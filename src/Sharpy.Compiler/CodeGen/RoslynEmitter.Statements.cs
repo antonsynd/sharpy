@@ -301,6 +301,14 @@ internal partial class RoslynEmitter
     {
         var expr = exprStmt.Expression;
 
+        // Special case for @test functions: rewrite unittest.assert_almost_equal(...)
+        // to Xunit.Assert.Equal(expected, actual, precision).
+        if (_isInTestFunction && expr is FunctionCall almostCall
+            && IsAssertAlmostEqualCall(almostCall))
+        {
+            return GenerateAssertAlmostEqual(almostCall);
+        }
+
         // None as a statement is a no-op (like Python's None expression)
         // We generate an empty statement since `_ = null;` requires type annotation in C#
         if (expr is NoneLiteral)
@@ -331,6 +339,60 @@ internal partial class RoslynEmitter
                 SyntaxKind.SimpleAssignmentExpression,
                 IdentifierName("_"),
                 generated));
+    }
+
+    /// <summary>
+    /// Returns true if the given call targets unittest.assert_almost_equal (bare or qualified).
+    /// </summary>
+    private static bool IsAssertAlmostEqualCall(FunctionCall call)
+    {
+        return call.Function switch
+        {
+            Identifier { Name: "assert_almost_equal" } => true,
+            MemberAccess { Member: "assert_almost_equal" } => true,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Rewrites assert_almost_equal(actual, expected, places=N) to
+    /// Xunit.Assert.Equal(expected, actual, N). Default precision is 7 decimal places,
+    /// matching Python's unittest.TestCase.assertAlmostEqual.
+    /// </summary>
+    private StatementSyntax GenerateAssertAlmostEqual(FunctionCall call)
+    {
+        // Fall back to the raw call if signature is malformed — callers are expected
+        // to have been validated semantically before reaching codegen.
+        if (call.Arguments.Length < 2)
+        {
+            return ExpressionStatement(GenerateExpression(call));
+        }
+
+        var actual = GenerateExpression(call.Arguments[0]);
+        var expected = GenerateExpression(call.Arguments[1]);
+
+        ExpressionSyntax precision;
+        if (call.Arguments.Length >= 3)
+        {
+            precision = GenerateExpression(call.Arguments[2]);
+        }
+        else
+        {
+            var placesKw = call.KeywordArguments.FirstOrDefault(k => k.Name == "places");
+            precision = placesKw != null
+                ? GenerateExpression(placesKw.Value)
+                : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7));
+        }
+
+        return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ParseName("Xunit.Assert"),
+                    IdentifierName("Equal")))
+            .AddArgumentListArguments(
+                Argument(expected),
+                Argument(actual),
+                Argument(precision)));
     }
 
     /// <summary>

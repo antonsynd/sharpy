@@ -776,6 +776,20 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateWith(WithStatement withStmt)
     {
+        // Special case for @test functions:
+        //   with assert_raises(ExceptionType): body
+        // is rewritten to xUnit:
+        //   Xunit.Assert.Throws<ExceptionType>(() => { body });
+        // assert_raises is a marker (no runtime implementation) — codegen handles it.
+        if (_isInTestFunction && withStmt.Items.Length == 1)
+        {
+            var ctxExpr = withStmt.Items[0].ContextExpression;
+            if (ctxExpr is FunctionCall call && IsAssertRaisesCall(call) && call.Arguments.Length == 1)
+            {
+                return GenerateAssertThrows(call.Arguments[0], withStmt.Body);
+            }
+        }
+
         // Generate the body block
         var bodyStatements = withStmt.Body.SelectMany(GenerateBodyStatements).ToList();
 
@@ -799,6 +813,47 @@ internal partial class RoslynEmitter
         }
 
         return innermost;
+    }
+
+    /// <summary>
+    /// Returns true if the given call targets unittest.assert_raises (bare or qualified).
+    /// </summary>
+    private static bool IsAssertRaisesCall(FunctionCall call)
+    {
+        return call.Function switch
+        {
+            Identifier { Name: "assert_raises" } => true,
+            MemberAccess { Member: "assert_raises" } => true,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Generates xUnit's Assert.Throws&lt;TException&gt;(() =&gt; { body }) for assert_raises blocks.
+    /// </summary>
+    private StatementSyntax GenerateAssertThrows(
+        Expression exceptionTypeExpr,
+        IReadOnlyList<Statement> body)
+    {
+        TypeSyntax exceptionType = exceptionTypeExpr switch
+        {
+            Identifier typeId => IdentifierName(NameMangler.Transform(typeId.Name, NameContext.Type)),
+            _ => _typeMapper.MapTypeFromExpression(exceptionTypeExpr)
+        };
+
+        var bodyStatements = body.SelectMany(GenerateBodyStatements).ToList();
+        var lambda = ParenthesizedLambdaExpression(Block(bodyStatements));
+
+        var throwsCall = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ParseName("Xunit.Assert"),
+                    GenericName(Identifier("Throws"))
+                        .WithTypeArgumentList(TypeArgumentList(
+                            SingletonSeparatedList(exceptionType)))))
+            .AddArgumentListArguments(Argument(lambda));
+
+        return ExpressionStatement(throwsCall);
     }
 
     /// <summary>

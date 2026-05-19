@@ -135,6 +135,11 @@ internal partial class RoslynEmitter
     // When true, assert statements are rewritten to xUnit assertions instead of Debug.Assert.
     private bool _isInTestFunction;
 
+    // Track if the current class being generated inherits from unittest.TestCase.
+    // When true, setup/teardown methods become private (called from synthesized
+    // constructor/Dispose) instead of being exposed publicly.
+    private bool _isInTestCaseClass;
+
     // Collects module-level @test functions during module member generation so they can
     // be emitted into a sibling test class instead of the regular module class.
     private readonly List<FunctionDef> _pendingTestFunctions = new();

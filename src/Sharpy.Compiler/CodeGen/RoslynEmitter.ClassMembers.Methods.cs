@@ -114,6 +114,21 @@ internal partial class RoslynEmitter
             }
         }
 
+        // In TestCase subclasses, setup/teardown are helper methods invoked by the
+        // synthesized constructor/Dispose. They should be private (xUnit only invokes
+        // the constructor/Dispose pair, never setup/teardown directly).
+        if (_isInTestCaseClass && (func.Name == "setup" || func.Name == "teardown"))
+        {
+            modifiers = TokenList(modifiers.Where(m =>
+                !m.IsKind(SyntaxKind.PublicKeyword)
+                && !m.IsKind(SyntaxKind.ProtectedKeyword)
+                && !m.IsKind(SyntaxKind.InternalKeyword)));
+            if (!modifiers.Any(m => m.IsKind(SyntaxKind.PrivateKeyword)))
+            {
+                modifiers = TokenList(new[] { Token(SyntaxKind.PrivateKeyword) }.Concat(modifiers));
+            }
+        }
+
         // Add override keyword for methods that override Object methods
         // Uses the protocol variable already fetched above, plus special handling for operator dunders
         var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"

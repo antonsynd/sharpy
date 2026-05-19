@@ -416,6 +416,30 @@ internal partial class RoslynEmitter
         // Process decorators to determine modifiers
         var modifiers = GenerateModifiersFromDecorators(classDef.Decorators, ModifierContext.Type);
 
+        // Detect inheritance from unittest.TestCase. TestCase is a marker base class
+        // used to drive xUnit lifecycle synthesis (constructor from setup, Dispose from
+        // teardown). It must NOT appear in the emitted C# base list.
+        bool isTestCase = classDef.BaseClasses.Any(bc =>
+            bc.Name == "TestCase" || bc.Name == "unittest.TestCase");
+
+        bool hasSetup = false;
+        bool hasTeardown = false;
+        if (isTestCase)
+        {
+            hasSetup = classDef.Body.OfType<FunctionDef>().Any(f => f.Name == "setup");
+            hasTeardown = classDef.Body.OfType<FunctionDef>().Any(f => f.Name == "teardown");
+
+            // Force public visibility — xUnit requires test classes be public.
+            if (!modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword)))
+            {
+                modifiers = TokenList(new[] { Token(SyntaxKind.PublicKeyword) }
+                    .Concat(modifiers.Where(m =>
+                        !m.IsKind(SyntaxKind.PrivateKeyword)
+                        && !m.IsKind(SyntaxKind.ProtectedKeyword)
+                        && !m.IsKind(SyntaxKind.InternalKeyword))));
+            }
+        }
+
         // Create class declaration
         var classDecl = ClassDeclaration(className)
             .WithModifiers(modifiers);
@@ -440,7 +464,13 @@ internal partial class RoslynEmitter
 
         // Add base class and interfaces (including synthesized protocol interfaces)
         {
-            var baseTypes = classDef.BaseClasses
+            var baseClassesForEmit = isTestCase
+                ? classDef.BaseClasses
+                    .Where(bc => bc.Name != "TestCase" && bc.Name != "unittest.TestCase")
+                    .ToList()
+                : (IReadOnlyList<TypeAnnotation>)classDef.BaseClasses;
+
+            var baseTypes = baseClassesForEmit
                 .Select(bc => (BaseTypeSyntax)SimpleBaseType(_typeMapper.MapType(bc)))
                 .ToList();
 
@@ -448,14 +478,55 @@ internal partial class RoslynEmitter
             var synthesizedInterfaces = CollectSynthesizedInterfaces(classDef.Body, classDef.BaseClasses, className, classDef.Name);
             baseTypes.AddRange(synthesizedInterfaces);
 
+            // If TestCase subclass has teardown(), add System.IDisposable so the
+            // synthesized Dispose() method satisfies xUnit's per-test cleanup contract.
+            if (isTestCase && hasTeardown)
+            {
+                baseTypes.Add(SimpleBaseType(ParseTypeName("System.IDisposable")));
+            }
+
             if (baseTypes.Count > 0)
             {
                 classDecl = classDecl.WithBaseList(BaseList(SeparatedList(baseTypes)));
             }
         }
 
+        // Track TestCase context so GenerateClassMethod can adjust setup/teardown visibility.
+        var wasInTestCaseClass = _isInTestCaseClass;
+        _isInTestCaseClass = isTestCase;
+
         // Generate class members from body
         var members = GenerateClassMembers(classDef.Body, className, classDef.Name);
+
+        _isInTestCaseClass = wasInTestCaseClass;
+
+        // Synthesize xUnit-compatible constructor (from setup) and Dispose (from teardown).
+        if (isTestCase)
+        {
+            if (hasSetup)
+            {
+                // public ClassName() { Setup(); }
+                var ctor = ConstructorDeclaration(Identifier(className))
+                    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                    .WithParameterList(ParameterList())
+                    .WithBody(Block(ExpressionStatement(
+                        InvocationExpression(IdentifierName("Setup")))));
+                members = new List<MemberDeclarationSyntax> { ctor }.Concat(members).ToList();
+            }
+
+            if (hasTeardown)
+            {
+                // public void Dispose() { Teardown(); }
+                var dispose = MethodDeclaration(
+                        PredefinedType(Token(SyntaxKind.VoidKeyword)),
+                        Identifier("Dispose"))
+                    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                    .WithParameterList(ParameterList())
+                    .WithBody(Block(ExpressionStatement(
+                        InvocationExpression(IdentifierName("Teardown")))));
+                members.Add(dispose);
+            }
+        }
 
         // For abstract classes implementing interfaces, generate abstract stubs for missing methods
         if (_isInAbstractClass && classDef.BaseClasses.Length > 0)
