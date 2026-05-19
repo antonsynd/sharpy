@@ -49,7 +49,7 @@ public class TextDocumentSyncHandlerTests : IDisposable
 
         // Wait for the analysis to complete (debounce + compilation) with generous timeout
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var fired = await Task.WhenAny(otherHandlerFired.Task, Task.Delay(Timeout.Infinite, cts.Token));
+        var fired = await Task.WhenAny(otherHandlerFired.Task, Task.Delay(System.Threading.Timeout.Infinite, cts.Token));
 
         // Our separate subscription should still fire, proving the event works
         otherHandlerFired.Task.IsCompletedSuccessfully.Should().BeTrue(

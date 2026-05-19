@@ -126,7 +126,7 @@ public class ItertoolsCombinatorics_Tests
             result.Add(arr);
         }
 
-        // 3\! = 6 permutations
+        // 3! = 6 permutations
         result.Should().HaveCount(6);
         // Python order: (1,2,3), (1,3,2), (2,1,3), (2,3,1), (3,1,2), (3,2,1)
         result[0].Should().Equal(1, 2, 3);

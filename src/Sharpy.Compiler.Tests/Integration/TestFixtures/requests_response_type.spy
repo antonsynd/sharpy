@@ -1,0 +1,8 @@
+# Test that the Response type is recognized and usable in annotations.
+from requests import Response
+
+def check_response(resp: Response) -> int:
+    return resp.status_code
+
+def main():
+    print("response type ok")

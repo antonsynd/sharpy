@@ -1,0 +1,9 @@
+# Test that the Session type can be imported and constructed.
+from requests import Session
+
+def make_session() -> Session:
+    s = Session()
+    return s
+
+def main():
+    print("session type ok")
