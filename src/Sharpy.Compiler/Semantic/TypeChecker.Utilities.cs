@@ -353,28 +353,28 @@ internal partial class TypeChecker
             case OptionalType ot:
                 return TryGetClrType(ot.UnderlyingType);
             case GenericType gt:
-            {
-                Type? openType = gt.Name switch
                 {
-                    "list" => typeof(SharpyRT::Sharpy.List<>),
-                    "dict" => typeof(SharpyRT::Sharpy.Dict<,>),
-                    "set" => typeof(SharpyRT::Sharpy.Set<>),
-                    _ => null,
-                };
-                if (openType == null)
-                    return null;
-                var clrTypeArgs = gt.TypeArguments.Select(ta => TryGetClrType(ta) ?? typeof(object)).ToArray();
-                if (clrTypeArgs.Length != openType.GetGenericArguments().Length)
-                    return null;
-                try
-                {
-                    return openType.MakeGenericType(clrTypeArgs);
+                    Type? openType = gt.Name switch
+                    {
+                        "list" => typeof(SharpyRT::Sharpy.List<>),
+                        "dict" => typeof(SharpyRT::Sharpy.Dict<,>),
+                        "set" => typeof(SharpyRT::Sharpy.Set<>),
+                        _ => null,
+                    };
+                    if (openType == null)
+                        return null;
+                    var clrTypeArgs = gt.TypeArguments.Select(ta => TryGetClrType(ta) ?? typeof(object)).ToArray();
+                    if (clrTypeArgs.Length != openType.GetGenericArguments().Length)
+                        return null;
+                    try
+                    {
+                        return openType.MakeGenericType(clrTypeArgs);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
                 }
-                catch
-                {
-                    return null;
-                }
-            }
             default:
                 return type.ClrType ?? type.DeclaringSymbol?.ClrType;
         }

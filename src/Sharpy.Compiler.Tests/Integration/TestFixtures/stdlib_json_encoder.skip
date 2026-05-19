@@ -1,1 +1,1 @@
-Blocked: subclassing CLR class JSONEncoder hides inherited non-virtual methods (encoder.encode fails type check with "Function expects 0 arguments but got 1"). #665 (CLR virtual method discovery) and #666 (module-type parameter overload resolution) are fixed, but a separate inheritance lifting issue remains.
+Blocked by #669: CLR-inherited method resolution (encoder.encode() not found through CLR base class). Original blockers #665 and #666 are resolved.
