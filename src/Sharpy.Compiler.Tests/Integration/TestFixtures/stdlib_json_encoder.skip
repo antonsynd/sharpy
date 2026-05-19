@@ -1,1 +1,1 @@
-Blocked by compiler limitations: #665 (CLR virtual method discovery) and #666 (module-type parameter overload resolution)
+Blocked: subclassing CLR class JSONEncoder hides inherited non-virtual methods (encoder.encode fails type check with "Function expects 0 arguments but got 1"). #665 (CLR virtual method discovery) and #666 (module-type parameter overload resolution) are fixed, but a separate inheritance lifting issue remains.
