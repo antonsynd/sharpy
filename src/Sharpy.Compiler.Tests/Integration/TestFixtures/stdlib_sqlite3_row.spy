@@ -1,0 +1,17 @@
+# Test sqlite3 module: row_factory and sqlite3.Row access
+import sqlite3
+
+def main():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE people (name TEXT, age INTEGER)")
+    cur.execute("INSERT INTO people VALUES ('Alice', 30)")
+    cur.execute("INSERT INTO people VALUES ('Bob', 25)")
+    conn.commit()
+    cur.execute("SELECT name, age FROM people ORDER BY name")
+    row = cur.fetchone()
+    print(row)
+    row = cur.fetchone()
+    print(row)
+    conn.close()

@@ -1,0 +1,5 @@
+2
+<sqlite3.Row name='Alice', score=95>
+<sqlite3.Row name='Charlie', score=92>
+2
+<sqlite3.Row name='Diana', score=88>

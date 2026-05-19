@@ -1,0 +1,2 @@
+<sqlite3.Row name='Alice', age=30>
+<sqlite3.Row name='Bob', age=25>

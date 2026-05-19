@@ -348,6 +348,11 @@ public abstract class IntegrationTestBase
                 {
                     var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
                     File.Copy(runtimePath, runtimeDest, overwrite: true);
+
+                    // Copy transitive dependencies of Sharpy.Core (e.g., Microsoft.Data.Sqlite)
+                    // from the test project's output directory where NuGet restores them.
+                    var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+                    CopyTransitiveDependencies(testBinDir, tempDir);
                 }
 
                 // Create a runtimeconfig.json for the assembly
@@ -661,6 +666,11 @@ public abstract class IntegrationTestBase
                 {
                     var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
                     File.Copy(runtimePath, runtimeDest, overwrite: true);
+
+                    // Copy transitive dependencies of Sharpy.Core (e.g., Microsoft.Data.Sqlite)
+                    // from the test project's output directory where NuGet restores them.
+                    var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+                    CopyTransitiveDependencies(testBinDir, tempDir);
                 }
 
                 // Create a runtimeconfig.json for the assembly
@@ -843,6 +853,76 @@ public abstract class IntegrationTestBase
                     symbolTable.TryDefine(moduleSymbol);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Copies transitive dependencies of Sharpy.Core (e.g., Microsoft.Data.Sqlite and its
+    /// native SQLite libraries) from the test project's output directory to the temp execution
+    /// directory. Skips assemblies already present and framework assemblies.
+    /// Also copies native libraries (e.g., libe_sqlite3.dylib) directly to the temp directory
+    /// so the .NET runtime can find them without a .deps.json probing configuration.
+    /// </summary>
+    private static void CopyTransitiveDependencies(string testBinDir, string destDir)
+    {
+        // Managed DLLs that are transitive dependencies of Sharpy.Core but not part of the
+        // .NET runtime. These must be present next to the compiled test assembly.
+        string[] transitiveDeps = new[]
+        {
+            "Microsoft.Data.Sqlite.dll",
+            "SQLitePCLRaw.batteries_v2.dll",
+            "SQLitePCLRaw.core.dll",
+            "SQLitePCLRaw.provider.e_sqlite3.dll",
+        };
+
+        foreach (var dllName in transitiveDeps)
+        {
+            var srcPath = Path.Combine(testBinDir, dllName);
+            if (File.Exists(srcPath))
+            {
+                var destPath = Path.Combine(destDir, dllName);
+                if (!File.Exists(destPath))
+                    File.Copy(srcPath, destPath);
+            }
+        }
+
+        // Copy native runtime libraries directly into the temp directory.
+        // Without a .deps.json, the runtime won't probe the runtimes/ subdirectory,
+        // so we find the platform-specific native library and place it at the root.
+        CopyNativeLibraries(testBinDir, destDir);
+    }
+
+    /// <summary>
+    /// Copies platform-specific native libraries from the runtimes/ subdirectory to the
+    /// destination directory root, where the .NET runtime can find them via P/Invoke.
+    /// </summary>
+    private static void CopyNativeLibraries(string testBinDir, string destDir)
+    {
+        var runtimesDir = Path.Combine(testBinDir, "runtimes");
+        if (!Directory.Exists(runtimesDir))
+            return;
+
+        // Determine the platform-specific runtime identifier
+        string rid;
+        if (OperatingSystem.IsMacOS())
+            rid = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture ==
+                  System.Runtime.InteropServices.Architecture.Arm64 ? "osx-arm64" : "osx-x64";
+        else if (OperatingSystem.IsLinux())
+            rid = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture ==
+                  System.Runtime.InteropServices.Architecture.Arm64 ? "linux-arm64" : "linux-x64";
+        else
+            rid = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture ==
+                  System.Runtime.InteropServices.Architecture.Arm64 ? "win-arm64" : "win-x64";
+
+        var nativeDir = Path.Combine(runtimesDir, rid, "native");
+        if (!Directory.Exists(nativeDir))
+            return;
+
+        foreach (var file in Directory.GetFiles(nativeDir))
+        {
+            var destFile = Path.Combine(destDir, Path.GetFileName(file));
+            if (!File.Exists(destFile))
+                File.Copy(file, destFile);
         }
     }
 }

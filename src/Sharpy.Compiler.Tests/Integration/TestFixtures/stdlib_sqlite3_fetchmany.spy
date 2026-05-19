@@ -1,0 +1,22 @@
+# Test sqlite3 module: fetchmany and cursor description
+import sqlite3
+
+def main():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE scores (name TEXT, score INTEGER)")
+    cur.execute("INSERT INTO scores VALUES ('Alice', 95)")
+    cur.execute("INSERT INTO scores VALUES ('Bob', 87)")
+    cur.execute("INSERT INTO scores VALUES ('Charlie', 92)")
+    cur.execute("INSERT INTO scores VALUES ('Diana', 88)")
+    conn.commit()
+    cur.execute("SELECT name, score FROM scores ORDER BY score DESC")
+    top_two = cur.fetchmany(2)
+    print(len(top_two))
+    print(top_two[0])
+    print(top_two[1])
+    rest = cur.fetchall()
+    print(len(rest))
+    print(rest[0])
+    conn.close()

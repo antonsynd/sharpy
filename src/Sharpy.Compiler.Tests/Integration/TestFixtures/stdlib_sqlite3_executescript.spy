@@ -1,0 +1,16 @@
+# Test sqlite3 module: executescript for multi-statement SQL
+import sqlite3
+
+def main():
+    conn = sqlite3.connect(":memory:")
+    cur = conn.cursor()
+    cur.executescript("CREATE TABLE t1 (a INTEGER); CREATE TABLE t2 (b TEXT); INSERT INTO t1 VALUES (1); INSERT INTO t1 VALUES (2); INSERT INTO t2 VALUES ('x')")
+    cur.execute("SELECT a FROM t1 ORDER BY a")
+    rows = cur.fetchall()
+    print(len(rows))
+    cur.execute("SELECT b FROM t2")
+    rows = cur.fetchall()
+    print(len(rows))
+    print(cur.description[0][0])
+    conn.close()
+    print("done")

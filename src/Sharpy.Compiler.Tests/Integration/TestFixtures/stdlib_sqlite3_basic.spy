@@ -1,0 +1,16 @@
+# Test sqlite3 module: basic connect, create, insert, select, close
+import sqlite3
+
+def main():
+    conn = sqlite3.connect(":memory:")
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
+    cur.execute("INSERT INTO test (name) VALUES ('Alice')")
+    cur.execute("INSERT INTO test (name) VALUES ('Bob')")
+    conn.commit()
+    cur.execute("SELECT name FROM test ORDER BY name")
+    rows = cur.fetchall()
+    print(len(rows))
+    print(cur.rowcount)
+    conn.close()
+    print("done")

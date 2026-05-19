@@ -1,0 +1,13 @@
+# Test sqlite3 module: context manager (with statement) pattern
+import sqlite3
+
+def main():
+    with sqlite3.connect(":memory:") as conn:
+        cur = conn.cursor()
+        cur.execute("CREATE TABLE data (value INTEGER)")
+        cur.execute("INSERT INTO data VALUES (42)")
+        conn.commit()
+        cur.execute("SELECT value FROM data")
+        rows = cur.fetchall()
+        print(len(rows))
+    print("closed")
