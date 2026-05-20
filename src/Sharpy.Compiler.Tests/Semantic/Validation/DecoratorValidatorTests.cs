@@ -708,4 +708,178 @@ class Foo:
     }
 
     #endregion
+
+    #region @test.skip and @test.skip_if decorators
+
+    [Fact]
+    public void TestSkip_WithStringReason_NoError()
+    {
+        var code = @"
+@test
+@test.skip(""flaky test"")
+def test_flaky():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestSkip_NoArguments_ReportsWarning()
+    {
+        var code = @"
+@test
+@test.skip
+def test_flaky():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.NotEmpty(warnings);
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.TestDecoratorInvalidArgument
+            && w.Message.Contains("@test.skip"));
+    }
+
+    [Fact]
+    public void TestSkip_NonStringArgument_ReportsWarning()
+    {
+        var code = @"
+@test
+@test.skip(42)
+def test_flaky():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.NotEmpty(warnings);
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.TestDecoratorInvalidArgument
+            && w.Message.Contains("string literal"));
+    }
+
+    [Fact]
+    public void TestSkip_TooManyArguments_ReportsWarning()
+    {
+        var code = @"
+@test
+@test.skip(""a"", ""b"")
+def test_flaky():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.TestDecoratorInvalidArgument);
+    }
+
+    [Fact]
+    public void TestSkipIf_WithConditionAndReason_NoError()
+    {
+        var code = @"
+@test
+@test.skip_if(True, ""platform-specific"")
+def test_platform():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestSkipIf_MissingReason_ReportsWarning()
+    {
+        var code = @"
+@test
+@test.skip_if(True)
+def test_platform():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.TestDecoratorInvalidArgument
+            && w.Message.Contains("@test.skip_if"));
+    }
+
+    [Fact]
+    public void TestSkipIf_NonStringReason_ReportsWarning()
+    {
+        var code = @"
+@test
+@test.skip_if(True, 42)
+def test_platform():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.TestDecoratorInvalidArgument
+            && w.Message.Contains("string literal"));
+    }
+
+    [Fact]
+    public void TestSkip_OnClass_ReportsInvalidTarget()
+    {
+        var code = @"
+@test.skip(""reason"")
+class Foo:
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidTarget
+            && e.Message.Contains("@test.skip"));
+    }
+
+    [Fact]
+    public void TestSkip_CombinedWithParametrize_NoError()
+    {
+        var code = @"
+@test.parametrize([(1,), (2,)])
+@test.skip(""WIP"")
+def test_x(a: int):
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    #endregion
 }

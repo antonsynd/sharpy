@@ -60,6 +60,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateLruCacheArguments(node.Decorators, definitionName);
         ValidateTestDecorator(node.Decorators, node.Name, isDunder: DunderDetector.IsDunderMethod(node.Name));
         ValidateTestParametrizeDecorator(node, definitionName);
+        ValidateTestSkipDecorators(node.Decorators, definitionName);
 
         if (_containingType != null)
         {
@@ -1029,6 +1030,99 @@ internal class DecoratorValidator : ValidatingAstWalker
                     code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
                     span: element.Span);
             }
+        }
+    }
+
+    /// <summary>
+    /// Validates @test.skip and @test.skip_if decorators on function definitions.
+    /// Rules:
+    /// - @test.skip(reason) takes exactly one string argument.
+    /// - @test.skip_if(condition, reason) takes exactly two arguments; the second must be a string.
+    /// - These decorators can be combined with @test or @test.parametrize.
+    /// - Cannot be applied to type definitions (handled by ValidateTestDecoratorNotOnType).
+    /// </summary>
+    private void ValidateTestSkipDecorators(IReadOnlyList<Decorator> decorators, string definitionName)
+    {
+        foreach (var decorator in decorators)
+        {
+            if (decorator.Name == DecoratorNames.TestSkip)
+            {
+                ValidateTestSkipDecorator(decorator, definitionName);
+            }
+            else if (decorator.Name == DecoratorNames.TestSkipIf)
+            {
+                ValidateTestSkipIfDecorator(decorator, definitionName);
+            }
+        }
+    }
+
+    private void ValidateTestSkipDecorator(Decorator decorator, string definitionName)
+    {
+        if (decorator.KeywordArguments.Length > 0)
+        {
+            AddWarning(
+                $"'@test.skip' on '{definitionName}' does not accept keyword arguments.",
+                decorator.KeywordArguments[0].Value.LineStart,
+                decorator.KeywordArguments[0].Value.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: decorator.KeywordArguments[0].Value.Span);
+        }
+
+        if (decorator.Arguments.Length != 1)
+        {
+            AddWarning(
+                $"'@test.skip' on '{definitionName}' requires exactly one string argument: " +
+                "@test.skip(\"reason\").",
+                decorator.LineStart,
+                decorator.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: decorator.Span);
+            return;
+        }
+
+        if (decorator.Arguments[0] is not StringLiteral)
+        {
+            AddWarning(
+                $"'@test.skip' argument on '{definitionName}' must be a string literal (the skip reason).",
+                decorator.Arguments[0].LineStart,
+                decorator.Arguments[0].ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: decorator.Arguments[0].Span);
+        }
+    }
+
+    private void ValidateTestSkipIfDecorator(Decorator decorator, string definitionName)
+    {
+        if (decorator.KeywordArguments.Length > 0)
+        {
+            AddWarning(
+                $"'@test.skip_if' on '{definitionName}' does not accept keyword arguments.",
+                decorator.KeywordArguments[0].Value.LineStart,
+                decorator.KeywordArguments[0].Value.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: decorator.KeywordArguments[0].Value.Span);
+        }
+
+        if (decorator.Arguments.Length != 2)
+        {
+            AddWarning(
+                $"'@test.skip_if' on '{definitionName}' requires exactly two arguments: " +
+                "@test.skip_if(condition, \"reason\").",
+                decorator.LineStart,
+                decorator.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: decorator.Span);
+            return;
+        }
+
+        if (decorator.Arguments[1] is not StringLiteral)
+        {
+            AddWarning(
+                $"'@test.skip_if' second argument on '{definitionName}' must be a string literal (the skip reason).",
+                decorator.Arguments[1].LineStart,
+                decorator.Arguments[1].ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: decorator.Arguments[1].Span);
         }
     }
 

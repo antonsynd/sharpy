@@ -23,6 +23,8 @@ internal static class DecoratorNames
 
     // Test framework sub-decorators (member access form: @test.parametrize, etc.)
     public const string TestParametrize = "test.parametrize";
+    public const string TestSkip = "test.skip";
+    public const string TestSkipIf = "test.skip_if";
 
     // Access modifiers
     public const string Public = "public";
@@ -65,5 +67,7 @@ internal static class DecoratorNames
     {
         Test,
         TestParametrize,
+        TestSkip,
+        TestSkipIf,
     }.ToImmutableHashSet();
 }
