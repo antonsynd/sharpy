@@ -1,0 +1,22 @@
+from unittest import TestCase
+
+@test.collection("database")
+class TestDatabaseOps(TestCase):
+    value: int
+
+    def setup(self):
+        self.value = 100
+
+    @test
+    def test_value(self):
+        assert self.value == 100
+
+@test.collection("database")
+class TestMoreDatabaseOps(TestCase):
+    @test
+    def test_simple(self):
+        x: int = 7
+        assert x == 7
+
+def main():
+    print("ok")

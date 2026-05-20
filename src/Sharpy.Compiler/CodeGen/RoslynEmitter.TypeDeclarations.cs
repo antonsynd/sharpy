@@ -1231,6 +1231,23 @@ internal partial class RoslynEmitter
                 if (decorator.Name == DecoratorNames.TestFixture)
                     continue;
 
+                // @test.collection("name") → [Xunit.CollectionAttribute("name")]
+                // Class-level decorator that groups tests for sequential execution in xUnit.
+                if (decorator.Name == DecoratorNames.TestCollection)
+                {
+                    if (decorator.Arguments.Length == 1
+                        && decorator.Arguments[0] is StringLiteral collectionName)
+                    {
+                        var collectionAttribute = Attribute(ParseName("Xunit.CollectionAttribute"))
+                            .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
+                                AttributeArgument(LiteralExpression(
+                                    SyntaxKind.StringLiteralExpression,
+                                    Literal(collectionName.Value))))));
+                        attributeLists.Add(AttributeList(SingletonSeparatedList(collectionAttribute)));
+                    }
+                    continue;
+                }
+
                 // @test.mark("category") → [Xunit.TraitAttribute("Category", "category")]
                 // Multiple @test.mark decorators produce multiple [Trait] attributes.
                 if (decorator.Name == DecoratorNames.TestMark)

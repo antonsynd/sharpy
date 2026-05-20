@@ -63,6 +63,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateTestSkipDecorators(node.Decorators, definitionName);
         ValidateTestFixtureDecorator(node, definitionName, isInsideType: _containingType != null);
         ValidateTestMarkDecorators(node.Decorators, definitionName, hasTestDecorator: HasAnyTestMarker(node.Decorators));
+        ValidateTestCollectionDecorator(node.Decorators, definitionName, "function", allowOnThisKind: false);
 
         if (_containingType != null)
         {
@@ -88,6 +89,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateReadonlyNotOnNonProperty(node.Decorators, node.Name, "class");
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "class");
         ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "class");
+        ValidateTestCollectionDecorator(node.Decorators, node.Name, "class", allowOnThisKind: true);
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Class);
@@ -101,6 +103,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDataclassOnNonClass(node.Decorators, node.Name, "struct");
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "struct");
         ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "struct");
+        ValidateTestCollectionDecorator(node.Decorators, node.Name, "struct", allowOnThisKind: false);
 
         var previousType = _containingType;
         _containingType = new ContainingTypeInfo(node.Name, ContainingTypeKind.Struct);
@@ -114,6 +117,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDataclassOnNonClass(node.Decorators, node.Name, "interface");
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "interface");
         ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "interface");
+        ValidateTestCollectionDecorator(node.Decorators, node.Name, "interface", allowOnThisKind: false);
         ValidateInterfaceDecorators(node);
 
         var previousType = _containingType;
@@ -128,6 +132,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateDataclassOnNonClass(node.Decorators, node.Name, "enum");
         ValidateLruCacheNotOnNonFunction(node.Decorators, node.Name, "enum");
         ValidateTestDecoratorNotOnType(node.Decorators, node.Name, "enum");
+        ValidateTestCollectionDecorator(node.Decorators, node.Name, "enum", allowOnThisKind: false);
         base.VisitEnumDef(node);
     }
 
@@ -270,7 +275,10 @@ internal class DecoratorValidator : ValidatingAstWalker
             // @test.mark is supplementary metadata: not in KnownTestDecorators
             // (so ValidateTestDecoratorNotOnType doesn't reject it on classes for collection use),
             // but still must pass the unknown-decorator check.
-            .Append(DecoratorNames.TestMark));
+            .Append(DecoratorNames.TestMark)
+            // @test.collection is a class-level decorator (maps to xUnit [Collection]).
+            // Not in KnownTestDecorators because it's only valid on classes.
+            .Append(DecoratorNames.TestCollection));
 
     private void ValidateDecorators(IEnumerable<Decorator> decorators, string definitionName)
     {
@@ -1291,6 +1299,66 @@ internal class DecoratorValidator : ValidatingAstWalker
                     decorator.ColumnStart,
                     code: DiagnosticCodes.Validation.TestDecoratorInvalidCombination,
                     span: decorator.Span);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates @test.collection decorator on type declarations.
+    /// Rules:
+    /// - Only valid on classes (not structs, interfaces, enums, or functions).
+    /// - Takes exactly one positional string argument (the collection name).
+    /// - No keyword arguments.
+    /// </summary>
+    private void ValidateTestCollectionDecorator(IReadOnlyList<Decorator> decorators, string definitionName, string definitionKind, bool allowOnThisKind)
+    {
+        foreach (var decorator in decorators)
+        {
+            if (decorator.Name != DecoratorNames.TestCollection)
+                continue;
+
+            if (!allowOnThisKind)
+            {
+                AddError(
+                    $"'@test.collection' cannot be applied to {definitionKind} '{definitionName}'. " +
+                    "Test collection grouping is only valid on classes.",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidTarget,
+                    span: decorator.Span);
+                continue;
+            }
+
+            if (decorator.KeywordArguments.Length > 0)
+            {
+                AddWarning(
+                    $"'@test.collection' on '{definitionName}' does not accept keyword arguments.",
+                    decorator.KeywordArguments[0].Value.LineStart,
+                    decorator.KeywordArguments[0].Value.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                    span: decorator.KeywordArguments[0].Value.Span);
+            }
+
+            if (decorator.Arguments.Length != 1)
+            {
+                AddWarning(
+                    $"'@test.collection' on '{definitionName}' requires exactly one string argument: " +
+                    "@test.collection(\"name\").",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                    span: decorator.Span);
+                continue;
+            }
+
+            if (decorator.Arguments[0] is not StringLiteral)
+            {
+                AddWarning(
+                    $"'@test.collection' argument on '{definitionName}' must be a string literal (the collection name).",
+                    decorator.Arguments[0].LineStart,
+                    decorator.Arguments[0].ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                    span: decorator.Arguments[0].Span);
             }
         }
     }

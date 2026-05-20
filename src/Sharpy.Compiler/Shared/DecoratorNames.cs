@@ -27,6 +27,7 @@ internal static class DecoratorNames
     public const string TestSkipIf = "test.skip_if";
     public const string TestFixture = "test.fixture";
     public const string TestMark = "test.mark";
+    public const string TestCollection = "test.collection";
 
     // Access modifiers
     public const string Public = "public";
