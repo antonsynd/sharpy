@@ -52,7 +52,7 @@ public static class DiagnosticCodes
         public const string InvalidHexLiteral = "SPY0008";          // Active
         public const string InvalidBinaryLiteral = "SPY0009";       // Active
         public const string InvalidOctalLiteral = "SPY0010";        // Active
-        public const string InvalidFloatLiteral = "SPY0019";        // Allocated — not yet emitted (#670)
+        public const string InvalidFloatLiteral = "SPY0019";        // Reserved — covered by SPY0007 (#670)
         public const string InvalidNumericSuffix = "SPY0023";       // Active
         public const string OctalEscapeOverflow = "SPY0024";        // Active
 
@@ -133,7 +133,7 @@ public static class DiagnosticCodes
         public const string PositionalAfterKeyword = "SPY0109";     // Active
         public const string MultipleVariadic = "SPY0110";           // Active
         public const string VariadicWithDefault = "SPY0111";        // Active
-        public const string VariadicNotLast = "SPY0112";            // Allocated — not yet emitted (#671)
+        public const string VariadicNotLast = "SPY0112";            // Reserved — covered by SPY0110 (#671)
 
         #endregion
 
@@ -224,7 +224,7 @@ public static class DiagnosticCodes
         #region Type checking (SPY0220-SPY0259)
 
         public const string TypeMismatch = "SPY0220";               // Active
-        public const string IncompatibleTypes = "SPY0221";          // Allocated — not yet emitted (#672)
+        public const string IncompatibleTypes = "SPY0221";          // Reserved — covered by SPY0220 (#672)
         public const string InvalidBinaryOperation = "SPY0222";     // Active
         public const string InvalidUnaryOperation = "SPY0223";      // Active
         public const string WrongArgumentCount = "SPY0224";         // Active
@@ -241,7 +241,7 @@ public static class DiagnosticCodes
         public const string DuplicateArgument = "SPY0235";          // Active
         public const string InvalidNullConditional = "SPY0236";     // Active
         public const string CannotInferGenericType = "SPY0237";     // Active
-        public const string InvalidComprehension = "SPY0238";       // Allocated — not yet emitted (#672)
+        public const string InvalidComprehension = "SPY0238";       // Reserved — covered by SPY0241 (#672)
         public const string InvalidTupleUnpacking = "SPY0239";      // Active
         public const string InvalidAutoVariable = "SPY0240";        // Active
         public const string ConditionNotBoolean = "SPY0241";        // Active
