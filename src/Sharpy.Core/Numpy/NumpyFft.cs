@@ -15,7 +15,7 @@ namespace Sharpy
     /// transforms backed by Math.NET's <see cref="Fourier"/> implementation.
     /// </summary>
     /// <remarks>
-    /// Uses <see cref="FourierOptions.Default"/> (asymmetric scaling: forward divides by 1,
+    /// Uses <see cref="FourierOptions.AsymmetricScaling"/> (asymmetric scaling: forward divides by 1,
     /// inverse divides by n), which matches NumPy's <c>numpy.fft.fft</c>/<c>ifft</c> convention.
     /// </remarks>
     [SharpyModule("numpy.fft")]
@@ -50,7 +50,7 @@ namespace Sharpy
                 buffer[i] = new BclComplex(a._data[offset + i * stride], 0.0);
             }
 
-            Fourier.Forward(buffer, FourierOptions.Default);
+            Fourier.Forward(buffer, FourierOptions.AsymmetricScaling);
             return new NdArray<BclComplex>(buffer, new[] { n });
         }
 
@@ -78,7 +78,7 @@ namespace Sharpy
                 buffer[i] = a._data[offset + i * stride];
             }
 
-            Fourier.Forward(buffer, FourierOptions.Default);
+            Fourier.Forward(buffer, FourierOptions.AsymmetricScaling);
             return new NdArray<BclComplex>(buffer, new[] { n });
         }
 
@@ -110,7 +110,7 @@ namespace Sharpy
                 buffer[i] = a._data[offset + i * stride];
             }
 
-            Fourier.Inverse(buffer, FourierOptions.Default);
+            Fourier.Inverse(buffer, FourierOptions.AsymmetricScaling);
             return new NdArray<BclComplex>(buffer, new[] { n });
         }
 

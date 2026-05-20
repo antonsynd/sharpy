@@ -121,6 +121,12 @@ namespace Sharpy
                 throw new ValueError($"expected square matrix, got ({m.RowCount},{m.ColumnCount})");
             }
 
+            double det = m.Determinant();
+            if (double.IsNaN(det) || double.IsInfinity(det) || System.Math.Abs(det) < 1e-15)
+            {
+                throw new ValueError("singular matrix");
+            }
+
             try
             {
                 var inv = m.Inverse();
@@ -265,6 +271,12 @@ namespace Sharpy
             if (m.RowCount != m.ColumnCount)
             {
                 throw new ValueError($"expected square coefficient matrix, got ({m.RowCount},{m.ColumnCount})");
+            }
+
+            double det = m.Determinant();
+            if (double.IsNaN(det) || double.IsInfinity(det) || System.Math.Abs(det) < 1e-15)
+            {
+                throw new ValueError("singular matrix");
             }
 
             try
