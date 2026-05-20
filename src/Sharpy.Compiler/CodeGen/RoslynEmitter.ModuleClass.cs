@@ -120,7 +120,7 @@ internal partial class RoslynEmitter
             // (so they don't end up as static methods on the module class — xUnit needs them
             // as instance methods on a public class).
             if (stmt is FunctionDef testFunc
-                && testFunc.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Test))
+                && testFunc.Decorators.Any(IsTestDecorator))
             {
                 _pendingTestFunctions.Add(testFunc);
                 _declaredVariables.Clear();

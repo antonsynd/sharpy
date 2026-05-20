@@ -27,9 +27,9 @@ internal partial class RoslynEmitter
         using var _async = SetAsyncScope(func.IsAsync);
 
         // Track @test context so assert statements in the body emit xUnit assertions
-        // (instead of System.Diagnostics.Debug.Assert).
-        bool hasTestDecorator = func.Decorators.Any(d =>
-            !d.IsBracketAttribute && d.Name == DecoratorNames.Test);
+        // (instead of System.Diagnostics.Debug.Assert). Matches @test and its
+        // sub-decorators (@test.parametrize, @test.skip, @test.skip_if).
+        bool hasTestDecorator = func.Decorators.Any(IsTestDecorator);
         bool savedIsInTestFunction = _isInTestFunction;
         if (hasTestDecorator)
         {

@@ -520,23 +520,30 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Returns true if the module contains any function or class method decorated with @test.
+    /// Returns true if the decorator is one of the test framework decorators
+    /// (@test, @test.parametrize, @test.skip, @test.skip_if). Bracket attributes
+    /// (@[...]) are excluded.
+    /// </summary>
+    internal static bool IsTestDecorator(Decorator d)
+        => !d.IsBracketAttribute && DecoratorNames.KnownTestDecorators.Contains(d.Name);
+
+    /// <summary>
+    /// Returns true if the module contains any function or class method decorated with @test
+    /// or any of its sub-decorators (@test.parametrize, etc.).
     /// Used to determine whether `using Xunit;` should be added.
     /// </summary>
     private static bool HasTestDecoratedMembers(Module module)
     {
-        static bool IsTest(Decorator d) => !d.IsBracketAttribute && d.Name == DecoratorNames.Test;
-
         foreach (var stmt in module.Body)
         {
-            if (stmt is FunctionDef fn && fn.Decorators.Any(IsTest))
+            if (stmt is FunctionDef fn && fn.Decorators.Any(IsTestDecorator))
                 return true;
 
             if (stmt is ClassDef cls)
             {
                 foreach (var member in cls.Body)
                 {
-                    if (member is FunctionDef m && m.Decorators.Any(IsTest))
+                    if (member is FunctionDef m && m.Decorators.Any(IsTestDecorator))
                         return true;
                 }
             }

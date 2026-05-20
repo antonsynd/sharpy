@@ -50,9 +50,9 @@ internal partial class RoslynEmitter
         using var _async = SetAsyncScope(func.IsAsync);
 
         // Track @test context so assert statements in the body emit xUnit assertions
-        // (instead of System.Diagnostics.Debug.Assert).
-        bool isTestFunction = func.Decorators.Any(d =>
-            !d.IsBracketAttribute && d.Name == DecoratorNames.Test);
+        // (instead of System.Diagnostics.Debug.Assert). Matches @test and its
+        // sub-decorators (@test.parametrize, @test.skip, @test.skip_if).
+        bool isTestFunction = func.Decorators.Any(IsTestDecorator);
         bool savedIsInTestFunction = _isInTestFunction;
         if (isTestFunction)
         {
@@ -1230,6 +1230,13 @@ internal partial class RoslynEmitter
                     attributeLists.Add(AttributeList(SingletonSeparatedList(factAttribute)));
                     continue;
                 }
+
+                // @test.parametrize([(a,b,...), ...]) → [Xunit.TheoryAttribute] + [Xunit.InlineDataAttribute(...)]
+                if (decorator.Name == DecoratorNames.TestParametrize)
+                {
+                    attributeLists.AddRange(GenerateParametrizeAttributes(decorator));
+                    continue;
+                }
             }
 
             NameSyntax attributeName;
@@ -1277,6 +1284,51 @@ internal partial class RoslynEmitter
         }
 
         return List(attributeLists);
+    }
+
+    /// <summary>
+    /// Generates [Theory] + one [InlineData(...)] per row for a @test.parametrize decorator.
+    /// The argument shape is validated by DecoratorValidator:
+    /// - decorator.Arguments[0] is a ListLiteral
+    /// - elements are TupleLiterals (or scalar literals for single-parameter functions)
+    /// </summary>
+    private IEnumerable<AttributeListSyntax> GenerateParametrizeAttributes(Decorator decorator)
+    {
+        var result = new List<AttributeListSyntax>();
+
+        // [Xunit.TheoryAttribute]
+        result.Add(AttributeList(SingletonSeparatedList(
+            Attribute(ParseName("Xunit.TheoryAttribute")))));
+
+        if (decorator.Arguments.Length != 1 || decorator.Arguments[0] is not ListLiteral listLit)
+        {
+            // Should be unreachable — DecoratorValidator rejects this. Return just [Theory].
+            return result;
+        }
+
+        foreach (var element in listLit.Elements)
+        {
+            IReadOnlyList<Expression> rowValues = element switch
+            {
+                TupleLiteral t => t.Elements,
+                // Single-parameter functions may use a flat list of scalars.
+                _ => new[] { element },
+            };
+
+            var args = rowValues
+                .Select(v => AttributeArgument(GenerateAttributeArgumentExpression(v)))
+                .ToArray();
+
+            var inlineData = Attribute(ParseName("Xunit.InlineDataAttribute"));
+            if (args.Length > 0)
+            {
+                inlineData = inlineData.WithArgumentList(AttributeArgumentList(SeparatedList(args)));
+            }
+
+            result.Add(AttributeList(SingletonSeparatedList(inlineData)));
+        }
+
+        return result;
     }
 
     private static string MangleBracketPart(Decorator decorator, int index)
