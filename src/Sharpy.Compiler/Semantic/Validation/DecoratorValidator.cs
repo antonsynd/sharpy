@@ -59,6 +59,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateReadonlyNotOnNonProperty(node.Decorators, definitionName, "function");
         ValidateLruCacheArguments(node.Decorators, definitionName);
         ValidateTestDecorator(node.Decorators, node.Name, isDunder: DunderDetector.IsDunderMethod(node.Name));
+        ValidateTestParametrizeDecorator(node, definitionName);
 
         if (_containingType != null)
         {
@@ -257,12 +258,12 @@ internal class DecoratorValidator : ValidatingAstWalker
     private static readonly HashSet<string> AllKnownDecorators = new(
         DecoratorNames.KnownModifierDecorators
             .Union(DecoratorNames.KnownAttributeDecorators)
+            .Union(DecoratorNames.KnownTestDecorators)
             .Append(DecoratorNames.Dataclass)
             .Append(DecoratorNames.LruCache)
             .Append(DecoratorNames.Cache)
             .Append(DecoratorNames.StaticMethod)
-            .Append(DecoratorNames.ClassMethod)
-            .Append(DecoratorNames.Test));
+            .Append(DecoratorNames.ClassMethod));
 
     private void ValidateDecorators(IEnumerable<Decorator> decorators, string definitionName)
     {
@@ -905,21 +906,129 @@ internal class DecoratorValidator : ValidatingAstWalker
     }
 
     /// <summary>
-    /// Validates that @test is not applied to type definitions (classes, structs, interfaces, enums)
-    /// or to properties/events.
+    /// Validates that @test (and its sub-decorators like @test.parametrize) is not applied to type
+    /// definitions (classes, structs, interfaces, enums) or to properties/events.
     /// </summary>
     private void ValidateTestDecoratorNotOnType(IEnumerable<Decorator> decorators, string typeName, string typeKind)
     {
-        var testDecorator = decorators.FirstOrDefault(d => d.Name == DecoratorNames.Test);
-        if (testDecorator != null)
+        foreach (var decorator in decorators)
+        {
+            if (!DecoratorNames.KnownTestDecorators.Contains(decorator.Name))
+                continue;
+
+            AddError(
+                $"'@{decorator.Name}' cannot be applied to {typeKind} '{typeName}'. " +
+                "Test decorators are only valid on function and method declarations.",
+                decorator.LineStart,
+                decorator.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidTarget,
+                span: decorator.Span);
+        }
+    }
+
+    /// <summary>
+    /// Validates @test.parametrize decorator on a function definition.
+    /// Rules:
+    /// - Must take exactly one positional argument (a list literal of tuples).
+    /// - Each tuple element must have the same arity as the function's parameters
+    ///   (excluding 'self' for methods).
+    /// - Cannot be combined with plain @test (it implies @test by itself).
+    /// </summary>
+    private void ValidateTestParametrizeDecorator(FunctionDef function, string definitionName)
+    {
+        var parametrize = function.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.TestParametrize);
+        if (parametrize == null)
+            return;
+
+        // Cannot combine with plain @test
+        var plainTest = function.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.Test);
+        if (plainTest != null)
         {
             AddError(
-                $"'@test' cannot be applied to {typeKind} '{typeName}'. " +
-                "The @test decorator is only valid on function and method declarations.",
-                testDecorator.LineStart,
-                testDecorator.ColumnStart,
-                code: DiagnosticCodes.Validation.TestDecoratorInvalidTarget,
-                span: testDecorator.Span);
+                $"'@test.parametrize' cannot be combined with '@test' on '{definitionName}'. " +
+                "'@test.parametrize' already marks the function as a test.",
+                parametrize.LineStart,
+                parametrize.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidCombination,
+                span: parametrize.Span);
+        }
+
+        // Keyword arguments are not supported
+        if (parametrize.KeywordArguments.Length > 0)
+        {
+            AddWarning(
+                $"'@test.parametrize' on '{definitionName}' does not accept keyword arguments.",
+                parametrize.KeywordArguments[0].Value.LineStart,
+                parametrize.KeywordArguments[0].Value.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: parametrize.KeywordArguments[0].Value.Span);
+        }
+
+        // Must take exactly one positional argument
+        if (parametrize.Arguments.Length != 1)
+        {
+            AddWarning(
+                $"'@test.parametrize' on '{definitionName}' requires exactly one argument: " +
+                "a list of tuples with parameter values.",
+                parametrize.LineStart,
+                parametrize.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: parametrize.Span);
+            return;
+        }
+
+        var argument = parametrize.Arguments[0];
+        if (argument is not ListLiteral listLiteral)
+        {
+            AddWarning(
+                $"'@test.parametrize' argument on '{definitionName}' must be a list literal " +
+                "of tuples (e.g. [(1, 2), (3, 4)]).",
+                argument.LineStart,
+                argument.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: argument.Span);
+            return;
+        }
+
+        // Compute the expected arity: number of function parameters, excluding 'self' on methods.
+        int expectedArity = function.Parameters.Length;
+        if (_containingType != null && function.Parameters.Length > 0
+            && function.Parameters[0].Name == PythonNames.Self)
+        {
+            expectedArity = function.Parameters.Length - 1;
+        }
+
+        for (int i = 0; i < listLiteral.Elements.Length; i++)
+        {
+            var element = listLiteral.Elements[i];
+            if (element is not TupleLiteral tuple)
+            {
+                // A single-parameter function may use a flat list of values (e.g. [1, 2, 3]).
+                // Otherwise require a tuple.
+                if (expectedArity != 1)
+                {
+                    AddWarning(
+                        $"'@test.parametrize' element {i} on '{definitionName}' must be a tuple " +
+                        $"with {expectedArity} values (one per parameter).",
+                        element.LineStart,
+                        element.ColumnStart,
+                        code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                        span: element.Span);
+                }
+                continue;
+            }
+
+            if (tuple.Elements.Length != expectedArity)
+            {
+                AddWarning(
+                    $"'@test.parametrize' element {i} on '{definitionName}' has " +
+                    $"{tuple.Elements.Length} value(s); expected {expectedArity} " +
+                    "(one per function parameter).",
+                    element.LineStart,
+                    element.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                    span: element.Span);
+            }
         }
     }
 

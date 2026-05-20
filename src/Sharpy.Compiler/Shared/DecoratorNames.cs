@@ -21,6 +21,9 @@ internal static class DecoratorNames
     public const string Cache = "cache";
     public const string Test = "test";
 
+    // Test framework sub-decorators (member access form: @test.parametrize, etc.)
+    public const string TestParametrize = "test.parametrize";
+
     // Access modifiers
     public const string Public = "public";
     public const string Protected = "protected";
@@ -61,5 +64,6 @@ internal static class DecoratorNames
     public static readonly ImmutableHashSet<string> KnownTestDecorators = new[]
     {
         Test,
+        TestParametrize,
     }.ToImmutableHashSet();
 }

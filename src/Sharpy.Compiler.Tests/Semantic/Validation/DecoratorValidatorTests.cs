@@ -556,4 +556,156 @@ class Foo:
     }
 
     #endregion
+
+    #region @test.parametrize decorator
+
+    [Fact]
+    public void TestParametrize_OnFunctionWithMatchingArity_NoError()
+    {
+        var code = @"
+@test.parametrize([(1, 2, 3), (4, 5, 9)])
+def test_add(a: int, b: int, expected: int):
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestParametrize_SingleParamFlatList_NoError()
+    {
+        var code = @"
+@test.parametrize([1, 2, 3])
+def test_one(x: int):
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestParametrize_ArityMismatch_ReportsWarning()
+    {
+        var code = @"
+@test.parametrize([(1, 2), (3,)])
+def test_pair(a: int, b: int):
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(DiagnosticCodes.Validation.TestDecoratorInvalidArgument, warnings[0].Code);
+        Assert.Contains("expected 2", warnings[0].Message);
+    }
+
+    [Fact]
+    public void TestParametrize_NonListArgument_ReportsWarning()
+    {
+        var code = @"
+@test.parametrize(42)
+def test_x(a: int):
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.NotEmpty(warnings);
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.TestDecoratorInvalidArgument);
+    }
+
+    [Fact]
+    public void TestParametrize_NoArguments_ReportsWarning()
+    {
+        var code = @"
+@test.parametrize
+def test_x(a: int):
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.NotEmpty(warnings);
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.TestDecoratorInvalidArgument);
+    }
+
+    [Fact]
+    public void TestParametrize_CombinedWithPlainTest_ReportsError()
+    {
+        var code = @"
+@test
+@test.parametrize([(1,), (2,)])
+def test_x(a: int):
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidCombination
+            && e.Message.Contains("@test.parametrize"));
+    }
+
+    [Fact]
+    public void TestParametrize_OnMethodWithSelf_ExcludesSelfFromArity()
+    {
+        var code = @"
+class Foo:
+    @test.parametrize([(1, 2), (3, 4)])
+    def test_method(self, a: int, b: int):
+        pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestParametrize_OnClass_ReportsInvalidTarget()
+    {
+        var code = @"
+@test.parametrize([(1,)])
+class Foo:
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidTarget
+            && e.Message.Contains("@test.parametrize"));
+    }
+
+    #endregion
 }
