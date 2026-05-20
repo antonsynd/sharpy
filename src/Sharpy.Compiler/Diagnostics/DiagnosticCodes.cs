@@ -52,7 +52,7 @@ public static class DiagnosticCodes
         public const string InvalidHexLiteral = "SPY0008";          // Active
         public const string InvalidBinaryLiteral = "SPY0009";       // Active
         public const string InvalidOctalLiteral = "SPY0010";        // Active
-        public const string InvalidFloatLiteral = "SPY0019";        // Allocated — not yet emitted
+        public const string InvalidFloatLiteral = "SPY0019";        // Allocated — not yet emitted (#670)
         public const string InvalidNumericSuffix = "SPY0023";       // Active
         public const string OctalEscapeOverflow = "SPY0024";        // Active
 
@@ -133,7 +133,7 @@ public static class DiagnosticCodes
         public const string PositionalAfterKeyword = "SPY0109";     // Active
         public const string MultipleVariadic = "SPY0110";           // Active
         public const string VariadicWithDefault = "SPY0111";        // Active
-        public const string VariadicNotLast = "SPY0112";            // Allocated — not yet emitted
+        public const string VariadicNotLast = "SPY0112";            // Allocated — not yet emitted (#671)
 
         #endregion
 
@@ -168,8 +168,8 @@ public static class DiagnosticCodes
         public const string SlashAtStart = "SPY0129";               // Active
         public const string PlaceholderInKeywordArg = "SPY0130";    // Reserved — keyword '_' placeholders are now supported
         public const string PlaceholderWithSpread = "SPY0131";      // Active
-        public const string PlaceholderOutsideCallOrOperator = "SPY0132"; // Allocated — not yet emitted
-        public const string NestedPlaceholder = "SPY0133";          // Allocated — not yet emitted
+        public const string PlaceholderOutsideCallOrOperator = "SPY0132"; // Allocated — not yet emitted (#671)
+        public const string NestedPlaceholder = "SPY0133";          // Allocated — not yet emitted (#671)
 
         #endregion
 
@@ -224,7 +224,7 @@ public static class DiagnosticCodes
         #region Type checking (SPY0220-SPY0259)
 
         public const string TypeMismatch = "SPY0220";               // Active
-        public const string IncompatibleTypes = "SPY0221";          // Allocated — not yet emitted
+        public const string IncompatibleTypes = "SPY0221";          // Allocated — not yet emitted (#672)
         public const string InvalidBinaryOperation = "SPY0222";     // Active
         public const string InvalidUnaryOperation = "SPY0223";      // Active
         public const string WrongArgumentCount = "SPY0224";         // Active
@@ -241,15 +241,15 @@ public static class DiagnosticCodes
         public const string DuplicateArgument = "SPY0235";          // Active
         public const string InvalidNullConditional = "SPY0236";     // Active
         public const string CannotInferGenericType = "SPY0237";     // Active
-        public const string InvalidComprehension = "SPY0238";       // Allocated — not yet emitted
+        public const string InvalidComprehension = "SPY0238";       // Allocated — not yet emitted (#672)
         public const string InvalidTupleUnpacking = "SPY0239";      // Active
         public const string InvalidAutoVariable = "SPY0240";        // Active
         public const string ConditionNotBoolean = "SPY0241";        // Active
         public const string InvalidRaise = "SPY0242";               // Active
         public const string InvalidMaybeExpression = "SPY0243";     // Active
         public const string InvalidNoneConstructor = "SPY0244";     // Active
-        public const string InvalidSomeConstructor = "SPY0245";     // Allocated — not yet emitted
-        public const string InvalidOkErrConstructor = "SPY0246";    // Allocated — not yet emitted
+        public const string InvalidSomeConstructor = "SPY0245";     // Allocated — not yet emitted (#672)
+        public const string InvalidOkErrConstructor = "SPY0246";    // Allocated — not yet emitted (#672)
         public const string MissingMethodBody = "SPY0247";          // Active
         public const string InvalidOverride = "SPY0248";            // Active
         public const string MissingParameterAnnotation = "SPY0249"; // Reserved — covered by MissingTypeAnnotation (SPY0226)
@@ -550,11 +550,11 @@ public static class DiagnosticCodes
 
         public const string Utf16StringLengthHint = "SPY0470";        // Active (emitted by TransitionWarningValidator; pending #611 for builtin len resolution)
         public const string StructValueSemanticsHint = "SPY0471";     // Active
-        public const string HomogeneousVariadicHint = "SPY0472";      // Allocated — not yet emitted
-        public const string NoClassmethodHint = "SPY0473";            // Allocated — not yet emitted
-        public const string NoAsyncComprehensionHint = "SPY0474";     // Allocated — not yet emitted
+        public const string HomogeneousVariadicHint = "SPY0472";      // Allocated — not yet emitted (#673)
+        public const string NoClassmethodHint = "SPY0473";            // Allocated — not yet emitted (#673)
+        public const string NoAsyncComprehensionHint = "SPY0474";     // Allocated — not yet emitted (#673)
         public const string SingleIsinstanceTypeHint = "SPY0475";     // Active
-        public const string NegativeTupleIndexHint = "SPY0476";       // Allocated — not yet emitted
+        public const string NegativeTupleIndexHint = "SPY0476";       // Allocated — not yet emitted (#673)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
         // SPY0478-SPY0489: Reserved for future transition diagnostics
 
