@@ -42,5 +42,85 @@ namespace Sharpy
             throw new System.NotSupportedException(
                 "assert_almost_equal is a compiler-transformed function and should not be called directly.");
         }
+
+        /// <summary>
+        /// Marker for assert_true. The compiler transforms calls to
+        /// <c>Xunit.Assert.True(value)</c>.
+        /// </summary>
+        public static void AssertTrue(object value)
+        {
+            throw new System.NotSupportedException(
+                "assert_true is a compiler-transformed function and should not be called directly.");
+        }
+
+        /// <summary>
+        /// Marker for assert_false. The compiler transforms calls to
+        /// <c>Xunit.Assert.False(value)</c>.
+        /// </summary>
+        public static void AssertFalse(object value)
+        {
+            throw new System.NotSupportedException(
+                "assert_false is a compiler-transformed function and should not be called directly.");
+        }
+
+        /// <summary>
+        /// Marker for assert_is_none. The compiler transforms calls to
+        /// <c>Xunit.Assert.Null(value)</c>.
+        /// </summary>
+        public static void AssertIsNone(object value)
+        {
+            throw new System.NotSupportedException(
+                "assert_is_none is a compiler-transformed function and should not be called directly.");
+        }
+
+        /// <summary>
+        /// Marker for assert_is_not_none. The compiler transforms calls to
+        /// <c>Xunit.Assert.NotNull(value)</c>.
+        /// </summary>
+        public static void AssertIsNotNone(object value)
+        {
+            throw new System.NotSupportedException(
+                "assert_is_not_none is a compiler-transformed function and should not be called directly.");
+        }
+
+        /// <summary>
+        /// Marker for assert_greater. The compiler transforms calls to
+        /// <c>Xunit.Assert.True(a &gt; b, ...)</c>.
+        /// </summary>
+        public static void AssertGreater(object a, object b)
+        {
+            throw new System.NotSupportedException(
+                "assert_greater is a compiler-transformed function and should not be called directly.");
+        }
+
+        /// <summary>
+        /// Marker for assert_less. The compiler transforms calls to
+        /// <c>Xunit.Assert.True(a &lt; b, ...)</c>.
+        /// </summary>
+        public static void AssertLess(object a, object b)
+        {
+            throw new System.NotSupportedException(
+                "assert_less is a compiler-transformed function and should not be called directly.");
+        }
+
+        /// <summary>
+        /// Marker for assert_in. The compiler transforms calls to
+        /// <c>Xunit.Assert.Contains(item, collection)</c>.
+        /// </summary>
+        public static void AssertIn(object item, object collection)
+        {
+            throw new System.NotSupportedException(
+                "assert_in is a compiler-transformed function and should not be called directly.");
+        }
+
+        /// <summary>
+        /// Marker for assert_not_in. The compiler transforms calls to
+        /// <c>Xunit.Assert.DoesNotContain(item, collection)</c>.
+        /// </summary>
+        public static void AssertNotIn(object item, object collection)
+        {
+            throw new System.NotSupportedException(
+                "assert_not_in is a compiler-transformed function and should not be called directly.");
+        }
     }
 }

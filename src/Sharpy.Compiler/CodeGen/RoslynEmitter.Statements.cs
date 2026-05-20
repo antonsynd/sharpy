@@ -309,6 +309,18 @@ internal partial class RoslynEmitter
             return GenerateAssertAlmostEqual(almostCall);
         }
 
+        // Custom unittest assertion helpers: assert_true, assert_false, assert_is_none,
+        // assert_is_not_none, assert_greater, assert_less, assert_in, assert_not_in.
+        // Each is rewritten to the matching Xunit.Assert.* call.
+        if (_isInTestFunction && expr is FunctionCall customAssertCall
+            && TryGetUnittestAssertionName(customAssertCall, out var assertionName)
+            && assertionName != "assert_almost_equal")
+        {
+            var rewritten = TryGenerateUnittestAssertion(customAssertCall, assertionName);
+            if (rewritten != null)
+                return rewritten;
+        }
+
         // None as a statement is a no-op (like Python's None expression)
         // We generate an empty statement since `_ = null;` requires type annotation in C#
         if (expr is NoneLiteral)
@@ -417,6 +429,117 @@ internal partial class RoslynEmitter
                 Argument(expected),
                 Argument(actual),
                 Argument(precision)));
+    }
+
+    /// <summary>
+    /// Recognizes a call to a unittest assertion helper (bare or qualified).
+    /// Sets <paramref name="name"/> to the snake_case function name (e.g., "assert_true").
+    /// </summary>
+    private static bool TryGetUnittestAssertionName(FunctionCall call, out string name)
+    {
+        switch (call.Function)
+        {
+            case Identifier id when IsUnittestAssertionName(id.Name):
+                name = id.Name;
+                return true;
+            case MemberAccess ma when IsUnittestAssertionName(ma.Member):
+                name = ma.Member;
+                return true;
+            default:
+                name = string.Empty;
+                return false;
+        }
+    }
+
+    private static bool IsUnittestAssertionName(string name)
+    {
+        return name is "assert_true"
+            or "assert_false"
+            or "assert_is_none"
+            or "assert_is_not_none"
+            or "assert_greater"
+            or "assert_less"
+            or "assert_in"
+            or "assert_not_in"
+            or "assert_almost_equal";
+    }
+
+    /// <summary>
+    /// Rewrites a unittest assertion helper call to the matching Xunit.Assert.* call.
+    /// Returns null if the call signature is malformed; callers fall back to the raw call.
+    /// </summary>
+    private StatementSyntax? TryGenerateUnittestAssertion(FunctionCall call, string assertionName)
+    {
+        switch (assertionName)
+        {
+            case "assert_true":
+                return GenerateUnaryAssert(call, "True");
+            case "assert_false":
+                return GenerateUnaryAssert(call, "False");
+            case "assert_is_none":
+                return GenerateUnaryAssert(call, "Null");
+            case "assert_is_not_none":
+                return GenerateUnaryAssert(call, "NotNull");
+            case "assert_greater":
+                return GenerateComparisonAssert(call, SyntaxKind.GreaterThanExpression, ">");
+            case "assert_less":
+                return GenerateComparisonAssert(call, SyntaxKind.LessThanExpression, "<");
+            case "assert_in":
+                return GenerateContainsAssert(call, contains: true);
+            case "assert_not_in":
+                return GenerateContainsAssert(call, contains: false);
+            default:
+                return null;
+        }
+    }
+
+    private StatementSyntax? GenerateUnaryAssert(FunctionCall call, string xunitMethod)
+    {
+        if (call.Arguments.Length < 1)
+            return null;
+
+        var arg = GenerateExpression(call.Arguments[0]);
+        return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ParseName("Xunit.Assert"),
+                    IdentifierName(xunitMethod)))
+            .AddArgumentListArguments(Argument(arg)));
+    }
+
+    private StatementSyntax? GenerateComparisonAssert(FunctionCall call, SyntaxKind compareKind, string opSymbol)
+    {
+        if (call.Arguments.Length < 2)
+            return null;
+
+        var lhs = GenerateExpression(call.Arguments[0]);
+        var rhs = GenerateExpression(call.Arguments[1]);
+        var comparison = BinaryExpression(compareKind, lhs, rhs);
+        var message = LiteralExpression(
+            SyntaxKind.StringLiteralExpression,
+            Literal($"Expected first argument {opSymbol} second argument"));
+        return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ParseName("Xunit.Assert"),
+                    IdentifierName("True")))
+            .AddArgumentListArguments(Argument(comparison), Argument(message)));
+    }
+
+    private StatementSyntax? GenerateContainsAssert(FunctionCall call, bool contains)
+    {
+        if (call.Arguments.Length < 2)
+            return null;
+
+        var item = GenerateExpression(call.Arguments[0]);
+        var collection = GenerateExpression(call.Arguments[1]);
+        var method = contains ? "Contains" : "DoesNotContain";
+        return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ParseName("Xunit.Assert"),
+                    IdentifierName(method)))
+            .AddArgumentListArguments(Argument(item), Argument(collection)));
     }
 
     /// <summary>

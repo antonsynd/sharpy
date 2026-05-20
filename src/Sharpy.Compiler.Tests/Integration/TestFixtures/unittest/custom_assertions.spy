@@ -1,0 +1,38 @@
+from unittest import assert_true, assert_false, assert_is_none, assert_is_not_none, assert_greater, assert_less, assert_in, assert_not_in
+
+@test
+def test_assert_true():
+    assert_true(1 == 1)
+
+@test
+def test_assert_false():
+    assert_false(1 == 2)
+
+@test
+def test_assert_is_none():
+    assert_is_none(None)
+
+@test
+def test_assert_is_not_none():
+    assert_is_not_none("hello")
+
+@test
+def test_assert_greater():
+    assert_greater(10, 5)
+
+@test
+def test_assert_less():
+    assert_less(3, 7)
+
+@test
+def test_assert_in():
+    items: list[int] = [1, 2, 3]
+    assert_in(2, items)
+
+@test
+def test_assert_not_in():
+    items: list[int] = [1, 2, 3]
+    assert_not_in(99, items)
+
+def main():
+    print("ok")
