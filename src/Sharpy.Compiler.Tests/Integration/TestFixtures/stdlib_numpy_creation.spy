@@ -1,0 +1,14 @@
+# Test numpy module: array creation functions
+import numpy as np
+
+def main() -> None:
+    a = np.zeros(3)
+    print(a)
+    b = np.ones(2, 2)
+    print(b)
+    c = np.eye(2)
+    print(c)
+    d = np.arange(0.0, 5.0, 1.0)
+    print(d)
+    e = np.linspace(0.0, 1.0, 5)
+    print(e)
