@@ -1,0 +1,14 @@
+@test.fixture
+def greeting() -> str:
+    return "hello"
+
+@test
+def test_uses_greeting(greeting: str):
+    assert greeting == "hello"
+
+@test
+def test_greeting_upper(greeting: str):
+    assert greeting.upper() == "HELLO"
+
+def main():
+    print("ok")

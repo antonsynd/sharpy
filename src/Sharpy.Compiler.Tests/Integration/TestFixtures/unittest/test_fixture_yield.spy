@@ -1,0 +1,13 @@
+@test.fixture
+def counter() -> list[int]:
+    data: list[int] = [0]
+    yield data
+    data.clear()
+
+@test
+def test_counter_append(counter: list[int]):
+    counter.append(1)
+    assert len(counter) == 2
+
+def main():
+    print("ok")
