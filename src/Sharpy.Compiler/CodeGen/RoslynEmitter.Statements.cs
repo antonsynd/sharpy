@@ -357,7 +357,9 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Rewrites assert_almost_equal(actual, expected, places=N) to
     /// Xunit.Assert.Equal(expected, actual, N). Default precision is 7 decimal places,
-    /// matching Python's unittest.TestCase.assertAlmostEqual.
+    /// matching Python's unittest.TestCase.assertAlmostEqual. When a `delta=D` keyword
+    /// argument is given, emits Xunit.Assert.True(Math.Abs(actual-expected) &lt;= delta, ...)
+    /// for an absolute-tolerance comparison.
     /// </summary>
     private StatementSyntax GenerateAssertAlmostEqual(FunctionCall call)
     {
@@ -370,6 +372,28 @@ internal partial class RoslynEmitter
 
         var actual = GenerateExpression(call.Arguments[0]);
         var expected = GenerateExpression(call.Arguments[1]);
+
+        // delta keyword takes precedence over places: assert_almost_equal(a, b, delta=0.001)
+        var deltaKw = call.KeywordArguments.FirstOrDefault(k => k.Name == "delta");
+        if (deltaKw != null)
+        {
+            var delta = GenerateExpression(deltaKw.Value);
+            // System.Math.Abs(actual - expected) <= delta
+            var absExpr = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ParseName("System.Math"),
+                    IdentifierName("Abs")))
+                .AddArgumentListArguments(Argument(
+                    BinaryExpression(SyntaxKind.SubtractExpression, actual, expected)));
+            var condition = BinaryExpression(SyntaxKind.LessThanOrEqualExpression, absExpr, delta);
+            return ExpressionStatement(InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ParseName("Xunit.Assert"),
+                        IdentifierName("True")))
+                .AddArgumentListArguments(Argument(condition)));
+        }
 
         ExpressionSyntax precision;
         if (call.Arguments.Length >= 3)

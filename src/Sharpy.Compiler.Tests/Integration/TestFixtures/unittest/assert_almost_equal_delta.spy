@@ -1,0 +1,12 @@
+from unittest import assert_almost_equal
+
+@test
+def test_within_delta():
+    assert_almost_equal(0.1 + 0.2, 0.3, delta=0.001)
+
+@test
+def test_small_delta():
+    assert_almost_equal(1.0, 1.0001, delta=0.001)
+
+def main():
+    print("ok")

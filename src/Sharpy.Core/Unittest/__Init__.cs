@@ -29,12 +29,15 @@ namespace Sharpy
 
         /// <summary>
         /// Marker for assert_almost_equal. The compiler transforms calls to this method
-        /// into <c>Xunit.Assert.Equal(expected, actual, precision)</c>.
+        /// into <c>Xunit.Assert.Equal(expected, actual, precision)</c> (digits) or, when
+        /// the <c>delta</c> keyword is provided, into an absolute-tolerance check.
         /// </summary>
         /// <remarks>
-        /// This method exists for type resolution only.
+        /// This method exists for type resolution only. Both <c>places</c> and <c>delta</c>
+        /// are accepted; if both are passed at the same call site, <c>delta</c> takes
+        /// precedence.
         /// </remarks>
-        public static void AssertAlmostEqual(double actual, double expected, int places = 7)
+        public static void AssertAlmostEqual(double actual, double expected, int places = 7, double delta = 0.0)
         {
             throw new System.NotSupportedException(
                 "assert_almost_equal is a compiler-transformed function and should not be called directly.");
