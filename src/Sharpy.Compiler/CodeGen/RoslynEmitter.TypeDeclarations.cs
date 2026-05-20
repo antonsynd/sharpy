@@ -1348,7 +1348,8 @@ internal partial class RoslynEmitter
     {
         foreach (var d in decorators)
         {
-            if (d.IsBracketAttribute) continue;
+            if (d.IsBracketAttribute)
+                continue;
 
             if (d.Name == DecoratorNames.TestSkip
                 && d.Arguments.Length >= 1

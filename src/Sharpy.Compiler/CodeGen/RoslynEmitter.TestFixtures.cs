@@ -74,7 +74,8 @@ internal partial class RoslynEmitter
     {
         for (int i = 0; i < body.Count; i++)
         {
-            if (body[i] is YieldStatement) return i;
+            if (body[i] is YieldStatement)
+                return i;
         }
         return -1;
     }
@@ -112,7 +113,8 @@ internal partial class RoslynEmitter
             int returnIndex = -1;
             for (int i = func.Body.Length - 1; i >= 0; i--)
             {
-                if (func.Body[i] is ReturnStatement) { returnIndex = i; break; }
+                if (func.Body[i] is ReturnStatement)
+                { returnIndex = i; break; }
             }
 
             if (returnIndex >= 0)
@@ -197,7 +199,8 @@ internal partial class RoslynEmitter
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         members.Add(valueProp);
 
-        if (teardownField != null) members.Add(teardownField);
+        if (teardownField != null)
+            members.Add(teardownField);
 
         // public XFixture() { ...setup...; Value = expr; [_teardown = () => {...}] }
         var ctor = ConstructorDeclaration(info.ClassName)
@@ -205,7 +208,8 @@ internal partial class RoslynEmitter
             .WithBody(Block(ctorStmts));
         members.Add(ctor);
 
-        if (disposeMethod != null) members.Add(disposeMethod);
+        if (disposeMethod != null)
+            members.Add(disposeMethod);
 
         var classDecl = ClassDeclaration(info.ClassName)
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
@@ -238,7 +242,8 @@ internal partial class RoslynEmitter
     private List<(Parameter Parameter, FixtureInfo Fixture)> GetConsumedFixtures(FunctionDef func)
     {
         var result = new List<(Parameter, FixtureInfo)>();
-        if (_fixtureRegistry.Count == 0) return result;
+        if (_fixtureRegistry.Count == 0)
+            return result;
 
         foreach (var p in func.Parameters)
         {
