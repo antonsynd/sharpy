@@ -234,6 +234,15 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
+            if (id.Name == "_")
+            {
+                AddError("'_' placeholder can only be used inside function call arguments for partial application (e.g., f(_, 2)). "
+                    + "If you intended a throwaway variable, assign it first: _ = ...",
+                    id.LineStart, id.ColumnStart, code: DiagnosticCodes.Parser.PlaceholderOutsideCallOrOperator,
+                    span: id.Span);
+                return SemanticType.Unknown;
+            }
+
             var message = $"Undefined identifier '{id.Name}'";
 
             // Enhanced diagnostic for Python developers: if the identifier was
