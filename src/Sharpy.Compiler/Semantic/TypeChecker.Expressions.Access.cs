@@ -770,6 +770,13 @@ internal partial class TypeChecker
         {
             if (_expectedType is OptionalType opt)
             {
+                if (call.Arguments[0] is NoneLiteral)
+                {
+                    AddError("Some() cannot wrap None — use None directly for the empty Optional case",
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.InvalidSomeConstructor,
+                        span: call.Span);
+                    return _expectedType;
+                }
                 var argType = CheckExpression(call.Arguments[0]);
                 if (!IsAssignable(argType, opt.UnderlyingType))
                 {

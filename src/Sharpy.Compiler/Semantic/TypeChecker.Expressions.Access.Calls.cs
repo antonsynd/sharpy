@@ -24,6 +24,33 @@ internal partial class TypeChecker
         if (noneResult != null)
             return noneResult;
 
+        // Check for invalid tagged union constructor usage (wrong arity)
+        if (call.Function is Identifier taggedId && call.KeywordArguments.Length == 0
+            && _symbolTable.BuiltinRegistry.IsTaggedUnionConstructor(taggedId.Name)
+            && _symbolTable.Lookup(taggedId.Name) == null)
+        {
+            if (call.Arguments.Length == 0)
+            {
+                var code = taggedId.Name == "Some"
+                    ? DiagnosticCodes.Semantic.InvalidSomeConstructor
+                    : DiagnosticCodes.Semantic.InvalidOkErrConstructor;
+                AddError($"'{taggedId.Name}()' requires exactly one argument",
+                    call.LineStart, call.ColumnStart, code: code, span: call.Span);
+                return SemanticType.Unknown;
+            }
+            if (call.Arguments.Length > 1)
+            {
+                var code = taggedId.Name == "Some"
+                    ? DiagnosticCodes.Semantic.InvalidSomeConstructor
+                    : DiagnosticCodes.Semantic.InvalidOkErrConstructor;
+                AddError($"'{taggedId.Name}()' takes exactly one argument, got {call.Arguments.Length}",
+                    call.LineStart, call.ColumnStart, code: code, span: call.Span);
+                foreach (var arg in call.Arguments)
+                    CheckExpression(arg);
+                return SemanticType.Unknown;
+            }
+        }
+
         // Check if this is a tagged union constructor shorthand (Some/Ok/Err)
         if (call.Function is Identifier constructorId && call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
         {
