@@ -1226,6 +1226,11 @@ internal partial class RoslynEmitter
                     || decorator.Name == DecoratorNames.TestSkipIf)
                     continue;
 
+                // @test.fixture functions are emitted as standalone fixture classes via
+                // GenerateFixtureClass; the decorator itself produces no method-level attribute.
+                if (decorator.Name == DecoratorNames.TestFixture)
+                    continue;
+
                 // @test → [Xunit.FactAttribute]
                 // @test("description") → [Xunit.FactAttribute(DisplayName = "description")]
                 if (decorator.Name == DecoratorNames.Test)

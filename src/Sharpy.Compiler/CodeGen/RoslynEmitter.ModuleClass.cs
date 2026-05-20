@@ -114,8 +114,32 @@ internal partial class RoslynEmitter
         // - The module is not an entry point (non-entry-point modules always use static fields)
         _forceModuleLevelFields = hasMainFunction || !_context.IsEntryPoint;
 
+        // First pre-scan: register @test.fixture functions so that test methods declared later
+        // in the same module — or earlier — can resolve their fixture parameters consistently
+        // regardless of file order.
         foreach (var stmt in statements)
         {
+            if (stmt is FunctionDef fixtureFunc && IsTestFixtureFunction(fixtureFunc))
+            {
+                RegisterFixture(fixtureFunc);
+            }
+        }
+
+        foreach (var stmt in statements)
+        {
+            // Module-level @test.fixture functions are emitted as standalone sibling classes,
+            // not as static methods on the module class. They were pre-registered above; here
+            // we just queue them for emission.
+            if (stmt is FunctionDef fixtureFunc && IsTestFixtureFunction(fixtureFunc))
+            {
+                _pendingFixtures.Add(fixtureFunc);
+                _declaredVariables.Clear();
+                _variableVersions.Clear();
+                _constVariables.Clear();
+                _narrowing.Reset();
+                continue;
+            }
+
             // Module-level @test functions are collected for a separate sibling test class
             // (so they don't end up as static methods on the module class — xUnit needs them
             // as instance methods on a public class).
@@ -515,10 +539,27 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generates a sibling test class containing all module-level @test functions.
     /// xUnit requires test methods to be public instance methods of a public class.
+    ///
+    /// Test methods whose parameters match a registered @test.fixture function name are
+    /// rewired: the parameter is stripped from the method signature, the test class
+    /// implements Xunit.IClassFixture&lt;XFixture&gt;, and a constructor receives the fixture
+    /// instance via DI. Each consumed fixture becomes a private field; the test body is
+    /// prefixed with `var name = _nameFixture.Value;`.
     /// </summary>
     private ClassDeclarationSyntax GenerateModuleTestClass(IReadOnlyList<FunctionDef> testFunctions)
     {
         var members = new List<MemberDeclarationSyntax>();
+
+        // Collect every unique fixture consumed by any test method in this class so we can
+        // emit IClassFixture<T> on the class itself and a constructor that captures them.
+        var consumedFixtures = new Dictionary<string, FixtureInfo>();
+        foreach (var func in testFunctions)
+        {
+            foreach (var (_, fixture) in GetConsumedFixtures(func))
+            {
+                consumedFixtures[fixture.SharpyName] = fixture;
+            }
+        }
 
         var savedIsInTestFunction = _isInTestFunction;
 
@@ -550,10 +591,21 @@ internal partial class RoslynEmitter
                 returnType = func.ReturnType != null ? WrapInTask(returnType) : TaskType();
             }
 
-            var orderedParams = ReorderParametersForCSharp(func.Parameters);
+            // Determine which parameters are fixture-injected and exclude them from the
+            // emitted parameter list (xUnit's [Fact] takes no params; for [Theory], only
+            // the parametrize columns remain).
+            var consumedForFunc = GetConsumedFixtures(func);
+            var fixtureParamNames = new HashSet<string>(
+                consumedForFunc.Select(c => c.Parameter.Name),
+                System.StringComparer.Ordinal);
+
+            var paramsExcludingFixtures = func.Parameters
+                .Where(p => !fixtureParamNames.Contains(p.Name))
+                .ToArray();
+            var orderedParams = ReorderParametersForCSharp(paramsExcludingFixtures);
             var parameters = orderedParams.Select(GenerateParameter).ToArray();
 
-            foreach (var param in func.Parameters)
+            foreach (var param in paramsExcludingFixtures)
             {
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 if (param.IsLateBound)
@@ -569,8 +621,19 @@ internal partial class RoslynEmitter
                 _variableVersions[baseName] = 0;
             }
 
-            var preamble = GenerateLateBoundPreamble(func.Parameters);
-            var body = Block(preamble.Concat(func.Body.SelectMany(GenerateBodyStatements)));
+            // Track fixture-injected names as declared variables to avoid versioning collisions.
+            foreach (var (parameter, _) in consumedForFunc)
+            {
+                var localName = NameMangler.ToCamelCase(parameter.Name);
+                _declaredVariables.Add(localName);
+                _variableVersions[localName] = 0;
+            }
+
+            var preamble = GenerateLateBoundPreamble(paramsExcludingFixtures);
+            var fixturePrelude = GenerateFixturePrelude(consumedForFunc);
+            var body = Block(preamble
+                .Concat(fixturePrelude)
+                .Concat(func.Body.SelectMany(GenerateBodyStatements)));
 
             // Build modifiers: always public, never static (xUnit requires instance methods).
             var modifierTokens = new List<SyntaxToken> { Token(SyntaxKind.PublicKeyword) };
@@ -622,11 +685,70 @@ internal partial class RoslynEmitter
         var moduleClassName = GetModuleClassName(willGenerateMainMethod: false, functionNames: new HashSet<string>());
         var testClassName = moduleClassName + "Tests";
 
-        return ClassDeclaration(testClassName)
+        // If any tests consume fixtures, prepend fixture fields and a constructor that
+        // captures the injected instances. Build the base list with one Xunit.IClassFixture<T>
+        // per unique consumed fixture.
+        var baseTypes = new List<BaseTypeSyntax>();
+        if (consumedFixtures.Count > 0)
+        {
+            var ctorParams = new List<ParameterSyntax>();
+            var ctorStmts = new List<StatementSyntax>();
+            var fieldMembers = new List<MemberDeclarationSyntax>();
+
+            // Sort by fixture name for deterministic output.
+            foreach (var fixture in consumedFixtures.Values
+                .OrderBy(f => f.SharpyName, System.StringComparer.Ordinal))
+            {
+                baseTypes.Add(SimpleBaseType(
+                    GenericName(Identifier("Xunit.IClassFixture"))
+                        .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
+                            IdentifierName(fixture.ClassName))))));
+
+                // private readonly XFixture _xFixture;
+                var fieldDecl = FieldDeclaration(
+                        VariableDeclaration(IdentifierName(fixture.ClassName))
+                            .WithVariables(SingletonSeparatedList(VariableDeclarator(fixture.FieldName))))
+                    .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword)));
+                fieldMembers.Add(fieldDecl);
+
+                // ctor parameter: XFixture xFixture
+                var paramName = fixture.FieldName.TrimStart('_');
+                ctorParams.Add(Parameter(Identifier(paramName))
+                    .WithType(IdentifierName(fixture.ClassName)));
+
+                // _xFixture = xFixture;
+                ctorStmts.Add(ExpressionStatement(AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(fixture.FieldName),
+                    IdentifierName(paramName))));
+            }
+
+            // Build ctor and prepend fields/ctor to members.
+            var ctor = ConstructorDeclaration(testClassName)
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithParameterList(ParameterList(SeparatedList(ctorParams)))
+                .WithBody(Block(ctorStmts));
+
+            // Prepend in deterministic order: fields then ctor then existing test methods.
+            var newMembers = new List<MemberDeclarationSyntax>();
+            newMembers.AddRange(fieldMembers);
+            newMembers.Add(ctor);
+            newMembers.AddRange(members);
+            members = newMembers;
+        }
+
+        var testClass = ClassDeclaration(testClassName)
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.PartialKeyword)))
             .WithMembers(List(members));
+
+        if (baseTypes.Count > 0)
+        {
+            testClass = testClass.WithBaseList(BaseList(SeparatedList(baseTypes)));
+        }
+
+        return testClass;
     }
 
     private SyntaxNode? GenerateStatement(Statement stmt)

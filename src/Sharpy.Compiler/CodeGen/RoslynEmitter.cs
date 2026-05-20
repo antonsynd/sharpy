@@ -144,6 +144,18 @@ internal partial class RoslynEmitter
     // be emitted into a sibling test class instead of the regular module class.
     private readonly List<FunctionDef> _pendingTestFunctions = new();
 
+    // Collects module-level @test.fixture functions during module member generation. Each is
+    // emitted as a sibling fixture class (parameterless constructor for setup, optional
+    // IDisposable for yield-based teardown). Test methods consuming these by parameter name
+    // are wired up via IClassFixture<T>.
+    private readonly List<FunctionDef> _pendingFixtures = new();
+
+    // Maps fixture function name (e.g., "db_connection") → metadata describing the generated
+    // C# fixture class (class name, return type, field name in consuming test classes).
+    // Populated as fixtures are emitted, consulted by test method generation to detect
+    // fixture-consuming parameters.
+    private readonly Dictionary<string, FixtureInfo> _fixtureRegistry = new();
+
     // Track the current TypeSymbol being generated (for IEquatable virtual detection, etc.)
     private TypeSymbol? _currentTypeSymbol;
 

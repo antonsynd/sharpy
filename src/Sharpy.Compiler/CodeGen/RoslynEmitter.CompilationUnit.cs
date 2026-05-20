@@ -46,7 +46,21 @@ internal partial class RoslynEmitter
         // Generate module class with all members nested inside.
         // Module-level @test functions are collected into _pendingTestFunctions during
         // this call (instead of being emitted as static methods on the module class).
+        // @test.fixture functions are collected into _pendingFixtures and emitted as
+        // sibling classes alongside the test class.
         var moduleClass = GenerateModuleMembers(nonImportStatements, fromImports);
+
+        // Emit fixture classes (one per @test.fixture function). Order matches source order
+        // so generated output is stable.
+        var fixtureClasses = new List<ClassDeclarationSyntax>();
+        if (_pendingFixtures.Count > 0)
+        {
+            foreach (var fixtureFunc in _pendingFixtures)
+            {
+                fixtureClasses.Add(GenerateFixtureClass(fixtureFunc));
+            }
+            _pendingFixtures.Clear();
+        }
 
         // If any module-level @test functions were collected, build a sibling test class.
         ClassDeclarationSyntax? testClass = null;
@@ -60,10 +74,13 @@ internal partial class RoslynEmitter
         var wrapperNames = ComputeWrapperClasses();
         MemberDeclarationSyntax current = moduleClass;
         MemberDeclarationSyntax? wrappedTestClass = testClass;
+        var wrappedFixtureClasses = fixtureClasses
+            .Cast<MemberDeclarationSyntax>()
+            .ToList();
 
-        // Build wrapper classes from inside out — wrap both the module class and the
-        // test class (if present) in the same directory wrapper hierarchy so they
-        // appear as siblings within those wrapper classes.
+        // Build wrapper classes from inside out — wrap the module class, test class, and
+        // any fixture classes in the same directory wrapper hierarchy so they appear as
+        // siblings within those wrapper classes.
         for (int i = wrapperNames.Count - 1; i >= 0; i--)
         {
             current = ClassDeclaration(wrapperNames[i])
@@ -82,10 +99,21 @@ internal partial class RoslynEmitter
                         Token(SyntaxKind.PartialKeyword)))
                     .WithMembers(SingletonList(wrappedTestClass));
             }
+
+            for (int j = 0; j < wrappedFixtureClasses.Count; j++)
+            {
+                wrappedFixtureClasses[j] = ClassDeclaration(wrapperNames[i])
+                    .WithModifiers(TokenList(
+                        Token(SyntaxKind.PublicKeyword),
+                        Token(SyntaxKind.StaticKeyword),
+                        Token(SyntaxKind.PartialKeyword)))
+                    .WithMembers(SingletonList(wrappedFixtureClasses[j]));
+            }
         }
 
-        // Collect top-level namespace members (module class + optional test class).
+        // Collect top-level namespace members (module class + fixture classes + optional test class).
         var topLevelMembers = new List<MemberDeclarationSyntax> { current };
+        topLevelMembers.AddRange(wrappedFixtureClasses);
         if (wrappedTestClass != null)
         {
             topLevelMembers.Add(wrappedTestClass);
@@ -521,8 +549,8 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Returns true if the decorator is one of the test framework decorators
-    /// (@test, @test.parametrize, @test.skip, @test.skip_if). Bracket attributes
-    /// (@[...]) are excluded.
+    /// (@test, @test.parametrize, @test.skip, @test.skip_if, @test.fixture). Bracket
+    /// attributes (@[...]) are excluded.
     /// </summary>
     internal static bool IsTestDecorator(Decorator d)
         => !d.IsBracketAttribute && DecoratorNames.KnownTestDecorators.Contains(d.Name);
