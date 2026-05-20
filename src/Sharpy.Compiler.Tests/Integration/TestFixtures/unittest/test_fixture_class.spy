@@ -1,0 +1,26 @@
+from unittest import TestCase
+
+@test.fixture
+def greeting() -> str:
+    return "hello"
+
+class TestGreetingCase(TestCase):
+    value: int
+
+    def setup(self):
+        self.value = 99
+
+    @test
+    def test_value(self):
+        assert self.value == 99
+
+@test
+def test_uses_greeting(greeting: str):
+    assert greeting == "hello"
+
+@test
+def test_greeting_length(greeting: str):
+    assert len(greeting) == 5
+
+def main():
+    print("ok")

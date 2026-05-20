@@ -1,0 +1,6 @@
+@test.collection("database")
+struct MyStruct:
+    x: int
+
+def main():
+    pass

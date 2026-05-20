@@ -1034,4 +1034,190 @@ def db_connection() -> int:
     }
 
     #endregion
+
+    #region @test.mark decorator
+
+    [Fact]
+    public void TestMark_WithStringArg_NoError()
+    {
+        var code = @"
+@test
+@test.mark(""slow"")
+def test_something():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestMark_WithoutTestDecorator_ReportsWarning()
+    {
+        var code = @"
+@test.mark(""slow"")
+def test_something():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(DiagnosticCodes.Validation.TestDecoratorInvalidCombination, warnings[0].Code);
+        Assert.Contains("@test.mark", warnings[0].Message);
+        Assert.Contains("no effect", warnings[0].Message);
+    }
+
+    [Fact]
+    public void TestMark_WithNonStringArg_ReportsWarning()
+    {
+        var code = @"
+@test
+@test.mark(42)
+def test_something():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(DiagnosticCodes.Validation.TestDecoratorInvalidArgument, warnings[0].Code);
+        Assert.Contains("string literal", warnings[0].Message);
+    }
+
+    [Fact]
+    public void TestMark_MultipleOnSameFunction_NoError()
+    {
+        var code = @"
+@test
+@test.mark(""slow"")
+@test.mark(""integration"")
+def test_something():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    #endregion
+
+    #region @test.collection decorator
+
+    [Fact]
+    public void TestCollection_OnClass_NoError()
+    {
+        var code = @"
+@test.collection(""database"")
+class DatabaseTests:
+    @test
+    def test_query(self):
+        pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestCollection_OnStruct_ReportsError()
+    {
+        var code = @"
+@test.collection(""database"")
+struct MyStruct:
+    x: int
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Validation.TestDecoratorInvalidTarget, errors[0].Code);
+        Assert.Contains("@test.collection", errors[0].Message);
+        Assert.Contains("struct", errors[0].Message);
+    }
+
+    [Fact]
+    public void TestCollection_OnFunction_ReportsError()
+    {
+        var code = @"
+@test.collection(""database"")
+def some_function():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidTarget
+            && e.Message.Contains("@test.collection"));
+    }
+
+    [Fact]
+    public void TestCollection_WithNonStringArg_ReportsWarning()
+    {
+        var code = @"
+@test.collection(42)
+class DatabaseTests:
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(DiagnosticCodes.Validation.TestDecoratorInvalidArgument, warnings[0].Code);
+        Assert.Contains("string literal", warnings[0].Message);
+    }
+
+    [Fact]
+    public void TestCollection_NoArguments_ReportsWarning()
+    {
+        var code = @"
+@test.collection
+class DatabaseTests:
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(DiagnosticCodes.Validation.TestDecoratorInvalidArgument, warnings[0].Code);
+        Assert.Contains("requires exactly one string argument", warnings[0].Message);
+    }
+
+    #endregion
 }
