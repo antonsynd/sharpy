@@ -1056,6 +1056,81 @@ public partial class Parser
             return call;
         }
 
+        // Check for nested placeholders — outer call has _ AND an argument that's a call with _
+        foreach (var arg in call.Arguments)
+        {
+            if (arg is FunctionCall innerCall)
+            {
+                bool innerHasPlaceholder = false;
+                foreach (var innerArg in innerCall.Arguments)
+                {
+                    if (innerArg is Identifier { Name: "_" })
+                    {
+                        innerHasPlaceholder = true;
+                        break;
+                    }
+                }
+                if (!innerHasPlaceholder)
+                {
+                    foreach (var innerKwarg in innerCall.KeywordArguments)
+                    {
+                        if (innerKwarg.Value is Identifier { Name: "_" })
+                        {
+                            innerHasPlaceholder = true;
+                            break;
+                        }
+                    }
+                }
+                if (innerHasPlaceholder)
+                {
+                    ReportError(
+                        "Nested placeholder expressions are not supported: '_' cannot appear in both an inner and outer call. "
+                        + "Extract the inner partial application into a separate variable",
+                        innerCall.LineStart, innerCall.ColumnStart,
+                        DiagnosticCodes.Parser.NestedPlaceholder,
+                        span: innerCall.Span);
+                    return call;
+                }
+            }
+        }
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (kwarg.Value is FunctionCall innerCall)
+            {
+                bool innerHasPlaceholder = false;
+                foreach (var innerArg in innerCall.Arguments)
+                {
+                    if (innerArg is Identifier { Name: "_" })
+                    {
+                        innerHasPlaceholder = true;
+                        break;
+                    }
+                }
+                if (!innerHasPlaceholder)
+                {
+                    foreach (var innerKwarg in innerCall.KeywordArguments)
+                    {
+                        if (innerKwarg.Value is Identifier { Name: "_" })
+                        {
+                            innerHasPlaceholder = true;
+                            break;
+                        }
+                    }
+                }
+                if (innerHasPlaceholder)
+                {
+                    ReportError(
+                        "Nested placeholder expressions are not supported: '_' cannot appear in both an inner and outer call. "
+                        + "Extract the inner partial application into a separate variable",
+                        innerCall.LineStart, innerCall.ColumnStart,
+                        DiagnosticCodes.Parser.NestedPlaceholder,
+                        span: innerCall.Span);
+                    return call;
+                }
+            }
+        }
+
         // Lower to lambda. Parameter ordering:
         //   positional placeholders first (left-to-right),
         //   then keyword placeholders (appearance order, named after the keyword).
