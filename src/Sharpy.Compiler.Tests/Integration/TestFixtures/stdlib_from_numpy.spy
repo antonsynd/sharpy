@@ -1,0 +1,10 @@
+# Test from numpy import for selected functions.
+from numpy import zeros, ones, eye
+
+def main():
+    a = zeros(3)
+    print(a)
+    b = ones(2, 2)
+    print(b)
+    c = eye(2)
+    print(c)

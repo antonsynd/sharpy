@@ -1,0 +1,15 @@
+# Test numpy reshape, transpose, and flatten.
+import numpy as np
+
+def main():
+    a = np.arange(0.0, 6.0, 1.0)
+    print(a)
+
+    b = a.reshape(2, 3)
+    print(b)
+
+    c = b.transpose()
+    print(c)
+
+    d = c.flatten()
+    print(d)

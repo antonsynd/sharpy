@@ -1,0 +1,13 @@
+# Test numpy.random with seeded RNG for deterministic output.
+import numpy as np
+from numpy.random import seed, rand
+
+def main():
+    seed(42)
+    a = rand(3)
+    print(a.ndim)
+    print(a.size)
+
+    b = rand(2, 2)
+    print(b.ndim)
+    print(b.size)

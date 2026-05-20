@@ -1,0 +1,15 @@
+# Test numpy ndarray properties: ndim, size, shape.
+import numpy as np
+
+def main():
+    a = np.zeros(3)
+    print(a.ndim)
+    print(a.size)
+
+    b = np.ones(2, 3)
+    print(b.ndim)
+    print(b.size)
+
+    c = np.eye(4)
+    print(c.ndim)
+    print(c.size)
