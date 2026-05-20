@@ -1260,7 +1260,7 @@ internal partial class RoslynEmitter
                             {
                                 AttributeArgument(LiteralExpression(
                                     SyntaxKind.StringLiteralExpression,
-                                    Literal("Category"))),
+                                    Literal(CSharpTypeNames.XunitTraitCategory))),
                                 AttributeArgument(LiteralExpression(
                                     SyntaxKind.StringLiteralExpression,
                                     Literal(markValue.Value))),
@@ -1380,8 +1380,8 @@ internal partial class RoslynEmitter
     /// - @test.skip_if(condition, "reason") skips only when condition is the literal True.
     ///   When the condition is the literal False, the decorator has no effect at codegen time.
     ///   Non-constant conditions fall back to "reason" (conservatively always skip), since
-    ///   xUnit v2 has no runtime-conditional Skip mechanism. DecoratorValidator emits a hint
-    ///   diagnostic for these cases.
+    ///   xUnit v2 has no runtime-conditional Skip mechanism. The skip reason is appended with
+    ///   a hint noting the condition is runtime-evaluated.
     /// </summary>
     private static string? ResolveSkipReason(IReadOnlyList<Decorator> decorators)
     {

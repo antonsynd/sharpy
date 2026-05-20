@@ -63,8 +63,9 @@ internal static class DecoratorNames
     }.ToImmutableHashSet();
 
     /// <summary>
-    /// Built-in decorators for test framework features.
-    /// These require special codegen handling (e.g., @test → [Fact]).
+    /// Test decorators that register a function as a test entry point.
+    /// TestMark and TestCollection are excluded — they are metadata annotations,
+    /// not test entry markers, and are validated separately.
     /// </summary>
     public static readonly ImmutableHashSet<string> KnownTestDecorators = new[]
     {

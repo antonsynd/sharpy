@@ -313,8 +313,7 @@ internal partial class RoslynEmitter
         // assert_is_not_none, assert_greater, assert_less, assert_in, assert_not_in.
         // Each is rewritten to the matching Xunit.Assert.* call.
         if (_isInTestFunction && expr is FunctionCall customAssertCall
-            && TryGetUnittestAssertionName(customAssertCall, out var assertionName)
-            && assertionName != "assert_almost_equal")
+            && TryGetUnittestAssertionName(customAssertCall, out var assertionName))
         {
             var rewritten = TryGenerateUnittestAssertion(customAssertCall, assertionName);
             if (rewritten != null)
@@ -460,8 +459,7 @@ internal partial class RoslynEmitter
             or "assert_greater"
             or "assert_less"
             or "assert_in"
-            or "assert_not_in"
-            or "assert_almost_equal";
+            or "assert_not_in";
     }
 
     /// <summary>

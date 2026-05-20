@@ -226,11 +226,6 @@ internal partial class RoslynEmitter
             classDecl = classDecl.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
         }
 
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _constVariables.Clear();
-        _narrowing.Reset();
-
         return classDecl;
     }
 

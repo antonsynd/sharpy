@@ -190,21 +190,20 @@ internal class DecoratorValidator : ValidatingAstWalker
     /// Validates that member-level modifier decorators are not applied to interface definitions.
     /// Only custom attribute decorators (and access modifiers) are valid on interfaces.
     /// </summary>
+    private static readonly HashSet<string> InvalidOnInterface = new()
+    {
+        DecoratorNames.Virtual,
+        DecoratorNames.Override,
+        DecoratorNames.Abstract,
+        DecoratorNames.Static,
+        DecoratorNames.Final,
+    };
+
     private void ValidateInterfaceDecorators(InterfaceDef interfaceDef)
     {
-        // Decorators that are invalid on interfaces — these are member-level modifiers
-        HashSet<string> invalidOnInterface = new()
-        {
-            DecoratorNames.Virtual,
-            DecoratorNames.Override,
-            DecoratorNames.Abstract,
-            DecoratorNames.Static,
-            DecoratorNames.Final,
-        };
-
         foreach (var decorator in interfaceDef.Decorators)
         {
-            if (invalidOnInterface.Contains(decorator.Name))
+            if (InvalidOnInterface.Contains(decorator.Name))
             {
                 AddError(
                     $"Decorator '@{decorator.Name}' is not valid on interface '{interfaceDef.Name}'. " +
@@ -1367,34 +1366,16 @@ internal class DecoratorValidator : ValidatingAstWalker
     /// Counts the number of YieldStatement nodes anywhere in the given block of statements.
     /// Does not descend into nested FunctionDef/ClassDef bodies (those have their own scope).
     /// </summary>
+    // Only counts top-level yield statements in the body. Does not descend into nested
+    // blocks (if/for/while) because the fixture emitter splits the body at the yield index
+    // and cannot handle yields inside control flow.
     private static int CountYieldStatements(IReadOnlyCollection<Statement> body)
     {
         int count = 0;
         foreach (var stmt in body)
-            count += CountYieldsInStatement(stmt);
-        return count;
-    }
-
-    private static int CountYieldsInStatement(Statement stmt)
-    {
-        switch (stmt)
         {
-            case YieldStatement:
-                return 1;
-            case FunctionDef:
-            case ClassDef:
-            case StructDef:
-            case InterfaceDef:
-            case EnumDef:
-                // Don't descend into nested definitions — they have their own scope.
-                return 0;
-        }
-
-        int count = 0;
-        foreach (var child in stmt.GetChildNodes())
-        {
-            if (child is Statement nested)
-                count += CountYieldsInStatement(nested);
+            if (stmt is YieldStatement)
+                count++;
         }
         return count;
     }
