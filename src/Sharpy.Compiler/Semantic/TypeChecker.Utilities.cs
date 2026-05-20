@@ -1,3 +1,4 @@
+extern alias SharpyRT;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -323,17 +324,60 @@ internal partial class TypeChecker
         // CLR fallback: when both types have CLR metadata (e.g., module-discovered types like
         // StringIO and TextWriter that may be different SemanticType subtypes), use reflection
         // to check inheritance. This covers cross-subtype assignability that the standard
-        // IsAssignableTo checks miss.
-        // Note: BuiltinType.ClrType uses 'new' (not override), so we must access it through
-        // the concrete type to get the actual CLR type.
-        var sourceClr = source.ClrType ?? source.DeclaringSymbol?.ClrType
-            ?? (source is BuiltinType sb ? sb.ClrType : null);
-        var targetClr = target.ClrType ?? target.DeclaringSymbol?.ClrType
-            ?? (target is BuiltinType tb ? tb.ClrType : null);
+        // IsAssignableTo checks miss, including Sharpy collection types (list/dict/set) being
+        // passed to CLR parameters expecting IEnumerable, ICollection<T>, etc.
+        var sourceClr = TryGetClrType(source);
+        var targetClr = TryGetClrType(target);
         if (sourceClr != null && targetClr != null && targetClr.IsAssignableFrom(sourceClr))
             return true;
 
         return false;
+    }
+
+    /// <summary>
+    /// Attempts to resolve a CLR <see cref="Type"/> for a <see cref="SemanticType"/>, including
+    /// constructing concrete generic types for Sharpy collection generics (list/dict/set). This
+    /// enables CLR assignability checks (e.g., passing a <c>list[int]</c> to a method parameter
+    /// typed as <c>IEnumerable</c>).
+    /// </summary>
+    private Type? TryGetClrType(SemanticType type)
+    {
+        switch (type)
+        {
+            case BuiltinType bt:
+                return bt.ClrType;
+            case UserDefinedType udt:
+                return udt.Symbol?.ClrType;
+            case NullableType nt:
+                return TryGetClrType(nt.UnderlyingType);
+            case OptionalType ot:
+                return TryGetClrType(ot.UnderlyingType);
+            case GenericType gt:
+                {
+                    Type? openType = gt.Name switch
+                    {
+                        "list" => typeof(SharpyRT::Sharpy.List<>),
+                        "dict" => typeof(SharpyRT::Sharpy.Dict<,>),
+                        "set" => typeof(SharpyRT::Sharpy.Set<>),
+                        _ => null,
+                    };
+                    if (openType == null)
+                        return null;
+                    var clrTypeArgs = gt.TypeArguments.Select(ta => TryGetClrType(ta) ?? typeof(object)).ToArray();
+                    if (clrTypeArgs.Length != openType.GetGenericArguments().Length)
+                        return null;
+                    try
+                    {
+                        return openType.MakeGenericType(clrTypeArgs);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            default:
+                return type.ClrType ?? type.DeclaringSymbol?.ClrType;
+        }
     }
 
     /// <summary>

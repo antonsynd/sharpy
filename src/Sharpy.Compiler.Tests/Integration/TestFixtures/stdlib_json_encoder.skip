@@ -1,1 +1,1 @@
-Blocked by compiler limitations: #665 (CLR virtual method discovery) and #666 (module-type parameter overload resolution)
+Blocked by #669: CLR-inherited method resolution (encoder.encode() not found through CLR base class). Original blockers #665 and #666 are resolved.

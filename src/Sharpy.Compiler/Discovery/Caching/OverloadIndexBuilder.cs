@@ -512,7 +512,9 @@ internal class OverloadIndexBuilder
         {
             Name = GetFunctionName(method),
             ReturnType = CreateTypeSignature(method.ReturnType),
-            MethodToken = CreateMethodToken(method)
+            MethodToken = CreateMethodToken(method),
+            IsVirtual = method.IsVirtual && !method.IsFinal,
+            IsAbstract = method.IsAbstract,
         };
 
         // Extract generic type parameters (e.g., T from Min<T>)

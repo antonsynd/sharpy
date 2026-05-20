@@ -540,6 +540,8 @@ internal class CachedModuleDiscovery
                     .Select(name => new Parser.Ast.TypeParameterDef { Name = name })
                     .ToList()
                 : new List<Parser.Ast.TypeParameterDef>(),
+            IsVirtual = signature.IsVirtual,
+            IsAbstract = signature.IsAbstract,
             Documentation = signature.Documentation
         };
     }

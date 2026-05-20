@@ -153,6 +153,46 @@ public class OverloadExpanderTests
     }
 
     [Fact]
+    public void Expand_FullArityOverload_RetainsHasDefault()
+    {
+        // Regression test for #666: full-arity expanded overload must retain
+        // HasDefault on optional parameters so keyword args can skip intermediate defaults.
+        // Simulates json.dumps(obj, indent=null, separators=null, default=null, sort_keys=false, cls=null).
+        var sig = MakeSignature("dumps",
+        [
+            MakeParam("obj", MakeType("object")),
+            MakeParam("indent", MakeType("int"), hasDefault: true),
+            MakeParam("separators", MakeType("str"), hasDefault: true),
+            MakeParam("default_fn", MakeType("object"), hasDefault: true),
+            MakeParam("sort_keys", MakeType("bool"), hasDefault: true),
+            MakeParam("cls", MakeType("object"), hasDefault: true),
+        ],
+            MakeType("str"));
+
+        var result = OverloadExpander.Expand(sig, "JsonModule");
+
+        // Should produce 6 overloads: arity 1 through 6
+        Assert.Equal(6, result.Count);
+
+        // Reduced-arity overloads (index 0-4) should have HasDefault=false
+        for (int i = 0; i < 5; i++)
+        {
+            foreach (var p in result[i].Parameters)
+                Assert.False(p.HasDefault, $"Arity-{result[i].Parameters.Count} param '{p.Name}' should not have HasDefault");
+        }
+
+        // Full-arity overload (index 5, all 6 params) should retain HasDefault on params 2-6
+        var fullArity = result[5];
+        Assert.Equal(6, fullArity.Parameters.Count);
+        Assert.False(fullArity.Parameters[0].HasDefault); // obj is required
+        Assert.True(fullArity.Parameters[1].HasDefault); // indent has default
+        Assert.True(fullArity.Parameters[2].HasDefault); // separators has default
+        Assert.True(fullArity.Parameters[3].HasDefault); // default_fn has default
+        Assert.True(fullArity.Parameters[4].HasDefault); // sort_keys has default
+        Assert.True(fullArity.Parameters[5].HasDefault); // cls has default
+    }
+
+    [Fact]
     public void Expand_PreservesMethodNameAndTypeParameters()
     {
         var sig = new FunctionSignature
