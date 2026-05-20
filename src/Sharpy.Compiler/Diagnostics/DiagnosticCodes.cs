@@ -23,6 +23,12 @@ namespace Sharpy.Compiler.Diagnostics;
 public static class DiagnosticCodes
 {
     /// <summary>
+    /// Generic diagnostic code used by <see cref="Logging.StructuredLogger"/> for
+    /// unstructured log messages that don't originate from a specific compiler phase.
+    /// </summary>
+    public const string GenericError = "SPY0000";
+
+    /// <summary>
     /// Lexer diagnostic codes (SPY0001-SPY0099).
     /// Active: SPY0001-SPY0029 (29 codes)
     /// Reserved: SPY0030-SPY0099 (70 codes for future lexer diagnostics)

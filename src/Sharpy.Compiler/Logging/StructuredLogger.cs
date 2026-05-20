@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Sharpy.Compiler.Diagnostics;
 
 namespace Sharpy.Compiler.Logging;
 
@@ -108,7 +109,7 @@ public sealed class StructuredLogger : ICompilerLogger
 
         // Also capture as a diagnostic event
         LogEvent(new DiagnosticEvent(
-            Code: "SPY0000", // Generic code for unstructured errors
+            Code: DiagnosticCodes.GenericError,
             Message: message,
             Severity: DiagnosticEventSeverity.Error,
             Line: line,
@@ -122,7 +123,7 @@ public sealed class StructuredLogger : ICompilerLogger
 
         // Also capture as a diagnostic event
         LogEvent(new DiagnosticEvent(
-            Code: "SPY0000", // Generic code for unstructured warnings
+            Code: DiagnosticCodes.GenericError,
             Message: message,
             Severity: DiagnosticEventSeverity.Warning,
             Line: line,
