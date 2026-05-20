@@ -1,0 +1,17 @@
+# Test numpy reductions on identity / ones matrices.
+import numpy as np
+
+def main():
+    # Trace of a 3x3 identity is 3 (sum of all elements = sum of diagonal).
+    eye3 = np.eye(3)
+    print(np.sum(eye3))
+
+    # Sum of a (2, 3) ones matrix is 6.
+    ones_mat = np.ones(2, 3)
+    print(np.sum(ones_mat))
+
+    # Sum along axis 0 of a (2, 3) ones matrix is [2, 2, 2].
+    print(np.sum(ones_mat, 0))
+
+    # Sum along axis 1 of a (2, 3) ones matrix is [3, 3].
+    print(np.sum(ones_mat, 1))
