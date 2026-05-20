@@ -14,16 +14,39 @@ namespace Sharpy
         /// <typeparam name="T">Element type.</typeparam>
         /// <param name="data">Source data. Length determines the shape.</param>
         /// <returns>A new 1-D ndarray owning a copy of <paramref name="data"/>.</returns>
-        public static NdArray<T> Array<T>(T[] data) where T : struct, IEquatable<T>
+        public static NdArray<T> Array<T>(System.Collections.Generic.IEnumerable<T> data)
+            where T : struct, IEquatable<T>
         {
             if (data == null)
             {
                 throw new ArgumentNullException(nameof(data));
             }
 
-            var copy = new T[data.Length];
-            System.Array.Copy(data, copy, data.Length);
-            return new NdArray<T>(copy, new[] { data.Length });
+            // Fast path for IList<T> / ICollection<T> to avoid the LINQ overhead.
+            if (data is System.Collections.Generic.IList<T> list)
+            {
+                var copy = new T[list.Count];
+                for (int i = 0; i < list.Count; i++)
+                {
+                    copy[i] = list[i];
+                }
+
+                return new NdArray<T>(copy, new[] { list.Count });
+            }
+
+            var buffer = new System.Collections.Generic.List<T>();
+            foreach (var item in data)
+            {
+                buffer.Add(item);
+            }
+
+            var result = new T[buffer.Count];
+            for (int i = 0; i < buffer.Count; i++)
+            {
+                result[i] = buffer[i];
+            }
+
+            return new NdArray<T>(result, new[] { buffer.Count });
         }
 
         /// <summary>
