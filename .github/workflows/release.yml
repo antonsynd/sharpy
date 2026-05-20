@@ -97,17 +97,22 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Create release with assets
+      - name: Create or update release with assets
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          TAG="${{ github.ref_name }}"
           PRERELEASE_FLAG=""
-          if echo "${{ github.ref_name }}" | grep -qE '-(alpha|beta|rc)'; then
+          if echo "$TAG" | grep -qE -- '-(alpha|beta|rc)'; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          gh release create ${{ github.ref_name }} \
-            --title "${{ github.ref_name }}" \
-            --generate-notes \
-            $PRERELEASE_FLAG \
-            artifacts/*
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/* --clobber
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --generate-notes \
+              $PRERELEASE_FLAG \
+              artifacts/*
+          fi
