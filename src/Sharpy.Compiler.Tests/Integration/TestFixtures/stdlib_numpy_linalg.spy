@@ -1,0 +1,16 @@
+# Test numpy.linalg submodule via aliased import.
+import numpy as np
+import numpy.linalg as la
+
+def main():
+    eye2 = np.eye(2)
+    print(la.det(eye2))
+
+    inv_eye = la.inv(eye2)
+    print(la.det(inv_eye))
+
+    prod = la.dot(eye2, eye2)
+    print(prod)
+
+    eye4 = np.eye(4)
+    print(la.norm(eye4))

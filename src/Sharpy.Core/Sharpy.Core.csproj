@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.8" />
     <PackageReference Include="System.Collections.Immutable" Version="10.0.8" />
     <!-- Async interfaces for IAsyncEnumerable<T>, IAsyncDisposable (Phase 10 prep) -->

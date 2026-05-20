@@ -1,0 +1,23 @@
+# Test numpy element-wise math and reductions.
+import numpy as np
+
+def main():
+    # 4x4 identity: sum is 4, mean is 4/16 = 0.25.
+    eye4 = np.eye(4)
+    print(np.sum(eye4))
+    print(np.mean(eye4))
+
+    # Max and Min on the identity.
+    print(np.max(eye4))
+    print(np.min(eye4))
+
+    # Variance and std deviation of identity:
+    # 16 elements, 4 of value 1.0 and 12 of value 0.0.
+    # mean = 0.25, var = (4 * 0.75^2 + 12 * 0.25^2) / 16 = (4*0.5625 + 12*0.0625)/16 = 0.1875.
+    print(np.var(eye4))
+
+    # Per-row max of an identity matrix is 1 in every row.
+    print(np.max(eye4, 1))
+
+    # Per-row sum of identity is also 1 in every row.
+    print(np.sum(eye4, 1))
