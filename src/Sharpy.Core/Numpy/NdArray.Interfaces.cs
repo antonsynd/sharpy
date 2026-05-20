@@ -125,6 +125,21 @@ namespace Sharpy
             return ToListRecursive(0, _offset);
         }
 
+        /// <summary>
+        /// Returns a flat copy of the array data in row-major order.
+        /// </summary>
+        public T[] ToArray()
+        {
+            var result = new T[Size];
+            int i = 0;
+            foreach (var item in this)
+            {
+                result[i++] = item;
+            }
+
+            return result;
+        }
+
         // -- Internal helpers -------------------------------------------------------
 
         // Visit the flat element at a given linear position (0..Size-1) through the strided view.
