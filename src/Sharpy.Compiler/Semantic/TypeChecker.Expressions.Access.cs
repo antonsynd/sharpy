@@ -287,8 +287,14 @@ internal partial class TypeChecker
                 // Access level validation is handled by AccessValidator in the validation pipeline
 
                 // When accessing a method via member access (obj.method), the object is implicitly
-                // bound as the first parameter (self), so we skip it when creating the FunctionType
-                var methodParameters = method.Parameters.Skip(1).ToList();
+                // bound as the first parameter (self), so we skip it when creating the FunctionType.
+                // CLR-discovered methods (e.g., inherited from a .NET base class like JSONEncoder)
+                // have no synthetic 'self' parameter — their Parameters list contains only the
+                // declared method parameters. Mirror the GetSelfOffset logic in ResolveOverloadCore.
+                var selfOffset = method.Parameters.Count > 0
+                    && method.Parameters[0].Name == PythonNames.Self
+                    ? 1 : 0;
+                var methodParameters = method.Parameters.Skip(selfOffset).ToList();
                 var paramTypes = methodParameters.Select(p => p.Type).ToList();
 
                 var methodFunctionType = new FunctionType
