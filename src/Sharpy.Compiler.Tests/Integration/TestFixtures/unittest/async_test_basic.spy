@@ -1,0 +1,12 @@
+@test
+async def test_async_basic():
+    x: int = 42
+    assert x == 42
+
+@test
+async def test_async_with_value():
+    name: str = "sharpy"
+    assert len(name) == 6
+
+def main():
+    print("ok")
