@@ -1196,6 +1196,14 @@ internal partial class RoslynEmitter
     {
         var attributeLists = new List<AttributeListSyntax>();
 
+        // Pre-extract @test.skip / @test.skip_if so they can be merged into [Fact(Skip=...)]
+        // or [Theory(Skip=...)] rather than emitted as standalone attributes.
+        string? skipReason = ResolveSkipReason(decorators);
+
+        // Track whether the loop emitted a [Fact] or [Theory] attribute; if not but a skip
+        // applies, we still need to mark the function as a test method.
+        bool emittedTestAttribute = false;
+
         foreach (var decorator in decorators)
         {
             if (!decorator.IsBracketAttribute)
@@ -1212,29 +1220,51 @@ internal partial class RoslynEmitter
                     || decorator.Name == DecoratorNames.ClassMethod)
                     continue;
 
+                // @test.skip / @test.skip_if are merged into the [Fact]/[Theory] attribute
+                // (handled via skipReason above), not emitted as separate attributes.
+                if (decorator.Name == DecoratorNames.TestSkip
+                    || decorator.Name == DecoratorNames.TestSkipIf)
+                    continue;
+
                 // @test → [Xunit.FactAttribute]
                 // @test("description") → [Xunit.FactAttribute(DisplayName = "description")]
                 if (decorator.Name == DecoratorNames.Test)
                 {
                     var factAttribute = Attribute(ParseName("Xunit.FactAttribute"));
+                    var factArgs = new List<AttributeArgumentSyntax>();
+
                     if (decorator.Arguments.Length == 1
                         && decorator.Arguments[0] is StringLiteral descLit)
                     {
+                        factArgs.Add(AttributeArgument(LiteralExpression(
+                            SyntaxKind.StringLiteralExpression,
+                            Literal(descLit.Value)))
+                            .WithNameEquals(NameEquals("DisplayName")));
+                    }
+
+                    if (skipReason != null)
+                    {
+                        factArgs.Add(AttributeArgument(LiteralExpression(
+                            SyntaxKind.StringLiteralExpression,
+                            Literal(skipReason)))
+                            .WithNameEquals(NameEquals("Skip")));
+                    }
+
+                    if (factArgs.Count > 0)
+                    {
                         factAttribute = factAttribute.WithArgumentList(
-                            AttributeArgumentList(SingletonSeparatedList(
-                                AttributeArgument(LiteralExpression(
-                                    SyntaxKind.StringLiteralExpression,
-                                    Literal(descLit.Value)))
-                                    .WithNameEquals(NameEquals("DisplayName")))));
+                            AttributeArgumentList(SeparatedList(factArgs)));
                     }
                     attributeLists.Add(AttributeList(SingletonSeparatedList(factAttribute)));
+                    emittedTestAttribute = true;
                     continue;
                 }
 
                 // @test.parametrize([(a,b,...), ...]) → [Xunit.TheoryAttribute] + [Xunit.InlineDataAttribute(...)]
                 if (decorator.Name == DecoratorNames.TestParametrize)
                 {
-                    attributeLists.AddRange(GenerateParametrizeAttributes(decorator));
+                    attributeLists.AddRange(GenerateParametrizeAttributes(decorator, skipReason));
+                    emittedTestAttribute = true;
                     continue;
                 }
             }
@@ -1283,22 +1313,85 @@ internal partial class RoslynEmitter
             attributeLists.Add(AttributeList(SingletonSeparatedList(attribute)));
         }
 
+        // If @test.skip / @test.skip_if was the only test marker (no @test or @test.parametrize),
+        // synthesize a [Fact(Skip = "reason")] so the method is registered as a skipped test.
+        if (skipReason != null && !emittedTestAttribute)
+        {
+            var skippedFact = Attribute(ParseName("Xunit.FactAttribute"))
+                .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
+                    AttributeArgument(LiteralExpression(
+                        SyntaxKind.StringLiteralExpression,
+                        Literal(skipReason)))
+                        .WithNameEquals(NameEquals("Skip")))));
+            attributeLists.Add(AttributeList(SingletonSeparatedList(skippedFact)));
+        }
+
         return List(attributeLists);
     }
 
     /// <summary>
-    /// Generates [Theory] + one [InlineData(...)] per row for a @test.parametrize decorator.
+    /// Resolves a Skip reason string from @test.skip / @test.skip_if decorators on a member.
+    /// Returns null if no skip applies.
+    /// - @test.skip("reason") always skips.
+    /// - @test.skip_if(condition, "reason") skips only when condition is the literal True.
+    ///   When the condition is the literal False, the decorator has no effect at codegen time.
+    ///   Non-constant conditions fall back to "reason" (conservatively always skip), since
+    ///   xUnit v2 has no runtime-conditional Skip mechanism. DecoratorValidator emits a hint
+    ///   diagnostic for these cases.
+    /// </summary>
+    private static string? ResolveSkipReason(IReadOnlyList<Decorator> decorators)
+    {
+        foreach (var d in decorators)
+        {
+            if (d.IsBracketAttribute) continue;
+
+            if (d.Name == DecoratorNames.TestSkip
+                && d.Arguments.Length >= 1
+                && d.Arguments[0] is StringLiteral reason)
+            {
+                return reason.Value;
+            }
+
+            if (d.Name == DecoratorNames.TestSkipIf
+                && d.Arguments.Length >= 2
+                && d.Arguments[1] is StringLiteral skipIfReason)
+            {
+                var condition = d.Arguments[0];
+                // Compile-time evaluation: literal True → skip, literal False → don't skip.
+                if (condition is BooleanLiteral { Value: false })
+                    continue;
+                if (condition is BooleanLiteral { Value: true })
+                    return skipIfReason.Value;
+
+                // Non-constant condition: conservatively skip with a hint in the reason.
+                return $"{skipIfReason.Value} (condition is runtime-evaluated; always skipped)";
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Generates [Theory(Skip=...)] + one [InlineData(...)] per row for a @test.parametrize decorator.
     /// The argument shape is validated by DecoratorValidator:
     /// - decorator.Arguments[0] is a ListLiteral
     /// - elements are TupleLiterals (or scalar literals for single-parameter functions)
     /// </summary>
-    private IEnumerable<AttributeListSyntax> GenerateParametrizeAttributes(Decorator decorator)
+    private IEnumerable<AttributeListSyntax> GenerateParametrizeAttributes(Decorator decorator, string? skipReason)
     {
         var result = new List<AttributeListSyntax>();
 
-        // [Xunit.TheoryAttribute]
-        result.Add(AttributeList(SingletonSeparatedList(
-            Attribute(ParseName("Xunit.TheoryAttribute")))));
+        // [Xunit.TheoryAttribute] (with optional Skip)
+        var theoryAttr = Attribute(ParseName("Xunit.TheoryAttribute"));
+        if (skipReason != null)
+        {
+            theoryAttr = theoryAttr.WithArgumentList(
+                AttributeArgumentList(SingletonSeparatedList(
+                    AttributeArgument(LiteralExpression(
+                        SyntaxKind.StringLiteralExpression,
+                        Literal(skipReason)))
+                        .WithNameEquals(NameEquals("Skip")))));
+        }
+        result.Add(AttributeList(SingletonSeparatedList(theoryAttr)));
 
         if (decorator.Arguments.Length != 1 || decorator.Arguments[0] is not ListLiteral listLit)
         {
