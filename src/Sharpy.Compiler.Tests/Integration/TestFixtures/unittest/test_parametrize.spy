@@ -1,0 +1,14 @@
+@test.parametrize([(1, 2, 3), (4, 5, 9), (10, 20, 30)])
+def test_add(a: int, b: int, expected: int):
+    assert a + b == expected
+
+@test.parametrize([("hello", 5), ("hi", 2), ("", 0)])
+def test_string_length(s: str, expected: int):
+    assert len(s) == expected
+
+@test.parametrize([True, False, True])
+def test_bool(flag: bool):
+    assert flag == True or flag == False
+
+def main():
+    print("ok")

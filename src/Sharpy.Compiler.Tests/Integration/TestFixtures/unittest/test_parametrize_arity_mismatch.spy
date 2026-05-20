@@ -1,0 +1,6 @@
+@test.parametrize([(1, 2), (3,)])
+def test_pair(a: int, b: int):
+    assert a + b > 0
+
+def main():
+    print("ok")

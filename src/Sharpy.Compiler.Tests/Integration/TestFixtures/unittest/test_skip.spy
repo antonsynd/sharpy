@@ -1,0 +1,17 @@
+@test
+@test.skip("work in progress")
+def test_skipped():
+    assert False
+
+@test
+@test.skip_if(True, "always skipped")
+def test_skipped_if_true():
+    assert False
+
+@test
+@test.skip_if(False, "never skipped")
+def test_runs_when_skip_if_false():
+    assert True
+
+def main():
+    print("ok")

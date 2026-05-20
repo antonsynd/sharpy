@@ -1,0 +1,11 @@
+class CalculatorTests:
+    @test.parametrize([(1, 2, 3), (10, 20, 30)])
+    def test_add(self, a: int, b: int, expected: int):
+        assert a + b == expected
+
+    @test.parametrize([(2, 3, 6), (4, 5, 20)])
+    def test_multiply(self, a: int, b: int, expected: int):
+        assert a * b == expected
+
+def main():
+    print("ok")

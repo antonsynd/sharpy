@@ -1,0 +1,7 @@
+@test
+@test.parametrize([(1,), (2,)])
+def test_combined(a: int):
+    assert a > 0
+
+def main():
+    print("ok")
