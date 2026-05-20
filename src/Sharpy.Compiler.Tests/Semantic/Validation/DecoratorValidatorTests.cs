@@ -388,4 +388,172 @@ def foo():
     }
 
     #endregion
+
+    #region @test decorator
+
+    [Fact]
+    public void Test_OnFunction_NoError()
+    {
+        var code = @"
+@test
+def test_something():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void Test_OnClass_ReportsInvalidTarget()
+    {
+        var code = @"
+@test
+class MyClass:
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Single(errors);
+        Assert.Contains("@test", errors[0].Message);
+        Assert.Contains("class", errors[0].Message);
+        Assert.Equal(DiagnosticCodes.Validation.TestDecoratorInvalidTarget, errors[0].Code);
+    }
+
+    [Fact]
+    public void Test_WithDescription_NoError()
+    {
+        var code = @"
+@test(""tests something specific"")
+def test_something():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void Test_WithNonStringArg_ReportsInvalidArgument()
+    {
+        var code = @"
+@test(42)
+def test_something():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Contains("string literal", warnings[0].Message);
+        Assert.Equal(DiagnosticCodes.Validation.TestDecoratorInvalidArgument, warnings[0].Code);
+    }
+
+    [Fact]
+    public void Test_WithMultipleArgs_ReportsInvalidArgument()
+    {
+        var code = @"
+@test(""a"", ""b"")
+def test_something():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Contains("at most one", warnings[0].Message);
+        Assert.Equal(DiagnosticCodes.Validation.TestDecoratorInvalidArgument, warnings[0].Code);
+    }
+
+    [Fact]
+    public void Test_WithStatic_ReportsInvalidCombination()
+    {
+        var code = @"
+class Foo:
+    @test
+    @static
+    def test_something():
+        pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        // SPY0449 should be reported; other unrelated errors may also be present.
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidCombination);
+        var combination = errors.First(e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidCombination);
+        Assert.Contains("@test", combination.Message);
+        Assert.Contains("@static", combination.Message);
+    }
+
+    [Fact]
+    public void Test_WithAbstract_ReportsInvalidCombination()
+    {
+        var code = @"
+class Foo:
+    @test
+    @abstract
+    def test_something(self):
+        ...
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidCombination);
+        var combination = errors.First(e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidCombination);
+        Assert.Contains("@test", combination.Message);
+        Assert.Contains("@abstract", combination.Message);
+    }
+
+    [Fact]
+    public void Test_OnDunderInit_ReportsInvalidTarget()
+    {
+        var code = @"
+class Foo:
+    @test
+    def __init__(self):
+        pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidTarget);
+        var target = errors.First(e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidTarget);
+        Assert.Contains("@test", target.Message);
+        Assert.Contains("dunder", target.Message);
+    }
+
+    #endregion
 }
