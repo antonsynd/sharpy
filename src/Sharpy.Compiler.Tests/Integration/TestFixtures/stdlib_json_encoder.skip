@@ -1,1 +1,0 @@
-Blocked by #669: CLR-inherited method resolution (encoder.encode() not found through CLR base class). Original blockers #665 and #666 are resolved.
