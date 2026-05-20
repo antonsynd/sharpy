@@ -17,8 +17,15 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///         (UTF-16 code-unit count vs. Python's code-point count).</item>
 ///   <item>SPY0471 — assignment of a struct-typed value to a variable
 ///         (value-copy semantics vs. Python's reference semantics).</item>
+///   <item>SPY0472 — typed variadic parameter (<c>*args: T</c>) — Sharpy's
+///         <c>*args</c> is homogeneous (<c>params T[]</c>), unlike Python's
+///         heterogeneous tuple.</item>
+///   <item>SPY0473 — <c>@classmethod</c> decorator usage — not supported in Sharpy;
+///         use <c>@static</c> with explicit type parameters or a factory method.</item>
 ///   <item>SPY0475 — <c>isinstance(x, (T1, T2))</c> tuple-of-types form
 ///         (Sharpy accepts only a single type argument).</item>
+///   <item>SPY0476 — negative tuple index literal (<c>t[-1]</c>) — Sharpy tuples
+///         do not support negative indexing; use the positive index instead.</item>
 ///   <item>SPY0477 — <c>@static</c> on a class/struct/interface method that already
 ///         lacks a <c>self</c> parameter (decorator is unnecessary; Sharpy auto-detects
 ///         static methods). Note: <c>@staticmethod</c> is a hard error via
@@ -89,7 +96,15 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     public override void VisitFunctionDef(FunctionDef node)
     {
         CheckUnnecessaryStaticDecorator(node);
+        CheckHomogeneousVariadic(node);
+        CheckNoClassmethod(node);
         base.VisitFunctionDef(node);
+    }
+
+    public override void VisitIndexAccess(IndexAccess node)
+    {
+        CheckNegativeTupleIndex(node);
+        base.VisitIndexAccess(node);
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -343,5 +358,88 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
 
         var first = node.Parameters[0];
         return first.Name == "self" && first.Type == null;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // SPY0472 — Homogeneous variadic (*args) hint
+    // ──────────────────────────────────────────────────────────────────────
+
+    private void CheckHomogeneousVariadic(FunctionDef node)
+    {
+        foreach (var param in node.Parameters)
+        {
+            if (param.IsVariadic && param.Type != null)
+            {
+                AddHint(
+                    $"Sharpy variadic parameters (*args) are homogeneous — all arguments must match "
+                        + $"the declared type '{FormatTypeAnnotation(param.Type)}', unlike Python's "
+                        + "heterogeneous *args. The parameter is lowered to C# 'params T[]'.",
+                    param.LineStart, param.ColumnStart,
+                    code: DiagnosticCodes.Validation.HomogeneousVariadicHint,
+                    span: param.Span);
+            }
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // SPY0473 — @classmethod not supported hint
+    // ──────────────────────────────────────────────────────────────────────
+
+    private void CheckNoClassmethod(FunctionDef node)
+    {
+        foreach (var dec in node.Decorators)
+        {
+            if (dec.Name == DecoratorNames.ClassMethod)
+            {
+                AddHint(
+                    "@classmethod is not supported in Sharpy — use @static with explicit type "
+                        + "parameters, or a factory method pattern instead. Sharpy auto-detects "
+                        + "static methods from the absence of a 'self' parameter.",
+                    dec.LineStart, dec.ColumnStart,
+                    code: DiagnosticCodes.Validation.NoClassmethodHint,
+                    span: dec.Span);
+                break;
+            }
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // SPY0476 — Negative tuple index hint
+    // ──────────────────────────────────────────────────────────────────────
+
+    private void CheckNegativeTupleIndex(IndexAccess node)
+    {
+        var targetType = Context.SemanticInfo.GetExpressionType(node.Object);
+        if (targetType is not TupleType)
+            return;
+
+        // Negative integer literal: parser emits UnaryOp(Minus, IntegerLiteral).
+        if (node.Index is not UnaryOp { Operator: UnaryOperator.Minus } unary)
+            return;
+        if (unary.Operand is not IntegerLiteral)
+            return;
+
+        AddHint(
+            "Negative tuple indices are not supported in Sharpy — use the positive index instead "
+                + "(e.g., t[2] instead of t[-1] for a 3-element tuple). Unlike Python, tuple "
+                + "element access is statically typed and resolved at compile time.",
+            node.LineStart, node.ColumnStart,
+            code: DiagnosticCodes.Validation.NegativeTupleIndexHint,
+            span: node.Span);
+    }
+
+    /// <summary>
+    /// Best-effort textual rendering of a parser <see cref="TypeAnnotation"/> for
+    /// inclusion in diagnostic messages. Mirrors the conservative formatter used
+    /// in <c>NameResolver.Members.cs</c> so the two surfaces stay aligned.
+    /// </summary>
+    private static string FormatTypeAnnotation(TypeAnnotation? type)
+    {
+        if (type == null)
+            return "_";
+        if (type.TypeArguments.Length == 0)
+            return type.Name;
+        var args = string.Join(", ", type.TypeArguments.Select(FormatTypeAnnotation));
+        return $"{type.Name}[{args}]";
     }
 }

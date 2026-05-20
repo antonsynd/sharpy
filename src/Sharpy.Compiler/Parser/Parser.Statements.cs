@@ -255,6 +255,23 @@ public partial class Parser
                 if (!CheckLoopProgress())
                     break;
 
+                // SPY0474 — `async for` inside comprehensions is not supported in Sharpy.
+                // Emit a transition hint and consume the `async` token so the following
+                // `for` clause can be parsed normally (best-effort recovery).
+                if (Current.Type == TokenType.Async && Peek().Type == TokenType.For)
+                {
+                    _diagnostics.AddHint(
+                        "Async comprehensions (`async for` inside a list/set/dict/generator comprehension) "
+                            + "are not supported in Sharpy — use a regular comprehension or an explicit "
+                            + "async loop. The `async` keyword has been ignored.",
+                        span: CurrentSpan,
+                        line: Current.Line,
+                        column: Current.Column,
+                        code: DiagnosticCodes.Validation.NoAsyncComprehensionHint,
+                        phase: CompilerPhase.Parser);
+                    Advance();
+                }
+
                 if (Current.Type == TokenType.For)
                 {
                     var startLine = Current.Line;

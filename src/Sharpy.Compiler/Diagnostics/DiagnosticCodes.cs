@@ -550,11 +550,11 @@ public static class DiagnosticCodes
 
         public const string Utf16StringLengthHint = "SPY0470";        // Active (emitted by TransitionWarningValidator; pending #611 for builtin len resolution)
         public const string StructValueSemanticsHint = "SPY0471";     // Active
-        public const string HomogeneousVariadicHint = "SPY0472";      // Allocated — not yet emitted (#673)
-        public const string NoClassmethodHint = "SPY0473";            // Allocated — not yet emitted (#673)
-        public const string NoAsyncComprehensionHint = "SPY0474";     // Allocated — not yet emitted (#673)
+        public const string HomogeneousVariadicHint = "SPY0472";      // Active (emitted by TransitionWarningValidator)
+        public const string NoClassmethodHint = "SPY0473";            // Active (emitted by TransitionWarningValidator)
+        public const string NoAsyncComprehensionHint = "SPY0474";     // Active (emitted by Parser.ParseComprehensionClauses)
         public const string SingleIsinstanceTypeHint = "SPY0475";     // Active
-        public const string NegativeTupleIndexHint = "SPY0476";       // Allocated — not yet emitted (#673)
+        public const string NegativeTupleIndexHint = "SPY0476";       // Active (emitted by TransitionWarningValidator)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
         // SPY0478-SPY0489: Reserved for future transition diagnostics
 
