@@ -62,6 +62,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateTestParametrizeDecorator(node, definitionName);
         ValidateTestSkipDecorators(node.Decorators, definitionName);
         ValidateTestFixtureDecorator(node, definitionName, isInsideType: _containingType != null);
+        ValidateTestMarkDecorators(node.Decorators, definitionName, hasTestDecorator: HasAnyTestMarker(node.Decorators));
 
         if (_containingType != null)
         {
@@ -265,7 +266,11 @@ internal class DecoratorValidator : ValidatingAstWalker
             .Append(DecoratorNames.LruCache)
             .Append(DecoratorNames.Cache)
             .Append(DecoratorNames.StaticMethod)
-            .Append(DecoratorNames.ClassMethod));
+            .Append(DecoratorNames.ClassMethod)
+            // @test.mark is supplementary metadata: not in KnownTestDecorators
+            // (so ValidateTestDecoratorNotOnType doesn't reject it on classes for collection use),
+            // but still must pass the unknown-decorator check.
+            .Append(DecoratorNames.TestMark));
 
     private void ValidateDecorators(IEnumerable<Decorator> decorators, string definitionName)
     {
@@ -1209,6 +1214,84 @@ internal class DecoratorValidator : ValidatingAstWalker
                 fixture.ColumnStart,
                 code: DiagnosticCodes.Validation.TestDecoratorInvalidCombination,
                 span: fixture.Span);
+        }
+    }
+
+    /// <summary>
+    /// Returns true if the decorator list contains any decorator that registers the function
+    /// as a test (e.g., @test or @test.parametrize). Used to determine whether @test.mark
+    /// is being applied to a real test function.
+    /// </summary>
+    private static bool HasAnyTestMarker(IEnumerable<Decorator> decorators)
+    {
+        foreach (var decorator in decorators)
+        {
+            if (decorator.Name == DecoratorNames.Test
+                || decorator.Name == DecoratorNames.TestParametrize)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Validates @test.mark decorator usage on function definitions.
+    /// Rules:
+    /// - Takes exactly one positional string argument (the trait category name).
+    /// - No keyword arguments.
+    /// - Multiple @test.mark decorators may be applied (each maps to a [Trait]).
+    /// - Should be combined with @test or @test.parametrize; otherwise warn.
+    /// </summary>
+    private void ValidateTestMarkDecorators(IReadOnlyList<Decorator> decorators, string definitionName, bool hasTestDecorator)
+    {
+        foreach (var decorator in decorators)
+        {
+            if (decorator.Name != DecoratorNames.TestMark)
+                continue;
+
+            if (decorator.KeywordArguments.Length > 0)
+            {
+                AddWarning(
+                    $"'@test.mark' on '{definitionName}' does not accept keyword arguments.",
+                    decorator.KeywordArguments[0].Value.LineStart,
+                    decorator.KeywordArguments[0].Value.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                    span: decorator.KeywordArguments[0].Value.Span);
+            }
+
+            if (decorator.Arguments.Length != 1)
+            {
+                AddWarning(
+                    $"'@test.mark' on '{definitionName}' requires exactly one string argument: " +
+                    "@test.mark(\"category\").",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                    span: decorator.Span);
+                continue;
+            }
+
+            if (decorator.Arguments[0] is not StringLiteral)
+            {
+                AddWarning(
+                    $"'@test.mark' argument on '{definitionName}' must be a string literal (the category name).",
+                    decorator.Arguments[0].LineStart,
+                    decorator.Arguments[0].ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                    span: decorator.Arguments[0].Span);
+            }
+
+            if (!hasTestDecorator)
+            {
+                AddWarning(
+                    $"'@test.mark' on '{definitionName}' has no effect without '@test' or '@test.parametrize'. " +
+                    "Add a test marker decorator to register this function as a test.",
+                    decorator.LineStart,
+                    decorator.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidCombination,
+                    span: decorator.Span);
+            }
         }
     }
 

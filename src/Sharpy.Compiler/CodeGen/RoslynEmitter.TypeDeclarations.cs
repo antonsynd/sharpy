@@ -1231,6 +1231,28 @@ internal partial class RoslynEmitter
                 if (decorator.Name == DecoratorNames.TestFixture)
                     continue;
 
+                // @test.mark("category") → [Xunit.TraitAttribute("Category", "category")]
+                // Multiple @test.mark decorators produce multiple [Trait] attributes.
+                if (decorator.Name == DecoratorNames.TestMark)
+                {
+                    if (decorator.Arguments.Length == 1
+                        && decorator.Arguments[0] is StringLiteral markValue)
+                    {
+                        var traitAttribute = Attribute(ParseName("Xunit.TraitAttribute"))
+                            .WithArgumentList(AttributeArgumentList(SeparatedList(new[]
+                            {
+                                AttributeArgument(LiteralExpression(
+                                    SyntaxKind.StringLiteralExpression,
+                                    Literal("Category"))),
+                                AttributeArgument(LiteralExpression(
+                                    SyntaxKind.StringLiteralExpression,
+                                    Literal(markValue.Value))),
+                            })));
+                        attributeLists.Add(AttributeList(SingletonSeparatedList(traitAttribute)));
+                    }
+                    continue;
+                }
+
                 // @test → [Xunit.FactAttribute]
                 // @test("description") → [Xunit.FactAttribute(DisplayName = "description")]
                 if (decorator.Name == DecoratorNames.Test)

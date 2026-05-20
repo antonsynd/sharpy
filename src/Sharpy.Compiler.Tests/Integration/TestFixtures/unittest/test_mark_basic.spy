@@ -1,0 +1,14 @@
+@test
+@test.mark("slow")
+def test_marked_slow():
+    x: int = 1 + 1
+    assert x == 2
+
+@test
+@test.mark("integration")
+def test_marked_integration():
+    name: str = "sharpy"
+    assert len(name) > 0
+
+def main():
+    print("ok")

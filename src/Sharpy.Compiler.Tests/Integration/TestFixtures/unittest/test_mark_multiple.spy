@@ -1,0 +1,15 @@
+@test
+@test.mark("slow")
+@test.mark("network")
+def test_multi_marked():
+    x: int = 100
+    assert x == 100
+
+@test.parametrize([(1, 1), (2, 4)])
+@test.mark("parametrized")
+def test_parametrized_marked(value: int, expected: int):
+    result: int = value * value
+    assert result == expected
+
+def main():
+    print("ok")
