@@ -25,7 +25,7 @@ internal partial class RoslynEmitter
 
         // Single-for: LINQ method chain
         var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
-            listComp.Clauses, "List", listComp.LineStart, listComp.ColumnStart);
+            listComp.Clauses, BuiltinNames.List, listComp.LineStart, listComp.ColumnStart);
 
         if (errorExpr != null)
             return errorExpr;
@@ -75,7 +75,7 @@ internal partial class RoslynEmitter
 
         // Single-for: LINQ method chain
         var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
-            setComp.Clauses, "Set", setComp.LineStart, setComp.ColumnStart);
+            setComp.Clauses, BuiltinNames.Set, setComp.LineStart, setComp.ColumnStart);
 
         if (errorExpr != null)
             return errorExpr;
@@ -123,7 +123,7 @@ internal partial class RoslynEmitter
 
         // Single-for: LINQ method chain
         var (chain, param, tupleTarget, errorExpr) = GenerateComprehensionChain(
-            dictComp.Clauses, "Dict", dictComp.LineStart, dictComp.ColumnStart);
+            dictComp.Clauses, BuiltinNames.Dict, dictComp.LineStart, dictComp.ColumnStart);
 
         if (errorExpr != null)
             return errorExpr;
