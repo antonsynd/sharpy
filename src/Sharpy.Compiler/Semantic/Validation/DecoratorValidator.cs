@@ -61,6 +61,7 @@ internal class DecoratorValidator : ValidatingAstWalker
         ValidateTestDecorator(node.Decorators, node.Name, isDunder: DunderDetector.IsDunderMethod(node.Name));
         ValidateTestParametrizeDecorator(node, definitionName);
         ValidateTestSkipDecorators(node.Decorators, definitionName);
+        ValidateTestFixtureDecorator(node, definitionName, isInsideType: _containingType != null);
 
         if (_containingType != null)
         {
@@ -1124,6 +1125,127 @@ internal class DecoratorValidator : ValidatingAstWalker
                 code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
                 span: decorator.Arguments[1].Span);
         }
+    }
+
+    /// <summary>
+    /// Validates @test.fixture decorator on a function definition.
+    /// Rules:
+    /// - Must be applied to a free function, not a method inside a class/struct/interface.
+    /// - Must declare a return type annotation.
+    /// - If the fixture body uses yield (setup/teardown pattern), there must be exactly one yield.
+    /// - Cannot be combined with @test, @test.parametrize, @test.skip, or @test.skip_if.
+    /// </summary>
+    private void ValidateTestFixtureDecorator(FunctionDef function, string definitionName, bool isInsideType)
+    {
+        var fixture = function.Decorators.FirstOrDefault(d => d.Name == DecoratorNames.TestFixture);
+        if (fixture == null)
+            return;
+
+        // Fixtures must be free functions.
+        if (isInsideType)
+        {
+            AddError(
+                $"'@test.fixture' cannot be applied to method '{definitionName}'. " +
+                "Fixtures must be free functions defined at module level.",
+                fixture.LineStart,
+                fixture.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidTarget,
+                span: fixture.Span);
+        }
+
+        // Fixtures cannot be combined with other test-family decorators.
+        foreach (var other in function.Decorators)
+        {
+            if (other.Name == DecoratorNames.TestFixture)
+                continue;
+
+            if (other.Name == DecoratorNames.Test
+                || other.Name == DecoratorNames.TestParametrize
+                || other.Name == DecoratorNames.TestSkip
+                || other.Name == DecoratorNames.TestSkipIf)
+            {
+                AddError(
+                    $"'@test.fixture' cannot be combined with '@{other.Name}' on '{definitionName}'. " +
+                    "Fixtures are setup helpers, not tests.",
+                    fixture.LineStart,
+                    fixture.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidCombination,
+                    span: fixture.Span);
+                break;
+            }
+        }
+
+        // Fixtures should not take any decorator arguments themselves.
+        if (fixture.Arguments.Length > 0 || fixture.KeywordArguments.Length > 0)
+        {
+            AddWarning(
+                $"'@test.fixture' on '{definitionName}' does not accept arguments.",
+                fixture.LineStart,
+                fixture.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: fixture.Span);
+        }
+
+        // Must declare a return type annotation.
+        if (function.ReturnType == null)
+        {
+            AddWarning(
+                $"'@test.fixture' on '{definitionName}' must declare a return type annotation. " +
+                "The return type defines the value injected into tests that consume the fixture.",
+                fixture.LineStart,
+                fixture.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                span: fixture.Span);
+        }
+
+        // If the fixture uses yield, there must be exactly one yield point.
+        int yieldCount = CountYieldStatements(function.Body);
+        if (yieldCount > 1)
+        {
+            AddError(
+                $"'@test.fixture' '{definitionName}' contains {yieldCount} yield statements; " +
+                "fixtures must have exactly one yield (setup before, teardown after).",
+                fixture.LineStart,
+                fixture.ColumnStart,
+                code: DiagnosticCodes.Validation.TestDecoratorInvalidCombination,
+                span: fixture.Span);
+        }
+    }
+
+    /// <summary>
+    /// Counts the number of YieldStatement nodes anywhere in the given block of statements.
+    /// Does not descend into nested FunctionDef/ClassDef bodies (those have their own scope).
+    /// </summary>
+    private static int CountYieldStatements(IReadOnlyCollection<Statement> body)
+    {
+        int count = 0;
+        foreach (var stmt in body)
+            count += CountYieldsInStatement(stmt);
+        return count;
+    }
+
+    private static int CountYieldsInStatement(Statement stmt)
+    {
+        switch (stmt)
+        {
+            case YieldStatement:
+                return 1;
+            case FunctionDef:
+            case ClassDef:
+            case StructDef:
+            case InterfaceDef:
+            case EnumDef:
+                // Don't descend into nested definitions — they have their own scope.
+                return 0;
+        }
+
+        int count = 0;
+        foreach (var child in stmt.GetChildNodes())
+        {
+            if (child is Statement nested)
+                count += CountYieldsInStatement(nested);
+        }
+        return count;
     }
 
     private enum ContainingTypeKind

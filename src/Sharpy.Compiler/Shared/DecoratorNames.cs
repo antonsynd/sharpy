@@ -25,6 +25,7 @@ internal static class DecoratorNames
     public const string TestParametrize = "test.parametrize";
     public const string TestSkip = "test.skip";
     public const string TestSkipIf = "test.skip_if";
+    public const string TestFixture = "test.fixture";
 
     // Access modifiers
     public const string Public = "public";
@@ -69,5 +70,6 @@ internal static class DecoratorNames
         TestParametrize,
         TestSkip,
         TestSkipIf,
+        TestFixture,
     }.ToImmutableHashSet();
 }

@@ -882,4 +882,156 @@ def test_x(a: int):
     }
 
     #endregion
+
+    #region @test.fixture decorator
+
+    [Fact]
+    public void TestFixture_OnFreeFunction_NoError()
+    {
+        var code = @"
+@test.fixture
+def db_connection() -> int:
+    return 42
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestFixture_OnMethod_ReportsInvalidTarget()
+    {
+        var code = @"
+class Foo:
+    @test.fixture
+    def db_connection(self) -> int:
+        return 42
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidTarget
+            && e.Message.Contains("@test.fixture"));
+    }
+
+    [Fact]
+    public void TestFixture_MissingReturnType_ReportsWarning()
+    {
+        var code = @"
+@test.fixture
+def db_connection():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.NotEmpty(warnings);
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.TestDecoratorInvalidArgument
+            && w.Message.Contains("return type annotation"));
+    }
+
+    [Fact]
+    public void TestFixture_WithSingleYield_NoError()
+    {
+        var code = @"
+@test.fixture
+def db_connection() -> int:
+    yield 1
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestFixture_WithMultipleYields_ReportsError()
+    {
+        var code = @"
+@test.fixture
+def db_connection() -> int:
+    yield 1
+    yield 2
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidCombination
+            && e.Message.Contains("yield"));
+    }
+
+    [Fact]
+    public void TestFixture_CombinedWithTest_ReportsError()
+    {
+        var code = @"
+@test
+@test.fixture
+def db_connection() -> int:
+    return 42
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidCombination
+            && e.Message.Contains("@test.fixture"));
+    }
+
+    [Fact]
+    public void TestFixture_CombinedWithParametrize_ReportsError()
+    {
+        var code = @"
+@test.parametrize([(1,)])
+@test.fixture
+def db_connection(a: int) -> int:
+    return a
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Contains(errors, e => e.Code == DiagnosticCodes.Validation.TestDecoratorInvalidCombination
+            && e.Message.Contains("@test.fixture"));
+    }
+
+    [Fact]
+    public void TestFixture_WithDecoratorArguments_ReportsWarning()
+    {
+        var code = @"
+@test.fixture(""scope"")
+def db_connection() -> int:
+    return 42
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Contains(warnings, w => w.Code == DiagnosticCodes.Validation.TestDecoratorInvalidArgument
+            && w.Message.Contains("does not accept arguments"));
+    }
+
+    #endregion
 }
