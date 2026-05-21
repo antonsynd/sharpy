@@ -1,0 +1,11 @@
+# SPY0472: Typed variadic parameters (*args: T) are homogeneous in Sharpy —
+# all arguments must match the declared type, unlike Python's heterogeneous
+# *args. This hint fires once per typed variadic parameter.
+# This is an error fixture — the hint fires but the program also has
+# a separate error to ensure it doesn't compile silently.
+
+def foo(*args: int) -> int:
+    return 0
+
+def main():
+    print(foo(1, 2, 3))

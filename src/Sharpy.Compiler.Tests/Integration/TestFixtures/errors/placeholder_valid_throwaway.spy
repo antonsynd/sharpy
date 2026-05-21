@@ -1,0 +1,7 @@
+# Regression guard: '_' as a throwaway variable should work fine.
+# Note: print(_) triggers partial application, so we read _ via assignment.
+
+def main():
+    _ = 42
+    x = _
+    print(x)

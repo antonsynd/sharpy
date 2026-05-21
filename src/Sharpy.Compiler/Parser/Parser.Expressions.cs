@@ -1056,78 +1056,38 @@ public partial class Parser
             return call;
         }
 
-        // Check for nested placeholders — outer call has _ AND an argument that's a call with _
+        // Check for nested placeholders — outer call has _ AND an argument
+        // was already lowered from a placeholder call (now a lambda with
+        // __placeholder_ parameters).
         foreach (var arg in call.Arguments)
         {
-            if (arg is FunctionCall innerCall)
+            if (arg is LambdaExpression lambda
+                && lambda.Parameters.Length > 0
+                && lambda.Parameters[0].Name.StartsWith("__placeholder_", StringComparison.Ordinal))
             {
-                bool innerHasPlaceholder = false;
-                foreach (var innerArg in innerCall.Arguments)
-                {
-                    if (innerArg is Identifier { Name: "_" })
-                    {
-                        innerHasPlaceholder = true;
-                        break;
-                    }
-                }
-                if (!innerHasPlaceholder)
-                {
-                    foreach (var innerKwarg in innerCall.KeywordArguments)
-                    {
-                        if (innerKwarg.Value is Identifier { Name: "_" })
-                        {
-                            innerHasPlaceholder = true;
-                            break;
-                        }
-                    }
-                }
-                if (innerHasPlaceholder)
-                {
-                    ReportError(
-                        "Nested placeholder expressions are not supported: '_' cannot appear in both an inner and outer call. "
-                        + "Extract the inner partial application into a separate variable",
-                        innerCall.LineStart, innerCall.ColumnStart,
-                        DiagnosticCodes.Parser.NestedPlaceholder,
-                        span: innerCall.Span);
-                    return call;
-                }
+                ReportError(
+                    "Nested placeholder expressions are not supported: '_' cannot appear in both an inner and outer call. "
+                    + "Extract the inner partial application into a separate variable",
+                    lambda.LineStart, lambda.ColumnStart,
+                    DiagnosticCodes.Parser.NestedPlaceholder,
+                    span: lambda.Span);
+                return call;
             }
         }
 
         foreach (var kwarg in call.KeywordArguments)
         {
-            if (kwarg.Value is FunctionCall innerCall)
+            if (kwarg.Value is LambdaExpression lambda
+                && lambda.Parameters.Length > 0
+                && lambda.Parameters[0].Name.StartsWith("__placeholder_", StringComparison.Ordinal))
             {
-                bool innerHasPlaceholder = false;
-                foreach (var innerArg in innerCall.Arguments)
-                {
-                    if (innerArg is Identifier { Name: "_" })
-                    {
-                        innerHasPlaceholder = true;
-                        break;
-                    }
-                }
-                if (!innerHasPlaceholder)
-                {
-                    foreach (var innerKwarg in innerCall.KeywordArguments)
-                    {
-                        if (innerKwarg.Value is Identifier { Name: "_" })
-                        {
-                            innerHasPlaceholder = true;
-                            break;
-                        }
-                    }
-                }
-                if (innerHasPlaceholder)
-                {
-                    ReportError(
-                        "Nested placeholder expressions are not supported: '_' cannot appear in both an inner and outer call. "
-                        + "Extract the inner partial application into a separate variable",
-                        innerCall.LineStart, innerCall.ColumnStart,
-                        DiagnosticCodes.Parser.NestedPlaceholder,
-                        span: innerCall.Span);
-                    return call;
-                }
+                ReportError(
+                    "Nested placeholder expressions are not supported: '_' cannot appear in both an inner and outer call. "
+                    + "Extract the inner partial application into a separate variable",
+                    lambda.LineStart, lambda.ColumnStart,
+                    DiagnosticCodes.Parser.NestedPlaceholder,
+                    span: lambda.Span);
+                return call;
             }
         }
 

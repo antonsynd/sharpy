@@ -1,0 +1,4 @@
+# SPY0245: Some(None) is invalid — use None directly.
+
+def main():
+    x: int? = Some(None)

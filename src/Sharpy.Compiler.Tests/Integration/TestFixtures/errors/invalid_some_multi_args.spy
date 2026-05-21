@@ -1,0 +1,4 @@
+# SPY0245: Some() takes exactly one argument.
+
+def main():
+    x: int? = Some(1, 2)

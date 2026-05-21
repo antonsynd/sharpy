@@ -1,0 +1,7 @@
+# SPY0473: @classmethod hint — alongside DecoratorValidator hard error.
+# The hint explains why classmethod isn't supported.
+
+class Foo:
+    @classmethod
+    def from_str(cls, s: str) -> int:
+        return 0

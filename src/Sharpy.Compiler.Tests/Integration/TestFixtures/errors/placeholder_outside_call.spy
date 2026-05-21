@@ -1,0 +1,6 @@
+# SPY0132: '_' placeholder used outside a function call context.
+# When '_' is not defined as a variable and used as an expression,
+# we emit a specific diagnostic instead of the generic UndefinedVariable.
+
+def main():
+    print(_)

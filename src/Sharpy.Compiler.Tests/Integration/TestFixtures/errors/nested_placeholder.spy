@@ -1,0 +1,10 @@
+# SPY0133: Nested placeholder expressions — '_' in both inner and outer call.
+
+def f(x: int, y: int) -> int:
+    return x + y
+
+def g(x: int) -> int:
+    return x * 2
+
+def main():
+    h = f(g(_), _)

@@ -1,0 +1,6 @@
+# SPY0476: Negative tuple index hint — alongside SPY0259 error.
+# The hint explains that Sharpy doesn't support negative tuple indexing.
+
+def main():
+    t = (1, 2, 3)
+    x = t[-1]
