@@ -1,0 +1,4 @@
+# SPY0246: Err() takes exactly one argument.
+
+def main():
+    x: int !str = Err("a", "b")

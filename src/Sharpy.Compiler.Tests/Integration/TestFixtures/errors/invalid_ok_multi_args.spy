@@ -1,0 +1,4 @@
+# SPY0246: Ok() takes exactly one argument.
+
+def main():
+    x: int !str = Ok(1, 2)
