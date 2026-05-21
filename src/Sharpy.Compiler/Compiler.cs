@@ -172,6 +172,7 @@ public class Compiler
 
             if (parseResult.HasErrors)
                 return MergeAndFail(diagnostics, parseResult.Diagnostics, metrics, result);
+            diagnostics.Merge(parseResult.Diagnostics);
 
             Debug.Assert(module != null, "Parser should produce a non-null Module");
             Debug.Assert(module.Body != null, "Module.Body should not be null");
