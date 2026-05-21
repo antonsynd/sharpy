@@ -410,17 +410,71 @@ internal class AssemblyCompiler
             var depsPath = Path.ChangeExtension(assemblyPath, ".deps.json");
             var assemblyName = projectConfig.AssemblyName ?? projectConfig.RootNamespace;
 
-            // Get Sharpy.Core assembly info
             var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
             var sharpyCoreLocation = sharpyCoreAssembly.Location;
             var sharpyCoreName = sharpyCoreAssembly.GetName();
             var sharpyCoreVersion = sharpyCoreName.Version?.ToString() ?? "1.0.0";
 
-            // Get the current runtime version
             var runtimeVersion = Environment.Version;
-            var frameworkVersion = $"{runtimeVersion.Major}.{runtimeVersion.Minor}.{runtimeVersion.Build}";
 
-            // Create deps.json content
+            var dependencyEntries = new List<string> { $@"""Sharpy.Core"": ""{sharpyCoreVersion}""" };
+            var targetEntries = new List<string>();
+            var libraryEntries = new List<string>();
+
+            targetEntries.Add($$"""
+      "Sharpy.Core/{{sharpyCoreVersion}}": {
+        "runtime": {
+          "{{Path.GetFileName(sharpyCoreLocation)}}": {
+            "assemblyVersion": "{{sharpyCoreVersion}}",
+            "fileVersion": "{{sharpyCoreVersion}}"
+          }
+        }
+      }
+""");
+            libraryEntries.Add($$"""
+    "Sharpy.Core/{{sharpyCoreVersion}}": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+""");
+
+            foreach (var refPath in projectConfig.References)
+            {
+                var fileName = Path.GetFileName(refPath);
+                if (!File.Exists(refPath) || fileName == "Sharpy.Core.dll")
+                    continue;
+
+                try
+                {
+                    var refName = System.Reflection.AssemblyName.GetAssemblyName(refPath);
+                    var refVersion = refName.Version?.ToString() ?? "1.0.0";
+                    var refSimpleName = refName.Name ?? Path.GetFileNameWithoutExtension(refPath);
+
+                    dependencyEntries.Add($@"""{refSimpleName}"": ""{refVersion}""");
+                    targetEntries.Add($$"""
+      "{{refSimpleName}}/{{refVersion}}": {
+        "runtime": {
+          "{{fileName}}": {
+            "assemblyVersion": "{{refVersion}}",
+            "fileVersion": "{{refVersion}}"
+          }
+        }
+      }
+""");
+                    libraryEntries.Add($$"""
+    "{{refSimpleName}}/{{refVersion}}": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+""");
+                }
+                catch
+                {
+                }
+            }
+
             var depsJson = $$"""
 {
   "runtimeTarget": {
@@ -432,21 +486,13 @@ internal class AssemblyCompiler
     ".NETCoreApp,Version=v{{runtimeVersion.Major}}.{{runtimeVersion.Minor}}": {
       "{{assemblyName}}/1.0.0": {
         "dependencies": {
-          "Sharpy.Core": "{{sharpyCoreVersion}}"
+          {{string.Join(",\n          ", dependencyEntries)}}
         },
         "runtime": {
           "{{Path.GetFileName(assemblyPath)}}": {}
         }
       },
-      "Sharpy.Core/{{sharpyCoreVersion}}": {
-        "runtime": {
-          "{{Path.GetFileName(sharpyCoreLocation)}}": {
-            "assemblyVersion": "{{sharpyCoreVersion}}",
-            "fileVersion": "{{sharpyCoreVersion}}"
-          }
-        }
-      }
-    }
+{{string.Join(",\n", targetEntries)}}    }
   },
   "libraries": {
     "{{assemblyName}}/1.0.0": {
@@ -454,12 +500,7 @@ internal class AssemblyCompiler
       "serviceable": false,
       "sha512": ""
     },
-    "Sharpy.Core/{{sharpyCoreVersion}}": {
-      "type": "reference",
-      "serviceable": false,
-      "sha512": ""
-    }
-  }
+{{string.Join(",\n", libraryEntries)}}  }
 }
 """;
 

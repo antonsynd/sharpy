@@ -189,7 +189,6 @@ internal static class RunCommand
             Directory.CreateDirectory(tempProjDir);
             var csprojPath = Path.Combine(tempProjDir, $"{assemblyName}.csproj");
 
-            var compiledDir = Path.GetDirectoryName(compiledExePath)!;
             var cliDir = Path.GetDirectoryName(sharpyCorePath)!;
             var stdlibPath = Path.Combine(cliDir, "Sharpy.Stdlib.dll");
             var stdlibRef = File.Exists(stdlibPath)

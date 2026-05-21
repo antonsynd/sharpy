@@ -121,16 +121,17 @@ internal static class BuildCommand
                 Directory.CreateDirectory(outputDirectory);
             }
 
+            var allReferences = CliHelpers.GetDefaultReferences().Concat(references).Distinct().ToList();
             var projectConfig = new SingleFileProjectConfig(
                 projectFilePath: inputFile.FullName,
                 projectDirectory: Path.GetDirectoryName(inputFile.FullName) ?? Directory.GetCurrentDirectory(),
                 rootNamespace: inputFileName,
                 assemblyName: assemblyName,
                 outputType: outputType,
-                targetFramework: "net8.0",
+                targetFramework: "net10.0",
                 configuration: "Debug",
                 sourceFiles: new List<string> { inputFile.FullName },
-                references: references.ToList(),
+                references: allReferences,
                 modulePaths: modulePaths.ToList(),
                 outputAssemblyPath: finalOutputPath
             );
