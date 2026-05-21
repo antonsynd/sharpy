@@ -6,6 +6,20 @@ namespace Sharpy.Compiler.Formatting;
 
 public static class FormatterService
 {
+    internal static string StripTrailingWhitespace(string text, FormatOptions options)
+    {
+        var lines = text.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+            lines[i] = lines[i].TrimEnd(' ', '\t');
+
+        var result = string.Join("\n", lines);
+
+        if (options.TrailingNewline && result.Length > 0 && !result.EndsWith("\n", StringComparison.Ordinal))
+            result += "\n";
+
+        return result;
+    }
+
     public static FormatterResult Format(string source, FormatOptions? options = null, string? filePath = null)
     {
         options ??= FormatOptions.Default;
@@ -49,7 +63,8 @@ public static class FormatterService
             }
         };
 
-        var formatted = Unparser.Unparse(parseResult.Module, unparseOptions);
+        var raw = Unparser.Unparse(parseResult.Module, unparseOptions);
+        var formatted = StripTrailingWhitespace(raw, options);
 
         return new FormatterResult
         {

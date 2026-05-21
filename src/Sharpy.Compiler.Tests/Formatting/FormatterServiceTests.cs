@@ -95,4 +95,84 @@ public class FormatterServiceTests
         var result = FormatterService.Format(source);
         result.FormattedText.Should().Contain("hello\n  world");
     }
+
+    [Fact]
+    public void Format_StripsTrailingWhitespace()
+    {
+        var source = "x = 1   \ny = 2  \n";
+        var result = FormatterService.Format(source);
+        result.FormattedText.Should().Be("x = 1\ny = 2\n");
+    }
+
+    [Fact]
+    public void Format_StripsTrailingWhitespace_OnBlankLines()
+    {
+        var source = "x = 1\n   \ny = 2\n";
+        var result = FormatterService.Format(source);
+        var lines = result.FormattedText.Split('\n');
+        lines.Should().AllSatisfy(line => line.Should().Be(line.TrimEnd(' ', '\t')));
+    }
+
+    [Fact]
+    public void Format_StripsTrailingTabs()
+    {
+        var source = "x = 1\t\t\n";
+        var result = FormatterService.Format(source);
+        result.FormattedText.Should().Be("x = 1\n");
+    }
+
+    [Fact]
+    public void StripTrailingWhitespace_PreservesTrailingNewline()
+    {
+        var result = FormatterService.StripTrailingWhitespace("x = 1  \ny = 2  ", FormatOptions.Default);
+        result.Should().EndWith("\n");
+    }
+
+    [Fact]
+    public void StripTrailingWhitespace_NoTrailingNewline_WhenDisabled()
+    {
+        var options = new FormatOptions { TrailingNewline = false };
+        var result = FormatterService.StripTrailingWhitespace("x = 1  ", options);
+        result.Should().Be("x = 1");
+    }
+
+    [Fact]
+    public void Format_MultipleDecorators_BeforeFunction()
+    {
+        var source = "def foo():\n    pass\n@staticmethod\n@abstractmethod\ndef bar():\n    pass\n";
+        var result = FormatterService.Format(source);
+        result.FormattedText.Should().Contain("pass\n\n\n@staticmethod\n@abstractmethod\ndef bar():");
+    }
+
+    [Fact]
+    public void Format_NestedClassWithMethods()
+    {
+        var source = "class Outer:\n    class Inner:\n        def a(self):\n            pass\n        def b(self):\n            pass\n";
+        var result = FormatterService.Format(source);
+        result.FormattedText.Should().Contain("pass\n\n        def b(self):");
+    }
+
+    [Fact]
+    public void Format_ImportThenAssignmentThenFunction()
+    {
+        var source = "import os\nx = 1\ndef foo():\n    pass\n";
+        var result = FormatterService.Format(source);
+        result.FormattedText.Should().Contain("x = 1\n\n\ndef foo():");
+    }
+
+    [Fact]
+    public void Format_FunctionWithPassOnly()
+    {
+        var source = "def foo():\n    pass\n";
+        var result = FormatterService.Format(source);
+        result.FormattedText.Should().Contain("def foo():\n    pass\n");
+    }
+
+    [Fact]
+    public void Format_BodyCommentPreserved()
+    {
+        var source = "def foo():\n    # body comment\n    x = 1\n";
+        var result = FormatterService.Format(source);
+        result.FormattedText.Should().Contain("# body comment\n    x = 1");
+    }
 }

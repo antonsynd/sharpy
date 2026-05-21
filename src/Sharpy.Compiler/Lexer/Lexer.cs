@@ -596,7 +596,8 @@ public partial class Lexer
         if (sourceLength.HasValue)
             token = token with { SourceLength = sourceLength };
 
-        if (_preserveTrivia && _pendingTrivia!.Count > 0)
+        if (_preserveTrivia && _pendingTrivia!.Count > 0
+            && type is not (TokenType.Indent or TokenType.Dedent))
         {
             token = token with { LeadingTrivia = _pendingTrivia.ToList() };
             _pendingTrivia.Clear();

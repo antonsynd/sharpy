@@ -144,5 +144,68 @@ public class UnparserTriviaAndFormattingTests
         second.Should().Be(first);
     }
 
+    [Fact]
+    public void Formatting_EmptyFile_IsIdempotent()
+    {
+        var source = "";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_SingleStatement_IsIdempotent()
+    {
+        var source = "x = 1\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_ClassWithMethods_IsIdempotent()
+    {
+        var source = "class Foo:\n    def a(self):\n        pass\n    def b(self):\n        pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_DecoratedFunctions_IsIdempotent()
+    {
+        var source = "def foo():\n    pass\n@staticmethod\ndef bar():\n    pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_NestedClasses_IsIdempotent()
+    {
+        var source = "class Outer:\n    class Inner:\n        def method(self):\n            pass\n    def outer_method(self):\n        pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_ImportsAndFunctions_IsIdempotent()
+    {
+        var source = "import os\nimport sys\ndef main():\n    pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_CommentsInBody_IsIdempotent()
+    {
+        var source = "# header\nimport os\ndef foo():  # my func\n    # body comment\n    x = 1  # inline\n    return x\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
     #endregion
 }
