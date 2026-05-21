@@ -168,8 +168,8 @@ public static class DiagnosticCodes
         public const string SlashAtStart = "SPY0129";               // Active
         public const string PlaceholderInKeywordArg = "SPY0130";    // Reserved — keyword '_' placeholders are now supported
         public const string PlaceholderWithSpread = "SPY0131";      // Active
-        public const string PlaceholderOutsideCallOrOperator = "SPY0132"; // Allocated — not yet emitted (#671)
-        public const string NestedPlaceholder = "SPY0133";          // Allocated — not yet emitted (#671)
+        public const string PlaceholderOutsideCallOrOperator = "SPY0132"; // Active (emitted by TypeChecker.CheckIdentifier)
+        public const string NestedPlaceholder = "SPY0133";          // Active (emitted by Parser.LowerPartialApplicationCall)
 
         #endregion
 
@@ -248,8 +248,8 @@ public static class DiagnosticCodes
         public const string InvalidRaise = "SPY0242";               // Active
         public const string InvalidMaybeExpression = "SPY0243";     // Active
         public const string InvalidNoneConstructor = "SPY0244";     // Active
-        public const string InvalidSomeConstructor = "SPY0245";     // Allocated — not yet emitted (#672)
-        public const string InvalidOkErrConstructor = "SPY0246";    // Allocated — not yet emitted (#672)
+        public const string InvalidSomeConstructor = "SPY0245";     // Active (emitted by TypeChecker.TryCheckTaggedUnionConstructor)
+        public const string InvalidOkErrConstructor = "SPY0246";    // Active (emitted by TypeChecker.CheckFunctionCall)
         public const string MissingMethodBody = "SPY0247";          // Active
         public const string InvalidOverride = "SPY0248";            // Active
         public const string MissingParameterAnnotation = "SPY0249"; // Reserved — covered by MissingTypeAnnotation (SPY0226)
