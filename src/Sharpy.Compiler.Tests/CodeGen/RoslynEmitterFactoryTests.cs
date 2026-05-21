@@ -1,4 +1,5 @@
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
@@ -46,6 +47,21 @@ public class RoslynEmitterFactoryTests
         var emitter2 = factory.Create(context2);
 
         Assert.NotSame(emitter1, emitter2);
+    }
+
+    [Fact]
+    public void Create_EmitterGeneratesCompilationUnitForTrivialModule()
+    {
+        var factory = new RoslynEmitterFactory();
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins);
+
+        var emitter = factory.Create(context);
+        var result = emitter.GenerateCompilationUnit(new Module());
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.Members);
     }
 
     [Fact]

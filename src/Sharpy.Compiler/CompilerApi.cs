@@ -220,7 +220,8 @@ public sealed class CompilerApi
         CancellationToken cancellationToken = default)
     {
         var registry = BuildModuleRegistry(config);
-        var compiler = new Project.ProjectCompiler(logger: _logger, moduleRegistry: registry);
+        var compiler = new Project.ProjectCompiler(logger: _logger, moduleRegistry: registry,
+            emitterFactory: _emitterFactory);
         return compiler.AnalyzeProject(config, cancellationToken);
     }
 
