@@ -57,30 +57,27 @@ public abstract class IntegrationTestBase
 
         string? runtimePath = null;
         var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
-        var testDir = Path.GetDirectoryName(testAssemblyPath);
-        var possibleFrameworks = new[] { "net10.0", "netstandard2.1", "netstandard2.0" };
+        var testDir = Path.GetDirectoryName(testAssemblyPath)!;
 
-        foreach (var targetFramework in possibleFrameworks)
+        // Probe order: test output directory first (MSBuild copies project references there),
+        // then navigate to the Core project's bin directory with both Debug and Release configs.
+        var coreDllPath = FindAssembly(testDir, "Sharpy.Core", "Sharpy.Core.dll");
+        if (coreDllPath != null)
         {
-            var candidate = Path.GetFullPath(Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", targetFramework, "Sharpy.Core.dll"));
-            if (File.Exists(candidate))
-            {
-                references.Add(MetadataReference.CreateFromFile(candidate));
-                runtimePath = candidate;
+            references.Add(MetadataReference.CreateFromFile(coreDllPath));
+            runtimePath = coreDllPath;
 
-                try
-                {
-                    var netstandardAssembly = Assembly.Load("netstandard");
-                    references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
-                }
-                catch
-                {
-                    var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
-                    var netstandardPath = Path.Combine(runtimeDir!, "netstandard.dll");
-                    if (File.Exists(netstandardPath))
-                        references.Add(MetadataReference.CreateFromFile(netstandardPath));
-                }
-                break;
+            try
+            {
+                var netstandardAssembly = Assembly.Load("netstandard");
+                references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
+            }
+            catch
+            {
+                var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
+                var netstandardPath = Path.Combine(runtimeDir!, "netstandard.dll");
+                if (File.Exists(netstandardPath))
+                    references.Add(MetadataReference.CreateFromFile(netstandardPath));
             }
         }
 
@@ -907,5 +904,35 @@ public abstract class IntegrationTestBase
             if (!File.Exists(destFile))
                 File.Copy(file, destFile);
         }
+    }
+
+    /// <summary>
+    /// Finds an assembly DLL by checking: (1) the test output directory (sibling DLL),
+    /// then (2) the project's bin directory under both Debug and Release configurations.
+    /// Configuration-agnostic so tests work under both Debug and Release builds.
+    /// </summary>
+    protected static string? FindAssembly(string testOutputDir, string projectName, string dllName)
+    {
+        // 1. Check test output directory (MSBuild copies ProjectReference outputs here)
+        var siblingPath = Path.Combine(testOutputDir, dllName);
+        if (File.Exists(siblingPath))
+            return siblingPath;
+
+        // 2. Navigate to the project's bin directory and probe Debug/Release with multiple TFMs
+        var possibleFrameworks = new[] { "net10.0", "netstandard2.1", "netstandard2.0" };
+        var possibleConfigs = new[] { "Debug", "Release" };
+
+        foreach (var config in possibleConfigs)
+        {
+            foreach (var tfm in possibleFrameworks)
+            {
+                var candidate = Path.GetFullPath(Path.Combine(
+                    testOutputDir, "..", "..", "..", "..", projectName, "bin", config, tfm, dllName));
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+        }
+
+        return null;
     }
 }

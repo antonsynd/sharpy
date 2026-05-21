@@ -33,19 +33,7 @@ public class FileBasedIntegrationTests : FileBasedIntegrationTestsBase
     private static string[] ResolveStdlibPaths()
     {
         var testDir = IOPath.GetDirectoryName(typeof(FileBasedIntegrationTests).Assembly.Location)!;
-        var possibleFrameworks = new[] { "net10.0", "netstandard2.1" };
-
-        foreach (var tf in possibleFrameworks)
-        {
-            var candidate = IOPath.GetFullPath(IOPath.Combine(testDir, "..", "..", "..", "..", "Sharpy.Stdlib", "bin", "Debug", tf, "Sharpy.Stdlib.dll"));
-            if (File.Exists(candidate))
-                return new[] { candidate };
-        }
-
-        var siblingPath = IOPath.Combine(testDir, "Sharpy.Stdlib.dll");
-        if (File.Exists(siblingPath))
-            return new[] { siblingPath };
-
-        return Array.Empty<string>();
+        var path = FindAssembly(testDir, "Sharpy.Stdlib", "Sharpy.Stdlib.dll");
+        return path != null ? new[] { path } : Array.Empty<string>();
     }
 }
