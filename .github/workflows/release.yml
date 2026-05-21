@@ -34,6 +34,31 @@ jobs:
           name: sharpy-core
           path: sharpy-core-netstandard2.1.zip
 
+  build-stdlib:
+    name: Build Sharpy.Stdlib (netstandard2.1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish Sharpy.Stdlib
+        run: dotnet publish src/Sharpy.Stdlib -f netstandard2.1 -c Release -o publish/stdlib
+
+      - name: Package Sharpy.Stdlib
+        run: |
+          cd publish/stdlib
+          zip -r ../../sharpy-stdlib-netstandard2.1.zip .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sharpy-stdlib
+          path: sharpy-stdlib-netstandard2.1.zip
+
   build-cli:
     name: Build sharpyc (${{ matrix.rid }})
     runs-on: ${{ matrix.os }}
@@ -88,7 +113,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: [build-core, build-cli]
+    needs: [build-core, build-stdlib, build-cli]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts

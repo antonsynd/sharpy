@@ -21,7 +21,11 @@ COMPILER_DIR: Path = SRC_DIR / "Sharpy.Compiler"
 COMPILER_TEST_DIR: Path = SRC_DIR / "Sharpy.Compiler.Tests"
 CORE_DIR: Path = SRC_DIR / "Sharpy.Core"
 CORE_TEST_DIR: Path = SRC_DIR / "Sharpy.Core.Tests"
+STDLIB_DIR: Path = SRC_DIR / "Sharpy.Stdlib"
+STDLIB_TEST_DIR: Path = SRC_DIR / "Sharpy.Stdlib.Tests"
 CLI_DIR: Path = SRC_DIR / "Sharpy.Cli"
+LSP_DIR: Path = SRC_DIR / "Sharpy.Lsp"
+LSP_TEST_DIR: Path = SRC_DIR / "Sharpy.Lsp.Tests"
 
 PLAYGROUND_DIR: Path = SRC_DIR / "Sharpy.Playground"
 
@@ -34,6 +38,10 @@ CSHARP_PROJECTS: Sequence[Path] = [
     COMPILER_TEST_DIR / "Sharpy.Compiler.Tests.csproj",
     CORE_DIR / "Sharpy.Core.csproj",
     CORE_TEST_DIR / "Sharpy.Core.Tests.csproj",
+    STDLIB_DIR / "Sharpy.Stdlib.csproj",
+    STDLIB_TEST_DIR / "Sharpy.Stdlib.Tests.csproj",
+    LSP_DIR / "Sharpy.Lsp.csproj",
+    LSP_TEST_DIR / "Sharpy.Lsp.Tests.csproj",
 ]
 
 CSHARP_CS: str = "cs"
@@ -234,9 +242,14 @@ def build_lib(release: bool) -> None:
 
     try:
         get_logger().info(
-            f"Building standard library with {build_type.lower()} configuration..."
+            f"Building core library with {build_type.lower()} configuration..."
         )
         subprocess.run(["dotnet", "build", "-c", build_type, str(CORE_DIR)], check=True)
+
+        get_logger().info(
+            f"Building stdlib with {build_type.lower()} configuration..."
+        )
+        subprocess.run(["dotnet", "build", "-c", build_type, str(STDLIB_DIR)], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -281,6 +294,12 @@ def build_tests(release: bool) -> None:
         )
         subprocess.run(
             ["dotnet", "build", "-c", build_type, str(COMPILER_TEST_DIR)], check=True
+        )
+        subprocess.run(
+            ["dotnet", "build", "-c", build_type, str(STDLIB_TEST_DIR)], check=True
+        )
+        subprocess.run(
+            ["dotnet", "build", "-c", build_type, str(LSP_TEST_DIR)], check=True
         )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
@@ -520,6 +539,16 @@ def test_csharp(args: argparse.Namespace, rest: Sequence[str], release: bool) ->
 
         subprocess.run(
             ["dotnet", "test", "-c", build_type, str(COMPILER_TEST_DIR), *rest],
+            check=True,
+        )
+
+        subprocess.run(
+            ["dotnet", "test", "-c", build_type, str(STDLIB_TEST_DIR), *rest],
+            check=True,
+        )
+
+        subprocess.run(
+            ["dotnet", "test", "-c", build_type, str(LSP_TEST_DIR), *rest],
             check=True,
         )
     except subprocess.CalledProcessError as e:
