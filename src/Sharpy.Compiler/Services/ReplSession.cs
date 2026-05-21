@@ -55,6 +55,7 @@ public record ReplResult(
 public class ReplSession
 {
     private readonly ICompilerLogger _logger;
+    private readonly ICodeEmitterFactory _emitterFactory;
 
     // Snippets that go at module level (function defs, classes, imports, typed
     // variable declarations, etc.). These accumulate across evaluations so prior
@@ -74,8 +75,14 @@ public class ReplSession
     /// </summary>
     /// <param name="logger">Optional compiler logger; defaults to <see cref="NullLogger.Instance"/>.</param>
     public ReplSession(ICompilerLogger? logger = null)
+        : this(logger, emitterFactory: null)
+    {
+    }
+
+    internal ReplSession(ICompilerLogger? logger, ICodeEmitterFactory? emitterFactory)
     {
         _logger = logger ?? NullLogger.Instance;
+        _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
     }
 
     /// <summary>
@@ -391,7 +398,7 @@ public class ReplSession
                 SemanticBinding = semanticBinding,
                 EmitLineDirectives = false
             };
-            var emitter = new RoslynEmitter(codeGenContext, cancellationToken);
+            var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
             var generatedSyntax = emitter.GenerateCompilationUnit(module);
             var generatedCSharp = generatedSyntax.ToFullString();
 

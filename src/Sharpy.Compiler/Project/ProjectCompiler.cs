@@ -1,4 +1,5 @@
 using System.Threading;
+using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -15,6 +16,7 @@ internal partial class ProjectCompiler
 {
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
+    private readonly ICodeEmitterFactory _emitterFactory;
     private readonly bool _warningsAsErrors;
     private readonly HashSet<string> _suppressedWarnings;
     private readonly int _maxErrors;
@@ -79,10 +81,11 @@ internal partial class ProjectCompiler
 
     public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null,
         bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null, int maxErrors = 0,
-        bool incremental = false)
+        bool incremental = false, ICodeEmitterFactory? emitterFactory = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
+        _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
         _warningsAsErrors = warningsAsErrors;
         _suppressedWarnings = suppressedWarnings ?? new HashSet<string>();
         _maxErrors = maxErrors;
@@ -186,7 +189,7 @@ internal partial class ProjectCompiler
             // then resolve inheritance for imported types.
             // ResolveInheritanceRelationships() handles types declared within the project,
             // but imported types from external modules still have unresolved base names.
-            var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel.SemanticBinding, _logger);
+            var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel.SemanticBinding, _logger, _emitterFactory);
             compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
             cancellationToken.ThrowIfCancellationRequested();
 

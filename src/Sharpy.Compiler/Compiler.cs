@@ -38,6 +38,7 @@ public class Compiler
 {
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
+    private readonly ICodeEmitterFactory _emitterFactory;
     private readonly CompilerOptions _options;
 
     // Phase timing for structured logging
@@ -48,12 +49,20 @@ public class Compiler
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = null;
+        _emitterFactory = new RoslynEmitterFactory();
         _options = new CompilerOptions();
     }
 
     public Compiler(CompilerOptions options, ICompilerLogger? logger = null)
+        : this(options, logger, emitterFactory: null)
+    {
+    }
+
+    internal Compiler(CompilerOptions options, ICompilerLogger? logger,
+        ICodeEmitterFactory? emitterFactory)
     {
         _logger = logger ?? NullLogger.Instance;
+        _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
         _options = options ?? new CompilerOptions();
         _moduleRegistry = new ModuleRegistry(_logger);
 
@@ -102,7 +111,8 @@ public class Compiler
         var warnAsErrors = _options.WarningsAsErrors || projectConfig.WarningsAsErrors;
 
         var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
-            warnAsErrors, mergedSuppressed, _options.MaxErrors, _options.Incremental);
+            warnAsErrors, mergedSuppressed, _options.MaxErrors, _options.Incremental,
+            _emitterFactory);
         return projectCompiler.Compile(projectConfig, cancellationToken);
     }
 
@@ -191,7 +201,7 @@ public class Compiler
             if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
                 return MergeAndFail(diagnostics, _moduleRegistry.Diagnostics, metrics, result);
 
-            var pipeline = new FileCompilationPipeline(symbolTable, semanticInfo, semanticBinding, _logger);
+            var pipeline = new FileCompilationPipeline(symbolTable, semanticInfo, semanticBinding, _logger, _emitterFactory);
 
             // Pass 1: Name resolution
             metrics.StartPhase("Name Resolution");

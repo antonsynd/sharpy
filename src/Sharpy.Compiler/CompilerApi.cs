@@ -1,3 +1,4 @@
+using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
@@ -31,19 +32,20 @@ namespace Sharpy.Compiler;
 public sealed class CompilerApi
 {
     private readonly ICompilerLogger _logger;
+    private readonly ICodeEmitterFactory _emitterFactory;
     private readonly AstPositionService _positionService = new();
     private readonly string[] _defaultReferences;
 
     /// <summary>
     /// Creates a new CompilerApi with default settings.
     /// </summary>
-    public CompilerApi() : this(null, null) { }
+    public CompilerApi() : this(null, null, null) { }
 
     /// <summary>
     /// Creates a new CompilerApi with a custom logger.
     /// </summary>
     /// <param name="logger">Optional compiler logger. Uses NullLogger if null.</param>
-    public CompilerApi(ICompilerLogger? logger) : this(logger, null) { }
+    public CompilerApi(ICompilerLogger? logger) : this(logger, null, null) { }
 
     /// <summary>
     /// Creates a new CompilerApi with a custom logger and default assembly references.
@@ -56,8 +58,13 @@ public sealed class CompilerApi
     /// Typically includes Sharpy.Core.dll for stdlib support.
     /// </param>
     public CompilerApi(ICompilerLogger? logger, string[]? defaultReferences)
+        : this(logger, defaultReferences, null) { }
+
+    internal CompilerApi(ICompilerLogger? logger, string[]? defaultReferences,
+        ICodeEmitterFactory? emitterFactory)
     {
         _logger = logger ?? NullLogger.Instance;
+        _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
         _defaultReferences = defaultReferences ?? Array.Empty<string>();
     }
 
@@ -78,7 +85,7 @@ public sealed class CompilerApi
         var resolvedPath = filePath ?? "<source>";
         var opts = options ?? new CompilerOptions();
         MergeDefaultReferences(opts);
-        var compiler = new Compiler(opts, _logger);
+        var compiler = new Compiler(opts, _logger, _emitterFactory);
 
         var result = compiler.Compile(source, resolvedPath, cancellationToken);
 
@@ -187,7 +194,7 @@ public sealed class CompilerApi
     {
         var opts = new CompilerOptions { OutputType = "library" };
         MergeDefaultReferences(opts);
-        var compiler = new Compiler(opts, _logger);
+        var compiler = new Compiler(opts, _logger, _emitterFactory);
         var result = compiler.Analyze(source, "<source>", cancellationToken, preserveTrivia: true);
 
         return new SemanticResult
