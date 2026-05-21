@@ -91,6 +91,9 @@ public abstract class IntegrationTestBase
         Output = output;
     }
 
+    protected virtual IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
+        => Enumerable.Empty<string>();
+
     /// <summary>
     /// Result of compiling and executing Sharpy code.
     /// </summary>
@@ -190,8 +193,9 @@ public abstract class IntegrationTestBase
             var semanticBinding = new SemanticBinding();
             var moduleRegistry = new ModuleRegistry(logger);
 
-            // Load Sharpy.Core into ModuleRegistry so stdlib imports (os, json, re, etc.) resolve
             moduleRegistry.LoadReference(SharpyCoreReference.Location);
+            foreach (var additionalPath in GetAdditionalReferenceAssemblyPaths())
+                moduleRegistry.LoadReference(additionalPath);
 
             var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
             nameResolver.ResolveDeclarations(module);
@@ -323,6 +327,12 @@ public abstract class IntegrationTestBase
             runtimePath = SharedReferences.Value.RuntimePath;
 
             var compilation = SharedBaseCompilation.Value.AddSyntaxTrees(syntaxTree);
+            var additionalPaths = GetAdditionalReferenceAssemblyPaths().ToList();
+            if (additionalPaths.Count > 0)
+            {
+                compilation = compilation.AddReferences(
+                    additionalPaths.Where(File.Exists).Select(p => MetadataReference.CreateFromFile(p)));
+            }
 
             using var ms = new MemoryStream();
             var emitResult = compilation.Emit(ms);
@@ -364,10 +374,15 @@ public abstract class IntegrationTestBase
                     var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
                     File.Copy(runtimePath, runtimeDest, overwrite: true);
 
-                    // Copy transitive dependencies of Sharpy.Core (e.g., Microsoft.Data.Sqlite)
-                    // from the test project's output directory where NuGet restores them.
                     var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
                     CopyTransitiveDependencies(testBinDir, tempDir);
+                }
+
+                foreach (var additionalPath in additionalPaths.Where(File.Exists))
+                {
+                    var destPath = Path.Combine(tempDir, Path.GetFileName(additionalPath));
+                    if (!File.Exists(destPath))
+                        File.Copy(additionalPath, destPath);
                 }
 
                 // Create a runtimeconfig.json for the assembly
@@ -638,10 +653,15 @@ public abstract class IntegrationTestBase
             var (projectReferences, projectRuntimePath) = SharedReferences.Value;
             runtimePath = projectRuntimePath;
 
+            var allReferences = projectReferences.ToList();
+            var additionalPaths = GetAdditionalReferenceAssemblyPaths().ToList();
+            allReferences.AddRange(
+                additionalPaths.Where(File.Exists).Select(p => MetadataReference.CreateFromFile(p)));
+
             var compilation = CSharpCompilation.Create(
                 "SharpyTestProject",
                 syntaxTrees,
-                projectReferences,
+                allReferences,
                 new CSharpCompilationOptions(OutputKind.ConsoleApplication));
 
             using var ms = new MemoryStream();
@@ -682,10 +702,15 @@ public abstract class IntegrationTestBase
                     var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
                     File.Copy(runtimePath, runtimeDest, overwrite: true);
 
-                    // Copy transitive dependencies of Sharpy.Core (e.g., Microsoft.Data.Sqlite)
-                    // from the test project's output directory where NuGet restores them.
                     var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
                     CopyTransitiveDependencies(testBinDir, tempDir);
+                }
+
+                foreach (var additionalPath in additionalPaths.Where(File.Exists))
+                {
+                    var destPath = Path.Combine(tempDir, Path.GetFileName(additionalPath));
+                    if (!File.Exists(destPath))
+                        File.Copy(additionalPath, destPath);
                 }
 
                 // Create a runtimeconfig.json for the assembly

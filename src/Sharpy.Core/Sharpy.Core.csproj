@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sharpy.Core.Tests" />
+    <InternalsVisibleTo Include="Sharpy.Stdlib.Tests" />
   </ItemGroup>
 
   <ItemGroup>
