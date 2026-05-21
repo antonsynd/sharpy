@@ -330,8 +330,10 @@ public class ReplSession
             var semanticBinding = new SemanticBinding();
             var moduleRegistry = new ModuleRegistry(_logger);
 
-            // Load Sharpy.Core so stdlib imports resolve.
             moduleRegistry.LoadReference(SharpyCoreAssembly.Location);
+            var stdlibPath = Path.Combine(Path.GetDirectoryName(SharpyCoreAssembly.Location)!, "Sharpy.Stdlib.dll");
+            if (File.Exists(stdlibPath))
+                moduleRegistry.LoadReference(stdlibPath);
 
             var nameResolver = new NameResolver(symbolTable, _logger, semanticBinding);
             nameResolver.ResolveDeclarations(module);
@@ -471,6 +473,10 @@ public class ReplSession
             MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
             MetadataReference.CreateFromFile(SharpyCoreAssembly.Location),
         };
+
+        var stdlibPath = Path.Combine(Path.GetDirectoryName(SharpyCoreAssembly.Location)!, "Sharpy.Stdlib.dll");
+        if (File.Exists(stdlibPath))
+            references.Add(MetadataReference.CreateFromFile(stdlibPath));
 
         // netstandard.dll is required because Sharpy.Core targets netstandard2.1.
         try

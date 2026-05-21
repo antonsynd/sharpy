@@ -84,7 +84,7 @@ internal static class BuildCommand
                 MaxErrors = maxErrors ?? 0
             };
 
-            var api = new CompilerApi(logger);
+            var api = CliHelpers.CreateCompilerApi(logger);
             var result = api.Compile(source, compilerOptions, inputFile.FullName);
 
             if (!result.Success)

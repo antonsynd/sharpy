@@ -95,6 +95,14 @@ internal static class RunCommand
             var sharpyCoreDestPath = Path.Combine(outputDir, "Sharpy.Core.dll");
             File.Copy(sharpyCorePath, sharpyCoreDestPath, overwrite: true);
 
+            var cliDir = Path.GetDirectoryName(sharpyCorePath)!;
+            CopyRuntimeDependency(cliDir, outputDir, "Sharpy.Stdlib.dll");
+            CopyRuntimeDependency(cliDir, outputDir, "MathNet.Numerics.dll");
+            CopyRuntimeDependency(cliDir, outputDir, "Microsoft.Data.Sqlite.dll");
+            CopyRuntimeDependency(cliDir, outputDir, "SQLitePCLRaw.batteries_v2.dll");
+            CopyRuntimeDependency(cliDir, outputDir, "SQLitePCLRaw.core.dll");
+            CopyRuntimeDependency(cliDir, outputDir, "SQLitePCLRaw.provider.e_sqlite3.dll");
+
             if (selfContained)
             {
                 HandleSelfContainedRun(inputFile, outputPath, sharpyCorePath, args, isTempOutput);
@@ -131,7 +139,7 @@ internal static class RunCommand
                         File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
                         File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
                         File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
-                        File.Delete(sharpyCoreDestPath);
+                        CleanupRuntimeDependencies(basePath);
                     }
                     catch
                     {
@@ -152,12 +160,7 @@ internal static class RunCommand
                     File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
                     File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
                     File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
-
-                    var sharpyCoreDestPath = Path.Combine(basePath, "Sharpy.Core.dll");
-                    if (File.Exists(sharpyCoreDestPath))
-                    {
-                        File.Delete(sharpyCoreDestPath);
-                    }
+                    CleanupRuntimeDependencies(basePath);
                 }
                 catch
                 {
@@ -187,6 +190,14 @@ internal static class RunCommand
             var csprojPath = Path.Combine(tempProjDir, $"{assemblyName}.csproj");
 
             var compiledDir = Path.GetDirectoryName(compiledExePath)!;
+            var cliDir = Path.GetDirectoryName(sharpyCorePath)!;
+            var stdlibPath = Path.Combine(cliDir, "Sharpy.Stdlib.dll");
+            var stdlibRef = File.Exists(stdlibPath)
+                ? $@"
+    <Reference Include=""Sharpy.Stdlib"">
+      <HintPath>{stdlibPath}</HintPath>
+    </Reference>"
+                : "";
             var csprojContent = $@"<Project Sdk=""Microsoft.NET.Sdk"">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -199,7 +210,7 @@ internal static class RunCommand
     </Reference>
     <Reference Include=""Sharpy.Core"">
       <HintPath>{sharpyCorePath}</HintPath>
-    </Reference>
+    </Reference>{stdlibRef}
   </ItemGroup>
 </Project>";
 
@@ -287,10 +298,38 @@ internal static class RunCommand
                     File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
                     File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
                     File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
-                    File.Delete(Path.Combine(basePath, "Sharpy.Core.dll"));
+                    CleanupRuntimeDependencies(basePath);
                 }
                 catch { }
             }
+        }
+    }
+
+    private static readonly string[] RuntimeDependencies = new[]
+    {
+        "Sharpy.Core.dll",
+        "Sharpy.Stdlib.dll",
+        "MathNet.Numerics.dll",
+        "Microsoft.Data.Sqlite.dll",
+        "SQLitePCLRaw.batteries_v2.dll",
+        "SQLitePCLRaw.core.dll",
+        "SQLitePCLRaw.provider.e_sqlite3.dll",
+    };
+
+    static void CopyRuntimeDependency(string sourceDir, string destDir, string fileName)
+    {
+        var src = Path.Combine(sourceDir, fileName);
+        if (File.Exists(src))
+            File.Copy(src, Path.Combine(destDir, fileName), overwrite: true);
+    }
+
+    static void CleanupRuntimeDependencies(string dir)
+    {
+        foreach (var dep in RuntimeDependencies)
+        {
+            var path = Path.Combine(dir, dep);
+            if (File.Exists(path))
+                File.Delete(path);
         }
     }
 }
