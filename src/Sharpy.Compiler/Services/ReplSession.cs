@@ -334,6 +334,8 @@ public class ReplSession
             var stdlibPath = Path.Combine(Path.GetDirectoryName(SharpyCoreAssembly.Location)!, "Sharpy.Stdlib.dll");
             if (File.Exists(stdlibPath))
                 moduleRegistry.LoadReference(stdlibPath);
+            else
+                _logger.LogWarning("Sharpy.Stdlib.dll not found — stdlib modules will not be available.", 0, 0);
 
             var nameResolver = new NameResolver(symbolTable, _logger, semanticBinding);
             nameResolver.ResolveDeclarations(module);
@@ -479,6 +481,8 @@ public class ReplSession
             references.Add(MetadataReference.CreateFromFile(stdlibPath));
 
         // netstandard.dll is required because Sharpy.Core targets netstandard2.1.
+        // Note: missing Stdlib warning for metadata references is handled by the
+        // instance method CompileAndEvaluate() via _logger (above), not here.
         try
         {
             var netstandardAssembly = Assembly.Load("netstandard");

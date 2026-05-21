@@ -24,6 +24,8 @@ internal static class CliHelpers
         var refs = new List<string> { corePath };
         if (File.Exists(stdlibPath))
             refs.Add(stdlibPath);
+        else
+            Console.Error.WriteLine("Warning: Sharpy.Stdlib.dll not found next to Sharpy.Core.dll — stdlib modules (json, os, math, etc.) will not be available.");
         return refs.ToArray();
     }
 
