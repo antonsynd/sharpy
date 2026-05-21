@@ -400,7 +400,7 @@ public partial class Parser
 
                     // Check for list comprehension: [expr for x in iterable]
                     // PEP 798: spread elements are allowed as comprehension elements: [*it for it in its]
-                    if (Current.Type == TokenType.For)
+                    if (IsComprehensionForStart())
                     {
                         var clauses = ParseComprehensionClauses();
                         Expect(TokenType.RightBracket);
@@ -483,7 +483,7 @@ public partial class Parser
                         var spreadValue = ParseExpression();
 
                         // PEP 798: {**d for d in dicts} — dict spread comprehension
-                        if (Current.Type == TokenType.For)
+                        if (IsComprehensionForStart())
                         {
                             var clauses = ParseComprehensionClauses();
                             Expect(TokenType.RightBrace);
@@ -532,7 +532,7 @@ public partial class Parser
                         var firstValue = ParseExpression();
 
                         // Check for dict comprehension: {key: value for x in iterable}
-                        if (Current.Type == TokenType.For)
+                        if (IsComprehensionForStart())
                         {
                             var clauses = ParseComprehensionClauses();
                             Expect(TokenType.RightBrace);
@@ -576,7 +576,7 @@ public partial class Parser
                     {
                         // Check for set comprehension: {expr for x in iterable}
                         // PEP 798: spread elements allowed: {*it for it in its}
-                        if (Current.Type == TokenType.For)
+                        if (IsComprehensionForStart())
                         {
                             var clauses = ParseComprehensionClauses();
                             Expect(TokenType.RightBrace);
@@ -1225,5 +1225,28 @@ public partial class Parser
         }
 
         return true;
+    }
+
+    private bool IsComprehensionForStart()
+    {
+        if (Current.Type == TokenType.For)
+            return true;
+
+        if (Current.Type == TokenType.Async && Peek().Type == TokenType.For)
+        {
+            _diagnostics.AddHint(
+                "Async comprehensions (`async for` inside a list/set/dict comprehension) "
+                    + "are not supported in Sharpy — use a regular comprehension or an explicit "
+                    + "async loop. The `async` keyword has been ignored.",
+                span: CurrentSpan,
+                line: Current.Line,
+                column: Current.Column,
+                code: DiagnosticCodes.Validation.NoAsyncComprehensionHint,
+                phase: CompilerPhase.Parser);
+            Advance();
+            return true;
+        }
+
+        return false;
     }
 }
