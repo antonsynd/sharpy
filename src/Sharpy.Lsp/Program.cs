@@ -46,12 +46,14 @@ public class Program
                 })
                 .WithServices(services =>
                 {
-                    // Register CompilerApi with Sharpy.Core.dll as a default reference
-                    // so that stdlib modules (os, bisect, math, etc.) are resolvable
-                    // in both project-level and single-file analysis.
                     var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
                     var sharpyCorePath = sharpyCoreAssembly.Location;
-                    services.AddSingleton(new CompilerApi(null, new[] { sharpyCorePath }));
+                    var coreDir = Path.GetDirectoryName(sharpyCorePath)!;
+                    var defaultRefs = new List<string> { sharpyCorePath };
+                    var stdlibPath = Path.Combine(coreDir, "Sharpy.Stdlib.dll");
+                    if (File.Exists(stdlibPath))
+                        defaultRefs.Add(stdlibPath);
+                    services.AddSingleton(new CompilerApi(null, defaultRefs.ToArray()));
                     services.AddSingleton<LspConfiguration>();
                     services.AddSingleton<SharpyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
