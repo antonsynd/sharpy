@@ -1,4 +1,4 @@
-using Sharpy.Compiler.Tests.Integration;
+using Sharpy.TestInfrastructure.Integration;
 using Xunit.Abstractions;
 using IOPath = System.IO.Path;
 

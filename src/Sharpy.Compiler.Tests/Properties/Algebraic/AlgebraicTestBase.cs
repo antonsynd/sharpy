@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Integration;
+using Sharpy.TestInfrastructure.Integration;
 using Xunit.Abstractions;
 
 namespace Sharpy.Compiler.Tests.Properties.Algebraic;

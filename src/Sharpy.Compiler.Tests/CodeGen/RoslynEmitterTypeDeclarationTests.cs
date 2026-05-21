@@ -1,6 +1,7 @@
 using Xunit;
 using Xunit.Abstractions;
 using Sharpy.Compiler.Tests.Integration;
+using Sharpy.TestInfrastructure.Integration;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 

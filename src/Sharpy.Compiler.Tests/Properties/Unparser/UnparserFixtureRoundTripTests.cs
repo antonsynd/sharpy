@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Tests.Integration;
+using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
 using SLexer = Sharpy.Compiler.Lexer.Lexer;

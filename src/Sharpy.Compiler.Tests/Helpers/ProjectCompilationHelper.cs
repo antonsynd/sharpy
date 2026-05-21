@@ -6,6 +6,8 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Project;
 using Xunit.Abstractions;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Helpers;
 
 /// <summary>
@@ -55,7 +57,7 @@ public class ProjectCompilationHelper : IDisposable
     {
         _tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
         _output = output;
-        _logger = output != null ? new Tests.TestHelpers.OutputTestLogger(output) : NullLogger.Instance;
+        _logger = output != null ? new TestHelpers.OutputTestLogger(output) : NullLogger.Instance;
 
         Directory.CreateDirectory(_tempDir);
         ProjectDirectory = _tempDir;

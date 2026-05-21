@@ -2,6 +2,8 @@ using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Discovery.Caching;
 using Xunit;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Discovery;
 
 /// <summary>

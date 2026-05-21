@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sharpy.Compiler/Sharpy.Compiler.csproj" />
-    <ProjectReference Include="../Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj" />
+    <ProjectReference Include="../Sharpy.TestInfrastructure/Sharpy.TestInfrastructure.csproj" />
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
     <ProjectReference Include="../Sharpy.Stdlib/Sharpy.Stdlib.csproj" />
   </ItemGroup>

@@ -1,5 +1,6 @@
 using CsCheck;
 using Sharpy.Compiler.Tests.Integration;
+using Sharpy.TestInfrastructure.Integration;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;

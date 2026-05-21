@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Sharpy.Compiler.Tests.Integration;
+using Sharpy.TestInfrastructure.Integration;
 using Sharpy.Compiler.Text;
 using Xunit;
 using Xunit.Abstractions;

@@ -1,5 +1,7 @@
 using Xunit.Abstractions;
 
+using Sharpy.TestInfrastructure.Integration;
+
 namespace Sharpy.Compiler.Tests.Integration;
 
 public abstract class StdlibAwareIntegrationTestBase : IntegrationTestBase

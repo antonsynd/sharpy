@@ -2,6 +2,8 @@ using Sharpy.Compiler.Formatting;
 using Xunit;
 using Xunit.Abstractions;
 
+using Sharpy.TestInfrastructure.Integration;
+
 namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>

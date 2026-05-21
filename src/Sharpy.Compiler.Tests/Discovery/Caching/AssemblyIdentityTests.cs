@@ -1,6 +1,8 @@
 using Sharpy.Compiler.Discovery.Caching;
 using Xunit;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Discovery.Caching;
 
 public class AssemblyIdentityTests

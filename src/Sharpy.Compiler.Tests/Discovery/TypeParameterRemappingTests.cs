@@ -3,6 +3,8 @@ using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
 using Xunit;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Discovery;
 
 /// <summary>

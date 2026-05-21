@@ -1,9 +1,9 @@
 extern alias SharpyRT;
 using System.Reflection;
 
-namespace Sharpy.Compiler.Tests;
+namespace Sharpy.TestInfrastructure;
 
-internal static class SharpyCoreReference
+public static class SharpyCoreReference
 {
     public static Assembly Assembly => typeof(SharpyRT::Sharpy.Builtins).Assembly;
     public static string Location => Assembly.Location;

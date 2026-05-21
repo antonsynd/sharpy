@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
+using Sharpy.Compiler;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
@@ -13,9 +14,9 @@ using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit.Abstractions;
-using static Sharpy.Compiler.Tests.TestHelpers;
+using static Sharpy.TestInfrastructure.TestHelpers;
 
-namespace Sharpy.Compiler.Tests.Integration;
+namespace Sharpy.TestInfrastructure.Integration;
 
 /// <summary>
 /// Base class for end-to-end integration tests that compile Sharpy code to C# and execute it.
@@ -833,66 +834,6 @@ public abstract class IntegrationTestBase
                 Exception = ex,
                 CompilationErrors = new List<string> { errorMessage }
             };
-        }
-    }
-
-    /// <summary>
-    /// Resolves imports in a module and registers imported symbols in the symbol table.
-    /// This is needed before inheritance resolution so that .NET base classes can be found.
-    /// </summary>
-    private void ResolveImports(Sharpy.Compiler.Parser.Ast.Module module, ImportResolver importResolver, SymbolTable symbolTable)
-    {
-        foreach (var statement in module.Body)
-        {
-            if (statement is Sharpy.Compiler.Parser.Ast.FromImportStatement fromImport)
-            {
-                var moduleInfo = importResolver.ResolveFromImport(fromImport);
-                if (moduleInfo != null)
-                {
-                    // Register imported symbols in the symbol table
-                    if (fromImport.ImportAll)
-                    {
-                        foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
-                        {
-                            symbolTable.TryDefine(symbol);
-                        }
-                    }
-                    else
-                    {
-                        foreach (var importAlias in fromImport.Names)
-                        {
-                            var symbolName = importAlias.AsName ?? importAlias.Name;
-                            if (moduleInfo.ExportedSymbols.TryGetValue(importAlias.Name, out var symbol))
-                            {
-                                // If aliased, create a new symbol with the alias name
-                                if (importAlias.AsName != null && symbol is TypeSymbol typeSymbol)
-                                {
-                                    symbol = typeSymbol with { Name = importAlias.AsName };
-                                }
-                                symbolTable.TryDefine(symbol);
-                            }
-                        }
-                    }
-                }
-            }
-            else if (statement is Sharpy.Compiler.Parser.Ast.ImportStatement import)
-            {
-                var modules = importResolver.ResolveImport(import);
-                foreach (var moduleInfo in modules)
-                {
-                    if (moduleInfo == null)
-                        continue;
-                    // For regular imports, the module itself is the symbol
-                    var moduleSymbol = new ModuleSymbol
-                    {
-                        Name = moduleInfo.Path,
-                        Kind = Sharpy.Compiler.Semantic.SymbolKind.Module,
-                        FilePath = moduleInfo.Path,
-                        Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
-                    };
-                    symbolTable.TryDefine(moduleSymbol);
-                }
-            }
         }
     }
 

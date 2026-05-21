@@ -2,6 +2,8 @@ using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
