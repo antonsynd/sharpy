@@ -28,6 +28,9 @@
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj">
       <Aliases>SharpyRT</Aliases>
     </ProjectReference>
+    <ProjectReference Include="../Sharpy.Stdlib/Sharpy.Stdlib.csproj">
+      <Aliases>SharpyStdlib</Aliases>
+    </ProjectReference>
   </ItemGroup>
 
   <!-- Exclude .expected.cs snapshot files from compilation (they are test data, not source) -->

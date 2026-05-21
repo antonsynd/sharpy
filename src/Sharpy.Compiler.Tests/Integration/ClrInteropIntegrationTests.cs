@@ -3,7 +3,7 @@ using Xunit.Abstractions;
 
 namespace Sharpy.Compiler.Tests.Integration;
 
-public class ClrInteropIntegrationTests : IntegrationTestBase
+public class ClrInteropIntegrationTests : StdlibAwareIntegrationTestBase
 {
     public ClrInteropIntegrationTests(ITestOutputHelper output) : base(output) { }
 

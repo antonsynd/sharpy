@@ -33,7 +33,7 @@ public class UnittestCodeGenTests
     private string CompileToCSharp(string source, string fileName = "test.spy", bool requiresSharpyCore = false)
     {
         var compiler = requiresSharpyCore
-            ? new Compiler(new CompilerOptions { References = new[] { SharpyCoreReference.Location } })
+            ? new Compiler(new CompilerOptions { References = new[] { SharpyCoreReference.Location, SharpyStdlibReference.Location } })
             : new Compiler();
         var result = compiler.Compile(source, fileName);
         result.Success.Should().BeTrue(

@@ -16,6 +16,7 @@ public class CachedModuleDiscoveryTypeTests : IDisposable
         var cache = new OverloadIndexCache(_testCacheDir);
         _discovery = new CachedModuleDiscovery(cache);
         _discovery.LoadAssembly(SharpyCoreReference.Assembly);
+        _discovery.LoadAssembly(SharpyStdlibReference.Assembly);
     }
 
     public void Dispose()

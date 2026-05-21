@@ -121,7 +121,8 @@ public class FileBasedIntegrationTests : StdlibIntegrationTestBase
                     {
                         var st = new SourceText(sourceTextContent);
                         var pos = st.GetLineAndColumn(matchingDiag.Span.Value.Start);
-                        actualLine = pos.Line; actualColumn = pos.Column;
+                        actualLine = pos.Line;
+                        actualColumn = pos.Column;
                     }
                     else if (matchingDiag.Line.HasValue)
                     { actualLine = matchingDiag.Line; actualColumn = matchingDiag.Column; }

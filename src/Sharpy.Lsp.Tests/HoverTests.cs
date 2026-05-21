@@ -533,7 +533,11 @@ public class HoverTests : IDisposable
             return;
         }
 
-        var api = new CompilerApi(null, new string[] { corePath });
+        var stdlibPath = System.IO.Path.Combine(testDir, "Sharpy.Stdlib.dll");
+        var refs = File.Exists(stdlibPath)
+            ? new string[] { corePath, stdlibPath }
+            : new string[] { corePath };
+        var api = new CompilerApi(null, refs);
         using var workspace = new SharpyWorkspace(api, NullLogger<SharpyWorkspace>.Instance);
 
         // Use csv module which has XML docs on its [SharpyModule] class

@@ -10,6 +10,7 @@
   <ItemGroup>
     <!-- Allow test assembly to access internal members -->
     <InternalsVisibleTo Include="Sharpy.Compiler.Tests" />
+    <InternalsVisibleTo Include="Sharpy.Stdlib.Tests" />
     <!-- Allow CLI to access internal types (e.g., OverloadIndexCache's internal dependencies) -->
     <InternalsVisibleTo Include="sharpyc" />
     <!-- Allow benchmarks to access internal types for isolation benchmarks -->
