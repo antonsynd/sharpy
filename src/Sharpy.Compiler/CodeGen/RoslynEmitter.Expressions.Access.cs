@@ -115,7 +115,7 @@ internal partial class RoslynEmitter
                 }
 
                 // Use explicit AliasQualifiedName to handle all expression contexts (f-strings, etc.)
-                var builtinName = MakeGlobalQualifiedName("Sharpy", "Builtins", NameMangler.ToPascalCase(funcName.Name));
+                var builtinName = MakeGlobalQualifiedName("Sharpy", "Builtins", NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped));
                 return InvocationExpression(builtinName)
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }
@@ -138,7 +138,7 @@ internal partial class RoslynEmitter
                         .Select(t => _typeMapper.MapSemanticType(t))
                         .ToArray();
                     var csharpCollectionName = CSharpTypeNames.FromSharpyName(funcName.Name)
-                        ?? NameMangler.ToPascalCase(funcName.Name);
+                        ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
                     var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpCollectionName,
                             typeArgsSyntax);
 
@@ -165,7 +165,7 @@ internal partial class RoslynEmitter
                     var typeArgsSyntax = inferredTypeArgs
                         .Select(t => _typeMapper.MapSemanticType(t));
                     var csharpName = CSharpTypeNames.FromSharpyName(funcName.Name)
-                        ?? NameMangler.ToPascalCase(funcName.Name);
+                        ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
                     var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpName,
                             typeArgsSyntax.ToArray());
                     return ObjectCreationExpression(genericTypeSyntax)
@@ -214,7 +214,7 @@ internal partial class RoslynEmitter
             }
             else
             {
-                funcCSharpName = NameMangler.ToPascalCase(funcName.Name);
+                funcCSharpName = NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped);
             }
             return InvocationExpression(ParseName(funcCSharpName))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
@@ -334,7 +334,7 @@ internal partial class RoslynEmitter
             // First check for dunder methods, then Python list method mappings (append -> Add, etc.)
             var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
                 ?? NameMangler.GetListMethodMapping(memberAccess.Member)
-                ?? NameMangler.ToPascalCase(memberAccess.Member);
+                ?? NameCasing.ResolveMethod(memberAccess.Member, isBacktickEscaped: false);
 
             // CLR property access: if the member is a property (not a method) on a
             // discovery-loaded type and the call has no arguments, emit property access
@@ -463,7 +463,7 @@ internal partial class RoslynEmitter
         {
             // Generate: new GenericType<TypeArgs>(args)
             var csharpGenericTypeName = CSharpTypeNames.FromSharpyName(genericName.Name)
-                ?? NameMangler.ToPascalCase(genericName.Name);
+                ?? NameCasing.ResolveType(genericName.Name, genericName.IsNameBacktickEscaped);
             var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
 
             // Generate arguments (reorder for C# compliance if needed)
@@ -487,7 +487,7 @@ internal partial class RoslynEmitter
         if (symbol is FunctionSymbol genericFuncSymbol && genericFuncSymbol.IsGeneric)
         {
             // Generate: GenericFunction<TypeArgs>(args)
-            var genericFuncSyntax = GenericName(NameMangler.ToPascalCase(genericName.Name))
+            var genericFuncSyntax = GenericName(NameCasing.ResolveMethod(genericName.Name, genericName.IsNameBacktickEscaped))
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
             // Generate arguments (reorder for C# compliance if needed)
@@ -517,7 +517,7 @@ internal partial class RoslynEmitter
             return null;
 
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
-        var csharpName = NameMangler.ToPascalCase(memberAccess.Member);
+        var csharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: false);
         var outerName = GetNestedTypeOuterPrefix(nestedTypeSymbol);
         var qualifiedGenericName = QualifiedName(
             ParseName(outerName),
@@ -552,7 +552,7 @@ internal partial class RoslynEmitter
         var declaring = nestedType.DeclaringType;
         while (declaring != null)
         {
-            parts.Add(NameMangler.ToPascalCase(declaring.Name));
+            parts.Add(NameCasing.ResolveType(declaring.Name, isBacktickEscaped: false));
             declaring = declaring.DeclaringType;
         }
         parts.Reverse();
@@ -572,7 +572,7 @@ internal partial class RoslynEmitter
         var memberName = memberAccess.Member;
         if (!moduleSymbol.Exports.ContainsKey(memberName) && moduleSymbol.IsNetModule)
         {
-            var pascalName = NameMangler.ToPascalCase(memberName);
+            var pascalName = NameCasing.ResolveMethod(memberName, isBacktickEscaped: false);
             if (moduleSymbol.Exports.ContainsKey(pascalName))
                 memberName = pascalName;
         }
@@ -585,7 +585,7 @@ internal partial class RoslynEmitter
         }
 
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
-        var genericMethodName = GenericName(NameMangler.ToPascalCase(memberName))
+        var genericMethodName = GenericName(NameCasing.ResolveMethod(memberName, isBacktickEscaped: false))
             .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
         var moduleExpr = GenerateExpression(memberAccess.Object);
@@ -718,7 +718,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GenerateGenericBuiltinCall(string name, FunctionCall call, ArgumentSyntax[] allArgs)
     {
-        var csharpName = NameMangler.ToPascalCase(name);
+        var csharpName = NameCasing.ResolveMethod(name, isBacktickEscaped: false);
 
         // Infer element type from first argument's semantic type
         TypeSyntax? typeArg = null;
@@ -929,7 +929,7 @@ internal partial class RoslynEmitter
         var mangledMemberName = DunderMapping.ResolveCSharpName(memberAccess.Member)
             ?? (NameFormDetector.IsConstantCaseName(memberAccess.Member)
                 ? NameMangler.ToConstantCase(memberAccess.Member)
-                : NameMangler.ToPascalCase(memberAccess.Member));
+                : NameCasing.ResolveField(memberAccess.Member, isBacktickEscaped: false));
         var member = IdentifierName(mangledMemberName);
 
         ExpressionSyntax result;
@@ -1180,7 +1180,7 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    mangledMemberName = NameMangler.ToPascalCase(memberPart);
+                    mangledMemberName = NameCasing.ResolveMethod(memberPart, isBacktickEscaped: false);
                 }
 
                 expr = MemberAccessExpression(
@@ -1194,7 +1194,7 @@ internal partial class RoslynEmitter
 
         // For multi-part module paths (e.g., lib.math.add) or other cases,
         // build the full qualified path (e.g., Lib.Math.Add)
-        ExpressionSyntax currentExpr = IdentifierName(NameMangler.ToPascalCase(modulePath[0]));
+        ExpressionSyntax currentExpr = IdentifierName(NameCasing.ResolveType(modulePath[0], isBacktickEscaped: false));
 
         // Chain the rest of the path
         for (int i = 1; i < modulePath.Count; i++)
@@ -1203,7 +1203,7 @@ internal partial class RoslynEmitter
             var memberPart = modulePath[i];
             var memberName = NameFormDetector.IsConstantCaseName(memberPart)
                 ? NameMangler.ToConstantCase(memberPart)
-                : NameMangler.ToPascalCase(memberPart);
+                : NameCasing.ResolveMethod(memberPart, isBacktickEscaped: false);
             currentExpr = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 currentExpr,
