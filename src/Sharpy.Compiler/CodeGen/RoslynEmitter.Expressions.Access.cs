@@ -240,7 +240,7 @@ internal partial class RoslynEmitter
                 if (unionSym is TypeSymbol { TypeKind: Semantic.TypeKind.Union } unionTypeSym)
                 {
                     var unionCSharpName = NameMangler.Transform(unionId.Name, NameContext.Type);
-                    var caseCSharpName = NameMangler.Transform(memberAccess.Member, NameContext.Type);
+                    var caseCSharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
 
                     // For generic unions, include type arguments: Option<int>.Some(42)
                     NameSyntax unionNameSyntax;
@@ -848,7 +848,7 @@ internal partial class RoslynEmitter
                 if (IsStringEnumSymbol(enumSymbol))
                 {
                     // String enums use CONSTANT_CASE field names (same as NameContext.Constant)
-                    var fieldName = NameMangler.Transform(memberAccess.Member, NameContext.Constant);
+                    var fieldName = NameCasing.ResolveConstant(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
                     var enumMemberAccess = MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         enumType,

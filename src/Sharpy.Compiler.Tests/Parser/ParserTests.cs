@@ -290,6 +290,19 @@ public partial class ParserTests
         member.Object.Should().BeOfType<Identifier>().Which.Name.Should().Be("obj");
         member.Member.Should().Be("field");
         member.IsNullConditional.Should().BeFalse();
+        member.IsMemberBacktickEscaped.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ParseBacktickEscapedMemberAccess()
+    {
+        var module = Parse("obj.`field`");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var member = exprStmt.Expression.Should().BeOfType<MemberAccess>().Subject;
+        member.Object.Should().BeOfType<Identifier>().Which.Name.Should().Be("obj");
+        member.Member.Should().Be("field");
+        member.IsMemberBacktickEscaped.Should().BeTrue();
+        member.IsNullConditional.Should().BeFalse();
     }
 
     [Fact]
@@ -299,6 +312,31 @@ public partial class ParserTests
         var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
         var member = exprStmt.Expression.Should().BeOfType<MemberAccess>().Subject;
         member.IsNullConditional.Should().BeTrue();
+        member.IsMemberBacktickEscaped.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ParseNullConditionalBacktickEscapedMemberAccess()
+    {
+        var module = Parse("obj?.`field`");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var member = exprStmt.Expression.Should().BeOfType<MemberAccess>().Subject;
+        member.IsNullConditional.Should().BeTrue();
+        member.IsMemberBacktickEscaped.Should().BeTrue();
+        member.Member.Should().Be("field");
+    }
+
+    [Fact]
+    public void ParseChainedBacktickEscapedMemberAccess()
+    {
+        var module = Parse("obj.`a`.`b`");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var outer = exprStmt.Expression.Should().BeOfType<MemberAccess>().Subject;
+        outer.Member.Should().Be("b");
+        outer.IsMemberBacktickEscaped.Should().BeTrue();
+        var inner = outer.Object.Should().BeOfType<MemberAccess>().Subject;
+        inner.Member.Should().Be("a");
+        inner.IsMemberBacktickEscaped.Should().BeTrue();
     }
 
     [Fact]

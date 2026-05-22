@@ -1,0 +1,29 @@
+# Test edge cases for backtick-escaped member access
+class Pair:
+    `first`: int = 0
+    `second`: int = 0
+
+    def __init__(self, a: int, b: int):
+        self.`first` = a
+        self.`second` = b
+
+    def `add`(self, x: int, y: int) -> int:
+        return self.`first` + self.`second` + x + y
+
+class Wrapper:
+    `inner`: Pair = Pair(0, 0)
+
+    def __init__(self, p: Pair):
+        self.`inner` = p
+
+    def `getInner`(self) -> Pair:
+        return self.`inner`
+
+def main():
+    p = Pair(10, 20)
+    # Backtick method with multiple parameters
+    print(p.`add`(3, 7))
+    # Chained backtick access
+    w = Wrapper(p)
+    print(w.`getInner`().`first`)
+    print(w.`inner`.`second`)
