@@ -164,7 +164,7 @@ internal partial class RoslynEmitter
         foreach (var field in ownFields)
         {
             var propName = GetCodeGenInfo(field)?.CSharpName
-                ?? NameMangler.ToPascalCase(field.Name);
+                ?? NameCasing.ResolveField(field.Name, field.IsNameBacktickEscaped);
             var paramName = field.Name;
 
             statements.Add(ExpressionStatement(
@@ -270,7 +270,7 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateSingleFieldEquals(VariableSymbol field)
     {
         var propName = GetCodeGenInfo(field)?.CSharpName
-            ?? NameMangler.ToPascalCase(field.Name);
+            ?? NameCasing.ResolveField(field.Name, field.IsNameBacktickEscaped);
 
         // Equals(this.Field, other.Field)
         return InvocationExpression(
@@ -305,7 +305,7 @@ internal partial class RoslynEmitter
             var args = fields.Select(f =>
             {
                 var propName = GetCodeGenInfo(f)?.CSharpName
-                    ?? NameMangler.ToPascalCase(f.Name);
+                    ?? NameCasing.ResolveField(f.Name, f.IsNameBacktickEscaped);
                 return Argument(IdentifierName(propName));
             }).ToArray();
 
@@ -336,7 +336,7 @@ internal partial class RoslynEmitter
             foreach (var f in fields)
             {
                 var propName = GetCodeGenInfo(f)?.CSharpName
-                    ?? NameMangler.ToPascalCase(f.Name);
+                    ?? NameCasing.ResolveField(f.Name, f.IsNameBacktickEscaped);
                 stmts.Add(ExpressionStatement(
                     InvocationExpression(
                         MemberAccessExpression(
@@ -457,7 +457,7 @@ internal partial class RoslynEmitter
             {
                 var field = fields[i];
                 var propName = GetCodeGenInfo(field)?.CSharpName
-                    ?? NameMangler.ToPascalCase(field.Name);
+                    ?? NameCasing.ResolveField(field.Name, field.IsNameBacktickEscaped);
 
                 var prefix = i > 0 ? $", {field.Name}=" : $"{field.Name}=";
                 parts.Add(InterpolatedStringText()
