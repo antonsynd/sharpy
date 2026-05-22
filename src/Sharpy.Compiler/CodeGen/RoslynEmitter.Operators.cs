@@ -251,7 +251,7 @@ internal partial class RoslynEmitter
         if (ContainsSuperExpression(funcDef.Body))
         {
             // Super() requires instance context — generate private impl method + delegation
-            var implName = $"_{NameMangler.ToPascalCase(funcDef.Name[2..^2])}Impl";
+            var implName = $"_{NameCasing.ResolveMethod(funcDef.Name[2..^2], isBacktickEscaped: false)}Impl";
             members.Add(GenerateClassMethod(funcDef)
                 .WithIdentifier(Identifier(implName))
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
@@ -313,7 +313,7 @@ internal partial class RoslynEmitter
 
         if (ContainsSuperExpression(funcDef.Body))
         {
-            var implName = $"_{NameMangler.ToPascalCase(funcDef.Name[2..^2])}Impl";
+            var implName = $"_{NameCasing.ResolveMethod(funcDef.Name[2..^2], isBacktickEscaped: false)}Impl";
             members.Add(GenerateClassMethod(funcDef)
                 .WithIdentifier(Identifier(implName))
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
@@ -368,7 +368,7 @@ internal partial class RoslynEmitter
 
         if (ContainsSuperExpression(funcDef.Body))
         {
-            var implName = $"_{NameMangler.ToPascalCase(funcDef.Name[2..^2])}Impl";
+            var implName = $"_{NameCasing.ResolveMethod(funcDef.Name[2..^2], isBacktickEscaped: false)}Impl";
             members.Add(GenerateClassMethod(funcDef)
                 .WithIdentifier(Identifier(implName))
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
