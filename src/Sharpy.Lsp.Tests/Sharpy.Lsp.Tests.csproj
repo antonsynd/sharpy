@@ -19,6 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Sharpy.Lsp\Sharpy.Lsp.csproj" />
     <ProjectReference Include="..\Sharpy.Compiler\Sharpy.Compiler.csproj" />
+    <ProjectReference Include="..\Sharpy.Stdlib\Sharpy.Stdlib.csproj">
+      <Aliases>SharpyStdlib</Aliases>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>

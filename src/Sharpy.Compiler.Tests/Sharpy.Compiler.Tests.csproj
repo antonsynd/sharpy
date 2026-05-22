@@ -25,8 +25,12 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sharpy.Compiler/Sharpy.Compiler.csproj" />
+    <ProjectReference Include="../Sharpy.TestInfrastructure/Sharpy.TestInfrastructure.csproj" />
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj">
       <Aliases>SharpyRT</Aliases>
+    </ProjectReference>
+    <ProjectReference Include="../Sharpy.Stdlib/Sharpy.Stdlib.csproj">
+      <Aliases>SharpyStdlib</Aliases>
     </ProjectReference>
   </ItemGroup>
 

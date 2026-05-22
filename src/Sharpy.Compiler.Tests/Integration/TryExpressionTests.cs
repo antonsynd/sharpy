@@ -6,6 +6,8 @@ using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 
+using Sharpy.TestInfrastructure.Integration;
+
 namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>

@@ -1,3 +1,4 @@
+using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
 

@@ -105,9 +105,14 @@ internal static class ProjectCommand
             var mergedSuppressed = new HashSet<string>(projectConfig.SuppressedWarnings);
             mergedSuppressed.UnionWith(CliHelpers.ParseNowarnCodes(nowarn));
 
+            var allReferences = CliHelpers.GetDefaultReferences()
+                .Concat(projectConfig.References)
+                .Distinct()
+                .ToArray();
+
             var compilerOptions = new CompilerOptions
             {
-                References = projectConfig.References.ToArray(),
+                References = allReferences,
                 ModulePaths = projectConfig.ModulePaths.ToArray(),
                 WarningsAsErrors = warnAsError || projectConfig.WarningsAsErrors,
                 SuppressedWarnings = mergedSuppressed,

@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Tests.Integration;
+using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
 

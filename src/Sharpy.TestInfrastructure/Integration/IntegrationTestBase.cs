@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
+using Sharpy.Compiler;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
@@ -13,9 +14,9 @@ using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit.Abstractions;
-using static Sharpy.Compiler.Tests.TestHelpers;
+using static Sharpy.TestInfrastructure.TestHelpers;
 
-namespace Sharpy.Compiler.Tests.Integration;
+namespace Sharpy.TestInfrastructure.Integration;
 
 /// <summary>
 /// Base class for end-to-end integration tests that compile Sharpy code to C# and execute it.
@@ -56,30 +57,27 @@ public abstract class IntegrationTestBase
 
         string? runtimePath = null;
         var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
-        var testDir = Path.GetDirectoryName(testAssemblyPath);
-        var possibleFrameworks = new[] { "net10.0", "netstandard2.1", "netstandard2.0" };
+        var testDir = Path.GetDirectoryName(testAssemblyPath)!;
 
-        foreach (var targetFramework in possibleFrameworks)
+        // Probe order: test output directory first (MSBuild copies project references there),
+        // then navigate to the Core project's bin directory with both Debug and Release configs.
+        var coreDllPath = FindAssembly(testDir, "Sharpy.Core", "Sharpy.Core.dll");
+        if (coreDllPath != null)
         {
-            var candidate = Path.GetFullPath(Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", targetFramework, "Sharpy.Core.dll"));
-            if (File.Exists(candidate))
-            {
-                references.Add(MetadataReference.CreateFromFile(candidate));
-                runtimePath = candidate;
+            references.Add(MetadataReference.CreateFromFile(coreDllPath));
+            runtimePath = coreDllPath;
 
-                try
-                {
-                    var netstandardAssembly = Assembly.Load("netstandard");
-                    references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
-                }
-                catch
-                {
-                    var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
-                    var netstandardPath = Path.Combine(runtimeDir!, "netstandard.dll");
-                    if (File.Exists(netstandardPath))
-                        references.Add(MetadataReference.CreateFromFile(netstandardPath));
-                }
-                break;
+            try
+            {
+                var netstandardAssembly = Assembly.Load("netstandard");
+                references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
+            }
+            catch
+            {
+                var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
+                var netstandardPath = Path.Combine(runtimeDir!, "netstandard.dll");
+                if (File.Exists(netstandardPath))
+                    references.Add(MetadataReference.CreateFromFile(netstandardPath));
             }
         }
 
@@ -90,6 +88,9 @@ public abstract class IntegrationTestBase
     {
         Output = output;
     }
+
+    protected virtual IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
+        => Enumerable.Empty<string>();
 
     /// <summary>
     /// Result of compiling and executing Sharpy code.
@@ -190,8 +191,9 @@ public abstract class IntegrationTestBase
             var semanticBinding = new SemanticBinding();
             var moduleRegistry = new ModuleRegistry(logger);
 
-            // Load Sharpy.Core into ModuleRegistry so stdlib imports (os, json, re, etc.) resolve
             moduleRegistry.LoadReference(SharpyCoreReference.Location);
+            foreach (var additionalPath in GetAdditionalReferenceAssemblyPaths())
+                moduleRegistry.LoadReference(additionalPath);
 
             var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
             nameResolver.ResolveDeclarations(module);
@@ -323,6 +325,12 @@ public abstract class IntegrationTestBase
             runtimePath = SharedReferences.Value.RuntimePath;
 
             var compilation = SharedBaseCompilation.Value.AddSyntaxTrees(syntaxTree);
+            var additionalPaths = GetAdditionalReferenceAssemblyPaths().ToList();
+            if (additionalPaths.Count > 0)
+            {
+                compilation = compilation.AddReferences(
+                    additionalPaths.Where(File.Exists).Select(p => MetadataReference.CreateFromFile(p)));
+            }
 
             using var ms = new MemoryStream();
             var emitResult = compilation.Emit(ms);
@@ -364,10 +372,15 @@ public abstract class IntegrationTestBase
                     var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
                     File.Copy(runtimePath, runtimeDest, overwrite: true);
 
-                    // Copy transitive dependencies of Sharpy.Core (e.g., Microsoft.Data.Sqlite)
-                    // from the test project's output directory where NuGet restores them.
                     var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
                     CopyTransitiveDependencies(testBinDir, tempDir);
+                }
+
+                foreach (var additionalPath in additionalPaths.Where(File.Exists))
+                {
+                    var destPath = Path.Combine(tempDir, Path.GetFileName(additionalPath));
+                    if (!File.Exists(destPath))
+                        File.Copy(additionalPath, destPath);
                 }
 
                 // Create a runtimeconfig.json for the assembly
@@ -638,10 +651,15 @@ public abstract class IntegrationTestBase
             var (projectReferences, projectRuntimePath) = SharedReferences.Value;
             runtimePath = projectRuntimePath;
 
+            var allReferences = projectReferences.ToList();
+            var additionalPaths = GetAdditionalReferenceAssemblyPaths().ToList();
+            allReferences.AddRange(
+                additionalPaths.Where(File.Exists).Select(p => MetadataReference.CreateFromFile(p)));
+
             var compilation = CSharpCompilation.Create(
                 "SharpyTestProject",
                 syntaxTrees,
-                projectReferences,
+                allReferences,
                 new CSharpCompilationOptions(OutputKind.ConsoleApplication));
 
             using var ms = new MemoryStream();
@@ -682,10 +700,15 @@ public abstract class IntegrationTestBase
                     var runtimeDest = Path.Combine(tempDir, "Sharpy.Core.dll");
                     File.Copy(runtimePath, runtimeDest, overwrite: true);
 
-                    // Copy transitive dependencies of Sharpy.Core (e.g., Microsoft.Data.Sqlite)
-                    // from the test project's output directory where NuGet restores them.
                     var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
                     CopyTransitiveDependencies(testBinDir, tempDir);
+                }
+
+                foreach (var additionalPath in additionalPaths.Where(File.Exists))
+                {
+                    var destPath = Path.Combine(tempDir, Path.GetFileName(additionalPath));
+                    if (!File.Exists(destPath))
+                        File.Copy(additionalPath, destPath);
                 }
 
                 // Create a runtimeconfig.json for the assembly
@@ -812,66 +835,6 @@ public abstract class IntegrationTestBase
     }
 
     /// <summary>
-    /// Resolves imports in a module and registers imported symbols in the symbol table.
-    /// This is needed before inheritance resolution so that .NET base classes can be found.
-    /// </summary>
-    private void ResolveImports(Sharpy.Compiler.Parser.Ast.Module module, ImportResolver importResolver, SymbolTable symbolTable)
-    {
-        foreach (var statement in module.Body)
-        {
-            if (statement is Sharpy.Compiler.Parser.Ast.FromImportStatement fromImport)
-            {
-                var moduleInfo = importResolver.ResolveFromImport(fromImport);
-                if (moduleInfo != null)
-                {
-                    // Register imported symbols in the symbol table
-                    if (fromImport.ImportAll)
-                    {
-                        foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
-                        {
-                            symbolTable.TryDefine(symbol);
-                        }
-                    }
-                    else
-                    {
-                        foreach (var importAlias in fromImport.Names)
-                        {
-                            var symbolName = importAlias.AsName ?? importAlias.Name;
-                            if (moduleInfo.ExportedSymbols.TryGetValue(importAlias.Name, out var symbol))
-                            {
-                                // If aliased, create a new symbol with the alias name
-                                if (importAlias.AsName != null && symbol is TypeSymbol typeSymbol)
-                                {
-                                    symbol = typeSymbol with { Name = importAlias.AsName };
-                                }
-                                symbolTable.TryDefine(symbol);
-                            }
-                        }
-                    }
-                }
-            }
-            else if (statement is Sharpy.Compiler.Parser.Ast.ImportStatement import)
-            {
-                var modules = importResolver.ResolveImport(import);
-                foreach (var moduleInfo in modules)
-                {
-                    if (moduleInfo == null)
-                        continue;
-                    // For regular imports, the module itself is the symbol
-                    var moduleSymbol = new ModuleSymbol
-                    {
-                        Name = moduleInfo.Path,
-                        Kind = Sharpy.Compiler.Semantic.SymbolKind.Module,
-                        FilePath = moduleInfo.Path,
-                        Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
-                    };
-                    symbolTable.TryDefine(moduleSymbol);
-                }
-            }
-        }
-    }
-
-    /// <summary>
     /// Copies transitive dependencies of Sharpy.Core (e.g., Microsoft.Data.Sqlite and its
     /// native SQLite libraries) from the test project's output directory to the temp execution
     /// directory. Skips assemblies already present and framework assemblies.
@@ -941,5 +904,35 @@ public abstract class IntegrationTestBase
             if (!File.Exists(destFile))
                 File.Copy(file, destFile);
         }
+    }
+
+    /// <summary>
+    /// Finds an assembly DLL by checking: (1) the test output directory (sibling DLL),
+    /// then (2) the project's bin directory under both Debug and Release configurations.
+    /// Configuration-agnostic so tests work under both Debug and Release builds.
+    /// </summary>
+    protected static string? FindAssembly(string testOutputDir, string projectName, string dllName)
+    {
+        // 1. Check test output directory (MSBuild copies ProjectReference outputs here)
+        var siblingPath = Path.Combine(testOutputDir, dllName);
+        if (File.Exists(siblingPath))
+            return siblingPath;
+
+        // 2. Navigate to the project's bin directory and probe Debug/Release with multiple TFMs
+        var possibleFrameworks = new[] { "net10.0", "netstandard2.1", "netstandard2.0" };
+        var possibleConfigs = new[] { "Debug", "Release" };
+
+        foreach (var config in possibleConfigs)
+        {
+            foreach (var tfm in possibleFrameworks)
+            {
+                var candidate = Path.GetFullPath(Path.Combine(
+                    testOutputDir, "..", "..", "..", "..", projectName, "bin", config, tfm, dllName));
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+        }
+
+        return null;
     }
 }

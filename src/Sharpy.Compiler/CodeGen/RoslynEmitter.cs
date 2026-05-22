@@ -22,7 +22,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// - String enum detection: Use CodeGenInfo.IsStringEnum
 /// </summary>
 [NotThreadSafe(Reason = "Maintains mutable emission state; create per-file instance")]
-internal partial class RoslynEmitter
+internal partial class RoslynEmitter : ICodeEmitter
 {
     private readonly CodeGenContext _context;
     private readonly TypeSyntaxMapper _typeMapper;

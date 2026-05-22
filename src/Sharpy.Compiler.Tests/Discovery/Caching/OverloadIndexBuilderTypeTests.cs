@@ -2,6 +2,8 @@ using System.Reflection;
 using Sharpy.Compiler.Discovery.Caching;
 using Xunit;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Discovery.Caching;
 
 public class OverloadIndexBuilderTypeTests
@@ -131,39 +133,23 @@ public class OverloadIndexBuilderTypeTests
     [Fact]
     public void DiscoverPublicTypes_SharpyModuleTypeAttribute_AssignsArgumentParserToArgparse()
     {
-        // Arrange
-        var assembly = SharpyCoreReference.Assembly;
-
-        // Act
+        var assembly = SharpyStdlibReference.Assembly;
         var index = _builder.BuildFromAssembly(assembly);
 
-        // Assert - ArgumentParser should be in "argparse" module, not "builtins"
         Assert.True(index.Modules.ContainsKey("argparse"), "Expected 'argparse' module to exist");
         var argparseModule = index.Modules["argparse"];
         Assert.Contains(argparseModule.Types, t => t.Name == "ArgumentParser");
-
-        // It should NOT be in builtins
-        var builtins = index.Modules["builtins"];
-        Assert.DoesNotContain(builtins.Types, t => t.Name == "ArgumentParser");
     }
 
     [Fact]
     public void DiscoverPublicTypes_SharpyModuleTypeAttribute_AssignsPathToPathlib()
     {
-        // Arrange
-        var assembly = SharpyCoreReference.Assembly;
-
-        // Act
+        var assembly = SharpyStdlibReference.Assembly;
         var index = _builder.BuildFromAssembly(assembly);
 
-        // Assert - Path should be in "pathlib" module, not "builtins"
         Assert.True(index.Modules.ContainsKey("pathlib"), "Expected 'pathlib' module to exist");
         var pathlibModule = index.Modules["pathlib"];
         Assert.Contains(pathlibModule.Types, t => t.Name == "Path");
-
-        // It should NOT be in builtins
-        var builtins = index.Modules["builtins"];
-        Assert.DoesNotContain(builtins.Types, t => t.Name == "Path");
     }
 
     [Fact]

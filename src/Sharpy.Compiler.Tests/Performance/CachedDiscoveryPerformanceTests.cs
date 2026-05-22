@@ -7,6 +7,8 @@ using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 using Xunit.Abstractions;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Performance;
 
 /// <summary>

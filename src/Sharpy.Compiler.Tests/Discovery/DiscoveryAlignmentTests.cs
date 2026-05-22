@@ -4,6 +4,8 @@ using Sharpy.Compiler.Semantic;
 using Xunit;
 using Xunit.Abstractions;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Discovery;
 
 /// <summary>

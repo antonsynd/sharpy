@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Sharpy.Core\Sharpy.Core.csproj">
       <Aliases>SharpyRT</Aliases>
     </ProjectReference>
+    <ProjectReference Include="..\Sharpy.Stdlib\Sharpy.Stdlib.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Sharpy.Lsp\Sharpy.Lsp.csproj" />
   </ItemGroup>
 

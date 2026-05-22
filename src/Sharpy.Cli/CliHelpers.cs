@@ -1,3 +1,4 @@
+extern alias SharpyRT;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
@@ -9,6 +10,24 @@ internal static class CliHelpers
 {
     internal static readonly DiagnosticRenderer Renderer = new(DiagnosticRenderer.IsColorSupported());
     internal static readonly bool UseColor = DiagnosticRenderer.IsColorSupported();
+
+    internal static CompilerApi CreateCompilerApi(ICompilerLogger logger)
+    {
+        return new CompilerApi(logger, GetDefaultReferences());
+    }
+
+    internal static string[] GetDefaultReferences()
+    {
+        var corePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
+        var coreDir = Path.GetDirectoryName(corePath)!;
+        var stdlibPath = Path.Combine(coreDir, "Sharpy.Stdlib.dll");
+        var refs = new List<string> { corePath };
+        if (File.Exists(stdlibPath))
+            refs.Add(stdlibPath);
+        else
+            Console.Error.WriteLine("Warning: Sharpy.Stdlib.dll not found next to Sharpy.Core.dll — stdlib modules (json, os, math, etc.) will not be available.");
+        return refs.ToArray();
+    }
 
     internal static readonly CompilerPhase[] PhaseOrder = new[]
     {

@@ -1,4 +1,4 @@
-namespace Sharpy.Compiler.Tests.Integration;
+namespace Sharpy.TestInfrastructure.Integration;
 
 /// <summary>
 /// Structured metadata for a discovered test fixture.
@@ -117,9 +117,9 @@ public static class FixtureDiscoveryHelper
 
                 var expectedFile = Path.ChangeExtension(spyFile, ".expected");
                 var errorFile = Path.ChangeExtension(spyFile, ".error");
-                var runtimeErrorFile = spyFile.Replace(".spy", ".runtime-error");
+                var runtimeErrorFile = spyFile.Replace(".spy", ".runtime-error", StringComparison.Ordinal);
                 var warningFile = Path.ChangeExtension(spyFile, ".warning");
-                var expectedCsFile = spyFile.Replace(".spy", ".expected.cs");
+                var expectedCsFile = spyFile.Replace(".spy", ".expected.cs", StringComparison.Ordinal);
 
                 yield return new TestFixtureInfo
                 {
@@ -158,10 +158,10 @@ public static class FixtureDiscoveryHelper
 
     private static string ExtractCategory(string relativePath)
     {
-        var separatorIndex = relativePath.IndexOf(Path.DirectorySeparatorChar);
+        var separatorIndex = relativePath.IndexOf(Path.DirectorySeparatorChar, StringComparison.Ordinal);
         if (separatorIndex < 0)
         {
-            separatorIndex = relativePath.IndexOf('/');
+            separatorIndex = relativePath.IndexOf('/', StringComparison.Ordinal);
         }
 
         return separatorIndex >= 0 ? relativePath.Substring(0, separatorIndex) : "";

@@ -70,7 +70,7 @@ internal partial class ProjectCompiler
                     SemanticInfo = SemanticInfo
                 };
 
-                var emitter = new RoslynEmitter(codeGenContext, _cancellationToken);
+                var emitter = _emitterFactory.Create(codeGenContext, _cancellationToken);
                 var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
                 var csharpCode = roslynCompilationUnit.ToFullString();
 

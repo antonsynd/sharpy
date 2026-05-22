@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Suppress nullable warnings in tests - test framework handles assertion failures -->
+    <!-- CS1718: intentional self-comparison in equality tests -->
+    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Sharpy.Compiler/Sharpy.Compiler.csproj" />
+    <ProjectReference Include="../Sharpy.TestInfrastructure/Sharpy.TestInfrastructure.csproj" />
+    <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
+    <ProjectReference Include="../Sharpy.Stdlib/Sharpy.Stdlib.csproj" />
+  </ItemGroup>
+
+  <!-- Exclude .expected.cs snapshot files from compilation (they are test data, not source) -->
+  <ItemGroup>
+    <Compile Remove="Integration\TestFixtures\**\*.expected.cs" />
+    <Compile Remove="Integration\TestFixtures\**\*.cs" />
+  </ItemGroup>
+
+  <!-- xUnit runner config (parallelism limits) -->
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Copy test fixture files to output directory -->
+  <ItemGroup>
+    <None Include="Integration\TestFixtures\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Integration\TestFixtures" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,0 @@
-Formatter gap: body-internal leading comments (e.g. `# body comment` on its own
-line inside a function body) are not yet preserved by the Unparser/Pretty
-pipeline. End-of-line trailing comments and module-level leading comments are
-preserved correctly (see other fixtures and UnparserTriviaAndFormattingTests).
-The `.spy` and `.formatted` files document the intended behavior; un-skip this
-fixture once body-internal leading trivia is propagated through the AST.

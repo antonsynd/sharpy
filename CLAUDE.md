@@ -38,7 +38,8 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 | Component | Location | Purpose |
 |-----------|----------|---------|
 | Compiler | `src/Sharpy.Compiler/` | Lexer, Parser, Semantic, CodeGen |
-| Stdlib | `src/Sharpy.Core/` | Runtime library (partial class pattern in `Partial.{Type}/`) |
+| Core | `src/Sharpy.Core/` | Runtime essentials: primitives, collections, builtins, protocol interfaces, `Partial.{Type}/` |
+| Stdlib | `src/Sharpy.Stdlib/` | Standard library modules (31 modules: json, os, re, numpy, etc.) |
 | CLI | `src/Sharpy.Cli/` | Command-line interface (`sharpyc`, uses `System.CommandLine`) |
 | LSP | `src/Sharpy.Lsp/` | Language Server Protocol server (OmniSharp-based) |
 | Tests | `src/*.Tests/` | Unit and integration tests |
@@ -283,13 +284,21 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 
 **Implementation**: `IncrementalCompilationCache`, `SymbolSerializer`, `SymbolCache` (all in `Project/`)
 
-## Sharpy.Core Patterns
+## Sharpy.Core Patterns (Essentials)
 
 - **Wrap .NET internally, expose Python API** — `list.append()` not `Add()`
 - **Partial class pattern**: Types split across `Partial.{Type}/` directories (e.g., `Partial.List/List.Methods.cs`, `List.Slicing.cs`, `List.Interfaces.cs`)
 - **Builtins**: `partial class Builtins` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
-- **30 stdlib modules**: Argparse, Bisect, Builtins, Collections, Copy, Csv, Datetime, Fnmatch, Functools, Glob, Grapheme, Hashlib, Heapq, Io, Itertools, Json, Logging, Math, Operator, Os, Pathlib, Random, Re, Shutil, Statistics, String, Sys, Tempfile, Textwrap, Time
+- **Core modules**: Operator (comparison helpers) and Copy (shallow/deep copy) stay in Core due to collection type dependencies
 - **Python semantics**: Negative indexing, slicing, Python-matching exceptions
+
+## Sharpy.Stdlib (Standard Library)
+
+- **31 stdlib modules** in `src/Sharpy.Stdlib/`: Argparse, Bisect, Collections, Csv, Datetime, Fnmatch, Functools, Glob, Grapheme, Hashlib, Heapq, Io, Itertools, Json, Logging, Math, Numpy, Os, Pathlib, Random, Re, Requests, Shutil, Sqlite3, Statistics, String, Sys, Tempfile, Textwrap, Time, Unittest
+- **Depends on Sharpy.Core** (ProjectReference), not the other way around
+- **NuGet deps**: MathNet.Numerics (numpy), Microsoft.Data.Sqlite (sqlite3)
+- **Multi-target**: `net10.0;netstandard2.1` (same as Core)
+- **Compiler has zero compile-time dependency on Stdlib** — stdlib modules are discovered at runtime via `ModuleRegistry.LoadReference()`
 
 ### Protocol Interfaces
 

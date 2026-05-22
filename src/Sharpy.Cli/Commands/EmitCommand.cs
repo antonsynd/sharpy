@@ -314,7 +314,7 @@ internal static class EmitCommand
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
-            var api = new CompilerApi(logger);
+            var api = CliHelpers.CreateCompilerApi(logger);
 
             IReadOnlyList<CompilerDiagnostic> diagnostics;
 
@@ -388,7 +388,7 @@ internal static class EmitCommand
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
-            var api = new CompilerApi(logger);
+            var api = CliHelpers.CreateCompilerApi(logger);
             var result = api.Analyze(source);
 
             foreach (var d in result.Diagnostics.Where(d => d.IsError))
@@ -448,7 +448,7 @@ internal static class EmitCommand
                 MaxErrors = maxErrors ?? 0,
                 Namespace = namespaceName
             };
-            var api = new CompilerApi(logger);
+            var api = CliHelpers.CreateCompilerApi(logger);
             var result = api.Compile(source, compilerOptions, inputFile.FullName);
 
             if (!result.Success)

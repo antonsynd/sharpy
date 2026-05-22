@@ -8,6 +8,8 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>

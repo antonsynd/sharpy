@@ -33,17 +33,20 @@ internal class FileCompilationPipeline
     private readonly SemanticInfo _semanticInfo;
     private readonly SemanticBinding _semanticBinding;
     private readonly ICompilerLogger _logger;
+    private readonly ICodeEmitterFactory _emitterFactory;
 
     public FileCompilationPipeline(
         SymbolTable symbolTable,
         SemanticInfo semanticInfo,
         SemanticBinding semanticBinding,
-        ICompilerLogger logger)
+        ICompilerLogger logger,
+        ICodeEmitterFactory? emitterFactory = null)
     {
         _symbolTable = symbolTable;
         _semanticInfo = semanticInfo;
         _semanticBinding = semanticBinding;
         _logger = logger;
+        _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
     }
 
     /// <summary>
@@ -296,7 +299,7 @@ internal class FileCompilationPipeline
             SemanticInfo = _semanticInfo,
             SemanticBinding = _semanticBinding
         };
-        var emitter = new RoslynEmitter(codeGenContext, cancellationToken);
+        var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
         var compilationUnit = emitter.GenerateCompilationUnit(module);
         var csharpCode = compilationUnit.ToFullString();
 
@@ -375,7 +378,7 @@ internal class FileCompilationPipeline
             SemanticBinding = _semanticBinding
         };
 
-        var emitter = new RoslynEmitter(codeGenContext, cancellationToken);
+        var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
         var compilationUnit = emitter.GenerateCompilationUnit(moduleInfo.Module);
 
         // Clean up temporarily added symbols

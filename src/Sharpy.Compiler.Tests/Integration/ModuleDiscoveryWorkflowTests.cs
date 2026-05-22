@@ -4,6 +4,8 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>
@@ -223,10 +225,9 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
     [Fact]
     public void Workflow_ModuleFunctionOverloads_PopulatedInModuleInfo()
     {
-        // Arrange - Load Sharpy.Core which contains os.path with overloaded join
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = SharpyCoreReference.Location;
-        registry.LoadReference(sharpyCoreAssembly);
+        registry.LoadReference(SharpyCoreReference.Location);
+        registry.LoadReference(SharpyStdlibReference.Location);
 
         // Act - Get os.path functions
         var osPathFunctions = registry.GetModuleFunctions("os.path");
@@ -242,10 +243,9 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
     [Fact]
     public void Workflow_ModuleFunctionOverloads_ThreadedToModuleSymbol()
     {
-        // Arrange - Set up ImportResolver to resolve os.path module
         var registry = new ModuleRegistry(cache: _cache);
-        var sharpyCoreAssembly = SharpyCoreReference.Location;
-        registry.LoadReference(sharpyCoreAssembly);
+        registry.LoadReference(SharpyCoreReference.Location);
+        registry.LoadReference(SharpyStdlibReference.Location);
 
         var logger = Sharpy.Compiler.Logging.NullLogger.Instance;
         var builtinRegistry = new BuiltinRegistry();

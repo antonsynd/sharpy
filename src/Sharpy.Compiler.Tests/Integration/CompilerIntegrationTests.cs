@@ -4,6 +4,8 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Xunit;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>

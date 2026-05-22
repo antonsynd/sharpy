@@ -55,6 +55,7 @@ public record ReplResult(
 public class ReplSession
 {
     private readonly ICompilerLogger _logger;
+    private readonly ICodeEmitterFactory _emitterFactory;
 
     // Snippets that go at module level (function defs, classes, imports, typed
     // variable declarations, etc.). These accumulate across evaluations so prior
@@ -74,8 +75,14 @@ public class ReplSession
     /// </summary>
     /// <param name="logger">Optional compiler logger; defaults to <see cref="NullLogger.Instance"/>.</param>
     public ReplSession(ICompilerLogger? logger = null)
+        : this(logger, emitterFactory: null)
+    {
+    }
+
+    internal ReplSession(ICompilerLogger? logger, ICodeEmitterFactory? emitterFactory)
     {
         _logger = logger ?? NullLogger.Instance;
+        _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
     }
 
     /// <summary>
@@ -330,8 +337,12 @@ public class ReplSession
             var semanticBinding = new SemanticBinding();
             var moduleRegistry = new ModuleRegistry(_logger);
 
-            // Load Sharpy.Core so stdlib imports resolve.
             moduleRegistry.LoadReference(SharpyCoreAssembly.Location);
+            var stdlibPath = Path.Combine(Path.GetDirectoryName(SharpyCoreAssembly.Location)!, "Sharpy.Stdlib.dll");
+            if (File.Exists(stdlibPath))
+                moduleRegistry.LoadReference(stdlibPath);
+            else
+                _logger.LogWarning("Sharpy.Stdlib.dll not found — stdlib modules will not be available.", 0, 0);
 
             var nameResolver = new NameResolver(symbolTable, _logger, semanticBinding);
             nameResolver.ResolveDeclarations(module);
@@ -387,7 +398,7 @@ public class ReplSession
                 SemanticBinding = semanticBinding,
                 EmitLineDirectives = false
             };
-            var emitter = new RoslynEmitter(codeGenContext, cancellationToken);
+            var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
             var generatedSyntax = emitter.GenerateCompilationUnit(module);
             var generatedCSharp = generatedSyntax.ToFullString();
 
@@ -472,7 +483,13 @@ public class ReplSession
             MetadataReference.CreateFromFile(SharpyCoreAssembly.Location),
         };
 
+        var stdlibPath = Path.Combine(Path.GetDirectoryName(SharpyCoreAssembly.Location)!, "Sharpy.Stdlib.dll");
+        if (File.Exists(stdlibPath))
+            references.Add(MetadataReference.CreateFromFile(stdlibPath));
+
         // netstandard.dll is required because Sharpy.Core targets netstandard2.1.
+        // Note: missing Stdlib warning for metadata references is handled by the
+        // instance method CompileAndEvaluate() via _logger (above), not here.
         try
         {
             var netstandardAssembly = Assembly.Load("netstandard");

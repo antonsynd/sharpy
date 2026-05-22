@@ -253,8 +253,8 @@ internal sealed partial class UnparseVisitor : AstVisitor
         {
             if (fmt != null && i > 0)
             {
-                bool isMemberDef = body[i] is FunctionDef or PropertyDef or EventDef;
-                bool prevWasMemberDef = body[i - 1] is FunctionDef or PropertyDef or EventDef;
+                bool isMemberDef = body[i] is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or PropertyDef or EventDef;
+                bool prevWasMemberDef = body[i - 1] is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or PropertyDef or EventDef;
                 if (isMemberDef || prevWasMemberDef)
                 {
                     for (int b = 0; b < fmt.BlankLinesBetweenClassMembers; b++)

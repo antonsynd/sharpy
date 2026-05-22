@@ -3,6 +3,8 @@ using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
 using Xunit;
 
+using Sharpy.TestInfrastructure;
+
 namespace Sharpy.Compiler.Tests.Discovery;
 
 public class CachedModuleDiscoveryTypeTests : IDisposable
@@ -16,6 +18,7 @@ public class CachedModuleDiscoveryTypeTests : IDisposable
         var cache = new OverloadIndexCache(_testCacheDir);
         _discovery = new CachedModuleDiscovery(cache);
         _discovery.LoadAssembly(SharpyCoreReference.Assembly);
+        _discovery.LoadAssembly(SharpyStdlibReference.Assembly);
     }
 
     public void Dispose()
