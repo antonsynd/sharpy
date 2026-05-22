@@ -458,7 +458,7 @@ internal class TypeSyntaxMapper
 
             // Type is in current scope (user-defined in current file) - use simple name
             // This takes priority over builtin registry to allow shadowing
-            return NameMangler.ToPascalCase(sharpyTypeName);
+            return NameCasing.ResolveType(sharpyTypeName, false);
         }
 
         // Check if it's a known builtin from the registry (exception types, etc.)
@@ -485,7 +485,7 @@ internal class TypeSyntaxMapper
         }
 
         // User-defined types in current module keep their PascalCase name
-        return NameMangler.ToPascalCase(sharpyTypeName);
+        return NameCasing.ResolveType(sharpyTypeName, false);
     }
 
     /// <summary>
@@ -530,10 +530,10 @@ internal class TypeSyntaxMapper
         else
         {
             // Fallback - shouldn't happen
-            return NameMangler.ToPascalCase(sharpyTypeName);
+            return NameCasing.ResolveType(sharpyTypeName, false);
         }
 
-        var typeName = NameMangler.ToPascalCase(sharpyTypeName);
+        var typeName = NameCasing.ResolveType(sharpyTypeName, false);
 
         // Check for collision: when the file/directory name (PascalCase) matches the type name,
         // the type IS the module class (collision merge), not nested inside it.
@@ -643,7 +643,7 @@ internal class TypeSyntaxMapper
             var current = udt.Symbol;
             while (current != null)
             {
-                parts.Add(NameMangler.ToPascalCase(current.Name));
+                parts.Add(NameCasing.ResolveType(current.Name, false));
                 current = current.DeclaringType;
             }
             parts.Reverse();
@@ -890,7 +890,7 @@ internal class TypeSyntaxMapper
         if (expr is IndexAccess indexAccess && indexAccess.Object is Identifier nestedTypeName)
         {
             var typeArgs = MapTypeArgumentsFromExpression(indexAccess.Index);
-            return GenericName(NameMangler.ToPascalCase(nestedTypeName.Name))
+            return GenericName(NameCasing.ResolveType(nestedTypeName.Name, nestedTypeName.IsNameBacktickEscaped))
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
         }
 
