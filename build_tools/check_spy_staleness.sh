@@ -29,7 +29,7 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 # Map of spy filename (without extension) to the C# file it generates.
 # Add entries here as more modules are migrated.
 # Uses a plain list of "name:path" pairs for bash 3.x compatibility (macOS).
-SPY_TO_CS="textwrap:Textwrap/Textwrap.cs"
+SPY_TO_CS="textwrap:Textwrap/Textwrap.cs bisect_module:Bisect/Bisect.cs statistics:Statistics/Statistics.cs"
 
 stale=0
 
