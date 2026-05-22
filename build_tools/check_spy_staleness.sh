@@ -28,15 +28,16 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 # Map of spy filename (without extension) to the C# file it generates.
 # Add entries here as more modules are migrated.
-declare -A SPY_TO_CS=(
-    ["textwrap"]="Textwrap/Textwrap.cs"
-)
+# Uses a plain list of "name:path" pairs for bash 3.x compatibility (macOS).
+SPY_TO_CS="textwrap:Textwrap/Textwrap.cs"
 
 stale=0
 
-for spy_name in "${!SPY_TO_CS[@]}"; do
+for entry in $SPY_TO_CS; do
+    spy_name="${entry%%:*}"
+    cs_rel="${entry#*:}"
     spy_file="$SPY_DIR/${spy_name}.spy"
-    cs_target="$STDLIB_DIR/${SPY_TO_CS[$spy_name]}"
+    cs_target="$STDLIB_DIR/${cs_rel}"
 
     if [[ ! -f "$spy_file" ]]; then
         echo "SKIP: $spy_file not found"

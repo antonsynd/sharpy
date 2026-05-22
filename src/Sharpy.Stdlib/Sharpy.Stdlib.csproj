@@ -29,5 +29,10 @@
     <InternalsVisibleTo Include="Sharpy.Stdlib.Tests" />
   </ItemGroup>
 
+  <!-- Exclude .spy source directory from C# compilation (contains .spy files
+       and may contain stale generated .cs from staleness checks) -->
+  <ItemGroup>
+    <Compile Remove="spy/**" />
+  </ItemGroup>
 
 </Project>
