@@ -218,7 +218,7 @@ public class StatisticsTests
     [Fact]
     public void Median_DoesNotMutateInput()
     {
-        var data = new System.Collections.Generic.List<double> { 4, 1, 3, 2 };
+        var data = new Sharpy.List<double> { 4, 1, 3, 2 };
         Sharpy.Statistics.Median(data);
         data.Should().Equal(4, 1, 3, 2);
     }
@@ -226,7 +226,7 @@ public class StatisticsTests
     [Fact]
     public void MedianLow_DoesNotMutateInput()
     {
-        var data = new System.Collections.Generic.List<double> { 4, 1, 3, 2 };
+        var data = new Sharpy.List<double> { 4, 1, 3, 2 };
         Sharpy.Statistics.MedianLow(data);
         data.Should().Equal(4, 1, 3, 2);
     }
@@ -234,7 +234,7 @@ public class StatisticsTests
     [Fact]
     public void MedianHigh_DoesNotMutateInput()
     {
-        var data = new System.Collections.Generic.List<double> { 4, 1, 3, 2 };
+        var data = new Sharpy.List<double> { 4, 1, 3, 2 };
         Sharpy.Statistics.MedianHigh(data);
         data.Should().Equal(4, 1, 3, 2);
     }

@@ -151,7 +151,7 @@ public class StatisticsAdditionalTests
     [Fact]
     public void Mean_DoesNotMutateInput()
     {
-        var data = new System.Collections.Generic.List<double> { 4.0, 1.0, 3.0, 2.0 };
+        var data = new Sharpy.List<double> { 4.0, 1.0, 3.0, 2.0 };
         Sharpy.Statistics.Mean(data);
         data.Should().Equal(4.0, 1.0, 3.0, 2.0);
     }

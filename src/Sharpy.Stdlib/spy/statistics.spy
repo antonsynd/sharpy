@@ -1,0 +1,99 @@
+from Sharpy import StatisticsError
+from System import Math
+
+def mean(data: list[float]) -> float:
+    values: list[float] = _materialize(data)
+    return _sum(values) / len(values)
+
+def fmean(data: list[float]) -> float:
+    return mean(data)
+
+def median(data: list[float]) -> float:
+    sorted_data: list[float] = _materialize_sorted(data)
+    n: int = len(sorted_data)
+    mid: int = n // 2
+    if n % 2 == 0:
+        return (sorted_data[mid - 1] + sorted_data[mid]) / 2.0
+    return sorted_data[mid]
+
+def median_low(data: list[float]) -> float:
+    sorted_data: list[float] = _materialize_sorted(data)
+    n: int = len(sorted_data)
+    mid: int = n // 2
+    if n % 2 == 0:
+        return sorted_data[mid - 1]
+    return sorted_data[mid]
+
+def median_high(data: list[float]) -> float:
+    sorted_data: list[float] = _materialize_sorted(data)
+    n: int = len(sorted_data)
+    return sorted_data[n // 2]
+
+def mode[T: notnull](data: list[T]) -> T:
+    counts: dict[T, int] = {}
+    order: list[T] = []
+    any_item: bool = False
+    for item in data:
+        any_item = True
+        if item in counts:
+            counts[item] = counts[item] + 1
+        else:
+            counts[item] = 1
+            order.append(item)
+    if not any_item:
+        raise StatisticsError("no data")
+    best_value: T = order[0]
+    best_count: int = counts[best_value]
+    i: int = 1
+    while i < len(order):
+        candidate: T = order[i]
+        candidate_count: int = counts[candidate]
+        if candidate_count > best_count:
+            best_value = candidate
+            best_count = candidate_count
+        i = i + 1
+    return best_value
+
+def stdev(data: list[float]) -> float:
+    return Math.Sqrt(variance(data))
+
+def pstdev(data: list[float]) -> float:
+    return Math.Sqrt(pvariance(data))
+
+def variance(data: list[float]) -> float:
+    values: list[float] = _materialize(data)
+    if len(values) < 2:
+        raise StatisticsError("variance requires at least two data points")
+    m: float = _sum(values) / len(values)
+    ss: float = _sum_of_squared_deviations(values, m)
+    return ss / (len(values) - 1)
+
+def pvariance(data: list[float]) -> float:
+    values: list[float] = _materialize(data)
+    m: float = _sum(values) / len(values)
+    ss: float = _sum_of_squared_deviations(values, m)
+    return ss / len(values)
+
+def _materialize(data: list[float]) -> list[float]:
+    result: list[float] = list(data)
+    if len(result) == 0:
+        raise StatisticsError("no data")
+    return result
+
+def _materialize_sorted(data: list[float]) -> list[float]:
+    result: list[float] = _materialize(data)
+    result.sort()
+    return result
+
+def _sum(values: list[float]) -> float:
+    total: float = 0.0
+    for v in values:
+        total = total + v
+    return total
+
+def _sum_of_squared_deviations(values: list[float], m: float) -> float:
+    ss: float = 0.0
+    for v in values:
+        diff: float = v - m
+        ss = ss + diff * diff
+    return ss
