@@ -290,6 +290,18 @@ def create[T: new()]() -> T:
     }
 
     [Fact]
+    public void ParseFunctionWithNotnullConstraint()
+    {
+        var source = @"
+def mode[T: notnull](data: list[T]) -> T:
+    pass
+";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.TypeParameters[0].Constraints[0].Should().BeOfType<NotnullConstraint>();
+    }
+
+    [Fact]
     public void ParseFunctionWithMultipleConstraints()
     {
         var source = @"

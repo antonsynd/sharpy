@@ -245,11 +245,8 @@ def identity[T](value: T) -> T:
     public void SpyModule_WithIComparableConstraint_EmitsConstraintInCSharp()
     {
         // Verify IComparable[T] constraint emits correctly in generated C#.
-        // Note: The emitter generates "where T : System.IComparable<T>" (no global:: prefix).
-        // This causes CS0234 when compiled inside a namespace (project compilation wraps in
-        // a namespace). The constraint works for single-file emit but not project compilation.
-        // Tracked by: the emit-level verification is sufficient for stdlib work since we
-        // consume the emitted C# directly, not via project compilation.
+        // TODO(#686): The emitter may omit the global:: prefix on constraint types in
+        // project compilation mode, causing CS0234. Single-file emit with -n works correctly.
         var api = new CompilerApi();
         var result = api.Compile(
             @"
