@@ -20,7 +20,7 @@ internal partial class RoslynEmitter
     private FieldDeclarationSyntax GenerateField(VariableDeclaration varDecl, string? mangledName = null)
     {
         // Use PascalCase for public fields (C# property-like convention)
-        var fieldName = mangledName ?? NameMangler.ToPascalCase(varDecl.Name);
+        var fieldName = mangledName ?? NameCasing.ResolveField(varDecl.Name, varDecl.IsNameBacktickEscaped);
 
         // Get field type from annotation, or infer from initializer for consts
         TypeSyntax fieldType;
@@ -252,7 +252,7 @@ internal partial class RoslynEmitter
     private PropertyDeclarationSyntax GenerateInterfaceProperty(VariableDeclaration varDecl)
     {
         // Use PascalCase for property names
-        var propertyName = NameMangler.ToPascalCase(varDecl.Name);
+        var propertyName = NameCasing.ResolveMethod(varDecl.Name, varDecl.IsNameBacktickEscaped);
 
         // Get property type from annotation
         // Interface properties must have type annotations in Sharpy
@@ -327,8 +327,8 @@ internal partial class RoslynEmitter
     private IEnumerable<MemberDeclarationSyntax> GenerateMixedAutoCustomProperty(
         PropertyDef autoProp, List<PropertyDef> customDefs)
     {
-        var propertyName = NameMangler.ToPascalCase(autoProp.Name);
-        var backingFieldName = NameMangler.ToPascalCase("_" + autoProp.Name);
+        var propertyName = NameCasing.ResolveMethod(autoProp.Name, autoProp.IsNameBacktickEscaped);
+        var backingFieldName = "_" + NameCasing.ResolveField(autoProp.Name, autoProp.IsNameBacktickEscaped);
 
         // Determine property type from auto-property's type annotation
         TypeSyntax propertyType;
@@ -459,7 +459,7 @@ internal partial class RoslynEmitter
     private PropertyDeclarationSyntax GenerateCombinedFunctionStyleProperty(List<PropertyDef> propGroup)
     {
         var first = propGroup[0];
-        var propertyName = NameMangler.ToPascalCase(first.Name);
+        var propertyName = NameCasing.ResolveMethod(first.Name, first.IsNameBacktickEscaped);
 
         // Determine property type from getter's return type or setter's parameter type
         TypeSyntax propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
@@ -572,7 +572,7 @@ internal partial class RoslynEmitter
         // (C# rule: explicit interface members cannot have access modifiers)
         if (first.ExplicitInterface != null)
         {
-            var interfaceName = NameMangler.ToPascalCase(first.ExplicitInterface);
+            var interfaceName = NameCasing.ResolveType(first.ExplicitInterface, false);
             property = property
                 .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(IdentifierName(interfaceName)));
         }
@@ -634,7 +634,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private PropertyDeclarationSyntax GenerateAutoProperty(PropertyDef propDef)
     {
-        var propertyName = NameMangler.ToPascalCase(propDef.Name);
+        var propertyName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
 
         TypeSyntax propertyType;
         if (propDef.Type != null)
@@ -693,7 +693,7 @@ internal partial class RoslynEmitter
         // (C# rule: explicit interface members cannot have access modifiers)
         if (propDef.ExplicitInterface != null)
         {
-            var interfaceName = NameMangler.ToPascalCase(propDef.ExplicitInterface);
+            var interfaceName = NameCasing.ResolveType(propDef.ExplicitInterface, false);
             property = property
                 .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(IdentifierName(interfaceName)));
         }
@@ -734,7 +734,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private PropertyDeclarationSyntax GenerateFunctionStyleProperty(PropertyDef propDef)
     {
-        var propertyName = NameMangler.ToPascalCase(propDef.Name);
+        var propertyName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
 
         TypeSyntax propertyType;
         if (propDef.ReturnType != null)
@@ -841,7 +841,7 @@ internal partial class RoslynEmitter
         // (C# rule: explicit interface members cannot have access modifiers)
         if (propDef.ExplicitInterface != null)
         {
-            var interfaceName = NameMangler.ToPascalCase(propDef.ExplicitInterface);
+            var interfaceName = NameCasing.ResolveType(propDef.ExplicitInterface, false);
             property = property
                 .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(IdentifierName(interfaceName)));
         }
@@ -866,7 +866,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private PropertyDeclarationSyntax GenerateInterfacePropertyFromDef(PropertyDef propDef)
     {
-        var propertyName = NameMangler.ToPascalCase(propDef.Name);
+        var propertyName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
 
         TypeSyntax propertyType;
         if (propDef.Type != null)
