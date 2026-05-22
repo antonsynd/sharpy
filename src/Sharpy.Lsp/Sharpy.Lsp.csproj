@@ -23,6 +23,7 @@
     </ProjectReference>
     <ProjectReference Include="..\Sharpy.Stdlib\Sharpy.Stdlib.csproj">
       <Aliases>SharpyStdlib</Aliases>
+      <PrivateAssets>all</PrivateAssets>
     </ProjectReference>
   </ItemGroup>
 
