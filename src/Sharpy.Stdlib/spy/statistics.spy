@@ -1,5 +1,5 @@
-from Sharpy import StatisticsError
-from System import Math
+from sharpy import StatisticsError
+from system import Math
 
 def mean(data: list[float]) -> float:
     values: list[float] = _materialize(data)

@@ -1,5 +1,5 @@
-from System.Text import StringBuilder
-from System import Math
+from system.text import StringBuilder
+from system import Math
 
 def wrap(text: str, width: int = 70) -> list[str]:
     if text is None:

@@ -246,18 +246,19 @@ internal sealed class NameResolutionService
     }
 
     /// <summary>
-    /// Resolves a symbol name based on its kind using NameMangler.
+    /// Resolves a symbol name based on its kind using NameCasing.
     /// This is the fallback when CodeGenInfo is not available.
     /// </summary>
     private string ResolveBySymbolKind(Symbol symbol)
     {
+        var escaped = symbol.IsNameBacktickEscaped;
         return symbol.Kind switch
         {
-            SymbolKind.Variable => NameMangler.ToCamelCase(symbol.Name),
-            SymbolKind.Function => NameMangler.ToPascalCase(symbol.Name),
-            SymbolKind.Type => NameMangler.ToPascalCase(symbol.Name),
+            SymbolKind.Variable => NameCasing.ResolveVariable(symbol.Name, escaped),
+            SymbolKind.Function => NameCasing.ResolveMethod(symbol.Name, escaped),
+            SymbolKind.Type => NameCasing.ResolveType(symbol.Name, escaped),
             SymbolKind.Module => EscapeCSharpKeyword(symbol.Name.Replace(".", "_", StringComparison.Ordinal)),
-            SymbolKind.Parameter => NameMangler.ToCamelCase(symbol.Name),
+            SymbolKind.Parameter => NameCasing.ResolveVariable(symbol.Name, escaped),
             _ => symbol.Name
         };
     }

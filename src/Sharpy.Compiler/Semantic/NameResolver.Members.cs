@@ -50,6 +50,7 @@ internal partial class NameResolver
         {
             Name = functionDef.Name,
             Kind = SymbolKind.Function,
+            IsNameBacktickEscaped = functionDef.IsNameBacktickEscaped,
             AccessLevel = AccessLevel.Public,
             Parameters = parameters,
             TypeParameters = functionDef.TypeParameters.ToList(),
@@ -121,6 +122,7 @@ internal partial class NameResolver
         {
             Name = method.Name,
             Kind = SymbolKind.Function,
+            IsNameBacktickEscaped = method.IsNameBacktickEscaped,
             AccessLevel = accessLevel,
             ExplicitAccessLevel = explicitAccess,
             Parameters = parameters,
@@ -266,6 +268,7 @@ internal partial class NameResolver
         {
             Name = field.Name,
             Kind = SymbolKind.Variable,
+            IsNameBacktickEscaped = field.IsNameBacktickEscaped,
             AccessLevel = accessLevel,
             ExplicitAccessLevel = explicitAccess,
             IsConstant = field.IsConst,
@@ -429,6 +432,7 @@ internal partial class NameResolver
         {
             Name = constDecl.Name,
             Kind = SymbolKind.Variable,
+            IsNameBacktickEscaped = constDecl.IsNameBacktickEscaped,
             AccessLevel = AccessLevel.Public,
             IsConstant = true,
             DeclaringFilePath = _currentFilePath,

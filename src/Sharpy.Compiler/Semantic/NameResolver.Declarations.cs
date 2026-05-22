@@ -74,6 +74,7 @@ internal partial class NameResolver
         {
             Name = classDef.Name,
             Kind = SymbolKind.Type,
+            IsNameBacktickEscaped = classDef.IsNameBacktickEscaped,
             TypeKind = TypeKind.Class,
             AccessLevel = AccessLevel.Public,
             TypeParameters = classDef.TypeParameters.ToList(),
@@ -162,6 +163,7 @@ internal partial class NameResolver
         {
             Name = structDef.Name,
             Kind = SymbolKind.Type,
+            IsNameBacktickEscaped = structDef.IsNameBacktickEscaped,
             TypeKind = TypeKind.Struct,
             AccessLevel = AccessLevel.Public,
             TypeParameters = structDef.TypeParameters.ToList(),
@@ -246,6 +248,7 @@ internal partial class NameResolver
         {
             Name = interfaceDef.Name,
             Kind = SymbolKind.Type,
+            IsNameBacktickEscaped = interfaceDef.IsNameBacktickEscaped,
             TypeKind = TypeKind.Interface,
             AccessLevel = AccessLevel.Public,
             TypeParameters = interfaceDef.TypeParameters.ToList(),
@@ -324,6 +327,7 @@ internal partial class NameResolver
         {
             Name = delegateDef.Name,
             Kind = SymbolKind.Type,
+            IsNameBacktickEscaped = delegateDef.IsNameBacktickEscaped,
             TypeKind = TypeKind.Delegate,
             AccessLevel = AccessLevel.Public,
             TypeParameters = delegateDef.TypeParameters.ToList(),
@@ -409,6 +413,7 @@ internal partial class NameResolver
         {
             Name = enumDef.Name,
             Kind = SymbolKind.Type,
+            IsNameBacktickEscaped = enumDef.IsNameBacktickEscaped,
             TypeKind = TypeKind.Enum,
             AccessLevel = AccessLevel.Public,
             DefiningFilePath = _currentFilePath,
@@ -459,6 +464,7 @@ internal partial class NameResolver
         {
             Name = unionDef.Name,
             Kind = SymbolKind.Type,
+            IsNameBacktickEscaped = unionDef.IsNameBacktickEscaped,
             TypeKind = TypeKind.Union,
             AccessLevel = AccessLevel.Public,
             IsAbstract = true,

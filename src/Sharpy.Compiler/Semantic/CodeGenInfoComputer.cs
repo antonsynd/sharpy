@@ -111,13 +111,14 @@ internal class CodeGenInfoComputer
             // Variables with execution order issues become locals in Main() and use camelCase
             // ALL_CAPS names (Python-style constants) use ToConstantCase (→ PascalCase)
             // Other module-level fields use ToPascalCase
+            var escaped = varDecl.IsNameBacktickEscaped;
             string csharpName;
             if (hasIssues)
-                csharpName = NameMangler.ToCamelCase(varDecl.Name);
+                csharpName = NameCasing.ResolveVariable(varDecl.Name, escaped);
             else if (NameFormDetector.IsConstantCaseName(varDecl.Name))
-                csharpName = NameMangler.ToConstantCase(varDecl.Name);
+                csharpName = NameCasing.ResolveConstant(varDecl.Name, escaped);
             else
-                csharpName = NameMangler.ToPascalCase(varDecl.Name);
+                csharpName = NameCasing.ResolveField(varDecl.Name, escaped);
 
             SetCodeGenInfo(varSymbol, new CodeGenInfo
             {
@@ -139,7 +140,7 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(varSymbol, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToConstantCase(constDecl.Name),
+                CSharpName = NameCasing.ResolveConstant(constDecl.Name, constDecl.IsNameBacktickEscaped),
                 OriginalName = constDecl.Name,
                 Version = 0,
                 IsModuleLevel = true,
@@ -206,9 +207,9 @@ internal class CodeGenInfoComputer
         // - Other names become PascalCase
         if (NameFormDetector.IsConstantCaseName(name))
         {
-            return NameMangler.ToConstantCase(name);
+            return NameCasing.ResolveConstant(name, symbol.IsNameBacktickEscaped);
         }
-        return NameMangler.ToPascalCase(name);
+        return NameCasing.ResolveMethod(name, symbol.IsNameBacktickEscaped);
     }
 
     private void ProcessClassDef(ClassDef classDef)
@@ -218,7 +219,7 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(typeSymbol, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToPascalCase(classDef.Name),
+                CSharpName = NameCasing.ResolveType(classDef.Name, classDef.IsNameBacktickEscaped),
                 OriginalName = classDef.Name
             });
 
@@ -235,7 +236,7 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(typeSymbol, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToPascalCase(structDef.Name),
+                CSharpName = NameCasing.ResolveType(structDef.Name, structDef.IsNameBacktickEscaped),
                 OriginalName = structDef.Name
             });
 
@@ -252,7 +253,7 @@ internal class CodeGenInfoComputer
             // Interfaces preserve their exact name (which should already have I prefix)
             SetCodeGenInfo(typeSymbol, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToInterfaceName(interfaceDef.Name),
+                CSharpName = NameCasing.ResolveInterface(interfaceDef.Name, interfaceDef.IsNameBacktickEscaped),
                 OriginalName = interfaceDef.Name
             });
 
@@ -271,7 +272,7 @@ internal class CodeGenInfoComputer
 
             SetCodeGenInfo(typeSymbol, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToPascalCase(enumDef.Name),
+                CSharpName = NameCasing.ResolveType(enumDef.Name, enumDef.IsNameBacktickEscaped),
                 OriginalName = enumDef.Name,
                 IsStringEnum = isStringEnum
             });
@@ -304,7 +305,7 @@ internal class CodeGenInfoComputer
         {
             SetCodeGenInfo(fieldSymbol, new CodeGenInfo
             {
-                CSharpName = NameMangler.ToPascalCase(fieldDecl.Name),
+                CSharpName = NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped),
                 OriginalName = fieldDecl.Name,
                 IsModuleLevel = false,
                 IsConstant = fieldDecl.IsConst
@@ -320,7 +321,7 @@ internal class CodeGenInfoComputer
             SetCodeGenInfo(methodSymbol, new CodeGenInfo
             {
                 CSharpName = DunderNameMapping.ResolveCSharpName(funcDef.Name)
-                    ?? NameMangler.ToPascalCase(funcDef.Name),
+                    ?? NameCasing.ResolveMethod(funcDef.Name, funcDef.IsNameBacktickEscaped),
                 OriginalName = funcDef.Name,
                 IsModuleLevel = false
             });
@@ -335,7 +336,7 @@ internal class CodeGenInfoComputer
             SetCodeGenInfo(funcSymbol, new CodeGenInfo
             {
                 CSharpName = DunderNameMapping.ResolveCSharpName(funcDef.Name)
-                    ?? NameMangler.ToPascalCase(funcDef.Name),
+                    ?? NameCasing.ResolveMethod(funcDef.Name, funcDef.IsNameBacktickEscaped),
                 OriginalName = funcDef.Name,
                 IsModuleLevel = isModuleLevel
             });

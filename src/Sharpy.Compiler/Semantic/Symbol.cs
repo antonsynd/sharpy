@@ -19,6 +19,7 @@ public abstract record Symbol
 {
     public string Name { get; init; } = string.Empty;
     public SymbolKind Kind { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public AccessLevel AccessLevel { get; internal set; } = AccessLevel.Public;
     public int? DeclarationLine { get; init; }
     public int? DeclarationColumn { get; init; }

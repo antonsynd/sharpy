@@ -1,4 +1,4 @@
-from System import IComparable
+from system import IComparable
 
 def bisect_left[T: IComparable[T]](a: list[T], x: T, lo: int = 0, hi: int = -1) -> int:
     if hi == -1:
