@@ -713,7 +713,7 @@ internal partial class RoslynEmitter
         }
         else
         {
-            varName = NameMangler.ToPascalCase(varDecl.Name);
+            varName = NameCasing.ResolveField(varDecl.Name, varDecl.IsNameBacktickEscaped);
         }
 
         // Check if we've already generated a field with this name (redefinition)
