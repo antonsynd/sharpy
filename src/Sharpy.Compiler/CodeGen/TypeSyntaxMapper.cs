@@ -491,16 +491,24 @@ internal class TypeSyntaxMapper
     /// </summary>
     private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
     {
-        // For Sharpy.Core CLR types (with [SharpyModuleType] attribute), use the actual CLR
-        // type name rather than deriving from DefiningModule, since the CLR namespace (Sharpy)
-        // differs from the module name (e.g., argparse -> Sharpy.ArgumentParser,
-        // not Argparse.ArgumentParser)
-        if (typeSymbol.ClrType != null && typeSymbol.ClrType.Namespace == "Sharpy")
+        if (typeSymbol.ClrType != null)
         {
             // Strip CLR generic arity suffix (e.g., DefaultDict`2 → DefaultDict)
             // because type arguments are added separately by the caller via QualifiedGenericName.
             var fullName = ClrNameHelper.StripArity(typeSymbol.ClrType.FullName!);
-            return $"global::{fullName}";
+
+            // Always use global:: for Sharpy namespace CLR types to avoid
+            // Sharpy.Sharpy.X when code is inside namespace Sharpy.
+            if (typeSymbol.ClrType.Namespace == "Sharpy")
+                return $"global::{fullName}";
+
+            // When inside a user-defined namespace, use global:: for all CLR types
+            // to avoid ambiguity (e.g., inside namespace Sharpy, "System.IComparable"
+            // could resolve to "Sharpy.System.IComparable").
+            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                return $"global::{fullName}";
+
+            return fullName;
         }
 
         string moduleNamespace;

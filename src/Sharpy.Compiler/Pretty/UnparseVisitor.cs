@@ -420,6 +420,9 @@ internal sealed partial class UnparseVisitor : AstVisitor
             case NewConstraint:
                 _w.Write(": new");
                 break;
+            case NotnullConstraint:
+                _w.Write(": notnull");
+                break;
         }
     }
 

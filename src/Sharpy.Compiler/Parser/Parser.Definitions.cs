@@ -771,6 +771,13 @@ public partial class Parser
             return new StructConstraint();
         }
 
+        // notnull constraint
+        if (Current.Type == TokenType.Identifier && Current.Value == "notnull")
+        {
+            Advance();
+            return new NotnullConstraint();
+        }
+
         // new() constraint
         if (Current.Type == TokenType.Identifier && Current.Value == "new")
         {

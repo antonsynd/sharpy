@@ -995,12 +995,13 @@ internal partial class RoslynEmitter
 
             var constraintSyntaxes = new List<TypeParameterConstraintSyntax>();
 
-            // Order: class/struct first, then types, then new()
+            // Order: class/struct/notnull first, then types, then new()
             var ordered = typeParam.Constraints
                 .OrderBy(c => c switch
                 {
                     ClassConstraint => 0,
                     StructConstraint => 0,
+                    NotnullConstraint => 0,
                     Parser.Ast.TypeConstraint => 1,
                     NewConstraint => 2,
                     _ => 3
@@ -1014,6 +1015,8 @@ internal partial class RoslynEmitter
                         SyntaxKind.ClassConstraint),
                     StructConstraint => ClassOrStructConstraint(
                         SyntaxKind.StructConstraint),
+                    NotnullConstraint => Microsoft.CodeAnalysis.CSharp.SyntaxFactory.TypeConstraint(
+                        IdentifierName("notnull")),
                     Parser.Ast.TypeConstraint tc => Microsoft.CodeAnalysis.CSharp.SyntaxFactory.TypeConstraint(
                         _typeMapper.MapType(tc.Type)),
                     NewConstraint => ConstructorConstraint(),

@@ -449,6 +449,7 @@ internal class ModuleRegistry
             "system.threading.tasks" => "System.Threading.Tasks",
             "system.net" => "System.Net",
             "system.net.http" => "System.Net.Http",
+            "sharpy" => "Sharpy",
             _ => null
         };
     }

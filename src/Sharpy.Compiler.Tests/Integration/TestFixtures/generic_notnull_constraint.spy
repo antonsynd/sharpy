@@ -1,0 +1,17 @@
+def mode[T: notnull](data: list[T]) -> T:
+    counts: dict[T, int] = {}
+    best: T = data[0]
+    best_count: int = 0
+    for item in data:
+        if item in counts:
+            counts[item] = counts[item] + 1
+        else:
+            counts[item] = 1
+        if counts[item] > best_count:
+            best = item
+            best_count = counts[item]
+    return best
+
+def main():
+    print(mode([1, 2, 2, 3, 3, 3]))
+    print(mode(["a", "b", "b"]))

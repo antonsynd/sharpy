@@ -475,6 +475,10 @@ internal class GenericTypeInferenceService
                 }
                 return InferenceResult.Succeeded(new List<SemanticType>());
 
+            // Handle "notnull" constraint
+            case Parser.Ast.NotnullConstraint:
+                return InferenceResult.Succeeded(new List<SemanticType>());
+
             // Handle "new()" constraint
             case Parser.Ast.NewConstraint:
                 // For now, accept all types for new() constraint
@@ -553,6 +557,25 @@ internal class GenericTypeInferenceService
             // Primitive types satisfy common constraints like IComparable
             // A more complete implementation would check the actual interface implementation
             return true;
+        }
+
+        if (type is TypeParameterType tpt)
+        {
+            foreach (var constraint in tpt.Constraints)
+            {
+                if (constraint is Parser.Ast.TypeConstraint tc)
+                {
+                    var ownConstraintName = GetTypeAnnotationName(tc.Type);
+                    var ownSubstituted = ownConstraintName.Replace(tpt.Name, type.GetDisplayName(), StringComparison.Ordinal);
+                    if (ownSubstituted == constraintTypeName)
+                        return true;
+                }
+
+                if (constraint is Parser.Ast.ClassConstraint && constraintTypeName == "class")
+                    return true;
+                if (constraint is Parser.Ast.StructConstraint && constraintTypeName == "struct")
+                    return true;
+            }
         }
 
         if (type is UserDefinedType udt && udt.Symbol != null)

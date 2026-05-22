@@ -741,6 +741,11 @@ public record StructConstraint : ConstraintClause;
 public record NewConstraint : ConstraintClause;
 
 /// <summary>
+/// Notnull constraint: T: notnull
+/// </summary>
+public record NotnullConstraint : ConstraintClause;
+
+/// <summary>
 /// Decorator applied to function/class/struct
 /// </summary>
 public record Decorator
