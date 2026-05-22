@@ -1349,7 +1349,7 @@ internal partial class RoslynEmitter
 
                 foreach (var kwArg in decorator.KeywordArguments)
                 {
-                    var nameEquals = NameEquals(IdentifierName(NameMangler.ToPascalCase(kwArg.Name)));
+                    var nameEquals = NameEquals(IdentifierName(NameCasing.ResolveField(kwArg.Name, false)));
                     args.Add(AttributeArgument(GenerateAttributeArgumentExpression(kwArg.Value))
                         .WithNameEquals(nameEquals));
                 }
@@ -1475,9 +1475,8 @@ internal partial class RoslynEmitter
     private static string MangleBracketPart(Decorator decorator, int index)
     {
         var part = decorator.QualifiedParts[index];
-        if (decorator.BacktickEscapedParts.Length > index && decorator.BacktickEscapedParts[index])
-            return part;
-        return NameMangler.ToPascalCase(part);
+        var isEscaped = decorator.BacktickEscapedParts.Length > index && decorator.BacktickEscapedParts[index];
+        return NameCasing.ResolveType(part, isEscaped);
     }
 
     /// <summary>
@@ -1506,8 +1505,8 @@ internal partial class RoslynEmitter
             // (non-enum, non-const fields) are caught downstream by the C# compiler.
             MemberAccess { Object: Identifier objId } memberAccess => MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName(NameMangler.ToPascalCase(objId.Name)),
-                IdentifierName(NameMangler.ToPascalCase(memberAccess.Member))),
+                IdentifierName(NameCasing.ResolveType(objId.Name, objId.IsNameBacktickEscaped)),
+                IdentifierName(NameCasing.ResolveField(memberAccess.Member, false))),
             _ => throw new InvalidOperationException(
                 $"Unsupported decorator argument expression: {expr.GetType().Name}. " +
                 "DecoratorValidator should have rejected this."),
@@ -1615,7 +1614,7 @@ internal partial class RoslynEmitter
         // Generate read-only auto-properties for each field
         foreach (var field in fields)
         {
-            var propName = NameMangler.ToPascalCase(field.Name);
+            var propName = NameCasing.ResolveField(field.Name, false);
             var propType = _typeMapper.MapSemanticType(field.Type);
 
             var prop = PropertyDeclaration(propType, Identifier(propName))
@@ -1636,7 +1635,7 @@ internal partial class RoslynEmitter
 
             var ctorBody = fields.Select(f =>
             {
-                var propName = NameMangler.ToPascalCase(f.Name);
+                var propName = NameCasing.ResolveField(f.Name, false);
                 var paramName = NameMangler.ToCamelCase(f.Name);
                 return (StatementSyntax)ExpressionStatement(
                     AssignmentExpression(
@@ -1679,7 +1678,7 @@ internal partial class RoslynEmitter
         var body = fields.Select(f =>
         {
             var paramName = NameMangler.ToCamelCase(f.Name);
-            var propName = NameMangler.ToPascalCase(f.Name);
+            var propName = NameCasing.ResolveField(f.Name, false);
             return (StatementSyntax)ExpressionStatement(
                 AssignmentExpression(
                     SyntaxKind.SimpleAssignmentExpression,
