@@ -175,4 +175,12 @@ public class FormatterServiceTests
         var result = FormatterService.Format(source);
         result.FormattedText.Should().Contain("# body comment\n    x = 1");
     }
+
+    [Fact]
+    public void Format_NestedTypeDefinitions_GetBlankLines()
+    {
+        var source = "class Outer:\n    class Inner1:\n        pass\n    class Inner2:\n        pass\n";
+        var result = FormatterService.Format(source);
+        result.FormattedText.Should().Contain("pass\n\n    class Inner2:");
+    }
 }
