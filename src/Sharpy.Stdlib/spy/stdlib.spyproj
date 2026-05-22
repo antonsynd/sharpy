@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <RootNamespace>Sharpy</RootNamespace>
+    <OutputType>library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <SourceFile Include="*.spy" />
+  </ItemGroup>
+</Project>
