@@ -1,0 +1,160 @@
+from System.Text import StringBuilder
+from System import Math
+
+def wrap(text: str, width: int = 70) -> list[str]:
+    if text is None:
+        raise TypeError("argument must be str, not NoneType")
+    result: list[str] = []
+    collapsed: str = _collapse_whitespace(text)
+    if len(collapsed) == 0:
+        return result
+    words: list[str] = collapsed.split(" ")
+    current_line: StringBuilder = StringBuilder()
+    for word in words:
+        if len(word) == 0:
+            continue
+        if len(word) > width:
+            if current_line.Length > 0:
+                result.append(current_line.ToString())
+                current_line.Clear()
+            offset: int = 0
+            while offset < len(word):
+                chunk_size: int = Math.Min(width, len(word) - offset)
+                result.append(word.Substring(offset, chunk_size))
+                offset = offset + chunk_size
+        elif current_line.Length == 0:
+            current_line.Append(word)
+        elif current_line.Length + 1 + len(word) <= width:
+            current_line.Append(" ")
+            current_line.Append(word)
+        else:
+            result.append(current_line.ToString())
+            current_line.Clear()
+            current_line.Append(word)
+    if current_line.Length > 0:
+        result.append(current_line.ToString())
+    return result
+
+def fill(text: str, width: int = 70) -> str:
+    lines: list[str] = wrap(text, width)
+    return "\n".join(lines)
+
+def dedent(text: str) -> str:
+    if text is None:
+        raise TypeError("argument must be str, not NoneType")
+    lines: list[str] = text.split("\n")
+    common_prefix: str = ""
+    has_prefix: bool = False
+    for line in lines:
+        if len(line) == 0 or _is_whitespace_only(line):
+            continue
+        leading_ws: str = _get_leading_whitespace(line)
+        if not has_prefix:
+            common_prefix = leading_ws
+            has_prefix = True
+        else:
+            common_prefix = _common_prefix(common_prefix, leading_ws)
+        if len(common_prefix) == 0:
+            break
+    if not has_prefix or len(common_prefix) == 0:
+        return text
+    sb: StringBuilder = StringBuilder()
+    i: int = 0
+    while i < len(lines):
+        if i > 0:
+            sb.Append("\n")
+        if len(lines[i]) == 0:
+            i = i + 1
+            continue
+        if lines[i].startswith(common_prefix):
+            sb.Append(lines[i].Substring(len(common_prefix)))
+        else:
+            sb.Append(lines[i].TrimStart())
+        i = i + 1
+    return sb.ToString()
+
+def indent(text: str, prefix: str) -> str:
+    if text is None:
+        raise TypeError("argument must be str, not NoneType")
+    if prefix is None:
+        raise TypeError("prefix must be str, not NoneType")
+    sb: StringBuilder = StringBuilder()
+    lines: list[str] = _split_keep_ends(text)
+    for line in lines:
+        if not _is_whitespace_only(line):
+            sb.Append(prefix)
+        sb.Append(line)
+    return sb.ToString()
+
+def shorten(text: str, width: int) -> str:
+    if text is None:
+        raise TypeError("argument must be str, not NoneType")
+    placeholder: str = " [...]"
+    collapsed: str = _collapse_whitespace(text)
+    if len(collapsed) <= width:
+        return collapsed
+    if width < len(placeholder.TrimStart()):
+        raise ValueError("placeholder too large for max width")
+    max_content: int = width - len(placeholder)
+    if max_content <= 0:
+        return placeholder.TrimStart().Substring(0, width)
+    break_at: int = collapsed.LastIndexOf(" ", max_content)
+    if break_at <= 0:
+        return collapsed.Substring(0, max_content) + placeholder
+    return collapsed.Substring(0, break_at) + placeholder
+
+def _collapse_whitespace(text: str) -> str:
+    sb: StringBuilder = StringBuilder(len(text))
+    in_whitespace: bool = False
+    has_content: bool = False
+    for c in text:
+        if c.isspace():
+            if has_content:
+                in_whitespace = True
+        else:
+            if in_whitespace:
+                sb.Append(" ")
+                in_whitespace = False
+            sb.Append(c)
+            has_content = True
+    return sb.ToString()
+
+def _is_whitespace_only(line: str) -> bool:
+    for c in line:
+        if not c.isspace():
+            return False
+    return True
+
+def _get_leading_whitespace(line: str) -> str:
+    i: int = 0
+    while i < len(line) and line[i].isspace():
+        i = i + 1
+    return line.Substring(0, i)
+
+def _common_prefix(a: str, b: str) -> str:
+    min_len: int = Math.Min(len(a), len(b))
+    i: int = 0
+    while i < min_len and a[i] == b[i]:
+        i = i + 1
+    return a.Substring(0, i)
+
+def _split_keep_ends(text: str) -> list[str]:
+    lines: list[str] = []
+    start: int = 0
+    i: int = 0
+    while i < len(text):
+        if text[i] == "\n":
+            lines.append(text.Substring(start, i - start + 1))
+            start = i + 1
+        elif text[i] == "\r":
+            if i + 1 < len(text) and text[i + 1] == "\n":
+                lines.append(text.Substring(start, i - start + 2))
+                start = i + 2
+                i = i + 1
+            else:
+                lines.append(text.Substring(start, i - start + 1))
+                start = i + 1
+        i = i + 1
+    if start < len(text):
+        lines.append(text.Substring(start))
+    return lines
