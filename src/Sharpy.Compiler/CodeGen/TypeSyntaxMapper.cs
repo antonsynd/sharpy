@@ -471,6 +471,10 @@ internal class TypeSyntaxMapper
                 // System namespace types are always available in C# without qualification
                 if (ns == "System" || ns.StartsWith("System."))
                 {
+                    // When inside a user-defined namespace, use global:: to avoid ambiguity
+                    // (e.g., inside namespace MyApp, "System" could resolve to "MyApp.System").
+                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                        return $"global::{ClrNameHelper.StripArity(builtinTypeSymbol.ClrType.FullName!)}";
                     return builtinTypeSymbol.ClrType.Name;
                 }
                 // Sharpy types need global:: qualification

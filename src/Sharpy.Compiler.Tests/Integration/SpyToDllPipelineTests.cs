@@ -245,8 +245,6 @@ def identity[T](value: T) -> T:
     public void SpyModule_WithIComparableConstraint_EmitsConstraintInCSharp()
     {
         // Verify IComparable[T] constraint emits correctly in generated C#.
-        // TODO(#686): The emitter may omit the global:: prefix on constraint types in
-        // project compilation mode, causing CS0234. Single-file emit with -n works correctly.
         var api = new CompilerApi();
         var result = api.Compile(
             @"
