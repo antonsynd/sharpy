@@ -44,7 +44,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private MemberDeclarationSyntax GenerateAutoEvent(EventDef eventDef)
     {
-        var eventName = NameMangler.ToPascalCase(eventDef.Name);
+        var eventName = NameCasing.ResolveMethod(eventDef.Name, eventDef.IsNameBacktickEscaped);
 
         // Map the delegate type (nullable for auto-events, since no subscribers initially)
         var delegateType = eventDef.Type != null
@@ -90,7 +90,7 @@ internal partial class RoslynEmitter
     private MemberDeclarationSyntax GenerateFunctionStyleEvent(List<EventDef> eventGroup)
     {
         var first = eventGroup[0];
-        var eventName = NameMangler.ToPascalCase(first.Name);
+        var eventName = NameCasing.ResolveMethod(first.Name, first.IsNameBacktickEscaped);
 
         // Determine the event type from the handler parameter of the first accessor
         TypeSyntax eventType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
@@ -198,7 +198,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private MemberDeclarationSyntax GenerateInterfaceEvent(EventDef eventDef)
     {
-        var eventName = NameMangler.ToPascalCase(eventDef.Name);
+        var eventName = NameCasing.ResolveMethod(eventDef.Name, eventDef.IsNameBacktickEscaped);
 
         TypeSyntax eventType;
         if (eventDef.Type != null)
