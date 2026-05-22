@@ -189,7 +189,7 @@ internal partial class RoslynEmitter
             !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
         {
             var moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
-            var typeName = NameMangler.ToPascalCase(sharpyTypeName);
+            var typeName = NameCasing.ResolveType(sharpyTypeName, isBacktickEscaped: false);
 
             return BuildQualifiedTypeName(moduleNamespace, typeName);
         }
@@ -198,13 +198,13 @@ internal partial class RoslynEmitter
         if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
         {
             var moduleNamespace = ConvertModuleToNamespace(typeSymbol.DefiningModule);
-            var typeName = NameMangler.ToPascalCase(sharpyTypeName);
+            var typeName = NameCasing.ResolveType(sharpyTypeName, isBacktickEscaped: false);
 
             return BuildQualifiedTypeName(moduleNamespace, typeName);
         }
 
         // Type is in current file - use simple name
-        return NameMangler.ToPascalCase(sharpyTypeName);
+        return NameCasing.ResolveType(sharpyTypeName, isBacktickEscaped: false);
     }
 
     /// <summary>
@@ -261,7 +261,7 @@ internal partial class RoslynEmitter
                 {
                     if (!string.IsNullOrEmpty(part) && part != ".")
                     {
-                        namespaceParts.Add(NameMangler.ToPascalCase(part));
+                        namespaceParts.Add(NameCasing.ResolveType(part, isBacktickEscaped: false));
                     }
                 }
             }
@@ -269,7 +269,7 @@ internal partial class RoslynEmitter
             // Add file name part (skip __init__ as it represents the package itself)
             if (!string.Equals(fileName, DunderNames.Init, StringComparison.OrdinalIgnoreCase))
             {
-                namespaceParts.Add(NameMangler.ToPascalCase(fileName));
+                namespaceParts.Add(NameCasing.ResolveType(fileName, isBacktickEscaped: false));
             }
 
             if (namespaceParts.Count > 0)
@@ -280,7 +280,7 @@ internal partial class RoslynEmitter
 
         // Fallback: just use file name
         var fallbackFileName = Path.GetFileNameWithoutExtension(filePath);
-        return NameMangler.ToPascalCase(fallbackFileName);
+        return NameCasing.ResolveType(fallbackFileName, isBacktickEscaped: false);
     }
 
     /// <summary>
@@ -289,7 +289,7 @@ internal partial class RoslynEmitter
     private static string ConvertModuleToNamespace(string modulePath)
     {
         var parts = modulePath.Split('.');
-        return string.Join(".", parts.Select(p => NameMangler.ToPascalCase(p)));
+        return string.Join(".", parts.Select(p => NameCasing.ResolveType(p, isBacktickEscaped: false)));
     }
 
     // ============================================================
@@ -933,7 +933,7 @@ internal partial class RoslynEmitter
     private ExpressionSyntax BuildQualifiedTypeAccess(
         Semantic.TypeSymbol typeSymbol, string originalName)
     {
-        var csharpTypeName = NameMangler.ToPascalCase(originalName);
+        var csharpTypeName = NameCasing.ResolveType(originalName, isBacktickEscaped: false);
         var fqn = GetFullyQualifiedTypeName(typeSymbol, originalName);
 
         if (fqn.Contains('.', StringComparison.Ordinal))
@@ -968,7 +968,7 @@ internal partial class RoslynEmitter
         ExpressionSyntax typeExpr = BuildQualifiedTypeAccess(classSymbol, originalName);
 
         var codeGenInfo = GetCodeGenInfo(fieldSymbol);
-        var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(memberName);
+        var fieldName = codeGenInfo?.CSharpName ?? NameCasing.ResolveField(memberName, isBacktickEscaped: false);
 
         return MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
