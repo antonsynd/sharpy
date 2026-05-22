@@ -489,4 +489,83 @@ def main():
 
         Assert.True(appResult.Success, $"Cross-namespace from-import compilation failed: {string.Join(", ", appResult.Diagnostics.GetErrors().Select(e => e.Message))}");
     }
+
+    [Fact]
+    public void SpyModule_CrossNamespace_IComparableConstraintWorksEndToEnd()
+    {
+        // Regression test for #686: a generic constraint referencing a System type
+        // (IComparable[T]) must emit with a global:: prefix so that, when the consuming
+        // project lives in a user-defined namespace, the constraint still resolves
+        // unambiguously and the project compiles in project mode.
+
+        // Step 1: compile a .spy module with namespace "ConstraintLib" that exposes
+        // a generic function constrained on IComparable[T].
+        using var libHelper = new ProjectCompilationHelper(_output);
+        libHelper.WithRootNamespace("ConstraintLib")
+            .WithOutputType("library")
+            .AddSourceFile("constraintmod.spy", @"
+from System import IComparable
+
+def clamp[T: IComparable[T]](value: T, low: T, high: T) -> T:
+    if value.CompareTo(low) < 0:
+        return low
+    if value.CompareTo(high) > 0:
+        return high
+    return value
+");
+        libHelper.CreateProjectFile();
+        var libResult = libHelper.Compile();
+        libHelper.AssertCompilationSucceeded(libResult);
+        Assert.NotNull(libResult.OutputAssemblyPath);
+
+        // Step 2: compile an app under a different namespace ("MyApp") that imports
+        // the library and exercises the constrained generic function. If the
+        // constraint were emitted without global::, the user namespace would shadow
+        // System (CS0234) and project-mode compilation would fail.
+        using var appHelper = new ProjectCompilationHelper(_output);
+        appHelper.WithRootNamespace("MyApp")
+            .WithOutputType("exe")
+            .WithEntryPoint("main.spy")
+            .AddSourceFile("main.spy", @"
+import constraintmod
+
+def main():
+    result: int = constraintmod.clamp(15, 0, 10)
+    print(result)
+");
+
+        var libDllPath = libResult.OutputAssemblyPath!;
+        var appModulesDir = Path.Combine(appHelper.TempDirectory, "modules");
+        Directory.CreateDirectory(appModulesDir);
+        var copiedDllPath = Path.Combine(appModulesDir, Path.GetFileName(libDllPath));
+        File.Copy(libDllPath, copiedDllPath);
+
+        var coreLocation = SharpyCoreReference.Location;
+        File.Copy(coreLocation, Path.Combine(appModulesDir, "Sharpy.Core.dll"), overwrite: true);
+
+        var projectContent = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+  <PropertyGroup>
+    <RootNamespace>MyApp</RootNamespace>
+    <OutputType>exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <EntryPoint>main.spy</EntryPoint>
+  </PropertyGroup>
+  <ItemGroup>
+    <SourceFile Include=""src/**/*.spy"" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include=""{copiedDllPath}"" />
+  </ItemGroup>
+</Project>";
+
+        var projectFilePath = Path.Combine(appHelper.TempDirectory, "MyApp.spyproj");
+        File.WriteAllText(projectFilePath, projectContent);
+
+        var config = ProjectFileParser.Load(projectFilePath);
+        var compiler = new Compiler(new CompilerOptions { References = new[] { copiedDllPath } });
+        var appResult = compiler.CompileProject(config);
+
+        Assert.True(appResult.Success, $"Cross-namespace constraint app compilation failed: {string.Join(", ", appResult.Diagnostics.GetErrors().Select(e => e.Message))}");
+    }
 }
