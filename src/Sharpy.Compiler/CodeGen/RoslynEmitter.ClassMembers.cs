@@ -39,7 +39,7 @@ internal partial class RoslynEmitter
             var varDecl = (VariableDeclaration)stmt;
             var fieldSymbol = typeSymbol?.Fields.FirstOrDefault(f => f.Name == varDecl.Name);
             var codeGenInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
-            var fieldName = codeGenInfo?.CSharpName ?? NameMangler.ToPascalCase(varDecl.Name);
+            var fieldName = codeGenInfo?.CSharpName ?? NameCasing.ResolveField(varDecl.Name, varDecl.IsNameBacktickEscaped);
 
             if (isDataclass && !varDecl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Static))
             {
@@ -70,7 +70,7 @@ internal partial class RoslynEmitter
         foreach (var stmt in body.Where(s => s is PropertyDef pd && !pd.IsFunctionStyle))
         {
             var propDef = (PropertyDef)stmt;
-            var propName = NameMangler.ToPascalCase(propDef.Name);
+            var propName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
             fieldMapping[propDef.Name] = propName;
             if (propDef.Type != null)
             {
@@ -82,7 +82,7 @@ internal partial class RoslynEmitter
         foreach (var stmt in body.Where(s => s is EventDef ed && !ed.IsFunctionStyle))
         {
             var eventDef = (EventDef)stmt;
-            var eventName = NameMangler.ToPascalCase(eventDef.Name);
+            var eventName = NameCasing.ResolveMethod(eventDef.Name, eventDef.IsNameBacktickEscaped);
             fieldMapping[eventDef.Name] = eventName;
         }
 
