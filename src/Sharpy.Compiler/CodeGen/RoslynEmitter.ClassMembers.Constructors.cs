@@ -136,7 +136,7 @@ internal partial class RoslynEmitter
                     // the convention used by GenerateField
                     string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
                         ? mappedFieldName
-                        : NameMangler.ToPascalCase(memberAccess.Member);
+                        : NameCasing.ResolveField(memberAccess.Member, false);
 
                     // Generate: this.Field = value;
                     var thisAccess = MemberAccessExpression(
@@ -250,8 +250,8 @@ internal partial class RoslynEmitter
             {
                 var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
                 var propName = fieldSymbol != null
-                    ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameMangler.ToPascalCase(fieldDecl.Name))
-                    : NameMangler.ToPascalCase(fieldDecl.Name);
+                    ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped))
+                    : NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped);
 
                 var previousTargetType = _targetTypeContext;
                 _targetTypeContext = fieldDecl.Type;
@@ -316,8 +316,8 @@ internal partial class RoslynEmitter
         {
             var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
             var propName = fieldSymbol != null
-                ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameMangler.ToPascalCase(fieldDecl.Name))
-                : NameMangler.ToPascalCase(fieldDecl.Name);
+                ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped))
+                : NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped);
             var paramName = fieldDecl.Name;
 
             statements.Add(ExpressionStatement(
