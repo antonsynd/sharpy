@@ -416,6 +416,24 @@ internal class CachedModuleDiscovery
     }
 
     /// <summary>
+    /// Get the C# namespace of the [SharpyModule] class for a module, or null if not available.
+    /// </summary>
+    public string? GetModuleCSharpNamespace(string moduleName)
+    {
+        foreach (var lazy in _loadedIndices.Values)
+        {
+            var index = lazy.Value;
+            if (index.Modules.TryGetValue(moduleName, out var moduleOverloads)
+                && moduleOverloads.CSharpNamespace != null)
+            {
+                return moduleOverloads.CSharpNamespace;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Get the XML documentation summary for a module, or null if not available.
     /// </summary>
     public string? GetModuleDocumentation(string moduleName)

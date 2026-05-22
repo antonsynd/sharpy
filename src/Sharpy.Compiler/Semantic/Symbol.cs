@@ -428,6 +428,13 @@ public record ModuleSymbol : Symbol
     /// </summary>
     public string? NetNamespaceName { get; init; }
 
+    /// <summary>
+    /// The C# namespace of the [SharpyModule] class (e.g., "Sharpy" for stdlib, "MyLib" for third-party).
+    /// Used by the emitter to generate fully-qualified using directives for cross-namespace imports.
+    /// Null for .spy source modules and CLR namespace modules.
+    /// </summary>
+    public string? CSharpNamespace { get; init; }
+
     public virtual bool Equals(ModuleSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

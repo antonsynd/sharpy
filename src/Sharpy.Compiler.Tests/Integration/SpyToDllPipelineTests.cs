@@ -366,4 +366,132 @@ def main():
 
         Assert.True(appResult.Success, $"App compilation failed: {string.Join(", ", appResult.Diagnostics.GetErrors().Select(e => e.Message))}");
     }
+
+    [Fact]
+    public void SpyModule_CrossNamespace_CanBeImportedBySecondModule()
+    {
+        // Step 1: compile a .spy module to a library DLL with namespace "CrossNsLib"
+        using var libHelper = new ProjectCompilationHelper(_output);
+        libHelper.WithRootNamespace("CrossNsLib")
+            .WithOutputType("library")
+            .AddSourceFile("crossmod.spy", @"
+def double_it(x: int) -> int:
+    return x * 2
+");
+        libHelper.CreateProjectFile();
+        var libResult = libHelper.Compile();
+        libHelper.AssertCompilationSucceeded(libResult);
+        Assert.NotNull(libResult.OutputAssemblyPath);
+
+        // Step 2: compile a second .spy file with namespace "MyApp" that imports the first module
+        using var appHelper = new ProjectCompilationHelper(_output);
+        appHelper.WithRootNamespace("MyApp")
+            .WithOutputType("exe")
+            .WithEntryPoint("main.spy")
+            .AddSourceFile("main.spy", @"
+import crossmod
+
+def main():
+    result: int = crossmod.double_it(21)
+    print(result)
+");
+
+        var libDllPath = libResult.OutputAssemblyPath!;
+        var appModulesDir = Path.Combine(appHelper.TempDirectory, "modules");
+        Directory.CreateDirectory(appModulesDir);
+        var copiedDllPath = Path.Combine(appModulesDir, Path.GetFileName(libDllPath));
+        File.Copy(libDllPath, copiedDllPath);
+
+        var coreLocation = SharpyCoreReference.Location;
+        File.Copy(coreLocation, Path.Combine(appModulesDir, "Sharpy.Core.dll"), overwrite: true);
+
+        var projectContent = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+  <PropertyGroup>
+    <RootNamespace>MyApp</RootNamespace>
+    <OutputType>exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <EntryPoint>main.spy</EntryPoint>
+  </PropertyGroup>
+  <ItemGroup>
+    <SourceFile Include=""src/**/*.spy"" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include=""{copiedDllPath}"" />
+  </ItemGroup>
+</Project>";
+
+        var projectFilePath = Path.Combine(appHelper.TempDirectory, "MyApp.spyproj");
+        File.WriteAllText(projectFilePath, projectContent);
+
+        var config = ProjectFileParser.Load(projectFilePath);
+        var compiler = new Compiler(new CompilerOptions { References = new[] { copiedDllPath } });
+        var appResult = compiler.CompileProject(config);
+
+        Assert.True(appResult.Success, $"Cross-namespace app compilation failed: {string.Join(", ", appResult.Diagnostics.GetErrors().Select(e => e.Message))}");
+    }
+
+    [Fact]
+    public void SpyModule_CrossNamespace_FromImportWorks()
+    {
+        // Step 1: compile a .spy module to a library DLL with namespace "CrossNsFromLib"
+        using var libHelper = new ProjectCompilationHelper(_output);
+        libHelper.WithRootNamespace("CrossNsFromLib")
+            .WithOutputType("library")
+            .AddSourceFile("crossfrom.spy", @"
+def double_it(x: int) -> int:
+    return x * 2
+");
+        libHelper.CreateProjectFile();
+        var libResult = libHelper.Compile();
+        libHelper.AssertCompilationSucceeded(libResult);
+        Assert.NotNull(libResult.OutputAssemblyPath);
+
+        // Step 2: use "from crossfrom import double_it" with a different namespace
+        using var appHelper = new ProjectCompilationHelper(_output);
+        appHelper.WithRootNamespace("MyApp")
+            .WithOutputType("exe")
+            .WithEntryPoint("main.spy")
+            .AddSourceFile("main.spy", @"
+from crossfrom import double_it
+
+def main():
+    result: int = double_it(21)
+    print(result)
+");
+
+        var libDllPath = libResult.OutputAssemblyPath!;
+        var appModulesDir = Path.Combine(appHelper.TempDirectory, "modules");
+        Directory.CreateDirectory(appModulesDir);
+        var copiedDllPath = Path.Combine(appModulesDir, Path.GetFileName(libDllPath));
+        File.Copy(libDllPath, copiedDllPath);
+
+        var coreLocation = SharpyCoreReference.Location;
+        File.Copy(coreLocation, Path.Combine(appModulesDir, "Sharpy.Core.dll"), overwrite: true);
+
+        var projectContent = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+  <PropertyGroup>
+    <RootNamespace>MyApp</RootNamespace>
+    <OutputType>exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <EntryPoint>main.spy</EntryPoint>
+  </PropertyGroup>
+  <ItemGroup>
+    <SourceFile Include=""src/**/*.spy"" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include=""{copiedDllPath}"" />
+  </ItemGroup>
+</Project>";
+
+        var projectFilePath = Path.Combine(appHelper.TempDirectory, "MyApp.spyproj");
+        File.WriteAllText(projectFilePath, projectContent);
+
+        var config = ProjectFileParser.Load(projectFilePath);
+        var compiler = new Compiler(new CompilerOptions { References = new[] { copiedDllPath } });
+        var appResult = compiler.CompileProject(config);
+
+        Assert.True(appResult.Success, $"Cross-namespace from-import compilation failed: {string.Join(", ", appResult.Diagnostics.GetErrors().Select(e => e.Message))}");
+    }
 }

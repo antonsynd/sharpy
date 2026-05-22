@@ -168,6 +168,14 @@ internal class ModuleRegistry
     }
 
     /// <summary>
+    /// Get the C# namespace of the [SharpyModule] class for a module, or null if not available.
+    /// </summary>
+    public string? GetModuleCSharpNamespace(string moduleName)
+    {
+        return _discovery.GetModuleCSharpNamespace(moduleName);
+    }
+
+    /// <summary>
     /// Get the XML documentation summary for a module, or null if not available.
     /// </summary>
     public string? GetModuleDocumentation(string moduleName)

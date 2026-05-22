@@ -41,6 +41,13 @@ internal class ModuleInfo
     public string? CanonicalModuleName { get; init; }
 
     /// <summary>
+    /// The C# namespace of the [SharpyModule] class (e.g., "Sharpy" for stdlib, "MyLib" for third-party).
+    /// Used by the emitter to generate fully-qualified using directives for cross-namespace imports.
+    /// Null for .spy source modules and CLR namespace modules.
+    /// </summary>
+    public string? CSharpNamespace { get; init; }
+
+    /// <summary>
     /// Indicates if this is an error recovery module created when the actual module couldn't be found.
     /// Error recovery modules contain placeholder symbols that suppress cascading errors in TypeChecker.
     /// </summary>

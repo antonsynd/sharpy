@@ -72,6 +72,7 @@ internal partial class ImportResolver
                             IsNetModule = moduleInfo.IsNetModule,
                             CanonicalModuleName = moduleInfo.CanonicalModuleName,
                             NetNamespaceName = moduleInfo.NetNamespaceName,
+                            CSharpNamespace = moduleInfo.CSharpNamespace,
                             Documentation = moduleInfo.Module?.DocString
                                 ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name),
                             NameDeclarationLine = importAlias.LineStart,
@@ -95,6 +96,7 @@ internal partial class ImportResolver
                             IsNetModule = moduleInfo.IsNetModule,
                             CanonicalModuleName = moduleInfo.CanonicalModuleName,
                             NetNamespaceName = moduleInfo.NetNamespaceName,
+                            CSharpNamespace = moduleInfo.CSharpNamespace,
                             Documentation = moduleInfo.Module?.DocString
                                 ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name),
                             NameDeclarationLine = importAlias.LineStart,
@@ -278,7 +280,7 @@ internal partial class ImportResolver
 
             // Track .NET module names for codegen to emit correct using directives
             if (moduleInfo is { IsNetModule: true })
-                _semanticBinding.MarkAsNetModule(importAlias.Name);
+                _semanticBinding.MarkAsNetModule(importAlias.Name, moduleInfo.CSharpNamespace);
 
             // If not found in .NET assemblies, try .spy file
             if (moduleInfo == null)
@@ -477,7 +479,7 @@ internal partial class ImportResolver
 
         // Track .NET module names for codegen to emit correct using directives
         if (moduleInfo is { IsNetModule: true })
-            _semanticBinding.MarkAsNetModule(fromImport.Module);
+            _semanticBinding.MarkAsNetModule(fromImport.Module, moduleInfo.CSharpNamespace);
 
         // If not found in .NET assemblies or synthetic modules, try .spy file
         if (moduleInfo == null)
@@ -786,7 +788,8 @@ internal partial class ImportResolver
             Path = $".net:{moduleName}",
             Module = null!,
             ExportedSymbols = new Dictionary<string, Symbol>(),
-            IsNetModule = true
+            IsNetModule = true,
+            CSharpNamespace = _moduleRegistry.GetModuleCSharpNamespace(moduleName)
         };
 
         foreach (var function in functions)

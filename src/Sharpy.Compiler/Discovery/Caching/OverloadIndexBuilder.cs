@@ -52,6 +52,7 @@ internal class OverloadIndexBuilder
         {
             var moduleName = DeriveModuleName(exportType);
             var moduleOverloads = DiscoverModuleFunctions(exportType);
+            moduleOverloads.CSharpNamespace = exportType.Namespace;
 
             // Look up XML documentation for this module class
             if (_xmlDocReader != null)

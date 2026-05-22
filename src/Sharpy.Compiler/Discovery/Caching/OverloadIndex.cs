@@ -23,6 +23,7 @@ internal class ModuleOverloads
     public List<DiscoveredTypeInfo> Types { get; set; } = new();
     public Dictionary<string, FieldSignature> Fields { get; set; } = new();
     public string? Documentation { get; set; }
+    public string? CSharpNamespace { get; set; }
 }
 
 /// <summary>

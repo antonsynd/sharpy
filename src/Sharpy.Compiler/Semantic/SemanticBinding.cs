@@ -69,8 +69,9 @@ public class SemanticBinding
     // Maps FromImportStatement nodes to their re-exported symbols
     private readonly ConcurrentDictionary<FromImportStatement, Dictionary<string, Symbol>> _reExportedSymbols = new();
 
-    // Tracks which import module names refer to .NET stdlib modules
-    private readonly ConcurrentDictionary<string, bool> _netModuleNames = new();
+    // Tracks which import module names refer to .NET stdlib modules.
+    // Value is the C# namespace of the [SharpyModule] class (null if not available).
+    private readonly ConcurrentDictionary<string, string?> _netModuleNames = new();
 
     // Phase-gating freeze flags - prevent mutations after a phase completes.
     // Volatile for thread safety when per-file bindings are frozen concurrently.
@@ -338,13 +339,13 @@ public class SemanticBinding
     /// <summary>
     /// Marks a module name as a .NET stdlib module for codegen to emit correct using directives.
     /// </summary>
-    public void MarkAsNetModule(string moduleName)
+    public void MarkAsNetModule(string moduleName, string? csharpNamespace = null)
     {
         if (_netModuleNamesFrozen)
         {
             AssertNotFrozen("NetModuleNames", moduleName);
         }
-        _netModuleNames[moduleName] = true;
+        _netModuleNames[moduleName] = csharpNamespace;
     }
 
     /// <summary>
@@ -352,6 +353,12 @@ public class SemanticBinding
     /// </summary>
     public bool IsNetModule(string moduleName)
         => _netModuleNames.ContainsKey(moduleName);
+
+    /// <summary>
+    /// Gets the C# namespace of a .NET module's [SharpyModule] class, or null if not available.
+    /// </summary>
+    public string? GetNetModuleCSharpNamespace(string moduleName)
+        => _netModuleNames.TryGetValue(moduleName, out var ns) ? ns : null;
 
     #endregion
 }

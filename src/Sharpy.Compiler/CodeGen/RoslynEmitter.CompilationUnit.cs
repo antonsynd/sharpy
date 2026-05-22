@@ -288,7 +288,8 @@ internal partial class RoslynEmitter
                 else if (IsStdlibModule(alias.Name))
                 {
                     // import math as m -> using m = global::Sharpy.Math;
-                    var fullModuleClass = ConvertStdlibModuleToFullyQualified(alias.Name);
+                    var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(alias.Name);
+                    var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns);
                     yield return UsingDirective(
                         NameEquals(alias.AsName),
                         ParseName(fullModuleClass));
@@ -322,7 +323,8 @@ internal partial class RoslynEmitter
                 {
                     // import math -> using math = global::Sharpy.Math;
                     var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_", StringComparison.Ordinal));
-                    var fullModuleClass = ConvertStdlibModuleToFullyQualified(alias.Name);
+                    var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(alias.Name);
+                    var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns);
                     yield return UsingDirective(
                         NameEquals(sanitizedAlias),
                         ParseName(fullModuleClass));
@@ -400,10 +402,11 @@ internal partial class RoslynEmitter
                 fromImport.Names.All(n => _context.LookupSymbol(n.Name) is TypeSymbol);
             if (!allImportsAreTypes)
             {
-                // Generate using static for Sharpy stdlib module class
+                // Generate using static for .NET module class
                 // e.g., "from math import sqrt" → "using static global::Sharpy.Math;"
                 // e.g., "from os.path import join" → "using static global::Sharpy.OsPath;"
-                var fullModuleClass = ConvertStdlibModuleToFullyQualified(fromImport.Module);
+                var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(fromImport.Module);
+                var fullModuleClass = ConvertNetModuleToFullyQualified(fromImport.Module, ns);
                 yield return UsingDirective(ParseName(fullModuleClass))
                     .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
             }
@@ -524,14 +527,21 @@ internal partial class RoslynEmitter
     /// </summary>
     private static string ConvertStdlibModuleToFullyQualified(string moduleName)
     {
+        return ConvertNetModuleToFullyQualified(moduleName, csharpNamespace: null);
+    }
+
+    private static string ConvertNetModuleToFullyQualified(string moduleName, string? csharpNamespace)
+    {
+        var ns = csharpNamespace ?? "Sharpy";
+
         if (StdlibClassNameOverrides.TryGetValue(moduleName, out var overrideName))
-            return $"global::Sharpy.{overrideName}";
+            return $"global::{ns}.{overrideName}";
 
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
         // Stdlib classes use simple PascalCase (e.g., Json, Os, Re) — not the
         // NameMangler.ToNamespacePart acronym logic used for user module names (which would produce JSON).
         var className = string.Concat(parts.Select(StdlibToPascalCase));
-        return $"global::Sharpy.{className}";
+        return $"global::{ns}.{className}";
     }
 
     private static string StdlibToPascalCase(string name)
