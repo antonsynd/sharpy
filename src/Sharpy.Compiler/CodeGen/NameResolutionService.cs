@@ -231,7 +231,7 @@ internal sealed class NameResolutionService
         // (for a static field). Override the name in this case.
         if (forceModuleLevelFields && info.HasExecutionOrderIssues && symbol is VariableSymbol)
         {
-            return NameMangler.ToPascalCase(symbol.Name);
+            return NameCasing.ResolveField(symbol.Name, false);
         }
 
         var csharpName = info.GetVersionedCSharpName();

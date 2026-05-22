@@ -628,7 +628,7 @@ internal partial class RoslynEmitter : ICodeEmitter
             (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
              typeSymbol.TypeKind == Semantic.TypeKind.Struct))
         {
-            return NameMangler.ToPascalCase(name);
+            return NameCasing.ResolveType(name, false);
         }
 
         // Check if this is a module symbol - use service for name resolution

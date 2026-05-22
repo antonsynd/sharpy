@@ -136,7 +136,7 @@ internal partial class RoslynEmitter
                 && _context.IsBuiltinFunction(name.Name))
             {
                 return MakeGlobalQualifiedName("Sharpy", "Builtins",
-                    NameMangler.ToPascalCase(name.Name));
+                    NameCasing.ResolveMethod(name.Name, name.IsNameBacktickEscaped));
             }
 
             // Type-name builtin function references (e.g., map(int, items) → Builtins.Int)
@@ -144,7 +144,7 @@ internal partial class RoslynEmitter
             if (symbol is TypeSymbol && _context.IsBuiltinFunction(name.Name))
             {
                 return MakeGlobalQualifiedName("Sharpy", "Builtins",
-                    NameMangler.ToPascalCase(name.Name));
+                    NameCasing.ResolveMethod(name.Name, name.IsNameBacktickEscaped));
             }
 
             // Discovered TypeSymbols in the Sharpy namespace (e.g., datetime → Sharpy.DateTime)

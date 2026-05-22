@@ -512,11 +512,11 @@ internal partial class RoslynEmitter
         // For constants/variables with ALL_CAPS names, preserve the case
         var propertyName = NameFormDetector.IsConstantCaseName(localName)
             ? NameMangler.ToConstantCase(localName)
-            : NameMangler.ToPascalCase(localName);
+            : NameCasing.ResolveField(localName, false);
 
         var sourcePropertyName = NameFormDetector.IsConstantCaseName(varSymbol.Name)
             ? NameMangler.ToConstantCase(varSymbol.Name)
-            : NameMangler.ToPascalCase(varSymbol.Name);
+            : NameCasing.ResolveField(varSymbol.Name, false);
 
         // Map the type
         var propertyType = _typeMapper.MapSemanticType(GetVariableType(varSymbol));
