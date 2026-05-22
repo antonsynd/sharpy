@@ -1,0 +1,13 @@
+# Test backtick escaping on class field and method declarations
+class Widget:
+    `myField`: int = 0
+
+    def __init__(self, value: int):
+        self.myField = value
+
+    def `getValue`(self) -> int:
+        return self.myField
+
+def main():
+    w = Widget(42)
+    print(w.getValue())
