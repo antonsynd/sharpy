@@ -409,6 +409,7 @@ public record MemberAccess : Expression
     public Expression Object { get; init; } = null!;
     public string Member { get; init; } = "";
     public bool IsNullConditional { get; init; }  // obj?.member
+    public bool IsMemberBacktickEscaped { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()

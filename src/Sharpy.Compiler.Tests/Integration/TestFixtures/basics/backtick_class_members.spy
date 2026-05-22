@@ -10,4 +10,8 @@ class Widget:
 
 def main():
     w = Widget(42)
+    # Non-escaped access of backtick-declared members
     print(w.getValue())
+    # Escaped access of backtick-declared members
+    print(w.`getValue`())
+    print(w.`myField`)

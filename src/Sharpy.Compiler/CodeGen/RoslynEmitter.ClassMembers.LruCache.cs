@@ -137,7 +137,7 @@ internal partial class RoslynEmitter
 
         // Compute names. The wrapper keeps the user-facing PascalCase name; the renamed
         // body uses a double-underscore prefix to prevent accidental external dispatch.
-        var publicName = NameMangler.Transform(func.Name, NameContext.Method);
+        var publicName = NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
         var privateName = "__" + publicName;
         var cacheFieldName = "__" + publicName + "Cache";
 

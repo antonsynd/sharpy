@@ -968,7 +968,7 @@ internal partial class RoslynEmitter
         ExpressionSyntax typeExpr = BuildQualifiedTypeAccess(classSymbol, originalName);
 
         var codeGenInfo = GetCodeGenInfo(fieldSymbol);
-        var fieldName = codeGenInfo?.CSharpName ?? NameCasing.ResolveField(memberName, isBacktickEscaped: false);
+        var fieldName = codeGenInfo?.CSharpName ?? NameCasing.ResolveField(memberName, isBacktickEscaped: fieldSymbol.IsNameBacktickEscaped);
 
         return MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,

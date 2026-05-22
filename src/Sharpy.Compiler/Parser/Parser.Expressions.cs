@@ -849,6 +849,7 @@ public partial class Parser
                         Object = expr,
                         Member = member,
                         IsNullConditional = isNullConditional,
+                        IsMemberBacktickEscaped = memberToken.IsBacktickEscaped,
                         LineStart = expr.LineStart,
                         ColumnStart = expr.ColumnStart,
                         LineEnd = Previous.Line,

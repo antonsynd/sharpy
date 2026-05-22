@@ -1,0 +1,26 @@
+# Test backtick-escaped self member access patterns
+class Counter:
+    `count`: int = 0
+
+    def __init__(self):
+        self.`count` = 0
+
+    def `increment`(self):
+        self.`count` = self.`count` + 1
+
+    def `getCount`(self) -> int:
+        return self.`count`
+
+    def reset_and_get(self) -> int:
+        old = self.`count`
+        self.`count` = 0
+        return old
+
+def main():
+    c = Counter()
+    c.`increment`()
+    c.`increment`()
+    c.`increment`()
+    print(c.`getCount`())
+    print(c.reset_and_get())
+    print(c.`getCount`())

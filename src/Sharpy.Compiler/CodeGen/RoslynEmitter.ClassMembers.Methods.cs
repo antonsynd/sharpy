@@ -41,9 +41,9 @@ internal partial class RoslynEmitter
         // with user-declared variables.
         CollectSourceVariableNames(func.Body);
 
-        // For class methods, use DunderMapping for dunders, NameMangler for regular names
+        // For class methods, use DunderMapping for dunders, NameCasing for regular names
         var mangledName = DunderMapping.ResolveCSharpName(func.Name)
-            ?? NameMangler.Transform(func.Name, NameContext.Method);
+            ?? NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
 
         // Determine return type from annotation or infer void
         // Default to void if no return type specified
@@ -603,7 +603,7 @@ internal partial class RoslynEmitter
     private MethodDeclarationSyntax GenerateInterfaceMethod(FunctionDef func)
     {
         var mangledName = DunderMapping.ResolveCSharpName(func.Name)
-            ?? NameMangler.Transform(func.Name, NameContext.Method);
+            ?? NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
 
         // Determine return type from annotation or infer void
         TypeSyntax returnType = func.ReturnType != null

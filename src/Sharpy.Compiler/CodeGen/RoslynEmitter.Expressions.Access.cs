@@ -334,7 +334,7 @@ internal partial class RoslynEmitter
             // First check for dunder methods, then Python list method mappings (append -> Add, etc.)
             var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
                 ?? NameMangler.GetListMethodMapping(memberAccess.Member)
-                ?? NameCasing.ResolveMethod(memberAccess.Member, isBacktickEscaped: false);
+                ?? NameCasing.ResolveMethod(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
 
             // CLR property access: if the member is a property (not a method) on a
             // discovery-loaded type and the call has no arguments, emit property access
@@ -517,7 +517,7 @@ internal partial class RoslynEmitter
             return null;
 
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
-        var csharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: false);
+        var csharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
         var outerName = GetNestedTypeOuterPrefix(nestedTypeSymbol);
         var qualifiedGenericName = QualifiedName(
             ParseName(outerName),
@@ -572,7 +572,7 @@ internal partial class RoslynEmitter
         var memberName = memberAccess.Member;
         if (!moduleSymbol.Exports.ContainsKey(memberName) && moduleSymbol.IsNetModule)
         {
-            var pascalName = NameCasing.ResolveMethod(memberName, isBacktickEscaped: false);
+            var pascalName = NameCasing.ResolveMethod(memberName, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
             if (moduleSymbol.Exports.ContainsKey(pascalName))
                 memberName = pascalName;
         }
@@ -585,7 +585,7 @@ internal partial class RoslynEmitter
         }
 
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
-        var genericMethodName = GenericName(NameCasing.ResolveMethod(memberName, isBacktickEscaped: false))
+        var genericMethodName = GenericName(NameCasing.ResolveMethod(memberName, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped))
             .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
         var moduleExpr = GenerateExpression(memberAccess.Object);
@@ -929,7 +929,7 @@ internal partial class RoslynEmitter
         var mangledMemberName = DunderMapping.ResolveCSharpName(memberAccess.Member)
             ?? (NameFormDetector.IsConstantCaseName(memberAccess.Member)
                 ? NameMangler.ToConstantCase(memberAccess.Member)
-                : NameCasing.ResolveField(memberAccess.Member, isBacktickEscaped: false));
+                : NameCasing.ResolveField(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped));
         var member = IdentifierName(mangledMemberName);
 
         ExpressionSyntax result;

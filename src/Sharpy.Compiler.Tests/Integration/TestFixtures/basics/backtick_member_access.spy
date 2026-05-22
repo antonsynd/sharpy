@@ -1,0 +1,23 @@
+# Test backtick-escaped identifiers in member access position
+class Widget:
+    `myField`: int = 0
+    `label`: str = ""
+
+    def __init__(self, value: int, label: str):
+        self.`myField` = value
+        self.`label` = label
+
+    def `getValue`(self) -> int:
+        return self.`myField`
+
+    def describe(self) -> str:
+        return self.`label`
+
+def main():
+    w = Widget(42, "test")
+    # Backtick-escaped method call
+    print(w.`getValue`())
+    # Backtick-escaped field access
+    print(w.`label`)
+    # Mix: non-escaped method accessing backtick-escaped field
+    print(w.describe())
