@@ -45,21 +45,51 @@ something to edit by hand.
 
 ## Generating C# from `.spy`
 
-Single-file emit is the workflow for stdlib rewrites:
+Use the regeneration script to regenerate all `.spy` → C# mappings at once:
+
+```bash
+bash build_tools/regenerate_spy_stdlib.sh           # Regenerate all in-place
+bash build_tools/regenerate_spy_stdlib.sh --check    # Diff against committed (CI mode)
+bash build_tools/regenerate_spy_stdlib.sh --dry-run  # Show what would be regenerated
+```
+
+The script is the **single source of truth** for the `.spy` → C# mapping. It:
+- Calls `sharpyc emit csharp` with the correct per-module flags
+- Prepends the `// Generated from ...` header comment
+- Strips the auto-generated `[SharpyModule]` attribute (since `__Init__.cs` owns it)
+- Applies workarounds for known codegen issues (#690)
+
+CI runs `bash build_tools/check_spy_staleness.sh` (which delegates to
+`regenerate_spy_stdlib.sh --check`) to catch drift between `.spy` sources and
+committed C#.
+
+### Adding a new module to the mapping
+
+1. Add an entry to the `MODULES` array in `build_tools/regenerate_spy_stdlib.sh`:
+   ```bash
+   "mymodule:MyModule/MyModule.cs:-n Sharpy"
+   ```
+2. Run `bash build_tools/regenerate_spy_stdlib.sh` to generate the C#.
+3. The CI staleness check picks it up automatically.
+
+### Manual single-file emit (for debugging)
+
+For one-off debugging, you can still emit a single file directly:
 
 ```bash
 sharpyc emit csharp \
     src/Sharpy.Stdlib/spy/textwrap.spy \
-    -t library \
+    -t library -n Sharpy \
     -o src/Sharpy.Stdlib/Textwrap/Textwrap.cs
 ```
 
 - `-t library` is **required**. Without it the emitter produces a `Main`-style
   program, not a library class with `[SharpyModule]`.
+- `-n Sharpy` wraps the output in `namespace Sharpy { }` to match `__Init__.cs`.
 - `-o` writes the generated C# directly to the deployment location.
-- After regeneration, diff the new C# against the previous version and against
-  the original hand-written implementation. Public signatures should match so
-  the file is a drop-in replacement.
+
+> **Note:** Manual emit skips the header and `[SharpyModule]` stripping that the
+> regeneration script handles. Always use the script for final regeneration.
 
 ## Running tests
 
@@ -111,13 +141,13 @@ When porting a module from C# to `.spy`:
 - [ ] Write the `.spy` equivalent under `src/Sharpy.Stdlib/spy/<module>.spy`.
 - [ ] Verify Python reference behavior before implementing semantics:
       `python3 -c "import <module>; ..."`.
-- [ ] Generate C#:
-      `sharpyc emit csharp src/Sharpy.Stdlib/spy/<module>.spy -t library -o src/Sharpy.Stdlib/<Module>/<Module>.cs`.
+- [ ] Add the module to the `MODULES` array in `build_tools/regenerate_spy_stdlib.sh`.
+- [ ] Run `bash build_tools/regenerate_spy_stdlib.sh` to generate C#.
 - [ ] Compare public signatures of the generated C# against the original
       implementation — they must match.
 - [ ] Replace the original hand-written `.cs` file with the generated code.
-- [ ] Keep `__Init__.cs` if it contains the `[SharpyModule]` partial class
-      declaration or other state that the generator does not emit.
+- [ ] Keep `__Init__.cs` with the `[SharpyModule]` partial class declaration.
+- [ ] Run `bash build_tools/regenerate_spy_stdlib.sh --check` to verify staleness check passes.
 - [ ] Run unit tests: `dotnet test --filter "FullyQualifiedName~<Module>"`.
 - [ ] Run integration tests: `dotnet test --filter "DisplayName~stdlib_<module>"`.
 - [ ] Commit with a message referencing issue #676.
