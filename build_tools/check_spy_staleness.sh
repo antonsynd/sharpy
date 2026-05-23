@@ -15,8 +15,7 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 STDLIB_DIR="$REPO_ROOT/src/Sharpy.Stdlib"
 SPY_DIR="$STDLIB_DIR/spy"
 SHARPYC="dotnet run --project $REPO_ROOT/src/Sharpy.Cli --"
@@ -29,7 +28,7 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 # Map of spy filename (without extension) to the C# file it generates.
 # Add entries here as more modules are migrated.
 # Uses a plain list of "name:path" pairs for bash 3.x compatibility (macOS).
-SPY_TO_CS="textwrap:Textwrap/Textwrap.cs bisect_module:Bisect/Bisect.cs statistics:Statistics/Statistics.cs"
+SPY_TO_CS="textwrap:Textwrap/Textwrap.cs bisect_module:Bisect/Bisect.cs statistics:Statistics/Statistics.cs heapq:Heapq/Heapq.cs"
 
 stale=0
 

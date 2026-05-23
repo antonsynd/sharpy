@@ -1,0 +1,89 @@
+from sharpy import IndexError
+from system import IComparable
+
+def heappush[T: IComparable[T]](heap: list[T], item: T) -> None:
+    heap.append(item)
+    _sift_up(heap, len(heap) - 1)
+
+def heappop[T: IComparable[T]](heap: list[T]) -> T:
+    if len(heap) == 0:
+        raise IndexError("index out of range")
+    last_idx: int = len(heap) - 1
+    result: T = heap[0]
+    if last_idx > 0:
+        heap[0] = heap[last_idx]
+        heap.pop()
+        _sift_down(heap, 0)
+    else:
+        heap.pop()
+    return result
+
+def heapify[T: IComparable[T]](x: list[T]) -> None:
+    n: int = len(x)
+    i: int = n // 2 - 1
+    while i >= 0:
+        _sift_down(x, i)
+        i = i - 1
+
+def heapreplace[T: IComparable[T]](heap: list[T], item: T) -> T:
+    if len(heap) == 0:
+        raise IndexError("index out of range")
+    result: T = heap[0]
+    heap[0] = item
+    _sift_down(heap, 0)
+    return result
+
+def heappushpop[T: IComparable[T]](heap: list[T], item: T) -> T:
+    if len(heap) > 0 and heap[0].CompareTo(item) < 0:
+        result: T = heap[0]
+        heap[0] = item
+        _sift_down(heap, 0)
+        return result
+    return item
+
+def nlargest[T: IComparable[T]](n: int, iterable: list[T]) -> list[T]:
+    if n <= 0:
+        return []
+    sorted_copy: list[T] = list(iterable)
+    sorted_copy.sort()
+    sorted_copy.reverse()
+    if n >= len(sorted_copy):
+        return sorted_copy
+    return sorted_copy[:n]
+
+def nsmallest[T: IComparable[T]](n: int, iterable: list[T]) -> list[T]:
+    if n <= 0:
+        return []
+    sorted_copy: list[T] = list(iterable)
+    sorted_copy.sort()
+    if n >= len(sorted_copy):
+        return sorted_copy
+    return sorted_copy[:n]
+
+def _sift_up[T: IComparable[T]](heap: list[T], index: int) -> None:
+    while index > 0:
+        parent: int = (index - 1) // 2
+        if heap[index].CompareTo(heap[parent]) < 0:
+            temp: T = heap[index]
+            heap[index] = heap[parent]
+            heap[parent] = temp
+            index = parent
+        else:
+            break
+
+def _sift_down[T: IComparable[T]](heap: list[T], index: int) -> None:
+    count: int = len(heap)
+    while True:
+        smallest: int = index
+        left: int = 2 * index + 1
+        right: int = 2 * index + 2
+        if left < count and heap[left].CompareTo(heap[smallest]) < 0:
+            smallest = left
+        if right < count and heap[right].CompareTo(heap[smallest]) < 0:
+            smallest = right
+        if smallest == index:
+            break
+        temp: T = heap[index]
+        heap[index] = heap[smallest]
+        heap[smallest] = temp
+        index = smallest
