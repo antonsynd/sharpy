@@ -83,24 +83,19 @@ for entry in "${MODULES[@]}"; do
         continue
     fi
 
-    # Strip auto-generated [SharpyModule] attribute — __Init__.cs is the source of truth
-    # (the compiler derives the module name from the filename, which may differ from the
-    # actual module name, e.g. bisect_module.spy -> "bisect_module" vs correct "bisect").
-    sed -i '' '/\[global::Sharpy\.SharpyModule(/d' "$tmp_file"
-
-    # BUG(#690): -n flag produces "new Sharpy.System.X" instead of "new System.X"
-    sed -i '' 's/new Sharpy\.System\./new global::System./g' "$tmp_file"
-
-    # BUG(#690): Using alias "Math = global::System.Math" is shadowed by Sharpy.Math.
-    # Remove the alias and replace bare Math.X calls with fully qualified names.
-    sed -i '' '/using Math = global::System\.Math;/d' "$tmp_file"
-    sed -i '' 's/ Math\.Min(/ global::System.Math.Min(/g; s/ Math\.Max(/ global::System.Math.Max(/g; s/ Math\.Abs(/ global::System.Math.Abs(/g' "$tmp_file"
-    sed -i '' 's/=Math\.Min(/=global::System.Math.Min(/g; s/=Math\.Max(/=global::System.Math.Max(/g' "$tmp_file"
-
+    # Post-process: normalize CRLF→LF, strip trailing whitespace, strip [SharpyModule],
+    # fix BUG(#690) workarounds. Uses a pipeline (no sed -i, which differs macOS vs Linux).
     final_file="$WORK_DIR/${spy_name}_final.cs"
     {
         echo "$header"
-        cat "$tmp_file"
+        tr -d '\r' < "$tmp_file" \
+            | sed '/\[global::Sharpy\.SharpyModule(/d' \
+            | sed 's/new Sharpy\.System\./new global::System./g' \
+            | sed '/using Math = global::System\.Math;/d' \
+            | sed 's/ Math\.Min(/ global::System.Math.Min(/g; s/ Math\.Max(/ global::System.Math.Max(/g; s/ Math\.Abs(/ global::System.Math.Abs(/g' \
+            | sed 's/=Math\.Min(/=global::System.Math.Min(/g; s/=Math\.Max(/=global::System.Math.Max(/g' \
+            | sed 's/(int? )/(int?)/g' \
+            | sed 's/[[:space:]]*$//'
     } > "$final_file"
 
     emitted+=("${spy_name}:${cs_rel}")
