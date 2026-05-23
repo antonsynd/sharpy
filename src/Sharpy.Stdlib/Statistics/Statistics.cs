@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
-using Math = global::System.Math;
 
 namespace Sharpy
 {
@@ -137,7 +136,7 @@ namespace Sharpy
             return ss / global::Sharpy.Builtins.Len(values);
         }
 
-        private static Sharpy.List<double> _Materialize(Sharpy.List<double> data)
+        public static Sharpy.List<double> _Materialize(Sharpy.List<double> data)
         {
             Sharpy.List<double> result = new Sharpy.List<double>(data);
             if (global::Sharpy.Builtins.Len(result) == 0)
@@ -148,14 +147,14 @@ namespace Sharpy
             return result;
         }
 
-        private static Sharpy.List<double> _MaterializeSorted(Sharpy.List<double> data)
+        public static Sharpy.List<double> _MaterializeSorted(Sharpy.List<double> data)
         {
             Sharpy.List<double> result = _Materialize(data);
             result.Sort();
             return result;
         }
 
-        private static double _Sum(Sharpy.List<double> values)
+        public static double _Sum(Sharpy.List<double> values)
         {
             double total = 0.0d;
             foreach (var __loopVar_1 in values)
@@ -167,7 +166,7 @@ namespace Sharpy
             return total;
         }
 
-        private static double _SumOfSquaredDeviations(Sharpy.List<double> values, double m)
+        public static double _SumOfSquaredDeviations(Sharpy.List<double> values, double m)
         {
             double ss = 0.0d;
             foreach (var __loopVar_2 in values)

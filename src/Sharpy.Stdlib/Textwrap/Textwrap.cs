@@ -1,5 +1,5 @@
 // Generated from src/Sharpy.Stdlib/spy/textwrap.spy — do not edit directly.
-// To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/textwrap.spy -t library
+// To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/textwrap.spy -t library -n Sharpy
 #nullable enable
 
 using System;
@@ -23,14 +23,14 @@ namespace Sharpy
             Sharpy.List<string> result = new Sharpy.List<string>()
             {
             };
-            string collapsed = CollapseWhitespace(text);
+            string collapsed = _CollapseWhitespace(text);
             if (collapsed.Length == 0)
             {
                 return result;
             }
 
             Sharpy.List<string> words = collapsed.Split(" ");
-            System.Text.StringBuilder currentLine = new System.Text.StringBuilder();
+            global::System.Text.StringBuilder currentLine = new global::System.Text.StringBuilder();
             foreach (var __loopVar_0 in words)
             {
                 var word = __loopVar_0;
@@ -50,7 +50,7 @@ namespace Sharpy
                     int offset = 0;
                     while (offset < word.Length)
                     {
-                        int chunkSize = System.Math.Min(width, word.Length - offset);
+                        int chunkSize = global::System.Math.Min(width, word.Length - offset);
                         result.Append(word.Substring(offset, chunkSize));
                         offset = offset + chunkSize;
                     }
@@ -99,12 +99,12 @@ namespace Sharpy
             foreach (var __loopVar_1 in lines)
             {
                 var line = __loopVar_1;
-                if (line.Length == 0 || IsWhitespaceOnly(line))
+                if (line.Length == 0 || _IsWhitespaceOnly(line))
                 {
                     continue;
                 }
 
-                string leadingWs = GetLeadingWhitespace(line);
+                string leadingWs = _GetLeadingWhitespace(line);
                 if (!hasPrefix)
                 {
                     commonPrefix = leadingWs;
@@ -112,7 +112,7 @@ namespace Sharpy
                 }
                 else
                 {
-                    commonPrefix = CommonPrefix(commonPrefix, leadingWs);
+                    commonPrefix = _CommonPrefix(commonPrefix, leadingWs);
                 }
 
                 if (commonPrefix.Length == 0)
@@ -126,7 +126,7 @@ namespace Sharpy
                 return text;
             }
 
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            global::System.Text.StringBuilder sb = new global::System.Text.StringBuilder();
             int i = 0;
             while (i < global::Sharpy.Builtins.Len(lines))
             {
@@ -168,12 +168,12 @@ namespace Sharpy
                 throw new global::Sharpy.TypeError("prefix must be str, not NoneType");
             }
 
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
-            Sharpy.List<string> lines = SplitKeepEnds(text);
+            global::System.Text.StringBuilder sb = new global::System.Text.StringBuilder();
+            Sharpy.List<string> lines = _SplitKeepEnds(text);
             foreach (var __loopVar_2 in lines)
             {
                 var line = __loopVar_2;
-                if (!IsWhitespaceOnly(line))
+                if (!_IsWhitespaceOnly(line))
                 {
                     sb.Append(prefix);
                 }
@@ -192,7 +192,7 @@ namespace Sharpy
             }
 
             string placeholder = " [...]";
-            string collapsed = CollapseWhitespace(text);
+            string collapsed = _CollapseWhitespace(text);
             if (collapsed.Length <= width)
             {
                 return collapsed;
@@ -218,9 +218,9 @@ namespace Sharpy
             return collapsed.Substring(0, breakAt) + placeholder;
         }
 
-        private static string CollapseWhitespace(string text)
+        public static string _CollapseWhitespace(string text)
         {
-            System.Text.StringBuilder sb = new System.Text.StringBuilder(text.Length);
+            global::System.Text.StringBuilder sb = new global::System.Text.StringBuilder(text.Length);
             bool inWhitespace = false;
             bool hasContent = false;
             foreach (var __loopVar_3 in global::Sharpy.StringHelpers.Iterate(text))
@@ -249,7 +249,7 @@ namespace Sharpy
             return sb.ToString();
         }
 
-        private static bool IsWhitespaceOnly(string line)
+        public static bool _IsWhitespaceOnly(string line)
         {
             foreach (var __loopVar_4 in global::Sharpy.StringHelpers.Iterate(line))
             {
@@ -263,7 +263,7 @@ namespace Sharpy
             return true;
         }
 
-        private static string GetLeadingWhitespace(string line)
+        public static string _GetLeadingWhitespace(string line)
         {
             int i = 0;
             while (i < line.Length && global::Sharpy.StringHelpers.GetItem(line, i).Isspace())
@@ -274,9 +274,9 @@ namespace Sharpy
             return line.Substring(0, i);
         }
 
-        private static string CommonPrefix(string a, string b)
+        public static string _CommonPrefix(string a, string b)
         {
-            int minLen = System.Math.Min(a.Length, b.Length);
+            int minLen = global::System.Math.Min(a.Length, b.Length);
             int i = 0;
             while (i < minLen && global::Sharpy.StringHelpers.GetItem(a, i) == global::Sharpy.StringHelpers.GetItem(b, i))
             {
@@ -286,7 +286,7 @@ namespace Sharpy
             return a.Substring(0, i);
         }
 
-        private static Sharpy.List<string> SplitKeepEnds(string text)
+        public static Sharpy.List<string> _SplitKeepEnds(string text)
         {
             Sharpy.List<string> lines = new Sharpy.List<string>()
             {
