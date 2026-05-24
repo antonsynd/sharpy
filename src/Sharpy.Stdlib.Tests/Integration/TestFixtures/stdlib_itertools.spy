@@ -24,3 +24,42 @@ def main():
     # accumulate with func
     acc2: list[int] = list(itertools.accumulate([1, 2, 3, 4, 5], lambda a: int, b: int: a * b))
     print(acc2)
+
+    # compress
+    data: list[str] = ["A", "B", "C", "D", "E", "F"]
+    sels: list[bool] = [True, False, True, False, True, True]
+    comp: list[str] = list(itertools.compress(data, sels))
+    print(comp)
+
+    # dropwhile
+    nums: list[int] = [1, 4, 6, 4, 1]
+    dw: list[int] = list(itertools.dropwhile(lambda x: int: x < 5, nums))
+    print(dw)
+
+    # takewhile
+    tw: list[int] = list(itertools.takewhile(lambda x: int: x < 5, nums))
+    print(tw)
+
+    # filterfalse
+    nums2: list[int] = [1, 2, 3, 4, 5, 6]
+    ff: list[int] = list(itertools.filterfalse(lambda x: int: x % 2 == 0, nums2))
+    print(ff)
+
+    # islice
+    nums3: list[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    sl: list[int] = list(itertools.islice(nums3, 3))
+    print(sl)
+
+    # pairwise
+    nums4: list[int] = [1, 2, 3, 4, 5]
+    pairs: list[tuple[int, int]] = list(itertools.pairwise(nums4))
+    print(pairs)
+
+    # cycle (take first 6)
+    cyc_src: list[str] = ["A", "B", "C"]
+    cyc_result: list[str] = []
+    for c in itertools.cycle(cyc_src):
+        cyc_result.append(c)
+        if len(cyc_result) >= 6:
+            break
+    print(cyc_result)

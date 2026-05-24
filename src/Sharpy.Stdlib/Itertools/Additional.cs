@@ -317,7 +317,7 @@ namespace Sharpy
         /// list(itertools.islice([0, 1, 2, 3, 4], 3))    # [0, 1, 2]
         /// </code>
         /// </example>
-        public static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int stop)
+        internal static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int stop)
         {
             return new IsliceIterator<T>(iterable, stop);
         }
@@ -331,7 +331,7 @@ namespace Sharpy
         /// <param name="step">Step value (default 1).</param>
         /// <typeparam name="T">The element type.</typeparam>
         /// <returns>An iterator over the selected elements.</returns>
-        public static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int start, int stop, int step = 1)
+        internal static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int start, int stop, int step = 1)
         {
             return new IsliceIterator<T>(iterable, start, stop, step);
         }

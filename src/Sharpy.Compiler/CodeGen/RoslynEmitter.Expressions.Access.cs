@@ -168,10 +168,10 @@ internal partial class RoslynEmitter
                         .Select(t => _typeMapper.MapSemanticType(t));
                     var csharpName = CSharpTypeNames.FromSharpyName(funcName.Name)
                         ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
-                    var needsGlobalQual = !string.IsNullOrEmpty(_context.ProjectNamespace)
+                    var needsGlobalQualification = !string.IsNullOrEmpty(_context.ProjectNamespace)
                         && csharpName.Contains('.', StringComparison.Ordinal);
                     var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpName,
-                            needsGlobalQual, typeArgsSyntax.ToArray());
+                            needsGlobalQualification, typeArgsSyntax.ToArray());
                     return ObjectCreationExpression(genericTypeSyntax)
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }
@@ -183,7 +183,7 @@ internal partial class RoslynEmitter
                 var collectionName = CSharpTypeNames.FromSharpyName(funcName.Name);
                 if (collectionName != null)
                 {
-                    var globalQualifyCollection = !string.IsNullOrEmpty(_context.ProjectNamespace)
+                    var needsGlobalQualification = !string.IsNullOrEmpty(_context.ProjectNamespace)
                         && collectionName.Contains('.', StringComparison.Ordinal);
                     if (call.Arguments.Length == 1)
                     {
@@ -192,12 +192,12 @@ internal partial class RoslynEmitter
                         {
                             var elementTypeSyntax = _typeMapper.MapSemanticType(elementType);
                             var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(
-                                collectionName, globalQualifyCollection, elementTypeSyntax);
+                                collectionName, needsGlobalQualification, elementTypeSyntax);
                             return ObjectCreationExpression(genericTypeSyntax)
                                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                         }
                     }
-                    NameSyntax collectionTypeSyntax = globalQualifyCollection
+                    NameSyntax collectionTypeSyntax = needsGlobalQualification
                         ? MakeGlobalQualifiedName(collectionName.Split('.'))
                         : ParseName(collectionName);
                     return ObjectCreationExpression(collectionTypeSyntax)
