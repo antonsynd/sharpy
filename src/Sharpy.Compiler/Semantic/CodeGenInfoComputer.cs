@@ -194,12 +194,14 @@ internal class CodeGenInfoComputer
 
     private string DetermineCSharpNameForFromImport(string name, Symbol symbol, bool isNetModule)
     {
-        // For .NET module variable fields (e.g., string.digits), the CLR field name
-        // may differ from PascalCase convention. Sharpy.Core uses Python-style
-        // snake_case names for string module constants. Use the CLR name directly.
+        // For .NET module variable fields, SCREAMING_SNAKE_CASE names match C# verbatim
+        // (e.g., csv.QUOTE_ALL). Other names need PascalCase conversion to match the
+        // generated C# field names (e.g., string.digits → Digits, math.pi → Pi).
         if (isNetModule && symbol is VariableSymbol)
         {
-            return name;
+            if (NameFormDetector.IsConstantCaseName(name))
+                return name;
+            return NameCasing.ResolveMethod(name, symbol.IsNameBacktickEscaped);
         }
 
         // Use the same logic as RoslynEmitter for from-imports:

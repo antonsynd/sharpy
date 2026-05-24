@@ -34,6 +34,7 @@ MODULES=(
     "heapq:Heapq/Heapq.cs:-n Sharpy"
     "itertools:Itertools/Itertools.cs:-n Sharpy"
     "functools:Functools/Functools.cs:-n Sharpy"
+    "string_module:String/StringModule.cs:-n Sharpy"
 )
 
 mode="regenerate"
