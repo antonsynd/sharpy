@@ -128,8 +128,8 @@ internal class TypeSyntaxMapper
 
             // Handle task types (v0.2.x placeholder)
             TaskType tt => tt.ResultType == null
-                ? ParseTypeName("System.Threading.Tasks.Task")
-                : QualifiedGenericName("System.Threading.Tasks.Task", MapSemanticType(tt.ResultType)),
+                ? RoslynEmitter.MakeGlobalQualifiedName("System", "Threading", "Tasks", "Task")
+                : QualifiedGenericName("System.Threading.Tasks.Task", globalQualified: true, MapSemanticType(tt.ResultType)),
 
             // Exhaustive check - if a new SemanticType is added, this will fail at runtime
             _ => throw new InvalidOperationException(
@@ -183,10 +183,10 @@ internal class TypeSyntaxMapper
         {
             if (paramTypes.Length == 0)
             {
-                return ParseTypeName("System.Action");
+                return RoslynEmitter.MakeGlobalQualifiedName("System", "Action");
             }
 
-            return QualifiedGenericName("System.Action", paramTypes);
+            return QualifiedGenericName("System.Action", globalQualified: true, paramTypes);
         }
 
         // Otherwise use Func<T1, T2, ..., TResult>
@@ -194,17 +194,17 @@ internal class TypeSyntaxMapper
 
         if (allTypes.Length == 1)
         {
-            return QualifiedGenericName("System.Func", returnType);
+            return QualifiedGenericName("System.Func", globalQualified: true, returnType);
         }
 
-        return QualifiedGenericName("System.Func", allTypes);
+        return QualifiedGenericName("System.Func", globalQualified: true, allTypes);
     }
 
     private TypeSyntax MapSemanticTupleType(Semantic.TupleType tupleType)
     {
         if (tupleType.ElementTypes.Count == 0)
         {
-            return ParseTypeName("System.ValueTuple");
+            return RoslynEmitter.MakeGlobalQualifiedName("System", "ValueTuple");
         }
 
         var elementTypes = tupleType.ElementTypes
@@ -235,7 +235,7 @@ internal class TypeSyntaxMapper
         }
 
         // Use ValueTuple<T1, T2, ...>
-        return QualifiedGenericName("System.ValueTuple", elementTypes);
+        return QualifiedGenericName("System.ValueTuple", globalQualified: true, elementTypes);
     }
 
     /// <summary>
@@ -348,11 +348,11 @@ internal class TypeSyntaxMapper
             {
                 if (paramTypeSyntaxes.Length == 0)
                 {
-                    result = ParseTypeName("System.Action");
+                    result = RoslynEmitter.MakeGlobalQualifiedName("System", "Action");
                 }
                 else
                 {
-                    result = QualifiedGenericName("System.Action", paramTypeSyntaxes);
+                    result = QualifiedGenericName("System.Action", globalQualified: true, paramTypeSyntaxes);
                 }
             }
             else
@@ -362,11 +362,11 @@ internal class TypeSyntaxMapper
 
                 if (funcTypeArgs.Length == 1)
                 {
-                    result = QualifiedGenericName("System.Func", returnTypeSyntax);
+                    result = QualifiedGenericName("System.Func", globalQualified: true, returnTypeSyntax);
                 }
                 else
                 {
-                    result = QualifiedGenericName("System.Func", funcTypeArgs);
+                    result = QualifiedGenericName("System.Func", globalQualified: true, funcTypeArgs);
                 }
             }
 
@@ -679,10 +679,10 @@ internal class TypeSyntaxMapper
         {
             if (paramTypes.Length == 0)
             {
-                return ParseTypeName("System.Action");
+                return RoslynEmitter.MakeGlobalQualifiedName("System", "Action");
             }
 
-            return QualifiedGenericName("System.Action", paramTypes);
+            return QualifiedGenericName("System.Action", globalQualified: true, paramTypes);
         }
 
         // Otherwise use Func<T1, T2, ..., TResult>
@@ -690,10 +690,10 @@ internal class TypeSyntaxMapper
 
         if (allTypes.Length == 1)
         {
-            return QualifiedGenericName("System.Func", returnType);
+            return QualifiedGenericName("System.Func", globalQualified: true, returnType);
         }
 
-        return QualifiedGenericName("System.Func", allTypes);
+        return QualifiedGenericName("System.Func", globalQualified: true, allTypes);
     }
 
     /// <summary>
@@ -704,7 +704,7 @@ internal class TypeSyntaxMapper
         if (tupleType.ElementTypes.IsEmpty)
         {
             // Empty tuple
-            return ParseTypeName("System.ValueTuple");
+            return RoslynEmitter.MakeGlobalQualifiedName("System", "ValueTuple");
         }
 
         var elementTypes = tupleType.ElementTypes
@@ -735,7 +735,7 @@ internal class TypeSyntaxMapper
         }
 
         // Use ValueTuple<T1, T2, ...>
-        return QualifiedGenericName("System.ValueTuple", elementTypes);
+        return QualifiedGenericName("System.ValueTuple", globalQualified: true, elementTypes);
     }
 
     /// <summary>

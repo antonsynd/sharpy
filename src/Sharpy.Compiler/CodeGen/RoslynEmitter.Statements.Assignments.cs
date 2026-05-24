@@ -941,18 +941,13 @@ internal partial class RoslynEmitter
             }
             else
             {
-                // Build Slice constructor args: new Sharpy.Slice((int?)start, (int?)end)
                 var startArg = numBefore > 0
-                    ? (ExpressionSyntax)CastExpression(
-                        NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numBefore)))
+                    ? (ExpressionSyntax)LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numBefore))
                     : LiteralExpression(SyntaxKind.NullLiteralExpression);
 
                 var endArg = numAfter > 0
-                    ? (ExpressionSyntax)CastExpression(
-                        NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                        PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression,
-                            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numAfter))))
+                    ? (ExpressionSyntax)PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression,
+                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(numAfter)))
                     : LiteralExpression(SyntaxKind.NullLiteralExpression);
 
                 // __t.GetSlice(new global::Sharpy.Slice(start, end))

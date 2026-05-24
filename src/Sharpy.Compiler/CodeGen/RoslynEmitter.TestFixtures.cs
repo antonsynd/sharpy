@@ -155,7 +155,7 @@ internal partial class RoslynEmitter
         {
             // private System.Action? _teardown;
             teardownField = FieldDeclaration(
-                    VariableDeclaration(NullableType(ParseTypeName("System.Action")))
+                    VariableDeclaration(NullableType(MakeGlobalQualifiedName("System", "Action")))
                         .WithVariables(SingletonSeparatedList(VariableDeclarator("_teardown"))))
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)));
 
@@ -218,7 +218,7 @@ internal partial class RoslynEmitter
         if (info.IsDisposable)
         {
             classDecl = classDecl.WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
-                SimpleBaseType(ParseTypeName("System.IDisposable")))));
+                SimpleBaseType(MakeGlobalQualifiedName("System", "IDisposable")))));
         }
 
         if (!string.IsNullOrEmpty(func.DocString))

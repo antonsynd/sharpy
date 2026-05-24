@@ -515,7 +515,7 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// which breaks in constrained expression contexts (e.g., f-string interpolation holes).
     /// </summary>
     /// <param name="parts">The namespace/type segments after global:: (e.g., "Sharpy", "Builtins", "Len").</param>
-    private static NameSyntax MakeGlobalQualifiedName(params string[] parts)
+    internal static NameSyntax MakeGlobalQualifiedName(params string[] parts)
     {
         NameSyntax name = AliasQualifiedName(
             IdentifierName(Token(SyntaxKind.GlobalKeyword)),

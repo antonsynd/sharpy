@@ -92,7 +92,6 @@ for entry in "${MODULES[@]}"; do
         echo "$header"
         tr -d '\r' < "$tmp_file" \
             | sed '/\[global::Sharpy\.SharpyModule(/d' \
-            | sed 's/(int? )/(int?)/g' \
             | sed 's/[[:space:]]*$//'
     } > "$final_file"
 

@@ -1290,20 +1290,14 @@ internal partial class RoslynEmitter
         // where omitted bounds pass null (matching the nullable int? parameters)
         var obj = GenerateExpression(sliceAccess.Object);
         var start = sliceAccess.Start != null
-            ? (ExpressionSyntax)CastExpression(
-                NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                GenerateExpression(sliceAccess.Start))
-            : LiteralExpression(SyntaxKind.NullLiteralExpression);
+            ? GenerateExpression(sliceAccess.Start)
+            : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
         var stop = sliceAccess.Stop != null
-            ? (ExpressionSyntax)CastExpression(
-                NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                GenerateExpression(sliceAccess.Stop))
-            : LiteralExpression(SyntaxKind.NullLiteralExpression);
+            ? GenerateExpression(sliceAccess.Stop)
+            : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
         var step = sliceAccess.Step != null
-            ? (ExpressionSyntax)CastExpression(
-                NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                GenerateExpression(sliceAccess.Step))
-            : LiteralExpression(SyntaxKind.NullLiteralExpression);
+            ? GenerateExpression(sliceAccess.Step)
+            : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
 
         return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,

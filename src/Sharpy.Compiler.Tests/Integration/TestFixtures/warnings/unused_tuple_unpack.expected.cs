@@ -9,7 +9,7 @@ using global::Sharpy;
 
 public static partial class UnusedTupleUnpack
 {
-    public static System.ValueTuple<int, int> GetPair()
+    public static global::System.ValueTuple<int, int> GetPair()
     {
 #line (2, 5) - (2, 21) 1 "unused_tuple_unpack.spy"
         return (10, 20);

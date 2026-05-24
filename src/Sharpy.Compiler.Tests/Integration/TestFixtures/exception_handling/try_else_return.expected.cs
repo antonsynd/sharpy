@@ -37,7 +37,7 @@ public static partial class TryElseReturn
                 return FormattableString.Invariant($"result: {(total)}");
             }
 
-            throw new System.InvalidOperationException("unreachable");
+            throw new global::System.InvalidOperationException("unreachable");
         }
     }
 

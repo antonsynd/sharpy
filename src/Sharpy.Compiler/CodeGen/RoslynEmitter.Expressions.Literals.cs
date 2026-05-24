@@ -22,7 +22,7 @@ internal partial class RoslynEmitter
         // Note: For abstract methods/interface methods, the ellipsis is ignored and
         // the method has no body (handled in GenerateClassMethod/GenerateInterfaceMethod)
         return ThrowExpression(
-            ObjectCreationExpression(ParseTypeName("System.NotImplementedException"))
+            ObjectCreationExpression(MakeGlobalQualifiedName("System", "NotImplementedException"))
                 .WithArgumentList(ArgumentList()));
     }
 

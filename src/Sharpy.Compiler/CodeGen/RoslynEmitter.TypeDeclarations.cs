@@ -482,7 +482,7 @@ internal partial class RoslynEmitter
             // synthesized Dispose() method satisfies xUnit's per-test cleanup contract.
             if (isTestCase && hasTeardown)
             {
-                baseTypes.Add(SimpleBaseType(ParseTypeName("System.IDisposable")));
+                baseTypes.Add(SimpleBaseType(MakeGlobalQualifiedName("System", "IDisposable")));
             }
 
             if (baseTypes.Count > 0)

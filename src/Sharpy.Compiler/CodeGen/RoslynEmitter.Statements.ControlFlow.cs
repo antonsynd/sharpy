@@ -847,7 +847,7 @@ internal partial class RoslynEmitter
         // be selected when the body is throw-only and the compiler cannot infer
         // a return type for the lambda).
         var lambda = CastExpression(
-            ParseTypeName("System.Action"),
+            MakeGlobalQualifiedName("System", "Action"),
             ParenthesizedExpression(ParenthesizedLambdaExpression(Block(bodyStatements))));
 
         var throwsCall = InvocationExpression(
@@ -1252,7 +1252,7 @@ internal partial class RoslynEmitter
         {
             allStatements.Add(ThrowStatement(
                 ObjectCreationExpression(
-                    ParseTypeName("System.InvalidOperationException"))
+                    MakeGlobalQualifiedName("System", "InvalidOperationException"))
                     .WithArgumentList(ArgumentList(SingletonSeparatedList(
                         Argument(LiteralExpression(
                             SyntaxKind.StringLiteralExpression,
@@ -1387,14 +1387,14 @@ internal partial class RoslynEmitter
             VariableDeclaration(
                 GenericName(Identifier("System.Collections.Generic.List"))
                     .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
-                        ParseTypeName("System.Exception")))))
+                        MakeGlobalQualifiedName("System", "Exception")))))
             .WithVariables(SingletonSeparatedList(
                 VariableDeclarator(Identifier(allMatchedVar))
                     .WithInitializer(EqualsValueClause(
                         ObjectCreationExpression(
                             GenericName(Identifier("System.Collections.Generic.List"))
                                 .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
-                                    ParseTypeName("System.Exception")))))
+                                    MakeGlobalQualifiedName("System", "Exception")))))
                         .WithArgumentList(ArgumentList())))))));
 
         foreach (var handler in handlers)
@@ -1478,7 +1478,7 @@ internal partial class RoslynEmitter
                                 IdentifierName(matchedVar),
                                 GenericName(Identifier("Cast"))
                                     .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
-                                        ParseTypeName("System.Exception")))))),
+                                        MakeGlobalQualifiedName("System", "Exception")))))),
                         IdentifierName("ToList")));
 
                 var egCreation = ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "ExceptionGroup"))
@@ -1564,7 +1564,7 @@ internal partial class RoslynEmitter
             LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
 
         var rethrowStmt = ThrowStatement(
-            ObjectCreationExpression(ParseTypeName("System.AggregateException"))
+            ObjectCreationExpression(MakeGlobalQualifiedName("System", "AggregateException"))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(
                     Argument(IdentifierName(unmatchedVar))))));
 
@@ -1572,7 +1572,7 @@ internal partial class RoslynEmitter
 
         // Build the single catch clause: catch (System.AggregateException __eg_N) { ... }
         var catchDeclaration = CatchDeclaration(
-            ParseTypeName("System.AggregateException"),
+            MakeGlobalQualifiedName("System", "AggregateException"),
             Identifier(egVar));
 
         result.Add(CatchClause(catchDeclaration, null, Block(catchBodyStatements)));

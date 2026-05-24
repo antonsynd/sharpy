@@ -117,7 +117,7 @@ internal partial class RoslynEmitter
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
             .WithExpressionBody(ArrowExpressionClause(
                 ThrowExpression(
-                    ObjectCreationExpression(ParseTypeName("System.NotSupportedException"))
+                    ObjectCreationExpression(MakeGlobalQualifiedName("System", "NotSupportedException"))
                         .WithArgumentList(ArgumentList()))))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
 

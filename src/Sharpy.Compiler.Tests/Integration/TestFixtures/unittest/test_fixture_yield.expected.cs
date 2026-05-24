@@ -16,11 +16,11 @@ public static partial class TestFixtureYield
     }
 }
 
-public class CounterFixture : System.IDisposable
+public class CounterFixture : global::System.IDisposable
 {
     public Sharpy.List<int> Value { get; private set; } = default!;
 
-    private System.Action? _teardown;
+    private global::System.Action? _teardown;
     public CounterFixture()
     {
 #line (3, 5) - (3, 27) 1 "test_fixture_yield.spy"

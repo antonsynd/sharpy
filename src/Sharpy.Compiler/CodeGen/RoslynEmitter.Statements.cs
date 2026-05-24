@@ -332,7 +332,7 @@ internal partial class RoslynEmitter
         if (expr is EllipsisLiteral)
         {
             return ThrowStatement(
-                ObjectCreationExpression(ParseTypeName("System.NotImplementedException"))
+                ObjectCreationExpression(MakeGlobalQualifiedName("System", "NotImplementedException"))
                     .WithArgumentList(ArgumentList()));
         }
 
