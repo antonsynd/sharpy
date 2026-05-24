@@ -147,16 +147,25 @@ internal partial class RoslynEmitter
                     NameCasing.ResolveMethod(name.Name, name.IsNameBacktickEscaped));
             }
 
-            // Discovered TypeSymbols in the Sharpy namespace (e.g., datetime → Sharpy.DateTime)
-            // must resolve through the CLR type name, not the Sharpy-facing Python alias,
-            // so member access like datetime.strptime(...) becomes Sharpy.DateTime.Strptime(...).
-            if ((resolvedSymbol is TypeSymbol rts && rts.ClrType != null && rts.ClrType.Namespace == "Sharpy")
-                || (symbol is TypeSymbol lts && lts.ClrType != null && lts.ClrType.Namespace == "Sharpy"))
+            // Discovered TypeSymbols with CLR type info must resolve through the CLR type name.
+            // Sharpy namespace: datetime → global::Sharpy.DateTime
+            // System namespace (when inside a user namespace): Math → global::System.Math
             {
-                var clrType = (resolvedSymbol as TypeSymbol)?.ClrType
-                              ?? ((TypeSymbol)symbol!).ClrType!;
-                var clrName = ClrNameHelper.StripArity(clrType.Name);
-                return MakeGlobalQualifiedName("Sharpy", clrName);
+                var ts = (resolvedSymbol as TypeSymbol) ?? (symbol as TypeSymbol);
+                if (ts?.ClrType != null)
+                {
+                    if (ts.ClrType.Namespace == "Sharpy")
+                    {
+                        var clrName = ClrNameHelper.StripArity(ts.ClrType.Name);
+                        return MakeGlobalQualifiedName("Sharpy", clrName);
+                    }
+
+                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                    {
+                        var fullName = ClrNameHelper.StripArity(ts.ClrType.FullName!);
+                        return MakeGlobalQualifiedName(fullName.Split('.'));
+                    }
+                }
             }
         }
 

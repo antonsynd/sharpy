@@ -1049,9 +1049,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)
     {
-        // System.Math.Floor((double)(left / right)) for both cases
-        // Note: We use fully qualified System.Math to avoid conflicts with Sharpy.Math namespace
-        // Note: We always cast to double to avoid CS0121 ambiguity between Math.Floor(double) and Math.Floor(decimal)
+        // global::System.Math.Floor((double)(left / right)) for both cases
+        // Cast to double to avoid CS0121 ambiguity between Math.Floor(double) and Math.Floor(decimal)
         var divisionExpr = BinaryExpression(SyntaxKind.DivideExpression,
             hasFloatOperand ? left : CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
             right);
@@ -1063,9 +1062,7 @@ internal partial class RoslynEmitter
 
         var floorCall = InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("System"),
-                    IdentifierName("Math")),
+                MakeGlobalQualifiedName("System", "Math"),
                 IdentifierName("Floor")))
             .AddArgumentListArguments(Argument(castToDouble));
 

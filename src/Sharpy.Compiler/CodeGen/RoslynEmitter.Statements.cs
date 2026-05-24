@@ -389,11 +389,11 @@ internal partial class RoslynEmitter
         if (deltaKw != null)
         {
             var delta = GenerateExpression(deltaKw.Value);
-            // System.Math.Abs(actual - expected) <= delta
+            // global::System.Math.Abs(actual - expected) <= delta
             var absExpr = InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("System.Math"),
+                    MakeGlobalQualifiedName("System", "Math"),
                     IdentifierName("Abs")))
                 .AddArgumentListArguments(Argument(
                     BinaryExpression(SyntaxKind.SubtractExpression, actual, expected)));

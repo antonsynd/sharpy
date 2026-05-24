@@ -1481,7 +1481,7 @@ internal partial class RoslynEmitter
                                         ParseTypeName("System.Exception")))))),
                         IdentifierName("ToList")));
 
-                var egCreation = ObjectCreationExpression(ParseTypeName("Sharpy.ExceptionGroup"))
+                var egCreation = ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "ExceptionGroup"))
                     .WithArgumentList(ArgumentList(SeparatedList(new[]
                     {
                         Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(""))),

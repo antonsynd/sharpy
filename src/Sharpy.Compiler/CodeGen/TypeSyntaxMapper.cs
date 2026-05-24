@@ -922,6 +922,9 @@ internal class TypeSyntaxMapper
     /// This avoids passing dotted names to GenericName(), which expects a simple identifier.
     /// </summary>
     internal static NameSyntax QualifiedGenericName(string dottedTypeName, params TypeSyntax[] typeArguments)
+        => QualifiedGenericName(dottedTypeName, globalQualified: false, typeArguments);
+
+    internal static NameSyntax QualifiedGenericName(string dottedTypeName, bool globalQualified, params TypeSyntax[] typeArguments)
     {
         var typeArgList = TypeArgumentList(
             typeArguments.Length == 1
@@ -935,7 +938,11 @@ internal class TypeSyntaxMapper
             return GenericName(parts[0]).WithTypeArgumentList(typeArgList);
         }
 
-        NameSyntax result = IdentifierName(parts[0]);
+        NameSyntax result = globalQualified
+            ? AliasQualifiedName(
+                IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                IdentifierName(parts[0]))
+            : IdentifierName(parts[0]);
         for (var i = 1; i < parts.Length - 1; i++)
         {
             result = QualifiedName(result, IdentifierName(parts[i]));

@@ -122,7 +122,7 @@ public static partial class FStringExpressions0003
 #line (68, 5) - (68, 66) 1 "f_string_expressions_0003.spy"
         global::Sharpy.Builtins.Print(FormattableString.Invariant($"Player: {(casual.Name)}, Games: {(casual.GamesPlayed)}"));
 #line (69, 5) - (69, 75) 1 "f_string_expressions_0003.spy"
-        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Average: {((casual.GamesPlayed == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)System.Math.Floor((double)((double)(casual.BaseScore) / casual.GamesPlayed))))} per game"));
+        global::Sharpy.Builtins.Print(FormattableString.Invariant($"Average: {((casual.GamesPlayed == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(casual.BaseScore) / casual.GamesPlayed))))} per game"));
 #line (70, 5) - (70, 54) 1 "f_string_expressions_0003.spy"
         global::Sharpy.Builtins.Print(FormattableString.Invariant($"Total Score: {(casual.GetFinalScore())}"));
 #line (71, 5) - (71, 89) 1 "f_string_expressions_0003.spy"

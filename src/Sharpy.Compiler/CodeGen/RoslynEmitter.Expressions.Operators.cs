@@ -29,13 +29,10 @@ internal partial class RoslynEmitter
         switch (binOp.Operator)
         {
             case BinaryOperator.Power:
-                // x ** y → System.Math.Pow(x, y)
-                // Note: We use fully qualified System.Math to avoid conflicts with Sharpy.Math namespace
+                // x ** y → global::System.Math.Pow(x, y)
                 var powCall = InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName("System"),
-                            IdentifierName("Math")),
+                        MakeGlobalQualifiedName("System", "Math"),
                         IdentifierName("Pow")))
                     .AddArgumentListArguments(
                         Argument(left),

@@ -14,7 +14,7 @@ public static partial class ArithmeticOperators
     public static int SumResult = A + B;
     public static int DiffResult = A - B;
     public static int ProdResult = A * B;
-    public static int DivResult = (B == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)System.Math.Floor((double)((double)(A) / B)));
+    public static int DivResult = (B == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(A) / B)));
     public static int ModResult = A % B;
     public static void Main()
     {

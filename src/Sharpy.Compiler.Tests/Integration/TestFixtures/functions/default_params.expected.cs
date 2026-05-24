@@ -14,7 +14,7 @@ public static partial class DefaultParams
 #line (6, 5) - (6, 34) 1 "default_params.spy"
         int baseCents = @base * 100;
 #line (7, 5) - (7, 64) 1 "default_params.spy"
-        int taxCents = (100 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)System.Math.Floor((double)((double)((baseCents * global::Sharpy.Builtins.Int(taxRate * 100))) / 100)));
+        int taxCents = (100 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)((baseCents * global::Sharpy.Builtins.Int(taxRate * 100))) / 100)));
 #line (8, 5) - (8, 47) 1 "default_params.spy"
         int totalCents = baseCents + taxCents;
 #line (9, 5) - (9, 42) 1 "default_params.spy"
@@ -22,7 +22,7 @@ public static partial class DefaultParams
 #line (10, 5) - (10, 53) 1 "default_params.spy"
         int finalCents = totalCents - discountCents;
 #line (11, 5) - (11, 31) 1 "default_params.spy"
-        return (100 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)System.Math.Floor((double)((double)(finalCents) / 100)));
+        return (100 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(finalCents) / 100)));
     }
 
     public static string Greet(string name, string greeting = "Hello", string punctuation = "!")

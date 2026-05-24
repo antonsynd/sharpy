@@ -139,8 +139,10 @@ internal partial class RoslynEmitter
                         .ToArray();
                     var csharpCollectionName = CSharpTypeNames.FromSharpyName(funcName.Name)
                         ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
+                    var needsGlobalQualification = !string.IsNullOrEmpty(_context.ProjectNamespace)
+                        && csharpCollectionName.Contains('.', StringComparison.Ordinal);
                     var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpCollectionName,
-                            typeArgsSyntax);
+                            needsGlobalQualification, typeArgsSyntax);
 
                     // DefaultDict: wrap type-reference arguments in factory lambdas.
                     // DefaultDict(list) → new DefaultDict<string, List<int>>(() => new List<int>())
@@ -166,8 +168,10 @@ internal partial class RoslynEmitter
                         .Select(t => _typeMapper.MapSemanticType(t));
                     var csharpName = CSharpTypeNames.FromSharpyName(funcName.Name)
                         ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
+                    var needsGlobalQual = !string.IsNullOrEmpty(_context.ProjectNamespace)
+                        && csharpName.Contains('.', StringComparison.Ordinal);
                     var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpName,
-                            typeArgsSyntax.ToArray());
+                            needsGlobalQual, typeArgsSyntax.ToArray());
                     return ObjectCreationExpression(genericTypeSyntax)
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }
@@ -179,6 +183,8 @@ internal partial class RoslynEmitter
                 var collectionName = CSharpTypeNames.FromSharpyName(funcName.Name);
                 if (collectionName != null)
                 {
+                    var globalQualifyCollection = !string.IsNullOrEmpty(_context.ProjectNamespace)
+                        && collectionName.Contains('.', StringComparison.Ordinal);
                     if (call.Arguments.Length == 1)
                     {
                         var elementType = TryInferElementTypeFromArg(call.Arguments[0]);
@@ -186,16 +192,22 @@ internal partial class RoslynEmitter
                         {
                             var elementTypeSyntax = _typeMapper.MapSemanticType(elementType);
                             var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(
-                                collectionName, elementTypeSyntax);
+                                collectionName, globalQualifyCollection, elementTypeSyntax);
                             return ObjectCreationExpression(genericTypeSyntax)
                                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                         }
                     }
-                    return ObjectCreationExpression(ParseName(collectionName))
+                    NameSyntax collectionTypeSyntax = globalQualifyCollection
+                        ? MakeGlobalQualifiedName(collectionName.Split('.'))
+                        : ParseName(collectionName);
+                    return ObjectCreationExpression(collectionTypeSyntax)
                         .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }
 
-                return ObjectCreationExpression(ParseName(name))
+                NameSyntax typeSyntax = name.StartsWith("global::", StringComparison.Ordinal)
+                    ? MakeGlobalQualifiedName(name.Substring("global::".Length).Split('.'))
+                    : ParseName(name);
+                return ObjectCreationExpression(typeSyntax)
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }
 

@@ -174,11 +174,17 @@ internal partial class RoslynEmitter
     {
         // For Sharpy.Core CLR types (with [SharpyModuleType] attribute), use the actual CLR
         // type name rather than deriving from DefiningModule, since the CLR namespace (Sharpy)
-        // differs from the module name (e.g., argparse -> Sharpy.ArgumentParser,
-        // not Argparse.ArgumentParser)
+        // differs from the module name (e.g., argparse -> Sharpy.ArgumentParser)
         if (typeSymbol.ClrType != null && typeSymbol.ClrType.Namespace == "Sharpy")
         {
-            // Type arguments are added separately by the caller.
+            var fullName = ClrNameHelper.StripArity(typeSymbol.ClrType.FullName!);
+            return $"global::{fullName}";
+        }
+
+        // All CLR types need global:: when inside a user namespace to avoid
+        // namespace prepending (e.g., Sharpy.System.Text.StringBuilder)
+        if (typeSymbol.ClrType != null && !string.IsNullOrEmpty(_context.ProjectNamespace))
+        {
             var fullName = ClrNameHelper.StripArity(typeSymbol.ClrType.FullName!);
             return $"global::{fullName}";
         }
