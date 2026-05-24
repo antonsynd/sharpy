@@ -8,28 +8,28 @@ public class Functools_Tests
     [Fact]
     public void Reduce_Sum_WithoutInitial()
     {
-        var result = Sharpy.Functools.Reduce((x, y) => x + y, new List<int> { 1, 2, 3, 4, 5 });
+        var result = Sharpy.Functools.Reduce((x, y) => x + y, new Sharpy.List<int>(new[] { 1, 2, 3, 4, 5 }));
         result.Should().Be(15);
     }
 
     [Fact]
     public void Reduce_Sum_WithInitial()
     {
-        var result = Sharpy.Functools.Reduce((x, y) => x + y, new List<int> { 1, 2, 3, 4, 5 }, 10);
+        var result = Sharpy.Functools.Reduce((x, y) => x + y, new Sharpy.List<int>(new[] { 1, 2, 3, 4, 5 }), 10);
         result.Should().Be(25);
     }
 
     [Fact]
     public void Reduce_SingleElement_WithoutInitial()
     {
-        var result = Sharpy.Functools.Reduce((x, y) => x + y, new List<int> { 42 });
+        var result = Sharpy.Functools.Reduce((x, y) => x + y, new Sharpy.List<int>(new[] { 42 }));
         result.Should().Be(42);
     }
 
     [Fact]
     public void Reduce_EmptyIterable_WithoutInitial_ThrowsTypeError()
     {
-        FluentActions.Invoking(() => Sharpy.Functools.Reduce((x, y) => x + y, new List<int>()))
+        FluentActions.Invoking(() => Sharpy.Functools.Reduce((x, y) => x + y, new Sharpy.List<int>()))
             .Should().Throw<Sharpy.TypeError>()
             .WithMessage("reduce() of empty iterable with no initial value");
     }
@@ -37,28 +37,28 @@ public class Functools_Tests
     [Fact]
     public void Reduce_EmptyIterable_WithInitial_ReturnsInitial()
     {
-        var result = Sharpy.Functools.Reduce((x, y) => x + y, new List<int>(), 42);
+        var result = Sharpy.Functools.Reduce((x, y) => x + y, new Sharpy.List<int>(), 42);
         result.Should().Be(42);
     }
 
     [Fact]
     public void Reduce_StringConcatenation()
     {
-        var result = Sharpy.Functools.Reduce((x, y) => x + y, new List<string> { "a", "b", "c" });
+        var result = Sharpy.Functools.Reduce((x, y) => x + y, new Sharpy.List<string>(new[] { "a", "b", "c" }));
         result.Should().Be("abc");
     }
 
     [Fact]
     public void Reduce_Product()
     {
-        var result = Sharpy.Functools.Reduce((x, y) => x * y, new List<int> { 1, 2, 3, 4 });
+        var result = Sharpy.Functools.Reduce((x, y) => x * y, new Sharpy.List<int>(new[] { 1, 2, 3, 4 }));
         result.Should().Be(24);
     }
 
     [Fact]
     public void Reduce_WithInitial_SingleElement()
     {
-        var result = Sharpy.Functools.Reduce((x, y) => x + y, new List<int> { 5 }, 10);
+        var result = Sharpy.Functools.Reduce((x, y) => x + y, new Sharpy.List<int>(new[] { 5 }), 10);
         result.Should().Be(15);
     }
 
@@ -100,7 +100,7 @@ public class Functools_Tests
     public void Reduce_WithIEnumerable()
     {
         IEnumerable<int> seq = Enumerable.Range(1, 5);
-        var result = Sharpy.Functools.Reduce((x, y) => x + y, seq);
+        var result = Sharpy.Functools.Reduce((x, y) => x + y, new Sharpy.List<int>(seq));
         result.Should().Be(15);
     }
 }

@@ -1,0 +1,26 @@
+import itertools
+
+def main():
+    # count
+    result: list[int] = []
+    for n in itertools.count(5, 3):
+        result.append(n)
+        if len(result) >= 4:
+            break
+    print(result)
+
+    # repeat with limit
+    rep: list[str] = list(itertools.repeat("x", 3))
+    print(rep)
+
+    # chain
+    chained: list[int] = list(itertools.chain[int]([1, 2], [3, 4], [5]))
+    print(chained)
+
+    # accumulate
+    acc: list[int] = list(itertools.accumulate([1, 2, 3, 4, 5]))
+    print(acc)
+
+    # accumulate with func
+    acc2: list[int] = list(itertools.accumulate([1, 2, 3, 4, 5], lambda a: int, b: int: a * b))
+    print(acc2)

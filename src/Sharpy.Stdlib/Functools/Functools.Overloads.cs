@@ -5,11 +5,6 @@ namespace Sharpy
 {
     public static partial class Functools
     {
-        public static T Reduce<T>(Func<T, T, T> func, IEnumerable<T> iterable)
-        {
-            return Reduce(func, new List<T>(iterable));
-        }
-
         public static T Reduce<T>(Func<T, T, T> func, IEnumerable<T> iterable, T initial)
         {
             T accumulator = initial;
