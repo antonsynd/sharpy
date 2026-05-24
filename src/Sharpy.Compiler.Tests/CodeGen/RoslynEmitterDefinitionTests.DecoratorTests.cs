@@ -125,7 +125,7 @@ public partial class RoslynEmitterDefinitionTests
 
         // Assert
         Assert.Contains("public int NotYetImplemented()", code);
-        Assert.Contains("throw new System.NotImplementedException()", code);
+        Assert.Contains("throw new global::System.NotImplementedException()", code);
     }
 
     [Fact]

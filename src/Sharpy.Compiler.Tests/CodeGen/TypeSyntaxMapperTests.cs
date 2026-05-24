@@ -245,7 +245,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Func<int>");
+        result.ToString().Should().Be("global::System.Func<int>");
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Func<int,string>");
+        result.ToString().Should().Be("global::System.Func<int,string>");
     }
 
     [Fact]
@@ -286,7 +286,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Action<int,string>");
+        result.ToString().Should().Be("global::System.Action<int,string>");
     }
 
     [Fact]
@@ -303,7 +303,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Action");
+        result.ToString().Should().Be("global::System.Action");
     }
 
     [Fact]
@@ -321,7 +321,7 @@ public class TypeSyntaxMapperTests
 
         var result = _typeMapper.MapType(typeAnnotation);
 
-        result.ToString().Should().Be("System.Func<int>");
+        result.ToString().Should().Be("global::System.Func<int>");
     }
 
     [Fact]
@@ -340,7 +340,7 @@ public class TypeSyntaxMapperTests
 
         var result = _typeMapper.MapType(typeAnnotation);
 
-        result.ToString().Should().Be("System.Func<int,int>");
+        result.ToString().Should().Be("global::System.Func<int,int>");
     }
 
     [Fact]
@@ -359,7 +359,7 @@ public class TypeSyntaxMapperTests
 
         var result = _typeMapper.MapType(typeAnnotation);
 
-        result.ToString().Should().Be("System.Action<int>");
+        result.ToString().Should().Be("global::System.Action<int>");
     }
 
     [Fact]
@@ -377,7 +377,7 @@ public class TypeSyntaxMapperTests
 
         var result = _typeMapper.MapType(typeAnnotation);
 
-        result.ToString().Should().Be("System.Action");
+        result.ToString().Should().Be("global::System.Action");
     }
 
     #endregion
@@ -397,7 +397,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapTupleType(tupleType);
 
         // Assert
-        result.ToString().Should().Be("System.ValueTuple");
+        result.ToString().Should().Be("global::System.ValueTuple");
     }
 
     [Fact]
@@ -436,7 +436,7 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapTupleType(tupleType);
 
         // Assert
-        result.ToString().Should().Be("System.ValueTuple<int,string>");
+        result.ToString().Should().Be("global::System.ValueTuple<int,string>");
     }
 
     [Fact]

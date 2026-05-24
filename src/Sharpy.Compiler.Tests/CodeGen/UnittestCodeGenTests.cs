@@ -339,7 +339,7 @@ def main():
 ";
         var code = CompileToCSharp(source, requiresSharpyCore: true);
         // IDisposable implementation
-        code.Should().Contain("System.IDisposable");
+        code.Should().Contain("global::System.IDisposable");
         // Constructor calls Setup()
         code.Should().MatchRegex(@"public\s+TestCalc\s*\(\s*\)");
         code.Should().Contain("Setup()");
