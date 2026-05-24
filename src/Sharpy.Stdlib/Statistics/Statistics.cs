@@ -27,7 +27,7 @@ namespace Sharpy
         {
             Sharpy.List<double> sortedData = _MaterializeSorted(data);
             int n = global::Sharpy.Builtins.Len(sortedData);
-            int mid = (2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)System.Math.Floor((double)((double)(n) / 2)));
+            int mid = (2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(n) / 2)));
             if (n % 2 == 0)
             {
                 return (sortedData[mid - 1] + sortedData[mid]) / 2.0d;
@@ -40,7 +40,7 @@ namespace Sharpy
         {
             Sharpy.List<double> sortedData = _MaterializeSorted(data);
             int n = global::Sharpy.Builtins.Len(sortedData);
-            int mid = (2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)System.Math.Floor((double)((double)(n) / 2)));
+            int mid = (2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(n) / 2)));
             if (n % 2 == 0)
             {
                 return sortedData[mid - 1];
@@ -53,7 +53,7 @@ namespace Sharpy
         {
             Sharpy.List<double> sortedData = _MaterializeSorted(data);
             int n = global::Sharpy.Builtins.Len(sortedData);
-            return sortedData[(2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)System.Math.Floor((double)((double)(n) / 2)))];
+            return sortedData[(2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(n) / 2)))];
         }
 
         public static T Mode<T>(Sharpy.List<T> data)
@@ -107,12 +107,12 @@ namespace Sharpy
 
         public static double Stdev(Sharpy.List<double> data)
         {
-            return Math.Sqrt(Variance(data));
+            return global::System.Math.Sqrt(Variance(data));
         }
 
         public static double Pstdev(Sharpy.List<double> data)
         {
-            return Math.Sqrt(Pvariance(data));
+            return global::System.Math.Sqrt(Pvariance(data));
         }
 
         public static double Variance(Sharpy.List<double> data)
@@ -138,7 +138,7 @@ namespace Sharpy
 
         public static Sharpy.List<double> _Materialize(Sharpy.List<double> data)
         {
-            Sharpy.List<double> result = new Sharpy.List<double>(data);
+            Sharpy.List<double> result = new global::Sharpy.List<double>(data);
             if (global::Sharpy.Builtins.Len(result) == 0)
             {
                 throw new global::Sharpy.StatisticsError("no data");

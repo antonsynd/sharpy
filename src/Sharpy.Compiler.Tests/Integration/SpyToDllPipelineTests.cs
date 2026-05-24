@@ -568,4 +568,28 @@ def main():
 
         Assert.True(appResult.Success, $"Cross-namespace constraint app compilation failed: {string.Join(", ", appResult.Diagnostics.GetErrors().Select(e => e.Message))}");
     }
+
+    [Fact]
+    public void NamespaceQualification_SharpyNamespace_UsesGlobalQualification()
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("Sharpy")
+            .WithOutputType("library")
+            .AddSourceFile("lib.spy", @"
+from system import Math
+
+def use_collections() -> list[int]:
+    result: list[int] = list([1, 2, 3])
+    return result
+
+def use_math() -> float:
+    return 3 ** 2
+
+def use_system_math() -> float:
+    return Math.sqrt(2.0)
+");
+        helper.CreateProjectFile();
+        var result = helper.Compile();
+        Assert.True(result.Success, $"Compilation with -n Sharpy failed: {string.Join(", ", result.Diagnostics.GetErrors().Select(e => e.Message))}");
+    }
 }

@@ -83,17 +83,13 @@ for entry in "${MODULES[@]}"; do
         continue
     fi
 
-    # Post-process: normalize CRLF→LF, strip trailing whitespace, strip [SharpyModule],
-    # fix BUG(#690) workarounds. Uses a pipeline (no sed -i, which differs macOS vs Linux).
+    # Post-process: normalize CRLF→LF, strip trailing whitespace, strip [SharpyModule].
+    # Uses a pipeline (no sed -i, which differs macOS vs Linux).
     final_file="$WORK_DIR/${spy_name}_final.cs"
     {
         echo "$header"
         tr -d '\r' < "$tmp_file" \
             | sed '/\[global::Sharpy\.SharpyModule(/d' \
-            | sed 's/new Sharpy\.System\./new global::System./g' \
-            | sed '/using Math = global::System\.Math;/d' \
-            | sed 's/ Math\.Min(/ global::System.Math.Min(/g; s/ Math\.Max(/ global::System.Math.Max(/g; s/ Math\.Abs(/ global::System.Math.Abs(/g' \
-            | sed 's/=Math\.Min(/=global::System.Math.Min(/g; s/=Math\.Max(/=global::System.Math.Max(/g' \
             | sed 's/(int? )/(int?)/g' \
             | sed 's/[[:space:]]*$//'
     } > "$final_file"

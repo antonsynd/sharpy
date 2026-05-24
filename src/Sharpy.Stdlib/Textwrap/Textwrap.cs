@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
-using StringBuilder = global::System.Text.StringBuilder;
 
 namespace Sharpy
 {
