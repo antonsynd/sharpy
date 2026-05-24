@@ -1,0 +1,80 @@
+def count(start: int = 0, step: int = 1) -> int:
+    n: int = start
+    while True:
+        yield n
+        n = n + step
+
+def repeat[T](elem: T, n: int = -1) -> T:
+    if n < 0:
+        while True:
+            yield elem
+    else:
+        i: int = 0
+        while i < n:
+            yield elem
+            i = i + 1
+
+def cycle[T](iterable: list[T]) -> T:
+    saved: list[T] = list(iterable)
+    if len(saved) == 0:
+        return
+    while True:
+        for element in saved:
+            yield element
+
+def compress[T](data: list[T], selectors: list[bool]) -> T:
+    i: int = 0
+    limit: int = len(data)
+    sel_limit: int = len(selectors)
+    while i < limit and i < sel_limit:
+        if selectors[i]:
+            yield data[i]
+        i = i + 1
+
+def dropwhile[T](predicate: (T) -> bool, iterable: list[T]) -> T:
+    dropping: bool = True
+    for element in iterable:
+        if dropping:
+            if not predicate(element):
+                dropping = False
+                yield element
+        else:
+            yield element
+
+def takewhile[T](predicate: (T) -> bool, iterable: list[T]) -> T:
+    for element in iterable:
+        if predicate(element):
+            yield element
+        else:
+            return
+
+def filterfalse[T](predicate: (T) -> bool, iterable: list[T]) -> T:
+    for element in iterable:
+        if not predicate(element):
+            yield element
+
+def islice[T](iterable: list[T], stop: int) -> T:
+    i: int = 0
+    for element in iterable:
+        if i >= stop:
+            return
+        yield element
+        i = i + 1
+
+def islice_range[T](iterable: list[T], start: int, stop: int, step: int = 1) -> T:
+    i: int = 0
+    next_yield: int = start
+    for element in iterable:
+        if i >= stop:
+            return
+        if i == next_yield:
+            yield element
+            next_yield = next_yield + step
+        i = i + 1
+
+def pairwise[T](iterable: list[T]) -> tuple[T, T]:
+    items: list[T] = list(iterable)
+    i: int = 0
+    while i < len(items) - 1:
+        yield (items[i], items[i + 1])
+        i = i + 1

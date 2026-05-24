@@ -32,6 +32,8 @@ MODULES=(
     "bisect_module:Bisect/Bisect.cs:-n Sharpy"
     "statistics:Statistics/Statistics.cs:-n Sharpy"
     "heapq:Heapq/Heapq.cs:-n Sharpy"
+    "itertools:Itertools/Itertools.cs:-n Sharpy"
+    "functools:Functools/Functools.cs:-n Sharpy"
 )
 
 mode="regenerate"
