@@ -1,0 +1,139 @@
+using System;
+using System.Collections.Generic;
+
+namespace Sharpy
+{
+    /// <summary>
+    /// Make an iterator that returns elements from the first iterable until it is exhausted,
+    /// then proceeds to the next iterable, until all of the iterables are exhausted.
+    /// </summary>
+    public class ChainIterator<T> : Iterator<T>
+    {
+        private readonly IEnumerator<IEnumerable<T>> _iterables;
+        private IEnumerator<T>? _currentIterator;
+
+        /// <summary>Create a chain iterator over the given iterables.</summary>
+        public ChainIterator(IEnumerable<IEnumerable<T>> iterables)
+        {
+            _iterables = iterables.GetEnumerator();
+            _currentIterator = null;
+        }
+
+        /// <inheritdoc/>
+        public override bool MoveNext()
+        {
+            while (true)
+            {
+                if (_currentIterator != null)
+                {
+                    if (_currentIterator.MoveNext())
+                    {
+                        _current = _currentIterator.Current;
+                        return true;
+                    }
+                    else
+                    {
+                        _currentIterator = null;
+                    }
+                }
+
+                if (!_iterables.MoveNext())
+                {
+                    _current = default;
+                    return false;
+                }
+
+                _currentIterator = _iterables.Current.GetEnumerator();
+            }
+        }
+    }
+
+    /// <summary>Iterator that aggregates elements from multiple iterables, filling missing values.</summary>
+    public class ZipLongestIterator<T> : Iterator<T[]>
+    {
+        private readonly IEnumerator<T>[] _enumerators;
+        private readonly T _fillvalue;
+        private readonly bool[] _exhausted;
+        private bool _allExhausted;
+
+        internal ZipLongestIterator(IEnumerable<T>[] iterables, T fillvalue)
+        {
+            _enumerators = new IEnumerator<T>[iterables.Length];
+            _exhausted = new bool[iterables.Length];
+            for (int i = 0; i < iterables.Length; i++)
+            {
+                _enumerators[i] = iterables[i].GetEnumerator();
+            }
+
+            _fillvalue = fillvalue;
+            _allExhausted = false;
+        }
+
+        /// <inheritdoc/>
+        public override bool MoveNext()
+        {
+            if (_allExhausted)
+            {
+                _current = default;
+                return false;
+            }
+
+            var result = new T[_enumerators.Length];
+            bool anyAdvanced = false;
+
+            for (int i = 0; i < _enumerators.Length; i++)
+            {
+                if (_exhausted[i])
+                {
+                    result[i] = _fillvalue;
+                }
+                else if (_enumerators[i].MoveNext())
+                {
+                    result[i] = _enumerators[i].Current;
+                    anyAdvanced = true;
+                }
+                else
+                {
+                    _exhausted[i] = true;
+                    result[i] = _fillvalue;
+                }
+            }
+
+            if (!anyAdvanced)
+            {
+                _allExhausted = true;
+                _current = default;
+                return false;
+            }
+
+            _current = result;
+            return true;
+        }
+    }
+
+    public static partial class Itertools
+    {
+        /// <summary>
+        /// Make an iterator that returns elements from the first iterable until it is exhausted,
+        /// then proceeds to the next iterable.
+        /// </summary>
+        /// <param name="iterables">One or more iterables to chain together.</param>
+        /// <typeparam name="T">The element type.</typeparam>
+        /// <returns>An iterator over the concatenated elements.</returns>
+        /// <example>
+        /// <code>
+        /// list(itertools.chain([1, 2], [3, 4]))    # [1, 2, 3, 4]
+        /// </code>
+        /// </example>
+        public static ChainIterator<T> Chain<T>(params IEnumerable<T>[] iterables)
+        {
+            return new ChainIterator<T>(iterables);
+        }
+
+        /// <summary>Make an iterator that aggregates elements from each iterable, filling missing values with fillvalue.</summary>
+        public static ZipLongestIterator<T> ZipLongest<T>(IEnumerable<T>[] iterables, T fillvalue = default!)
+        {
+            return new ZipLongestIterator<T>(iterables, fillvalue);
+        }
+    }
+}

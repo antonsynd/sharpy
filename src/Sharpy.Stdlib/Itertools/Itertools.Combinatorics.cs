@@ -1,54 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
 namespace Sharpy
 {
-
-    /// <summary>
-    /// Make an iterator that returns elements from the first iterable until it is exhausted,
-    /// then proceeds to the next iterable, until all of the iterables are exhausted.
-    /// </summary>
-    public class ChainIterator<T> : Iterator<T>
-    {
-        private readonly IEnumerator<IEnumerable<T>> _iterables;
-        private IEnumerator<T>? _currentIterator;
-
-        /// <summary>Create a chain iterator over the given iterables.</summary>
-        public ChainIterator(IEnumerable<IEnumerable<T>> iterables)
-        {
-            _iterables = iterables.GetEnumerator();
-            _currentIterator = null;
-        }
-
-        /// <inheritdoc/>
-        public override bool MoveNext()
-        {
-            while (true)
-            {
-                if (_currentIterator != null)
-                {
-                    if (_currentIterator.MoveNext())
-                    {
-                        _current = _currentIterator.Current;
-                        return true;
-                    }
-                    else
-                    {
-                        _currentIterator = null;
-                    }
-                }
-
-                if (!_iterables.MoveNext())
-                {
-                    _current = default;
-                    return false;
-                }
-
-                _currentIterator = _iterables.Current.GetEnumerator();
-            }
-        }
-    }
-
     /// <summary>
     /// Return successive r-length combinations of elements in the iterable.
     /// </summary>
@@ -207,35 +162,153 @@ namespace Sharpy
         }
     }
 
+    /// <summary>Iterator that yields r-length combinations with replacement.</summary>
+    public class CombinationsWithReplacementIterator<T> : Iterator<T[]>
+    {
+        private readonly T[] _pool;
+        private readonly int _r;
+        private readonly int[] _indices;
+        private bool _started;
+        private bool _exhausted;
+
+        internal CombinationsWithReplacementIterator(IEnumerable<T> iterable, int r)
+        {
+            _pool = iterable.ToArray();
+            _r = r;
+
+            if (r < 0)
+            {
+                throw new ValueError("r must be non-negative");
+            }
+
+            if (_pool.Length == 0 && r > 0)
+            {
+                _exhausted = true;
+                _indices = System.Array.Empty<int>();
+            }
+            else
+            {
+                _indices = new int[r];
+                _started = false;
+                _exhausted = false;
+            }
+        }
+
+        /// <inheritdoc/>
+        public override bool MoveNext()
+        {
+            if (_exhausted)
+            {
+                _current = default;
+                return false;
+            }
+
+            if (!_started)
+            {
+                _started = true;
+                _current = _indices.Select(i => _pool[i]).ToArray();
+                return true;
+            }
+
+            int n = _pool.Length;
+            int i = _r - 1;
+            while (i >= 0 && _indices[i] == n - 1)
+            {
+                i--;
+            }
+
+            if (i < 0)
+            {
+                _exhausted = true;
+                _current = default;
+                return false;
+            }
+
+            int newVal = _indices[i] + 1;
+            for (int j = i; j < _r; j++)
+            {
+                _indices[j] = newVal;
+            }
+
+            _current = _indices.Select(idx => _pool[idx]).ToArray();
+            return true;
+        }
+    }
+
+    /// <summary>Iterator that yields tuples from the Cartesian product of input iterables.</summary>
+    public class ProductIterator<T> : Iterator<T[]>
+    {
+        private readonly T[][] _pools;
+        private readonly int[] _indices;
+        private bool _started;
+        private bool _exhausted;
+
+        internal ProductIterator(IEnumerable<T>[] iterables)
+        {
+            _pools = iterables.Select(it => it.ToArray()).ToArray();
+            _indices = new int[_pools.Length];
+            _started = false;
+            _exhausted = false;
+
+            // If any pool is empty, the product is empty
+            for (int i = 0; i < _pools.Length; i++)
+            {
+                if (_pools[i].Length == 0)
+                {
+                    _exhausted = true;
+                    break;
+                }
+            }
+        }
+
+        /// <inheritdoc/>
+        public override bool MoveNext()
+        {
+            if (_exhausted)
+            {
+                _current = default;
+                return false;
+            }
+
+            if (!_started)
+            {
+                _started = true;
+                _current = GetCurrentTuple();
+                return true;
+            }
+
+            // Increment indices from the rightmost position
+            for (int i = _pools.Length - 1; i >= 0; i--)
+            {
+                _indices[i]++;
+                if (_indices[i] < _pools[i].Length)
+                {
+                    _current = GetCurrentTuple();
+                    return true;
+                }
+
+                _indices[i] = 0;
+            }
+
+            _exhausted = true;
+            _current = default;
+            return false;
+        }
+
+        private T[] GetCurrentTuple()
+        {
+            var result = new T[_pools.Length];
+            for (int i = 0; i < _pools.Length; i++)
+            {
+                result[i] = _pools[i][_indices[i]];
+            }
+
+            return result;
+        }
+    }
+
     public static partial class Itertools
     {
-        /// <summary>
-        /// Make an iterator that returns elements from the first iterable until it is exhausted,
-        /// then proceeds to the next iterable.
-        /// </summary>
-        /// <param name="iterables">One or more iterables to chain together.</param>
-        /// <typeparam name="T">The element type.</typeparam>
-        /// <returns>An iterator over the concatenated elements.</returns>
-        /// <example>
-        /// <code>
-        /// list(itertools.chain([1, 2], [3, 4]))    # [1, 2, 3, 4]
-        /// </code>
-        /// </example>
-        public static ChainIterator<T> Chain<T>(params IEnumerable<T>[] iterables)
-        {
-            return new ChainIterator<T>(iterables);
-        }
-
-        internal static IEnumerable<T> Islice<T>(IEnumerable<T> iterable, int stop)
-        {
-            return Islice(new Sharpy.List<T>(iterable), stop);
-        }
-
-        internal static IEnumerable<T> Islice<T>(IEnumerable<T> iterable, int start, int stop, int step = 1)
-        {
-            return IsliceRange(new Sharpy.List<T>(iterable), start, stop, step);
-        }
-
         /// <summary>
         /// Return r-length combinations of elements in the iterable.
         /// </summary>
@@ -250,6 +323,18 @@ namespace Sharpy
         public static PermutationsIterator<T> Permutations<T>(IEnumerable<T> iterable, int? r = null)
         {
             return new PermutationsIterator<T>(iterable, r);
+        }
+
+        /// <summary>Return r-length combinations of elements allowing individual elements to be repeated.</summary>
+        public static CombinationsWithReplacementIterator<T> CombinationsWithReplacement<T>(IEnumerable<T> iterable, int r)
+        {
+            return new CombinationsWithReplacementIterator<T>(iterable, r);
+        }
+
+        /// <summary>Cartesian product of input iterables, equivalent to nested for-loops.</summary>
+        public static ProductIterator<T> Product<T>(params IEnumerable<T>[] iterables)
+        {
+            return new ProductIterator<T>(iterables);
         }
     }
 }

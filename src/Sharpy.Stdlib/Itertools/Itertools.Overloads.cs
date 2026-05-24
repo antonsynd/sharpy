@@ -39,5 +39,15 @@ namespace Sharpy
         {
             return Pairwise(new List<T>(iterable));
         }
+
+        internal static IEnumerable<T> Islice<T>(IEnumerable<T> iterable, int stop)
+        {
+            return Islice(new Sharpy.List<T>(iterable), stop);
+        }
+
+        internal static IEnumerable<T> Islice<T>(IEnumerable<T> iterable, int start, int stop, int step = 1)
+        {
+            return IsliceRange(new Sharpy.List<T>(iterable), start, stop, step);
+        }
     }
 }
