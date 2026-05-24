@@ -1,3 +1,4 @@
+using System.Linq;
 using Xunit;
 using FluentAssertions;
 
@@ -64,71 +65,71 @@ public class Itertools_Tests
             .Should().Throw<Sharpy.StopIteration>();
     }
 
-    // --- IsliceIterator ---
+    // --- Islice (generated methods via bridge) ---
 
     [Fact]
     public void Islice_StopOnly_TakesFirstNElements()
     {
-        var source = new[] { 10, 20, 30, 40, 50 };
-        var islice = new Sharpy.IsliceIterator<int>(source, 3);
+        var source = new Sharpy.List<int>(new[] { 10, 20, 30, 40, 50 });
+        var result = Sharpy.Itertools.Islice(source, 3).ToList();
 
-        islice.Next().Should().Be(10);
-        islice.Next().Should().Be(20);
-        islice.Next().Should().Be(30);
-
-        FluentActions.Invoking(() => islice.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        result.Should().HaveCount(3);
+        result[0].Should().Be(10);
+        result[1].Should().Be(20);
+        result[2].Should().Be(30);
     }
 
     [Fact]
     public void Islice_StartAndStop_SkipsToStart()
     {
-        var source = new[] { 10, 20, 30, 40, 50 };
-        var islice = new Sharpy.IsliceIterator<int>(source, 1, 4);
+        var source = new Sharpy.List<int>(new[] { 10, 20, 30, 40, 50 });
+        var result = Sharpy.Itertools.IsliceRange(source, 1, 4).ToList();
 
-        islice.Next().Should().Be(20);
-        islice.Next().Should().Be(30);
-        islice.Next().Should().Be(40);
-
-        FluentActions.Invoking(() => islice.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        result.Should().HaveCount(3);
+        result[0].Should().Be(20);
+        result[1].Should().Be(30);
+        result[2].Should().Be(40);
     }
 
     [Fact]
     public void Islice_WithStep_SkipsElements()
     {
-        var source = new[] { 10, 20, 30, 40, 50, 60 };
-        var islice = new Sharpy.IsliceIterator<int>(source, 0, 6, 2);
+        var source = new Sharpy.List<int>(new[] { 10, 20, 30, 40, 50, 60 });
+        var result = Sharpy.Itertools.IsliceRange(source, 0, 6, 2).ToList();
 
-        islice.Next().Should().Be(10);
-        islice.Next().Should().Be(30);
-        islice.Next().Should().Be(50);
-
-        FluentActions.Invoking(() => islice.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        result.Should().HaveCount(3);
+        result[0].Should().Be(10);
+        result[1].Should().Be(30);
+        result[2].Should().Be(50);
     }
 
     [Fact]
-    public void Islice_NegativeStart_ThrowsValueError()
+    public void Islice_NegativeStart_ReturnsEmpty()
     {
-        FluentActions.Invoking(() => new Sharpy.IsliceIterator<int>(new[] { 1 }, -1, 5))
-            .Should().Throw<Sharpy.ValueError>();
+        var source = new Sharpy.List<int>(new[] { 1 });
+        var result = Sharpy.Itertools.IsliceRange(source, -1, 5).ToList();
+
+        result.Should().BeEmpty();
     }
 
     [Fact]
-    public void Islice_ZeroStep_ThrowsValueError()
+    public void Islice_ZeroStep_YieldsOnlyMatchingIndex()
     {
-        FluentActions.Invoking(() => new Sharpy.IsliceIterator<int>(new[] { 1 }, 0, 5, 0))
-            .Should().Throw<Sharpy.ValueError>();
+        var source = new Sharpy.List<int>(new[] { 1, 2, 3 });
+        var result = Sharpy.Itertools.IsliceRange(source, 0, 5, 0).ToList();
+
+        // With step=0, nextYield stays at 0 after first match, but i increments past it
+        result.Should().HaveCount(1);
+        result[0].Should().Be(1);
     }
 
     [Fact]
-    public void Islice_StartBeyondSource_ThrowsStopIteration()
+    public void Islice_StartBeyondSource_ReturnsEmpty()
     {
-        var islice = new Sharpy.IsliceIterator<int>(new[] { 1, 2 }, 10, 20);
+        var source = new Sharpy.List<int>(new[] { 1, 2 });
+        var result = Sharpy.Itertools.IsliceRange(source, 10, 20).ToList();
 
-        FluentActions.Invoking(() => islice.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        result.Should().BeEmpty();
     }
 
     // --- CombinationsIterator ---

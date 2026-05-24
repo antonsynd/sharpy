@@ -50,85 +50,6 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Make an iterator that returns selected elements from the iterable.
-    /// Note: The constructor consumes elements from the underlying iterator to skip to the start position.
-    /// If the iterator is exhausted before reaching the start index, an empty iterator is created.
-    /// </summary>
-    public class IsliceIterator<T> : Iterator<T>
-    {
-        private readonly IEnumerator<T> _enumerator;
-        private readonly int _stop;
-        private readonly int _step;
-        private int _currentIndex;
-        private bool _exhausted;
-
-        /// <summary>Create an islice iterator that yields elements up to stop.</summary>
-        public IsliceIterator(IEnumerable<T> iterable, int stop)
-            : this(iterable, 0, stop, 1)
-        {
-        }
-
-        /// <summary>Create an islice iterator with start, stop, and step.</summary>
-        public IsliceIterator(IEnumerable<T> iterable, int start, int stop, int step = 1)
-        {
-            if (start < 0 || stop < 0 || step <= 0)
-            {
-                throw new ValueError("Indices for islice() must be non-negative");
-            }
-
-            _enumerator = iterable.GetEnumerator();
-            _stop = stop;
-            _step = step;
-            _currentIndex = 0;
-            _exhausted = false;
-
-            // Skip to start - if iterator is exhausted before start, mark as exhausted
-            for (int i = 0; i < start; i++)
-            {
-                if (!_enumerator.MoveNext())
-                {
-                    _exhausted = true;
-                    break;
-                }
-                _currentIndex++;
-            }
-        }
-
-        /// <inheritdoc/>
-        public override bool MoveNext()
-        {
-            if (_exhausted || _currentIndex >= _stop)
-            {
-                _current = default;
-                return false;
-            }
-
-            if (!_enumerator.MoveNext())
-            {
-                _exhausted = true;
-                _current = default;
-                return false;
-            }
-
-            _current = _enumerator.Current;
-            _currentIndex++;
-
-            // Skip step - 1 elements
-            for (int i = 1; i < _step; i++)
-            {
-                if (!_enumerator.MoveNext())
-                {
-                    _exhausted = true;
-                    break;
-                }
-                _currentIndex++;
-            }
-
-            return true;
-        }
-    }
-
-    /// <summary>
     /// Return successive r-length combinations of elements in the iterable.
     /// </summary>
     public class CombinationsIterator<T> : Iterator<T[]>
@@ -305,35 +226,14 @@ namespace Sharpy
             return new ChainIterator<T>(iterables);
         }
 
-        /// <summary>
-        /// Make an iterator that returns selected elements from the iterable.
-        /// </summary>
-        /// <param name="iterable">The source iterable.</param>
-        /// <param name="stop">Stop index (exclusive).</param>
-        /// <typeparam name="T">The element type.</typeparam>
-        /// <returns>An iterator over the selected elements.</returns>
-        /// <example>
-        /// <code>
-        /// list(itertools.islice([0, 1, 2, 3, 4], 3))    # [0, 1, 2]
-        /// </code>
-        /// </example>
-        internal static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int stop)
+        internal static IEnumerable<T> Islice<T>(IEnumerable<T> iterable, int stop)
         {
-            return new IsliceIterator<T>(iterable, stop);
+            return Islice(new Sharpy.List<T>(iterable), stop);
         }
 
-        /// <summary>
-        /// Make an iterator that returns selected elements from the iterable.
-        /// </summary>
-        /// <param name="iterable">The source iterable.</param>
-        /// <param name="start">Start index.</param>
-        /// <param name="stop">Stop index (exclusive).</param>
-        /// <param name="step">Step value (default 1).</param>
-        /// <typeparam name="T">The element type.</typeparam>
-        /// <returns>An iterator over the selected elements.</returns>
-        internal static IsliceIterator<T> Islice<T>(IEnumerable<T> iterable, int start, int stop, int step = 1)
+        internal static IEnumerable<T> Islice<T>(IEnumerable<T> iterable, int start, int stop, int step = 1)
         {
-            return new IsliceIterator<T>(iterable, start, stop, step);
+            return IsliceRange(new Sharpy.List<T>(iterable), start, stop, step);
         }
 
         /// <summary>
