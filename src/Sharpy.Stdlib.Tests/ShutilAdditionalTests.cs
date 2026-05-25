@@ -36,7 +36,7 @@ public class ShutilAdditionalTests : IDisposable
     {
         File.WriteAllText(Sub("src.txt"), "new content");
         File.WriteAllText(Sub("dst.txt"), "old content");
-        Sharpy.Shutil.Copy(Sub("src.txt"), Sub("dst.txt"));
+        Sharpy.ShutilModule.Copy(Sub("src.txt"), Sub("dst.txt"));
         File.ReadAllText(Sub("dst.txt")).Should().Be("new content");
     }
 
@@ -45,7 +45,7 @@ public class ShutilAdditionalTests : IDisposable
     {
         var content = "hello from source";
         File.WriteAllText(Sub("content_src.txt"), content);
-        Sharpy.Shutil.Copy(Sub("content_src.txt"), Sub("content_dst.txt"));
+        Sharpy.ShutilModule.Copy(Sub("content_src.txt"), Sub("content_dst.txt"));
         File.ReadAllText(Sub("content_dst.txt")).Should().Be(content);
     }
 
@@ -56,7 +56,7 @@ public class ShutilAdditionalTests : IDisposable
     {
         File.WriteAllText(Sub("src2.txt"), "data");
         Directory.CreateDirectory(Sub("copy2dir"));
-        var result = Sharpy.Shutil.Copy2(Sub("src2.txt"), Sub("copy2dir"));
+        var result = Sharpy.ShutilModule.Copy2(Sub("src2.txt"), Sub("copy2dir"));
         File.Exists(result).Should().BeTrue();
         File.ReadAllText(result).Should().Be("data");
     }
@@ -64,7 +64,7 @@ public class ShutilAdditionalTests : IDisposable
     [Fact]
     public void Copy2_NonexistentSource_ThrowsOSError()
     {
-        Action act = () => Sharpy.Shutil.Copy2(Sub("nope.txt"), Sub("dst.txt"));
+        Action act = () => Sharpy.ShutilModule.Copy2(Sub("nope.txt"), Sub("dst.txt"));
         act.Should().Throw<Sharpy.OSError>();
     }
 
@@ -82,7 +82,7 @@ public class ShutilAdditionalTests : IDisposable
         File.WriteAllText(System.IO.Path.Combine(l2, "deep.txt"), "deep");
 
         var dst = Sub("deep_dst");
-        Sharpy.Shutil.Copytree(src, dst);
+        Sharpy.ShutilModule.Copytree(src, dst);
 
         File.Exists(System.IO.Path.Combine(dst, "root.txt")).Should().BeTrue();
         File.Exists(System.IO.Path.Combine(dst, "l1", "mid.txt")).Should().BeTrue();
@@ -97,7 +97,7 @@ public class ShutilAdditionalTests : IDisposable
     {
         var dir = Sub("rmtree_empty");
         Directory.CreateDirectory(dir);
-        Sharpy.Shutil.Rmtree(dir);
+        Sharpy.ShutilModule.Rmtree(dir);
         Directory.Exists(dir).Should().BeFalse();
     }
 
@@ -108,7 +108,7 @@ public class ShutilAdditionalTests : IDisposable
         var sub = System.IO.Path.Combine(dir, "sub");
         Directory.CreateDirectory(sub);
         File.WriteAllText(System.IO.Path.Combine(sub, "f.txt"), "data");
-        Sharpy.Shutil.Rmtree(dir);
+        Sharpy.ShutilModule.Rmtree(dir);
         Directory.Exists(dir).Should().BeFalse();
     }
 
@@ -118,7 +118,7 @@ public class ShutilAdditionalTests : IDisposable
     public void Move_File_ContentPreserved()
     {
         File.WriteAllText(Sub("move_content_src.txt"), "preserved");
-        Sharpy.Shutil.Move(Sub("move_content_src.txt"), Sub("move_content_dst.txt"));
+        Sharpy.ShutilModule.Move(Sub("move_content_src.txt"), Sub("move_content_dst.txt"));
         File.ReadAllText(Sub("move_content_dst.txt")).Should().Be("preserved");
     }
 
@@ -127,7 +127,7 @@ public class ShutilAdditionalTests : IDisposable
     {
         File.WriteAllText(Sub("move_into_src.txt"), "data");
         Directory.CreateDirectory(Sub("move_into_dir"));
-        var result = Sharpy.Shutil.Move(Sub("move_into_src.txt"), Sub("move_into_dir"));
+        var result = Sharpy.ShutilModule.Move(Sub("move_into_src.txt"), Sub("move_into_dir"));
         // When destination is a directory, the file should be placed inside it
         File.Exists(Sub("move_into_src.txt")).Should().BeFalse();
         // result should be the destination (either dir or file path inside)
@@ -143,7 +143,7 @@ public class ShutilAdditionalTests : IDisposable
             System.Runtime.InteropServices.OSPlatform.Windows))
             return; // Skip on Windows
 
-        var result = Sharpy.Shutil.Which("ls");
+        var result = Sharpy.ShutilModule.Which("ls");
         result.Should().NotBeNull();
         File.Exists(result).Should().BeTrue();
     }
@@ -157,18 +157,18 @@ public class ShutilAdditionalTests : IDisposable
             return;
 
         // Find an existing absolute path to test with (use Which to find ls first)
-        string? lsPath = Sharpy.Shutil.Which("ls");
+        string? lsPath = Sharpy.ShutilModule.Which("ls");
         if (lsPath == null)
             return; // ls not findable, skip
 
-        var result = Sharpy.Shutil.Which(lsPath);
+        var result = Sharpy.ShutilModule.Which(lsPath);
         result.Should().NotBeNull();
     }
 
     [Fact]
     public void Which_PathWithSeparator_Nonexistent_ReturnsNull()
     {
-        var result = Sharpy.Shutil.Which("/nonexistent_xyz_path/binary");
+        var result = Sharpy.ShutilModule.Which("/nonexistent_xyz_path/binary");
         result.Should().BeNull();
     }
 
@@ -178,7 +178,7 @@ public class ShutilAdditionalTests : IDisposable
     public void DiskUsage_ForFile_ReturnsSensibleValues()
     {
         File.WriteAllText(Sub("diskusage.txt"), "data");
-        var (total, used, free) = Sharpy.Shutil.DiskUsage(Sub("diskusage.txt"));
+        var (total, used, free) = Sharpy.ShutilModule.DiskUsage(Sub("diskusage.txt"));
         total.Should().BeGreaterThan(0);
         (used + free).Should().Be(total);
     }
@@ -186,7 +186,7 @@ public class ShutilAdditionalTests : IDisposable
     [Fact]
     public void DiskUsage_TotalGreaterThanUsedAndFree()
     {
-        var (total, used, free) = Sharpy.Shutil.DiskUsage(_tempDir);
+        var (total, used, free) = Sharpy.ShutilModule.DiskUsage(_tempDir);
         total.Should().BeGreaterThanOrEqualTo(used);
         total.Should().BeGreaterThanOrEqualTo(free);
     }

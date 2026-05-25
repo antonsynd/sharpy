@@ -1,6 +1,6 @@
 namespace Sharpy
 {
     [SharpyModule("shutil")]
-    public static partial class Shutil
+    public static partial class ShutilModule
     { }
 }

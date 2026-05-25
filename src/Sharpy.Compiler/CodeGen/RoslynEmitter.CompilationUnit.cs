@@ -523,6 +523,7 @@ internal partial class RoslynEmitter
         { "tempfile", "TempfileModule" },
         { "os", "OsModule" },
         { "os.path", "OsPathModule" },
+        { "shutil", "ShutilModule" },
     };
 
     /// <summary>

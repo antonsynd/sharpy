@@ -30,7 +30,7 @@ namespace Sharpy.Core.Tests
         public void Copy_CopiesToFile()
         {
             File.WriteAllText(Sub("src.txt"), "hello");
-            string result = Sharpy.Shutil.Copy(Sub("src.txt"), Sub("dst.txt"));
+            string result = Sharpy.ShutilModule.Copy(Sub("src.txt"), Sub("dst.txt"));
 
             File.Exists(Sub("dst.txt")).Should().BeTrue();
             File.ReadAllText(Sub("dst.txt")).Should().Be("hello");
@@ -43,7 +43,7 @@ namespace Sharpy.Core.Tests
             File.WriteAllText(Sub("src.txt"), "hello");
             Directory.CreateDirectory(Sub("destdir"));
 
-            string result = Sharpy.Shutil.Copy(Sub("src.txt"), Sub("destdir"));
+            string result = Sharpy.ShutilModule.Copy(Sub("src.txt"), Sub("destdir"));
 
             string expected = System.IO.Path.Combine(Sub("destdir"), "src.txt");
             File.Exists(expected).Should().BeTrue();
@@ -53,7 +53,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Copy_ThrowsOnNonexistentSource()
         {
-            Assert.Throws<OSError>(() => Sharpy.Shutil.Copy(Sub("nope.txt"), Sub("dst.txt")));
+            Assert.Throws<OSError>(() => Sharpy.ShutilModule.Copy(Sub("nope.txt"), Sub("dst.txt")));
         }
 
         // ===== copy2 =====
@@ -69,7 +69,7 @@ namespace Sharpy.Core.Tests
             var customTime = new System.DateTime(2020, 6, 15, 12, 0, 0, System.DateTimeKind.Utc);
             File.SetLastWriteTimeUtc(srcPath, customTime);
 
-            string result = Sharpy.Shutil.Copy2(srcPath, Sub("dst2.txt"));
+            string result = Sharpy.ShutilModule.Copy2(srcPath, Sub("dst2.txt"));
 
             File.GetLastWriteTimeUtc(result).Should().Be(customTime);
         }
@@ -86,7 +86,7 @@ namespace Sharpy.Core.Tests
             File.WriteAllText(System.IO.Path.Combine(srcDir, "sub", "b.txt"), "b");
 
             string dstDir = Sub("treedst");
-            string result = Sharpy.Shutil.Copytree(srcDir, dstDir);
+            string result = Sharpy.ShutilModule.Copytree(srcDir, dstDir);
 
             result.Should().Be(dstDir);
             File.Exists(System.IO.Path.Combine(dstDir, "a.txt")).Should().BeTrue();
@@ -97,7 +97,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Copytree_ThrowsOnNonexistentSource()
         {
-            Assert.Throws<OSError>(() => Sharpy.Shutil.Copytree(Sub("nope"), Sub("dst")));
+            Assert.Throws<OSError>(() => Sharpy.ShutilModule.Copytree(Sub("nope"), Sub("dst")));
         }
 
         // ===== rmtree =====
@@ -111,7 +111,7 @@ namespace Sharpy.Core.Tests
             Directory.CreateDirectory(System.IO.Path.Combine(dir, "sub"));
             File.WriteAllText(System.IO.Path.Combine(dir, "sub", "inner.txt"), "inner");
 
-            Sharpy.Shutil.Rmtree(dir);
+            Sharpy.ShutilModule.Rmtree(dir);
 
             Directory.Exists(dir).Should().BeFalse();
         }
@@ -119,7 +119,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Rmtree_ThrowsOnNonexistent()
         {
-            Assert.Throws<OSError>(() => Sharpy.Shutil.Rmtree(Sub("nope")));
+            Assert.Throws<OSError>(() => Sharpy.ShutilModule.Rmtree(Sub("nope")));
         }
 
         // ===== move =====
@@ -128,7 +128,7 @@ namespace Sharpy.Core.Tests
         public void Move_MovesFile()
         {
             File.WriteAllText(Sub("movesrc.txt"), "move");
-            string result = Sharpy.Shutil.Move(Sub("movesrc.txt"), Sub("movedst.txt"));
+            string result = Sharpy.ShutilModule.Move(Sub("movesrc.txt"), Sub("movedst.txt"));
 
             File.Exists(Sub("movesrc.txt")).Should().BeFalse();
             File.Exists(Sub("movedst.txt")).Should().BeTrue();
@@ -144,7 +144,7 @@ namespace Sharpy.Core.Tests
             File.WriteAllText(System.IO.Path.Combine(srcDir, "f.txt"), "f");
 
             string dstDir = Sub("movedirdst");
-            string result = Sharpy.Shutil.Move(srcDir, dstDir);
+            string result = Sharpy.ShutilModule.Move(srcDir, dstDir);
 
             Directory.Exists(srcDir).Should().BeFalse();
             Directory.Exists(dstDir).Should().BeTrue();
@@ -155,7 +155,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Move_ThrowsOnNonexistentSource()
         {
-            Assert.Throws<OSError>(() => Sharpy.Shutil.Move(Sub("nope.txt"), Sub("dst.txt")));
+            Assert.Throws<OSError>(() => Sharpy.ShutilModule.Move(Sub("nope.txt"), Sub("dst.txt")));
         }
 
         // ===== which =====
@@ -163,7 +163,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Which_FindsDotnet()
         {
-            string? result = Sharpy.Shutil.Which("dotnet");
+            string? result = Sharpy.ShutilModule.Which("dotnet");
             result.Should().NotBeNull();
             File.Exists(result).Should().BeTrue();
         }
@@ -171,14 +171,14 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Which_ReturnsNullForNonexistent()
         {
-            string? result = Sharpy.Shutil.Which("this_command_does_not_exist_xyz_123");
+            string? result = Sharpy.ShutilModule.Which("this_command_does_not_exist_xyz_123");
             result.Should().BeNull();
         }
 
         [Fact]
         public void Which_ReturnsNullForEmpty()
         {
-            string? result = Sharpy.Shutil.Which("");
+            string? result = Sharpy.ShutilModule.Which("");
             result.Should().BeNull();
         }
 
@@ -187,7 +187,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void DiskUsage_ReturnsSensibleValues()
         {
-            var (total, used, free) = Sharpy.Shutil.DiskUsage(_tempDir);
+            var (total, used, free) = Sharpy.ShutilModule.DiskUsage(_tempDir);
 
             total.Should().BeGreaterThan(0);
             used.Should().BeGreaterThanOrEqualTo(0);
