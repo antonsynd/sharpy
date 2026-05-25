@@ -1,21 +1,20 @@
-using System.Security.Cryptography;
-using System.Text;
+// Generated from src/Sharpy.Stdlib/spy/hashlib_module.spy — do not edit directly.
+// To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/hashlib_module.spy -t library -n Sharpy
+#nullable enable
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using global::Sharpy;
 
 namespace Sharpy
 {
-    /// <summary>
-    /// Secure hash and message digest algorithms, similar to Python's hashlib module.
-    /// </summary>
-    public static partial class Hashlib
+    public static partial class HashlibModule
     {
-        /// <summary>
-        /// Create an MD5 hash object, optionally initialized with data.
-        /// </summary>
-        /// <param name="data">Optional initial data to hash (encoded as UTF-8).</param>
-        /// <returns>A new <see cref="HashObject"/> using the MD5 algorithm.</returns>
-        public static HashObject Md5(string data = "")
+        public static global::Sharpy.HashObject Md5(string data = "")
         {
-            var obj = new HashObject("md5", () => MD5.Create(), 16);
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("md5", 16);
             if (data.Length > 0)
             {
                 obj.Update(data);
@@ -24,14 +23,9 @@ namespace Sharpy
             return obj;
         }
 
-        /// <summary>
-        /// Create a SHA-1 hash object, optionally initialized with data.
-        /// </summary>
-        /// <param name="data">Optional initial data to hash (encoded as UTF-8).</param>
-        /// <returns>A new <see cref="HashObject"/> using the SHA-1 algorithm.</returns>
-        public static HashObject Sha1(string data = "")
+        public static global::Sharpy.HashObject Sha1(string data = "")
         {
-            var obj = new HashObject("sha1", () => SHA1.Create(), 20);
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha1", 20);
             if (data.Length > 0)
             {
                 obj.Update(data);
@@ -40,14 +34,9 @@ namespace Sharpy
             return obj;
         }
 
-        /// <summary>
-        /// Create a SHA-256 hash object, optionally initialized with data.
-        /// </summary>
-        /// <param name="data">Optional initial data to hash (encoded as UTF-8).</param>
-        /// <returns>A new <see cref="HashObject"/> using the SHA-256 algorithm.</returns>
-        public static HashObject Sha256(string data = "")
+        public static global::Sharpy.HashObject Sha256(string data = "")
         {
-            var obj = new HashObject("sha256", () => SHA256.Create(), 32);
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha256", 32);
             if (data.Length > 0)
             {
                 obj.Update(data);
@@ -56,14 +45,9 @@ namespace Sharpy
             return obj;
         }
 
-        /// <summary>
-        /// Create a SHA-384 hash object, optionally initialized with data.
-        /// </summary>
-        /// <param name="data">Optional initial data to hash (encoded as UTF-8).</param>
-        /// <returns>A new <see cref="HashObject"/> using the SHA-384 algorithm.</returns>
-        public static HashObject Sha384(string data = "")
+        public static global::Sharpy.HashObject Sha384(string data = "")
         {
-            var obj = new HashObject("sha384", () => SHA384.Create(), 48);
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha384", 48);
             if (data.Length > 0)
             {
                 obj.Update(data);
@@ -72,14 +56,9 @@ namespace Sharpy
             return obj;
         }
 
-        /// <summary>
-        /// Create a SHA-512 hash object, optionally initialized with data.
-        /// </summary>
-        /// <param name="data">Optional initial data to hash (encoded as UTF-8).</param>
-        /// <returns>A new <see cref="HashObject"/> using the SHA-512 algorithm.</returns>
-        public static HashObject Sha512(string data = "")
+        public static global::Sharpy.HashObject Sha512(string data = "")
         {
-            var obj = new HashObject("sha512", () => SHA512.Create(), 64);
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha512", 64);
             if (data.Length > 0)
             {
                 obj.Update(data);

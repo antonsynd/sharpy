@@ -148,6 +148,27 @@ into a partial class — it cannot produce standalone generic classes.
 | `glob` | `out` parameters (not supported in Sharpy), `Array.Copy`, try/catch inside generators (`yield break` in catch), extensive char-level pattern matching, `SearchOption` enum member access |
 | `csv` | Factory functions return types from the same assembly (circular dependency during regeneration), SCREAMING_SNAKE_CASE constants don't preserve casing through the name mangler (emit as PascalCase) |
 
+### Class-heavy modules with deep CLR interop (json, re, requests, sqlite3, numpy)
+
+Tier 4 modules evaluated in #694. These are class-heavy and deeply intertwined
+with specific .NET APIs — rewriting in `.spy` would produce identical delegation
+with no logic gain.
+
+| Module | Classes | Blockers |
+|--------|---------|----------|
+| `json` | `JSONEncoder`, `JSONDecoder`, `JSONDecodeError`, internal `JsonParser`, `JsonSerializer` | Custom recursive descent parser, `#if NET10_0_OR_GREATER`, generic `Loads<T>`, `object?` boxing |
+| `re` | `RePattern`, `ReMatch`, `ReError`, internal `RePatternTranslator` | Char-by-char FSM regex translator, `sealed`/`internal` constructors, lazy properties |
+| `requests` | `Response`, `Session`, 4 exception classes | Async-to-sync bridge (`.GetAwaiter().GetResult()`), `HttpClient` singleton, `CancellationTokenSource` |
+| `sqlite3` | `Sqlite3Connection`, `Sqlite3Cursor`, `Sqlite3Row`, 6 exception classes | `IDisposable`, NuGet assembly interop (`Microsoft.Data.Sqlite`), `internal` constructor coupling |
+| `numpy` | `NdArray<T>` (10 partial files), `Numpy` (7 partial files) | 4,631 LOC generic numerics, `MathNet.Numerics` NuGet dep, `Span<T>`, broadcasting algorithms |
+
+### Partially rewritten modules (hashlib)
+
+`hashlib` factory functions (`md5()`, `sha1()`, `sha256()`, `sha384()`, `sha512()`)
+are written in `.spy`. The `HashObject` class stays in C# because it requires
+`Func<HashAlgorithm>` lambdas and `System.Security.Cryptography` imports not
+available through the spy compilation pipeline.
+
 ### When can these be revisited?
 
 - **collections/argparse**: When the compiler supports class declarations with
@@ -158,6 +179,10 @@ into a partial class — it cannot produce standalone generic classes.
 - **csv**: When the regeneration pipeline supports cross-type references within
   the same project, or when backtick escaping correctly preserves
   SCREAMING_SNAKE_CASE for module-level variable declarations.
+- **hashlib (full)**: When the `.spy` pipeline supports class definitions and
+  `system.security.cryptography` is added to the namespace map.
+- **json/re/requests/sqlite3/numpy**: Unlikely regardless of pipeline
+  improvements — their value proposition doesn't improve with class support.
 
 ## Known limitations (as of 2026-05)
 

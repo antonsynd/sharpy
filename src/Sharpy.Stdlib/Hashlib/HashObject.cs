@@ -34,6 +34,22 @@ namespace Sharpy
             _data = new System.Collections.Generic.List<byte>();
         }
 
+        internal HashObject(string algorithmName, int digestSize)
+        {
+            _algorithmName = algorithmName;
+            _algorithmFactory = algorithmName switch
+            {
+                "md5" => MD5.Create,
+                "sha1" => SHA1.Create,
+                "sha256" => SHA256.Create,
+                "sha384" => SHA384.Create,
+                "sha512" => SHA512.Create,
+                _ => throw new ValueError($"unsupported hash type '{algorithmName}'")
+            };
+            DigestSize = digestSize;
+            _data = new System.Collections.Generic.List<byte>();
+        }
+
         internal HashObject(string algorithmName, Func<HashAlgorithm> algorithmFactory, int digestSize, System.Collections.Generic.List<byte> existingData)
         {
             _algorithmName = algorithmName;

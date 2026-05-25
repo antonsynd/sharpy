@@ -1,0 +1,31 @@
+from sharpy import HashObject
+
+def md5(data: str = "") -> HashObject:
+    obj: HashObject = HashObject("md5", 16)
+    if len(data) > 0:
+        obj.update(data)
+    return obj
+
+def sha1(data: str = "") -> HashObject:
+    obj: HashObject = HashObject("sha1", 20)
+    if len(data) > 0:
+        obj.update(data)
+    return obj
+
+def sha256(data: str = "") -> HashObject:
+    obj: HashObject = HashObject("sha256", 32)
+    if len(data) > 0:
+        obj.update(data)
+    return obj
+
+def sha384(data: str = "") -> HashObject:
+    obj: HashObject = HashObject("sha384", 48)
+    if len(data) > 0:
+        obj.update(data)
+    return obj
+
+def sha512(data: str = "") -> HashObject:
+    obj: HashObject = HashObject("sha512", 64)
+    if len(data) > 0:
+        obj.update(data)
+    return obj

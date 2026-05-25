@@ -525,6 +525,7 @@ internal partial class RoslynEmitter
         { "os.path", "OsPathModule" },
         { "shutil", "ShutilModule" },
         { "random", "RandomModule" },
+        { "hashlib", "HashlibModule" },
     };
 
     /// <summary>

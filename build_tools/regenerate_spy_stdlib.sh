@@ -42,6 +42,7 @@ MODULES=(
     "os_path_module:Os/OsPath.cs:-n Sharpy"
     "shutil_module:Shutil/Shutil.cs:-n Sharpy"
     "random_module:Random/Random.cs:-n Sharpy"
+    "hashlib_module:Hashlib/Hashlib.cs:-n Sharpy"
 )
 
 mode="regenerate"
