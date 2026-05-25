@@ -101,7 +101,7 @@ namespace Sharpy
                 return sortedCopy;
             }
 
-            return global::Sharpy.Slice.GetSlice(sortedCopy, null, (int?)n, null);
+            return global::Sharpy.Slice.GetSlice(sortedCopy, null, n, null);
         }
 
         public static Sharpy.List<T> Nsmallest<T>(int n, Sharpy.List<T> iterable)
@@ -121,7 +121,7 @@ namespace Sharpy
                 return sortedCopy;
             }
 
-            return global::Sharpy.Slice.GetSlice(sortedCopy, null, (int?)n, null);
+            return global::Sharpy.Slice.GetSlice(sortedCopy, null, n, null);
         }
 
         public static void _SiftUp<T>(Sharpy.List<T> heap, int index)

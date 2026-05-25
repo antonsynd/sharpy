@@ -118,6 +118,40 @@ replacement for the hand-written code it replaces.
 | Module name      | lowercase, derived from filename (`textwrap.spy` → `textwrap`)   |
 | Sharpy import    | snake_case (discovery maps PascalCase methods back to snake_case)|
 
+## Modules that stay C#
+
+The following modules cannot be rewritten in `.spy` due to compiler limitations
+or architectural constraints. They remain hand-written C# permanently.
+
+### Class-based modules (collections, argparse)
+
+These modules export **classes** annotated with `[SharpyModuleType]`, not just
+module-level functions. The `.spy` → library pipeline only emits static methods
+into a partial class — it cannot produce standalone generic classes.
+
+| Module | Classes | Blockers |
+|--------|---------|----------|
+| `collections` | `Deque<T>`, `Counter<T>`, `DefaultDict<TKey,TValue>`, `ChainMap<TKey,TValue>`, `OrderedDict<TKey,TValue>` | Generic constraints (`where T : notnull`), operator overloads, interface implementations, indexers |
+| `argparse` | `ArgumentParser`, `Namespace`, `ArgumentGroup`, `MutuallyExclusiveGroup`, `SubparsersAction` | Complex class hierarchies, `params` arrays, builder-pattern methods |
+
+### Modules with complex CLR interop (glob, csv)
+
+| Module | Blockers |
+|--------|----------|
+| `glob` | `out` parameters (not supported in Sharpy), `Array.Copy`, try/catch inside generators (`yield break` in catch), extensive char-level pattern matching, `SearchOption` enum member access |
+| `csv` | Factory functions return types from the same assembly (circular dependency during regeneration), SCREAMING_SNAKE_CASE constants don't preserve casing through the name mangler (emit as PascalCase) |
+
+### When can these be revisited?
+
+- **collections/argparse**: When the compiler supports class declarations with
+  `[SharpyModuleType]` in library mode (tracked as a future capability, not
+  currently planned).
+- **glob**: When the compiler adds `out` parameter support, or when the module
+  is restructured to avoid them.
+- **csv**: When the regeneration pipeline supports cross-type references within
+  the same project, or when backtick escaping correctly preserves
+  SCREAMING_SNAKE_CASE for module-level variable declarations.
+
 ## Known limitations (as of 2026-05)
 
 These are tracked rough edges to be aware of when porting:

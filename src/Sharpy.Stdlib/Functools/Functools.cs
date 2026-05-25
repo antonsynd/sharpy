@@ -12,7 +12,7 @@ namespace Sharpy
 {
     public static partial class Functools
     {
-        public static T Reduce<T>(System.Func<T, T, T> func, Sharpy.List<T> iterable)
+        public static T Reduce<T>(global::System.Func<T, T, T> func, Sharpy.List<T> iterable)
         {
             Sharpy.List<T> items = new global::Sharpy.List<T>(iterable);
             if (global::Sharpy.Builtins.Len(items) == 0)

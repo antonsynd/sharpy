@@ -76,7 +76,7 @@ namespace Sharpy
             }
         }
 
-        public static System.Collections.Generic.IEnumerable<T> Dropwhile<T>(System.Func<T, bool> predicate, Sharpy.List<T> iterable)
+        public static System.Collections.Generic.IEnumerable<T> Dropwhile<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
             bool dropping = true;
             foreach (var __loopVar_1 in iterable)
@@ -97,7 +97,7 @@ namespace Sharpy
             }
         }
 
-        public static System.Collections.Generic.IEnumerable<T> Takewhile<T>(System.Func<T, bool> predicate, Sharpy.List<T> iterable)
+        public static System.Collections.Generic.IEnumerable<T> Takewhile<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
             foreach (var __loopVar_2 in iterable)
             {
@@ -113,7 +113,7 @@ namespace Sharpy
             }
         }
 
-        public static System.Collections.Generic.IEnumerable<T> Filterfalse<T>(System.Func<T, bool> predicate, Sharpy.List<T> iterable)
+        public static System.Collections.Generic.IEnumerable<T> Filterfalse<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
             foreach (var __loopVar_3 in iterable)
             {
@@ -163,7 +163,7 @@ namespace Sharpy
             }
         }
 
-        public static System.Collections.Generic.IEnumerable<System.ValueTuple<T, T>> Pairwise<T>(Sharpy.List<T> iterable)
+        public static System.Collections.Generic.IEnumerable<global::System.ValueTuple<T, T>> Pairwise<T>(Sharpy.List<T> iterable)
         {
             Sharpy.List<T> items = new global::Sharpy.List<T>(iterable);
             int i = 0;
