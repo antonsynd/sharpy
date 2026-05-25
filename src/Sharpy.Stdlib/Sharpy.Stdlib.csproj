@@ -35,4 +35,9 @@
     <Compile Remove="spy/**" />
   </ItemGroup>
 
+  <!-- Exclude per-module project directories from monolith compilation -->
+  <ItemGroup>
+    <Compile Remove="modules/**" />
+  </ItemGroup>
+
 </Project>

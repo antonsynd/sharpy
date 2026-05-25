@@ -69,6 +69,8 @@ __resources/
 # C#/.NET files
 src/Sharpy.*/bin/
 src/Sharpy.*/obj/
+src/Sharpy.Stdlib/modules/obj/
+src/Sharpy.Stdlib/modules/bin/
 samples/**/bin/
 samples/**/obj/
 test-project/bin/
