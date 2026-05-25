@@ -134,6 +134,13 @@ into a partial class — it cannot produce standalone generic classes.
 | `collections` | `Deque<T>`, `Counter<T>`, `DefaultDict<TKey,TValue>`, `ChainMap<TKey,TValue>`, `OrderedDict<TKey,TValue>` | Generic constraints (`where T : notnull`), operator overloads, interface implementations, indexers |
 | `argparse` | `ArgumentParser`, `Namespace`, `ArgumentGroup`, `MutuallyExclusiveGroup`, `SubparsersAction` | Complex class hierarchies, `params` arrays, builder-pattern methods |
 
+### Multi-class modules with internal visibility (datetime, pathlib)
+
+| Module | Classes | Blockers |
+|--------|---------|----------|
+| `datetime` | `Date`, `Time`, `DateTime`, `Timedelta`, `Timezone` | 5 interrelated classes with `internal` constructors and `InternalTimeSpan`/`InternalDateTime` properties for cross-class access (Sharpy has no `internal` visibility modifier). Complex operator overloading between different types (`DateTime + Timedelta → DateTime`). `internal static class DatetimeFormatHelper` with ~100-line strftime/strptime state machine. Multiple `[SharpyModuleType]` registrations. Per Axiom 1, keeping this in C# is correct. |
+| `pathlib` | `Path` | `sealed class Path : IEquatable<Path>` with `/` operator overloading for path joining, private helper methods (`GlobMatch`, `GetEncoding`), `IEnumerable<Path>` returns via `yield return` (generators), `[SharpyModuleType("pathlib")]` registration. While technically rewritable, the class wraps `System.IO.Path` 1:1 — the `.spy` version would be identical logic with more verbose .NET import syntax. Diminishing returns. |
+
 ### Modules with complex CLR interop (glob, csv)
 
 | Module | Blockers |
