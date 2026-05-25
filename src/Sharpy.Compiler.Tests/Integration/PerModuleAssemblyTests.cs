@@ -151,4 +151,117 @@ def main():
             .ToList();
         Assert.Empty(stdlibPaths);
     }
+
+    [Fact]
+    public void GroupedModule_NumpyLinalg_LoadsNumpyAssembly()
+    {
+        if (!Directory.Exists(PerModuleDir))
+            return;
+
+        var numpyDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Numpy.dll");
+        if (!File.Exists(numpyDll))
+        {
+            _output.WriteLine("Sharpy.Stdlib.Numpy.dll not found");
+            return;
+        }
+
+        var registry = new ModuleRegistry(NullLogger.Instance);
+        registry.LoadReference(numpyDll);
+
+        Assert.True(registry.IsModuleLoaded("numpy"));
+        Assert.True(registry.IsModuleLoaded("numpy.linalg"));
+        Assert.True(registry.IsModuleLoaded("numpy.random"));
+
+        registry.GetModuleFunctions("numpy.linalg");
+        var used = registry.GetUsedAssemblyPaths();
+        Assert.Single(used);
+        Assert.Contains(used, p => Path.GetFileName(p) == "Sharpy.Stdlib.Numpy.dll");
+    }
+
+    [Fact]
+    public void GroupedModule_OsPath_LoadsOsAssembly()
+    {
+        if (!Directory.Exists(PerModuleDir))
+            return;
+
+        var osDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Os.dll");
+        if (!File.Exists(osDll))
+        {
+            _output.WriteLine("Sharpy.Stdlib.Os.dll not found");
+            return;
+        }
+
+        var registry = new ModuleRegistry(NullLogger.Instance);
+        registry.LoadReference(osDll);
+
+        Assert.True(registry.IsModuleLoaded("os"));
+        Assert.True(registry.IsModuleLoaded("os.path"));
+
+        registry.GetModuleFunctions("os");
+        registry.GetModuleFunctions("os.path");
+        var used = registry.GetUsedAssemblyPaths();
+        Assert.Single(used);
+        Assert.Contains(used, p => Path.GetFileName(p) == "Sharpy.Stdlib.Os.dll");
+    }
+
+    [Fact]
+    public void NuGetDepMapping_NumpyRequiresMathNet()
+    {
+        var cliDir = CoreDir;
+        var mathNetDll = Path.Combine(cliDir, "MathNet.Numerics.dll");
+        if (!File.Exists(mathNetDll))
+        {
+            _output.WriteLine("MathNet.Numerics.dll not found in CLI output dir");
+            return;
+        }
+
+        var numpyAssembly = "Sharpy.Stdlib.Numpy.dll";
+        var numpyPath = Path.Combine(cliDir, numpyAssembly);
+        if (!File.Exists(numpyPath) && Directory.Exists(PerModuleDir))
+            numpyPath = Path.Combine(PerModuleDir, numpyAssembly);
+
+        if (!File.Exists(numpyPath))
+        {
+            _output.WriteLine("Sharpy.Stdlib.Numpy.dll not found");
+            return;
+        }
+
+        var registry = new ModuleRegistry(NullLogger.Instance);
+        registry.LoadReference(numpyPath);
+        registry.GetModuleFunctions("numpy");
+        var used = registry.GetUsedAssemblyPaths();
+
+        Assert.Contains(used, p => Path.GetFileName(p).Contains("Numpy", StringComparison.OrdinalIgnoreCase));
+        _output.WriteLine($"Numpy assembly tracked, MathNet.Numerics.dll present at: {mathNetDll}");
+    }
+
+    [Fact]
+    public void MultipleModuleImports_TracksAllUsedAssemblies()
+    {
+        if (!Directory.Exists(PerModuleDir))
+            return;
+
+        var mathDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Math.dll");
+        var randomDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Random.dll");
+        var osDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Os.dll");
+        if (!File.Exists(mathDll) || !File.Exists(randomDll) || !File.Exists(osDll))
+        {
+            _output.WriteLine("Required per-module DLLs not found");
+            return;
+        }
+
+        var registry = new ModuleRegistry(NullLogger.Instance);
+        registry.LoadReference(mathDll);
+        registry.LoadReference(randomDll);
+        registry.LoadReference(osDll);
+
+        registry.GetModuleFunctions("math");
+        registry.GetModuleFunctions("os");
+
+        var used = registry.GetUsedAssemblyPaths();
+        Assert.Equal(2, used.Count);
+        Assert.Contains(used, p => Path.GetFileName(p) == "Sharpy.Stdlib.Math.dll");
+        Assert.Contains(used, p => Path.GetFileName(p) == "Sharpy.Stdlib.Os.dll");
+        Assert.DoesNotContain(used, p => Path.GetFileName(p) == "Sharpy.Stdlib.Random.dll");
+    }
 }

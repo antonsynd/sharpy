@@ -1,25 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net10.0;netstandard2.1</TargetFrameworks>
-    <LangVersion Condition="'$(TargetFramework)' == 'netstandard2.1'">9.0</LangVersion>
-    <LangVersion Condition="'$(TargetFramework)' == 'net10.0'">14</LangVersion>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <RootNamespace>Sharpy</RootNamespace>
     <AssemblyName>Sharpy.Stdlib.Sys</AssemblyName>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>CS1574;CS1580;CS1591</NoWarn>
-    <NoWarn Condition="'$(TargetFramework)' == 'net10.0'">$(NoWarn);CA1305;CA1307</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../Sharpy.Core/Sharpy.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Include="../Sys/**/*.cs" />
-    <Compile Include="../IsExternalInit.cs" />
   </ItemGroup>
 
 </Project>

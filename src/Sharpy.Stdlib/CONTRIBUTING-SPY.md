@@ -31,7 +31,7 @@ src/Sharpy.Stdlib/
 │   ├── Sharpy.Stdlib.Math.csproj    # Compiles Math/**/*.cs
 │   ├── Sharpy.Stdlib.Random.csproj  # Compiles Random/**/*.cs
 │   └── ...                          # 31 per-module projects
-├── Sharpy.Stdlib.csproj             # Meta-project: references all per-module projects
+├── Sharpy.Stdlib.csproj             # Monolith: compiles all source directly (backward compat)
 ├── Math/                            # Module source: Math.cs, __Init__.cs, etc.
 ├── Random/                          # Module source
 └── ...
@@ -44,16 +44,40 @@ src/Sharpy.Stdlib/
 3. Create a per-module `.csproj` in `modules/`:
    ```xml
    <Project Sdk="Microsoft.NET.Sdk">
+     <PropertyGroup>
+       <AssemblyName>Sharpy.Stdlib.NewModule</AssemblyName>
+     </PropertyGroup>
      <ItemGroup>
        <Compile Include="../NewModule/**/*.cs" />
      </ItemGroup>
    </Project>
    ```
-   The `Directory.Build.props` in `modules/` handles shared properties
-   (TargetFrameworks, Sharpy.Core reference, etc.).
-4. Add a `<ProjectReference>` to `Sharpy.Stdlib.csproj` (the meta-project).
+   `Directory.Build.props` in `modules/` provides shared properties
+   (TargetFrameworks `net10.0;netstandard2.1`, LangVersion, Nullable,
+   RootNamespace, NoWarn) and shared ItemGroups (Sharpy.Core ProjectReference,
+   `IsExternalInit.cs`). Only module-specific items go in the `.csproj`.
+   If the module depends on another stdlib module, add a `<ProjectReference>`
+   (e.g., Pathlib references Os for `StatResult`, Requests references Json).
+   If the dependent module exposes `internal` types, add `<InternalsVisibleTo>`
+   to the dependency's `.csproj` (e.g., Json grants access to Requests).
+4. Ensure the module source compiles in `Sharpy.Stdlib.csproj` (the monolith) —
+   SDK default compile items include all `*.cs` files in the project directory.
 5. Add the project to `sharpy.sln` under the `Stdlib.Modules` solution folder.
 6. If the module has NuGet dependencies, add them to the per-module `.csproj`.
+
+### Dual-build architecture
+
+Both the monolith (`Sharpy.Stdlib.dll`) and per-module assemblies
+(`Sharpy.Stdlib.*.dll`) are built from the same source. The monolith provides
+backward compatibility; per-module assemblies enable tree-shaking. The CLI
+prefers the monolith if present, falling back to per-module discovery via
+`Sharpy.Stdlib.*.dll` glob.
+
+### Target framework exceptions
+
+Most per-module projects target `net10.0;netstandard2.1`. Exceptions:
+- **Sqlite3** targets `net10.0` only — `Microsoft.Data.Sqlite` does not
+  support `netstandard2.1`.
 
 ### How tree-shaking works
 
