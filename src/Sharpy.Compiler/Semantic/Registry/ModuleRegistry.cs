@@ -21,6 +21,8 @@ internal class ModuleRegistry
     private readonly ConcurrentDictionary<string, Assembly> _loadedAssemblies = new();
     private readonly ConcurrentBag<string> _modulePaths = new();
     private readonly DiagnosticBag _diagnostics = new();
+    private readonly ConcurrentDictionary<string, string> _assemblyNameToPath = new();
+    private readonly ConcurrentDictionary<string, byte> _usedAssemblyPaths = new();
 
     public ModuleRegistry(ICompilerLogger? logger = null, OverloadIndexCache? cache = null)
     {
@@ -82,6 +84,8 @@ internal class ModuleRegistry
             // Discover functions from the assembly
             _discovery.LoadAssembly(assembly);
 
+            _assemblyNameToPath.TryAdd(assemblyName, resolvedPath);
+
             _logger.LogInfo($"Loaded module reference: {assemblyName} from {resolvedPath}");
             return true;
         }
@@ -110,7 +114,10 @@ internal class ModuleRegistry
     {
         try
         {
-            return _discovery.GetModuleFunctions(moduleName);
+            var result = _discovery.GetModuleFunctions(moduleName);
+            if (result.Count > 0)
+                RecordModuleUsage(moduleName);
+            return result;
         }
         catch (KeyNotFoundException ex)
         {
@@ -131,7 +138,10 @@ internal class ModuleRegistry
     {
         try
         {
-            return _discovery.GetModuleTypes(moduleName);
+            var result = _discovery.GetModuleTypes(moduleName);
+            if (result.Count > 0)
+                RecordModuleUsage(moduleName);
+            return result;
         }
         catch (KeyNotFoundException ex)
         {
@@ -153,7 +163,10 @@ internal class ModuleRegistry
     {
         try
         {
-            return _discovery.GetModuleFields(moduleName);
+            var result = _discovery.GetModuleFields(moduleName);
+            if (result.Count > 0)
+                RecordModuleUsage(moduleName);
+            return result;
         }
         catch (KeyNotFoundException ex)
         {
@@ -198,6 +211,24 @@ internal class ModuleRegistry
     {
         return GetLoadedModules().Any(m =>
             m.Equals(moduleName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Get the file paths of all assemblies that contributed modules actually
+    /// used during compilation. Sharpy.Core is always included.
+    /// </summary>
+    public IReadOnlySet<string> GetUsedAssemblyPaths()
+    {
+        return new HashSet<string>(_usedAssemblyPaths.Keys, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void RecordModuleUsage(string moduleName)
+    {
+        var assemblyName = _discovery.GetAssemblyNameForModule(moduleName);
+        if (assemblyName != null && _assemblyNameToPath.TryGetValue(assemblyName, out var path))
+        {
+            _usedAssemblyPaths.TryAdd(path, 0);
+        }
     }
 
     /// <summary>

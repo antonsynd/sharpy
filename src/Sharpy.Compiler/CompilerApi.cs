@@ -97,7 +97,9 @@ public sealed class CompilerApi
             GeneratedCSharpFiles = new Dictionary<string, string>(result.GeneratedCSharpFiles),
             Ast = result.Module,
             SemanticInfo = result.SemanticInfo,
-            Metrics = result.Metrics
+            Metrics = result.Metrics,
+            UsedAssemblyPaths = result.ModuleRegistry?.GetUsedAssemblyPaths()
+                ?? (IReadOnlySet<string>)new HashSet<string>()
         };
     }
 

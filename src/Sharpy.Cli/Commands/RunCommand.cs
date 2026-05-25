@@ -1,6 +1,7 @@
 extern alias SharpyRT;
 using System.CommandLine;
 using System.Runtime.InteropServices;
+using Sharpy.Compiler;
 using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Cli.Commands;
@@ -87,7 +88,7 @@ internal static class RunCommand
 
         try
         {
-            BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
 
             var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
             var sharpyCorePath = sharpyCoreAssembly.Location;
@@ -96,16 +97,11 @@ internal static class RunCommand
             File.Copy(sharpyCorePath, sharpyCoreDestPath, overwrite: true);
 
             var cliDir = Path.GetDirectoryName(sharpyCorePath)!;
-            CopyRuntimeDependency(cliDir, outputDir, "Sharpy.Stdlib.dll");
-            CopyRuntimeDependency(cliDir, outputDir, "MathNet.Numerics.dll");
-            CopyRuntimeDependency(cliDir, outputDir, "Microsoft.Data.Sqlite.dll");
-            CopyRuntimeDependency(cliDir, outputDir, "SQLitePCLRaw.batteries_v2.dll");
-            CopyRuntimeDependency(cliDir, outputDir, "SQLitePCLRaw.core.dll");
-            CopyRuntimeDependency(cliDir, outputDir, "SQLitePCLRaw.provider.e_sqlite3.dll");
+            CopyUsedStdlibDependencies(cliDir, outputDir, compileResult.UsedAssemblyPaths);
 
             if (selfContained)
             {
-                HandleSelfContainedRun(inputFile, outputPath, sharpyCorePath, args, isTempOutput);
+                HandleSelfContainedRun(inputFile, outputPath, sharpyCorePath, args, isTempOutput, compileResult.UsedAssemblyPaths);
                 return;
             }
 
@@ -175,7 +171,8 @@ internal static class RunCommand
         string compiledExePath,
         string sharpyCorePath,
         string[] args,
-        bool isTempOutput)
+        bool isTempOutput,
+        IReadOnlySet<string> usedAssemblyPaths)
     {
         var rid = RuntimeInformation.RuntimeIdentifier;
         var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
@@ -190,13 +187,21 @@ internal static class RunCommand
             var csprojPath = Path.Combine(tempProjDir, $"{assemblyName}.csproj");
 
             var cliDir = Path.GetDirectoryName(sharpyCorePath)!;
-            var stdlibPath = Path.Combine(cliDir, "Sharpy.Stdlib.dll");
-            var stdlibRef = File.Exists(stdlibPath)
-                ? $@"
-    <Reference Include=""Sharpy.Stdlib"">
-      <HintPath>{stdlibPath}</HintPath>
-    </Reference>"
-                : "";
+            var stdlibRefs = new System.Text.StringBuilder();
+            foreach (var assemblyPath in usedAssemblyPaths)
+            {
+                var fileName = Path.GetFileName(assemblyPath);
+                if (fileName.Equals("Sharpy.Core.dll", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var fullPath = Path.Combine(cliDir, fileName);
+                if (File.Exists(fullPath))
+                {
+                    var includeName = Path.GetFileNameWithoutExtension(fileName);
+                    stdlibRefs.AppendLine($@"    <Reference Include=""{includeName}"">
+      <HintPath>{fullPath}</HintPath>
+    </Reference>");
+                }
+            }
             var csprojContent = $@"<Project Sdk=""Microsoft.NET.Sdk"">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -209,8 +214,8 @@ internal static class RunCommand
     </Reference>
     <Reference Include=""Sharpy.Core"">
       <HintPath>{sharpyCorePath}</HintPath>
-    </Reference>{stdlibRef}
-  </ItemGroup>
+    </Reference>
+{stdlibRefs}  </ItemGroup>
 </Project>";
 
             File.WriteAllText(csprojPath, csprojContent);
@@ -304,16 +309,49 @@ internal static class RunCommand
         }
     }
 
-    private static readonly string[] RuntimeDependencies = new[]
+    private static readonly string[] NumpyNuGetDeps = new[] { "MathNet.Numerics.dll" };
+    private static readonly string[] Sqlite3NuGetDeps = new[]
     {
-        "Sharpy.Core.dll",
-        "Sharpy.Stdlib.dll",
-        "MathNet.Numerics.dll",
         "Microsoft.Data.Sqlite.dll",
         "SQLitePCLRaw.batteries_v2.dll",
         "SQLitePCLRaw.core.dll",
         "SQLitePCLRaw.provider.e_sqlite3.dll",
     };
+
+    private static readonly Dictionary<string, string[]> PerModuleNuGetDeps = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Sharpy.Stdlib.Numpy.dll"] = NumpyNuGetDeps,
+        ["Sharpy.Stdlib.Sqlite3.dll"] = Sqlite3NuGetDeps,
+        ["Sharpy.Stdlib.dll"] = NumpyNuGetDeps.Concat(Sqlite3NuGetDeps).ToArray(),
+    };
+
+    static void CopyUsedStdlibDependencies(string cliDir, string outputDir, IReadOnlySet<string> usedAssemblyPaths)
+    {
+        var copiedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Sharpy.Core.dll" };
+        foreach (var assemblyPath in usedAssemblyPaths)
+        {
+            var fileName = Path.GetFileName(assemblyPath);
+            if (fileName.Equals("Sharpy.Core.dll", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            CopyRuntimeDependency(cliDir, outputDir, fileName);
+            copiedFiles.Add(fileName);
+
+            if (PerModuleNuGetDeps.TryGetValue(fileName, out var nugetDeps))
+            {
+                foreach (var dep in nugetDeps)
+                {
+                    CopyRuntimeDependency(cliDir, outputDir, dep);
+                    copiedFiles.Add(dep);
+                }
+            }
+        }
+
+        _lastCopiedDependencies = copiedFiles;
+    }
+
+    [ThreadStatic]
+    private static HashSet<string>? _lastCopiedDependencies;
 
     static void CopyRuntimeDependency(string sourceDir, string destDir, string fileName)
     {
@@ -324,7 +362,10 @@ internal static class RunCommand
 
     static void CleanupRuntimeDependencies(string dir)
     {
-        foreach (var dep in RuntimeDependencies)
+        var deps = _lastCopiedDependencies;
+        if (deps == null)
+            return;
+        foreach (var dep in deps)
         {
             var path = Path.Combine(dir, dep);
             if (File.Exists(path))

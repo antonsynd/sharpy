@@ -20,12 +20,26 @@ internal static class CliHelpers
     {
         var corePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
         var coreDir = Path.GetDirectoryName(corePath)!;
-        var stdlibPath = Path.Combine(coreDir, "Sharpy.Stdlib.dll");
         var refs = new List<string> { corePath };
-        if (File.Exists(stdlibPath))
-            refs.Add(stdlibPath);
+
+        var monolithPath = Path.Combine(coreDir, "Sharpy.Stdlib.dll");
+        if (File.Exists(monolithPath))
+        {
+            refs.Add(monolithPath);
+        }
         else
-            Console.Error.WriteLine("Warning: Sharpy.Stdlib.dll not found next to Sharpy.Core.dll — stdlib modules (json, os, math, etc.) will not be available.");
+        {
+            var perModuleAssemblies = Directory.GetFiles(coreDir, "Sharpy.Stdlib.*.dll");
+            if (perModuleAssemblies.Length > 0)
+            {
+                refs.AddRange(perModuleAssemblies);
+            }
+            else
+            {
+                Console.Error.WriteLine("Warning: No Sharpy.Stdlib assemblies found next to Sharpy.Core.dll — stdlib modules (json, os, math, etc.) will not be available.");
+            }
+        }
+
         return refs.ToArray();
     }
 

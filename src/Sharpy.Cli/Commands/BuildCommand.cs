@@ -55,7 +55,7 @@ internal static class BuildCommand
         root.Subcommands.Add(command);
     }
 
-    internal static void CompileToBinary(
+    internal static CompileResult CompileToBinary(
         FileInfo inputFile,
         string outputType,
         FileInfo? output,
@@ -169,11 +169,14 @@ internal static class BuildCommand
 
             CliHelpers.OutputVerboseTimingSummary(result.Metrics, logger);
             CliHelpers.OutputMetrics(assemblyResult.Metrics, metricsFormat, metricsOutput);
+
+            return result;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
             Environment.Exit(1);
+            return null!;
         }
     }
 

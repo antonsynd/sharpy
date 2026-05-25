@@ -38,6 +38,13 @@ public sealed record CompileResult
 
     /// <summary>Optional timing and artifact count data.</summary>
     public CompilationMetrics? Metrics { get; init; }
+
+    /// <summary>
+    /// File paths of stdlib assemblies that were actually used during compilation.
+    /// Enables selective dependency copying — only assemblies in this set need to be
+    /// included in the output directory at runtime.
+    /// </summary>
+    public IReadOnlySet<string> UsedAssemblyPaths { get; init; } = new HashSet<string>();
 }
 
 /// <summary>

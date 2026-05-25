@@ -463,6 +463,21 @@ internal class CachedModuleDiscovery
     }
 
     /// <summary>
+    /// Get the assembly identity name that contains the given module,
+    /// or null if not found.
+    /// </summary>
+    public string? GetAssemblyNameForModule(string moduleName)
+    {
+        foreach (var (assemblyName, lazy) in _loadedIndices)
+        {
+            var index = lazy.Value;
+            if (index.Modules.ContainsKey(moduleName))
+                return assemblyName;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Clear all cached data.
     /// </summary>
     public void ClearCache()

@@ -48,3 +48,18 @@ jobs:
       run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
     - name: Verify .spy stdlib C# staleness
       run: bash build_tools/check_spy_staleness.sh
+    - name: Log per-module stdlib assembly sizes
+      run: |
+        echo "=== Per-module stdlib assembly sizes (net10.0) ==="
+        find src/Sharpy.Stdlib/modules/bin -name "Sharpy.Stdlib.*.dll" -path "*/net10.0/*" \
+          | sort \
+          | while read f; do
+              size=$(stat --format="%s" "$f" 2>/dev/null || stat -f "%z" "$f" 2>/dev/null)
+              printf "  %-40s %s bytes\n" "$(basename "$f")" "$size"
+            done
+        echo "=== Monolith size ==="
+        monolith="src/Sharpy.Stdlib/bin/Debug/net10.0/Sharpy.Stdlib.dll"
+        if [ -f "$monolith" ]; then
+          size=$(stat --format="%s" "$monolith" 2>/dev/null || stat -f "%z" "$monolith" 2>/dev/null)
+          printf "  %-40s %s bytes\n" "$(basename "$monolith")" "$size"
+        fi

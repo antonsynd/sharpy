@@ -17,6 +17,51 @@ ships in `Sharpy.Stdlib.dll`. Treat the generated C# as build output that happen
 to be checked in (so consumers of `Sharpy.Stdlib` don't need the compiler), not as
 something to edit by hand.
 
+## Per-Module Assembly Structure
+
+Each stdlib module compiles into its own assembly (`Sharpy.Stdlib.<ModuleName>.dll`)
+for tree-shaking. The per-module `.csproj` files live in `src/Sharpy.Stdlib/modules/`.
+
+### Layout
+
+```
+src/Sharpy.Stdlib/
+├── modules/                         # Per-module .csproj files
+│   ├── Directory.Build.props        # Shared build properties
+│   ├── Sharpy.Stdlib.Math.csproj    # Compiles Math/**/*.cs
+│   ├── Sharpy.Stdlib.Random.csproj  # Compiles Random/**/*.cs
+│   └── ...                          # 31 per-module projects
+├── Sharpy.Stdlib.csproj             # Meta-project: references all per-module projects
+├── Math/                            # Module source: Math.cs, __Init__.cs, etc.
+├── Random/                          # Module source
+└── ...
+```
+
+### Adding a new module
+
+1. Create the module directory (e.g., `src/Sharpy.Stdlib/NewModule/`).
+2. Add `__Init__.cs` with `[SharpyModule("newmodule")]` and the module class.
+3. Create a per-module `.csproj` in `modules/`:
+   ```xml
+   <Project Sdk="Microsoft.NET.Sdk">
+     <ItemGroup>
+       <Compile Include="../NewModule/**/*.cs" />
+     </ItemGroup>
+   </Project>
+   ```
+   The `Directory.Build.props` in `modules/` handles shared properties
+   (TargetFrameworks, Sharpy.Core reference, etc.).
+4. Add a `<ProjectReference>` to `Sharpy.Stdlib.csproj` (the meta-project).
+5. Add the project to `sharpy.sln` under the `Stdlib.Modules` solution folder.
+6. If the module has NuGet dependencies, add them to the per-module `.csproj`.
+
+### How tree-shaking works
+
+The compiler loads all available stdlib assemblies at startup. During import
+resolution, it records which modules were actually accessed. At runtime, only
+the assemblies that contributed used modules (and their NuGet dependencies) are
+copied to the output directory.
+
 ## Writing a `.spy` stdlib module
 
 1. Place the source file under `src/Sharpy.Stdlib/spy/`, named after the module
