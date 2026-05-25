@@ -513,6 +513,7 @@ internal partial class RoslynEmitter
     {
         { "argparse", "ArgparseModule" },
         { "bisect", "BisectModule" },
+        { "fnmatch", "FnmatchModule" },
         { "pathlib", "PathlibModule" },
         { "string", "StringModule" },
         { "time", "TimeModule" },

@@ -1,0 +1,76 @@
+from system.text import StringBuilder
+from system.text.regular_expressions import Regex
+from system.runtime.interop_services import RuntimeInformation, OSPlatform
+
+def fnmatch(name: str, pat: str) -> bool:
+    if name is None:
+        raise TypeError("argument must be str, not NoneType")
+    if pat is None:
+        raise TypeError("argument must be str, not NoneType")
+    if RuntimeInformation.IsOSPlatform(OSPlatform.Windows):
+        name = name.ToLowerInvariant()
+        pat = pat.ToLowerInvariant()
+    return fnmatchcase(name, pat)
+
+def fnmatchcase(name: str, pat: str) -> bool:
+    if name is None:
+        raise TypeError("argument must be str, not NoneType")
+    if pat is None:
+        raise TypeError("argument must be str, not NoneType")
+    regex_pattern: str = translate(pat)
+    return Regex.IsMatch(name, regex_pattern)
+
+def filter(names: list[str], pat: str) -> list[str]:
+    if names is None:
+        raise TypeError("argument must be list, not NoneType")
+    if pat is None:
+        raise TypeError("argument must be str, not NoneType")
+    match_pat: str = pat
+    case_insensitive: bool = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+    if case_insensitive:
+        match_pat = match_pat.ToLowerInvariant()
+    regex_pattern: str = translate(match_pat)
+    regex: Regex = Regex(regex_pattern)
+    result: list[str] = []
+    for name in names:
+        test_name: str = name.ToLowerInvariant() if case_insensitive else name
+        if regex.IsMatch(test_name):
+            result.append(name)
+    return result
+
+def translate(pat: str) -> str:
+    if pat is None:
+        raise TypeError("argument must be str, not NoneType")
+    sb: StringBuilder = StringBuilder()
+    sb.Append("\\A(?s:")
+    i: int = 0
+    while i < len(pat):
+        c: str = pat[i]
+        i = i + 1
+        if c == "*":
+            sb.Append(".*")
+        elif c == "?":
+            sb.Append(".")
+        elif c == "[":
+            j: int = i
+            if j < len(pat) and pat[j] == "!":
+                j = j + 1
+            if j < len(pat) and pat[j] == "]":
+                j = j + 1
+            while j < len(pat) and pat[j] != "]":
+                j = j + 1
+            if j >= len(pat):
+                sb.Append("\\[")
+            else:
+                stuff: str = pat.Substring(i, j - i)
+                i = j + 1
+                stuff = stuff.Replace("\\", "\\\\")
+                if len(stuff) > 0 and stuff.StartsWith("!"):
+                    stuff = "^" + stuff.Substring(1)
+                sb.Append("[")
+                sb.Append(stuff)
+                sb.Append("]")
+        else:
+            sb.Append(Regex.Escape(c))
+    sb.Append(")\\Z")
+    return sb.ToString()

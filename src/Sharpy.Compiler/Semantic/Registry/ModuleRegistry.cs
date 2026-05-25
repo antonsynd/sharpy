@@ -444,11 +444,13 @@ internal class ModuleRegistry
             "system.collections.generic" => "System.Collections.Generic",
             "system.io" => "System.IO",
             "system.text" => "System.Text",
+            "system.text.regular_expressions" => "System.Text.RegularExpressions",
             "system.linq" => "System.Linq",
             "system.threading" => "System.Threading",
             "system.threading.tasks" => "System.Threading.Tasks",
             "system.net" => "System.Net",
             "system.net.http" => "System.Net.Http",
+            "system.runtime.interop_services" => "System.Runtime.InteropServices",
             "sharpy" => "Sharpy",
             _ => null
         };

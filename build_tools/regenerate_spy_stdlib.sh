@@ -35,6 +35,7 @@ MODULES=(
     "itertools:Itertools/Itertools.cs:-n Sharpy"
     "functools:Functools/Functools.cs:-n Sharpy"
     "string_module:String/StringModule.cs:-n Sharpy"
+    "fnmatch_module:Fnmatch/FnmatchModule.cs:-n Sharpy"
 )
 
 mode="regenerate"

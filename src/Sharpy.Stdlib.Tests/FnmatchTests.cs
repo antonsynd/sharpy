@@ -17,7 +17,7 @@ public class Fnmatch_Tests
     [InlineData("fooo", "f?o", false)]
     public void FnMatchCase_BasicPatterns(string name, string pat, bool expected)
     {
-        Sharpy.Fnmatch.FnMatchCase(name, pat).Should().Be(expected);
+        Sharpy.FnmatchModule.Fnmatchcase(name, pat).Should().Be(expected);
     }
 
     [Theory]
@@ -25,7 +25,7 @@ public class Fnmatch_Tests
     [InlineData("fbo", "f[oa]o", false)]
     public void FnMatchCase_CharacterClass(string name, string pat, bool expected)
     {
-        Sharpy.Fnmatch.FnMatchCase(name, pat).Should().Be(expected);
+        Sharpy.FnmatchModule.Fnmatchcase(name, pat).Should().Be(expected);
     }
 
     [Theory]
@@ -34,36 +34,36 @@ public class Fnmatch_Tests
     [InlineData("fbo", "f[!ab]o", false)]
     public void FnMatchCase_NegatedCharacterClass(string name, string pat, bool expected)
     {
-        Sharpy.Fnmatch.FnMatchCase(name, pat).Should().Be(expected);
+        Sharpy.FnmatchModule.Fnmatchcase(name, pat).Should().Be(expected);
     }
 
     [Fact]
     public void FnMatchCase_Wildcard_MatchesAnything()
     {
-        Sharpy.Fnmatch.FnMatchCase("anything", "*").Should().BeTrue();
-        Sharpy.Fnmatch.FnMatchCase("", "*").Should().BeTrue();
+        Sharpy.FnmatchModule.Fnmatchcase("anything", "*").Should().BeTrue();
+        Sharpy.FnmatchModule.Fnmatchcase("", "*").Should().BeTrue();
     }
 
     [Fact]
     public void FnMatchCase_QuestionMark_MatchesSingleChar()
     {
-        Sharpy.Fnmatch.FnMatchCase("a", "?").Should().BeTrue();
-        Sharpy.Fnmatch.FnMatchCase("", "?").Should().BeFalse();
-        Sharpy.Fnmatch.FnMatchCase("ab", "?").Should().BeFalse();
+        Sharpy.FnmatchModule.Fnmatchcase("a", "?").Should().BeTrue();
+        Sharpy.FnmatchModule.Fnmatchcase("", "?").Should().BeFalse();
+        Sharpy.FnmatchModule.Fnmatchcase("ab", "?").Should().BeFalse();
     }
 
     [Fact]
     public void FnMatchCase_SpecialCharsEscaped()
     {
-        Sharpy.Fnmatch.FnMatchCase("file.txt", "file.txt").Should().BeTrue();
-        Sharpy.Fnmatch.FnMatchCase("fileatxt", "file.txt").Should().BeFalse();
+        Sharpy.FnmatchModule.Fnmatchcase("file.txt", "file.txt").Should().BeTrue();
+        Sharpy.FnmatchModule.Fnmatchcase("fileatxt", "file.txt").Should().BeFalse();
     }
 
     [Fact]
     public void FnMatchCase_CaseSensitive()
     {
-        Sharpy.Fnmatch.FnMatchCase("FOO.TXT", "*.txt").Should().BeFalse();
-        Sharpy.Fnmatch.FnMatchCase("FOO.TXT", "*.TXT").Should().BeTrue();
+        Sharpy.FnmatchModule.Fnmatchcase("FOO.TXT", "*.txt").Should().BeFalse();
+        Sharpy.FnmatchModule.Fnmatchcase("FOO.TXT", "*.TXT").Should().BeTrue();
     }
 
     // --- fnmatch (platform-dependent case sensitivity) ---
@@ -74,15 +74,15 @@ public class Fnmatch_Tests
         if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
                 System.Runtime.InteropServices.OSPlatform.Windows))
         {
-            Sharpy.Fnmatch.FnMatch("FOO.TXT", "*.txt").Should().BeFalse();
+            Sharpy.FnmatchModule.Fnmatch("FOO.TXT", "*.txt").Should().BeFalse();
         }
     }
 
     [Fact]
     public void FnMatch_BasicMatch()
     {
-        Sharpy.Fnmatch.FnMatch("foo.txt", "*.txt").Should().BeTrue();
-        Sharpy.Fnmatch.FnMatch("foo.py", "*.txt").Should().BeFalse();
+        Sharpy.FnmatchModule.Fnmatch("foo.txt", "*.txt").Should().BeTrue();
+        Sharpy.FnmatchModule.Fnmatch("foo.py", "*.txt").Should().BeFalse();
     }
 
     // --- filter ---
@@ -92,7 +92,7 @@ public class Fnmatch_Tests
     {
         var names = new Sharpy.List<string>(
             new System.Collections.Generic.List<string> { "foo.txt", "bar.py", "baz.txt" });
-        var result = Sharpy.Fnmatch.Filter(names, "*.txt");
+        var result = Sharpy.FnmatchModule.Filter(names, "*.txt");
         result.Should().HaveCount(2);
         result[0].Should().Be("foo.txt");
         result[1].Should().Be("baz.txt");
@@ -103,7 +103,7 @@ public class Fnmatch_Tests
     {
         var names = new Sharpy.List<string>(
             new System.Collections.Generic.List<string> { "foo.py", "bar.py" });
-        var result = Sharpy.Fnmatch.Filter(names, "*.txt");
+        var result = Sharpy.FnmatchModule.Filter(names, "*.txt");
         result.Should().HaveCount(0);
     }
 
@@ -111,7 +111,7 @@ public class Fnmatch_Tests
     public void Filter_EmptyList_ReturnsEmptyList()
     {
         var names = new Sharpy.List<string>(new System.Collections.Generic.List<string>());
-        var result = Sharpy.Fnmatch.Filter(names, "*");
+        var result = Sharpy.FnmatchModule.Filter(names, "*");
         result.Should().HaveCount(0);
     }
 
@@ -120,42 +120,42 @@ public class Fnmatch_Tests
     [Fact]
     public void Translate_Star_ToRegex()
     {
-        var result = Sharpy.Fnmatch.Translate("*.txt");
+        var result = Sharpy.FnmatchModule.Translate("*.txt");
         result.Should().Be("\\A(?s:.*\\.txt)\\Z");
     }
 
     [Fact]
     public void Translate_QuestionMark_ToRegex()
     {
-        var result = Sharpy.Fnmatch.Translate("?.txt");
+        var result = Sharpy.FnmatchModule.Translate("?.txt");
         result.Should().Be("\\A(?s:.\\.txt)\\Z");
     }
 
     [Fact]
     public void Translate_CharacterClass_ToRegex()
     {
-        var result = Sharpy.Fnmatch.Translate("[abc]");
+        var result = Sharpy.FnmatchModule.Translate("[abc]");
         result.Should().Be("\\A(?s:[abc])\\Z");
     }
 
     [Fact]
     public void Translate_NegatedClass_ToRegex()
     {
-        var result = Sharpy.Fnmatch.Translate("[!abc]");
+        var result = Sharpy.FnmatchModule.Translate("[!abc]");
         result.Should().Be("\\A(?s:[^abc])\\Z");
     }
 
     [Fact]
     public void Translate_UnclosedBracket_TreatedAsLiteral()
     {
-        var result = Sharpy.Fnmatch.Translate("[abc");
+        var result = Sharpy.FnmatchModule.Translate("[abc");
         result.Should().Contain("\\[");
     }
 
     [Fact]
     public void Translate_StarOnly()
     {
-        var result = Sharpy.Fnmatch.Translate("*");
+        var result = Sharpy.FnmatchModule.Translate("*");
         result.Should().Be("\\A(?s:.*)\\Z");
     }
 }
