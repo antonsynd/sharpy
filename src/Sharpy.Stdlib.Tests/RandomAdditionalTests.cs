@@ -10,10 +10,10 @@ public class RandomAdditional_Tests
     [Fact]
     public void Randrange_SingleArg_ReturnsInRange()
     {
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         for (int i = 0; i < 100; i++)
         {
-            var val = Sharpy.Random.Randrange(10);
+            var val = Sharpy.RandomModule.Randrange(10);
             val.Should().BeGreaterThanOrEqualTo(0);
             val.Should().BeLessThan(10);
         }
@@ -22,10 +22,10 @@ public class RandomAdditional_Tests
     [Fact]
     public void Randrange_TwoArgs_ReturnsInRange()
     {
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         for (int i = 0; i < 100; i++)
         {
-            var val = Sharpy.Random.Randrange(5, 15);
+            var val = Sharpy.RandomModule.Randrange(5, 15);
             val.Should().BeGreaterThanOrEqualTo(5);
             val.Should().BeLessThan(15);
         }
@@ -34,10 +34,10 @@ public class RandomAdditional_Tests
     [Fact]
     public void Randrange_WithStep_ReturnsValidValues()
     {
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         for (int i = 0; i < 100; i++)
         {
-            var val = Sharpy.Random.Randrange(0, 10, 2);
+            var val = Sharpy.RandomModule.Randrange(0, 10, 2);
             val.Should().BeGreaterThanOrEqualTo(0);
             val.Should().BeLessThan(10);
             (val % 2).Should().Be(0);
@@ -47,10 +47,10 @@ public class RandomAdditional_Tests
     [Fact]
     public void Randrange_NegativeStep()
     {
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         for (int i = 0; i < 100; i++)
         {
-            var val = Sharpy.Random.Randrange(10, 0, -2);
+            var val = Sharpy.RandomModule.Randrange(10, 0, -2);
             val.Should().BeGreaterThan(0);
             val.Should().BeLessThanOrEqualTo(10);
             (val % 2).Should().Be(0);
@@ -60,14 +60,14 @@ public class RandomAdditional_Tests
     [Fact]
     public void Randrange_EmptyRange_ThrowsValueError()
     {
-        FluentActions.Invoking(() => Sharpy.Random.Randrange(5, 5))
+        FluentActions.Invoking(() => Sharpy.RandomModule.Randrange(5, 5))
             .Should().Throw<ValueError>();
     }
 
     [Fact]
     public void Randrange_ZeroStep_ThrowsValueError()
     {
-        FluentActions.Invoking(() => Sharpy.Random.Randrange(0, 10, 0))
+        FluentActions.Invoking(() => Sharpy.RandomModule.Randrange(0, 10, 0))
             .Should().Throw<ValueError>();
     }
 
@@ -76,7 +76,7 @@ public class RandomAdditional_Tests
     [Fact]
     public void Gauss_MeanAndStdDev_WithinTolerance()
     {
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         double mu = 5.0;
         double sigma = 2.0;
         int n = 10000;
@@ -85,7 +85,7 @@ public class RandomAdditional_Tests
         double sumSq = 0;
         for (int i = 0; i < n; i++)
         {
-            double val = Sharpy.Random.Gauss(mu, sigma);
+            double val = Sharpy.RandomModule.Gauss(mu, sigma);
             sum += val;
             sumSq += val * val;
         }
@@ -102,10 +102,10 @@ public class RandomAdditional_Tests
     public void Gauss_ZeroSigma_ReturnsMu()
     {
         // With sigma=0, result should always be mu
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         for (int i = 0; i < 10; i++)
         {
-            Sharpy.Random.Gauss(3.0, 0.0).Should().Be(3.0);
+            Sharpy.RandomModule.Gauss(3.0, 0.0).Should().Be(3.0);
         }
     }
 
@@ -114,10 +114,10 @@ public class RandomAdditional_Tests
     [Fact]
     public void Getrandbits_ReturnsValueInBitRange()
     {
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         for (int i = 0; i < 100; i++)
         {
-            var val = Sharpy.Random.Getrandbits(8);
+            var val = Sharpy.RandomModule.Getrandbits(8);
             val.Should().BeGreaterThanOrEqualTo(0);
             val.Should().BeLessThan(256);
         }
@@ -126,16 +126,16 @@ public class RandomAdditional_Tests
     [Fact]
     public void Getrandbits_ZeroBits_ReturnsZero()
     {
-        Sharpy.Random.Getrandbits(0).Should().Be(0);
+        Sharpy.RandomModule.Getrandbits(0).Should().Be(0);
     }
 
     [Fact]
     public void Getrandbits_OneBit_ReturnsZeroOrOne()
     {
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         for (int i = 0; i < 50; i++)
         {
-            var val = Sharpy.Random.Getrandbits(1);
+            var val = Sharpy.RandomModule.Getrandbits(1);
             val.Should().BeGreaterThanOrEqualTo(0);
             val.Should().BeLessThanOrEqualTo(1);
         }
@@ -144,14 +144,14 @@ public class RandomAdditional_Tests
     [Fact]
     public void Getrandbits_NegativeBits_ThrowsValueError()
     {
-        FluentActions.Invoking(() => Sharpy.Random.Getrandbits(-1))
+        FluentActions.Invoking(() => Sharpy.RandomModule.Getrandbits(-1))
             .Should().Throw<ValueError>();
     }
 
     [Fact]
     public void Getrandbits_TooManyBits_ThrowsValueError()
     {
-        FluentActions.Invoking(() => Sharpy.Random.Getrandbits(31))
+        FluentActions.Invoking(() => Sharpy.RandomModule.Getrandbits(31))
             .Should().Throw<ValueError>();
     }
 
@@ -160,9 +160,9 @@ public class RandomAdditional_Tests
     [Fact]
     public void Choices_UniformSelection_ReturnsFromPopulation()
     {
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         var pop = new List<string> { "a", "b", "c" };
-        var result = Sharpy.Random.Choices(pop, k: 10);
+        var result = Sharpy.RandomModule.Choices(pop, k: 10);
 
         ((ICollection<string>)result).Count.Should().Be(10);
         foreach (var item in (IEnumerable<string>)result)
@@ -174,11 +174,11 @@ public class RandomAdditional_Tests
     [Fact]
     public void Choices_WithWeights_RespectsDistribution()
     {
-        Sharpy.Random.Seed(42);
+        Sharpy.RandomModule.Seed(42);
         var pop = new List<string> { "rare", "common" };
         var weights = new List<double> { 0.01, 0.99 };
 
-        var result = Sharpy.Random.Choices(pop, weights, k: 1000);
+        var result = Sharpy.RandomModule.Choices(pop, weights, k: 1000);
 
         int commonCount = 0;
         foreach (var item in (IEnumerable<string>)result)
@@ -194,14 +194,14 @@ public class RandomAdditional_Tests
     [Fact]
     public void Choices_EmptyPopulation_ThrowsValueError()
     {
-        FluentActions.Invoking(() => Sharpy.Random.Choices(new List<int>(), k: 1))
+        FluentActions.Invoking(() => Sharpy.RandomModule.Choices(new List<int>(), k: 1))
             .Should().Throw<ValueError>();
     }
 
     [Fact]
     public void Choices_MismatchedWeights_ThrowsValueError()
     {
-        FluentActions.Invoking(() => Sharpy.Random.Choices(
+        FluentActions.Invoking(() => Sharpy.RandomModule.Choices(
             new List<int> { 1, 2, 3 },
             new List<double> { 1.0, 2.0 },
             k: 1))
@@ -211,8 +211,8 @@ public class RandomAdditional_Tests
     [Fact]
     public void Choices_KZero_ReturnsEmpty()
     {
-        Sharpy.Random.Seed(42);
-        var result = Sharpy.Random.Choices(new List<int> { 1, 2, 3 }, k: 0);
+        Sharpy.RandomModule.Seed(42);
+        var result = Sharpy.RandomModule.Choices(new List<int> { 1, 2, 3 }, k: 0);
         ((ICollection<int>)result).Count.Should().Be(0);
     }
 

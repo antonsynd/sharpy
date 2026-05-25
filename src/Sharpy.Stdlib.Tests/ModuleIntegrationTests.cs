@@ -61,20 +61,20 @@ public class ModuleIntegrationTests
     public void RandomModule_BasicFunctions_WorkCorrectly()
     {
         // Test random
-        var rand1 = Sharpy.Random.NextDouble();
+        var rand1 = Sharpy.RandomModule.NextDouble();
         rand1.Should().BeInRange(0.0, 1.0);
 
         // Test randint
-        var randInt = Sharpy.Random.Randint(1, 10);
+        var randInt = Sharpy.RandomModule.Randint(1, 10);
         randInt.Should().BeInRange(1, 10);
 
         // Test choice
         var arr = new[] { 1, 2, 3, 4, 5 };
-        var choice = Sharpy.Random.Choice(arr);
+        var choice = Sharpy.RandomModule.Choice(arr);
         arr.Should().Contain(choice);
 
         // Test uniform
-        var uniform = Sharpy.Random.Uniform(1.0, 5.0);
+        var uniform = Sharpy.RandomModule.Uniform(1.0, 5.0);
         uniform.Should().BeInRange(1.0, 5.0);
     }
 

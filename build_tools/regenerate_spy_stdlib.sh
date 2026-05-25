@@ -41,6 +41,7 @@ MODULES=(
     "os_module:Os/Os.cs:-n Sharpy"
     "os_path_module:Os/OsPath.cs:-n Sharpy"
     "shutil_module:Shutil/Shutil.cs:-n Sharpy"
+    "random_module:Random/Random.cs:-n Sharpy"
 )
 
 mode="regenerate"
