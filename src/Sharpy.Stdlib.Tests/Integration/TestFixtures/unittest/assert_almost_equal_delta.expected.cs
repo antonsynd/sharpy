@@ -23,13 +23,13 @@ public partial class AssertAlmostEqualDeltaTests
     public void TestWithinDelta()
     {
 #line (5, 5) - (5, 53) 1 "assert_almost_equal_delta.spy"
-        Xunit.Assert.True(System.Math.Abs(0.1d + 0.2d - 0.3d) <= 0.001d);
+        Xunit.Assert.True(global::System.Math.Abs(0.1d + 0.2d - 0.3d) <= 0.001d);
     }
 
     [Xunit.FactAttribute]
     public void TestSmallDelta()
     {
 #line (9, 5) - (9, 50) 1 "assert_almost_equal_delta.spy"
-        Xunit.Assert.True(System.Math.Abs(1.0d - 1.0001d) <= 0.001d);
+        Xunit.Assert.True(global::System.Math.Abs(1.0d - 1.0001d) <= 0.001d);
     }
 }

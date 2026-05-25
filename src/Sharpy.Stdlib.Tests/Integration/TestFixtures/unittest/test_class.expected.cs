@@ -9,7 +9,7 @@ using Xunit;
 
 public static partial class TestClass
 {
-    public class TestCalc : System.IDisposable
+    public class TestCalc : global::System.IDisposable
     {
         public TestCalc()
         {
