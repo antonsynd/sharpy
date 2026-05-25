@@ -28,19 +28,19 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Sep_IsNotEmpty()
         {
-            Assert.False(string.IsNullOrEmpty(Os.Sep));
+            Assert.False(string.IsNullOrEmpty(OsModule.Sep));
         }
 
         [Fact]
         public void Linesep_IsNotEmpty()
         {
-            Assert.False(string.IsNullOrEmpty(Os.Linesep));
+            Assert.False(string.IsNullOrEmpty(OsModule.Linesep));
         }
 
         [Fact]
         public void Name_IsPosixOrNt()
         {
-            Assert.True(Os.Name == "posix" || Os.Name == "nt");
+            Assert.True(OsModule.Name == "posix" || OsModule.Name == "nt");
         }
 
         // ===== File Operations =====
@@ -50,14 +50,14 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("removeme.txt");
             System.IO.File.WriteAllText(path, "data");
-            Os.Remove(path);
+            OsModule.Remove(path);
             Assert.False(System.IO.File.Exists(path));
         }
 
         [Fact]
         public void Remove_ThrowsOnNonexistent()
         {
-            Assert.Throws<FileNotFoundError>(() => Os.Remove(Sub("nope.txt")));
+            Assert.Throws<FileNotFoundError>(() => OsModule.Remove(Sub("nope.txt")));
         }
 
         [Fact]
@@ -66,7 +66,7 @@ namespace Sharpy.Core.Tests
             var src = Sub("old.txt");
             var dst = Sub("new.txt");
             System.IO.File.WriteAllText(src, "data");
-            Os.Rename(src, dst);
+            OsModule.Rename(src, dst);
             Assert.False(System.IO.File.Exists(src));
             Assert.True(System.IO.File.Exists(dst));
         }
@@ -74,7 +74,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Rename_ThrowsOnNonexistent()
         {
-            Assert.Throws<FileNotFoundError>(() => Os.Rename(Sub("nope.txt"), Sub("also_nope.txt")));
+            Assert.Throws<FileNotFoundError>(() => OsModule.Rename(Sub("nope.txt"), Sub("also_nope.txt")));
         }
 
         // ===== Directory Operations =====
@@ -83,7 +83,7 @@ namespace Sharpy.Core.Tests
         public void Mkdir_CreatesDirectory()
         {
             var path = Sub("newdir");
-            Os.Mkdir(path);
+            OsModule.Mkdir(path);
             Assert.True(System.IO.Directory.Exists(path));
         }
 
@@ -92,14 +92,14 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("existdir");
             System.IO.Directory.CreateDirectory(path);
-            Assert.Throws<FileExistsError>(() => Os.Mkdir(path));
+            Assert.Throws<FileExistsError>(() => OsModule.Mkdir(path));
         }
 
         [Fact]
         public void Makedirs_CreatesNestedDirectories()
         {
             var path = System.IO.Path.Combine(_tempDir, "a", "b", "c");
-            Os.Makedirs(path);
+            OsModule.Makedirs(path);
             Assert.True(System.IO.Directory.Exists(path));
         }
 
@@ -108,7 +108,7 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("existing");
             System.IO.Directory.CreateDirectory(path);
-            Os.Makedirs(path, exist_ok: true); // should not throw
+            OsModule.Makedirs(path, existOk: true); // should not throw
         }
 
         [Fact]
@@ -116,7 +116,7 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("existing2");
             System.IO.Directory.CreateDirectory(path);
-            Assert.Throws<FileExistsError>(() => Os.Makedirs(path, exist_ok: false));
+            Assert.Throws<FileExistsError>(() => OsModule.Makedirs(path, existOk: false));
         }
 
         [Fact]
@@ -124,7 +124,7 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("emptydir");
             System.IO.Directory.CreateDirectory(path);
-            Os.Rmdir(path);
+            OsModule.Rmdir(path);
             Assert.False(System.IO.Directory.Exists(path));
         }
 
@@ -134,13 +134,13 @@ namespace Sharpy.Core.Tests
             var path = Sub("notempty");
             System.IO.Directory.CreateDirectory(path);
             System.IO.File.WriteAllText(System.IO.Path.Combine(path, "file.txt"), "data");
-            Assert.Throws<IOError>(() => Os.Rmdir(path));
+            Assert.Throws<IOError>(() => OsModule.Rmdir(path));
         }
 
         [Fact]
         public void Rmdir_ThrowsOnNonexistent()
         {
-            Assert.Throws<FileNotFoundError>(() => Os.Rmdir(Sub("nope")));
+            Assert.Throws<FileNotFoundError>(() => OsModule.Rmdir(Sub("nope")));
         }
 
         [Fact]
@@ -152,7 +152,7 @@ namespace Sharpy.Core.Tests
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "b.txt"), "");
             System.IO.Directory.CreateDirectory(System.IO.Path.Combine(dir, "subdir"));
 
-            var entries = Os.Listdir(dir);
+            var entries = OsModule.Listdir(dir);
             Assert.Contains("a.txt", (IEnumerable<string>)entries);
             Assert.Contains("b.txt", (IEnumerable<string>)entries);
             Assert.Contains("subdir", (IEnumerable<string>)entries);
@@ -161,38 +161,38 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Listdir_ThrowsOnNonexistent()
         {
-            Assert.Throws<FileNotFoundError>(() => Os.Listdir(Sub("nope")));
+            Assert.Throws<FileNotFoundError>(() => OsModule.Listdir(Sub("nope")));
         }
 
         [Fact]
         public void Getcwd_ReturnsNonEmptyString()
         {
-            var cwd = Os.Getcwd();
+            var cwd = OsModule.Getcwd();
             Assert.False(string.IsNullOrEmpty(cwd));
         }
 
         [Fact]
         public void Chdir_ChangesDirectory()
         {
-            var original = Os.Getcwd();
+            var original = OsModule.Getcwd();
             try
             {
-                Os.Chdir(_tempDir);
+                OsModule.Chdir(_tempDir);
                 // Verify we moved somewhere that contains the temp dir name component
-                var cwd = Os.Getcwd();
+                var cwd = OsModule.Getcwd();
                 var dirName = System.IO.Path.GetFileName(_tempDir);
                 Assert.Contains(dirName, cwd, StringComparison.Ordinal);
             }
             finally
             {
-                Os.Chdir(original);
+                OsModule.Chdir(original);
             }
         }
 
         [Fact]
         public void Chdir_ThrowsOnNonexistent()
         {
-            Assert.Throws<FileNotFoundError>(() => Os.Chdir(Sub("nope")));
+            Assert.Throws<FileNotFoundError>(() => OsModule.Chdir(Sub("nope")));
         }
 
         // ===== Environment Variables =====
@@ -200,23 +200,23 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Getenv_ReturnsNullForMissing()
         {
-            Assert.Null(Os.Getenv("SHARPY_TEST_NONEXISTENT_" + Guid.NewGuid().ToString("N")));
+            Assert.True(OsModule.Getenv("SHARPY_TEST_NONEXISTENT_" + Guid.NewGuid().ToString("N")).IsNone);
         }
 
         [Fact]
         public void Getenv_WithDefault_ReturnsDefault()
         {
-            Assert.Equal("fallback", Os.Getenv("SHARPY_TEST_NONEXISTENT_" + Guid.NewGuid().ToString("N"), "fallback"));
+            Assert.Equal("fallback", OsModule.Getenv("SHARPY_TEST_NONEXISTENT_" + Guid.NewGuid().ToString("N"), "fallback"));
         }
 
         [Fact]
         public void Putenv_And_Getenv_RoundTrip()
         {
             var key = "SHARPY_TEST_" + Guid.NewGuid().ToString("N");
-            Os.Putenv(key, "testvalue");
+            OsModule.Putenv(key, "testvalue");
             try
             {
-                Assert.Equal("testvalue", Os.Getenv(key));
+                Assert.Equal("testvalue", OsModule.Getenv(key).Unwrap());
             }
             finally
             {
@@ -227,7 +227,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Environ_ReturnsDictWithEntries()
         {
-            var env = Os.Environ;
+            var env = OsModule.Environ;
             Assert.True(env.Count > 0);
         }
 
@@ -238,7 +238,7 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("exists_file.txt");
             System.IO.File.WriteAllText(path, "data");
-            Assert.True(Os.PathExists(path));
+            Assert.True(OsModule.PathExists(path));
         }
 
         [Fact]
@@ -246,13 +246,13 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("exists_dir");
             System.IO.Directory.CreateDirectory(path);
-            Assert.True(Os.PathExists(path));
+            Assert.True(OsModule.PathExists(path));
         }
 
         [Fact]
         public void PathExists_FalseForNonexistent()
         {
-            Assert.False(Os.PathExists(Sub("nonexistent_path")));
+            Assert.False(OsModule.PathExists(Sub("nonexistent_path")));
         }
 
         // ===== Stat =====
@@ -262,7 +262,7 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("stat_file.txt");
             System.IO.File.WriteAllText(path, "hello");
-            var result = Os.Stat(path);
+            var result = OsModule.Stat(path);
             Assert.True(result.StSize > 0);
         }
 
@@ -271,7 +271,7 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("stat_time.txt");
             System.IO.File.WriteAllText(path, "data");
-            var result = Os.Stat(path);
+            var result = OsModule.Stat(path);
             // Timestamps should be reasonable (after year 2020 = 1577836800)
             Assert.True(result.StMtime > 1577836800);
             Assert.True(result.StCtime > 1577836800);
@@ -283,7 +283,7 @@ namespace Sharpy.Core.Tests
         {
             var path = Sub("stat_dir");
             System.IO.Directory.CreateDirectory(path);
-            var result = Os.Stat(path);
+            var result = OsModule.Stat(path);
             Assert.Equal(0, result.StSize);
             Assert.True(result.StMtime > 1577836800);
         }
@@ -291,7 +291,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Stat_ThrowsOnNonexistent()
         {
-            Assert.Throws<FileNotFoundError>(() => Os.Stat(Sub("nonexistent_stat")));
+            Assert.Throws<FileNotFoundError>(() => OsModule.Stat(Sub("nonexistent_stat")));
         }
 
         // ===== Walk =====
@@ -308,7 +308,7 @@ namespace Sharpy.Core.Tests
             System.IO.File.WriteAllText(System.IO.Path.Combine(sub, "file2.txt"), "");
 
             var results = new System.Collections.Generic.List<string>();
-            foreach (var (dirpath, dirnames, filenames) in Os.Walk(root))
+            foreach (var (dirpath, dirnames, filenames) in OsModule.Walk(root))
             {
                 results.Add(dirpath);
             }
@@ -322,7 +322,7 @@ namespace Sharpy.Core.Tests
         public void Walk_NonexistentPath_YieldsNothing()
         {
             var count = 0;
-            foreach (var _ in Os.Walk(Sub("nonexistent")))
+            foreach (var _ in OsModule.Walk(Sub("nonexistent")))
             {
                 count++;
             }

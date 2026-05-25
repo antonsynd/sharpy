@@ -35,13 +35,13 @@ public class OsModuleAdditionalTests : IDisposable
     public void Altsep_IsStringValue()
     {
         // Altsep is always a string (empty string or a separator character)
-        Os.Altsep.Should().NotBeNull();
+        OsModule.Altsep.Should().NotBeNull();
     }
 
     [Fact]
     public void Pathsep_IsNotEmpty()
     {
-        Os.Pathsep.Should().NotBeNullOrEmpty();
+        OsModule.Pathsep.Should().NotBeNullOrEmpty();
     }
 
     // ===== File Operations =====
@@ -50,10 +50,10 @@ public class OsModuleAdditionalTests : IDisposable
     public void Remove_OnDirectoryPath_ThrowsFileNotFoundError()
     {
         // On .NET, File.Exists returns false for directories,
-        // so Os.Remove always throws FileNotFoundError for directory paths.
+        // so OsModule.Remove always throws FileNotFoundError for directory paths.
         var dirPath = Sub("adirtoremove");
         System.IO.Directory.CreateDirectory(dirPath);
-        Action act = () => Os.Remove(dirPath);
+        Action act = () => OsModule.Remove(dirPath);
         act.Should().Throw<FileNotFoundError>();
     }
 
@@ -63,7 +63,7 @@ public class OsModuleAdditionalTests : IDisposable
         var srcDir = Sub("rename_src_dir");
         var dstDir = Sub("rename_dst_dir");
         System.IO.Directory.CreateDirectory(srcDir);
-        Os.Rename(srcDir, dstDir);
+        OsModule.Rename(srcDir, dstDir);
         System.IO.Directory.Exists(srcDir).Should().BeFalse();
         System.IO.Directory.Exists(dstDir).Should().BeTrue();
     }
@@ -74,7 +74,7 @@ public class OsModuleAdditionalTests : IDisposable
     public void Mkdir_ThrowsWhenParentMissing()
     {
         var path = Sub("missing_parent/child");
-        Action act = () => Os.Mkdir(path);
+        Action act = () => OsModule.Mkdir(path);
         act.Should().Throw<FileNotFoundError>();
     }
 
@@ -83,7 +83,7 @@ public class OsModuleAdditionalTests : IDisposable
     {
         var emptyDir = Sub("empty_listdir_dir");
         System.IO.Directory.CreateDirectory(emptyDir);
-        var entries = Os.Listdir(emptyDir);
+        var entries = OsModule.Listdir(emptyDir);
         ((ICollection<string>)entries).Count.Should().Be(0);
     }
 
@@ -91,7 +91,7 @@ public class OsModuleAdditionalTests : IDisposable
     public void Listdir_CurrentDir_ReturnsEntries()
     {
         // Listdir with "." is valid (uses current directory)
-        var entries = Os.Listdir(".");
+        var entries = OsModule.Listdir(".");
         entries.Should().NotBeNull();
     }
 
@@ -106,7 +106,7 @@ public class OsModuleAdditionalTests : IDisposable
         System.IO.File.WriteAllText(System.IO.Path.Combine(root, "beta.txt"), "");
 
         bool found = false;
-        foreach (var (dirpath, dirnames, filenames) in Os.Walk(root))
+        foreach (var (dirpath, dirnames, filenames) in OsModule.Walk(root))
         {
             if (dirpath == root)
             {
@@ -128,7 +128,7 @@ public class OsModuleAdditionalTests : IDisposable
         System.IO.Directory.CreateDirectory(System.IO.Path.Combine(root, "subB"));
 
         bool found = false;
-        foreach (var (dirpath, dirnames, filenames) in Os.Walk(root))
+        foreach (var (dirpath, dirnames, filenames) in OsModule.Walk(root))
         {
             if (dirpath == root)
             {
@@ -150,7 +150,7 @@ public class OsModuleAdditionalTests : IDisposable
         System.IO.File.WriteAllText(System.IO.Path.Combine(level2, "deep.txt"), "");
 
         var visitedPaths = new List<string>();
-        foreach (var (dirpath, _, _) in Os.Walk(root))
+        foreach (var (dirpath, _, _) in OsModule.Walk(root))
         {
             visitedPaths.Add(dirpath);
         }
@@ -164,7 +164,7 @@ public class OsModuleAdditionalTests : IDisposable
     [Fact]
     public void Environ_ContainsPathVariable()
     {
-        var env = Os.Environ;
+        var env = OsModule.Environ;
         // PATH is present on posix, Path or PATH on Windows
         bool hasPath = env.ContainsKey("PATH") || env.ContainsKey("Path");
         hasPath.Should().BeTrue("PATH should be set in environment");
@@ -174,10 +174,11 @@ public class OsModuleAdditionalTests : IDisposable
     public void Getenv_ReturnsExistingVariable()
     {
         // PATH always exists on Unix/Windows
-        string? pathVal = Os.Getenv(
+        var pathVal = OsModule.Getenv(
             System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
                 System.Runtime.InteropServices.OSPlatform.Windows) ? "Path" : "PATH");
-        pathVal.Should().NotBeNullOrEmpty();
+        pathVal.IsSome.Should().BeTrue();
+        pathVal.Unwrap().Should().NotBeNullOrEmpty();
     }
 
     // ===== Stat additional coverage =====
@@ -187,7 +188,7 @@ public class OsModuleAdditionalTests : IDisposable
     {
         var path = Sub("stat_mode.txt");
         System.IO.File.WriteAllText(path, "mode test");
-        var result = Os.Stat(path);
+        var result = OsModule.Stat(path);
         result.StMode.Should().BeGreaterThanOrEqualTo(0);
     }
 
@@ -196,7 +197,7 @@ public class OsModuleAdditionalTests : IDisposable
     {
         var path = Sub("empty_stat.txt");
         System.IO.File.WriteAllText(path, "");
-        var result = Os.Stat(path);
+        var result = OsModule.Stat(path);
         result.StSize.Should().Be(0);
     }
 
@@ -205,7 +206,7 @@ public class OsModuleAdditionalTests : IDisposable
     [Fact]
     public void Getcwd_IsAbsolutePath()
     {
-        var cwd = Os.Getcwd();
+        var cwd = OsModule.Getcwd();
         System.IO.Path.IsPathRooted(cwd).Should().BeTrue();
     }
 
@@ -215,7 +216,7 @@ public class OsModuleAdditionalTests : IDisposable
     public void Makedirs_DeepNesting_CreatesAll()
     {
         var deep = System.IO.Path.Combine(_tempDir, "x", "y", "z", "w");
-        Os.Makedirs(deep);
+        OsModule.Makedirs(deep);
         System.IO.Directory.Exists(deep).Should().BeTrue();
     }
 }

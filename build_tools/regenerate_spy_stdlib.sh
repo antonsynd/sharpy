@@ -38,6 +38,7 @@ MODULES=(
     "fnmatch_module:Fnmatch/FnmatchModule.cs:-n Sharpy"
     "tempfile_module:Tempfile/Tempfile.cs:-n Sharpy"
     "math_module:Math/Math.cs:-n Sharpy"
+    "os_module:Os/Os.cs:-n Sharpy"
     "os_path_module:Os/OsPath.cs:-n Sharpy"
 )
 

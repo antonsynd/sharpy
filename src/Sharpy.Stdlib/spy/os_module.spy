@@ -1,0 +1,78 @@
+from system.io import Path as IoPath, File, Directory
+from system import Environment, UnauthorizedAccessException
+
+sep: str = str(IoPath.DirectorySeparatorChar)
+linesep: str = Environment.NewLine
+name: str = "nt" if sep == "\\" else "posix"
+pathsep: str = str(IoPath.PathSeparator)
+altsep: str = "" if IoPath.AltDirectorySeparatorChar == IoPath.DirectorySeparatorChar else str(IoPath.AltDirectorySeparatorChar)
+
+def remove(path: str) -> None:
+    if not File.Exists(path):
+        raise FileNotFoundError("No such file or directory: '" + path + "'")
+    if Directory.Exists(path):
+        raise IsADirectoryError("Is a directory: '" + path + "'")
+    try:
+        File.Delete(path)
+    except UnauthorizedAccessException:
+        raise PermissionError("Permission denied: '" + path + "'")
+
+def rename(src: str, dst: str) -> None:
+    if File.Exists(src):
+        File.Move(src, dst)
+    elif Directory.Exists(src):
+        Directory.Move(src, dst)
+    else:
+        raise FileNotFoundError("No such file or directory: '" + src + "'")
+
+def mkdir(path: str) -> None:
+    if Directory.Exists(path):
+        raise FileExistsError("File exists: '" + path + "'")
+    parent = IoPath.GetDirectoryName(path)
+    if parent is not None:
+        if len(parent) > 0 and not Directory.Exists(parent):
+            raise FileNotFoundError("No such file or directory: '" + path + "'")
+    Directory.CreateDirectory(path)
+
+def makedirs(path: str, exist_ok: bool = False) -> None:
+    if Directory.Exists(path):
+        if not exist_ok:
+            raise FileExistsError("File exists: '" + path + "'")
+        return
+    Directory.CreateDirectory(path)
+
+def rmdir(path: str) -> None:
+    if not Directory.Exists(path):
+        raise FileNotFoundError("No such file or directory: '" + path + "'")
+    try:
+        Directory.Delete(path, False)
+    except Exception:
+        raise IOError("Directory not empty: '" + path + "'")
+
+def listdir(path: str = ".") -> list[str]:
+    if not Directory.Exists(path):
+        raise FileNotFoundError("No such file or directory: '" + path + "'")
+    result: list[str] = []
+    for entry in Directory.GetFileSystemEntries(path):
+        result.append(IoPath.GetFileName(entry))
+    return result
+
+def getcwd() -> str:
+    return Directory.GetCurrentDirectory()
+
+def chdir(path: str) -> None:
+    if not Directory.Exists(path):
+        raise FileNotFoundError("No such file or directory: '" + path + "'")
+    Directory.SetCurrentDirectory(path)
+
+def getenv(key: str) -> str?:
+    result = Environment.GetEnvironmentVariable(key)
+    if result is None:
+        return None()
+    return result
+
+def putenv(key: str, value: str) -> None:
+    Environment.SetEnvironmentVariable(key, value)
+
+def path_exists(path: str) -> bool:
+    return File.Exists(path) or Directory.Exists(path)

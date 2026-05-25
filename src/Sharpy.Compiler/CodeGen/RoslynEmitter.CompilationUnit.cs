@@ -521,6 +521,7 @@ internal partial class RoslynEmitter
         { "glob", "GlobModule" },
         { "math", "MathModule" },
         { "tempfile", "TempfileModule" },
+        { "os", "OsModule" },
         { "os.path", "OsPathModule" },
     };
 
