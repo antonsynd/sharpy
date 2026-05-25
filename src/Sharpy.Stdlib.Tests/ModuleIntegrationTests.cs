@@ -34,27 +34,27 @@ public class ModuleIntegrationTests
     public void MathModule_BasicFunctions_WorkCorrectly()
     {
         // Test sqrt
-        Sharpy.Math.Sqrt(16.0).Should().Be(4.0);
+        Sharpy.MathModule.Sqrt(16.0).Should().Be(4.0);
 
         // Test pow
-        Sharpy.Math.Pow(2.0, 3.0).Should().Be(8.0);
+        Sharpy.MathModule.Pow(2.0, 3.0).Should().Be(8.0);
 
         // Test floor and ceil
-        Sharpy.Math.Floor(3.7).Should().Be(3.0);
-        Sharpy.Math.Ceil(3.2).Should().Be(4.0);
+        Sharpy.MathModule.Floor(3.7).Should().Be(3.0);
+        Sharpy.MathModule.Ceil(3.2).Should().Be(4.0);
 
         // Test trigonometric
-        System.Math.Round(Sharpy.Math.Sin(Sharpy.Math.Pi / 2), 10).Should().Be(1.0);
+        System.Math.Round(Sharpy.MathModule.Sin(Sharpy.MathModule.Pi / 2), 10).Should().Be(1.0);
 
         // Test constants
-        Sharpy.Math.Pi.Should().BeApproximately(3.14159, 0.00001);
-        Sharpy.Math.E.Should().BeApproximately(2.71828, 0.00001);
+        Sharpy.MathModule.Pi.Should().BeApproximately(3.14159, 0.00001);
+        Sharpy.MathModule.E.Should().BeApproximately(2.71828, 0.00001);
 
         // Test factorial
-        Sharpy.Math.Factorial(5).Should().Be(120);
+        Sharpy.MathModule.Factorial(5).Should().Be(120);
 
         // Test gcd
-        Sharpy.Math.Gcd(48, 18).Should().Be(6);
+        Sharpy.MathModule.Gcd(48, 18).Should().Be(6);
     }
 
     [Fact]

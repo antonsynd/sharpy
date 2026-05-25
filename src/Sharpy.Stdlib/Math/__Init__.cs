@@ -1,6 +1,6 @@
 namespace Sharpy
 {
     [SharpyModule("math")]
-    public static partial class Math
+    public static partial class MathModule
     { }
 }

@@ -519,11 +519,13 @@ internal partial class RoslynEmitter
         { "time", "TimeModule" },
         { "copy", "CopyModule" },
         { "glob", "GlobModule" },
+        { "math", "MathModule" },
+        { "tempfile", "TempfileModule" },
     };
 
     /// <summary>
     /// Convert a Sharpy stdlib module name to a fully qualified C# class name.
-    /// e.g., "math" -> "global::Sharpy.Math", "os.path" -> "global::Sharpy.OsPath"
+    /// e.g., "math" -> "global::Sharpy.MathModule", "os.path" -> "global::Sharpy.OsPath"
     /// Stdlib module classes live in the Sharpy namespace with PascalCase names
     /// where dotted parts are concatenated (no dots in the class name).
     /// </summary>

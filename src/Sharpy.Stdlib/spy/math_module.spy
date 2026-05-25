@@ -1,0 +1,172 @@
+from system import Math as SysMath, Double
+
+pi: float = 3.141592653589793
+e: float = 2.718281828459045
+tau: float = 6.283185307179586
+inf: float = Double.PositiveInfinity
+nan: float = Double.NaN
+
+def ceil(x: float) -> float:
+    return SysMath.Ceiling(x)
+
+def floor(x: float) -> float:
+    return SysMath.Floor(x)
+
+def fabs(x: float) -> float:
+    return SysMath.Abs(x)
+
+def copysign(x: float, y: float) -> float:
+    sign: float = -1.0 if (y < 0.0 or (y == 0.0 and 1.0 / y < 0.0)) else 1.0
+    return SysMath.Abs(x) * sign
+
+def sqrt(x: float) -> float:
+    return SysMath.Sqrt(x)
+
+def pow(x: float, y: float) -> float:
+    return SysMath.Pow(x, y)
+
+def exp(x: float) -> float:
+    return SysMath.Exp(x)
+
+def log(x: float) -> float:
+    return SysMath.Log(x)
+
+def log10(x: float) -> float:
+    return SysMath.Log10(x)
+
+def log2(x: float) -> float:
+    return SysMath.Log(x, 2.0)
+
+def sin(x: float) -> float:
+    return SysMath.Sin(x)
+
+def cos(x: float) -> float:
+    return SysMath.Cos(x)
+
+def tan(x: float) -> float:
+    return SysMath.Tan(x)
+
+def asin(x: float) -> float:
+    return SysMath.Asin(x)
+
+def acos(x: float) -> float:
+    return SysMath.Acos(x)
+
+def atan(x: float) -> float:
+    return SysMath.Atan(x)
+
+def atan2(y: float, x: float) -> float:
+    return SysMath.Atan2(y, x)
+
+def sinh(x: float) -> float:
+    return SysMath.Sinh(x)
+
+def cosh(x: float) -> float:
+    return SysMath.Cosh(x)
+
+def tanh(x: float) -> float:
+    return SysMath.Tanh(x)
+
+def degrees(x: float) -> float:
+    return x * (180.0 / pi)
+
+def radians(x: float) -> float:
+    return x * (pi / 180.0)
+
+def isfinite(x: float) -> bool:
+    return not Double.IsInfinity(x) and not Double.IsNaN(x)
+
+def isinf(x: float) -> bool:
+    return Double.IsInfinity(x)
+
+def isnan(x: float) -> bool:
+    return Double.IsNaN(x)
+
+def trunc(x: float) -> float:
+    return SysMath.Truncate(x)
+
+def expm1(x: float) -> float:
+    if SysMath.Abs(x) < 1e-5:
+        return x + 0.5 * x * x + x * x * x / 6.0
+    return SysMath.Exp(x) - 1.0
+
+def log1p(x: float) -> float:
+    if x <= -1.0:
+        raise ValueError("math domain error")
+    if SysMath.Abs(x) < 1e-4:
+        x2: float = x * x
+        return x - x2 / 2.0 + x2 * x / 3.0 - x2 * x2 / 4.0
+    return SysMath.Log(1.0 + x)
+
+def remainder(x: float, y: float) -> float:
+    if y == 0.0:
+        raise ValueError("math domain error")
+    return SysMath.IEEERemainder(x, y)
+
+def gcd(a: long, b: long) -> long:
+    a = SysMath.Abs(a)
+    b = SysMath.Abs(b)
+    while b != 0:
+        temp: long = b
+        b = a % b
+        a = temp
+    return a
+
+def factorial(n: int) -> long:
+    if n < 0:
+        raise ValueError("factorial() not defined for negative values")
+    if n > 20:
+        raise OverflowError("factorial() result too large for long type (n > 20)")
+    if n == 0 or n == 1:
+        return 1
+    result: long = 1
+    i: int = 2
+    while i <= n:
+        result = result * i
+        i = i + 1
+    return result
+
+def isclose(a: float, b: float, rel_tol: float = 1e-9, abs_tol: float = 0.0) -> bool:
+    if rel_tol < 0.0 or abs_tol < 0.0:
+        raise ValueError("tolerances must be non-negative")
+    if a == b:
+        return True
+    if Double.IsInfinity(a) or Double.IsInfinity(b):
+        return False
+    if Double.IsNaN(a) or Double.IsNaN(b):
+        return False
+    diff: float = SysMath.Abs(b - a)
+    return diff <= SysMath.Max(rel_tol * SysMath.Max(SysMath.Abs(a), SysMath.Abs(b)), abs_tol)
+
+def perm(n: int, k: int) -> long:
+    if n < 0:
+        raise ValueError("n must not be negative")
+    if k < 0:
+        raise ValueError("k must not be negative")
+    if k > n:
+        return 0
+    result: long = 1
+    i: int = 0
+    while i < k:
+        result = result * (n - i)
+        i = i + 1
+    return result
+
+def fsum(iterable: list[float]) -> float:
+    total: float = 0.0
+    c: float = 0.0
+    for value in iterable:
+        y: float = value - c
+        t: float = total + y
+        c = (t - total) - y
+        total = t
+    return total
+
+def prod(iterable: list[float], start: float = 1.0) -> float:
+    result: float = start
+    for value in iterable:
+        result = result * value
+    return result
+
+def hypot(x: float, y: float) -> float:
+    return SysMath.Sqrt(x * x + y * y)
