@@ -1,0 +1,63 @@
+from system.io import Path as IoPath, File, Directory, FileInfo
+from system import Environment
+
+def join(a: str, b: str) -> str:
+    return IoPath.Combine(a, b)
+
+def exists(path: str) -> bool:
+    return File.Exists(path) or Directory.Exists(path)
+
+def isfile(path: str) -> bool:
+    return File.Exists(path)
+
+def isdir(path: str) -> bool:
+    return Directory.Exists(path)
+
+def isabs(path: str) -> bool:
+    return IoPath.IsPathRooted(path)
+
+def basename(path: str) -> str:
+    return IoPath.GetFileName(path)
+
+def dirname(path: str) -> str:
+    result = IoPath.GetDirectoryName(path)
+    if result is None:
+        return ""
+    return result
+
+def split(path: str) -> tuple[str, str]:
+    dir_part = IoPath.GetDirectoryName(path)
+    if dir_part is None:
+        dir_part = ""
+    name_part: str = IoPath.GetFileName(path)
+    return (dir_part, name_part)
+
+def splitext(path: str) -> tuple[str, str]:
+    ext: str = IoPath.GetExtension(path)
+    root: str = path
+    if len(ext) > 0:
+        root = path.Substring(0, len(path) - len(ext))
+    return (root, ext)
+
+def abspath(path: str) -> str:
+    return IoPath.GetFullPath(path)
+
+def realpath(path: str) -> str:
+    return IoPath.GetFullPath(path)
+
+def getsize(path: str) -> long:
+    if not File.Exists(path):
+        raise FileNotFoundError("No such file or directory: '" + path + "'")
+    info: FileInfo = FileInfo(path)
+    return info.Length
+
+def expanduser(path: str) -> str:
+    if path.StartsWith("~"):
+        home: str = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+        if len(path) == 1:
+            return home
+        sep_str: str = str(IoPath.DirectorySeparatorChar)
+        alt_sep_str: str = str(IoPath.AltDirectorySeparatorChar)
+        if path[1] == sep_str or path[1] == alt_sep_str:
+            return home + path.Substring(1)
+    return path

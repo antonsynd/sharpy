@@ -34,7 +34,7 @@ public class OsPathAdditionalTests : IDisposable
     [Fact]
     public void Abspath_DotReturnsAbsolute()
     {
-        var result = OsPath.Abspath(".");
+        var result = OsPathModule.Abspath(".");
         result.Should().NotBeNullOrEmpty();
         System.IO.Path.IsPathRooted(result).Should().BeTrue();
     }
@@ -42,7 +42,7 @@ public class OsPathAdditionalTests : IDisposable
     [Fact]
     public void Abspath_RelativePath_ReturnsAbsolute()
     {
-        var result = OsPath.Abspath("some/relative");
+        var result = OsPathModule.Abspath("some/relative");
         System.IO.Path.IsPathRooted(result).Should().BeTrue();
     }
 
@@ -51,7 +51,7 @@ public class OsPathAdditionalTests : IDisposable
     [Fact]
     public void Realpath_ExistingDir_ReturnsAbsolute()
     {
-        var result = OsPath.Realpath(_tempDir);
+        var result = OsPathModule.Realpath(_tempDir);
         System.IO.Path.IsPathRooted(result).Should().BeTrue();
         result.Should().NotBeNullOrEmpty();
     }
@@ -59,7 +59,7 @@ public class OsPathAdditionalTests : IDisposable
     [Fact]
     public void Realpath_Dot_ReturnsAbsolute()
     {
-        var result = OsPath.Realpath(".");
+        var result = OsPathModule.Realpath(".");
         System.IO.Path.IsPathRooted(result).Should().BeTrue();
     }
 
@@ -70,7 +70,7 @@ public class OsPathAdditionalTests : IDisposable
     {
         // Python: os.path.split("/a/b/") -> ("/a/b", "")
         // .NET GetFileName("/a/b/") returns "" on Unix
-        var (head, tail) = OsPath.Split("/a/b/");
+        var (head, tail) = OsPathModule.Split("/a/b/");
         tail.Should().BeEmpty();
         head.Should().NotBeNullOrEmpty();
     }
@@ -79,7 +79,7 @@ public class OsPathAdditionalTests : IDisposable
     public void Split_RootOnly_ReturnsRootAndEmpty()
     {
         // os.path.split("/") -> ("/", "")
-        var (head, tail) = OsPath.Split("/");
+        var (head, tail) = OsPathModule.Split("/");
         tail.Should().BeEmpty();
     }
 
@@ -87,7 +87,7 @@ public class OsPathAdditionalTests : IDisposable
     public void Split_SimpleFilename_HeadIsEmpty()
     {
         // os.path.split("file.txt") -> ("", "file.txt")
-        var (head, tail) = OsPath.Split("file.txt");
+        var (head, tail) = OsPathModule.Split("file.txt");
         tail.Should().Be("file.txt");
         head.Should().BeEmpty();
     }
@@ -97,7 +97,7 @@ public class OsPathAdditionalTests : IDisposable
     [Fact]
     public void Splitext_SimpleExtension_ReturnsCorrectParts()
     {
-        var (root, ext) = OsPath.Splitext("file.txt");
+        var (root, ext) = OsPathModule.Splitext("file.txt");
         root.Should().Be("file");
         ext.Should().Be(".txt");
     }
@@ -107,7 +107,7 @@ public class OsPathAdditionalTests : IDisposable
     {
         // .NET Path.GetExtension(".hidden") returns ".hidden" as the extension.
         // The implementation uses .NET semantics, so the parts round-trip to original.
-        var (root, ext) = OsPath.Splitext(".hidden");
+        var (root, ext) = OsPathModule.Splitext(".hidden");
         (root + ext).Should().Be(".hidden");
     }
 
@@ -115,7 +115,7 @@ public class OsPathAdditionalTests : IDisposable
     public void Splitext_DotAtEnd_ExtIsEmpty()
     {
         // "file." -> ("file.", "") by .NET GetExtension
-        var (root, ext) = OsPath.Splitext("file.");
+        var (root, ext) = OsPathModule.Splitext("file.");
         // .NET Path.GetExtension("file.") returns "."
         (root + ext).Should().Be("file.");
     }
@@ -125,7 +125,7 @@ public class OsPathAdditionalTests : IDisposable
     [Fact]
     public void Join_FourArgs_JoinsCorrectly()
     {
-        var result = OsPath.Join("a", "b", "c", "d");
+        var result = OsPathModule.Join("a", "b", "c", "d");
         result.Should().Contain("a");
         result.Should().EndWith("d");
     }
@@ -134,7 +134,7 @@ public class OsPathAdditionalTests : IDisposable
     public void Join_TwoAbsolutePaths_SecondWins()
     {
         // System.IO.Path.Combine("/a", "/b") returns "/b" on Unix
-        var result = OsPath.Join("/a", "/b");
+        var result = OsPathModule.Join("/a", "/b");
         // On macOS/Linux, Path.Combine("/a", "/b") = "/b"
         result.Should().Be(System.IO.Path.Combine("/a", "/b"));
     }
@@ -142,7 +142,7 @@ public class OsPathAdditionalTests : IDisposable
     [Fact]
     public void Join_EmptyFirstArg_ReturnsSecond()
     {
-        var result = OsPath.Join("", "b");
+        var result = OsPathModule.Join("", "b");
         result.Should().Be(System.IO.Path.Combine("", "b"));
     }
 
@@ -152,7 +152,7 @@ public class OsPathAdditionalTests : IDisposable
     public void Normpath_AbsoluteWithDotDot_Collapses()
     {
         var sep = System.IO.Path.DirectorySeparatorChar;
-        var result = OsPath.Normpath("/a/./b/../c");
+        var result = OsPathModule.Normpath("/a/./b/../c");
         result.Should().Be(sep + "a" + sep + "c");
     }
 
@@ -161,7 +161,7 @@ public class OsPathAdditionalTests : IDisposable
     {
         var sep = System.IO.Path.DirectorySeparatorChar;
         // "/a//b" should collapse to "/a/b"
-        var result = OsPath.Normpath("/a//b");
+        var result = OsPathModule.Normpath("/a//b");
         result.Should().Be(sep + "a" + sep + "b");
     }
 
@@ -169,7 +169,7 @@ public class OsPathAdditionalTests : IDisposable
     public void Normpath_RelativeDotDotAtStart_Preserved()
     {
         var sep = System.IO.Path.DirectorySeparatorChar;
-        var result = OsPath.Normpath("../a/b");
+        var result = OsPathModule.Normpath("../a/b");
         result.Should().Be(".." + sep + "a" + sep + "b");
     }
 
@@ -180,7 +180,7 @@ public class OsPathAdditionalTests : IDisposable
     {
         var path = Sub("empty.txt");
         File.WriteAllText(path, "");
-        OsPath.Getsize(path).Should().Be(0);
+        OsPathModule.Getsize(path).Should().Be(0);
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public class OsPathAdditionalTests : IDisposable
         // Write known bytes
         var bytes = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         File.WriteAllBytes(path, bytes);
-        OsPath.Getsize(path).Should().Be(10);
+        OsPathModule.Getsize(path).Should().Be(10);
     }
 
     // ===== Expanduser additional =====
@@ -198,7 +198,7 @@ public class OsPathAdditionalTests : IDisposable
     [Fact]
     public void Expanduser_TildeWithSubdir_BuildsCorrectPath()
     {
-        var result = OsPath.Expanduser("~/mydir/file.txt");
+        var result = OsPathModule.Expanduser("~/mydir/file.txt");
         result.Should().NotStartWith("~");
         result.Should().EndWith("mydir/file.txt".Replace('/', System.IO.Path.DirectorySeparatorChar));
     }
@@ -209,7 +209,7 @@ public class OsPathAdditionalTests : IDisposable
     public void Dirname_TrailingSlash_ReturnsParent()
     {
         // "/a/b/" -> dirname is "/a/b" (GetDirectoryName strips trailing sep)
-        var result = OsPath.Dirname("/a/b/");
+        var result = OsPathModule.Dirname("/a/b/");
         result.Should().NotBeNullOrEmpty();
     }
 
@@ -217,14 +217,14 @@ public class OsPathAdditionalTests : IDisposable
     public void Basename_TrailingSlash_ReturnsEmpty()
     {
         // "/a/b/" -> GetFileName returns ""
-        var result = OsPath.Basename("/a/b/");
+        var result = OsPathModule.Basename("/a/b/");
         result.Should().BeEmpty();
     }
 
     [Fact]
     public void Basename_RootPath_ReturnsEmpty()
     {
-        var result = OsPath.Basename("/");
+        var result = OsPathModule.Basename("/");
         result.Should().BeEmpty();
     }
 
@@ -233,12 +233,12 @@ public class OsPathAdditionalTests : IDisposable
     [Fact]
     public void Isabs_EmptyString_ReturnsFalse()
     {
-        OsPath.Isabs("").Should().BeFalse();
+        OsPathModule.Isabs("").Should().BeFalse();
     }
 
     [Fact]
     public void Isabs_SingleSlash_ReturnsTrue()
     {
-        OsPath.Isabs("/").Should().BeTrue();
+        OsPathModule.Isabs("/").Should().BeTrue();
     }
 }
