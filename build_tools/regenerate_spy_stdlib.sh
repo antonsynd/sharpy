@@ -97,6 +97,11 @@ for entry in "${MODULES[@]}"; do
             | sed 's/[[:space:]]*$//'
     } > "$final_file"
 
+    # Ensure file ends with a newline (some compiler outputs omit it).
+    if [ -n "$(tail -c 1 "$final_file")" ]; then
+        echo "" >> "$final_file"
+    fi
+
     emitted+=("${spy_name}:${cs_rel}")
     echo "Emitted: $spy_file"
 done
