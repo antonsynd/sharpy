@@ -1,0 +1,18 @@
+import itertools
+
+def main():
+    items: list[int] = [1, 2, 3]
+
+    # combinations
+    for combo in itertools.combinations(items, 2):
+        print(len(combo))
+    print("---")
+
+    # permutations
+    for perm in itertools.permutations(items, 2):
+        print(len(perm))
+    print("---")
+
+    # combinations_with_replacement
+    for cwr in itertools.combinations_with_replacement(items, 2):
+        print(len(cwr))

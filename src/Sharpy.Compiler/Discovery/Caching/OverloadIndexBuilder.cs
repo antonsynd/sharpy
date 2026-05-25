@@ -640,6 +640,15 @@ internal class OverloadIndexBuilder
                     .Select(CreateTypeSignature)
                     .ToList();
             }
+            else if (semanticType is BuiltinType && ClrTypeHelper.GetIteratorElementType(clrType) != null)
+            {
+                // Generic Iterator<T> subtypes (e.g., CombinationsIterator<T> : Iterator<T[]>)
+                // Emit as Iterator[elementType] so the round-trip preserves iterability.
+                var elementClrType = ClrTypeHelper.GetIteratorElementType(clrType)!;
+                signature.Name = BuiltinNames.Iterator;
+                signature.IsGeneric = true;
+                signature.TypeArguments = new List<TypeSignature> { CreateTypeSignature(elementClrType) };
+            }
         }
         else if (semanticType is GenericType genericType)
         {
