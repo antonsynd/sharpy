@@ -34,7 +34,7 @@ namespace Sharpy
             _data = new System.Collections.Generic.List<byte>();
         }
 
-        internal HashObject(string algorithmName, int digestSize)
+        public HashObject(string algorithmName, int digestSize)
         {
             _algorithmName = algorithmName;
             _algorithmFactory = algorithmName switch

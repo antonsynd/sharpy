@@ -110,6 +110,14 @@ internal static class ProjectCommand
                 .Distinct()
                 .ToArray();
 
+            // Inject CLI default references into ProjectConfig so AssemblyCompiler
+            // can resolve types from Sharpy.Core/Stdlib during Roslyn compilation
+            foreach (var defaultRef in CliHelpers.GetDefaultReferences())
+            {
+                if (!projectConfig.References.Contains(defaultRef))
+                    projectConfig.References.Add(defaultRef);
+            }
+
             var compilerOptions = new CompilerOptions
             {
                 References = allReferences,

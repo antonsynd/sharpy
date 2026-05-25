@@ -6,9 +6,8 @@
 #   bash build_tools/regenerate_spy_stdlib.sh --check    # Diff against committed (CI mode)
 #   bash build_tools/regenerate_spy_stdlib.sh --dry-run  # Show what would be regenerated
 #
-# Two-pass design: all files are emitted to a temp directory first, then
-# applied to the tree (or diffed). This avoids cascading build failures
-# since Sharpy.Cli has a build-order dependency on Sharpy.Stdlib.
+# Uses project compilation (sharpyc project stdlib.spyproj --emit-cs-to) to emit
+# all modules in one pass, then maps the output files to their target locations.
 
 set -euo pipefail
 
@@ -25,24 +24,25 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Mapping: spy_name:cs_relative_path:extra_flags
-# All modules use -n Sharpy to emit into the Sharpy namespace (matching __Init__.cs).
+# Mapping: emitted_filename:cs_relative_path
+# The emitted filename comes from --emit-cs-to (spy filename stem + .cs).
+# The cs_relative_path is the target location in Sharpy.Stdlib.
 MODULES=(
-    "textwrap:Textwrap/Textwrap.cs:-n Sharpy"
-    "bisect_module:Bisect/Bisect.cs:-n Sharpy"
-    "statistics:Statistics/Statistics.cs:-n Sharpy"
-    "heapq:Heapq/Heapq.cs:-n Sharpy"
-    "itertools:Itertools/Itertools.cs:-n Sharpy"
-    "functools:Functools/Functools.cs:-n Sharpy"
-    "string_module:String/StringModule.cs:-n Sharpy"
-    "fnmatch_module:Fnmatch/FnmatchModule.cs:-n Sharpy"
-    "tempfile_module:Tempfile/Tempfile.cs:-n Sharpy"
-    "math_module:Math/Math.cs:-n Sharpy"
-    "os_module:Os/Os.cs:-n Sharpy"
-    "os_path_module:Os/OsPath.cs:-n Sharpy"
-    "shutil_module:Shutil/Shutil.cs:-n Sharpy"
-    "random_module:Random/Random.cs:-n Sharpy"
-    "hashlib_module:Hashlib/Hashlib.cs:-n Sharpy"
+    "textwrap:Textwrap/Textwrap.cs"
+    "bisect_module:Bisect/Bisect.cs"
+    "statistics:Statistics/Statistics.cs"
+    "heapq:Heapq/Heapq.cs"
+    "itertools:Itertools/Itertools.cs"
+    "functools:Functools/Functools.cs"
+    "string_module:String/StringModule.cs"
+    "fnmatch_module:Fnmatch/FnmatchModule.cs"
+    "tempfile_module:Tempfile/Tempfile.cs"
+    "math_module:Math/Math.cs"
+    "os_module:Os/Os.cs"
+    "os_path_module:Os/OsPath.cs"
+    "shutil_module:Shutil/Shutil.cs"
+    "random_module:Random/Random.cs"
+    "hashlib_module:Hashlib/Hashlib.cs"
 )
 
 mode="regenerate"
@@ -53,82 +53,70 @@ elif [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ "$mode" == "dry-run" ]]; then
+    echo "Would emit all modules via: sharpyc project stdlib.spyproj --emit-cs-to <tmpdir>"
     for entry in "${MODULES[@]}"; do
-        IFS=':' read -r spy_name cs_rel extra_flags <<< "$entry"
-        flags="-t library"
-        if [[ -n "$extra_flags" ]]; then flags="$flags $extra_flags"; fi
-        echo "Would regenerate: $SPY_DIR/${spy_name}.spy -> $STDLIB_DIR/${cs_rel} (flags: $flags)"
+        IFS=':' read -r emitted_name cs_rel <<< "$entry"
+        echo "  ${emitted_name}.cs -> $STDLIB_DIR/${cs_rel}"
     done
     exit 0
 fi
 
 WORK_DIR="$(mktemp -d)"
-errors=0
-emitted=()
+EMIT_DIR="$WORK_DIR/emitted"
+mkdir -p "$EMIT_DIR"
 
-# --- Pass 1: Emit all files to temp directory ---
+# --- Pass 1: Emit all modules in one project compilation pass ---
+
+echo "Emitting all .spy modules via project compilation..."
+if ! $SHARPYC project "$SPY_DIR/stdlib.spyproj" --emit-cs-to "$EMIT_DIR" 2>/dev/null; then
+    echo "ERROR: sharpyc project compilation failed"
+    echo "Run manually to see diagnostics:"
+    echo "  dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj"
+    exit 1
+fi
+echo "Project compilation succeeded."
+echo ""
+
+# --- Pass 2: Post-process and apply/diff ---
+
+errors=0
 
 for entry in "${MODULES[@]}"; do
-    IFS=':' read -r spy_name cs_rel extra_flags <<< "$entry"
-    spy_file="$SPY_DIR/${spy_name}.spy"
+    IFS=':' read -r emitted_name cs_rel <<< "$entry"
 
-    if [[ ! -f "$spy_file" ]]; then
-        echo "ERROR: $spy_file not found"
+    emitted_file="$EMIT_DIR/${emitted_name}.cs"
+    if [[ ! -f "$emitted_file" ]]; then
+        echo "ERROR: Expected emitted file not found: ${emitted_name}.cs"
         errors=1
         continue
     fi
 
-    flags="-t library"
-    if [[ -n "$extra_flags" ]]; then
-        flags="$flags $extra_flags"
-    fi
-
-    header_cmd="sharpyc emit csharp src/Sharpy.Stdlib/spy/${spy_name}.spy $flags"
-    header="// Generated from src/Sharpy.Stdlib/spy/${spy_name}.spy — do not edit directly.
+    # Build the header comment
+    header_cmd="sharpyc emit csharp src/Sharpy.Stdlib/spy/${emitted_name}.spy -t library -n Sharpy"
+    header="// Generated from src/Sharpy.Stdlib/spy/${emitted_name}.spy — do not edit directly.
 // To regenerate: $header_cmd"
 
-    tmp_file="$WORK_DIR/${spy_name}.cs"
-    if ! $SHARPYC emit csharp "$spy_file" $flags -o "$tmp_file" 2>/dev/null; then
-        echo "ERROR: sharpyc emit csharp failed for $spy_file"
-        errors=1
-        continue
-    fi
-
-    # Post-process: normalize CRLF→LF, strip trailing whitespace, strip [SharpyModule].
-    # Uses a pipeline (no sed -i, which differs macOS vs Linux).
-    final_file="$WORK_DIR/${spy_name}_final.cs"
+    # Post-process: normalize CRLF→LF, strip trailing whitespace, strip [SharpyModule],
+    # strip #line directives (project compilation emits these for source mapping).
+    final_file="$WORK_DIR/${emitted_name}_final.cs"
     {
         echo "$header"
-        tr -d '\r' < "$tmp_file" \
+        tr -d '\r' < "$emitted_file" \
             | sed '/\[global::Sharpy\.SharpyModule(/d' \
+            | sed '/^#line /d' \
             | sed 's/[[:space:]]*$//'
     } > "$final_file"
 
-    # Ensure file ends with a newline (some compiler outputs omit it).
+    # Ensure file ends with a newline
     if [ -n "$(tail -c 1 "$final_file")" ]; then
         echo "" >> "$final_file"
     fi
 
-    emitted+=("${spy_name}:${cs_rel}")
-    echo "Emitted: $spy_file"
-done
-
-if [[ $errors -ne 0 ]]; then
-    echo ""
-    echo "Some modules failed to emit. Aborting."
-    exit 1
-fi
-
-# --- Pass 2: Apply or diff ---
-
-for entry in "${emitted[@]}"; do
-    IFS=':' read -r spy_name cs_rel <<< "$entry"
-    final_file="$WORK_DIR/${spy_name}_final.cs"
     cs_target="$STDLIB_DIR/${cs_rel}"
 
     if [[ "$mode" == "check" ]]; then
         if [[ ! -f "$cs_target" ]]; then
-            echo "FAIL: $cs_target not found (expected generated C# for ${spy_name}.spy)"
+            echo "FAIL: $cs_target not found (expected generated C# for ${emitted_name}.spy)"
             errors=1
             continue
         fi

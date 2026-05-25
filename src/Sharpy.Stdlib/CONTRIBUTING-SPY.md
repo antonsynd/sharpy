@@ -53,11 +53,12 @@ bash build_tools/regenerate_spy_stdlib.sh --check    # Diff against committed (C
 bash build_tools/regenerate_spy_stdlib.sh --dry-run  # Show what would be regenerated
 ```
 
-The script is the **single source of truth** for the `.spy` → C# mapping. It:
-- Calls `sharpyc emit csharp` with the correct per-module flags
+The script uses **project compilation** (`sharpyc project stdlib.spyproj --emit-cs-to`)
+to emit all modules in a single pass, then post-processes each output file:
 - Prepends the `// Generated from ...` header comment
 - Strips the auto-generated `[SharpyModule]` attribute (since `__Init__.cs` owns it)
-- Applies workarounds for known codegen issues (#690)
+- Strips `#line` directives (emitted by project compilation for source mapping)
+- Normalizes trailing whitespace
 
 CI runs `bash build_tools/check_spy_staleness.sh` (which delegates to
 `regenerate_spy_stdlib.sh --check`) to catch drift between `.spy` sources and
@@ -67,7 +68,7 @@ committed C#.
 
 1. Add an entry to the `MODULES` array in `build_tools/regenerate_spy_stdlib.sh`:
    ```bash
-   "mymodule:MyModule/MyModule.cs:-n Sharpy"
+   "mymodule:MyModule/MyModule.cs"
    ```
 2. Run `bash build_tools/regenerate_spy_stdlib.sh` to generate the C#.
 3. The CI staleness check picks it up automatically.
@@ -90,6 +91,39 @@ sharpyc emit csharp \
 
 > **Note:** Manual emit skips the header and `[SharpyModule]` stripping that the
 > regeneration script handles. Always use the script for final regeneration.
+
+## Native compilation (`.spy` → `.dll` directly)
+
+The native pipeline compiles all `.spy` modules into a single assembly without
+going through checked-in C# files:
+
+```bash
+sharpyc project src/Sharpy.Stdlib/spy/stdlib.spyproj
+```
+
+This produces `spy/bin/Debug/net10.0/Sharpy.Stdlib.Spy.dll` — a validation
+artifact that proves the `.spy` sources can compile end-to-end through the
+ProjectCompiler's 7-phase pipeline (Parse → Init → Declarations → Imports →
+Semantic → CodeGen → Assembly).
+
+### When to use native compilation vs C# emission
+
+| Use Case | Command |
+|----------|---------|
+| Deploy to `Sharpy.Stdlib.dll` | `bash build_tools/regenerate_spy_stdlib.sh` |
+| Validate all modules compile together | `sharpyc project stdlib.spyproj` |
+| Debug a single module's codegen | `sharpyc emit csharp <file>.spy -t library -n Sharpy` |
+| Compare native vs MSBuild API surface | Run `NativeStdlibCompilationTests` and `ApiSurfaceComparisonTests` |
+
+### Why checked-in C# is still the deployment path
+
+The generated C# files checked into the repo are what ships in `Sharpy.Stdlib.dll`.
+This ensures consumers of the NuGet package or source reference don't need the
+Sharpy compiler installed. The native pipeline validates correctness but doesn't
+replace the deployment path.
+
+Decision: keep checked-in C# for v1.0, plan removal when NuGet distribution of
+the compiler is ready.
 
 ## Running tests
 
@@ -191,11 +225,9 @@ These are tracked rough edges to be aware of when porting:
 - **`IList[T]` indexing is not supported** in `.spy`. Use `list[T]` for
   parameters and locals; convert at the boundary if you need to interoperate
   with a `.NET` `IList`.
-- **Generic constraints with `IComparable[T]`** work cleanly under single-file
-  emit (`sharpyc emit csharp ... -t library`) but may surface namespace
-  resolution issues under full project compilation. Single-file emit is the
-  recommended path for stdlib rewrites until the project-compilation case is
-  fixed.
+- **Generic constraints with `IComparable[T]`** work under both single-file
+  emit and project compilation. The project-compilation namespace resolution
+  issues documented previously have been resolved.
 - **Cross-namespace module imports** require matching root namespaces. Stdlib
   `.spy` modules must target the `Sharpy` root namespace so they coexist with
   the rest of `Sharpy.Stdlib`.

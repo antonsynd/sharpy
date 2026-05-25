@@ -162,18 +162,38 @@ internal class AssemblyCompiler
     internal static List<MetadataReference> GetDefaultReferences()
     {
         var references = new List<MetadataReference>();
-        var coreLibPath = typeof(object).Assembly.Location;
-        var coreLibDir = Path.GetDirectoryName(coreLibPath);
+        var addedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        if (!string.IsNullOrEmpty(coreLibDir))
+        var trustedPlatformAssemblies = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
+        if (!string.IsNullOrEmpty(trustedPlatformAssemblies))
         {
-            references.Add(MetadataReference.CreateFromFile(coreLibPath));
-            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Runtime.dll")));
-            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Collections.dll")));
-            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Linq.dll")));
+            foreach (var assemblyPath in trustedPlatformAssemblies.Split(Path.PathSeparator))
+            {
+                if (File.Exists(assemblyPath) && addedPaths.Add(assemblyPath))
+                    references.Add(MetadataReference.CreateFromFile(assemblyPath));
+            }
+        }
+        else
+        {
+            var coreLibPath = typeof(object).Assembly.Location;
+            var coreLibDir = Path.GetDirectoryName(coreLibPath);
+
+            if (!string.IsNullOrEmpty(coreLibDir))
+            {
+                references.Add(MetadataReference.CreateFromFile(coreLibPath));
+                addedPaths.Add(coreLibPath);
+                foreach (var dll in new[] { "System.Runtime.dll", "System.Collections.dll", "System.Linq.dll" })
+                {
+                    var path = Path.Combine(coreLibDir, dll);
+                    if (File.Exists(path) && addedPaths.Add(path))
+                        references.Add(MetadataReference.CreateFromFile(path));
+                }
+            }
         }
 
-        references.Add(MetadataReference.CreateFromFile(typeof(SharpyRT::Sharpy.Builtins).Assembly.Location));
+        var sharpyCorePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
+        if (addedPaths.Add(sharpyCorePath))
+            references.Add(MetadataReference.CreateFromFile(sharpyCorePath));
 
         return references;
     }
@@ -181,37 +201,60 @@ internal class AssemblyCompiler
     private List<MetadataReference> GetMetadataReferences(ProjectConfig projectConfig)
     {
         var references = new List<MetadataReference>();
+        var addedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Add core .NET references
-        var coreLibPath = typeof(object).Assembly.Location;
-        var coreLibDir = Path.GetDirectoryName(coreLibPath);
-
-        if (!string.IsNullOrEmpty(coreLibDir))
+        // Reference all trusted platform assemblies (full .NET shared framework).
+        // This ensures compiled assemblies can use any BCL type (Regex, HttpClient, etc.)
+        // without requiring explicit assembly references in the .spyproj.
+        var trustedPlatformAssemblies = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
+        if (!string.IsNullOrEmpty(trustedPlatformAssemblies))
         {
-            references.Add(MetadataReference.CreateFromFile(coreLibPath)); // System.Private.CoreLib
-            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Runtime.dll")));
-            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Console.dll")));
-            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Collections.dll")));
-            references.Add(MetadataReference.CreateFromFile(Path.Combine(coreLibDir, "System.Linq.dll")));
+            foreach (var assemblyPath in trustedPlatformAssemblies.Split(Path.PathSeparator))
+            {
+                if (File.Exists(assemblyPath) && addedPaths.Add(assemblyPath))
+                {
+                    references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                }
+            }
+        }
+        else
+        {
+            // Fallback: manually add essential references
+            var coreLibPath = typeof(object).Assembly.Location;
+            var coreLibDir = Path.GetDirectoryName(coreLibPath);
+
+            if (!string.IsNullOrEmpty(coreLibDir))
+            {
+                references.Add(MetadataReference.CreateFromFile(coreLibPath));
+                addedPaths.Add(coreLibPath);
+                foreach (var dll in new[] { "System.Runtime.dll", "System.Console.dll", "System.Collections.dll", "System.Linq.dll", "System.Text.RegularExpressions.dll" })
+                {
+                    var path = Path.Combine(coreLibDir, dll);
+                    if (File.Exists(path) && addedPaths.Add(path))
+                        references.Add(MetadataReference.CreateFromFile(path));
+                }
+            }
         }
 
         // Add Sharpy.Core reference
-        references.Add(MetadataReference.CreateFromFile(typeof(SharpyRT::Sharpy.Builtins).Assembly.Location));
+        var sharpyCorePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
+        if (addedPaths.Add(sharpyCorePath))
+            references.Add(MetadataReference.CreateFromFile(sharpyCorePath));
 
         // Add netstandard reference (required because Sharpy.Core targets netstandard2.1/2.0)
         try
         {
             var netstandardAssembly = System.Reflection.Assembly.Load("netstandard");
-            references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
+            if (addedPaths.Add(netstandardAssembly.Location))
+                references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
         }
         catch
         {
-            // netstandard may not be directly loadable in all runtimes
-            // Try to find it in the runtime directory
-            if (!string.IsNullOrEmpty(coreLibDir))
+            var coreLibDir2 = Path.GetDirectoryName(typeof(object).Assembly.Location);
+            if (!string.IsNullOrEmpty(coreLibDir2))
             {
-                var netstandardPath = Path.Combine(coreLibDir, "netstandard.dll");
-                if (File.Exists(netstandardPath))
+                var netstandardPath = Path.Combine(coreLibDir2, "netstandard.dll");
+                if (File.Exists(netstandardPath) && addedPaths.Add(netstandardPath))
                 {
                     references.Add(MetadataReference.CreateFromFile(netstandardPath));
                 }
@@ -223,8 +266,11 @@ internal class AssemblyCompiler
         {
             if (File.Exists(referencePath))
             {
-                references.Add(MetadataReference.CreateFromFile(referencePath));
-                _logger.LogDebug($"Added reference: {referencePath}");
+                if (addedPaths.Add(referencePath))
+                {
+                    references.Add(MetadataReference.CreateFromFile(referencePath));
+                    _logger.LogDebug($"Added reference: {referencePath}");
+                }
             }
             else
             {
@@ -238,8 +284,11 @@ internal class AssemblyCompiler
             var packageAssemblies = ResolveNuGetPackage(packageRef, projectConfig.TargetFramework);
             foreach (var assemblyPath in packageAssemblies)
             {
-                references.Add(MetadataReference.CreateFromFile(assemblyPath));
-                _logger.LogDebug($"Added package reference: {assemblyPath}");
+                if (addedPaths.Add(assemblyPath))
+                {
+                    references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                    _logger.LogDebug($"Added package reference: {assemblyPath}");
+                }
             }
         }
 

@@ -44,5 +44,7 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal --filter "Category!=Benchmark"
-    - name: Verify .spy stdlib modules compile
+    - name: Verify .spy stdlib native compilation
+      run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
+    - name: Verify .spy stdlib C# staleness
       run: bash build_tools/check_spy_staleness.sh
