@@ -34,28 +34,28 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Gettempdir_ReturnsNonEmptyPath()
         {
-            string result = Sharpy.Tempfile.Gettempdir();
+            string result = Sharpy.TempfileModule.Gettempdir();
             result.Should().NotBeNullOrEmpty();
         }
 
         [Fact]
         public void Gettempdir_ReturnsValidDirectory()
         {
-            string result = Sharpy.Tempfile.Gettempdir();
+            string result = Sharpy.TempfileModule.Gettempdir();
             Directory.Exists(result).Should().BeTrue();
         }
 
         [Fact]
         public void Gettempdir_DoesNotEndWithSeparator()
         {
-            string result = Sharpy.Tempfile.Gettempdir();
+            string result = Sharpy.TempfileModule.Gettempdir();
             result.Should().NotEndWith(System.IO.Path.DirectorySeparatorChar.ToString());
         }
 
         [Fact]
         public void Mkdtemp_CreatesDirectory()
         {
-            string dir = Sharpy.Tempfile.Mkdtemp();
+            string dir = Sharpy.TempfileModule.Mkdtemp();
             _createdPaths.Add(dir);
 
             Directory.Exists(dir).Should().BeTrue();
@@ -64,7 +64,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Mkdtemp_UsesDefaultPrefix()
         {
-            string dir = Sharpy.Tempfile.Mkdtemp();
+            string dir = Sharpy.TempfileModule.Mkdtemp();
             _createdPaths.Add(dir);
 
             System.IO.Path.GetFileName(dir).Should().StartWith("tmp");
@@ -73,7 +73,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Mkdtemp_UsesCustomPrefix()
         {
-            string dir = Sharpy.Tempfile.Mkdtemp("myapp_");
+            string dir = Sharpy.TempfileModule.Mkdtemp("myapp_");
             _createdPaths.Add(dir);
 
             System.IO.Path.GetFileName(dir).Should().StartWith("myapp_");
@@ -82,8 +82,8 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Mkdtemp_CreatesUniqueDirectories()
         {
-            string dir1 = Sharpy.Tempfile.Mkdtemp();
-            string dir2 = Sharpy.Tempfile.Mkdtemp();
+            string dir1 = Sharpy.TempfileModule.Mkdtemp();
+            string dir2 = Sharpy.TempfileModule.Mkdtemp();
             _createdPaths.Add(dir1);
             _createdPaths.Add(dir2);
 
@@ -93,7 +93,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Mkstemp_CreatesFile()
         {
-            var (fd, path) = Sharpy.Tempfile.Mkstemp();
+            var (fd, path) = Sharpy.TempfileModule.Mkstemp();
             _createdPaths.Add(path);
 
             File.Exists(path).Should().BeTrue();
@@ -103,7 +103,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Mkstemp_UsesDefaultPrefix()
         {
-            var (_, path) = Sharpy.Tempfile.Mkstemp();
+            var (_, path) = Sharpy.TempfileModule.Mkstemp();
             _createdPaths.Add(path);
 
             System.IO.Path.GetFileName(path).Should().StartWith("tmp");
@@ -112,7 +112,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Mkstemp_UsesCustomPrefixAndSuffix()
         {
-            var (_, path) = Sharpy.Tempfile.Mkstemp("data_", ".csv");
+            var (_, path) = Sharpy.TempfileModule.Mkstemp("data_", ".csv");
             _createdPaths.Add(path);
 
             string fileName = System.IO.Path.GetFileName(path);
@@ -123,8 +123,8 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Mkstemp_CreatesUniqueFiles()
         {
-            var (_, path1) = Sharpy.Tempfile.Mkstemp();
-            var (_, path2) = Sharpy.Tempfile.Mkstemp();
+            var (_, path1) = Sharpy.TempfileModule.Mkstemp();
+            var (_, path2) = Sharpy.TempfileModule.Mkstemp();
             _createdPaths.Add(path1);
             _createdPaths.Add(path2);
 

@@ -36,6 +36,7 @@ MODULES=(
     "functools:Functools/Functools.cs:-n Sharpy"
     "string_module:String/StringModule.cs:-n Sharpy"
     "fnmatch_module:Fnmatch/FnmatchModule.cs:-n Sharpy"
+    "tempfile_module:Tempfile/Tempfile.cs:-n Sharpy"
 )
 
 mode="regenerate"

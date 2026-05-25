@@ -1,89 +1,52 @@
+// Generated from src/Sharpy.Stdlib/spy/tempfile_module.spy — do not edit directly.
+// To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/tempfile_module.spy -t library -n Sharpy
+#nullable enable
+
 using System;
-using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using global::Sharpy;
 
 namespace Sharpy
 {
-    /// <summary>
-    /// Temporary file and directory creation, similar to Python's tempfile module.
-    /// </summary>
-    public static partial class Tempfile
+    public static partial class TempfileModule
     {
-        /// <summary>
-        /// Return the name of the directory used for temporary files.
-        /// Similar to Python's <c>tempfile.gettempdir()</c>.
-        /// </summary>
-        /// <returns>The path to the system temporary directory, without a trailing separator.</returns>
-        /// <example>
-        /// <code>
-        /// tempfile.gettempdir()    # "/tmp" on Unix, "C:\Users\...\Temp" on Windows
-        /// </code>
-        /// </example>
         public static string Gettempdir()
         {
-            return System.IO.Path.GetTempPath().TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+            string temp = global::System.IO.Path.GetTempPath();
+            return temp.TrimEnd(global::System.IO.Path.DirectorySeparatorChar, global::System.IO.Path.AltDirectorySeparatorChar);
         }
 
-        /// <summary>
-        /// Create a temporary directory and return its absolute pathname.
-        /// Similar to Python's <c>tempfile.mkdtemp()</c>.
-        /// </summary>
-        /// <param name="prefix">Prefix for the directory name. Defaults to "tmp".</param>
-        /// <returns>The absolute path of the created temporary directory.</returns>
-        /// <exception cref="OSError">Thrown if the directory could not be created.</exception>
-        /// <example>
-        /// <code>
-        /// tempfile.mkdtemp()           # "/tmp/tmpabcdefgh"
-        /// tempfile.mkdtemp("myapp_")   # "/tmp/myapp_abcdefgh"
-        /// </code>
-        /// </example>
         public static string Mkdtemp(string prefix = "tmp")
         {
             try
             {
-                string randomPart = System.IO.Path.GetRandomFileName().Replace(".", "");
+                string randomPart = global::System.IO.Path.GetRandomFileName().Replace(".", "");
                 string dirName = prefix + randomPart;
-                string fullPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), dirName);
-                Directory.CreateDirectory(fullPath);
+                string fullPath = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), dirName);
+                global::System.IO.Directory.CreateDirectory(fullPath);
                 return fullPath;
             }
-            catch (Exception ex) when (!(ex is OSError))
+            catch (Exception ex)
             {
-                throw new OSError("Failed to create temporary directory: " + ex.Message, ex);
+                throw new global::Sharpy.OSError("Failed to create temporary directory: " + ex.Message);
             }
         }
 
-        /// <summary>
-        /// Create a temporary file and return a tuple of (fd, name).
-        /// Similar to Python's <c>tempfile.mkstemp()</c>.
-        /// Note: The file descriptor is always 0 as .NET does not use POSIX file descriptors.
-        /// </summary>
-        /// <param name="prefix">Prefix for the file name. Defaults to "tmp".</param>
-        /// <param name="suffix">Suffix for the file name. Defaults to "".</param>
-        /// <returns>A tuple of (0, absolute_path) where the file has been created.</returns>
-        /// <exception cref="OSError">Thrown if the file could not be created.</exception>
-        /// <example>
-        /// <code>
-        /// tempfile.mkstemp()                    # (0, "/tmp/tmpabcdefgh")
-        /// tempfile.mkstemp("myapp_", ".dat")    # (0, "/tmp/myapp_abcdefgh.dat")
-        /// </code>
-        /// </example>
-        public static (int, string) Mkstemp(string prefix = "tmp", string suffix = "")
+        public static global::System.ValueTuple<int, string> Mkstemp(string prefix = "tmp", string suffix = "")
         {
             try
             {
-                string randomPart = System.IO.Path.GetRandomFileName().Replace(".", "");
+                string randomPart = global::System.IO.Path.GetRandomFileName().Replace(".", "");
                 string fileName = prefix + randomPart + suffix;
-                string fullPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
-                // Create the file (and immediately close it, matching Python's mkstemp behavior
-                // where the caller is responsible for the file handle)
-                using (File.Create(fullPath))
-                {
-                }
+                string fullPath = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), fileName);
+                global::System.IO.File.WriteAllText(fullPath, "");
                 return (0, fullPath);
             }
-            catch (Exception ex) when (!(ex is OSError))
+            catch (Exception ex)
             {
-                throw new OSError("Failed to create temporary file: " + ex.Message, ex);
+                throw new global::Sharpy.OSError("Failed to create temporary file: " + ex.Message);
             }
         }
     }

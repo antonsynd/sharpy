@@ -1,0 +1,25 @@
+from system.io import Path as IoPath, File, Directory
+
+def gettempdir() -> str:
+    temp: str = IoPath.GetTempPath()
+    return temp.TrimEnd(IoPath.DirectorySeparatorChar, IoPath.AltDirectorySeparatorChar)
+
+def mkdtemp(prefix: str = "tmp") -> str:
+    try:
+        random_part: str = IoPath.GetRandomFileName().Replace(".", "")
+        dir_name: str = prefix + random_part
+        full_path: str = IoPath.Combine(IoPath.GetTempPath(), dir_name)
+        Directory.CreateDirectory(full_path)
+        return full_path
+    except Exception as ex:
+        raise OSError("Failed to create temporary directory: " + ex.Message)
+
+def mkstemp(prefix: str = "tmp", suffix: str = "") -> tuple[int, str]:
+    try:
+        random_part: str = IoPath.GetRandomFileName().Replace(".", "")
+        file_name: str = prefix + random_part + suffix
+        full_path: str = IoPath.Combine(IoPath.GetTempPath(), file_name)
+        File.WriteAllText(full_path, "")
+        return (0, full_path)
+    except Exception as ex:
+        raise OSError("Failed to create temporary file: " + ex.Message)
