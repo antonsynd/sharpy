@@ -124,4 +124,88 @@ public class SysModule_Tests
         path1.Should().Equal(path2);
         path1.Should().NotBeSameAs(path2);
     }
+
+    // --- Argv edge cases ---
+
+    [Fact]
+    public void Sys_Argv_HasAtLeastProgramName()
+    {
+        // argv[0] is always present (program name, possibly empty string) — never null.
+        Sharpy.Sys.Argv.Should().NotBeEmpty();
+        Sharpy.Sys.Argv[0].Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Sys_Argv_MutatingCopy_DoesNotAffectSource()
+    {
+        var argv = Sharpy.Sys.Argv;
+        if (argv.Length > 0)
+        {
+            argv[0] = "mutated value with spaces & symbols!";
+        }
+
+        // A fresh copy is unaffected by mutations to a previously returned array.
+        Sharpy.Sys.Argv.Should().NotContain("mutated value with spaces & symbols!");
+    }
+
+    // --- Maxsize ---
+
+    [Fact]
+    public void Sys_Maxsize_IsIntMaxValue()
+    {
+        Sharpy.Sys.Maxsize.Should().Be(int.MaxValue);
+    }
+
+    // --- Getsizeof ---
+
+    [Fact]
+    public void Sys_Getsizeof_Null_ReturnsZero()
+    {
+        Sharpy.Sys.Getsizeof(null).Should().Be(0);
+    }
+
+    [Fact]
+    public void Sys_Getsizeof_ValueType_ReturnsPositiveSize()
+    {
+        // Value types report a marshalled size in bytes.
+        Sharpy.Sys.Getsizeof(42).Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void Sys_Getsizeof_ReferenceType_ReturnsMinusOne()
+    {
+        // Reference types cannot be sized via Marshal.SizeOf, so -1 is returned.
+        Sharpy.Sys.Getsizeof("a reference type").Should().Be(-1);
+    }
+
+    // --- Executable ---
+
+    [Fact]
+    public void Sys_Executable_MatchesArgvZeroOrEmpty()
+    {
+        var argv = Sharpy.Sys.Argv;
+        var expected = (argv.Length > 0 && !string.IsNullOrEmpty(argv[0])) ? argv[0] : "";
+        Sharpy.Sys.Executable.Should().Be(expected);
+    }
+
+    // --- Stdout routing ---
+
+    [Fact]
+    public void Sys_Stdout_WriteRoutesToConsoleOut()
+    {
+        var originalOut = Console.Out;
+        try
+        {
+            var writer = new StringWriter();
+            Console.SetOut(writer);
+
+            Sharpy.Sys.Stdout.Write("routed");
+
+            writer.ToString().Should().Contain("routed");
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
 }

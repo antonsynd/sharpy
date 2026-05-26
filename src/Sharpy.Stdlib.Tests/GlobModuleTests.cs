@@ -151,5 +151,59 @@ namespace Sharpy.Core.Tests
         {
             Sharpy.GlobModule.Escape("").Should().Be("");
         }
+
+        [Fact]
+        public void Glob_RecursiveDoubleStar_MatchesPyFiles()
+        {
+            // **/*.py should match c.py (top level) and sub/e.py
+            var pattern = System.IO.Path.Combine(_tempDir, "**", "*.py");
+            var results = Sharpy.GlobModule.Glob(pattern);
+
+            ((ISized)results).Count.Should().Be(2);
+            results.Should().Contain(r => r.EndsWith("c.py"));
+            results.Should().Contain(r => r.EndsWith("e.py"));
+        }
+
+        [Fact]
+        public void Glob_CharacterClass_MatchesRange()
+        {
+            // [ab].txt matches a.txt and b.txt but not c.py
+            var pattern = System.IO.Path.Combine(_tempDir, "[ab].txt");
+            var results = Sharpy.GlobModule.Glob(pattern);
+
+            ((ISized)results).Count.Should().Be(2);
+            results.Should().Contain(r => r.EndsWith("a.txt"));
+            results.Should().Contain(r => r.EndsWith("b.txt"));
+        }
+
+        [Fact]
+        public void Glob_LiteralPath_NoWildcard_ReturnsMatch()
+        {
+            // A pattern with no magic characters resolves to the literal file.
+            var pattern = System.IO.Path.Combine(_tempDir, "a.txt");
+            var results = Sharpy.GlobModule.Glob(pattern);
+
+            ((ISized)results).Count.Should().Be(1);
+            results[0].Should().EndWith("a.txt");
+        }
+
+        [Fact]
+        public void Glob_EmptyPattern_ReturnsEmpty()
+        {
+            Sharpy.GlobModule.Glob("").Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Iglob_IsLazilyEvaluated()
+        {
+            // Iglob is a deferred iterator: the directory is not scanned until the
+            // sequence is enumerated, so a file created after the call is still seen.
+            var pattern = System.IO.Path.Combine(_tempDir, "*.lazytest");
+            var lazy = Sharpy.GlobModule.Iglob(pattern);
+
+            File.WriteAllText(System.IO.Path.Combine(_tempDir, "created_after_call.lazytest"), "x");
+
+            lazy.Count().Should().Be(1);
+        }
     }
 }

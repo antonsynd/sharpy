@@ -191,4 +191,72 @@ public class IoStringIOTests
         var act = () => sio.Seek(0);
         act.Should().Throw<Sharpy.ValueError>();
     }
+
+    [Fact]
+    public void Close_WriteThrowsValueError()
+    {
+        var sio = new Sharpy.StringIO();
+        sio.Close();
+
+        var act = () => sio.Write("data");
+        act.Should().Throw<Sharpy.ValueError>();
+    }
+
+    [Fact]
+    public void Close_ReadThrowsValueError()
+    {
+        var sio = new Sharpy.StringIO("hello");
+        sio.Close();
+
+        var act = () => sio.Read();
+        act.Should().Throw<Sharpy.ValueError>();
+    }
+
+    [Fact]
+    public void Close_TellThrowsValueError()
+    {
+        var sio = new Sharpy.StringIO("hello");
+        sio.Close();
+
+        var act = () => sio.Tell();
+        act.Should().Throw<Sharpy.ValueError>();
+    }
+
+    [Fact]
+    public void Close_TruncateThrowsValueError()
+    {
+        var sio = new Sharpy.StringIO("hello");
+        sio.Close();
+
+        var act = () => sio.Truncate();
+        act.Should().Throw<Sharpy.ValueError>();
+    }
+
+    [Fact]
+    public void Seek_NegativePosition_ThrowsValueError()
+    {
+        var sio = new Sharpy.StringIO("hello");
+
+        var act = () => sio.Seek(-1);
+        act.Should().Throw<Sharpy.ValueError>();
+    }
+
+    [Fact]
+    public void Truncate_DefaultArg_UsesCurrentPosition()
+    {
+        var sio = new Sharpy.StringIO("hello world");
+        sio.Seek(5);
+
+        sio.Truncate().Should().Be(5);
+        sio.Getvalue().Should().Be("hello");
+    }
+
+    [Fact]
+    public void Tell_AfterWrite_ReflectsBufferLength()
+    {
+        var sio = new Sharpy.StringIO();
+        sio.Write("abc");
+
+        sio.Tell().Should().Be(3);
+    }
 }
