@@ -226,7 +226,7 @@ internal partial class RoslynEmitter
             }
             else
             {
-                funcCSharpName = NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped);
+                funcCSharpName = NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped, GetClrMethodName(symbol));
             }
             return InvocationExpression(ParseName(funcCSharpName))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
@@ -344,9 +344,15 @@ internal partial class RoslynEmitter
 
             // Apply name mangling to method name
             // First check for dunder methods, then Python list method mappings (append -> Add, etc.)
+            // For discovery-loaded CLR methods, prefer the original CLR name (preserves acronym casing).
+            var resolvedMethodSymbol = (Symbol?)_context.SemanticInfo?.GetCallTarget(call)
+                ?? _context.SemanticInfo?.GetMemberAccessResolution(memberAccess)?.Member
+                ?? ResolveMethodForCall(memberAccess.Object, memberAccess.Member);
+            var resolvedClrMethodName = GetClrMethodName(resolvedMethodSymbol)
+                ?? ResolveClrMethodNameByReflection(memberAccess.Object, memberAccess.Member);
             var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
                 ?? NameMangler.GetListMethodMapping(memberAccess.Member)
-                ?? NameCasing.ResolveMethod(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
+                ?? NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, resolvedClrMethodName);
 
             // CLR property access: if the member is a property (not a method) on a
             // discovery-loaded type and the call has no arguments, emit property access
@@ -499,7 +505,7 @@ internal partial class RoslynEmitter
         if (symbol is FunctionSymbol genericFuncSymbol && genericFuncSymbol.IsGeneric)
         {
             // Generate: GenericFunction<TypeArgs>(args)
-            var genericFuncSyntax = GenericName(NameCasing.ResolveMethod(genericName.Name, genericName.IsNameBacktickEscaped))
+            var genericFuncSyntax = GenericName(NameCasing.ResolveMethod(genericName.Name, genericName.IsNameBacktickEscaped, GetClrMethodName(genericFuncSymbol)))
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
             // Generate arguments (reorder for C# compliance if needed)
@@ -597,7 +603,7 @@ internal partial class RoslynEmitter
         }
 
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
-        var genericMethodName = GenericName(NameCasing.ResolveMethod(memberName, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped))
+        var genericMethodName = GenericName(NameCasing.ResolveMethod(memberName, memberAccess.IsMemberBacktickEscaped, GetClrMethodName(funcSymbol)))
             .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
         var moduleExpr = GenerateExpression(memberAccess.Object);
@@ -1180,9 +1186,8 @@ internal partial class RoslynEmitter
                 // snake_case names for string module constants). Use the CLR name directly
                 // when the export is a VariableSymbol.
                 string mangledMemberName;
-                if (currentModule.IsNetModule
-                    && currentModule.Exports.TryGetValue(memberPart, out var exportSymbol)
-                    && exportSymbol is VariableSymbol)
+                currentModule.Exports.TryGetValue(memberPart, out var exportSymbol);
+                if (currentModule.IsNetModule && exportSymbol is VariableSymbol)
                 {
                     mangledMemberName = memberPart;
                 }
@@ -1192,7 +1197,7 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    mangledMemberName = NameCasing.ResolveMethod(memberPart, isBacktickEscaped: false);
+                    mangledMemberName = NameCasing.ResolveMethod(memberPart, isBacktickEscaped: false, GetClrMethodName(exportSymbol));
                 }
 
                 expr = MemberAccessExpression(

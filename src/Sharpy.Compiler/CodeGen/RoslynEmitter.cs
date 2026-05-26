@@ -909,6 +909,20 @@ internal partial class RoslynEmitter : ICodeEmitter
         => _context.SemanticBinding.GetCodeGenInfo(symbol) ?? symbol.CodeGenInfo;
 
     /// <summary>
+    /// Gets the original CLR method name for a symbol, if it is a discovery-loaded
+    /// CLR method. Prefers the materialized CodeGenInfo, falling back to the
+    /// FunctionSymbol property. Returns null for user-defined or unresolved symbols,
+    /// in which case code generation applies normal name mangling.
+    /// </summary>
+    private string? GetClrMethodName(Symbol? symbol)
+    {
+        if (symbol is null)
+            return null;
+        return GetCodeGenInfo(symbol)?.ClrMethodName
+            ?? (symbol as FunctionSymbol)?.ClrMethodName;
+    }
+
+    /// <summary>
     /// Get the type for a VariableSymbol from SemanticBinding.
     /// Falls back to symbol.Type for symbols not tracked by this binding.
     /// </summary>

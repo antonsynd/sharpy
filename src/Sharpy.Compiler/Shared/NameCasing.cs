@@ -21,6 +21,21 @@ internal static class NameCasing
         return NameMangler.ToPascalCase(name);
     }
 
+    /// <summary>
+    /// Resolves a method name, preferring the original CLR method name when available.
+    /// CLR names are emitted verbatim so acronym casing survives (e.g., "IsOSPlatform"
+    /// instead of round-tripping through name mangling to "IsOsPlatform"). Backtick
+    /// escaping still takes precedence.
+    /// </summary>
+    public static string ResolveMethod(string name, bool isBacktickEscaped, string? clrMethodName)
+    {
+        if (isBacktickEscaped)
+            return name;
+        if (clrMethodName is not null)
+            return clrMethodName;
+        return NameMangler.ToPascalCase(name);
+    }
+
     public static string ResolveField(string name, bool isBacktickEscaped)
     {
         if (isBacktickEscaped)

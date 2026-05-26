@@ -1025,6 +1025,71 @@ internal partial class RoslynEmitter
             yield return baseType;
     }
 
+    // Caches reflection lookups of (CLR type, Sharpy member name) -> original CLR method name.
+    private readonly Dictionary<(System.Type, string), string?> _clrReflectionMethodNames = new();
+
+    /// <summary>
+    /// Resolves the original CLR method name for a member access whose receiver is a
+    /// CLR-backed type, when no discovered <see cref="FunctionSymbol"/> is available
+    /// (e.g., directly-imported .NET types whose methods are not eagerly discovered).
+    /// Matches the written Sharpy member name against the reverse-mangled name of each
+    /// CLR method so acronym casing survives (is_os_platform → IsOSPlatform). Returns
+    /// null when no unambiguous match exists, leaving normal mangling in place.
+    /// </summary>
+    private string? ResolveClrMethodNameByReflection(Expression receiver, string memberName)
+    {
+        var clrType = GetReceiverClrType(receiver);
+        if (clrType == null)
+            return null;
+
+        if (_clrReflectionMethodNames.TryGetValue((clrType, memberName), out var cached))
+            return cached;
+
+        string? resolved = null;
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.Public
+            | System.Reflection.BindingFlags.Static
+            | System.Reflection.BindingFlags.Instance;
+        foreach (var method in clrType.GetMethods(flags))
+        {
+            // A CLR name already written verbatim (PascalCase) should be left untouched;
+            // only match when the Sharpy (reverse-mangled) form equals the written name.
+            if (Discovery.ReverseNameMangler.ToSharpyName(method.Name, Discovery.ReverseNameContext.Method) == memberName)
+            {
+                if (resolved != null && resolved != method.Name)
+                {
+                    // Ambiguous (multiple distinct CLR names map to this Sharpy name) — bail out.
+                    resolved = null;
+                    break;
+                }
+                resolved = method.Name;
+            }
+        }
+
+        _clrReflectionMethodNames[(clrType, memberName)] = resolved;
+        return resolved;
+    }
+
+    /// <summary>
+    /// Gets the CLR <see cref="System.Type"/> of a member-access receiver, for both static
+    /// (type-name) receivers and instance receivers. Returns null when the receiver is not
+    /// backed by a CLR type.
+    /// </summary>
+    private System.Type? GetReceiverClrType(Expression receiver)
+    {
+        // Static receiver: a bare type-name identifier (e.g., RuntimeInformation.is_os_platform()).
+        if (receiver is Identifier id && _context.LookupSymbol(id.Name) is TypeSymbol staticTs)
+            return staticTs.ClrType;
+
+        // Instance receiver: resolve via the receiver's semantic type.
+        return GetExpressionSemanticType(receiver) switch
+        {
+            UserDefinedType udt when (udt.Symbol as TypeSymbol)?.ClrType is { } ct => ct,
+            BuiltinType bt => bt.ClrType,
+            _ => null
+        };
+    }
+
     /// <summary>
     /// Generates code for a <c>functools.partial(f, fixed_args..., kw=val, ...)</c> call.
     /// Desugars to a lambda that captures the fixed arguments and forwards the remaining
