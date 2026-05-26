@@ -139,4 +139,18 @@ public class EmitCommandTests
         File.Exists(outPath).Should().BeTrue();
         File.ReadAllText(outPath).Should().Contain("class");
     }
+
+    [Fact]
+    public void Hover_Invoke_ProducesOutput()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy(ValidSource);
+
+        var invocation = CliTestHarness.Invoke($"emit hover \"{spy}\" --line 1 --col 5");
+
+        invocation.ExitCode.Should().Be(0);
+    }
+
+    // Emit subcommands call Environment.Exit(1) for file-not-found errors.
+    // Invocation-level error tests are not possible without CLI refactoring.
 }

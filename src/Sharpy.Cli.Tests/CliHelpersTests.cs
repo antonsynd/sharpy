@@ -202,6 +202,41 @@ public class CliHelpersTests
         act.Should().NotThrow();
     }
 
+    [Theory]
+    [InlineData("text")]
+    [InlineData("json")]
+    public void OutputMetrics_WithMetrics_ProducesNonEmptyString(string format)
+    {
+        var metrics = new CompilationMetrics(fileName: "test.spy");
+
+        var output = format == "json" ? metrics.FormatAsJson() : metrics.FormatAsText();
+
+        output.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void OutputMetrics_ToFile_WritesFile()
+    {
+        using var ws = new TempWorkspace();
+        var outPath = ws.PathFor("metrics.txt");
+        var metrics = new CompilationMetrics(fileName: "test.spy");
+
+        var originalOut = Console.Out;
+        using var safeWriter = new StringWriter();
+        try
+        {
+            Console.SetOut(safeWriter);
+            CliHelpers.OutputMetrics(metrics, metricsFormat: "text", metricsOutput: new FileInfo(outPath));
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        File.Exists(outPath).Should().BeTrue();
+        File.ReadAllText(outPath).Should().NotBeNullOrWhiteSpace();
+    }
+
     [Fact]
     public void PhaseOrder_EndsWithUnknown()
     {

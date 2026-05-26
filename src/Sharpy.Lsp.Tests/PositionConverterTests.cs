@@ -308,6 +308,24 @@ public class PositionConverterTests
         range.End.Character.Should().Be(4);
     }
 
+    // --- BOM test ---
+
+    [Fact]
+    public void ToLspRange_FileWithBom()
+    {
+        // UTF-8 BOM (U+FEFF) is a single .NET char at offset 0
+        var source = new SourceText("﻿abc\n");
+        // "bc" starts at offset 2 (BOM=0, a=1, b=2), length 2
+        var span = new TextSpan(2, 2);
+
+        var range = PositionConverter.ToLspRange(span, source);
+
+        range.Start.Line.Should().Be(0);
+        range.Start.Character.Should().Be(2);
+        range.End.Line.Should().Be(0);
+        range.End.Character.Should().Be(4);
+    }
+
     // --- Additional edge cases ---
 
     [Fact]

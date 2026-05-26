@@ -87,4 +87,7 @@ public class RunCommandTests
 
         result.Errors.Should().NotBeEmpty();
     }
+
+    // RunCommand calls Environment.Exit on all paths (success spawns a child process
+    // then exits). Invocation-level tests are not possible without CLI refactoring.
 }

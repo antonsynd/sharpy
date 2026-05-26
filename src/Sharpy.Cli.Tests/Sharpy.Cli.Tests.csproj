@@ -7,8 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Suppress nullable warnings in tests - test framework handles assertion failures -->
-    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718</NoWarn>
+    <NoWarn>CS1718</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -80,4 +80,7 @@ public class BuildCommandTests
 
         result.Errors.Should().NotBeEmpty();
     }
+
+    // BuildCommand calls Environment.Exit(1) for file-not-found and compilation errors.
+    // Invocation-level error tests are not possible without CLI refactoring.
 }

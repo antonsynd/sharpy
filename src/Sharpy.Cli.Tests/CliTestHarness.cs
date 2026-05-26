@@ -76,7 +76,9 @@ internal static class CliTestHarness
 
                 var (root, _) = BuildRoot();
                 var parseResult = root.Parse(commandLine);
+#pragma warning disable CS0618 // ParseResult.Invoke is obsolete in System.CommandLine 2.x; matches production Program.cs usage
                 var exitCode = parseResult.Invoke();
+#pragma warning restore CS0618
                 return new CliInvocation(exitCode, outWriter.ToString(), errWriter.ToString(), parseResult);
             }
             finally

@@ -73,4 +73,7 @@ public class ProjectCommandTests
 
         result.Errors.Should().NotBeEmpty();
     }
+
+    // ProjectCommand calls Environment.Exit(1) for missing .spyproj errors.
+    // Invocation-level error tests are not possible without CLI refactoring.
 }
