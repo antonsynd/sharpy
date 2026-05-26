@@ -83,12 +83,15 @@ public class NameManglerTests
     #region Constant Case Tests
 
     [Theory]
-    [InlineData("MAX_SIZE", "MaxSize")]
-    [InlineData("PI", "Pi")]
-    [InlineData("DEFAULT_TIMEOUT", "DefaultTimeout")]
-    public void ToConstantCase_CapsSnakeCase_ConvertsToPascalCase(string input, string expected)
+    [InlineData("MAX_SIZE", "MAX_SIZE")]
+    [InlineData("DEFAULT_TIMEOUT", "DEFAULT_TIMEOUT")]
+    [InlineData("QUOTE_MINIMAL", "QUOTE_MINIMAL")]
+    [InlineData("HTTP_200", "HTTP_200")]            // with numbers
+    [InlineData("_PRIVATE_CONST", "_PRIVATE_CONST")] // private constant preserved
+    [InlineData("A_B", "A_B")]                       // two single-letter segments
+    public void ToConstantCase_CapsSnakeCase_PreservesScreamingSnakeCase(string input, string expected)
     {
-        // Act
+        // SCREAMING_SNAKE_CASE constants preserve their Python identity (#702)
         var result = NameMangler.ToConstantCase(input);
 
         // Assert
@@ -96,9 +99,23 @@ public class NameManglerTests
     }
 
     [Theory]
-    [InlineData("HTTP", "Http")]
-    public void ToConstantCase_SingleWordUpper_Normalized(string input, string expected)
+    [InlineData("PI", "PI")]
+    [InlineData("HTTP", "HTTP")]
+    [InlineData("A", "A")]      // single letter
+    [InlineData("AB", "AB")]    // two letters
+    [InlineData("V2", "V2")]    // with number
+    public void ToConstantCase_SingleWordUpper_Preserved(string input, string expected)
     {
+        var result = NameMangler.ToConstantCase(input);
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("max_size", "MaxSize")]
+    [InlineData("default_timeout", "DefaultTimeout")]
+    public void ToConstantCase_SnakeCase_ConvertsToPascalCase(string input, string expected)
+    {
+        // Lowercase snake_case still normalizes to PascalCase
         var result = NameMangler.ToConstantCase(input);
         result.Should().Be(expected);
     }
@@ -198,8 +215,8 @@ public class NameManglerTests
     [InlineData(NameContext.Variable, "user_name", "userName")]
     [InlineData(NameContext.Parameter, "item_count", "itemCount")]
     [InlineData(NameContext.Field, "private_data", "PrivateData")]
-    [InlineData(NameContext.Constant, "MAX_SIZE", "MaxSize")]
-    [InlineData(NameContext.EnumMember, "RED", "Red")]
+    [InlineData(NameContext.Constant, "MAX_SIZE", "MAX_SIZE")]
+    [InlineData(NameContext.EnumMember, "RED", "RED")]
     public void Transform_WithContext_TransformsCorrectly(NameContext context, string input, string expected)
     {
         // Act
@@ -287,10 +304,14 @@ public class NameManglerTests
     }
 
     [Theory]
-    [InlineData("RED", "Red")]
-    [InlineData("DARK_BLUE", "DarkBlue")]
-    [InlineData("MAX_RETRY_COUNT", "MaxRetryCount")]
-    [InlineData("already_lower", "AlreadyLower")]
+    [InlineData("RED", "RED")]                       // SCREAMING_SNAKE_CASE preserved (#702)
+    [InlineData("DARK_BLUE", "DARK_BLUE")]           // preserved
+    [InlineData("MAX_RETRY_COUNT", "MAX_RETRY_COUNT")] // preserved
+    [InlineData("NOT_FOUND", "NOT_FOUND")]           // preserved
+    [InlineData("HTTP_200", "HTTP_200")]             // with numbers, preserved
+    [InlineData("A", "A")]                           // single letter preserved
+    [InlineData("V2", "V2")]                          // single word with number preserved
+    [InlineData("already_lower", "AlreadyLower")]    // snake_case still normalizes
     [InlineData("", "")]
     public void ToEnumMemberName_ConvertsCorrectly(string input, string expected)
     {

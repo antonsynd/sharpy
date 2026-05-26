@@ -1,0 +1,14 @@
+def read_values(items: list[int]) -> int:
+    i = 0
+    while i < len(items):
+        value = 0
+        try:
+            value = items[i]
+        except Exception:
+            return
+        yield value
+        i += 1
+
+def main():
+    for x in read_values([10, 20, 30]):
+        print(x)

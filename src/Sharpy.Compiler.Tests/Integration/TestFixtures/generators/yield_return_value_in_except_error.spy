@@ -1,0 +1,9 @@
+def gen() -> int:
+    try:
+        pass
+    except Exception:
+        yield 99
+
+def main():
+    for x in gen():
+        print(x)

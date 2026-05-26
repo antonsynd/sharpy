@@ -205,6 +205,6 @@ def main():
     print(c.value)
 ");
         Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
-        Assert.Equal("Green\n2\n", result.StandardOutput);
+        Assert.Equal("GREEN\n2\n", result.StandardOutput);
     }
 }

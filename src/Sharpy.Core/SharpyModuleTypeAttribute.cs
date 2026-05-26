@@ -12,7 +12,7 @@ namespace Sharpy
     /// that differs from its CLR name — e.g., <c>DateTime</c> appears as <c>datetime</c> in
     /// user code. When omitted, the CLR type name is used verbatim.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Interface, AllowMultiple = false)]
     public sealed class SharpyModuleTypeAttribute : Attribute
     {
         /// <summary>The module name this type belongs to.</summary>

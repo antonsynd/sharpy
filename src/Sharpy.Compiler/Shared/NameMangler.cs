@@ -178,11 +178,12 @@ internal static class NameMangler
     }
 
     /// <summary>
-    /// Convert constant names to PascalCase (matching spec: CAPS_SNAKE_CASE → PascalCase).
+    /// Resolve constant names. SCREAMING_SNAKE_CASE is preserved as-is to retain
+    /// Python identity and align with .NET conventions (e.g., Math.PI, Double.NaN).
     /// Uses form detection:
-    /// - ScreamingSnakeCase: PascalCase via normalizing capitalize. MAX_SIZE → MaxSize
-    /// - SingleWordUpper: title-case. HTTP → Http
-    /// - SnakeCase: PascalCase (same as ToPascalCase for snake_case)
+    /// - ScreamingSnakeCase: preserved as-is. MAX_SIZE → MAX_SIZE
+    /// - SingleWordUpper: preserved as-is. PI → PI, HTTP → HTTP
+    /// - SnakeCase: PascalCase (same as ToPascalCase for snake_case). max_size → MaxSize
     /// - PascalCase/CamelCase: pass through
     /// - Unrecognized: pass through
     /// </summary>
@@ -194,9 +195,8 @@ internal static class NameMangler
         var form = NameFormDetector.Detect(name);
         var result = form switch
         {
-            NameForm.ScreamingSnakeCase =>
-                string.Join("", name.Split('_').Select(CapitalizeNormalizing)),
-            NameForm.SingleWordUpper => CapitalizeNormalizing(name),
+            NameForm.ScreamingSnakeCase => name, // preserve SCREAMING_SNAKE_CASE as-is
+            NameForm.SingleWordUpper => name, // preserve single-word uppercase as-is
             NameForm.SnakeCase or NameForm.SingleWordLower =>
                 string.Join("", name.Split('_').Select(CapitalizePreserving)),
             _ => name, // PascalCase, CamelCase, Unrecognized — pass through
@@ -206,12 +206,21 @@ internal static class NameMangler
     }
 
     /// <summary>
-    /// Convert enum member names (typically SCREAMING_SNAKE_CASE) to PascalCase.
+    /// Resolve enum member names. SCREAMING_SNAKE_CASE / single-word uppercase forms
+    /// (the typical Python enum convention) are preserved as-is to retain Python identity.
+    /// Other forms (e.g., snake_case) are normalized to PascalCase.
+    /// - ScreamingSnakeCase: preserved. RED → RED, DARK_BLUE → DARK_BLUE
+    /// - SingleWordUpper: preserved. RED → RED
+    /// - other forms: title-case each underscore-delimited segment. dark_blue → DarkBlue
     /// </summary>
     public static string ToEnumMemberName(string name)
     {
         if (string.IsNullOrEmpty(name))
             return name;
+
+        var form = NameFormDetector.Detect(name);
+        if (form is NameForm.ScreamingSnakeCase or NameForm.SingleWordUpper)
+            return EscapeKeywordIfNeeded(name); // preserve SCREAMING_SNAKE_CASE as-is
 
         // Split by underscores (RemoveEmptyEntries handles consecutive underscores)
         var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);

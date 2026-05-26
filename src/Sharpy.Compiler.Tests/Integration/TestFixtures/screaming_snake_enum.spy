@@ -1,0 +1,19 @@
+# Enum members in SCREAMING_SNAKE_CASE (and single-word uppercase like OK) should
+# preserve their casing in emitted C#. See #702.
+enum Status:
+    NOT_FOUND = 404
+    OK = 200
+    SERVER_ERROR = 500
+
+def describe(s: Status) -> str:
+    if s == Status.NOT_FOUND:
+        return "not found"
+    elif s == Status.OK:
+        return "ok"
+    else:
+        return "server error"
+
+def main():
+    print(describe(Status.NOT_FOUND))
+    print(describe(Status.OK))
+    print(describe(Status.SERVER_ERROR))

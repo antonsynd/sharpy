@@ -70,6 +70,12 @@ internal partial class RoslynEmitter
             _pendingTestFunctions.Clear();
         }
 
+        // In library mode, top-level types were extracted from the module class
+        // (RoslynEmitter.ModuleClass.cs) and are emitted as namespace siblings annotated with
+        // [SharpyModuleType]. Capture and reset the shared field before wrapping.
+        var wrappedExtractedTypes = _extractedTypes.ToList();
+        _extractedTypes.Clear();
+
         // Compute directory wrapper classes and wrap the module class
         var wrapperNames = ComputeWrapperClasses();
         MemberDeclarationSyntax current = moduleClass;
@@ -109,10 +115,25 @@ internal partial class RoslynEmitter
                         Token(SyntaxKind.PartialKeyword)))
                     .WithMembers(SingletonList(wrappedFixtureClasses[j]));
             }
+
+            // Wrap extracted library-mode types in the same directory hierarchy so that
+            // same-named types in sibling modules stay isolated (multi-file projects). For
+            // single-file library modules there are no wrappers, so they land at namespace level.
+            for (int j = 0; j < wrappedExtractedTypes.Count; j++)
+            {
+                wrappedExtractedTypes[j] = ClassDeclaration(wrapperNames[i])
+                    .WithModifiers(TokenList(
+                        Token(SyntaxKind.PublicKeyword),
+                        Token(SyntaxKind.StaticKeyword),
+                        Token(SyntaxKind.PartialKeyword)))
+                    .WithMembers(SingletonList(wrappedExtractedTypes[j]));
+            }
         }
 
-        // Collect top-level namespace members (module class + fixture classes + optional test class).
+        // Collect top-level namespace members (module class + extracted types + fixture classes
+        // + optional test class).
         var topLevelMembers = new List<MemberDeclarationSyntax> { current };
+        topLevelMembers.AddRange(wrappedExtractedTypes);
         topLevelMembers.AddRange(wrappedFixtureClasses);
         if (wrappedTestClass != null)
         {

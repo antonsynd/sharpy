@@ -1310,7 +1310,7 @@ def main():
         var result = helper.CompileAndExecute();
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Red\nBlue\n", result.StandardOutput);
+        Assert.Equal("RED\nBLUE\n", result.StandardOutput);
     }
 
     [Fact]

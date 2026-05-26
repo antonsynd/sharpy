@@ -1,0 +1,12 @@
+# Module-level constants in SCREAMING_SNAKE_CASE should preserve their casing in
+# emitted C# (Python identity, .NET convention like Math.PI). See #702.
+MAX_SIZE: int = 100
+DEFAULT_NAME: str = "sharpy"
+HTTP_PORT: int = 8080
+VERSION: int = 2
+
+def main():
+    print(MAX_SIZE)
+    print(DEFAULT_NAME)
+    print(HTTP_PORT)
+    print(VERSION)

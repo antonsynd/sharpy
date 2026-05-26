@@ -1,0 +1,13 @@
+def process(items: list[int]) -> int:
+    total = 0
+    try:
+        for item in items:
+            total += item
+    except Exception:
+        return
+    yield total
+    yield total * 2
+
+def main():
+    for x in process([1, 2, 3]):
+        print(x)

@@ -41,6 +41,14 @@ internal partial class RoslynEmitter
         // Clear tracking field for module field names (still needed to prevent duplicate field declarations)
         _moduleFieldNames.Clear();
 
+        // Clear extracted-type tracking. In library mode, top-level type declarations are
+        // pulled out of the module class and emitted as namespace siblings (see below).
+        _extractedTypes.Clear();
+
+        // Maps a generated top-level type declaration back to its original Sharpy name so the
+        // emitted [SharpyModuleType("module", "PythonName")] attribute can carry the source name.
+        var extractableTypeNames = new Dictionary<MemberDeclarationSyntax, string>(ReferenceEqualityComparer.Instance);
+
         // Note: Module variable tracking is now handled by CodeGenInfo during semantic analysis.
         // The CodeGenInfoComputer.ComputeForModule method sets CodeGenInfo.IsModuleLevel,
         // CodeGenInfo.HasExecutionOrderIssues, etc. for proper symbol name resolution.
@@ -181,8 +189,26 @@ internal partial class RoslynEmitter
 
             if (member is MemberDeclarationSyntax memberDecl)
             {
-                // Everything goes into the module class (types are nested)
+                // Everything goes into the module class for now (collision detection below
+                // relies on type declarations being present). In library mode, top-level types
+                // are partitioned out into _extractedTypes after collision handling.
                 moduleDeclarations.Add(memberDecl);
+
+                // Record the original Sharpy name for top-level type declarations so they can
+                // be extracted as namespace siblings (library mode only).
+                var sourceTypeName = stmt switch
+                {
+                    ClassDef cd => cd.Name,
+                    StructDef sd => sd.Name,
+                    InterfaceDef id => id.Name,
+                    EnumDef ed => ed.Name,
+                    UnionDef ud => ud.Name,
+                    _ => null
+                };
+                if (sourceTypeName != null)
+                {
+                    extractableTypeNames[memberDecl] = sourceTypeName;
+                }
             }
             else if (member == null && stmt is VariableDeclaration varRedefinition)
             {
@@ -315,6 +341,37 @@ internal partial class RoslynEmitter
             return augmentedType;
         }
 
+        // Single-file library mode: extract top-level type declarations
+        // (class/struct/interface/enum/union) out of the module class and emit them as namespace
+        // siblings annotated with [SharpyModuleType]. Module-level functions, fields, and
+        // re-exports stay on the module class. Entry-point files keep their types nested.
+        //
+        // Extraction is intentionally limited to single-file library compilation (no
+        // ProjectNamespace). Multi-file projects keep types nested inside their module class so
+        // that same-named types in sibling modules stay isolated (avoiding CS0101 duplicate-type
+        // errors at namespace level) and cross-module references continue to resolve via the
+        // Namespace.ModuleClass.Type path. The collision case above returns early, so a type whose
+        // name matches the module class is never extracted.
+        if (!_context.IsEntryPoint
+            && string.IsNullOrEmpty(_context.ProjectNamespace)
+            && extractableTypeNames.Count > 0)
+        {
+            var sharpyModuleName = GetSharpyModuleName();
+            var retainedDeclarations = new List<MemberDeclarationSyntax>(moduleDeclarations.Count);
+            foreach (var decl in moduleDeclarations)
+            {
+                if (extractableTypeNames.TryGetValue(decl, out var pythonName))
+                {
+                    _extractedTypes.Add(DecorateExtractedType(decl, sharpyModuleName, pythonName));
+                }
+                else
+                {
+                    retainedDeclarations.Add(decl);
+                }
+            }
+            moduleDeclarations = retainedDeclarations;
+        }
+
         // Normal case: build a static module class containing all declarations
         var moduleClassDecl = ClassDeclaration(moduleClassName);
 
@@ -342,6 +399,31 @@ internal partial class RoslynEmitter
             .WithMembers(List(moduleDeclarations));
 
         return moduleClass;
+    }
+
+    /// <summary>
+    /// Annotates an extracted top-level type declaration with
+    /// <c>[global::Sharpy.SharpyModuleType("moduleName", "pythonName")]</c> so the compiler can
+    /// rediscover it as belonging to the module when the assembly is imported. The attribute is
+    /// prepended ahead of any existing attribute lists (e.g., dataclass-derived attributes).
+    /// </summary>
+    private static MemberDeclarationSyntax DecorateExtractedType(
+        MemberDeclarationSyntax typeDecl, string moduleName, string pythonName)
+    {
+        var attribute = Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyModuleType"))
+            .WithArgumentList(AttributeArgumentList(SeparatedList(new[]
+            {
+                AttributeArgument(LiteralExpression(
+                    SyntaxKind.StringLiteralExpression, Literal(moduleName))),
+                AttributeArgument(LiteralExpression(
+                    SyntaxKind.StringLiteralExpression, Literal(pythonName)))
+            })));
+
+        var attributeList = AttributeList(SingletonSeparatedList(attribute));
+
+        // Prepend so [SharpyModuleType] appears first, ahead of any existing attribute lists.
+        var existing = typeDecl.AttributeLists;
+        return typeDecl.WithAttributeLists(existing.Insert(0, attributeList));
     }
 
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)

@@ -578,7 +578,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Active\n", result.StandardOutput);
+        Assert.Equal("ACTIVE\n", result.StandardOutput);
     }
 
     [Fact]
@@ -619,7 +619,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Pending\nActive\nInactive\n", result.StandardOutput);
+        Assert.Equal("PENDING\nACTIVE\nINACTIVE\n", result.StandardOutput);
     }
 
     [Fact]
@@ -644,7 +644,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Pending\nActive\nInactive\n", result.StandardOutput);
+        Assert.Equal("PENDING\nACTIVE\nINACTIVE\n", result.StandardOutput);
     }
 
     [Fact]
@@ -687,13 +687,13 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Up\nNeutral\nDown\n", result.StandardOutput);
+        Assert.Equal("UP\nNEUTRAL\nDOWN\n", result.StandardOutput);
     }
 
     [Fact]
     public void EnumWithLargeValues_Works()
     {
-        // Integer enums print their PascalCase name when printed directly (C# enum behavior)
+        // Integer enums print their name when printed directly (C# enum behavior)
         var source = @"
 enum Flags:
     FLAG_A = 1000000
@@ -708,7 +708,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("FlagA\nFlagB\nFlagC\n", result.StandardOutput);
+        Assert.Equal("FLAG_A\nFLAG_B\nFLAG_C\n", result.StandardOutput);
     }
 
     #endregion
@@ -792,7 +792,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("My Task\nActive\n", result.StandardOutput);
+        Assert.Equal("My Task\nACTIVE\n", result.StandardOutput);
     }
 
     [Fact]
@@ -829,7 +829,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Pending\nActive\nComplete\n", result.StandardOutput);
+        Assert.Equal("PENDING\nACTIVE\nCOMPLETE\n", result.StandardOutput);
     }
 
     [Fact]
@@ -870,7 +870,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("My Project\nMedium\nImportant Task\nHigh\n", result.StandardOutput);
+        Assert.Equal("My Project\nMEDIUM\nImportant Task\nHIGH\n", result.StandardOutput);
     }
 
     #endregion
@@ -983,7 +983,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Active\nHigh\n", result.StandardOutput);
+        Assert.Equal("ACTIVE\nHIGH\n", result.StandardOutput);
     }
 
     [Fact]
@@ -1120,7 +1120,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Only\n", result.StandardOutput);
+        Assert.Equal("ONLY\n", result.StandardOutput);
     }
 
     [Fact]
@@ -1208,7 +1208,7 @@ def main():
         var result = CompileAndExecute(source);
 
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("Build feature\nMedium\nTodo\nInProgress\nHigh\nDone\n5\n", result.StandardOutput);
+        Assert.Equal("Build feature\nMEDIUM\nTODO\nIN_PROGRESS\nHIGH\nDONE\n5\n", result.StandardOutput);
     }
 
     [Fact]
