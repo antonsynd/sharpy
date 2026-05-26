@@ -152,6 +152,7 @@ public class Program
                 .WithHandler<SharpyOnTypeFormattingHandler>()
                 .WithHandler<SharpySelectionRangeHandler>()
                 .WithHandler<SharpyLinkedEditingRangeHandler>()
+                .WithHandler<SharpyDocumentLinkHandler>()
         ).ConfigureAwait(false);
 
         await server.WaitForExit.ConfigureAwait(false);
