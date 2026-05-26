@@ -11,6 +11,15 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// - Generator __iter__ conflicts with __next__ (SPY0269)
 /// - yield + return-with-value in the same function (SPY0267)
 /// - yield in try block with catch/except handlers (SPY0270)
+/// - yield in except handler (SPY0271)
+/// - yield in finally block (SPY0272)
+///
+/// Note: these guards intentionally inspect only <see cref="YieldStatement"/> nodes,
+/// which always carry a value (enforced by <c>Statement.ValidateInvariants()</c>).
+/// A bare <c>return</c> in a generator lowers to C# <c>yield break</c>, which the C#
+/// spec permits inside try/catch bodies and except handlers. Because bare return is a
+/// <see cref="ReturnStatement"/> (not a <see cref="YieldStatement"/>), it is correctly
+/// allowed by SPY0270/SPY0271 without any special-casing here.
 /// </summary>
 internal class GeneratorValidator : SemanticValidatorBase
 {
