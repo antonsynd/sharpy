@@ -1,0 +1,4 @@
+const max_size: int = 100
+
+def main():
+    print(max_size)

@@ -1,0 +1,16 @@
+class MyClass:
+    pass
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+const MAX_SIZE: int = 100
+
+def my_function(my_param: int) -> int:
+    my_var: int = my_param + MAX_SIZE
+    return my_var
+
+def main():
+    result = my_function(5)
+    print(result)

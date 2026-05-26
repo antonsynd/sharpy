@@ -1,0 +1,6 @@
+enum Color:
+    red = 1
+    green = 2
+
+def main():
+    print("ok")

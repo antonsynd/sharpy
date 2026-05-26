@@ -1,0 +1,8 @@
+def __init__():
+    pass
+
+def `MySpecialName`():
+    pass
+
+def main():
+    print("exempt")

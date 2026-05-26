@@ -1,0 +1,5 @@
+class my_class:
+    pass
+
+def main():
+    print("ok")
