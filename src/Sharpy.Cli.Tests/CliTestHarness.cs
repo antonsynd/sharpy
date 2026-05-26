@@ -7,8 +7,9 @@ namespace Sharpy.Cli.Tests;
 /// <summary>
 /// Test harness that reconstructs the CLI root command exactly as
 /// <c>Program.Main</c> does, and provides helpers for parse-level assertions and
-/// (for commands that do not call <see cref="Environment.Exit"/>) full invocation
-/// with captured console output.
+/// full invocation with captured console output. All command handlers return exit
+/// codes rather than calling <see cref="Environment.Exit"/>, so every command is
+/// safe to exercise via <see cref="Invoke"/>.
 /// </summary>
 internal static class CliTestHarness
 {
@@ -58,8 +59,7 @@ internal static class CliTestHarness
     }
 
     /// <summary>
-    /// Invokes a command line with stdout/stderr captured. Only safe for commands that
-    /// never call <see cref="Environment.Exit"/> on the exercised path.
+    /// Invokes a command line with stdout/stderr captured and returns the exit code.
     /// </summary>
     internal static CliInvocation Invoke(string commandLine)
     {

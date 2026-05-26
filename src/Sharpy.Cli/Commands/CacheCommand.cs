@@ -15,7 +15,7 @@ internal static class CacheCommand
         clearCommand.SetAction((parseResult) =>
         {
             var cacheDir = parseResult.GetValue(clearDirOpt);
-            ClearCache(cacheDir);
+            return ClearCache(cacheDir);
         });
 
         var infoCommand = new Command("info", "Display cache information");
@@ -24,7 +24,7 @@ internal static class CacheCommand
         infoCommand.SetAction((parseResult) =>
         {
             var cacheDir = parseResult.GetValue(infoDirOpt);
-            ShowCacheInfo(cacheDir);
+            return ShowCacheInfo(cacheDir);
         });
 
         command.Subcommands.Add(clearCommand);
@@ -33,7 +33,7 @@ internal static class CacheCommand
         root.Subcommands.Add(command);
     }
 
-    static void ClearCache(string? cacheDir)
+    static int ClearCache(string? cacheDir)
     {
         try
         {
@@ -44,15 +44,16 @@ internal static class CacheCommand
             {
                 Console.WriteLine($"Cache directory: {cacheDir}");
             }
+            return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error clearing cache: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
     }
 
-    static void ShowCacheInfo(string? cacheDir)
+    static int ShowCacheInfo(string? cacheDir)
     {
         try
         {
@@ -65,11 +66,12 @@ internal static class CacheCommand
             Console.WriteLine($"Cached Assemblies: {info.CachedAssemblies}");
             Console.WriteLine($"Total Size: {CliHelpers.FormatBytes(info.TotalSizeBytes)}");
             Console.WriteLine(new string('=', 50));
+            return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error retrieving cache info: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
     }
 }

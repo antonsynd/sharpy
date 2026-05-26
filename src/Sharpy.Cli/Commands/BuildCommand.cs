@@ -48,14 +48,23 @@ internal static class BuildCommand
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            CliHelpers.ValidateInputFile(input);
-            CompileToBinary(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            if (!CliHelpers.ValidateInputFile(input))
+            {
+                return 1;
+            }
+            var compileResult = CompileToBinary(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            return compileResult == null ? 1 : 0;
         });
 
         root.Subcommands.Add(command);
     }
 
-    internal static CompileResult CompileToBinary(
+    /// <summary>
+    /// Compiles a Sharpy source file to a binary. Returns the <see cref="CompileResult"/>
+    /// on success, or <c>null</c> if compilation or assembly generation failed (the
+    /// caller should treat a <c>null</c> result as exit code 1).
+    /// </summary>
+    internal static CompileResult? CompileToBinary(
         FileInfo inputFile,
         string outputType,
         FileInfo? output,
@@ -92,7 +101,7 @@ internal static class BuildCommand
                 Console.Error.WriteLine("Compilation failed:");
                 Console.Error.WriteLine();
                 CliHelpers.RenderDiagnostics(result.Diagnostics.Where(d => d.IsError), sourceText, Console.Error);
-                Environment.Exit(1);
+                return null;
             }
 
             var compilationWarnings = result.Diagnostics.Where(d => d.IsWarning).ToList();
@@ -156,7 +165,7 @@ internal static class BuildCommand
                 Console.Error.WriteLine("Assembly compilation failed:");
                 Console.Error.WriteLine();
                 CliHelpers.RenderDiagnostics(assemblyResult.Diagnostics.GetErrors(), sourceText, Console.Error);
-                Environment.Exit(1);
+                return null;
             }
 
             var assemblyWarnings = assemblyResult.Diagnostics.GetWarnings();
@@ -175,8 +184,7 @@ internal static class BuildCommand
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-            Environment.Exit(1);
-            return null!;
+            return null;
         }
     }
 

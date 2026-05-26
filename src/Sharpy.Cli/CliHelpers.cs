@@ -231,18 +231,25 @@ internal static class CliHelpers
         }
     }
 
-    internal static void ValidateInputFile(FileInfo inputFile)
+    /// <summary>
+    /// Validates that the input file exists and has a .spy extension. Returns
+    /// <c>false</c> (after writing an error) if the file does not exist; a missing
+    /// .spy extension only produces a warning and still returns <c>true</c>.
+    /// </summary>
+    internal static bool ValidateInputFile(FileInfo inputFile)
     {
         if (!inputFile.Exists)
         {
             Console.Error.WriteLine($"Error: Input file '{inputFile.FullName}' does not exist.");
-            Environment.Exit(1);
+            return false;
         }
 
         if (inputFile.Extension != ".spy")
         {
             Console.Error.WriteLine($"Warning: Input file '{inputFile.Name}' does not have .spy extension.");
         }
+
+        return true;
     }
 
     internal static void RenderDiagnostic(CompilerDiagnostic diagnostic, SourceText? sourceText, TextWriter writer)

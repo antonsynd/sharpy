@@ -19,13 +19,13 @@ internal static class ExplainCommand
         {
             var code = parseResult.GetValue(codeArg);
             var list = parseResult.GetValue(listOpt);
-            HandleExplainCommand(code, list);
+            return HandleExplainCommand(code, list);
         });
 
         root.Subcommands.Add(command);
     }
 
-    static void HandleExplainCommand(string? code, bool list)
+    static int HandleExplainCommand(string? code, bool list)
     {
         if (list)
         {
@@ -50,7 +50,7 @@ internal static class ExplainCommand
 
             Console.WriteLine(CliHelpers.CliColor(new string('=', 60), "36"));
             Console.WriteLine($"Total: {CliHelpers.CliBold(all.Count.ToString())} documented codes");
-            return;
+            return 0;
         }
 
         if (string.IsNullOrWhiteSpace(code))
@@ -59,8 +59,7 @@ internal static class ExplainCommand
             Console.Error.WriteLine("       sharpyc explain --list");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Example: sharpyc explain SPY0200");
-            Environment.Exit(1);
-            return;
+            return 1;
         }
 
         var trimmedCode = code!.Trim();
@@ -69,8 +68,7 @@ internal static class ExplainCommand
         {
             Console.Error.WriteLine($"No explanation found for diagnostic code '{trimmedCode}'.");
             Console.Error.WriteLine("Use 'sharpyc explain --list' to see all documented codes.");
-            Environment.Exit(1);
-            return;
+            return 1;
         }
 
         var color = CliHelpers.CategoryColor(explanation.Category);
@@ -97,5 +95,6 @@ internal static class ExplainCommand
 
         Console.WriteLine();
         Console.WriteLine($"{CliHelpers.CliColor("Category:", "36", bold: true)} {CliHelpers.CliColor(explanation.Category, color, bold: true)}");
+        return 0;
     }
 }

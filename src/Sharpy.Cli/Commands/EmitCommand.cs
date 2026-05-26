@@ -44,7 +44,7 @@ internal static class EmitCommand
             var logFile = parseResult.GetValue(globals.LogFile);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            EmitTokens(input, logger, maxErrors);
+            return EmitTokens(input, logger, maxErrors);
         });
         parent.Subcommands.Add(command);
     }
@@ -61,7 +61,7 @@ internal static class EmitCommand
             var logFile = parseResult.GetValue(globals.LogFile);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            EmitAst(input, logger, maxErrors);
+            return EmitAst(input, logger, maxErrors);
         });
         parent.Subcommands.Add(command);
     }
@@ -105,7 +105,7 @@ internal static class EmitCommand
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives, emitType, namespaceName);
+            return EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives, emitType, namespaceName);
         });
         parent.Subcommands.Add(command);
     }
@@ -122,7 +122,7 @@ internal static class EmitCommand
             var logFile = parseResult.GetValue(globals.LogFile);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            EmitParse(input, logger, maxErrors);
+            return EmitParse(input, logger, maxErrors);
         });
         parent.Subcommands.Add(command);
     }
@@ -146,8 +146,7 @@ internal static class EmitCommand
             if (format != "text" && format != "json")
             {
                 Console.Error.WriteLine($"Error: --format must be 'text' or 'json', got '{format}'");
-                Environment.Exit(1);
-                return;
+                return 1;
             }
             var includeCodegen = parseResult.GetValue(includeCodegenOpt);
             var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
@@ -156,7 +155,7 @@ internal static class EmitCommand
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            EmitDiagnostics(input, logger, format, warnAsError, nowarn, maxErrors, includeCodegen);
+            return EmitDiagnostics(input, logger, format, warnAsError, nowarn, maxErrors, includeCodegen);
         });
         parent.Subcommands.Add(command);
     }
@@ -181,12 +180,12 @@ internal static class EmitCommand
             var logFile = parseResult.GetValue(globals.LogFile);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            EmitHover(input, line, col, logger, maxErrors);
+            return EmitHover(input, line, col, logger, maxErrors);
         });
         parent.Subcommands.Add(command);
     }
 
-    static void EmitTokens(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
+    static int EmitTokens(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
@@ -202,7 +201,7 @@ internal static class EmitCommand
             if (lexer.Diagnostics.HasErrors)
             {
                 CliHelpers.RenderDiagnostics(lexer.Diagnostics.GetErrors(), sourceText, Console.Error);
-                Environment.Exit(1);
+                return 1;
             }
 
             Console.WriteLine($"Tokens for {inputFile.Name}:");
@@ -217,15 +216,16 @@ internal static class EmitCommand
 
             Console.WriteLine(new string('=', 80));
             Console.WriteLine($"Total tokens: {tokens.Count}");
+            return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
     }
 
-    static void EmitAst(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
+    static int EmitAst(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
@@ -241,7 +241,7 @@ internal static class EmitCommand
             if (lexer.Diagnostics.HasErrors)
             {
                 CliHelpers.RenderDiagnostics(lexer.Diagnostics.GetErrors(), sourceText, Console.Error);
-                Environment.Exit(1);
+                return 1;
             }
 
             var parserMaxErrors = maxErrors is > 0 ? maxErrors.Value : 25;
@@ -251,7 +251,7 @@ internal static class EmitCommand
             if (parser.Diagnostics.HasErrors)
             {
                 CliHelpers.RenderDiagnostics(parser.Diagnostics.GetErrors(), sourceText, Console.Error);
-                Environment.Exit(1);
+                return 1;
             }
 
             Console.WriteLine($"AST for {inputFile.Name}:");
@@ -262,15 +262,16 @@ internal static class EmitCommand
             Console.Write(ast);
 
             Console.WriteLine(new string('=', 80));
+            return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
     }
 
-    static void EmitParse(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
+    static int EmitParse(FileInfo inputFile, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
@@ -286,7 +287,7 @@ internal static class EmitCommand
             if (lexer.Diagnostics.HasErrors)
             {
                 CliHelpers.RenderDiagnostics(lexer.Diagnostics.GetErrors(), sourceText, Console.Error);
-                Environment.Exit(1);
+                return 1;
             }
 
             var parserMaxErrors = maxErrors is > 0 ? maxErrors.Value : 25;
@@ -296,19 +297,20 @@ internal static class EmitCommand
             if (parser.Diagnostics.HasErrors)
             {
                 CliHelpers.RenderDiagnostics(parser.Diagnostics.GetErrors(), sourceText, Console.Error);
-                Environment.Exit(1);
+                return 1;
             }
 
             Console.WriteLine("PARSE_OK");
+            return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
     }
 
-    static void EmitDiagnostics(FileInfo inputFile, ICompilerLogger logger, string format,
+    static int EmitDiagnostics(FileInfo inputFile, ICompilerLogger logger, string format,
         bool warnAsError = false, string? nowarn = null, int? maxErrors = null, bool includeCodegen = false)
     {
         try
@@ -371,19 +373,16 @@ internal static class EmitCommand
                 }
             }
 
-            if (hasErrors)
-            {
-                Environment.Exit(1);
-            }
+            return hasErrors ? 1 : 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
     }
 
-    static void EmitHover(FileInfo inputFile, int line, int col, ICompilerLogger logger, int? maxErrors = null)
+    static int EmitHover(FileInfo inputFile, int line, int col, ICompilerLogger logger, int? maxErrors = null)
     {
         try
         {
@@ -400,8 +399,7 @@ internal static class EmitCommand
             if (result.Ast == null || result.SemanticQuery == null)
             {
                 Console.Error.WriteLine("Analysis failed: no AST or semantic info available.");
-                Environment.Exit(1);
-                return;
+                return 1;
             }
 
             var hoverService = new HoverService(api);
@@ -415,15 +413,16 @@ internal static class EmitCommand
             {
                 Console.WriteLine("(no hover)");
             }
+            return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
     }
 
-    static void EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
+    static int EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
         ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null,
         bool showLineDirectives = false, string outputType = "exe", string? namespaceName = null)
     {
@@ -432,7 +431,7 @@ internal static class EmitCommand
             if (namespaceName != null && !ValidNamespaceRegex.IsMatch(namespaceName))
             {
                 Console.Error.WriteLine($"Invalid namespace '{namespaceName}': must be a valid dotted identifier (e.g., 'Game.Scripts')");
-                Environment.Exit(1);
+                return 1;
             }
 
             var source = File.ReadAllText(inputFile.FullName);
@@ -456,7 +455,7 @@ internal static class EmitCommand
                 Console.Error.WriteLine("Compilation errors:");
                 Console.Error.WriteLine();
                 CliHelpers.RenderDiagnostics(result.Diagnostics.Where(d => d.IsError), sourceText, Console.Error);
-                Environment.Exit(1);
+                return 1;
             }
 
             var warnings = result.Diagnostics.Where(d => d.IsWarning).ToList();
@@ -500,11 +499,12 @@ internal static class EmitCommand
                 File.WriteAllText(moduleOutputPath, processedModuleCode);
                 Console.WriteLine($"Generated C# code written to: {moduleOutputPath}");
             }
+            return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
     }
 }

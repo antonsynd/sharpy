@@ -50,13 +50,13 @@ internal static class RunCommand
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained);
+            return HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained);
         });
 
         root.Subcommands.Add(command);
     }
 
-    static void HandleRunCommand(
+    static int HandleRunCommand(
         FileInfo inputFile,
         FileInfo? output,
         string[] references,
@@ -71,7 +71,10 @@ internal static class RunCommand
         int? maxErrors = null,
         bool selfContained = false)
     {
-        CliHelpers.ValidateInputFile(inputFile);
+        if (!CliHelpers.ValidateInputFile(inputFile))
+        {
+            return 1;
+        }
 
         var outputPath = output?.FullName;
         var isTempOutput = false;
@@ -89,6 +92,10 @@ internal static class RunCommand
         try
         {
             var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            if (compileResult == null)
+            {
+                return 1;
+            }
 
             var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
             var sharpyCorePath = sharpyCoreAssembly.Location;
@@ -101,8 +108,7 @@ internal static class RunCommand
 
             if (selfContained)
             {
-                HandleSelfContainedRun(inputFile, outputPath, sharpyCorePath, args, isTempOutput, compileResult.UsedAssemblyPaths);
-                return;
+                return HandleSelfContainedRun(inputFile, outputPath, sharpyCorePath, args, isTempOutput, compileResult.UsedAssemblyPaths);
             }
 
             Console.WriteLine();
@@ -142,8 +148,10 @@ internal static class RunCommand
                     }
                 }
 
-                Environment.Exit(process.ExitCode);
+                return process.ExitCode;
             }
+
+            return 0;
         }
         catch (Exception)
         {
@@ -166,7 +174,7 @@ internal static class RunCommand
         }
     }
 
-    static void HandleSelfContainedRun(
+    static int HandleSelfContainedRun(
         FileInfo inputFile,
         string compiledExePath,
         string sharpyCorePath,
@@ -251,7 +259,7 @@ internal static class RunCommand
                 {
                     Console.Error.WriteLine("Self-contained publish failed:");
                     Console.Error.WriteLine(stderr);
-                    Environment.Exit(1);
+                    return 1;
                 }
             }
 
@@ -262,7 +270,7 @@ internal static class RunCommand
             if (!File.Exists(publishedExe))
             {
                 Console.Error.WriteLine($"Published executable not found: {publishedExe}");
-                Environment.Exit(1);
+                return 1;
             }
 
             Console.WriteLine($"Published to: {publishDir}");
@@ -283,12 +291,14 @@ internal static class RunCommand
             if (runProcess != null)
             {
                 runProcess.WaitForExit();
-                Environment.Exit(runProcess.ExitCode);
+                return runProcess.ExitCode;
             }
 
             try
             { Directory.Delete(tempProjDir, recursive: true); }
             catch { }
+
+            return 0;
         }
         finally
         {

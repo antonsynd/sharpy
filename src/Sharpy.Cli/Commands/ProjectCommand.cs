@@ -39,13 +39,13 @@ internal static class ProjectCommand
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            return HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
         });
 
         root.Subcommands.Add(command);
     }
 
-    static void HandleProjectCommand(
+    static int HandleProjectCommand(
         FileInfo? projectFile,
         string configuration,
         bool clean,
@@ -70,18 +70,17 @@ internal static class ProjectCommand
             {
                 Console.Error.WriteLine("Error: No .spyproj file found in current directory.");
                 Console.Error.WriteLine("Specify a project file with the first argument, or use 'sharpyc build' for single-file compilation.");
-                Environment.Exit(1);
-                return;
+                return 1;
             }
 
             resolvedProjectFile = new FileInfo(discoveredPath);
             Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
         }
 
-        CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+        return CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
     }
 
-    static void CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
+    static int CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
     {
         try
         {
@@ -148,7 +147,7 @@ internal static class ProjectCommand
                 Console.Error.WriteLine("Build FAILED.");
                 Console.Error.WriteLine();
                 CliHelpers.RenderDiagnosticsFromFiles(result.Diagnostics.GetErrors(), Console.Error);
-                Environment.Exit(1);
+                return 1;
             }
 
             Console.WriteLine("Build succeeded.");
@@ -156,21 +155,22 @@ internal static class ProjectCommand
 
             CliHelpers.OutputVerboseTimingSummary(result.Metrics, logger);
             CliHelpers.OutputProjectMetrics(result.Metrics, metricsFormat, metricsOutput);
+            return 0;
         }
         catch (FileNotFoundException ex)
         {
             Console.Error.WriteLine($"Error: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
         catch (InvalidDataException ex)
         {
             Console.Error.WriteLine($"Error: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
         catch (InvalidOperationException ex)
         {
             Console.Error.WriteLine($"Error: {ex.Message}");
-            Environment.Exit(1);
+            return 1;
         }
         catch (Exception ex)
         {
@@ -179,7 +179,7 @@ internal static class ProjectCommand
             {
                 Console.Error.WriteLine(ex.StackTrace);
             }
-            Environment.Exit(1);
+            return 1;
         }
     }
 
