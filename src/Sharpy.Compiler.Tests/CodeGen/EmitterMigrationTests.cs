@@ -85,9 +85,9 @@ const MAX_VALUE: int = 100
 ";
         var result = CompileToString(code);
 
-        // Constants → PascalCase
-        result.Should().Contain("MaxValue");
-        result.Should().Contain("const int MaxValue = 100");
+        // Constants preserve SCREAMING_SNAKE_CASE
+        result.Should().Contain("MAX_VALUE");
+        result.Should().Contain("const int MAX_VALUE = 100");
     }
 
     [Fact]
@@ -99,8 +99,8 @@ MAX_SIZE: int = 1024
 ";
         var result = CompileToString(code);
 
-        // ALL_CAPS names should be treated as constants and use PascalCase
-        result.Should().Contain("MaxSize");
+        // ALL_CAPS names should be treated as constants and preserve SCREAMING_SNAKE_CASE
+        result.Should().Contain("MAX_SIZE");
     }
 
     [Fact]
@@ -177,8 +177,8 @@ def get_pi() -> float:
 ";
         var result = CompileToString(code);
 
-        // Constant reference should use PascalCase name
-        result.Should().Contain("return Pi;");
+        // Constant reference should preserve SCREAMING_SNAKE_CASE / single-word uppercase name
+        result.Should().Contain("return PI;");
     }
 
     [Fact]

@@ -1571,8 +1571,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Should generate delegating property (constants → PascalCase)
-        Assert.Contains("MaxSize", code);
+        // Assert - Should generate delegating property (SCREAMING_SNAKE_CASE preserved)
+        Assert.Contains("MAX_SIZE", code);
         Assert.Contains("Mypackage.Config", code);
         // Should use expression body (=>)
         Assert.Contains("=>", code);

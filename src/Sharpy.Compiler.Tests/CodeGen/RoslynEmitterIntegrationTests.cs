@@ -395,9 +395,9 @@ public class RoslynEmitterIntegrationTests
 
         // Assert
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}\n\nGenerated code:\n{code}");
-        // Verify both declaration and reference use PascalCase (Base)
-        Assert.Contains("const int Base = 10", code);
-        Assert.Contains("Base * 2", code);
+        // Verify both declaration and reference preserve SCREAMING_SNAKE_CASE (BASE)
+        Assert.Contains("const int BASE = 10", code);
+        Assert.Contains("BASE * 2", code);
     }
 
     [Fact]
@@ -448,9 +448,9 @@ public class RoslynEmitterIntegrationTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - verify naming is consistent (both use PascalCase: Base)
-        Assert.Contains("const int Base = 10", code);
-        Assert.Contains("Base * 2", code);
+        // Assert - verify naming is consistent (both preserve SCREAMING_SNAKE_CASE: BASE)
+        Assert.Contains("const int BASE = 10", code);
+        Assert.Contains("BASE * 2", code);
     }
 
     [Fact]
@@ -537,15 +537,15 @@ public class RoslynEmitterIntegrationTests
         // Assert
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}\n\nGenerated code:\n{code}");
 
-        // Verify only the first declaration appears (MaxSize = 100)
-        // Constants use PascalCase naming
-        Assert.Contains("MaxSize = 100", code);
+        // Verify only the first declaration appears (MAX_SIZE = 100)
+        // Constants preserve SCREAMING_SNAKE_CASE naming
+        Assert.Contains("MAX_SIZE = 100", code);
 
-        // Verify the second declaration does NOT appear (no MaxSize = 200)
+        // Verify the second declaration does NOT appear (no MAX_SIZE = 200)
         Assert.DoesNotContain("200", code);
 
-        // Verify there's only one MaxSize field
-        var maxSizeFieldCount = System.Text.RegularExpressions.Regex.Matches(code, @"\bMaxSize\b").Count;
+        // Verify there's only one MAX_SIZE field
+        var maxSizeFieldCount = System.Text.RegularExpressions.Regex.Matches(code, @"\bMAX_SIZE\b").Count;
         Assert.Equal(1, maxSizeFieldCount);
     }
 }

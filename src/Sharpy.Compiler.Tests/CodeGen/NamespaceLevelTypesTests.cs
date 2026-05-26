@@ -170,9 +170,9 @@ def main():
 ";
         var csharp = CompileToCSharp(source);
 
-        // Module class should have: Counter, Version (constants → PascalCase), Helper, Main
+        // Module class should have: Counter, VERSION (constants preserve SCREAMING_SNAKE_CASE), Helper, Main
         Assert.Contains("public static int Counter", csharp);
-        Assert.Contains("Version", csharp);
+        Assert.Contains("VERSION", csharp);
         Assert.Contains("public static int Helper()", csharp);
         Assert.Contains("public static void Main()", csharp);
 

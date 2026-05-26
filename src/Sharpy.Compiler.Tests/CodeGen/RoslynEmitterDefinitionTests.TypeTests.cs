@@ -470,9 +470,9 @@ public partial class RoslynEmitterDefinitionTests
 
         // Assert
         Assert.Contains("public enum Color", code);
-        Assert.Contains("Red = 1", code);
-        Assert.Contains("Green = 2", code);
-        Assert.Contains("Blue = 3", code);
+        Assert.Contains("RED = 1", code);
+        Assert.Contains("GREEN = 2", code);
+        Assert.Contains("BLUE = 3", code);
     }
 
     [Fact]
@@ -497,9 +497,9 @@ public partial class RoslynEmitterDefinitionTests
 
         // Assert
         Assert.Contains("public enum Status", code);
-        Assert.Contains("Pending", code);
-        Assert.Contains("Active", code);
-        Assert.Contains("Complete", code);
+        Assert.Contains("PENDING", code);
+        Assert.Contains("ACTIVE", code);
+        Assert.Contains("COMPLETE", code);
     }
 
     [Fact]
@@ -528,9 +528,9 @@ public partial class RoslynEmitterDefinitionTests
     }
 
     [Fact]
-    public void GenerateEnumMemberAccess_TransformsToPascalCase()
+    public void GenerateEnumMemberAccess_PreservesScreamingSnakeCase()
     {
-        // Arrange: Color.RED -> Color.Red
+        // Arrange: Color.RED -> Color.RED, Color.DARK_BLUE -> Color.DARK_BLUE (#702)
         _context.IsEntryPoint = true;
         var enumDef = new EnumDef
         {
@@ -578,8 +578,8 @@ public partial class RoslynEmitterDefinitionTests
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
         // Assert
-        Assert.Contains("Color.Red", code);
-        Assert.Contains("Color.DarkBlue", code);
+        Assert.Contains("Color.RED", code);
+        Assert.Contains("Color.DARK_BLUE", code);
     }
 
     [Fact]

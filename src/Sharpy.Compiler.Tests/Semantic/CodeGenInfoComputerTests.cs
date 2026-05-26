@@ -61,10 +61,10 @@ my_variable: int = 42
     }
 
     [Fact]
-    public void ComputeForModule_ModuleLevelVariable_WithUppercaseName_UsesPascalCase()
+    public void ComputeForModule_ModuleLevelVariable_WithUppercaseName_PreservesScreamingSnakeCase()
     {
-        // Without const keyword, even ALL_CAPS names are treated as regular variables
-        // and get PascalCase conversion
+        // ALL_CAPS names are treated as constants and preserve their SCREAMING_SNAKE_CASE
+        // form (Python identity, .NET convention like Math.PI). See #702.
         var source = @"
 MAX_VALUE: int = 100
 ";
@@ -77,8 +77,8 @@ MAX_VALUE: int = 100
         var symbol = symbolTable.Lookup("MAX_VALUE") as VariableSymbol;
         symbol.Should().NotBeNull();
         symbol!.CodeGenInfo.Should().NotBeNull();
-        // Without const keyword, this becomes PascalCase like other module-level variables
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MaxValue");
+        // ALL_CAPS names preserve their SCREAMING_SNAKE_CASE form
+        symbol.CodeGenInfo!.CSharpName.Should().Be("MAX_VALUE");
         symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue();
         symbol.CodeGenInfo.IsConstant.Should().BeFalse();
     }
@@ -99,7 +99,7 @@ const MY_CONST: int = 100
         var symbol = symbolTable.Lookup("MY_CONST") as VariableSymbol;
         symbol.Should().NotBeNull();
         symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MyConst");
+        symbol.CodeGenInfo!.CSharpName.Should().Be("MY_CONST");
         symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue();
         symbol.CodeGenInfo.IsConstant.Should().BeTrue();
     }

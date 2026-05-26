@@ -74,7 +74,7 @@ const MAX_VALUE: int = 100
         var symbol = symbolTable.Lookup("MAX_VALUE") as VariableSymbol;
         symbol.Should().NotBeNull();
         symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MaxValue");
+        symbol.CodeGenInfo!.CSharpName.Should().Be("MAX_VALUE");
         symbol.CodeGenInfo.IsConstant.Should().BeTrue();
     }
 

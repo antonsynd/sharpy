@@ -44,7 +44,7 @@ public class NameCasingTests
     [Theory]
     [InlineData("max_size", false, "MaxSize")]
     [InlineData("max_size", true, "max_size")]
-    [InlineData("MAX_SIZE", false, "MaxSize")]
+    [InlineData("MAX_SIZE", false, "MAX_SIZE")]
     public void ResolveConstant_AppliesConstantCaseUnlessEscaped(string name, bool escaped, string expected)
     {
         Assert.Equal(expected, NameCasing.ResolveConstant(name, escaped));
