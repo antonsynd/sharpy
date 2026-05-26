@@ -232,16 +232,16 @@ Different identifier types use different target conventions:
 
 ## Interop with .NET Libraries
 
-When calling .NET libraries from Sharpy, use the C# names directly (PascalCase):
+Write snake_case in Sharpy source code. The compiler mangles method names to PascalCase for C#:
 
 ```python
-# Calling .NET
+# Calling .NET — use snake_case, compiler emits PascalCase
 from system import Console
-Console.WriteLine("Hello")  # Use actual C# name
+Console.write_line("Hello")  # Emits Console.WriteLine("Hello")
 
 # Sharpy method calling C#
-def print_message(msg: str):  # Sharpy convention
-    Console.WriteLine(msg)    # C# convention
+def print_message(msg: str):   # Sharpy convention (snake_case)
+    Console.write_line(msg)    # Emits Console.WriteLine(msg)
 ```
 
 When .NET code calls Sharpy-compiled code, it sees the mangled PascalCase names:
@@ -251,8 +251,26 @@ When .NET code calls Sharpy-compiled code, it sees the mangled PascalCase names:
 var result = sharpyModule.GetUserName();  // Not get_user_name
 ```
 
+### Acronym Round-Trip Limitation
+
+Some CLR method names with acronyms don't round-trip cleanly through name mangling:
+
+| CLR Name | snake_case | Re-mangled | Match? |
+|----------|-----------|------------|--------|
+| `WriteLine` | `write_line` | `WriteLine` | Yes |
+| `IsOSPlatform` | `is_os_platform` | `IsOsPlatform` | **No** |
+| `GetUTF8Encoding` | `get_utf8_encoding` | `GetUtf8Encoding` | **No** |
+
+The compiler preserves original CLR names from assembly discovery and uses them directly during code generation, so `is_os_platform()` correctly emits `IsOSPlatform()`. For cases where the compiler cannot resolve the original name, use backtick escaping to pass the exact CLR name through:
+
+```python
+# Backtick escaping bypasses name mangling entirely
+obj.`IsOSPlatform`(platform)
+```
+
 *Implementation*
 - Name mangling is performed during code generation by `NameMangler` (form detection via `NameFormDetector`)
+- Original CLR names are preserved via `FunctionSignature.ClrName` → `FunctionSymbol.ClrMethodName` → `CodeGenInfo.ClrMethodName`
 - Dunder method mapping is handled by `DunderMapping` (codegen-owned, separate from `NameMangler`)
 - Naming convention warnings (SPY0453) are emitted by `NamingConventionValidator` during semantic validation
 - Backtick-escaped identifiers bypass mangling
