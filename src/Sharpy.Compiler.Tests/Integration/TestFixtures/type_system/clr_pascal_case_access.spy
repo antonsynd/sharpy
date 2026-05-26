@@ -4,4 +4,7 @@
 import system
 
 def main():
+    # Idiomatic snake_case call round-trips to the CLR PascalCase method
+    system.Console.write_line("idiomatic snake case access")
+    # PascalCase access still works for direct CLR interop
     system.Console.WriteLine("direct pascal case access")
