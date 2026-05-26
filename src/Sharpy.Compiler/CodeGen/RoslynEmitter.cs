@@ -150,6 +150,13 @@ internal partial class RoslynEmitter : ICodeEmitter
     // are wired up via IClassFixture<T>.
     private readonly List<FunctionDef> _pendingFixtures = new();
 
+    // In library mode (non-entry-point files), top-level type declarations (class/struct/
+    // interface/enum/union) are extracted out of the static module class and emitted as
+    // sibling types annotated with [SharpyModuleType]. GenerateModuleMembers populates this
+    // list; GenerateCompilationUnit emits them at namespace level (wrapped in the same
+    // directory-wrapper hierarchy as the module class for multi-file isolation).
+    private readonly List<MemberDeclarationSyntax> _extractedTypes = new();
+
     // Maps fixture function name (e.g., "db_connection") → metadata describing the generated
     // C# fixture class (class name, return type, field name in consuming test classes).
     // Populated as fixtures are emitted, consulted by test method generation to detect
