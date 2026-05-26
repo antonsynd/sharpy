@@ -88,6 +88,41 @@ public class RunCommandTests
         result.Errors.Should().NotBeEmpty();
     }
 
-    // RunCommand calls Environment.Exit on all paths (success spawns a child process
-    // then exits). Invocation-level tests are not possible without CLI refactoring.
+    // ---- Invocation-level error/success tests ----
+
+    [Fact]
+    public void Run_FileNotFound_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var missing = ws.PathFor("nope.spy");
+
+        var invocation = CliTestHarness.Invoke($"run \"{missing}\"");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("does not exist");
+    }
+
+    [Fact]
+    public void Run_CompilationFailure_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy("def 123invalid():\n    return 0\n");
+
+        var invocation = CliTestHarness.Invoke($"run \"{spy}\"");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("Compilation failed:");
+    }
+
+    [Fact]
+    public void Run_ValidProgram_ReturnsExitCode0()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy("def main():\n    print(\"hello\")\n");
+        var outPath = ws.PathFor("app.dll");
+
+        var invocation = CliTestHarness.Invoke($"run \"{spy}\" --output \"{outPath}\"");
+
+        invocation.ExitCode.Should().Be(0);
+    }
 }

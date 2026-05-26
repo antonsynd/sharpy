@@ -52,4 +52,24 @@ public class ExplainCommandTests
         invocation.ExitCode.Should().Be(0);
         invocation.StdOut.Should().Contain("SPY0200");
     }
+
+    // ---- Invocation-level error tests ----
+
+    [Fact]
+    public void UnknownCode_ReturnsExitCode1()
+    {
+        var invocation = CliTestHarness.Invoke("explain SPY9999");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("No explanation found");
+    }
+
+    [Fact]
+    public void NoCodeAndNoList_ReturnsExitCode1()
+    {
+        var invocation = CliTestHarness.Invoke("explain");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("Usage:");
+    }
 }

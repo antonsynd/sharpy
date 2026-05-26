@@ -74,6 +74,39 @@ public class ProjectCommandTests
         result.Errors.Should().NotBeEmpty();
     }
 
-    // ProjectCommand calls Environment.Exit(1) for missing .spyproj errors.
-    // Invocation-level error tests are not possible without CLI refactoring.
+    // ---- Invocation-level error tests ----
+
+    [Fact]
+    public void Project_MissingProjectFile_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var missing = ws.PathFor("nope.spyproj");
+
+        var invocation = CliTestHarness.Invoke($"project \"{missing}\"");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("Error");
+    }
+
+    [Fact]
+    public void Project_BuildFailure_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        ws.WriteFile("lib.spy", "def 123invalid():\n    return 0\n");
+        var proj = ws.WriteFile("BadProj.spyproj",
+            "<Project>\n" +
+            "  <PropertyGroup>\n" +
+            "    <RootNamespace>BadProj</RootNamespace>\n" +
+            "    <OutputType>library</OutputType>\n" +
+            "    <TargetFramework>net10.0</TargetFramework>\n" +
+            "  </PropertyGroup>\n" +
+            "  <ItemGroup>\n" +
+            "    <SourceFile Include=\"*.spy\" />\n" +
+            "  </ItemGroup>\n" +
+            "</Project>\n");
+
+        var invocation = CliTestHarness.Invoke($"project \"{proj}\"");
+
+        invocation.ExitCode.Should().Be(1);
+    }
 }

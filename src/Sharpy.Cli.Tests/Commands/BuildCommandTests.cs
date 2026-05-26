@@ -81,6 +81,42 @@ public class BuildCommandTests
         result.Errors.Should().NotBeEmpty();
     }
 
-    // BuildCommand calls Environment.Exit(1) for file-not-found and compilation errors.
-    // Invocation-level error tests are not possible without CLI refactoring.
+    // ---- Invocation-level error/success tests ----
+
+    [Fact]
+    public void Build_FileNotFound_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var missing = ws.PathFor("nope.spy");
+
+        var invocation = CliTestHarness.Invoke($"build \"{missing}\"");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("does not exist");
+    }
+
+    [Fact]
+    public void Build_CompilationFailure_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy("def 123invalid():\n    return 0\n");
+
+        var invocation = CliTestHarness.Invoke($"build \"{spy}\"");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("Compilation failed:");
+    }
+
+    [Fact]
+    public void Build_ValidSource_ReturnsExitCode0()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy("def main():\n    print(\"hello\")\n");
+        var outPath = ws.PathFor("app.dll");
+
+        var invocation = CliTestHarness.Invoke($"build \"{spy}\" --output \"{outPath}\"");
+
+        invocation.ExitCode.Should().Be(0);
+        File.Exists(outPath).Should().BeTrue();
+    }
 }

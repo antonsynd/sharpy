@@ -55,4 +55,31 @@ public class CacheCommandTests
         invocation.ExitCode.Should().Be(0);
         invocation.StdOut.Should().Contain("cache cleared successfully");
     }
+
+    // ---- Invocation-level error tests ----
+    // A --cache-dir pointing at an existing file forces Directory.CreateDirectory to throw.
+
+    [Fact]
+    public void Info_CacheDirIsAFile_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var filePath = ws.WriteFile("not-a-dir", "x");
+
+        var invocation = CliTestHarness.Invoke($"cache info --cache-dir \"{filePath}\"");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("Error retrieving cache info");
+    }
+
+    [Fact]
+    public void Clear_CacheDirIsAFile_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var filePath = ws.WriteFile("not-a-dir", "x");
+
+        var invocation = CliTestHarness.Invoke($"cache clear --cache-dir \"{filePath}\"");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("Error clearing cache");
+    }
 }

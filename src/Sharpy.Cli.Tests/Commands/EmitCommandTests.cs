@@ -151,6 +151,71 @@ public class EmitCommandTests
         invocation.ExitCode.Should().Be(0);
     }
 
-    // Emit subcommands call Environment.Exit(1) for file-not-found errors.
-    // Invocation-level error tests are not possible without CLI refactoring.
+    // ---- Invocation-level error tests (nonexistent file → exit code 1) ----
+
+    [Fact]
+    public void Tokens_FileNotFound_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var missing = ws.PathFor("nope.spy");
+
+        var invocation = CliTestHarness.Invoke($"emit tokens \"{missing}\"");
+
+        invocation.ExitCode.Should().Be(1);
+    }
+
+    [Fact]
+    public void Ast_FileNotFound_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var missing = ws.PathFor("nope.spy");
+
+        var invocation = CliTestHarness.Invoke($"emit ast \"{missing}\"");
+
+        invocation.ExitCode.Should().Be(1);
+    }
+
+    [Fact]
+    public void Parse_FileNotFound_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var missing = ws.PathFor("nope.spy");
+
+        var invocation = CliTestHarness.Invoke($"emit parse \"{missing}\"");
+
+        invocation.ExitCode.Should().Be(1);
+    }
+
+    [Fact]
+    public void CSharp_FileNotFound_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var missing = ws.PathFor("nope.spy");
+
+        var invocation = CliTestHarness.Invoke($"emit csharp \"{missing}\"");
+
+        invocation.ExitCode.Should().Be(1);
+    }
+
+    [Fact]
+    public void Diagnostics_FileNotFound_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var missing = ws.PathFor("nope.spy");
+
+        var invocation = CliTestHarness.Invoke($"emit diagnostics \"{missing}\"");
+
+        invocation.ExitCode.Should().Be(1);
+    }
+
+    [Fact]
+    public void Hover_FileNotFound_ReturnsExitCode1()
+    {
+        using var ws = new TempWorkspace();
+        var missing = ws.PathFor("nope.spy");
+
+        var invocation = CliTestHarness.Invoke($"emit hover \"{missing}\" --line 1 --col 1");
+
+        invocation.ExitCode.Should().Be(1);
+    }
 }
