@@ -235,9 +235,11 @@ def main():
     }
 
     [Fact]
-    public void LibraryModule_TypesNestedInModuleClass()
+    public void LibraryModule_TypesExtractedAsNamespaceSiblings()
     {
-        // Non-entry-point module (library)
+        // Non-entry-point single-file module (library mode). Top-level types are extracted out
+        // of the module class and emitted as namespace siblings annotated with
+        // [SharpyModuleType], while module-level functions stay on the module class. (#702)
         var source = @"
 class Point:
     x: int
@@ -251,12 +253,17 @@ def get_origin() -> Point:
         // Should have Module class for library (fallback when no SourceFilePath is set)
         Assert.Contains("public static partial class Module", csharp);
 
-        // Types should be nested inside the Module class
+        // Point is extracted: it appears AFTER the module class closes (a namespace sibling)
+        // and carries the [SharpyModuleType] attribute.
         var moduleIndex = csharp.IndexOf("public static partial class Module");
         var moduleEnd = FindClosingBrace(csharp, moduleIndex);
         var pointIndex = csharp.IndexOf("public class Point");
 
-        Assert.True(pointIndex < moduleEnd, "Point should be inside Module class");
+        Assert.True(pointIndex > moduleEnd, "Point should be a sibling of (not nested in) the Module class");
+        Assert.Contains("SharpyModuleType", csharp);
+
+        // The module-level function stays on the module class.
+        Assert.Contains("public static Point GetOrigin()", csharp);
     }
 
     // Note: Nested classes within user classes are not currently supported by the language.

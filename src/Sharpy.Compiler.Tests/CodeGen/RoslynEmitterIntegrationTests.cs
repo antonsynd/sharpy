@@ -548,4 +548,90 @@ public class RoslynEmitterIntegrationTests
         var maxSizeFieldCount = System.Text.RegularExpressions.Regex.Matches(code, @"\bMAX_SIZE\b").Count;
         Assert.Equal(1, maxSizeFieldCount);
     }
+
+    [Fact]
+    public void LibraryMode_ExtractedTypes_CompileSuccessfully()
+    {
+        // End-to-end: in single-file library mode, top-level types (class/enum/interface) are
+        // extracted as namespace siblings annotated with [SharpyModuleType], and a module-level
+        // function referencing the class stays on the module class. The generated C# must compile
+        // (verifies [SharpyModuleType] is valid on each extracted declaration kind). (#702)
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef { Name = "IShape", Body = ImmutableArray<Statement>.Empty },
+                new EnumDef
+                {
+                    Name = "Mode",
+                    Members = new List<EnumMember>
+                    {
+                        new EnumMember { Name = "FAST", Value = new IntegerLiteral { Value = "0" } },
+                        new EnumMember { Name = "SLOW", Value = new IntegerLiteral { Value = "1" } }
+                    }.ToImmutableArray()
+                },
+                new ClassDef
+                {
+                    Name = "Widget",
+                    Body = new List<Statement>
+                    {
+                        new VariableDeclaration { Name = "size", Type = new TypeAnnotation { Name = "int" } },
+                        new FunctionDef
+                        {
+                            Name = "__init__",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" },
+                                new Parameter { Name = "size", Type = new TypeAnnotation { Name = "int" } }
+                            }.ToImmutableArray(),
+                            Body = new List<Statement>
+                            {
+                                new Assignment
+                                {
+                                    Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "size" },
+                                    Value = new Identifier { Name = "size" },
+                                    Operator = AssignmentOperator.Assign
+                                }
+                            }.ToImmutableArray()
+                        }
+                    }.ToImmutableArray()
+                },
+                new FunctionDef
+                {
+                    Name = "make_widget",
+                    Parameters = ImmutableArray<Parameter>.Empty,
+                    ReturnType = new TypeAnnotation { Name = "Widget" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new FunctionCall
+                            {
+                                Function = new Identifier { Name = "Widget" },
+                                Arguments = new List<Expression> { new IntegerLiteral { Value = "3" } }.ToImmutableArray()
+                            }
+                        }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray()
+        };
+
+        // Library mode = non-entry-point, single-file (no project namespace).
+        var emitter = CreateEmitterWithSemanticAnalysis(module, isEntryPoint: false);
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+        var compiles = CompileCode(code, out var errors);
+
+        // Assert - the generated library C# compiles
+        Assert.True(compiles, $"Generated library code should compile. Errors:\n{errors}\n\nGenerated code:\n{code}");
+
+        // Each extracted type carries [SharpyModuleType]; the function stays on the module class.
+        Assert.Contains("[global::Sharpy.SharpyModuleType(", code);
+        Assert.Contains("public interface IShape", code);
+        Assert.Contains("public enum Mode", code);
+        Assert.Contains("public class Widget", code);
+        Assert.Contains("public static Widget MakeWidget()", code);
+    }
 }

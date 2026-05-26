@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -1675,6 +1677,195 @@ public class RoslynEmitterModuleTests
         // Assert - Regular modules should NOT generate delegating members
         // (only __init__.spy package files do)
         Assert.DoesNotContain("UtilityFunc", code);
+    }
+
+    #endregion
+
+    #region Library-Mode Type Extraction Tests (#702)
+
+    private RoslynEmitter CreateEmitter(bool isEntryPoint, string? sourceFilePath = null)
+    {
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = sourceFilePath,
+            IsEntryPoint = isEntryPoint
+        };
+        return new RoslynEmitter(context);
+    }
+
+    private static ClassDeclarationSyntax GetModuleClass(CompilationUnitSyntax cu)
+        => cu.Members
+            .OfType<ClassDeclarationSyntax>()
+            .First(c => c.Modifiers.Any(m => m.RawKind == (int)SyntaxKind.StaticKeyword));
+
+    private static bool HasSharpyModuleTypeAttribute(MemberDeclarationSyntax decl)
+        => decl.AttributeLists
+            .SelectMany(al => al.Attributes)
+            .Any(a => a.Name.ToString().Contains("SharpyModuleType"));
+
+    private static ClassDef SimpleClass(string name) => new ClassDef
+    {
+        Name = name,
+        Body = new List<Statement>
+        {
+            new FunctionDef
+            {
+                Name = "ping",
+                Parameters = ImmutableArray<Parameter>.Empty,
+                ReturnType = new TypeAnnotation { Name = "int" },
+                Body = new List<Statement>
+                {
+                    new ReturnStatement { Value = new IntegerLiteral { Value = "1" } }
+                }.ToImmutableArray()
+            }
+        }.ToImmutableArray()
+    };
+
+    [Fact]
+    public void LibraryMode_ClassDefinition_ExtractedAsNamespaceSibling()
+    {
+        // Arrange - library mode (non-entry-point)
+        var emitter = CreateEmitter(isEntryPoint: false);
+        var module = new Module
+        {
+            Body = new List<Statement> { SimpleClass("Widget") }.ToImmutableArray()
+        };
+
+        // Act
+        var cu = emitter.GenerateCompilationUnit(module);
+
+        // Assert - Widget is a top-level sibling, NOT nested in the module class
+        var widget = cu.Members
+            .OfType<ClassDeclarationSyntax>()
+            .FirstOrDefault(c => c.Identifier.Text == "Widget");
+        Assert.NotNull(widget);
+        Assert.True(HasSharpyModuleTypeAttribute(widget!), "extracted type must carry [SharpyModuleType]");
+
+        var moduleClass = GetModuleClass(cu);
+        Assert.DoesNotContain(moduleClass.Members,
+            m => m is ClassDeclarationSyntax c && c.Identifier.Text == "Widget");
+    }
+
+    [Fact]
+    public void LibraryMode_StructEnumInterface_AllExtracted()
+    {
+        // Arrange
+        var emitter = CreateEmitter(isEntryPoint: false);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new StructDef
+                {
+                    Name = "Vec",
+                    Body = new List<Statement>
+                    {
+                        new VariableDeclaration { Name = "x", Type = new TypeAnnotation { Name = "int" } }
+                    }.ToImmutableArray()
+                },
+                new EnumDef
+                {
+                    Name = "Mode",
+                    Members = new List<EnumMember>
+                    {
+                        new EnumMember { Name = "ON", Value = new IntegerLiteral { Value = "1" } }
+                    }.ToImmutableArray()
+                },
+                new InterfaceDef
+                {
+                    Name = "IShape",
+                    Body = ImmutableArray<Statement>.Empty
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        var cu = emitter.GenerateCompilationUnit(module);
+
+        // Assert - all three are top-level siblings with [SharpyModuleType]
+        var vec = cu.Members.OfType<StructDeclarationSyntax>().FirstOrDefault(s => s.Identifier.Text == "Vec");
+        var mode = cu.Members.OfType<EnumDeclarationSyntax>().FirstOrDefault(e => e.Identifier.Text == "Mode");
+        var shape = cu.Members.OfType<InterfaceDeclarationSyntax>().FirstOrDefault(i => i.Identifier.Text == "IShape");
+
+        Assert.NotNull(vec);
+        Assert.NotNull(mode);
+        Assert.NotNull(shape);
+        Assert.True(HasSharpyModuleTypeAttribute(vec!));
+        Assert.True(HasSharpyModuleTypeAttribute(mode!));
+        Assert.True(HasSharpyModuleTypeAttribute(shape!));
+    }
+
+    [Fact]
+    public void EntryPointMode_ClassDefinition_RemainsNested()
+    {
+        // Arrange - entry-point mode keeps types nested (unchanged behavior)
+        var emitter = CreateEmitter(isEntryPoint: true);
+        var module = new Module
+        {
+            Body = new List<Statement> { SimpleClass("Widget") }.ToImmutableArray()
+        };
+
+        // Act
+        var cu = emitter.GenerateCompilationUnit(module);
+
+        // Assert - Widget is nested inside the module class, no [SharpyModuleType]
+        var moduleClass = GetModuleClass(cu);
+        var nestedWidget = moduleClass.Members
+            .OfType<ClassDeclarationSyntax>()
+            .FirstOrDefault(c => c.Identifier.Text == "Widget");
+        Assert.NotNull(nestedWidget);
+        Assert.False(HasSharpyModuleTypeAttribute(nestedWidget!));
+
+        // No top-level Widget sibling
+        Assert.DoesNotContain(cu.Members,
+            m => m is ClassDeclarationSyntax c && c.Identifier.Text == "Widget");
+    }
+
+    [Fact]
+    public void LibraryMode_ClassAndFunction_FunctionStaysOnModuleClassClassIsSibling()
+    {
+        // Arrange - library mode with a module-level function alongside a class
+        var emitter = CreateEmitter(isEntryPoint: false);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                SimpleClass("Widget"),
+                new FunctionDef
+                {
+                    Name = "make_widget",
+                    Parameters = ImmutableArray<Parameter>.Empty,
+                    ReturnType = new TypeAnnotation { Name = "Widget" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new FunctionCall
+                            {
+                                Function = new Identifier { Name = "Widget" },
+                                Arguments = ImmutableArray<Expression>.Empty
+                            }
+                        }
+                    }.ToImmutableArray()
+                }
+            }.ToImmutableArray()
+        };
+
+        // Act
+        var cu = emitter.GenerateCompilationUnit(module);
+
+        // Assert - the function is a method on the module class
+        var moduleClass = GetModuleClass(cu);
+        Assert.Contains(moduleClass.Members,
+            m => m is MethodDeclarationSyntax method && method.Identifier.Text == "MakeWidget");
+
+        // and Widget is a top-level sibling, not nested
+        Assert.Contains(cu.Members,
+            m => m is ClassDeclarationSyntax c && c.Identifier.Text == "Widget");
+        Assert.DoesNotContain(moduleClass.Members,
+            m => m is ClassDeclarationSyntax c && c.Identifier.Text == "Widget");
     }
 
     #endregion
