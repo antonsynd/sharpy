@@ -109,7 +109,7 @@ internal class CodeGenInfoComputer
             var hasIssues = _variablesWithExecutionOrderIssues.Contains(varDecl.Name);
 
             // Variables with execution order issues become locals in Main() and use camelCase
-            // ALL_CAPS names (Python-style constants) use ToConstantCase (→ PascalCase)
+            // ALL_CAPS names (Python-style constants) use ToConstantCase (preserves SCREAMING_SNAKE_CASE)
             // Other module-level fields use ToPascalCase
             var escaped = varDecl.IsNameBacktickEscaped;
             string csharpName;
@@ -205,7 +205,7 @@ internal class CodeGenInfoComputer
         }
 
         // Use the same logic as RoslynEmitter for from-imports:
-        // - ALL_CAPS names (constants) use ToConstantCase (→ PascalCase)
+        // - ALL_CAPS names (constants) use ToConstantCase (preserves SCREAMING_SNAKE_CASE)
         // - Other names become PascalCase
         if (NameFormDetector.IsConstantCaseName(name))
         {
