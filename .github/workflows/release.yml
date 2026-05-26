@@ -129,7 +129,7 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           PRERELEASE_FLAG=""
-          if echo "$TAG" | grep -qE -- '-(alpha|beta|rc)'; then
+          if echo "$TAG" | grep -qE '[-](alpha|beta|rc)'; then
             PRERELEASE_FLAG="--prerelease"
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
