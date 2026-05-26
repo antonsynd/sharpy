@@ -7,9 +7,9 @@ def fnmatch(name: str, pat: str) -> bool:
         raise TypeError("argument must be str, not NoneType")
     if pat is None:
         raise TypeError("argument must be str, not NoneType")
-    if RuntimeInformation.IsOSPlatform(OSPlatform.Windows):
-        name = name.ToLowerInvariant()
-        pat = pat.ToLowerInvariant()
+    if RuntimeInformation.is_o_s_platform(OSPlatform.Windows):
+        name = name.to_lower_invariant()
+        pat = pat.to_lower_invariant()
     return fnmatchcase(name, pat)
 
 def fnmatchcase(name: str, pat: str) -> bool:
@@ -18,7 +18,7 @@ def fnmatchcase(name: str, pat: str) -> bool:
     if pat is None:
         raise TypeError("argument must be str, not NoneType")
     regex_pattern: str = translate(pat)
-    return Regex.IsMatch(name, regex_pattern)
+    return Regex.is_match(name, regex_pattern)
 
 def filter(names: list[str], pat: str) -> list[str]:
     if names is None:
@@ -26,15 +26,15 @@ def filter(names: list[str], pat: str) -> list[str]:
     if pat is None:
         raise TypeError("argument must be str, not NoneType")
     match_pat: str = pat
-    case_insensitive: bool = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+    case_insensitive: bool = RuntimeInformation.is_o_s_platform(OSPlatform.Windows)
     if case_insensitive:
-        match_pat = match_pat.ToLowerInvariant()
+        match_pat = match_pat.to_lower_invariant()
     regex_pattern: str = translate(match_pat)
     regex: Regex = Regex(regex_pattern)
     result: list[str] = []
     for name in names:
-        test_name: str = name.ToLowerInvariant() if case_insensitive else name
-        if regex.IsMatch(test_name):
+        test_name: str = name.to_lower_invariant() if case_insensitive else name
+        if regex.is_match(test_name):
             result.append(name)
     return result
 
@@ -42,15 +42,15 @@ def translate(pat: str) -> str:
     if pat is None:
         raise TypeError("argument must be str, not NoneType")
     sb: StringBuilder = StringBuilder()
-    sb.Append("\\A(?s:")
+    sb.append("\\A(?s:")
     i: int = 0
     while i < len(pat):
         c: str = pat[i]
         i = i + 1
         if c == "*":
-            sb.Append(".*")
+            sb.append(".*")
         elif c == "?":
-            sb.Append(".")
+            sb.append(".")
         elif c == "[":
             j: int = i
             if j < len(pat) and pat[j] == "!":
@@ -60,17 +60,17 @@ def translate(pat: str) -> str:
             while j < len(pat) and pat[j] != "]":
                 j = j + 1
             if j >= len(pat):
-                sb.Append("\\[")
+                sb.append("\\[")
             else:
-                stuff: str = pat.Substring(i, j - i)
+                stuff: str = pat.substring(i, j - i)
                 i = j + 1
-                stuff = stuff.Replace("\\", "\\\\")
-                if len(stuff) > 0 and stuff.StartsWith("!"):
-                    stuff = "^" + stuff.Substring(1)
-                sb.Append("[")
-                sb.Append(stuff)
-                sb.Append("]")
+                stuff = stuff.replace("\\", "\\\\")
+                if len(stuff) > 0 and stuff.starts_with("!"):
+                    stuff = "^" + stuff.substring(1)
+                sb.append("[")
+                sb.append(stuff)
+                sb.append("]")
         else:
-            sb.Append(Regex.Escape(c))
-    sb.Append(")\\Z")
-    return sb.ToString()
+            sb.append(Regex.escape(c))
+    sb.append(")\\Z")
+    return sb.to_string()

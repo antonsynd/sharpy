@@ -34,7 +34,7 @@ def heapreplace[T: IComparable[T]](heap: list[T], item: T) -> T:
     return result
 
 def heappushpop[T: IComparable[T]](heap: list[T], item: T) -> T:
-    if len(heap) > 0 and heap[0].CompareTo(item) < 0:
+    if len(heap) > 0 and heap[0].compare_to(item) < 0:
         result: T = heap[0]
         heap[0] = item
         _sift_down(heap, 0)
@@ -63,7 +63,7 @@ def nsmallest[T: IComparable[T]](n: int, iterable: list[T]) -> list[T]:
 def _sift_up[T: IComparable[T]](heap: list[T], index: int) -> None:
     while index > 0:
         parent: int = (index - 1) // 2
-        if heap[index].CompareTo(heap[parent]) < 0:
+        if heap[index].compare_to(heap[parent]) < 0:
             temp: T = heap[index]
             heap[index] = heap[parent]
             heap[parent] = temp
@@ -77,9 +77,9 @@ def _sift_down[T: IComparable[T]](heap: list[T], index: int) -> None:
         smallest: int = index
         left: int = 2 * index + 1
         right: int = 2 * index + 2
-        if left < count and heap[left].CompareTo(heap[smallest]) < 0:
+        if left < count and heap[left].compare_to(heap[smallest]) < 0:
             smallest = left
-        if right < count and heap[right].CompareTo(heap[smallest]) < 0:
+        if right < count and heap[right].compare_to(heap[smallest]) < 0:
             smallest = right
         if smallest == index:
             break

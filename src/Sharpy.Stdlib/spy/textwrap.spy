@@ -15,24 +15,24 @@ def wrap(text: str, width: int = 70) -> list[str]:
             continue
         if len(word) > width:
             if current_line.Length > 0:
-                result.append(current_line.ToString())
-                current_line.Clear()
+                result.append(current_line.to_string())
+                current_line.clear()
             offset: int = 0
             while offset < len(word):
-                chunk_size: int = Math.Min(width, len(word) - offset)
-                result.append(word.Substring(offset, chunk_size))
+                chunk_size: int = Math.min(width, len(word) - offset)
+                result.append(word.substring(offset, chunk_size))
                 offset = offset + chunk_size
         elif current_line.Length == 0:
-            current_line.Append(word)
+            current_line.append(word)
         elif current_line.Length + 1 + len(word) <= width:
-            current_line.Append(" ")
-            current_line.Append(word)
+            current_line.append(" ")
+            current_line.append(word)
         else:
-            result.append(current_line.ToString())
-            current_line.Clear()
-            current_line.Append(word)
+            result.append(current_line.to_string())
+            current_line.clear()
+            current_line.append(word)
     if current_line.Length > 0:
-        result.append(current_line.ToString())
+        result.append(current_line.to_string())
     return result
 
 def fill(text: str, width: int = 70) -> str:
@@ -62,16 +62,16 @@ def dedent(text: str) -> str:
     i: int = 0
     while i < len(lines):
         if i > 0:
-            sb.Append("\n")
+            sb.append("\n")
         if len(lines[i]) == 0:
             i = i + 1
             continue
         if lines[i].startswith(common_prefix):
-            sb.Append(lines[i].Substring(len(common_prefix)))
+            sb.append(lines[i].substring(len(common_prefix)))
         else:
-            sb.Append(lines[i].TrimStart())
+            sb.append(lines[i].trim_start())
         i = i + 1
-    return sb.ToString()
+    return sb.to_string()
 
 def indent(text: str, prefix: str) -> str:
     if text is None:
@@ -82,9 +82,9 @@ def indent(text: str, prefix: str) -> str:
     lines: list[str] = _split_keep_ends(text)
     for line in lines:
         if not _is_whitespace_only(line):
-            sb.Append(prefix)
-        sb.Append(line)
-    return sb.ToString()
+            sb.append(prefix)
+        sb.append(line)
+    return sb.to_string()
 
 def shorten(text: str, width: int) -> str:
     if text is None:
@@ -93,15 +93,15 @@ def shorten(text: str, width: int) -> str:
     collapsed: str = _collapse_whitespace(text)
     if len(collapsed) <= width:
         return collapsed
-    if width < len(placeholder.TrimStart()):
+    if width < len(placeholder.trim_start()):
         raise ValueError("placeholder too large for max width")
     max_content: int = width - len(placeholder)
     if max_content <= 0:
-        return placeholder.TrimStart().Substring(0, width)
-    break_at: int = collapsed.LastIndexOf(" ", max_content)
+        return placeholder.trim_start().substring(0, width)
+    break_at: int = collapsed.last_index_of(" ", max_content)
     if break_at <= 0:
-        return collapsed.Substring(0, max_content) + placeholder
-    return collapsed.Substring(0, break_at) + placeholder
+        return collapsed.substring(0, max_content) + placeholder
+    return collapsed.substring(0, break_at) + placeholder
 
 def _collapse_whitespace(text: str) -> str:
     sb: StringBuilder = StringBuilder(len(text))
@@ -113,11 +113,11 @@ def _collapse_whitespace(text: str) -> str:
                 in_whitespace = True
         else:
             if in_whitespace:
-                sb.Append(" ")
+                sb.append(" ")
                 in_whitespace = False
-            sb.Append(c)
+            sb.append(c)
             has_content = True
-    return sb.ToString()
+    return sb.to_string()
 
 def _is_whitespace_only(line: str) -> bool:
     for c in line:
@@ -129,14 +129,14 @@ def _get_leading_whitespace(line: str) -> str:
     i: int = 0
     while i < len(line) and line[i].isspace():
         i = i + 1
-    return line.Substring(0, i)
+    return line.substring(0, i)
 
 def _common_prefix(a: str, b: str) -> str:
-    min_len: int = Math.Min(len(a), len(b))
+    min_len: int = Math.min(len(a), len(b))
     i: int = 0
     while i < min_len and a[i] == b[i]:
         i = i + 1
-    return a.Substring(0, i)
+    return a.substring(0, i)
 
 def _split_keep_ends(text: str) -> list[str]:
     lines: list[str] = []
@@ -144,17 +144,17 @@ def _split_keep_ends(text: str) -> list[str]:
     i: int = 0
     while i < len(text):
         if text[i] == "\n":
-            lines.append(text.Substring(start, i - start + 1))
+            lines.append(text.substring(start, i - start + 1))
             start = i + 1
         elif text[i] == "\r":
             if i + 1 < len(text) and text[i + 1] == "\n":
-                lines.append(text.Substring(start, i - start + 2))
+                lines.append(text.substring(start, i - start + 2))
                 start = i + 2
                 i = i + 1
             else:
-                lines.append(text.Substring(start, i - start + 1))
+                lines.append(text.substring(start, i - start + 1))
                 start = i + 1
         i = i + 1
     if start < len(text):
-        lines.append(text.Substring(start))
+        lines.append(text.substring(start))
     return lines

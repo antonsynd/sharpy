@@ -2,62 +2,62 @@ from system.io import Path as IoPath, File, Directory, FileInfo
 from system import Environment
 
 def join(a: str, b: str) -> str:
-    return IoPath.Combine(a, b)
+    return IoPath.combine(a, b)
 
 def exists(path: str) -> bool:
-    return File.Exists(path) or Directory.Exists(path)
+    return File.exists(path) or Directory.exists(path)
 
 def isfile(path: str) -> bool:
-    return File.Exists(path)
+    return File.exists(path)
 
 def isdir(path: str) -> bool:
-    return Directory.Exists(path)
+    return Directory.exists(path)
 
 def isabs(path: str) -> bool:
-    return IoPath.IsPathRooted(path)
+    return IoPath.is_path_rooted(path)
 
 def basename(path: str) -> str:
-    return IoPath.GetFileName(path)
+    return IoPath.get_file_name(path)
 
 def dirname(path: str) -> str:
-    result = IoPath.GetDirectoryName(path)
+    result = IoPath.get_directory_name(path)
     if result is None:
         return ""
     return result
 
 def split(path: str) -> tuple[str, str]:
-    dir_part = IoPath.GetDirectoryName(path)
+    dir_part = IoPath.get_directory_name(path)
     if dir_part is None:
         dir_part = ""
-    name_part: str = IoPath.GetFileName(path)
+    name_part: str = IoPath.get_file_name(path)
     return (dir_part, name_part)
 
 def splitext(path: str) -> tuple[str, str]:
-    ext: str = IoPath.GetExtension(path)
+    ext: str = IoPath.get_extension(path)
     root: str = path
     if len(ext) > 0:
-        root = path.Substring(0, len(path) - len(ext))
+        root = path.substring(0, len(path) - len(ext))
     return (root, ext)
 
 def abspath(path: str) -> str:
-    return IoPath.GetFullPath(path)
+    return IoPath.get_full_path(path)
 
 def realpath(path: str) -> str:
-    return IoPath.GetFullPath(path)
+    return IoPath.get_full_path(path)
 
 def getsize(path: str) -> long:
-    if not File.Exists(path):
+    if not File.exists(path):
         raise FileNotFoundError("No such file or directory: '" + path + "'")
     info: FileInfo = FileInfo(path)
     return info.Length
 
 def expanduser(path: str) -> str:
-    if path.StartsWith("~"):
-        home: str = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+    if path.starts_with("~"):
+        home: str = Environment.get_folder_path(Environment.SpecialFolder.UserProfile)
         if len(path) == 1:
             return home
         sep_str: str = str(IoPath.DirectorySeparatorChar)
         alt_sep_str: str = str(IoPath.AltDirectorySeparatorChar)
         if path[1] == sep_str or path[1] == alt_sep_str:
-            return home + path.Substring(1)
+            return home + path.substring(1)
     return path

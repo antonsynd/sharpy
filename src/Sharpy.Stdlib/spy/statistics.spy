@@ -55,10 +55,10 @@ def mode[T: notnull](data: list[T]) -> T:
     return best_value
 
 def stdev(data: list[float]) -> float:
-    return Math.Sqrt(variance(data))
+    return Math.sqrt(variance(data))
 
 def pstdev(data: list[float]) -> float:
-    return Math.Sqrt(pvariance(data))
+    return Math.sqrt(pvariance(data))
 
 def variance(data: list[float]) -> float:
     values: list[float] = _materialize(data)

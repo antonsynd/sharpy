@@ -6,18 +6,18 @@ def seed(s: int) -> None:
     _random = SysRandom(s)
 
 def next_double() -> float:
-    return _random.NextDouble()
+    return _random.next_double()
 
 def randint(a: int, b: int) -> int:
-    return _random.Next(a, b + 1)
+    return _random.next(a, b + 1)
 
 def uniform(a: float, b: float) -> float:
-    return a + (_random.NextDouble() * (b - a))
+    return a + (_random.next_double() * (b - a))
 
 def choice[T](seq: list[T]) -> T:
     if seq is None or len(seq) == 0:
         raise IndexError("Cannot choose from an empty sequence")
-    index: int = _random.Next(len(seq))
+    index: int = _random.next(len(seq))
     return seq[index]
 
 def shuffle[T](x: list[T]) -> None:
@@ -26,7 +26,7 @@ def shuffle[T](x: list[T]) -> None:
     n: int = len(x)
     i: int = n - 1
     while i > 0:
-        j: int = _random.Next(i + 1)
+        j: int = _random.next(i + 1)
         temp: T = x[i]
         x[i] = x[j]
         x[j] = temp
@@ -39,7 +39,7 @@ def randrange(start: int, stop: int, step: int = 1) -> int:
     if step == 1:
         if width <= 0:
             raise ValueError(f"empty range for randrange() ({start}, {stop}, {step})")
-        return start + _random.Next(width)
+        return start + _random.next(width)
     n: int = 0
     if step > 0:
         n = (width + step - 1) // step
@@ -47,12 +47,12 @@ def randrange(start: int, stop: int, step: int = 1) -> int:
         n = (width + step + 1) // step
     if n <= 0:
         raise ValueError(f"empty range for randrange() ({start}, {stop}, {step})")
-    return start + step * _random.Next(n)
+    return start + step * _random.next(n)
 
 def gauss(mu: float, sigma: float) -> float:
-    u1: float = _random.NextDouble()
-    u2: float = _random.NextDouble()
-    z0: float = SysMath.Sqrt(-2.0 * SysMath.Log(u1)) * SysMath.Cos(2.0 * 3.141592653589793 * u2)
+    u1: float = _random.next_double()
+    u2: float = _random.next_double()
+    z0: float = SysMath.sqrt(-2.0 * SysMath.log(u1)) * SysMath.cos(2.0 * 3.141592653589793 * u2)
     return mu + sigma * z0
 
 def getrandbits(k: int) -> int:
@@ -62,4 +62,4 @@ def getrandbits(k: int) -> int:
         return 0
     if k > 30:
         raise ValueError("number of bits must be <= 30 for int return")
-    return _random.Next(1 << k)
+    return _random.next(1 << k)

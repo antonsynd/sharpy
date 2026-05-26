@@ -1,29 +1,29 @@
 from system.io import Path as IoPath, File, Directory, IOException
 
 def copy(src: str, dst: str) -> str:
-    if not File.Exists(src):
+    if not File.exists(src):
         raise OSError("No such file: '" + src + "'")
     dest_path: str = _resolve_destination(src, dst)
     try:
-        File.Copy(src, dest_path, True)
+        File.copy(src, dest_path, True)
     except Exception:
         raise OSError("Failed to copy '" + src + "' to '" + dst + "'")
     return dest_path
 
 def copy2(src: str, dst: str) -> str:
-    if not File.Exists(src):
+    if not File.exists(src):
         raise OSError("No such file: '" + src + "'")
     dest_path: str = _resolve_destination(src, dst)
     try:
-        File.Copy(src, dest_path, True)
-        File.SetLastWriteTimeUtc(dest_path, File.GetLastWriteTimeUtc(src))
-        File.SetCreationTimeUtc(dest_path, File.GetCreationTimeUtc(src))
+        File.copy(src, dest_path, True)
+        File.set_last_write_time_utc(dest_path, File.get_last_write_time_utc(src))
+        File.set_creation_time_utc(dest_path, File.get_creation_time_utc(src))
     except Exception:
         raise OSError("Failed to copy2 '" + src + "' to '" + dst + "'")
     return dest_path
 
 def copytree(src: str, dst: str) -> str:
-    if not Directory.Exists(src):
+    if not Directory.exists(src):
         raise OSError("No such directory: '" + src + "'")
     try:
         _copy_directory_recursive(src, dst)
@@ -32,37 +32,37 @@ def copytree(src: str, dst: str) -> str:
     return dst
 
 def rmtree(path: str) -> None:
-    if not Directory.Exists(path):
+    if not Directory.exists(path):
         raise OSError("No such directory: '" + path + "'")
     try:
-        Directory.Delete(path, True)
+        Directory.delete(path, True)
     except Exception:
         raise OSError("Failed to remove directory tree '" + path + "'")
 
 def move(src: str, dst: str) -> str:
-    if File.Exists(src):
+    if File.exists(src):
         dest_path: str = _resolve_destination(src, dst)
         try:
-            File.Move(src, dest_path)
+            File.move(src, dest_path)
         except IOException:
-            File.Copy(src, dest_path, True)
-            File.Delete(src)
+            File.copy(src, dest_path, True)
+            File.delete(src)
         return dest_path
-    if Directory.Exists(src):
-        Directory.Move(src, dst)
+    if Directory.exists(src):
+        Directory.move(src, dst)
         return dst
     raise OSError("No such file or directory: '" + src + "'")
 
 def _resolve_destination(src: str, dst: str) -> str:
-    if Directory.Exists(dst):
-        return IoPath.Combine(dst, IoPath.GetFileName(src))
+    if Directory.exists(dst):
+        return IoPath.combine(dst, IoPath.get_file_name(src))
     return dst
 
 def _copy_directory_recursive(src: str, dst: str) -> None:
-    Directory.CreateDirectory(dst)
-    for file_path in Directory.GetFiles(src):
-        dest_file: str = IoPath.Combine(dst, IoPath.GetFileName(file_path))
-        File.Copy(file_path, dest_file, True)
-    for dir_path in Directory.GetDirectories(src):
-        dest_dir: str = IoPath.Combine(dst, IoPath.GetFileName(dir_path))
+    Directory.create_directory(dst)
+    for file_path in Directory.get_files(src):
+        dest_file: str = IoPath.combine(dst, IoPath.get_file_name(file_path))
+        File.copy(file_path, dest_file, True)
+    for dir_path in Directory.get_directories(src):
+        dest_dir: str = IoPath.combine(dst, IoPath.get_file_name(dir_path))
         _copy_directory_recursive(dir_path, dest_dir)
