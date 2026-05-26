@@ -44,7 +44,8 @@ internal class IncrementalCompilationCache
     /// Increment this when making breaking changes to FileCacheEntry or CachedSymbol structures.
     /// </summary>
     // v13: Added GeneratorOutputs to FileCacheEntry for source generator caching (#636)
-    internal const int CurrentSchemaVersion = 13;
+    // v14: Added ClrMethodName to CachedCodeGenInfo for CLR name preservation (#705)
+    internal const int CurrentSchemaVersion = 14;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

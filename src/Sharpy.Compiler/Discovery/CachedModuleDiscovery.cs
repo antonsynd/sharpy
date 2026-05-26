@@ -575,8 +575,23 @@ internal class CachedModuleDiscovery
                 : new List<Parser.Ast.TypeParameterDef>(),
             IsVirtual = signature.IsVirtual,
             IsAbstract = signature.IsAbstract,
-            Documentation = signature.Documentation
+            Documentation = signature.Documentation,
+            ClrMethodName = signature.ClrName ?? ExtractClrNameFromMethodToken(signature.MethodToken)
         };
+    }
+
+    /// <summary>
+    /// Extracts the original CLR method name from a method token of the form
+    /// "Assembly|Type|MethodName|ParamCount". Returns null if the token is empty
+    /// or malformed. Used as a fallback for cache entries created before ClrName
+    /// was stored directly on the signature.
+    /// </summary>
+    private static string? ExtractClrNameFromMethodToken(string? methodToken)
+    {
+        if (string.IsNullOrEmpty(methodToken))
+            return null;
+        var parts = methodToken!.Split('|');
+        return parts.Length >= 3 ? parts[2] : null;
     }
 
     /// <summary>

@@ -89,6 +89,13 @@ internal class FunctionSignature
     public string? Documentation { get; set; }
     public bool IsVirtual { get; set; }
     public bool IsAbstract { get; set; }
+
+    /// <summary>
+    /// The original CLR method name (e.g., "IsOSPlatform") preserved verbatim so
+    /// code generation can emit it without round-tripping through name mangling,
+    /// which loses acronym casing (IsOSPlatform → is_os_platform → IsOsPlatform).
+    /// </summary>
+    public string? ClrName { get; set; }
 }
 
 /// <summary>

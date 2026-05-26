@@ -512,6 +512,7 @@ internal class OverloadIndexBuilder
         var signature = new FunctionSignature
         {
             Name = GetFunctionName(method),
+            ClrName = method.Name,
             ReturnType = CreateTypeSignature(method.ReturnType),
             MethodToken = CreateMethodToken(method),
             IsVirtual = method.IsVirtual && !method.IsFinal,

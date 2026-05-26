@@ -299,7 +299,8 @@ internal static class SymbolSerializer
             HasExecutionOrderIssues = cgi.HasExecutionOrderIssues,
             IsStringEnum = cgi.IsStringEnum,
             ImportKind = cgi.ImportKind.ToString(),
-            OriginalImportName = cgi.OriginalImportName
+            OriginalImportName = cgi.OriginalImportName,
+            ClrMethodName = cgi.ClrMethodName
         };
     }
 
@@ -577,7 +578,8 @@ internal static class SymbolSerializer
             HasExecutionOrderIssues = cached.HasExecutionOrderIssues,
             IsStringEnum = cached.IsStringEnum,
             ImportKind = Enum.Parse<ImportKind>(cached.ImportKind),
-            OriginalImportName = cached.OriginalImportName
+            OriginalImportName = cached.OriginalImportName,
+            ClrMethodName = cached.ClrMethodName
         };
     }
 

@@ -61,6 +61,13 @@ public sealed record CodeGenInfo
     /// </summary>
     public string? OriginalImportName { get; init; }
 
+    /// <summary>
+    /// For discovery-loaded (CLR) methods, the original CLR method name (e.g., "IsOSPlatform").
+    /// Code generation emits this verbatim instead of round-tripping through name mangling,
+    /// which would corrupt acronym casing (IsOSPlatform → is_os_platform → IsOsPlatform).
+    /// </summary>
+    public string? ClrMethodName { get; init; }
+
     // ============================================================
     // FUTURE EXTENSIBILITY (for v0.2.x+)
     // These fields are reserved for future features. They are

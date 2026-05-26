@@ -174,6 +174,13 @@ public record FunctionSymbol : Symbol
     public System.Reflection.MethodInfo? ClrMethod { get; init; }
 
     /// <summary>
+    /// The original CLR method name (e.g., "IsOSPlatform") for discovery-loaded methods.
+    /// Used by code generation to emit the exact CLR name rather than round-tripping
+    /// through name mangling, which would corrupt acronym casing.
+    /// </summary>
+    public string? ClrMethodName { get; init; }
+
+    /// <summary>
     /// Signature key for overload deduplication (set during name resolution).
     /// Format: "paramType1,paramType2,..." based on AST type annotation names.
     /// </summary>

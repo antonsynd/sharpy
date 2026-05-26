@@ -285,6 +285,11 @@ internal record CachedCodeGenInfo
     /// For aliased imports, the original name
     /// </summary>
     public string? OriginalImportName { get; init; }
+
+    /// <summary>
+    /// For discovery-loaded methods, the original CLR method name.
+    /// </summary>
+    public string? ClrMethodName { get; init; }
 }
 
 /// <summary>

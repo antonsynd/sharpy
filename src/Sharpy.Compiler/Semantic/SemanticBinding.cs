@@ -284,7 +284,14 @@ public class SemanticBinding
     internal void MaterializeCodeGenInfo()
     {
         foreach (var (symbol, info) in _codeGenInfo)
-            symbol.CodeGenInfo = info;
+        {
+            // Preserve the original CLR method name on the CodeGenInfo so code
+            // generation can emit it verbatim (avoids name-mangling acronym loss).
+            if (symbol is FunctionSymbol { ClrMethodName: { } clrName } && info.ClrMethodName is null)
+                symbol.CodeGenInfo = info with { ClrMethodName = clrName };
+            else
+                symbol.CodeGenInfo = info;
+        }
     }
 
     #endregion

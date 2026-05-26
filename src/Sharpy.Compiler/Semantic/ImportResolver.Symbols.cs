@@ -118,7 +118,8 @@ internal partial class ImportResolver
                 NameDeclarationLine = func.NameDeclarationLine,
                 NameDeclarationColumn = func.NameDeclarationColumn,
                 IsReExport = true,
-                OriginalModule = fromImport.Module
+                OriginalModule = fromImport.Module,
+                ClrMethodName = func.ClrMethodName
             },
             TypeSymbol type => CreateReExportedTypeSymbol(type, fromImport, effectiveName),
             VariableSymbol var => new VariableSymbol

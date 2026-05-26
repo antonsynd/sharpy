@@ -14,7 +14,7 @@ internal class OverloadIndexCache
 {
     private readonly string _cacheDirectory;
     private readonly ICompilerLogger _logger;
-    internal const int CurrentCacheFormatVersion = 12;
+    internal const int CurrentCacheFormatVersion = 13;
 
     public CacheStatistics Statistics { get; } = new();
 
