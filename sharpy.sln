@@ -93,6 +93,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Stdlib.Time", "src\S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Stdlib.Unittest", "src\Sharpy.Stdlib\modules\Sharpy.Stdlib.Unittest.csproj", "{343A5172-94AF-4BE5-AEBF-5212FA8B9E63}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Cli.Tests", "src\Sharpy.Cli.Tests\Sharpy.Cli.Tests.csproj", "{70AD476D-5670-4E8C-9B61-43F07788708E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -619,6 +621,18 @@ Global
 		{343A5172-94AF-4BE5-AEBF-5212FA8B9E63}.Release|x64.Build.0 = Release|Any CPU
 		{343A5172-94AF-4BE5-AEBF-5212FA8B9E63}.Release|x86.ActiveCfg = Release|Any CPU
 		{343A5172-94AF-4BE5-AEBF-5212FA8B9E63}.Release|x86.Build.0 = Release|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Debug|x64.Build.0 = Debug|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Debug|x86.Build.0 = Debug|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Release|x64.ActiveCfg = Release|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Release|x64.Build.0 = Release|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Release|x86.ActiveCfg = Release|Any CPU
+		{70AD476D-5670-4E8C-9B61-43F07788708E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -667,5 +681,6 @@ Global
 		{9922640D-7054-4B26-9F4D-3461A11B7C62} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
 		{B03BF44E-B207-4327-BE10-E4D4570F854D} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
 		{343A5172-94AF-4BE5-AEBF-5212FA8B9E63} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
+		{70AD476D-5670-4E8C-9B61-43F07788708E} = {3B92A21E-F75D-4750-9B0E-BBEBCDE8932A}
 	EndGlobalSection
 EndGlobal
