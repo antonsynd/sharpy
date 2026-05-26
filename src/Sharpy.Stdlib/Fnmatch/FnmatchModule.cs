@@ -135,7 +135,7 @@ namespace Sharpy
                         string stuff = pat.Substring(i, j - i);
                         i = j + 1;
                         stuff = stuff.Replace("\\", "\\\\");
-                        if (global::Sharpy.Builtins.Len(stuff) > 0 && stuff.StartsWith("!"))
+                        if (stuff.Length > 0 && stuff.StartsWith("!"))
                         {
                             stuff = "^" + stuff.Substring(1);
                         }
