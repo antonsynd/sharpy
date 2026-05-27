@@ -576,6 +576,18 @@ internal partial class RoslynEmitter
             unionNameSyntax = GenericName(Identifier(unionCSharpName))
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
         }
+        else if (unionParent.IsGeneric)
+        {
+            // Scrutinee type carries no concrete type arguments (e.g. 'match self'
+            // inside a generic union method, where self is typed as the open union).
+            // Reference the union with its own type parameter names so the nested
+            // case type is correctly qualified (e.g. Option<T>.Some).
+            var typeParamSyntax = unionParent.TypeParameters
+                .Select(tp => (TypeSyntax)IdentifierName(tp.Name))
+                .ToArray();
+            unionNameSyntax = GenericName(Identifier(unionCSharpName))
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeParamSyntax)));
+        }
         else
         {
             unionNameSyntax = IdentifierName(unionCSharpName);

@@ -1,0 +1,6 @@
+union Bad:
+    case A(x: int)
+    name: str = "bad"
+
+def main():
+    print("x")

@@ -1,0 +1,10 @@
+union Shape:
+    case Circle(radius: float)
+    case Rectangle(width: float, height: float)
+
+    def describe(self) -> str:
+        return "I am a shape"
+
+def main():
+    s: Shape = Shape.Circle(5.0)
+    print(s.describe())

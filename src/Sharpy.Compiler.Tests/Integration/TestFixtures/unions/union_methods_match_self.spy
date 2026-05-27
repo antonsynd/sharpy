@@ -1,0 +1,25 @@
+union Maybe:
+    case Ok(value: int)
+    case Err(message: str)
+
+    def is_ok(self) -> bool:
+        match self:
+            case Ok(_):
+                return True
+            case Err(_):
+                return False
+
+    def unwrap_or(self, default: int) -> int:
+        match self:
+            case Ok(v):
+                return v
+            case Err(_):
+                return default
+
+def main():
+    ok: Maybe = Maybe.Ok(42)
+    err: Maybe = Maybe.Err("fail")
+    print(ok.is_ok())
+    print(err.is_ok())
+    print(ok.unwrap_or(0))
+    print(err.unwrap_or(0))

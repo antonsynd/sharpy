@@ -1,0 +1,16 @@
+union Option[T]:
+    case Some(value: T)
+    case Nothing()
+
+    def is_some(self) -> bool:
+        match self:
+            case Some(_):
+                return True
+            case Option.Nothing:
+                return False
+
+def main():
+    x: Option[int] = Option.Some(10)
+    y: Option[int] = Option.Nothing()
+    print(x.is_some())
+    print(y.is_some())
