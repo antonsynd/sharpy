@@ -1219,6 +1219,20 @@ internal partial class TypeChecker
                     });
                 }
             }
+
+            // Type-check union body methods. Set the current type context so 'self'
+            // and Self resolve to the union type (mirrors CheckClass).
+            var previousClass = _currentClass;
+            _currentClass = unionSymbol;
+            _typeResolver.SetCurrentTypeContext(unionSymbol);
+
+            foreach (var statement in unionDef.Body)
+            {
+                CheckStatement(statement);
+            }
+
+            _currentClass = previousClass;
+            _typeResolver.SetCurrentTypeContext(previousClass);
         }
         finally
         {
