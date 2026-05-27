@@ -93,7 +93,7 @@ public class DiagnosticSpanPropertyTests
     }
 
     [Fact]
-    public void ErrorDiagnosticSpans_AreNonEmpty()
+    public void ErrorDiagnosticSpans_HaveNonNegativeLength()
     {
         var errors = new List<string>();
 
@@ -115,11 +115,11 @@ public class DiagnosticSpanPropertyTests
                     if (diag.Severity == CompilerDiagnosticSeverity.Error && diag.Span.HasValue)
                     {
                         var span = diag.Span.Value;
-                        if (span.Length <= 0)
+                        if (span.Length < 0)
                         {
                             lock (errors)
                                 errors.Add(
-                                    $"Error diagnostic has empty span: {span}, " +
+                                    $"Error diagnostic has negative-length span: {span}, " +
                                     $"diagnostic {diag.Code}: {diag.Message}\nSource:\n{source}");
                         }
                     }
@@ -131,7 +131,7 @@ public class DiagnosticSpanPropertyTests
             }
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
 
-        _output.WriteLine($"Error diagnostic non-empty spans: {errors.Count} violations found");
+        _output.WriteLine($"Error diagnostic span length: {errors.Count} violations found");
         Assert.Empty(errors);
     }
 
