@@ -80,4 +80,68 @@ internal static class GenIdentifier
 
     public static Gen<string> BacktickContentWithNewline { get; } =
         Gen.OneOfConst(InvalidBacktickWithNewline);
+
+    // --- Name mangling generators ---
+
+    private static Gen<string> LowercaseSegment { get; } =
+        Gen.Int[1, 6].SelectMany(len =>
+            Gen.Char['a', 'z'].Array[len, len].Select(cs => new string(cs)));
+
+    private static Gen<string> LowercaseSegmentWithDigits { get; } =
+        Gen.Select(LowercaseSegment, Gen.OneOf(
+            Gen.Const(""),
+            Gen.Int[0, 99].Select(d => d.ToString())),
+            (seg, digits) => seg + digits);
+
+    /// <summary>
+    /// Generate snake_case identifiers: 1-4 lowercase segments joined by underscores.
+    /// Each segment is 1-6 lowercase alpha chars optionally followed by digits.
+    /// e.g., "foo", "foo_bar", "get_item_count", "x_1"
+    /// </summary>
+    public static Gen<string> SnakeCaseIdentifier { get; } =
+        Gen.Int[1, 4].SelectMany(count =>
+            LowercaseSegmentWithDigits.Array[count, count]
+                .Select(parts => string.Join("_", parts)))
+        .Where(n => !KeywordSet.Contains(n));
+
+    private static Gen<string> UppercaseSegment { get; } =
+        Gen.Int[1, 6].SelectMany(len =>
+            Gen.Char['A', 'Z'].Array[len, len].Select(cs => new string(cs)));
+
+    private static Gen<string> UppercaseSegmentWithDigits { get; } =
+        Gen.Select(UppercaseSegment, Gen.OneOf(
+            Gen.Const(""),
+            Gen.Int[0, 99].Select(d => d.ToString())),
+            (seg, digits) => seg + digits);
+
+    /// <summary>
+    /// Generate SCREAMING_SNAKE_CASE identifiers: 1-4 UPPERCASE segments joined by underscores.
+    /// e.g., "MAX", "MAX_SIZE", "HTTP_STATUS_CODE"
+    /// </summary>
+    public static Gen<string> ScreamingSnakeCaseIdentifier { get; } =
+        Gen.Int[1, 4].SelectMany(count =>
+            UppercaseSegmentWithDigits.Array[count, count]
+                .Select(parts => string.Join("_", parts)))
+        .Where(n => !KeywordSet.Contains(n));
+
+    /// <summary>
+    /// Generate mixed-form identifiers covering multiple naming conventions:
+    /// snake_case, PascalCase, SCREAMING_SNAKE_CASE, single-word, _prefixed, __prefixed.
+    /// </summary>
+    public static Gen<string> MixedFormIdentifier { get; } =
+        Gen.OneOf(
+            SnakeCaseIdentifier,
+            // PascalCase: capitalize first char of each snake_case segment, join without underscores
+            Gen.Int[1, 3].SelectMany(count =>
+                LowercaseSegment.Array[count, count]
+                    .Select(parts => string.Join("", parts.Select(p =>
+                        char.ToUpperInvariant(p[0]) + p[1..])))),
+            ScreamingSnakeCaseIdentifier,
+            // Single lowercase word
+            LowercaseSegment,
+            // _prefixed snake_case
+            SnakeCaseIdentifier.Select(n => "_" + n),
+            // __prefixed snake_case
+            SnakeCaseIdentifier.Select(n => "__" + n))
+        .Where(n => !KeywordSet.Contains(n));
 }
