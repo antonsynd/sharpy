@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Represents a row returned from a query when using <see cref="Sqlite3.Row"/> as the row factory.</summary>
     [SharpyModuleType("sqlite3", "Row")]
     public class Sqlite3Row : ISized
     {
@@ -21,6 +22,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get a column value by integer index. Supports negative indexing.</summary>
+        /// <param name="index">The zero-based column index. Negative values count from the end.</param>
+        /// <returns>The column value, or null if the value is SQL NULL.</returns>
         public object? this[int index]
         {
             get
@@ -39,6 +43,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get a column value by column name (case-insensitive).</summary>
+        /// <param name="columnName">The column name.</param>
+        /// <returns>The column value, or null if the value is SQL NULL.</returns>
         public object? this[string columnName]
         {
             get
@@ -52,16 +59,20 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Return a list of column names.</summary>
+        /// <returns>A list of column name strings.</returns>
         public System.Collections.Generic.List<string> Keys()
         {
             return new System.Collections.Generic.List<string>(_columnNames);
         }
 
+        /// <summary>Gets the number of columns in the row.</summary>
         public int Count
         {
             get { return _values.Length; }
         }
 
+        /// <summary>Return a string representation of the row.</summary>
         public override string ToString()
         {
             var parts = new System.Text.StringBuilder("<sqlite3.Row");

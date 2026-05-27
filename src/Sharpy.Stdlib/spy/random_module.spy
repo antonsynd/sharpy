@@ -3,24 +3,30 @@ from system import Math as SysMath, Random as SysRandom
 _random: SysRandom = SysRandom()
 
 def seed(s: int) -> None:
+    """Initialize the random number generator with the given seed."""
     _random = SysRandom(s)
 
 def next_double() -> float:
+    """Return the next random floating point number in the range [0.0, 1.0)."""
     return _random.next_double()
 
 def randint(a: int, b: int) -> int:
+    """Return a random integer in the range [a, b], including both end points."""
     return _random.next(a, b + 1)
 
 def uniform(a: float, b: float) -> float:
+    """Return a random floating point number in the range [a, b]."""
     return a + (_random.next_double() * (b - a))
 
 def choice[T](seq: list[T]) -> T:
+    """Return a random element from the non-empty sequence seq."""
     if seq is None or len(seq) == 0:
         raise IndexError("Cannot choose from an empty sequence")
     index: int = _random.next(len(seq))
     return seq[index]
 
 def shuffle[T](x: list[T]) -> None:
+    """Shuffle the sequence x in place."""
     if x is None:
         raise TypeError("'NoneType' object cannot be shuffled")
     n: int = len(x)
@@ -33,6 +39,7 @@ def shuffle[T](x: list[T]) -> None:
         i = i - 1
 
 def randrange(start: int, stop: int, step: int = 1) -> int:
+    """Return a randomly selected element from range(start, stop, step)."""
     if step == 0:
         raise ValueError("zero step for randrange()")
     width: int = stop - start
@@ -50,12 +57,14 @@ def randrange(start: int, stop: int, step: int = 1) -> int:
     return start + step * _random.next(n)
 
 def gauss(mu: float, sigma: float) -> float:
+    """Return a random floating point number with Gaussian distribution."""
     u1: float = _random.next_double()
     u2: float = _random.next_double()
     z0: float = SysMath.sqrt(-2.0 * SysMath.log(u1)) * SysMath.cos(2.0 * 3.141592653589793 * u2)
     return mu + sigma * z0
 
 def getrandbits(k: int) -> int:
+    """Return an int with k random bits."""
     if k < 0:
         raise ValueError("number of bits must be non-negative")
     if k == 0:

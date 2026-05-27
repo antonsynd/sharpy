@@ -4,12 +4,14 @@ using Microsoft.Data.Sqlite;
 
 namespace Sharpy
 {
+    /// <summary>Represents a connection to an SQLite database.</summary>
     [SharpyModuleType("sqlite3", "Connection")]
     public class Sqlite3Connection : IDisposable
     {
         private SqliteConnection? _connection;
         private SqliteTransaction? _transaction;
 
+        /// <summary>Gets or sets the row factory used to create row objects from query results.</summary>
         public Func<Sqlite3Cursor, object?[], object>? RowFactory { get; set; }
 
         internal Sqlite3Connection(string database)
@@ -39,12 +41,18 @@ namespace Sharpy
             return _connection;
         }
 
+        /// <summary>Create a new cursor object for this connection.</summary>
+        /// <returns>A new <see cref="Sqlite3Cursor"/>.</returns>
         public Sqlite3Cursor Cursor()
         {
             EnsureOpen();
             return new Sqlite3Cursor(this);
         }
 
+        /// <summary>Create a cursor, execute a single SQL statement, and return the cursor.</summary>
+        /// <param name="sql">The SQL statement to execute.</param>
+        /// <param name="parameters">Optional parameters to bind to placeholders in the SQL.</param>
+        /// <returns>The cursor that executed the statement.</returns>
         public Sqlite3Cursor Execute(string sql, System.Collections.IEnumerable? parameters = null)
         {
             var cursor = Cursor();
@@ -52,6 +60,10 @@ namespace Sharpy
             return cursor;
         }
 
+        /// <summary>Create a cursor and execute an SQL statement against all parameter sequences.</summary>
+        /// <param name="sql">The SQL statement to execute.</param>
+        /// <param name="seqOfParameters">An iterable of parameter sequences.</param>
+        /// <returns>The cursor that executed the statements.</returns>
         public Sqlite3Cursor Executemany(string sql, System.Collections.IEnumerable seqOfParameters)
         {
             var cursor = Cursor();
@@ -59,6 +71,9 @@ namespace Sharpy
             return cursor;
         }
 
+        /// <summary>Create a cursor and execute a script of one or more SQL statements.</summary>
+        /// <param name="sqlScript">A string containing one or more SQL statements separated by semicolons.</param>
+        /// <returns>The cursor that executed the script.</returns>
         public Sqlite3Cursor Executescript(string sqlScript)
         {
             var cursor = Cursor();
@@ -66,6 +81,7 @@ namespace Sharpy
             return cursor;
         }
 
+        /// <summary>Commit the current transaction.</summary>
         public void Commit()
         {
             EnsureOpen();
@@ -87,6 +103,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Roll back the current transaction.</summary>
         public void Rollback()
         {
             EnsureOpen();
@@ -108,6 +125,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Close the connection. Any pending transaction is rolled back.</summary>
         public void Close()
         {
             if (_connection != null)
@@ -132,6 +150,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Dispose the connection, releasing all resources.</summary>
         public void Dispose()
         {
             Close();

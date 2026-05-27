@@ -2,6 +2,7 @@ from system.text import StringBuilder
 from system import Math
 
 def wrap(text: str, width: int = 70) -> list[str]:
+    """Wrap a single paragraph of text, returning a list of wrapped lines."""
     if text is None:
         raise TypeError("argument must be str, not NoneType")
     result: list[str] = []
@@ -36,10 +37,12 @@ def wrap(text: str, width: int = 70) -> list[str]:
     return result
 
 def fill(text: str, width: int = 70) -> str:
+    """Wrap a single paragraph of text, and return a single string with newlines."""
     lines: list[str] = wrap(text, width)
     return "\n".join(lines)
 
 def dedent(text: str) -> str:
+    """Remove any common leading whitespace from all lines in text."""
     if text is None:
         raise TypeError("argument must be str, not NoneType")
     lines: list[str] = text.split("\n")
@@ -74,6 +77,7 @@ def dedent(text: str) -> str:
     return sb.to_string()
 
 def indent(text: str, prefix: str) -> str:
+    """Add prefix to the beginning of selected lines in text."""
     if text is None:
         raise TypeError("argument must be str, not NoneType")
     if prefix is None:
@@ -87,6 +91,7 @@ def indent(text: str, prefix: str) -> str:
     return sb.to_string()
 
 def shorten(text: str, width: int) -> str:
+    """Collapse and truncate the given text to fit in the given width."""
     if text is None:
         raise TypeError("argument must be str, not NoneType")
     placeholder: str = " [...]"
@@ -104,6 +109,7 @@ def shorten(text: str, width: int) -> str:
     return collapsed.substring(0, break_at) + placeholder
 
 def _collapse_whitespace(text: str) -> str:
+    """Collapse runs of whitespace into a single space and strip leading/trailing whitespace."""
     sb: StringBuilder = StringBuilder(len(text))
     in_whitespace: bool = False
     has_content: bool = False
@@ -120,18 +126,21 @@ def _collapse_whitespace(text: str) -> str:
     return sb.to_string()
 
 def _is_whitespace_only(line: str) -> bool:
+    """Return True if line contains only whitespace characters."""
     for c in line:
         if not c.isspace():
             return False
     return True
 
 def _get_leading_whitespace(line: str) -> str:
+    """Return the leading whitespace of a line."""
     i: int = 0
     while i < len(line) and line[i].isspace():
         i = i + 1
     return line.substring(0, i)
 
 def _common_prefix(a: str, b: str) -> str:
+    """Return the longest common prefix of strings a and b."""
     min_len: int = Math.min(len(a), len(b))
     i: int = 0
     while i < min_len and a[i] == b[i]:
@@ -139,6 +148,7 @@ def _common_prefix(a: str, b: str) -> str:
     return a.substring(0, i)
 
 def _split_keep_ends(text: str) -> list[str]:
+    """Split text into lines, preserving line endings."""
     lines: list[str] = []
     start: int = 0
     i: int = 0

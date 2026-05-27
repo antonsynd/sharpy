@@ -13,26 +13,41 @@ namespace Sharpy
     public static partial class RandomModule
     {
         public static global::System.Random _Random = new global::System.Random();
+        /// <summary>
+        /// Initialize the random number generator with the given seed.
+        /// </summary>
         public static void Seed(int s)
         {
             _Random = new global::System.Random(s);
         }
 
+        /// <summary>
+        /// Return the next random floating point number in the range [0.0, 1.0).
+        /// </summary>
         public static double NextDouble()
         {
             return _Random.NextDouble();
         }
 
+        /// <summary>
+        /// Return a random integer in the range [a, b], including both end points.
+        /// </summary>
         public static int Randint(int a, int b)
         {
             return _Random.Next(a, b + 1);
         }
 
+        /// <summary>
+        /// Return a random floating point number in the range [a, b].
+        /// </summary>
         public static double Uniform(double a, double b)
         {
             return a + (_Random.NextDouble() * (b - a));
         }
 
+        /// <summary>
+        /// Return a random element from the non-empty sequence seq.
+        /// </summary>
         public static T Choice<T>(Sharpy.List<T> seq)
         {
             if (seq == null || global::Sharpy.Builtins.Len(seq) == 0)
@@ -44,6 +59,9 @@ namespace Sharpy
             return seq[index];
         }
 
+        /// <summary>
+        /// Shuffle the sequence x in place.
+        /// </summary>
         public static void Shuffle<T>(Sharpy.List<T> x)
         {
             if (x == null)
@@ -63,6 +81,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Return a randomly selected element from range(start, stop, step).
+        /// </summary>
         public static int Randrange(int start, int stop, int step = 1)
         {
             if (step == 0)
@@ -99,6 +120,9 @@ namespace Sharpy
             return start + step * _Random.Next(n);
         }
 
+        /// <summary>
+        /// Return a random floating point number with Gaussian distribution.
+        /// </summary>
         public static double Gauss(double mu, double sigma)
         {
             double u1 = _Random.NextDouble();
@@ -107,6 +131,9 @@ namespace Sharpy
             return mu + sigma * z0;
         }
 
+        /// <summary>
+        /// Return an int with k random bits.
+        /// </summary>
         public static int Getrandbits(int k)
         {
             if (k < 0)

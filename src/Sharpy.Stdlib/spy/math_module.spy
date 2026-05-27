@@ -7,90 +7,118 @@ inf: float = Double.PositiveInfinity
 nan: float = Double.NaN
 
 def ceil(x: float) -> float:
+    """Return the ceiling of x as a float."""
     return SysMath.ceiling(x)
 
 def floor(x: float) -> float:
+    """Return the floor of x as a float."""
     return SysMath.floor(x)
 
 def fabs(x: float) -> float:
+    """Return the absolute value of the float x."""
     return SysMath.abs(x)
 
 def copysign(x: float, y: float) -> float:
+    """Return a float with the magnitude of x but the sign of y."""
     sign: float = -1.0 if (y < 0.0 or (y == 0.0 and 1.0 / y < 0.0)) else 1.0
     return SysMath.abs(x) * sign
 
 def sqrt(x: float) -> float:
+    """Return the square root of x."""
     return SysMath.sqrt(x)
 
 def pow(x: float, y: float) -> float:
+    """Return x raised to the power y."""
     return SysMath.pow(x, y)
 
 def exp(x: float) -> float:
+    """Return e raised to the power of x."""
     return SysMath.exp(x)
 
 def log(x: float) -> float:
+    """Return the natural logarithm of x (base e)."""
     return SysMath.log(x)
 
 def log10(x: float) -> float:
+    """Return the base 10 logarithm of x."""
     return SysMath.log10(x)
 
 def log2(x: float) -> float:
+    """Return the base 2 logarithm of x."""
     return SysMath.log(x, 2.0)
 
 def sin(x: float) -> float:
+    """Return the sine of x (measured in radians)."""
     return SysMath.sin(x)
 
 def cos(x: float) -> float:
+    """Return the cosine of x (measured in radians)."""
     return SysMath.cos(x)
 
 def tan(x: float) -> float:
+    """Return the tangent of x (measured in radians)."""
     return SysMath.tan(x)
 
 def asin(x: float) -> float:
+    """Return the arc sine (measured in radians) of x."""
     return SysMath.asin(x)
 
 def acos(x: float) -> float:
+    """Return the arc cosine (measured in radians) of x."""
     return SysMath.acos(x)
 
 def atan(x: float) -> float:
+    """Return the arc tangent (measured in radians) of x."""
     return SysMath.atan(x)
 
 def atan2(y: float, x: float) -> float:
+    """Return the arc tangent (measured in radians) of y/x."""
     return SysMath.atan2(y, x)
 
 def sinh(x: float) -> float:
+    """Return the hyperbolic sine of x."""
     return SysMath.sinh(x)
 
 def cosh(x: float) -> float:
+    """Return the hyperbolic cosine of x."""
     return SysMath.cosh(x)
 
 def tanh(x: float) -> float:
+    """Return the hyperbolic tangent of x."""
     return SysMath.tanh(x)
 
 def degrees(x: float) -> float:
+    """Convert angle x from radians to degrees."""
     return x * (180.0 / pi)
 
 def radians(x: float) -> float:
+    """Convert angle x from degrees to radians."""
     return x * (pi / 180.0)
 
 def isfinite(x: float) -> bool:
+    """Return True if x is neither an infinity nor a NaN, and False otherwise."""
     return not Double.is_infinity(x) and not Double.is_na_n(x)
 
 def isinf(x: float) -> bool:
+    """Return True if x is a positive or negative infinity, and False otherwise."""
     return Double.is_infinity(x)
 
 def isnan(x: float) -> bool:
+    """Return True if x is a NaN (not a number), and False otherwise."""
     return Double.is_na_n(x)
 
 def trunc(x: float) -> float:
+    """Truncate x to the nearest integral value toward 0."""
     return SysMath.truncate(x)
 
 def expm1(x: float) -> float:
+    """Return exp(x) - 1, computed in a way that is accurate for small x."""
     if SysMath.abs(x) < 1e-5:
         return x + 0.5 * x * x + x * x * x / 6.0
     return SysMath.exp(x) - 1.0
 
 def log1p(x: float) -> float:
+    """Return the natural logarithm of 1+x (base e), computed in a way that is accurate for small x."""
     if x <= -1.0:
         raise ValueError("math domain error")
     if SysMath.abs(x) < 1e-4:
@@ -99,11 +127,13 @@ def log1p(x: float) -> float:
     return SysMath.log(1.0 + x)
 
 def remainder(x: float, y: float) -> float:
+    """Return the IEEE 754-style remainder of x with respect to y."""
     if y == 0.0:
         raise ValueError("math domain error")
     return SysMath.i_e_e_e_remainder(x, y)
 
 def gcd(a: long, b: long) -> long:
+    """Return the greatest common divisor of a and b."""
     a = SysMath.abs(a)
     b = SysMath.abs(b)
     while b != 0:
@@ -113,6 +143,7 @@ def gcd(a: long, b: long) -> long:
     return a
 
 def factorial(n: int) -> long:
+    """Return n factorial. Raises ValueError for negative n and OverflowError for n > 20."""
     if n < 0:
         raise ValueError("factorial() not defined for negative values")
     if n > 20:
@@ -127,6 +158,7 @@ def factorial(n: int) -> long:
     return result
 
 def isclose(a: float, b: float, rel_tol: float = 1e-9, abs_tol: float = 0.0) -> bool:
+    """Determine whether two floating-point numbers are close in value."""
     if rel_tol < 0.0 or abs_tol < 0.0:
         raise ValueError("tolerances must be non-negative")
     if a == b:
@@ -139,6 +171,7 @@ def isclose(a: float, b: float, rel_tol: float = 1e-9, abs_tol: float = 0.0) -> 
     return diff <= SysMath.max(rel_tol * SysMath.max(SysMath.abs(a), SysMath.abs(b)), abs_tol)
 
 def perm(n: int, k: int) -> long:
+    """Return the number of ways to choose k items from n items without repetition and with order."""
     if n < 0:
         raise ValueError("n must not be negative")
     if k < 0:
@@ -153,6 +186,7 @@ def perm(n: int, k: int) -> long:
     return result
 
 def fsum(iterable: list[float]) -> float:
+    """Return an accurate floating-point sum of values in the iterable."""
     total: float = 0.0
     c: float = 0.0
     for value in iterable:
@@ -163,10 +197,12 @@ def fsum(iterable: list[float]) -> float:
     return total
 
 def prod(iterable: list[float], start: float = 1.0) -> float:
+    """Return the product of all the elements in the iterable."""
     result: float = start
     for value in iterable:
         result = result * value
     return result
 
 def hypot(x: float, y: float) -> float:
+    """Return the Euclidean distance, sqrt(x*x + y*y)."""
     return SysMath.sqrt(x * x + y * y)

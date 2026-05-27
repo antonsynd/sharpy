@@ -2,30 +2,38 @@ from system.io import Path as IoPath, File, Directory, FileInfo
 from system import Environment
 
 def join(a: str, b: str) -> str:
+    """Join two pathname components, inserting '/' as needed."""
     return IoPath.combine(a, b)
 
 def exists(path: str) -> bool:
+    """Test whether a path exists."""
     return File.exists(path) or Directory.exists(path)
 
 def isfile(path: str) -> bool:
+    """Test whether a path is a regular file."""
     return File.exists(path)
 
 def isdir(path: str) -> bool:
+    """Return true if the pathname refers to an existing directory."""
     return Directory.exists(path)
 
 def isabs(path: str) -> bool:
+    """Test whether a path is absolute."""
     return IoPath.is_path_rooted(path)
 
 def basename(path: str) -> str:
+    """Return the final component of a pathname."""
     return IoPath.get_file_name(path)
 
 def dirname(path: str) -> str:
+    """Return the directory component of a pathname."""
     result = IoPath.get_directory_name(path)
     if result is None:
         return ""
     return result
 
 def split(path: str) -> tuple[str, str]:
+    """Split a pathname. Return tuple (head, tail) where tail is everything after the final slash."""
     dir_part = IoPath.get_directory_name(path)
     if dir_part is None:
         dir_part = ""
@@ -33,6 +41,7 @@ def split(path: str) -> tuple[str, str]:
     return (dir_part, name_part)
 
 def splitext(path: str) -> tuple[str, str]:
+    """Split the extension from a pathname."""
     ext: str = IoPath.get_extension(path)
     root: str = path
     if len(ext) > 0:
@@ -40,18 +49,22 @@ def splitext(path: str) -> tuple[str, str]:
     return (root, ext)
 
 def abspath(path: str) -> str:
+    """Return an absolute path."""
     return IoPath.get_full_path(path)
 
 def realpath(path: str) -> str:
+    """Return the canonical path of the specified filename, eliminating any symbolic links."""
     return IoPath.get_full_path(path)
 
 def getsize(path: str) -> long:
+    """Return the size of a file, reported by os.stat()."""
     if not File.exists(path):
         raise FileNotFoundError("No such file or directory: '" + path + "'")
     info: FileInfo = FileInfo(path)
     return info.Length
 
 def expanduser(path: str) -> str:
+    """Expand ~ and ~user constructions."""
     if path.starts_with("~"):
         home: str = Environment.get_folder_path(Environment.SpecialFolder.UserProfile)
         if len(path) == 1:

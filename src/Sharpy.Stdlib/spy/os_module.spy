@@ -8,6 +8,7 @@ pathsep: str = str(IoPath.PathSeparator)
 altsep: str = "" if IoPath.AltDirectorySeparatorChar == IoPath.DirectorySeparatorChar else str(IoPath.AltDirectorySeparatorChar)
 
 def remove(path: str) -> None:
+    """Remove a file (same as unlink)."""
     if not File.exists(path):
         raise FileNotFoundError("No such file or directory: '" + path + "'")
     if Directory.exists(path):
@@ -18,6 +19,7 @@ def remove(path: str) -> None:
         raise PermissionError("Permission denied: '" + path + "'")
 
 def rename(src: str, dst: str) -> None:
+    """Rename a file or directory."""
     if File.exists(src):
         File.move(src, dst)
     elif Directory.exists(src):
@@ -26,6 +28,7 @@ def rename(src: str, dst: str) -> None:
         raise FileNotFoundError("No such file or directory: '" + src + "'")
 
 def mkdir(path: str) -> None:
+    """Create a directory."""
     if Directory.exists(path):
         raise FileExistsError("File exists: '" + path + "'")
     parent = IoPath.get_directory_name(path)
@@ -35,6 +38,7 @@ def mkdir(path: str) -> None:
     Directory.create_directory(path)
 
 def makedirs(path: str, exist_ok: bool = False) -> None:
+    """Super-mkdir; create a leaf directory and all intermediate ones."""
     if Directory.exists(path):
         if not exist_ok:
             raise FileExistsError("File exists: '" + path + "'")
@@ -42,6 +46,7 @@ def makedirs(path: str, exist_ok: bool = False) -> None:
     Directory.create_directory(path)
 
 def rmdir(path: str) -> None:
+    """Remove a directory."""
     if not Directory.exists(path):
         raise FileNotFoundError("No such file or directory: '" + path + "'")
     try:
@@ -50,6 +55,7 @@ def rmdir(path: str) -> None:
         raise IOError("Directory not empty: '" + path + "'")
 
 def listdir(path: str = ".") -> list[str]:
+    """Return a list containing the names of the entries in the directory."""
     if not Directory.exists(path):
         raise FileNotFoundError("No such file or directory: '" + path + "'")
     result: list[str] = []
@@ -58,21 +64,26 @@ def listdir(path: str = ".") -> list[str]:
     return result
 
 def getcwd() -> str:
+    """Return a string representing the current working directory."""
     return Directory.get_current_directory()
 
 def chdir(path: str) -> None:
+    """Change the current working directory to the specified path."""
     if not Directory.exists(path):
         raise FileNotFoundError("No such file or directory: '" + path + "'")
     Directory.set_current_directory(path)
 
 def getenv(key: str) -> str?:
+    """Get an environment variable, return None if it doesn't exist."""
     result = Environment.get_environment_variable(key)
     if result is None:
         return None()
     return result
 
 def putenv(key: str, value: str) -> None:
+    """Change or add an environment variable."""
     Environment.set_environment_variable(key, value)
 
 def path_exists(path: str) -> bool:
+    """Test whether a path exists."""
     return File.exists(path) or Directory.exists(path)

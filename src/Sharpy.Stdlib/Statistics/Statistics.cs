@@ -12,17 +12,26 @@ namespace Sharpy
 {
     public static partial class Statistics
     {
+        /// <summary>
+        /// Return the sample arithmetic mean of data.
+        /// </summary>
         public static double Mean(Sharpy.List<double> data)
         {
             Sharpy.List<double> values = _Materialize(data);
             return _Sum(values) / global::Sharpy.Builtins.Len(values);
         }
 
+        /// <summary>
+        /// Convert data to floats and compute the arithmetic mean.
+        /// </summary>
         public static double Fmean(Sharpy.List<double> data)
         {
             return Mean(data);
         }
 
+        /// <summary>
+        /// Return the median (middle value) of numeric data.
+        /// </summary>
         public static double Median(Sharpy.List<double> data)
         {
             Sharpy.List<double> sortedData = _MaterializeSorted(data);
@@ -36,6 +45,9 @@ namespace Sharpy
             return sortedData[mid];
         }
 
+        /// <summary>
+        /// Return the low median of numeric data.
+        /// </summary>
         public static double MedianLow(Sharpy.List<double> data)
         {
             Sharpy.List<double> sortedData = _MaterializeSorted(data);
@@ -49,6 +61,9 @@ namespace Sharpy
             return sortedData[mid];
         }
 
+        /// <summary>
+        /// Return the high median of numeric data.
+        /// </summary>
         public static double MedianHigh(Sharpy.List<double> data)
         {
             Sharpy.List<double> sortedData = _MaterializeSorted(data);
@@ -56,6 +71,9 @@ namespace Sharpy
             return sortedData[(2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(n) / 2)))];
         }
 
+        /// <summary>
+        /// Return the most common data point from discrete or nominal data.
+        /// </summary>
         public static T Mode<T>(Sharpy.List<T> data)
             where T : notnull
         {
@@ -105,16 +123,25 @@ namespace Sharpy
             return bestValue;
         }
 
+        /// <summary>
+        /// Return the square root of the sample variance.
+        /// </summary>
         public static double Stdev(Sharpy.List<double> data)
         {
             return global::System.Math.Sqrt(Variance(data));
         }
 
+        /// <summary>
+        /// Return the square root of the population variance.
+        /// </summary>
         public static double Pstdev(Sharpy.List<double> data)
         {
             return global::System.Math.Sqrt(Pvariance(data));
         }
 
+        /// <summary>
+        /// Return the sample variance of data.
+        /// </summary>
         public static double Variance(Sharpy.List<double> data)
         {
             Sharpy.List<double> values = _Materialize(data);
@@ -128,6 +155,9 @@ namespace Sharpy
             return ss / (global::Sharpy.Builtins.Len(values) - 1);
         }
 
+        /// <summary>
+        /// Return the population variance of data.
+        /// </summary>
         public static double Pvariance(Sharpy.List<double> data)
         {
             Sharpy.List<double> values = _Materialize(data);

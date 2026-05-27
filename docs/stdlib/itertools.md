@@ -42,6 +42,8 @@ Make an iterator that returns consecutive keys and groups from the iterable.
 
 ### `itertools.repeat(elem: T, n: uint) -> Iterable[T]`
 
+Make an iterator that returns object over and over again, limited by n times.
+
 ### `itertools.chain(iterables: list[Iterable[T]]) -> ChainIterator[T]`
 
 Make an iterator that returns elements from the first iterable until it is exhausted,
@@ -63,18 +65,36 @@ Make an iterator that aggregates elements from each iterable, filling missing va
 
 ### `itertools.count(start: int = 0, step: int = 1) -> System.Collections.Generic.IEnumerable[int]`
 
+Make an iterator that returns evenly spaced values starting with number start.
+
 ### `itertools.repeat(elem: T, n: int = -1) -> System.Collections.Generic.IEnumerable[T]`
+
+Make an iterator that returns object over and over again, optionally limited by n times.
 
 ### `itertools.cycle(iterable: list[T]) -> System.Collections.Generic.IEnumerable[T]`
 
+Make an iterator returning elements from the iterable and saving a copy of each.
+
 ### `itertools.compress(data: list[T], selectors: list[bool]) -> System.Collections.Generic.IEnumerable[T]`
+
+Make an iterator that filters elements from data returning only those that have a corresponding element in selectors that evaluates to True.
 
 ### `itertools.dropwhile(predicate: global::System.Func<T, bool>, iterable: list[T]) -> System.Collections.Generic.IEnumerable[T]`
 
+Make an iterator that drops elements from the iterable as long as the predicate is true; afterwards, returns every element.
+
 ### `itertools.takewhile(predicate: global::System.Func<T, bool>, iterable: list[T]) -> System.Collections.Generic.IEnumerable[T]`
+
+Make an iterator that returns elements from the iterable as long as the predicate is true.
 
 ### `itertools.filterfalse(predicate: global::System.Func<T, bool>, iterable: list[T]) -> System.Collections.Generic.IEnumerable[T]`
 
+Make an iterator that filters elements from iterable returning only those for which the predicate is false.
+
 ### `itertools.islice(iterable: list[T], stop: int) -> System.Collections.Generic.IEnumerable[T]`
 
+Make an iterator that returns selected elements from the iterable.
+
 ### `itertools.islice_range(iterable: list[T], start: int, stop: int, step: int = 1) -> System.Collections.Generic.IEnumerable[T]`
+
+Make an iterator that returns selected elements from the iterable with start, stop, and step.

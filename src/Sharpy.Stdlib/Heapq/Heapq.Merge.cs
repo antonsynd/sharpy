@@ -6,31 +6,37 @@ namespace Sharpy
 {
     public static partial class Heapq
     {
+        /// <summary>Merge two sorted inputs into a single sorted output.</summary>
         public static IEnumerable<T> Merge<T>(Sharpy.List<T> a, Sharpy.List<T> b) where T : IComparable<T>
         {
             return MergeInternal(new Sharpy.List<T>[] { a, b });
         }
 
+        /// <summary>Merge three sorted inputs into a single sorted output.</summary>
         public static IEnumerable<T> Merge<T>(Sharpy.List<T> a, Sharpy.List<T> b, Sharpy.List<T> c) where T : IComparable<T>
         {
             return MergeInternal(new Sharpy.List<T>[] { a, b, c });
         }
 
+        /// <summary>Merge multiple sorted inputs into a single sorted output.</summary>
         public static IEnumerable<T> Merge<T>(params Sharpy.List<T>[] iterables) where T : IComparable<T>
         {
             return MergeInternal(iterables);
         }
 
+        /// <summary>Merge two sorted inputs into a single sorted output, using a key function.</summary>
         public static IEnumerable<T> Merge<T, TKey>(Sharpy.List<T> a, Sharpy.List<T> b, Func<T, TKey> key, bool reverse = false) where TKey : IComparable<TKey>
         {
             return MergeInternal(new Sharpy.List<T>[] { a, b }, key, reverse);
         }
 
+        /// <summary>Merge three sorted inputs into a single sorted output, using a key function.</summary>
         public static IEnumerable<T> Merge<T, TKey>(Sharpy.List<T> a, Sharpy.List<T> b, Sharpy.List<T> c, Func<T, TKey> key, bool reverse = false) where TKey : IComparable<TKey>
         {
             return MergeInternal(new Sharpy.List<T>[] { a, b, c }, key, reverse);
         }
 
+        /// <summary>Merge multiple sorted inputs into a single sorted output, with optional reverse ordering.</summary>
         public static IEnumerable<T> Merge<T>(Sharpy.List<T>[] iterables, bool reverse = false) where T : IComparable<T>
         {
             Comparison<T> comparison = reverse
@@ -39,11 +45,13 @@ namespace Sharpy
             return MergeInternal(iterables, comparison);
         }
 
+        /// <summary>Merge multiple sorted inputs into a single sorted output, using a key function.</summary>
         public static IEnumerable<T> Merge<T, TKey>(Sharpy.List<T>[] iterables, Func<T, TKey> key, bool reverse = false) where TKey : IComparable<TKey>
         {
             return MergeInternal(iterables, key, reverse);
         }
 
+        /// <summary>Merge two sorted inputs into a single sorted output, with optional reverse ordering.</summary>
         public static IEnumerable<T> Merge<T>(Sharpy.List<T> a, Sharpy.List<T> b, bool reverse) where T : IComparable<T>
         {
             Comparison<T> comparison = reverse
@@ -52,6 +60,7 @@ namespace Sharpy
             return MergeInternal(new Sharpy.List<T>[] { a, b }, comparison);
         }
 
+        /// <summary>Merge three sorted inputs into a single sorted output, with optional reverse ordering.</summary>
         public static IEnumerable<T> Merge<T>(Sharpy.List<T> a, Sharpy.List<T> b, Sharpy.List<T> c, bool reverse) where T : IComparable<T>
         {
             Comparison<T> comparison = reverse

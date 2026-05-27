@@ -12,6 +12,9 @@ namespace Sharpy
 {
     public static partial class Textwrap
     {
+        /// <summary>
+        /// Wrap a single paragraph of text, returning a list of wrapped lines.
+        /// </summary>
         public static Sharpy.List<string> Wrap(string text, int width = 70)
         {
             if (text == null)
@@ -79,12 +82,18 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>
+        /// Wrap a single paragraph of text, and return a single string with newlines.
+        /// </summary>
         public static string Fill(string text, int width = 70)
         {
             Sharpy.List<string> lines = Wrap(text, width);
             return "\n".Join(lines);
         }
 
+        /// <summary>
+        /// Remove any common leading whitespace from all lines in text.
+        /// </summary>
         public static string Dedent(string text)
         {
             if (text == null)
@@ -155,6 +164,9 @@ namespace Sharpy
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Add prefix to the beginning of selected lines in text.
+        /// </summary>
         public static string Indent(string text, string prefix)
         {
             if (text == null)
@@ -183,6 +195,9 @@ namespace Sharpy
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Collapse and truncate the given text to fit in the given width.
+        /// </summary>
         public static string Shorten(string text, int width)
         {
             if (text == null)
@@ -217,6 +232,9 @@ namespace Sharpy
             return collapsed.Substring(0, breakAt) + placeholder;
         }
 
+        /// <summary>
+        /// Collapse runs of whitespace into a single space and strip leading/trailing whitespace.
+        /// </summary>
         public static string _CollapseWhitespace(string text)
         {
             global::System.Text.StringBuilder sb = new global::System.Text.StringBuilder(text.Length);
@@ -248,6 +266,9 @@ namespace Sharpy
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Return True if line contains only whitespace characters.
+        /// </summary>
         public static bool _IsWhitespaceOnly(string line)
         {
             foreach (var __loopVar_4 in global::Sharpy.StringHelpers.Iterate(line))
@@ -262,6 +283,9 @@ namespace Sharpy
             return true;
         }
 
+        /// <summary>
+        /// Return the leading whitespace of a line.
+        /// </summary>
         public static string _GetLeadingWhitespace(string line)
         {
             int i = 0;
@@ -273,6 +297,9 @@ namespace Sharpy
             return line.Substring(0, i);
         }
 
+        /// <summary>
+        /// Return the longest common prefix of strings a and b.
+        /// </summary>
         public static string _CommonPrefix(string a, string b)
         {
             int minLen = global::System.Math.Min(a.Length, b.Length);
@@ -285,6 +312,9 @@ namespace Sharpy
             return a.Substring(0, i);
         }
 
+        /// <summary>
+        /// Split text into lines, preserving line endings.
+        /// </summary>
         public static Sharpy.List<string> _SplitKeepEnds(string text)
         {
             Sharpy.List<string> lines = new Sharpy.List<string>()

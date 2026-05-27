@@ -5,16 +5,19 @@ namespace Sharpy
 {
     public static partial class OsPathModule
     {
+        /// <summary>Join three pathname components, inserting '/' as needed.</summary>
         public static string Join(string a, string b, string c)
         {
             return System.IO.Path.Combine(a, b, c);
         }
 
+        /// <summary>Join four pathname components, inserting '/' as needed.</summary>
         public static string Join(string a, string b, string c, string d)
         {
             return System.IO.Path.Combine(a, b, c, d);
         }
 
+        /// <summary>Normalize path, eliminating double slashes, etc.</summary>
         public static string Normpath(string path)
         {
             if (string.IsNullOrEmpty(path))

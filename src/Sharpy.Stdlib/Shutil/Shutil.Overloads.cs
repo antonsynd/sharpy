@@ -5,6 +5,7 @@ namespace Sharpy
 {
     public static partial class ShutilModule
     {
+        /// <summary>Given a command, return the path which conforms to the given mode on the PATH, or <c>null</c> if no such file exists.</summary>
         public static string? Which(string name)
         {
             if (string.IsNullOrEmpty(name))
@@ -64,6 +65,7 @@ namespace Sharpy
             return null;
         }
 
+        /// <summary>Return disk usage statistics about the given path as a (total, used, free) tuple.</summary>
         public static (long, long, long) DiskUsage(string path)
         {
             try

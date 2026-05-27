@@ -12,6 +12,9 @@ namespace Sharpy
 {
     public static partial class Itertools
     {
+        /// <summary>
+        /// Make an iterator that returns evenly spaced values starting with number start.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<int> Count(int start = 0, int step = 1)
         {
             int n = start;
@@ -22,6 +25,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Make an iterator that returns object over and over again, optionally limited by n times.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<T> Repeat<T>(T elem, int n = -1)
         {
             if (n < 0)
@@ -42,6 +48,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Make an iterator returning elements from the iterable and saving a copy of each.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<T> Cycle<T>(Sharpy.List<T> iterable)
         {
             Sharpy.List<T> saved = new global::Sharpy.List<T>(iterable);
@@ -60,6 +69,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Make an iterator that filters elements from data returning only those that have a corresponding element in selectors that evaluates to True.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<T> Compress<T>(Sharpy.List<T> data, Sharpy.List<bool> selectors)
         {
             int i = 0;
@@ -76,6 +88,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Make an iterator that drops elements from the iterable as long as the predicate is true; afterwards, returns every element.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<T> Dropwhile<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
             bool dropping = true;
@@ -97,6 +112,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Make an iterator that returns elements from the iterable as long as the predicate is true.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<T> Takewhile<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
             foreach (var __loopVar_2 in iterable)
@@ -113,6 +131,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Make an iterator that filters elements from iterable returning only those for which the predicate is false.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<T> Filterfalse<T>(global::System.Func<T, bool> predicate, Sharpy.List<T> iterable)
         {
             foreach (var __loopVar_3 in iterable)
@@ -125,6 +146,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Make an iterator that returns selected elements from the iterable.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<T> Islice<T>(Sharpy.List<T> iterable, int stop)
         {
             int i = 0;
@@ -141,6 +165,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Make an iterator that returns selected elements from the iterable with start, stop, and step.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<T> IsliceRange<T>(Sharpy.List<T> iterable, int start, int stop, int step = 1)
         {
             int i = 0;
@@ -163,6 +190,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Return successive overlapping pairs taken from the input iterable.
+        /// </summary>
         public static System.Collections.Generic.IEnumerable<global::System.ValueTuple<T, T>> Pairwise<T>(Sharpy.List<T> iterable)
         {
             Sharpy.List<T> items = new global::Sharpy.List<T>(iterable);

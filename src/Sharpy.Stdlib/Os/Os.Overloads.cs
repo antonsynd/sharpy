@@ -6,11 +6,13 @@ namespace Sharpy
 {
     public static partial class OsModule
     {
+        /// <summary>Get an environment variable, return <paramref name="default_"/> if it doesn't exist.</summary>
         public static string Getenv(string key, string default_)
         {
             return Environment.GetEnvironmentVariable(key) ?? default_;
         }
 
+        /// <summary>A mapping object representing the string environment.</summary>
         public static Dict<string, string> Environ
         {
             get
@@ -27,6 +29,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Perform a stat system call on the given path.</summary>
         public static StatResult Stat(string path)
         {
             if (File.Exists(path))
@@ -54,6 +57,7 @@ namespace Sharpy
             throw new FileNotFoundError("No such file or directory: '" + path + "'");
         }
 
+        /// <summary>Directory tree generator. For each directory in the tree rooted at top, yields a 3-tuple (dirpath, dirnames, filenames).</summary>
         public static IEnumerable<(string dirpath, System.Collections.Generic.List<string> dirnames, System.Collections.Generic.List<string> filenames)> Walk(string top)
         {
             if (!Directory.Exists(top))

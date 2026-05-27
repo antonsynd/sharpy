@@ -38,13 +38,13 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`math`](math.md) |  |
 | [`numpy`](numpy.md) | Interface implementations for \`NdArray{T}\` — \`IEnumerable&lt;T&gt;\`, \`ISized\`, structural equality, and conversion helpers. |
 | [`operator`](operator.md) | Operator module — functions corresponding to the intrinsic operators of Python. |
-| [`os`](os.md) | Result of os.stat(), similar to Python's os.stat_result. |
+| [`os`](os.md) | Common operations on pathnames. |
 | [`pathlib`](pathlib.md) | Object-oriented filesystem path, similar to Python's pathlib.Path. Immutable — all mutation methods return new Path instances. |
 | [`random`](random.md) |  |
 | [`re`](re.md) | Wraps a .NET \`System.Text.RegularExpressions.Match\` with Python-compatible API. |
 | [`requests`](requests.md) | Base class for all requests-related errors. Equivalent to Python's \`requests.RequestException\`. |
 | [`shutil`](shutil.md) |  |
-| [`sqlite3`](sqlite3.md) |  |
+| [`sqlite3`](sqlite3.md) | Represents a connection to an SQLite database. |
 | [`statistics`](statistics.md) | Exception raised for statistics-related errors, similar to Python's \`statistics.StatisticsError\`. |
 | [`string`](string.md) |  |
 | [`sys`](sys.md) | Provides access to system-specific parameters and functions, similar to Python's sys module. |

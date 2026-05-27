@@ -34,6 +34,9 @@ namespace Sharpy
             _data = new System.Collections.Generic.List<byte>();
         }
 
+        /// <summary>Create a new hash object for the specified algorithm.</summary>
+        /// <param name="algorithmName">The hash algorithm name (e.g., "md5", "sha256").</param>
+        /// <param name="digestSize">The size of the resulting hash digest in bytes.</param>
         public HashObject(string algorithmName, int digestSize)
         {
             _algorithmName = algorithmName;

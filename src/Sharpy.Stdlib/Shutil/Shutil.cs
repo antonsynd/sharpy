@@ -12,6 +12,9 @@ namespace Sharpy
 {
     public static partial class ShutilModule
     {
+        /// <summary>
+        /// Copy data and mode bits ("cp src dst"). Return the file's destination.
+        /// </summary>
         public static string Copy(string src, string dst)
         {
             if (!global::System.IO.File.Exists(src))
@@ -32,6 +35,9 @@ namespace Sharpy
             return destPath;
         }
 
+        /// <summary>
+        /// Copy data and metadata. Return the file's destination.
+        /// </summary>
         public static string Copy2(string src, string dst)
         {
             if (!global::System.IO.File.Exists(src))
@@ -54,6 +60,9 @@ namespace Sharpy
             return destPath;
         }
 
+        /// <summary>
+        /// Recursively copy a directory tree and return the destination directory.
+        /// </summary>
         public static string Copytree(string src, string dst)
         {
             if (!global::System.IO.Directory.Exists(src))
@@ -73,6 +82,9 @@ namespace Sharpy
             return dst;
         }
 
+        /// <summary>
+        /// Recursively delete a directory tree.
+        /// </summary>
         public static void Rmtree(string path)
         {
             if (!global::System.IO.Directory.Exists(path))
@@ -90,6 +102,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Recursively move a file or directory to another location.
+        /// </summary>
         public static string Move(string src, string dst)
         {
             if (global::System.IO.File.Exists(src))

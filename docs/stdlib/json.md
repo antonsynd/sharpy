@@ -131,10 +131,38 @@ or a `JSONDecodeError` on failure.
 
 ## JSONDecoder
 
+Simple JSON decoder. Subclass this to customize JSON decoding behavior.
+
 ### `decode(s: str) -> object?`
+
+Deserialize a JSON string to a Python-like object.
+
+**Parameters:**
+
+- `s` (str) -- The JSON string to deserialize.
+
+**Returns:** The deserialized object.
 
 ## JSONEncoder
 
+Extensible JSON encoder. Subclass this to customize JSON encoding behavior.
+
 ### `default(obj: object) -> object?`
 
+Called for objects that cannot otherwise be serialized. Override to provide custom serialization.
+
+**Parameters:**
+
+- `obj` (object) -- The object that is not JSON serializable.
+
+**Returns:** A JSON-serializable replacement object.
+
 ### `encode(obj: object?) -> str`
+
+Serialize an object to a JSON formatted string.
+
+**Parameters:**
+
+- `obj` (object?) -- The object to serialize.
+
+**Returns:** A JSON string representation of the object.

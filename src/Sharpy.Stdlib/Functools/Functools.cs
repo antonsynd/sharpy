@@ -12,6 +12,9 @@ namespace Sharpy
 {
     public static partial class Functools
     {
+        /// <summary>
+        /// Apply function of two arguments cumulatively to the items of iterable, so as to reduce the iterable to a single value.
+        /// </summary>
         public static T Reduce<T>(global::System.Func<T, T, T> func, Sharpy.List<T> iterable)
         {
             Sharpy.List<T> items = new global::Sharpy.List<T>(iterable);

@@ -12,12 +12,18 @@ namespace Sharpy
 {
     public static partial class TempfileModule
     {
+        /// <summary>
+        /// Return the name of the directory used for temporary files.
+        /// </summary>
         public static string Gettempdir()
         {
             string temp = global::System.IO.Path.GetTempPath();
             return temp.TrimEnd(global::System.IO.Path.DirectorySeparatorChar, global::System.IO.Path.AltDirectorySeparatorChar);
         }
 
+        /// <summary>
+        /// Create and return a unique temporary directory.
+        /// </summary>
         public static string Mkdtemp(string prefix = "tmp")
         {
             try
@@ -34,6 +40,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Create and return a unique temporary file.
+        /// </summary>
         public static global::System.ValueTuple<int, string> Mkstemp(string prefix = "tmp", string suffix = "")
         {
             try

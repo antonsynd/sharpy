@@ -12,6 +12,9 @@ namespace Sharpy
 {
     public static partial class Heapq
     {
+        /// <summary>
+        /// Push item onto heap, maintaining the heap invariant.
+        /// </summary>
         public static void Heappush<T>(Sharpy.List<T> heap, T item)
             where T : global::System.IComparable<T>
         {
@@ -19,6 +22,9 @@ namespace Sharpy
             _SiftUp(heap, global::Sharpy.Builtins.Len(heap) - 1);
         }
 
+        /// <summary>
+        /// Pop the smallest item off the heap, maintaining the heap invariant.
+        /// </summary>
         public static T Heappop<T>(Sharpy.List<T> heap)
             where T : global::System.IComparable<T>
         {
@@ -43,6 +49,9 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>
+        /// Transform list into a heap, in-place, in O(len(x)) time.
+        /// </summary>
         public static void Heapify<T>(Sharpy.List<T> x)
             where T : global::System.IComparable<T>
         {
@@ -55,6 +64,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Pop and return the smallest item, and push the new item.
+        /// </summary>
         public static T Heapreplace<T>(Sharpy.List<T> heap, T item)
             where T : global::System.IComparable<T>
         {
@@ -69,6 +81,9 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>
+        /// Push item on the heap, then pop and return the smallest item.
+        /// </summary>
         public static T Heappushpop<T>(Sharpy.List<T> heap, T item)
             where T : global::System.IComparable<T>
         {
@@ -83,6 +98,9 @@ namespace Sharpy
             return item;
         }
 
+        /// <summary>
+        /// Find the n largest elements in a dataset.
+        /// </summary>
         public static Sharpy.List<T> Nlargest<T>(int n, Sharpy.List<T> iterable)
             where T : global::System.IComparable<T>
         {
@@ -104,6 +122,9 @@ namespace Sharpy
             return global::Sharpy.Slice.GetSlice(sortedCopy, null, n, null);
         }
 
+        /// <summary>
+        /// Find the n smallest elements in a dataset.
+        /// </summary>
         public static Sharpy.List<T> Nsmallest<T>(int n, Sharpy.List<T> iterable)
             where T : global::System.IComparable<T>
         {
@@ -124,6 +145,9 @@ namespace Sharpy
             return global::Sharpy.Slice.GetSlice(sortedCopy, null, n, null);
         }
 
+        /// <summary>
+        /// Bubble element at index up to restore the heap invariant.
+        /// </summary>
         public static void _SiftUp<T>(Sharpy.List<T> heap, int index)
             where T : global::System.IComparable<T>
         {
@@ -144,6 +168,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Push element at index down to restore the heap invariant.
+        /// </summary>
         public static void _SiftDown<T>(Sharpy.List<T> heap, int index)
             where T : global::System.IComparable<T>
         {

@@ -12,6 +12,9 @@ namespace Sharpy
 {
     public static partial class FnmatchModule
     {
+        /// <summary>
+        /// Test whether filename matches pattern.
+        /// </summary>
         public static bool Fnmatch(string name, string pat)
         {
             if (name == null)
@@ -33,6 +36,9 @@ namespace Sharpy
             return Fnmatchcase(name, pat);
         }
 
+        /// <summary>
+        /// Test whether filename matches pattern, including case.
+        /// </summary>
         public static bool Fnmatchcase(string name, string pat)
         {
             if (name == null)
@@ -49,6 +55,9 @@ namespace Sharpy
             return global::System.Text.RegularExpressions.Regex.IsMatch(name, regexPattern);
         }
 
+        /// <summary>
+        /// Construct a list from those elements of the names sequence that match pattern.
+        /// </summary>
         public static Sharpy.List<string> Filter(Sharpy.List<string> names, string pat)
         {
             if (names == null)
@@ -86,6 +95,9 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>
+        /// Translate a shell pattern to a regular expression.
+        /// </summary>
         public static string Translate(string pat)
         {
             if (pat == null)

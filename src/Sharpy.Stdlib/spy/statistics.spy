@@ -2,13 +2,16 @@ from sharpy import StatisticsError
 from system import Math
 
 def mean(data: list[float]) -> float:
+    """Return the sample arithmetic mean of data."""
     values: list[float] = _materialize(data)
     return _sum(values) / len(values)
 
 def fmean(data: list[float]) -> float:
+    """Convert data to floats and compute the arithmetic mean."""
     return mean(data)
 
 def median(data: list[float]) -> float:
+    """Return the median (middle value) of numeric data."""
     sorted_data: list[float] = _materialize_sorted(data)
     n: int = len(sorted_data)
     mid: int = n // 2
@@ -17,6 +20,7 @@ def median(data: list[float]) -> float:
     return sorted_data[mid]
 
 def median_low(data: list[float]) -> float:
+    """Return the low median of numeric data."""
     sorted_data: list[float] = _materialize_sorted(data)
     n: int = len(sorted_data)
     mid: int = n // 2
@@ -25,11 +29,13 @@ def median_low(data: list[float]) -> float:
     return sorted_data[mid]
 
 def median_high(data: list[float]) -> float:
+    """Return the high median of numeric data."""
     sorted_data: list[float] = _materialize_sorted(data)
     n: int = len(sorted_data)
     return sorted_data[n // 2]
 
 def mode[T: notnull](data: list[T]) -> T:
+    """Return the most common data point from discrete or nominal data."""
     counts: dict[T, int] = {}
     order: list[T] = []
     any_item: bool = False
@@ -55,12 +61,15 @@ def mode[T: notnull](data: list[T]) -> T:
     return best_value
 
 def stdev(data: list[float]) -> float:
+    """Return the square root of the sample variance."""
     return Math.sqrt(variance(data))
 
 def pstdev(data: list[float]) -> float:
+    """Return the square root of the population variance."""
     return Math.sqrt(pvariance(data))
 
 def variance(data: list[float]) -> float:
+    """Return the sample variance of data."""
     values: list[float] = _materialize(data)
     if len(values) < 2:
         raise StatisticsError("variance requires at least two data points")
@@ -69,6 +78,7 @@ def variance(data: list[float]) -> float:
     return ss / (len(values) - 1)
 
 def pvariance(data: list[float]) -> float:
+    """Return the population variance of data."""
     values: list[float] = _materialize(data)
     m: float = _sum(values) / len(values)
     ss: float = _sum_of_squared_deviations(values, m)

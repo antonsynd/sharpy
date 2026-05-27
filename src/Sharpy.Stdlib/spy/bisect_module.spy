@@ -1,6 +1,7 @@
 from system import IComparable
 
 def bisect_left[T: IComparable[T]](a: list[T], x: T, lo: int = 0, hi: int = -1) -> int:
+    """Locate the insertion point for x in a to maintain sorted order."""
     if hi == -1:
         hi = len(a)
     while lo < hi:
@@ -12,6 +13,7 @@ def bisect_left[T: IComparable[T]](a: list[T], x: T, lo: int = 0, hi: int = -1) 
     return lo
 
 def bisect_right[T: IComparable[T]](a: list[T], x: T, lo: int = 0, hi: int = -1) -> int:
+    """Like bisect_left, but returns an insertion point which comes after any existing entries of x."""
     if hi == -1:
         hi = len(a)
     while lo < hi:
@@ -23,15 +25,19 @@ def bisect_right[T: IComparable[T]](a: list[T], x: T, lo: int = 0, hi: int = -1)
     return lo
 
 def bisect[T: IComparable[T]](a: list[T], x: T, lo: int = 0, hi: int = -1) -> int:
+    """Alias for bisect_right."""
     return bisect_right(a, x, lo, hi)
 
 def insort_left[T: IComparable[T]](a: list[T], x: T, lo: int = 0, hi: int = -1) -> None:
+    """Insert x in a in sorted order, inserting to the left of any existing entries of x."""
     idx: int = bisect_left(a, x, lo, hi)
     a.insert(idx, x)
 
 def insort_right[T: IComparable[T]](a: list[T], x: T, lo: int = 0, hi: int = -1) -> None:
+    """Insert x in a in sorted order, inserting to the right of any existing entries of x."""
     idx: int = bisect_right(a, x, lo, hi)
     a.insert(idx, x)
 
 def insort[T: IComparable[T]](a: list[T], x: T, lo: int = 0, hi: int = -1) -> None:
+    """Alias for insort_right."""
     insort_right(a, x, lo, hi)

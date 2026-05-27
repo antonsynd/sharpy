@@ -2,10 +2,12 @@ from sharpy import IndexError
 from system import IComparable
 
 def heappush[T: IComparable[T]](heap: list[T], item: T) -> None:
+    """Push item onto heap, maintaining the heap invariant."""
     heap.append(item)
     _sift_up(heap, len(heap) - 1)
 
 def heappop[T: IComparable[T]](heap: list[T]) -> T:
+    """Pop the smallest item off the heap, maintaining the heap invariant."""
     if len(heap) == 0:
         raise IndexError("index out of range")
     last_idx: int = len(heap) - 1
@@ -19,6 +21,7 @@ def heappop[T: IComparable[T]](heap: list[T]) -> T:
     return result
 
 def heapify[T: IComparable[T]](x: list[T]) -> None:
+    """Transform list into a heap, in-place, in O(len(x)) time."""
     n: int = len(x)
     i: int = n // 2 - 1
     while i >= 0:
@@ -26,6 +29,7 @@ def heapify[T: IComparable[T]](x: list[T]) -> None:
         i = i - 1
 
 def heapreplace[T: IComparable[T]](heap: list[T], item: T) -> T:
+    """Pop and return the smallest item, and push the new item."""
     if len(heap) == 0:
         raise IndexError("index out of range")
     result: T = heap[0]
@@ -34,6 +38,7 @@ def heapreplace[T: IComparable[T]](heap: list[T], item: T) -> T:
     return result
 
 def heappushpop[T: IComparable[T]](heap: list[T], item: T) -> T:
+    """Push item on the heap, then pop and return the smallest item."""
     if len(heap) > 0 and heap[0].compare_to(item) < 0:
         result: T = heap[0]
         heap[0] = item
@@ -42,6 +47,7 @@ def heappushpop[T: IComparable[T]](heap: list[T], item: T) -> T:
     return item
 
 def nlargest[T: IComparable[T]](n: int, iterable: list[T]) -> list[T]:
+    """Find the n largest elements in a dataset."""
     if n <= 0:
         return []
     sorted_copy: list[T] = list(iterable)
@@ -52,6 +58,7 @@ def nlargest[T: IComparable[T]](n: int, iterable: list[T]) -> list[T]:
     return sorted_copy[:n]
 
 def nsmallest[T: IComparable[T]](n: int, iterable: list[T]) -> list[T]:
+    """Find the n smallest elements in a dataset."""
     if n <= 0:
         return []
     sorted_copy: list[T] = list(iterable)
@@ -61,6 +68,7 @@ def nsmallest[T: IComparable[T]](n: int, iterable: list[T]) -> list[T]:
     return sorted_copy[:n]
 
 def _sift_up[T: IComparable[T]](heap: list[T], index: int) -> None:
+    """Bubble element at index up to restore the heap invariant."""
     while index > 0:
         parent: int = (index - 1) // 2
         if heap[index].compare_to(heap[parent]) < 0:
@@ -72,6 +80,7 @@ def _sift_up[T: IComparable[T]](heap: list[T], index: int) -> None:
             break
 
 def _sift_down[T: IComparable[T]](heap: list[T], index: int) -> None:
+    """Push element at index down to restore the heap invariant."""
     count: int = len(heap)
     while True:
         smallest: int = index

@@ -1,10 +1,12 @@
 from system.io import Path as IoPath, File, Directory
 
 def gettempdir() -> str:
+    """Return the name of the directory used for temporary files."""
     temp: str = IoPath.get_temp_path()
     return temp.trim_end(IoPath.DirectorySeparatorChar, IoPath.AltDirectorySeparatorChar)
 
 def mkdtemp(prefix: str = "tmp") -> str:
+    """Create and return a unique temporary directory."""
     try:
         random_part: str = IoPath.get_random_file_name().replace(".", "")
         dir_name: str = prefix + random_part
@@ -15,6 +17,7 @@ def mkdtemp(prefix: str = "tmp") -> str:
         raise OSError("Failed to create temporary directory: " + ex.Message)
 
 def mkstemp(prefix: str = "tmp", suffix: str = "") -> tuple[int, str]:
+    """Create and return a unique temporary file."""
     try:
         random_part: str = IoPath.get_random_file_name().replace(".", "")
         file_name: str = prefix + random_part + suffix

@@ -1,6 +1,7 @@
 from system.io import Path as IoPath, File, Directory, IOException
 
 def copy(src: str, dst: str) -> str:
+    """Copy data and mode bits ("cp src dst"). Return the file's destination."""
     if not File.exists(src):
         raise OSError("No such file: '" + src + "'")
     dest_path: str = _resolve_destination(src, dst)
@@ -11,6 +12,7 @@ def copy(src: str, dst: str) -> str:
     return dest_path
 
 def copy2(src: str, dst: str) -> str:
+    """Copy data and metadata. Return the file's destination."""
     if not File.exists(src):
         raise OSError("No such file: '" + src + "'")
     dest_path: str = _resolve_destination(src, dst)
@@ -23,6 +25,7 @@ def copy2(src: str, dst: str) -> str:
     return dest_path
 
 def copytree(src: str, dst: str) -> str:
+    """Recursively copy a directory tree and return the destination directory."""
     if not Directory.exists(src):
         raise OSError("No such directory: '" + src + "'")
     try:
@@ -32,6 +35,7 @@ def copytree(src: str, dst: str) -> str:
     return dst
 
 def rmtree(path: str) -> None:
+    """Recursively delete a directory tree."""
     if not Directory.exists(path):
         raise OSError("No such directory: '" + path + "'")
     try:
@@ -40,6 +44,7 @@ def rmtree(path: str) -> None:
         raise OSError("Failed to remove directory tree '" + path + "'")
 
 def move(src: str, dst: str) -> str:
+    """Recursively move a file or directory to another location."""
     if File.exists(src):
         dest_path: str = _resolve_destination(src, dst)
         try:
