@@ -28,19 +28,102 @@ $ sharpyc run hello.spy
 Hello, World!
 ```
 
-## Features
+## Features at a Glance
 
-- **Static typing with full inference** — types checked at compile time, rarely written inside functions
-- **Null safety** — non-nullable by default, nullable types explicit (`T?`), compiler-tracked narrowing
-- **Optional and Result types** — tagged unions for safe error handling without exceptions
-- **Interfaces** — explicit implementation, no duck typing
-- **Structs** — true value semantics, stack-allocated
-- **Generics** — type-safe with bracket syntax, variance support (`out`/`in`)
-- **Properties** — first-class declarations, no `@property` boilerplate
-- **Pattern matching** — `match` with guards, type patterns, destructuring
-- **Async/await** — first-class async support
-- **.NET interop** — import .NET types directly, `snake_case` auto-maps to `PascalCase`
-- **Familiar Python** — classes, inheritance, decorators, comprehensions, f-strings, generators, lambdas, dunder methods
+### Tagged Unions & Pattern Matching
+
+```python
+union Shape:
+    case Circle(radius: float)
+    case Rectangle(width: float, height: float)
+
+def area(shape: Shape) -> float:
+    match shape:
+        case Circle(r):
+            return 3.14159 * r * r
+        case Rectangle(w, h):
+            return w * h
+
+def main():
+    print(area(Shape.Circle(5.0)))
+    print(area(Shape.Rectangle(3.0, 4.0)))
+```
+
+### Result Types
+
+Error handling without exceptions — `T !E` returns either `Ok(value)` or `Err(error)`:
+
+```python
+def validate_age(age: int) -> int !str:
+    if age < 0:
+        return Err("Age cannot be negative")
+    return Ok(age)
+
+def main():
+    match validate_age(25):
+        case Ok(v):
+            print(f"Valid: {v}")
+        case Err(e):
+            print(f"Error: {e}")
+```
+
+### Null Safety & Optionals
+
+Non-nullable by default. `T?` tracks nullability, `?.` and `??` navigate safely:
+
+```python
+def find(items: list[str], target: str) -> str?:
+    for item in items:
+        if item == target:
+            return Some(item)
+    return None()
+
+def main():
+    result = find(["apple", "banana"], "banana")
+    print(result ?? "not found")
+```
+
+### Pipe Operator
+
+Chain transformations left-to-right:
+
+```python
+def double(x: int) -> int:
+    return x * 2
+
+def add_one(x: int) -> int:
+    return x + 1
+
+def main():
+    result = 5 |> double() |> add_one()
+    print(result)  # 11
+```
+
+### Classes & Properties
+
+Python syntax with access modifiers and first-class properties:
+
+```python
+class Temperature:
+    __celsius: float
+
+    def __init__(self, celsius: float):
+        self.__celsius = celsius
+
+    property get fahrenheit(self) -> float:
+        return self.__celsius * 9.0 / 5.0 + 32.0
+
+    def __str__(self) -> str:
+        return f"{self.__celsius}C ({self.fahrenheit}F)"
+
+def main():
+    temp = Temperature(100.0)
+    print(temp)
+```
+
+**Also:** full type inference, interfaces, structs, generics with variance, async/await, decorators, comprehensions, generators, lambdas, operator overloading, partial application, and seamless .NET interop (`snake_case` auto-maps to `PascalCase`).
+
+[**Try all 13 examples in the playground →**](https://antonsynd.github.io/sharpy/playground/)
 
 ## Getting Started
 
