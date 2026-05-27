@@ -941,6 +941,13 @@ public partial class Parser
     {
         var parts = new List<string> { ExpectIdentifier() };
 
+        // A backtick-escaped identifier may already contain dots (e.g. `System.Collections.Generic`),
+        // forming a complete dotted path. In that case it is the entire name (#713).
+        if (Previous.IsBacktickEscaped && Previous.Value.Contains('.', StringComparison.Ordinal))
+        {
+            return parts[0];
+        }
+
         while (Current.Type == TokenType.Dot)
         {
             Advance();
