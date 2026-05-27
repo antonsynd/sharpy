@@ -28,6 +28,7 @@ LSP_DIR: Path = SRC_DIR / "Sharpy.Lsp"
 LSP_TEST_DIR: Path = SRC_DIR / "Sharpy.Lsp.Tests"
 
 PLAYGROUND_DIR: Path = SRC_DIR / "Sharpy.Playground"
+DOCS_DIR: Path = ROOT_DIR / "docs"
 
 EDITORS_DIR: Path = ROOT_DIR / "editors"
 VSCODE_EXT_DIR: Path = EDITORS_DIR / "vscode"
@@ -96,6 +97,8 @@ def main() -> None:
         test(args=args, rest=rest, release=False)
     elif command == "playground":
         playground(args=args, rest=rest)
+    elif command == "docs":
+        docs(args=args, rest=rest)
     elif command == "help":
         parser.print_help()
     else:
@@ -176,6 +179,20 @@ def create_parser() -> argparse.ArgumentParser:
         "--no-watch",
         action="store_true",
         help="Run without hot reload (dotnet run instead of dotnet watch run)",
+    )
+
+    docs_parser = subparsers.add_parser(
+        "docs", help="Serves or builds the documentation site."
+    )
+    docs_parser.add_argument(
+        "--build",
+        action="store_true",
+        help="Build static site instead of serving locally",
+    )
+    docs_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Enable strict mode (fail on warnings)",
     )
 
     _ = subparsers.add_parser("help", help="Prints this help message.")
@@ -330,6 +347,35 @@ def playground(args: argparse.Namespace, rest: Sequence[str]) -> None:
         sys.exit(1)
     except KeyboardInterrupt:
         get_logger().info("Playground stopped.")
+
+
+def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    cmd: MutableSequence[str] = ["mkdocs"]
+
+    if args.build:
+        cmd.append("build")
+        get_logger().info("Building documentation site...")
+    else:
+        cmd.append("serve")
+        get_logger().info("Serving documentation site...")
+        get_logger().info("Open http://localhost:8000 in your browser")
+        get_logger().info("Press Ctrl+C to stop")
+
+    if args.strict:
+        cmd.append("--strict")
+
+    cmd.extend(rest)
+
+    try:
+        subprocess.run(cmd, check=True, cwd=ROOT_DIR)
+    except FileNotFoundError:
+        get_logger().error("mkdocs not found. Install it with: pip install mkdocs-material")
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        get_logger().error(f"Documentation {'build' if args.build else 'serve'} failed: {e}")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        get_logger().info("Documentation server stopped.")
 
 
 def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
