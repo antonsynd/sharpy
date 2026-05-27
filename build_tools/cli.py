@@ -32,9 +32,15 @@ from pathlib import Path
 import click
 
 
-# Import tool-specific CLI functions
+# Import stdlib doc generator (stdlib-only deps, always available)
 try:
-    # Use absolute imports when run as script, relative when as module
+    from build_tools.generate_stdlib_docs import generate as stdlib_generate
+except ImportError:
+    from .generate_stdlib_docs import generate as stdlib_generate
+
+# Import heavier tool-specific CLI functions (optional deps like langgraph)
+_heavy_imports_available = True
+try:
     try:
         from build_tools.generate_code_walkthroughs import (
             Config as WalkthroughConfig,
@@ -56,9 +62,7 @@ try:
             cmd_logs as builder_logs,
         )
         from build_tools.sharpy_auto_builder.config import Config as BuilderConfig
-        from build_tools.generate_stdlib_docs import generate as stdlib_generate
     except ImportError:
-        # Fallback to relative imports
         from .generate_code_walkthroughs import (
             Config as WalkthroughConfig,
             main_async as walkthrough_main,
@@ -79,11 +83,10 @@ try:
             cmd_logs as builder_logs,
         )
         from .sharpy_auto_builder.config import Config as BuilderConfig
-        from .generate_stdlib_docs import generate as stdlib_generate
 except ImportError as e:
-    print(f"Error importing build tools: {e}", file=sys.stderr)
-    print("Make sure you're running from the Sharpy project root", file=sys.stderr)
-    sys.exit(1)
+    _heavy_imports_available = False
+    print(f"Warning: some build tools unavailable ({e})", file=sys.stderr)
+    print("The 'stdlib' command is still available.", file=sys.stderr)
 
 
 @click.group()
