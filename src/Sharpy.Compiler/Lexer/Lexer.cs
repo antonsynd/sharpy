@@ -714,13 +714,8 @@ public partial class Lexer
                 throw ReportError("Unterminated literal name (backtick-delimited identifier)", _line, _column, DiagnosticCodes.Lexer.UnterminatedBacktickIdentifier);
             }
 
-            if (c == '.')
-            {
-                throw ReportError(
-                    "Backtick-delimited identifier cannot contain dots. Use separate backtick segments (e.g., `System`.IO instead of `System.IO`)",
-                    _line, _column,
-                    DiagnosticCodes.Lexer.DotInBacktickIdentifier);
-            }
+            // Dots are allowed inside backtick-delimited identifiers (#713), enabling
+            // natural .NET interop like `System.Collections.Generic`.
 
             sb.Append(c);
             _position++;

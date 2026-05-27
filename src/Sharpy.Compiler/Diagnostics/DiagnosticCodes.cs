@@ -86,7 +86,7 @@ public static class DiagnosticCodes
 
         #region Backtick identifier errors (SPY0025)
 
-        public const string DotInBacktickIdentifier = "SPY0025";    // Active
+        public const string DotInBacktickIdentifier = "SPY0025";    // Deprecated: dots now allowed in backtick identifiers
 
         #endregion
 
