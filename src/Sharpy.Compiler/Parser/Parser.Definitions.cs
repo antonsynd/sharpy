@@ -933,6 +933,7 @@ public partial class Parser
         }
 
         var cases = new List<UnionCaseDef>();
+        var body = new List<Statement>();
 
         _lastLoopPosition = -1;
         while (Current.Type != TokenType.Dedent && !IsAtEnd)
@@ -951,6 +952,21 @@ public partial class Parser
                 {
                     Advance();
                     ExpectNewline();
+                    SkipNewlines();
+                    continue;
+                }
+
+                // Method definitions inside the union body.
+                if (Current.Type == TokenType.Def)
+                {
+                    body.Add(ParseFunctionDef());
+                    SkipNewlines();
+                    continue;
+                }
+
+                if (Current.Type == TokenType.Async)
+                {
+                    body.Add(ParseAsyncFunctionDef());
                     SkipNewlines();
                     continue;
                 }
@@ -1053,6 +1069,7 @@ public partial class Parser
             IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams,
             Cases = cases.ToImmutableArray(),
+            Body = body.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
