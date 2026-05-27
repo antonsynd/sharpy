@@ -47,6 +47,11 @@ html, body {
     flex-shrink: 0;
 }
 
+.header-logo {
+    width: 24px;
+    height: 24px;
+}
+
 .header h1 {
     font-size: 16px;
     font-weight: 600;
