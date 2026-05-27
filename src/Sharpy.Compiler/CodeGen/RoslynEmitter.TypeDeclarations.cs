@@ -1567,6 +1567,13 @@ internal partial class RoslynEmitter
             members.Add(GenerateUnionCaseClass(caseDef, caseSymbol, unionName, unionDef.TypeParameters));
         }
 
+        // Generate method members from the union body
+        if (unionDef.Body.Length > 0)
+        {
+            var bodyMembers = GenerateClassMembers(unionDef.Body, unionName, unionDef.Name);
+            members.AddRange(bodyMembers);
+        }
+
         classDecl = classDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present
