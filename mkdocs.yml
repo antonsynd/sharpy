@@ -44,10 +44,7 @@ plugins:
   - search
 
 exclude_docs: |
-  audits/
   rejected_proposals/
-  completed_plans/
-  implementation_planning/
 
 nav:
   - Home: index.md
