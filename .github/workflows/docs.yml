@@ -6,9 +6,11 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'build_tools/generate_stdlib_docs.py'
       - 'src/Sharpy.Playground/**'
       - 'src/Sharpy.Compiler/**'
       - 'src/Sharpy.Core/**'
+      - 'src/Sharpy.Stdlib/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -34,8 +36,13 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install MkDocs Material
-        run: pip install mkdocs-material
+      - name: Install MkDocs Material and build tools deps
+        run: pip install mkdocs-material click
+
+      - name: Generate stdlib API docs
+        run: python -m build_tools stdlib generate --force --verbose
+        env:
+          PYTHONPATH: ${{ github.workspace }}
 
       - name: Build documentation
         run: mkdocs build --strict

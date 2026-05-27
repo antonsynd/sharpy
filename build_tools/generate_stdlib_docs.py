@@ -1358,6 +1358,7 @@ def generate(
     output_dir: Path,
     force: bool = False,
     verbose: bool = False,
+    stdlib_dir: Optional[Path] = None,
 ) -> list[Path]:
     """Generate stdlib documentation pages.
 
@@ -1368,6 +1369,8 @@ def generate(
 
     if verbose:
         print(f"Source: {source_dir}")
+        if stdlib_dir:
+            print(f"Stdlib: {stdlib_dir}")
         print(f"Output: {output_dir}")
         print()
 
@@ -1375,8 +1378,14 @@ def generate(
     if verbose:
         print("Discovering modules...")
     modules = discover_modules(source_dir)
+    if stdlib_dir and stdlib_dir.exists():
+        stdlib_modules = discover_modules(stdlib_dir)
+        modules.extend(stdlib_modules)
+        if verbose:
+            print(f"  Found {len(stdlib_modules)} stdlib modules")
+    modules.sort(key=lambda m: m.name)
     if verbose:
-        print(f"  Found {len(modules)} modules")
+        print(f"  Found {len(modules)} modules total")
 
     if verbose:
         print("Discovering core types...")

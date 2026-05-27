@@ -736,6 +736,12 @@ def stdlib():
     help="Output directory for generated docs (default: docs/stdlib)",
 )
 @click.option(
+    "--stdlib-dir",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Path to Sharpy.Stdlib source directory (default: auto-detected from source-dir sibling)",
+)
+@click.option(
     "--force",
     "-f",
     is_flag=True,
@@ -747,14 +753,19 @@ def stdlib():
     is_flag=True,
     help="Print progress information",
 )
-def stdlib_gen(source_dir: Path, output_dir: Path, force: bool, verbose: bool):
-    """Generate stdlib API reference pages from Sharpy.Core C# source."""
+def stdlib_gen(source_dir: Path, output_dir: Path, stdlib_dir: Path | None, force: bool, verbose: bool):
+    """Generate stdlib API reference pages from Sharpy.Core and Sharpy.Stdlib C# source."""
+    if stdlib_dir is None:
+        auto = source_dir.resolve().parent / "Sharpy.Stdlib"
+        if auto.exists():
+            stdlib_dir = auto
     try:
         generated = stdlib_generate(
             source_dir=source_dir.resolve(),
             output_dir=output_dir.resolve(),
             force=force,
             verbose=verbose,
+            stdlib_dir=stdlib_dir.resolve() if stdlib_dir else None,
         )
         if not verbose:
             click.echo(f"Generated {len(generated)} files in {output_dir}")

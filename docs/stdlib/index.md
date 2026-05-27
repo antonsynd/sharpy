@@ -20,31 +20,35 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | Module | Description |
 |--------|-------------|
 | [`argparse`](argparse.md) | A named group of arguments for organization in help text. Arguments still belong to the parent parser; groups are for help formatting. |
-| [`bisect`](bisect.md) | Array bisection algorithm, similar to Python's bisect module. Provides functions to maintain a list in sorted order without having to sort the list after each insertion. |
+| [`bisect`](bisect.md) |  |
 | [`collections`](collections.md) | A ChainMap groups multiple dictionaries together to create a single, updateable view. Like Python's collections.ChainMap. |
 | [`copy`](copy.md) | Shallow and deep copy operations, similar to Python's \`copy\` module. |
 | [`csv`](csv.md) | Reads CSV data and maps each row to a dictionary keyed by field names, similar to Python's \`csv.DictReader\`. |
 | [`datetime`](datetime.md) | Represents a date (year, month, day). |
-| [`fnmatch`](fnmatch.md) | Unix filename pattern matching, matching Python's fnmatch module. |
-| [`functools`](functools.md) | Higher-order functions and operations on callable objects, similar to Python's functools module. |
+| [`fnmatch`](fnmatch.md) |  |
+| [`functools`](functools.md) | Thread-safe memoization cache backing the \`@functools.lru_cache\` and \`@functools.cache\` decorators. |
 | [`glob`](glob.md) | Unix-style pathname pattern expansion, similar to Python's glob module. Supports \`*\`, \`?\`, \`[seq]\`, and \`**\` patterns. |
-| [`grapheme`](grapheme.md) | Grapheme cluster (user-perceived character) operations. Splits, slices, and indexes strings by grapheme clusters using `System.Globalization.StringInfo`. |
+| [`grapheme`](grapheme.md) | Grapheme cluster (user-perceived character) operations. Wraps \`System.Globalization.StringInfo\` for working with text at the level of what users perceive as a single character — including combining marks, emoji sequences, and ZWJ (zero-width joiner) sequences. |
 | [`hashlib`](hashlib.md) | Represents a hash object that accumulates data and computes cryptographic hashes. Mirrors Python's hashlib hash object API. |
-| [`heapq`](heapq.md) | Heap queue algorithm (priority queue), similar to Python's heapq module. Implements a min-heap using a list as the underlying storage. |
+| [`heapq`](heapq.md) |  |
 | [`io`](io.md) | In-memory text stream using a string buffer, similar to Python's io.StringIO. Extends TextWriter so it can be used anywhere a TextWriter is expected (e.g., csv module). |
 | [`itertools`](itertools.md) | Itertools module — tools for creating iterators. |
 | [`json`](json.md) | Python-compatible json module. Provides dumps/loads for string serialization and dump/load for file I/O. |
 | [`logging`](logging.md) | A named logger that outputs messages at or above a configured level. Output format: LEVEL:name:message (written to stderr). |
-| [`math`](math.md) | Mathematical functions, similar to Python's math module. This module provides access to mathematical functions defined by the C standard. |
+| [`math`](math.md) |  |
+| [`numpy`](numpy.md) | Interface implementations for \`NdArray{T}\` — \`IEnumerable&lt;T&gt;\`, \`ISized\`, structural equality, and conversion helpers. |
 | [`operator`](operator.md) | Operator module — functions corresponding to the intrinsic operators of Python. |
-| [`os`](os.md) | OS-level operations, similar to Python's os module. Wraps System.IO and System.Environment for file, directory, and environment operations. |
+| [`os`](os.md) | Result of os.stat(), similar to Python's os.stat_result. |
 | [`pathlib`](pathlib.md) | Object-oriented filesystem path, similar to Python's pathlib.Path. Immutable — all mutation methods return new Path instances. |
-| [`random`](random.md) | Pseudo-random number generators for various distributions, similar to Python's random module. |
+| [`random`](random.md) |  |
 | [`re`](re.md) | Wraps a .NET \`System.Text.RegularExpressions.Match\` with Python-compatible API. |
-| [`shutil`](shutil.md) | High-level file operations, similar to Python's shutil module. Provides functions for copying, moving, and removing files and directory trees. |
-| [`statistics`](statistics.md) | Mathematical statistics functions, similar to Python's \`statistics\` module. |
-| [`string`](string.md) | String constants matching Python's string module. Provides character classification constants for ASCII characters. |
+| [`requests`](requests.md) | Base class for all requests-related errors. Equivalent to Python's \`requests.RequestException\`. |
+| [`shutil`](shutil.md) |  |
+| [`sqlite3`](sqlite3.md) |  |
+| [`statistics`](statistics.md) | Exception raised for statistics-related errors, similar to Python's \`statistics.StatisticsError\`. |
+| [`string`](string.md) |  |
 | [`sys`](sys.md) | Provides access to system-specific parameters and functions, similar to Python's sys module. |
-| [`tempfile`](tempfile.md) | Temporary file and directory creation, similar to Python's tempfile module. |
-| [`textwrap`](textwrap.md) | Text wrapping and filling, matching Python's textwrap module. |
+| [`tempfile`](tempfile.md) |  |
+| [`textwrap`](textwrap.md) |  |
 | [`time`](time.md) | Represents a time value as a named tuple of components, similar to Python's \`time.struct_time\`. |
+| [`unittest`](unittest.md) | Marker type returned by unittest.assert_raises(). Implements IDisposable so the with-statement type checking passes. The compiler replaces the entire with-block with Xunit.Assert.Throws during codegen. |

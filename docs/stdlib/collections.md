@@ -121,6 +121,11 @@ Return the sum of all counts.
 
 Remove all elements from the counter.
 
+### `contains(key: T) -> bool`
+
+Check if the counter contains a key (alias for ContainsKey).
+Used by the `in` operator.
+
 ## DefaultDict
 
 A deque (double-ended queue) is a generalization of stacks and queues
@@ -138,6 +143,11 @@ that supports adding and removing elements from either end.
 ### `get(key: TKey, default_value: TValue = default!) -> TValue`
 
 Get the value for a key, or return a default value if the key is not present.
+
+### `contains(key: TKey) -> bool`
+
+Check if the dictionary contains a key (alias for ContainsKey).
+Used by the `in` operator: `"x" in d` → `d.Contains("x")`.
 
 ### `copy() -> DefaultDict[TKey, TValue]`
 

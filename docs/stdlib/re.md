@@ -16,74 +16,14 @@ import re
 | `m` | `int` | Shorthand for MULTILINE. |
 | `dotall` | `int` | Make . match any character including newline. |
 | `s` | `int` | Shorthand for DOTALL. |
-
-## Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `string` | `str` | The input string. |
-| `pattern` | `str` | The pattern string. |
-| `pos` | `int` | The start position of the search. |
-| `endpos` | `int` | The end position of the search. |
-| `pattern_str` | `str` | The original pattern string. |
-| `flags` | `int` | The flags used to compile this pattern. |
+| `verbose` | `int` | Allow verbose regex with comments and whitespace. |
+| `x` | `int` | Shorthand for VERBOSE. |
+| `unicode` | `int` | Make \\w, \\b, etc. match Unicode (default on .NET, accepted for compatibility). |
+| `u` | `int` | Shorthand for UNICODE. |
+| `ascii` | `int` | Make \\w, \\b, etc. match ASCII only (no-op on .NET, accepted for compatibility). |
+| `a` | `int` | Shorthand for ASCII. |
 
 ## Functions
-
-### `re.group(n: int = 0) -> str?`
-
-Return the string matched by group number. Group 0 is the entire match.
-Returns null if the group didn't participate in the match.
-
-### `re.group(name: str) -> str?`
-
-Return the string matched by a named group.
-Returns null if the group didn't participate in the match.
-
-### `re.groups() -> list[str?]`
-
-Return a list of all subgroups (groups 1..n).
-
-### `re.groupdict() -> dict[str, str?]`
-
-Return a Dict of all named subgroups.
-
-### `re.start(group: int = 0) -> int`
-
-Start index of the matched group.
-
-### `re.end(group: int = 0) -> int`
-
-End index of the matched group.
-
-### `re.search(s: str, pos: int = 0, endpos: int = -1) -> ReMatch?`
-
-Scan through string looking for the first location where the pattern produces a match.
-
-### `re.match(s: str, pos: int = 0, endpos: int = -1) -> ReMatch?`
-
-Try to apply the pattern at the start of the string.
-
-### `re.fullmatch(s: str, pos: int = 0, endpos: int = -1) -> ReMatch?`
-
-Try to apply the pattern to the entire string.
-
-### `re.findall(s: str, pos: int = 0, endpos: int = -1) -> list[object?]`
-
-Return all non-overlapping matches as a list of strings.
-If the pattern has groups, returns the group(s) rather than the full match.
-
-### `re.finditer(s: str, pos: int = 0, endpos: int = -1) -> list[ReMatch]`
-
-Return an iterator yielding ReMatch objects over all non-overlapping matches.
-
-### `re.sub(repl: str, s: str, count: int = 0) -> str`
-
-Return the string obtained by replacing the leftmost non-overlapping occurrences of pattern.
-
-### `re.split(s: str, maxsplit: int = 0) -> list[str]`
-
-Split string by the occurrences of the pattern.
 
 ### `re.compile(pattern: str, flags: int = 0) -> RePattern`
 
@@ -157,6 +97,121 @@ re.sub(r"\d+", "N", "abc123def456")    # "abcNdefN"
 
 Split string by the occurrences of the pattern.
 
+### `re.sub(pattern: str, repl: Func[ReMatch, str], s: str, count: int = 0, flags: int = 0) -> str`
+
+Return the string obtained by replacing occurrences using a callable.
+The callable receives the match object and returns the replacement string.
+
+### `re.purge()`
+
+Clear the regular expression cache. No-op on .NET (no internal cache).
+
 ### `re.escape(pattern: str) -> str`
 
 Escape special characters in pattern.
+
+## Match
+
+Wraps a .NET `System.Text.RegularExpressions.Match` with Python-compatible API.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `string` | `str` | The input string. |
+| `pattern` | `str` | The pattern string. |
+| `pos` | `int` | The start position of the search. |
+| `endpos` | `int` | The end position of the search. |
+| `re` | `RePattern?` | The compiled pattern object that produced this match, or null. |
+
+### `group(n: int = 0) -> str?`
+
+Return the string matched by group number. Group 0 is the entire match.
+Returns null if the group didn't participate in the match.
+
+### `group(name: str) -> str?`
+
+Return the string matched by a named group.
+Returns null if the group didn't participate in the match.
+
+### `groups() -> list[str?]`
+
+Return a list of all subgroups (groups 1..n).
+
+### `groupdict() -> dict[str, str?]`
+
+Return a Dict of all named subgroups.
+
+### `start(group: int = 0) -> int`
+
+Start index of the matched group.
+
+### `end(group: int = 0) -> int`
+
+End index of the matched group.
+
+### `expand(template: str) -> str`
+
+Return the string obtained by doing backslash substitution on the template.
+Supports \1, \2, ... and \g references.
+
+## Pattern
+
+Compiled regular expression pattern, wrapping .NET's Regex.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `pattern_str` | `str` | The original pattern string. |
+| `flags` | `int` | The flags used to compile this pattern. |
+| `pattern` | `str` | The pattern string (Python-compatible alias for PatternStr). |
+
+### `search(s: str, pos: int = 0, endpos: int = -1) -> ReMatch?`
+
+Scan through string looking for the first location where the pattern produces a match.
+
+### `match(s: str, pos: int = 0, endpos: int = -1) -> ReMatch?`
+
+Try to apply the pattern at the start of the string.
+
+### `fullmatch(s: str, pos: int = 0, endpos: int = -1) -> ReMatch?`
+
+Try to apply the pattern to the entire string.
+
+### `findall(s: str, pos: int = 0, endpos: int = -1) -> list[object?]`
+
+Return all non-overlapping matches as a list of strings.
+If the pattern has groups, returns the group(s) rather than the full match.
+
+### `finditer(s: str, pos: int = 0, endpos: int = -1) -> list[ReMatch]`
+
+Return an iterator yielding ReMatch objects over all non-overlapping matches.
+
+### `sub(repl: str, s: str, count: int = 0) -> str`
+
+Return the string obtained by replacing the leftmost non-overlapping occurrences of pattern.
+
+### `sub(repl: Func[ReMatch, str], s: str, count: int = 0) -> str`
+
+Return the string obtained by replacing occurrences using a callable.
+The callable receives the match object and returns the replacement string.
+
+### `split(s: str, maxsplit: int = 0) -> list[str]`
+
+Split string by the occurrences of the pattern.
+
+## error
+
+Exception raised when a regex pattern is invalid.
+Equivalent to Python's `re.error`.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `msg` | `str` | The unformatted error message. |
+| `pattern` | `str?` | The regex pattern that caused the error, if available. |
+| `pos` | `int?` | The position in the pattern where the error occurred, if available. |
+| `lineno` | `int?` | The line number of the error position, if available. |
+| `colno` | `int?` | The column number of the error position, if available. |

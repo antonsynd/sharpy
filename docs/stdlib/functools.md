@@ -1,7 +1,7 @@
 # functools
 
-Higher-order functions and operations on callable objects, similar to
-Python's functools module.
+Thread-safe memoization cache backing the `@functools.lru_cache` and
+`@functools.cache` decorators.
 
 ```python
 import functools
@@ -9,60 +9,33 @@ import functools
 
 ## Functions
 
-### `functools.reduce(func: Func[T, T, T], iterable: Iterable[T]) -> T`
-
-Apply a function of two arguments cumulatively to the items of
-*iterable*, from left to right, so as to reduce
-the iterable to a single value.
-
-**Parameters:**
-
-- `func` (Func[T, T, T]) -- A function of two arguments.
-- `iterable` (Iterable[T]) -- The iterable to reduce.
-
-**Returns:** The single result of the cumulative application.
-
-```python
-functools.reduce(lambda x, y: x + y, [1, 2, 3, 4, 5])    # 15
-```
-
-**Raises:**
-
-- `TypeError` -- Thrown if the iterable is empty.
-
 ### `functools.reduce(func: Func[T, T, T], iterable: Iterable[T], initial: T) -> T`
-
-Apply a function of two arguments cumulatively to the items of
-*iterable*, from left to right, starting with
-*initial*, so as to reduce the iterable to a
-single value.
-
-**Parameters:**
-
-- `func` (Func[T, T, T]) -- A function of two arguments.
-- `iterable` (Iterable[T]) -- The iterable to reduce.
-- `initial` (T) -- The initial (seed) value.
-
-**Returns:** The single result of the cumulative application.
-
-```python
-functools.reduce(lambda x, y: x + y, [1, 2, 3, 4, 5], 10)    # 25
-```
 
 ### `functools.cmp_to_key(func: Func[T, T, int]) -> IComparer[T]`
 
-Convert a comparison function into a key function suitable for use
-with sorting. Returns an `IComparer{T}` that wraps the
-comparison function.
+### `functools.reduce(func: global::System.Func<T, T, T>, iterable: list[T]) -> T`
+
+### `functools.cache_info(hits: int, misses: int, max_size: int?, current_size: int) -> record`
+
+Snapshot of cache statistics returned by
+`LruCache{TKey, TResult}.CacheInfo`.
+
+### `functools.get_or_add(key: TKey, factory: Func[TKey, TResult]) -> TResult`
+
+Looks up the cached value for *key*, or computes it
+via *factory* and stores the result.
 
 **Parameters:**
 
-- `func` (Func[T, T, int]) -- A comparison function that returns a negative number
-for less-than, zero for equal, or a positive number for greater-than.
+- `key` (TKey) -- The cache key.
+- `factory` (Func[TKey, TResult]) -- A factory invoked on miss to compute the value.
 
-**Returns:** An `IComparer{T}` wrapping the comparison function.
+**Returns:** The cached or freshly-computed value.
 
-```python
-comparer = functools.cmp_to_key(lambda a, b: a - b)
-sorted([3, 1, 2], key=comparer)    # [1, 2, 3]
-```
+### `functools.cache_info() -> CacheInfo`
+
+Returns a snapshot of cache statistics.
+
+### `functools.cache_clear()`
+
+Clears all cached entries and resets the hit/miss counters.

@@ -86,11 +86,11 @@ any([])                      # False
 ### `ascii(obj: object) -> str`
 
 Return a string with non-ASCII characters escaped.
-Like repr(), but escapes non-ASCII characters with \xNN, \uNNNN, or \UNNNNNNNN.
+Calls repr() first, then escapes non-ASCII characters with \xNN, \uNNNN, or \UNNNNNNNN.
 
 ```python
-ascii("hello")      # "hello"
-ascii("héllo")      # "h\xe9llo"
+ascii("hello")      # "'hello'"
+ascii("héllo")      # "'h\\xe9llo'"
 ```
 
 ### `bin(x: int) -> str`
@@ -1191,6 +1191,7 @@ repr(None)         # "None"
     Uses `object.ToString()` to get the representation.
     Sharpy types (List, Set, Dict) override ToString() to produce
     Python-compatible repr output (e.g., "[1, 2, 3]", "{1, 2}", etc.).
+    Strings are wrapped in single quotes, matching Python's repr().
 
 ### `reversed(sequence: Iterable[T]) -> Iterator[T]`
 

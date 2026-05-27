@@ -7,58 +7,6 @@ Mirrors Python's hashlib hash object API.
 import hashlib
 ```
 
-## Functions
-
-### `hashlib.md5(data: str = "") -> HashObject`
-
-Create an MD5 hash object, optionally initialized with data.
-
-**Parameters:**
-
-- `data` (str) -- Optional initial data to hash (encoded as UTF-8).
-
-**Returns:** A new `HashObject` using the MD5 algorithm.
-
-### `hashlib.sha1(data: str = "") -> HashObject`
-
-Create a SHA-1 hash object, optionally initialized with data.
-
-**Parameters:**
-
-- `data` (str) -- Optional initial data to hash (encoded as UTF-8).
-
-**Returns:** A new `HashObject` using the SHA-1 algorithm.
-
-### `hashlib.sha256(data: str = "") -> HashObject`
-
-Create a SHA-256 hash object, optionally initialized with data.
-
-**Parameters:**
-
-- `data` (str) -- Optional initial data to hash (encoded as UTF-8).
-
-**Returns:** A new `HashObject` using the SHA-256 algorithm.
-
-### `hashlib.sha384(data: str = "") -> HashObject`
-
-Create a SHA-384 hash object, optionally initialized with data.
-
-**Parameters:**
-
-- `data` (str) -- Optional initial data to hash (encoded as UTF-8).
-
-**Returns:** A new `HashObject` using the SHA-384 algorithm.
-
-### `hashlib.sha512(data: str = "") -> HashObject`
-
-Create a SHA-512 hash object, optionally initialized with data.
-
-**Parameters:**
-
-- `data` (str) -- Optional initial data to hash (encoded as UTF-8).
-
-**Returns:** A new `HashObject` using the SHA-512 algorithm.
-
 ## HashObject
 
 Represents a hash object that accumulates data and computes cryptographic hashes.

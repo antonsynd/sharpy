@@ -206,6 +206,7 @@ nav:
       - fnmatch: stdlib/fnmatch.md
       - functools: stdlib/functools.md
       - glob: stdlib/glob.md
+      - grapheme: stdlib/grapheme.md
       - hashlib: stdlib/hashlib.md
       - heapq: stdlib/heapq.md
       - io: stdlib/io.md
@@ -213,18 +214,22 @@ nav:
       - json: stdlib/json.md
       - logging: stdlib/logging.md
       - math: stdlib/math.md
+      - numpy: stdlib/numpy.md
       - operator: stdlib/operator.md
       - os: stdlib/os.md
       - pathlib: stdlib/pathlib.md
       - random: stdlib/random.md
       - re: stdlib/re.md
+      - requests: stdlib/requests.md
       - shutil: stdlib/shutil.md
+      - sqlite3: stdlib/sqlite3.md
       - statistics: stdlib/statistics.md
       - string: stdlib/string.md
       - sys: stdlib/sys.md
       - tempfile: stdlib/tempfile.md
       - textwrap: stdlib/textwrap.md
       - time: stdlib/time.md
+      - unittest: stdlib/unittest.md
   - Tooling:
     - Editor Integration: tooling/editor-integration.md
     - VS Code Extension: tooling/vscode-extension.md
