@@ -212,6 +212,42 @@ public partial class Parser
                     var identToken = Current;
                     var name = identToken.Value;
                     Advance();
+
+                    // A backtick-escaped identifier may contain dots (e.g. `System.IO.Path`),
+                    // which represents a member access chain (#713). Split it into a
+                    // root Identifier followed by MemberAccess segments.
+                    if (identToken.IsBacktickEscaped && name.Contains('.', StringComparison.Ordinal))
+                    {
+                        var segments = name.Split('.');
+                        Expression expr = new Identifier
+                        {
+                            Name = segments[0],
+                            IsNameBacktickEscaped = true,
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = GetSpanFromToken(identToken)
+                        };
+
+                        for (var i = 1; i < segments.Length; i++)
+                        {
+                            expr = new MemberAccess
+                            {
+                                Object = expr,
+                                Member = segments[i],
+                                IsMemberBacktickEscaped = true,
+                                LineStart = startLine,
+                                ColumnStart = startColumn,
+                                LineEnd = Previous.Line,
+                                ColumnEnd = Previous.Column + Previous.Value.Length,
+                                Span = GetSpanFromToken(identToken)
+                            };
+                        }
+
+                        return expr;
+                    }
+
                     return new Identifier
                     {
                         Name = name,
