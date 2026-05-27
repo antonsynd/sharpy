@@ -1,19 +1,19 @@
 :root {
-    --bg-primary: #1A1B26;
-    --bg-secondary: #24253A;
-    --bg-tertiary: #2D2E45;
-    --border: #3A3B55;
-    --text-primary: #D0D0E0;
-    --text-secondary: #8888A0;
-    --accent: #4EC9B0;
-    --accent-hover: #5EDBC2;
-    --primary: #7B68AE;
-    --primary-hover: #9485C4;
+    --bg-primary: #0D0D0D;
+    --bg-secondary: #161618;
+    --bg-tertiary: #1E1E22;
+    --border: #2A2A30;
+    --text-primary: #D0D0DC;
+    --text-secondary: #808090;
+    --accent: #4AD9D9;
+    --accent-hover: #5DE8E8;
+    --primary: #8154BF;
+    --primary-hover: #9A6FD6;
     --error: #F44747;
     --warning: #CCA700;
     --success: #6A9955;
-    --tab-active: #1A1B26;
-    --tab-inactive: #2D2E45;
+    --tab-active: #0D0D0D;
+    --tab-inactive: #1E1E22;
 }
 
 * {
@@ -71,7 +71,7 @@ html, body {
 .btn-compile {
     padding: 5px 16px;
     background: var(--accent);
-    color: #1e1e1e;
+    color: #0D0D0D;
     border: none;
     border-radius: 4px;
     font-size: 13px;

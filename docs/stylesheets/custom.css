@@ -1,39 +1,42 @@
-/* Sharpy Design Language — derived from logo palette (teal/purple/blue) */
+/*
+ * Sharpy Design Language
+ * Palette from logo: #8154BF, #492A8C, #3F8EBF, #4AD9D9, #0D0D0D
+ */
 
 /* ── Light mode (default scheme) ── */
 [data-md-color-scheme="default"] {
-    --md-primary-fg-color: #6C5CE7;
-    --md-primary-fg-color--light: #8677ED;
-    --md-primary-fg-color--dark: #5A4BD4;
+    --md-primary-fg-color: #492A8C;
+    --md-primary-fg-color--light: #8154BF;
+    --md-primary-fg-color--dark: #3A1F73;
     --md-primary-bg-color: #FFFFFF;
-    --md-accent-fg-color: #4DBDCF;
-    --md-accent-fg-color--transparent: rgba(77, 189, 207, 0.12);
+    --md-accent-fg-color: #3F8EBF;
+    --md-accent-fg-color--transparent: rgba(63, 142, 191, 0.12);
     --md-default-bg-color: #FFFFFF;
-    --md-default-fg-color: #1A1B26;
-    --md-default-fg-color--light: #6B6B80;
-    --md-default-fg-color--lighter: #8888A0;
-    --md-default-fg-color--lightest: rgba(26, 27, 38, 0.06);
-    --md-code-bg-color: #F5F5F7;
-    --md-code-fg-color: #1A1B26;
-    --md-typeset-color: #1A1B26;
+    --md-default-fg-color: #1A1A1A;
+    --md-default-fg-color--light: #606068;
+    --md-default-fg-color--lighter: #909098;
+    --md-default-fg-color--lightest: rgba(26, 26, 26, 0.06);
+    --md-code-bg-color: #F4F4F6;
+    --md-code-fg-color: #1A1A1A;
+    --md-typeset-color: #1A1A1A;
 }
 
 /* ── Dark mode (slate scheme) ── */
 [data-md-color-scheme="slate"] {
-    --md-primary-fg-color: #7B68AE;
-    --md-primary-fg-color--light: #9485C4;
-    --md-primary-fg-color--dark: #6A589E;
-    --md-primary-bg-color: #D0D0E0;
-    --md-accent-fg-color: #4EC9B0;
-    --md-accent-fg-color--transparent: rgba(78, 201, 176, 0.12);
-    --md-default-bg-color: #1A1B26;
-    --md-default-fg-color: #D0D0E0;
-    --md-default-fg-color--light: #8888A0;
-    --md-default-fg-color--lighter: #6B6B80;
-    --md-default-fg-color--lightest: rgba(208, 208, 224, 0.06);
-    --md-code-bg-color: #24253A;
-    --md-code-fg-color: #D0D0E0;
-    --md-typeset-color: #D0D0E0;
+    --md-primary-fg-color: #8154BF;
+    --md-primary-fg-color--light: #9A6FD6;
+    --md-primary-fg-color--dark: #492A8C;
+    --md-primary-bg-color: #D0D0DC;
+    --md-accent-fg-color: #4AD9D9;
+    --md-accent-fg-color--transparent: rgba(74, 217, 217, 0.12);
+    --md-default-bg-color: #0D0D0D;
+    --md-default-fg-color: #D0D0DC;
+    --md-default-fg-color--light: #808090;
+    --md-default-fg-color--lighter: #606068;
+    --md-default-fg-color--lightest: rgba(208, 208, 220, 0.06);
+    --md-code-bg-color: #161618;
+    --md-code-fg-color: #D0D0DC;
+    --md-typeset-color: #D0D0DC;
 }
 
 /* ── Header ── */
@@ -52,7 +55,7 @@
 }
 
 .md-typeset a:hover {
-    color: var(--md-primary-fg-color);
+    color: var(--md-primary-fg-color--light);
 }
 
 [data-md-color-scheme="slate"] .md-typeset a {
@@ -74,13 +77,13 @@
 
 /* ── Inline code ── */
 [data-md-color-scheme="default"] .md-typeset code {
-    background-color: #F0F0F4;
-    color: #5A4BD4;
+    background-color: #EEEEF2;
+    color: #492A8C;
 }
 
 [data-md-color-scheme="slate"] .md-typeset code {
-    background-color: #2D2E45;
-    color: #9485C4;
+    background-color: #1E1E22;
+    color: #9A6FD6;
 }
 
 /* Code inside links should inherit link color */
@@ -120,7 +123,7 @@
 }
 
 [data-md-color-scheme="slate"] .md-footer {
-    background-color: #151620;
+    background-color: #080808;
 }
 
 /* ── Sidebar active indicator ── */
@@ -130,10 +133,10 @@
 
 /* ── Scrollbar (dark mode) ── */
 [data-md-color-scheme="slate"] ::-webkit-scrollbar-thumb {
-    background-color: #3A3B55;
+    background-color: #2A2A30;
     border-radius: 4px;
 }
 
 [data-md-color-scheme="slate"] ::-webkit-scrollbar-track {
-    background-color: #1A1B26;
+    background-color: #0D0D0D;
 }
