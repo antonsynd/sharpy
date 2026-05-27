@@ -1,0 +1,8 @@
+# Test dotted backtick identifier in from...import path (#713)
+from `System.Collections.Generic` import `LinkedList`
+
+def main():
+    items: `LinkedList`[int] = `LinkedList`[int]()
+    items.AddLast(42)
+    items.AddLast(7)
+    print(items.Count)
