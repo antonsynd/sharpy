@@ -503,6 +503,37 @@ internal partial class NameResolver
             unionSymbol.UnionCases.Add(caseSymbol);
         }
 
+        // Register union body methods as symbols on the union type. Enter a scope
+        // so type parameters are resolvable in method signatures (mirrors classes).
+        _symbolTable.EnterScope($"union:{unionDef.Name}");
+
+        foreach (var typeParam in unionDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = unionSymbol,
+                Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
+                DeclarationLine = typeParam.LineStart,
+                DeclarationColumn = typeParam.ColumnStart,
+                NameDeclarationLine = typeParam.LineStart,
+                NameDeclarationColumn = typeParam.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
+        foreach (var statement in unionDef.Body)
+        {
+            if (statement is FunctionDef method)
+            {
+                ResolveMethodDeclaration(method, unionSymbol);
+            }
+        }
+
+        _symbolTable.ExitScope();
+
         _symbolTable.Define(unionSymbol);
     }
 
