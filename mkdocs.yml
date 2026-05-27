@@ -6,16 +6,14 @@ repo_name: antonsynd/sharpy
 
 theme:
   name: material
+  logo: assets/sharpy-icon.png
+  favicon: assets/sharpy-icon.png
   palette:
     - scheme: default
-      primary: deep purple
-      accent: amber
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
-      primary: deep purple
-      accent: amber
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -26,6 +24,9 @@ theme:
     - search.suggest
     - search.highlight
     - content.code.copy
+
+extra_css:
+  - stylesheets/custom.css
 
 markdown_extensions:
   - admonition
