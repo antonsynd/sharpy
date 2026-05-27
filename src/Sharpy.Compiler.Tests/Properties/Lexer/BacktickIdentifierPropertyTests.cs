@@ -47,24 +47,32 @@ public class BacktickIdentifierPropertyTests
     }
 
     [Fact]
-    public void BacktickWithDot_ProducesDiagnosticError()
+    public void BacktickWithDot_LexesSuccessfully()
     {
+        // Dots are now legal inside backtick identifiers (e.g. `System.IO`)
+        // so they can name fully-qualified .NET types/namespaces (#713).
         GenIdentifier.BacktickContentWithDot.Sample(content =>
         {
             var source = $"`{content}`\n";
             var lexer = new SharpyLexer(source);
-            lexer.TokenizeAll();
+            var tokens = lexer.TokenizeAll();
 
-            if (!lexer.Diagnostics.HasErrors)
+            if (lexer.Diagnostics.HasErrors)
                 throw new Exception(
-                    $"Expected DotInBacktickIdentifier error for: `{content}`");
+                    $"Unexpected errors for dotted backtick content '{content}': {lexer.Diagnostics.GetErrors().First().Message}");
 
-            var hasDotError = lexer.Diagnostics.GetErrors()
-                .Any(e => e.Code == "SPY0025");
-
-            if (!hasDotError)
+            var identToken = tokens.FirstOrDefault(t => t.Type == TokenType.Identifier);
+            if (identToken == null)
                 throw new Exception(
-                    $"Expected SPY0025 (DotInBacktickIdentifier) for: `{content}`, got: {lexer.Diagnostics.GetErrors().First().Code} {lexer.Diagnostics.GetErrors().First().Message}");
+                    $"No Identifier token for dotted backtick content: {content}");
+
+            if (!identToken.IsBacktickEscaped)
+                throw new Exception(
+                    $"IsBacktickEscaped is false for: `{content}`");
+
+            if (identToken.Value != content)
+                throw new Exception(
+                    $"Token value mismatch: expected '{content}', got '{identToken.Value}'");
         }, print: s => s, iter: 50);
     }
 

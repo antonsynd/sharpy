@@ -1,0 +1,26 @@
+# Test that a dotted backtick identifier splits into a member access chain (#713)
+class Leaf:
+    `value`: int = 0
+
+    def __init__(self, v: int):
+        self.`value` = v
+
+class Branch:
+    `leaf`: Leaf = Leaf(0)
+
+    def __init__(self, l: Leaf):
+        self.`leaf` = l
+
+class Tree:
+    `branch`: Branch = Branch(Leaf(0))
+
+    def __init__(self, b: Branch):
+        self.`branch` = b
+
+def main():
+    tree = Tree(Branch(Leaf(42)))
+    # Standalone dotted backtick splits into tree.branch.leaf.value
+    print(`tree.branch.leaf.value`)
+    # Single dot
+    leaf = Leaf(7)
+    print(`leaf.value`)

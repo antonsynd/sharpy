@@ -63,13 +63,15 @@ internal static class GenIdentifier
     public static Gen<string> BacktickIdentifier { get; } =
         BacktickContent.Select(content => $"`{content}`");
 
-    private static readonly string[] InvalidBacktickWithDot =
+    // Dotted backtick contents are valid (#713): they name fully-qualified
+    // .NET types/namespaces, e.g. `System.IO`.
+    private static readonly string[] BacktickWithDot =
     {
         "sys.path", "os.path", "foo.bar", "a.b.c"
     };
 
     public static Gen<string> BacktickContentWithDot { get; } =
-        Gen.OneOfConst(InvalidBacktickWithDot);
+        Gen.OneOfConst(BacktickWithDot);
 
     private static readonly string[] InvalidBacktickWithNewline =
     {

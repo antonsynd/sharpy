@@ -1447,6 +1447,36 @@ y = 2";
     }
 
     [Fact]
+    public void Tokenize_LiteralNameWithSingleDot_ProducesSingleIdentifierToken()
+    {
+        var source = "`System.IO`";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("System.IO");
+        token.IsBacktickEscaped.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithMultipleDots_ProducesSingleIdentifierToken()
+    {
+        var source = "`System.Collections.Generic`";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("System.Collections.Generic");
+        token.IsBacktickEscaped.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithoutDots_IsBacktickEscaped()
+    {
+        var source = "`class`";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("class");
+        token.IsBacktickEscaped.Should().BeTrue();
+    }
+
+    [Fact]
     public void Tokenize_MultipleLiteralNames_ProducesCorrectTokens()
     {
         var source = "`first` `second` `third`";

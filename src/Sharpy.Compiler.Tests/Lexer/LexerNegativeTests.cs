@@ -518,10 +518,17 @@ public class LexerNegativeTests
     }
 
     [Fact]
-    public void RejectsDotInBacktickIdentifier()
+    public void AllowsDotInBacktickIdentifier()
     {
-        var errors = TokenizeExpectingError("`System.IO`");
-        errors.Should().Contain("cannot contain dots");
+        // Dots are now legal inside backtick identifiers (e.g. `System.IO`)
+        // so they can name fully-qualified .NET types/namespaces (#713).
+        var lexer = new LexerNs.Lexer("`System.IO`");
+        var tokens = lexer.TokenizeAll();
+
+        lexer.Diagnostics.HasErrors.Should().BeFalse();
+        var ident = tokens.Single(t => t.Type == LexerNs.TokenType.Identifier);
+        ident.Value.Should().Be("System.IO");
+        ident.IsBacktickEscaped.Should().BeTrue();
     }
 
     [Fact]
