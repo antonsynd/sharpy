@@ -118,6 +118,11 @@ public record UnionDef : Statement
     public ImmutableArray<UnionCaseDef> Cases { get; init; } = ImmutableArray<UnionCaseDef>.Empty;
 
     /// <summary>
+    /// Methods and other statements defined in the union body.
+    /// </summary>
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <summary>
     /// Decorators applied to the union.
     /// </summary>
     public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
@@ -134,6 +139,7 @@ public record UnionDef : Statement
         Debug.Assert(!string.IsNullOrEmpty(Name), "UnionDef.Name cannot be null or empty");
         Debug.Assert(TypeParameters != null, "UnionDef.TypeParameters cannot be null");
         Debug.Assert(Cases != null, "UnionDef.Cases cannot be null");
+        Debug.Assert(Body != null, "UnionDef.Body cannot be null");
         Debug.Assert(Decorators != null, "UnionDef.Decorators cannot be null");
     }
 
@@ -142,7 +148,8 @@ public record UnionDef : Statement
     {
         // TypeParameters, Cases, and Decorators don't contain Node-derived children
         // that we need to traverse (TypeAnnotation doesn't inherit from Node)
-        yield break;
+        foreach (var stmt in Body)
+            yield return stmt;
     }
 }
 
