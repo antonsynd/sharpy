@@ -230,7 +230,8 @@ public abstract class IntegrationTestBase
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
             {
                 SemanticBinding = semanticBinding,
-                CurrentFilePath = fileName
+                CurrentFilePath = fileName,
+                ModuleRegistry = moduleRegistry
             };
             // Integration tests are executable programs, so they're entry points
             try

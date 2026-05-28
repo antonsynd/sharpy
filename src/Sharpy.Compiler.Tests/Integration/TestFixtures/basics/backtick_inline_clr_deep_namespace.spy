@@ -1,0 +1,4 @@
+# Test inline CLR access through a 3-level namespace chain: System.IO.Path (#730)
+def main():
+    sep: str = `System.IO.Path`.DirectorySeparatorChar.ToString()
+    print("got separator")

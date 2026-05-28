@@ -1,0 +1,6 @@
+# Test inline CLR namespace access for static method calls (#730)
+def main():
+    x: int = `System.Math`.Abs(-42)
+    print(x)
+    y: int = `System.Math`.Max(3, 7)
+    print(y)

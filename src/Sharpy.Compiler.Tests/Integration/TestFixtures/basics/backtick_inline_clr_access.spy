@@ -1,0 +1,3 @@
+# Test inline CLR namespace access via dotted backtick identifier (#730)
+def main():
+    `System.Console`.WriteLine("Hello!")
