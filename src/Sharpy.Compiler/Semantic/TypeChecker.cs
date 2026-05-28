@@ -1,6 +1,7 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Services;
 
@@ -223,6 +224,13 @@ internal partial class TypeChecker
         get => _currentFilePath;
         set => _currentFilePath = value;
     }
+
+    /// <summary>
+    /// Optional module registry for inline CLR namespace resolution (e.g., `System`.Console).
+    /// When set, backtick-escaped identifiers that fail symbol-table lookup are resolved against
+    /// the registry's known .NET namespaces lazily, without requiring an explicit import.
+    /// </summary>
+    internal ModuleRegistry? ModuleRegistry { get; set; }
 
     /// <summary>
     /// Check for cancellation periodically in tight loops.

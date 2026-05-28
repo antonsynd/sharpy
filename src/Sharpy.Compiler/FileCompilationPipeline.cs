@@ -84,7 +84,8 @@ internal class FileCompilationPipeline
         SemanticInfo? fileSemanticInfo = null,
         SemanticBinding? fileSemanticBinding = null,
         IReadOnlySet<string>? deferredCycleSymbols = null,
-        IReadOnlySet<string>? deferredCycleFiles = null)
+        IReadOnlySet<string>? deferredCycleFiles = null,
+        ModuleRegistry? moduleRegistry = null)
     {
         var effectiveSemanticInfo = fileSemanticInfo ?? _semanticInfo;
         var effectiveBinding = fileSemanticBinding ?? _semanticBinding;
@@ -97,7 +98,8 @@ internal class FileCompilationPipeline
             SemanticBinding = effectiveBinding,
             MaxErrors = semanticMaxErrors,
             DeferredCycleSymbols = deferredCycleSymbols,
-            DeferredCycleFiles = deferredCycleFiles
+            DeferredCycleFiles = deferredCycleFiles,
+            ModuleRegistry = moduleRegistry
         };
 
         // Import root causes so TypeChecker can suppress cascading errors
@@ -221,7 +223,8 @@ internal class FileCompilationPipeline
         ImportResolver importResolver,
         string entryFilePath,
         DiagnosticBag diagnostics,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        ModuleRegistry? moduleRegistry = null)
     {
         foreach (var (modulePath, moduleInfo) in importResolver.LoadedSpyModules)
         {
@@ -251,7 +254,8 @@ internal class FileCompilationPipeline
             {
                 CurrentFilePath = modulePath,
                 SemanticBinding = _semanticBinding,
-                ContinueAfterError = true
+                ContinueAfterError = true,
+                ModuleRegistry = moduleRegistry
             };
             moduleTypeChecker.CheckModule(
                 moduleInfo.Module,

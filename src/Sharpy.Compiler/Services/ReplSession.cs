@@ -365,7 +365,8 @@ public class ReplSession
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger)
             {
                 SemanticBinding = semanticBinding,
-                CurrentFilePath = ReplFileName
+                CurrentFilePath = ReplFileName,
+                ModuleRegistry = moduleRegistry
             };
             try
             {

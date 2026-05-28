@@ -109,6 +109,15 @@ internal partial class TypeChecker
                 return exportedType;
             }
 
+            // For .NET modules, try lazy resolution of sub-namespaces and CLR types
+            // (e.g., `System`.Console resolves Console as a CLR type on the System namespace).
+            if (moduleSymbol.IsNetModule && ModuleRegistry != null)
+            {
+                var subResult = TryResolveClrSubNamespaceOrType(moduleSymbol, memberAccess);
+                if (subResult != null)
+                    return subResult;
+            }
+
             var moduleMemberMessage = $"Module '{moduleSymbol.Name}' has no member '{memberAccess.Member}'";
             var moduleMemberSuggestion = FindModuleMemberSuggestion(memberAccess.Member, moduleSymbol);
             if (moduleMemberSuggestion != null)
@@ -846,6 +855,59 @@ internal partial class TypeChecker
         }
 
         return null; // Not a tagged union constructor — fall through to normal handling
+    }
+
+    /// <summary>
+    /// Resolves a member access on a .NET namespace module to either a nested namespace
+    /// (e.g., <c>System.Collections</c>) or a CLR type (e.g., <c>System.Console</c>).
+    /// Returns null if neither resolution succeeds.
+    /// </summary>
+    private SemanticType? TryResolveClrSubNamespaceOrType(ModuleSymbol moduleSymbol, MemberAccess memberAccess)
+    {
+        if (moduleSymbol.NetNamespaceName == null)
+            return null;
+
+        var fullName = moduleSymbol.NetNamespaceName + "." + memberAccess.Member;
+
+        // Check if the qualified name is itself a known sub-namespace (e.g., System.Collections).
+        if (ModuleRegistry!.IsNetNamespace(fullName))
+        {
+            var netNamespace = ModuleRegistry.GetNetNamespace(fullName);
+            if (netNamespace != null)
+            {
+                var subModule = new ModuleSymbol
+                {
+                    Name = memberAccess.Member,
+                    Kind = SymbolKind.Module,
+                    FilePath = $".net:{fullName}",
+                    IsNetModule = true,
+                    NetNamespaceName = netNamespace,
+                    IsNameBacktickEscaped = memberAccess.IsMemberBacktickEscaped
+                };
+
+                foreach (var typeSymbol in ModuleRegistry.GetNamespaceTypes(fullName))
+                    subModule.Exports[typeSymbol.Name] = typeSymbol;
+
+                moduleSymbol.Exports[memberAccess.Member] = subModule;
+                return new ModuleType { Symbol = subModule };
+            }
+        }
+
+        // Otherwise, attempt to resolve the member as a CLR type within the current namespace.
+        // Pass the full namespace path (e.g., "System.Collections.Generic") so MapModuleToNamespace
+        // can resolve nested namespaces correctly; it lowercases the input internally.
+        var clrType = ModuleRegistry.TryResolveNetType(moduleSymbol.NetNamespaceName, memberAccess.Member);
+        if (clrType != null)
+        {
+            var typeSymbol = ModuleRegistry.CreateTypeSymbolFromClrType(clrType);
+            if (typeSymbol != null)
+            {
+                moduleSymbol.Exports[memberAccess.Member] = typeSymbol;
+                return new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol };
+            }
+        }
+
+        return null;
     }
 
 }

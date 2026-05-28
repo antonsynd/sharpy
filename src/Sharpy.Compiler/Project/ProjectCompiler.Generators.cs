@@ -468,7 +468,8 @@ internal partial class ProjectCompiler
                 isEntryPoint: false,
                 maxErrors: _maxErrors,
                 existingDiagnostics: _diagnostics,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken,
+                moduleRegistry: _moduleRegistry);
 
             foreach (var error in typeCheckResult.TypeChecker.Diagnostics.GetErrors())
             {

@@ -234,6 +234,15 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
+            // Inline CLR namespace resolution: a backtick-escaped identifier (e.g., `System`)
+            // that hasn't been imported can resolve directly to a .NET namespace.
+            if (id.IsNameBacktickEscaped && ModuleRegistry != null)
+            {
+                var resolved = TryResolveInlineClrNamespace(id);
+                if (resolved != null)
+                    return resolved;
+            }
+
             if (id.Name == "_")
             {
                 AddError("'_' placeholder can only be used inside function call arguments for partial application (e.g., f(_, 2)). "
@@ -453,5 +462,38 @@ internal partial class TypeChecker
         }
 
         return resultType ?? SemanticType.Void;
+    }
+
+    /// <summary>
+    /// Resolves a backtick-escaped identifier (e.g., `System`) to a synthetic ModuleSymbol
+    /// representing a .NET namespace, without requiring an explicit import statement.
+    /// Returns null if the identifier doesn't map to a known .NET namespace.
+    /// </summary>
+    private SemanticType? TryResolveInlineClrNamespace(Identifier id)
+    {
+        if (!ModuleRegistry!.IsNetNamespace(id.Name))
+            return null;
+
+        var netNamespace = ModuleRegistry.GetNetNamespace(id.Name);
+        if (netNamespace == null)
+            return null;
+
+        var moduleSymbol = new ModuleSymbol
+        {
+            Name = id.Name,
+            Kind = SymbolKind.Module,
+            FilePath = $".net:{id.Name}",
+            IsNetModule = true,
+            NetNamespaceName = netNamespace,
+            IsNameBacktickEscaped = true
+        };
+
+        foreach (var typeSymbol in ModuleRegistry.GetNamespaceTypes(id.Name))
+            moduleSymbol.Exports[typeSymbol.Name] = typeSymbol;
+
+        _symbolTable.TryDefine(moduleSymbol);
+        _semanticInfo.SetIdentifierSymbol(id, moduleSymbol);
+
+        return new ModuleType { Symbol = moduleSymbol };
     }
 }

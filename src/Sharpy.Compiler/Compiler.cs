@@ -243,7 +243,8 @@ public class Compiler
             var isEntryPoint = _options.OutputType.Equals("exe", StringComparison.OrdinalIgnoreCase);
             var typeCheckResult = pipeline.TypeCheck(
                 module, filePath, isEntryPoint, _options.MaxErrors, diagnostics,
-                computeCodeGenInfo: true, cancellationToken: cancellationToken);
+                computeCodeGenInfo: true, cancellationToken: cancellationToken,
+                moduleRegistry: _moduleRegistry);
             var typeChecker = typeCheckResult.TypeChecker;
 
             if (typeCheckResult.Aborted)
@@ -261,7 +262,7 @@ public class Compiler
             metrics.EndPhase();
 
             // Type-check imported .spy modules for SemanticInfo population
-            pipeline.TypeCheckImportedModules(importResolver, filePath, diagnostics, cancellationToken);
+            pipeline.TypeCheckImportedModules(importResolver, filePath, diagnostics, cancellationToken, _moduleRegistry);
 
             RunTimedAssertion(assertionTimer, "Post-type-checking", () => CompilerInvariants.AssertPostTypeChecking(semanticInfo, typeChecker.Diagnostics));
             AssertExpressionTypesRecorded(module, semanticInfo, diagnostics);
