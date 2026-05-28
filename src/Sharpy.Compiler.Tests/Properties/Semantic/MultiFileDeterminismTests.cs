@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using CsCheck;
 using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
 using Xunit.Abstractions;
@@ -45,6 +46,64 @@ public class MultiFileDeterminismTests
         {
             Assert.Equal(norm1[key], norm2[key]);
         }
+    }
+
+    [Fact]
+    public void GeneratedMultiFilePrograms_AreOrderIndependent()
+    {
+        Gen.Select(
+            Gen.OneOfConst("greet", "compute", "transform", "process"),
+            Gen.OneOfConst("int", "str", "bool"),
+            Gen.OneOfConst("Widget", "Item", "Entry", "Record"),
+            Gen.OneOfConst("int", "str")
+        ).Sample((funcName, paramType, className, fieldType) =>
+        {
+            var defaultVal = paramType switch
+            {
+                "int" => "0",
+                "str" => "\"hello\"",
+                "bool" => "True",
+                _ => "0"
+            };
+            var fieldDefault = fieldType switch
+            {
+                "int" => "42",
+                "str" => "\"test\"",
+                _ => "0"
+            };
+
+            var libSpy = $"def {funcName}(x: {paramType}) -> {paramType}:\n    return x\n\nclass {className}:\n    value: {fieldType}\n    def __init__(self, v: {fieldType}):\n        self.value = v\n";
+            var mainSpy = $"from lib import {funcName}, {className}\n\ndef main():\n    print({funcName}({defaultVal}))\n    obj: {className} = {className}({fieldDefault})\n    print(obj.value)\n";
+
+            var (diags1, csharp1) = CompileWithOrder(mainSpy, libSpy, mainFirst: true);
+            var (diags2, csharp2) = CompileWithOrder(mainSpy, libSpy, mainFirst: false);
+
+            var normDiags1 = diags1.Select(d => (d.Code, NormalizePath(d.Message))).OrderBy(d => d.Code).ThenBy(d => d.Item2).ToList();
+            var normDiags2 = diags2.Select(d => (d.Code, NormalizePath(d.Message))).OrderBy(d => d.Code).ThenBy(d => d.Item2).ToList();
+
+            if (normDiags1.Count != normDiags2.Count)
+                throw new Exception($"Diagnostic count mismatch: {normDiags1.Count} vs {normDiags2.Count}");
+
+            for (int i = 0; i < normDiags1.Count; i++)
+            {
+                if (normDiags1[i].Code != normDiags2[i].Code || normDiags1[i].Item2 != normDiags2[i].Item2)
+                    throw new Exception($"Diagnostic mismatch at index {i}");
+            }
+
+            var norm1 = NormalizeCSharp(csharp1);
+            var norm2 = NormalizeCSharp(csharp2);
+
+            var keys1 = norm1.Keys.OrderBy(k => k).ToList();
+            var keys2 = norm2.Keys.OrderBy(k => k).ToList();
+            if (!keys1.SequenceEqual(keys2))
+                throw new Exception($"C# file keys differ: [{string.Join(", ", keys1)}] vs [{string.Join(", ", keys2)}]");
+
+            foreach (var key in keys1)
+            {
+                if (norm1[key] != norm2[key])
+                    throw new Exception($"Generated C# differs for {key}");
+            }
+        }, iter: 20);
     }
 
     private (List<Sharpy.Compiler.Diagnostics.CompilerDiagnostic> diags, Dictionary<string, string> csharp)
