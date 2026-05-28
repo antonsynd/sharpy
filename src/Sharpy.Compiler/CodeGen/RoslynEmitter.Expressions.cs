@@ -129,6 +129,16 @@ internal partial class RoslynEmitter
         // Shadowing check: if the semantic analysis resolved this identifier to a VariableSymbol,
         // it's a local variable shadowing the builtin — skip the builtin emission path.
         var resolvedSymbol = _context.SemanticInfo?.GetIdentifierSymbol(name);
+
+        // Inline CLR namespace identifier (e.g., `System` resolved by semantic analysis
+        // to a synthetic .NET ModuleSymbol). Emit the namespace name verbatim so chained
+        // access produces valid C# (e.g., `System`.Console.WriteLine → System.Console.WriteLine).
+        // Bypasses GetMangledVariableName which would otherwise camel-case it to "system".
+        if (resolvedSymbol is ModuleSymbol { IsNetModule: true, NetNamespaceName: { } netNamespaceName })
+        {
+            return IdentifierName(netNamespaceName);
+        }
+
         if (resolvedSymbol is not VariableSymbol)
         {
             var symbol = _context.LookupSymbol(name.Name);
