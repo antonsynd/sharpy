@@ -130,7 +130,6 @@ public class CfgWellFormednessPropertyTests
                     Interlocked.Increment(ref cfgsChecked);
                 }
             }
-            }
             catch (CfgInvariantException)
             {
                 // Real invariant violation — propagate so the property fails.
