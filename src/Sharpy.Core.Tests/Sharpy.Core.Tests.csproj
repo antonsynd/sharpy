@@ -24,5 +24,6 @@
 
     <!-- Optional: Fluent assertions for better readability -->
     <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="CsCheck" Version="4.7.0" />
   </ItemGroup>
 </Project>
