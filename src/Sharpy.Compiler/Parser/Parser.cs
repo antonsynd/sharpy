@@ -95,8 +95,12 @@ public partial class Parser
     }
 
     private Token Current => _position < _tokens.Count ? _tokens[_position] : _tokens[^1];
-    private Token Previous => _position > 0 ? _tokens[_position - 1] : _tokens[0];
-    private Token Peek(int offset = 1) => _position + offset < _tokens.Count ? _tokens[_position + offset] : _tokens[^1];
+    private Token Previous => _position > 0 ? _tokens[Math.Min(_position - 1, _tokens.Count - 1)] : _tokens[0];
+    private Token Peek(int offset = 1)
+    {
+        var index = _position + offset;
+        return index >= 0 && index < _tokens.Count ? _tokens[index] : _tokens[^1];
+    }
     private bool IsAtEnd => Current.Type == TokenType.Eof;
 
     /// <summary>
@@ -457,7 +461,7 @@ public partial class Parser
 
         if (trailingTrivia == null)
         {
-            for (int i = _position - 1; i >= 0; i--)
+            for (int i = Math.Min(_position - 1, _tokens.Count - 1); i >= 0; i--)
             {
                 var t = _tokens[i];
                 if (t.Type is TokenType.Newline or TokenType.Indent or TokenType.Dedent)

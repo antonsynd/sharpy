@@ -237,6 +237,13 @@ internal sealed partial class UnparseVisitor
     {
         _w.Write("(");
         Visit(node.Expression);
+        // When the inner expression is a starred/spread expression, the parser
+        // will interpret (*expr) as a single-element tuple literal rather than
+        // a parenthesized star expression. Add a trailing comma so that the
+        // round-trip is stable: (*expr,) parses as TupleLiteral and unparses
+        // the same way.
+        if (node.Expression is StarExpression or SpreadElement)
+            _w.Write(",");
         _w.Write(")");
     }
 
