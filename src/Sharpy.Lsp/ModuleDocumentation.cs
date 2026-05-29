@@ -32,6 +32,7 @@ internal static class ModuleDocumentation
         ["random"] = "Generate pseudo-random numbers and choices.",
         ["re"] = "Regular expression matching operations.",
         ["shutil"] = "High-level file operations (copy, move, remove trees).",
+        ["socket"] = "Low-level networking interface (TCP, UDP, DNS).",
         ["statistics"] = "Mathematical statistics functions.",
         ["string"] = "String constants and template operations.",
         ["sys"] = "System-specific parameters and functions.",
