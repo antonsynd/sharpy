@@ -66,7 +66,7 @@ namespace Sharpy
             var sb = new StringBuilder();
             sb.Append(string.IsNullOrEmpty(problem) ? "error parsing YAML" : problem);
 
-            if (\!string.IsNullOrEmpty(context))
+            if (!string.IsNullOrEmpty(context))
             {
                 sb.Append("; ");
                 sb.Append(context);

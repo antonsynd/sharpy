@@ -27,25 +27,25 @@ namespace Sharpy
                     return value;
 
                 case IDictionary mapping:
-                {
-                    var result = new Dict<string, object?>();
-                    foreach (DictionaryEntry entry in mapping)
                     {
-                        string key = ScalarToString(entry.Key);
-                        result[key] = ToSharpy(entry.Value);
+                        var result = new Dict<string, object?>();
+                        foreach (DictionaryEntry entry in mapping)
+                        {
+                            string key = ScalarToString(entry.Key);
+                            result[key] = ToSharpy(entry.Value);
+                        }
+                        return result;
                     }
-                    return result;
-                }
 
                 case IEnumerable sequence:
-                {
-                    var result = new List<object?>();
-                    foreach (object? item in sequence)
                     {
-                        result.Append(ToSharpy(item));
+                        var result = new List<object?>();
+                        foreach (object? item in sequence)
+                        {
+                            result.Append(ToSharpy(item));
+                        }
+                        return result;
                     }
-                    return result;
-                }
 
                 default:
                     return NormalizeScalar(value);
@@ -190,10 +190,10 @@ namespace Sharpy
                 case ushort:
                 case int:
                 case uint:
-                {
-                    long widened = System.Convert.ToInt64(value, CultureInfo.InvariantCulture);
-                    return (widened >= int.MinValue && widened <= int.MaxValue) ? (int)widened : (object)widened;
-                }
+                    {
+                        long widened = System.Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                        return (widened >= int.MinValue && widened <= int.MaxValue) ? (int)widened : (object)widened;
+                    }
 
                 default:
                     return value;
