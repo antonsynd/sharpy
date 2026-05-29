@@ -259,6 +259,42 @@ namespace Sharpy
 
             return value;
         }
+
+#if NET10_0_OR_GREATER
+        /// <summary>
+        /// Deserialize a YAML string into a strongly-typed object.
+        /// </summary>
+        /// <typeparam name="T">The target type to deserialize into.</typeparam>
+        /// <param name="text">The YAML text to parse.</param>
+        /// <returns>A <see cref="Result{T,E}"/> containing the deserialized value on success,
+        /// or a <see cref="YAMLError"/> on failure.</returns>
+        public static Result<T, YAMLError> SafeLoadTyped<T>(string text)
+        {
+            if (text is null)
+            {
+                throw new TypeError("the YAML input must be str, not NoneType");
+            }
+
+            try
+            {
+                // Mirror the json module's snake_case, lenient mapping for typed loads.
+                IDeserializer deserializer = new DeserializerBuilder()
+                    .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.UnderscoredNamingConvention.Instance)
+                    .IgnoreUnmatchedProperties()
+                    .Build();
+                T value = deserializer.Deserialize<T>(text);
+                return Result<T, YAMLError>.Ok(value);
+            }
+            catch (YamlException ex)
+            {
+                return Result<T, YAMLError>.Err(ToParseError(ex));
+            }
+            catch (System.Exception ex)
+            {
+                return Result<T, YAMLError>.Err(new YAMLError(ex.Message, ex));
+            }
+        }
+#endif
     }
 
     /// <summary>
