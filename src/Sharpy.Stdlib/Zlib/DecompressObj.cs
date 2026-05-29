@@ -21,9 +21,11 @@ namespace Sharpy
 
         /// <summary>
         /// Decompress data and return a bytes object with at least part of the decompressed data.
+        /// Unlike CPython's incremental output, this implementation buffers all input and
+        /// returns decompressed data only when <see cref="Flush"/> is called.
         /// </summary>
         /// <param name="data">The compressed data to decompress.</param>
-        /// <returns>Decompressed bytes.</returns>
+        /// <returns>Empty array (data is buffered until Flush).</returns>
         public byte[] Decompress(byte[] data)
         {
             if (data == null)

@@ -23,9 +23,11 @@ namespace Sharpy
 
         /// <summary>
         /// Compress data and return a bytes object with at least part of the compressed data.
+        /// Unlike CPython's incremental output, this implementation buffers all input and
+        /// returns compressed data only when <see cref="Flush"/> is called.
         /// </summary>
         /// <param name="data">The data to compress.</param>
-        /// <returns>Compressed bytes (may be empty if buffered internally).</returns>
+        /// <returns>Empty array (data is buffered until Flush).</returns>
         public byte[] Compress(byte[] data)
         {
             if (data == null)

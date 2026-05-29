@@ -140,7 +140,9 @@ namespace Sharpy
                     zlib.Write(input, 0, input.Length);
                 }
 #else
-                // netstandard2.1: use DeflateStream (no ZLibStream available)
+                // netstandard2.1: use DeflateStream (no ZLibStream available).
+                // NOTE: produces raw DEFLATE without zlib headers — not cross-compatible
+                // with standard zlib format. Use net6.0+ for full zlib compatibility.
                 using (var deflate = new DeflateStream(output, level, leaveOpen: true))
                 {
                     deflate.Write(input, 0, input.Length);
@@ -161,7 +163,9 @@ namespace Sharpy
                     zlib.CopyTo(output);
                 }
 #else
-                // netstandard2.1: use DeflateStream (no ZLibStream available)
+                // netstandard2.1: use DeflateStream (no ZLibStream available).
+                // NOTE: expects raw DEFLATE without zlib headers — not cross-compatible
+                // with standard zlib format. Use net6.0+ for full zlib compatibility.
                 using (var deflate = new DeflateStream(inputStream, CompressionMode.Decompress))
                 {
                     deflate.CopyTo(output);
