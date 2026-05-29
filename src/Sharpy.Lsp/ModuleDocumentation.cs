@@ -38,6 +38,7 @@ internal static class ModuleDocumentation
         ["tempfile"] = "Generate temporary files and directories.",
         ["textwrap"] = "Text wrapping and filling.",
         ["time"] = "Time access and conversions.",
+        ["uuid"] = "UUID generation and parsing.",
     };
 
     /// <summary>
