@@ -260,6 +260,36 @@ namespace Sharpy
             return value;
         }
 
+        /// <summary>
+        /// Parse a YAML document preserving comments, key order, and formatting.
+        /// Mappings become <see cref="CommentedMap"/>, sequences become
+        /// <see cref="CommentedSeq"/>, and scalars are converted to their natural types.
+        /// </summary>
+        /// <param name="text">The YAML text to parse.</param>
+        /// <returns>The parsed value with comments preserved.</returns>
+        /// <exception cref="YAMLParseError">Thrown when the input cannot be parsed.</exception>
+        public static object? RoundtripLoad(string text)
+        {
+            if (text is null)
+            {
+                throw new TypeError("the YAML input must be str, not NoneType");
+            }
+
+            return YamlRoundtrip.RoundtripLoad(text);
+        }
+
+        /// <summary>
+        /// Serialize data to YAML, re-emitting any comments stored in
+        /// <see cref="CommentedMap"/>/<see cref="CommentedSeq"/> nodes.
+        /// </summary>
+        /// <param name="data">The data to serialize (may include commented nodes).</param>
+        /// <param name="indent">Number of spaces per indentation level.</param>
+        /// <returns>The YAML string with comments preserved.</returns>
+        public static string RoundtripDump(object? data, int indent = 2)
+        {
+            return YamlRoundtrip.RoundtripDump(data, indent);
+        }
+
 #if NET10_0_OR_GREATER
         /// <summary>
         /// Deserialize a YAML string into a strongly-typed object.
