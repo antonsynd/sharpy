@@ -93,6 +93,8 @@ namespace Sharpy
         public void Connect((string host, int port) address)
         {
             var ipAddresses = Dns.GetHostAddresses(address.host);
+            if (ipAddresses.Length == 0)
+                throw new SocketException((int)SocketError.HostNotFound);
             var endpoint = new IPEndPoint(ipAddresses[0], address.port);
             _socket.Connect(endpoint);
         }
@@ -302,7 +304,8 @@ namespace Sharpy
         /// <returns>A tuple of (host, port).</returns>
         public (string host, int port) Getsockname()
         {
-            var ep = (IPEndPoint)_socket.LocalEndPoint!;
+            if (_socket.LocalEndPoint is not IPEndPoint ep)
+                throw new InvalidOperationException("Socket is not bound to an address.");
             return (ep.Address.ToString(), ep.Port);
         }
 
@@ -313,7 +316,8 @@ namespace Sharpy
         /// <returns>A tuple of (host, port).</returns>
         public (string host, int port) Getpeername()
         {
-            var ep = (IPEndPoint)_socket.RemoteEndPoint!;
+            if (_socket.RemoteEndPoint is not IPEndPoint ep)
+                throw new InvalidOperationException("Socket is not connected.");
             return (ep.Address.ToString(), ep.Port);
         }
 

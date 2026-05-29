@@ -69,7 +69,10 @@ namespace Sharpy
         /// s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         /// </code>
         /// </example>
-        public static SocketWrapper Socket(int family = 2, int type = 1, int proto = 0)
+        public static SocketWrapper Socket(
+            int family = (int)System.Net.Sockets.AddressFamily.InterNetwork,
+            int type = (int)System.Net.Sockets.SocketType.Stream,
+            int proto = 0)
         {
             var addressFamily = (AddressFamily)family;
             var socketType = (SocketType)type;
