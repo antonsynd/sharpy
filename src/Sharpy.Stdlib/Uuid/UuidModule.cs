@@ -45,10 +45,7 @@ namespace Sharpy
 
             // Random clock_seq (14 bits) and node (48 bits) for privacy
             var randomBytes = new byte[8];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomBytes);
-            }
+            RandomNumberGenerator.Fill(randomBytes);
 
             int clockSeq = ((randomBytes[0] & 0x3F) << 8) | randomBytes[1];
             var node = new byte[6];

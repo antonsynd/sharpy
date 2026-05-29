@@ -63,23 +63,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// The UUID as a 128-bit integer.
-        /// </summary>
-        public long Int
-        {
-            get
-            {
-                var bytes = ToRfc4122Bytes();
-                // Convert to big-endian 128-bit integer (return as long for top 64 bits would lose data)
-                // Python returns a full 128-bit int; we approximate with the full hex parse
-                var hex = _guid.ToString("N");
-                // Use long for the lower 64 bits representation
-                // For full fidelity we return the numeric value as a long (may overflow for large UUIDs)
-                return long.Parse(hex.Substring(16), System.Globalization.NumberStyles.HexNumber);
-            }
-        }
-
-        /// <summary>
         /// The UUID version number (1 through 5, meaningful for RFC 4122 UUIDs).
         /// </summary>
         public int Version
