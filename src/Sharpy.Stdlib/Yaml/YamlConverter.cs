@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Reflection;
 
 namespace Sharpy
 {
@@ -46,7 +48,7 @@ namespace Sharpy
                 }
 
                 default:
-                    return value;
+                    return NormalizeScalar(value);
             }
         }
 
@@ -75,13 +77,12 @@ namespace Sharpy
 
                 if (definition == typeof(Dict<,>) || definition == typeof(FrozenDict<,>))
                 {
+                    // Sharpy dicts enumerate keys (Python semantics), so walk the
+                    // IEnumerable<KeyValuePair<K, V>> interface to recover entries.
                     var result = new Dictionary<object, object?>();
-                    foreach (object? entry in (IEnumerable)value)
+                    foreach (KeyValuePair<object?, object?> entry in EnumerateMapping(value, type))
                     {
-                        System.Type entryType = entry!.GetType();
-                        object? key = entryType.GetProperty("Key")!.GetValue(entry);
-                        object? entryValue = entryType.GetProperty("Value")!.GetValue(entry);
-                        result[ToYamlDotNet(key)!] = ToYamlDotNet(entryValue);
+                        result[ToYamlDotNet(entry.Key)!] = ToYamlDotNet(entry.Value);
                     }
                     return result;
                 }
@@ -120,6 +121,83 @@ namespace Sharpy
             }
 
             return value;
+        }
+
+        private static IEnumerable<KeyValuePair<object?, object?>> EnumerateMapping(object mapping, System.Type type)
+        {
+            System.Type? kvpEnumerable = null;
+            foreach (System.Type iface in type.GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                {
+                    System.Type argument = iface.GetGenericArguments()[0];
+                    if (argument.IsGenericType && argument.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+                    {
+                        kvpEnumerable = iface;
+                        break;
+                    }
+                }
+            }
+
+            if (kvpEnumerable is null)
+            {
+                yield break;
+            }
+
+            // Invoke GetEnumerator through the interface so explicit implementations dispatch.
+            var enumerator = (IEnumerator)kvpEnumerable.GetMethod("GetEnumerator")!.Invoke(mapping, null)!;
+            PropertyInfo? keyProperty = null;
+            PropertyInfo? valueProperty = null;
+            while (enumerator.MoveNext())
+            {
+                object current = enumerator.Current!;
+                if (keyProperty is null || valueProperty is null)
+                {
+                    System.Type currentType = current.GetType();
+                    keyProperty = currentType.GetProperty("Key");
+                    valueProperty = currentType.GetProperty("Value");
+                }
+
+                yield return new KeyValuePair<object?, object?>(
+                    keyProperty!.GetValue(current),
+                    valueProperty!.GetValue(current));
+            }
+        }
+
+        private static object NormalizeScalar(object value)
+        {
+            switch (value)
+            {
+                case bool:
+                case double:
+                    return value;
+
+                case float f:
+                    return (double)f;
+
+                case decimal m:
+                    return (double)m;
+
+                case ulong u:
+                    return u <= long.MaxValue ? (long)u : value;
+
+                case long l:
+                    return (l >= int.MinValue && l <= int.MaxValue) ? (int)l : (object)l;
+
+                case byte:
+                case sbyte:
+                case short:
+                case ushort:
+                case int:
+                case uint:
+                {
+                    long widened = System.Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                    return (widened >= int.MinValue && widened <= int.MaxValue) ? (int)widened : (object)widened;
+                }
+
+                default:
+                    return value;
+            }
         }
 
         private static List<object?> EnumerableToList(IEnumerable source)
