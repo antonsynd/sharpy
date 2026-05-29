@@ -79,7 +79,7 @@ namespace Sharpy
                 ms = int.MaxValue;
             }
 
-            Thread.Sleep((int)ms);
+            System.Threading.Thread.Sleep((int)ms);
         }
 
         /// <summary>
