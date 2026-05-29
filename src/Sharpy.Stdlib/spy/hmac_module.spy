@@ -1,0 +1,18 @@
+from sharpy import HmacObject
+
+def new(key: str, msg: str = "", digestmod: str = "sha256") -> HmacObject:
+    """Create a new HMAC object for incremental hashing."""
+    h: HmacObject = HmacObject(key, digestmod, 32)
+    if len(msg) > 0:
+        h.update(msg)
+    return h
+
+def digest(key: str, msg: str, digestmod: str) -> list[int]:
+    """One-shot HMAC computation returning raw digest bytes."""
+    h: HmacObject = HmacObject(key, digestmod, 32)
+    h.update(msg)
+    return h.digest()
+
+def compare_digest(a: str, b: str) -> bool:
+    """Constant-time comparison of two strings to prevent timing attacks."""
+    ...
