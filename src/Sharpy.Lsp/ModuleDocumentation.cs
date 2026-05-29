@@ -31,6 +31,7 @@ internal static class ModuleDocumentation
         ["pathlib"] = "Object-oriented filesystem paths.",
         ["random"] = "Generate pseudo-random numbers and choices.",
         ["re"] = "Regular expression matching operations.",
+        ["shlex"] = "Shell-like lexical analysis (split, quote, join).",
         ["shutil"] = "High-level file operations (copy, move, remove trees).",
         ["statistics"] = "Mathematical statistics functions.",
         ["string"] = "String constants and template operations.",

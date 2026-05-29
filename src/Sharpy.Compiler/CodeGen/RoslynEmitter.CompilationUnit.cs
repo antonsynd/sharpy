@@ -547,6 +547,7 @@ internal partial class RoslynEmitter
         { "shutil", "ShutilModule" },
         { "random", "RandomModule" },
         { "hashlib", "HashlibModule" },
+        { "shlex", "ShlexModule" },
     };
 
     /// <summary>
