@@ -207,6 +207,87 @@ public class UnparserTriviaAndFormattingTests
         second.Should().Be(first);
     }
 
+    [Fact]
+    public void Formatting_StructDef_IsIdempotent()
+    {
+        var source = "struct Point:\n    x: int = 0\n    y: int = 0\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_InterfaceDef_IsIdempotent()
+    {
+        var source = "interface IDrawable:\n    def draw(self):\n        pass\n    def resize(self, w: int, h: int):\n        pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_EnumDef_IsIdempotent()
+    {
+        var source = "enum Color:\n    RED = 1\n    GREEN = 2\n    BLUE = 3\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_UnionDef_IsIdempotent()
+    {
+        var source = "union Shape:\n    case Circle(radius: float)\n    case Rect(w: float, h: float)\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_DelegateDef_IsIdempotent()
+    {
+        var source = "delegate Callback(x: int) -> bool\ndef main():\n    pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_MixedDefinitions_IsIdempotent()
+    {
+        var source = "import os\nx: int = 42\ndef helper():\n    pass\nclass Config:\n    name: str = \"default\"\n    def reset(self):\n        pass\nstruct Point:\n    x: int = 0\nenum Color:\n    RED = 1\ndef main():\n    pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_NestedDefinitionsWithTrivia_IsIdempotent()
+    {
+        var source = "# Top comment\nclass Outer:\n    # Inner class\n    class Inner:\n        # Method\n        def method(self):\n            # Body\n            x = 1  # inline\n            return x\n        def another(self):\n            pass\n    def outer_method(self):\n        pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_DecoratedMultipleDefinitions_IsIdempotent()
+    {
+        var source = "# Before decorated\n@staticmethod\ndef static_func():\n    pass\n@staticmethod\n@override\ndef overridden():\n    pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void Formatting_EmptyBodies_IsIdempotent()
+    {
+        var source = "class Empty:\n    pass\ndef noop():\n    pass\nclass WithDoc:\n    \"\"\"Docstring.\"\"\"\n    pass\n";
+        var first = FormatSource(source);
+        var second = FormatSource(first);
+        second.Should().Be(first);
+    }
+
     #endregion
 
     #region Blank line trivia preservation
