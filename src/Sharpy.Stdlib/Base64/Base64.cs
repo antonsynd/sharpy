@@ -339,13 +339,23 @@ namespace Sharpy
             return new Bytes(final);
         }
 
-        private static int B85CharToValue(char c)
+        private static readonly int[] B85Lookup = BuildB85Lookup();
+
+        private static int[] BuildB85Lookup()
         {
+            var lookup = new int[128];
+            for (int i = 0; i < 128; i++) lookup[i] = -1;
             for (int i = 0; i < B85Alphabet.Length; i++)
             {
-                if (B85Alphabet[i] == c) return i;
+                lookup[B85Alphabet[i]] = i;
             }
-            return -1;
+            return lookup;
+        }
+
+        private static int B85CharToValue(char c)
+        {
+            if (c < 0 || c >= 128) return -1;
+            return B85Lookup[c];
         }
 
         // ─── Ascii85 (Adobe variant) ────────────────────────────────────────
