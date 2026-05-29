@@ -95,6 +95,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Stdlib.Unittest", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Cli.Tests", "src\Sharpy.Cli.Tests\Sharpy.Cli.Tests.csproj", "{70AD476D-5670-4E8C-9B61-43F07788708E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Stdlib.Urllib", "src\Sharpy.Stdlib\modules\Sharpy.Stdlib.Urllib.csproj", "{57EF70DB-E19F-4368-B889-491899A48325}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -633,6 +635,18 @@ Global
 		{70AD476D-5670-4E8C-9B61-43F07788708E}.Release|x64.Build.0 = Release|Any CPU
 		{70AD476D-5670-4E8C-9B61-43F07788708E}.Release|x86.ActiveCfg = Release|Any CPU
 		{70AD476D-5670-4E8C-9B61-43F07788708E}.Release|x86.Build.0 = Release|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Debug|x64.Build.0 = Debug|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Debug|x86.Build.0 = Debug|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Release|x64.ActiveCfg = Release|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Release|x64.Build.0 = Release|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Release|x86.ActiveCfg = Release|Any CPU
+		{57EF70DB-E19F-4368-B889-491899A48325}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -682,5 +696,6 @@ Global
 		{B03BF44E-B207-4327-BE10-E4D4570F854D} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
 		{343A5172-94AF-4BE5-AEBF-5212FA8B9E63} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
 		{70AD476D-5670-4E8C-9B61-43F07788708E} = {3B92A21E-F75D-4750-9B0E-BBEBCDE8932A}
+		{57EF70DB-E19F-4368-B889-491899A48325} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
 	EndGlobalSection
 EndGlobal
