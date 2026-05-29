@@ -1,0 +1,16 @@
+class Empty:
+    pass
+
+
+def noop():
+    pass
+
+
+class WithDocstring:
+    """A class with only a docstring."""
+    pass
+
+
+def documented():
+    """A function with only a docstring."""
+    pass

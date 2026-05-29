@@ -1,0 +1,16 @@
+# Top-level comment
+class Outer:
+    # Inner class comment
+    class Inner:
+        # Method comment
+        def method(self):
+            # Body comment
+            x = 1  # inline
+            return x
+        def another(self):
+            pass
+    def outer_method(self):
+        # Outer method body
+        if True:
+            y = 2
+        return y

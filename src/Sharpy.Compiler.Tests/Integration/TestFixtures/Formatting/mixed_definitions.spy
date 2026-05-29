@@ -1,0 +1,18 @@
+import os
+from sys import argv
+x: int = 42
+def helper():
+    pass
+class Config:
+    name: str = "default"
+    def reset(self):
+        pass
+struct Point:
+    x: int = 0
+    y: int = 0
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+def main():
+    pass

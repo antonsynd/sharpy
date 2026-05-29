@@ -1,0 +1,10 @@
+# Module-level comment about functions
+def greet(name: str):
+    """Say hello."""
+    # Prepare greeting
+    msg = f"Hello, {name}"  # build message
+    # Return it
+    return msg
+def farewell():
+    """Say goodbye."""
+    return "bye"

@@ -1,0 +1,16 @@
+# Comment before first decorated function
+@staticmethod
+def static_func():
+    pass
+
+
+# Comment before second decorated function
+@staticmethod
+@override
+def overridden():
+    pass
+
+
+# Comment before plain function
+def plain():
+    pass
