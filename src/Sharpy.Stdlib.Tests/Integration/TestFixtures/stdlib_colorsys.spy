@@ -1,0 +1,43 @@
+# Test colorsys module: RGB/HSV/HLS/YIQ conversions
+import colorsys
+
+def main():
+    # RGB to HSV roundtrip
+    hsv: tuple[float, float, float] = colorsys.rgb_to_hsv(0.2, 0.4, 0.6)
+    print(hsv[0])
+    print(hsv[1])
+    print(hsv[2])
+    rgb: tuple[float, float, float] = colorsys.hsv_to_rgb(hsv[0], hsv[1], hsv[2])
+    print(rgb[0])
+    print(rgb[1])
+    print(rgb[2])
+
+    # RGB to HLS roundtrip
+    hls: tuple[float, float, float] = colorsys.rgb_to_hls(0.2, 0.4, 0.6)
+    print(hls[0])
+    print(hls[1])
+    print(hls[2])
+
+    # RGB to YIQ roundtrip
+    yiq: tuple[float, float, float] = colorsys.rgb_to_yiq(0.2, 0.4, 0.6)
+    print(yiq[0])
+    print(yiq[1])
+    print(yiq[2])
+
+    # Edge case: black
+    black: tuple[float, float, float] = colorsys.rgb_to_hsv(0.0, 0.0, 0.0)
+    print(black[0])
+    print(black[1])
+    print(black[2])
+
+    # Edge case: white
+    white: tuple[float, float, float] = colorsys.rgb_to_hsv(1.0, 1.0, 1.0)
+    print(white[0])
+    print(white[1])
+    print(white[2])
+
+    # Edge case: pure red
+    red: tuple[float, float, float] = colorsys.rgb_to_hsv(1.0, 0.0, 0.0)
+    print(red[0])
+    print(red[1])
+    print(red[2])

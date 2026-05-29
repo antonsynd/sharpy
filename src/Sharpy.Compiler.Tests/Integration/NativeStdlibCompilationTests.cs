@@ -26,6 +26,7 @@ public class NativeStdlibCompilationTests
     private static readonly string[] ExpectedModules = new[]
     {
         "bisect_module",
+        "colorsys_module",
         "fnmatch_module",
         "functools",
         "hashlib_module",
