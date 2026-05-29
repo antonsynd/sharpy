@@ -1,0 +1,14 @@
+# Module-level comment
+import os
+
+
+# Function comment
+def foo():
+    # Body comment
+    x = 1  # inline comment
+    return x
+
+
+# Another function
+def bar():
+    pass

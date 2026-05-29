@@ -68,6 +68,18 @@ internal static class GenComments
         "# top\npass  # noop\n"
     };
 
+    private static readonly string[] BlankLineSources =
+    {
+        "x = 1\n\ny = 2\n",
+        "x = 1\n\n\ny = 2\n",
+        "x = 1\n\n\n\ny = 2\n",
+        "def foo():\n    pass\n\ndef bar():\n    pass\n",
+        "def foo():\n    pass\n\n\ndef bar():\n    pass\n",
+        "# comment\n\nx = 1\n",
+        "x = 1  # inline\n\ny = 2\n",
+        "x = 1\n\n# comment\ny = 2\n"
+    };
+
     private static readonly string[] CommentTexts =
     {
         "# TODO: fix this", "# important note", "# this is a comment",
@@ -91,6 +103,9 @@ internal static class GenComments
 
     public static Gen<string> SourceWithMixedComments { get; } =
         Gen.OneOfConst(MixedSources);
+
+    public static Gen<string> SourceWithBlankLines { get; } =
+        Gen.OneOfConst(BlankLineSources);
 
     public static Gen<string> CommentText { get; } =
         Gen.OneOfConst(CommentTexts);

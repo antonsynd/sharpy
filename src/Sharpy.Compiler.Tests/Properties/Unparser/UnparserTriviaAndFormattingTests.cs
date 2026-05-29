@@ -208,4 +208,60 @@ public class UnparserTriviaAndFormattingTests
     }
 
     #endregion
+
+    #region Blank line trivia preservation
+
+    [Fact]
+    public void Roundtrip_ThreeBlankLinesBetweenFunctions_Preserved()
+    {
+        var source = "def foo():\n    pass\n\n\n\ndef bar():\n    pass\n";
+        var result = UnparseWithTrivia(source);
+        result.Should().Contain("pass\n\n\n\ndef bar():");
+    }
+
+    [Fact]
+    public void Roundtrip_ZeroBlankLinesBetweenFunctions_NoCanonicalInsertion()
+    {
+        var source = "def foo():\n    pass\ndef bar():\n    pass\n";
+        var result = UnparseWithTrivia(source);
+        result.Should().Contain("pass\ndef bar():");
+    }
+
+    [Fact]
+    public void CanonicalMode_ZeroBlankLinesInput_InsertsCanonicalBlankLines()
+    {
+        var source = "def foo():\n    pass\ndef bar():\n    pass\n";
+        var result = FormatSource(source, FormatOptions.Default);
+        // FormatOptions.Default has BlankLinesAroundTopLevelDefs = 2, so 2 blank lines
+        result.Should().Contain("pass\n\n\ndef bar():");
+    }
+
+    [Fact]
+    public void Roundtrip_MixedBlankLinesAndComments_BothPreserved()
+    {
+        var source = "x = 1\n\n# a comment\n\ny = 2\n";
+        var result = UnparseWithTrivia(source);
+        result.Should().Contain("x = 1\n");
+        result.Should().Contain("\n# a comment\n");
+        result.Should().Contain("y = 2\n");
+        // Verify blank lines around the comment are present
+        var commentIdx = result.IndexOf("# a comment");
+        commentIdx.Should().BeGreaterThan(0);
+        // There should be a blank line before the comment
+        result.Substring(0, commentIdx).Should().EndWith("\n\n");
+    }
+
+    [Fact]
+    public void Roundtrip_VariedBlankLineCounts_MatchesInput()
+    {
+        // 1 blank line after first assignment, 3 blank lines before third function
+        var source = "x = 1\n\ny = 2\n\n\n\ndef foo():\n    pass\n";
+        var result = UnparseWithTrivia(source);
+        // 1 blank line between x=1 and y=2
+        result.Should().Contain("x = 1\n\ny = 2\n");
+        // 3 blank lines between y=2 and def foo
+        result.Should().Contain("y = 2\n\n\n\ndef foo():");
+    }
+
+    #endregion
 }

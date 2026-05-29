@@ -1,0 +1,17 @@
+# Header comment
+
+
+import os
+
+
+
+
+# Below imports
+def foo():
+    pass
+# Between functions
+
+
+def bar():
+    # Bar body
+    x = 1

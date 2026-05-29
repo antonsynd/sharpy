@@ -1,11 +1,56 @@
 using System.Collections.Immutable;
 using CsCheck;
+using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Tests.Properties.Generators;
 
 internal static class GenStatements
 {
+    /// <summary>
+    /// Randomly attaches BlankLines leading trivia to a statement (~20% chance).
+    /// BlankLineCount is randomly chosen between 1 and 3, with empty Text.
+    /// </summary>
+    internal static Gen<T> WithOptionalBlankLineTrivia<T>(Gen<T> gen) where T : Statement =>
+        Gen.Select(gen, Gen.Int[1, 100], Gen.Int[1, 3], (stmt, roll, count) =>
+        {
+            if (roll > 20)
+                return stmt;
+            return AddBlankLineTrivia(stmt, count);
+        });
+
+    /// <summary>
+    /// Deterministically attaches BlankLines leading trivia to a statement.
+    /// </summary>
+    internal static T AddBlankLineTrivia<T>(T stmt, int blankLineCount) where T : Statement
+    {
+        var trivia = new Trivia
+        {
+            Kind = TriviaKind.BlankLines,
+            BlankLineCount = blankLineCount,
+            Text = ""
+        };
+        return (T)(stmt with
+        {
+            LeadingTrivia = new[] { trivia }
+        });
+    }
+
+    /// <summary>
+    /// Deterministically attaches BlankLines trivia to a statement based on
+    /// a hash of its position, giving roughly 20% coverage with counts 1-3.
+    /// Suitable for use inside Select transforms.
+    /// </summary>
+    internal static Statement AddOptionalBlankLineTrivia(Statement stmt)
+    {
+        // Use a hash of the statement's hashcode to pseudo-randomly decide
+        var hash = Math.Abs(stmt.GetHashCode());
+        if (hash % 5 != 0)
+            return stmt;
+        int count = (hash % 3) + 1;
+        return AddBlankLineTrivia(stmt, count);
+    }
+
     public static Gen<Statement> Statement(GenContext ctx) =>
         ctx.HasFuel
             ? Gen.Frequency(
@@ -332,6 +377,22 @@ internal static class GenStatements
     {
         int maxLen = Sizing.MaxBodyLength(ctx.Fuel);
         return Statement(ctx.Burn()).Array[1, Math.Max(1, maxLen)]
+            .Select(stmts => stmts.ToImmutableArray());
+    }
+
+    /// <summary>
+    /// Like <see cref="Statement"/> but with ~20% chance of BlankLines trivia on each statement.
+    /// </summary>
+    public static Gen<Statement> StatementWithTrivia(GenContext ctx) =>
+        WithOptionalBlankLineTrivia(Statement(ctx));
+
+    /// <summary>
+    /// Like <see cref="Body"/> but statements may carry BlankLines trivia.
+    /// </summary>
+    public static Gen<ImmutableArray<Statement>> BodyWithTrivia(GenContext ctx)
+    {
+        int maxLen = Sizing.MaxBodyLength(ctx.Fuel);
+        return StatementWithTrivia(ctx.Burn()).Array[1, Math.Max(1, maxLen)]
             .Select(stmts => stmts.ToImmutableArray());
     }
 }

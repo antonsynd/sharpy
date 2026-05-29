@@ -11,6 +11,12 @@ internal static class GenSharpy
     public static Gen<Module> Module(GenContext ctx) =>
         GenModule.Module(ctx);
 
+    public static Gen<Module> ModuleWithTrivia() =>
+        ModuleWithTrivia(GenContext.Default);
+
+    public static Gen<Module> ModuleWithTrivia(GenContext ctx) =>
+        GenModule.ModuleWithTrivia(ctx);
+
     public static Gen<Expression> Expression() =>
         Expression(GenContext.Default);
 

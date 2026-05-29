@@ -121,6 +121,54 @@ public class CommentPreservationPropertyTests
     }
 
     [Fact]
+    public void BlankLines_PreservedInTrivia()
+    {
+        int passed = 0;
+        int total = 0;
+
+        GenComments.SourceWithBlankLines.Sample(source =>
+        {
+            Interlocked.Increment(ref total);
+            var lexer = new SharpyLexer(source, preserveTrivia: true);
+            var tokens = lexer.TokenizeAll();
+
+            var hasBlankLines = tokens.Any(t =>
+                t.LeadingTrivia is { Count: > 0 } trivia &&
+                trivia.Any(tr => tr.Kind == TriviaKind.BlankLines && tr.BlankLineCount > 0));
+
+            if (hasBlankLines)
+                Interlocked.Increment(ref passed);
+        }, iter: 150);
+
+        _output.WriteLine($"Blank line preservation: {passed}/{total}");
+        Assert.True(passed == total,
+            $"Blank lines not preserved in {total - passed}/{total} cases");
+    }
+
+    [Fact]
+    public void BlankLines_CountMatchesSource()
+    {
+        GenComments.SourceWithBlankLines.Sample(source =>
+        {
+            var lexer = new SharpyLexer(source, preserveTrivia: true);
+            var tokens = lexer.TokenizeAll();
+
+            var blankLineTrivia = tokens
+                .Where(t => t.LeadingTrivia is { Count: > 0 })
+                .SelectMany(t => t.LeadingTrivia!)
+                .Where(tr => tr.Kind == TriviaKind.BlankLines)
+                .ToList();
+
+            foreach (var trivia in blankLineTrivia)
+            {
+                if (trivia.BlankLineCount < 1)
+                    throw new Exception(
+                        $"BlankLineCount must be >= 1 but was {trivia.BlankLineCount}");
+            }
+        }, print: s => s, iter: 150);
+    }
+
+    [Fact]
     public void CommentText_MatchesOriginalContent()
     {
         GenComments.CommentText.Sample(commentText =>
