@@ -1,0 +1,9 @@
+# Test from-import toml module: loads, dumps
+from toml import loads, dumps
+
+def main():
+    data = loads('key = "value"')
+    print(data["key"])
+
+    result: str = dumps(data)
+    print(len(result) > 0)

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Sharpy.Stdlib.Toml</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Tomlyn" Version="0.18.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../Toml/**/*.cs" />
+  </ItemGroup>
+
+</Project>

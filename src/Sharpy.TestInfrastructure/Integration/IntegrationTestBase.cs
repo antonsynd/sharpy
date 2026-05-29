@@ -854,6 +854,8 @@ public abstract class IntegrationTestBase
             "SQLitePCLRaw.provider.e_sqlite3.dll",
             // Math.NET Numerics — required by numpy.linalg / numpy.fft submodules.
             "MathNet.Numerics.dll",
+            // Tomlyn — required by toml module.
+            "Tomlyn.dll",
         };
 
         foreach (var dllName in transitiveDeps)

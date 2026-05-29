@@ -1,0 +1,10 @@
+# Test toml module: roundtrip serialization
+import toml
+
+def main():
+    original: str = 'name = "hello"\ncount = 99'
+    data = toml.loads(original)
+    serialized: str = toml.dumps(data)
+    restored = toml.loads(serialized)
+    print(restored["name"])
+    print(restored["count"])

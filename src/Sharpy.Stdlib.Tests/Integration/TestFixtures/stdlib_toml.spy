@@ -1,0 +1,11 @@
+# Test toml module: loads and dumps
+import toml
+
+def main():
+    text: str = 'name = "test"\ncount = 42'
+    data = toml.loads(text)
+    print(data["name"])
+    print(data["count"])
+
+    result: str = toml.dumps(data)
+    print(len(result) > 0)

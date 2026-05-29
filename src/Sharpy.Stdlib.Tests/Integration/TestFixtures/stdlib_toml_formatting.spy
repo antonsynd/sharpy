@@ -1,0 +1,10 @@
+# Test toml module: dumps with sort_keys option
+import toml
+
+def main():
+    data = toml.loads('zebra = 1\nalpha = 2')
+    result: str = toml.dumps(data, sort_keys=True)
+    # When sorted, alpha should come before zebra
+    alpha_pos: int = result.index("alpha")
+    zebra_pos: int = result.index("zebra")
+    print(alpha_pos < zebra_pos)

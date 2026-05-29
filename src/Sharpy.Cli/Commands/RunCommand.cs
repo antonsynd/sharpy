@@ -327,12 +327,14 @@ internal static class RunCommand
         "SQLitePCLRaw.core.dll",
         "SQLitePCLRaw.provider.e_sqlite3.dll",
     };
+    private static readonly string[] TomlNuGetDeps = new[] { "Tomlyn.dll" };
 
     private static readonly Dictionary<string, string[]> PerModuleNuGetDeps = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Sharpy.Stdlib.Numpy.dll"] = NumpyNuGetDeps,
         ["Sharpy.Stdlib.Sqlite3.dll"] = Sqlite3NuGetDeps,
-        ["Sharpy.Stdlib.dll"] = NumpyNuGetDeps.Concat(Sqlite3NuGetDeps).ToArray(),
+        ["Sharpy.Stdlib.Toml.dll"] = TomlNuGetDeps,
+        ["Sharpy.Stdlib.dll"] = NumpyNuGetDeps.Concat(Sqlite3NuGetDeps).Concat(TomlNuGetDeps).ToArray(),
     };
 
     static void CopyUsedStdlibDependencies(string cliDir, string outputDir, IReadOnlySet<string> usedAssemblyPaths)
