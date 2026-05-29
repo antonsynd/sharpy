@@ -78,7 +78,17 @@ internal sealed partial class UnparseVisitor : AstVisitor
             return;
         foreach (var trivia in node.LeadingTrivia)
         {
-            _w.WriteLine(trivia.Text);
+            if (trivia.Kind == TriviaKind.BlankLines)
+            {
+                if (_options.Formatting != null)
+                    continue;
+                for (int i = 0; i < trivia.BlankLineCount; i++)
+                    _w.WriteLine();
+            }
+            else
+            {
+                _w.WriteLine(trivia.Text);
+            }
         }
     }
 
