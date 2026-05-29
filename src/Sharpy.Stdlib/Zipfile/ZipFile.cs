@@ -16,6 +16,7 @@ namespace Sharpy
         private ZipArchive? _archive;
         private FileStream? _stream;
         private readonly string _mode;
+        private readonly int _compression;
 
         /// <summary>
         /// Open a ZIP archive.
@@ -26,6 +27,7 @@ namespace Sharpy
         public ZipFile(string file, string mode = "r", int compression = 8)
         {
             _mode = mode;
+            _compression = compression;
 
             ZipArchiveMode archiveMode;
             switch (mode)
@@ -73,9 +75,11 @@ namespace Sharpy
                 throw new KeyNotFoundException("There is no item named '" + name + "' in the archive");
             }
 
-            int compressType = entry.CompressedLength < entry.Length
-                ? ZipfileModule.ZIP_DEFLATED
-                : ZipfileModule.ZIP_STORED;
+            // .NET ZipArchiveEntry doesn't expose compression method directly.
+            // Use heuristic: if compressed size equals uncompressed, assume stored.
+            int compressType = entry.CompressedLength == entry.Length
+                ? ZipfileModule.ZIP_STORED
+                : ZipfileModule.ZIP_DEFLATED;
 
             return new ZipInfo(
                 entry.FullName,
@@ -178,8 +182,9 @@ namespace Sharpy
             {
                 _archive.Dispose();
                 _archive = null;
+                // Stream is disposed by ZipArchive (leaveOpen: false)
+                _stream = null;
             }
-            _stream = null;
         }
 
         /// <summary>Dispose the archive (supports context manager pattern).</summary>
@@ -206,12 +211,22 @@ namespace Sharpy
 
         private CompressionLevel GetCompressionLevel()
         {
-            return CompressionLevel.Optimal;
+            return _compression == ZipfileModule.ZIP_STORED
+                ? CompressionLevel.NoCompression
+                : CompressionLevel.Optimal;
         }
 
         private static string ExtractEntry(ZipArchiveEntry entry, string destDir)
         {
-            string destPath = System.IO.Path.Combine(destDir, entry.FullName);
+            string destPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(destDir, entry.FullName));
+            string fullDestDir = System.IO.Path.GetFullPath(destDir + System.IO.Path.DirectorySeparatorChar);
+
+            // Prevent ZIP slip: ensure extracted path is within the destination directory
+            if (!destPath.StartsWith(fullDestDir, StringComparison.Ordinal))
+            {
+                throw new IOException("Entry is outside the target directory: " + entry.FullName);
+            }
+
             string? dirPath = System.IO.Path.GetDirectoryName(destPath);
             if (dirPath != null)
             {
