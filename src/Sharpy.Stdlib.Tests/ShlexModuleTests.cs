@@ -155,21 +155,21 @@ public class ShlexModuleTests
     [Fact]
     public void Join_SimpleTokens()
     {
-        var result = ShlexModule.Join(new System.Collections.Generic.List<string> { "echo", "hello world" });
+        var result = ShlexModule.Join(new List<string>(new[] { "echo", "hello world" }));
         result.Should().Be("echo 'hello world'");
     }
 
     [Fact]
     public void Join_EmptyList()
     {
-        var result = ShlexModule.Join(new System.Collections.Generic.List<string>());
+        var result = ShlexModule.Join(new List<string>());
         result.Should().Be("");
     }
 
     [Fact]
     public void Join_SingleToken()
     {
-        var result = ShlexModule.Join(new System.Collections.Generic.List<string> { "hello" });
+        var result = ShlexModule.Join(new List<string>(new[] { "hello" }));
         result.Should().Be("hello");
     }
 
@@ -178,7 +178,7 @@ public class ShlexModuleTests
     [Fact]
     public void Split_Join_Roundtrip()
     {
-        var tokens = new System.Collections.Generic.List<string> { "echo", "hello world", "|", "grep", "hello" };
+        var tokens = new List<string>(new[] { "echo", "hello world", "|", "grep", "hello" });
         var joined = ShlexModule.Join(tokens);
         var split = ShlexModule.Split(joined);
         split.Should().Equal(tokens);

@@ -16,14 +16,14 @@ namespace Sharpy
         /// <param name="s">The string to split.</param>
         /// <returns>A list of tokens.</returns>
         /// <exception cref="ValueError">Thrown when quotes are not closed.</exception>
-        public static System.Collections.Generic.List<string> Split(string s)
+        public static List<string> Split(string s)
         {
             if (s == null)
             {
                 throw new TypeError("argument must be str, not NoneType");
             }
 
-            var tokens = new System.Collections.Generic.List<string>();
+            var tokens = new List<string>();
             var token = new StringBuilder();
             bool inToken = false;
             int i = 0;
@@ -202,7 +202,7 @@ namespace Sharpy
         /// </summary>
         /// <param name="splitCommand">The list of tokens to join.</param>
         /// <returns>A shell-safe command string.</returns>
-        public static string Join(System.Collections.Generic.List<string> splitCommand)
+        public static string Join(List<string> splitCommand)
         {
             if (splitCommand == null)
             {
@@ -210,7 +210,8 @@ namespace Sharpy
             }
 
             var sb = new StringBuilder();
-            for (int i = 0; i < splitCommand.Count; i++)
+            int count = ((ICollection<string>)splitCommand).Count;
+            for (int i = 0; i < count; i++)
             {
                 if (i > 0)
                 {
