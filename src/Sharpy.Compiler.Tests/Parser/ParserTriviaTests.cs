@@ -184,4 +184,45 @@ public class ParserTriviaTests
         funcDef.Name.Should().Be("foo");
         funcDef.LeadingTrivia.Should().BeNull();
     }
+
+    [Fact]
+    public void BlankLines_TransferredToAstNode()
+    {
+        var source = "x = 1\n\ny = 2\n";
+        var module = ParseWithTrivia(source);
+
+        module.Body.Should().HaveCount(2);
+        module.Body[1].LeadingTrivia.Should().NotBeNull();
+        module.Body[1].LeadingTrivia.Should().ContainSingle();
+        module.Body[1].LeadingTrivia![0].Kind.Should().Be(TriviaKind.BlankLines);
+        module.Body[1].LeadingTrivia[0].BlankLineCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void BlankLinesAndComment_BothTransferredInOrder()
+    {
+        var source = "x = 1\n\n# comment\ny = 2\n";
+        var module = ParseWithTrivia(source);
+
+        module.Body.Should().HaveCount(2);
+        module.Body[1].LeadingTrivia.Should().NotBeNull();
+        module.Body[1].LeadingTrivia.Should().HaveCount(2);
+        module.Body[1].LeadingTrivia![0].Kind.Should().Be(TriviaKind.BlankLines);
+        module.Body[1].LeadingTrivia[0].BlankLineCount.Should().Be(1);
+        module.Body[1].LeadingTrivia[1].Kind.Should().Be(TriviaKind.Comment);
+    }
+
+    [Fact]
+    public void BlankLinesWithinClassBody_TriviaOnClassMember()
+    {
+        var source = "class Foo:\n    x: int = 1\n\n    y: int = 2\n";
+        var module = ParseWithTrivia(source);
+
+        module.Body.Should().HaveCount(1);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.Body.Should().HaveCountGreaterThanOrEqualTo(2);
+        var secondMember = classDef.Body[1];
+        secondMember.LeadingTrivia.Should().NotBeNull();
+        secondMember.LeadingTrivia.Should().Contain(t => t.Kind == TriviaKind.BlankLines);
+    }
 }
