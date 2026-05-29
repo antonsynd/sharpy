@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace Sharpy
@@ -82,7 +83,9 @@ namespace Sharpy
         /// </summary>
         public static string SharpyVersion()
         {
-            return "0.1.3";
+            var asm = typeof(PlatformModule).Assembly;
+            var attr = asm.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>();
+            return attr?.InformationalVersion ?? asm.GetName().Version?.ToString(3) ?? "0.0.0";
         }
 
         /// <summary>
@@ -98,7 +101,24 @@ namespace Sharpy
         /// </summary>
         public static string DotnetImplementation()
         {
-            return "CoreCLR";
+            var desc = RuntimeInformation.FrameworkDescription;
+            if (desc.StartsWith(".NET Core", StringComparison.OrdinalIgnoreCase) ||
+                desc.StartsWith(".NET ", StringComparison.OrdinalIgnoreCase))
+            {
+                return "CoreCLR";
+            }
+            else if (desc.StartsWith(".NET Framework", StringComparison.OrdinalIgnoreCase))
+            {
+                return ".NET Framework";
+            }
+            else if (global::System.Type.GetType("Mono.Runtime") != null)
+            {
+                return "Mono";
+            }
+            else
+            {
+                return "Unknown";
+            }
         }
     }
 }
