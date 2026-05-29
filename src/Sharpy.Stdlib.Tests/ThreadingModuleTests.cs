@@ -140,7 +140,7 @@ public class ThreadingModuleTests
     public void Event_WaitTimeout()
     {
         var evt = new Event();
-        evt.Wait(timeout: 0.01).Should().BeFalse();
+        evt.Wait(timeout: 0.05).Should().BeFalse();
     }
 
     [Fact]

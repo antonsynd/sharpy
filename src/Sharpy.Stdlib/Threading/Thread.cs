@@ -14,8 +14,6 @@ namespace Sharpy
     public class Thread
     {
         private readonly SysThread _thread;
-        private readonly Action? _target;
-        private readonly object?[]? _args;
 
         /// <summary>
         /// Create a new Thread that wraps an existing <see cref="System.Threading.Thread"/>.
@@ -23,22 +21,17 @@ namespace Sharpy
         internal Thread(SysThread thread)
         {
             _thread = thread;
-            _target = null;
-            _args = null;
         }
 
         /// <summary>
-        /// Create a new Thread with a target callable and optional arguments.
+        /// Create a new Thread with a target callable.
         /// </summary>
         /// <param name="target">The callable to invoke when the thread starts.</param>
-        /// <param name="args">Arguments to pass to the target (unused in the Action overload).</param>
         /// <param name="daemon">Whether the thread is a daemon thread.</param>
         /// <param name="name">Optional thread name.</param>
-        public Thread(Action target, object?[]? args = null, bool daemon = false, string? name = null)
+        public Thread(Action target, bool daemon = false, string? name = null)
         {
-            _target = target;
-            _args = args;
-            _thread = new SysThread(() => _target());
+            _thread = new SysThread(() => target());
             _thread.IsBackground = daemon;
             if (name != null)
             {

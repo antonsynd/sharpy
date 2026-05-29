@@ -25,10 +25,13 @@ namespace Sharpy
         {
             int currentId = SysThread.CurrentThread.ManagedThreadId;
 
-            if (_owner == currentId)
+            lock (_lock)
             {
-                _count++;
-                return true;
+                if (_owner == currentId)
+                {
+                    _count++;
+                    return true;
+                }
             }
 
             bool acquired;

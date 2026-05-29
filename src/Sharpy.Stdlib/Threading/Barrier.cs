@@ -47,16 +47,15 @@ namespace Sharpy
         /// Wait at the barrier until all parties have arrived.
         /// </summary>
         /// <param name="timeout">Optional timeout in seconds. If null, waits indefinitely.</param>
-        /// <returns>The arrival index of the current thread (0 to parties-1).</returns>
         /// <exception cref="RuntimeError">If the barrier is broken or the timeout expires.</exception>
-        public int Wait(double? timeout = null)
+        public void Wait(double? timeout = null)
         {
             try
             {
                 if (timeout == null)
                 {
                     _barrier.SignalAndWait(System.Threading.Timeout.InfiniteTimeSpan);
-                    return 0;
+                    return;
                 }
 
                 int ms = (int)(timeout.Value * 1000);
@@ -65,22 +64,11 @@ namespace Sharpy
                 {
                     throw new RuntimeError("barrier wait timed out");
                 }
-                return 0;
             }
             catch (System.Threading.BarrierPostPhaseException ex)
             {
                 throw new RuntimeError($"barrier is broken: {ex.Message}");
             }
-        }
-
-        /// <summary>
-        /// Reset the barrier to its initial state.
-        /// </summary>
-        public void Reset()
-        {
-            // .NET Barrier doesn't have a direct Reset; remove and re-add participants
-            // is not equivalent. We signal that the barrier is broken.
-            throw new RuntimeError("barrier reset is not supported on .NET Barrier");
         }
 
         /// <inheritdoc/>
