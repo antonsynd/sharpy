@@ -335,6 +335,22 @@ namespace Sharpy.Tests
         }
 
         [Fact]
+        public void SafeDump_Width_AffectsLineWrapping()
+        {
+            var items = new List<object?>();
+            for (int i = 0; i < 10; i++)
+            {
+                items.Append($"item-{i}");
+            }
+
+            string narrow = Yaml.SafeDump(items, width: 20);
+            string wide = Yaml.SafeDump(items, width: 1000);
+
+            Assert.Contains("item-0", narrow, StringComparison.Ordinal);
+            Assert.Contains("item-0", wide, StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void SafeDump_Null_EmitsNullToken()
         {
             string yaml = Yaml.SafeDump(null);
@@ -453,6 +469,12 @@ namespace Sharpy.Tests
             var dict = Assert.IsType<Dict<string, object?>>(result);
             Assert.Equal("hello", dict["first"]);
             Assert.Equal("hello", dict["second"]);
+        }
+
+        [Fact]
+        public void SafeLoad_UndefinedAlias_ThrowsParseError()
+        {
+            Assert.Throws<YAMLParseError>(() => Yaml.SafeLoad("ref: *missing\n"));
         }
 
         #endregion
