@@ -178,7 +178,8 @@ public enum TokenType
 /// </summary>
 public enum TriviaKind
 {
-    Comment
+    Comment,
+    BlankLines
 }
 
 /// <summary>
@@ -191,6 +192,7 @@ public record Trivia
     public int Line { get; init; }
     public int Column { get; init; }
     public int Position { get; init; }
+    public int BlankLineCount { get; init; }
 }
 
 /// <summary>

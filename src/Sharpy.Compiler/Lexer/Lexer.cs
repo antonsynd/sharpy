@@ -56,6 +56,7 @@ public partial class Lexer
     private readonly CancellationToken _cancellationToken;
     private readonly bool _preserveTrivia;
     private List<Trivia>? _pendingTrivia;
+    private int _pendingBlankLineCount;
 
     /// <summary>
     /// Diagnostics collected during lexing. Check HasErrors after TokenizeAll().
@@ -380,6 +381,8 @@ public partial class Lexer
                     _indentStack.Pop();
                     return CreateToken(TokenType.Dedent, "", _line, _column, _position);
                 }
+                if (_preserveTrivia)
+                    FlushPendingBlankLines();
                 return CreateToken(TokenType.Eof, "", _line, _column, _position);
             }
 
@@ -604,6 +607,22 @@ public partial class Lexer
         }
 
         return token;
+    }
+
+    private void FlushPendingBlankLines()
+    {
+        if (_pendingBlankLineCount > 0)
+        {
+            _pendingTrivia!.Add(new Trivia
+            {
+                Kind = TriviaKind.BlankLines,
+                BlankLineCount = _pendingBlankLineCount,
+                Line = _line,
+                Column = 1,
+                Position = _position
+            });
+            _pendingBlankLineCount = 0;
+        }
     }
 
     private void SkipWhitespace()

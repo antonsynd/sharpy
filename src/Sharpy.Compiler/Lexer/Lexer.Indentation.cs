@@ -89,6 +89,7 @@ public partial class Lexer
             {
                 if (_preserveTrivia)
                 {
+                    FlushPendingBlankLines();
                     var commentStartLine = _line;
                     var commentStartCol = _column;
                     var commentStartPos = _position;
@@ -121,6 +122,10 @@ public partial class Lexer
                     }
                 }
             }
+            else if (_preserveTrivia && _position < _source.Length)
+            {
+                _pendingBlankLineCount++;
+            }
 
             // Skip the newline if present
             if (_position < _source.Length && (_source[_position] == '\n' || _source[_position] == '\r'))
@@ -143,6 +148,9 @@ public partial class Lexer
             // Return null so the caller's loop re-enters (no recursion)
             return null;
         }
+
+        if (_preserveTrivia)
+            FlushPendingBlankLines();
 
         // Restore position to measure indentation properly
         _position = savedPos;
