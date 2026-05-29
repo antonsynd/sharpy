@@ -2,7 +2,7 @@ using Xunit;
 using FluentAssertions;
 using System.Numerics;
 
-namespace Sharpy.Core.Tests;
+namespace Sharpy.Stdlib.Tests;
 
 /// <summary>
 /// Tests for the fractions module Fraction class.
@@ -128,11 +128,19 @@ public class FractionsTests
     }
 
     [Fact]
-    public void Fraction_FromString_ScientificNotation()
+    public void Fraction_FromString_ScientificNotation_NegativeExponent()
     {
         var f = new Fraction("1e-2");
         f.Numerator.Should().Be(1);
         f.Denominator.Should().Be(100);
+    }
+
+    [Fact]
+    public void Fraction_FromString_ScientificNotation_PositiveExponent()
+    {
+        var f = new Fraction("1.5e2");
+        f.Numerator.Should().Be(150);
+        f.Denominator.Should().Be(1);
     }
 
     // --- Arithmetic ---
@@ -272,7 +280,7 @@ public class FractionsTests
     {
         // pi ≈ 355/113
         var pi = new Fraction("3.141592653589793");
-        var approx = pi.Limit_denominator(1000);
+        var approx = pi.LimitDenominator(1000);
         approx.Numerator.Should().Be(355);
         approx.Denominator.Should().Be(113);
     }
@@ -281,7 +289,7 @@ public class FractionsTests
     public void Fraction_LimitDenominator_AlreadyBelow()
     {
         var f = new Fraction(1, 3);
-        var result = f.Limit_denominator(10);
+        var result = f.LimitDenominator(10);
         result.Should().Be(f);
     }
 
@@ -289,7 +297,7 @@ public class FractionsTests
     public void Fraction_LimitDenominator_InvalidMax_Throws()
     {
         var f = new Fraction(1, 3);
-        var act = () => f.Limit_denominator(0);
+        var act = () => f.LimitDenominator(0);
         act.Should().Throw<ValueError>();
     }
 

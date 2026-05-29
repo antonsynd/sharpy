@@ -207,7 +207,7 @@ namespace Sharpy
         /// Find the closest rational with denominator at most max_denominator.
         /// Uses the continued-fraction algorithm (same as Python).
         /// </summary>
-        public Fraction Limit_denominator(BigInteger maxDenominator)
+        public Fraction LimitDenominator(BigInteger maxDenominator)
         {
             if (maxDenominator < BigInteger.One)
                 throw new ValueError("max_denominator should be at least 1");
