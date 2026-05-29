@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
@@ -60,6 +61,122 @@ namespace Sharpy
             int width = 80)
         {
             return DumpSingle(data, defaultFlowStyle, indent, sortKeys, allowUnicode, width);
+        }
+
+        /// <summary>
+        /// Parse the first YAML document read from a file and return the corresponding Sharpy value.
+        /// </summary>
+        /// <param name="fp">The file to read from.</param>
+        /// <returns>The parsed value, or <c>null</c> for an empty document.</returns>
+        /// <exception cref="YAMLParseError">Thrown when the input cannot be parsed.</exception>
+        public static object? SafeLoadFile(TextFile fp)
+        {
+            if (fp is null)
+            {
+                throw new TypeError("expected TextFile, got NoneType");
+            }
+
+            return SafeLoad(fp.Read());
+        }
+
+        /// <summary>
+        /// Serialize <paramref name="data"/> to a file as a YAML formatted document.
+        /// </summary>
+        /// <param name="data">The Sharpy value to serialize.</param>
+        /// <param name="fp">The file to write to.</param>
+        /// <param name="defaultFlowStyle">When <c>true</c>, emit collections in flow style.</param>
+        /// <param name="indent">Number of spaces per indentation level (1-9).</param>
+        /// <param name="sortKeys">Whether to sort mapping keys.</param>
+        /// <param name="allowUnicode">Whether to allow non-ASCII characters unescaped.</param>
+        /// <param name="width">Preferred maximum line width before wrapping.</param>
+        public static void SafeDumpFile(
+            object? data,
+            TextFile fp,
+            bool defaultFlowStyle = false,
+            int indent = 2,
+            bool sortKeys = true,
+            bool allowUnicode = true,
+            int width = 80)
+        {
+            if (fp is null)
+            {
+                throw new TypeError("expected TextFile, got NoneType");
+            }
+
+            fp.Write(SafeDump(data, defaultFlowStyle, indent, sortKeys, allowUnicode, width));
+        }
+
+        /// <summary>
+        /// Parse all YAML documents in a multi-document stream (separated by <c>---</c>).
+        /// </summary>
+        /// <param name="text">The YAML text to parse.</param>
+        /// <returns>A list with one entry per parsed document.</returns>
+        /// <exception cref="YAMLParseError">Thrown when the input cannot be parsed.</exception>
+        public static List<object?> SafeLoadAll(string text)
+        {
+            if (text is null)
+            {
+                throw new TypeError("the YAML input must be str, not NoneType");
+            }
+
+            var documents = new List<object?>();
+            IDeserializer deserializer = CreateDeserializer();
+            try
+            {
+                var parser = new Parser(new StringReader(text));
+                parser.Consume<StreamStart>();
+                while (parser.Accept<DocumentStart>(out _))
+                {
+                    object? value = deserializer.Deserialize<object>(parser);
+                    documents.Append(YamlConverter.ToSharpy(value));
+                }
+            }
+            catch (YamlException ex)
+            {
+                throw ToParseError(ex);
+            }
+
+            return documents;
+        }
+
+        /// <summary>
+        /// Serialize a sequence of documents into a single multi-document YAML string,
+        /// separating documents with <c>---</c>.
+        /// </summary>
+        /// <param name="documents">The documents to serialize.</param>
+        /// <param name="defaultFlowStyle">When <c>true</c>, emit collections in flow style.</param>
+        /// <param name="indent">Number of spaces per indentation level (1-9).</param>
+        /// <param name="sortKeys">Whether to sort mapping keys.</param>
+        /// <param name="allowUnicode">Whether to allow non-ASCII characters unescaped.</param>
+        /// <param name="width">Preferred maximum line width before wrapping.</param>
+        /// <returns>The multi-document YAML string.</returns>
+        public static string SafeDumpAll(
+            List<object?> documents,
+            bool defaultFlowStyle = false,
+            int indent = 2,
+            bool sortKeys = true,
+            bool allowUnicode = true,
+            int width = 80)
+        {
+            if (documents is null)
+            {
+                throw new TypeError("expected list, got NoneType");
+            }
+
+            var builder = new StringBuilder();
+            bool first = true;
+            foreach (object? document in documents)
+            {
+                if (!first)
+                {
+                    builder.Append("---\n");
+                }
+
+                builder.Append(DumpSingle(document, defaultFlowStyle, indent, sortKeys, allowUnicode, width));
+                first = false;
+            }
+
+            return builder.ToString();
         }
 
         private static IDeserializer CreateDeserializer()
