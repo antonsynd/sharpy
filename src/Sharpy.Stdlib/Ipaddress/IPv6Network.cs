@@ -27,7 +27,7 @@ namespace Sharpy
         public IPv6Address NetworkAddress => new IPv6Address(_networkAddress);
 
         /// <summary>The netmask for this network.</summary>
-        public string Netmask
+        public IPv6Address Netmask
         {
             get
             {
@@ -45,7 +45,7 @@ namespace Sharpy
                     mask[fullBytes] = (byte)(0xFF << (8 - remainBits));
                 }
 
-                return new IPAddress(mask).ToString();
+                return new IPv6Address(new IPAddress(mask));
             }
         }
 
