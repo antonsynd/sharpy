@@ -1,0 +1,13 @@
+from sharpy import UUID
+
+def uuid4() -> UUID:
+    return UUID("00000000-0000-0000-0000-000000000000")
+
+def uuid1() -> UUID:
+    return UUID("00000000-0000-0000-0000-000000000000")
+
+def uuid3(namespace_uuid: UUID, name: str) -> UUID:
+    return UUID("00000000-0000-0000-0000-000000000000")
+
+def uuid5(namespace_uuid: UUID, name: str) -> UUID:
+    return UUID("00000000-0000-0000-0000-000000000000")

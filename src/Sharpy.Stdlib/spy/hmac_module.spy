@@ -1,0 +1,11 @@
+from sharpy import HmacObject
+
+def new(key: str, msg: str = "", digestmod: str = "sha256") -> HmacObject:
+    obj: HmacObject = HmacObject(key, "sha256", 32)
+    return obj
+
+def digest(key: str, msg: str, digestmod: str) -> bytes:
+    return bytes()
+
+def compare_digest(a: str, b: str) -> bool:
+    return False

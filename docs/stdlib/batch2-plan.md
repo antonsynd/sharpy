@@ -10,7 +10,7 @@ Implement the three "essential utilities" stdlib modules from the [Tier 1 roadma
 **GitHub issues:**
 - [#742](https://github.com/antonsynd/sharpy/issues/742) — urllib module (URL parsing and encoding)
 - [#743](https://github.com/antonsynd/sharpy/issues/743) — platform module (platform identification)
-- struct module — [#734](https://github.com/antonsynd/sharpy/issues/734) in roadmap, but **issue #734 is actually titled "add base64 module"** — needs a new issue for struct, and roadmap fix [CORRECTED: clarified that the roadmap entry label says "struct" but the linked issue #734 is actually the base64 module]
+- [#787](https://github.com/antonsynd/sharpy/issues/787) — struct module (binary data packing/unpacking)
 
 ## Current State
 

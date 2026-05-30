@@ -9,6 +9,7 @@ internal static class ModuleDocumentation
     private static readonly Dictionary<string, string> Summaries = new()
     {
         ["argparse"] = "Command-line argument parsing.",
+        ["base64"] = "Base16, Base32, Base64, Base85 data encodings.",
         ["asyncio"] = "Async I/O primitives (sleep, gather, tasks).",
         ["builtins"] = "Built-in functions and types (print, len, range, etc.).",
         ["bisect"] = "Array bisection algorithm for sorted sequences.",
@@ -20,6 +21,7 @@ internal static class ModuleDocumentation
         ["functools"] = "Higher-order functions and operations on callable objects.",
         ["glob"] = "Unix-style pathname pattern expansion.",
         ["hashlib"] = "Secure hash and message digest algorithms.",
+        ["hmac"] = "Keyed-hashing for message authentication.",
         ["heapq"] = "Heap queue (priority queue) algorithm.",
         ["io"] = "Core tools for working with streams.",
         ["itertools"] = "Iterator building blocks for efficient looping.",
@@ -31,6 +33,7 @@ internal static class ModuleDocumentation
         ["pathlib"] = "Object-oriented filesystem paths.",
         ["random"] = "Generate pseudo-random numbers and choices.",
         ["re"] = "Regular expression matching operations.",
+        ["secrets"] = "Generate cryptographically strong random numbers.",
         ["shutil"] = "High-level file operations (copy, move, remove trees).",
         ["statistics"] = "Mathematical statistics functions.",
         ["string"] = "String constants and template operations.",
@@ -38,6 +41,7 @@ internal static class ModuleDocumentation
         ["tempfile"] = "Generate temporary files and directories.",
         ["textwrap"] = "Text wrapping and filling.",
         ["time"] = "Time access and conversions.",
+        ["uuid"] = "UUID generation and parsing.",
     };
 
     /// <summary>

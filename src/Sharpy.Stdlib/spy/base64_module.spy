@@ -1,0 +1,35 @@
+def b64encode(s: bytes) -> bytes:
+    return bytes()
+
+def b64decode(s: bytes) -> bytes:
+    return bytes()
+
+def urlsafe_b64encode(s: bytes) -> bytes:
+    return bytes()
+
+def urlsafe_b64decode(s: bytes) -> bytes:
+    return bytes()
+
+def b32encode(s: bytes) -> bytes:
+    return bytes()
+
+def b32decode(s: bytes) -> bytes:
+    return bytes()
+
+def b16encode(s: bytes) -> bytes:
+    return bytes()
+
+def b16decode(s: bytes) -> bytes:
+    return bytes()
+
+def b85encode(s: bytes) -> bytes:
+    return bytes()
+
+def b85decode(s: bytes) -> bytes:
+    return bytes()
+
+def a85encode(s: bytes) -> bytes:
+    return bytes()
+
+def a85decode(s: bytes) -> bytes:
+    return bytes()

@@ -12,7 +12,7 @@ Implement the three compression-related stdlib modules from the [Tier 1 roadmap]
 **GitHub issues:**
 - [#740](https://github.com/antonsynd/sharpy/issues/740) — zlib module (deflate compression)
 - [#737](https://github.com/antonsynd/sharpy/issues/737) — zipfile module (ZIP archive manipulation)
-- gzip module — **needs issue creation** (no existing issue; roadmap listed #736 which is a duplicate zlib issue)
+- [#788](https://github.com/antonsynd/sharpy/issues/788) — gzip module (gzip compression)
 
 ## Current State
 

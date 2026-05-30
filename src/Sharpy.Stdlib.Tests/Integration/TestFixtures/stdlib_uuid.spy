@@ -1,0 +1,19 @@
+import uuid
+
+def main():
+    # UUID3 with known namespace+name
+    u3 = uuid.uuid3(uuid.NAMESPACE_DNS, "example.com")
+    print(str(u3))
+
+    # UUID5 with known namespace+name
+    u5 = uuid.uuid5(uuid.NAMESPACE_DNS, "example.com")
+    print(str(u5))
+
+    # UUID4 format validation
+    u4 = uuid.uuid4()
+    s = str(u4)
+    print(len(s))
+
+    # Version
+    print(u3.version)
+    print(u5.version)

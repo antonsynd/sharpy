@@ -1,0 +1,20 @@
+import hmac
+
+def main():
+    # HMAC-SHA256 with known key/message
+    h = hmac.new("secret", "message", "sha256")
+    print(h.hexdigest())
+
+    # Incremental update produces same result
+    h2 = hmac.new("secret", digestmod="sha256")
+    h2.update("message")
+    print(h2.hexdigest())
+
+    # compare_digest
+    print(hmac.compare_digest("abc", "abc"))
+    print(hmac.compare_digest("abc", "xyz"))
+
+    # Name and digest_size
+    h3 = hmac.new("key", digestmod="sha512")
+    print(h3.name)
+    print(h3.digest_size)

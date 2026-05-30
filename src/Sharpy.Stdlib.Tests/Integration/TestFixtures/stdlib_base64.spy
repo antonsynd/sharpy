@@ -1,0 +1,14 @@
+import base64
+
+def main():
+    # b64 encode known value
+    encoded = base64.b64encode(b"hello world")
+    print(encoded)
+
+    # b64 decode roundtrip
+    decoded = base64.b64decode(encoded)
+    print(decoded)
+
+    # b16 encode
+    b16 = base64.b16encode(b"AB")
+    print(b16)

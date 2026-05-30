@@ -11,7 +11,7 @@ Implement the four "quick win" stdlib modules from the [Tier 1 roadmap](roadmap.
 - [#733](https://github.com/antonsynd/sharpy/issues/733) — uuid module (UUID generation and parsing)
 - [#734](https://github.com/antonsynd/sharpy/issues/734) — base64 module (base16/32/64/85 encoding)
 - [#741](https://github.com/antonsynd/sharpy/issues/741) — hmac module (keyed-hash message authentication)
-- secrets module — **needs issue creation** (no existing issue; roadmap incorrectly listed #738 which is a duplicate hmac issue)
+- [#786](https://github.com/antonsynd/sharpy/issues/786) — secrets module (secure random generation)
 
 ## Current State
 

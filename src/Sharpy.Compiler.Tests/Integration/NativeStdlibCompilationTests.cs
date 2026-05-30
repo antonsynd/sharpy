@@ -25,21 +25,25 @@ public class NativeStdlibCompilationTests
 
     private static readonly string[] ExpectedModules = new[]
     {
+        "base64_module",
         "bisect_module",
         "fnmatch_module",
         "functools",
         "hashlib_module",
         "heapq",
+        "hmac_module",
         "itertools",
         "math_module",
         "os_module",
         "os_path_module",
         "random_module",
+        "secrets_module",
         "shutil_module",
         "statistics",
         "string_module",
         "tempfile_module",
         "textwrap",
+        "uuid_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)
