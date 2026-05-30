@@ -7,7 +7,24 @@ def main():
     print(len(platform.version()) > 0)
     print(len(platform.machine()) > 0)
     print(len(platform.node()) > 0)
+    print(len(platform.processor()) > 0)
     print(len(platform.dotnet_version()) > 0)
     print(len(platform.dotnet_compiler()) > 0)
+    print(len(platform.dotnet_implementation()) > 0)
+    print(len(platform.sharpy_version()) > 0)
+
+    # platform() function - full and terse
+    p = platform.platform()
+    print(len(p) > 0)
+    pt = platform.platform(terse=True)
+    print(len(pt) > 0)
+    print(len(pt) <= len(p))
+
+    # architecture tuple
+    arch = platform.architecture()
+    bits = arch[0]
+    linkage = arch[1]
+    print(bits == "32bit" or bits == "64bit")
+
     u = platform.uname()
     print(u.system == s)

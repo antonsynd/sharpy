@@ -1,0 +1,11 @@
+https://example.com:8080/path?q=1&r=2#frag
+https://example.com:8080/path?q=1&r=2#frag
+
+
+ftp
+files.example.com
+/pub/file.txt
+1
+2
+hello%20world
+hello world

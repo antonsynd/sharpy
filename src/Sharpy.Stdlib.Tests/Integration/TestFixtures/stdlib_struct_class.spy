@@ -1,0 +1,13 @@
+from struct import Struct
+
+def main():
+    # Pre-compiled Struct class
+    s = Struct(">Ih")
+    print(s.format)
+    print(s.size)
+
+    # Pack and unpack with pre-compiled format
+    data = s.pack(1000, 42)
+    vals = s.unpack(data)
+    print(vals[0])
+    print(vals[1])

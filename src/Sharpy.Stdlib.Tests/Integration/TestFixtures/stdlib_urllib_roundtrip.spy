@@ -1,0 +1,35 @@
+import urllib
+
+def main():
+    # Parse-unparse roundtrip
+    url = "https://example.com:8080/path?q=1&r=2#frag"
+    parsed = urllib.urlparse(url)
+    rebuilt = urllib.urlunparse(parsed)
+    print(rebuilt)
+
+    # Split-unsplit roundtrip
+    split = urllib.urlsplit(url)
+    rebuilt2 = urllib.urlunsplit(split)
+    print(rebuilt2)
+
+    # Empty components
+    empty = urllib.urlparse("")
+    print(empty.scheme)
+    print(empty.path)
+
+    # FTP scheme
+    ftp = urllib.urlparse("ftp://files.example.com/pub/file.txt")
+    print(ftp.scheme)
+    print(ftp.hostname)
+    print(ftp.path)
+
+    # parse_qs with multi-values
+    qs = urllib.parse_qs("a=1&b=2&b=3")
+    print(qs["a"][0])
+    print(len(qs["b"]))
+
+    # quote roundtrip
+    encoded = urllib.quote("hello world", "")
+    print(encoded)
+    decoded = urllib.unquote(encoded)
+    print(decoded)

@@ -1,0 +1,13 @@
+import struct
+
+def main():
+    # Pack three unsigned shorts
+    data = struct.pack(">HHH", 10, 20, 30)
+    print(struct.calcsize(">H"))
+
+    # iter_unpack yields one list per struct-sized chunk
+    count = 0
+    for vals in struct.iter_unpack(">H", data):
+        print(vals[0])
+        count = count + 1
+    print(count)
