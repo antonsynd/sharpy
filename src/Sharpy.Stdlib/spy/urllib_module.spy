@@ -26,3 +26,12 @@ def unquote(s: str) -> str:
 
 def unquote_plus(s: str) -> str:
     return ""
+
+def parse_qs(qs: str, separator: str = "&") -> dict[str, list[str]]:
+    return {}
+
+def parse_qsl(qs: str, separator: str = "&") -> list[tuple[str, str]]:
+    return []
+
+def urlencode(query: dict[str, object], doseq: bool = False) -> str:
+    return ""
