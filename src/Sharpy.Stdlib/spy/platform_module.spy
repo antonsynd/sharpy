@@ -1,0 +1,40 @@
+from sharpy import UnameResult
+
+def system() -> str:
+    return ""
+
+def release() -> str:
+    return ""
+
+def version() -> str:
+    return ""
+
+def machine() -> str:
+    return ""
+
+def node() -> str:
+    return ""
+
+def processor() -> str:
+    return ""
+
+def platform(aliased: bool = False, terse: bool = False) -> str:
+    return ""
+
+def sharpy_version() -> str:
+    return ""
+
+def dotnet_version() -> str:
+    return ""
+
+def dotnet_implementation() -> str:
+    return ""
+
+def dotnet_compiler() -> str:
+    return ""
+
+def architecture() -> tuple[str, str]:
+    return ("", "")
+
+def uname() -> UnameResult:
+    return UnameResult("", "", "", "", "")

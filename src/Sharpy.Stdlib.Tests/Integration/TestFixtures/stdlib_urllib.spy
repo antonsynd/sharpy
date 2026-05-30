@@ -1,0 +1,22 @@
+import urllib
+
+def main():
+    r = urllib.urlparse("https://user:pass@example.com:8080/path;type=a?q=1#frag")
+    print(r.scheme)
+    print(r.netloc)
+    print(r.path)
+    print(r.params)
+    print(r.query)
+    print(r.fragment)
+    print(r.hostname)
+    print(r.port)
+    print(r.username)
+    print(r.password)
+
+    print(urllib.quote("/path with spaces"))
+    print(urllib.quote_plus("a b+c"))
+    print(urllib.unquote("%2Fpath%20with%20spaces"))
+    print(urllib.unquote_plus("a+b%2Bc"))
+
+    joined = urllib.urljoin("https://example.com/a/", "b/c")
+    print(joined)

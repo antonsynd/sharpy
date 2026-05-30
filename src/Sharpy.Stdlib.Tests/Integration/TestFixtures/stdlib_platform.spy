@@ -1,0 +1,13 @@
+import platform
+
+def main():
+    s = platform.system()
+    print(s == "Windows" or s == "Linux" or s == "Darwin" or s == "Unknown")
+    print(len(platform.release()) > 0)
+    print(len(platform.version()) > 0)
+    print(len(platform.machine()) > 0)
+    print(len(platform.node()) > 0)
+    print(len(platform.dotnet_version()) > 0)
+    print(len(platform.dotnet_compiler()) > 0)
+    u = platform.uname()
+    print(u.system == s)

@@ -1,0 +1,6 @@
+from urllib import urlparse, quote
+
+def main():
+    r = urlparse("https://example.com/path")
+    print(r.scheme)
+    print(quote("hello world", ""))

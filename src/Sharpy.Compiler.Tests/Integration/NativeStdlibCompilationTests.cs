@@ -44,6 +44,9 @@ public class NativeStdlibCompilationTests
         "tempfile_module",
         "textwrap",
         "uuid_module",
+        "platform_module",
+        "urllib_module",
+        "struct_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)

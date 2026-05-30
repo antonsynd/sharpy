@@ -1,0 +1,15 @@
+https
+user:pass@example.com:8080
+/path
+type=a
+q=1
+frag
+example.com
+8080
+user
+pass
+/path%20with%20spaces
+a+b%2Bc
+/path with spaces
+a b+c
+https://example.com/a/b/c

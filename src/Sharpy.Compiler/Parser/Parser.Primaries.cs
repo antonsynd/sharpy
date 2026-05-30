@@ -207,6 +207,21 @@ public partial class Parser
                     };
                 }
 
+            case TokenType.Struct:
+                {
+                    var keywordToken = Current;
+                    Advance();
+                    return new Identifier
+                    {
+                        Name = keywordToken.Value,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = keywordToken.Line,
+                        ColumnEnd = keywordToken.Column + keywordToken.Value.Length,
+                        Span = GetSpanFromToken(keywordToken)
+                    };
+                }
+
             case TokenType.Identifier:
                 {
                     var identToken = Current;

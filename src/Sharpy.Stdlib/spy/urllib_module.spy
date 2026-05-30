@@ -1,0 +1,28 @@
+from sharpy import ParseResult, SplitResult
+
+def urlparse(url: str, scheme: str = "", allow_fragments: bool = True) -> ParseResult:
+    return ParseResult("", "", "", "", "", "")
+
+def urlsplit(url: str, scheme: str = "", allow_fragments: bool = True) -> SplitResult:
+    return SplitResult("", "", "", "", "")
+
+def urlunparse(components: ParseResult) -> str:
+    return ""
+
+def urlunsplit(components: SplitResult) -> str:
+    return ""
+
+def urljoin(base_url: str, url: str, allow_fragments: bool = True) -> str:
+    return ""
+
+def quote(s: str, safe: str = "/") -> str:
+    return ""
+
+def quote_plus(s: str, safe: str = "") -> str:
+    return ""
+
+def unquote(s: str) -> str:
+    return ""
+
+def unquote_plus(s: str) -> str:
+    return ""

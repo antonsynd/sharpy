@@ -1,0 +1,204 @@
+using System;
+
+namespace Sharpy
+{
+    /// <summary>
+    /// Result of <see cref="UrllibModule.Urlsplit"/>. Contains five components of a
+    /// parsed URL: scheme, netloc, path, query, and fragment (no params).
+    /// </summary>
+    [SharpyModuleType("urllib")]
+    public sealed class SplitResult : IEquatable<SplitResult>
+    {
+        /// <summary>URL scheme specifier (e.g. "https").</summary>
+        public string Scheme { get; }
+
+        /// <summary>Network location part (e.g. "user:pass@host:8080").</summary>
+        public string Netloc { get; }
+
+        /// <summary>Hierarchical path (e.g. "/index.html").</summary>
+        public string Path { get; }
+
+        /// <summary>Query component (text after '?').</summary>
+        public string Query { get; }
+
+        /// <summary>Fragment identifier (text after '#').</summary>
+        public string Fragment { get; }
+
+        /// <summary>Lowercase hostname extracted from <see cref="Netloc"/>, or null.</summary>
+        public string? Hostname
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Netloc))
+                {
+                    return null;
+                }
+
+                string host = Netloc;
+
+                // Strip userinfo
+                int atIdx = host.LastIndexOf('@');
+                if (atIdx >= 0)
+                {
+                    host = host.Substring(atIdx + 1);
+                }
+
+                // Strip port
+                int colonIdx = host.LastIndexOf(':');
+                if (colonIdx >= 0)
+                {
+                    host = host.Substring(0, colonIdx);
+                }
+
+                // Strip brackets for IPv6
+                if (host.StartsWith("[") && host.EndsWith("]"))
+                {
+                    host = host.Substring(1, host.Length - 2);
+                }
+
+                return host.Length > 0 ? host.ToLowerInvariant() : null;
+            }
+        }
+
+        /// <summary>Port number extracted from <see cref="Netloc"/>, or null.</summary>
+        public int? Port
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Netloc))
+                {
+                    return null;
+                }
+
+                string host = Netloc;
+
+                // Strip userinfo
+                int atIdx = host.LastIndexOf('@');
+                if (atIdx >= 0)
+                {
+                    host = host.Substring(atIdx + 1);
+                }
+
+                int colonIdx = host.LastIndexOf(':');
+                if (colonIdx >= 0)
+                {
+                    string portStr = host.Substring(colonIdx + 1);
+                    if (int.TryParse(portStr, out int port))
+                    {
+                        return port;
+                    }
+                }
+
+                return null;
+            }
+        }
+
+        /// <summary>Username extracted from <see cref="Netloc"/>, or null.</summary>
+        public string? Username
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Netloc))
+                {
+                    return null;
+                }
+
+                int atIdx = Netloc.LastIndexOf('@');
+                if (atIdx < 0)
+                {
+                    return null;
+                }
+
+                string userinfo = Netloc.Substring(0, atIdx);
+                int colonIdx = userinfo.IndexOf(':');
+                return colonIdx >= 0 ? userinfo.Substring(0, colonIdx) : userinfo;
+            }
+        }
+
+        /// <summary>Password extracted from <see cref="Netloc"/>, or null.</summary>
+        public string? Password
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Netloc))
+                {
+                    return null;
+                }
+
+                int atIdx = Netloc.LastIndexOf('@');
+                if (atIdx < 0)
+                {
+                    return null;
+                }
+
+                string userinfo = Netloc.Substring(0, atIdx);
+                int colonIdx = userinfo.IndexOf(':');
+                return colonIdx >= 0 ? userinfo.Substring(colonIdx + 1) : null;
+            }
+        }
+
+        /// <summary>Create a SplitResult from the five URL components.</summary>
+        public SplitResult(string scheme, string netloc, string path, string query, string fragment)
+        {
+            Scheme = scheme;
+            Netloc = netloc;
+            Path = path;
+            Query = query;
+            Fragment = fragment;
+        }
+
+        /// <summary>Reassemble the URL from its components.</summary>
+        public string Geturl()
+        {
+            return UrllibModule.Urlunsplit(this);
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return "SplitResult(scheme='" + Scheme + "', netloc='" + Netloc +
+                   "', path='" + Path + "', query='" + Query +
+                   "', fragment='" + Fragment + "')";
+        }
+
+        /// <inheritdoc />
+        public override bool Equals(object? obj)
+        {
+            return obj is SplitResult other && Equals(other);
+        }
+
+        /// <inheritdoc />
+        public bool Equals(SplitResult? other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+
+            return Scheme == other.Scheme &&
+                   Netloc == other.Netloc &&
+                   Path == other.Path &&
+                   Query == other.Query &&
+                   Fragment == other.Fragment;
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+#if NET10_0_OR_GREATER
+            return HashCode.Combine(Scheme, Netloc, Path, Query, Fragment);
+#else
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + (Scheme?.GetHashCode() ?? 0);
+                hash = hash * 31 + (Netloc?.GetHashCode() ?? 0);
+                hash = hash * 31 + (Path?.GetHashCode() ?? 0);
+                hash = hash * 31 + (Query?.GetHashCode() ?? 0);
+                hash = hash * 31 + (Fragment?.GetHashCode() ?? 0);
+                return hash;
+            }
+#endif
+        }
+    }
+}

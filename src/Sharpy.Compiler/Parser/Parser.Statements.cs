@@ -819,7 +819,7 @@ public partial class Parser
             var aliasStartLine = Current.Line;
             var aliasStartColumn = Current.Column;
             var aliasStartToken = Current;
-            var name = ParseDottedName();
+            var name = ParseDottedName(allowKeywords: true);
             string? asName = null;
 
             if (Current.Type == TokenType.As)
@@ -937,9 +937,9 @@ public partial class Parser
         };
     }
 
-    private string ParseDottedName()
+    private string ParseDottedName(bool allowKeywords = false)
     {
-        var parts = new List<string> { ExpectIdentifier() };
+        var parts = new List<string> { allowKeywords && IsModuleNameKeyword(Current.Type) ? ExpectIdentifierOrKeyword() : ExpectIdentifier() };
 
         // A backtick-escaped identifier may already contain dots (e.g. `System.Collections.Generic`),
         // forming a complete dotted path. In that case it is the entire name (#713).
@@ -970,9 +970,9 @@ public partial class Parser
         // After the leading dots, there may be an identifier and more dotted parts
         // For example: ".helpers" or "..package.module"
         // But it's also valid to have just dots (e.g., "." for current package)
-        if (Current.Type == TokenType.Identifier)
+        if (Current.Type == TokenType.Identifier || IsModuleNameKeyword(Current.Type))
         {
-            var dottedName = ParseDottedName();
+            var dottedName = ParseDottedName(allowKeywords: true);
             return leadingDots.ToString() + dottedName;
         }
 

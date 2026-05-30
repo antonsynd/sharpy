@@ -1,0 +1,5 @@
+from platform import machine, node
+
+def main():
+    print(len(machine()) > 0)
+    print(len(node()) > 0)

@@ -551,6 +551,9 @@ internal partial class RoslynEmitter
         { "secrets", "SecretsModule" },
         { "hashlib", "HashlibModule" },
         { "hmac", "HmacModule" },
+        { "platform", "PlatformModule" },
+        { "urllib", "UrllibModule" },
+        { "struct", "StructModule" },
     };
 
     /// <summary>

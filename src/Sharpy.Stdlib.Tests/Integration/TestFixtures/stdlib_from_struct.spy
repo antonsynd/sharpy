@@ -1,0 +1,7 @@
+from struct import pack, unpack, calcsize
+
+def main():
+    print(calcsize(">I"))
+    data = pack(">I", 42)
+    vals = unpack(">I", data)
+    print(vals[0])

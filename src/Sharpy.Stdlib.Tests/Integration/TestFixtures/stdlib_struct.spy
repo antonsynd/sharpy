@@ -1,0 +1,25 @@
+import struct
+
+def main():
+    # Pack a big-endian unsigned int
+    packed = struct.pack(">I", 1234)
+    print(struct.calcsize(">I"))
+
+    # Unpack it back
+    values = struct.unpack(">I", packed)
+    print(values[0])
+
+    # calcsize
+    print(struct.calcsize(">I"))
+    print(struct.calcsize(">2ih"))
+
+    # Little-endian pack/unpack roundtrip
+    packed2 = struct.pack("<hh", 1, 2)
+    vals2 = struct.unpack("<hh", packed2)
+    print(vals2[0])
+    print(vals2[1])
+
+    # Bool
+    packed3 = struct.pack(">?", True)
+    vals3 = struct.unpack(">?", packed3)
+    print(vals3[0])

@@ -1,0 +1,39 @@
+from sharpy import StructClass, StructError
+
+class error(Exception):
+    pass
+
+def pack(format: str, *values: object) -> bytes:
+    return bytes()
+
+def unpack(format: str, buffer: bytes) -> list[object]:
+    return []
+
+def unpack_from(format: str, buffer: bytes, offset: int = 0) -> list[object]:
+    return []
+
+def calcsize(format: str) -> int:
+    return 0
+
+def iter_unpack(format: str, buffer: bytes) -> list[list[object]]:
+    return []
+
+class Struct:
+    format: str
+    size: int
+
+    def __init__(self, format: str):
+        self.format = format
+        self.size = 0
+
+    def pack(self, *values: object) -> bytes:
+        return bytes()
+
+    def unpack(self, buffer: bytes) -> list[object]:
+        return []
+
+    def unpack_from(self, buffer: bytes, offset: int = 0) -> list[object]:
+        return []
+
+    def iter_unpack(self, buffer: bytes) -> list[list[object]]:
+        return []

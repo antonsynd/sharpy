@@ -561,6 +561,14 @@ public partial class Parser
         };
     }
 
+    /// <summary>
+    /// Keywords that are allowed as module names in import statements (e.g., <c>import struct</c>).
+    /// </summary>
+    private static bool IsModuleNameKeyword(TokenType type)
+    {
+        return type == TokenType.Struct;
+    }
+
     private void ExpectNewline()
     {
         if (Current.Type == TokenType.Newline)
