@@ -66,6 +66,14 @@ namespace Sharpy.Tests
             act.Should().Throw<TypeError>();
         }
 
+        [Fact]
+        public void LoadsT_TypeMismatch_ReturnsErr()
+        {
+            var result = Toml.Loads<ServerConfig>("host = 123\nport = \"not_a_number\"");
+            result.IsErr.Should().BeTrue();
+            result.UnwrapErr().Should().BeOfType<TOMLDecodeError>();
+        }
+
         #endregion
 
         #region Load<T>

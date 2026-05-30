@@ -27,10 +27,10 @@ namespace Sharpy
 
         public static string Dumps(object? obj)
         {
-            return Dumps(obj, false, false);
+            return Dumps(obj, false);
         }
 
-        public static string Dumps(object? obj, bool sortKeys = false, bool multilineStrings = false)
+        public static string Dumps(object? obj, bool sortKeys = false)
         {
             var table = TomlConverter.ToTomlyn(obj);
 
@@ -63,17 +63,17 @@ namespace Sharpy
 
         public static void Dump(object? obj, TextFile fp)
         {
-            Dump(obj, fp, false, false);
+            Dump(obj, fp, false);
         }
 
-        public static void Dump(object? obj, TextFile fp, bool sortKeys = false, bool multilineStrings = false)
+        public static void Dump(object? obj, TextFile fp, bool sortKeys = false)
         {
             if (fp == null)
             {
                 throw new TypeError("expected TextFile, got NoneType");
             }
 
-            string toml = Dumps(obj, sortKeys, multilineStrings);
+            string toml = Dumps(obj, sortKeys);
             fp.Write(toml);
         }
 
@@ -101,17 +101,17 @@ namespace Sharpy
 
         public static void DumpFile(object? obj, string path)
         {
-            DumpFile(obj, path, false, false);
+            DumpFile(obj, path, false);
         }
 
-        public static void DumpFile(object? obj, string path, bool sortKeys = false, bool multilineStrings = false)
+        public static void DumpFile(object? obj, string path, bool sortKeys = false)
         {
             if (path == null)
             {
                 throw new TypeError("expected str, not NoneType");
             }
 
-            string toml = Dumps(obj, sortKeys, multilineStrings);
+            string toml = Dumps(obj, sortKeys);
             File.WriteAllText(path, toml);
         }
 

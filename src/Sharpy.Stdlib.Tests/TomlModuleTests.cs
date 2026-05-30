@@ -397,6 +397,25 @@ namespace Sharpy.Tests
             act.Should().Throw<ValueError>();
         }
 
+        [Fact]
+        public void Loads_MalformedToml_ErrorMessageContainsLineColumn()
+        {
+            try
+            {
+                Toml.Loads("valid = 1\ninvalid = [");
+            }
+            catch (TOMLDecodeError ex)
+            {
+                ex.Message.Should().Contain("line");
+                ex.Message.Should().Contain("column");
+                ex.Msg.Should().NotBeEmpty();
+                ex.Doc.Should().Contain("invalid");
+                return;
+            }
+
+            Assert.Fail("Expected TOMLDecodeError");
+        }
+
         #endregion
 
         #region File I/O
