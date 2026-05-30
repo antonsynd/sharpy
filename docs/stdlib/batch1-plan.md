@@ -256,7 +256,7 @@ Module implementation order: secrets (simplest, no dependencies) → base64 (sta
     - Follow the same format as #733/#734/#741
     - Commit: (no commit — GitHub issue only)
 
-24. **Update roadmap** — `docs/stdlib/roadmap.md`
+24. **Update roadmap** — `roadmap.md`
     - Fix issue references in Batch 1 table: #738 → secrets issue number, #739 → #734
     - Update "Current Modules" count from 31 to 37 and add `toml`, `yaml`, and all four new modules to the list [CORRECTED: current actual count is 33 (toml + yaml already exist), not 31; 33 + 4 = 37]
     - Update Batch 3 status: yaml (#731) is implemented, toml (#732) is implemented — mark as complete

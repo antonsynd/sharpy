@@ -5,7 +5,7 @@
 
 ## Context
 
-Implement the three "niche" stdlib modules from the [Tier 2 roadmap](docs/stdlib/roadmap.md) Batch 10. These are the final Tier 2 modules: `tarfile` for tar archive handling, `http` for lower-level HTTP client access (complementing the existing `requests` module), and `email` for email message creation and parsing.
+Implement the three "niche" stdlib modules from the [Tier 2 roadmap](roadmap.md) Batch 10. These are the final Tier 2 modules: `tarfile` for tar archive handling, `http` for lower-level HTTP client access (complementing the existing `requests` module), and `email` for email message creation and parsing.
 
 **GitHub issues:**
 - [#755](https://github.com/antonsynd/sharpy/issues/755) — tarfile module (tar archive handling)

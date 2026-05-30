@@ -5,7 +5,7 @@
 
 ## Context
 
-Implement the two "config + networking" stdlib modules from the [Tier 2 roadmap](docs/stdlib/roadmap.md) Batch 6. `configparser` provides INI-style configuration file parsing and writing (custom implementation, no .NET equivalent). `ipaddress` wraps `System.Net.IPAddress` and `System.Net.IPNetwork` for IPv4/IPv6 address and network manipulation.
+Implement the two "config + networking" stdlib modules from the [Tier 2 roadmap](roadmap.md) Batch 6. `configparser` provides INI-style configuration file parsing and writing (custom implementation, no .NET equivalent). `ipaddress` wraps `System.Net.IPAddress` and `System.Net.IPNetwork` for IPv4/IPv6 address and network manipulation.
 
 **GitHub issues:**
 - [#744](https://github.com/antonsynd/sharpy/issues/744) — configparser module (INI file parsing)

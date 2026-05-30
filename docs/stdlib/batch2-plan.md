@@ -315,7 +315,7 @@ Module implementation order: platform (simplest, pure read-only) → urllib (mod
     - Include proposed API, .NET backing (`BinaryPrimitives`), and test plan
     - Commit: (no commit — GitHub issue only)
 
-23. **Update roadmap** — `docs/stdlib/roadmap.md`
+23. **Update roadmap** — `roadmap.md`
     - Fix issue reference for struct in Batch 2 table: #734 → new struct issue number (since #734 is actually the base64 issue)
     - Update "Current Modules" count to include all newly added modules
     - Mark Batch 1 as complete if it was implemented before this plan

@@ -5,7 +5,7 @@
 
 ## Context
 
-Implement the four "utilities" stdlib modules from the [Tier 2 roadmap](docs/stdlib/roadmap.md) Batch 8. These are smaller modules that round out Sharpy's standard library: `pprint` for pretty-printing data structures, `calendar` and `zoneinfo` which pair with the existing `datetime` module, and `colorsys` for color space conversions.
+Implement the four "utilities" stdlib modules from the [Tier 2 roadmap](roadmap.md) Batch 8. These are smaller modules that round out Sharpy's standard library: `pprint` for pretty-printing data structures, `calendar` and `zoneinfo` which pair with the existing `datetime` module, and `colorsys` for color space conversions.
 
 **GitHub issues:**
 - [#745](https://github.com/antonsynd/sharpy/issues/745) — pprint module (data structure pretty-printing)

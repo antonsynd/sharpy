@@ -5,7 +5,7 @@
 
 ## Context
 
-Implement the three compression-related stdlib modules from the [Tier 1 roadmap](docs/stdlib/roadmap.md) Batch 4. These wrap .NET BCL compression APIs with no NuGet dependencies required.
+Implement the three compression-related stdlib modules from the [Tier 1 roadmap](roadmap.md) Batch 4. These wrap .NET BCL compression APIs with no NuGet dependencies required.
 
 **Note:** The original Batch 4 included `decimal`, but [#735](https://github.com/antonsynd/sharpy/issues/735) was closed as NOT_PLANNED — Sharpy already has `decimal` as a builtin type mapped to `System.Decimal`, and adding a module would create a naming conflict. The roadmap's `gzip` entry incorrectly referenced [#736](https://github.com/antonsynd/sharpy/issues/736), which is a duplicate of the `zlib` issue [#740](https://github.com/antonsynd/sharpy/issues/740) (closed as duplicate). A new issue is needed for `gzip`.
 
@@ -380,7 +380,7 @@ Module implementation order: zlib (foundational compression) → gzip (simpler, 
 
 #### Tasks
 
-27. **Update roadmap** — `docs/stdlib/roadmap.md`
+27. **Update roadmap** — `roadmap.md`
     - Fix issue reference for gzip: #736 → new gzip issue number (since #736 is a duplicate zlib issue, closed)
     - Remove `decimal` from Batch 4 (add note that it was closed as NOT_PLANNED — already a builtin type)
     - Update "Current Modules" count to include all newly added modules
@@ -430,7 +430,7 @@ Each module gets at least two fixture pairs:
 
 ## Roadmap Corrections Needed
 
-The roadmap (`docs/stdlib/roadmap.md`) has several issues that should be fixed as part of Task 27:
+The roadmap (`roadmap.md`) has several issues that should be fixed as part of Task 27:
 1. **#736 is labeled as "gzip"** but the issue is actually titled "add zlib module" and is a duplicate of #740. The gzip entry needs a new issue.
 2. **`decimal` (#735)** was closed as NOT_PLANNED (already a builtin type). Remove from Batch 4 or mark as dropped.
 3. **Batch 4 description** says "decimal, zlib, gzip, zipfile" — should be updated to "zlib, gzip, zipfile" with a note about decimal.

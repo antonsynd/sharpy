@@ -2,7 +2,7 @@
 
 ## Context
 
-Implement the two "markup" stdlib modules from the [Tier 2 roadmap](docs/stdlib/roadmap.md) Batch 7. These provide structured data processing — `xml` wraps `System.Xml.Linq` for an ElementTree-style API, and `html` provides HTML escaping/unescaping plus an event-driven HTML parser.
+Implement the two "markup" stdlib modules from the [Tier 2 roadmap](roadmap.md) Batch 7. These provide structured data processing — `xml` wraps `System.Xml.Linq` for an ElementTree-style API, and `html` provides HTML escaping/unescaping plus an event-driven HTML parser.
 
 **GitHub issues:**
 - [#751](https://github.com/antonsynd/sharpy/issues/751) — xml module (XML processing via ElementTree API)

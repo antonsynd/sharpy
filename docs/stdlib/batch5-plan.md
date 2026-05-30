@@ -5,7 +5,7 @@
 
 ## Context
 
-Implement the two "scripting" stdlib modules from the [Tier 2 roadmap](docs/stdlib/roadmap.md) Batch 5. These are frequently needed for scripting and automation — `subprocess` wraps `System.Diagnostics.Process` for spawning child processes, and `shlex` provides shell-like string splitting/quoting (custom implementation, no .NET equivalent).
+Implement the two "scripting" stdlib modules from the [Tier 2 roadmap](roadmap.md) Batch 5. These are frequently needed for scripting and automation — `subprocess` wraps `System.Diagnostics.Process` for spawning child processes, and `shlex` provides shell-like string splitting/quoting (custom implementation, no .NET equivalent).
 
 **GitHub issues:**
 - [#752](https://github.com/antonsynd/sharpy/issues/752) — subprocess module (process spawning and management)

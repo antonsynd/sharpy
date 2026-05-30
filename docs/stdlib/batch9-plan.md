@@ -5,7 +5,7 @@
 
 ## Context
 
-Implement the four "advanced" stdlib modules from the [Tier 2 roadmap](docs/stdlib/roadmap.md) Batch 9. These are more complex modules with lower immediate demand but important for specific use cases: `threading` provides thread-based concurrency, `socket` provides low-level networking, `difflib` provides text comparison/diffing, and `fractions` provides exact rational number arithmetic.
+Implement the four "advanced" stdlib modules from the [Tier 2 roadmap](roadmap.md) Batch 9. These are more complex modules with lower immediate demand but important for specific use cases: `threading` provides thread-based concurrency, `socket` provides low-level networking, `difflib` provides text comparison/diffing, and `fractions` provides exact rational number arithmetic.
 
 **GitHub issues:**
 - [#753](https://github.com/antonsynd/sharpy/issues/753) — threading module (thread-based concurrency)
