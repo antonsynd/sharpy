@@ -1,0 +1,18 @@
+import gzip
+
+def main():
+    # Compress/decompress roundtrip
+    data: bytes = b"Hello, World!" * 10
+    compressed: bytes = gzip.compress(data)
+    decompressed: bytes = gzip.decompress(compressed)
+    print(decompressed == data)
+
+    # Empty data roundtrip
+    empty_compressed: bytes = gzip.compress(b"")
+    print(gzip.decompress(empty_compressed) == b"")
+
+    # Different compression levels
+    c1: bytes = gzip.compress(data, 1)
+    print(gzip.decompress(c1) == data)
+    c9: bytes = gzip.compress(data, 9)
+    print(gzip.decompress(c9) == data)

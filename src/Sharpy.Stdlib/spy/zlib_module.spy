@@ -1,0 +1,57 @@
+from sharpy import ZlibError
+
+MAX_WBITS: int = 15
+DEFLATED: int = 8
+DEF_MEM_LEVEL: int = 8
+DEF_BUF_SIZE: int = 16384
+
+Z_DEFAULT_COMPRESSION: int = -1
+Z_NO_COMPRESSION: int = 0
+Z_BEST_SPEED: int = 1
+Z_BEST_COMPRESSION: int = 9
+
+Z_DEFAULT_STRATEGY: int = 0
+Z_FILTERED: int = 1
+Z_HUFFMAN_ONLY: int = 2
+Z_RLE: int = 3
+Z_FIXED: int = 4
+
+Z_NO_FLUSH: int = 0
+Z_PARTIAL_FLUSH: int = 1
+Z_SYNC_FLUSH: int = 2
+Z_FULL_FLUSH: int = 3
+Z_FINISH: int = 4
+Z_BLOCK: int = 5
+Z_TREES: int = 6
+
+class error(Exception):
+    pass
+
+class compressobj:
+    def compress(self, data: bytes) -> bytes:
+        return bytes()
+
+    def flush(self, mode: int = 4) -> bytes:
+        return bytes()
+
+class decompressobj:
+    unconsumed_tail: bytes
+    eof: bool
+
+    def decompress(self, data: bytes, max_length: int = 0) -> bytes:
+        return bytes()
+
+    def flush(self, length: int = 16384) -> bytes:
+        return bytes()
+
+def compress(data: bytes, level: int = 6) -> bytes:
+    return bytes()
+
+def decompress(data: bytes, wbits: int = 15, bufsize: int = 16384) -> bytes:
+    return bytes()
+
+def crc32(data: bytes, value: int = 0) -> int:
+    return 0
+
+def adler32(data: bytes, value: int = 1) -> int:
+    return 0

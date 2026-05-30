@@ -554,6 +554,9 @@ internal partial class RoslynEmitter
         { "platform", "PlatformModule" },
         { "urllib", "UrllibModule" },
         { "struct", "StructModule" },
+        { "zlib", "ZlibModule" },
+        { "gzip", "GzipModule" },
+        { "zipfile", "ZipfileModule" },
     };
 
     /// <summary>

@@ -1,0 +1,6 @@
+from zlib import compress, decompress, crc32
+
+def main():
+    print(crc32(b"Hello"))
+    data: bytes = b"test data"
+    print(decompress(compress(data)) == data)

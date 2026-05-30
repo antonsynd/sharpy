@@ -1,0 +1,28 @@
+import zlib
+
+def main():
+    # Checksum tests
+    print(zlib.crc32(b"Hello"))
+    print(zlib.adler32(b"Hello"))
+
+    # Compress/decompress roundtrip
+    data: bytes = b"Hello, World!" * 10
+    compressed: bytes = zlib.compress(data)
+    decompressed: bytes = zlib.decompress(compressed)
+    print(decompressed == data)
+
+    # Empty data roundtrip
+    empty_compressed: bytes = zlib.compress(b"")
+    empty_decompressed: bytes = zlib.decompress(empty_compressed)
+    print(empty_decompressed == b"")
+
+    # Different compression levels
+    c0: bytes = zlib.compress(data, 0)
+    print(zlib.decompress(c0) == data)
+    c9: bytes = zlib.compress(data, 9)
+    print(zlib.decompress(c9) == data)
+
+    # Constants
+    print(zlib.MAX_WBITS)
+    print(zlib.Z_DEFAULT_COMPRESSION)
+    print(zlib.Z_BEST_COMPRESSION)

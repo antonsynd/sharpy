@@ -1,0 +1,22 @@
+import gzip
+import tempfile
+import os.path
+
+def main():
+    # Write and read back via GzipFile
+    tmpdir: str = tempfile.mkdtemp()
+    filepath: str = os.path.join(tmpdir, "test.gz")
+
+    data: bytes = b"Hello gzip file test!"
+
+    f = gzip.open(filepath, "wb")
+    f.write(data)
+    f.close()
+
+    f2 = gzip.open(filepath, "rb")
+    result: bytes = f2.read()
+    f2.close()
+
+    print(result == data)
+    print(f2.readable())
+    print(f2.seekable())

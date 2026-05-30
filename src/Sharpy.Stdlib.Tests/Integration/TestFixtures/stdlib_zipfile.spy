@@ -1,0 +1,35 @@
+from zipfile import ZipFile, is_zipfile, ZIP_STORED, ZIP_DEFLATED
+import tempfile
+import os.path
+
+def main():
+    tmpdir: str = tempfile.mkdtemp()
+    zippath: str = os.path.join(tmpdir, "test.zip")
+
+    # Create a ZIP and write string content
+    zf = ZipFile(zippath, "w", ZIP_DEFLATED)
+    zf.writestr("hello.txt", "Hello, World!")
+    zf.writestr("data.txt", "Some data here")
+    zf.close()
+
+    # Verify is_zipfile
+    print(is_zipfile(zippath))
+
+    # Read back
+    zf2 = ZipFile(zippath, "r")
+    names = zf2.namelist()
+    print(len(names))
+    print("hello.txt" in names)
+    print("data.txt" in names)
+
+    data: bytes = zf2.read("hello.txt")
+    print(data == b"Hello, World!")
+
+    info = zf2.getinfo("hello.txt")
+    print(info.filename)
+    print(info.file_size)
+    zf2.close()
+
+    # Constants
+    print(ZIP_STORED)
+    print(ZIP_DEFLATED)

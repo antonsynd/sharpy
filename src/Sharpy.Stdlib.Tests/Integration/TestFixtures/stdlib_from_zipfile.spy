@@ -1,0 +1,4 @@
+from zipfile import ZipFile, is_zipfile, ZIP_DEFLATED
+
+def main():
+    print(ZIP_DEFLATED)

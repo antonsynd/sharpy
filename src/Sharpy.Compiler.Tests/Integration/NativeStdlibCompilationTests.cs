@@ -47,6 +47,9 @@ public class NativeStdlibCompilationTests
         "platform_module",
         "urllib_module",
         "struct_module",
+        "zlib_module",
+        "gzip_module",
+        "zipfile_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)

@@ -1,0 +1,32 @@
+from sharpy import BadGzipFile
+
+class GzipFile:
+    name: str
+    mode: int
+
+    def read(self, size: int = -1) -> bytes:
+        return bytes()
+
+    def write(self, data: bytes) -> int:
+        return 0
+
+    def close(self):
+        pass
+
+    def readable(self) -> bool:
+        return False
+
+    def writable(self) -> bool:
+        return False
+
+    def seekable(self) -> bool:
+        return False
+
+def compress(data: bytes, compresslevel: int = 9) -> bytes:
+    return bytes()
+
+def decompress(data: bytes) -> bytes:
+    return bytes()
+
+def open(filename: str, mode: str = "rb", compresslevel: int = 9) -> GzipFile:
+    return GzipFile()

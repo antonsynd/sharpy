@@ -1,0 +1,54 @@
+from sharpy import BadZipFile, LargeZipFile, KeyError
+
+ZIP_STORED: int = 0
+ZIP_DEFLATED: int = 8
+
+class ZipInfo:
+    filename: str
+    date_time: list[int]
+    compress_type: int
+    file_size: int
+    compress_size: int
+
+    def __init__(self, filename: str = "NoName"):
+        self.filename = filename
+
+    def is_dir(self) -> bool:
+        return False
+
+class ZipFile:
+    def __init__(self, file: str, mode: str = "r", compression: int = 8, allow_zip64: bool = True):
+        pass
+
+    def namelist(self) -> list[str]:
+        return []
+
+    def infolist(self) -> list[ZipInfo]:
+        return []
+
+    def getinfo(self, name: str) -> ZipInfo:
+        return ZipInfo()
+
+    def read(self, name: str) -> bytes:
+        return bytes()
+
+    def write(self, filename: str, arcname: str = "", compress_type: int = 0):
+        pass
+
+    def writestr(self, arcname: str, data: str, compress_type: int = 0):
+        pass
+
+    def extract(self, member: str, path: str = "") -> str:
+        return ""
+
+    def extractall(self, path: str = ""):
+        pass
+
+    def mkdir(self, zinf_or_arcname: str):
+        pass
+
+    def close(self):
+        pass
+
+def is_zipfile(filename: str) -> bool:
+    return False

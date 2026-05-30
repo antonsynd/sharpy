@@ -1,0 +1,16 @@
+import zlib
+
+def main():
+    # Streaming compress/decompress roundtrip
+    data: bytes = b"Hello streaming compression!" * 5
+    c = zlib.compressobj(6)
+    part1: bytes = c.compress(data)
+    part2: bytes = c.flush()
+    compressed: bytes = part1 + part2
+
+    d = zlib.decompressobj()
+    dpart1: bytes = d.decompress(compressed)
+    dpart2: bytes = d.flush()
+    result: bytes = dpart1 + dpart2
+    print(result == data)
+    print(d.eof)

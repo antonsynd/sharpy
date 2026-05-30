@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Sharpy.Stdlib.Zipfile</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../Zipfile/**/*.cs" />
+  </ItemGroup>
+
+</Project>

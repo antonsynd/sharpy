@@ -1,0 +1,23 @@
+from zipfile import ZipFile
+import tempfile
+import os.path
+
+def main():
+    tmpdir: str = tempfile.mkdtemp()
+    zippath: str = os.path.join(tmpdir, "extract_test.zip")
+    outdir: str = os.path.join(tmpdir, "extracted")
+
+    # Create a ZIP
+    zf = ZipFile(zippath, "w")
+    zf.writestr("file1.txt", "content1")
+    zf.writestr("file2.txt", "content2")
+    zf.close()
+
+    # Extract all
+    zf2 = ZipFile(zippath, "r")
+    zf2.extractall(outdir)
+    zf2.close()
+
+    # Verify extracted files
+    print(os.path.exists(os.path.join(outdir, "file1.txt")))
+    print(os.path.exists(os.path.join(outdir, "file2.txt")))
