@@ -145,6 +145,7 @@ namespace Sharpy
         public void Dispose()
         {
             Close();
+            GC.SuppressFinalize(this);
         }
 
         private void EnsureOpen()

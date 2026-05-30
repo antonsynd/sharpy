@@ -189,39 +189,17 @@ namespace Sharpy
                 flg = 0x9C;
             }
 
-            int check = (cmf * 256 + flg) % 31;
-            if (check != 0)
-            {
-                flg = (byte)(flg + (31 - check));
-            }
-
             output.WriteByte(cmf);
             output.WriteByte(flg);
         }
 
         private static void WriteAdler32Trailer(MemoryStream output, byte[] data)
         {
-            long adler = ComputeAdler32(data, 1);
-            uint a = (uint)adler;
+            uint a = (uint)Adler32(new Bytes(data));
             output.WriteByte((byte)((a >> 24) & 0xFF));
             output.WriteByte((byte)((a >> 16) & 0xFF));
             output.WriteByte((byte)((a >> 8) & 0xFF));
             output.WriteByte((byte)(a & 0xFF));
-        }
-
-        private static long ComputeAdler32(byte[] data, long value)
-        {
-            uint s1 = (uint)(value & 0xFFFF);
-            uint s2 = (uint)((value >> 16) & 0xFFFF);
-            const uint MOD_ADLER = 65521;
-
-            for (int i = 0; i < data.Length; i++)
-            {
-                s1 = (s1 + data[i]) % MOD_ADLER;
-                s2 = (s2 + s1) % MOD_ADLER;
-            }
-
-            return (long)(((s2 << 16) | s1) & 0xFFFFFFFF);
         }
 #endif
     }

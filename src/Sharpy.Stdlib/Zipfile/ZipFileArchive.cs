@@ -94,7 +94,7 @@ namespace Sharpy
             EnsureOpen();
             if (_mode == "w")
             {
-                throw new InvalidOperationException("Cannot read from a ZipFile opened for writing");
+                throw new OSError("Cannot read from a ZipFile opened for writing");
             }
 
             var entry = _archive!.GetEntry(name);
@@ -139,6 +139,7 @@ namespace Sharpy
         public void Dispose()
         {
             Close();
+            GC.SuppressFinalize(this);
         }
 
         private void EnsureOpen()
@@ -153,7 +154,7 @@ namespace Sharpy
         {
             if (_mode == "r")
             {
-                throw new InvalidOperationException("Cannot write to a ZipFile opened for reading");
+                throw new OSError("Cannot write to a ZipFile opened for reading");
             }
         }
 

@@ -8,7 +8,7 @@ namespace Sharpy
     {
         public static Bytes Compress(Bytes data, int compresslevel = 9)
         {
-            if (compresslevel < 0 || compresslevel > 9)
+            if (compresslevel != -1 && (compresslevel < 0 || compresslevel > 9))
             {
                 throw new ValueError("Bad compression level: " + compresslevel);
             }
@@ -48,6 +48,11 @@ namespace Sharpy
 
         internal static CompressionLevel MapGzipLevel(int level)
         {
+            if (level == -1)
+            {
+                return CompressionLevel.Optimal;
+            }
+
             if (level == 0)
             {
                 return CompressionLevel.NoCompression;

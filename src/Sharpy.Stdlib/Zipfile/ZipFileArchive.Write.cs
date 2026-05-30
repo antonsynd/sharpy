@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Sharpy
@@ -103,7 +104,10 @@ namespace Sharpy
             string destPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(destDir, entry.FullName));
             string fullDestDir = System.IO.Path.GetFullPath(destDir + System.IO.Path.DirectorySeparatorChar);
 
-            if (!destPath.StartsWith(fullDestDir, StringComparison.Ordinal))
+            var comparison = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            if (!destPath.StartsWith(fullDestDir, comparison))
             {
                 throw new ValueError("Entry is outside the target directory: " + entry.FullName);
             }

@@ -19,10 +19,9 @@ Modules with direct .NET BCL equivalents. Most are thin wrappers requiring minim
 | 5 | `struct` | [#787](https://github.com/antonsynd/sharpy/issues/787) | `BinaryPrimitives` | Medium | — |
 | 6 | `urllib` | [#742](https://github.com/antonsynd/sharpy/issues/742) | `System.Uri` | Medium | — |
 | 7 | `platform` | [#743](https://github.com/antonsynd/sharpy/issues/743) | `RuntimeInformation` | Small | — |
-| 8 | `decimal` | [#735](https://github.com/antonsynd/sharpy/issues/735) | `System.Decimal` | Medium | — |
-| 9 | `zlib` | [#740](https://github.com/antonsynd/sharpy/issues/740) | `DeflateStream` | Medium | — |
-| 10 | `gzip` | [#736](https://github.com/antonsynd/sharpy/issues/736) | `GZipStream` | Medium | zlib |
-| 11 | `zipfile` | [#737](https://github.com/antonsynd/sharpy/issues/737) | `ZipArchive` | Medium | — |
+| 8 | `zlib` | [#740](https://github.com/antonsynd/sharpy/issues/740) | `DeflateStream` | Medium | — |
+| 9 | `gzip` | [#788](https://github.com/antonsynd/sharpy/issues/788) | `GZipStream` | Medium | zlib |
+| 10 | `zipfile` | [#737](https://github.com/antonsynd/sharpy/issues/737) | `ZipArchive` | Medium | — |
 
 ### Recommended batch order
 
@@ -32,7 +31,7 @@ Modules with direct .NET BCL equivalents. Most are thin wrappers requiring minim
 
 **Batch 3 (data formats):** yaml ([#731](https://github.com/antonsynd/sharpy/issues/731)), toml ([#732](https://github.com/antonsynd/sharpy/issues/732)) — COMPLETE. Both implemented with NuGet-backed (YamlDotNet, Tomlyn).
 
-**Batch 4 (compression):** decimal, zlib, gzip, zipfile — zlib before gzip (dependency). Unlocks data processing workflows.
+**Batch 4 (compression):** zlib, gzip, zipfile — COMPLETE. Implemented in [batch4-plan](batch4-plan.md). (`decimal` [#735] dropped — already a builtin type mapped to `System.Decimal`.)
 
 ## Tier 2 — Moderate value, good .NET story
 
