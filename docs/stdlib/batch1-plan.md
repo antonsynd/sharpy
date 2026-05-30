@@ -1,5 +1,6 @@
 <!-- Verified by /verify-plan on 2026-05-29 -->
 <!-- Verification result: PASS WITH CORRECTIONS -->
+<!-- Implementation status: COMPLETE (2026-05-29) -->
 
 # Stdlib Batch 1: uuid, base64, secrets, hmac
 
@@ -294,12 +295,32 @@ Since three of these modules involve randomness (secrets, uuid) or variable outp
 - `secrets.randbelow(0)` → error
 - `secrets.choice([])` → error
 
+## Implementation Status
+
+**Status:** COMPLETE — implemented on branch `feat/stdlib-batch1` (2026-05-29)
+
+| Module | Status | Source | Tests | Notes |
+|--------|--------|--------|-------|-------|
+| secrets | Done | From scratch | 21 unit + 2 integration fixtures | Issue #786 created |
+| base64 | Done | Copilot PR #772 + fixes | 14 unit + 1 integration fixture | Added casefold params, string overloads, validate fix |
+| uuid | Done | Copilot PR #771 + fixes | 12 unit + 1 integration fixture | Added .csproj, netstandard2.1 compat, UuidBytes, Urn |
+| hmac | Done | Copilot PR #781 + fixes | 13 unit + 1 integration fixture | Added Bytes overloads, BlockSize, constant-time fallback |
+
+**Key fixes over Copilot PRs:**
+- All modules: added missing `.csproj`, `.spy` stub, integration test fixtures, `StdlibClassNameOverrides`, LSP docs
+- base64: `casefold` param for b32decode/b16decode (Python parity), string decode overloads, validate=False strips invalid chars
+- uuid: `UuidBytes` returns `Bytes` (not `List<int>`), `Urn` property, `System.DateTime` qualification, SCREAMING_SNAKE_CASE constants matching name mangler
+- hmac: `Bytes` overloads for New/Digest/Update, `BlockSize` property, `#if NET10_0_OR_GREATER` for `CryptographicOperations.FixedTimeEquals`
+- All modules: netstandard2.1 compat (`RandomNumberGenerator.Create()` fallback, no `Fill`/`GetInt32`)
+
+**Known limitation:** `len(b)` on `bytes` values doesn't work — compiler doesn't detect `ISized` on CLR-discovered types. Filed as #789.
+
 ## Issues to Close
 
 - #733 — uuid module (closed by Phase 3, Tasks 11-16)
 - #734 — base64 module (closed by Phase 2, Tasks 6-10)
 - #741 — hmac module (closed by Phase 4, Tasks 17-22)
-- (new issue) — secrets module (closed by Phase 1, Tasks 1-5)
+- #786 — secrets module (closed by Phase 1, Tasks 1-5)
 
 ## Verification Summary
 
