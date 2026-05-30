@@ -1,0 +1,8 @@
+def split(s: str, comments: bool = False, posix: bool = True) -> list[str]:
+    pass
+
+def quote(s: str) -> str:
+    pass
+
+def join(split_command: list[str]) -> str:
+    pass

@@ -557,6 +557,8 @@ internal partial class RoslynEmitter
         { "zlib", "ZlibModule" },
         { "gzip", "GzipModule" },
         { "zipfile", "ZipfileModule" },
+        { "shlex", "ShlexModule" },
+        { "subprocess", "SubprocessModule" },
     };
 
     /// <summary>
