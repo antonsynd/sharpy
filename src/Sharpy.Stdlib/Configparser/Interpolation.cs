@@ -36,13 +36,23 @@ namespace Sharpy
             while (true)
             {
                 int idx = result.IndexOf("%(", startIdx, StringComparison.Ordinal);
-                if (idx < 0) break;
+                if (idx < 0)
+                    break;
 
                 int endIdx = result.IndexOf(")s", idx + 2, StringComparison.Ordinal);
-                if (endIdx < 0) break;
+                if (endIdx < 0)
+                    break;
 
                 string key = result.Substring(idx + 2, endIdx - idx - 2);
-                string? replacement = parser.Get(section, key, raw: true);
+                string? replacement;
+                try
+                {
+                    replacement = parser.Get(section, key, raw: true);
+                }
+                catch (ConfigparserError)
+                {
+                    replacement = null;
+                }
                 if (replacement == null)
                 {
                     throw new InterpolationError(
@@ -91,10 +101,12 @@ namespace Sharpy
             while (true)
             {
                 int idx = result.IndexOf("${", startIdx, StringComparison.Ordinal);
-                if (idx < 0) break;
+                if (idx < 0)
+                    break;
 
                 int endIdx = result.IndexOf("}", idx + 2, StringComparison.Ordinal);
-                if (endIdx < 0) break;
+                if (endIdx < 0)
+                    break;
 
                 string reference = result.Substring(idx + 2, endIdx - idx - 2);
                 string refSection;
@@ -112,7 +124,15 @@ namespace Sharpy
                     refOption = reference;
                 }
 
-                string? replacement = parser.Get(refSection, refOption, raw: true);
+                string? replacement;
+                try
+                {
+                    replacement = parser.Get(refSection, refOption, raw: true);
+                }
+                catch (ConfigparserError)
+                {
+                    replacement = null;
+                }
                 if (replacement == null)
                 {
                     throw new InterpolationError(

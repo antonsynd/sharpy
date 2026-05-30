@@ -117,9 +117,11 @@ namespace Sharpy
 
                 string trimmed = line.TrimStart();
 
-                if (trimmed.Length == 0) continue;
+                if (trimmed.Length == 0)
+                    continue;
 
-                if (trimmed[0] == '#' || trimmed[0] == ';') continue;
+                if (trimmed[0] == '#' || trimmed[0] == ';')
+                    continue;
 
                 if (trimmed[0] == '[')
                 {
@@ -201,7 +203,8 @@ namespace Sharpy
 
         private void FlushPending(string? section, string key, string? value)
         {
-            if (section == null) return;
+            if (section == null)
+                return;
 
             if (string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
             {

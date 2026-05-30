@@ -30,8 +30,10 @@ namespace Sharpy
         {
             get
             {
-                if (_bytes[0] == 0x20 && _bytes[1] == 0x01 && _bytes[2] == 0x0D && _bytes[3] == 0xB8) return true;
-                if (_bytes[0] == 0x01 && _bytes[1] == 0x00) return true;
+                if (_bytes[0] == 0x20 && _bytes[1] == 0x01 && _bytes[2] == 0x0D && _bytes[3] == 0xB8)
+                    return true;
+                if (_bytes[0] == 0x01 && _bytes[1] == 0x00)
+                    return true;
                 return false;
             }
         }
@@ -62,9 +64,11 @@ namespace Sharpy
             {
                 for (int i = 0; i < 10; i++)
                 {
-                    if (_bytes[i] != 0) return null;
+                    if (_bytes[i] != 0)
+                        return null;
                 }
-                if (_bytes[10] != 0xFF || _bytes[11] != 0xFF) return null;
+                if (_bytes[10] != 0xFF || _bytes[11] != 0xFF)
+                    return null;
 
                 uint v4 = ((uint)_bytes[12] << 24) | ((uint)_bytes[13] << 16) |
                           ((uint)_bytes[14] << 8) | _bytes[15];
@@ -146,11 +150,13 @@ namespace Sharpy
 
         public int CompareTo(IPv6Address? other)
         {
-            if (other == null) return 1;
+            if (other == null)
+                return 1;
             for (int i = 0; i < 16; i++)
             {
                 int cmp = _bytes[i].CompareTo(other._bytes[i]);
-                if (cmp != 0) return cmp;
+                if (cmp != 0)
+                    return cmp;
             }
             return 0;
         }
@@ -183,7 +189,8 @@ namespace Sharpy
         public static bool operator >=(IPv6Address left, IPv6Address right) => left.CompareTo(right) >= 0;
         public static bool operator ==(IPv6Address? left, IPv6Address? right)
         {
-            if (left is null) return right is null;
+            if (left is null)
+                return right is null;
             return left.Equals(right);
         }
         public static bool operator !=(IPv6Address? left, IPv6Address? right) => !(left == right);

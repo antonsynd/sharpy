@@ -18,9 +18,12 @@ namespace Sharpy
             {
                 byte b0 = (byte)(_value >> 24);
                 byte b1 = (byte)(_value >> 16);
-                if (b0 == 10) return true;
-                if (b0 == 172 && b1 >= 16 && b1 <= 31) return true;
-                if (b0 == 192 && b1 == 168) return true;
+                if (b0 == 10)
+                    return true;
+                if (b0 == 172 && b1 >= 16 && b1 <= 31)
+                    return true;
+                if (b0 == 192 && b1 == 168)
+                    return true;
                 return false;
             }
         }
@@ -36,7 +39,7 @@ namespace Sharpy
             }
         }
 
-        public bool IsReserved => (_value >> 24) >= 240 && _value != 0xFFFFFFFF;
+        public bool IsReserved => (_value >> 24) >= 240;
 
         public bool IsLinkLocal
         {
@@ -138,7 +141,8 @@ namespace Sharpy
 
         public int CompareTo(IPv4Address? other)
         {
-            if (other == null) return 1;
+            if (other == null)
+                return 1;
             return _value.CompareTo(other._value);
         }
 
@@ -168,7 +172,8 @@ namespace Sharpy
         public static bool operator >=(IPv4Address left, IPv4Address right) => left._value >= right._value;
         public static bool operator ==(IPv4Address? left, IPv4Address? right)
         {
-            if (left is null) return right is null;
+            if (left is null)
+                return right is null;
             return left.Equals(right);
         }
         public static bool operator !=(IPv4Address? left, IPv4Address? right) => !(left == right);

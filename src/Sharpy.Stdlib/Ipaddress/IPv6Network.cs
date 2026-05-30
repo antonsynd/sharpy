@@ -8,7 +8,7 @@ using System.Numerics;
 namespace Sharpy
 {
     [SharpyModuleType("ipaddress")]
-    public sealed class IPv6Network : IEquatable<IPv6Network>, IComparable<IPv6Network>
+    public sealed class IPv6Network : IEnumerable<IPv6Address>, IEquatable<IPv6Network>, IComparable<IPv6Network>
     {
         private readonly byte[] _networkAddress;
         private readonly int _prefixLength;
@@ -49,6 +49,20 @@ namespace Sharpy
             }
         }
 
+        public IPv6Address Hostmask
+        {
+            get
+            {
+                byte[] mask = ComputeMask(_prefixLength);
+                byte[] host = new byte[16];
+                for (int i = 0; i < 16; i++)
+                {
+                    host[i] = (byte)(~mask[i] & 0xFF);
+                }
+                return new IPv6Address(new IPAddress(host));
+            }
+        }
+
         public BigInteger NumAddresses
         {
             get
@@ -57,6 +71,17 @@ namespace Sharpy
                 return BigInteger.One << hostBits;
             }
         }
+
+        public bool IsPrivate => NetworkAddress.IsPrivate;
+        public bool IsLoopback => NetworkAddress.IsLoopback;
+        public bool IsMulticast => NetworkAddress.IsMulticast;
+        public bool IsReserved => NetworkAddress.IsReserved;
+        public bool IsLinkLocal => NetworkAddress.IsLinkLocal;
+        public bool IsGlobal => NetworkAddress.IsGlobal;
+
+        public string WithPrefixlen => NetworkAddress + "/" + _prefixLength;
+        public string WithNetmask => NetworkAddress + "/" + Netmask;
+        public string WithHostmask => NetworkAddress + "/" + Hostmask;
 
         public IPv6Network(string address, bool strict = true)
         {
@@ -145,7 +170,8 @@ namespace Sharpy
 
             for (int i = 0; i < 16; i++)
             {
-                if (masked[i] != _networkAddress[i]) return false;
+                if (masked[i] != _networkAddress[i])
+                    return false;
             }
             return true;
         }
@@ -154,6 +180,86 @@ namespace Sharpy
         {
             return Contains(other.NetworkAddress) || Contains(other.BroadcastAddress) ||
                    other.Contains(NetworkAddress) || other.Contains(BroadcastAddress);
+        }
+
+        public IEnumerable<IPv6Address> Hosts()
+        {
+            BigInteger network = NetworkAddress.ToInt();
+            BigInteger last = network + NumAddresses - 1;
+            // Python excludes only the Subnet-Router anycast (first address) for prefixes
+            // shorter than /127; /127 and /128 yield all addresses.
+            BigInteger start = _prefixLength >= 127 ? network : network + 1;
+            for (BigInteger i = start; i <= last; i++)
+            {
+                yield return new IPv6Address(i);
+            }
+        }
+
+        public IEnumerator<IPv6Address> GetEnumerator()
+        {
+            BigInteger network = NetworkAddress.ToInt();
+            BigInteger last = network + NumAddresses - 1;
+            for (BigInteger i = network; i <= last; i++)
+            {
+                yield return new IPv6Address(i);
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public List<IPv6Network> Subnets(int prefixlenDiff = 1, int? newPrefix = null)
+        {
+            int targetPrefix;
+            if (newPrefix != null)
+            {
+                targetPrefix = newPrefix.Value;
+                if (targetPrefix <= _prefixLength || targetPrefix > 128)
+                {
+                    throw new ValueError("new prefix must be longer");
+                }
+            }
+            else
+            {
+                targetPrefix = _prefixLength + prefixlenDiff;
+                if (targetPrefix > 128)
+                {
+                    throw new ValueError("prefix length diff too large");
+                }
+            }
+
+            var result = new List<IPv6Network>();
+            BigInteger network = NetworkAddress.ToInt();
+            BigInteger count = BigInteger.One << (targetPrefix - _prefixLength);
+            BigInteger subnetSize = BigInteger.One << (128 - targetPrefix);
+
+            for (BigInteger i = 0; i < count; i++)
+            {
+                byte[] subnetAddr = new IPv6Address(network + i * subnetSize).Address.GetAddressBytes();
+                result.Add(new IPv6Network(subnetAddr, targetPrefix));
+            }
+
+            return result;
+        }
+
+        public IPv6Network Supernet(int prefixlenDiff = 1, int? newPrefix = null)
+        {
+            int targetPrefix;
+            if (newPrefix != null)
+            {
+                targetPrefix = newPrefix.Value;
+            }
+            else
+            {
+                targetPrefix = _prefixLength - prefixlenDiff;
+            }
+
+            if (targetPrefix < 0)
+            {
+                throw new ValueError("prefix length is too small");
+            }
+
+            byte[] masked = ApplyMask(_networkAddress, targetPrefix);
+            return new IPv6Network(masked, targetPrefix);
         }
 
         public bool SubnetOf(IPv6Network other)
@@ -183,29 +289,35 @@ namespace Sharpy
 
         public bool Equals(IPv6Network? other)
         {
-            if (other == null) return false;
-            if (_prefixLength != other._prefixLength) return false;
+            if (other == null)
+                return false;
+            if (_prefixLength != other._prefixLength)
+                return false;
             for (int i = 0; i < 16; i++)
             {
-                if (_networkAddress[i] != other._networkAddress[i]) return false;
+                if (_networkAddress[i] != other._networkAddress[i])
+                    return false;
             }
             return true;
         }
 
         public int CompareTo(IPv6Network? other)
         {
-            if (other == null) return 1;
+            if (other == null)
+                return 1;
             for (int i = 0; i < 16; i++)
             {
                 int cmp = _networkAddress[i].CompareTo(other._networkAddress[i]);
-                if (cmp != 0) return cmp;
+                if (cmp != 0)
+                    return cmp;
             }
             return _prefixLength.CompareTo(other._prefixLength);
         }
 
         public static bool operator ==(IPv6Network? left, IPv6Network? right)
         {
-            if (left is null) return right is null;
+            if (left is null)
+                return right is null;
             return left.Equals(right);
         }
         public static bool operator !=(IPv6Network? left, IPv6Network? right) => !(left == right);

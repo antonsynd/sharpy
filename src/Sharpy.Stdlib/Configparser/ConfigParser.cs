@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using SCG = System.Collections.Generic;
 
 namespace Sharpy
@@ -91,6 +90,13 @@ namespace Sharpy
 
             if (rawValue == null)
             {
+                // A null raw value is ambiguous: the option may be genuinely absent,
+                // or present with no value (allow_no_value=True). Python returns None
+                // for the latter and raises NoOptionError only for the former.
+                if (OptionExists(section, normalizedOption))
+                {
+                    return null;
+                }
                 if (fallback != null)
                 {
                     return fallback;
@@ -113,7 +119,7 @@ namespace Sharpy
             {
                 value = Get(section, option);
             }
-            catch (NoOptionError) when (fallback != null)
+            catch (ConfigparserError) when (fallback != null)
             {
                 return fallback.Value;
             }
@@ -132,7 +138,7 @@ namespace Sharpy
             {
                 value = Get(section, option);
             }
-            catch (NoOptionError) when (fallback != null)
+            catch (ConfigparserError) when (fallback != null)
             {
                 return fallback.Value;
             }
@@ -152,7 +158,7 @@ namespace Sharpy
             {
                 value = Get(section, option);
             }
-            catch (NoOptionError) when (fallback != null)
+            catch (ConfigparserError) when (fallback != null)
             {
                 return fallback.Value;
             }
@@ -292,6 +298,21 @@ namespace Sharpy
                 }
             }
             return result;
+        }
+
+        // Whether the option key is present (in the section or DEFAULT), regardless of
+        // whether its stored value is null. Distinguishes allow_no_value keys from absent keys.
+        private bool OptionExists(string section, string option)
+        {
+            if (string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
+            {
+                return _defaults.ContainsKey(option);
+            }
+            if (_sections.TryGetValue(section, out var sectionDict) && sectionDict.ContainsKey(option))
+            {
+                return true;
+            }
+            return _defaults.ContainsKey(option);
         }
 
         private string? GetRaw(string section, string option)

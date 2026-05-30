@@ -454,4 +454,97 @@ public class IpaddressTests
         result.Should().HaveCount(1);
         result[0].ToString().Should().Be("192.168.1.0/24");
     }
+
+    // Regression: /0 network host-mask arithmetic. C# masks uint shift counts mod 32,
+    // so the broadcast/hostmask computation must explicitly guard the /0 case.
+    [Fact]
+    public void IPv4Network_ZeroPrefix_BroadcastAndHostmask()
+    {
+        var net = new IPv4Network("0.0.0.0/0");
+        net.BroadcastAddress.ToString().Should().Be("255.255.255.255");
+        net.Hostmask.ToString().Should().Be("255.255.255.255");
+        net.Netmask.ToString().Should().Be("0.0.0.0");
+        net.NumAddresses.Should().Be(4294967296L);
+    }
+
+    // Regression: Subnets() used `int` count, which overflows for large prefix diffs from /0.
+    [Fact]
+    public void IPv4Network_ZeroPrefix_SubnetsDoesNotOverflow()
+    {
+        var net = new IPv4Network("0.0.0.0/0");
+        net.Subnets(prefixlenDiff: 1).Should().HaveCount(2);
+    }
+
+    // Regression: 255.255.255.255 is in 240.0.0.0/4 and is reserved (not global) in Python.
+    [Fact]
+    public void IPv4Address_Broadcast_IsReservedNotGlobal()
+    {
+        var addr = new IPv4Address("255.255.255.255");
+        addr.IsReserved.Should().BeTrue();
+        addr.IsGlobal.Should().BeFalse();
+    }
+
+    // IPv6Network parity with IPv4Network (plan task 14: "same API surface").
+    [Fact]
+    public void IPv6Network_Hosts_ExcludesAnycastFirstAddress()
+    {
+        var net = new IPv6Network("2001:db8::/120");
+        net.Hosts().Count().Should().Be(255);
+    }
+
+    [Fact]
+    public void IPv6Network_Hosts_SingleAndPointToPoint()
+    {
+        new IPv6Network("2001:db8::/128").Hosts().Count().Should().Be(1);
+        new IPv6Network("2001:db8::/127").Hosts().Count().Should().Be(2);
+    }
+
+    [Fact]
+    public void IPv6Network_Subnets()
+    {
+        var subnets = new IPv6Network("2001:db8::/126").Subnets();
+        subnets.Should().HaveCount(2);
+        subnets[0].ToString().Should().Be("2001:db8::/127");
+        subnets[1].ToString().Should().Be("2001:db8::2/127");
+    }
+
+    [Fact]
+    public void IPv6Network_Supernet()
+    {
+        new IPv6Network("2001:db8::/120").Supernet().ToString().Should().Be("2001:db8::/119");
+    }
+
+    [Fact]
+    public void IPv6Network_Hostmask_And_WithNetmask()
+    {
+        var net = new IPv6Network("2001:db8::/120");
+        net.WithNetmask.Should().Be("2001:db8::/ffff:ffff:ffff:ffff:ffff:ffff:ffff:ff00");
+        net.WithPrefixlen.Should().Be("2001:db8::/120");
+    }
+
+    [Fact]
+    public void IPv6Network_Iteration()
+    {
+        var net = new IPv6Network("2001:db8::/126");
+        net.Count().Should().Be(4);
+    }
+
+    [Fact]
+    public void IPv6Network_ClassificationProperties()
+    {
+        new IPv6Network("fc00::/7").IsPrivate.Should().BeTrue();
+        new IPv6Network("2001:db8::/32").IsGlobal.Should().BeFalse();
+    }
+
+    // Regression: IPv6 range summarization was a NotImplementedException stub.
+    [Fact]
+    public void SummarizeAddressRange_IPv6()
+    {
+        var result = IpaddressModule.SummarizeAddressRange(
+            new IPv6Address("2001:db8::"),
+            new IPv6Address("2001:db8::ff"));
+
+        result.Should().HaveCount(1);
+        result[0].ToString().Should().Be("2001:db8::/120");
+    }
 }

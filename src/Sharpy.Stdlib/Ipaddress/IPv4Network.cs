@@ -22,7 +22,7 @@ namespace Sharpy
         {
             get
             {
-                uint hostMask = _prefixLength == 32 ? 0 : ~(0xFFFFFFFFU << (32 - _prefixLength));
+                uint hostMask = HostMaskBits();
                 return new IPv4Address(_networkAddress | hostMask);
             }
         }
@@ -40,12 +40,22 @@ namespace Sharpy
         {
             get
             {
-                uint mask = _prefixLength == 32 ? 0 : ~(0xFFFFFFFFU << (32 - _prefixLength));
-                return new IPv4Address(mask);
+                return new IPv4Address(HostMaskBits());
             }
         }
 
         public long NumAddresses => 1L << (32 - _prefixLength);
+
+        // Host-mask bits with explicit /0 and /32 guards. C# masks uint shift counts
+        // mod 32, so `0xFFFFFFFFU << 32` would wrongly evaluate to 0xFFFFFFFF (<< 0).
+        private uint HostMaskBits()
+        {
+            if (_prefixLength == 0)
+                return 0xFFFFFFFFU;
+            if (_prefixLength == 32)
+                return 0;
+            return ~(0xFFFFFFFFU << (32 - _prefixLength));
+        }
 
         public bool IsPrivate => NetworkAddress.IsPrivate;
         public bool IsLoopback => NetworkAddress.IsLoopback;
@@ -123,7 +133,7 @@ namespace Sharpy
                 yield break;
             }
 
-            uint hostMask = ~(0xFFFFFFFFU << (32 - _prefixLength));
+            uint hostMask = HostMaskBits();
             for (uint i = 1; i < hostMask; i++)
             {
                 yield return new IPv4Address(_networkAddress + i);
@@ -174,10 +184,10 @@ namespace Sharpy
             }
 
             var result = new SCG.List<IPv4Network>();
-            int count = 1 << (targetPrefix - _prefixLength);
+            long count = 1L << (targetPrefix - _prefixLength);
             uint subnetSize = 1U << (32 - targetPrefix);
 
-            for (int i = 0; i < count; i++)
+            for (long i = 0; i < count; i++)
             {
                 result.Add(new IPv4Network(_networkAddress + (uint)i * subnetSize, targetPrefix));
             }
@@ -225,15 +235,18 @@ namespace Sharpy
 
         public bool Equals(IPv4Network? other)
         {
-            if (other == null) return false;
+            if (other == null)
+                return false;
             return _networkAddress == other._networkAddress && _prefixLength == other._prefixLength;
         }
 
         public int CompareTo(IPv4Network? other)
         {
-            if (other == null) return 1;
+            if (other == null)
+                return 1;
             int cmp = _networkAddress.CompareTo(other._networkAddress);
-            if (cmp != 0) return cmp;
+            if (cmp != 0)
+                return cmp;
             return _prefixLength.CompareTo(other._prefixLength);
         }
 
@@ -243,7 +256,8 @@ namespace Sharpy
         public static bool operator >=(IPv4Network left, IPv4Network right) => left.CompareTo(right) >= 0;
         public static bool operator ==(IPv4Network? left, IPv4Network? right)
         {
-            if (left is null) return right is null;
+            if (left is null)
+                return right is null;
             return left.Equals(right);
         }
         public static bool operator !=(IPv4Network? left, IPv4Network? right) => !(left == right);

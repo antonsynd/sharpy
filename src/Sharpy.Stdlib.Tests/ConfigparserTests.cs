@@ -497,4 +497,41 @@ public class ConfigparserTests
         config.ReadString("[section]\nkey = foo # bar");
         config.Get("section", "key").Should().Be("foo # bar");
     }
+
+    // Regression: allow_no_value keys are stored with a null value; Get must return null
+    // rather than raising NoOptionError (Python returns None).
+    [Fact]
+    public void AllowNoValue_GetReturnsNull()
+    {
+        var config = new ConfigParser(allowNoValue: true);
+        config.ReadString("[section]\nkey");
+        config.Get("section", "key").Should().BeNull();
+    }
+
+    // Regression: interpolation of a missing key must raise InterpolationError, not let the
+    // underlying NoOptionError escape (Python raises InterpolationMissingOptionError).
+    [Fact]
+    public void BasicInterpolation_MissingKeyThrowsInterpolationError()
+    {
+        var config = new ConfigParser();
+        config.ReadString("[section]\npath = %(missing)s");
+        var act = () => config.Get("section", "path");
+        act.Should().Throw<InterpolationError>();
+    }
+
+    // Regression: typed getters must honor the fallback even when the section is absent
+    // (the catch previously only covered NoOptionError, not NoSectionError).
+    [Fact]
+    public void GetInt_MissingSection_ReturnsFallback()
+    {
+        var config = new ConfigParser();
+        config.GetInt("nosection", "key", fallback: 42).Should().Be(42);
+    }
+
+    [Fact]
+    public void GetBoolean_MissingSection_ReturnsFallback()
+    {
+        var config = new ConfigParser();
+        config.GetBoolean("nosection", "key", fallback: true).Should().BeTrue();
+    }
 }
