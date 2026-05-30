@@ -52,6 +52,8 @@ public class NativeStdlibCompilationTests
         "zipfile_module",
         "shlex_module",
         "subprocess_module",
+        "configparser_module",
+        "ipaddress_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)

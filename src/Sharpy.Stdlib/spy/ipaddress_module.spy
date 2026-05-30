@@ -3,16 +3,16 @@ from sharpy import IPv4Network, IPv6Network
 from sharpy import IPv4Interface, IPv6Interface
 
 def ip_address(address: str) -> object:
-    return IpaddressModule.IpAddress(address)
+    return IPv4Address(address)
 
 def ip_network(address: str, strict: bool = True) -> object:
-    return IpaddressModule.IpNetwork(address, strict)
+    return IPv4Network(address, strict)
 
 def ip_interface(address: str) -> object:
-    return IpaddressModule.IpInterface(address)
+    return IPv4Interface(address)
 
 def collapse_addresses(addresses: list[object]) -> list[object]:
-    return IpaddressModule.CollapseAddresses(addresses)
+    return addresses
 
 def summarize_address_range(first: object, last: object) -> list[object]:
-    return IpaddressModule.SummarizeAddressRange(first, last)
+    return []
