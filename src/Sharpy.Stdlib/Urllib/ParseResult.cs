@@ -46,17 +46,23 @@ namespace Sharpy
                     host = host.Substring(atIdx + 1);
                 }
 
-                // Strip port
-                int colonIdx = host.LastIndexOf(':');
-                if (colonIdx >= 0)
+                // Handle IPv6 brackets before port stripping
+                if (host.StartsWith("["))
                 {
-                    host = host.Substring(0, colonIdx);
+                    int closeBracket = host.IndexOf(']');
+                    if (closeBracket >= 0)
+                    {
+                        host = host.Substring(1, closeBracket - 1);
+                    }
                 }
-
-                // Strip brackets for IPv6
-                if (host.StartsWith("[") && host.EndsWith("]"))
+                else
                 {
-                    host = host.Substring(1, host.Length - 2);
+                    // Strip port (only for non-IPv6)
+                    int colonIdx = host.LastIndexOf(':');
+                    if (colonIdx >= 0)
+                    {
+                        host = host.Substring(0, colonIdx);
+                    }
                 }
 
                 return host.Length > 0 ? host.ToLowerInvariant() : null;
@@ -82,11 +88,27 @@ namespace Sharpy
                     host = host.Substring(atIdx + 1);
                 }
 
+                // For IPv6, port is after the closing bracket
+                if (host.StartsWith("["))
+                {
+                    int closeBracket = host.IndexOf(']');
+                    if (closeBracket >= 0 && closeBracket + 1 < host.Length && host[closeBracket + 1] == ':')
+                    {
+                        string portStr = host.Substring(closeBracket + 2);
+                        if (int.TryParse(portStr, out int port) && port >= 0 && port <= 65535)
+                        {
+                            return port;
+                        }
+                    }
+
+                    return null;
+                }
+
                 int colonIdx = host.LastIndexOf(':');
                 if (colonIdx >= 0)
                 {
                     string portStr = host.Substring(colonIdx + 1);
-                    if (int.TryParse(portStr, out int port))
+                    if (int.TryParse(portStr, out int port) && port >= 0 && port <= 65535)
                     {
                         return port;
                     }

@@ -121,6 +121,12 @@ namespace Sharpy
                     count = 1;
                 }
 
+                if ((typeChar == 'n' || typeChar == 'N') &&
+                    byteOrder != ByteOrder.Native && byteOrder != ByteOrder.NativeStandard)
+                {
+                    throw new StructError("'" + typeChar + "' format requires native byte order");
+                }
+
                 fields.Add(new FormatField(typeChar, count));
             }
 
@@ -173,24 +179,42 @@ namespace Sharpy
         {
             switch (field.Type)
             {
-                case 'x': return 1 * field.Count;   // pad bytes
-                case 'b': return 1 * field.Count;   // signed byte
-                case 'B': return 1 * field.Count;   // unsigned byte
-                case '?': return 1 * field.Count;   // bool
-                case 'h': return 2 * field.Count;   // int16
-                case 'H': return 2 * field.Count;   // uint16
-                case 'i': return 4 * field.Count;   // int32
-                case 'I': return 4 * field.Count;   // uint32
-                case 'l': return 4 * field.Count;   // int32 (same as 'i')
-                case 'L': return 4 * field.Count;   // uint32 (same as 'I')
-                case 'q': return 8 * field.Count;   // int64
-                case 'Q': return 8 * field.Count;   // uint64
-                case 'n': return 8 * field.Count;   // ssize_t (64-bit)
-                case 'N': return 8 * field.Count;   // size_t (64-bit)
-                case 'f': return 4 * field.Count;   // float32
-                case 'd': return 8 * field.Count;   // float64
-                case 's': return field.Count;        // char[] (count = byte length)
-                case 'p': return field.Count;        // pascal string (count = byte length)
+                case 'x':
+                    return 1 * field.Count;   // pad bytes
+                case 'b':
+                    return 1 * field.Count;   // signed byte
+                case 'B':
+                    return 1 * field.Count;   // unsigned byte
+                case '?':
+                    return 1 * field.Count;   // bool
+                case 'h':
+                    return 2 * field.Count;   // int16
+                case 'H':
+                    return 2 * field.Count;   // uint16
+                case 'i':
+                    return 4 * field.Count;   // int32
+                case 'I':
+                    return 4 * field.Count;   // uint32
+                case 'l':
+                    return 4 * field.Count;   // int32 (same as 'i')
+                case 'L':
+                    return 4 * field.Count;   // uint32 (same as 'I')
+                case 'q':
+                    return 8 * field.Count;   // int64
+                case 'Q':
+                    return 8 * field.Count;   // uint64
+                case 'n':
+                    return 8 * field.Count;   // ssize_t (64-bit)
+                case 'N':
+                    return 8 * field.Count;   // size_t (64-bit)
+                case 'f':
+                    return 4 * field.Count;   // float32
+                case 'd':
+                    return 8 * field.Count;   // float64
+                case 's':
+                    return field.Count;        // char[] (count = byte length)
+                case 'p':
+                    return field.Count;        // pascal string (count = byte length)
                 default:
                     throw new StructError("bad char in struct format: '" + field.Type + "'");
             }

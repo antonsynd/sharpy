@@ -228,192 +228,192 @@ namespace Sharpy
             switch (type)
             {
                 case 'b':
-                {
-                    int v = ConvertToInt(value);
-                    if (v < -128 || v > 127)
                     {
-                        throw new StructError("byte format requires -128 <= number <= 127");
+                        int v = ConvertToInt(value);
+                        if (v < -128 || v > 127)
+                        {
+                            throw new StructError("byte format requires -128 <= number <= 127");
+                        }
+                        buffer[offset] = unchecked((byte)(sbyte)v);
+                        offset += 1;
+                        break;
                     }
-                    buffer[offset] = unchecked((byte)(sbyte)v);
-                    offset += 1;
-                    break;
-                }
 
                 case 'B':
-                {
-                    int v = ConvertToInt(value);
-                    if (v < 0 || v > 255)
                     {
-                        throw new StructError("ubyte format requires 0 <= number <= 255");
+                        int v = ConvertToInt(value);
+                        if (v < 0 || v > 255)
+                        {
+                            throw new StructError("ubyte format requires 0 <= number <= 255");
+                        }
+                        buffer[offset] = (byte)v;
+                        offset += 1;
+                        break;
                     }
-                    buffer[offset] = (byte)v;
-                    offset += 1;
-                    break;
-                }
 
                 case '?':
-                {
-                    bool b = ConvertToBool(value);
-                    buffer[offset] = b ? (byte)1 : (byte)0;
-                    offset += 1;
-                    break;
-                }
+                    {
+                        bool b = ConvertToBool(value);
+                        buffer[offset] = b ? (byte)1 : (byte)0;
+                        offset += 1;
+                        break;
+                    }
 
                 case 'h':
-                {
-                    int v = ConvertToInt(value);
-                    if (v < short.MinValue || v > short.MaxValue)
                     {
-                        throw new StructError("short format requires " + short.MinValue.ToString(System.Globalization.CultureInfo.InvariantCulture) + " <= number <= " + short.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        int v = ConvertToInt(value);
+                        if (v < short.MinValue || v > short.MaxValue)
+                        {
+                            throw new StructError("short format requires " + short.MinValue.ToString(System.Globalization.CultureInfo.InvariantCulture) + " <= number <= " + short.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        }
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteInt16LittleEndian(span, (short)v);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteInt16BigEndian(span, (short)v);
+                        }
+                        offset += 2;
+                        break;
                     }
-                    if (isLittleEndian)
-                    {
-                        BinaryPrimitives.WriteInt16LittleEndian(span, (short)v);
-                    }
-                    else
-                    {
-                        BinaryPrimitives.WriteInt16BigEndian(span, (short)v);
-                    }
-                    offset += 2;
-                    break;
-                }
 
                 case 'H':
-                {
-                    int v = ConvertToInt(value);
-                    if (v < 0 || v > ushort.MaxValue)
                     {
-                        throw new StructError("ushort format requires 0 <= number <= " + ushort.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        int v = ConvertToInt(value);
+                        if (v < 0 || v > ushort.MaxValue)
+                        {
+                            throw new StructError("ushort format requires 0 <= number <= " + ushort.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        }
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteUInt16LittleEndian(span, (ushort)v);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteUInt16BigEndian(span, (ushort)v);
+                        }
+                        offset += 2;
+                        break;
                     }
-                    if (isLittleEndian)
-                    {
-                        BinaryPrimitives.WriteUInt16LittleEndian(span, (ushort)v);
-                    }
-                    else
-                    {
-                        BinaryPrimitives.WriteUInt16BigEndian(span, (ushort)v);
-                    }
-                    offset += 2;
-                    break;
-                }
 
                 case 'i':
                 case 'l':
-                {
-                    int v = ConvertToInt(value);
-                    if (isLittleEndian)
                     {
-                        BinaryPrimitives.WriteInt32LittleEndian(span, v);
+                        int v = ConvertToInt(value);
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteInt32LittleEndian(span, v);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteInt32BigEndian(span, v);
+                        }
+                        offset += 4;
+                        break;
                     }
-                    else
-                    {
-                        BinaryPrimitives.WriteInt32BigEndian(span, v);
-                    }
-                    offset += 4;
-                    break;
-                }
 
                 case 'I':
                 case 'L':
-                {
-                    long v = ConvertToLong(value);
-                    if (v < 0 || v > uint.MaxValue)
                     {
-                        throw new StructError("uint format requires 0 <= number <= " + uint.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        long v = ConvertToLong(value);
+                        if (v < 0 || v > uint.MaxValue)
+                        {
+                            throw new StructError("uint format requires 0 <= number <= " + uint.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        }
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteUInt32LittleEndian(span, (uint)v);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteUInt32BigEndian(span, (uint)v);
+                        }
+                        offset += 4;
+                        break;
                     }
-                    if (isLittleEndian)
-                    {
-                        BinaryPrimitives.WriteUInt32LittleEndian(span, (uint)v);
-                    }
-                    else
-                    {
-                        BinaryPrimitives.WriteUInt32BigEndian(span, (uint)v);
-                    }
-                    offset += 4;
-                    break;
-                }
 
                 case 'q':
-                {
-                    long v = ConvertToLong(value);
-                    if (isLittleEndian)
                     {
-                        BinaryPrimitives.WriteInt64LittleEndian(span, v);
+                        long v = ConvertToLong(value);
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteInt64LittleEndian(span, v);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteInt64BigEndian(span, v);
+                        }
+                        offset += 8;
+                        break;
                     }
-                    else
-                    {
-                        BinaryPrimitives.WriteInt64BigEndian(span, v);
-                    }
-                    offset += 8;
-                    break;
-                }
 
                 case 'Q':
-                {
-                    long v = ConvertToLong(value);
-                    if (v < 0)
                     {
-                        throw new StructError("uint64 format requires 0 <= number");
+                        long v = ConvertToLong(value);
+                        if (v < 0)
+                        {
+                            throw new StructError("uint64 format requires 0 <= number");
+                        }
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteUInt64LittleEndian(span, (ulong)v);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteUInt64BigEndian(span, (ulong)v);
+                        }
+                        offset += 8;
+                        break;
                     }
-                    if (isLittleEndian)
-                    {
-                        BinaryPrimitives.WriteUInt64LittleEndian(span, (ulong)v);
-                    }
-                    else
-                    {
-                        BinaryPrimitives.WriteUInt64BigEndian(span, (ulong)v);
-                    }
-                    offset += 8;
-                    break;
-                }
 
                 case 'n':
-                {
-                    long v = ConvertToLong(value);
-                    if (isLittleEndian)
                     {
-                        BinaryPrimitives.WriteInt64LittleEndian(span, v);
+                        long v = ConvertToLong(value);
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteInt64LittleEndian(span, v);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteInt64BigEndian(span, v);
+                        }
+                        offset += 8;
+                        break;
                     }
-                    else
-                    {
-                        BinaryPrimitives.WriteInt64BigEndian(span, v);
-                    }
-                    offset += 8;
-                    break;
-                }
 
                 case 'N':
-                {
-                    long v = ConvertToLong(value);
-                    if (v < 0)
                     {
-                        throw new StructError("size_t format requires 0 <= number");
+                        long v = ConvertToLong(value);
+                        if (v < 0)
+                        {
+                            throw new StructError("size_t format requires 0 <= number");
+                        }
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteUInt64LittleEndian(span, (ulong)v);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteUInt64BigEndian(span, (ulong)v);
+                        }
+                        offset += 8;
+                        break;
                     }
-                    if (isLittleEndian)
-                    {
-                        BinaryPrimitives.WriteUInt64LittleEndian(span, (ulong)v);
-                    }
-                    else
-                    {
-                        BinaryPrimitives.WriteUInt64BigEndian(span, (ulong)v);
-                    }
-                    offset += 8;
-                    break;
-                }
 
                 case 'f':
-                {
-                    double dv = ConvertToDouble(value);
-                    float fv = (float)dv;
+                    {
+                        double dv = ConvertToDouble(value);
+                        float fv = (float)dv;
 #if NET10_0_OR_GREATER
-                    if (isLittleEndian)
-                    {
-                        BinaryPrimitives.WriteSingleLittleEndian(span, fv);
-                    }
-                    else
-                    {
-                        BinaryPrimitives.WriteSingleBigEndian(span, fv);
-                    }
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteSingleLittleEndian(span, fv);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteSingleBigEndian(span, fv);
+                        }
 #else
                     byte[] floatBytes = BitConverter.GetBytes(fv);
                     if (isLittleEndian != BitConverter.IsLittleEndian)
@@ -422,22 +422,22 @@ namespace Sharpy
                     }
                     floatBytes.CopyTo(buffer, offset);
 #endif
-                    offset += 4;
-                    break;
-                }
+                        offset += 4;
+                        break;
+                    }
 
                 case 'd':
-                {
-                    double dv = ConvertToDouble(value);
+                    {
+                        double dv = ConvertToDouble(value);
 #if NET10_0_OR_GREATER
-                    if (isLittleEndian)
-                    {
-                        BinaryPrimitives.WriteDoubleLittleEndian(span, dv);
-                    }
-                    else
-                    {
-                        BinaryPrimitives.WriteDoubleBigEndian(span, dv);
-                    }
+                        if (isLittleEndian)
+                        {
+                            BinaryPrimitives.WriteDoubleLittleEndian(span, dv);
+                        }
+                        else
+                        {
+                            BinaryPrimitives.WriteDoubleBigEndian(span, dv);
+                        }
 #else
                     byte[] doubleBytes = BitConverter.GetBytes(dv);
                     if (isLittleEndian != BitConverter.IsLittleEndian)
@@ -446,9 +446,9 @@ namespace Sharpy
                     }
                     doubleBytes.CopyTo(buffer, offset);
 #endif
-                    offset += 8;
-                    break;
-                }
+                        offset += 8;
+                        break;
+                    }
 
                 default:
                     throw new StructError("bad char in struct format: '" + type + "'");
@@ -462,112 +462,112 @@ namespace Sharpy
             switch (type)
             {
                 case 'b':
-                {
-                    sbyte v = unchecked((sbyte)data[offset]);
-                    offset += 1;
-                    return (int)v;
-                }
+                    {
+                        sbyte v = unchecked((sbyte)data[offset]);
+                        offset += 1;
+                        return (int)v;
+                    }
 
                 case 'B':
-                {
-                    int v = data[offset];
-                    offset += 1;
-                    return v;
-                }
+                    {
+                        int v = data[offset];
+                        offset += 1;
+                        return v;
+                    }
 
                 case '?':
-                {
-                    bool v = data[offset] != 0;
-                    offset += 1;
-                    return v;
-                }
+                    {
+                        bool v = data[offset] != 0;
+                        offset += 1;
+                        return v;
+                    }
 
                 case 'h':
-                {
-                    short v = isLittleEndian
-                        ? BinaryPrimitives.ReadInt16LittleEndian(span)
-                        : BinaryPrimitives.ReadInt16BigEndian(span);
-                    offset += 2;
-                    return (int)v;
-                }
+                    {
+                        short v = isLittleEndian
+                            ? BinaryPrimitives.ReadInt16LittleEndian(span)
+                            : BinaryPrimitives.ReadInt16BigEndian(span);
+                        offset += 2;
+                        return (int)v;
+                    }
 
                 case 'H':
-                {
-                    ushort v = isLittleEndian
-                        ? BinaryPrimitives.ReadUInt16LittleEndian(span)
-                        : BinaryPrimitives.ReadUInt16BigEndian(span);
-                    offset += 2;
-                    return (int)v;
-                }
+                    {
+                        ushort v = isLittleEndian
+                            ? BinaryPrimitives.ReadUInt16LittleEndian(span)
+                            : BinaryPrimitives.ReadUInt16BigEndian(span);
+                        offset += 2;
+                        return (int)v;
+                    }
 
                 case 'i':
                 case 'l':
-                {
-                    int v = isLittleEndian
-                        ? BinaryPrimitives.ReadInt32LittleEndian(span)
-                        : BinaryPrimitives.ReadInt32BigEndian(span);
-                    offset += 4;
-                    return v;
-                }
+                    {
+                        int v = isLittleEndian
+                            ? BinaryPrimitives.ReadInt32LittleEndian(span)
+                            : BinaryPrimitives.ReadInt32BigEndian(span);
+                        offset += 4;
+                        return v;
+                    }
 
                 case 'I':
                 case 'L':
-                {
-                    uint v = isLittleEndian
-                        ? BinaryPrimitives.ReadUInt32LittleEndian(span)
-                        : BinaryPrimitives.ReadUInt32BigEndian(span);
-                    offset += 4;
-                    // Return as int if it fits, otherwise as long (Python returns int for unsigned values too)
-                    if (v <= int.MaxValue)
                     {
-                        return (int)v;
+                        uint v = isLittleEndian
+                            ? BinaryPrimitives.ReadUInt32LittleEndian(span)
+                            : BinaryPrimitives.ReadUInt32BigEndian(span);
+                        offset += 4;
+                        // Return as int if it fits, otherwise as long (Python returns int for unsigned values too)
+                        if (v <= int.MaxValue)
+                        {
+                            return (int)v;
+                        }
+                        return (long)v;
                     }
-                    return (long)v;
-                }
 
                 case 'q':
-                {
-                    long v = isLittleEndian
-                        ? BinaryPrimitives.ReadInt64LittleEndian(span)
-                        : BinaryPrimitives.ReadInt64BigEndian(span);
-                    offset += 8;
-                    return v;
-                }
+                    {
+                        long v = isLittleEndian
+                            ? BinaryPrimitives.ReadInt64LittleEndian(span)
+                            : BinaryPrimitives.ReadInt64BigEndian(span);
+                        offset += 8;
+                        return v;
+                    }
 
                 case 'Q':
-                {
-                    ulong v = isLittleEndian
-                        ? BinaryPrimitives.ReadUInt64LittleEndian(span)
-                        : BinaryPrimitives.ReadUInt64BigEndian(span);
-                    offset += 8;
-                    // Sharpy uses long for large unsigned values
-                    return (long)v;
-                }
+                    {
+                        ulong v = isLittleEndian
+                            ? BinaryPrimitives.ReadUInt64LittleEndian(span)
+                            : BinaryPrimitives.ReadUInt64BigEndian(span);
+                        offset += 8;
+                        // Sharpy uses long for large unsigned values
+                        return (long)v;
+                    }
 
                 case 'n':
-                {
-                    long v = isLittleEndian
-                        ? BinaryPrimitives.ReadInt64LittleEndian(span)
-                        : BinaryPrimitives.ReadInt64BigEndian(span);
-                    offset += 8;
-                    return v;
-                }
+                    {
+                        long v = isLittleEndian
+                            ? BinaryPrimitives.ReadInt64LittleEndian(span)
+                            : BinaryPrimitives.ReadInt64BigEndian(span);
+                        offset += 8;
+                        return v;
+                    }
 
                 case 'N':
-                {
-                    ulong v = isLittleEndian
-                        ? BinaryPrimitives.ReadUInt64LittleEndian(span)
-                        : BinaryPrimitives.ReadUInt64BigEndian(span);
-                    offset += 8;
-                    return (long)v;
-                }
+                    {
+                        ulong v = isLittleEndian
+                            ? BinaryPrimitives.ReadUInt64LittleEndian(span)
+                            : BinaryPrimitives.ReadUInt64BigEndian(span);
+                        offset += 8;
+                        return (long)v;
+                    }
 
                 case 'f':
-                {
+                    {
 #if NET10_0_OR_GREATER
-                    float fv = isLittleEndian
-                        ? BinaryPrimitives.ReadSingleLittleEndian(span)
-                        : BinaryPrimitives.ReadSingleBigEndian(span);
+                        float fv = isLittleEndian
+                            ? BinaryPrimitives.ReadSingleLittleEndian(span)
+                            : BinaryPrimitives.ReadSingleBigEndian(span);
 #else
                     byte[] floatBytes = new byte[4];
                     Array.Copy(data, offset, floatBytes, 0, 4);
@@ -577,16 +577,16 @@ namespace Sharpy
                     }
                     float fv = BitConverter.ToSingle(floatBytes, 0);
 #endif
-                    offset += 4;
-                    return (double)fv;
-                }
+                        offset += 4;
+                        return (double)fv;
+                    }
 
                 case 'd':
-                {
+                    {
 #if NET10_0_OR_GREATER
-                    double dv = isLittleEndian
-                        ? BinaryPrimitives.ReadDoubleLittleEndian(span)
-                        : BinaryPrimitives.ReadDoubleBigEndian(span);
+                        double dv = isLittleEndian
+                            ? BinaryPrimitives.ReadDoubleLittleEndian(span)
+                            : BinaryPrimitives.ReadDoubleBigEndian(span);
 #else
                     byte[] doubleBytes = new byte[8];
                     Array.Copy(data, offset, doubleBytes, 0, 8);
@@ -596,9 +596,9 @@ namespace Sharpy
                     }
                     double dv = BitConverter.ToDouble(doubleBytes, 0);
 #endif
-                    offset += 8;
-                    return dv;
-                }
+                        offset += 8;
+                        return dv;
+                    }
 
                 default:
                     throw new StructError("bad char in struct format: '" + type + "'");
