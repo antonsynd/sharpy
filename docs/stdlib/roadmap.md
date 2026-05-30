@@ -2,9 +2,9 @@
 
 Implementation order for new stdlib modules. Modules are grouped by priority tier and ordered by value, complexity, and dependencies within each tier.
 
-## Current Modules (31 implemented)
+## Current Modules (37 implemented)
 
-argparse, bisect, collections, copy, csv, datetime, fnmatch, functools, glob, grapheme, hashlib, heapq, io, itertools, json, logging, math, numpy, operator, os, pathlib, random, re, requests, shutil, sqlite3, statistics, string, sys, tempfile, textwrap, time, unittest
+argparse, base64, bisect, collections, csv, datetime, fnmatch, functools, glob, grapheme, hashlib, heapq, hmac, io, itertools, json, logging, math, numpy, os, pathlib, random, re, requests, secrets, shutil, sqlite3, statistics, string, sys, tempfile, textwrap, time, toml, unittest, uuid, yaml
 
 ## Tier 1 — High value, clear .NET backing
 
@@ -13,8 +13,8 @@ Modules with direct .NET BCL equivalents. Most are thin wrappers requiring minim
 | # | Module | Issue | .NET Backing | Est. Size | Dependencies |
 |---|--------|-------|-------------|-----------|-------------|
 | 1 | `uuid` | [#733](https://github.com/antonsynd/sharpy/issues/733) | `System.Guid` | Small | — |
-| 2 | `base64` | [#739](https://github.com/antonsynd/sharpy/issues/739) | `System.Convert` | Small | — |
-| 3 | `secrets` | [#738](https://github.com/antonsynd/sharpy/issues/738) | `RandomNumberGenerator` | Small | — |
+| 2 | `base64` | [#734](https://github.com/antonsynd/sharpy/issues/734) | `System.Convert` | Small | — |
+| 3 | `secrets` | [#786](https://github.com/antonsynd/sharpy/issues/786) | `RandomNumberGenerator` | Small | — |
 | 4 | `hmac` | [#741](https://github.com/antonsynd/sharpy/issues/741) | `HMACSHA256` etc. | Small | hashlib |
 | 5 | `struct` | [#734](https://github.com/antonsynd/sharpy/issues/734) | `BinaryPrimitives` | Medium | — |
 | 6 | `urllib` | [#742](https://github.com/antonsynd/sharpy/issues/742) | `System.Uri` | Medium | — |
@@ -26,11 +26,11 @@ Modules with direct .NET BCL equivalents. Most are thin wrappers requiring minim
 
 ### Recommended batch order
 
-**Batch 1 (quick wins):** uuid, base64, secrets, hmac — all under ~200 lines, direct .NET wrappers. Could be one PR each.
+**Batch 1 (quick wins):** uuid, base64, secrets, hmac — COMPLETE. Implemented in [batch1-plan](batch1-plan.md).
 
 **Batch 2 (essential utilities):** struct, urllib, platform — moderate complexity, very commonly needed.
 
-**Batch 3 (data formats):** yaml ([#731](https://github.com/antonsynd/sharpy/issues/731)), toml ([#732](https://github.com/antonsynd/sharpy/issues/732)) — NuGet-backed (YamlDotNet, Tomlyn). Rounds out config file support alongside json.
+**Batch 3 (data formats):** yaml ([#731](https://github.com/antonsynd/sharpy/issues/731)), toml ([#732](https://github.com/antonsynd/sharpy/issues/732)) — COMPLETE. Both implemented with NuGet-backed (YamlDotNet, Tomlyn).
 
 **Batch 4 (compression):** decimal, zlib, gzip, zipfile — zlib before gzip (dependency). Unlocks data processing workflows.
 

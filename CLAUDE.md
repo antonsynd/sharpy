@@ -39,7 +39,7 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 |-----------|----------|---------|
 | Compiler | `src/Sharpy.Compiler/` | Lexer, Parser, Semantic, CodeGen |
 | Core | `src/Sharpy.Core/` | Runtime essentials: primitives, collections, builtins, protocol interfaces, `Partial.{Type}/` |
-| Stdlib | `src/Sharpy.Stdlib/` | Standard library modules (31 modules: json, os, re, numpy, etc.) |
+| Stdlib | `src/Sharpy.Stdlib/` | Standard library modules (37 modules: json, os, re, numpy, etc.) |
 | CLI | `src/Sharpy.Cli/` | Command-line interface (`sharpyc`, uses `System.CommandLine`) |
 | LSP | `src/Sharpy.Lsp/` | Language Server Protocol server (OmniSharp-based) |
 | Tests | `src/*.Tests/` | Unit and integration tests |
@@ -294,7 +294,7 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 
 ## Sharpy.Stdlib (Standard Library)
 
-- **31 stdlib modules** in `src/Sharpy.Stdlib/`: Argparse, Bisect, Collections, Csv, Datetime, Fnmatch, Functools, Glob, Grapheme, Hashlib, Heapq, Io, Itertools, Json, Logging, Math, Numpy, Os, Pathlib, Random, Re, Requests, Shutil, Sqlite3, Statistics, String, Sys, Tempfile, Textwrap, Time, Unittest
+- **37 stdlib modules** in `src/Sharpy.Stdlib/`: Argparse, Base64, Bisect, Collections, Csv, Datetime, Fnmatch, Functools, Glob, Grapheme, Hashlib, Heapq, Hmac, Io, Itertools, Json, Logging, Math, Numpy, Os, Pathlib, Random, Re, Requests, Secrets, Shutil, Sqlite3, Statistics, String, Sys, Tempfile, Textwrap, Time, Toml, Unittest, Uuid, Yaml
 - **Depends on Sharpy.Core** (ProjectReference), not the other way around
 - **NuGet deps**: MathNet.Numerics (numpy), Microsoft.Data.Sqlite (sqlite3)
 - **Multi-target**: `net10.0;netstandard2.1` (same as Core)

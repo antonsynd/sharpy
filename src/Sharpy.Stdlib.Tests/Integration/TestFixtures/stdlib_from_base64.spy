@@ -1,0 +1,9 @@
+from base64 import b64encode, b64decode, b16encode
+
+def main():
+    encoded = b64encode(b"test")
+    print(encoded)
+    decoded = b64decode(encoded)
+    print(decoded)
+    hex_val = b16encode(b"Hi")
+    print(hex_val)

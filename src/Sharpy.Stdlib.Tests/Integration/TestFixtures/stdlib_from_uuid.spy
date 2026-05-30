@@ -1,0 +1,10 @@
+from uuid import uuid4, uuid5, NAMESPACE_DNS, UUID
+
+def main():
+    u = uuid5(NAMESPACE_DNS, "example.com")
+    print(str(u))
+    print(u.version)
+    parsed = UUID("12345678-1234-5678-1234-567812345678")
+    print(str(parsed))
+    u4 = uuid4()
+    print(len(str(u4)))

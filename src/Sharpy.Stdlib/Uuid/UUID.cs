@@ -29,6 +29,21 @@ namespace Sharpy
 
         public string Hex => _guid.ToString("N");
 
+        public long Int
+        {
+            get
+            {
+                var bytes = ToRfc4122Bytes();
+                long result = 0;
+                for (int i = 0; i < 8; i++)
+                {
+                    result = (result << 8) | bytes[i];
+                }
+
+                return result;
+            }
+        }
+
         public Bytes UuidBytes
         {
             get

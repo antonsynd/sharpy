@@ -1,0 +1,7 @@
+from hmac import new, compare_digest
+
+def main():
+    h = new("key", "data", "sha256")
+    print(h.hexdigest())
+    print(compare_digest("test", "test"))
+    print(compare_digest("test", "other"))
