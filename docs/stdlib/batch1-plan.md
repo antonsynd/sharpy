@@ -5,7 +5,7 @@
 
 ## Context
 
-Implement the four "quick win" stdlib modules from the [Tier 1 roadmap](docs/stdlib/roadmap.md) Batch 1. These are all small (<200 lines each), thin wrappers over .NET BCL types with no NuGet dependencies required.
+Implement the four "quick win" stdlib modules from the [Tier 1 roadmap](roadmap.md) Batch 1. These are all small (<200 lines each), thin wrappers over .NET BCL types with no NuGet dependencies required.
 
 **GitHub issues:**
 - [#733](https://github.com/antonsynd/sharpy/issues/733) — uuid module (UUID generation and parsing)

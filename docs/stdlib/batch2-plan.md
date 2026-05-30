@@ -5,7 +5,7 @@
 
 ## Context
 
-Implement the three "essential utilities" stdlib modules from the [Tier 1 roadmap](docs/stdlib/roadmap.md) Batch 2. These are moderate-complexity modules with direct .NET BCL equivalents, no NuGet dependencies required.
+Implement the three "essential utilities" stdlib modules from the [Tier 1 roadmap](roadmap.md) Batch 2. These are moderate-complexity modules with direct .NET BCL equivalents, no NuGet dependencies required.
 
 **GitHub issues:**
 - [#742](https://github.com/antonsynd/sharpy/issues/742) — urllib module (URL parsing and encoding)
