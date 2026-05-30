@@ -11,7 +11,9 @@ namespace Sharpy
     public sealed class Popen : IDisposable
     {
         private readonly Process _process;
-        private readonly System.Collections.Generic.List<string> _args;
+        private readonly List<string> _args;
+        private Task? _devnullStdoutDrain;
+        private Task? _devnullStderrDrain;
         private bool _disposed;
 
         public int Pid => _process.Id;
@@ -31,7 +33,7 @@ namespace Sharpy
             }
         }
 
-        public System.Collections.Generic.List<string> Args => _args;
+        public List<string> Args => _args;
 
         public System.IO.StreamWriter? Stdin =>
             _process.StartInfo.RedirectStandardInput ? _process.StandardInput : null;
@@ -43,20 +45,25 @@ namespace Sharpy
             _process.StartInfo.RedirectStandardError ? _process.StandardError : null;
 
         public Popen(
-            System.Collections.Generic.List<string> args,
+            List<string> args,
             int stdin = 0,
             int stdout = 0,
             int stderr = 0,
             bool shell = false,
             string? cwd = null,
-            Dictionary<string, string>? env = null)
+            Dict<string, string>? env = null)
         {
-            if (args == null || args.Count == 0)
+            if (args == null || ((ISized)args).Count == 0)
             {
                 throw new ValueError("args must be a non-empty list");
             }
 
-            _args = new System.Collections.Generic.List<string>(args);
+            if (stderr == SubprocessModule.STDOUT)
+            {
+                throw new NotImplementedError("stderr=STDOUT (merge stderr into stdout) is not supported by the .NET Process API");
+            }
+
+            _args = new List<string>(args);
 
             var startInfo = new ProcessStartInfo();
             startInfo.UseShellExecute = false;
@@ -70,12 +77,12 @@ namespace Sharpy
                 startInfo.WorkingDirectory = cwd;
             }
 
-            if (env != null)
+            if (env is object)
             {
                 startInfo.Environment.Clear();
-                foreach (var kvp in env)
+                foreach (var key in env)
                 {
-                    startInfo.Environment[kvp.Key] = kvp.Value;
+                    startInfo.Environment[key] = env[key];
                 }
             }
 
@@ -89,6 +96,31 @@ namespace Sharpy
             catch (Exception ex)
             {
                 throw new OSError("Failed to start process '" + args[0] + "': " + ex.Message, ex);
+            }
+
+            if (stdin == SubprocessModule.DEVNULL)
+            {
+                _process.StandardInput.Close();
+            }
+
+            if (stdout == SubprocessModule.DEVNULL)
+            {
+                _devnullStdoutDrain = Task.Run(() =>
+                {
+                    try
+                    { _process.StandardOutput.ReadToEnd(); }
+                    catch (ObjectDisposedException) { }
+                });
+            }
+
+            if (stderr == SubprocessModule.DEVNULL)
+            {
+                _devnullStderrDrain = Task.Run(() =>
+                {
+                    try
+                    { _process.StandardError.ReadToEnd(); }
+                    catch (ObjectDisposedException) { }
+                });
             }
         }
 
@@ -104,7 +136,6 @@ namespace Sharpy
                 _process.StandardInput.Close();
             }
 
-            // Read stdout and stderr concurrently to avoid deadlocks
             Task<string>? stdoutTask = null;
             Task<string>? stderrTask = null;
 
@@ -209,11 +240,18 @@ namespace Sharpy
                 {
                 }
 
+                try
+                { _devnullStdoutDrain?.Wait(); }
+                catch (AggregateException) { }
+                try
+                { _devnullStderrDrain?.Wait(); }
+                catch (AggregateException) { }
+
                 _process.Dispose();
             }
         }
 
-        internal static void ConfigureCommand(ProcessStartInfo startInfo, System.Collections.Generic.List<string> args, bool shell)
+        internal static void ConfigureCommand(ProcessStartInfo startInfo, List<string> args, bool shell)
         {
             if (shell)
             {
@@ -234,7 +272,7 @@ namespace Sharpy
             else
             {
                 startInfo.FileName = args[0];
-                for (int i = 1; i < args.Count; i++)
+                for (int i = 1; i < ((ISized)args).Count; i++)
                 {
                     startInfo.ArgumentList.Add(args[i]);
                 }
@@ -243,32 +281,9 @@ namespace Sharpy
 
         internal static void ConfigureRedirects(ProcessStartInfo startInfo, int stdin, int stdout, int stderr)
         {
-            startInfo.RedirectStandardInput = (stdin == SubprocessModule.PIPE);
-            startInfo.RedirectStandardOutput = (stdout == SubprocessModule.PIPE);
-
-            if (stderr == SubprocessModule.STDOUT)
-            {
-                startInfo.RedirectStandardError = true;
-            }
-            else
-            {
-                startInfo.RedirectStandardError = (stderr == SubprocessModule.PIPE);
-            }
-
-            if (stdin == SubprocessModule.DEVNULL)
-            {
-                startInfo.RedirectStandardInput = true;
-            }
-
-            if (stdout == SubprocessModule.DEVNULL)
-            {
-                startInfo.RedirectStandardOutput = true;
-            }
-
-            if (stderr == SubprocessModule.DEVNULL)
-            {
-                startInfo.RedirectStandardError = true;
-            }
+            startInfo.RedirectStandardInput = (stdin == SubprocessModule.PIPE || stdin == SubprocessModule.DEVNULL);
+            startInfo.RedirectStandardOutput = (stdout == SubprocessModule.PIPE || stdout == SubprocessModule.DEVNULL);
+            startInfo.RedirectStandardError = (stderr == SubprocessModule.PIPE || stderr == SubprocessModule.DEVNULL);
         }
     }
 }

@@ -43,6 +43,7 @@ public class ApiSurfaceComparisonTests
         ["string_module"] = "string",
         ["tempfile_module"] = "tempfile",
         ["textwrap"] = "textwrap",
+        ["shlex_module"] = "shlex",
     };
 
     public ApiSurfaceComparisonTests(ITestOutputHelper output)

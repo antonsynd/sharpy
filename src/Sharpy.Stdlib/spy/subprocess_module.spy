@@ -4,11 +4,11 @@ PIPE: int = -1
 STDOUT: int = -2
 DEVNULL: int = -3
 
-def run(args: list[str], capture_output: bool = False, text: bool = True, check: bool = False, timeout: float = None, input: str = None, cwd: str = None, env: dict[str, str] = None, shell: bool = False, stdin: int = 0, stdout: int = 0, stderr: int = 0) -> CompletedProcess:
-    pass
+def run(args: list[str], capture_output: bool = False, text: bool = True, check: bool = False, timeout: float? = None(), input: str? = None(), cwd: str? = None(), env: dict[str, str]? = None(), shell: bool = False, stdin: int = 0, stdout: int = 0, stderr: int = 0) -> CompletedProcess:
+    return CompletedProcess(args, 0)
 
-def check_output(args: list[str], text: bool = True, timeout: float = None, input: str = None, cwd: str = None, env: dict[str, str] = None, shell: bool = False, stderr: int = 0) -> str:
-    pass
+def check_output(args: list[str], text: bool = True, timeout: float? = None(), input: str? = None(), cwd: str? = None(), env: dict[str, str]? = None(), shell: bool = False, stderr: int = 0) -> str:
+    return ""
 
-def check_call(args: list[str], timeout: float = None, cwd: str = None, env: dict[str, str] = None, shell: bool = False) -> int:
-    pass
+def check_call(args: list[str], timeout: float? = None(), cwd: str? = None(), env: dict[str, str]? = None(), shell: bool = False) -> int:
+    return 0

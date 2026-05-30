@@ -13,22 +13,27 @@ namespace Sharpy
         public const int DEVNULL = -3;
 
         public static CompletedProcess Run(
-            System.Collections.Generic.List<string> args,
+            List<string> args,
             bool captureOutput = false,
             bool text = true,
             bool check = false,
             double? timeout = null,
             string? input = null,
             string? cwd = null,
-            Dictionary<string, string>? env = null,
+            Dict<string, string>? env = null,
             bool shell = false,
             int stdin = 0,
             int stdout = 0,
             int stderr = 0)
         {
-            if (args == null || args.Count == 0)
+            if (args == null || ((ISized)args).Count == 0)
             {
                 throw new ValueError("args must be a non-empty list");
+            }
+
+            if (!text)
+            {
+                throw new NotImplementedError("binary mode (text=False) is not supported; Sharpy subprocess operates in text mode only");
             }
 
             if (captureOutput)
@@ -49,14 +54,14 @@ namespace Sharpy
 
                 int exitCode = proc.Returncode ?? 0;
                 var result = new CompletedProcess(
-                    new System.Collections.Generic.List<string>(args),
+                    new List<string>(args),
                     exitCode, stdoutStr, stderrStr);
 
                 if (check && exitCode != 0)
                 {
                     throw new CalledProcessError(
                         exitCode,
-                        new System.Collections.Generic.List<string>(args),
+                        new List<string>(args),
                         stdoutStr, stderrStr);
                 }
 
@@ -65,15 +70,20 @@ namespace Sharpy
         }
 
         public static string CheckOutput(
-            System.Collections.Generic.List<string> args,
+            List<string> args,
             bool text = true,
             double? timeout = null,
             string? input = null,
             string? cwd = null,
-            Dictionary<string, string>? env = null,
+            Dict<string, string>? env = null,
             bool shell = false,
             int stderr = 0)
         {
+            if (!text)
+            {
+                throw new NotImplementedError("binary mode (text=False) is not supported; Sharpy subprocess operates in text mode only");
+            }
+
             var result = Run(args, captureOutput: true, check: true, text: text,
                 timeout: timeout, input: input, cwd: cwd, env: env, shell: shell,
                 stderr: stderr);
@@ -81,10 +91,10 @@ namespace Sharpy
         }
 
         public static int CheckCall(
-            System.Collections.Generic.List<string> args,
+            List<string> args,
             double? timeout = null,
             string? cwd = null,
-            Dictionary<string, string>? env = null,
+            Dict<string, string>? env = null,
             bool shell = false)
         {
             var result = Run(args, check: true, timeout: timeout, cwd: cwd, env: env, shell: shell);

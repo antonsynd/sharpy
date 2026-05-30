@@ -50,6 +50,8 @@ public class NativeStdlibCompilationTests
         "zlib_module",
         "gzip_module",
         "zipfile_module",
+        "shlex_module",
+        "subprocess_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)
