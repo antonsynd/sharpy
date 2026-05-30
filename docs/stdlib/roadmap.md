@@ -2,9 +2,9 @@
 
 Implementation order for new stdlib modules. Modules are grouped by priority tier and ordered by value, complexity, and dependencies within each tier.
 
-## Current Modules (37 implemented)
+## Current Modules (40 implemented)
 
-argparse, base64, bisect, collections, csv, datetime, fnmatch, functools, glob, grapheme, hashlib, heapq, hmac, io, itertools, json, logging, math, numpy, os, pathlib, random, re, requests, secrets, shutil, sqlite3, statistics, string, sys, tempfile, textwrap, time, toml, unittest, uuid, yaml
+argparse, base64, bisect, collections, csv, datetime, fnmatch, functools, glob, grapheme, hashlib, heapq, hmac, io, itertools, json, logging, math, numpy, os, pathlib, platform, random, re, requests, secrets, shutil, sqlite3, statistics, string, struct, sys, tempfile, textwrap, time, toml, unittest, urllib, uuid, yaml
 
 ## Tier 1 — High value, clear .NET backing
 
@@ -16,7 +16,7 @@ Modules with direct .NET BCL equivalents. Most are thin wrappers requiring minim
 | 2 | `base64` | [#734](https://github.com/antonsynd/sharpy/issues/734) | `System.Convert` | Small | — |
 | 3 | `secrets` | [#786](https://github.com/antonsynd/sharpy/issues/786) | `RandomNumberGenerator` | Small | — |
 | 4 | `hmac` | [#741](https://github.com/antonsynd/sharpy/issues/741) | `HMACSHA256` etc. | Small | hashlib |
-| 5 | `struct` | [#734](https://github.com/antonsynd/sharpy/issues/734) | `BinaryPrimitives` | Medium | — |
+| 5 | `struct` | [#787](https://github.com/antonsynd/sharpy/issues/787) | `BinaryPrimitives` | Medium | — |
 | 6 | `urllib` | [#742](https://github.com/antonsynd/sharpy/issues/742) | `System.Uri` | Medium | — |
 | 7 | `platform` | [#743](https://github.com/antonsynd/sharpy/issues/743) | `RuntimeInformation` | Small | — |
 | 8 | `decimal` | [#735](https://github.com/antonsynd/sharpy/issues/735) | `System.Decimal` | Medium | — |
@@ -28,7 +28,7 @@ Modules with direct .NET BCL equivalents. Most are thin wrappers requiring minim
 
 **Batch 1 (quick wins):** uuid, base64, secrets, hmac — COMPLETE. Implemented in [batch1-plan](batch1-plan.md).
 
-**Batch 2 (essential utilities):** struct, urllib, platform — moderate complexity, very commonly needed.
+**Batch 2 (essential utilities):** struct, urllib, platform — COMPLETE. Implemented in [batch2-plan](batch2-plan.md).
 
 **Batch 3 (data formats):** yaml ([#731](https://github.com/antonsynd/sharpy/issues/731)), toml ([#732](https://github.com/antonsynd/sharpy/issues/732)) — COMPLETE. Both implemented with NuGet-backed (YamlDotNet, Tomlyn).
 
