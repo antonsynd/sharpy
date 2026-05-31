@@ -293,6 +293,27 @@ internal class ProtocolValidator : ValidatingAstWalker
                 return true;
         }
 
+        // Check Sharpy protocol interfaces (mirrors OverloadIndexBuilder.DiscoverTypeProtocols)
+        var interfaces = clrType.GetInterfaces();
+
+        if (dunderName == DunderNames.Len)
+        {
+            if (interfaces.Any(i => i.FullName == "Sharpy.ISized"))
+                return true;
+        }
+
+        if (dunderName == DunderNames.Bool)
+        {
+            if (interfaces.Any(i => i.FullName == "Sharpy.IBoolConvertible"))
+                return true;
+        }
+
+        if (dunderName == DunderNames.Reversed)
+        {
+            if (interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.IReverseEnumerable`1"))
+                return true;
+        }
+
         return false;
     }
 }

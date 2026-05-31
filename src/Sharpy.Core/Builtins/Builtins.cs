@@ -30,6 +30,8 @@ namespace Sharpy
                 return arr.Length;
             if (obj is System.Collections.ICollection collection)
                 return collection.Count;
+            if (obj is ISized sized)
+                return sized.Count;
 
             // Check for generic ICollection<T> or IReadOnlyCollection<T> via reflection
             // This handles types like Set<T> that implement ICollection<T> but not non-generic ICollection
