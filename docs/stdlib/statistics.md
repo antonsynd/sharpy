@@ -126,11 +126,11 @@ Return the population variance of data.
 
 ### `statistics._materialize(data: list[float]) -> list[float]`
 
-Copy data into a list and throw if empty.
+Copy data to a new list, raising StatisticsError if empty.
 
 ### `statistics._materialize_sorted(data: list[float]) -> list[float]`
 
-Copy data into a sorted list and throw if empty.
+Copy data to a sorted list, raising StatisticsError if empty.
 
 ### `statistics._sum(values: list[float]) -> float`
 
@@ -138,4 +138,4 @@ Return the sum of all values in the list.
 
 ### `statistics._sum_of_squared_deviations(values: list[float], m: float) -> float`
 
-Return the sum of squared deviations from the mean *m*.
+Return the sum of squared deviations from the mean m.
