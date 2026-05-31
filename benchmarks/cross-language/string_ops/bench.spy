@@ -1,0 +1,18 @@
+def main():
+    # String concatenation and manipulation
+    result: str = ""
+    i: int = 0
+    while i < 10000:
+        result = result + str(i)
+        i = i + 1
+
+    # String methods
+    count: int = 0
+    j: int = 0
+    while j < 1000:
+        upper: str = result.upper()
+        lower: str = result.lower()
+        parts: list[str] = result.split("5")
+        count = count + len(parts)
+        j = j + 1
+    print(f"operations: {count}")

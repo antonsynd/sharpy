@@ -1,6 +1,6 @@
 ---
 name: codegen-expert
-description: Implements Sharpy code generation via Roslyn SyntaxFactory. Owns src/Sharpy.Compiler/CodeGen/. ~6,225 lines across 8 partial files.
+description: Implements Sharpy code generation via Roslyn SyntaxFactory. Owns src/Sharpy.Compiler/CodeGen/. ~19,680 lines across 25 files.
 tools: Read, Edit, Glob, Grep, Bash
 ---
 
@@ -11,28 +11,53 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
 ## Scope
 
 **Owns:** `src/Sharpy.Compiler/CodeGen/`
+
+RoslynEmitter partial files (~19,680 lines across 24 partial classes + factory):
 - `RoslynEmitter.cs` - Main emitter orchestration, name resolution
-- `RoslynEmitter.*.cs` - 8 partial classes (~6,225 lines total):
-  - `.Expressions.cs` - Expression generation
-  - `.Statements.cs` - Statement generation
-  - `.TypeDeclarations.cs` - Class/struct/interface/enum
-  - `.ClassMembers.cs` - Methods, properties, constructors
-  - `.ModuleClass.cs` - Module-level Exports class
-  - `.CompilationUnit.cs` - Top-level compilation unit
-  - `.Operators.cs` - Binary/unary operators
-- `TypeMapper.cs` - Sharpy types -> C# types
-- `NameMangler.cs` - Name transformations
-- `CodeValidator.cs` - Validates generated code compiles
+- `.Expressions.cs` - Expression generation
+- `.Expressions.Access.cs` - Member access, indexing
+- `.Expressions.Access.Calls.cs` - Method/function calls
+- `.Expressions.Comprehensions.cs` - List/dict/set comprehensions
+- `.Expressions.Literals.cs` - Literal values
+- `.Expressions.Operators.cs` - Binary/unary operators
+- `.Statements.cs` - General statements
+- `.Statements.Assignments.cs` - Assignment statements
+- `.Statements.ControlFlow.cs` - if/while/for/match/try
+- `.TypeDeclarations.cs` - Class/struct/interface/enum
+- `.ClassMembers.cs` - Class member orchestration
+- `.ClassMembers.Constructors.cs` - Constructor generation
+- `.ClassMembers.Dataclass.cs` - @dataclass decorator support
+- `.ClassMembers.Events.cs` - Event emission
+- `.ClassMembers.Iterators.cs` - Iterator/generator support
+- `.ClassMembers.LruCache.cs` - @lru_cache decorator support
+- `.ClassMembers.Methods.cs` - Method generation
+- `.ClassMembers.Properties.cs` - Property generation
+- `.CompilationUnit.cs` - Top-level compilation unit
+- `.ModuleClass.cs` - Module-level Exports class
+- `.Operators.cs` - Operator overload emission
+- `.Patterns.cs` - Pattern matching emission
+- `.TestFixtures.cs` - Test infrastructure helpers
+- `RoslynEmitterFactory.cs` - Factory for creating emitter instances
+
+Supporting files:
+- `TypeSyntaxMapper.cs` - Sharpy types -> C# type syntax
+- `NameResolutionService.cs` - Consolidated name resolution
 - `CodeGenContext.cs` - Shared context for emission
-- `NameResolutionService.cs` - Consolidated name resolution (Sharpy names -> C# identifiers)
+- `CodeValidator.cs` - Validates generated code compiles
+- `CollectionTypeRegistry.cs` - Collection type mappings
+- `DunderCodeGenRegistry.cs` - Dunder method -> C# mapping registry
+- `DunderMapping.cs` - Individual dunder mappings
+- `ICodeEmitter.cs` / `ICodeEmitterFactory.cs` - Interfaces
+- `LineDirectivePostProcessor.cs` - #line directive handling
 
 **Does NOT modify:** Lexer, Parser, Semantic analysis, or Sharpy.Core
 
 ## Debugging Commands
 
 ```bash
-dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
-dotnet test --filter "FullyQualifiedName~CodeGen"            # Run codegen tests
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~CodeGen"            # Run codegen tests
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # Integration tests
 ```
 
 ## Core Principle
@@ -57,7 +82,7 @@ return MethodDeclaration(returnType, Identifier("MyMethod"))
 $"public {returnType} MyMethod() {{ {body} }}"
 ```
 
-## Type Mapping (`TypeMapper.cs`)
+## Type Mapping (`TypeSyntaxMapper.cs`)
 
 | Sharpy | C# |
 |--------|-----|
@@ -68,12 +93,11 @@ $"public {returnType} MyMethod() {{ {body} }}"
 | `bool` | `bool` |
 | `list[T]` | `global::Sharpy.Core.List<T>` |
 | `dict[K, V]` | `global::Sharpy.Core.Dict<K, V>` |
+| `set[T]` | `global::Sharpy.Core.Set<T>` |
 | `None` | `void` |
 | `T?` | `T?` (nullable) |
 
-**Note:** There's a separate `Discovery/TypeMapper.cs` that maps CLR types back to Sharpy `SemanticType` instances during import resolution.
-
-## Name Mangling (`NameMangler.cs`)
+## Name Mangling (`Shared/NameMangler.cs`)
 
 | Python | C# |
 |--------|-----|
@@ -82,29 +106,6 @@ $"public {returnType} MyMethod() {{ {body} }}"
 | `__add__` | `operator+` |
 | `__eq__` | `operator==` |
 | `__init__` | constructor |
-
-## C# 9.0 Constraints
-
-| Available | Not Available (C# 10+) |
-|-----------|-------------------------|
-| Records | File-scoped namespaces |
-| Pattern matching | Global usings |
-| Init-only setters | Record structs |
-| Target-typed new | Required members |
-
-## Generated Code Structure
-
-A Sharpy module generates a C# namespace containing:
-
-1. **Module Class** (`Exports` or `Program`)
-   - Static fields (module-level variables)
-   - Static constants
-   - Static methods (module-level functions)
-   - `Main()` method (entry point files only)
-
-2. **Type Declarations** (at namespace level, NOT nested)
-   - Classes, structs, interfaces, enums
-   - Preserves inheritance hierarchies
 
 ## Symbol Resolution Strategy
 
@@ -122,12 +123,19 @@ Key internal state:
 - `_constVariables` - Compile-time constants
 - `_moduleFieldNames` - Module-level field names
 
-## Commands
+## Generated Code Structure
 
-```bash
-dotnet test --filter "FullyQualifiedName~CodeGen"
-dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect output
-```
+A Sharpy module generates a C# namespace containing:
+
+1. **Module Class** (`Exports` or `Program`)
+   - Static fields (module-level variables)
+   - Static constants
+   - Static methods (module-level functions)
+   - `Main()` method (entry point files only)
+
+2. **Type Declarations** (at namespace level, NOT nested)
+   - Classes, structs, interfaces, enums
+   - Preserves inheritance hierarchies
 
 ## Boundaries
 

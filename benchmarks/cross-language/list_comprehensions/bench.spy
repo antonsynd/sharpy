@@ -1,0 +1,11 @@
+def main():
+    total: int = 0
+    i: int = 0
+    while i < 500:
+        # List comprehension with filter
+        evens: list[int] = [x * x for x in range(1000) if x % 2 == 0]
+        # Nested comprehension
+        pairs: list[int] = [a + b for a in range(50) for b in range(50)]
+        total = total + len(evens) + len(pairs)
+        i = i + 1
+    print(f"total elements: {total}")

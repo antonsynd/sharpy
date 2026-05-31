@@ -440,18 +440,11 @@ Three MCP servers provide structural codebase understanding. Prefer them over ra
 Find a file by name/pattern?              → Glob
 Search text/regex across files?            → Grep
 Search strings/comments/non-symbol text?   → Grep
-Symbol definition, callers, shape?         → Serena (find_symbol, find_referencing_symbols)
-Edit a whole method/function?              → Serena (replace_symbol_body)
-Edit a few lines within a method?          → Edit (or Serena replace_content)
 Code review (risk-scored)?                 → code-review-graph (detect_changes + get_review_context)
 Impact analysis, call chains, dead code?   → code-review-graph (get_impact_radius, query_graph, refactor_tool)
 Architecture overview, communities?        → code-review-graph (get_architecture_overview, list_communities)
 Complexity triage?                         → CodeGraphContext (find_most_complex_functions)
 ```
-
-### Serena (Symbol-Level Navigation & Editing)
-
-LSP-powered, symbol-aware operations: `find_symbol`, `find_referencing_symbols`, `get_symbols_overview`, `replace_symbol_body`, `insert_before_symbol`/`insert_after_symbol`, `rename_symbol`.
 
 ### code-review-graph (Knowledge Graph)
 

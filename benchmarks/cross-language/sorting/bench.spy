@@ -1,0 +1,19 @@
+import random
+
+def quicksort(arr: list[int]) -> list[int]:
+    if len(arr) <= 1:
+        return arr
+    pivot: int = arr[len(arr) // 2]
+    left: list[int] = [x for x in arr if x < pivot]
+    middle: list[int] = [x for x in arr if x == pivot]
+    right: list[int] = [x for x in arr if x > pivot]
+    return quicksort(left) + middle + quicksort(right)
+
+def main():
+    random.seed(42)
+    i: int = 0
+    while i < 100:
+        data: list[int] = [random.randint(0, 10000) for _ in range(1000)]
+        sorted_data: list[int] = quicksort(data)
+        i = i + 1
+    print(f"sorted {i} arrays")

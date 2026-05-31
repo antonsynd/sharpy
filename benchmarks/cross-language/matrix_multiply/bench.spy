@@ -1,0 +1,27 @@
+def matrix_multiply(a: list[list[int]], b: list[list[int]]) -> list[list[int]]:
+    rows_a: int = len(a)
+    cols_a: int = len(a[0])
+    cols_b: int = len(b[0])
+    result: list[list[int]] = [[0 for _ in range(cols_b)] for _ in range(rows_a)]
+    i: int = 0
+    while i < rows_a:
+        j: int = 0
+        while j < cols_b:
+            k: int = 0
+            while k < cols_a:
+                result[i][j] = result[i][j] + a[i][k] * b[k][j]
+                k = k + 1
+            j = j + 1
+        i = i + 1
+    return result
+
+def main():
+    size: int = 100
+    a: list[list[int]] = [[(i + j) % 7 for j in range(size)] for i in range(size)]
+    b: list[list[int]] = [[(i * j + 1) % 11 for j in range(size)] for i in range(size)]
+
+    n: int = 0
+    while n < 10:
+        result: list[list[int]] = matrix_multiply(a, b)
+        n = n + 1
+    print(f"done: {result[0][0]}")
