@@ -71,7 +71,7 @@ namespace Sharpy
         public override int GetHashCode() => Ip.GetHashCode() ^ Network.GetHashCode();
 
         /// <summary>
-        /// Determines whether the specified object is the same IPv6 interface.
+        /// Determines whether the specified object is the same IPv4 interface.
         /// </summary>
         public override bool Equals(object? obj)
         {
