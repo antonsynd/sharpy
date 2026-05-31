@@ -185,14 +185,18 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     (tmp_dir / "Directory.Packages.props").write_text('<Project></Project>')
 
     start = time.perf_counter()
-    # Use --no-restore to avoid NuGet interference, and set MSBuildProjectExtensionsPath
-    # to keep obj/ inside the temp dir. Run from the temp dir with explicit isolation flags.
     env = os.environ.copy()
     env["DOTNET_CLI_HOME"] = str(tmp_dir)
     env["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
+    # MSBuildProjectExtensionsPath controls where obj/ goes
+    # BaseIntermediateOutputPath must also be set to prevent interference
     result = subprocess.run(
         ["dotnet", "build", str(proj_path), "-c", "Release", "--nologo", "-v", "q",
-         f"-o", str(tmp_dir / "out")],
+         f"-o", str(tmp_dir / "out"),
+         f"/p:BaseIntermediateOutputPath={tmp_dir / 'obj'}/",
+         "/p:ImportDirectoryBuildProps=false",
+         "/p:ImportDirectoryBuildTargets=false",
+         "/p:ImportDirectoryPackagesProps=false"],
         cwd=tmp_dir, capture_output=True, text=True, timeout=120, env=env
     )
     elapsed = time.perf_counter() - start
