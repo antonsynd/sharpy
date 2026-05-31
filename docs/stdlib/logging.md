@@ -1,7 +1,6 @@
 # logging
 
-A named logger that outputs messages at or above a configured level.
-Output format: LEVEL:name:message (written to stderr).
+Module exports for the logging module.
 
 ```python
 import logging

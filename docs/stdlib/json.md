@@ -1,7 +1,6 @@
 # json
 
-Python-compatible json module.
-Provides dumps/loads for string serialization and dump/load for file I/O.
+JSON encoder and decoder.
 
 ```python
 import json
@@ -17,13 +16,13 @@ import json
 
 ## Functions
 
-### `json.dumps(obj: object?) -> str`
+### `json.dumps(obj: object | None) -> str`
 
 Serialize obj to a JSON formatted string.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to serialize.
+- `obj` (object | None) -- The object to serialize.
 
 **Returns:** A JSON string representation of *obj*.
 
@@ -32,32 +31,36 @@ json.dumps({"key": "value"})    # '{"key": "value"}'
 json.dumps([1, 2, 3])           # '[1, 2, 3]'
 ```
 
-### `json.dumps(obj: object?, indent: int = -1, sort_keys: bool = false, ensure_ascii: bool = true, (string, string) -> str`
+### `json.dumps(obj: object | None, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, @default: (object) -> object | None | None = None, cls: JSONEncoder | None = None) -> str`
 
 Serialize obj to a JSON formatted string with formatting options.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to serialize.
+- `obj` (object | None) -- The object to serialize.
 - `indent` (int) -- Number of spaces for indentation. Use -1 for compact output.
 - `sort_keys` (bool)
 - `ensure_ascii` (bool)
-- `(string` ()
-- `string` ()
+- `separators` (tuple[str, str] | None) -- A tuple of `(itemSeparator, keySeparator)` overriding the
+defaults. When `None`, defaults to `(", ", ": ")` in compact mode and
+`(",", ": ")`-style behavior in pretty mode (newlines drive item separation).
+- `@default` ((object) -> object | None | None)
+- `cls` (JSONEncoder | None) -- Optional `JSONEncoder` instance. When provided,
+delegates serialization to `cls.Encode(obj)`.
 
 **Returns:** A JSON string representation of *obj*.
 
-### `json.loads(s: str, cls: JSONDecoder? = null, object_hook: Func[dict[str, object?], object?]? = null) -> object?`
+### `json.loads(s: str, cls: JSONDecoder | None = None, object_hook: (dict[str, object | None]) -> object | None | None = None) -> object | None`
 
 Deserialize a JSON string to a Python-like object.
 Returns Dict for objects, List for arrays,
-string, int/long/double, bool, or null.
+string, int/long/double, bool, or None.
 
 **Parameters:**
 
 - `s` (str) -- The JSON string to deserialize.
-- `cls` (JSONDecoder?) -- Optional `JSONDecoder` instance for custom decoding.
-- `object_hook` (Func[dict[str, object?], object?]?)
+- `cls` (JSONDecoder | None) -- Optional `JSONDecoder` instance for custom decoding.
+- `object_hook` ((dict[str, object | None]) -> object | None | None)
 
 **Returns:** The deserialized object.
 
@@ -66,13 +69,13 @@ json.loads('{"a": 1}')    # {"a": 1}
 json.loads('[1, 2]')      # [1, 2]
 ```
 
-### `json.dump(obj: object?, fp: TextFile)`
+### `json.dump(obj: object | None, fp: TextFile)`
 
 Serialize obj as a JSON formatted stream to a file.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to serialize.
+- `obj` (object | None) -- The object to serialize.
 - `fp` (TextFile) -- The file to write to.
 
 ```python
@@ -81,29 +84,31 @@ json.dump({"key": "value"}, f)
 f.close()
 ```
 
-### `json.dump(obj: object?, fp: TextFile, indent: int = -1, sort_keys: bool = false, ensure_ascii: bool = true, (string, string)`
+### `json.dump(obj: object | None, fp: TextFile, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, @default: (object) -> object | None | None = None, cls: JSONEncoder | None = None)`
 
 Serialize obj as a JSON formatted stream to a file with formatting options.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to serialize.
+- `obj` (object | None) -- The object to serialize.
 - `fp` (TextFile) -- The file to write to.
 - `indent` (int) -- Number of spaces for indentation. Use -1 for compact output.
 - `sort_keys` (bool)
 - `ensure_ascii` (bool)
-- `(string` ()
-- `string` ()
+- `separators` (tuple[str, str] | None) -- A tuple of `(itemSeparator, keySeparator)` overriding the
+defaults. See `Dumps(object?, int, bool, bool, ValueTuple{string, string}?, Func{object, object?}?)`.
+- `@default` ((object) -> object | None | None)
+- `cls` (JSONEncoder | None) -- Optional `JSONEncoder` instance for custom encoding.
 
-### `json.load(fp: TextFile, cls: JSONDecoder? = null, object_hook: Func[dict[str, object?], object?]? = null) -> object?`
+### `json.load(fp: TextFile, cls: JSONDecoder | None = None, object_hook: (dict[str, object | None]) -> object | None | None = None) -> object | None`
 
 Deserialize a JSON document read from a file.
 
 **Parameters:**
 
 - `fp` (TextFile) -- The file to read from.
-- `cls` (JSONDecoder?) -- Optional `JSONDecoder` instance for custom decoding.
-- `object_hook` (Func[dict[str, object?], object?]?)
+- `cls` (JSONDecoder | None) -- Optional `JSONDecoder` instance for custom decoding.
+- `object_hook` ((dict[str, object | None]) -> object | None | None)
 
 **Returns:** The deserialized object.
 
@@ -133,7 +138,7 @@ or a `JSONDecodeError` on failure.
 
 Simple JSON decoder. Subclass this to customize JSON decoding behavior.
 
-### `decode(s: str) -> object?`
+### `decode(s: str) -> object | None`
 
 Deserialize a JSON string to a Python-like object.
 
@@ -147,7 +152,7 @@ Deserialize a JSON string to a Python-like object.
 
 Extensible JSON encoder. Subclass this to customize JSON encoding behavior.
 
-### `default(obj: object) -> object?`
+### `default(obj: object) -> object | None`
 
 Called for objects that cannot otherwise be serialized. Override to provide custom serialization.
 
@@ -157,12 +162,12 @@ Called for objects that cannot otherwise be serialized. Override to provide cust
 
 **Returns:** A JSON-serializable replacement object.
 
-### `encode(obj: object?) -> str`
+### `encode(obj: object | None) -> str`
 
 Serialize an object to a JSON formatted string.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to serialize.
+- `obj` (object | None) -- The object to serialize.
 
 **Returns:** A JSON string representation of the object.

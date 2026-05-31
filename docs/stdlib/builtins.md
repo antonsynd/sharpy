@@ -53,7 +53,7 @@ Python: `abs(x)`
 
 ### `all(iterable: Iterable[T]) -> bool`
 
-Return True if all elements of the iterable are true (or if the iterable is empty).
+Return True if all elements of the iterable are True (or if the iterable is empty).
 
 **Parameters:**
 
@@ -69,7 +69,7 @@ all([])                    # True
 
 ### `any(iterable: Iterable[T]) -> bool`
 
-Return True if any element of the iterable is true. If the iterable is empty, return False.
+Return True if any element of the iterable is True. If the iterable is empty, return False.
 
 **Parameters:**
 
@@ -241,23 +241,23 @@ Convert an sbyte to bool. Returns False if zero, True otherwise.
 
 ### `bool(s: str) -> bool`
 
-Convert a string to bool. Returns False if the string is null or empty, True otherwise.
+Convert a string to bool. Returns False if the string is None or empty, True otherwise.
 
 **Parameters:**
 
 - `s` (str) -- The string value
 
-**Returns:** False if null or empty, True otherwise
+**Returns:** False if None or empty, True otherwise
 
-### `bool(obj: object?) -> bool`
+### `bool(obj: object | None) -> bool`
 
 Convert an arbitrary object to bool using Python's truth testing protocol.
 Checks __bool__ (IBoolConvertible), then __len__ (ISized), then collection emptiness.
-Non-null objects without these protocols are truthy.
+Non-None objects without these protocols are truthy.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to test for truthiness
+- `obj` (object | None) -- The object to test for truthiness
 
 **Returns:** The truth value of the object
 
@@ -380,14 +380,14 @@ for i, val in enumerate(["a", "b", "c"]):
 # 2 c
 ```
 
-### `filter(predicate: Func[T, bool], iterable: Iterable[T]) -> FilterIterator[T]`
+### `filter(predicate: (T) -> bool, iterable: Iterable[T]) -> FilterIterator[T]`
 
-Construct an iterator from those elements of iterable for which predicate is true.
-If predicate is None, return the elements that are true.
+Construct an iterator from those elements of iterable for which predicate is True.
+If predicate is None, return the elements that are True.
 
 **Parameters:**
 
-- `predicate` (Func[T, bool]) -- The predicate function to test each element
+- `predicate` ((T) -> bool) -- The predicate function to test each element
 - `iterable` (Iterable[T]) -- The iterable to filter
 
 **Returns:** A filter iterator
@@ -477,14 +477,14 @@ float("-1.5")    # -1.5
 
 - `ValueError` -- Thrown when the string cannot be parsed
 
-### `format(value: object?, format_spec: str = "") -> str`
+### `format(value: object | None, format_spec: str = "") -> str`
 
 Convert a value to a "formatted" representation, as controlled by format_spec.
 The interpretation of format_spec will depend on the type of the value argument.
 
 **Parameters:**
 
-- `value` (object?) -- The value to format
+- `value` (object | None) -- The value to format
 - `format_spec` (str)
 
 **Returns:** The formatted string representation
@@ -495,11 +495,11 @@ format(3.14, ".1f")    # "3.1"
 format(255, "x")       # "ff"
 ```
 
-### `frozen_set(items: Iterable[T]) -> FrozenSet[T]`
+### `frozen_set(items): Iterable[T] = > new(items) -> FrozenSet[T]`
 
 Return a new frozenset object, optionally with elements taken from iterable.
 
-### `frozen_set() -> FrozenSet[T]`
+### `frozen_set()) -> FrozenSet[T]`
 
 Return a new empty frozenset object.
 
@@ -657,13 +657,13 @@ Convert uint to int
 
 Convert ulong to int
 
-### `isinstance(obj: object?) -> bool`
+### `isinstance(obj: object | None) -> bool`
 
 Return True if the object argument is an instance of the classinfo argument.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to check
+- `obj` (object | None) -- The object to check
 
 **Returns:** True if obj is an instance of T, False otherwise
 
@@ -673,25 +673,25 @@ isinstance("hello", str)      # True
 isinstance(42, str)           # False
 ```
 
-### `isinstance(obj: object?, class_info: Type) -> bool`
+### `isinstance(obj: object | None, class_info: Type) -> bool`
 
 Return True if the object argument is an instance of the classinfo argument.
 This overload accepts the type as a parameter for runtime type checking.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to check
+- `obj` (object | None) -- The object to check
 - `class_info` (Type)
 
 **Returns:** True if obj is an instance of classInfo, False otherwise
 
-### `isinstance(obj: object?, class_info: list[Type]) -> bool`
+### `isinstance(obj: object | None, class_info: list[Type]) -> bool`
 
 Return True if the object argument is an instance of any of the types in classInfo.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to check
+- `obj` (object | None) -- The object to check
 - `class_info` (list[Type])
 
 **Returns:** True if obj is an instance of any type in classInfo, False otherwise
@@ -748,7 +748,7 @@ next(it)    # 2
 
 - `TypeError` -- Thrown when enumerable is null.
 
-### `len(c: System.Collections.ICollection) -> int`
+### `len(c: ICollection) -> int`
 
 Return the length (the number of items) of a collection.
 
@@ -759,7 +759,7 @@ len({})           # 0
 ```
 
 !!! note
-    Uses the non-generic `System.Collections.ICollection` interface
+    Uses the non-generic `ICollection` interface
     which is implemented by arrays, List{T}, Dictionary{K,V}, etc.
     This avoids overload ambiguity when a type implements both
     `ICollection{T}` and `IReadOnlyCollection{T}`.
@@ -850,13 +850,13 @@ Convert uint to long
 
 Convert ulong to long
 
-### `map(function: Func[TIn, TOut], iterable: Iterable[TIn]) -> MapIterator[TIn, TOut]`
+### `map(function: (TIn) -> TOut, iterable: Iterable[TIn]) -> MapIterator[TIn, TOut]`
 
 Return an iterator that applies function to every item of iterable, yielding the results.
 
 **Parameters:**
 
-- `function` (Func[TIn, TOut]) -- The function to apply to each element
+- `function` ((TIn) -> TOut) -- The function to apply to each element
 - `iterable` (Iterable[TIn]) -- The iterable to map over
 
 **Returns:** A map iterator
@@ -885,14 +885,14 @@ max("abc")           # "c"
 
 - `ValueError` -- Thrown when the iterable is empty
 
-### `max(iterable: Iterable[T], key: Func[T, TKey]) -> T`
+### `max(iterable: Iterable[T], key: (T) -> TKey) -> T`
 
 Return the largest item in an iterable, using a key function for comparison.
 
 **Parameters:**
 
 - `iterable` (Iterable[T]) -- The iterable to search
-- `key` (Func[T, TKey]) -- A function to extract a comparison key from each element
+- `key` ((T) -> TKey) -- A function to extract a comparison key from each element
 
 **Returns:** The largest item according to the key function
 
@@ -904,7 +904,7 @@ Return the largest item in an iterable, using a key function for comparison.
 
 Return the largest item in an iterable, or default if the iterable is empty.
 
-### `max(iterable: Iterable[T], key: Func[T, TKey], @default: T) -> T`
+### `max(iterable: Iterable[T], key: (T) -> TKey, @default: T) -> T`
 
 Return the largest item in an iterable using a key function,
 or default if the iterable is empty.
@@ -928,14 +928,14 @@ min("abc")           # "a"
 
 - `ValueError` -- Thrown when the iterable is empty
 
-### `min(iterable: Iterable[T], key: Func[T, TKey]) -> T`
+### `min(iterable: Iterable[T], key: (T) -> TKey) -> T`
 
 Return the smallest item in an iterable, using a key function for comparison.
 
 **Parameters:**
 
 - `iterable` (Iterable[T]) -- The iterable to search
-- `key` (Func[T, TKey]) -- A function to extract a comparison key from each element
+- `key` ((T) -> TKey) -- A function to extract a comparison key from each element
 
 **Returns:** The smallest item according to the key function
 
@@ -947,7 +947,7 @@ Return the smallest item in an iterable, using a key function for comparison.
 
 Return the smallest item in an iterable, or default if the iterable is empty.
 
-### `min(iterable: Iterable[T], key: Func[T, TKey], @default: T) -> T`
+### `min(iterable: Iterable[T], key: (T) -> TKey, @default: T) -> T`
 
 Return the smallest item in an iterable using a key function,
 or default if the iterable is empty.
@@ -1171,13 +1171,13 @@ incrementing by step.
 
 - `ValueError` -- Thrown when *step* is zero
 
-### `repr(obj: object?) -> str`
+### `repr(obj: object | None) -> str`
 
 Return a string containing a printable representation of an object.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to get the representation of
+- `obj` (object | None) -- The object to get the representation of
 
 **Returns:** A printable string representation
 
@@ -1336,14 +1336,14 @@ sorted("cab")                  # ["a", "b", "c"]
 sorted([3, 1, 2], reverse=True) # [3, 2, 1]
 ```
 
-### `sorted(iterable: Iterable[T], key: Func[T, TKey]) -> list[T]`
+### `sorted(iterable: Iterable[T], key: (T) -> TKey) -> list[T]`
 
 Return a new sorted list using a key function for comparison.
 
 **Parameters:**
 
 - `iterable` (Iterable[T]) -- The iterable to sort
-- `key` (Func[T, TKey]) -- A function to extract a comparison key from each element
+- `key` ((T) -> TKey) -- A function to extract a comparison key from each element
 
 **Returns:** A new sorted list
 
@@ -1358,14 +1358,14 @@ Return a new sorted list, optionally in reverse order.
 
 **Returns:** A new sorted list
 
-### `sorted(iterable: Iterable[T], key: Func[T, TKey], reverse: bool) -> list[T]`
+### `sorted(iterable: Iterable[T], key: (T) -> TKey, reverse: bool) -> list[T]`
 
 Return a new sorted list using a key function, optionally in reverse order.
 
 **Parameters:**
 
 - `iterable` (Iterable[T]) -- The iterable to sort
-- `key` (Func[T, TKey]) -- A function to extract a comparison key from each element
+- `key` ((T) -> TKey) -- A function to extract a comparison key from each element
 - `reverse` (bool) -- If True, sort in descending order
 
 **Returns:** A new sorted list
@@ -1373,7 +1373,7 @@ Return a new sorted list using a key function, optionally in reverse order.
 ### `str(x: object) -> str`
 
 Convert an arbitrary object to its string representation.
-Returns `"None"` for null, Python-style `"True"`/`"False"`
+Returns `"None"` for None, Python-style `"True"`/`"False"`
 for booleans, and `object.ToString` for everything else.
 
 **Parameters:**
@@ -1536,13 +1536,13 @@ Sums a sequence of doubles with a start value.
 
 Sums a sequence of decimals with a start value.
 
-### `type(obj: object?) -> Type`
+### `type(obj: object | None) -> Type`
 
 Return the type of an object.
 
 **Parameters:**
 
-- `obj` (object?) -- The object to get the type of
+- `obj` (object | None) -- The object to get the type of
 
 **Returns:** The type of the object
 
@@ -1574,13 +1574,13 @@ list(zip([1, 2], [10, 20, 30]))           # [(1, 10), (2, 20)]
 ### `zip(iterable1: Iterable[T1], iterable2: Iterable[T2], strict: bool) -> ZipIterator[T1, T2]`
 
 Make an iterator that aggregates elements from two iterables.
-When strict is true, raises ValueError if iterables have different lengths.
+When strict is True, raises ValueError if iterables have different lengths.
 
 **Parameters:**
 
 - `iterable1` (Iterable[T1]) -- The first iterable
 - `iterable2` (Iterable[T2]) -- The second iterable
-- `strict` (bool) -- If true, raises ValueError when iterables have different lengths
+- `strict` (bool) -- If True, raises ValueError when iterables have different lengths
 
 **Returns:** A zip iterator
 
@@ -1602,14 +1602,14 @@ input iterable is exhausted.
 ### `zip(iterable1: Iterable[T1], iterable2: Iterable[T2], iterable3: Iterable[T3], strict: bool) -> ZipIterator[T1, T2, T3]`
 
 Make an iterator that aggregates elements from three iterables.
-When strict is true, raises ValueError if iterables have different lengths.
+When strict is True, raises ValueError if iterables have different lengths.
 
 **Parameters:**
 
 - `iterable1` (Iterable[T1]) -- The first iterable
 - `iterable2` (Iterable[T2]) -- The second iterable
 - `iterable3` (Iterable[T3]) -- The third iterable
-- `strict` (bool) -- If true, raises ValueError when iterables have different lengths
+- `strict` (bool) -- If True, raises ValueError when iterables have different lengths
 
 **Returns:** A zip iterator
 
@@ -1643,14 +1643,14 @@ and center-alignment.
 
 **Returns:** The aligned string, or *value* unchanged if already wider than *width*
 
-### `print(values: list[object?])`
+### `print(values: list[object | None])`
 
 Print values to standard output, matching Python's print() behavior.
 Values are converted to strings using ToString() and separated by the separator.
 
 **Parameters:**
 
-- `values` (list[object?]) -- Values to print
+- `values` (list[object | None]) -- Values to print
 
 ```python
 print("hello")           # hello

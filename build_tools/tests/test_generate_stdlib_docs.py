@@ -143,10 +143,17 @@ class TestMapType:
         assert map_type("object") == "object"
 
     def test_nullable(self):
-        assert map_type("int?") == "int?"
+        assert map_type("int?") == "int | None"
 
     def test_nullable_string(self):
-        assert map_type("string?") == "str?"
+        assert map_type("string?") == "str | None"
+
+    def test_nullable_str(self):
+        assert map_type("str?") == "str | None"
+
+    def test_nullable_int(self):
+        # int is not in _TYPE_MAP but the nullable stripping works regardless
+        assert map_type("int?") == "int | None"
 
     def test_generic_list(self):
         assert map_type("List<int>") == "list[int]"
@@ -186,6 +193,43 @@ class TestMapType:
 
     def test_value_tuple(self):
         assert map_type("ValueTuple<int, string>") == "tuple[int, str]"
+
+    # --- New tests for fixes ---
+
+    def test_func_two_args(self):
+        assert map_type("Func<int, str>") == "(int) -> str"
+
+    def test_func_three_args(self):
+        assert map_type("Func<T, T, int>") == "(T, T) -> int"
+
+    def test_func_single_arg(self):
+        assert map_type("Func<bool>") == "() -> bool"
+
+    def test_action_one_arg(self):
+        assert map_type("Action<str>") == "(str) -> None"
+
+    def test_action_no_args(self):
+        assert map_type("Action") == "() -> None"
+
+    def test_global_func(self):
+        assert map_type("global::System.Func<T, bool>") == "(T) -> bool"
+
+    def test_system_ienumerable_generic(self):
+        assert map_type("System.Collections.Generic.IEnumerable<int>") == "Iterable[int]"
+
+    def test_system_value_tuple_generic(self):
+        assert map_type("System.ValueTuple<str, str>") == "tuple[str, str]"
+
+    def test_value_tuple_cs_syntax(self):
+        """C# value-tuple syntax (T1, T2) should map to tuple[T1, T2]."""
+        assert map_type("(string, int)") == "tuple[str, int]"
+
+    def test_ienumerable_of_tuple(self):
+        """IEnumerable<(TKey, TValue)> should map to Iterable[tuple[TKey, TValue]]."""
+        assert map_type("IEnumerable<(string, int)>") == "Iterable[tuple[str, int]]"
+
+    def test_global_system_stripped(self):
+        assert map_type("global::System.Func<T, bool>") == "(T) -> bool"
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +384,23 @@ class TestParseParams:
 
     def test_nullable(self):
         params = _parse_params("string? name")
-        assert params[0].type == "str?"
+        assert params[0].type == "str | None"
+
+    def test_null_default_mapped_to_none(self):
+        params = _parse_params("string? name = null")
+        assert params[0].default == "None"
+
+    def test_false_default_mapped_to_False(self):
+        params = _parse_params("bool reverse = false")
+        assert params[0].default == "False"
+
+    def test_true_default_mapped_to_True(self):
+        params = _parse_params("bool enable = true")
+        assert params[0].default == "True"
+
+    def test_non_literal_default_preserved(self):
+        params = _parse_params("int x = 0")
+        assert params[0].default == "0"
 
 
 # ---------------------------------------------------------------------------
@@ -514,7 +574,7 @@ class TestParseCsFile:
         members = parse_cs_file(f)
         assert len(members) == 1
         assert members[0].params[0].default == "0"
-        assert members[0].params[1].default == "false"
+        assert members[0].params[1].default == "False"  # false -> False
 
 
 # ---------------------------------------------------------------------------

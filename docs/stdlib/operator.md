@@ -1,7 +1,5 @@
 # operator
 
-Operator module — functions corresponding to the intrinsic operators of Python.
-
 ```python
 import operator
 ```
@@ -62,39 +60,39 @@ Return left + right (concatenation) for string operands.
 
 ### `operator.eq(left: IComparable[T], right: T) -> bool`
 
-Return true if left == right using IComparable.
+Return True if left == right using IComparable.
 
 ### `operator.eq(left: IComparable, right: object) -> bool`
 
-Return true if left == right using IComparable.
+Return True if left == right using IComparable.
 
 ### `operator.eq(left: object, right: object) -> bool`
 
-Return true if left == right using Equals.
+Return True if left == right using Equals.
 
 ### `operator.ge(left: IComparable[T], right: T) -> bool`
 
-Return true if left >= right using IComparable.
+Return True if left >= right using IComparable.
 
 ### `operator.ge(left: IComparable, right: object) -> bool`
 
-Return true if left >= right using IComparable.
+Return True if left >= right using IComparable.
 
 ### `operator.ge(left: T, right: T) -> bool`
 
-Return true if left >= right with automatic dispatch.
+Return True if left >= right with automatic dispatch.
 
 ### `operator.gt(left: IComparable[T], right: T) -> bool`
 
-Return true if left > right using IComparable.
+Return True if left > right using IComparable.
 
 ### `operator.gt(left: IComparable, right: object) -> bool`
 
-Return true if left > right using IComparable.
+Return True if left > right using IComparable.
 
 ### `operator.gt(left: T, right: T) -> bool`
 
-Return true if left > right with automatic dispatch.
+Return True if left > right with automatic dispatch.
 
 ### `operator.i_add(left: ref int, right: int)`
 
@@ -138,35 +136,35 @@ In-place multiplication: left *= right (decimal).
 
 ### `operator.is(left: object, right: object) -> bool`
 
-Return true if left and right are the same object (identity check).
+Return True if left and right are the same object (identity check).
 
 ### `operator.is_not(left: object, right: object) -> bool`
 
-Return true if left and right are not the same object (identity check).
+Return True if left and right are not the same object (identity check).
 
 ### `operator.le(left: IComparable[T], right: T) -> bool`
 
-Return true if left <= right using IComparable.
+Return True if left <= right using IComparable.
 
 ### `operator.le(left: IComparable, right: object) -> bool`
 
-Return true if left <= right using IComparable.
+Return True if left <= right using IComparable.
 
 ### `operator.le(left: T, right: T) -> bool`
 
-Return true if left <= right with automatic dispatch.
+Return True if left <= right with automatic dispatch.
 
 ### `operator.lt(left: IComparable[T], right: T) -> bool`
 
-Return true if left < right using IComparable.
+Return True if left < right using IComparable.
 
 ### `operator.lt(left: IComparable, right: object) -> bool`
 
-Return true if left < right using IComparable.
+Return True if left < right using IComparable.
 
 ### `operator.lt(left: T, right: T) -> bool`
 
-Return true if left < right with automatic dispatch.
+Return True if left < right with automatic dispatch.
 
 ### `operator.mul(left: int, right: int) -> int`
 
@@ -190,36 +188,36 @@ Return left * right for decimal operands.
 
 ### `operator.ne(left: IComparable[T], right: T) -> bool`
 
-Return true if left != right using IComparable.
+Return True if left != right using IComparable.
 
 ### `operator.ne(left: IComparable, right: object) -> bool`
 
-Return true if left != right using IComparable.
+Return True if left != right using IComparable.
 
 ### `operator.ne(left: object, right: object) -> bool`
 
-Return true if left != right using Equals.
+Return True if left != right using Equals.
 
 ### `operator.not(value: bool) -> bool`
 
 Return the logical negation of a boolean value.
 
-### `operator.not(collection: System.Collections.ICollection) -> bool`
+### `operator.not(collection: ICollection) -> bool`
 
-Return true if the collection is empty.
+Return True if the collection is empty.
 
 ### `operator.not(collection: ICollection[T]) -> bool`
 
-Return true if the collection is empty.
+Return True if the collection is empty.
 
 ### `operator.truth(value: bool) -> bool`
 
 Return the truth value of a boolean.
 
-### `operator.truth(collection: System.Collections.ICollection) -> bool`
+### `operator.truth(collection: ICollection) -> bool`
 
-Return true if the collection is non-empty.
+Return True if the collection is non-empty.
 
 ### `operator.truth(collection: ICollection[T]) -> bool`
 
-Return true if the collection is non-empty.
+Return True if the collection is non-empty.

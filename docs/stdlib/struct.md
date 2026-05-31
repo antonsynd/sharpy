@@ -1,7 +1,6 @@
 # struct
 
-Pre-compiled struct format for repeated packing/unpacking operations.
-Corresponds to Python's struct.Struct class.
+Module exports for the struct module.
 
 ```python
 import struct

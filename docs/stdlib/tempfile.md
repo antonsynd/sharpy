@@ -1,5 +1,7 @@
 # tempfile
 
+Generate temporary files and directories.
+
 ```python
 import tempfile
 ```

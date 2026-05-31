@@ -1,7 +1,6 @@
 # pathlib
 
-Object-oriented filesystem path, similar to Python's pathlib.Path.
-Immutable — all mutation methods return new Path instances.
+Module exports for the pathlib module.
 
 ```python
 import pathlib
@@ -22,7 +21,7 @@ Immutable — all mutation methods return new Path instances.
 
 Whether the path exists on the filesystem.
 
-**Returns:** `true` if the path exists.
+**Returns:** `True` if the path exists.
 
 ```python
 Path("/tmp").exists()        # True
@@ -64,7 +63,7 @@ Read the file as bytes.
 
 Write bytes to the file.
 
-### `mkdir(parents: bool = false, exist_ok: bool = false)`
+### `mkdir(parents: bool = False, exist_ok: bool = False)`
 
 Create the directory. Optionally create parents.
 
@@ -84,7 +83,7 @@ Glob for matching paths relative to this directory.
 
 Rename the file or directory.
 
-### `unlink(missing_ok: bool = false)`
+### `unlink(missing_ok: bool = False)`
 
 Remove the file.
 
@@ -120,7 +119,7 @@ Return the current working directory.
 
 Return the user's home directory.
 
-### `touch(exist_ok: bool = true)`
+### `touch(exist_ok: bool = True)`
 
 Create the file if it doesn't exist, or update its timestamp if it does.
 

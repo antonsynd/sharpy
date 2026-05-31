@@ -1,7 +1,6 @@
 # functools
 
-Thread-safe memoization cache backing the `@functools.lru_cache` and
-`@functools.cache` decorators.
+Higher-order functions and operations on callable objects.
 
 ```python
 import functools
@@ -9,24 +8,24 @@ import functools
 
 ## Functions
 
-### `functools.reduce(func: Func[T, T, T], iterable: Iterable[T], initial: T) -> T`
+### `functools.reduce(func: (T, T) -> T, iterable: Iterable[T], initial: T) -> T`
 
 Apply function of two arguments cumulatively to the items of iterable, with an initial value.
 
-### `functools.cmp_to_key(func: Func[T, T, int]) -> IComparer[T]`
+### `functools.cmp_to_key(func: (T, T) -> int) -> Comparer[T]`
 
 Transform a comparison function into a key function for use with sorted() and friends.
 
-### `functools.reduce(func: global::System.Func<T, T, T>, iterable: list[T]) -> T`
+### `functools.reduce(func: (T, T) -> T, iterable: list[T]) -> T`
 
 Apply function of two arguments cumulatively to the items of iterable, so as to reduce the iterable to a single value.
 
-### `functools.cache_info(hits: int, misses: int, max_size: int?, current_size: int) -> record`
+### `functools.cache_info(hits: int, misses: int, max_size: int | None, current_size: int) -> record`
 
 Snapshot of cache statistics returned by
 `LruCache{TKey, TResult}.CacheInfo`.
 
-### `functools.get_or_add(key: TKey, factory: Func[TKey, TResult]) -> TResult`
+### `functools.get_or_add(key: TKey, factory: (TKey) -> TResult) -> TResult`
 
 Looks up the cached value for *key*, or computes it
 via *factory* and stores the result.
@@ -34,7 +33,7 @@ via *factory* and stores the result.
 **Parameters:**
 
 - `key` (TKey) -- The cache key.
-- `factory` (Func[TKey, TResult]) -- A factory invoked on miss to compute the value.
+- `factory` ((TKey) -> TResult) -- A factory invoked on miss to compute the value.
 
 **Returns:** The cached or freshly-computed value.
 

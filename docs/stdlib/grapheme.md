@@ -1,9 +1,6 @@
 # grapheme
 
-Grapheme cluster (user-perceived character) operations.
-Wraps `System.Globalization.StringInfo` for working with
-text at the level of what users perceive as a single character — including
-combining marks, emoji sequences, and ZWJ (zero-width joiner) sequences.
+Unicode grapheme cluster iteration and string width calculation.
 
 ```python
 import grapheme

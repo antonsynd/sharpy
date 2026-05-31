@@ -8,7 +8,7 @@ import ipaddress
 
 ### `ipaddress.ip_address(address: str) -> object`
 
-### `ipaddress.ip_network(address: str, strict: bool = true) -> object`
+### `ipaddress.ip_network(address: str, strict: bool = True) -> object`
 
 ### `ipaddress.ip_interface(address: str) -> object`
 
@@ -51,9 +51,9 @@ import ipaddress
 
 ### `overlaps(other: IPv4Network) -> bool`
 
-### `subnets(prefixlen_diff: int = 1, new_prefix: int? = null) -> SCG.List[IPv4Network]`
+### `subnets(prefixlen_diff: int = 1, new_prefix: int | None = None) -> SCG.List[IPv4Network]`
 
-### `supernet(prefixlen_diff: int = 1, new_prefix: int? = null) -> IPv4Network`
+### `supernet(prefixlen_diff: int = 1, new_prefix: int | None = None) -> IPv4Network`
 
 ### `subnet_of(other: IPv4Network) -> bool`
 
@@ -97,9 +97,9 @@ import ipaddress
 
 ### `hosts() -> Iterable[IPv6Address]`
 
-### `subnets(prefixlen_diff: int = 1, new_prefix: int? = null) -> list[IPv6Network]`
+### `subnets(prefixlen_diff: int = 1, new_prefix: int | None = None) -> list[IPv6Network]`
 
-### `supernet(prefixlen_diff: int = 1, new_prefix: int? = null) -> IPv6Network`
+### `supernet(prefixlen_diff: int = 1, new_prefix: int | None = None) -> IPv6Network`
 
 ### `subnet_of(other: IPv6Network) -> bool`
 

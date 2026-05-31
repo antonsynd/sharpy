@@ -1,7 +1,6 @@
 # glob
 
-Unix-style pathname pattern expansion, similar to Python's glob module.
-Supports `*`, `?`, `[seq]`, and `**` patterns.
+Unix shell-style pathname pattern expansion.
 
 ```python
 import glob

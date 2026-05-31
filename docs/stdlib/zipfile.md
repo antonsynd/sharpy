@@ -1,5 +1,7 @@
 # zipfile
 
+Read and write ZIP archive files.
+
 ```python
 import zipfile
 ```
@@ -13,17 +15,17 @@ import zipfile
 
 ## Functions
 
-### `zipfile.write(filename: str, arcname: str? = null, compress_type: int? = null)`
+### `zipfile.write(filename: str, arcname: str | None = None, compress_type: int | None = None)`
 
-### `zipfile.writestr(zinfo: ZipInfo, data: Bytes, compress_type: int? = null)`
+### `zipfile.writestr(zinfo: ZipInfo, data: Bytes, compress_type: int | None = None)`
 
-### `zipfile.writestr(arcname: str, data: Bytes, compress_type: int? = null)`
+### `zipfile.writestr(arcname: str, data: Bytes, compress_type: int | None = None)`
 
-### `zipfile.writestr(arcname: str, data: str, compress_type: int? = null)`
+### `zipfile.writestr(arcname: str, data: str, compress_type: int | None = None)`
 
-### `zipfile.extract(member: str, path: str? = null) -> str`
+### `zipfile.extract(member: str, path: str | None = None) -> str`
 
-### `zipfile.extractall(path: str? = null, members: list[str]? = null)`
+### `zipfile.extractall(path: str | None = None, members: list[str] | None = None)`
 
 ### `zipfile.mkdir(zinf_or_arcname: str)`
 

@@ -1,5 +1,7 @@
 # bisect
 
+Array bisection algorithm for maintaining sorted lists.
+
 ```python
 import bisect
 ```

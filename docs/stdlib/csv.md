@@ -1,7 +1,6 @@
 # csv
 
-Reads CSV data and maps each row to a dictionary keyed by field names,
-similar to Python's `csv.DictReader`.
+Module exports for the csv module.
 
 ```python
 import csv
@@ -28,34 +27,34 @@ Create a CSV reader from an enumerable of lines.
 
 **Returns:** A `CsvReader` that iterates over parsed rows.
 
-### `csv.writer(output: System.IO.TextWriter) -> CsvWriter`
+### `csv.writer(output: TextWriter) -> CsvWriter`
 
 Create a CSV writer that writes to a TextWriter.
 
 **Parameters:**
 
-- `output` (System.IO.TextWriter) -- The output writer to write CSV data to.
+- `output` (TextWriter) -- The output writer to write CSV data to.
 
 **Returns:** A `CsvWriter` for writing CSV rows.
 
-### `csv.dict_reader(lines: Iterable[str], fieldnames: list[str]? = null) -> CsvDictReader`
+### `csv.dict_reader(lines: Iterable[str], fieldnames: list[str] | None = None) -> CsvDictReader`
 
 Create a CSV DictReader from an enumerable of lines.
 
 **Parameters:**
 
 - `lines` (Iterable[str]) -- An enumerable of CSV lines to parse.
-- `fieldnames` (list[str]?) -- Optional field names. If null, the first row is used as field names.
+- `fieldnames` (list[str] | None) -- Optional field names. If None, the first row is used as field names.
 
 **Returns:** A `CsvDictReader` that iterates over parsed rows as dictionaries.
 
-### `csv.dict_writer(output: System.IO.TextWriter, fieldnames: list[str]) -> CsvDictWriter`
+### `csv.dict_writer(output: TextWriter, fieldnames: list[str]) -> CsvDictWriter`
 
 Create a CSV DictWriter that writes to a TextWriter.
 
 **Parameters:**
 
-- `output` (System.IO.TextWriter) -- The output writer to write CSV data to.
+- `output` (TextWriter) -- The output writer to write CSV data to.
 - `fieldnames` (list[str]) -- The field names determining column order.
 
 **Returns:** A `CsvDictWriter` for writing CSV rows as dictionaries.

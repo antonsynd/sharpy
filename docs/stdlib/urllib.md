@@ -1,7 +1,6 @@
 # urllib
 
-Result of `UrllibModule.Urlparse`. Contains the six components of a
-parsed URL: scheme, netloc, path, params, query, and fragment.
+Module exports for the urllib module.
 
 ```python
 import urllib
@@ -9,7 +8,7 @@ import urllib
 
 ## Functions
 
-### `urllib.urlparse(url: str, scheme: str = "", allow_fragments: bool = true) -> ParseResult`
+### `urllib.urlparse(url: str, scheme: str = "", allow_fragments: bool = True) -> ParseResult`
 
 Parse a URL into six components: (scheme, netloc, path, params, query, fragment).
 
@@ -21,7 +20,7 @@ Parse a URL into six components: (scheme, netloc, path, params, query, fragment)
 
 **Returns:** A `ParseResult` with the six components.
 
-### `urllib.urlsplit(url: str, scheme: str = "", allow_fragments: bool = true) -> SplitResult`
+### `urllib.urlsplit(url: str, scheme: str = "", allow_fragments: bool = True) -> SplitResult`
 
 Parse a URL into five components: (scheme, netloc, path, query, fragment).
 Similar to `Urlparse` but does not split params from the path.
@@ -42,7 +41,7 @@ Combine the six components of a `ParseResult` into a URL string.
 
 Combine the five components of a `SplitResult` into a URL string.
 
-### `urllib.urljoin(base_url: str, url: str, allow_fragments: bool = true) -> str`
+### `urllib.urljoin(base_url: str, url: str, allow_fragments: bool = True) -> str`
 
 Construct a full URL by combining a base URL with a relative URL.
 
@@ -66,7 +65,7 @@ Keys that appear multiple times have all values aggregated.
 
 **Returns:** A dictionary mapping keys to lists of values.
 
-### `urllib.parse_qsl(qs: str, separator: str = "&") -> list[System.ValueTuple[str, str]]`
+### `urllib.parse_qsl(qs: str, separator: str = "&") -> list[tuple[str, str]]`
 
 Parse a query string and return a list of (key, value) tuples.
 
@@ -77,24 +76,24 @@ Parse a query string and return a list of (key, value) tuples.
 
 **Returns:** A list of (key, value) tuples.
 
-### `urllib.urlencode(query: dict[str, object?], doseq: bool = false) -> str`
+### `urllib.urlencode(query: dict[str, object | None], doseq: bool = False) -> str`
 
 Encode a dictionary of query parameters into a query string.
 
 **Parameters:**
 
-- `query` (dict[str, object?]) -- Dictionary of key-value pairs.
-- `doseq` (bool) -- If true, sequence values are encoded as separate key=value pairs.
+- `query` (dict[str, object | None]) -- Dictionary of key-value pairs.
+- `doseq` (bool) -- If True, sequence values are encoded as separate key=value pairs.
 
 **Returns:** A URL-encoded query string.
 
-### `urllib.urlencode(query: list[System.ValueTuple[str, str]]) -> str`
+### `urllib.urlencode(query: list[tuple[str, str]]) -> str`
 
 Encode a list of (key, value) tuples into a query string.
 
 **Parameters:**
 
-- `query` (list[System.ValueTuple[str, str]]) -- List of (key, value) tuples.
+- `query` (list[tuple[str, str]]) -- List of (key, value) tuples.
 
 **Returns:** A URL-encoded query string.
 

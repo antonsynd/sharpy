@@ -1,7 +1,6 @@
 # platform
 
-Represents the result of a platform.uname() call.
-Mirrors Python's platform.uname_result named tuple.
+Module exports for the platform module.
 
 ```python
 import platform
@@ -34,15 +33,15 @@ Returns the computer's network name (hostname).
 
 Returns the (real) processor name or architecture string.
 
-### `platform.platform(aliased: bool = false, terse: bool = false) -> str`
+### `platform.platform(aliased: bool = False, terse: bool = False) -> str`
 
 Returns a single string identifying the underlying platform
 with as much useful information as possible.
 
 **Parameters:**
 
-- `aliased` (bool) -- If true, use aliased platform names (currently unused).
-- `terse` (bool) -- If true, return a minimal platform string without version.
+- `aliased` (bool) -- If True, use aliased platform names (currently unused).
+- `terse` (bool) -- If True, return a minimal platform string without version.
 
 ### `platform.sharpy_version() -> str`
 

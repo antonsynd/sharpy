@@ -1,5 +1,7 @@
 # random
 
+Generate pseudo-random numbers with various distributions.
+
 ```python
 import random
 ```
@@ -38,7 +40,7 @@ Return a randomly-selected element from range(stop).
 
 Return a randomly-selected element from range(start, stop).
 
-### `random.choices(population: IList[T], weights: IList[float]? = null, k: int = 1) -> list[T]`
+### `random.choices(population: IList[T], weights: IList[float] | None = None, k: int = 1) -> list[T]`
 
 Return a k sized list of elements chosen from the population with replacement,
 optionally weighted.

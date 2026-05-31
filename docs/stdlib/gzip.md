@@ -1,5 +1,7 @@
 # gzip
 
+Support for gzip compressed files.
+
 ```python
 import gzip
 ```

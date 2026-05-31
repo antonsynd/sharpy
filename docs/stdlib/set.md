@@ -31,7 +31,7 @@ Returns whether this set is a proper subset of other (subset but not equal).
 
 - `other` (set[T]) -- The set to compare against
 
-**Returns:** `true` if this set is a proper subset of *other*
+**Returns:** `True` if this set is a proper subset of *other*
 
 ### `is_subset(other: set[T]) -> bool`
 
@@ -41,7 +41,7 @@ Returns whether this set is a subset of other (all elements in other).
 
 - `other` (set[T]) -- The set to compare against.
 
-**Returns:** `true` if every element in this set is also in *other*.
+**Returns:** `True` if every element in this set is also in *other*.
 
 ```python
 a = {1, 2}
@@ -57,7 +57,7 @@ Returns whether this set is a proper superset of other (superset but not equal).
 
 - `other` (set[T]) -- The set to compare against
 
-**Returns:** `true` if this set is a proper superset of *other*
+**Returns:** `True` if this set is a proper superset of *other*
 
 ### `is_superset(other: set[T]) -> bool`
 
@@ -67,7 +67,7 @@ Returns whether this set is a superset of other (contains all elements of other)
 
 - `other` (set[T]) -- The set to compare against.
 
-**Returns:** `true` if every element in *other* is also in this set.
+**Returns:** `True` if every element in *other* is also in this set.
 
 ```python
 a = {1, 2, 3}
@@ -143,13 +143,9 @@ a.symmetric_difference(b)    # {1, 4}
 
 Convert to a standard .NET HashSet.
 
-### `add(x: T)`
+### `add(x): T = > _set.Add(x)`
 
 Add an element to the set (no effect if already present).
-
-**Parameters:**
-
-- `x` (T) -- The element to add.
 
 ```python
 s = {1, 2}
@@ -159,15 +155,11 @@ s.add(2)    # {1, 2, 3}  (no change)
 
 !!! note
     For initializer literals and part of
-    System.Collections.Generic.ICollection interface.
+    ICollection interface.
 
-### `discard(x: T)`
+### `discard(x): T = > _set.Remove(x)`
 
 Remove an element from the set if present (no error if not present).
-
-**Parameters:**
-
-- `x` (T) -- The element to discard.
 
 ```python
 s = {1, 2, 3}
@@ -175,7 +167,7 @@ s.discard(2)    # {1, 3}
 s.discard(9)    # {1, 3}  (no error)
 ```
 
-### `clear()`
+### `clear())`
 
 Remove all elements from the set.
 
@@ -218,15 +210,11 @@ s.remove(2)    # {1, 3}
 
 - `KeyError` -- Thrown if the element is not found.
 
-### `contains(x: T) -> bool`
+### `contains(x): T = > _set.Contains(x) -> bool`
 
 Returns whether the item is in the set.
 
-**Parameters:**
-
-- `x` (T) -- The element to check for.
-
-**Returns:** `true` if the element is found; otherwise `false`.
+**Returns:** `True` if the element is found; otherwise `False`.
 
 ```python
 s = {1, 2, 3}
@@ -242,7 +230,7 @@ Returns whether this set has no elements in common with other.
 
 - `other` (set[T]) -- The set to test against.
 
-**Returns:** `true` if the sets have no common elements.
+**Returns:** `True` if the sets have no common elements.
 
 ```python
 a = {1, 2}
@@ -334,7 +322,7 @@ Update the set, keeping only elements found in either set or the iterable but no
 
 - `other` (Iterable[T]) -- The iterable to compute symmetric difference with.
 
-### `copy_to(array: list[T], array_index: int)`
+### `copy_to(array: list[T], array_index): int = > _set.CopyTo(array, arrayIndex)`
 
 Copies the elements of the set to an array.
 

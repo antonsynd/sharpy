@@ -11,11 +11,11 @@ Supports negative indexing, slicing, and Python-style methods.
 
 ## Methods
 
-### `add(item: T)`
+### `add(item): T = > _list.Add(item)`
 
 !!! note
     For collection initializers. Also a part of the
-    System.Collections.Generic.ICollection interface.
+    ICollection interface.
 
 ### `copy() -> list[T]`
 
@@ -28,14 +28,14 @@ x = [1, 2, 3]
 y = x.copy()    # [1, 2, 3]
 ```
 
-### `sort(reverse: bool = false)`
+### `sort(reverse: bool = False)`
 
 Sort the items of the list in place (the arguments can be used for
 sort customization, see Sorted() for their explanation).
 
 **Parameters:**
 
-- `reverse` (bool) -- If `true`, sort in descending order.
+- `reverse` (bool) -- If `True`, sort in descending order.
 
 ```python
 x = [3, 1, 2]
@@ -46,7 +46,7 @@ x.sort(reverse=True) # [3, 2, 1]
 !!! note
     This is not a stable sort.
 
-### `sort(key: Func[T, TKey], reverse: bool = false)`
+### `sort(key: (T) -> TKey, reverse: bool = False)`
 
 Sort the items of the list in place (the arguments can be used for
 sort customization, see Sorted() for their explanation).
@@ -54,17 +54,13 @@ sort customization, see Sorted() for their explanation).
 !!! note
     This is not a stable sort.
 
-### `to_list() -> System.Collections.Generic.List[T]`
+### `to_list() -> list[T]`
 
 Creates a shallow copy this list as a .NET list.
 
-### `append(x: T)`
+### `append(x): T = > _list.Add(x)`
 
 Add an item to the end of the list. Similar to a[len(a):] = [x].
-
-**Parameters:**
-
-- `x` (T) -- The item to add.
 
 ```python
 x = [1, 2, 3]
@@ -85,7 +81,7 @@ x = [1, 2]
 x.extend([3, 4])    # [1, 2, 3, 4]
 ```
 
-### `clear()`
+### `clear())`
 
 Remove all items from the list.
 
@@ -153,7 +149,7 @@ x.remove(2)    # [1, 3, 2]
 
 - `ValueError` -- Thrown if the value is not found.
 
-### `reverse()`
+### `reverse())`
 
 Reverse the elements of the list in place.
 
@@ -209,15 +205,11 @@ x.index(2, 2)    # 3
 
 - `ValueError` -- Thrown if the value is not found.
 
-### `contains(x: T) -> bool`
+### `contains(x): T = > _list.Contains(x) -> bool`
 
 Returns whether the item is in the list.
 
-**Parameters:**
-
-- `x` (T) -- The value to check for.
-
-**Returns:** `true` if the item is found; otherwise `false`.
+**Returns:** `True` if the item is found; otherwise `False`.
 
 ```python
 x = [1, 2, 3]
@@ -299,6 +291,6 @@ Deletes a slice of the list.
 
 - `ValueError` -- Thrown if slice step is zero.
 
-### `copy_to(array: list[T], array_index: int)`
+### `copy_to(array: list[T], array_index): int = > _list.CopyTo(array, arrayIndex)`
 
 Copies the elements of the list to an array.

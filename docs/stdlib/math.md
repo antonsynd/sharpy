@@ -1,5 +1,7 @@
 # math
 
+Mathematical functions.
+
 ```python
 import math
 ```

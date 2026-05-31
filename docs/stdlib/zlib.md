@@ -1,5 +1,7 @@
 # zlib
 
+Compression and decompression using zlib.
+
 ```python
 import zlib
 ```

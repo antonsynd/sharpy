@@ -1,7 +1,6 @@
 # collections
 
-A ChainMap groups multiple dictionaries together to create a single, updateable view.
-Like Python's collections.ChainMap.
+Specialized container datatypes: ChainMap, Counter, Deque, DefaultDict, OrderedDict.
 
 ```python
 import collections
@@ -16,9 +15,9 @@ Like Python's collections.ChainMap.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `maps` | `System.Collections.Generic.List[dict[K, V]]` | The list of underlying mappings. |
+| `maps` | `list[dict[K, V]]` | The list of underlying mappings. |
 
-### `new_child(m: dict[K, V]? = null) -> ChainMap[K, V]`
+### `new_child(m: dict[K, V] | None = None) -> ChainMap[K, V]`
 
 Return a new ChainMap with a new map followed by all previous maps.
 If no map is provided, an empty dict is used.
@@ -121,7 +120,7 @@ Return the sum of all counts.
 
 Remove all elements from the counter.
 
-### `contains(key: T) -> bool`
+### `contains(key): T = > ContainsKey(key) -> bool`
 
 Check if the counter contains a key (alias for ContainsKey).
 Used by the `in` operator.
@@ -137,14 +136,14 @@ that supports adding and removing elements from either end.
 |------|------|-------------|
 | `keys` | `Iterable[TKey]` | The keys of the dictionary. |
 | `values` | `Iterable[TValue]` | The values of the dictionary. |
-| `default_factory` | `Func[TValue]` | The default factory function used for missing keys. |
+| `default_factory` | `() -> TValue` | The default factory function used for missing keys. |
 | `count` | `int` | The number of items in the defaultdict. |
 
 ### `get(key: TKey, default_value: TValue = default!) -> TValue`
 
 Get the value for a key, or return a default value if the key is not present.
 
-### `contains(key: TKey) -> bool`
+### `contains(key): TKey = > ContainsKey(key) -> bool`
 
 Check if the dictionary contains a key (alias for ContainsKey).
 Used by the `in` operator: `"x" in d` → `d.Contains("x")`.
@@ -171,7 +170,7 @@ If the key is not found, return *defaultValue*.
 
 Update the defaultdict with key-value pairs from another dictionary.
 
-### `update(t_value: IEnumerable<(TKey,)`
+### `update(other: Iterable[tuple[TKey, TValue]])`
 
 Update the defaultdict with key-value pairs from an iterable of tuples.
 
@@ -212,10 +211,10 @@ Remove the specified key and return its value.
 
 Remove the specified key and return its value, or return default if not found.
 
-### `move_to_end(key: K, last: bool = true)`
+### `move_to_end(key: K, last: bool = True)`
 
 Move an existing key to either end of an ordered dictionary.
-If last is true, move to the end; if false, move to the beginning.
+If last is True, move to the end; if False, move to the beginning.
 
 ### `clear()`
 

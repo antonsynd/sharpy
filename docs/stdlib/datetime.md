@@ -1,6 +1,6 @@
 # datetime
 
-Represents a date (year, month, day).
+Classes for working with dates and times.
 
 ```python
 import datetime
@@ -34,7 +34,7 @@ Return the ISO day of the week (1=Monday through 7=Sunday).
 
 Return the ISO 8601 formatted string.
 
-### `replace(year: int? = null, month: int? = null, day: int? = null) -> Date`
+### `replace(year: int | None = None, month: int | None = None, day: int | None = None) -> Date`
 
 Return a new Date with replaced components.
 
@@ -88,7 +88,7 @@ Represents a date (year, month, day).
 | `hour` | `int` | The hour component (0-23). |
 | `minute` | `int` | The minute component (0-59). |
 | `second` | `int` | The second component (0-59). |
-| `tzinfo` | `Timezone?` | The timezone info, or null if naive. |
+| `tzinfo` | `Timezone | None` | The timezone info, or null if naive. |
 
 ### `now() -> DateTime`
 
@@ -110,11 +110,11 @@ Return the day of the week (0=Monday through 6=Sunday).
 
 Return the ISO day of the week (1=Monday through 7=Sunday).
 
-### `isoformat(sep: str? = null) -> str`
+### `isoformat(sep: str | None = None) -> str`
 
 Return the ISO 8601 formatted string.
 
-### `replace(year: int? = null, month: int? = null, day: int? = null, hour: int? = null, minute: int? = null, second: int? = null) -> DateTime`
+### `replace(year: int | None = None, month: int | None = None, day: int | None = None, hour: int | None = None, minute: int | None = None, second: int | None = None) -> DateTime`
 
 Return a new DateTime with replaced components.
 

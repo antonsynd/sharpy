@@ -1,7 +1,6 @@
 # argparse
 
-A named group of arguments for organization in help text.
-Arguments still belong to the parent parser; groups are for help formatting.
+Module exports for the argparse module.
 
 ```python
 import argparse
@@ -12,11 +11,11 @@ import argparse
 A named group of arguments for organization in help text.
 Arguments still belong to the parent parser; groups are for help formatting.
 
-### `add_argument(name: str, type: str = "str", help: str = "", default_value: object? = null, nargs: str? = null, choices: list[str]? = null)`
+### `add_argument(name: str, type: str = "str", help: str = "", default_value: object | None = None, nargs: str | None = None, choices: list[str] | None = None)`
 
 Add a positional argument to this group.
 
-### `add_optional_argument(long_name: str, short_name: str? = null, type: str = "str", help: str = "", default_value: object? = null, required: bool = false, action: str = "store", nargs: str? = null, choices: list[str]? = null, dest: str? = null)`
+### `add_optional_argument(long_name: str, short_name: str | None = None, type: str = "str", help: str = "", default_value: object | None = None, required: bool = False, action: str = "store", nargs: str | None = None, choices: list[str] | None = None, dest: str | None = None)`
 
 Add an optional argument to this group.
 
@@ -30,7 +29,7 @@ Python-compatible command-line argument parser.
 |------|------|-------------|
 | `prog` | `str` | Program name for help text. |
 
-### `add_argument(name: str, type: str = "str", help: str = "", default_value: object? = null, nargs: str? = null, choices: list[str]? = null)`
+### `add_argument(name: str, type: str = "str", help: str = "", default_value: object | None = None, nargs: str | None = None, choices: list[str] | None = None)`
 
 Add a positional argument.
 
@@ -39,16 +38,16 @@ Add a positional argument.
 - `name` (str) -- The argument name.
 - `type` (str) -- Value type: "str", "int", or "float".
 - `help` (str) -- Help text for this argument.
-- `default_value` (object?)
-- `nargs` (str?) -- Number of arguments: "*", "+", or "?".
-- `choices` (list[str]?) -- Restrict values to this set.
+- `default_value` (object | None)
+- `nargs` (str | None) -- Number of arguments: "*", "+", or "?".
+- `choices` (list[str] | None) -- Restrict values to this set.
 
 ```python
 parser = ArgumentParser(description="My tool")
 parser.add_argument("filename", help="input file")
 ```
 
-### `add_optional_argument(long_name: str, short_name: str? = null, type: str = "str", help: str = "", default_value: object? = null, required: bool = false, action: str = "store", nargs: str? = null, choices: list[str]? = null, dest: str? = null)`
+### `add_optional_argument(long_name: str, short_name: str | None = None, type: str = "str", help: str = "", default_value: object | None = None, required: bool = False, action: str = "store", nargs: str | None = None, choices: list[str] | None = None, dest: str | None = None)`
 
 Add an optional argument with long name only (e.g., "--verbose").
 
@@ -61,7 +60,7 @@ Add subparsers to this parser, allowing subcommand dispatch.
 Add a named argument group for organizational purposes.
 Arguments in the group are still parsed by this parser.
 
-### `add_mutually_exclusive_group(required: bool = false) -> MutuallyExclusiveGroup`
+### `add_mutually_exclusive_group(required: bool = False) -> MutuallyExclusiveGroup`
 
 Add a mutually exclusive group of optional arguments.
 At most one option in the group may be provided.
@@ -87,7 +86,7 @@ Set the output writer for help text (for testing).
 A group of mutually exclusive optional arguments.
 At most one may be provided. If required, exactly one must be provided.
 
-### `add_optional_argument(long_name: str, short_name: str? = null, type: str = "str", help: str = "", default_value: object? = null, action: str = "store", dest: str? = null)`
+### `add_optional_argument(long_name: str, short_name: str | None = None, type: str = "str", help: str = "", default_value: object | None = None, action: str = "store", dest: str | None = None)`
 
 Add an optional argument to this mutually exclusive group.
 

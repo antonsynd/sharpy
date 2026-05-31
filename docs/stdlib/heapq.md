@@ -1,5 +1,7 @@
 # heapq
 
+Heap queue (priority queue) algorithm.
+
 ```python
 import heapq
 ```
@@ -18,19 +20,19 @@ Merge three sorted inputs into a single sorted output.
 
 Merge multiple sorted inputs into a single sorted output.
 
-### `heapq.merge(a: list[T], b: list[T], key: Func[T, TKey], reverse: bool = false) -> Iterable[T]`
+### `heapq.merge(a: list[T], b: list[T], key: (T) -> TKey, reverse: bool = False) -> Iterable[T]`
 
 Merge two sorted inputs into a single sorted output, using a key function.
 
-### `heapq.merge(a: list[T], b: list[T], c: list[T], key: Func[T, TKey], reverse: bool = false) -> Iterable[T]`
+### `heapq.merge(a: list[T], b: list[T], c: list[T], key: (T) -> TKey, reverse: bool = False) -> Iterable[T]`
 
 Merge three sorted inputs into a single sorted output, using a key function.
 
-### `heapq.merge(iterables: list[list[T]], reverse: bool = false) -> Iterable[T]`
+### `heapq.merge(iterables: list[list[T]], reverse: bool = False) -> Iterable[T]`
 
 Merge multiple sorted inputs into a single sorted output, with optional reverse ordering.
 
-### `heapq.merge(iterables: list[list[T]], key: Func[T, TKey], reverse: bool = false) -> Iterable[T]`
+### `heapq.merge(iterables: list[list[T]], key: (T) -> TKey, reverse: bool = False) -> Iterable[T]`
 
 Merge multiple sorted inputs into a single sorted output, using a key function.
 

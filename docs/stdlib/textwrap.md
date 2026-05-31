@@ -1,5 +1,7 @@
 # textwrap
 
+Text wrapping and filling.
+
 ```python
 import textwrap
 ```

@@ -1,5 +1,7 @@
 # subprocess
 
+Module exports for the subprocess module.
+
 ```python
 import subprocess
 ```
@@ -14,11 +16,11 @@ import subprocess
 
 ## Functions
 
-### `subprocess.run(args: list[str], capture_output: bool = false, text: bool = true, check: bool = false, timeout: float? = null, input: str? = null, cwd: str? = null, env: dict[str, str]? = null, shell: bool = false, stdin: int = 0, stdout: int = 0, stderr: int = 0) -> CompletedProcess`
+### `subprocess.run(args: list[str], capture_output: bool = False, text: bool = True, check: bool = False, timeout: float | None = None, input: str | None = None, cwd: str | None = None, env: dict[str, str] | None = None, shell: bool = False, stdin: int = 0, stdout: int = 0, stderr: int = 0) -> CompletedProcess`
 
-### `subprocess.check_output(args: list[str], text: bool = true, timeout: float? = null, input: str? = null, cwd: str? = null, env: dict[str, str]? = null, shell: bool = false, stderr: int = 0) -> str`
+### `subprocess.check_output(args: list[str], text: bool = True, timeout: float | None = None, input: str | None = None, cwd: str | None = None, env: dict[str, str] | None = None, shell: bool = False, stderr: int = 0) -> str`
 
-### `subprocess.check_call(args: list[str], timeout: float? = null, cwd: str? = null, env: dict[str, str]? = null, shell: bool = false) -> int`
+### `subprocess.check_call(args: list[str], timeout: float | None = None, cwd: str | None = None, env: dict[str, str] | None = None, shell: bool = False) -> int`
 
 ## CompletedProcess
 
@@ -28,8 +30,8 @@ import subprocess
 |------|------|-------------|
 | `args` | `list[str]` |  |
 | `returncode` | `int` |  |
-| `stdout` | `str?` |  |
-| `stderr` | `str?` |  |
+| `stdout` | `str | None` |  |
+| `stderr` | `str | None` |  |
 
 ### `check_returncode()`
 
@@ -43,8 +45,8 @@ import subprocess
 |------|------|-------------|
 | `returncode` | `int` |  |
 | `cmd` | `list[str]` |  |
-| `output` | `str?` |  |
-| `stderr` | `str?` |  |
+| `output` | `str | None` |  |
+| `stderr` | `str | None` |  |
 
 ## TimeoutExpired
 
@@ -54,8 +56,8 @@ import subprocess
 |------|------|-------------|
 | `cmd` | `list[str]` |  |
 | `timeout` | `float` |  |
-| `output` | `str?` |  |
-| `stderr` | `str?` |  |
+| `output` | `str | None` |  |
+| `stderr` | `str | None` |  |
 
 ## Popen
 
@@ -65,13 +67,13 @@ import subprocess
 |------|------|-------------|
 | `pid` | `int` |  |
 | `args` | `list[str]` |  |
-| `stdin` | `System.IO.StreamWriter?` |  |
-| `stdout_stream` | `System.IO.StreamReader?` |  |
-| `stderr_stream` | `System.IO.StreamReader?` |  |
+| `stdin` | `StreamWriter | None` |  |
+| `stdout_stream` | `StreamReader | None` |  |
+| `stderr_stream` | `StreamReader | None` |  |
 
-### `wait(timeout: float? = null) -> int`
+### `wait(timeout: float | None = None) -> int`
 
-### `poll() -> int?`
+### `poll() -> int | None`
 
 ### `kill()`
 

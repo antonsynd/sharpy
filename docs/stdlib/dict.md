@@ -11,7 +11,7 @@ Supports Python-style methods like get(), pop(), items(), keys(), and values().
 
 ## Methods
 
-### `get_string_key_entries() -> Iterable[KeyValuePair[str, object?]]`
+### `get_string_key_entries() -> Iterable[KeyValuePair[str, object | None]]`
 
 Projects this dictionary's entries as string-keyed pairs for
 reflection-free JSON dispatch. Returns an empty sequence when
@@ -52,7 +52,7 @@ d = {"a": 1, "b": 2}
 d.clear()    # {}
 ```
 
-### `contains(key: K) -> bool`
+### `contains(key): K = > ContainsKey(key) -> bool`
 
 Check if *key* exists in the dictionary.
 Used by the compiler for `key in dict` expressions.
@@ -185,9 +185,13 @@ d = {"a": 1}
 d.update({"a": 9, "b": 2})    # {"a": 9, "b": 2}
 ```
 
-### `update(v: IEnumerable<(K,)`
+### `update(other: Iterable[tuple[K, V]])`
 
 Update the dictionary with key-value pairs from an iterable of tuples.
+
+**Parameters:**
+
+- `other` (Iterable[tuple[K, V]]) -- An iterable of `(key, value)` tuples.
 
 ### `values() -> DictValuesView[K, V]`
 
@@ -219,14 +223,14 @@ Keys from other take precedence.
 
 ### `fromkeys(keys: Iterable[TKey]) -> dict[TKey, object]`
 
-Create a new dictionary with keys from *keys* and values set to `null`.
+Create a new dictionary with keys from *keys* and values set to `None`.
 Mirrors Python's `dict.fromkeys(iterable)`.
 
 **Parameters:**
 
 - `keys` (Iterable[TKey]) -- An iterable of keys for the new dictionary.
 
-**Returns:** A new dictionary with the specified keys all mapped to `null`.
+**Returns:** A new dictionary with the specified keys all mapped to `None`.
 
 ```python
 d = dict.fromkeys(["a", "b"])    # {"a": None, "b": None}

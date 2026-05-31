@@ -141,12 +141,62 @@ _GENERIC_TYPE_MAP: dict[str, str] = {
     "Set": "set",
     "Sharpy.Set": "set",
     "IEnumerable": "Iterable",
+    "System.Collections.Generic.IEnumerable": "Iterable",
     "IEnumerator": "Iterator",
     "Optional": "Optional",
     "Result": "Result",
     "Tuple": "tuple",
     "ValueTuple": "tuple",
+    "System.ValueTuple": "tuple",
+    "IComparer": "Comparer",
+    "TextWriter": "TextWriter",
 }
+
+
+# Literal default value mapping for C# -> Sharpy
+_LITERAL_DEFAULTS: dict[str, str] = {
+    "null": "None",
+    "false": "False",
+    "true": "True",
+}
+
+# Common C# namespace prefixes to strip for cleaner type names
+_CS_NAMESPACE_PREFIXES = [
+    "System.Collections.Generic.",
+    "System.Collections.",
+    "System.Text.RegularExpressions.",
+    "System.IO.",
+    "System.",
+]
+
+
+def _normalize_cs_type(cs_type: str) -> str:
+    """Strip global:: prefix and common C# namespace prefixes from a type string."""
+    cs_type = cs_type.strip()
+    # Strip global:: prefix
+    if cs_type.startswith("global::"):
+        cs_type = cs_type[len("global::"):]
+    # Strip common namespace prefixes (but keep the mapped form if it's in _TYPE_MAP)
+    for prefix in _CS_NAMESPACE_PREFIXES:
+        if cs_type.startswith(prefix):
+            candidate = cs_type[len(prefix):]
+            # Only strip prefix if the result is a known type (or still has namespace)
+            # Always strip — downstream maps handle them
+            cs_type = candidate
+            break
+    return cs_type
+
+
+def _fixup_prose(text: str) -> str:
+    """Replace C# literal keywords with Sharpy equivalents in prose text."""
+    if not text:
+        return text
+    text = re.sub(r'\btrue\b', 'True', text)
+    text = re.sub(r'\bfalse\b', 'False', text)
+    text = re.sub(r'\bnull\b', 'None', text)
+    # Strip global:: prefixes that may appear in prose
+    text = text.replace('global::', '')
+    return text
 
 
 def map_type(cs_type: str) -> str:
@@ -156,25 +206,56 @@ def map_type(cs_type: str) -> str:
     if not cs_type:
         return ""
 
+    # Normalize: strip global:: and common namespace prefixes
+    cs_type = _normalize_cs_type(cs_type)
+
     # Nullable suffix
     if cs_type.endswith("?"):
         inner = map_type(cs_type[:-1])
-        return f"{inner}?"
+        return f"{inner} | None"
 
     # Direct mapping
     if cs_type in _TYPE_MAP:
         return _TYPE_MAP[cs_type]
 
+    # C# value-tuple syntax: (T1, T2, ...)
+    if cs_type.startswith("(") and cs_type.endswith(")"):
+        inner = cs_type[1:-1]
+        parts = _split_generic_args(inner)
+        mapped = ", ".join(map_type(p.strip()) for p in parts)
+        return f"tuple[{mapped}]"
+
     # Generic types: Name<T1, T2>
-    generic_match = re.match(r"^([\w.]+)<(.+)>$", cs_type)
+    generic_match = re.match(r"^([\w.]+)<(.+)>$", cs_type, re.DOTALL)
     if generic_match:
         outer = generic_match.group(1)
         inner_raw = generic_match.group(2)
-        # Split on top-level commas (respect nested generics)
+
+        # Func<T1, T2, ..., TResult> -> (T1, T2, ...) -> TResult
+        if outer == "Func":
+            args = _split_generic_args(inner_raw)
+            if args:
+                param_types = [map_type(a) for a in args[:-1]]
+                return_type = map_type(args[-1])
+                params_str = ", ".join(param_types)
+                return f"({params_str}) -> {return_type}"
+
+        # Action<T1, T2, ...> -> (T1, T2, ...) -> None
+        if outer == "Action":
+            args = _split_generic_args(inner_raw)
+            param_types = [map_type(a) for a in args]
+            params_str = ", ".join(param_types)
+            return f"({params_str}) -> None"
+
+        # Split on top-level commas (respect nested generics and tuples)
         inners = _split_generic_args(inner_raw)
         mapped_inners = ", ".join(map_type(i) for i in inners)
         mapped_outer = _GENERIC_TYPE_MAP.get(outer, outer)
         return f"{mapped_outer}[{mapped_inners}]"
+
+    # Action (no generics) -> () -> None
+    if cs_type == "Action":
+        return "() -> None"
 
     # Array types
     if cs_type.endswith("[]"):
@@ -198,9 +279,10 @@ def map_type(cs_type: str) -> str:
 
 
 def _split_generic_args(s: str) -> list[str]:
-    """Split generic arguments respecting nested angle brackets."""
+    """Split generic arguments respecting nested angle brackets and tuple parens."""
     parts = []
     depth = 0
+    paren_depth = 0
     current = []
     for ch in s:
         if ch == "<":
@@ -209,7 +291,13 @@ def _split_generic_args(s: str) -> list[str]:
         elif ch == ">":
             depth -= 1
             current.append(ch)
-        elif ch == "," and depth == 0:
+        elif ch == "(":
+            paren_depth += 1
+            current.append(ch)
+        elif ch == ")":
+            paren_depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0 and paren_depth == 0:
             parts.append("".join(current).strip())
             current = []
         else:
@@ -233,7 +321,14 @@ def _strip_xml_tags(text: str) -> str:
     text = re.sub(r"<paramref\s+name=\"([^\"]+)\"\s*/>", r"*\1*", text)
     text = re.sub(r"<c>([^<]*)</c>", r"`\1`", text)
     text = re.sub(r"</?[a-zA-Z][^>]*>", "", text)
-    return text.strip()
+    text = text.strip()
+    # Strip global:: and common System. namespace prefixes from prose
+    text = text.replace('global::', '')
+    text = re.sub(r'\bSystem\.Text\.RegularExpressions\.', '', text)
+    text = re.sub(r'\bSystem\.Collections\.Generic\.', '', text)
+    text = re.sub(r'\bSystem\.Collections\.', '', text)
+    text = re.sub(r'\bSystem\.IO\.', '', text)
+    return text
 
 
 def _parse_xml_doc(lines: list[str]) -> dict:
@@ -469,6 +564,8 @@ def _parse_params(param_str: str, is_extension: bool = False) -> list[DocParam]:
         if "=" in part:
             part, default_raw = part.rsplit("=", 1)
             default = default_raw.strip()
+            # Map C# literal keywords to Sharpy equivalents
+            default = _LITERAL_DEFAULTS.get(default, default)
             part = part.strip()
 
         # Split type and name
@@ -516,7 +613,7 @@ _METHOD_PATTERN = re.compile(
     r"([\w<>\[\],\s\?\.]+?)\s+"  # return type
     r"(\w+)"  # method name
     r"(?:<([^>]+)>)?"  # optional type params
-    r"\(([^)]*)\)"  # parameters
+    r"\((.*)\)"  # parameters (greedy to handle nested parens in type args)
 )
 
 _CONST_PATTERN = re.compile(
@@ -980,7 +1077,9 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
             continue
 
         # Parse all .cs files in the module directory
-        summary = ""
+        # Read module summary explicitly from __Init__.cs to avoid picking up
+        # summaries from the first class file alphabetically (e.g. ReMatch in re).
+        summary = _get_class_summary(init_file)
         all_members: list[DocMember] = []
         all_types: list[DocType] = []
 
@@ -989,12 +1088,6 @@ def discover_modules(core_dir: Path) -> list[DocModule]:
                 members = parse_cs_file(cs_file)
                 all_members.extend(members)
                 continue
-
-            # Get module summary from the main implementation file
-            if not summary:
-                file_summary = _get_class_summary(cs_file)
-                if file_summary:
-                    summary = file_summary
 
             # Check if this file contains SharpyModuleType-annotated classes.
             # Supports both 1-arg form `[SharpyModuleType("mod")]` and 2-arg
@@ -1180,7 +1273,7 @@ def _render_member(member: DocMember, prefix: str = "") -> str:
     lines.append("")
 
     if member.summary:
-        lines.append(member.summary)
+        lines.append(_fixup_prose(member.summary))
         lines.append("")
 
     if member.params:
@@ -1189,12 +1282,12 @@ def _render_member(member: DocMember, prefix: str = "") -> str:
             lines.append("**Parameters:**")
             lines.append("")
             for p in member.params:
-                desc = f" -- {p.description}" if p.description else ""
+                desc = f" -- {_fixup_prose(p.description)}" if p.description else ""
                 lines.append(f"- `{p.name}` ({p.type}){desc}")
             lines.append("")
 
     if member.returns:
-        lines.append(f"**Returns:** {member.returns}")
+        lines.append(f"**Returns:** {_fixup_prose(member.returns)}")
         lines.append("")
 
     if member.example:
@@ -1206,7 +1299,7 @@ def _render_member(member: DocMember, prefix: str = "") -> str:
     if member.remarks:
         lines.append(f"!!! note")
         # Indent all lines of the remark for admonition formatting
-        for remark_line in member.remarks.split("\n"):
+        for remark_line in _fixup_prose(member.remarks).split("\n"):
             lines.append(f"    {remark_line.strip()}")
         lines.append("")
 
@@ -1244,7 +1337,7 @@ def render_module_page(module: DocModule) -> str:
     lines = [f"# {module.name}", ""]
 
     if module.summary:
-        lines.append(module.summary)
+        lines.append(_fixup_prose(module.summary))
         lines.append("")
 
     if module.kind == "module":
@@ -1300,7 +1393,7 @@ def render_module_page(module: DocModule) -> str:
         lines.append(f"## {doc_type.name}")
         lines.append("")
         if doc_type.summary:
-            lines.append(doc_type.summary)
+            lines.append(_fixup_prose(doc_type.summary))
             lines.append("")
 
         type_constants = [m for m in doc_type.members if m.kind == "constant"]

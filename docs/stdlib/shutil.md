@@ -1,14 +1,16 @@
 # shutil
 
+Utility functions for copying and removal of files and directory trees.
+
 ```python
 import shutil
 ```
 
 ## Functions
 
-### `shutil.which(name: str) -> str?`
+### `shutil.which(name: str) -> str | None`
 
-Given a command, return the path which conforms to the given mode on the PATH, or `null` if no such file exists.
+Given a command, return the path which conforms to the given mode on the PATH, or `None` if no such file exists.
 
 ### `shutil.copy(src: str, dst: str) -> str`
 

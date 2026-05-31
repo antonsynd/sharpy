@@ -1,5 +1,7 @@
 # secrets
 
+Module exports for the secrets module.
+
 ```python
 import secrets
 ```

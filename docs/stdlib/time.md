@@ -1,7 +1,6 @@
 # time
 
-Represents a time value as a named tuple of components, similar to Python's
-`time.struct_time`.
+Time access and conversions.
 
 ```python
 import time

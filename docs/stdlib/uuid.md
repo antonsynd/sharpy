@@ -1,5 +1,7 @@
 # uuid
 
+Module exports for the uuid module.
+
 ```python
 import uuid
 ```

@@ -1,6 +1,6 @@
 # sys
 
-Provides access to system-specific parameters and functions, similar to Python's sys module.
+System-specific parameters and functions.
 
 ```python
 import sys
@@ -31,7 +31,7 @@ sys.exit()     # exit with code 0
 sys.exit(1)    # exit with code 1
 ```
 
-### `sys.getsizeof(obj: object?) -> int`
+### `sys.getsizeof(obj: object | None) -> int`
 
 Return the size of an object in bytes. Best-effort estimate.
 Returns -1 if the size cannot be determined.

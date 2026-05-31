@@ -1,5 +1,7 @@
 # fnmatch
 
+Unix shell-style filename pattern matching.
+
 ```python
 import fnmatch
 ```

@@ -1,7 +1,5 @@
 # copy
 
-Shallow and deep copy operations, similar to Python's `copy` module.
-
 ```python
 import copy
 ```

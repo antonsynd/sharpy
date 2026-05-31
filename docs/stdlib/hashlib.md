@@ -1,7 +1,6 @@
 # hashlib
 
-Represents a hash object that accumulates data and computes cryptographic hashes.
-Mirrors Python's hashlib hash object API.
+Module exports for the hashlib module.
 
 ```python
 import hashlib

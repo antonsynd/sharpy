@@ -1,6 +1,6 @@
 # os
 
-Common operations on pathnames.
+Miscellaneous operating system interfaces.
 
 ```python
 import os
@@ -38,7 +38,7 @@ Rename a file or directory.
 
 Create a directory.
 
-### `os.makedirs(path: str, exist_ok: bool = false)`
+### `os.makedirs(path: str, exist_ok: bool = False)`
 
 Super-mkdir; create a leaf directory and all intermediate ones.
 
@@ -96,7 +96,7 @@ Test whether a path is a regular file.
 
 ### `os.isdir(path: str) -> bool`
 
-Return true if the pathname refers to an existing directory.
+Return True if the pathname refers to an existing directory.
 
 ### `os.isabs(path: str) -> bool`
 

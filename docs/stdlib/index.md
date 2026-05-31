@@ -19,52 +19,52 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 
 | Module | Description |
 |--------|-------------|
-| [`argparse`](argparse.md) | A named group of arguments for organization in help text. Arguments still belong to the parent parser; groups are for help formatting. |
-| [`base64`](base64.md) |  |
-| [`bisect`](bisect.md) |  |
-| [`collections`](collections.md) | A ChainMap groups multiple dictionaries together to create a single, updateable view. Like Python's collections.ChainMap. |
-| [`configparser`](configparser.md) |  |
-| [`copy`](copy.md) | Shallow and deep copy operations, similar to Python's \`copy\` module. |
-| [`csv`](csv.md) | Reads CSV data and maps each row to a dictionary keyed by field names, similar to Python's \`csv.DictReader\`. |
-| [`datetime`](datetime.md) | Represents a date (year, month, day). |
-| [`fnmatch`](fnmatch.md) |  |
-| [`functools`](functools.md) | Thread-safe memoization cache backing the \`@functools.lru_cache\` and \`@functools.cache\` decorators. |
-| [`glob`](glob.md) | Unix-style pathname pattern expansion, similar to Python's glob module. Supports \`*\`, \`?\`, \`[seq]\`, and \`**\` patterns. |
-| [`grapheme`](grapheme.md) | Grapheme cluster (user-perceived character) operations. Wraps \`System.Globalization.StringInfo\` for working with text at the level of what users perceive as a single character — including combining marks, emoji sequences, and ZWJ (zero-width joiner) sequences. |
-| [`gzip`](gzip.md) |  |
-| [`hashlib`](hashlib.md) | Represents a hash object that accumulates data and computes cryptographic hashes. Mirrors Python's hashlib hash object API. |
-| [`heapq`](heapq.md) |  |
-| [`hmac`](hmac.md) |  |
-| [`io`](io.md) | In-memory text stream using a string buffer, similar to Python's io.StringIO. Extends TextWriter so it can be used anywhere a TextWriter is expected (e.g., csv module). |
+| [`argparse`](argparse.md) | Module exports for the argparse module. |
+| [`base64`](base64.md) | Module exports for the base64 module. |
+| [`bisect`](bisect.md) | Array bisection algorithm for maintaining sorted lists. |
+| [`collections`](collections.md) | Specialized container datatypes: ChainMap, Counter, Deque, DefaultDict, OrderedDict. |
+| [`configparser`](configparser.md) | Configuration file parser similar to Python's configparser module. |
+| [`copy`](copy.md) |  |
+| [`csv`](csv.md) | Module exports for the csv module. |
+| [`datetime`](datetime.md) | Classes for working with dates and times. |
+| [`fnmatch`](fnmatch.md) | Unix shell-style filename pattern matching. |
+| [`functools`](functools.md) | Higher-order functions and operations on callable objects. |
+| [`glob`](glob.md) | Unix shell-style pathname pattern expansion. |
+| [`grapheme`](grapheme.md) | Unicode grapheme cluster iteration and string width calculation. |
+| [`gzip`](gzip.md) | Support for gzip compressed files. |
+| [`hashlib`](hashlib.md) | Module exports for the hashlib module. |
+| [`heapq`](heapq.md) | Heap queue (priority queue) algorithm. |
+| [`hmac`](hmac.md) | Module exports for the hmac module. |
+| [`io`](io.md) | Module exports for the io module. |
 | [`ipaddress`](ipaddress.md) |  |
-| [`itertools`](itertools.md) | Itertools module — tools for creating iterators. |
-| [`json`](json.md) | Python-compatible json module. Provides dumps/loads for string serialization and dump/load for file I/O. |
-| [`logging`](logging.md) | A named logger that outputs messages at or above a configured level. Output format: LEVEL:name:message (written to stderr). |
-| [`math`](math.md) |  |
-| [`numpy`](numpy.md) | Interface implementations for \`NdArray{T}\` — \`IEnumerable&lt;T&gt;\`, \`ISized\`, structural equality, and conversion helpers. |
-| [`operator`](operator.md) | Operator module — functions corresponding to the intrinsic operators of Python. |
-| [`os`](os.md) | Common operations on pathnames. |
-| [`pathlib`](pathlib.md) | Object-oriented filesystem path, similar to Python's pathlib.Path. Immutable — all mutation methods return new Path instances. |
-| [`platform`](platform.md) | Represents the result of a platform.uname() call. Mirrors Python's platform.uname_result named tuple. |
-| [`random`](random.md) |  |
-| [`re`](re.md) | Wraps a .NET \`System.Text.RegularExpressions.Match\` with Python-compatible API. |
-| [`requests`](requests.md) | Base class for all requests-related errors. Equivalent to Python's \`requests.RequestException\`. |
-| [`secrets`](secrets.md) |  |
-| [`shlex`](shlex.md) |  |
-| [`shutil`](shutil.md) |  |
-| [`sqlite3`](sqlite3.md) | Represents a connection to an SQLite database. |
-| [`statistics`](statistics.md) | Exception raised for statistics-related errors, similar to Python's \`statistics.StatisticsError\`. |
-| [`string`](string.md) |  |
-| [`struct`](struct.md) | Pre-compiled struct format for repeated packing/unpacking operations. Corresponds to Python's struct.Struct class. |
-| [`subprocess`](subprocess.md) |  |
-| [`sys`](sys.md) | Provides access to system-specific parameters and functions, similar to Python's sys module. |
-| [`tempfile`](tempfile.md) |  |
-| [`textwrap`](textwrap.md) |  |
-| [`time`](time.md) | Represents a time value as a named tuple of components, similar to Python's \`time.struct_time\`. |
-| [`toml`](toml.md) |  |
-| [`unittest`](unittest.md) | Marker type returned by unittest.assert_raises(). Implements IDisposable so the with-statement type checking passes. The compiler replaces the entire with-block with Xunit.Assert.Throws during codegen. |
-| [`urllib`](urllib.md) | Result of \`UrllibModule.Urlparse\`. Contains the six components of a parsed URL: scheme, netloc, path, params, query, and fragment. |
-| [`uuid`](uuid.md) |  |
-| [`yaml`](yaml.md) | Holds the comments associated with a single key (in a mapping) or item (in a sequence) for YAML roundtrip preservation, mirroring ruamel.yaml's comment model. |
-| [`zipfile`](zipfile.md) |  |
-| [`zlib`](zlib.md) |  |
+| [`itertools`](itertools.md) | Functions creating iterators for efficient looping. |
+| [`json`](json.md) | JSON encoder and decoder. |
+| [`logging`](logging.md) | Module exports for the logging module. |
+| [`math`](math.md) | Mathematical functions. |
+| [`numpy`](numpy.md) |  |
+| [`operator`](operator.md) |  |
+| [`os`](os.md) | Miscellaneous operating system interfaces. |
+| [`pathlib`](pathlib.md) | Module exports for the pathlib module. |
+| [`platform`](platform.md) | Module exports for the platform module. |
+| [`random`](random.md) | Generate pseudo-random numbers with various distributions. |
+| [`re`](re.md) | Regular expression operations. |
+| [`requests`](requests.md) |  |
+| [`secrets`](secrets.md) | Module exports for the secrets module. |
+| [`shlex`](shlex.md) | Module exports for the shlex module. |
+| [`shutil`](shutil.md) | Utility functions for copying and removal of files and directory trees. |
+| [`sqlite3`](sqlite3.md) | DB-API interface for SQLite databases. |
+| [`statistics`](statistics.md) | Mathematical statistics functions. |
+| [`string`](string.md) | Common string constants and operations. |
+| [`struct`](struct.md) | Module exports for the struct module. |
+| [`subprocess`](subprocess.md) | Module exports for the subprocess module. |
+| [`sys`](sys.md) | System-specific parameters and functions. |
+| [`tempfile`](tempfile.md) | Generate temporary files and directories. |
+| [`textwrap`](textwrap.md) | Text wrapping and filling. |
+| [`time`](time.md) | Time access and conversions. |
+| [`toml`](toml.md) | TOML configuration file parser and encoder. |
+| [`unittest`](unittest.md) | The unittest module provides a Pythonic testing API that the Sharpy compiler transforms into xUnit test infrastructure during code generation. |
+| [`urllib`](urllib.md) | Module exports for the urllib module. |
+| [`uuid`](uuid.md) | Module exports for the uuid module. |
+| [`yaml`](yaml.md) | YAML parser and emitter. |
+| [`zipfile`](zipfile.md) | Read and write ZIP archive files. |
+| [`zlib`](zlib.md) | Compression and decompression using zlib. |

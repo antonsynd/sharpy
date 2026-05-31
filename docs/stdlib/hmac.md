@@ -1,14 +1,16 @@
 # hmac
 
+Module exports for the hmac module.
+
 ```python
 import hmac
 ```
 
 ## Functions
 
-### `hmac.new(key: Bytes, msg: Bytes? = null, digestmod: str = "sha256") -> HmacObject`
+### `hmac.new(key: Bytes, msg: Bytes | None = None, digestmod: str = "sha256") -> HmacObject`
 
-### `hmac.new(key: str, msg: str? = null, digestmod: str = "sha256") -> HmacObject`
+### `hmac.new(key: str, msg: str | None = None, digestmod: str = "sha256") -> HmacObject`
 
 ### `hmac.digest(key: Bytes, msg: Bytes, digestmod: str) -> Bytes`
 

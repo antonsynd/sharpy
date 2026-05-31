@@ -1,5 +1,7 @@
 # configparser
 
+Configuration file parser similar to Python's configparser module.
+
 ```python
 import configparser
 ```
@@ -12,9 +14,9 @@ import configparser
 
 ### `configparser.read_dict(dictionary: SCG.Dictionary[str, SCG.Dictionary[str, str]])`
 
-### `configparser.write(writer: TextWriter, space_around_delimiters: bool = true)`
+### `configparser.write(writer: TextWriter, space_around_delimiters: bool = True)`
 
-### `configparser.write_to_file(filename: str, space_around_delimiters: bool = true)`
+### `configparser.write_to_file(filename: str, space_around_delimiters: bool = True)`
 
 ## ConfigParser
 
@@ -26,13 +28,13 @@ import configparser
 
 ### `remove_section(section: str) -> bool`
 
-### `get(section: str, option: str, fallback: str? = null, raw: bool = false) -> str?`
+### `get(section: str, option: str, fallback: str | None = None, raw: bool = False) -> str | None`
 
-### `get_int(section: str, option: str, fallback: int? = null) -> int`
+### `get_int(section: str, option: str, fallback: int | None = None) -> int`
 
-### `get_float(section: str, option: str, fallback: float? = null) -> float`
+### `get_float(section: str, option: str, fallback: float | None = None) -> float`
 
-### `get_boolean(section: str, option: str, fallback: bool? = null) -> bool`
+### `get_boolean(section: str, option: str, fallback: bool | None = None) -> bool`
 
 ### `set(section: str, option: str, value: str)`
 
@@ -88,7 +90,7 @@ import configparser
 
 | Name | Type | Description |
 |------|------|-------------|
-| `source` | `str?` |  |
+| `source` | `str | None` |  |
 | `line_number` | `int` |  |
 
 ## MissingSectionHeaderError
@@ -125,7 +127,7 @@ import configparser
 
 ## SectionProxy
 
-### `get(key: str, fallback: str? = null) -> str?`
+### `get(key: str, fallback: str | None = None) -> str | None`
 
 ### `keys() -> SCG.List[str]`
 

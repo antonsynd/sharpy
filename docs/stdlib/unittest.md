@@ -1,8 +1,7 @@
 # unittest
 
-Marker type returned by unittest.assert_raises(). Implements IDisposable
-so the with-statement type checking passes. The compiler replaces the
-entire with-block with Xunit.Assert.Throws during codegen.
+The unittest module provides a Pythonic testing API that the Sharpy compiler
+transforms into xUnit test infrastructure during code generation.
 
 ```python
 import unittest
@@ -10,7 +9,7 @@ import unittest
 
 ## Functions
 
-### `unittest.assert_raises(exception_type: System.Type) -> AssertRaisesMarker`
+### `unittest.assert_raises(exception_type: Type) -> AssertRaisesMarker`
 
 Marker for assert_raises context manager. The compiler transforms
 `with assert_raises(ExceptionType): body` into

@@ -1,6 +1,6 @@
 # re
 
-Wraps a .NET `System.Text.RegularExpressions.Match` with Python-compatible API.
+Regular expression operations.
 
 ```python
 import re
@@ -29,7 +29,7 @@ import re
 
 Compile a pattern into a RePattern object.
 
-### `re.search(pattern: str, s: str, flags: int = 0) -> ReMatch?`
+### `re.search(pattern: str, s: str, flags: int = 0) -> ReMatch | None`
 
 Scan through string looking for the first location where the pattern produces a match.
 
@@ -39,14 +39,14 @@ Scan through string looking for the first location where the pattern produces a 
 - `s` (str) -- The string to search.
 - `flags` (int) -- Optional regex flags (e.g., re.IGNORECASE).
 
-**Returns:** A match object, or `null` if no match is found.
+**Returns:** A match object, or `None` if no match is found.
 
 ```python
 m = re.search(r"\d+", "abc123")
 m.group()    # "123"
 ```
 
-### `re.match(pattern: str, s: str, flags: int = 0) -> ReMatch?`
+### `re.match(pattern: str, s: str, flags: int = 0) -> ReMatch | None`
 
 Try to apply the pattern at the start of the string.
 
@@ -56,18 +56,18 @@ Try to apply the pattern at the start of the string.
 - `s` (str) -- The string to match against.
 - `flags` (int) -- Optional regex flags.
 
-**Returns:** A match object, or `null` if the pattern does not match at the start.
+**Returns:** A match object, or `None` if the pattern does not match at the start.
 
 ```python
 m = re.match(r"\d+", "123abc")
 m.group()    # "123"
 ```
 
-### `re.fullmatch(pattern: str, s: str, flags: int = 0) -> ReMatch?`
+### `re.fullmatch(pattern: str, s: str, flags: int = 0) -> ReMatch | None`
 
 Try to apply the pattern to the entire string.
 
-### `re.findall(pattern: str, s: str, flags: int = 0) -> list[object?]`
+### `re.findall(pattern: str, s: str, flags: int = 0) -> list[object | None]`
 
 Return all non-overlapping matches of pattern in string, as a list.
 
@@ -97,7 +97,7 @@ re.sub(r"\d+", "N", "abc123def456")    # "abcNdefN"
 
 Split string by the occurrences of the pattern.
 
-### `re.sub(pattern: str, repl: Func[ReMatch, str], s: str, count: int = 0, flags: int = 0) -> str`
+### `re.sub(pattern: str, repl: (ReMatch) -> str, s: str, count: int = 0, flags: int = 0) -> str`
 
 Return the string obtained by replacing occurrences using a callable.
 The callable receives the match object and returns the replacement string.
@@ -112,7 +112,7 @@ Escape special characters in pattern.
 
 ## Match
 
-Wraps a .NET `System.Text.RegularExpressions.Match` with Python-compatible API.
+Wraps a .NET `Match` with Python-compatible API.
 
 ### Properties
 
@@ -122,23 +122,23 @@ Wraps a .NET `System.Text.RegularExpressions.Match` with Python-compatible API.
 | `pattern` | `str` | The pattern string. |
 | `pos` | `int` | The start position of the search. |
 | `endpos` | `int` | The end position of the search. |
-| `re` | `RePattern?` | The compiled pattern object that produced this match, or null. |
+| `re` | `RePattern | None` | The compiled pattern object that produced this match, or null. |
 
-### `group(n: int = 0) -> str?`
+### `group(n: int = 0) -> str | None`
 
 Return the string matched by group number. Group 0 is the entire match.
-Returns null if the group didn't participate in the match.
+Returns None if the group didn't participate in the match.
 
-### `group(name: str) -> str?`
+### `group(name: str) -> str | None`
 
 Return the string matched by a named group.
-Returns null if the group didn't participate in the match.
+Returns None if the group didn't participate in the match.
 
-### `groups() -> list[str?]`
+### `groups() -> list[str | None]`
 
 Return a list of all subgroups (groups 1..n).
 
-### `groupdict() -> dict[str, str?]`
+### `groupdict() -> dict[str, str | None]`
 
 Return a Dict of all named subgroups.
 
@@ -167,19 +167,19 @@ Compiled regular expression pattern, wrapping .NET's Regex.
 | `flags` | `int` | The flags used to compile this pattern. |
 | `pattern` | `str` | The pattern string (Python-compatible alias for PatternStr). |
 
-### `search(s: str, pos: int = 0, endpos: int = -1) -> ReMatch?`
+### `search(s: str, pos: int = 0, endpos: int = -1) -> ReMatch | None`
 
 Scan through string looking for the first location where the pattern produces a match.
 
-### `match(s: str, pos: int = 0, endpos: int = -1) -> ReMatch?`
+### `match(s: str, pos: int = 0, endpos: int = -1) -> ReMatch | None`
 
 Try to apply the pattern at the start of the string.
 
-### `fullmatch(s: str, pos: int = 0, endpos: int = -1) -> ReMatch?`
+### `fullmatch(s: str, pos: int = 0, endpos: int = -1) -> ReMatch | None`
 
 Try to apply the pattern to the entire string.
 
-### `findall(s: str, pos: int = 0, endpos: int = -1) -> list[object?]`
+### `findall(s: str, pos: int = 0, endpos: int = -1) -> list[object | None]`
 
 Return all non-overlapping matches as a list of strings.
 If the pattern has groups, returns the group(s) rather than the full match.
@@ -192,7 +192,7 @@ Return an iterator yielding ReMatch objects over all non-overlapping matches.
 
 Return the string obtained by replacing the leftmost non-overlapping occurrences of pattern.
 
-### `sub(repl: Func[ReMatch, str], s: str, count: int = 0) -> str`
+### `sub(repl: (ReMatch) -> str, s: str, count: int = 0) -> str`
 
 Return the string obtained by replacing occurrences using a callable.
 The callable receives the match object and returns the replacement string.
@@ -211,7 +211,7 @@ Equivalent to Python's `re.error`.
 | Name | Type | Description |
 |------|------|-------------|
 | `msg` | `str` | The unformatted error message. |
-| `pattern` | `str?` | The regex pattern that caused the error, if available. |
-| `pos` | `int?` | The position in the pattern where the error occurred, if available. |
-| `lineno` | `int?` | The line number of the error position, if available. |
-| `colno` | `int?` | The column number of the error position, if available. |
+| `pattern` | `str | None` | The regex pattern that caused the error, if available. |
+| `pos` | `int | None` | The position in the pattern where the error occurred, if available. |
+| `lineno` | `int | None` | The line number of the error position, if available. |
+| `colno` | `int | None` | The column number of the error position, if available. |
