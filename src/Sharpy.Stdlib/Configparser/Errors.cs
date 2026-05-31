@@ -113,4 +113,37 @@ namespace Sharpy
             RawValue = rawValue;
         }
     }
+
+    [SharpyModuleType("configparser")]
+    public class InterpolationDepthError : InterpolationError
+    {
+        public InterpolationDepthError(string option, string section, string rawval)
+            : base("Recursion limit exceeded in value substitution: section '" + section + "' option '" + option + "'",
+                   section, option, rawval)
+        {
+        }
+    }
+
+    [SharpyModuleType("configparser")]
+    public class InterpolationMissingOptionError : InterpolationError
+    {
+        public string Reference { get; }
+
+        public InterpolationMissingOptionError(string option, string section, string rawval, string reference)
+            : base("Bad value substitution: option '" + option + "' in section '" + section +
+                   "' contains an interpolation key '" + reference + "' which is not a valid option name.",
+                   section, option, rawval)
+        {
+            Reference = reference;
+        }
+    }
+
+    [SharpyModuleType("configparser")]
+    public class InterpolationSyntaxError : InterpolationError
+    {
+        public InterpolationSyntaxError(string option, string section, string msg)
+            : base(msg, section, option, "")
+        {
+        }
+    }
 }

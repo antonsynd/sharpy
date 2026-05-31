@@ -534,4 +534,76 @@ public class ConfigparserTests
         var config = new ConfigParser();
         config.GetBoolean("nosection", "key", fallback: true).Should().BeTrue();
     }
+
+    // Interpolation error subclass tests
+
+    [Fact]
+    public void BasicInterpolation_CircularThrows_DepthError()
+    {
+        var config = new ConfigParser(new BasicInterpolation());
+        config.ReadString("[section]\na = %(b)s\nb = %(a)s");
+        var act = () => config.Get("section", "a");
+        act.Should().Throw<InterpolationDepthError>();
+    }
+
+    [Fact]
+    public void BasicInterpolation_MissingKeyThrows_MissingOptionError()
+    {
+        var config = new ConfigParser(new BasicInterpolation());
+        config.ReadString("[section]\npath = %(missing)s");
+        var act = () => config.Get("section", "path");
+        act.Should().Throw<InterpolationMissingOptionError>();
+    }
+
+    [Fact]
+    public void BasicInterpolation_UnterminatedThrows_SyntaxError()
+    {
+        var config = new ConfigParser(new BasicInterpolation());
+        config.ReadString("[section]\na = %(b");
+        var act = () => config.Get("section", "a");
+        act.Should().Throw<InterpolationSyntaxError>();
+    }
+
+    [Fact]
+    public void BasicInterpolation_BadPercentThrows_SyntaxError()
+    {
+        var config = new ConfigParser(new BasicInterpolation());
+        config.ReadString("[section]\na = %z");
+        var act = () => config.Get("section", "a");
+        act.Should().Throw<InterpolationSyntaxError>();
+    }
+
+    [Fact]
+    public void ExtendedInterpolation_UnterminatedThrows_SyntaxError()
+    {
+        var config = new ConfigParser(new ExtendedInterpolation());
+        config.ReadString("[section]\na = ${b");
+        var act = () => config.Get("section", "a");
+        act.Should().Throw<InterpolationSyntaxError>();
+    }
+
+    [Fact]
+    public void ExtendedInterpolation_TooManyColonsThrows_SyntaxError()
+    {
+        var config = new ConfigParser(new ExtendedInterpolation());
+        config.ReadString("[section]\na = ${x:y:z}");
+        var act = () => config.Get("section", "a");
+        act.Should().Throw<InterpolationSyntaxError>();
+    }
+
+    [Fact]
+    public void BasicInterpolation_PercentEscape_DoesNotThrow()
+    {
+        var config = new ConfigParser(new BasicInterpolation());
+        config.ReadString("[section]\na = 100%%");
+        config.Get("section", "a").Should().Be("100%");
+    }
+
+    [Fact]
+    public void ExtendedInterpolation_ValidCrossSection_DoesNotThrow()
+    {
+        var config = new ConfigParser(new ExtendedInterpolation());
+        config.ReadString("[defaults]\nbase = /opt\n[section]\npath = ${defaults:base}/app");
+        config.Get("section", "path").Should().Be("/opt/app");
+    }
 }
