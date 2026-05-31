@@ -185,20 +185,11 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
 
 
 def execute_csharp(tmp_dir: Path) -> tuple[float, bool, str]:
-    """Execute pre-built C# benchmark."""
-    # Only look under bin/ (obj/ also has a bench.dll but without runtimeconfig)
-    bin_dir = tmp_dir / "bin"
-    dlls = list(bin_dir.rglob("bench.dll")) if bin_dir.exists() else []
-    if not dlls:
-        found = list(tmp_dir.rglob("bench.dll"))
-        return 0.0, False, f"No bench.dll under bin/. All matches: {[str(f.relative_to(tmp_dir)) for f in found[:5]]}"
-
-    dll = dlls[0]
-    elapsed, success, err, _ = time_command(["dotnet", str(dll)])
-    if not success and not err:
-        # Capture more context
-        rc = dll.parent / "bench.runtimeconfig.json"
-        err = f"dotnet {dll.name} failed. runtimeconfig exists: {rc.exists()}. Dir contents: {[f.name for f in dll.parent.iterdir()][:10]}"
+    """Execute pre-built C# benchmark using 'dotnet run --no-build'."""
+    elapsed, success, err, _ = time_command(
+        ["dotnet", "run", "-c", "Release", "--no-build"],
+        cwd=tmp_dir
+    )
     return elapsed, success, err
 
 
