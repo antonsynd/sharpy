@@ -63,13 +63,14 @@ def find_benchmarks(names: list[str] | None = None) -> list[Path]:
 
 
 def time_command(cmd: list[str], cwd: Path | None = None, timeout: int = 300) -> tuple[float, bool, str, str]:
-    """Run a command. Returns (elapsed, success, stderr, stdout)."""
+    """Run a command. Returns (elapsed, success, error_detail, stdout)."""
     start = time.perf_counter()
     try:
         result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
         elapsed = time.perf_counter() - start
         if result.returncode != 0:
-            return elapsed, False, result.stderr[:500], result.stdout
+            err = result.stderr[:500] or result.stdout[:500] or f"exit code {result.returncode}"
+            return elapsed, False, err, result.stdout
         return elapsed, True, "", result.stdout
     except subprocess.TimeoutExpired:
         return timeout, False, "TIMEOUT", ""
@@ -187,14 +188,11 @@ def execute_csharp(tmp_dir: Path) -> tuple[float, bool, str]:
     """Execute pre-built C# benchmark."""
     exe_dir = tmp_dir / "bin" / "Release" / "net10.0"
     dll = exe_dir / "bench.dll"
-    exe = exe_dir / "bench"
 
-    if exe.exists():
-        elapsed, success, err, _ = time_command([str(exe)])
-    elif dll.exists():
+    if dll.exists():
         elapsed, success, err, _ = time_command(["dotnet", str(dll)])
     else:
-        return 0.0, False, "No executable found"
+        return 0.0, False, f"No dll found in {exe_dir}"
     return elapsed, success, err
 
 

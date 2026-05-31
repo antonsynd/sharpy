@@ -20,8 +20,9 @@ def main():
     a: list[list[int]] = [[(i + j) % 7 for j in range(size)] for i in range(size)]
     b: list[list[int]] = [[(i * j + 1) % 11 for j in range(size)] for i in range(size)]
 
-    n: int = 0
+    result: list[list[int]] = matrix_multiply(a, b)
+    n: int = 1
     while n < 10:
-        result: list[list[int]] = matrix_multiply(a, b)
+        result = matrix_multiply(a, b)
         n = n + 1
     print(f"done: {result[0][0]}")
