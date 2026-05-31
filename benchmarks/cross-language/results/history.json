@@ -668,5 +668,145 @@
         "error": ""
       }
     ]
+  },
+  {
+    "date": "2026-05-31",
+    "results": [
+      {
+        "name": "fibonacci",
+        "language": "Python",
+        "compile_seconds": 0.0005565850000124328,
+        "execute_seconds": 0.20302576000000272,
+        "total_seconds": 0.20358234500001515,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "Sharpy",
+        "compile_seconds": 0.6430621169999995,
+        "execute_seconds": 1.279315853,
+        "total_seconds": 1.9223779699999994,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "C#",
+        "compile_seconds": 1.3383238370000043,
+        "execute_seconds": 0,
+        "total_seconds": 1.3383238370000043,
+        "success": false,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Python",
+        "compile_seconds": 0.0004440750000043181,
+        "execute_seconds": 0.0563641260000054,
+        "total_seconds": 0.05680820100000972,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Sharpy",
+        "compile_seconds": 0.6742073099999999,
+        "execute_seconds": 1.5293956720000068,
+        "total_seconds": 2.2036029820000067,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "C#",
+        "compile_seconds": 1.3494014630000066,
+        "execute_seconds": 0,
+        "total_seconds": 1.3494014630000066,
+        "success": false,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Python",
+        "compile_seconds": 0.0006789960000048723,
+        "execute_seconds": 0.7448267000000044,
+        "total_seconds": 0.7455056960000093,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Sharpy",
+        "compile_seconds": 0.6901685829999877,
+        "execute_seconds": 1.9040770680000207,
+        "total_seconds": 2.5942456510000085,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "C#",
+        "compile_seconds": 1.3604722979999906,
+        "execute_seconds": 0,
+        "total_seconds": 1.3604722979999906,
+        "success": false,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Python",
+        "compile_seconds": 0.0005441920000066602,
+        "execute_seconds": 0.17735487899999214,
+        "total_seconds": 0.1778990709999988,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Sharpy",
+        "compile_seconds": 0.734600039,
+        "execute_seconds": 1.8455397469999895,
+        "total_seconds": 2.5801397859999895,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "C#",
+        "compile_seconds": 1.334321750000015,
+        "execute_seconds": 0,
+        "total_seconds": 1.334321750000015,
+        "success": false,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Python",
+        "compile_seconds": 0.00043605999999840606,
+        "execute_seconds": 0.16724085100000252,
+        "total_seconds": 0.16767691100000093,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Sharpy",
+        "compile_seconds": 0.6706749320000256,
+        "execute_seconds": 1.4959088229999793,
+        "total_seconds": 2.166583755000005,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "C#",
+        "compile_seconds": 1.350381532,
+        "execute_seconds": 0,
+        "total_seconds": 1.350381532,
+        "success": false,
+        "error": ""
+      }
+    ]
   }
 ]
