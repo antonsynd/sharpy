@@ -6,18 +6,36 @@ using SCG = System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Represents an IPv4 network.
+    /// </summary>
     [SharpyModuleType("ipaddress")]
     public sealed class IPv4Network : SCG.IEnumerable<IPv4Address>, IEquatable<IPv4Network>, IComparable<IPv4Network>
     {
         private readonly uint _networkAddress;
         private readonly int _prefixLength;
 
+        /// <summary>
+        /// Gets the IP version number.
+        /// </summary>
         public int Version => 4;
+        /// <summary>
+        /// Gets the network prefix length.
+        /// </summary>
         public int Prefixlen => _prefixLength;
+        /// <summary>
+        /// Gets the maximum prefix length for IPv4 networks.
+        /// </summary>
         public int MaxPrefixlen => 32;
 
+        /// <summary>
+        /// Gets the network address.
+        /// </summary>
         public IPv4Address NetworkAddress => new IPv4Address(_networkAddress);
 
+        /// <summary>
+        /// Gets the broadcast address.
+        /// </summary>
         public IPv4Address BroadcastAddress
         {
             get
@@ -27,6 +45,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets the network mask.
+        /// </summary>
         public IPv4Address Netmask
         {
             get
@@ -36,6 +57,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets the host mask.
+        /// </summary>
         public IPv4Address Hostmask
         {
             get
@@ -44,6 +68,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets the number of addresses in the network.
+        /// </summary>
         public long NumAddresses => 1L << (32 - _prefixLength);
 
         // Host-mask bits with explicit /0 and /32 guards. C# masks uint shift counts
@@ -57,17 +84,47 @@ namespace Sharpy
             return ~(0xFFFFFFFFU << (32 - _prefixLength));
         }
 
+        /// <summary>
+        /// Gets whether the network is in a private-use range.
+        /// </summary>
         public bool IsPrivate => NetworkAddress.IsPrivate;
+        /// <summary>
+        /// Gets whether the network is a loopback network.
+        /// </summary>
         public bool IsLoopback => NetworkAddress.IsLoopback;
+        /// <summary>
+        /// Gets whether the network is a multicast network.
+        /// </summary>
         public bool IsMulticast => NetworkAddress.IsMulticast;
+        /// <summary>
+        /// Gets whether the network is in a reserved range.
+        /// </summary>
         public bool IsReserved => NetworkAddress.IsReserved;
+        /// <summary>
+        /// Gets whether the network is link-local.
+        /// </summary>
         public bool IsLinkLocal => NetworkAddress.IsLinkLocal;
+        /// <summary>
+        /// Gets whether the network is globally reachable.
+        /// </summary>
         public bool IsGlobal => NetworkAddress.IsGlobal;
 
+        /// <summary>
+        /// Gets the network in address/prefix notation.
+        /// </summary>
         public string WithPrefixlen => _toIpString(_networkAddress) + "/" + _prefixLength;
+        /// <summary>
+        /// Gets the network in address/netmask notation.
+        /// </summary>
         public string WithNetmask => _toIpString(_networkAddress) + "/" + Netmask;
+        /// <summary>
+        /// Gets the network in address/hostmask notation.
+        /// </summary>
         public string WithHostmask => _toIpString(_networkAddress) + "/" + Hostmask;
 
+        /// <summary>
+        /// Initializes an IPv4 network from its CIDR notation.
+        /// </summary>
         public IPv4Network(string address, bool strict = true)
         {
             int slashIdx = address.IndexOf('/');
@@ -118,6 +175,9 @@ namespace Sharpy
             _prefixLength = prefixLength;
         }
 
+        /// <summary>
+        /// Iterates over usable host addresses in the network.
+        /// </summary>
         public SCG.IEnumerable<IPv4Address> Hosts()
         {
             if (_prefixLength == 32)
@@ -140,6 +200,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Iterates over all addresses in the network.
+        /// </summary>
         public SCG.IEnumerator<IPv4Address> GetEnumerator()
         {
             long count = NumAddresses;
@@ -151,18 +214,27 @@ namespace Sharpy
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+        /// <summary>
+        /// Determines whether the network contains the specified address.
+        /// </summary>
         public bool Contains(IPv4Address address)
         {
             uint mask = _prefixLength == 0 ? 0 : 0xFFFFFFFFU << (32 - _prefixLength);
             return (address.Value & mask) == _networkAddress;
         }
 
+        /// <summary>
+        /// Determines whether this network overlaps another network.
+        /// </summary>
         public bool Overlaps(IPv4Network other)
         {
             return Contains(other.NetworkAddress) || Contains(other.BroadcastAddress) ||
                    other.Contains(NetworkAddress) || other.Contains(BroadcastAddress);
         }
 
+        /// <summary>
+        /// Splits the network into subnets.
+        /// </summary>
         public SCG.List<IPv4Network> Subnets(int prefixlenDiff = 1, int? newPrefix = null)
         {
             int targetPrefix;
@@ -195,6 +267,9 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>
+        /// Returns the containing supernet.
+        /// </summary>
         public IPv4Network Supernet(int prefixlenDiff = 1, int? newPrefix = null)
         {
             int targetPrefix;
@@ -216,23 +291,41 @@ namespace Sharpy
             return new IPv4Network(_networkAddress & mask, targetPrefix);
         }
 
+        /// <summary>
+        /// Determines whether this network is a subnet of another network.
+        /// </summary>
         public bool SubnetOf(IPv4Network other)
         {
             return other._prefixLength < _prefixLength &&
                    other.Contains(NetworkAddress) && other.Contains(BroadcastAddress);
         }
 
+        /// <summary>
+        /// Determines whether this network is a supernet of another network.
+        /// </summary>
         public bool SupernetOf(IPv4Network other)
         {
             return other.SubnetOf(this);
         }
 
+        /// <summary>
+        /// Returns the CIDR string form of the network.
+        /// </summary>
         public override string ToString() => _toIpString(_networkAddress) + "/" + _prefixLength;
 
+        /// <summary>
+        /// Returns a hash code for the network.
+        /// </summary>
         public override int GetHashCode() => _networkAddress.GetHashCode() ^ _prefixLength;
 
+        /// <summary>
+        /// Determines whether the specified object is the same IPv4 network.
+        /// </summary>
         public override bool Equals(object? obj) => obj is IPv4Network other && Equals(other);
 
+        /// <summary>
+        /// Determines whether the specified network is the same IPv4 network.
+        /// </summary>
         public bool Equals(IPv4Network? other)
         {
             if (other == null)
@@ -240,6 +333,9 @@ namespace Sharpy
             return _networkAddress == other._networkAddress && _prefixLength == other._prefixLength;
         }
 
+        /// <summary>
+        /// Compares this network with another IPv4 network.
+        /// </summary>
         public int CompareTo(IPv4Network? other)
         {
             if (other == null)
@@ -250,16 +346,34 @@ namespace Sharpy
             return _prefixLength.CompareTo(other._prefixLength);
         }
 
+        /// <summary>
+        /// Determines whether one IPv4 network sorts before another.
+        /// </summary>
         public static bool operator <(IPv4Network left, IPv4Network right) => left.CompareTo(right) < 0;
+        /// <summary>
+        /// Determines whether one IPv4 network sorts after another.
+        /// </summary>
         public static bool operator >(IPv4Network left, IPv4Network right) => left.CompareTo(right) > 0;
+        /// <summary>
+        /// Determines whether one IPv4 network sorts before or the same as another.
+        /// </summary>
         public static bool operator <=(IPv4Network left, IPv4Network right) => left.CompareTo(right) <= 0;
+        /// <summary>
+        /// Determines whether one IPv4 network sorts after or the same as another.
+        /// </summary>
         public static bool operator >=(IPv4Network left, IPv4Network right) => left.CompareTo(right) >= 0;
+        /// <summary>
+        /// Determines whether two IPv4 networks are equal.
+        /// </summary>
         public static bool operator ==(IPv4Network? left, IPv4Network? right)
         {
             if (left is null)
                 return right is null;
             return left.Equals(right);
         }
+        /// <summary>
+        /// Determines whether two IPv4 networks are not equal.
+        /// </summary>
         public static bool operator !=(IPv4Network? left, IPv4Network? right) => !(left == right);
 
         private static string _toIpString(uint value)

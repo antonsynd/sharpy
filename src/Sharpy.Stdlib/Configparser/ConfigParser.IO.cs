@@ -4,8 +4,10 @@ using SCG = System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Provides I/O helpers for the config parser.</summary>
     public sealed partial class ConfigParser
     {
+        /// <summary>Reads configuration data from a string.</summary>
         public void ReadString(string content, string source = "<string>")
         {
             using (var reader = new StringReader(content))
@@ -14,6 +16,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Reads configuration data from a file if it exists.</summary>
         public void Read(string filename)
         {
             if (!File.Exists(filename))
@@ -24,6 +27,7 @@ namespace Sharpy
             ReadString(content, filename);
         }
 
+        /// <summary>Loads configuration values from nested dictionaries.</summary>
         public void ReadDict(SCG.Dictionary<string, SCG.Dictionary<string, string>> dictionary)
         {
             foreach (var section in dictionary)
@@ -43,6 +47,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Writes the current configuration to a text writer.</summary>
         public void Write(TextWriter writer, bool spaceAroundDelimiters = true)
         {
             string delimiter = spaceAroundDelimiters ? " = " : "=";
@@ -82,6 +87,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Writes the current configuration to a file.</summary>
         public void WriteToFile(string filename, bool spaceAroundDelimiters = true)
         {
             using (var writer = new StreamWriter(filename))

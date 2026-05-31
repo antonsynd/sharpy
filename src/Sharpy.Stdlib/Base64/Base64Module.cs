@@ -3,10 +3,12 @@ using System.Text;
 
 namespace Sharpy
 {
+    /// <summary>Provides base-N encoders and decoders similar to Python's base64 module.</summary>
     public static partial class Base64Module
     {
         // ─── Base64 ──────────────────────────────────────────────────────────
 
+        /// <summary>Encode bytes using Base64.</summary>
         public static Bytes B64encode(Bytes s, Bytes? altchars = null)
         {
             byte[] data = s.ToArray();
@@ -26,11 +28,13 @@ namespace Sharpy
             return new Bytes(Encoding.ASCII.GetBytes(encoded));
         }
 
+        /// <summary>Decode Base64-encoded bytes.</summary>
         public static Bytes B64decode(Bytes s, Bytes? altchars = null, bool validate = false)
         {
             return B64decodeString(Encoding.ASCII.GetString(s.ToArray()), altchars, validate);
         }
 
+        /// <summary>Decode a Base64-encoded string.</summary>
         public static Bytes B64decode(string s, Bytes? altchars = null, bool validate = false)
         {
             return B64decodeString(s, altchars, validate);
@@ -86,6 +90,7 @@ namespace Sharpy
 
         // ─── URL-safe Base64 ─────────────────────────────────────────────────
 
+        /// <summary>Encode bytes using URL-safe Base64.</summary>
         public static Bytes UrlsafeB64encode(Bytes s)
         {
             byte[] data = s.ToArray();
@@ -94,11 +99,13 @@ namespace Sharpy
             return new Bytes(Encoding.ASCII.GetBytes(encoded));
         }
 
+        /// <summary>Decode URL-safe Base64-encoded bytes.</summary>
         public static Bytes UrlsafeB64decode(Bytes s)
         {
             return UrlsafeB64decodeString(Encoding.ASCII.GetString(s.ToArray()));
         }
 
+        /// <summary>Decode a URL-safe Base64-encoded string.</summary>
         public static Bytes UrlsafeB64decode(string s)
         {
             return UrlsafeB64decodeString(s);
@@ -122,6 +129,7 @@ namespace Sharpy
 
         private static readonly char[] Base32Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".ToCharArray();
 
+        /// <summary>Encode bytes using Base32.</summary>
         public static Bytes B32encode(Bytes s)
         {
             byte[] data = s.ToArray();
@@ -158,6 +166,7 @@ namespace Sharpy
             return new Bytes(Encoding.ASCII.GetBytes(sb.ToString()));
         }
 
+        /// <summary>Decode Base32-encoded bytes.</summary>
         public static Bytes B32decode(Bytes s, bool casefold = false)
         {
             string encoded = Encoding.ASCII.GetString(s.ToArray()).TrimEnd('=');
@@ -225,6 +234,7 @@ namespace Sharpy
 
         // ─── Base16 ──────────────────────────────────────────────────────────
 
+        /// <summary>Encode bytes using Base16.</summary>
         public static Bytes B16encode(Bytes s)
         {
             byte[] data = s.ToArray();
@@ -237,6 +247,7 @@ namespace Sharpy
             return new Bytes(Encoding.ASCII.GetBytes(sb.ToString()));
         }
 
+        /// <summary>Decode Base16-encoded bytes.</summary>
         public static Bytes B16decode(Bytes s, bool casefold = false)
         {
             string hex = Encoding.ASCII.GetString(s.ToArray());
@@ -309,6 +320,7 @@ namespace Sharpy
             return lookup;
         }
 
+        /// <summary>Encode bytes using RFC 1924 Base85.</summary>
         public static Bytes B85encode(Bytes s)
         {
             byte[] data = s.ToArray();
@@ -342,6 +354,7 @@ namespace Sharpy
             return new Bytes(Encoding.ASCII.GetBytes(sb.ToString(0, resultLen)));
         }
 
+        /// <summary>Decode RFC 1924 Base85-encoded bytes.</summary>
         public static Bytes B85decode(Bytes s)
         {
             byte[] data = s.ToArray();
@@ -399,6 +412,7 @@ namespace Sharpy
 
         // ─── Ascii85 (Adobe variant) ─────────────────────────────────────────
 
+        /// <summary>Encode bytes using Adobe-style Ascii85.</summary>
         public static Bytes A85encode(Bytes s)
         {
             byte[] data = s.ToArray();
@@ -439,6 +453,7 @@ namespace Sharpy
             return new Bytes(Encoding.ASCII.GetBytes(sb.ToString(0, resultLen)));
         }
 
+        /// <summary>Decode Adobe-style Ascii85-encoded bytes.</summary>
         public static Bytes A85decode(Bytes s)
         {
             byte[] data = s.ToArray();

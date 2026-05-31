@@ -4,8 +4,10 @@ using System.IO.Compression;
 
 namespace Sharpy
 {
+    /// <summary>Provides helpers for gzip compression and decompression.</summary>
     public static partial class GzipModule
     {
+        /// <summary>Compresses bytes into gzip format.</summary>
         public static Bytes Compress(Bytes data, int compresslevel = 9)
         {
             if (compresslevel != -1 && (compresslevel < 0 || compresslevel > 9))
@@ -27,6 +29,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Decompresses gzip-compressed bytes.</summary>
         public static Bytes Decompress(Bytes data)
         {
             try

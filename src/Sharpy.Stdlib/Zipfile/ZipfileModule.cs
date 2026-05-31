@@ -4,8 +4,10 @@ using System.IO.Compression;
 
 namespace Sharpy
 {
+    /// <summary>Provides helpers for working with ZIP archives.</summary>
     public static partial class ZipfileModule
     {
+        /// <summary>Returns true if the file is a readable ZIP archive.</summary>
         public static bool IsZipfile(string filename)
         {
             if (!File.Exists(filename))
@@ -28,6 +30,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Returns true if the bytes contain a readable ZIP archive.</summary>
         public static bool IsZipfile(Bytes data)
         {
             try

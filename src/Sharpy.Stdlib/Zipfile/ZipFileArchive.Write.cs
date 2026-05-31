@@ -6,8 +6,10 @@ using System.Text;
 
 namespace Sharpy
 {
+    /// <summary>Provides write and extraction operations for ZIP archives.</summary>
     public partial class ZipFileArchive
     {
+        /// <summary>Adds a file from disk to the archive.</summary>
         public void Write(string filename, string? arcname = null, int? compressType = null)
         {
             EnsureOpen();
@@ -25,6 +27,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Writes bytes to the archive using the supplied ZipInfo metadata.</summary>
         public void Writestr(ZipInfo zinfo, Bytes data, int? compressType = null)
         {
             EnsureOpen();
@@ -41,16 +44,19 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Writes bytes to a named archive member.</summary>
         public void Writestr(string arcname, Bytes data, int? compressType = null)
         {
             Writestr(new ZipInfo(arcname), data, compressType);
         }
 
+        /// <summary>Writes UTF-8 text to a named archive member.</summary>
         public void Writestr(string arcname, string data, int? compressType = null)
         {
             Writestr(arcname, new Bytes(Encoding.UTF8.GetBytes(data)), compressType);
         }
 
+        /// <summary>Extracts one archive member to a target directory.</summary>
         public string Extract(string member, string? path = null)
         {
             EnsureOpen();
@@ -64,6 +70,7 @@ namespace Sharpy
             return ExtractEntry(entry, destDir);
         }
 
+        /// <summary>Extracts all members, or the selected members, to a target directory.</summary>
         public void Extractall(string? path = null, List<string>? members = null)
         {
             EnsureOpen();
@@ -91,6 +98,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Creates a directory entry in the archive.</summary>
         public void Mkdir(string zinfOrArcname)
         {
             EnsureOpen();

@@ -4,8 +4,10 @@ using System.IO.Compression;
 
 namespace Sharpy
 {
+    /// <summary>Provides zlib compression and decompression functions.</summary>
     public static partial class ZlibModule
     {
+        /// <summary>Compresses data using zlib format.</summary>
         public static Bytes Compress(Bytes data, int level = 6)
         {
             if (level != -1 && (level < 0 || level > 9))
@@ -17,6 +19,7 @@ namespace Sharpy
             return CompressBytes(data.ToArray(), compressionLevel);
         }
 
+        /// <summary>Decompresses zlib, raw deflate, or gzip data depending on wbits.</summary>
         public static Bytes Decompress(Bytes data, int wbits = 15, int bufsize = 16384)
         {
             byte[] input = data.ToArray();
@@ -34,6 +37,7 @@ namespace Sharpy
             return DecompressZlib(input);
         }
 
+        /// <summary>Creates an incremental compressor object.</summary>
         public static CompressObj Compressobj(int level = 6, int method = 8, int wbits = 15, int memLevel = 8, int strategy = 0)
         {
             if (level != -1 && (level < 0 || level > 9))
@@ -44,6 +48,7 @@ namespace Sharpy
             return new CompressObj(MapLevel(level), wbits);
         }
 
+        /// <summary>Creates an incremental decompressor object.</summary>
         public static DecompressObj Decompressobj(int wbits = 15)
         {
             return new DecompressObj(wbits);

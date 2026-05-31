@@ -2,8 +2,10 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>Provides zlib checksum helpers.</summary>
     public static partial class ZlibModule
     {
+        /// <summary>Computes the CRC-32 checksum of the data.</summary>
         public static long Crc32(Bytes data, long value = 0)
         {
             byte[] bytes = data.ToArray();
@@ -19,6 +21,7 @@ namespace Sharpy
             return (long)(crc & 0xFFFFFFFF);
         }
 
+        /// <summary>Computes the Adler-32 checksum of the data.</summary>
         public static long Adler32(Bytes data, long value = 1)
         {
             byte[] bytes = data.ToArray();

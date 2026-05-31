@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the hashlib module.</summary>
+    /// <summary>Secure hash and message digest algorithms.</summary>
     [SharpyModule("hashlib")]
     public static partial class HashlibModule
     { }

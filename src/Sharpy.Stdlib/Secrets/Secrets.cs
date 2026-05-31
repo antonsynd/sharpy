@@ -4,8 +4,10 @@ using System.Text;
 
 namespace Sharpy
 {
+    /// <summary>Provides cryptographically strong helpers similar to Python's secrets module.</summary>
     public static partial class SecretsModule
     {
+        /// <summary>Return a random byte string containing nbytes bytes.</summary>
         public static Bytes TokenBytes(int nbytes = 32)
         {
             if (nbytes < 0)
@@ -25,6 +27,7 @@ namespace Sharpy
             return new Bytes(buf);
         }
 
+        /// <summary>Return a random text string with nbytes random bytes encoded as hex.</summary>
         public static string TokenHex(int nbytes = 32)
         {
             if (nbytes < 0)
@@ -55,6 +58,7 @@ namespace Sharpy
             return sb.ToString();
         }
 
+        /// <summary>Return a random URL-safe text string containing nbytes random bytes.</summary>
         public static string TokenUrlsafe(int nbytes = 32)
         {
             if (nbytes < 0)
@@ -82,6 +86,7 @@ namespace Sharpy
                 .TrimEnd('=');
         }
 
+        /// <summary>Return a random int in the range [0, exclusiveUpperBound).</summary>
         public static int Randbelow(int exclusiveUpperBound)
         {
             if (exclusiveUpperBound <= 0)
@@ -103,6 +108,7 @@ namespace Sharpy
 #endif
         }
 
+        /// <summary>Return a random element from a non-empty sequence.</summary>
         public static T Choice<T>(List<T> sequence)
         {
             int len = ((ISized)sequence).Count;
@@ -114,6 +120,7 @@ namespace Sharpy
             return sequence[Randbelow(len)];
         }
 
+        /// <summary>Compare two strings in constant time.</summary>
         public static bool CompareDigest(string a, string b)
         {
             byte[] aBytes = Encoding.UTF8.GetBytes(a);
@@ -121,6 +128,7 @@ namespace Sharpy
             return FixedTimeEquals(aBytes, bBytes);
         }
 
+        /// <summary>Compare two byte sequences in constant time.</summary>
         public static bool CompareDigest(Bytes a, Bytes b)
         {
             return FixedTimeEquals(a.ToArray(), b.ToArray());

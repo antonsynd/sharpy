@@ -6,12 +6,19 @@ using System.Threading.Tasks;
 
 namespace Sharpy
 {
+    /// <summary>Provides helpers that mirror Python's subprocess module.</summary>
     public static partial class SubprocessModule
     {
+        /// <summary>Requests that a standard stream be redirected through a pipe.</summary>
         public const int PIPE = -1;
+
+        /// <summary>Requests that stderr be merged into stdout.</summary>
         public const int STDOUT = -2;
+
+        /// <summary>Requests that a standard stream be redirected to the null device.</summary>
         public const int DEVNULL = -3;
 
+        /// <summary>Runs a command, waits for it to finish, and returns a CompletedProcess.</summary>
         public static CompletedProcess Run(
             List<string> args,
             bool captureOutput = false,
@@ -69,6 +76,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Runs a command and returns its standard output.</summary>
         public static string CheckOutput(
             List<string> args,
             bool text = true,
@@ -90,6 +98,7 @@ namespace Sharpy
             return result.Stdout ?? "";
         }
 
+        /// <summary>Runs a command and raises if it exits with a non-zero status.</summary>
         public static int CheckCall(
             List<string> args,
             double? timeout = null,

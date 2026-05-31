@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the struct module.</summary>
+    /// <summary>Interpret bytes as packed binary data.</summary>
     [SharpyModule("struct")]
     public static partial class StructModule
     { }

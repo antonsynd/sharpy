@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the secrets module.</summary>
+    /// <summary>Generate cryptographically strong random numbers suitable for managing secrets.</summary>
     [SharpyModule("secrets")]
     public static partial class SecretsModule
     { }

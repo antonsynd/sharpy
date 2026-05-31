@@ -2,8 +2,10 @@ using System.Text;
 
 namespace Sharpy
 {
+    /// <summary>Provides shell-style lexical analysis helpers similar to Python's shlex module.</summary>
     public static partial class ShlexModule
     {
+        /// <summary>Split a shell-like string into tokens using POSIX shlex rules.</summary>
         public static List<string> Split(string s, bool comments = false, bool posix = true)
         {
             if (s == null)
@@ -126,6 +128,7 @@ namespace Sharpy
             return tokens;
         }
 
+        /// <summary>Return a shell-escaped version of a string.</summary>
         public static string Quote(string s)
         {
             if (s == null)
@@ -171,6 +174,7 @@ namespace Sharpy
             return sb.ToString();
         }
 
+        /// <summary>Join shell tokens into a command string using shell escaping.</summary>
         public static string Join(List<string> splitCommand)
         {
             if (splitCommand == null)

@@ -5,8 +5,10 @@ using Tomlyn.Model;
 
 namespace Sharpy
 {
+    /// <summary>Provides TOML parsing and serialization helpers.</summary>
     public static partial class Toml
     {
+        /// <summary>Parse a TOML string into a dictionary.</summary>
         public static Dict<string, object?> Loads(string s)
         {
             if (s == null)
@@ -25,11 +27,13 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Serialize an object to a TOML string.</summary>
         public static string Dumps(object? obj)
         {
             return Dumps(obj, false);
         }
 
+        /// <summary>Serialize an object to a TOML string, optionally sorting keys.</summary>
         public static string Dumps(object? obj, bool sortKeys = false)
         {
             var table = TomlConverter.ToTomlyn(obj);
@@ -50,6 +54,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Parse TOML content from an open text file.</summary>
         public static Dict<string, object?> Load(TextFile fp)
         {
             if (fp == null)
@@ -61,11 +66,13 @@ namespace Sharpy
             return Loads(content);
         }
 
+        /// <summary>Write an object's TOML representation to a text file.</summary>
         public static void Dump(object? obj, TextFile fp)
         {
             Dump(obj, fp, false);
         }
 
+        /// <summary>Write an object's TOML representation to a text file, optionally sorting keys.</summary>
         public static void Dump(object? obj, TextFile fp, bool sortKeys = false)
         {
             if (fp == null)
@@ -77,6 +84,7 @@ namespace Sharpy
             fp.Write(toml);
         }
 
+        /// <summary>Parse a TOML file from a path.</summary>
         public static Dict<string, object?> LoadFile(string path)
         {
             if (path == null)
@@ -99,11 +107,13 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Write an object's TOML representation to a file path.</summary>
         public static void DumpFile(object? obj, string path)
         {
             DumpFile(obj, path, false);
         }
 
+        /// <summary>Write an object's TOML representation to a file path, optionally sorting keys.</summary>
         public static void DumpFile(object? obj, string path, bool sortKeys = false)
         {
             if (path == null)
@@ -138,6 +148,7 @@ namespace Sharpy
         }
 
 #if NET10_0_OR_GREATER
+        /// <summary>Parse a TOML string into a typed model.</summary>
         public static Result<T, TOMLDecodeError> Loads<T>(string s) where T : class, new()
         {
             if (s == null)
@@ -156,6 +167,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Parse TOML content from a text file into a typed model.</summary>
         public static Result<T, TOMLDecodeError> Load<T>(TextFile fp) where T : class, new()
         {
             if (fp == null)

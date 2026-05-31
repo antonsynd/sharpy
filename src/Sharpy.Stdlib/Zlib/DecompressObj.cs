@@ -4,6 +4,7 @@ using System.IO.Compression;
 
 namespace Sharpy
 {
+    /// <summary>Provides incremental decompression like zlib.decompressobj.</summary>
     [SharpyModuleType("zlib")]
     public sealed class DecompressObj
     {
@@ -20,6 +21,7 @@ namespace Sharpy
             _unconsumedTail = new Bytes(Array.Empty<byte>());
         }
 
+        /// <summary>Buffers compressed data for later decompression.</summary>
         public Bytes Decompress(Bytes data, int maxLength = 0)
         {
             if (_finished)
@@ -32,6 +34,7 @@ namespace Sharpy
             return new Bytes(Array.Empty<byte>());
         }
 
+        /// <summary>Finishes decompression and returns the remaining output.</summary>
         public Bytes Flush(int length = 16384)
         {
             if (_finished)
@@ -56,8 +59,10 @@ namespace Sharpy
             return ZlibModule.DecompressZlib(input);
         }
 
+        /// <summary>Gets compressed data that was not consumed.</summary>
         public Bytes UnconsumedTail => _unconsumedTail;
 
+        /// <summary>Gets a value indicating whether the stream has been finished.</summary>
         public bool Eof => _finished;
     }
 }

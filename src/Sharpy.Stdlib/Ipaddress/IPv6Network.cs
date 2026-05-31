@@ -7,18 +7,36 @@ using System.Numerics;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Represents an IPv6 network.
+    /// </summary>
     [SharpyModuleType("ipaddress")]
     public sealed class IPv6Network : IEnumerable<IPv6Address>, IEquatable<IPv6Network>, IComparable<IPv6Network>
     {
         private readonly byte[] _networkAddress;
         private readonly int _prefixLength;
 
+        /// <summary>
+        /// Gets the IP version number.
+        /// </summary>
         public int Version => 6;
+        /// <summary>
+        /// Gets the network prefix length.
+        /// </summary>
         public int Prefixlen => _prefixLength;
+        /// <summary>
+        /// Gets the maximum prefix length for IPv6 networks.
+        /// </summary>
         public int MaxPrefixlen => 128;
 
+        /// <summary>
+        /// Gets the network address.
+        /// </summary>
         public IPv6Address NetworkAddress => new IPv6Address(new IPAddress((byte[])_networkAddress.Clone()));
 
+        /// <summary>
+        /// Gets the last address in the network.
+        /// </summary>
         public IPv6Address BroadcastAddress
         {
             get
@@ -40,6 +58,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets the network mask.
+        /// </summary>
         public IPv6Address Netmask
         {
             get
@@ -49,6 +70,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets the host mask.
+        /// </summary>
         public IPv6Address Hostmask
         {
             get
@@ -63,6 +87,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets the number of addresses in the network.
+        /// </summary>
         public BigInteger NumAddresses
         {
             get
@@ -72,17 +99,47 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets whether the network is in a unique local range.
+        /// </summary>
         public bool IsPrivate => NetworkAddress.IsPrivate;
+        /// <summary>
+        /// Gets whether the network is a loopback network.
+        /// </summary>
         public bool IsLoopback => NetworkAddress.IsLoopback;
+        /// <summary>
+        /// Gets whether the network is a multicast network.
+        /// </summary>
         public bool IsMulticast => NetworkAddress.IsMulticast;
+        /// <summary>
+        /// Gets whether the network is in a reserved range.
+        /// </summary>
         public bool IsReserved => NetworkAddress.IsReserved;
+        /// <summary>
+        /// Gets whether the network is link-local.
+        /// </summary>
         public bool IsLinkLocal => NetworkAddress.IsLinkLocal;
+        /// <summary>
+        /// Gets whether the network is globally reachable.
+        /// </summary>
         public bool IsGlobal => NetworkAddress.IsGlobal;
 
+        /// <summary>
+        /// Gets the network in address/prefix notation.
+        /// </summary>
         public string WithPrefixlen => NetworkAddress + "/" + _prefixLength;
+        /// <summary>
+        /// Gets the network in address/netmask notation.
+        /// </summary>
         public string WithNetmask => NetworkAddress + "/" + Netmask;
+        /// <summary>
+        /// Gets the network in address/hostmask notation.
+        /// </summary>
         public string WithHostmask => NetworkAddress + "/" + Hostmask;
 
+        /// <summary>
+        /// Initializes an IPv6 network from its CIDR notation.
+        /// </summary>
         public IPv6Network(string address, bool strict = true)
         {
             int slashIdx = address.IndexOf('/');
@@ -163,6 +220,9 @@ namespace Sharpy
             _prefixLength = prefixLength;
         }
 
+        /// <summary>
+        /// Determines whether the network contains the specified address.
+        /// </summary>
         public bool Contains(IPv6Address address)
         {
             byte[] addrBytes = address.Address.GetAddressBytes();
@@ -176,12 +236,18 @@ namespace Sharpy
             return true;
         }
 
+        /// <summary>
+        /// Determines whether this network overlaps another network.
+        /// </summary>
         public bool Overlaps(IPv6Network other)
         {
             return Contains(other.NetworkAddress) || Contains(other.BroadcastAddress) ||
                    other.Contains(NetworkAddress) || other.Contains(BroadcastAddress);
         }
 
+        /// <summary>
+        /// Iterates over usable host addresses in the network.
+        /// </summary>
         public IEnumerable<IPv6Address> Hosts()
         {
             BigInteger network = NetworkAddress.ToInt();
@@ -195,6 +261,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Iterates over all addresses in the network.
+        /// </summary>
         public IEnumerator<IPv6Address> GetEnumerator()
         {
             BigInteger network = NetworkAddress.ToInt();
@@ -207,6 +276,9 @@ namespace Sharpy
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+        /// <summary>
+        /// Splits the network into subnets.
+        /// </summary>
         public List<IPv6Network> Subnets(int prefixlenDiff = 1, int? newPrefix = null)
         {
             int targetPrefix;
@@ -241,6 +313,9 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>
+        /// Returns the containing supernet.
+        /// </summary>
         public IPv6Network Supernet(int prefixlenDiff = 1, int? newPrefix = null)
         {
             int targetPrefix;
@@ -262,19 +337,31 @@ namespace Sharpy
             return new IPv6Network(masked, targetPrefix);
         }
 
+        /// <summary>
+        /// Determines whether this network is a subnet of another network.
+        /// </summary>
         public bool SubnetOf(IPv6Network other)
         {
             return other._prefixLength < _prefixLength &&
                    other.Contains(NetworkAddress) && other.Contains(BroadcastAddress);
         }
 
+        /// <summary>
+        /// Determines whether this network is a supernet of another network.
+        /// </summary>
         public bool SupernetOf(IPv6Network other)
         {
             return other.SubnetOf(this);
         }
 
+        /// <summary>
+        /// Returns the CIDR string form of the network.
+        /// </summary>
         public override string ToString() => new IPAddress((byte[])_networkAddress.Clone()) + "/" + _prefixLength;
 
+        /// <summary>
+        /// Returns a hash code for the network.
+        /// </summary>
         public override int GetHashCode()
         {
             int hash = _prefixLength;
@@ -285,8 +372,14 @@ namespace Sharpy
             return hash;
         }
 
+        /// <summary>
+        /// Determines whether the specified object is the same IPv6 network.
+        /// </summary>
         public override bool Equals(object? obj) => obj is IPv6Network other && Equals(other);
 
+        /// <summary>
+        /// Determines whether the specified network is the same IPv6 network.
+        /// </summary>
         public bool Equals(IPv6Network? other)
         {
             if (other == null)
@@ -301,6 +394,9 @@ namespace Sharpy
             return true;
         }
 
+        /// <summary>
+        /// Compares this network with another IPv6 network.
+        /// </summary>
         public int CompareTo(IPv6Network? other)
         {
             if (other == null)
@@ -314,16 +410,34 @@ namespace Sharpy
             return _prefixLength.CompareTo(other._prefixLength);
         }
 
+        /// <summary>
+        /// Determines whether two IPv6 networks are equal.
+        /// </summary>
         public static bool operator ==(IPv6Network? left, IPv6Network? right)
         {
             if (left is null)
                 return right is null;
             return left.Equals(right);
         }
+        /// <summary>
+        /// Determines whether two IPv6 networks are not equal.
+        /// </summary>
         public static bool operator !=(IPv6Network? left, IPv6Network? right) => !(left == right);
+        /// <summary>
+        /// Determines whether one IPv6 network sorts before another.
+        /// </summary>
         public static bool operator <(IPv6Network left, IPv6Network right) => left.CompareTo(right) < 0;
+        /// <summary>
+        /// Determines whether one IPv6 network sorts after another.
+        /// </summary>
         public static bool operator >(IPv6Network left, IPv6Network right) => left.CompareTo(right) > 0;
+        /// <summary>
+        /// Determines whether one IPv6 network sorts before or the same as another.
+        /// </summary>
         public static bool operator <=(IPv6Network left, IPv6Network right) => left.CompareTo(right) <= 0;
+        /// <summary>
+        /// Determines whether one IPv6 network sorts after or the same as another.
+        /// </summary>
         public static bool operator >=(IPv6Network left, IPv6Network right) => left.CompareTo(right) >= 0;
 
         private static byte[] ApplyMask(byte[] bytes, int prefixLength)

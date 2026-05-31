@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the subprocess module.</summary>
+    /// <summary>Subprocess management: spawn new processes, connect to their pipes, and obtain return codes.</summary>
     [SharpyModule("subprocess")]
     public static partial class SubprocessModule
     { }

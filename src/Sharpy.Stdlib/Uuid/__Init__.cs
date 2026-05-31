@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the uuid module.</summary>
+    /// <summary>UUID objects (universally unique identifiers) according to RFC 4122.</summary>
     [SharpyModule("uuid")]
     public static partial class UuidModule
     { }

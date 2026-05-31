@@ -4,14 +4,26 @@ using System.Net.Sockets;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Represents an IPv4 address.
+    /// </summary>
     [SharpyModuleType("ipaddress")]
     public sealed class IPv4Address : IComparable<IPv4Address>, IEquatable<IPv4Address>
     {
         private readonly uint _value;
 
+        /// <summary>
+        /// Gets the IP version number.
+        /// </summary>
         public int Version => 4;
+        /// <summary>
+        /// Gets the maximum prefix length for IPv4 addresses.
+        /// </summary>
         public int MaxPrefixlen => 32;
 
+        /// <summary>
+        /// Gets whether the address is in a private-use range.
+        /// </summary>
         public bool IsPrivate
         {
             get
@@ -28,8 +40,14 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets whether the address is a loopback address.
+        /// </summary>
         public bool IsLoopback => (_value >> 24) == 127;
 
+        /// <summary>
+        /// Gets whether the address is a multicast address.
+        /// </summary>
         public bool IsMulticast
         {
             get
@@ -39,8 +57,14 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets whether the address is in a reserved range.
+        /// </summary>
         public bool IsReserved => (_value >> 24) >= 240;
 
+        /// <summary>
+        /// Gets whether the address is a link-local address.
+        /// </summary>
         public bool IsLinkLocal
         {
             get
@@ -51,10 +75,19 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets whether the address is globally reachable.
+        /// </summary>
         public bool IsGlobal => !IsPrivate && !IsLoopback && !IsLinkLocal && !IsMulticast && !IsReserved && !IsUnspecified;
 
+        /// <summary>
+        /// Gets whether the address is the unspecified address.
+        /// </summary>
         public bool IsUnspecified => _value == 0;
 
+        /// <summary>
+        /// Gets the packed binary representation of the address.
+        /// </summary>
         public Bytes Packed
         {
             get
@@ -69,10 +102,16 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Gets the canonical string form of the address.
+        /// </summary>
         public string Compressed => ToString();
 
         internal uint Value => _value;
 
+        /// <summary>
+        /// Initializes an IPv4 address from its string representation.
+        /// </summary>
         public IPv4Address(string address)
         {
             if (!IPAddress.TryParse(address, out IPAddress? parsed) ||
@@ -83,6 +122,9 @@ namespace Sharpy
             _value = BytesToUint(parsed.GetAddressBytes());
         }
 
+        /// <summary>
+        /// Initializes an IPv4 address from its integer value.
+        /// </summary>
         public IPv4Address(long address)
         {
             if (address < 0 || address > 0xFFFFFFFF)
@@ -92,6 +134,9 @@ namespace Sharpy
             _value = (uint)address;
         }
 
+        /// <summary>
+        /// Initializes an IPv4 address from its packed 4-byte representation.
+        /// </summary>
         public IPv4Address(Bytes packed)
         {
             if (packed.Length != 4)
@@ -111,11 +156,17 @@ namespace Sharpy
             _value = value;
         }
 
+        /// <summary>
+        /// Returns the integer value of the address.
+        /// </summary>
         public long ToInt()
         {
             return _value;
         }
 
+        /// <summary>
+        /// Returns the dotted-decimal string form of the address.
+        /// </summary>
         public override string ToString()
         {
             return ((_value >> 24) & 0xFF) + "." +
@@ -124,21 +175,33 @@ namespace Sharpy
                    (_value & 0xFF);
         }
 
+        /// <summary>
+        /// Returns a hash code for the address.
+        /// </summary>
         public override int GetHashCode()
         {
             return (int)_value;
         }
 
+        /// <summary>
+        /// Determines whether the specified object is the same IPv4 address.
+        /// </summary>
         public override bool Equals(object? obj)
         {
             return obj is IPv4Address other && _value == other._value;
         }
 
+        /// <summary>
+        /// Determines whether the specified address is the same IPv4 address.
+        /// </summary>
         public bool Equals(IPv4Address? other)
         {
             return other != null && _value == other._value;
         }
 
+        /// <summary>
+        /// Compares this address with another IPv4 address.
+        /// </summary>
         public int CompareTo(IPv4Address? other)
         {
             if (other == null)
@@ -146,6 +209,9 @@ namespace Sharpy
             return _value.CompareTo(other._value);
         }
 
+        /// <summary>
+        /// Returns a new address offset forward by the specified number of addresses.
+        /// </summary>
         public static IPv4Address operator +(IPv4Address addr, int offset)
         {
             long result = (long)addr._value + offset;
@@ -156,6 +222,9 @@ namespace Sharpy
             return new IPv4Address((uint)result);
         }
 
+        /// <summary>
+        /// Returns a new address offset backward by the specified number of addresses.
+        /// </summary>
         public static IPv4Address operator -(IPv4Address addr, int offset)
         {
             long result = (long)addr._value - offset;
@@ -166,16 +235,34 @@ namespace Sharpy
             return new IPv4Address((uint)result);
         }
 
+        /// <summary>
+        /// Determines whether one IPv4 address sorts before another.
+        /// </summary>
         public static bool operator <(IPv4Address left, IPv4Address right) => left._value < right._value;
+        /// <summary>
+        /// Determines whether one IPv4 address sorts after another.
+        /// </summary>
         public static bool operator >(IPv4Address left, IPv4Address right) => left._value > right._value;
+        /// <summary>
+        /// Determines whether one IPv4 address sorts before or the same as another.
+        /// </summary>
         public static bool operator <=(IPv4Address left, IPv4Address right) => left._value <= right._value;
+        /// <summary>
+        /// Determines whether one IPv4 address sorts after or the same as another.
+        /// </summary>
         public static bool operator >=(IPv4Address left, IPv4Address right) => left._value >= right._value;
+        /// <summary>
+        /// Determines whether two IPv4 addresses are equal.
+        /// </summary>
         public static bool operator ==(IPv4Address? left, IPv4Address? right)
         {
             if (left is null)
                 return right is null;
             return left.Equals(right);
         }
+        /// <summary>
+        /// Determines whether two IPv4 addresses are not equal.
+        /// </summary>
         public static bool operator !=(IPv4Address? left, IPv4Address? right) => !(left == right);
 
         internal static uint BytesToUint(byte[] bytes)
