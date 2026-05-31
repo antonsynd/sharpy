@@ -6,21 +6,21 @@
 
 | Benchmark | Python | Sharpy | C# | Spy/Py | Spy/C# |
 |-----------|--------|--------|-----|--------|--------|
-| fibonacci | 207ms | 1.29s | FAIL | 6.25x | — |
-| list_comprehensions | 57ms | 1.55s | FAIL | 27.32x | — |
-| matrix_multiply | 740ms | 1.91s | FAIL | 2.58x | — |
-| sorting | 179ms | 1.89s | FAIL | 10.58x | — |
-| string_ops | 166ms | 1.53s | FAIL | 9.23x | — |
+| fibonacci | 204ms | 1.27s | FAIL | 6.23x | — |
+| list_comprehensions | 56ms | 1.53s | FAIL | 27.29x | — |
+| matrix_multiply | 745ms | 1.89s | FAIL | 2.54x | — |
+| sorting | 177ms | 1.84s | FAIL | 10.40x | — |
+| string_ops | 166ms | 1.48s | FAIL | 8.93x | — |
 
 ## Compilation Time
 
 | Benchmark | Python (.pyc) | Sharpy (.spy→C#) | C# (dotnet build) | Spy/C# |
 |-----------|---------------|------------------|-------------------|--------|
-| fibonacci | 560us | 655ms | 1.36s | 0.48x |
-| list_comprehensions | 509us | 687ms | 1.36s | 0.50x |
-| matrix_multiply | 728us | 696ms | 1.41s | 0.49x |
-| sorting | 565us | 743ms | 1.40s | 0.53x |
-| string_ops | 432us | 686ms | 1.39s | 0.49x |
+| fibonacci | 511us | 641ms | 1.45s | 0.44x |
+| list_comprehensions | 498us | 665ms | 1.34s | 0.50x |
+| matrix_multiply | 656us | 684ms | 1.35s | 0.51x |
+| sorting | 582us | 730ms | 1.33s | 0.55x |
+| string_ops | 433us | 668ms | 1.35s | 0.49x |
 
 > **Spy/Py < 1.0** = Sharpy execution faster than Python. **Spy/C# ≈ 1.0** = minimal overhead vs hand-written C#.
 
