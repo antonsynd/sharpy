@@ -213,8 +213,7 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     )
     elapsed = time.perf_counter() - start
     if result.returncode != 0:
-        # Include full output for diagnosis (limited to 1000 chars)
-        full = f"STDERR: {result.stderr[:500]}\nSTDOUT: {result.stdout[:500]}"
+        full = f"STDERR: {result.stderr[:1000]}\nSTDOUT: {result.stdout[:1000]}"
         return elapsed, False, full, tmp_dir
     return elapsed, True, "", tmp_dir
 
