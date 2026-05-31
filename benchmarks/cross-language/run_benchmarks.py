@@ -192,10 +192,9 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     env = os.environ.copy()
     env["DOTNET_CLI_HOME"] = str(tmp_dir)
     env["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
-    # MSBuildProjectExtensionsPath controls where obj/ goes
-    # BaseIntermediateOutputPath must also be set to prevent interference
+    # Build with maximum isolation
     result = subprocess.run(
-        ["dotnet", "build", str(proj_path), "-c", "Release", "--nologo", "-v", "q",
+        ["dotnet", "build", str(proj_path), "-c", "Release", "--nologo",
          f"-o", str(tmp_dir / "out"),
          f"/p:BaseIntermediateOutputPath={tmp_dir / 'obj'}/",
          "/p:ImportDirectoryBuildProps=false",
@@ -205,8 +204,9 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     )
     elapsed = time.perf_counter() - start
     if result.returncode != 0:
-        err = result.stderr[:500] or result.stdout[:500] or f"exit code {result.returncode}"
-        return elapsed, False, err, tmp_dir
+        # Include full output for diagnosis (limited to 1000 chars)
+        full = f"STDERR: {result.stderr[:500]}\nSTDOUT: {result.stdout[:500]}"
+        return elapsed, False, full, tmp_dir
     return elapsed, True, "", tmp_dir
 
 
