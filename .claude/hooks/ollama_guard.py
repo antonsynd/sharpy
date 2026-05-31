@@ -3,6 +3,48 @@ import sys
 import json
 import re
 import urllib.request
+import os
+from collections import deque
+from datetime import datetime
+
+# Configuration for local logging
+LOG_FILE = os.path.expanduser("~/.claude/hooks/guard_history.json")
+MAX_LOG_ENTRIES = 50  # Keeps the last 50 decisions
+
+def log_decision(tool_name: str, command: str, source: str, decision: str):
+    """Logs the decision to a local JSON file using a fixed-capacity deque."""
+    entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "tool": tool_name,
+        "source": source,
+        "decision": decision,
+        "command": command[:1000]  # Cap length to prevent massive write payloads
+    }
+
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+
+    history = []
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, "r") as f:
+                history = json.load(f)
+                if not isinstance(history, list):
+                    history = []
+        except Exception:
+            history = []
+
+    # Use deque with maxlen to enforce the rolling window limit automatically
+    history_deque = deque(history, maxlen=MAX_LOG_ENTRIES)
+    history_deque.append(entry)
+
+    try:
+        with open(LOG_FILE, "w") as f:
+            json.dump(list(history_deque), f, indent=2)
+    except Exception as e:
+        # Fail silently to prevent hook crashes from breaking Claude Code execution
+        sys.stderr.write(f"Guardrail logging error: {e}\n")
+
 
 def main():
     try:
@@ -36,7 +78,7 @@ Decision:"""
     req = urllib.request.Request(
         "http://localhost:11434/api/generate",
         data=json.dumps({
-            "model": "qwen2.5:7b", # Change to your preferred 7B/8B model
+            "model": "qwen2.5:7b",
             "prompt": prompt,
             "stream": False,
             "options": {"temperature": 0.0, "num_predict": 5}
@@ -49,11 +91,12 @@ Decision:"""
             result = json.loads(response.read().decode())
             decision = result.get("response", "").strip().upper()
     except Exception:
-        # Fallback safety check if Ollama is down
-        fallback(command)
+        # Fallback safety check if Ollama is down/timeouts
+        evaluate_fallback(tool_name, command, source="Fallback (Ollama Down)")
         sys.exit(0)
 
     if "DENY" in decision:
+        log_decision(tool_name, command, source="Ollama", decision="DENY")
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -62,6 +105,7 @@ Decision:"""
             }
         }))
     elif "ALLOW" in decision:
+        log_decision(tool_name, command, source="Ollama", decision="ALLOW")
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -70,19 +114,25 @@ Decision:"""
             }
         }))
     else:
-        fallback(command)
+        # Fallback if Ollama returns unparseable junk data
+        evaluate_fallback(tool_name, command, source="Fallback (Ollama Output Invalid)")
         sys.exit(0)
 
 
-def fallback(command: str):
+def evaluate_fallback(tool_name: str, command: str, source: str):
+    """Checks regex rules; logs and blocks if dangerous, otherwise logs manual prompt request."""
     if re.search(r"rm\s+(?:-rf|-fr|-r\s+-f|-f\s+-f|--no-preserve-root)", command):
+        log_decision(tool_name, command, source=source, decision="DENY")
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
-                "permissionDecisionReason": "Destructive command blocked by fallback hook (Ollama down)"
+                "permissionDecisionReason": f"Destructive command blocked by backup regex rule ({source})"
             }
         }))
+    else:
+        # Command did not trigger a dangerous regex pattern, so Claude defaults to prompting you manually
+        log_decision(tool_name, command, source=source, decision="PROMPT")
 
 if __name__ == "__main__":
     main()
