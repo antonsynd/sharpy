@@ -47,7 +47,7 @@ idiomatic hand-written code (not hyper-optimized). Benchmarks run weekly on `ubu
     return;
   }
 
-  // Render table
+  // Render tables
   if (latest && latest.length > 0) {
     const benchmarks = {};
     latest.forEach(r => {
@@ -55,27 +55,47 @@ idiomatic hand-written code (not hyper-optimized). Benchmarks run weekly on `ubu
       benchmarks[r.name][r.language] = r;
     });
 
-    function fmt(r) {
-      if (!r || !r.success) return 'FAIL';
-      const s = r.elapsed_seconds;
+    function fmt(s) {
+      if (!s || s === 0) return '—';
+      if (s < 0.001) return `${(s * 1000000).toFixed(0)}us`;
       if (s < 1.0) return `${(s * 1000).toFixed(0)}ms`;
       return `${s.toFixed(2)}s`;
     }
 
-    let html = '<table><thead><tr><th>Benchmark</th><th>Python</th><th>Sharpy</th><th>C#</th><th>Spy/Py</th><th>Spy/C#</th></tr></thead><tbody>';
+    function ratio(a, b) {
+      return (a > 0 && b > 0) ? `${(a / b).toFixed(2)}x` : '—';
+    }
+
+    // Execution time table
+    let html = '<h3>Execution Time (runtime only)</h3>';
+    html += '<table><thead><tr><th>Benchmark</th><th>Python</th><th>Sharpy</th><th>C#</th><th>Spy/Py</th><th>Spy/C#</th></tr></thead><tbody>';
     Object.keys(benchmarks).sort().forEach(name => {
       const langs = benchmarks[name];
       const py = langs['Python'] || {};
       const spy = langs['Sharpy'] || {};
       const cs = langs['C#'] || {};
-      const pyT = py.success ? py.elapsed_seconds : 0;
-      const spyT = spy.success ? spy.elapsed_seconds : 0;
-      const csT = cs.success ? cs.elapsed_seconds : 0;
-      const ratioPy = (pyT > 0 && spyT > 0) ? `${(spyT / pyT).toFixed(2)}x` : '—';
-      const ratioCs = (csT > 0 && spyT > 0) ? `${(spyT / csT).toFixed(2)}x` : '—';
-      html += `<tr><td><strong>${name}</strong></td><td>${fmt(py)}</td><td>${fmt(spy)}</td><td>${fmt(cs)}</td><td>${ratioPy}</td><td>${ratioCs}</td></tr>`;
+      const pyT = py.success ? (py.execute_seconds || py.elapsed_seconds || 0) : 0;
+      const spyT = spy.success ? (spy.execute_seconds || spy.elapsed_seconds || 0) : 0;
+      const csT = cs.success ? (cs.execute_seconds || cs.elapsed_seconds || 0) : 0;
+      html += `<tr><td><strong>${name}</strong></td><td>${py.success ? fmt(pyT) : 'FAIL'}</td><td>${spy.success ? fmt(spyT) : 'FAIL'}</td><td>${cs.success ? fmt(csT) : 'FAIL'}</td><td>${ratio(spyT, pyT)}</td><td>${ratio(spyT, csT)}</td></tr>`;
     });
     html += '</tbody></table>';
+
+    // Compilation time table
+    html += '<h3>Compilation Time</h3>';
+    html += '<table><thead><tr><th>Benchmark</th><th>Python (.pyc)</th><th>Sharpy (.spy→C#)</th><th>C# (dotnet build)</th><th>Spy/C#</th></tr></thead><tbody>';
+    Object.keys(benchmarks).sort().forEach(name => {
+      const langs = benchmarks[name];
+      const py = langs['Python'] || {};
+      const spy = langs['Sharpy'] || {};
+      const cs = langs['C#'] || {};
+      const pyC = py.compile_seconds || 0;
+      const spyC = spy.compile_seconds || 0;
+      const csC = cs.compile_seconds || 0;
+      html += `<tr><td><strong>${name}</strong></td><td>${fmt(pyC)}</td><td>${fmt(spyC)}</td><td>${fmt(csC)}</td><td>${ratio(spyC, csC)}</td></tr>`;
+    });
+    html += '</tbody></table>';
+
     document.getElementById('benchmark-table').innerHTML = html;
   }
 
@@ -89,8 +109,10 @@ idiomatic hand-written code (not hyper-optimized). Benchmarks run weekly on `ubu
       const data = history.map(h => {
         const spy = h.results.find(r => r.name === name && r.language === 'Sharpy');
         const py = h.results.find(r => r.name === name && r.language === 'Python');
-        if (spy && spy.success && py && py.success && py.elapsed_seconds > 0) {
-          return (spy.elapsed_seconds / py.elapsed_seconds);
+        if (spy && spy.success && py && py.success) {
+          const spyT = spy.execute_seconds || spy.elapsed_seconds || 0;
+          const pyT = py.execute_seconds || py.elapsed_seconds || 0;
+          return pyT > 0 ? (spyT / pyT) : null;
         }
         return null;
       });

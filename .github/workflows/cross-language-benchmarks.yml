@@ -53,11 +53,28 @@ jobs:
         for r in results:
             benchmarks.setdefault(r["name"], {})[r["language"]] = r
 
-        # Write markdown report
+        def fmt(seconds):
+            if seconds == 0:
+                return "—"
+            if seconds < 0.001:
+                return f"{seconds*1_000_000:.0f}us"
+            if seconds < 1.0:
+                return f"{seconds*1000:.0f}ms"
+            return f"{seconds:.2f}s"
+
+        def ratio(a, b):
+            if a > 0 and b > 0:
+                return f"{a/b:.2f}x"
+            return "—"
+
+        # Execution time table
         lines = [
             f"# Cross-Language Benchmark Results ({now})",
             "",
-            f"**Runner:** `ubuntu-latest` | **Python:** 3.12 | **.NET:** 10.0",
+            f"**Runner:** `ubuntu-latest` | **Python:** 3.12 | **.NET:** 10.0 | "
+            f"**Runs:** 3 (median) + warmup",
+            "",
+            "## Execution Time (runtime only)",
             "",
             "| Benchmark | Python | Sharpy | C# | Spy/Py | Spy/C# |",
             "|-----------|--------|--------|-----|--------|--------|",
@@ -69,26 +86,40 @@ jobs:
             spy = langs.get("Sharpy", {})
             cs = langs.get("C#", {})
 
-            def fmt(r):
-                if not r or not r.get("success"):
-                    return "FAIL"
-                s = r["elapsed_seconds"]
-                if s < 1.0:
-                    return f"{s*1000:.0f}ms"
-                return f"{s:.2f}s"
+            py_t = py.get("execute_seconds", 0) if py.get("success") else 0
+            spy_t = spy.get("execute_seconds", 0) if spy.get("success") else 0
+            cs_t = cs.get("execute_seconds", 0) if cs.get("success") else 0
 
-            py_t = py.get("elapsed_seconds", 0) if py.get("success") else 0
-            spy_t = spy.get("elapsed_seconds", 0) if spy.get("success") else 0
-            cs_t = cs.get("elapsed_seconds", 0) if cs.get("success") else 0
+            py_s = fmt(py_t) if py.get("success") else "FAIL"
+            spy_s = fmt(spy_t) if spy.get("success") else "FAIL"
+            cs_s = fmt(cs_t) if cs.get("success") else "FAIL"
 
-            ratio_py = f"{spy_t/py_t:.2f}x" if py_t > 0 and spy_t > 0 else "—"
-            ratio_cs = f"{spy_t/cs_t:.2f}x" if cs_t > 0 and spy_t > 0 else "—"
+            lines.append(f"| {name} | {py_s} | {spy_s} | {cs_s} | {ratio(spy_t, py_t)} | {ratio(spy_t, cs_t)} |")
 
-            lines.append(f"| {name} | {fmt(py)} | {fmt(spy)} | {fmt(cs)} | {ratio_py} | {ratio_cs} |")
+        # Compilation time table
+        lines += [
+            "",
+            "## Compilation Time",
+            "",
+            "| Benchmark | Python (.pyc) | Sharpy (.spy→C#) | C# (dotnet build) | Spy/C# |",
+            "|-----------|---------------|------------------|-------------------|--------|",
+        ]
+
+        for name in sorted(benchmarks):
+            langs = benchmarks[name]
+            py = langs.get("Python", {})
+            spy = langs.get("Sharpy", {})
+            cs = langs.get("C#", {})
+
+            py_t = py.get("compile_seconds", 0)
+            spy_t = spy.get("compile_seconds", 0)
+            cs_t = cs.get("compile_seconds", 0)
+
+            lines.append(f"| {name} | {fmt(py_t)} | {fmt(spy_t)} | {fmt(cs_t)} | {ratio(spy_t, cs_t)} |")
 
         lines += [
             "",
-            "> **Spy/Py < 1.0** = Sharpy faster than Python. "
+            "> **Spy/Py < 1.0** = Sharpy execution faster than Python. "
             "**Spy/C# ≈ 1.0** = minimal overhead vs hand-written C#.",
             "",
             "---",
