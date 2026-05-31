@@ -167,18 +167,19 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Optimize>true</Optimize>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>CS8981</NoWarn>
   </PropertyGroup>
 </Project>"""
     proj_path = tmp_dir / "bench.csproj"
     proj_path.write_text(proj_content)
     shutil.copy2(cs_file, tmp_dir / "bench.cs")
 
-    # Also write a Directory.Build.props to block inheritance from parent dirs
-    (tmp_dir / "Directory.Build.props").write_text(
-        '<Project><PropertyGroup><TreatWarningsAsErrors>false</TreatWarningsAsErrors></PropertyGroup></Project>'
-    )
+    # Block inheritance from any parent Directory.Build.props/targets
+    (tmp_dir / "Directory.Build.props").write_text('<Project></Project>')
+    (tmp_dir / "Directory.Build.targets").write_text('<Project></Project>')
 
     start = time.perf_counter()
     result = subprocess.run(
