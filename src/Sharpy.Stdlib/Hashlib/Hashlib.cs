@@ -10,10 +10,14 @@ using global::Sharpy;
 
 namespace Sharpy
 {
-    /// <summary>Provides hash constructors similar to Python's hashlib module.</summary>
+    /// <summary>
+    /// Secure hash and message digest algorithms (MD5, SHA-1, SHA-2 family).
+    /// </summary>
     public static partial class HashlibModule
     {
-        /// <summary>Create an MD5 hash object, optionally seeded with data.</summary>
+        /// <summary>
+        /// Return a new hash object for MD5, optionally initialized with data.
+        /// </summary>
         public static global::Sharpy.HashObject Md5(string data = "")
         {
             global::Sharpy.HashObject obj = new global::Sharpy.HashObject("md5", 16);
@@ -25,7 +29,9 @@ namespace Sharpy
             return obj;
         }
 
-        /// <summary>Create a SHA-1 hash object, optionally seeded with data.</summary>
+        /// <summary>
+        /// Return a new hash object for SHA-1, optionally initialized with data.
+        /// </summary>
         public static global::Sharpy.HashObject Sha1(string data = "")
         {
             global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha1", 20);
@@ -37,7 +43,9 @@ namespace Sharpy
             return obj;
         }
 
-        /// <summary>Create a SHA-256 hash object, optionally seeded with data.</summary>
+        /// <summary>
+        /// Return a new hash object for SHA-256, optionally initialized with data.
+        /// </summary>
         public static global::Sharpy.HashObject Sha256(string data = "")
         {
             global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha256", 32);
@@ -49,7 +57,9 @@ namespace Sharpy
             return obj;
         }
 
-        /// <summary>Create a SHA-384 hash object, optionally seeded with data.</summary>
+        /// <summary>
+        /// Return a new hash object for SHA-384, optionally initialized with data.
+        /// </summary>
         public static global::Sharpy.HashObject Sha384(string data = "")
         {
             global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha384", 48);
@@ -61,7 +71,9 @@ namespace Sharpy
             return obj;
         }
 
-        /// <summary>Create a SHA-512 hash object, optionally seeded with data.</summary>
+        /// <summary>
+        /// Return a new hash object for SHA-512, optionally initialized with data.
+        /// </summary>
         public static global::Sharpy.HashObject Sha512(string data = "")
         {
             global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha512", 64);

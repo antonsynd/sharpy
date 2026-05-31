@@ -11,7 +11,7 @@ using global::Sharpy;
 namespace Sharpy
 {
     /// <summary>
-    /// Heap queue algorithm (priority queue), equivalent to Python's heapq module.
+    /// Heap queue algorithm (priority queue).
     /// </summary>
     public static partial class Heapq
     {

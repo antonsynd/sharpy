@@ -10,7 +10,9 @@ using global::Sharpy;
 
 namespace Sharpy
 {
-    /// <summary>Functions creating iterators for efficient looping.</summary>
+    /// <summary>
+    /// Functions creating iterators for efficient looping.
+    /// </summary>
     public static partial class Itertools
     {
         /// <summary>

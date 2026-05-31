@@ -11,7 +11,7 @@ using global::Sharpy;
 namespace Sharpy
 {
     /// <summary>
-    /// High-level file operations, equivalent to Python's shutil module.
+    /// High-level file operations (copy, move, remove trees).
     /// </summary>
     public static partial class ShutilModule
     {
@@ -136,7 +136,7 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Resolve the destination path, appending the source filename if dst is a directory.
+        /// Resolve the final destination path, appending the source filename if dst is a directory.
         /// </summary>
         public static string _ResolveDestination(string src, string dst)
         {
@@ -149,7 +149,7 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Recursively copy all files and subdirectories from src to dst.
+        /// Recursively copy a directory tree from src to dst.
         /// </summary>
         public static void _CopyDirectoryRecursive(string src, string dst)
         {

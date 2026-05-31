@@ -11,19 +11,14 @@ using global::Sharpy;
 namespace Sharpy
 {
     /// <summary>
-    /// Provides mathematical functions and constants, equivalent to Python's math module.
+    /// Mathematical functions (trigonometric, logarithmic, etc.).
     /// </summary>
     public static partial class MathModule
     {
-        /// <summary>The mathematical constant pi = 3.141592653589793.</summary>
         public static double Pi = 3.141592653589793d;
-        /// <summary>The mathematical constant e = 2.718281828459045.</summary>
         public static double E = 2.718281828459045d;
-        /// <summary>The mathematical constant tau = 2*pi = 6.283185307179586.</summary>
         public static double Tau = 6.283185307179586d;
-        /// <summary>A floating-point positive infinity.</summary>
         public static double Inf = global::System.Double.PositiveInfinity;
-        /// <summary>A floating-point "not a number" (NaN) value.</summary>
         public static double Nan = global::System.Double.NaN;
         /// <summary>
         /// Return the ceiling of x as a float.

@@ -11,7 +11,7 @@ using global::Sharpy;
 namespace Sharpy
 {
     /// <summary>
-    /// Generate temporary files and directories, equivalent to Python's tempfile module.
+    /// Generate temporary files and directories.
     /// </summary>
     public static partial class TempfileModule
     {

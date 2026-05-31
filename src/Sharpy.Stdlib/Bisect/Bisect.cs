@@ -11,7 +11,7 @@ using global::Sharpy;
 namespace Sharpy
 {
     /// <summary>
-    /// Array bisection algorithm for maintaining sorted lists, equivalent to Python's bisect module.
+    /// Array bisection algorithm for maintaining sorted lists.
     /// </summary>
     public static partial class BisectModule
     {

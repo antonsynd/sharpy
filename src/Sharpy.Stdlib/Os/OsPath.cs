@@ -11,7 +11,7 @@ using global::Sharpy;
 namespace Sharpy
 {
     /// <summary>
-    /// Provides common pathname manipulations, equivalent to Python's os.path module.
+    /// Common pathname manipulations (os.path equivalent).
     /// </summary>
     public static partial class OsPathModule
     {

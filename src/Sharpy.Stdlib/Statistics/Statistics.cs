@@ -11,7 +11,7 @@ using global::Sharpy;
 namespace Sharpy
 {
     /// <summary>
-    /// Provides statistical functions matching Python's <c>statistics</c> module.
+    /// Mathematical statistics functions (mean, median, variance, etc.).
     /// </summary>
     public static partial class Statistics
     {
@@ -170,7 +170,7 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Copy data into a list and throw if empty.
+        /// Copy data to a new list, raising StatisticsError if empty.
         /// </summary>
         public static Sharpy.List<double> _Materialize(Sharpy.List<double> data)
         {
@@ -184,7 +184,7 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Copy data into a sorted list and throw if empty.
+        /// Copy data to a sorted list, raising StatisticsError if empty.
         /// </summary>
         public static Sharpy.List<double> _MaterializeSorted(Sharpy.List<double> data)
         {
@@ -209,7 +209,7 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return the sum of squared deviations from the mean <paramref name="m"/>.
+        /// Return the sum of squared deviations from the mean m.
         /// </summary>
         public static double _SumOfSquaredDeviations(Sharpy.List<double> values, double m)
         {

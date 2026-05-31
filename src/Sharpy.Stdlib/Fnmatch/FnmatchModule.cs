@@ -11,7 +11,7 @@ using global::Sharpy;
 namespace Sharpy
 {
     /// <summary>
-    /// Unix filename pattern matching, equivalent to Python's fnmatch module.
+    /// Unix shell-style filename pattern matching.
     /// </summary>
     public static partial class FnmatchModule
     {

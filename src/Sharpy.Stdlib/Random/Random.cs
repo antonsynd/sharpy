@@ -11,11 +11,10 @@ using global::Sharpy;
 namespace Sharpy
 {
     /// <summary>
-    /// Provides functions for generating random numbers, equivalent to Python's random module.
+    /// Generate pseudo-random numbers with various distributions.
     /// </summary>
     public static partial class RandomModule
     {
-        /// <summary>The underlying random number generator instance.</summary>
         public static global::System.Random _Random = new global::System.Random();
         /// <summary>
         /// Initialize the random number generator with the given seed.
