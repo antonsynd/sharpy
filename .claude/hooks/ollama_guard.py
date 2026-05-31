@@ -121,7 +121,7 @@ Decision:"""
 
 def evaluate_fallback(tool_name: str, command: str, source: str):
     """Checks regex rules; logs and blocks if dangerous, otherwise logs manual prompt request."""
-    if re.search(r"rm\s+(?:-rf|-fr|-r\s+-f|-f\s+-f|--no-preserve-root)", command):
+    if re.search(r"rm\s+(?:.*?\s)?(?:-rf|-fr|-r\s+-f|-f\s+-f|--no-preserve-root)\s+(?:.*?\s)?(?:/|/(?:bin|boot|dev|cores|home|private|opt|etc|lib|proc|root|sbin|sys|usr|var|Users|Volumes|Library|System|Applications)/?|~|\$HOME)(?:/\*|\*)?(?:$|\s)", command):
         log_decision(tool_name, command, source=source, decision="DENY")
         print(json.dumps({
             "hookSpecificOutput": {
