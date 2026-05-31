@@ -49,6 +49,8 @@ jobs:
         python -m pip install --upgrade pip
         # Install sharpy_auto_builder as editable package
         pip install -e "build_tools/sharpy_auto_builder[dev]"
+        # click is required by the build_tools CLI (used by the stdlib docs check)
+        pip install click
 
     - name: Run tests with pytest
       env:
