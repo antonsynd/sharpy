@@ -160,8 +160,10 @@ def execute_sharpy(cli_dll: Path, spy_file: Path) -> tuple[float, bool, str]:
 # --- C# ---
 
 def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
-    """Compile .cs to executable. Returns (time, success, error, exe_dir)."""
+    """Compile .cs to executable using dotnet build in a fully isolated project."""
     cs_file = bench_dir / "bench.cs"
+
+    # Create a completely standalone project with no inheritance
     proj_content = """<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -177,17 +179,21 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     proj_path.write_text(proj_content)
     shutil.copy2(cs_file, tmp_dir / "bench.cs")
 
-    # Block inheritance from any parent Directory.Build.props/targets
+    # Block ALL MSBuild directory traversal
     (tmp_dir / "Directory.Build.props").write_text('<Project></Project>')
     (tmp_dir / "Directory.Build.targets").write_text('<Project></Project>')
+    (tmp_dir / "Directory.Packages.props").write_text('<Project></Project>')
 
     start = time.perf_counter()
+    # Use --no-restore to avoid NuGet interference, and set MSBuildProjectExtensionsPath
+    # to keep obj/ inside the temp dir. Run from the temp dir with explicit isolation flags.
+    env = os.environ.copy()
+    env["DOTNET_CLI_HOME"] = str(tmp_dir)
+    env["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
     result = subprocess.run(
-        ["dotnet", "build", "-c", "Release", "--nologo", "-v", "q",
-         "/p:ImportDirectoryBuildProps=false",
-         "/p:ImportDirectoryBuildTargets=false",
-         "/p:ImportDirectoryPackagesProps=false"],
-        cwd=tmp_dir, capture_output=True, text=True, timeout=120
+        ["dotnet", "build", str(proj_path), "-c", "Release", "--nologo", "-v", "q",
+         f"-o", str(tmp_dir / "out")],
+        cwd=tmp_dir, capture_output=True, text=True, timeout=120, env=env
     )
     elapsed = time.perf_counter() - start
     if result.returncode != 0:
@@ -197,12 +203,18 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
 
 
 def execute_csharp(tmp_dir: Path) -> tuple[float, bool, str]:
-    """Execute pre-built C# benchmark using 'dotnet run --no-build'."""
+    """Execute pre-built C# benchmark."""
+    out_dir = tmp_dir / "out"
+    dll = out_dir / "bench.dll"
+    if not dll.exists():
+        found = list(out_dir.rglob("*.dll")) if out_dir.exists() else []
+        return 0.0, False, f"bench.dll not found in {out_dir}. Found: {[f.name for f in found[:5]]}"
+
     start = time.perf_counter()
     try:
         result = subprocess.run(
-            ["dotnet", "run", "-c", "Release", "--no-build"],
-            cwd=tmp_dir, capture_output=True, text=True, timeout=120
+            ["dotnet", str(dll)],
+            capture_output=True, text=True, timeout=120
         )
         elapsed = time.perf_counter() - start
         if result.returncode != 0:
