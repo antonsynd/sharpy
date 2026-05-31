@@ -247,4 +247,5 @@ nav:
     - Editor Integration: tooling/editor-integration.md
     - VS Code Extension: tooling/vscode-extension.md
     - LSP Server: tooling/lsp-server.md
+  - Benchmarks: benchmarks.md
   - Playground: https://antonsynd.github.io/sharpy/playground/

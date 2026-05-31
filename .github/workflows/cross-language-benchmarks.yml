@@ -118,6 +118,12 @@ jobs:
 
         SCRIPT
 
+    - name: Post to job summary
+      run: |
+        echo "## Cross-Language Benchmark Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        cat benchmarks/cross-language/results/latest.md >> $GITHUB_STEP_SUMMARY
+
     - name: Commit results
       run: |
         git config user.name "github-actions[bot]"
