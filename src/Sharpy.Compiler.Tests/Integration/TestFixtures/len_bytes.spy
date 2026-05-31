@@ -1,0 +1,4 @@
+def main():
+    b = b"hello"
+    print(len(b))
+    print(len(b""))
