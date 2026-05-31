@@ -1,6 +1,6 @@
 # hashlib
 
-Module exports for the hashlib module.
+Secure hash and message digest algorithms.
 
 ```python
 import hashlib

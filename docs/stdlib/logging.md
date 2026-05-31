@@ -1,6 +1,6 @@
 # logging
 
-Module exports for the logging module.
+Flexible event logging system for applications.
 
 ```python
 import logging

@@ -1,6 +1,6 @@
 # platform
 
-Module exports for the platform module.
+Access to underlying platform's identifying data.
 
 ```python
 import platform

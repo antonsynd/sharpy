@@ -25,13 +25,16 @@ internal static class ExplainCommand
         root.Subcommands.Add(command);
     }
 
-    static int HandleExplainCommand(string? code, bool list)
+    internal static int HandleExplainCommand(string? code, bool list, TextWriter? stdout = null, TextWriter? stderr = null)
     {
+        stdout ??= Console.Out;
+        stderr ??= Console.Error;
+
         if (list)
         {
             var all = DiagnosticExplanations.GetAll();
-            Console.WriteLine(CliHelpers.CliBold("Documented Diagnostic Codes:"));
-            Console.WriteLine(CliHelpers.CliColor(new string('=', 60), "36"));
+            stdout.WriteLine(CliHelpers.CliBold("Documented Diagnostic Codes:"));
+            stdout.WriteLine(CliHelpers.CliColor(new string('=', 60), "36"));
 
             string? lastCategory = null;
             foreach (var entry in all.OrderBy(e => e.Key, StringComparer.Ordinal))
@@ -39,26 +42,26 @@ internal static class ExplainCommand
                 if (entry.Value.Category != lastCategory)
                 {
                     if (lastCategory != null)
-                        Console.WriteLine();
+                        stdout.WriteLine();
                     var catColor = CliHelpers.CategoryColor(entry.Value.Category);
-                    Console.WriteLine($"  {CliHelpers.CliColor($"[{entry.Value.Category}]", catColor, bold: true)}");
+                    stdout.WriteLine($"  {CliHelpers.CliColor($"[{entry.Value.Category}]", catColor, bold: true)}");
                     lastCategory = entry.Value.Category;
                 }
                 var entryColor = CliHelpers.CategoryColor(entry.Value.Category);
-                Console.WriteLine($"    {CliHelpers.CliColor(entry.Key, entryColor)}  {entry.Value.Title}");
+                stdout.WriteLine($"    {CliHelpers.CliColor(entry.Key, entryColor)}  {entry.Value.Title}");
             }
 
-            Console.WriteLine(CliHelpers.CliColor(new string('=', 60), "36"));
-            Console.WriteLine($"Total: {CliHelpers.CliBold(all.Count.ToString())} documented codes");
+            stdout.WriteLine(CliHelpers.CliColor(new string('=', 60), "36"));
+            stdout.WriteLine($"Total: {CliHelpers.CliBold(all.Count.ToString())} documented codes");
             return 0;
         }
 
         if (string.IsNullOrWhiteSpace(code))
         {
-            Console.Error.WriteLine("Usage: sharpyc explain <code>");
-            Console.Error.WriteLine("       sharpyc explain --list");
-            Console.Error.WriteLine();
-            Console.Error.WriteLine("Example: sharpyc explain SPY0200");
+            stderr.WriteLine("Usage: sharpyc explain <code>");
+            stderr.WriteLine("       sharpyc explain --list");
+            stderr.WriteLine();
+            stderr.WriteLine("Example: sharpyc explain SPY0200");
             return 1;
         }
 
@@ -66,35 +69,35 @@ internal static class ExplainCommand
         var explanation = DiagnosticExplanations.Get(trimmedCode);
         if (explanation == null)
         {
-            Console.Error.WriteLine($"No explanation found for diagnostic code '{trimmedCode}'.");
-            Console.Error.WriteLine("Use 'sharpyc explain --list' to see all documented codes.");
+            stderr.WriteLine($"No explanation found for diagnostic code '{trimmedCode}'.");
+            stderr.WriteLine("Use 'sharpyc explain --list' to see all documented codes.");
             return 1;
         }
 
         var color = CliHelpers.CategoryColor(explanation.Category);
-        Console.WriteLine($"{CliHelpers.CliColor(explanation.Code, color, bold: true)}: {CliHelpers.CliBold(explanation.Title)}");
-        Console.WriteLine(CliHelpers.CliColor(new string('=', 60), "36"));
-        Console.WriteLine();
-        Console.WriteLine(explanation.Description);
+        stdout.WriteLine($"{CliHelpers.CliColor(explanation.Code, color, bold: true)}: {CliHelpers.CliBold(explanation.Title)}");
+        stdout.WriteLine(CliHelpers.CliColor(new string('=', 60), "36"));
+        stdout.WriteLine();
+        stdout.WriteLine(explanation.Description);
 
         if (explanation.Example != null)
         {
-            Console.WriteLine();
-            Console.WriteLine(CliHelpers.CliColor("Example:", "36", bold: true));
+            stdout.WriteLine();
+            stdout.WriteLine(CliHelpers.CliColor("Example:", "36", bold: true));
             foreach (var line in explanation.Example.Split('\n'))
-                Console.WriteLine($"  {line}");
+                stdout.WriteLine($"  {line}");
         }
 
         if (explanation.Fix != null)
         {
-            Console.WriteLine();
-            Console.WriteLine(CliHelpers.CliColor("Fix:", "36", bold: true));
+            stdout.WriteLine();
+            stdout.WriteLine(CliHelpers.CliColor("Fix:", "36", bold: true));
             foreach (var line in explanation.Fix.Split('\n'))
-                Console.WriteLine($"  {line}");
+                stdout.WriteLine($"  {line}");
         }
 
-        Console.WriteLine();
-        Console.WriteLine($"{CliHelpers.CliColor("Category:", "36", bold: true)} {CliHelpers.CliColor(explanation.Category, color, bold: true)}");
+        stdout.WriteLine();
+        stdout.WriteLine($"{CliHelpers.CliColor("Category:", "36", bold: true)} {CliHelpers.CliColor(explanation.Category, color, bold: true)}");
         return 0;
     }
 }

@@ -1,6 +1,6 @@
 # argparse
 
-Module exports for the argparse module.
+Command-line argument parsing.
 
 ```python
 import argparse

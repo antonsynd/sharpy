@@ -19,52 +19,52 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 
 | Module | Description |
 |--------|-------------|
-| [`argparse`](argparse.md) | Module exports for the argparse module. |
-| [`base64`](base64.md) | Module exports for the base64 module. |
+| [`argparse`](argparse.md) | Command-line argument parsing. |
+| [`base64`](base64.md) | RFC 4648 base16, base32, base64, and base85 data encodings. |
 | [`bisect`](bisect.md) | Array bisection algorithm for maintaining sorted lists. |
 | [`collections`](collections.md) | Specialized container datatypes: ChainMap, Counter, Deque, DefaultDict, OrderedDict. |
 | [`configparser`](configparser.md) | Configuration file parser similar to Python's configparser module. |
 | [`copy`](copy.md) |  |
-| [`csv`](csv.md) | Module exports for the csv module. |
+| [`csv`](csv.md) | CSV file reading and writing. |
 | [`datetime`](datetime.md) | Classes for working with dates and times. |
 | [`fnmatch`](fnmatch.md) | Unix shell-style filename pattern matching. |
 | [`functools`](functools.md) | Higher-order functions and operations on callable objects. |
 | [`glob`](glob.md) | Unix shell-style pathname pattern expansion. |
 | [`grapheme`](grapheme.md) | Unicode grapheme cluster iteration and string width calculation. |
 | [`gzip`](gzip.md) | Support for gzip compressed files. |
-| [`hashlib`](hashlib.md) | Module exports for the hashlib module. |
+| [`hashlib`](hashlib.md) | Secure hash and message digest algorithms. |
 | [`heapq`](heapq.md) | Heap queue (priority queue) algorithm. |
-| [`hmac`](hmac.md) | Module exports for the hmac module. |
-| [`io`](io.md) | Module exports for the io module. |
-| [`ipaddress`](ipaddress.md) |  |
+| [`hmac`](hmac.md) | Keyed-hashing for message authentication (HMAC). |
+| [`io`](io.md) | Core tools for working with streams and file-like objects. |
+| [`ipaddress`](ipaddress.md) | Functions to create and manipulate IPv4 and IPv6 addresses and networks. |
 | [`itertools`](itertools.md) | Functions creating iterators for efficient looping. |
 | [`json`](json.md) | JSON encoder and decoder. |
-| [`logging`](logging.md) | Module exports for the logging module. |
+| [`logging`](logging.md) | Flexible event logging system for applications. |
 | [`math`](math.md) | Mathematical functions. |
-| [`numpy`](numpy.md) |  |
+| [`numpy`](numpy.md) | Numerical computing with multi-dimensional arrays and mathematical operations. |
 | [`operator`](operator.md) |  |
 | [`os`](os.md) | Miscellaneous operating system interfaces. |
-| [`pathlib`](pathlib.md) | Module exports for the pathlib module. |
-| [`platform`](platform.md) | Module exports for the platform module. |
+| [`pathlib`](pathlib.md) | Object-oriented filesystem paths. |
+| [`platform`](platform.md) | Access to underlying platform's identifying data. |
 | [`random`](random.md) | Generate pseudo-random numbers with various distributions. |
 | [`re`](re.md) | Regular expression operations. |
-| [`requests`](requests.md) |  |
-| [`secrets`](secrets.md) | Module exports for the secrets module. |
-| [`shlex`](shlex.md) | Module exports for the shlex module. |
+| [`requests`](requests.md) | HTTP library for making requests (GET, POST, PUT, DELETE, etc.). |
+| [`secrets`](secrets.md) | Generate cryptographically strong random numbers suitable for managing secrets. |
+| [`shlex`](shlex.md) | Simple lexical analysis of shell-style syntaxes. |
 | [`shutil`](shutil.md) | Utility functions for copying and removal of files and directory trees. |
 | [`sqlite3`](sqlite3.md) | DB-API interface for SQLite databases. |
 | [`statistics`](statistics.md) | Mathematical statistics functions. |
 | [`string`](string.md) | Common string constants and operations. |
-| [`struct`](struct.md) | Module exports for the struct module. |
-| [`subprocess`](subprocess.md) | Module exports for the subprocess module. |
+| [`struct`](struct.md) | Interpret bytes as packed binary data. |
+| [`subprocess`](subprocess.md) | Subprocess management: spawn new processes, connect to their pipes, and obtain return codes. |
 | [`sys`](sys.md) | System-specific parameters and functions. |
 | [`tempfile`](tempfile.md) | Generate temporary files and directories. |
 | [`textwrap`](textwrap.md) | Text wrapping and filling. |
 | [`time`](time.md) | Time access and conversions. |
 | [`toml`](toml.md) | TOML configuration file parser and encoder. |
 | [`unittest`](unittest.md) | The unittest module provides a Pythonic testing API that the Sharpy compiler transforms into xUnit test infrastructure during code generation. |
-| [`urllib`](urllib.md) | Module exports for the urllib module. |
-| [`uuid`](uuid.md) | Module exports for the uuid module. |
+| [`urllib`](urllib.md) | URL parsing, quoting, and query string manipulation utilities. |
+| [`uuid`](uuid.md) | UUID objects (universally unique identifiers) according to RFC 4122. |
 | [`yaml`](yaml.md) | YAML parser and emitter. |
 | [`zipfile`](zipfile.md) | Read and write ZIP archive files. |
 | [`zlib`](zlib.md) | Compression and decompression using zlib. |

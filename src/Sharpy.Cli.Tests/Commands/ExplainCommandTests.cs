@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Sharpy.Cli.Commands;
 using Xunit;
 
 namespace Sharpy.Cli.Tests.Commands;
@@ -27,30 +28,39 @@ public class ExplainCommandTests
     [Fact]
     public void List_PrintsDocumentedCodes()
     {
-        var invocation = CliTestHarness.Invoke("explain --list");
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
 
-        invocation.ExitCode.Should().Be(0);
-        invocation.StdOut.Should().Contain("Documented Diagnostic Codes:");
-        invocation.StdOut.Should().Contain("Total:");
+        var exitCode = ExplainCommand.HandleExplainCommand(null, list: true, stdout, stderr);
+
+        exitCode.Should().Be(0);
+        stdout.ToString().Should().Contain("Documented Diagnostic Codes:");
+        stdout.ToString().Should().Contain("Total:");
     }
 
     [Fact]
     public void SpecificCode_PrintsExplanation()
     {
-        var invocation = CliTestHarness.Invoke("explain SPY0200");
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
 
-        invocation.ExitCode.Should().Be(0);
-        invocation.StdOut.Should().Contain("SPY0200");
-        invocation.StdOut.Should().Contain("Category:");
+        var exitCode = ExplainCommand.HandleExplainCommand("SPY0200", list: false, stdout, stderr);
+
+        exitCode.Should().Be(0);
+        stdout.ToString().Should().Contain("SPY0200");
+        stdout.ToString().Should().Contain("Category:");
     }
 
     [Fact]
     public void SpecificCode_IsCaseInsensitive()
     {
-        var invocation = CliTestHarness.Invoke("explain spy0200");
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
 
-        invocation.ExitCode.Should().Be(0);
-        invocation.StdOut.Should().Contain("SPY0200");
+        var exitCode = ExplainCommand.HandleExplainCommand("spy0200", list: false, stdout, stderr);
+
+        exitCode.Should().Be(0);
+        stdout.ToString().Should().Contain("SPY0200");
     }
 
     // ---- Invocation-level error tests ----
@@ -58,18 +68,24 @@ public class ExplainCommandTests
     [Fact]
     public void UnknownCode_ReturnsExitCode1()
     {
-        var invocation = CliTestHarness.Invoke("explain SPY9999");
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
 
-        invocation.ExitCode.Should().Be(1);
-        invocation.StdErr.Should().Contain("No explanation found");
+        var exitCode = ExplainCommand.HandleExplainCommand("SPY9999", list: false, stdout, stderr);
+
+        exitCode.Should().Be(1);
+        stderr.ToString().Should().Contain("No explanation found");
     }
 
     [Fact]
     public void NoCodeAndNoList_ReturnsExitCode1()
     {
-        var invocation = CliTestHarness.Invoke("explain");
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
 
-        invocation.ExitCode.Should().Be(1);
-        invocation.StdErr.Should().Contain("Usage:");
+        var exitCode = ExplainCommand.HandleExplainCommand(null, list: false, stdout, stderr);
+
+        exitCode.Should().Be(1);
+        stderr.ToString().Should().Contain("Usage:");
     }
 }

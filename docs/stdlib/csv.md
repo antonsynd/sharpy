@@ -1,6 +1,6 @@
 # csv
 
-Module exports for the csv module.
+CSV file reading and writing.
 
 ```python
 import csv

@@ -1,6 +1,6 @@
 # urllib
 
-Module exports for the urllib module.
+URL parsing, quoting, and query string manipulation utilities.
 
 ```python
 import urllib

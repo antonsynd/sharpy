@@ -1,6 +1,6 @@
 # io
 
-Module exports for the io module.
+Core tools for working with streams and file-like objects.
 
 ```python
 import io

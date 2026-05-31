@@ -1,6 +1,6 @@
 # struct
 
-Module exports for the struct module.
+Interpret bytes as packed binary data.
 
 ```python
 import struct

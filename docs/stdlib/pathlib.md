@@ -1,6 +1,6 @@
 # pathlib
 
-Module exports for the pathlib module.
+Object-oriented filesystem paths.
 
 ```python
 import pathlib
