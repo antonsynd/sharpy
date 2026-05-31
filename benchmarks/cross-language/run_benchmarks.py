@@ -183,7 +183,10 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
 
     start = time.perf_counter()
     result = subprocess.run(
-        ["dotnet", "build", "-c", "Release", "--nologo", "-v", "q"],
+        ["dotnet", "build", "-c", "Release", "--nologo", "-v", "q",
+         "/p:ImportDirectoryBuildProps=false",
+         "/p:ImportDirectoryBuildTargets=false",
+         "/p:ImportDirectoryPackagesProps=false"],
         cwd=tmp_dir, capture_output=True, text=True, timeout=120
     )
     elapsed = time.perf_counter() - start
