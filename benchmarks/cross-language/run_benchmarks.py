@@ -183,10 +183,19 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     proj_path.write_text(proj_content)
     shutil.copy2(cs_file, tmp_dir / "bench.cs")
 
-    # Block ALL MSBuild directory traversal
+    # Block ALL MSBuild directory traversal and NuGet source leakage
     (tmp_dir / "Directory.Build.props").write_text('<Project></Project>')
     (tmp_dir / "Directory.Build.targets").write_text('<Project></Project>')
     (tmp_dir / "Directory.Packages.props").write_text('<Project></Project>')
+    (tmp_dir / "nuget.config").write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<configuration>\n'
+        '  <packageSources>\n'
+        '    <clear />\n'
+        '    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />\n'
+        '  </packageSources>\n'
+        '</configuration>\n'
+    )
 
     start = time.perf_counter()
     env = os.environ.copy()
