@@ -144,6 +144,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 56**: `TransitionWarningValidator` — Transition hint diagnostics for Python/C# behavioral differences
 - **Order 60**: `DecoratorValidator` — Decorator validation
 - **Order 62**: `BodylessSyntaxValidator` — Deprecation warnings for body-less method syntax
+- **Order 65**: `SourceGeneratorValidator` — Source generator attribute validation
 - **Order 140**: `ConstructorOverloadValidator` — Duplicate constructor signatures
 - **Order 145**: `StructRulesValidator` — Struct constructor field initialization
 - **Order 147**: `EnumRulesValidator` — Enum value type consistency
@@ -190,7 +191,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 23 partial classes (~17,930 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Events.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.LruCache.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`.
+The `RoslynEmitter` is split into 25 files (~19,680 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Events.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.LruCache.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`, `.TestFixtures.cs`, `RoslynEmitterFactory.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -294,7 +295,7 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 
 ## Sharpy.Stdlib (Standard Library)
 
-- **37 stdlib modules** in `src/Sharpy.Stdlib/`: Argparse, Base64, Bisect, Collections, Csv, Datetime, Fnmatch, Functools, Glob, Grapheme, Hashlib, Heapq, Hmac, Io, Itertools, Json, Logging, Math, Numpy, Os, Pathlib, Random, Re, Requests, Secrets, Shutil, Sqlite3, Statistics, String, Sys, Tempfile, Textwrap, Time, Toml, Unittest, Uuid, Yaml
+- **47 stdlib modules** in `src/Sharpy.Stdlib/`: Argparse, Base64, Bisect, Collections, Configparser, Csv, Datetime, Fnmatch, Functools, Glob, Grapheme, Gzip, Hashlib, Heapq, Hmac, Io, Ipaddress, Itertools, Json, Logging, Math, Numpy, Os, Pathlib, Platform, Random, Re, Requests, Secrets, Shlex, Shutil, Sqlite3, Statistics, String, Struct, Subprocess, Sys, Tempfile, Textwrap, Time, Toml, Unittest, Urllib, Uuid, Yaml, Zipfile, Zlib
 - **Depends on Sharpy.Core** (ProjectReference), not the other way around
 - **NuGet deps**: MathNet.Numerics (numpy), Microsoft.Data.Sqlite (sqlite3)
 - **Multi-target**: `net10.0;netstandard2.1` (same as Core)
