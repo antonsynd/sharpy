@@ -97,8 +97,8 @@ def prebuild_sharpy_cli(verbose: bool = False) -> Path:
     )
     if result.returncode != 0:
         raise RuntimeError(f"Failed to build Sharpy CLI:\n{result.stderr[:500]}")
-    # Find the built dll
-    dll = CLI_PROJECT / "bin" / "Release" / "net10.0" / "Sharpy.Cli.dll"
+    # Find the built dll (assembly name is 'sharpyc', not 'Sharpy.Cli')
+    dll = CLI_PROJECT / "bin" / "Release" / "net10.0" / "sharpyc.dll"
     if not dll.exists():
         raise RuntimeError(f"CLI dll not found at {dll}")
     if verbose:
