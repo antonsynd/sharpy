@@ -229,7 +229,8 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
         int childPrec = GetExpressionPrecedence(obj);
         bool needsParens = childPrec < PrecPostfix
-            || obj is IntegerLiteral or FloatLiteral;
+            || obj is IntegerLiteral or FloatLiteral
+            || obj is StringLiteral or BytesLiteralExpression or FStringLiteral or TStringLiteral;
 
         if (needsParens)
         {
