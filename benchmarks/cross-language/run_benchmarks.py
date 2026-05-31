@@ -167,11 +167,18 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Optimize>true</Optimize>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 </Project>"""
     proj_path = tmp_dir / "bench.csproj"
     proj_path.write_text(proj_content)
     shutil.copy2(cs_file, tmp_dir / "bench.cs")
+
+    # Also write a Directory.Build.props to block inheritance from parent dirs
+    (tmp_dir / "Directory.Build.props").write_text(
+        '<Project><PropertyGroup><TreatWarningsAsErrors>false</TreatWarningsAsErrors></PropertyGroup></Project>'
+    )
 
     start = time.perf_counter()
     result = subprocess.run(
@@ -180,7 +187,8 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     )
     elapsed = time.perf_counter() - start
     if result.returncode != 0:
-        return elapsed, False, result.stderr[:500], tmp_dir
+        err = result.stderr[:500] or result.stdout[:500] or f"exit code {result.returncode}"
+        return elapsed, False, err, tmp_dir
     return elapsed, True, "", tmp_dir
 
 
