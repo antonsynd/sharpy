@@ -948,5 +948,145 @@
         "error": ""
       }
     ]
+  },
+  {
+    "date": "2026-05-31",
+    "results": [
+      {
+        "name": "fibonacci",
+        "language": "Python",
+        "compile_seconds": 0.0006684300000188159,
+        "execute_seconds": 0.2169771229999924,
+        "total_seconds": 0.2176455530000112,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "Sharpy",
+        "compile_seconds": 0.6044167360000188,
+        "execute_seconds": 1.2468175399999382,
+        "total_seconds": 1.851234275999957,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "C#",
+        "compile_seconds": 1.3390476349999858,
+        "execute_seconds": 0,
+        "total_seconds": 1.3390476349999858,
+        "success": false,
+        "error": "compile failed: "
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Python",
+        "compile_seconds": 0.000501482999993641,
+        "execute_seconds": 0.06224277500001563,
+        "total_seconds": 0.06274425800000927,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Sharpy",
+        "compile_seconds": 0.6379939800000329,
+        "execute_seconds": 1.4903308229999652,
+        "total_seconds": 2.128324802999998,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "C#",
+        "compile_seconds": 1.3462185249999834,
+        "execute_seconds": 0,
+        "total_seconds": 1.3462185249999834,
+        "success": false,
+        "error": "compile failed: "
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Python",
+        "compile_seconds": 0.000806805000024724,
+        "execute_seconds": 0.7905913430000169,
+        "total_seconds": 0.7913981480000416,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Sharpy",
+        "compile_seconds": 0.6466341679999914,
+        "execute_seconds": 1.8526639820000241,
+        "total_seconds": 2.4992981500000155,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "C#",
+        "compile_seconds": 1.3600514070000145,
+        "execute_seconds": 0,
+        "total_seconds": 1.3600514070000145,
+        "success": false,
+        "error": "compile failed: "
+      },
+      {
+        "name": "sorting",
+        "language": "Python",
+        "compile_seconds": 0.000625997999975425,
+        "execute_seconds": 0.18181069299998853,
+        "total_seconds": 0.18243669099996396,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Sharpy",
+        "compile_seconds": 0.6900144930000351,
+        "execute_seconds": 1.7971677799999384,
+        "total_seconds": 2.4871822729999735,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "C#",
+        "compile_seconds": 1.347855726999967,
+        "execute_seconds": 0,
+        "total_seconds": 1.347855726999967,
+        "success": false,
+        "error": "compile failed: "
+      },
+      {
+        "name": "string_ops",
+        "language": "Python",
+        "compile_seconds": 0.000488194000013209,
+        "execute_seconds": 0.1803121659999647,
+        "total_seconds": 0.1808003599999779,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Sharpy",
+        "compile_seconds": 0.6316622150000057,
+        "execute_seconds": 1.4752613449999785,
+        "total_seconds": 2.1069235599999843,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "C#",
+        "compile_seconds": 1.3446990009999809,
+        "execute_seconds": 0,
+        "total_seconds": 1.3446990009999809,
+        "success": false,
+        "error": "compile failed: "
+      }
+    ]
   }
 ]
