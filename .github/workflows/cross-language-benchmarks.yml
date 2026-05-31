@@ -164,5 +164,6 @@ jobs:
           echo "No changes to commit"
         else
           git commit -m "bench: weekly cross-language benchmark results $(date -u +%Y-%m-%d)"
+          git pull --rebase origin dev || true
           git push
         fi
