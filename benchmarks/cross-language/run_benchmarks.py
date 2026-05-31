@@ -186,13 +186,15 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
 
 def execute_csharp(tmp_dir: Path) -> tuple[float, bool, str]:
     """Execute pre-built C# benchmark."""
-    exe_dir = tmp_dir / "bin" / "Release" / "net10.0"
-    dll = exe_dir / "bench.dll"
+    # Search for the dll — output path varies by platform/SDK version
+    import glob
+    dlls = list(tmp_dir.rglob("bench.dll"))
+    if not dlls:
+        found = list(tmp_dir.rglob("*.dll"))
+        return 0.0, False, f"No bench.dll found. Files: {[str(f.relative_to(tmp_dir)) for f in found[:5]]}"
 
-    if dll.exists():
-        elapsed, success, err, _ = time_command(["dotnet", str(dll)])
-    else:
-        return 0.0, False, f"No dll found in {exe_dir}"
+    dll = dlls[0]
+    elapsed, success, err, _ = time_command(["dotnet", str(dll)])
     return elapsed, success, err
 
 
