@@ -173,7 +173,11 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     <Nullable>disable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <NoWarn>CS8981</NoWarn>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="bench.cs" />
+  </ItemGroup>
 </Project>"""
     proj_path = tmp_dir / "bench.csproj"
     proj_path.write_text(proj_content)
