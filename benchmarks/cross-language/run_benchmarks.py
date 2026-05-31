@@ -186,11 +186,20 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
 
 def execute_csharp(tmp_dir: Path) -> tuple[float, bool, str]:
     """Execute pre-built C# benchmark using 'dotnet run --no-build'."""
-    elapsed, success, err, _ = time_command(
-        ["dotnet", "run", "-c", "Release", "--no-build"],
-        cwd=tmp_dir
-    )
-    return elapsed, success, err
+    start = time.perf_counter()
+    try:
+        result = subprocess.run(
+            ["dotnet", "run", "-c", "Release", "--no-build"],
+            cwd=tmp_dir, capture_output=True, text=True, timeout=120
+        )
+        elapsed = time.perf_counter() - start
+        if result.returncode != 0:
+            err = result.stderr[:300] or result.stdout[:300] or f"exit code {result.returncode}"
+            return elapsed, False, err
+        return elapsed, True, ""
+    except Exception as e:
+        elapsed = time.perf_counter() - start
+        return elapsed, False, f"Exception: {type(e).__name__}: {e}"
 
 
 # --- Main ---
