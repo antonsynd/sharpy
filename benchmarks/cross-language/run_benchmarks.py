@@ -272,7 +272,7 @@ def run_benchmark(bench_dir: Path, cli_dll: Path, warmup: bool = False) -> dict[
         tmp_path = Path(tmp)
         compile_t, compile_ok, compile_err, _ = compile_csharp(bench_dir, tmp_path)
         if not compile_ok:
-            results["C#"] = BenchResult(bench_dir.name, "C#", compile_t, 0, compile_t, False, compile_err)
+            results["C#"] = BenchResult(bench_dir.name, "C#", compile_t, 0, compile_t, False, f"compile failed: {compile_err}")
         else:
             exec_times = []
             exec_ok = True
@@ -282,7 +282,7 @@ def run_benchmark(bench_dir: Path, cli_dll: Path, warmup: bool = False) -> dict[
                 exec_times.append(et)
                 if not ok:
                     exec_ok = False
-                    exec_err = err
+                    exec_err = f"run {len(exec_times)} failed: {err}"
                     break
             exec_t = median(exec_times) if exec_ok else exec_times[0]
             results["C#"] = BenchResult(
