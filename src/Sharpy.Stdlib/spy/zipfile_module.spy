@@ -1,9 +1,12 @@
+"""Read and write ZIP-format archive files."""
+
 from sharpy import BadZipFile, LargeZipFile, KeyError
 
 ZIP_STORED: int = 0
 ZIP_DEFLATED: int = 8
 
 class ZipInfo:
+    """Metadata about a member of a ZIP archive."""
     filename: str
     date_time: list[int]
     compress_type: int
@@ -11,44 +14,59 @@ class ZipInfo:
     compress_size: int
 
     def __init__(self, filename: str = "NoName"):
+        """Create a ZipInfo instance for the given filename."""
         self.filename = filename
 
     def is_dir(self) -> bool:
+        """Return True if this archive member is a directory."""
         return False
 
 class ZipFile:
+    """Class for reading and writing ZIP files."""
     def __init__(self, file: str, mode: str = "r", compression: int = 8, allow_zip64: bool = True):
+        """Open a ZIP file for reading, writing, or appending."""
         pass
 
     def namelist(self) -> list[str]:
+        """Return a list of archive members by name."""
         return []
 
     def infolist(self) -> list[ZipInfo]:
+        """Return a list of ZipInfo objects for all archive members."""
         return []
 
     def getinfo(self, name: str) -> ZipInfo:
+        """Return a ZipInfo object with information about the archive member name."""
         return ZipInfo()
 
     def read(self, name: str) -> bytes:
+        """Return the bytes of the file name in the archive."""
         return bytes()
 
     def write(self, filename: str, arcname: str = "", compress_type: int = 0):
+        """Write the file named filename to the archive, giving it the archive name arcname."""
         pass
 
     def writestr(self, arcname: str, data: str, compress_type: int = 0):
+        """Write a string directly into the archive under the given name."""
         pass
 
     def extract(self, member: str, path: str = "") -> str:
+        """Extract a member from the archive to the current working directory or path."""
         return ""
 
     def extractall(self, path: str = ""):
+        """Extract all members from the archive to the current working directory or path."""
         pass
 
     def mkdir(self, zinf_or_arcname: str):
+        """Create a directory inside the archive."""
         pass
 
     def close(self):
+        """Close the archive file."""
         pass
 
 def is_zipfile(filename: str) -> bool:
+    """Return True if filename is a valid ZIP file based on its magic number."""
     return False

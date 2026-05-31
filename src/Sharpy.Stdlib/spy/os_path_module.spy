@@ -1,3 +1,5 @@
+"""Common pathname manipulations (os.path equivalent)."""
+
 from system.io import Path as IoPath, File, Directory, FileInfo
 from system import Environment
 

@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the urllib module.</summary>
+    /// <summary>URL parsing, quoting, and query string manipulation utilities.</summary>
     [SharpyModule("urllib")]
     public static partial class UrllibModule
     { }

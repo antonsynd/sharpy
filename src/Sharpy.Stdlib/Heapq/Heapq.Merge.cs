@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Heap queue algorithm (priority queue).</summary>
     public static partial class Heapq
     {
         /// <summary>Merge two sorted inputs into a single sorted output.</summary>

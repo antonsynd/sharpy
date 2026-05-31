@@ -2,6 +2,7 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>N-dimensional array with NumPy-compatible semantics.</summary>
     public partial class NdArray<T>
     {
         /// <summary>Elementwise addition with broadcasting.</summary>

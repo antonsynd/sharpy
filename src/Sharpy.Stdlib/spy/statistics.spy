@@ -1,3 +1,5 @@
+"""Mathematical statistics functions (mean, median, variance, etc.)."""
+
 from sharpy import StatisticsError
 from system import Math
 
@@ -85,23 +87,27 @@ def pvariance(data: list[float]) -> float:
     return ss / len(values)
 
 def _materialize(data: list[float]) -> list[float]:
+    """Copy data to a new list, raising StatisticsError if empty."""
     result: list[float] = list(data)
     if len(result) == 0:
         raise StatisticsError("no data")
     return result
 
 def _materialize_sorted(data: list[float]) -> list[float]:
+    """Copy data to a sorted list, raising StatisticsError if empty."""
     result: list[float] = _materialize(data)
     result.sort()
     return result
 
 def _sum(values: list[float]) -> float:
+    """Return the sum of all values in the list."""
     total: float = 0.0
     for v in values:
         total = total + v
     return total
 
 def _sum_of_squared_deviations(values: list[float], m: float) -> float:
+    """Return the sum of squared deviations from the mean m."""
     ss: float = 0.0
     for v in values:
         diff: float = v - m

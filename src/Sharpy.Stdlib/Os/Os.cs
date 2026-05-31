@@ -10,12 +10,20 @@ using global::Sharpy;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Provides miscellaneous operating system interfaces, equivalent to Python's os module.
+    /// </summary>
     public static partial class OsModule
     {
+        /// <summary>The character used by the operating system to separate pathname components.</summary>
         public static string Sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
+        /// <summary>The string used to separate lines on the current platform.</summary>
         public static string Linesep = global::System.Environment.NewLine;
+        /// <summary>The name of the operating system: "posix" or "nt".</summary>
         public static string Name = Sep == "\\" ? "nt" : "posix";
+        /// <summary>The character used to separate search path components (as in PATH).</summary>
         public static string Pathsep = global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator);
+        /// <summary>The alternative path separator, or empty string if none exists.</summary>
         public static string Altsep = global::System.IO.Path.AltDirectorySeparatorChar == global::System.IO.Path.DirectorySeparatorChar ? "" : global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar);
         /// <summary>
         /// Remove a file (same as unlink).

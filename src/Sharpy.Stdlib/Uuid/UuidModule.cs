@@ -4,20 +4,27 @@ using System.Text;
 
 namespace Sharpy
 {
+    /// <summary>Provides UUID generation helpers similar to Python's uuid module.</summary>
     public static partial class UuidModule
     {
 #pragma warning disable CA1707
+        /// <summary>The namespace UUID for fully qualified domain names.</summary>
         public static readonly UUID NAMESPACE_DNS = new UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
+        /// <summary>The namespace UUID for URLs.</summary>
         public static readonly UUID NAMESPACE_URL = new UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8");
+        /// <summary>The namespace UUID for ISO object identifiers.</summary>
         public static readonly UUID NAMESPACE_OID = new UUID("6ba7b812-9dad-11d1-80b4-00c04fd430c8");
+        /// <summary>The namespace UUID for X.500 distinguished names.</summary>
         public static readonly UUID NAMESPACE_X500 = new UUID("6ba7b814-9dad-11d1-80b4-00c04fd430c8");
 #pragma warning restore CA1707
 
+        /// <summary>Generate a random version 4 UUID.</summary>
         public static UUID Uuid4()
         {
             return new UUID(Guid.NewGuid());
         }
 
+        /// <summary>Generate a time-based version 1 UUID.</summary>
         public static UUID Uuid1()
         {
             var epoch = new System.DateTime(1582, 10, 15, 0, 0, 0, System.DateTimeKind.Utc);
@@ -62,11 +69,13 @@ namespace Sharpy
             return UUID.FromRfc4122Bytes(bytes);
         }
 
+        /// <summary>Generate a name-based version 3 UUID using MD5.</summary>
         public static UUID Uuid3(UUID namespaceUuid, string name)
         {
             return GenerateNameBased(namespaceUuid, name, 3);
         }
 
+        /// <summary>Generate a name-based version 5 UUID using SHA-1.</summary>
         public static UUID Uuid5(UUID namespaceUuid, string name)
         {
             return GenerateNameBased(namespaceUuid, name, 5);

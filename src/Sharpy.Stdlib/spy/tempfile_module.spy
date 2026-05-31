@@ -1,3 +1,5 @@
+"""Generate temporary files and directories."""
+
 from system.io import Path as IoPath, File, Directory
 
 def gettempdir() -> str:

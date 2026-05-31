@@ -10,6 +10,9 @@ using global::Sharpy;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Text wrapping and filling, equivalent to Python's textwrap module.
+    /// </summary>
     public static partial class Textwrap
     {
         /// <summary>

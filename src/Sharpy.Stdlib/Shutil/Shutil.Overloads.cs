@@ -3,6 +3,7 @@ using System.IO;
 
 namespace Sharpy
 {
+    /// <summary>High-level file operations (copy, move, remove trees).</summary>
     public static partial class ShutilModule
     {
         /// <summary>Given a command, return the path which conforms to the given mode on the PATH, or <c>null</c> if no such file exists.</summary>

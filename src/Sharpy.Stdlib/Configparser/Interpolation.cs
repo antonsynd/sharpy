@@ -2,15 +2,21 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>Defines configparser value interpolation hooks.</summary>
     public interface IInterpolation
     {
+        /// <summary>Interpolates a value before it is returned to the caller.</summary>
         string BeforeGet(ConfigParser parser, string section, string option, string rawValue);
+
+        /// <summary>Normalizes a value before it is stored in the parser.</summary>
         string BeforeSet(ConfigParser parser, string section, string option, string value);
     }
 
+    /// <summary>Implements configparser.BasicInterpolation using %(name)s substitutions.</summary>
     [SharpyModuleType("configparser")]
     public sealed class BasicInterpolation : IInterpolation
     {
+        /// <summary>Interpolates %(name)s references in an option value.</summary>
         public string BeforeGet(ConfigParser parser, string section, string option, string rawValue)
         {
             var result = Interpolate(parser, section, option, rawValue, 10);
@@ -19,6 +25,7 @@ namespace Sharpy
 #pragma warning restore CA1307
         }
 
+        /// <summary>Returns the value unchanged before storing it.</summary>
         public string BeforeSet(ConfigParser parser, string section, string option, string value)
         {
             return value;
@@ -108,14 +115,17 @@ namespace Sharpy
         }
     }
 
+    /// <summary>Implements configparser.ExtendedInterpolation using ${section:option} substitutions.</summary>
     [SharpyModuleType("configparser")]
     public sealed class ExtendedInterpolation : IInterpolation
     {
+        /// <summary>Interpolates ${section:option} references in an option value.</summary>
         public string BeforeGet(ConfigParser parser, string section, string option, string rawValue)
         {
             return Interpolate(parser, section, option, rawValue, 10);
         }
 
+        /// <summary>Returns the value unchanged before storing it.</summary>
         public string BeforeSet(ConfigParser parser, string section, string option, string value)
         {
             return value;

@@ -1,3 +1,5 @@
+"""Generate pseudo-random numbers with various distributions."""
+
 from system import Math as SysMath, Random as SysRandom
 
 _random: SysRandom = SysRandom()

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Mathematical functions (equivalent to Python's math module).</summary>
     public static partial class MathModule
     {
         /// <summary>Return the least common multiple of a and b.</summary>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Functions creating iterators for efficient looping.</summary>
     public static partial class Itertools
     {
         /// <summary>Make an iterator that returns object over and over again, limited by n times.</summary>

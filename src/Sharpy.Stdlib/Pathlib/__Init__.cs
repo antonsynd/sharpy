@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the pathlib module.</summary>
+    /// <summary>Object-oriented filesystem paths.</summary>
     [SharpyModule("pathlib")]
     public static partial class PathlibModule
     { }

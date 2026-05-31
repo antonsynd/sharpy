@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the csv module.</summary>
+    /// <summary>CSV file reading and writing.</summary>
     [SharpyModule("csv")]
     public static partial class Csv
     { }

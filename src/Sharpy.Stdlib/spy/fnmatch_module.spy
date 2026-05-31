@@ -1,3 +1,5 @@
+"""Unix shell-style filename pattern matching."""
+
 from system.text import StringBuilder
 from system.text.regular_expressions import Regex
 from system.runtime.interop_services import RuntimeInformation, OSPlatform

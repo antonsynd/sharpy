@@ -4,6 +4,7 @@ using System.IO.Compression;
 
 namespace Sharpy
 {
+    /// <summary>Provides incremental compression like zlib.compressobj.</summary>
     [SharpyModuleType("zlib")]
     public sealed class CompressObj
     {
@@ -20,6 +21,7 @@ namespace Sharpy
             _flushed = false;
         }
 
+        /// <summary>Buffers data for later compression.</summary>
         public Bytes Compress(Bytes data)
         {
             if (_flushed)
@@ -32,6 +34,7 @@ namespace Sharpy
             return new Bytes(Array.Empty<byte>());
         }
 
+        /// <summary>Finishes compression and returns the compressed output.</summary>
         public Bytes Flush(int mode = 4)
         {
             if (_flushed)

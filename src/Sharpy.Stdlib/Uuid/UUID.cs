@@ -2,11 +2,13 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>Represents a UUID value with Python uuid.UUID-style properties.</summary>
     [SharpyModuleType("uuid")]
     public sealed class UUID : IEquatable<UUID>, IComparable<UUID>
     {
         private readonly Guid _guid;
 
+        /// <summary>Initialize a UUID from its string representation.</summary>
         public UUID(string hex)
         {
             if (hex == null)
@@ -27,8 +29,10 @@ namespace Sharpy
             _guid = guid;
         }
 
+        /// <summary>Get the UUID as 32 lowercase hexadecimal digits.</summary>
         public string Hex => _guid.ToString("N");
 
+        /// <summary>Get the leading 64 bits of the UUID as an integer.</summary>
         public long Int
         {
             get
@@ -44,6 +48,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get the UUID as 16 RFC 4122 bytes.</summary>
         public Bytes UuidBytes
         {
             get
@@ -52,6 +57,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get the UUID version number.</summary>
         public int Version
         {
             get
@@ -61,6 +67,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get the UUID variant description.</summary>
         public string Variant
         {
             get
@@ -86,8 +93,10 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get the UUID as a URN string.</summary>
         public string Urn => "urn:uuid:" + ToString();
 
+        /// <summary>Get the low 32 bits of the time field.</summary>
         public long TimeLow
         {
             get
@@ -97,6 +106,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get the middle 16 bits of the time field.</summary>
         public int TimeMid
         {
             get
@@ -106,6 +116,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get the high time field including the version bits.</summary>
         public int TimeHiVersion
         {
             get
@@ -115,6 +126,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get the high clock sequence byte including the variant bits.</summary>
         public int ClockSeqHiVariant
         {
             get
@@ -124,6 +136,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get the low clock sequence byte.</summary>
         public int ClockSeqLow
         {
             get
@@ -133,6 +146,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Get the 48-bit node value.</summary>
         public long Node
         {
             get
@@ -144,26 +158,31 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Return the canonical hexadecimal string representation of the UUID.</summary>
         public override string ToString()
         {
             return _guid.ToString("D");
         }
 
+        /// <summary>Return a hash code for this UUID.</summary>
         public override int GetHashCode()
         {
             return _guid.GetHashCode();
         }
 
+        /// <summary>Determine whether this UUID equals another object.</summary>
         public override bool Equals(object? obj)
         {
             return obj is UUID other && _guid.Equals(other._guid);
         }
 
+        /// <summary>Determine whether this UUID equals another UUID.</summary>
         public bool Equals(UUID? other)
         {
             return other != null && _guid.Equals(other._guid);
         }
 
+        /// <summary>Compare this UUID to another UUID.</summary>
         public int CompareTo(UUID? other)
         {
             if (other == null)

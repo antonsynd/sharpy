@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace Sharpy
 {
+    /// <summary>Starts and manages a child process like Python's subprocess.Popen.</summary>
     [SharpyModuleType("subprocess", "Popen")]
     public sealed class Popen : IDisposable
     {
@@ -16,8 +17,10 @@ namespace Sharpy
         private Task? _devnullStderrDrain;
         private bool _disposed;
 
+        /// <summary>Gets the operating system process identifier.</summary>
         public int Pid => _process.Id;
 
+        /// <summary>Gets the process exit code, or null while the process is still running.</summary>
         public int? Returncode
         {
             get
@@ -33,17 +36,22 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Gets the command arguments used to start the process.</summary>
         public List<string> Args => _args;
 
+        /// <summary>Gets the redirected standard input writer, if available.</summary>
         public System.IO.StreamWriter? Stdin =>
             _process.StartInfo.RedirectStandardInput ? _process.StandardInput : null;
 
+        /// <summary>Gets the redirected standard output reader, if available.</summary>
         public System.IO.StreamReader? StdoutStream =>
             _process.StartInfo.RedirectStandardOutput ? _process.StandardOutput : null;
 
+        /// <summary>Gets the redirected standard error reader, if available.</summary>
         public System.IO.StreamReader? StderrStream =>
             _process.StartInfo.RedirectStandardError ? _process.StandardError : null;
 
+        /// <summary>Starts a new subprocess with the requested redirections and environment.</summary>
         public Popen(
             List<string> args,
             int stdin = 0,
@@ -124,6 +132,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Sends optional input, waits for completion, and returns captured output.</summary>
         public (string? stdout, string? stderr) Communicate(string? input = null, double? timeout = null)
         {
             if (input != null && _process.StartInfo.RedirectStandardInput)
@@ -171,6 +180,7 @@ namespace Sharpy
             return (stdoutResult, stderrResult);
         }
 
+        /// <summary>Waits for the process to exit and returns its exit code.</summary>
         public int Wait(double? timeout = null)
         {
             if (timeout.HasValue)
@@ -189,11 +199,13 @@ namespace Sharpy
             return _process.ExitCode;
         }
 
+        /// <summary>Checks whether the process has exited without blocking.</summary>
         public int? Poll()
         {
             return Returncode;
         }
 
+        /// <summary>Forcefully terminates the child process.</summary>
         public void Kill()
         {
             try
@@ -208,12 +220,14 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Terminates the child process.</summary>
         // .NET Process.Kill() sends SIGKILL on Unix — SIGTERM is not available via managed API
         public void Terminate()
         {
             Kill();
         }
 
+        /// <summary>Sends a signal to the child process.</summary>
         public void SendSignal(int signal)
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -224,6 +238,7 @@ namespace Sharpy
             Kill();
         }
 
+        /// <summary>Disposes the process and any background drain tasks.</summary>
         public void Dispose()
         {
             if (!_disposed)

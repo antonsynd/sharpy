@@ -10,6 +10,9 @@ using global::Sharpy;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Unix filename pattern matching, equivalent to Python's fnmatch module.
+    /// </summary>
     public static partial class FnmatchModule
     {
         /// <summary>

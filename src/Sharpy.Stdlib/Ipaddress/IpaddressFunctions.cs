@@ -6,8 +6,14 @@ using SCG = System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Provides helpers for the ipaddress module.
+    /// </summary>
     public static partial class IpaddressModule
     {
+        /// <summary>
+        /// Parses a string as an IPv4 or IPv6 address.
+        /// </summary>
         public static object IpAddress(string address)
         {
             if (address == null)
@@ -28,6 +34,9 @@ namespace Sharpy
             return new IPv6Address(address);
         }
 
+        /// <summary>
+        /// Parses a string as an IPv4 or IPv6 network.
+        /// </summary>
         public static object IpNetwork(string address, bool strict = true)
         {
             if (address == null)
@@ -51,6 +60,9 @@ namespace Sharpy
             return new IPv6Network(address, strict);
         }
 
+        /// <summary>
+        /// Parses a string as an IPv4 or IPv6 interface.
+        /// </summary>
         public static object IpInterface(string address)
         {
             if (address == null)
@@ -74,6 +86,9 @@ namespace Sharpy
             return new IPv6Interface(address);
         }
 
+        /// <summary>
+        /// Collapses addresses and networks into the smallest set of CIDR blocks.
+        /// </summary>
         public static SCG.List<object> CollapseAddresses(SCG.List<object> addresses)
         {
             var v4Networks = new SCG.List<IPv4Network>();
@@ -116,6 +131,9 @@ namespace Sharpy
             return CollapseV6(v6Networks).Cast<object>().ToList();
         }
 
+        /// <summary>
+        /// Summarizes an address range as the smallest set of CIDR blocks.
+        /// </summary>
         public static SCG.List<object> SummarizeAddressRange(object first, object last)
         {
             if (first is IPv4Address f4 && last is IPv4Address l4)

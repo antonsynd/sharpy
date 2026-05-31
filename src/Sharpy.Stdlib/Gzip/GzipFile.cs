@@ -4,6 +4,7 @@ using System.IO.Compression;
 
 namespace Sharpy
 {
+    /// <summary>Provides file-like access to gzip-compressed data.</summary>
     [SharpyModuleType("gzip")]
     public class GzipFile : IDisposable
     {
@@ -13,6 +14,7 @@ namespace Sharpy
         private GZipStream? _gzipStream;
         private bool _closed;
 
+        /// <summary>Opens a gzip file or stream in binary read or write mode.</summary>
         public GzipFile(string filename = "", string mode = "rb", int compresslevel = 9, Stream? fileobj = null)
         {
             _name = filename;
@@ -55,10 +57,13 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Gets the original file name passed to the gzip file.</summary>
         public string Name => _name;
 
+        /// <summary>Gets the internal read or write mode flag.</summary>
         public int Mode => _mode;
 
+        /// <summary>Reads decompressed bytes from the gzip stream.</summary>
         public Bytes Read(int size = -1)
         {
             EnsureOpen();
@@ -105,6 +110,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Writes bytes to the gzip stream and returns the number written.</summary>
         public int Write(Bytes data)
         {
             EnsureOpen();
@@ -118,6 +124,7 @@ namespace Sharpy
             return bytes.Length;
         }
 
+        /// <summary>Closes the gzip stream and its underlying file object.</summary>
         public void Close()
         {
             if (!_closed)
@@ -136,12 +143,16 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Returns true if the gzip file was opened for reading.</summary>
         public bool Readable() => _mode == 1;
 
+        /// <summary>Returns true if the gzip file was opened for writing.</summary>
         public bool Writable() => _mode == 2;
 
+        /// <summary>Returns false because this gzip wrapper is not seekable.</summary>
         public bool Seekable() => false;
 
+        /// <summary>Disposes the gzip file and suppresses finalization.</summary>
         public void Dispose()
         {
             Close();

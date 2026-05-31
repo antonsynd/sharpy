@@ -171,6 +171,9 @@ namespace Sharpy
         public static bool operator !=(SliceSpec left, SliceSpec right) => !left.Equals(right);
     }
 
+    /// <summary>
+    /// N-dimensional array with NumPy-compatible slicing and row/column access.
+    /// </summary>
     public partial class NdArray<T>
     {
         /// <summary>

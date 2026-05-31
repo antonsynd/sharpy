@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Access to underlying platform identifying data, equivalent to Python's platform module.
+    /// </summary>
     public static partial class PlatformModule
     {
         /// <summary>

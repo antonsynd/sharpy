@@ -2,6 +2,7 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>NumPy-compatible numerical computing functions.</summary>
     public static partial class Numpy
     {
         /// <summary>Elementwise square root.</summary>

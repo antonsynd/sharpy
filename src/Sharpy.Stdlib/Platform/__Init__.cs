@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the platform module.</summary>
+    /// <summary>Access to underlying platform's identifying data.</summary>
     [SharpyModule("platform")]
     public static partial class PlatformModule
     { }

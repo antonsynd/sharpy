@@ -3,6 +3,9 @@ using System.Text;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// N-dimensional array with NumPy-style string representation.
+    /// </summary>
     public partial class NdArray<T>
     {
         // Element-count threshold above which we truncate long axes when rendering.

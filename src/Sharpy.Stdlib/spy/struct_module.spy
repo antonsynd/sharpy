@@ -1,39 +1,53 @@
+"""Interpret bytes as packed binary data using format strings."""
+
 from sharpy import StructClass, StructError
 
 class error(Exception):
+    """Exception raised on struct format or data errors."""
     pass
 
 def pack(format: str, *values: object) -> bytes:
+    """Return a bytes object containing values packed according to the format string."""
     return bytes()
 
 def unpack(format: str, buffer: bytes) -> list[object]:
+    """Unpack from the buffer according to the format string."""
     return []
 
 def unpack_from(format: str, buffer: bytes, offset: int = 0) -> list[object]:
+    """Unpack from the buffer starting at the given offset."""
     return []
 
 def calcsize(format: str) -> int:
+    """Return the size of the struct described by the format string."""
     return 0
 
 def iter_unpack(format: str, buffer: bytes) -> list[list[object]]:
+    """Iteratively unpack from the buffer according to the format string."""
     return []
 
 class Struct:
+    """Compiled struct format object for repeated packing/unpacking operations."""
     format: str
     size: int
 
     def __init__(self, format: str):
+        """Create a new Struct object with the given format string."""
         self.format = format
         self.size = 0
 
     def pack(self, *values: object) -> bytes:
+        """Pack values according to the compiled format."""
         return bytes()
 
     def unpack(self, buffer: bytes) -> list[object]:
+        """Unpack from the buffer according to the compiled format."""
         return []
 
     def unpack_from(self, buffer: bytes, offset: int = 0) -> list[object]:
+        """Unpack from the buffer starting at the given offset."""
         return []
 
     def iter_unpack(self, buffer: bytes) -> list[list[object]]:
+        """Iteratively unpack from the buffer according to the compiled format."""
         return []

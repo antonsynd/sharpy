@@ -5,6 +5,7 @@ using System.Text;
 
 namespace Sharpy
 {
+    /// <summary>Represents an incremental HMAC computation.</summary>
     [SharpyModuleType("hmac")]
     public sealed class HmacObject
     {
@@ -12,10 +13,13 @@ namespace Sharpy
         private readonly byte[] _key;
         private readonly System.Collections.Generic.List<byte> _data;
 
+        /// <summary>Get the digest size in bytes.</summary>
         public int DigestSize { get; }
 
+        /// <summary>Get the canonical algorithm name for this HMAC.</summary>
         public string Name => "hmac-" + _algorithmName;
 
+        /// <summary>Get the internal block size of the hash algorithm.</summary>
         public int BlockSize
         {
             get
@@ -29,6 +33,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Initialize an HMAC object from a string key.</summary>
         public HmacObject(string key, string algorithmName, int digestSize)
         {
             _key = Encoding.UTF8.GetBytes(key);
@@ -53,17 +58,20 @@ namespace Sharpy
             _data = new System.Collections.Generic.List<byte>(existingData);
         }
 
+        /// <summary>Update the HMAC with string data.</summary>
         public void Update(string data)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(data);
             _data.AddRange(bytes);
         }
 
+        /// <summary>Update the HMAC with byte data.</summary>
         public void Update(Bytes data)
         {
             _data.AddRange(data.ToArray());
         }
 
+        /// <summary>Return the current digest as lowercase hexadecimal text.</summary>
         public string Hexdigest()
         {
             byte[] hash = ComputeHmac();
@@ -76,6 +84,7 @@ namespace Sharpy
             return sb.ToString();
         }
 
+        /// <summary>Return the current digest as a list of byte values.</summary>
         public List<int> Digest()
         {
             byte[] hash = ComputeHmac();
@@ -88,6 +97,7 @@ namespace Sharpy
             return new List<int>(result);
         }
 
+        /// <summary>Return a copy of this HMAC object.</summary>
         public HmacObject Copy()
         {
             return new HmacObject(_key, _algorithmName, DigestSize, _data);

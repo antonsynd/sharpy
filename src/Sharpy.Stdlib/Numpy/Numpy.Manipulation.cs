@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Provides NumPy-equivalent array manipulation functions.
+    /// </summary>
     public static partial class Numpy
     {
         /// <summary>

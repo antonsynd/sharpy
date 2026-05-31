@@ -4,8 +4,10 @@ using System.Text;
 
 namespace Sharpy
 {
+    /// <summary>Provides HMAC helpers similar to Python's hmac module.</summary>
     public static partial class HmacModule
     {
+        /// <summary>Create a new HMAC object from a byte key.</summary>
         public static HmacObject New(Bytes key, Bytes? msg = null, string digestmod = "sha256")
         {
             if (string.IsNullOrEmpty(digestmod))
@@ -23,6 +25,7 @@ namespace Sharpy
             return hmacObj;
         }
 
+        /// <summary>Create a new HMAC object from a string key.</summary>
         public static HmacObject New(string key, string? msg = null, string digestmod = "sha256")
         {
             if (string.IsNullOrEmpty(digestmod))
@@ -41,6 +44,7 @@ namespace Sharpy
             return hmacObj;
         }
 
+        /// <summary>Compute an HMAC digest for a byte message.</summary>
         public static Bytes Digest(Bytes key, Bytes msg, string digestmod)
         {
             if (string.IsNullOrEmpty(digestmod))
@@ -57,6 +61,7 @@ namespace Sharpy
             return new Bytes(hash);
         }
 
+        /// <summary>Compute an HMAC digest for a string message.</summary>
         public static Bytes Digest(string key, string msg, string digestmod)
         {
             return Digest(
@@ -65,6 +70,7 @@ namespace Sharpy
                 digestmod);
         }
 
+        /// <summary>Compare two strings in constant time.</summary>
         public static bool CompareDigest(string a, string b)
         {
             byte[] aBytes = Encoding.UTF8.GetBytes(a);
@@ -72,6 +78,7 @@ namespace Sharpy
             return FixedTimeEquals(aBytes, bBytes);
         }
 
+        /// <summary>Compare two byte sequences in constant time.</summary>
         public static bool CompareDigest(Bytes a, Bytes b)
         {
             return FixedTimeEquals(a.ToArray(), b.ToArray());

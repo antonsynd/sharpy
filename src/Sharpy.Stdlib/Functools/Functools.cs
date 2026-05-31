@@ -10,6 +10,7 @@ using global::Sharpy;
 
 namespace Sharpy
 {
+    /// <summary>Higher-order functions and operations on callable objects.</summary>
     public static partial class Functools
     {
         /// <summary>

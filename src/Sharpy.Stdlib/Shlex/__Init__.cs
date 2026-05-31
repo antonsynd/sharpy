@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the shlex module.</summary>
+    /// <summary>Simple lexical analysis of shell-style syntaxes.</summary>
     [SharpyModule("shlex")]
     public static partial class ShlexModule
     { }

@@ -12,11 +12,17 @@ namespace Sharpy
     /// </summary>
     internal static class JsonParser
     {
+        /// <summary>
+        /// Deserialize a JSON string to a Sharpy object.
+        /// </summary>
         public static object? Parse(string json)
         {
             return Parse(json, null);
         }
 
+        /// <summary>
+        /// Deserialize a JSON string to a Sharpy object, with an optional object hook.
+        /// </summary>
         public static object? Parse(string json, Func<Dict<string, object?>, object?>? objectHook)
         {
             if (json == null)

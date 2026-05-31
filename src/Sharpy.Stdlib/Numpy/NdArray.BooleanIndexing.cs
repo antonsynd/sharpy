@@ -2,6 +2,9 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// N-dimensional array with NumPy-compatible boolean indexing operations.
+    /// </summary>
     public partial class NdArray<T>
     {
         /// <summary>

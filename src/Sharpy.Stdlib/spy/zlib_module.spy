@@ -1,3 +1,5 @@
+"""Compression and decompression using the zlib (DEFLATE) algorithm."""
+
 from sharpy import ZlibError
 
 MAX_WBITS: int = 15
@@ -25,33 +27,44 @@ Z_BLOCK: int = 5
 Z_TREES: int = 6
 
 class error(Exception):
+    """Exception raised on compression and decompression errors."""
     pass
 
 class compressobj:
+    """Compression object for incremental compression of data."""
     def compress(self, data: bytes) -> bytes:
+        """Compress data, returning a bytes object with at least part of the compressed data."""
         return bytes()
 
     def flush(self, mode: int = 4) -> bytes:
+        """Flush the internal buffers and return any remaining compressed output."""
         return bytes()
 
 class decompressobj:
+    """Decompression object for incremental decompression of data."""
     unconsumed_tail: bytes
     eof: bool
 
     def decompress(self, data: bytes, max_length: int = 0) -> bytes:
+        """Decompress data, returning a bytes object with at least part of the uncompressed data."""
         return bytes()
 
     def flush(self, length: int = 16384) -> bytes:
+        """Flush the internal buffers and return any remaining uncompressed output."""
         return bytes()
 
 def compress(data: bytes, level: int = 6) -> bytes:
+    """Compress data at the given level, returning a bytes object."""
     return bytes()
 
 def decompress(data: bytes, wbits: int = 15, bufsize: int = 16384) -> bytes:
+    """Decompress data, returning a bytes object containing the uncompressed data."""
     return bytes()
 
 def crc32(data: bytes, value: int = 0) -> int:
+    """Compute a CRC-32 checksum of data, starting with an optional initial value."""
     return 0
 
 def adler32(data: bytes, value: int = 1) -> int:
+    """Compute an Adler-32 checksum of data, starting with an optional initial value."""
     return 0

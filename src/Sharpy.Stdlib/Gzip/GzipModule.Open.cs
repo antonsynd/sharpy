@@ -1,7 +1,9 @@
 namespace Sharpy
 {
+    /// <summary>Provides helpers for opening gzip-compressed files.</summary>
     public static partial class GzipModule
     {
+        /// <summary>Opens a gzip file in binary mode.</summary>
         public static GzipFile Open(string filename, string mode = "rb", int compresslevel = 9)
         {
             if (mode == "rt" || mode == "wt" || mode == "at")

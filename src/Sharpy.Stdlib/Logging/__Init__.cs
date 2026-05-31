@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the logging module.</summary>
+    /// <summary>Flexible event logging system for applications.</summary>
     [SharpyModule("logging")]
     public static partial class Logging
     { }

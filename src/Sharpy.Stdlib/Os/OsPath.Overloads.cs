@@ -3,6 +3,7 @@ using System.IO;
 
 namespace Sharpy
 {
+    /// <summary>Common pathname manipulations.</summary>
     public static partial class OsPathModule
     {
         /// <summary>Join three pathname components, inserting '/' as needed.</summary>

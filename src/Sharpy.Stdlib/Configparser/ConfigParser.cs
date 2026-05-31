@@ -3,6 +3,7 @@ using SCG = System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Parses and stores INI-style configuration data.</summary>
     [SharpyModuleType("configparser")]
     public sealed partial class ConfigParser
     {
@@ -17,12 +18,14 @@ namespace Sharpy
         private readonly IInterpolation _interpolation;
         private readonly bool _allowNoValue;
 
+        /// <summary>Initializes a new config parser.</summary>
         public ConfigParser(IInterpolation? interpolation = null, bool allowNoValue = false)
         {
             _interpolation = interpolation ?? new BasicInterpolation();
             _allowNoValue = allowNoValue;
         }
 
+        /// <summary>Gets a proxy for the named section.</summary>
         public SectionProxy this[string section]
         {
             get
@@ -36,11 +39,13 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Returns the non-default section names.</summary>
         public SCG.List<string> Sections()
         {
             return new SCG.List<string>(_sections.Keys);
         }
 
+        /// <summary>Adds a new section.</summary>
         public void AddSection(string section)
         {
             if (string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
@@ -54,6 +59,7 @@ namespace Sharpy
             _sections[section] = new SCG.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         }
 
+        /// <summary>Determines whether a non-default section exists.</summary>
         public bool HasSection(string section)
         {
             if (string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
@@ -63,6 +69,7 @@ namespace Sharpy
             return _sections.ContainsKey(section);
         }
 
+        /// <summary>Removes a non-default section.</summary>
         public bool RemoveSection(string section)
         {
             if (string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
@@ -72,6 +79,7 @@ namespace Sharpy
             return _sections.Remove(section);
         }
 
+        /// <summary>Gets an option value, optionally applying interpolation.</summary>
         public string? Get(string section, string option, string? fallback = null, bool raw = false)
         {
             string normalizedOption = option.ToLowerInvariant();
@@ -112,6 +120,7 @@ namespace Sharpy
             return _interpolation.BeforeGet(this, section, normalizedOption, rawValue);
         }
 
+        /// <summary>Gets an option as an integer.</summary>
         public int GetInt(string section, string option, int? fallback = null)
         {
             string? value = null;
@@ -131,6 +140,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>Gets an option as a floating-point number.</summary>
         public double GetFloat(string section, string option, double? fallback = null)
         {
             string? value = null;
@@ -151,6 +161,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>Gets an option as a boolean using configparser truth values.</summary>
         public bool GetBoolean(string section, string option, bool? fallback = null)
         {
             string? value = null;
@@ -185,6 +196,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Sets an option value in a section.</summary>
         public void Set(string section, string option, string value)
         {
             string normalizedOption = option.ToLowerInvariant();
@@ -201,6 +213,7 @@ namespace Sharpy
             _sections[section][normalizedOption] = value;
         }
 
+        /// <summary>Determines whether a section or defaults contain an option.</summary>
         public bool HasOption(string section, string option)
         {
             string normalizedOption = option.ToLowerInvariant();
@@ -216,6 +229,7 @@ namespace Sharpy
             return _sections[section].ContainsKey(normalizedOption) || _defaults.ContainsKey(normalizedOption);
         }
 
+        /// <summary>Removes an option from a section or from defaults.</summary>
         public bool RemoveOption(string section, string option)
         {
             string normalizedOption = option.ToLowerInvariant();
@@ -231,6 +245,7 @@ namespace Sharpy
             return _sections[section].Remove(normalizedOption);
         }
 
+        /// <summary>Returns the option names available in a section.</summary>
         public SCG.List<string> Options(string section)
         {
             if (string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
@@ -254,6 +269,7 @@ namespace Sharpy
             return new SCG.List<string>(result);
         }
 
+        /// <summary>Returns the section items with defaults applied.</summary>
         public SCG.Dictionary<string, string> Items(string section)
         {
             if (!string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase)
@@ -287,6 +303,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>Returns the default section values.</summary>
         public SCG.Dictionary<string, string> Defaults()
         {
             var result = new SCG.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

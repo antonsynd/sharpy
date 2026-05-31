@@ -2,15 +2,20 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>Represents a TOML decoding error.</summary>
     [SharpyModuleType("toml")]
     public class TOMLDecodeError : ValueError
     {
+        /// <summary>Get the original error message.</summary>
         public string Msg { get; }
 
+        /// <summary>Get the TOML document that failed to decode.</summary>
         public string Doc { get; }
 
+        /// <summary>Get the zero-based error position in the document.</summary>
         public int Pos { get; }
 
+        /// <summary>Initialize a TOML decoding error.</summary>
         public TOMLDecodeError(string msg, string doc, int pos)
             : base(FormatMessage(msg, doc, pos))
         {

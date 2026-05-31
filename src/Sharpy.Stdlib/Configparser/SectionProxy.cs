@@ -2,6 +2,7 @@ using SCG = System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Provides mapping-style access to a single configparser section.</summary>
     [SharpyModuleType("configparser")]
     public sealed class SectionProxy
     {
@@ -14,6 +15,7 @@ namespace Sharpy
             _section = section;
         }
 
+        /// <summary>Gets or sets an option value in the proxied section.</summary>
         public string this[string key]
         {
             get
@@ -31,21 +33,25 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Gets an option from the section, returning the fallback when it is missing.</summary>
         public string? Get(string key, string? fallback = null)
         {
             return _parser.Get(_section, key, fallback: fallback);
         }
 
+        /// <summary>Determines whether the section contains an option.</summary>
         public bool ContainsKey(string key)
         {
             return _parser.HasOption(_section, key);
         }
 
+        /// <summary>Returns the option names available in the section.</summary>
         public SCG.List<string> Keys()
         {
             return _parser.Options(_section);
         }
 
+        /// <summary>Returns the section items with defaults merged in.</summary>
         public SCG.Dictionary<string, string> Items()
         {
             return _parser.Items(_section);

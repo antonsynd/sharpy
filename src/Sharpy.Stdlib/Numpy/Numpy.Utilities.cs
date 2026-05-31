@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Provides NumPy-equivalent array utility functions (sort, search, unique, allclose, etc.).
+    /// </summary>
     public static partial class Numpy
     {
         /// <summary>

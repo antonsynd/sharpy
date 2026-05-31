@@ -4,6 +4,7 @@ using System.IO.Compression;
 
 namespace Sharpy
 {
+    /// <summary>Represents a ZIP archive for reading, writing, and extracting members.</summary>
     [SharpyModuleType("zipfile", "ZipFile")]
     public partial class ZipFileArchive : IDisposable
     {
@@ -13,6 +14,7 @@ namespace Sharpy
         private readonly int _compression;
         private bool _closed;
 
+        /// <summary>Opens a ZIP archive from a file path using the requested mode.</summary>
         public ZipFileArchive(string file, string mode = "r", int compression = 8, bool allowZip64 = true)
         {
             _mode = mode;
@@ -56,6 +58,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Returns the names of all archive members.</summary>
         public List<string> Namelist()
         {
             EnsureOpen();
@@ -67,6 +70,7 @@ namespace Sharpy
             return names;
         }
 
+        /// <summary>Returns ZipInfo objects for all archive members.</summary>
         public List<ZipInfo> Infolist()
         {
             EnsureOpen();
@@ -78,6 +82,7 @@ namespace Sharpy
             return infos;
         }
 
+        /// <summary>Returns metadata for a named archive member.</summary>
         public ZipInfo Getinfo(string name)
         {
             EnsureOpen();
@@ -89,6 +94,7 @@ namespace Sharpy
             return ZipInfo.FromEntry(entry);
         }
 
+        /// <summary>Reads an archive member and returns its bytes.</summary>
         public Bytes Read(string name)
         {
             EnsureOpen();
@@ -111,6 +117,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Opens a stream for a named archive member.</summary>
         public Stream Open(string name, string mode = "r")
         {
             EnsureOpen();
@@ -122,6 +129,7 @@ namespace Sharpy
             return entry.Open();
         }
 
+        /// <summary>Closes the archive and releases its underlying resources.</summary>
         public void Close()
         {
             if (!_closed)
@@ -136,6 +144,7 @@ namespace Sharpy
             }
         }
 
+        /// <summary>Disposes the archive and suppresses finalization.</summary>
         public void Dispose()
         {
             Close();

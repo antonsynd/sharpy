@@ -12,6 +12,9 @@ namespace Sharpy
     /// </summary>
     internal static class JsonSerializer
     {
+        /// <summary>
+        /// Serialize a Sharpy object to a JSON formatted string.
+        /// </summary>
         public static string Serialize(
             object? obj,
             int indent = -1,

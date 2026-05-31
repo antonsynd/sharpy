@@ -335,12 +335,14 @@ namespace Sharpy
     {
         public FlowStyleEventEmitter(IEventEmitter nextEmitter) : base(nextEmitter) { }
 
+        /// <inheritdoc />
         public override void Emit(MappingStartEventInfo eventInfo, IEmitter emitter)
         {
             eventInfo.Style = MappingStyle.Flow;
             base.Emit(eventInfo, emitter);
         }
 
+        /// <inheritdoc />
         public override void Emit(SequenceStartEventInfo eventInfo, IEmitter emitter)
         {
             eventInfo.Style = SequenceStyle.Flow;

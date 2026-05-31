@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>Module exports for the hmac module.</summary>
+    /// <summary>Keyed-hashing for message authentication (HMAC).</summary>
     [SharpyModule("hmac")]
     public static partial class HmacModule
     { }
