@@ -1,37 +1,51 @@
+"""URL parsing, quoting, and query string manipulation utilities."""
+
 from sharpy import ParseResult, SplitResult
 
 def urlparse(url: str, scheme: str = "", allow_fragments: bool = True) -> ParseResult:
+    """Parse a URL into 6 components: scheme, netloc, path, params, query, fragment."""
     return ParseResult("", "", "", "", "", "")
 
 def urlsplit(url: str, scheme: str = "", allow_fragments: bool = True) -> SplitResult:
+    """Parse a URL into 5 components: scheme, netloc, path, query, fragment."""
     return SplitResult("", "", "", "", "")
 
 def urlunparse(components: ParseResult) -> str:
+    """Combine a 6-tuple back into a URL string."""
     return ""
 
 def urlunsplit(components: SplitResult) -> str:
+    """Combine a 5-tuple back into a URL string."""
     return ""
 
 def urljoin(base_url: str, url: str, allow_fragments: bool = True) -> str:
+    """Join a base URL and a possibly relative URL to form an absolute URL."""
     return ""
 
 def quote(s: str, safe: str = "/") -> str:
+    """Percent-encode a string, replacing special characters with %xx escapes."""
     return ""
 
 def quote_plus(s: str, safe: str = "") -> str:
+    """Like quote(), but also replace spaces with plus signs."""
     return ""
 
 def unquote(s: str) -> str:
+    """Replace %xx escapes with their single-character equivalent."""
     return ""
 
 def unquote_plus(s: str) -> str:
+    """Like unquote(), but also replace plus signs with spaces."""
     return ""
 
 def parse_qs(qs: str, separator: str = "&") -> dict[str, list[str]]:
+    """Parse a query string and return a dictionary of key to list-of-values."""
     return {}
 
 def parse_qsl(qs: str, separator: str = "&") -> list[tuple[str, str]]:
+    """Parse a query string and return a list of (name, value) pairs."""
     return []
 
 def urlencode(query: dict[str, object], doseq: bool = False) -> str:
+    """Encode a mapping or sequence of two-element tuples into a percent-encoded query string."""
     return ""

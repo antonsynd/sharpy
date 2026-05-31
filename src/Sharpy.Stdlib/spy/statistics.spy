@@ -1,3 +1,5 @@
+"""Mathematical statistics functions (mean, median, variance, etc.)."""
+
 from sharpy import StatisticsError
 from system import Math
 

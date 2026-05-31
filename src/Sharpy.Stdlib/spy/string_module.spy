@@ -1,3 +1,5 @@
+"""Common string constants (ascii_letters, digits, punctuation, etc.)."""
+
 ascii_lowercase: str = "abcdefghijklmnopqrstuvwxyz"
 ascii_uppercase: str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 ascii_letters: str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

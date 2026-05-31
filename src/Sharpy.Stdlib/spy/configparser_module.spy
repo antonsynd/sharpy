@@ -1,3 +1,5 @@
+"""Configuration file parser compatible with Python's configparser module."""
+
 from sharpy import ConfigParser, SectionProxy, BasicInterpolation, ExtendedInterpolation
 from sharpy import ConfigparserError, NoSectionError, NoOptionError
 from sharpy import DuplicateSectionError, DuplicateOptionError

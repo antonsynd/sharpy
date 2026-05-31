@@ -1,3 +1,5 @@
+"""Higher-order functions and operations on callable objects."""
+
 from sharpy import TypeError
 
 def reduce[T](func: (T, T) -> T, iterable: list[T]) -> T:

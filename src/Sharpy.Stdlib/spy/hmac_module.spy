@@ -1,11 +1,16 @@
+"""Keyed-hashing for message authentication (HMAC)."""
+
 from sharpy import HmacObject
 
 def new(key: str, msg: str = "", digestmod: str = "sha256") -> HmacObject:
+    """Create a new HMAC object using the given key and digest algorithm."""
     obj: HmacObject = HmacObject(key, "sha256", 32)
     return obj
 
 def digest(key: str, msg: str, digestmod: str) -> bytes:
+    """Return the digest of msg for given key and digest algorithm as bytes."""
     return bytes()
 
 def compare_digest(a: str, b: str) -> bool:
+    """Return True if strings a and b are equal using a constant-time comparison."""
     return False

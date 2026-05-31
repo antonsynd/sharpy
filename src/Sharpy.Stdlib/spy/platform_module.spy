@@ -1,40 +1,55 @@
+"""Access to underlying platform's identifying data (OS, hardware, interpreter)."""
+
 from sharpy import UnameResult
 
 def system() -> str:
+    """Return the system/OS name, e.g. 'Linux', 'Darwin', 'Windows'."""
     return ""
 
 def release() -> str:
+    """Return the system's release version, e.g. '5.4.0-42-generic'."""
     return ""
 
 def version() -> str:
+    """Return the system's release version detail string."""
     return ""
 
 def machine() -> str:
+    """Return the machine type, e.g. 'x86_64', 'arm64'."""
     return ""
 
 def node() -> str:
+    """Return the computer's network name (may not be fully qualified)."""
     return ""
 
 def processor() -> str:
+    """Return the (real) processor name."""
     return ""
 
 def platform(aliased: bool = False, terse: bool = False) -> str:
+    """Return a single string identifying the underlying platform."""
     return ""
 
 def sharpy_version() -> str:
+    """Return the Sharpy compiler version string."""
     return ""
 
 def dotnet_version() -> str:
+    """Return the .NET runtime version string."""
     return ""
 
 def dotnet_implementation() -> str:
+    """Return the .NET implementation name (e.g. '.NET' or 'Mono')."""
     return ""
 
 def dotnet_compiler() -> str:
+    """Return the .NET compiler identifier."""
     return ""
 
 def architecture() -> tuple[str, str]:
+    """Return a tuple (bits, linkage) identifying the bit architecture and linkage format."""
     return ("", "")
 
 def uname() -> UnameResult:
+    """Return a named tuple with system, node, release, version, and machine information."""
     return UnameResult("", "", "", "", "")

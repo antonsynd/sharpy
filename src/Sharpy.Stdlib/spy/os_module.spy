@@ -1,3 +1,5 @@
+"""Miscellaneous operating system interfaces."""
+
 from system.io import Path as IoPath, File, Directory
 from system import Environment, UnauthorizedAccessException
 

@@ -1,35 +1,49 @@
+"""RFC 4648 base16, base32, base64, and base85 data encodings."""
+
 def b64encode(s: bytes) -> bytes:
+    """Encode bytes using the standard Base64 alphabet."""
     return bytes()
 
 def b64decode(s: bytes) -> bytes:
+    """Decode a Base64 encoded bytes object."""
     return bytes()
 
 def urlsafe_b64encode(s: bytes) -> bytes:
+    """Encode bytes using the URL-safe Base64 alphabet."""
     return bytes()
 
 def urlsafe_b64decode(s: bytes) -> bytes:
+    """Decode bytes encoded with the URL-safe Base64 alphabet."""
     return bytes()
 
 def b32encode(s: bytes) -> bytes:
+    """Encode bytes using Base32."""
     return bytes()
 
 def b32decode(s: bytes) -> bytes:
+    """Decode a Base32 encoded bytes object."""
     return bytes()
 
 def b16encode(s: bytes) -> bytes:
+    """Encode bytes using Base16 (hexadecimal)."""
     return bytes()
 
 def b16decode(s: bytes) -> bytes:
+    """Decode a Base16 (hexadecimal) encoded bytes object."""
     return bytes()
 
 def b85encode(s: bytes) -> bytes:
+    """Encode bytes using the standard Base85 alphabet."""
     return bytes()
 
 def b85decode(s: bytes) -> bytes:
+    """Decode a Base85 encoded bytes object."""
     return bytes()
 
 def a85encode(s: bytes) -> bytes:
+    """Encode bytes using Ascii85."""
     return bytes()
 
 def a85decode(s: bytes) -> bytes:
+    """Decode an Ascii85 encoded bytes object."""
     return bytes()

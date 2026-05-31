@@ -1,3 +1,5 @@
+"""Heap queue algorithm (priority queue)."""
+
 from sharpy import IndexError
 from system import IComparable
 

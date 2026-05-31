@@ -1,3 +1,5 @@
+"""Mathematical functions (trigonometric, logarithmic, etc.)."""
+
 from system import Math as SysMath, Double
 
 pi: float = 3.141592653589793

@@ -1,3 +1,5 @@
+"""High-level file operations (copy, move, remove trees)."""
+
 from system.io import Path as IoPath, File, Directory, IOException
 
 def copy(src: str, dst: str) -> str:

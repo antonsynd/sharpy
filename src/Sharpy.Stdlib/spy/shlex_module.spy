@@ -1,8 +1,13 @@
+"""Simple lexical analysis of shell-style syntaxes."""
+
 def split(s: str, comments: bool = False, posix: bool = True) -> list[str]:
+    """Split the string s using shell-like syntax."""
     return []
 
 def quote(s: str) -> str:
+    """Return a shell-escaped version of the string s."""
     return ""
 
 def join(split_command: list[str]) -> str:
+    """Concatenate tokens into a command string, quoting as necessary."""
     return ""

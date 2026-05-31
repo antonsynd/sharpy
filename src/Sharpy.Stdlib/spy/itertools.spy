@@ -1,3 +1,5 @@
+"""Functions creating iterators for efficient looping."""
+
 def count(start: int = 0, step: int = 1) -> int:
     """Make an iterator that returns evenly spaced values starting with number start."""
     n: int = start

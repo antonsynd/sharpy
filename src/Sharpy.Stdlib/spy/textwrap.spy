@@ -1,3 +1,5 @@
+"""Text wrapping and filling utilities."""
+
 from system.text import StringBuilder
 from system import Math
 
