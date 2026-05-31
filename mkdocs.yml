@@ -198,6 +198,7 @@ nav:
       - argparse: stdlib/argparse.md
       - bisect: stdlib/bisect.md
       - collections: stdlib/collections.md
+      - configparser: stdlib/configparser.md
       - copy: stdlib/copy.md
       - csv: stdlib/csv.md
       - datetime: stdlib/datetime.md
@@ -208,6 +209,7 @@ nav:
       - hashlib: stdlib/hashlib.md
       - heapq: stdlib/heapq.md
       - io: stdlib/io.md
+      - ipaddress: stdlib/ipaddress.md
       - itertools: stdlib/itertools.md
       - json: stdlib/json.md
       - logging: stdlib/logging.md

@@ -22,6 +22,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`argparse`](argparse.md) | A named group of arguments for organization in help text. Arguments still belong to the parent parser; groups are for help formatting. |
 | [`bisect`](bisect.md) |  |
 | [`collections`](collections.md) | A ChainMap groups multiple dictionaries together to create a single, updateable view. Like Python's collections.ChainMap. |
+| [`configparser`](configparser.md) | INI-style configuration file parsing and writing, with interpolation, a DEFAULT section, and case-insensitive keys. Mirrors Python's \`configparser\`. |
 | [`copy`](copy.md) | Shallow and deep copy operations, similar to Python's \`copy\` module. |
 | [`csv`](csv.md) | Reads CSV data and maps each row to a dictionary keyed by field names, similar to Python's \`csv.DictReader\`. |
 | [`datetime`](datetime.md) | Represents a date (year, month, day). |
@@ -32,6 +33,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`hashlib`](hashlib.md) | Represents a hash object that accumulates data and computes cryptographic hashes. Mirrors Python's hashlib hash object API. |
 | [`heapq`](heapq.md) |  |
 | [`io`](io.md) | In-memory text stream using a string buffer, similar to Python's io.StringIO. Extends TextWriter so it can be used anywhere a TextWriter is expected (e.g., csv module). |
+| [`ipaddress`](ipaddress.md) | IPv4/IPv6 address, network, and interface manipulation. Wraps \`System.Net.IPAddress\` with a Python-compatible API. |
 | [`itertools`](itertools.md) | Itertools module — tools for creating iterators. |
 | [`json`](json.md) | Python-compatible json module. Provides dumps/loads for string serialization and dump/load for file I/O. |
 | [`logging`](logging.md) | A named logger that outputs messages at or above a configured level. Output format: LEVEL:name:message (written to stderr). |
