@@ -24,7 +24,6 @@ import ipaddress
 |------|------|-------------|
 | `version` | `int` |  |
 | `max_prefixlen` | `int` |  |
-| `is_global` | `bool` |  |
 | `is_unspecified` | `bool` |  |
 
 ### `to_int() -> long`
@@ -38,12 +37,9 @@ import ipaddress
 | `version` | `int` |  |
 | `prefixlen` | `int` |  |
 | `max_prefixlen` | `int` |  |
-| `is_private` | `bool` |  |
 | `is_loopback` | `bool` |  |
 | `is_multicast` | `bool` |  |
-| `is_reserved` | `bool` |  |
 | `is_link_local` | `bool` |  |
-| `is_global` | `bool` |  |
 
 ### `hosts() -> SCG.IEnumerable[IPv4Address]`
 
@@ -81,12 +77,11 @@ import ipaddress
 | `version` | `int` |  |
 | `prefixlen` | `int` |  |
 | `max_prefixlen` | `int` |  |
-| `is_private` | `bool` |  |
+| `is_global` | `bool` |  |
 | `is_loopback` | `bool` |  |
 | `is_multicast` | `bool` |  |
 | `is_reserved` | `bool` |  |
 | `is_link_local` | `bool` |  |
-| `is_global` | `bool` |  |
 | `with_prefixlen` | `str` |  |
 | `with_netmask` | `str` |  |
 | `with_hostmask` | `str` |  |

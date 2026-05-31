@@ -606,4 +606,12 @@ public class ConfigparserTests
         config.ReadString("[defaults]\nbase = /opt\n[section]\npath = ${defaults:base}/app");
         config.Get("section", "path").Should().Be("/opt/app");
     }
+
+    [Fact]
+    public void BasicInterpolation_PercentEscapeBeforeKey_ProducesLiteral()
+    {
+        var config = new ConfigParser(new BasicInterpolation());
+        config.ReadString("[section]\nkey = world\na = 100%%(key)s");
+        config.Get("section", "a").Should().Be("100%(key)s");
+    }
 }

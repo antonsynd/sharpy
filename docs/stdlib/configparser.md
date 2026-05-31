@@ -113,6 +113,18 @@ import configparser
 | `option` | `str` |  |
 | `raw_value` | `str` |  |
 
+## InterpolationDepthError
+
+## InterpolationMissingOptionError
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `reference` | `str` |  |
+
+## InterpolationSyntaxError
+
 ## BasicInterpolation
 
 ### `before_get(parser: ConfigParser, section: str, option: str, raw_value: str) -> str`

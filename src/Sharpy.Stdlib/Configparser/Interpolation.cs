@@ -13,7 +13,10 @@ namespace Sharpy
     {
         public string BeforeGet(ConfigParser parser, string section, string option, string rawValue)
         {
-            return Interpolate(parser, section, option, rawValue, 10);
+            var result = Interpolate(parser, section, option, rawValue, 10);
+#pragma warning disable CA1307
+            return result.Replace("%%", "%");
+#pragma warning restore CA1307
         }
 
         public string BeforeSet(ConfigParser parser, string section, string option, string value)
@@ -40,9 +43,7 @@ namespace Sharpy
                 char next = result[idx + 1];
                 if (next == '%')
                 {
-                    // %% escape — replace with single % and skip
-                    result = result.Substring(0, idx) + result.Substring(idx + 1);
-                    startIdx = idx + 1;
+                    startIdx = idx + 2;
                     continue;
                 }
 
@@ -52,7 +53,6 @@ namespace Sharpy
                         "'%' must be followed by '%' or '(', found: '" + next + "'");
                 }
 
-                // We have %(
                 int endIdx = result.IndexOf(")s", idx + 2, StringComparison.Ordinal);
                 if (endIdx < 0)
                 {
@@ -79,12 +79,32 @@ namespace Sharpy
                 startIdx = idx + replacement.Length;
             }
 
-            if (result.IndexOf("%(", StringComparison.Ordinal) >= 0)
+            if (HasUnescapedInterpolation(result))
             {
                 return Interpolate(parser, section, option, result, depth - 1);
             }
 
             return result;
+        }
+
+        private static bool HasUnescapedInterpolation(string s)
+        {
+            int idx = 0;
+            while (idx < s.Length - 1)
+            {
+                int pos = s.IndexOf('%', idx);
+                if (pos < 0 || pos >= s.Length - 1)
+                    return false;
+                if (s[pos + 1] == '%')
+                {
+                    idx = pos + 2;
+                    continue;
+                }
+                if (s[pos + 1] == '(')
+                    return true;
+                idx = pos + 1;
+            }
+            return false;
         }
     }
 
