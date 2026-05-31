@@ -10,6 +10,9 @@ using global::Sharpy;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// High-level file operations, equivalent to Python's shutil module.
+    /// </summary>
     public static partial class ShutilModule
     {
         /// <summary>
@@ -132,6 +135,9 @@ namespace Sharpy
             throw new global::Sharpy.OSError("No such file or directory: '" + src + "'");
         }
 
+        /// <summary>
+        /// Resolve the destination path, appending the source filename if dst is a directory.
+        /// </summary>
         public static string _ResolveDestination(string src, string dst)
         {
             if (global::System.IO.Directory.Exists(dst))
@@ -142,6 +148,9 @@ namespace Sharpy
             return dst;
         }
 
+        /// <summary>
+        /// Recursively copy all files and subdirectories from src to dst.
+        /// </summary>
         public static void _CopyDirectoryRecursive(string src, string dst)
         {
             global::System.IO.Directory.CreateDirectory(dst);

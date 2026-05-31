@@ -10,6 +10,9 @@ using global::Sharpy;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Provides statistical functions matching Python's <c>statistics</c> module.
+    /// </summary>
     public static partial class Statistics
     {
         /// <summary>
@@ -166,6 +169,9 @@ namespace Sharpy
             return ss / global::Sharpy.Builtins.Len(values);
         }
 
+        /// <summary>
+        /// Copy data into a list and throw if empty.
+        /// </summary>
         public static Sharpy.List<double> _Materialize(Sharpy.List<double> data)
         {
             Sharpy.List<double> result = new global::Sharpy.List<double>(data);
@@ -177,6 +183,9 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>
+        /// Copy data into a sorted list and throw if empty.
+        /// </summary>
         public static Sharpy.List<double> _MaterializeSorted(Sharpy.List<double> data)
         {
             Sharpy.List<double> result = _Materialize(data);
@@ -184,6 +193,9 @@ namespace Sharpy
             return result;
         }
 
+        /// <summary>
+        /// Return the sum of all values in the list.
+        /// </summary>
         public static double _Sum(Sharpy.List<double> values)
         {
             double total = 0.0d;
@@ -196,6 +208,9 @@ namespace Sharpy
             return total;
         }
 
+        /// <summary>
+        /// Return the sum of squared deviations from the mean <paramref name="m"/>.
+        /// </summary>
         public static double _SumOfSquaredDeviations(Sharpy.List<double> values, double m)
         {
             double ss = 0.0d;

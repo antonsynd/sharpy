@@ -4,6 +4,7 @@ using System.IO;
 
 namespace Sharpy
 {
+    /// <summary>Miscellaneous operating system interfaces.</summary>
     public static partial class OsModule
     {
         /// <summary>Get an environment variable, return <paramref name="default_"/> if it doesn't exist.</summary>

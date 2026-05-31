@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Generate pseudo-random numbers with various distributions.</summary>
     public static partial class RandomModule
     {
         /// <summary>

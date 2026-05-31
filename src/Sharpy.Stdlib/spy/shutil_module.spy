@@ -61,11 +61,13 @@ def move(src: str, dst: str) -> str:
     raise OSError("No such file or directory: '" + src + "'")
 
 def _resolve_destination(src: str, dst: str) -> str:
+    """Resolve the final destination path, appending the source filename if dst is a directory."""
     if Directory.exists(dst):
         return IoPath.combine(dst, IoPath.get_file_name(src))
     return dst
 
 def _copy_directory_recursive(src: str, dst: str) -> None:
+    """Recursively copy a directory tree from src to dst."""
     Directory.create_directory(dst)
     for file_path in Directory.get_files(src):
         dest_file: str = IoPath.combine(dst, IoPath.get_file_name(file_path))

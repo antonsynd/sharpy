@@ -32,6 +32,7 @@ class Struct:
     size: int
 
     def __init__(self, format: str):
+        """Create a new Struct object with the given format string."""
         self.format = format
         self.size = 0
 

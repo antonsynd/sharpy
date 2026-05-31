@@ -2,6 +2,9 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Provides NumPy-equivalent array power functions.
+    /// </summary>
     public static partial class Numpy
     {
         /// <summary>

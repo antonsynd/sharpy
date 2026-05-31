@@ -10,6 +10,9 @@ using global::Sharpy;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Provides common pathname manipulations, equivalent to Python's os.path module.
+    /// </summary>
     public static partial class OsPathModule
     {
         /// <summary>

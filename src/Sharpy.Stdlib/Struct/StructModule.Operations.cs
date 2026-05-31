@@ -5,6 +5,7 @@ using System.Text;
 
 namespace Sharpy
 {
+    /// <summary>Interpret bytes as packed binary data using format strings.</summary>
     public static partial class StructModule
     {
         /// <summary>

@@ -14,9 +14,15 @@ namespace Sharpy
         BigEndian
     }
 
+    /// <summary>
+    /// Represents a single field in a struct format string.
+    /// </summary>
     internal sealed class FormatField
     {
+        /// <summary>The format character specifying the data type.</summary>
         public char Type { get; }
+
+        /// <summary>The repeat count for this field.</summary>
         public int Count { get; }
 
         public FormatField(char type, int count)
@@ -26,9 +32,15 @@ namespace Sharpy
         }
     }
 
+    /// <summary>
+    /// Represents a fully parsed struct format specification.
+    /// </summary>
     internal sealed class FormatSpec
     {
+        /// <summary>The byte order specified by the format prefix.</summary>
         public ByteOrder ByteOrder { get; }
+
+        /// <summary>The list of fields parsed from the format string.</summary>
         public System.Collections.Generic.List<FormatField> Fields { get; }
 
         public FormatSpec(ByteOrder byteOrder, System.Collections.Generic.List<FormatField> fields)
@@ -38,10 +50,16 @@ namespace Sharpy
         }
     }
 
+    /// <summary>
+    /// Parses Python struct format strings into a <see cref="FormatSpec"/>.
+    /// </summary>
     internal static class FormatParser
     {
         private const string ValidFormatChars = "xbBhHiIlLqQfdsp?nN";
 
+        /// <summary>
+        /// Parse a struct format string into a byte order and list of fields.
+        /// </summary>
         public static FormatSpec Parse(string format)
         {
             if (format == null)

@@ -2,6 +2,9 @@ using System;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Provides NumPy-equivalent array reduction functions (sum, min, max, mean, variance, etc.).
+    /// </summary>
     public static partial class Numpy
     {
         // -- Full reductions (collapse the entire array to a scalar) -----------------

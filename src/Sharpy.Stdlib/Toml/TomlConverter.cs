@@ -5,8 +5,14 @@ using Tomlyn.Model;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Converts between Tomlyn TOML model types and Sharpy runtime types.
+    /// </summary>
     internal static class TomlConverter
     {
+        /// <summary>
+        /// Convert a Tomlyn <see cref="TomlTable"/> to a Sharpy Dict.
+        /// </summary>
         internal static Dict<string, object?> ToSharpy(TomlTable table)
         {
             var dict = new Dict<string, object?>();
@@ -76,6 +82,9 @@ namespace Sharpy
             }
         }
 
+        /// <summary>
+        /// Convert a Sharpy Dict to a Tomlyn <see cref="TomlTable"/> for serialization.
+        /// </summary>
         internal static TomlTable ToTomlyn(object? obj)
         {
             if (obj is Dict<string, object?> dict)

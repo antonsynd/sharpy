@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>Heap queue algorithm (priority queue).</summary>
     public static partial class Heapq
     {
         /// <summary>Find the n largest elements in a dataset, accepting any IList.</summary>

@@ -2,6 +2,9 @@ using System.Collections.Generic;
 
 namespace Sharpy
 {
+    /// <summary>
+    /// Provides statistical functions matching Python's <c>statistics</c> module.
+    /// </summary>
     public static partial class Statistics
     {
         /// <summary>Return the sample arithmetic mean of integer data.</summary>
