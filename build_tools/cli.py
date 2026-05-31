@@ -34,9 +34,15 @@ import click
 
 # Import stdlib doc generator (stdlib-only deps, always available)
 try:
-    from build_tools.generate_stdlib_docs import generate as stdlib_generate
+    from build_tools.generate_stdlib_docs import (
+        generate as stdlib_generate,
+        check_docs as stdlib_check_docs,
+    )
 except ImportError:
-    from .generate_stdlib_docs import generate as stdlib_generate
+    from .generate_stdlib_docs import (
+        generate as stdlib_generate,
+        check_docs as stdlib_check_docs,
+    )
 
 # Import heavier tool-specific CLI functions (optional deps like langgraph)
 _heavy_imports_available = True
@@ -751,24 +757,83 @@ def stdlib():
     help="Overwrite existing files (default: skip existing)",
 )
 @click.option(
+    "--mkdocs",
+    "mkdocs_path",
+    type=click.Path(path_type=Path),
+    default="mkdocs.yml",
+    help="Path to mkdocs.yml to update the stdlib nav (default: mkdocs.yml)",
+)
+@click.option(
+    "--no-nav",
+    is_flag=True,
+    help="Do not update the mkdocs.yml nav",
+)
+@click.option(
+    "--check",
+    is_flag=True,
+    help="Check that committed docs and nav are up to date; write nothing and "
+    "exit non-zero on drift",
+)
+@click.option(
     "--verbose",
     "-v",
     is_flag=True,
     help="Print progress information",
 )
-def stdlib_gen(source_dir: Path, output_dir: Path, stdlib_dir: Path | None, force: bool, verbose: bool):
+def stdlib_gen(
+    source_dir: Path,
+    output_dir: Path,
+    stdlib_dir: Path | None,
+    force: bool,
+    mkdocs_path: Path,
+    no_nav: bool,
+    check: bool,
+    verbose: bool,
+):
     """Generate stdlib API reference pages from Sharpy.Core and Sharpy.Stdlib C# source."""
     if stdlib_dir is None:
         auto = source_dir.resolve().parent / "Sharpy.Stdlib"
         if auto.exists():
             stdlib_dir = auto
+
+    resolved_stdlib = stdlib_dir.resolve() if stdlib_dir else None
+
+    if check:
+        # Drift detection: write nothing, diff against committed docs + nav.
+        mk = mkdocs_path.resolve() if mkdocs_path and mkdocs_path.exists() else None
+        try:
+            up_to_date, messages = stdlib_check_docs(
+                source_dir=source_dir.resolve(),
+                output_dir=output_dir.resolve(),
+                stdlib_dir=resolved_stdlib,
+                mkdocs_path=mk,
+            )
+        except Exception as e:
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(1)
+        if up_to_date:
+            click.echo("docs up to date")
+            sys.exit(0)
+        click.echo("Stdlib docs are out of sync with source:", err=True)
+        for msg in messages:
+            click.echo(f"  - {msg}", err=True)
+        click.echo(
+            "\nRun: python -m build_tools stdlib generate --force",
+            err=True,
+        )
+        sys.exit(1)
+
     try:
         generated = stdlib_generate(
             source_dir=source_dir.resolve(),
             output_dir=output_dir.resolve(),
             force=force,
             verbose=verbose,
-            stdlib_dir=stdlib_dir.resolve() if stdlib_dir else None,
+            stdlib_dir=resolved_stdlib,
+            mkdocs_path=mkdocs_path.resolve()
+            if (mkdocs_path and not no_nav)
+            else None,
+            update_nav=not no_nav,
         )
         if not verbose:
             click.echo(f"Generated {len(generated)} files in {output_dir}")

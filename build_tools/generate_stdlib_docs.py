@@ -8,10 +8,49 @@ and produces Markdown pages suitable for MkDocs Material.
 
 import re
 import os
+import shutil
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 from xml.etree import ElementTree
+
+
+# ---------------------------------------------------------------------------
+# Hand-authored pages
+# ---------------------------------------------------------------------------
+
+# Pages the generator does NOT own (their source has no introspectable members,
+# or the docs are written by hand) but which must still appear in the index
+# Modules table and the mkdocs nav. The generator must never overwrite or delete
+# these pages, but it must merge them into the index and nav so they stay linked.
+#
+# Each entry maps the module name to:
+#   "description" -- one-line cell for the index Modules table
+#   "nav_title"   -- the title used in the mkdocs nav (usually the module name)
+HAND_AUTHORED_MODULES: dict[str, dict[str, str]] = {
+    "numpy": {
+        "description": (
+            "NumPy-style N-dimensional arrays and numerical routines, backed by "
+            "MathNet.Numerics."
+        ),
+        "nav_title": "numpy",
+    },
+    "requests": {
+        "description": (
+            "Pythonic HTTP client for sending requests and handling responses, "
+            "similar to Python's `requests` library."
+        ),
+        "nav_title": "requests",
+    },
+    "sqlite3": {
+        "description": (
+            "SQLite database access with a DB-API-style interface, similar to "
+            "Python's `sqlite3` module."
+        ),
+        "nav_title": "sqlite3",
+    },
+}
 
 
 # ---------------------------------------------------------------------------
@@ -1340,12 +1379,162 @@ def render_index_page(
     lines.append("")
     lines.append("| Module | Description |")
     lines.append("|--------|-------------|")
+
+    # Merge generator-owned modules with the hand-authored allowlist, sorted by
+    # name so the table stays stable regardless of source.
+    table_rows: dict[str, str] = {}
     for mod in modules:
-        desc = _escape_table_cell(mod.summary)
-        lines.append(f"| [`{mod.name}`]({mod.name}.md) | {desc} |")
+        table_rows[mod.name] = _escape_table_cell(mod.summary)
+    for name, info in HAND_AUTHORED_MODULES.items():
+        # Generator-owned pages win if a name somehow appears in both.
+        table_rows.setdefault(name, _escape_table_cell(info["description"]))
+
+    for name in sorted(table_rows):
+        lines.append(f"| [`{name}`]({name}.md) | {table_rows[name]} |")
     lines.append("")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# mkdocs nav generation
+# ---------------------------------------------------------------------------
+
+
+def _all_module_nav_names(modules: list[DocModule]) -> list[str]:
+    """Return the sorted set of module names that belong in the nav/index.
+
+    Combines generator-owned modules with the hand-authored allowlist.
+    """
+    names = {m.name for m in modules}
+    names.update(HAND_AUTHORED_MODULES.keys())
+    return sorted(names)
+
+
+def _replace_child_block(
+    lines: list[str], parent_label: str, child_lines: list[str]
+) -> tuple[list[str], bool]:
+    """Replace the contiguous, more-indented child block under *parent_label*.
+
+    *parent_label* is matched against a stripped line (e.g. ``"- Modules:"``).
+    The block of following lines that are indented deeper than the parent is
+    replaced wholesale with *child_lines*. The rest of the file is preserved
+    byte-for-byte. Returns ``(new_lines, changed)``.
+
+    This is a targeted text-region edit (not a YAML round-trip) so the rest of
+    ``mkdocs.yml`` keeps its exact formatting and indentation.
+    """
+    out: list[str] = []
+    i = 0
+    n = len(lines)
+    changed = False
+    while i < n:
+        line = lines[i]
+        if line.strip() == parent_label:
+            parent_indent = len(line) - len(line.lstrip())
+            out.append(line)
+            i += 1
+            # Consume the existing child block (deeper-indented lines; blank
+            # lines are tolerated only when a deeper line follows immediately).
+            old_block: list[str] = []
+            while i < n:
+                cur = lines[i]
+                if cur.strip() == "":
+                    j = i + 1
+                    if j < n:
+                        nxt = lines[j]
+                        nxt_indent = len(nxt) - len(nxt.lstrip())
+                        if nxt.strip() != "" and nxt_indent > parent_indent:
+                            old_block.append(cur)
+                            i += 1
+                            continue
+                    break
+                cur_indent = len(cur) - len(cur.lstrip())
+                if cur_indent > parent_indent:
+                    old_block.append(cur)
+                    i += 1
+                    continue
+                break
+            out.extend(child_lines)
+            if old_block != child_lines:
+                changed = True
+            continue
+        out.append(line)
+        i += 1
+    return out, changed
+
+
+def build_nav_blocks(
+    core_types: list[DocModule], modules: list[DocModule]
+) -> dict[str, list[str]]:
+    """Compute the desired mkdocs nav child blocks for stdlib.
+
+    Returns a mapping of parent label -> list of child lines (with the 6-space
+    indentation used under ``- Modules:`` / ``- Core Types:``).
+    """
+    core_block = [
+        f"      - {ct.name}: stdlib/{ct.name}.md" for ct in core_types
+    ]
+    module_block = [
+        f"      - {name}: stdlib/{name}.md"
+        for name in _all_module_nav_names(modules)
+    ]
+    return {
+        "- Core Types:": core_block,
+        "- Modules:": module_block,
+    }
+
+
+def compute_mkdocs_nav(
+    mkdocs_path: Path, core_types: list[DocModule], modules: list[DocModule]
+) -> str:
+    """Return what the full contents of *mkdocs_path* would be after a nav update.
+
+    Does not write anything. Used by both ``update_mkdocs_nav`` and ``--check``.
+    """
+    text = mkdocs_path.read_text(encoding="utf-8")
+    trailing_newline = text.endswith("\n")
+    lines = text.split("\n")
+    if trailing_newline:
+        # Drop the final empty element from split so we can rejoin cleanly.
+        lines = lines[:-1]
+
+    blocks = build_nav_blocks(core_types, modules)
+    for label, child_lines in blocks.items():
+        lines, _changed = _replace_child_block(lines, label, child_lines)
+
+    result = "\n".join(lines)
+    if trailing_newline:
+        result += "\n"
+    return result
+
+
+def update_mkdocs_nav(
+    mkdocs_path: Path,
+    core_types: list[DocModule],
+    modules: list[DocModule],
+    verbose: bool = False,
+) -> bool:
+    """Rewrite the stdlib nav child blocks in *mkdocs_path* in place.
+
+    Only the ``- Modules:`` and ``- Core Types:`` child blocks are touched; the
+    rest of the file is preserved exactly. Returns ``True`` if the file changed.
+    Idempotent: running twice produces no further change.
+    """
+    if not mkdocs_path.exists():
+        if verbose:
+            print(f"  mkdocs file not found, skipping nav update: {mkdocs_path}")
+        return False
+    current = mkdocs_path.read_text(encoding="utf-8")
+    desired = compute_mkdocs_nav(mkdocs_path, core_types, modules)
+    if desired == current:
+        if verbose:
+            print(f"  mkdocs nav already up to date: {mkdocs_path.name}")
+        return False
+    mkdocs_path.write_text(desired, encoding="utf-8")
+    if verbose:
+        print(f"  Updated mkdocs nav: {mkdocs_path.name}")
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -1359,6 +1548,8 @@ def generate(
     force: bool = False,
     verbose: bool = False,
     stdlib_dir: Optional[Path] = None,
+    mkdocs_path: Optional[Path] = None,
+    update_nav: bool = True,
 ) -> list[Path]:
     """Generate stdlib documentation pages.
 
@@ -1417,8 +1608,13 @@ def generate(
             if verbose:
                 print(f"  Generated: {out_path.name}")
 
-    # Render modules
+    # Render modules. Hand-authored pages are never overwritten or generated,
+    # even with --force; they are owned outside this tool.
     for mod in modules:
+        if mod.name in HAND_AUTHORED_MODULES:
+            if verbose:
+                print(f"  Skipping hand-authored page: {mod.name}.md")
+            continue
         out_path = output_dir / f"{mod.name}.md"
         if force or not out_path.exists():
             out_path.write_text(render_module_page(mod), encoding="utf-8")
@@ -1426,7 +1622,7 @@ def generate(
             if verbose:
                 print(f"  Generated: {out_path.name}")
 
-    # Render index
+    # Render index (merges hand-authored modules into the Modules table).
     out_path = output_dir / "index.md"
     if force or not out_path.exists():
         out_path.write_text(
@@ -1437,7 +1633,90 @@ def generate(
         if verbose:
             print(f"  Generated: {out_path.name}")
 
+    # Update the mkdocs nav (only when requested; never for temp/check dirs —
+    # the caller controls this via update_nav / mkdocs_path).
+    if update_nav and mkdocs_path is not None:
+        if update_mkdocs_nav(mkdocs_path, core_types, modules, verbose=verbose):
+            generated.append(mkdocs_path)
+
     if verbose:
         print(f"\nDone. Generated {len(generated)} files.")
 
     return generated
+
+
+# ---------------------------------------------------------------------------
+# Drift detection (--check)
+# ---------------------------------------------------------------------------
+
+
+def check_docs(
+    source_dir: Path,
+    output_dir: Path,
+    stdlib_dir: Optional[Path] = None,
+    mkdocs_path: Optional[Path] = None,
+) -> tuple[bool, list[str]]:
+    """Check whether committed docs are in sync with what would be generated.
+
+    Generates everything into a temporary directory (writing NOTHING to
+    *output_dir* or *mkdocs_path*), then diffs:
+
+      * each generator-owned ``*.md`` page (incl. ``index.md``) against the
+        committed page in *output_dir*
+      * the committed ``mkdocs.yml`` nav against what it would become
+
+    Returns ``(up_to_date, messages)``. ``messages`` concisely describes every
+    difference found (empty when in sync).
+    """
+    messages: list[str] = []
+
+    tmp_root = Path(tempfile.mkdtemp(prefix="sharpy-doc-check-"))
+    try:
+        tmp_out = tmp_root / "stdlib"
+        # Generate into the temp dir with force, no nav writing.
+        generate(
+            source_dir=source_dir,
+            output_dir=tmp_out,
+            force=True,
+            verbose=False,
+            stdlib_dir=stdlib_dir,
+            update_nav=False,
+        )
+
+        # Compare generator-owned pages.
+        generated_pages = sorted(p.name for p in tmp_out.glob("*.md"))
+        for name in generated_pages:
+            expected = (tmp_out / name).read_text(encoding="utf-8")
+            committed_path = output_dir / name
+            if not committed_path.exists():
+                messages.append(
+                    f"missing page: docs/stdlib/{name} (would be generated)"
+                )
+                continue
+            actual = committed_path.read_text(encoding="utf-8")
+            if actual != expected:
+                messages.append(f"out-of-date page: docs/stdlib/{name}")
+
+        # Note hand-authored pages that are missing entirely.
+        for name in HAND_AUTHORED_MODULES:
+            page = output_dir / f"{name}.md"
+            if not page.exists():
+                messages.append(
+                    f"missing hand-authored page: docs/stdlib/{name}.md"
+                )
+
+        # Compare mkdocs nav.
+        if mkdocs_path is not None and mkdocs_path.exists():
+            current = mkdocs_path.read_text(encoding="utf-8")
+            modules = discover_modules(source_dir)
+            if stdlib_dir and stdlib_dir.exists():
+                modules.extend(discover_modules(stdlib_dir))
+            modules.sort(key=lambda m: m.name)
+            core_types = discover_core_types(source_dir)
+            desired = compute_mkdocs_nav(mkdocs_path, core_types, modules)
+            if current != desired:
+                messages.append(f"out-of-date nav: {mkdocs_path.name}")
+    finally:
+        shutil.rmtree(tmp_root, ignore_errors=True)
+
+    return (len(messages) == 0, messages)

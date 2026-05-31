@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from build_tools.generate_stdlib_docs import (
+    HAND_AUTHORED_MODULES,
     DocMember,
     DocModule,
     DocParam,
@@ -15,13 +16,19 @@ from build_tools.generate_stdlib_docs import (
     _find_nonpublic_class_ranges,
     _parse_params,
     _parse_xml_doc,
+    _replace_child_block,
     _split_generic_args,
+    build_nav_blocks,
+    check_docs,
+    compute_mkdocs_nav,
     discover_modules,
+    generate,
     map_type,
     parse_cs_file,
     pascal_to_snake,
     render_index_page,
     render_module_page,
+    update_mkdocs_nav,
 )
 
 
@@ -1181,3 +1188,304 @@ class TestFindNonpublicClassRanges:
         ).split("\n")
         ranges = _find_nonpublic_class_ranges(src)
         assert ranges == []
+
+
+# ---------------------------------------------------------------------------
+# Hand-authored allowlist
+# ---------------------------------------------------------------------------
+
+
+class TestHandAuthoredModules:
+    """The hand-authored allowlist controls index merging and page skipping."""
+
+    def test_allowlist_seeded(self):
+        for name in ("numpy", "requests", "sqlite3"):
+            assert name in HAND_AUTHORED_MODULES
+            entry = HAND_AUTHORED_MODULES[name]
+            assert entry["description"].strip()
+            assert entry["nav_title"]
+
+    def test_index_merges_hand_authored(self):
+        """Hand-authored modules appear in the index even with no generated module."""
+        builtins = DocModule(name="builtins", kind="builtins", members=[])
+        core_types = [DocModule(name="list", kind="type", summary="A list.")]
+        modules = [DocModule(name="math", kind="module", summary="Math functions.")]
+        output = render_index_page(builtins, core_types, modules)
+        assert "[`math`](math.md)" in output
+        # numpy is hand-authored: must still be linked from the index.
+        assert "[`numpy`](numpy.md)" in output
+        assert "[`requests`](requests.md)" in output
+
+    def test_index_modules_sorted(self):
+        builtins = DocModule(name="builtins", kind="builtins", members=[])
+        modules = [
+            DocModule(name="zzz", kind="module", summary="Z."),
+            DocModule(name="aaa", kind="module", summary="A."),
+        ]
+        output = render_index_page(builtins, [], modules)
+        # aaa before zzz, and hand-authored numpy slotted in sorted order.
+        i_aaa = output.index("[`aaa`]")
+        i_numpy = output.index("[`numpy`]")
+        i_zzz = output.index("[`zzz`]")
+        assert i_aaa < i_numpy < i_zzz
+
+    def test_generate_skips_hand_authored_pages(self, tmp_path: Path):
+        """Even with force, a hand-authored page is never (re)written."""
+        src = tmp_path / "src"
+        mod_dir = src / "Numpy"
+        mod_dir.mkdir(parents=True)
+        (mod_dir / "__Init__.cs").write_text(
+            textwrap.dedent(
+                """\
+                namespace Sharpy;
+                [SharpyModule("numpy")]
+                public static partial class NumpyModule { }
+                """
+            ),
+            encoding="utf-8",
+        )
+        out = tmp_path / "out"
+        out.mkdir()
+        sentinel = "HAND AUTHORED — DO NOT OVERWRITE\n"
+        (out / "numpy.md").write_text(sentinel, encoding="utf-8")
+
+        generate(source_dir=src, output_dir=out, force=True, update_nav=False)
+
+        # The hand-authored page must be untouched.
+        assert (out / "numpy.md").read_text(encoding="utf-8") == sentinel
+
+
+# ---------------------------------------------------------------------------
+# mkdocs nav generation
+# ---------------------------------------------------------------------------
+
+
+SAMPLE_MKDOCS = textwrap.dedent(
+    """\
+    site_name: Sample
+    nav:
+      - Home: index.md
+      - Standard Library:
+        - Overview: stdlib/index.md
+        - Core Types:
+          - list: stdlib/list.md
+          - dict: stdlib/dict.md
+        - Modules:
+          - argparse: stdlib/argparse.md
+          - zlib: stdlib/zlib.md
+      - Tooling:
+        - LSP Server: tooling/lsp-server.md
+    """
+)
+
+
+class TestNavGeneration:
+    """Targeted mkdocs nav child-block replacement."""
+
+    def _write(self, tmp_path: Path) -> Path:
+        p = tmp_path / "mkdocs.yml"
+        p.write_text(SAMPLE_MKDOCS, encoding="utf-8")
+        return p
+
+    def test_replace_child_block_preserves_siblings(self):
+        lines = SAMPLE_MKDOCS.split("\n")
+        new, changed = _replace_child_block(
+            lines, "- Modules:", ["      - foo: stdlib/foo.md"]
+        )
+        assert changed
+        text = "\n".join(new)
+        assert "- foo: stdlib/foo.md" in text
+        assert "argparse: stdlib/argparse.md" not in text
+        # Unrelated sections are preserved.
+        assert "- Tooling:" in text
+        assert "LSP Server: tooling/lsp-server.md" in text
+        assert "list: stdlib/list.md" in text
+
+    def test_build_nav_blocks_sorted_and_merged(self):
+        core_types = [
+            DocModule(name="list", kind="type"),
+            DocModule(name="dict", kind="type"),
+        ]
+        modules = [
+            DocModule(name="zlib", kind="module"),
+            DocModule(name="argparse", kind="module"),
+        ]
+        blocks = build_nav_blocks(core_types, modules)
+        # Core types keep discovery order.
+        assert blocks["- Core Types:"] == [
+            "      - list: stdlib/list.md",
+            "      - dict: stdlib/dict.md",
+        ]
+        module_block = blocks["- Modules:"]
+        # Sorted, and hand-authored names merged in.
+        assert module_block[0] == "      - argparse: stdlib/argparse.md"
+        assert "      - numpy: stdlib/numpy.md" in module_block
+        assert module_block == sorted(module_block)
+
+    def test_update_mkdocs_nav_writes_and_is_idempotent(self, tmp_path: Path):
+        p = self._write(tmp_path)
+        core_types = [DocModule(name="list", kind="type")]
+        modules = [
+            DocModule(name="argparse", kind="module"),
+            DocModule(name="zlib", kind="module"),
+            DocModule(name="middle", kind="module"),
+        ]
+        changed1 = update_mkdocs_nav(p, core_types, modules)
+        assert changed1
+        after_first = p.read_text(encoding="utf-8")
+        assert "- middle: stdlib/middle.md" in after_first
+        # numpy (hand-authored) merged into nav too.
+        assert "- numpy: stdlib/numpy.md" in after_first
+        # Unrelated sections preserved.
+        assert "- Tooling:" in after_first
+
+        # Second run must not change anything (idempotency).
+        changed2 = update_mkdocs_nav(p, core_types, modules)
+        assert not changed2
+        assert p.read_text(encoding="utf-8") == after_first
+
+    def test_compute_nav_does_not_mutate_file(self, tmp_path: Path):
+        p = self._write(tmp_path)
+        before = p.read_text(encoding="utf-8")
+        compute_mkdocs_nav(
+            p,
+            [DocModule(name="list", kind="type")],
+            [DocModule(name="x", kind="module")],
+        )
+        assert p.read_text(encoding="utf-8") == before
+
+    def test_nav_preserves_trailing_newline(self, tmp_path: Path):
+        p = self._write(tmp_path)
+        update_mkdocs_nav(
+            p,
+            [DocModule(name="list", kind="type")],
+            [DocModule(name="x", kind="module")],
+        )
+        assert p.read_text(encoding="utf-8").endswith("\n")
+
+
+# ---------------------------------------------------------------------------
+# --check drift detection
+# ---------------------------------------------------------------------------
+
+
+class TestCheckDocs:
+    """check_docs reports drift without writing anything."""
+
+    def _make_source(self, tmp_path: Path) -> Path:
+        src = tmp_path / "src"
+        mod_dir = src / "Greet"
+        mod_dir.mkdir(parents=True)
+        (mod_dir / "__Init__.cs").write_text(
+            textwrap.dedent(
+                """\
+                namespace Sharpy;
+                /// <summary>Greeting helpers.</summary>
+                [SharpyModule("greet")]
+                public static partial class GreetModule
+                {
+                    /// <summary>Say hello.</summary>
+                    public static string Hello() => "hi";
+                }
+                """
+            ),
+            encoding="utf-8",
+        )
+        return src
+
+    def test_check_passes_when_in_sync(self, tmp_path: Path):
+        src = self._make_source(tmp_path)
+        out = tmp_path / "docs"
+        mkdocs = tmp_path / "mkdocs.yml"
+        mkdocs.write_text(SAMPLE_MKDOCS, encoding="utf-8")
+        generate(
+            source_dir=src,
+            output_dir=out,
+            force=True,
+            mkdocs_path=mkdocs,
+            update_nav=True,
+        )
+        # A genuinely in-sync repo also has the hand-authored pages present.
+        for name in HAND_AUTHORED_MODULES:
+            (out / f"{name}.md").write_text(f"# {name}\n", encoding="utf-8")
+        up_to_date, messages = check_docs(
+            source_dir=src, output_dir=out, mkdocs_path=mkdocs
+        )
+        assert up_to_date, messages
+        assert messages == []
+
+    def test_check_detects_missing_hand_authored_page(self, tmp_path: Path):
+        """A deleted hand-authored page is flagged as drift."""
+        src = self._make_source(tmp_path)
+        out = tmp_path / "docs"
+        mkdocs = tmp_path / "mkdocs.yml"
+        mkdocs.write_text(SAMPLE_MKDOCS, encoding="utf-8")
+        generate(
+            source_dir=src,
+            output_dir=out,
+            force=True,
+            mkdocs_path=mkdocs,
+            update_nav=True,
+        )
+        # Deliberately do NOT create the hand-authored pages.
+        up_to_date, messages = check_docs(
+            source_dir=src, output_dir=out, mkdocs_path=mkdocs
+        )
+        assert not up_to_date
+        assert any("numpy.md" in m for m in messages)
+
+    def test_check_detects_stale_page(self, tmp_path: Path):
+        src = self._make_source(tmp_path)
+        out = tmp_path / "docs"
+        mkdocs = tmp_path / "mkdocs.yml"
+        mkdocs.write_text(SAMPLE_MKDOCS, encoding="utf-8")
+        generate(
+            source_dir=src,
+            output_dir=out,
+            force=True,
+            mkdocs_path=mkdocs,
+            update_nav=True,
+        )
+        (out / "greet.md").write_text("stale content\n", encoding="utf-8")
+        up_to_date, messages = check_docs(
+            source_dir=src, output_dir=out, mkdocs_path=mkdocs
+        )
+        assert not up_to_date
+        assert any("greet.md" in m for m in messages)
+
+    def test_check_detects_stale_nav(self, tmp_path: Path):
+        src = self._make_source(tmp_path)
+        out = tmp_path / "docs"
+        mkdocs = tmp_path / "mkdocs.yml"
+        mkdocs.write_text(SAMPLE_MKDOCS, encoding="utf-8")
+        generate(
+            source_dir=src,
+            output_dir=out,
+            force=True,
+            mkdocs_path=mkdocs,
+            update_nav=False,  # leave nav stale on purpose
+        )
+        up_to_date, messages = check_docs(
+            source_dir=src, output_dir=out, mkdocs_path=mkdocs
+        )
+        assert not up_to_date
+        assert any("nav" in m for m in messages)
+
+    def test_check_writes_nothing(self, tmp_path: Path):
+        src = self._make_source(tmp_path)
+        out = tmp_path / "docs"
+        mkdocs = tmp_path / "mkdocs.yml"
+        mkdocs.write_text(SAMPLE_MKDOCS, encoding="utf-8")
+        generate(
+            source_dir=src,
+            output_dir=out,
+            force=True,
+            mkdocs_path=mkdocs,
+            update_nav=True,
+        )
+        snapshot = {p: p.read_text(encoding="utf-8") for p in out.glob("*.md")}
+        mk_before = mkdocs.read_text(encoding="utf-8")
+        check_docs(source_dir=src, output_dir=out, mkdocs_path=mkdocs)
+        for p, content in snapshot.items():
+            assert p.read_text(encoding="utf-8") == content
+        assert mkdocs.read_text(encoding="utf-8") == mk_before

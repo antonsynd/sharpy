@@ -192,10 +192,10 @@ nav:
       - list: stdlib/list.md
       - dict: stdlib/dict.md
       - set: stdlib/set.md
-      - str: stdlib/str.md
       - complex: stdlib/complex.md
     - Modules:
       - argparse: stdlib/argparse.md
+      - base64: stdlib/base64.md
       - bisect: stdlib/bisect.md
       - collections: stdlib/collections.md
       - configparser: stdlib/configparser.md
@@ -206,8 +206,10 @@ nav:
       - functools: stdlib/functools.md
       - glob: stdlib/glob.md
       - grapheme: stdlib/grapheme.md
+      - gzip: stdlib/gzip.md
       - hashlib: stdlib/hashlib.md
       - heapq: stdlib/heapq.md
+      - hmac: stdlib/hmac.md
       - io: stdlib/io.md
       - ipaddress: stdlib/ipaddress.md
       - itertools: stdlib/itertools.md
@@ -218,18 +220,29 @@ nav:
       - operator: stdlib/operator.md
       - os: stdlib/os.md
       - pathlib: stdlib/pathlib.md
+      - platform: stdlib/platform.md
       - random: stdlib/random.md
       - re: stdlib/re.md
       - requests: stdlib/requests.md
+      - secrets: stdlib/secrets.md
+      - shlex: stdlib/shlex.md
       - shutil: stdlib/shutil.md
       - sqlite3: stdlib/sqlite3.md
       - statistics: stdlib/statistics.md
       - string: stdlib/string.md
+      - struct: stdlib/struct.md
+      - subprocess: stdlib/subprocess.md
       - sys: stdlib/sys.md
       - tempfile: stdlib/tempfile.md
       - textwrap: stdlib/textwrap.md
       - time: stdlib/time.md
+      - toml: stdlib/toml.md
       - unittest: stdlib/unittest.md
+      - urllib: stdlib/urllib.md
+      - uuid: stdlib/uuid.md
+      - yaml: stdlib/yaml.md
+      - zipfile: stdlib/zipfile.md
+      - zlib: stdlib/zlib.md
   - Tooling:
     - Editor Integration: tooling/editor-integration.md
     - VS Code Extension: tooling/vscode-extension.md
