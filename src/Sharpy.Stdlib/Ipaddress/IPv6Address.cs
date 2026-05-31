@@ -14,7 +14,65 @@ namespace Sharpy
         public int Version => 6;
         public int MaxPrefixlen => 128;
 
-        public bool IsPrivate => (_bytes[0] & 0xFE) == 0xFC;
+        // CPython 3.12 _private_networks table for IPv6.
+        internal static readonly (byte[] Network, int Prefix)[] PrivateNetworks = new[]
+        {
+            (new byte[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}, 128),       // ::1/128
+            (new byte[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 128),       // ::/128
+            (new byte[]{0,0,0,0,0,0,0,0,0,0,0xFF,0xFF,0,0,0,0}, 96),  // ::ffff:0.0.0.0/96
+            (new byte[]{0,0x64,0xFF,0x9B,0,1,0,0,0,0,0,0,0,0,0,0}, 48), // 64:ff9b:1::/48
+            (new byte[]{0x01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 64),     // 100::/64
+            (new byte[]{0x20,0x01,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 23),  // 2001::/23
+            (new byte[]{0x20,0x01,0x0D,0xB8,0,0,0,0,0,0,0,0,0,0,0,0}, 32), // 2001:db8::/32
+            (new byte[]{0x20,0x02,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 16),  // 2002::/16
+            (new byte[]{0x3F,0xFF,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 20),  // 3fff::/20
+            (new byte[]{0xFC,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 7),      // fc00::/7
+            (new byte[]{0xFE,0x80,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 10),  // fe80::/10
+        };
+
+        // CPython 3.12 _private_networks_exceptions table for IPv6.
+        internal static readonly (byte[] Network, int Prefix)[] PrivateNetworkExceptions = new[]
+        {
+            (new byte[]{0x20,0x01,0,1,0,0,0,0,0,0,0,0,0,0,0,1}, 128),   // 2001:1::1/128
+            (new byte[]{0x20,0x01,0,1,0,0,0,0,0,0,0,0,0,0,0,2}, 128),   // 2001:1::2/128
+            (new byte[]{0x20,0x01,0,3,0,0,0,0,0,0,0,0,0,0,0,0}, 32),    // 2001:3::/32
+            (new byte[]{0x20,0x01,0,4,0x01,0x12,0,0,0,0,0,0,0,0,0,0}, 48), // 2001:4:112::/48
+            (new byte[]{0x20,0x01,0,0x20,0,0,0,0,0,0,0,0,0,0,0,0}, 28), // 2001:20::/28
+            (new byte[]{0x20,0x01,0,0x30,0,0,0,0,0,0,0,0,0,0,0,0}, 28), // 2001:30::/28
+        };
+
+        internal static bool InRange(byte[] addr, byte[] network, int prefix)
+        {
+            byte[] masked = IPv6Network.ApplyMask(addr, prefix);
+            for (int i = 0; i < 16; i++)
+            {
+                if (masked[i] != network[i])
+                    return false;
+            }
+            return true;
+        }
+
+        internal static bool InAnyPrivate(byte[] addr)
+        {
+            foreach (var (network, prefix) in PrivateNetworks)
+            {
+                if (InRange(addr, network, prefix))
+                    return true;
+            }
+            return false;
+        }
+
+        internal static bool InAnyException(byte[] addr)
+        {
+            foreach (var (network, prefix) in PrivateNetworkExceptions)
+            {
+                if (InRange(addr, network, prefix))
+                    return true;
+            }
+            return false;
+        }
+
+        public bool IsPrivate => InAnyPrivate(_bytes) && !InAnyException(_bytes);
 
         public bool IsLoopback => IPAddress.IsLoopback(_address);
 
@@ -38,8 +96,7 @@ namespace Sharpy
             }
         }
 
-        public bool IsGlobal => !IsPrivate && !IsLoopback && !IsLinkLocal && !IsSiteLocal &&
-                                !IsMulticast && !IsReserved && !IsUnspecified;
+        public bool IsGlobal => !IsPrivate;
 
         public Bytes Packed => new Bytes((byte[])_bytes.Clone());
 

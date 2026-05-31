@@ -547,4 +547,68 @@ public class IpaddressTests
         result.Should().HaveCount(1);
         result[0].ToString().Should().Be("2001:db8::/120");
     }
+
+    // CPython 3.12.13 classification parity tests (#791)
+
+    [Theory]
+    [InlineData("0.0.0.1", true, false, false)]
+    [InlineData("10.5.5.5", true, false, false)]
+    [InlineData("100.64.1.1", false, false, false)]
+    [InlineData("169.254.1.1", true, false, false)]
+    [InlineData("172.16.5.5", true, false, false)]
+    [InlineData("192.0.0.1", true, false, false)]
+    [InlineData("192.0.0.10", false, true, false)]
+    [InlineData("192.0.2.5", true, false, false)]
+    [InlineData("192.88.99.1", false, true, false)]
+    [InlineData("192.168.1.1", true, false, false)]
+    [InlineData("198.18.5.5", true, false, false)]
+    [InlineData("198.51.100.5", true, false, false)]
+    [InlineData("203.0.113.5", true, false, false)]
+    [InlineData("240.0.0.1", true, false, true)]
+    [InlineData("255.255.255.255", true, false, true)]
+    [InlineData("8.8.8.8", false, true, false)]
+    public void IPv4Address_Classification_MatchesCPython312(string addr, bool isPrivate, bool isGlobal, bool isReserved)
+    {
+        var a = new IPv4Address(addr);
+        Assert.Equal(isPrivate, a.IsPrivate);
+        Assert.Equal(isGlobal, a.IsGlobal);
+        Assert.Equal(isReserved, a.IsReserved);
+    }
+
+    [Theory]
+    [InlineData("10.0.0.0/7", false, true, false)]
+    [InlineData("10.0.0.0/8", true, false, false)]
+    [InlineData("100.64.0.0/10", false, false, false)]
+    [InlineData("172.16.0.0/12", true, false, false)]
+    [InlineData("192.0.2.0/24", true, false, false)]
+    [InlineData("198.18.0.0/15", true, false, false)]
+    [InlineData("203.0.113.0/24", true, false, false)]
+    [InlineData("8.8.8.0/24", false, true, false)]
+    [InlineData("0.0.0.0/0", false, true, false)]
+    [InlineData("240.0.0.0/4", true, false, true)]
+    public void IPv4Network_Classification_MatchesCPython312(string net, bool isPrivate, bool isGlobal, bool isReserved)
+    {
+        var n = new IPv4Network(net);
+        Assert.Equal(isPrivate, n.IsPrivate);
+        Assert.Equal(isGlobal, n.IsGlobal);
+        Assert.Equal(isReserved, n.IsReserved);
+    }
+
+    [Theory]
+    [InlineData("::1", true, false)]
+    [InlineData("fe80::1", true, false)]
+    [InlineData("fc00::1", true, false)]
+    [InlineData("2001:db8::1", true, false)]
+    [InlineData("2002::1", true, false)]
+    [InlineData("2001:1::1", false, true)]
+    [InlineData("64:ff9b:1::1", true, false)]
+    [InlineData("2606:4700::1", false, true)]
+    [InlineData("100::1", true, false)]
+    [InlineData("3fff::1", true, false)]
+    public void IPv6Address_Classification_MatchesCPython312(string addr, bool isPrivate, bool isGlobal)
+    {
+        var a = new IPv6Address(addr);
+        Assert.Equal(isPrivate, a.IsPrivate);
+        Assert.Equal(isGlobal, a.IsGlobal);
+    }
 }

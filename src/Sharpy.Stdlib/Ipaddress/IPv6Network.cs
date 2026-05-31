@@ -72,12 +72,31 @@ namespace Sharpy
             }
         }
 
-        public bool IsPrivate => NetworkAddress.IsPrivate;
+        public bool IsPrivate
+        {
+            get
+            {
+                byte[] netAddr = _networkAddress;
+                byte[] bcastBytes = BroadcastAddressBytes();
+                foreach (var (network, prefix) in IPv6Address.PrivateNetworks)
+                {
+                    if (IPv6Address.InRange(netAddr, network, prefix) &&
+                        IPv6Address.InRange(bcastBytes, network, prefix))
+                    {
+                        if (!IPv6Address.InAnyException(netAddr) && !IPv6Address.InAnyException(bcastBytes))
+                            return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        public bool IsGlobal => !IsPrivate;
+
         public bool IsLoopback => NetworkAddress.IsLoopback;
         public bool IsMulticast => NetworkAddress.IsMulticast;
         public bool IsReserved => NetworkAddress.IsReserved;
         public bool IsLinkLocal => NetworkAddress.IsLinkLocal;
-        public bool IsGlobal => NetworkAddress.IsGlobal;
 
         public string WithPrefixlen => NetworkAddress + "/" + _prefixLength;
         public string WithNetmask => NetworkAddress + "/" + Netmask;
@@ -326,7 +345,25 @@ namespace Sharpy
         public static bool operator <=(IPv6Network left, IPv6Network right) => left.CompareTo(right) <= 0;
         public static bool operator >=(IPv6Network left, IPv6Network right) => left.CompareTo(right) >= 0;
 
-        private static byte[] ApplyMask(byte[] bytes, int prefixLength)
+        private byte[] BroadcastAddressBytes()
+        {
+            byte[] last = (byte[])_networkAddress.Clone();
+            int fullBytes = _prefixLength / 8;
+            int remainBits = _prefixLength % 8;
+
+            if (fullBytes < 16 && remainBits > 0)
+            {
+                last[fullBytes] |= (byte)(0xFF >> remainBits);
+                fullBytes++;
+            }
+            for (int i = fullBytes; i < 16; i++)
+            {
+                last[i] = 0xFF;
+            }
+            return last;
+        }
+
+        internal static byte[] ApplyMask(byte[] bytes, int prefixLength)
         {
             byte[] result = new byte[16];
             int fullBytes = prefixLength / 8;
