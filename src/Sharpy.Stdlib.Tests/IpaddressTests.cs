@@ -611,4 +611,25 @@ public class IpaddressTests
         Assert.Equal(isPrivate, a.IsPrivate);
         Assert.Equal(isGlobal, a.IsGlobal);
     }
+
+    [Theory]
+    [InlineData("fc00::/7", true, false)]
+    [InlineData("2001:db8::/32", true, false)]
+    [InlineData("::1/128", true, false)]
+    [InlineData("fe80::/10", true, false)]
+    [InlineData("2001::/23", true, false)]
+    [InlineData("2606:4700::/32", false, true)]
+    [InlineData("100::/64", true, false)]
+    [InlineData("::/0", false, true)]
+    [InlineData("2002::/16", true, false)]
+    [InlineData("3fff::/20", true, false)]
+    [InlineData("64:ff9b:1::/48", true, false)]
+    [InlineData("2001::/16", false, true)]
+    [InlineData("2001:1::/32", true, false)]
+    public void IPv6Network_Classification_MatchesCPython312(string net, bool isPrivate, bool isGlobal)
+    {
+        var n = new IPv6Network(net);
+        Assert.Equal(isPrivate, n.IsPrivate);
+        Assert.Equal(isGlobal, n.IsGlobal);
+    }
 }

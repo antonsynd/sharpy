@@ -345,23 +345,8 @@ namespace Sharpy
         public static bool operator <=(IPv6Network left, IPv6Network right) => left.CompareTo(right) <= 0;
         public static bool operator >=(IPv6Network left, IPv6Network right) => left.CompareTo(right) >= 0;
 
-        private byte[] BroadcastAddressBytes()
-        {
-            byte[] last = (byte[])_networkAddress.Clone();
-            int fullBytes = _prefixLength / 8;
-            int remainBits = _prefixLength % 8;
-
-            if (fullBytes < 16 && remainBits > 0)
-            {
-                last[fullBytes] |= (byte)(0xFF >> remainBits);
-                fullBytes++;
-            }
-            for (int i = fullBytes; i < 16; i++)
-            {
-                last[i] = 0xFF;
-            }
-            return last;
-        }
+        private byte[] BroadcastAddressBytes() =>
+            BroadcastAddress.Address.GetAddressBytes();
 
         internal static byte[] ApplyMask(byte[] bytes, int prefixLength)
         {
