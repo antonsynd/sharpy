@@ -50,6 +50,11 @@ internal partial class RoslynEmitter
         // sibling classes alongside the test class.
         var moduleClass = GenerateModuleMembers(nonImportStatements, fromImports);
 
+        if (!string.IsNullOrEmpty(module.DocString))
+        {
+            moduleClass = moduleClass.WithLeadingTrivia(GenerateXmlDocComment(module.DocString));
+        }
+
         // Emit fixture classes (one per @test.fixture function). Order matches source order
         // so generated output is stable.
         var fixtureClasses = new List<ClassDeclarationSyntax>();

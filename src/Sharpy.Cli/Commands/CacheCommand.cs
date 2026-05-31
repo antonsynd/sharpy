@@ -33,44 +33,50 @@ internal static class CacheCommand
         root.Subcommands.Add(command);
     }
 
-    static int ClearCache(string? cacheDir)
+    internal static int ClearCache(string? cacheDir, TextWriter? stdout = null, TextWriter? stderr = null)
     {
+        stdout ??= Console.Out;
+        stderr ??= Console.Error;
+
         try
         {
             var cache = new OverloadIndexCache(cacheDir);
             cache.ClearAll();
-            Console.WriteLine("Overload discovery cache cleared successfully.");
+            stdout.WriteLine("Overload discovery cache cleared successfully.");
             if (cacheDir != null)
             {
-                Console.WriteLine($"Cache directory: {cacheDir}");
+                stdout.WriteLine($"Cache directory: {cacheDir}");
             }
             return 0;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error clearing cache: {ex.Message}");
+            stderr.WriteLine($"Error clearing cache: {ex.Message}");
             return 1;
         }
     }
 
-    static int ShowCacheInfo(string? cacheDir)
+    internal static int ShowCacheInfo(string? cacheDir, TextWriter? stdout = null, TextWriter? stderr = null)
     {
+        stdout ??= Console.Out;
+        stderr ??= Console.Error;
+
         try
         {
             var cache = new OverloadIndexCache(cacheDir);
             var info = cache.GetInfo();
 
-            Console.WriteLine("Overload Discovery Cache Information:");
-            Console.WriteLine(new string('=', 50));
-            Console.WriteLine($"Cache Directory: {info.CacheDirectory}");
-            Console.WriteLine($"Cached Assemblies: {info.CachedAssemblies}");
-            Console.WriteLine($"Total Size: {CliHelpers.FormatBytes(info.TotalSizeBytes)}");
-            Console.WriteLine(new string('=', 50));
+            stdout.WriteLine("Overload Discovery Cache Information:");
+            stdout.WriteLine(new string('=', 50));
+            stdout.WriteLine($"Cache Directory: {info.CacheDirectory}");
+            stdout.WriteLine($"Cached Assemblies: {info.CachedAssemblies}");
+            stdout.WriteLine($"Total Size: {CliHelpers.FormatBytes(info.TotalSizeBytes)}");
+            stdout.WriteLine(new string('=', 50));
             return 0;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error retrieving cache info: {ex.Message}");
+            stderr.WriteLine($"Error retrieving cache info: {ex.Message}");
             return 1;
         }
     }

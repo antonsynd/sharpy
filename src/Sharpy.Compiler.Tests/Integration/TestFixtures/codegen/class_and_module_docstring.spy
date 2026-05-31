@@ -1,0 +1,16 @@
+"""Module-level documentation."""
+
+class Animal:
+    """Represents an animal."""
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def speak(self) -> str:
+        """Make the animal speak."""
+        return f"{self.name} says hello"
+
+def main():
+    a = Animal("Cat")
+    print(a.speak())

@@ -1,0 +1,8 @@
+"""This module provides utility functions."""
+
+def greet(name: str) -> str:
+    """Greet someone by name."""
+    return f"Hello, {name}!"
+
+def main():
+    print(greet("World"))

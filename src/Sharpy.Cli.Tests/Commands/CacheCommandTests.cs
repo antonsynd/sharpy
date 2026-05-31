@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Sharpy.Cli.Commands;
 using Xunit;
 
 namespace Sharpy.Cli.Tests.Commands;
@@ -36,39 +37,42 @@ public class CacheCommandTests
     public void Info_ReportsCacheInformation()
     {
         using var ws = new TempWorkspace();
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
 
-        var invocation = CliTestHarness.Invoke($"cache info --cache-dir \"{ws.Root}\"");
+        var exitCode = CacheCommand.ShowCacheInfo(ws.Root, stdout, stderr);
 
-        invocation.ExitCode.Should().Be(0);
-        invocation.StdOut.Should().Contain("Overload Discovery Cache Information:");
-        invocation.StdOut.Should().Contain("Cache Directory:");
-        invocation.StdOut.Should().Contain("Total Size:");
+        exitCode.Should().Be(0);
+        stdout.ToString().Should().Contain("Overload Discovery Cache Information:");
+        stdout.ToString().Should().Contain("Cache Directory:");
+        stdout.ToString().Should().Contain("Total Size:");
     }
 
     [Fact]
     public void Clear_ReportsSuccess()
     {
         using var ws = new TempWorkspace();
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
 
-        var invocation = CliTestHarness.Invoke($"cache clear --cache-dir \"{ws.Root}\"");
+        var exitCode = CacheCommand.ClearCache(ws.Root, stdout, stderr);
 
-        invocation.ExitCode.Should().Be(0);
-        invocation.StdOut.Should().Contain("cache cleared successfully");
+        exitCode.Should().Be(0);
+        stdout.ToString().Should().Contain("cache cleared successfully");
     }
-
-    // ---- Invocation-level error tests ----
-    // A --cache-dir pointing at an existing file forces Directory.CreateDirectory to throw.
 
     [Fact]
     public void Info_CacheDirIsAFile_ReturnsExitCode1()
     {
         using var ws = new TempWorkspace();
         var filePath = ws.WriteFile("not-a-dir", "x");
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
 
-        var invocation = CliTestHarness.Invoke($"cache info --cache-dir \"{filePath}\"");
+        var exitCode = CacheCommand.ShowCacheInfo(filePath, stdout, stderr);
 
-        invocation.ExitCode.Should().Be(1);
-        invocation.StdErr.Should().Contain("Error retrieving cache info");
+        exitCode.Should().Be(1);
+        stderr.ToString().Should().Contain("Error retrieving cache info");
     }
 
     [Fact]
@@ -76,10 +80,12 @@ public class CacheCommandTests
     {
         using var ws = new TempWorkspace();
         var filePath = ws.WriteFile("not-a-dir", "x");
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
 
-        var invocation = CliTestHarness.Invoke($"cache clear --cache-dir \"{filePath}\"");
+        var exitCode = CacheCommand.ClearCache(filePath, stdout, stderr);
 
-        invocation.ExitCode.Should().Be(1);
-        invocation.StdErr.Should().Contain("Error clearing cache");
+        exitCode.Should().Be(1);
+        stderr.ToString().Should().Contain("Error clearing cache");
     }
 }
