@@ -12,21 +12,71 @@ namespace Sharpy
         public int Version => 4;
         public int MaxPrefixlen => 32;
 
-        public bool IsPrivate
+        // CPython 3.12 _private_networks table (IANA special-purpose ranges).
+        internal static readonly (uint Network, int Prefix)[] PrivateNetworks = new[]
         {
-            get
-            {
-                byte b0 = (byte)(_value >> 24);
-                byte b1 = (byte)(_value >> 16);
-                if (b0 == 10)
-                    return true;
-                if (b0 == 172 && b1 >= 16 && b1 <= 31)
-                    return true;
-                if (b0 == 192 && b1 == 168)
-                    return true;
-                return false;
-            }
+            (0x00000000u, 8),   // 0.0.0.0/8
+            (0x0A000000u, 8),   // 10.0.0.0/8
+            (0x7F000000u, 8),   // 127.0.0.0/8
+            (0xA9FE0000u, 16),  // 169.254.0.0/16
+            (0xAC100000u, 12),  // 172.16.0.0/12
+            (0xC0000000u, 24),  // 192.0.0.0/24
+            (0xC00000AAu, 31),  // 192.0.0.170/31
+            (0xC0000200u, 24),  // 192.0.2.0/24
+            (0xC0A80000u, 16),  // 192.168.0.0/16
+            (0xC6120000u, 15),  // 198.18.0.0/15
+            (0xC6336400u, 24),  // 198.51.100.0/24
+            (0xCB007100u, 24),  // 203.0.113.0/24
+            (0xF0000000u, 4),   // 240.0.0.0/4
+            (0xFFFFFFFFu, 32),  // 255.255.255.255/32
+        };
+
+        // CPython 3.12 _private_networks_exceptions table.
+        internal static readonly (uint Network, int Prefix)[] PrivateNetworkExceptions = new[]
+        {
+            (0xC0000009u, 32),  // 192.0.0.9/32
+            (0xC000000Au, 32),  // 192.0.0.10/32
+        };
+
+        // CPython 3.12 _public_network: 100.64.0.0/10
+        internal const uint PublicNetwork = 0x64400000u;
+        internal const int PublicNetworkPrefix = 10;
+
+        // 240.0.0.0/4 — reserved/future-use range.
+        internal const uint ReservedNetwork = 0xF0000000u;
+        internal const int ReservedNetworkPrefix = 4;
+
+        internal static bool InRange(uint addr, uint network, int prefix)
+        {
+            if (prefix == 0)
+                return true;
+            if (prefix == 32)
+                return addr == network;
+            uint mask = 0xFFFFFFFFu << (32 - prefix);
+            return (addr & mask) == network;
         }
+
+        internal static bool InAnyPrivate(uint addr)
+        {
+            foreach (var (network, prefix) in PrivateNetworks)
+            {
+                if (InRange(addr, network, prefix))
+                    return true;
+            }
+            return false;
+        }
+
+        internal static bool InAnyException(uint addr)
+        {
+            foreach (var (network, prefix) in PrivateNetworkExceptions)
+            {
+                if (InRange(addr, network, prefix))
+                    return true;
+            }
+            return false;
+        }
+
+        public bool IsPrivate => InAnyPrivate(_value) && !InAnyException(_value);
 
         public bool IsLoopback => (_value >> 24) == 127;
 
@@ -39,7 +89,7 @@ namespace Sharpy
             }
         }
 
-        public bool IsReserved => (_value >> 24) >= 240;
+        public bool IsReserved => InRange(_value, ReservedNetwork, ReservedNetworkPrefix);
 
         public bool IsLinkLocal
         {
@@ -51,7 +101,7 @@ namespace Sharpy
             }
         }
 
-        public bool IsGlobal => !IsPrivate && !IsLoopback && !IsLinkLocal && !IsMulticast && !IsReserved && !IsUnspecified;
+        public bool IsGlobal => !InRange(_value, PublicNetwork, PublicNetworkPrefix) && !IsPrivate;
 
         public bool IsUnspecified => _value == 0;
 

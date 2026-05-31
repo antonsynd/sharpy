@@ -57,12 +57,52 @@ namespace Sharpy
             return ~(0xFFFFFFFFU << (32 - _prefixLength));
         }
 
-        public bool IsPrivate => NetworkAddress.IsPrivate;
+        public bool IsPrivate
+        {
+            get
+            {
+                uint netAddr = _networkAddress;
+                uint bcastAddr = _networkAddress | HostMaskBits();
+                foreach (var (network, prefix) in IPv4Address.PrivateNetworks)
+                {
+                    if (IPv4Address.InRange(netAddr, network, prefix) &&
+                        IPv4Address.InRange(bcastAddr, network, prefix))
+                    {
+                        if (!IPv4Address.InAnyException(netAddr) && !IPv4Address.InAnyException(bcastAddr))
+                            return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        public bool IsGlobal
+        {
+            get
+            {
+                uint netAddr = _networkAddress;
+                uint bcastAddr = _networkAddress | HostMaskBits();
+                if (IPv4Address.InRange(netAddr, IPv4Address.PublicNetwork, IPv4Address.PublicNetworkPrefix) ||
+                    IPv4Address.InRange(bcastAddr, IPv4Address.PublicNetwork, IPv4Address.PublicNetworkPrefix))
+                    return false;
+                return !IsPrivate;
+            }
+        }
+
+        public bool IsReserved
+        {
+            get
+            {
+                uint netAddr = _networkAddress;
+                uint bcastAddr = _networkAddress | HostMaskBits();
+                return IPv4Address.InRange(netAddr, IPv4Address.ReservedNetwork, IPv4Address.ReservedNetworkPrefix) &&
+                       IPv4Address.InRange(bcastAddr, IPv4Address.ReservedNetwork, IPv4Address.ReservedNetworkPrefix);
+            }
+        }
+
         public bool IsLoopback => NetworkAddress.IsLoopback;
         public bool IsMulticast => NetworkAddress.IsMulticast;
-        public bool IsReserved => NetworkAddress.IsReserved;
         public bool IsLinkLocal => NetworkAddress.IsLinkLocal;
-        public bool IsGlobal => NetworkAddress.IsGlobal;
 
         public string WithPrefixlen => _toIpString(_networkAddress) + "/" + _prefixLength;
         public string WithNetmask => _toIpString(_networkAddress) + "/" + Netmask;
