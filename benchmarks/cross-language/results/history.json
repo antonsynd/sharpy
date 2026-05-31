@@ -808,5 +808,145 @@
         "error": ""
       }
     ]
+  },
+  {
+    "date": "2026-05-31",
+    "results": [
+      {
+        "name": "fibonacci",
+        "language": "Python",
+        "compile_seconds": 0.0005675219999972114,
+        "execute_seconds": 0.21569085699999846,
+        "total_seconds": 0.21625837899999567,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "Sharpy",
+        "compile_seconds": 0.6038457700000066,
+        "execute_seconds": 1.2271087399999914,
+        "total_seconds": 1.830954509999998,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "C#",
+        "compile_seconds": 1.3186009590000083,
+        "execute_seconds": 0,
+        "total_seconds": 1.3186009590000083,
+        "success": false,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Python",
+        "compile_seconds": 0.0005235650000088299,
+        "execute_seconds": 0.06217019900000764,
+        "total_seconds": 0.06269376400001647,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Sharpy",
+        "compile_seconds": 0.6289838659999987,
+        "execute_seconds": 1.4861508980000053,
+        "total_seconds": 2.115134764000004,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "C#",
+        "compile_seconds": 1.318649019999981,
+        "execute_seconds": 0,
+        "total_seconds": 1.318649019999981,
+        "success": false,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Python",
+        "compile_seconds": 0.0007147430000031818,
+        "execute_seconds": 0.7912246390000064,
+        "total_seconds": 0.7919393820000096,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Sharpy",
+        "compile_seconds": 0.6414082370000074,
+        "execute_seconds": 1.8426653939999937,
+        "total_seconds": 2.484073631000001,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "C#",
+        "compile_seconds": 1.3312858239999912,
+        "execute_seconds": 0,
+        "total_seconds": 1.3312858239999912,
+        "success": false,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Python",
+        "compile_seconds": 0.0005995799999993778,
+        "execute_seconds": 0.1815233350000085,
+        "total_seconds": 0.18212291500000788,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Sharpy",
+        "compile_seconds": 0.6837389099999882,
+        "execute_seconds": 1.7748248620000027,
+        "total_seconds": 2.458563771999991,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "C#",
+        "compile_seconds": 1.3040769670000145,
+        "execute_seconds": 0,
+        "total_seconds": 1.3040769670000145,
+        "success": false,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Python",
+        "compile_seconds": 0.0004352619999963281,
+        "execute_seconds": 0.1854734389999919,
+        "total_seconds": 0.18590870099998824,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Sharpy",
+        "compile_seconds": 0.6236350879999861,
+        "execute_seconds": 1.4508117760000232,
+        "total_seconds": 2.0744468640000093,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "C#",
+        "compile_seconds": 1.3298041129999945,
+        "execute_seconds": 0,
+        "total_seconds": 1.3298041129999945,
+        "success": false,
+        "error": ""
+      }
+    ]
   }
 ]
