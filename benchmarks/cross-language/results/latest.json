@@ -1,0 +1,107 @@
+[
+  {
+    "name": "fibonacci",
+    "language": "Python",
+    "elapsed_seconds": 0.31290641999999025,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "fibonacci",
+    "language": "Sharpy",
+    "elapsed_seconds": 8.153500891999954,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "fibonacci",
+    "language": "C#",
+    "elapsed_seconds": 0.03761354900001379,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "list_comprehensions",
+    "language": "Python",
+    "elapsed_seconds": 0.06334288800002241,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "list_comprehensions",
+    "language": "Sharpy",
+    "elapsed_seconds": 5.71744339899999,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "list_comprehensions",
+    "language": "C#",
+    "elapsed_seconds": 0.10572068699997317,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "matrix_multiply",
+    "language": "Python",
+    "elapsed_seconds": 0.7574029349999591,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "matrix_multiply",
+    "language": "Sharpy",
+    "elapsed_seconds": 2.9814924159999805,
+    "success": false,
+    "error": "Compilation failed:\n\nerror[SPY0200]: Undefined identifier 'result'. Note: 'result' was declared inside a while block at line 25 \u2014 in Sharpy, block-scoped variables are not accessible outside their block (unlike Python)\n  --> /home/runner/work/sharpy/sharpy/benchmarks/cross-language/matrix_multiply/bench.spy:27:20\n    |\n 27 |     print(f\"done: {result[0][0]}\")\n    |                    ^^^^^^\n    |\n\n"
+  },
+  {
+    "name": "matrix_multiply",
+    "language": "C#",
+    "elapsed_seconds": 0.05052876700000297,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "sorting",
+    "language": "Python",
+    "elapsed_seconds": 0.1845358909999959,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "sorting",
+    "language": "Sharpy",
+    "elapsed_seconds": 5.315535846000046,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "sorting",
+    "language": "C#",
+    "elapsed_seconds": 0.23448022100001253,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "string_ops",
+    "language": "Python",
+    "elapsed_seconds": 0.16514632799999163,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "string_ops",
+    "language": "Sharpy",
+    "elapsed_seconds": 4.742415176000009,
+    "success": true,
+    "error": ""
+  },
+  {
+    "name": "string_ops",
+    "language": "C#",
+    "elapsed_seconds": 0.1859228989999906,
+    "success": true,
+    "error": ""
+  }
+]
