@@ -78,14 +78,14 @@ public class Calendar_Tests
 
             // Each week has 7 days.
             foreach (var week in cal)
-                week.Count.Should().Be(7);
+                ((System.Collections.Generic.ICollection<int>)week).Count.Should().Be(7);
 
             // June 1, 2026 is a Monday, so the first week is exactly 1..7.
             var firstWeek = cal[0];
             firstWeek.Should().Equal(1, 2, 3, 4, 5, 6, 7);
 
             // The last real day (30) appears, padded with trailing zeros.
-            var lastWeek = cal[cal.Count - 1];
+            var lastWeek = cal[((System.Collections.Generic.ICollection<Sharpy.List<int>>)cal).Count - 1];
             lastWeek[0].Should().Be(29);
             lastWeek[1].Should().Be(30);
             lastWeek[2].Should().Be(0);
@@ -110,7 +110,7 @@ public class Calendar_Tests
     [Fact]
     public void Constants_DayName_HasSevenEntriesStartingMonday()
     {
-        Sharpy.CalendarModule.DayName.Count.Should().Be(7);
+        ((System.Collections.Generic.ICollection<string>)Sharpy.CalendarModule.DayName).Count.Should().Be(7);
         Sharpy.CalendarModule.DayName[0].Should().Be("Monday");
         Sharpy.CalendarModule.DayName[6].Should().Be("Sunday");
     }
