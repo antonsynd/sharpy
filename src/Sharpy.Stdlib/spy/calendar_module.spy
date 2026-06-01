@@ -1,0 +1,60 @@
+"""Calendar-related functions, including TextCalendar and HTMLCalendar."""
+
+from sharpy import Calendar, TextCalendar, HTMLCalendar
+
+MONDAY: int = 0
+TUESDAY: int = 1
+WEDNESDAY: int = 2
+THURSDAY: int = 3
+FRIDAY: int = 4
+SATURDAY: int = 5
+SUNDAY: int = 6
+
+day_name: list[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+day_abbr: list[str] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+month_name: list[str] = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+month_abbr: list[str] = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+def isleap(year: int) -> bool:
+    """Return True for leap years, False for non-leap years."""
+    ...
+
+def leapdays(y1: int, y2: int) -> int:
+    """Return number of leap years in range [y1, y2)."""
+    ...
+
+def weekday(year: int, month: int, day: int) -> int:
+    """Return day of the week (0=Monday, 6=Sunday)."""
+    ...
+
+def monthrange(year: int, month: int) -> tuple[int, int]:
+    """Return weekday of first day and number of days for year, month."""
+    ...
+
+def monthcalendar(year: int, month: int) -> list[list[int]]:
+    """Return a matrix representing a month's calendar."""
+    ...
+
+def month(year: int, month: int, w: int = 2, l: int = 1) -> str:
+    """Return a month's calendar in a multi-line string."""
+    ...
+
+def calendar(year: int, w: int = 2, l: int = 1, c: int = 6, m: int = 3) -> str:
+    """Returns a 3-column calendar for an entire year as a multi-line string."""
+    ...
+
+def setfirstweekday(weekday: int) -> None:
+    """Set the first day of the week (0=Monday, 6=Sunday)."""
+    ...
+
+def prmonth(year: int, month: int, w: int = 2, l: int = 1) -> None:
+    """Print a month's calendar."""
+    ...
+
+def prcal(year: int, w: int = 2, l: int = 1, c: int = 6, m: int = 3) -> None:
+    """Print a year's calendar."""
+    ...
+
+def timegm(year: int, month: int, day: int, hour: int, minute: int, second: int) -> int:
+    """Convert UTC time tuple to Unix timestamp."""
+    ...

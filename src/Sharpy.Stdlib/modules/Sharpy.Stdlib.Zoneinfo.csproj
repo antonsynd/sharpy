@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Sharpy.Stdlib.Zoneinfo</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../Zoneinfo/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Sharpy.Stdlib.Datetime.csproj" />
+  </ItemGroup>
+
+</Project>

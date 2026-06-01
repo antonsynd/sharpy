@@ -27,6 +27,8 @@ public class NativeStdlibCompilationTests
     {
         "base64_module",
         "bisect_module",
+        "calendar_module",
+        "colorsys",
         "fnmatch_module",
         "functools",
         "hashlib_module",
@@ -36,6 +38,7 @@ public class NativeStdlibCompilationTests
         "math_module",
         "os_module",
         "os_path_module",
+        "pprint_module",
         "random_module",
         "secrets_module",
         "shutil_module",
@@ -56,6 +59,7 @@ public class NativeStdlibCompilationTests
         "ipaddress_module",
         "xml_module",
         "html_module",
+        "zoneinfo_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)

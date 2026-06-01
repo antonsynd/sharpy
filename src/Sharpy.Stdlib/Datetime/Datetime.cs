@@ -307,16 +307,16 @@ namespace Sharpy
     public class DateTime : IEquatable<DateTime>, IComparable<DateTime>
     {
         private readonly System.DateTime _dateTime;
-        private readonly Timezone? _tzinfo;
+        private readonly ITzinfo? _tzinfo;
 
         /// <summary>Create a datetime from year, month, day, and optional time components.</summary>
-        public DateTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int microsecond = 0, Timezone? tzinfo = null)
+        public DateTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int microsecond = 0, ITzinfo? tzinfo = null)
         {
             _dateTime = new System.DateTime(year, month, day, hour, minute, second).AddTicks(microsecond * 10L);
             _tzinfo = tzinfo;
         }
 
-        internal DateTime(System.DateTime dateTime, Timezone? tzinfo = null)
+        internal DateTime(System.DateTime dateTime, ITzinfo? tzinfo = null)
         {
             _dateTime = dateTime;
             _tzinfo = tzinfo;
@@ -339,7 +339,7 @@ namespace Sharpy
         /// <summary>The microsecond component (0-999999).</summary>
         public int Microsecond => (int)((_dateTime.Ticks % TimeSpan.TicksPerSecond) / 10);
         /// <summary>The timezone info, or null if naive.</summary>
-        public Timezone? Tzinfo => _tzinfo;
+        public ITzinfo? Tzinfo => _tzinfo;
 
         /// <summary>The date component of this datetime.</summary>
         public Date DateComponent => new Date(_dateTime);
@@ -352,7 +352,7 @@ namespace Sharpy
             var result = _dateTime.ToString("yyyy-MM-dd HH:mm:ss.ffffff");
             if (_tzinfo is not null)
             {
-                var offset = _tzinfo.Utcoffset();
+                var offset = _tzinfo.Utcoffset(this);
                 var sign = offset.InternalTimeSpan.Ticks >= 0 ? "+" : "-";
                 var absOffset = offset.InternalTimeSpan.Duration();
                 result += $"{sign}{absOffset.Hours:D2}:{absOffset.Minutes:D2}";
@@ -403,7 +403,7 @@ namespace Sharpy
             }
             if (_tzinfo is not null)
             {
-                var offset = _tzinfo.Utcoffset();
+                var offset = _tzinfo.Utcoffset(this);
                 var sign = offset.InternalTimeSpan.Ticks >= 0 ? "+" : "-";
                 var absOffset = offset.InternalTimeSpan.Duration();
                 result += $"{sign}{absOffset.Hours:D2}:{absOffset.Minutes:D2}";
@@ -427,7 +427,7 @@ namespace Sharpy
             System.DateTime utcTime;
             if (_tzinfo is not null)
             {
-                utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset().InternalTimeSpan.Ticks);
+                utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset(this).InternalTimeSpan.Ticks);
             }
             else
             {
@@ -458,18 +458,20 @@ namespace Sharpy
         }
 
         /// <summary>Convert to a different timezone.</summary>
-        public DateTime Astimezone(Timezone tz)
+        public DateTime Astimezone(ITzinfo tz)
         {
             System.DateTime utcTime;
             if (_tzinfo is not null)
             {
-                utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset().InternalTimeSpan.Ticks);
+                utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset(this).InternalTimeSpan.Ticks);
             }
             else
             {
                 utcTime = System.DateTime.SpecifyKind(_dateTime, DateTimeKind.Local).ToUniversalTime();
             }
-            var targetTime = utcTime.AddTicks(tz.Utcoffset().InternalTimeSpan.Ticks);
+            var utcDt = new DateTime(utcTime, Timezone.Utc);
+            var targetOffset = tz.Utcoffset(utcDt);
+            var targetTime = utcTime.AddTicks(targetOffset.InternalTimeSpan.Ticks);
             return new DateTime(targetTime, tz);
         }
 
@@ -731,7 +733,7 @@ namespace Sharpy
     /// Represents a fixed-offset timezone.
     /// </summary>
     [SharpyModuleType("datetime", "timezone")]
-    public class Timezone
+    public class Timezone : ITzinfo
     {
         private readonly Timedelta _offset;
         private readonly string _name;
@@ -746,16 +748,22 @@ namespace Sharpy
             _name = name ?? "";
         }
 
-        /// <summary>Return the UTC offset.</summary>
-        public Timedelta Utcoffset()
+        /// <summary>Return the UTC offset (dt parameter ignored for fixed-offset zones).</summary>
+        public Timedelta Utcoffset(DateTime? dt = null)
         {
             return _offset;
         }
 
-        /// <summary>Return the timezone name.</summary>
-        public string Tzname()
+        /// <summary>Return the timezone name (dt parameter ignored for fixed-offset zones).</summary>
+        public string Tzname(DateTime? dt = null)
         {
             return _name;
+        }
+
+        /// <summary>Return DST offset (always zero for fixed-offset zones).</summary>
+        public Timedelta Dst(DateTime? dt = null)
+        {
+            return new Timedelta();
         }
 
         /// <summary>Return the string representation.</summary>

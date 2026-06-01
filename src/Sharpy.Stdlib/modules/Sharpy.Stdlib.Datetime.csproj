@@ -8,4 +8,9 @@
     <Compile Include="../Datetime/**/*.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sharpy.Stdlib.Zoneinfo" />
+    <InternalsVisibleTo Include="Sharpy.Stdlib.Tests" />
+  </ItemGroup>
+
 </Project>
