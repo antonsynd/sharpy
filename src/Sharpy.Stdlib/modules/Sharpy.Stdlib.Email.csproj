@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Sharpy.Stdlib.Email</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../Email/**/*.cs" />
+  </ItemGroup>
+
+</Project>

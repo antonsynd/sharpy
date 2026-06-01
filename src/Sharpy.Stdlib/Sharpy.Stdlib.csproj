@@ -42,4 +42,9 @@
     <Compile Remove="modules/**" />
   </ItemGroup>
 
+  <!-- Tarfile uses System.Formats.Tar which requires .NET 7+ -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <Compile Remove="Tarfile/**" />
+  </ItemGroup>
+
 </Project>
