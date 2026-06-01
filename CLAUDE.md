@@ -213,6 +213,9 @@ Avoid these patterns:
 | Wrapper types for Pythonic API | Use extension methods instead |
 | Multiple ways to do same thing | Consistency issue |
 | Magic behavior | Unpredictable; prefer explicit |
+| Raw .NET collections in public APIs | Use `Sharpy.List<T>`, `Dict<K,V>`, `Set<T>` |
+| `Optional<T>` return from stdlib | Return nullable; users opt in via `maybe` |
+| Throwing for expected failures | Return `Result<T, E>`; reserve exceptions for bugs |
 
 ## Axiom Conflict Resolutions
 
@@ -300,6 +303,26 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 - **NuGet deps**: MathNet.Numerics (numpy), Microsoft.Data.Sqlite (sqlite3)
 - **Multi-target**: `net10.0;netstandard2.1` (same as Core)
 - **Compiler has zero compile-time dependency on Stdlib** — stdlib modules are discovered at runtime via `ModuleRegistry.LoadReference()`
+
+### Stdlib API Conventions
+
+**Error handling — what to return:**
+
+| Scenario | Stdlib returns | User opts into safety via |
+|----------|---------------|--------------------------|
+| Absence | `T?` (nullable) | `maybe` → `Optional<T>` |
+| Expected failure | `Result<T, E>` | (already safe) |
+| Bugs | exception | (should crash) |
+
+- **Return nullable for absence**, not Optional — e.g., `re.search()` returns `ReMatch?`, `dict.get()` returns `V?`. This is Pythonic, convenient, and .NET-interop-friendly. Users who want compile-time safety add `maybe` at the call site.
+- **Return Result for expected failures** with typed errors — e.g., `json.loads[T]()` returns `Result<T, JSONDecodeError>`.
+- **Throw only for bugs** — e.g., `list[i]` out of bounds, null where required.
+- **No dual APIs** — don't provide both throwing and Result-returning variants of the same function. `try`/`maybe` bridge .NET interop generically.
+
+**Public API surface:**
+
+- **Use Sharpy collection types** in public signatures — `List<T>`, `Dict<K,V>`, `Set<T>` from `Sharpy.Core`. Never expose `System.Collections.Generic.List<T>` or namespace-aliased `SCG.List<T>` in public APIs. Internal/private code may use raw .NET collections.
+- **Optional parameters** use nullable with `= null` in C# or `T? = None()` in `.spy` definitions. Don't use `Optional<T>` as a parameter type.
 
 ### Protocol Interfaces
 
