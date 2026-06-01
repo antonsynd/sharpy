@@ -29,6 +29,7 @@ internal static class CliTestHarness
         globals.AddToCommand(root);
 
         BuildCommand.Configure(root, globals);
+        CompileCommand.Configure(root, globals);
         RunCommand.Configure(root, globals);
         ProjectCommand.Configure(root, globals);
         EmitCommand.Configure(root, globals);
