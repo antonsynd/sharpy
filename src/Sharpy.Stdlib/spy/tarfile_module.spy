@@ -76,6 +76,10 @@ class TarFile:
         """Add a file or directory to the archive."""
         ...
 
+    def Addfile(self, tarinfo: TarInfo) -> None:
+        """Add a TarInfo entry to the archive."""
+        ...
+
     def Close(self) -> None:
         """Close the archive."""
         ...

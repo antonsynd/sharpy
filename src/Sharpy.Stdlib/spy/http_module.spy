@@ -25,6 +25,10 @@ class HTTPResponse:
         """Read the full response body."""
         ...
 
+    def Read(self, amt: int) -> bytes:
+        """Read up to amt bytes of the response body."""
+        ...
+
     def Getheader(self, name: str, default_: str | None = None) -> str | None:
         """Get a response header by name."""
         ...
@@ -56,4 +60,8 @@ class HTTPConnection:
     def Close(self) -> None:
         """Close the connection."""
         ...
+
+class HTTPSConnection(HTTPConnection):
+    """HTTPS connection (TLS)."""
+    pass
 
