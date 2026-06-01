@@ -20,6 +20,7 @@ class Program
         globals.AddToCommand(rootCommand);
 
         BuildCommand.Configure(rootCommand, globals);
+        CompileCommand.Configure(rootCommand, globals);
         RunCommand.Configure(rootCommand, globals);
         ProjectCommand.Configure(rootCommand, globals);
         EmitCommand.Configure(rootCommand, globals);
