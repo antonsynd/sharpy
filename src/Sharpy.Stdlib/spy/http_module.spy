@@ -11,24 +11,8 @@ class HTTPStatus:
     Name: str
     Phrase: str
 
-    @staticmethod
     def FromValue(value: int) -> HTTPStatus:
         """Look up an HTTPStatus by numeric value."""
-        ...
-
-class HTTPException(Exception):
-    """Base exception for http module errors."""
-    def __init__(self, message: str) -> None:
-        ...
-
-class InvalidURL(HTTPException):
-    """Raised when an invalid URL is provided."""
-    def __init__(self, message: str) -> None:
-        ...
-
-class NotConnected(HTTPException):
-    """Raised when no request has been sent."""
-    def __init__(self, message: str) -> None:
         ...
 
 class HTTPResponse:
@@ -41,7 +25,7 @@ class HTTPResponse:
         """Read the full response body."""
         ...
 
-    def Getheader(self, name: str, default_: str? = None) -> str?:
+    def Getheader(self, name: str, default_: str | None = None) -> str | None:
         """Get a response header by name."""
         ...
 
@@ -58,10 +42,10 @@ class HTTPConnection:
     Host: str
     Port: int
 
-    def __init__(self, host: str, port: int? = None, timeout: float? = None) -> None:
+    def __init__(self, host: str, port: int | None = None, timeout: float | None = None) -> None:
         ...
 
-    def Request(self, method: str, url: str, body: str? = None, headers: dict[str, str]? = None) -> None:
+    def Request(self, method: str, url: str, body: str | None = None, headers: dict[str, str] | None = None) -> None:
         """Send an HTTP request."""
         ...
 
@@ -73,7 +57,3 @@ class HTTPConnection:
         """Close the connection."""
         ...
 
-class HTTPSConnection(HTTPConnection):
-    """HTTPS connection with TLS."""
-    def __init__(self, host: str, port: int? = None, timeout: float? = None) -> None:
-        ...

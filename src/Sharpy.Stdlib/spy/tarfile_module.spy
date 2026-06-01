@@ -15,26 +15,6 @@ def IsTarfile(name: str) -> bool:
     """Return True if name appears to be a tar archive."""
     ...
 
-class TarError(Exception):
-    """Base exception for tarfile errors."""
-    def __init__(self, message: str) -> None:
-        ...
-
-class ReadError(TarError):
-    """Raised when a tar archive cannot be read."""
-    def __init__(self, message: str) -> None:
-        ...
-
-class CompressionError(TarError):
-    """Raised for unsupported compression methods."""
-    def __init__(self, message: str) -> None:
-        ...
-
-class ExtractError(TarError):
-    """Raised when extraction fails."""
-    def __init__(self, message: str) -> None:
-        ...
-
 class TarInfo:
     """Metadata about a tar archive member."""
     Name: str
@@ -80,19 +60,19 @@ class TarFile:
         """Return a TarInfo object for the named member."""
         ...
 
-    def Extractfile(self, name: str) -> bytes?:
+    def Extractfile(self, name: str) -> bytes | None:
         """Extract a member as bytes. Returns None for directories."""
         ...
 
-    def Extractall(self, path: str? = None) -> None:
+    def Extractall(self, path: str | None = None) -> None:
         """Extract all members to the specified directory."""
         ...
 
-    def Extract(self, name: str, path: str? = None) -> None:
+    def Extract(self, name: str, path: str | None = None) -> None:
         """Extract a single member."""
         ...
 
-    def Add(self, name: str, arcname: str? = None, recursive: bool = True) -> None:
+    def Add(self, name: str, arcname: str | None = None, recursive: bool = True) -> None:
         """Add a file or directory to the archive."""
         ...
 
