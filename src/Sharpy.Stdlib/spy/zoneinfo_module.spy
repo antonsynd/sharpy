@@ -1,6 +1,6 @@
 """IANA time zone support."""
 
-from sharpy import ZoneInfo, ZoneInfoNotFoundError
+from sharpy import ZoneInfo, ZoneInfoNotFoundError, Set
 
 class ZoneInfo:
     """Concrete time zone implementation backed by IANA time zone data."""
@@ -9,19 +9,19 @@ class ZoneInfo:
     def __init__(self, key: str):
         ...
 
-    def utcoffset(self, dt: object? = None()) -> object:
+    def utcoffset(self, dt: object | None = None) -> object:
         ...
 
-    def tzname(self, dt: object? = None()) -> str:
+    def tzname(self, dt: object | None = None) -> str:
         ...
 
-    def dst(self, dt: object? = None()) -> object:
+    def dst(self, dt: object | None = None) -> object:
         ...
 
 class ZoneInfoNotFoundError(KeyError):
     """Exception raised when a time zone is not found."""
     pass
 
-def available_timezones() -> set[str]:
+def available_timezones() -> Set[str]:
     """Return a set of all available IANA time zone keys."""
     ...

@@ -177,8 +177,8 @@ public class OsModuleAdditionalTests : IDisposable
         var pathVal = OsModule.Getenv(
             System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
                 System.Runtime.InteropServices.OSPlatform.Windows) ? "Path" : "PATH");
-        pathVal.IsSome.Should().BeTrue();
-        pathVal.Unwrap().Should().NotBeNullOrEmpty();
+        pathVal.Should().NotBeNull();
+        pathVal.Should().NotBeNullOrEmpty();
     }
 
     // ===== Stat additional coverage =====

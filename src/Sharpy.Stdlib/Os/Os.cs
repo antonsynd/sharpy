@@ -170,15 +170,9 @@ namespace Sharpy
         /// <summary>
         /// Get an environment variable, return None if it doesn't exist.
         /// </summary>
-        public static Optional<string> Getenv(string key)
+        public static string? Getenv(string key)
         {
-            var result = global::System.Environment.GetEnvironmentVariable(key);
-            if (result == null)
-            {
-                return Optional<string>.None;
-            }
-
-            return result;
+            return global::System.Environment.GetEnvironmentVariable(key);
         }
 
         /// <summary>

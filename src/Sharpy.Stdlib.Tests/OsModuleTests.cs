@@ -200,7 +200,7 @@ namespace Sharpy.Core.Tests
         [Fact]
         public void Getenv_ReturnsNullForMissing()
         {
-            Assert.True(OsModule.Getenv("SHARPY_TEST_NONEXISTENT_" + Guid.NewGuid().ToString("N")).IsNone);
+            Assert.Null(OsModule.Getenv("SHARPY_TEST_NONEXISTENT_" + Guid.NewGuid().ToString("N")));
         }
 
         [Fact]
@@ -216,7 +216,7 @@ namespace Sharpy.Core.Tests
             OsModule.Putenv(key, "testvalue");
             try
             {
-                Assert.Equal("testvalue", OsModule.Getenv(key).Unwrap());
+                Assert.Equal("testvalue", OsModule.Getenv(key));
             }
             finally
             {

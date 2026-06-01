@@ -75,11 +75,11 @@ def chdir(path: str) -> None:
         raise FileNotFoundError("No such file or directory: '" + path + "'")
     Directory.set_current_directory(path)
 
-def getenv(key: str) -> str?:
+def getenv(key: str) -> str | None:
     """Get an environment variable, return None if it doesn't exist."""
     result = Environment.get_environment_variable(key)
     if result is None:
-        return None()
+        return None
     return result
 
 def putenv(key: str, value: str) -> None:

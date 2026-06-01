@@ -5,6 +5,7 @@
     <OutputType>library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>Sharpy.Stdlib.Spy</AssemblyName>
+    <NoWarn>SPY0452,SPY0453</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <SourceFile Include="*.spy" />

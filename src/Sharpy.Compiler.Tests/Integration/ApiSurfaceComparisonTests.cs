@@ -44,6 +44,10 @@ public class ApiSurfaceComparisonTests
         ["tempfile_module"] = "tempfile",
         ["textwrap"] = "textwrap",
         ["shlex_module"] = "shlex",
+        ["xml_module"] = "xml",
+        ["subprocess_module"] = "subprocess",
+        ["pprint_module"] = "pprint",
+        ["zoneinfo_module"] = "zoneinfo",
     };
 
     public ApiSurfaceComparisonTests(ITestOutputHelper output)

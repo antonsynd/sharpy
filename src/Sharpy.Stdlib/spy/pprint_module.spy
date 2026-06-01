@@ -2,11 +2,11 @@
 
 from sharpy import PrettyPrinter
 
-def pprint(obj: object, indent: int = 1, width: int = 80, depth: int? = None(), compact: bool = False, sort_dicts: bool = True) -> None:
+def pprint(obj: object, indent: int = 1, width: int = 80, depth: int | None = None, compact: bool = False, sort_dicts: bool = True) -> None:
     """Pretty-print a Python object to a stream."""
     ...
 
-def pformat(obj: object, indent: int = 1, width: int = 80, depth: int? = None(), compact: bool = False, sort_dicts: bool = True) -> str:
+def pformat(obj: object, indent: int = 1, width: int = 80, depth: int | None = None, compact: bool = False, sort_dicts: bool = True) -> str:
     """Format a Python object into a pretty-printed representation."""
     ...
 
