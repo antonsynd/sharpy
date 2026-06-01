@@ -170,10 +170,12 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     <TargetFramework>net10.0</TargetFramework>
     <Optimize>true</Optimize>
     <ImplicitUsings>disable</ImplicitUsings>
+    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
     <Nullable>disable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <NoWarn>CS8981</NoWarn>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateGlobalUsings>false</GenerateGlobalUsings>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="bench.cs" />
