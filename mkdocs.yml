@@ -197,7 +197,9 @@ nav:
       - argparse: stdlib/argparse.md
       - base64: stdlib/base64.md
       - bisect: stdlib/bisect.md
+      - calendar: stdlib/calendar.md
       - collections: stdlib/collections.md
+      - colorsys: stdlib/colorsys.md
       - configparser: stdlib/configparser.md
       - copy: stdlib/copy.md
       - csv: stdlib/csv.md
@@ -210,6 +212,7 @@ nav:
       - hashlib: stdlib/hashlib.md
       - heapq: stdlib/heapq.md
       - hmac: stdlib/hmac.md
+      - html: stdlib/html.md
       - io: stdlib/io.md
       - ipaddress: stdlib/ipaddress.md
       - itertools: stdlib/itertools.md
@@ -221,6 +224,7 @@ nav:
       - os: stdlib/os.md
       - pathlib: stdlib/pathlib.md
       - platform: stdlib/platform.md
+      - pprint: stdlib/pprint.md
       - random: stdlib/random.md
       - re: stdlib/re.md
       - requests: stdlib/requests.md
@@ -240,9 +244,11 @@ nav:
       - unittest: stdlib/unittest.md
       - urllib: stdlib/urllib.md
       - uuid: stdlib/uuid.md
+      - xml: stdlib/xml.md
       - yaml: stdlib/yaml.md
       - zipfile: stdlib/zipfile.md
       - zlib: stdlib/zlib.md
+      - zoneinfo: stdlib/zoneinfo.md
   - Tooling:
     - Editor Integration: tooling/editor-integration.md
     - VS Code Extension: tooling/vscode-extension.md

@@ -172,7 +172,13 @@ namespace Sharpy
         /// </summary>
         public static string? Getenv(string key)
         {
-            return global::System.Environment.GetEnvironmentVariable(key);
+            var result = global::System.Environment.GetEnvironmentVariable(key);
+            if (result == null)
+            {
+                return default;
+            }
+
+            return result;
         }
 
         /// <summary>

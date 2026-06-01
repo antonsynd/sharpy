@@ -90,7 +90,7 @@ Represents a date (year, month, day).
 | `minute` | `int` | The minute component (0-59). |
 | `second` | `int` | The second component (0-59). |
 | `microsecond` | `int` | The microsecond component (0-999999). |
-| `tzinfo` | `Timezone | None` | The timezone info, or null if naive. |
+| `tzinfo` | `ITzinfo | None` | The timezone info, or null if naive. |
 | `date_component` | `Date` | The date component of this datetime. |
 | `time_component` | `Time` | The time component of this datetime. |
 
@@ -138,7 +138,7 @@ Format the datetime using Python strftime format codes.
 
 Parse a datetime from a string using Python strftime format codes.
 
-### `astimezone(tz: Timezone) -> DateTime`
+### `astimezone(tz: ITzinfo) -> DateTime`
 
 Convert to a different timezone.
 
@@ -179,10 +179,14 @@ Represents a date (year, month, day).
 | `timedelta_type` | `Type` | The Timedelta type. |
 | `timezone_type` | `Type` | The Timezone type. |
 
-### `utcoffset() -> Timedelta`
+### `utcoffset(dt: DateTime | None = None) -> Timedelta`
 
-Return the UTC offset.
+Return the UTC offset (dt parameter ignored for fixed-offset zones).
 
-### `tzname() -> str`
+### `tzname(dt: DateTime | None = None) -> str`
 
-Return the timezone name.
+Return the timezone name (dt parameter ignored for fixed-offset zones).
+
+### `dst(dt: DateTime | None = None) -> Timedelta`
+
+Return DST offset (always zero for fixed-offset zones).

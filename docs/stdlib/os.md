@@ -58,7 +58,7 @@ Return a string representing the current working directory.
 
 Change the current working directory to the specified path.
 
-### `os.getenv(key: str) -> Optional[str]`
+### `os.getenv(key: str) -> str | None`
 
 Get an environment variable, return None if it doesn't exist.
 

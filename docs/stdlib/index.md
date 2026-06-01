@@ -22,7 +22,9 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`argparse`](argparse.md) | Command-line argument parsing. |
 | [`base64`](base64.md) | RFC 4648 base16, base32, base64, and base85 data encodings. |
 | [`bisect`](bisect.md) | Array bisection algorithm for maintaining sorted lists. |
+| [`calendar`](calendar.md) |  |
 | [`collections`](collections.md) | Specialized container datatypes: ChainMap, Counter, Deque, DefaultDict, OrderedDict. |
+| [`colorsys`](colorsys.md) |  |
 | [`configparser`](configparser.md) | Configuration file parser similar to Python's configparser module. |
 | [`copy`](copy.md) |  |
 | [`csv`](csv.md) | CSV file reading and writing. |
@@ -35,6 +37,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`hashlib`](hashlib.md) | Secure hash and message digest algorithms. |
 | [`heapq`](heapq.md) | Heap queue (priority queue) algorithm. |
 | [`hmac`](hmac.md) | Keyed-hashing for message authentication (HMAC). |
+| [`html`](html.md) | HTML processing module. |
 | [`io`](io.md) | Core tools for working with streams and file-like objects. |
 | [`ipaddress`](ipaddress.md) | Functions to create and manipulate IPv4 and IPv6 addresses and networks. |
 | [`itertools`](itertools.md) | Functions creating iterators for efficient looping. |
@@ -46,6 +49,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`os`](os.md) | Miscellaneous operating system interfaces. |
 | [`pathlib`](pathlib.md) | Object-oriented filesystem paths. |
 | [`platform`](platform.md) | Access to underlying platform's identifying data. |
+| [`pprint`](pprint.md) |  |
 | [`random`](random.md) | Generate pseudo-random numbers with various distributions. |
 | [`re`](re.md) | Regular expression operations. |
 | [`requests`](requests.md) | HTTP library for making requests (GET, POST, PUT, DELETE, etc.). |
@@ -65,6 +69,8 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`unittest`](unittest.md) | The unittest module provides a Pythonic testing API that the Sharpy compiler transforms into xUnit test infrastructure during code generation. |
 | [`urllib`](urllib.md) | URL parsing, quoting, and query string manipulation utilities. |
 | [`uuid`](uuid.md) | UUID objects (universally unique identifiers) according to RFC 4122. |
+| [`xml`](xml.md) | XML processing module (ElementTree API). |
 | [`yaml`](yaml.md) | YAML parser and emitter. |
 | [`zipfile`](zipfile.md) | Read and write ZIP archive files. |
 | [`zlib`](zlib.md) | Compression and decompression using zlib. |
+| [`zoneinfo`](zoneinfo.md) |  |

@@ -1,0 +1,5 @@
+# colorsys
+
+```python
+import colorsys
+```
