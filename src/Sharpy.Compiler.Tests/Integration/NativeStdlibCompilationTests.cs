@@ -64,6 +64,9 @@ public class NativeStdlibCompilationTests
         "xml_module",
         "html_module",
         "zoneinfo_module",
+        "http_module",
+        "tarfile_module",
+        "email_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)

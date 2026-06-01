@@ -1,0 +1,82 @@
+"""Email message creation and parsing."""
+
+from sharpy import EmailMessage, MessageError, MessageParseError, HeaderParseError
+
+def MessageFromString(text: str) -> EmailMessage:
+    """Parse an email message from a string."""
+    ...
+
+def MessageFromBytes(data: bytes) -> EmailMessage:
+    """Parse an email message from bytes."""
+    ...
+
+class EmailMessage:
+    """Email message with headers and body."""
+
+    def GetItem(self, name: str) -> str | None:
+        """Get a header value by name (case-insensitive)."""
+        ...
+
+    def SetItem(self, name: str, value: str) -> None:
+        """Set a header value."""
+        ...
+
+    def DelItem(self, name: str) -> None:
+        """Remove all headers with the given name."""
+        ...
+
+    def Contains(self, name: str) -> bool:
+        """Check if a header exists."""
+        ...
+
+    def Keys(self) -> list[str]:
+        """Return all header names."""
+        ...
+
+    def Values(self) -> list[str]:
+        """Return all header values."""
+        ...
+
+    def Items(self) -> list[tuple[str, str]]:
+        """Return all (name, value) header tuples."""
+        ...
+
+    def GetAll(self, name: str) -> list[str] | None:
+        """Return all values for a header name, or None if not found."""
+        ...
+
+    def AddHeader(self, name: str, value: str) -> None:
+        """Add a header (allows duplicates)."""
+        ...
+
+    def ReplaceHeader(self, name: str, value: str) -> None:
+        """Replace the first occurrence of a header, or add if not found."""
+        ...
+
+    def SetContent(self, text: str, subtype: str = "plain") -> None:
+        """Set the message body and Content-Type."""
+        ...
+
+    def GetContent(self) -> str:
+        """Get the message body text."""
+        ...
+
+    def GetPayload(self) -> str | None:
+        """Get the message payload (alias for GetContent)."""
+        ...
+
+    def IsMultipart(self) -> bool:
+        """Return True if this is a multipart message."""
+        ...
+
+    def AddAttachment(self, data: bytes, maintype: str = "application", subtype: str = "octet-stream", filename: str | None = None) -> None:
+        """Add a binary attachment."""
+        ...
+
+    def AsString(self) -> str:
+        """Serialize the message to RFC 5322 format."""
+        ...
+
+    def AsBytes(self) -> bytes:
+        """Serialize the message as UTF-8 bytes."""
+        ...

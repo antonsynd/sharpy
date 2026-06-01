@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net10.0 only: System.Formats.Tar requires .NET 7+ -->
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <AssemblyName>Sharpy.Stdlib.Tarfile</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../Tarfile/**/*.cs" />
+  </ItemGroup>
+
+</Project>

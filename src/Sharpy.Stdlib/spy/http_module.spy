@@ -1,0 +1,59 @@
+"""HTTP modules — status codes, connections, and responses."""
+
+from sharpy import HTTPStatus, HTTPException, InvalidURL, NotConnected, HTTPConnection, HTTPSConnection, HTTPResponse
+
+HTTP_PORT: int = 80
+HTTPS_PORT: int = 443
+
+class HTTPStatus:
+    """HTTP status code with phrase description."""
+    Value: int
+    Name: str
+    Phrase: str
+
+    def FromValue(value: int) -> HTTPStatus:
+        """Look up an HTTPStatus by numeric value."""
+        ...
+
+class HTTPResponse:
+    """HTTP response from a connection."""
+    Status: int
+    Reason: str
+    Version: int
+
+    def Read(self) -> bytes:
+        """Read the full response body."""
+        ...
+
+    def Getheader(self, name: str, default_: str | None = None) -> str | None:
+        """Get a response header by name."""
+        ...
+
+    def Getheaders(self) -> list[tuple[str, str]]:
+        """Get all response headers."""
+        ...
+
+    def Close(self) -> None:
+        """Close the response."""
+        ...
+
+class HTTPConnection:
+    """Lower-level HTTP connection."""
+    Host: str
+    Port: int
+
+    def __init__(self, host: str, port: int | None = None, timeout: float | None = None) -> None:
+        ...
+
+    def Request(self, method: str, url: str, body: str | None = None, headers: dict[str, str] | None = None) -> None:
+        """Send an HTTP request."""
+        ...
+
+    def Getresponse(self) -> HTTPResponse:
+        """Get the response from the last request."""
+        ...
+
+    def Close(self) -> None:
+        """Close the connection."""
+        ...
+
