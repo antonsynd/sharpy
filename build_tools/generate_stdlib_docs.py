@@ -1015,8 +1015,9 @@ def parse_cs_file(
             i = end_i + 1
             continue
 
-        # Properties (no parentheses in the declaration)
-        if "(" not in joined:
+        # Properties (no parentheses in the declaration part before => or {)
+        decl_part = joined.split("=>")[0].split("{")[0]
+        if "(" not in decl_part:
             prop_match = _PROPERTY_PATTERN.match(joined)
             if prop_match:
                 modifiers, ptype, pname = prop_match.groups()
