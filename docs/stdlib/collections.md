@@ -138,6 +138,11 @@ that supports adding and removing elements from either end.
 | `values` | `Iterable[TValue]` | The values of the dictionary. |
 | `default_factory` | `() -> TValue` | The default factory function used for missing keys. |
 | `count` | `int` | The number of items in the defaultdict. |
+| `deque_type` | `Type` | The Deque type. |
+| `counter_type` | `Type` | The Counter type. |
+| `default_dict_type` | `Type` | The DefaultDict type. |
+| `ordered_dict_type` | `Type` | The OrderedDict type. |
+| `chain_map_type` | `Type` | The ChainMap type. |
 
 ### `get(key: TKey, default_value: TValue = default!) -> TValue`
 
@@ -188,7 +193,7 @@ Removes the item with the specified key from the defaultdict.
 
 - `KeyError` -- Thrown if the key does not exist.
 
-### `to_dictionary() -> Dictionary[TKey, TValue]`
+### `to_dictionary() -> dict[TKey, TValue]`
 
 Convert to a standard .NET Dictionary.
 

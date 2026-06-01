@@ -212,7 +212,7 @@ Removes the item with the specified key from the dictionary.
 
 - `KeyError` -- Thrown if the key does not exist.
 
-### `to_dictionary() -> Dictionary[K, V]`
+### `to_dictionary() -> dict[K, V]`
 
 Convert to a standard .NET Dictionary.
 

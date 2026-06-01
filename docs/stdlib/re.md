@@ -166,6 +166,7 @@ Compiled regular expression pattern, wrapping .NET's Regex.
 | `pattern_str` | `str` | The original pattern string. |
 | `flags` | `int` | The flags used to compile this pattern. |
 | `pattern` | `str` | The pattern string (Python-compatible alias for PatternStr). |
+| `groups` | `int` | The number of capturing groups in the pattern. |
 
 ### `search(s: str, pos: int = 0, endpos: int = -1) -> ReMatch | None`
 

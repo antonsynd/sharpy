@@ -195,6 +195,7 @@ the comments associated with each item by index.
 | Name | Type | Description |
 |------|------|-------------|
 | `seq` | `list[object | None]` | The underlying \`List{T}\` backing this sequence, exposed for serialization access. |
+| `count` | `int` | The number of items in this sequence. |
 | `comments` | `IReadOnlyDictionary[int, CommentInfo]` | The comments associated with this sequence's items, keyed by item index. |
 
 ### `add(item): object | None = > _items.Add(item)`

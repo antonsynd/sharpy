@@ -20,11 +20,11 @@ Parses a string as an IPv4 or IPv6 network.
 
 Parses a string as an IPv4 or IPv6 interface.
 
-### `ipaddress.collapse_addresses(addresses: SCG.List[object]) -> SCG.List[object]`
+### `ipaddress.collapse_addresses(addresses: list[object]) -> list[object]`
 
 Collapses addresses and networks into the smallest set of CIDR blocks.
 
-### `ipaddress.summarize_address_range(first: object, last: object) -> SCG.List[object]`
+### `ipaddress.summarize_address_range(first: object, last: object) -> list[object]`
 
 Summarizes an address range as the smallest set of CIDR blocks.
 
@@ -38,7 +38,12 @@ Represents an IPv4 address.
 |------|------|-------------|
 | `version` | `int` | Gets the IP version number. |
 | `max_prefixlen` | `int` | Gets the maximum prefix length for IPv4 addresses. |
+| `is_private` | `bool` | Gets whether the address is in a private-use range. |
+| `is_loopback` | `bool` | Gets whether the address is a loopback address. |
+| `is_reserved` | `bool` | Gets whether the address is in a reserved range. |
+| `is_global` | `bool` | Gets whether the address is globally reachable. |
 | `is_unspecified` | `bool` | Gets whether the address is the unspecified address. |
+| `compressed` | `str` | Gets the canonical string form of the address. |
 
 ### `to_int() -> long`
 
@@ -55,11 +60,16 @@ Represents an IPv4 network.
 | `version` | `int` | Gets the IP version number. |
 | `prefixlen` | `int` | Gets the network prefix length. |
 | `max_prefixlen` | `int` | Gets the maximum prefix length for IPv4 networks. |
+| `network_address` | `IPv4Address` | Gets the network address. |
+| `num_addresses` | `long` | Gets the number of addresses in the network. |
 | `is_loopback` | `bool` | Gets whether the network is a loopback network. |
 | `is_multicast` | `bool` | Gets whether the network is a multicast network. |
 | `is_link_local` | `bool` | Gets whether the network is link-local. |
+| `with_prefixlen` | `str` | Gets the network in address/prefix notation. |
+| `with_netmask` | `str` | Gets the network in address/netmask notation. |
+| `with_hostmask` | `str` | Gets the network in address/hostmask notation. |
 
-### `hosts() -> SCG.IEnumerable[IPv4Address]`
+### `hosts() -> Iterable[IPv4Address]`
 
 Iterates over usable host addresses in the network.
 
@@ -71,7 +81,7 @@ Determines whether the network contains the specified address.
 
 Determines whether this network overlaps another network.
 
-### `subnets(prefixlen_diff: int = 1, new_prefix: int | None = None) -> SCG.List[IPv4Network]`
+### `subnets(prefixlen_diff: int = 1, new_prefix: int | None = None) -> list[IPv4Network]`
 
 Splits the network into subnets.
 
@@ -97,8 +107,15 @@ Represents an IPv6 address.
 |------|------|-------------|
 | `version` | `int` | Gets the IP version number. |
 | `max_prefixlen` | `int` | Gets the maximum prefix length for IPv6 addresses. |
+| `is_private` | `bool` | Gets whether the address is in a private-use range. |
+| `is_loopback` | `bool` | Gets whether the address is a loopback address. |
 | `is_multicast` | `bool` | Gets whether the address is a multicast address. |
+| `is_link_local` | `bool` | Gets whether the address is link-local. |
+| `is_site_local` | `bool` | Gets whether the address is site-local. |
+| `is_unspecified` | `bool` | Gets whether the address is the unspecified address. |
 | `is_global` | `bool` | Gets whether the address is globally reachable. |
+| `packed` | `Bytes` | Gets the packed binary representation of the address. |
+| `compressed` | `str` | Gets the compressed string form of the address. |
 
 ### `to_int() -> BigInteger`
 
@@ -115,6 +132,7 @@ Represents an IPv6 network.
 | `version` | `int` | Gets the IP version number. |
 | `prefixlen` | `int` | Gets the network prefix length. |
 | `max_prefixlen` | `int` | Gets the maximum prefix length for IPv6 networks. |
+| `network_address` | `IPv6Address` | Gets the network address. |
 | `is_global` | `bool` | Gets whether the network is globally reachable. |
 | `is_loopback` | `bool` | Gets whether the network is a loopback network. |
 | `is_multicast` | `bool` | Gets whether the network is a multicast network. |

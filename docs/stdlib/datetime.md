@@ -65,6 +65,7 @@ Represents a date (year, month, day).
 | `hour` | `int` | The hour component (0-23). |
 | `minute` | `int` | The minute component (0-59). |
 | `second` | `int` | The second component (0-59). |
+| `microsecond` | `int` | The microsecond component (0-999999). |
 
 ### `isoformat() -> str`
 
@@ -88,7 +89,10 @@ Represents a date (year, month, day).
 | `hour` | `int` | The hour component (0-23). |
 | `minute` | `int` | The minute component (0-59). |
 | `second` | `int` | The second component (0-59). |
+| `microsecond` | `int` | The microsecond component (0-999999). |
 | `tzinfo` | `Timezone | None` | The timezone info, or null if naive. |
+| `date_component` | `Date` | The date component of this datetime. |
+| `time_component` | `Time` | The time component of this datetime. |
 
 ### `now() -> DateTime`
 
@@ -147,6 +151,8 @@ Represents a date (year, month, day).
 | Name | Type | Description |
 |------|------|-------------|
 | `days` | `int` | The days component of the time interval. |
+| `seconds` | `int` | Gets the remaining seconds after extracting days (0-86399). This matches Python's \`timedelta.seconds\` property. For the total number of seconds, use \`TotalSeconds\`. |
+| `microseconds` | `int` | The microseconds component of the time interval. |
 | `total_seconds` | `float` | The total number of seconds represented by this timedelta. |
 
 ### `abs() -> Timedelta`
@@ -162,6 +168,16 @@ Represents a date (year, month, day).
 | Name | Type | Description |
 |------|------|-------------|
 | `utc` | `Timezone` | The UTC timezone. |
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `date_type` | `Type` | The Date type. |
+| `time_type` | `Type` | The Time type. |
+| `date_time_type` | `Type` | The DateTime type. |
+| `timedelta_type` | `Type` | The Timedelta type. |
+| `timezone_type` | `Type` | The Timezone type. |
 
 ### `utcoffset() -> Timedelta`
 

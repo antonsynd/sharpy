@@ -16,7 +16,7 @@ Reads configuration data from a string.
 
 Reads configuration data from a file if it exists.
 
-### `configparser.read_dict(dictionary: SCG.Dictionary[str, SCG.Dictionary[str, str]])`
+### `configparser.read_dict(dictionary: dict[str, dict[str, str]])`
 
 Loads configuration values from nested dictionaries.
 
@@ -32,7 +32,7 @@ Writes the current configuration to a file.
 
 Parses and stores INI-style configuration data.
 
-### `sections() -> SCG.List[str]`
+### `sections() -> list[str]`
 
 Returns the non-default section names.
 
@@ -76,15 +76,15 @@ Determines whether a section or defaults contain an option.
 
 Removes an option from a section or from defaults.
 
-### `options(section: str) -> SCG.List[str]`
+### `options(section: str) -> list[str]`
 
 Returns the option names available in a section.
 
-### `items(section: str) -> SCG.Dictionary[str, str]`
+### `items(section: str) -> dict[str, str]`
 
 Returns the section items with defaults applied.
 
-### `defaults() -> SCG.Dictionary[str, str]`
+### `defaults() -> dict[str, str]`
 
 Returns the default section values.
 
@@ -219,10 +219,10 @@ Provides mapping-style access to a single configparser section.
 
 Gets an option from the section, returning the fallback when it is missing.
 
-### `keys() -> SCG.List[str]`
+### `keys() -> list[str]`
 
 Returns the option names available in the section.
 
-### `items() -> SCG.Dictionary[str, str]`
+### `items() -> dict[str, str]`
 
 Returns the section items with defaults merged in.

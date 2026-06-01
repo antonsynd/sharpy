@@ -36,3 +36,10 @@ Generate a name-based version 5 UUID using SHA-1.
 ## UUID
 
 Represents a UUID value with Python uuid.UUID-style properties.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `hex` | `str` | Get the UUID as 32 lowercase hexadecimal digits. |
+| `urn` | `str` | Get the UUID as a URN string. |

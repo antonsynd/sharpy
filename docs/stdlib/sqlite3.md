@@ -91,7 +91,7 @@ Represents a database cursor used to execute SQL statements and fetch results.
 | `arraysize` | `int` | Gets or sets the number of rows to fetch at a time with \`Fetchmany\`. Default is 1. |
 | `lastrowid` | `long` | Gets the row ID of the last modified row, or -1 if no row was inserted. |
 | `rowcount` | `int` | Gets the number of rows affected by the last DML statement, or -1 for queries. |
-| `description` | `System.Collections.Generic.List[list[object?]]?` | Gets column descriptions for the last query, or null if no query has been executed. |
+| `description` | `list[list[object?]]?` | Gets column descriptions for the last query, or null if no query has been executed. |
 
 ### `execute(sql: str, parameters: System.Collections.IEnumerable? = null) -> Sqlite3Cursor`
 
@@ -127,7 +127,7 @@ Fetch the next row of a query result, returning null if no more data is availabl
 
 **Returns:** The next row as an array of values, or null.
 
-### `fetchmany(size: int = -1) -> System.Collections.Generic.List[object]`
+### `fetchmany(size: int = -1) -> list[object]`
 
 Fetch the next set of rows, returning a list. An empty list is returned when no more rows are available.
 
@@ -137,7 +137,7 @@ Fetch the next set of rows, returning a list. An empty list is returned when no 
 
 **Returns:** A list of row objects.
 
-### `fetchall() -> System.Collections.Generic.List[object]`
+### `fetchall() -> list[object]`
 
 Fetch all remaining rows of a query result, returning a list.
 
@@ -175,7 +175,7 @@ Base exception for all sqlite3-related errors.
 
 Represents a row returned from a query when using `Sqlite3.Row` as the row factory.
 
-### `keys() -> System.Collections.Generic.List[str]`
+### `keys() -> list[str]`
 
 Return a list of column names.
 
