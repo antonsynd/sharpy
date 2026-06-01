@@ -20,7 +20,7 @@ namespace Sharpy
         /// <summary>Gets the number of rows affected by the last DML statement, or -1 for queries.</summary>
         public int Rowcount { get; private set; }
         /// <summary>Gets column descriptions for the last query, or null if no query has been executed.</summary>
-        public System.Collections.Generic.List<object?[]>? Description { get; private set; }
+        public List<object?[]>? Description { get; private set; }
         internal string[]? ColumnNames { get; private set; }
 
         internal Sqlite3Cursor(Sqlite3Connection connection)
@@ -151,7 +151,7 @@ namespace Sharpy
         /// <summary>Fetch the next set of rows, returning a list. An empty list is returned when no more rows are available.</summary>
         /// <param name="size">The maximum number of rows to fetch. Defaults to <see cref="Arraysize"/>.</param>
         /// <returns>A list of row objects.</returns>
-        public System.Collections.Generic.List<object> Fetchmany(int size = -1)
+        public List<object> Fetchmany(int size = -1)
         {
             EnsureOpen();
             if (size < 0)
@@ -162,7 +162,7 @@ namespace Sharpy
             var rows = new System.Collections.Generic.List<object>();
             if (_reader == null)
             {
-                return rows;
+                return new List<object>(rows);
             }
 
             for (int i = 0; i < size; i++)
@@ -175,18 +175,18 @@ namespace Sharpy
                 rows.Add(MaterializeRow());
             }
 
-            return rows;
+            return new List<object>(rows);
         }
 
         /// <summary>Fetch all remaining rows of a query result, returning a list.</summary>
         /// <returns>A list of all remaining row objects.</returns>
-        public System.Collections.Generic.List<object> Fetchall()
+        public List<object> Fetchall()
         {
             EnsureOpen();
             var rows = new System.Collections.Generic.List<object>();
             if (_reader == null)
             {
-                return rows;
+                return new List<object>(rows);
             }
 
             while (_reader.Read())
@@ -194,7 +194,7 @@ namespace Sharpy
                 rows.Add(MaterializeRow());
             }
 
-            return rows;
+            return new List<object>(rows);
         }
 
         /// <summary>Close the cursor. The cursor will be unusable from this point forward.</summary>
@@ -291,14 +291,15 @@ namespace Sharpy
             }
 
             int fieldCount = _reader.FieldCount;
-            Description = new System.Collections.Generic.List<object?[]>(fieldCount);
+            var descList = new System.Collections.Generic.List<object?[]>(fieldCount);
             ColumnNames = new string[fieldCount];
             for (int i = 0; i < fieldCount; i++)
             {
                 string name = _reader.GetName(i);
                 ColumnNames[i] = name;
-                Description.Add(new object?[] { name, null, null, null, null, null, null });
+                descList.Add(new object?[] { name, null, null, null, null, null, null });
             }
+            Description = new List<object?[]>(descList);
         }
 
         private static void BindParameters(SqliteCommand command, object?[]? parameters)

@@ -287,7 +287,7 @@ public class ChainMap_Tests
 
         childCm["a"].Should().Be(99);
         childCm["b"].Should().Be(2);
-        childCm.Maps.Count.Should().Be(2);
+        childCm.Maps.Should().HaveCount(2);
     }
 
     [Fact]
@@ -298,7 +298,7 @@ public class ChainMap_Tests
         var cm = new ChainMap<string, int>(d1);
 
         var childCm = cm.NewChild();
-        childCm.Maps.Count.Should().Be(2);
+        childCm.Maps.Should().HaveCount(2);
         childCm["a"].Should().Be(1);
     }
 
@@ -315,7 +315,7 @@ public class ChainMap_Tests
         var cm = new ChainMap<string, int>(d1, d2, d3);
         var parents = cm.Parents;
 
-        parents.Maps.Count.Should().Be(2);
+        parents.Maps.Should().HaveCount(2);
         parents.ContainsKey("b").Should().BeTrue();
         parents.ContainsKey("c").Should().BeTrue();
         parents.ContainsKey("a").Should().BeFalse();
@@ -329,7 +329,7 @@ public class ChainMap_Tests
         var cm = new ChainMap<string, int>(d1);
 
         var parents = cm.Parents;
-        parents.Maps.Count.Should().Be(1);
+        parents.Maps.Should().HaveCount(1);
         parents.ContainsKey("a").Should().BeFalse();
     }
 
@@ -410,7 +410,7 @@ public class ChainMap_Tests
     public void ChainMap_DefaultConstructor_HasOneEmptyMap()
     {
         var cm = new ChainMap<string, int>();
-        cm.Maps.Count.Should().Be(1);
+        cm.Maps.Should().HaveCount(1);
         cm.Count.Should().Be(0);
     }
 }

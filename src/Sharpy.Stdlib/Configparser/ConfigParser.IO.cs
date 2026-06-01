@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using SCG = System.Collections.Generic;
 
 namespace Sharpy
 {
@@ -28,21 +27,22 @@ namespace Sharpy
         }
 
         /// <summary>Loads configuration values from nested dictionaries.</summary>
-        public void ReadDict(SCG.Dictionary<string, SCG.Dictionary<string, string>> dictionary)
+        public void ReadDict(Dict<string, Dict<string, string>> dictionary)
         {
-            foreach (var section in dictionary)
+            foreach (var sectionName in dictionary)
             {
-                if (!string.Equals(section.Key, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(sectionName, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!_sections.ContainsKey(section.Key))
+                    if (!_sections.ContainsKey(sectionName))
                     {
-                        _sections[section.Key] = new SCG.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                        _sections[sectionName] = new System.Collections.Generic.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
                     }
                 }
 
-                foreach (var kvp in section.Value)
+                var sectionValues = dictionary[sectionName];
+                foreach (var key in sectionValues)
                 {
-                    Set(section.Key, kvp.Key, kvp.Value);
+                    Set(sectionName, key, sectionValues[key]);
                 }
             }
         }
@@ -150,7 +150,7 @@ namespace Sharpy
                         currentSection = sectionName;
                         if (!_sections.ContainsKey(sectionName))
                         {
-                            _sections[sectionName] = new SCG.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                            _sections[sectionName] = new System.Collections.Generic.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
                         }
                     }
                     continue;
@@ -220,7 +220,7 @@ namespace Sharpy
             {
                 if (!_sections.ContainsKey(section))
                 {
-                    _sections[section] = new SCG.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                    _sections[section] = new System.Collections.Generic.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
                 }
                 _sections[section][key] = value;
             }

@@ -286,7 +286,7 @@ public class IpaddressTests
     {
         var net = new IPv4Network("192.168.1.0/24");
         var subnets = net.Subnets();
-        subnets.Count.Should().Be(2);
+        subnets.Should().HaveCount(2);
         subnets[0].ToString().Should().Be("192.168.1.0/25");
         subnets[1].ToString().Should().Be("192.168.1.128/25");
     }
@@ -433,7 +433,7 @@ public class IpaddressTests
     [Fact]
     public void CollapseAddresses_MergesAdjacentNetworks()
     {
-        var networks = new System.Collections.Generic.List<object>
+        var networks = new Sharpy.List<object>
         {
             new IPv4Network("192.168.1.0/25"),
             new IPv4Network("192.168.1.128/25")

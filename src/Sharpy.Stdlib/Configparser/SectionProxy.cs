@@ -1,5 +1,3 @@
-using SCG = System.Collections.Generic;
-
 namespace Sharpy
 {
     /// <summary>Provides mapping-style access to a single configparser section.</summary>
@@ -46,13 +44,13 @@ namespace Sharpy
         }
 
         /// <summary>Returns the option names available in the section.</summary>
-        public SCG.List<string> Keys()
+        public List<string> Keys()
         {
             return _parser.Options(_section);
         }
 
         /// <summary>Returns the section items with defaults merged in.</summary>
-        public SCG.Dictionary<string, string> Items()
+        public Dict<string, string> Items()
         {
             return _parser.Items(_section);
         }

@@ -1,5 +1,4 @@
 using System;
-using SCG = System.Collections.Generic;
 
 namespace Sharpy
 {
@@ -9,11 +8,11 @@ namespace Sharpy
     {
         private const string DefaultSectionName = "DEFAULT";
 
-        private readonly SCG.Dictionary<string, SCG.Dictionary<string, string?>> _sections =
-            new SCG.Dictionary<string, SCG.Dictionary<string, string?>>(StringComparer.Ordinal);
+        private readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, string?>> _sections =
+            new System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, string?>>(StringComparer.Ordinal);
 
-        private readonly SCG.Dictionary<string, string?> _defaults =
-            new SCG.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        private readonly System.Collections.Generic.Dictionary<string, string?> _defaults =
+            new System.Collections.Generic.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         private readonly IInterpolation _interpolation;
         private readonly bool _allowNoValue;
@@ -40,9 +39,9 @@ namespace Sharpy
         }
 
         /// <summary>Returns the non-default section names.</summary>
-        public SCG.List<string> Sections()
+        public List<string> Sections()
         {
-            return new SCG.List<string>(_sections.Keys);
+            return new List<string>(new System.Collections.Generic.List<string>(_sections.Keys));
         }
 
         /// <summary>Adds a new section.</summary>
@@ -56,7 +55,7 @@ namespace Sharpy
             {
                 throw new DuplicateSectionError(section);
             }
-            _sections[section] = new SCG.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            _sections[section] = new System.Collections.Generic.Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>Determines whether a non-default section exists.</summary>
@@ -246,18 +245,18 @@ namespace Sharpy
         }
 
         /// <summary>Returns the option names available in a section.</summary>
-        public SCG.List<string> Options(string section)
+        public List<string> Options(string section)
         {
             if (string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
             {
-                return new SCG.List<string>(_defaults.Keys);
+                return new List<string>(new System.Collections.Generic.List<string>(_defaults.Keys));
             }
             if (!_sections.ContainsKey(section))
             {
                 throw new NoSectionError(section);
             }
 
-            var result = new SCG.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var result = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var key in _defaults.Keys)
             {
                 result.Add(key);
@@ -266,11 +265,11 @@ namespace Sharpy
             {
                 result.Add(key);
             }
-            return new SCG.List<string>(result);
+            return new List<string>(new System.Collections.Generic.List<string>(result));
         }
 
         /// <summary>Returns the section items with defaults applied.</summary>
-        public SCG.Dictionary<string, string> Items(string section)
+        public Dict<string, string> Items(string section)
         {
             if (!string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase)
                 && !_sections.ContainsKey(section))
@@ -278,7 +277,7 @@ namespace Sharpy
                 throw new NoSectionError(section);
             }
 
-            var result = new SCG.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var result = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var kvp in _defaults)
             {
@@ -300,13 +299,13 @@ namespace Sharpy
                 }
             }
 
-            return result;
+            return new Dict<string, string>(result);
         }
 
         /// <summary>Returns the default section values.</summary>
-        public SCG.Dictionary<string, string> Defaults()
+        public Dict<string, string> Defaults()
         {
-            var result = new SCG.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var result = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var kvp in _defaults)
             {
                 if (kvp.Value != null)
@@ -314,7 +313,7 @@ namespace Sharpy
                     result[kvp.Key] = kvp.Value;
                 }
             }
-            return result;
+            return new Dict<string, string>(result);
         }
 
         // Whether the option key is present (in the section or DEFAULT), regardless of

@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using SCG = System.Collections.Generic;
 
 namespace Sharpy
 {
@@ -89,10 +88,10 @@ namespace Sharpy
         /// <summary>
         /// Collapses addresses and networks into the smallest set of CIDR blocks.
         /// </summary>
-        public static SCG.List<object> CollapseAddresses(SCG.List<object> addresses)
+        public static List<object> CollapseAddresses(List<object> addresses)
         {
-            var v4Networks = new SCG.List<IPv4Network>();
-            var v6Networks = new SCG.List<IPv6Network>();
+            var v4Networks = new System.Collections.Generic.List<IPv4Network>();
+            var v6Networks = new System.Collections.Generic.List<IPv6Network>();
 
             foreach (var addr in addresses)
             {
@@ -125,37 +124,37 @@ namespace Sharpy
 
             if (v4Networks.Count > 0)
             {
-                return CollapseV4(v4Networks).Cast<object>().ToList();
+                return new List<object>(CollapseV4(v4Networks).Cast<object>().ToList());
             }
 
-            return CollapseV6(v6Networks).Cast<object>().ToList();
+            return new List<object>(CollapseV6(v6Networks).Cast<object>().ToList());
         }
 
         /// <summary>
         /// Summarizes an address range as the smallest set of CIDR blocks.
         /// </summary>
-        public static SCG.List<object> SummarizeAddressRange(object first, object last)
+        public static List<object> SummarizeAddressRange(object first, object last)
         {
             if (first is IPv4Address f4 && last is IPv4Address l4)
             {
-                return SummarizeV4Range(f4, l4).Cast<object>().ToList();
+                return new List<object>(SummarizeV4Range(f4, l4).Cast<object>().ToList());
             }
             if (first is IPv6Address f6 && last is IPv6Address l6)
             {
-                return SummarizeV6Range(f6, l6).Cast<object>().ToList();
+                return new List<object>(SummarizeV6Range(f6, l6).Cast<object>().ToList());
             }
 
             throw new TypeError("first and last must be the same type (both IPv4Address or both IPv6Address)");
         }
 
-        private static SCG.List<IPv4Network> CollapseV4(SCG.List<IPv4Network> networks)
+        private static System.Collections.Generic.List<IPv4Network> CollapseV4(System.Collections.Generic.List<IPv4Network> networks)
         {
             if (networks.Count == 0)
-                return new SCG.List<IPv4Network>();
+                return new System.Collections.Generic.List<IPv4Network>();
 
             networks.Sort();
 
-            var merged = new SCG.List<IPv4Network>();
+            var merged = new System.Collections.Generic.List<IPv4Network>();
             foreach (var net in networks)
             {
                 if (merged.Count > 0)
@@ -173,7 +172,7 @@ namespace Sharpy
             while (changed)
             {
                 changed = false;
-                var next = new SCG.List<IPv4Network>();
+                var next = new System.Collections.Generic.List<IPv4Network>();
 
                 int i = 0;
                 while (i < merged.Count)
@@ -203,14 +202,14 @@ namespace Sharpy
             return merged;
         }
 
-        private static SCG.List<IPv6Network> CollapseV6(SCG.List<IPv6Network> networks)
+        private static System.Collections.Generic.List<IPv6Network> CollapseV6(System.Collections.Generic.List<IPv6Network> networks)
         {
             if (networks.Count == 0)
-                return new SCG.List<IPv6Network>();
+                return new System.Collections.Generic.List<IPv6Network>();
 
             networks.Sort();
 
-            var merged = new SCG.List<IPv6Network>();
+            var merged = new System.Collections.Generic.List<IPv6Network>();
             foreach (var net in networks)
             {
                 if (merged.Count > 0)
@@ -227,9 +226,9 @@ namespace Sharpy
             return merged;
         }
 
-        private static SCG.List<IPv4Network> SummarizeV4Range(IPv4Address first, IPv4Address last)
+        private static System.Collections.Generic.List<IPv4Network> SummarizeV4Range(IPv4Address first, IPv4Address last)
         {
-            var result = new SCG.List<IPv4Network>();
+            var result = new System.Collections.Generic.List<IPv4Network>();
             uint start = first.Value;
             uint end = last.Value;
 
@@ -280,9 +279,9 @@ namespace Sharpy
             return count;
         }
 
-        private static SCG.List<IPv6Network> SummarizeV6Range(IPv6Address first, IPv6Address last)
+        private static System.Collections.Generic.List<IPv6Network> SummarizeV6Range(IPv6Address first, IPv6Address last)
         {
-            var result = new SCG.List<IPv6Network>();
+            var result = new System.Collections.Generic.List<IPv6Network>();
             System.Numerics.BigInteger start = first.ToInt();
             System.Numerics.BigInteger end = last.ToInt();
             System.Numerics.BigInteger maxAddr = (System.Numerics.BigInteger.One << 128) - 1;

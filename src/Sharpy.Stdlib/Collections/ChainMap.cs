@@ -32,7 +32,7 @@ namespace Sharpy
         /// <summary>
         /// The list of underlying mappings.
         /// </summary>
-        public System.Collections.Generic.List<Dict<K, V>> Maps => _maps;
+        public List<Dict<K, V>> Maps => new List<Dict<K, V>>(_maps);
 
         /// <summary>
         /// A new ChainMap containing all maps except the first one.

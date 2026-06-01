@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using SCG = System.Collections.Generic;
 
 namespace Sharpy
 {
@@ -10,7 +10,7 @@ namespace Sharpy
     /// Represents an IPv4 network.
     /// </summary>
     [SharpyModuleType("ipaddress")]
-    public sealed class IPv4Network : SCG.IEnumerable<IPv4Address>, IEquatable<IPv4Network>, IComparable<IPv4Network>
+    public sealed class IPv4Network : IEnumerable<IPv4Address>, IEquatable<IPv4Network>, IComparable<IPv4Network>
     {
         private readonly uint _networkAddress;
         private readonly int _prefixLength;
@@ -218,7 +218,7 @@ namespace Sharpy
         /// <summary>
         /// Iterates over usable host addresses in the network.
         /// </summary>
-        public SCG.IEnumerable<IPv4Address> Hosts()
+        public IEnumerable<IPv4Address> Hosts()
         {
             if (_prefixLength == 32)
             {
@@ -243,7 +243,7 @@ namespace Sharpy
         /// <summary>
         /// Iterates over all addresses in the network.
         /// </summary>
-        public SCG.IEnumerator<IPv4Address> GetEnumerator()
+        public IEnumerator<IPv4Address> GetEnumerator()
         {
             long count = NumAddresses;
             for (long i = 0; i < count; i++)
@@ -275,7 +275,7 @@ namespace Sharpy
         /// <summary>
         /// Splits the network into subnets.
         /// </summary>
-        public SCG.List<IPv4Network> Subnets(int prefixlenDiff = 1, int? newPrefix = null)
+        public List<IPv4Network> Subnets(int prefixlenDiff = 1, int? newPrefix = null)
         {
             int targetPrefix;
             if (newPrefix != null)
@@ -295,7 +295,7 @@ namespace Sharpy
                 }
             }
 
-            var result = new SCG.List<IPv4Network>();
+            var result = new System.Collections.Generic.List<IPv4Network>();
             long count = 1L << (targetPrefix - _prefixLength);
             uint subnetSize = 1U << (32 - targetPrefix);
 
@@ -304,7 +304,7 @@ namespace Sharpy
                 result.Add(new IPv4Network(_networkAddress + (uint)i * subnetSize, targetPrefix));
             }
 
-            return result;
+            return new List<IPv4Network>(result);
         }
 
         /// <summary>

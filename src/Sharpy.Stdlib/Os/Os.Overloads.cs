@@ -59,7 +59,7 @@ namespace Sharpy
         }
 
         /// <summary>Directory tree generator. For each directory in the tree rooted at top, yields a 3-tuple (dirpath, dirnames, filenames).</summary>
-        public static IEnumerable<(string dirpath, System.Collections.Generic.List<string> dirnames, System.Collections.Generic.List<string> filenames)> Walk(string top)
+        public static IEnumerable<(string dirpath, List<string> dirnames, List<string> filenames)> Walk(string top)
         {
             if (!Directory.Exists(top))
             {
@@ -78,7 +78,7 @@ namespace Sharpy
                 filenames.Add(System.IO.Path.GetFileName(file));
             }
 
-            yield return (top, dirnames, filenames);
+            yield return (top, new List<string>(dirnames), new List<string>(filenames));
 
             foreach (string dirname in dirnames)
             {
