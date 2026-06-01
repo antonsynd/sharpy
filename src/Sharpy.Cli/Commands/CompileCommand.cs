@@ -133,15 +133,21 @@ internal static class CompileCommand
             return 1;
         }
 
+        if (selfContained)
+        {
+            var entryTypeName = Path.GetFileNameWithoutExtension(inputFile.Name);
+            var publishedExe = SelfContainedPublisher.Publish(outputPath, entryTypeName, outputDir, compileResult.UsedAssemblyPaths);
+            if (publishedExe == null)
+            {
+                return 1;
+            }
+            ReportOutput(publishedExe);
+            return 0;
+        }
+
         if (!noDeps)
         {
             RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, compileResult.UsedAssemblyPaths);
-        }
-
-        if (selfContained)
-        {
-            Console.Error.WriteLine("Self-contained publishing not yet supported.");
-            return 1;
         }
 
         ReportOutput(outputPath);

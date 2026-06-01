@@ -1,6 +1,4 @@
-extern alias SharpyRT;
 using System.CommandLine;
-using System.Runtime.InteropServices;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Logging;
 
@@ -104,8 +102,7 @@ internal static class RunCommand
 
             if (selfContained)
             {
-                var sharpyCorePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
-                return HandleSelfContainedRun(inputFile, outputPath, sharpyCorePath, args, isTempOutput, compileResult.UsedAssemblyPaths, copiedDeps);
+                return HandleSelfContainedRun(inputFile, outputPath, args, isTempOutput, compileResult.UsedAssemblyPaths, copiedDeps);
             }
 
             Console.WriteLine();
@@ -174,100 +171,19 @@ internal static class RunCommand
     static int HandleSelfContainedRun(
         FileInfo inputFile,
         string compiledExePath,
-        string sharpyCorePath,
         string[] args,
         bool isTempOutput,
         IReadOnlySet<string> usedAssemblyPaths,
         IReadOnlySet<string>? copiedDeps)
     {
-        var rid = RuntimeInformation.RuntimeIdentifier;
-        var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
+        var entryTypeName = Path.GetFileNameWithoutExtension(inputFile.Name);
         var publishDir = Path.Combine(Path.GetTempPath(), $"sharpy_publish_{Guid.NewGuid():N}");
 
         try
         {
-            Directory.CreateDirectory(publishDir);
-
-            var tempProjDir = Path.Combine(Path.GetTempPath(), $"sharpy_proj_{Guid.NewGuid():N}");
-            Directory.CreateDirectory(tempProjDir);
-            var csprojPath = Path.Combine(tempProjDir, $"{assemblyName}.csproj");
-
-            var cliDir = Path.GetDirectoryName(sharpyCorePath)!;
-            var stdlibRefs = new System.Text.StringBuilder();
-            foreach (var assemblyPath in usedAssemblyPaths)
+            var publishedExe = SelfContainedPublisher.Publish(compiledExePath, entryTypeName, publishDir, usedAssemblyPaths);
+            if (publishedExe == null)
             {
-                var fileName = Path.GetFileName(assemblyPath);
-                if (fileName.Equals("Sharpy.Core.dll", StringComparison.OrdinalIgnoreCase))
-                    continue;
-                var fullPath = Path.Combine(cliDir, fileName);
-                if (File.Exists(fullPath))
-                {
-                    var includeName = Path.GetFileNameWithoutExtension(fileName);
-                    stdlibRefs.AppendLine($@"    <Reference Include=""{includeName}"">
-      <HintPath>{fullPath}</HintPath>
-    </Reference>");
-                }
-            }
-            var csprojContent = $@"<Project Sdk=""Microsoft.NET.Sdk"">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <AssemblyName>{assemblyName}</AssemblyName>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include=""{Path.GetFileNameWithoutExtension(compiledExePath)}"">
-      <HintPath>{compiledExePath}</HintPath>
-    </Reference>
-    <Reference Include=""Sharpy.Core"">
-      <HintPath>{sharpyCorePath}</HintPath>
-    </Reference>
-{stdlibRefs}  </ItemGroup>
-</Project>";
-
-            File.WriteAllText(csprojPath, csprojContent);
-            File.WriteAllText(
-                Path.Combine(tempProjDir, "Program.cs"),
-                $"// Auto-generated entry point\n{assemblyName}.Main();\n");
-
-            Console.WriteLine($"Publishing self-contained executable for {rid}...");
-            var publishInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = "dotnet",
-                ArgumentList =
-                {
-                    "publish",
-                    csprojPath,
-                    "--self-contained",
-                    "-r", rid,
-                    "-o", publishDir,
-                    "--nologo",
-                    "-v", "q"
-                },
-                UseShellExecute = false,
-                RedirectStandardError = true
-            };
-
-            var publishProcess = System.Diagnostics.Process.Start(publishInfo);
-            if (publishProcess != null)
-            {
-                var stderr = publishProcess.StandardError.ReadToEnd();
-                publishProcess.WaitForExit();
-
-                if (publishProcess.ExitCode != 0)
-                {
-                    Console.Error.WriteLine("Self-contained publish failed:");
-                    Console.Error.WriteLine(stderr);
-                    return 1;
-                }
-            }
-
-            var publishedExe = Path.Combine(publishDir, assemblyName);
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                publishedExe += ".exe";
-
-            if (!File.Exists(publishedExe))
-            {
-                Console.Error.WriteLine($"Published executable not found: {publishedExe}");
                 return 1;
             }
 
@@ -291,10 +207,6 @@ internal static class RunCommand
                 runProcess.WaitForExit();
                 return runProcess.ExitCode;
             }
-
-            try
-            { Directory.Delete(tempProjDir, recursive: true); }
-            catch { }
 
             return 0;
         }
