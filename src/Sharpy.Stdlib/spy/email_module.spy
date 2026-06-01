@@ -73,6 +73,10 @@ class EmailMessage:
         """Add a binary attachment."""
         ...
 
+    def IterAttachments(self) -> list[object]:
+        """Return a list of attachments."""
+        ...
+
     def AsString(self) -> str:
         """Serialize the message to RFC 5322 format."""
         ...

@@ -14,6 +14,8 @@ namespace Sharpy
 
         public static TarFile Open(string name, string mode = "r")
         {
+            bool autoDetect = (mode == "r");
+
             if (mode == "r" || mode == "w")
             {
                 mode = mode + ":";
@@ -31,24 +33,20 @@ namespace Sharpy
                 throw new ValueError("mode '" + mode + "' is not valid");
             }
 
-            if (baseMode == "r" && mode == "r:")
+            if (autoDetect && File.Exists(name))
             {
-                // Auto-detect: try gzip first
-                if (File.Exists(name))
+                try
                 {
-                    try
+                    using var fs = new FileStream(name, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    byte[] magic = new byte[2];
+                    if (fs.Read(magic, 0, 2) == 2 && magic[0] == 0x1f && magic[1] == 0x8b)
                     {
-                        using var fs = new FileStream(name, FileMode.Open, FileAccess.Read, FileShare.Read);
-                        byte[] magic = new byte[2];
-                        if (fs.Read(magic, 0, 2) == 2 && magic[0] == 0x1f && magic[1] == 0x8b)
-                        {
-                            return new TarFile(name, "r:gz");
-                        }
+                        return new TarFile(name, "r:gz");
                     }
-                    catch
-                    {
-                        // Fall through to plain tar
-                    }
+                }
+                catch
+                {
+                    // Fall through to plain tar
                 }
             }
 

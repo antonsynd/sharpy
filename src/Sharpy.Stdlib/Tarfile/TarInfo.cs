@@ -43,6 +43,7 @@ namespace Sharpy
                 Name = entry.Name,
                 Size = entry.Length,
                 Mtime = entry.ModificationTime.ToUnixTimeSeconds(),
+                Mode = (int)entry.Mode,
                 Linkname = entry.LinkName ?? "",
             };
 
