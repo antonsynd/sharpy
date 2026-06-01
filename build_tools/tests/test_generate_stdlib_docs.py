@@ -231,6 +231,27 @@ class TestMapType:
     def test_global_system_stripped(self):
         assert map_type("global::System.Func<T, bool>") == "(T) -> bool"
 
+    def test_scg_list(self):
+        assert map_type("SCG.List<string>") == "list[str]"
+
+    def test_scg_dictionary(self):
+        assert map_type("SCG.Dictionary<string, int>") == "dict[str, int]"
+
+    def test_scg_dictionary_nested(self):
+        assert map_type("SCG.Dictionary<string, SCG.List<int>>") == "dict[str, list[int]]"
+
+    def test_scg_ienumerable(self):
+        assert map_type("SCG.IEnumerable<IPv4Address>") == "Iterable[IPv4Address]"
+
+    def test_system_collections_generic_list(self):
+        assert map_type("System.Collections.Generic.List<object>") == "list[object]"
+
+    def test_system_collections_generic_dictionary(self):
+        assert map_type("System.Collections.Generic.Dictionary<string, string>") == "dict[str, str]"
+
+    def test_unknown_alias_passthrough(self):
+        assert map_type("UnknownAlias.Something<int>") == "UnknownAlias.Something[int]"
+
 
 # ---------------------------------------------------------------------------
 # _split_generic_args

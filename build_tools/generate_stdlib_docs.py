@@ -137,6 +137,7 @@ _GENERIC_TYPE_MAP: dict[str, str] = {
     "List": "list",
     "Sharpy.List": "list",
     "Dict": "dict",
+    "Dictionary": "dict",
     "Sharpy.Dict": "dict",
     "Set": "set",
     "Sharpy.Set": "set",
@@ -160,6 +161,12 @@ _LITERAL_DEFAULTS: dict[str, str] = {
     "true": "True",
 }
 
+# Known C# namespace aliases used in stdlib source files
+_CS_NAMESPACE_ALIASES: dict[str, str] = {
+    "SCG": "System.Collections.Generic",
+    "BclComplex": "System.Numerics.Complex",
+}
+
 # Common C# namespace prefixes to strip for cleaner type names
 _CS_NAMESPACE_PREFIXES = [
     "System.Collections.Generic.",
@@ -171,11 +178,17 @@ _CS_NAMESPACE_PREFIXES = [
 
 
 def _normalize_cs_type(cs_type: str) -> str:
-    """Strip global:: prefix and common C# namespace prefixes from a type string."""
+    """Strip global:: prefix, expand namespace aliases, and strip common C# namespace prefixes."""
     cs_type = cs_type.strip()
     # Strip global:: prefix
     if cs_type.startswith("global::"):
         cs_type = cs_type[len("global::"):]
+    # Expand known namespace aliases (e.g., SCG.List -> System.Collections.Generic.List)
+    for alias, expansion in _CS_NAMESPACE_ALIASES.items():
+        prefix = alias + "."
+        if cs_type.startswith(prefix):
+            cs_type = expansion + "." + cs_type[len(prefix):]
+            break
     # Strip common namespace prefixes (but keep the mapped form if it's in _TYPE_MAP)
     for prefix in _CS_NAMESPACE_PREFIXES:
         if cs_type.startswith(prefix):
