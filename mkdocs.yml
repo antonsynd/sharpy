@@ -204,7 +204,9 @@ nav:
       - copy: stdlib/copy.md
       - csv: stdlib/csv.md
       - datetime: stdlib/datetime.md
+      - difflib: stdlib/difflib.md
       - fnmatch: stdlib/fnmatch.md
+      - fractions: stdlib/fractions.md
       - functools: stdlib/functools.md
       - glob: stdlib/glob.md
       - grapheme: stdlib/grapheme.md
@@ -231,6 +233,7 @@ nav:
       - secrets: stdlib/secrets.md
       - shlex: stdlib/shlex.md
       - shutil: stdlib/shutil.md
+      - socket: stdlib/socket.md
       - sqlite3: stdlib/sqlite3.md
       - statistics: stdlib/statistics.md
       - string: stdlib/string.md
@@ -239,6 +242,7 @@ nav:
       - sys: stdlib/sys.md
       - tempfile: stdlib/tempfile.md
       - textwrap: stdlib/textwrap.md
+      - threading: stdlib/threading.md
       - time: stdlib/time.md
       - toml: stdlib/toml.md
       - unittest: stdlib/unittest.md

@@ -29,7 +29,9 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`copy`](copy.md) |  |
 | [`csv`](csv.md) | CSV file reading and writing. |
 | [`datetime`](datetime.md) | Classes for working with dates and times. |
+| [`difflib`](difflib.md) |  |
 | [`fnmatch`](fnmatch.md) | Unix shell-style filename pattern matching. |
+| [`fractions`](fractions.md) |  |
 | [`functools`](functools.md) | Higher-order functions and operations on callable objects. |
 | [`glob`](glob.md) | Unix shell-style pathname pattern expansion. |
 | [`grapheme`](grapheme.md) | Unicode grapheme cluster iteration and string width calculation. |
@@ -56,6 +58,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`secrets`](secrets.md) | Generate cryptographically strong random numbers suitable for managing secrets. |
 | [`shlex`](shlex.md) | Simple lexical analysis of shell-style syntaxes. |
 | [`shutil`](shutil.md) | Utility functions for copying and removal of files and directory trees. |
+| [`socket`](socket.md) | Low-level networking interface, similar to Python's socket module. |
 | [`sqlite3`](sqlite3.md) | DB-API interface for SQLite databases. |
 | [`statistics`](statistics.md) | Mathematical statistics functions. |
 | [`string`](string.md) | Common string constants and operations. |
@@ -64,6 +67,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`sys`](sys.md) | System-specific parameters and functions. |
 | [`tempfile`](tempfile.md) | Generate temporary files and directories. |
 | [`textwrap`](textwrap.md) | Text wrapping and filling. |
+| [`threading`](threading.md) | Thread-based concurrency primitives. |
 | [`time`](time.md) | Time access and conversions. |
 | [`toml`](toml.md) | TOML configuration file parser and encoder. |
 | [`unittest`](unittest.md) | The unittest module provides a Pythonic testing API that the Sharpy compiler transforms into xUnit test infrastructure during code generation. |
