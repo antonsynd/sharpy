@@ -18,7 +18,7 @@ namespace Sharpy
 
             try
             {
-                var table = Tomlyn.Toml.ToModel(s);
+                var table = TomlSerializer.Deserialize<TomlTable>(s)!;
                 return TomlConverter.ToSharpy(table);
             }
             catch (TomlException ex)
@@ -45,8 +45,7 @@ namespace Sharpy
 
             try
             {
-                var options = new TomlModelOptions();
-                return Tomlyn.Toml.FromModel(table, options);
+                return TomlSerializer.Serialize(table);
             }
             catch (TomlException ex)
             {
@@ -158,7 +157,11 @@ namespace Sharpy
 
             try
             {
-                T model = Tomlyn.Toml.ToModel<T>(s);
+                var options = new TomlSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                T model = TomlSerializer.Deserialize<T>(s, options)!;
                 return Result<T, TOMLDecodeError>.Ok(model);
             }
             catch (TomlException ex)
