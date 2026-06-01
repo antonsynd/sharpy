@@ -61,7 +61,8 @@ namespace Sharpy
 
         public bool Equals(ZoneInfo? other)
         {
-            if (other is null) return false;
+            if (other is null)
+                return false;
             return Key == other.Key;
         }
 

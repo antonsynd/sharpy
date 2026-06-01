@@ -408,12 +408,16 @@ namespace Sharpy
 
         private static int CompareObjects(object? a, object? b)
         {
-            if (a == null && b == null) return 0;
-            if (a == null) return -1;
-            if (b == null) return 1;
+            if (a == null && b == null)
+                return 0;
+            if (a == null)
+                return -1;
+            if (b == null)
+                return 1;
             if (a is IComparable ca)
             {
-                try { return ca.CompareTo(b); }
+                try
+                { return ca.CompareTo(b); }
                 catch (ArgumentException) { }
             }
             return string.Compare(a.ToString(), b.ToString(), StringComparison.Ordinal);
@@ -421,9 +425,12 @@ namespace Sharpy
 
         private static string FormatFloat(double d)
         {
-            if (double.IsPositiveInfinity(d)) return "inf";
-            if (double.IsNegativeInfinity(d)) return "-inf";
-            if (double.IsNaN(d)) return "nan";
+            if (double.IsPositiveInfinity(d))
+                return "inf";
+            if (double.IsNegativeInfinity(d))
+                return "-inf";
+            if (double.IsNaN(d))
+                return "nan";
 
             string result = d.ToString("G");
             if (!result.Contains('.') && !result.Contains('E') && !result.Contains('e'))
@@ -435,22 +442,28 @@ namespace Sharpy
 
         private static string GetTypeName(object obj)
         {
-            if (obj is IDictionary) return "dict";
-            if (obj is IList) return "list";
+            if (obj is IDictionary)
+                return "dict";
+            if (obj is IList)
+                return "list";
             return obj.GetType().Name;
         }
 
         private int GetFormattedLength(object? obj)
         {
-            if (obj == null) return 4;
-            if (obj is string s) return Builtins.Repr(s).Length;
-            if (obj is bool b) return b ? 4 : 5;
+            if (obj == null)
+                return 4;
+            if (obj is string s)
+                return Builtins.Repr(s).Length;
+            if (obj is bool b)
+                return b ? 4 : 5;
             return obj.ToString()?.Length ?? 0;
         }
 
         private static bool IsValueTuple(object? obj)
         {
-            if (obj == null) return false;
+            if (obj == null)
+                return false;
             var type = obj.GetType();
             return type.IsValueType && type.FullName != null
                 && type.FullName.StartsWith("System.ValueTuple`", StringComparison.Ordinal);

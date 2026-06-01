@@ -32,7 +32,8 @@ namespace Sharpy
                 var week = weeks[wi];
                 for (int i = 0; i < week.Count; i++)
                 {
-                    if (i > 0) sb.Append(' ');
+                    if (i > 0)
+                        sb.Append(' ');
                     if (week[i] == 0)
                         sb.Append(new string(' ', w));
                     else
@@ -86,7 +87,8 @@ namespace Sharpy
                 {
                     var weeks = MonthdayscalendarRaw(year, monthStart + i);
                     allWeeks.Add(weeks);
-                    if (weeks.Count > maxWeeks) maxWeeks = weeks.Count;
+                    if (weeks.Count > maxWeeks)
+                        maxWeeks = weeks.Count;
                 }
 
                 for (int weekIdx = 0; weekIdx < maxWeeks; weekIdx++)
@@ -100,7 +102,8 @@ namespace Sharpy
                             var week = allWeeks[mi][weekIdx];
                             for (int d = 0; d < week.Count; d++)
                             {
-                                if (d > 0) weekSb.Append(' ');
+                                if (d > 0)
+                                    weekSb.Append(' ');
                                 if (week[d] == 0)
                                     weekSb.Append(new string(' ', w));
                                 else
@@ -132,7 +135,8 @@ namespace Sharpy
             string[] dayNames = { "Mo", "Tu", "We", "Th", "Fr", "Sa", "Su" };
             for (int i = 0; i < 7; i++)
             {
-                if (i > 0) sb.Append(' ');
+                if (i > 0)
+                    sb.Append(' ');
                 int idx = (Firstweekday + i) % 7;
                 string name = dayNames[idx];
                 if (w > 2)

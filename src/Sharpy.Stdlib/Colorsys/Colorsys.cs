@@ -52,11 +52,16 @@ namespace Sharpy
             double q = v * (1.0 - s * f);
             double t = v * (1.0 - s * (1.0 - f));
             i = i % 6;
-            if (i == 0) return (v, t, p);
-            if (i == 1) return (q, v, p);
-            if (i == 2) return (p, v, t);
-            if (i == 3) return (p, q, v);
-            if (i == 4) return (t, p, v);
+            if (i == 0)
+                return (v, t, p);
+            if (i == 1)
+                return (q, v, p);
+            if (i == 2)
+                return (p, v, t);
+            if (i == 3)
+                return (p, q, v);
+            if (i == 4)
+                return (t, p, v);
             return (v, p, q);
         }
 
@@ -158,12 +163,18 @@ namespace Sharpy
             double r = y + 0.9468822170900693 * i + 0.6235565819861433 * q;
             double g = y - 0.27478764629897834 * i - 0.6356910791873801 * q;
             double b = y - 1.1085450346420322 * i + 1.7090069284064666 * q;
-            if (r < 0.0) r = 0.0;
-            if (r > 1.0) r = 1.0;
-            if (g < 0.0) g = 0.0;
-            if (g > 1.0) g = 1.0;
-            if (b < 0.0) b = 0.0;
-            if (b > 1.0) b = 1.0;
+            if (r < 0.0)
+                r = 0.0;
+            if (r > 1.0)
+                r = 1.0;
+            if (g < 0.0)
+                g = 0.0;
+            if (g > 1.0)
+                g = 1.0;
+            if (b < 0.0)
+                b = 0.0;
+            if (b > 1.0)
+                b = 1.0;
             return (r, g, b);
         }
     }
