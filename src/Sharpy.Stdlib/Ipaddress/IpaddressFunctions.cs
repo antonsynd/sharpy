@@ -124,10 +124,10 @@ namespace Sharpy
 
             if (v4Networks.Count > 0)
             {
-                return new List<object>(CollapseV4(v4Networks).Cast<object>().ToList());
+                return new List<object>(CollapseV4(v4Networks).Cast<object>());
             }
 
-            return new List<object>(CollapseV6(v6Networks).Cast<object>().ToList());
+            return new List<object>(CollapseV6(v6Networks).Cast<object>());
         }
 
         /// <summary>
@@ -137,11 +137,11 @@ namespace Sharpy
         {
             if (first is IPv4Address f4 && last is IPv4Address l4)
             {
-                return new List<object>(SummarizeV4Range(f4, l4).Cast<object>().ToList());
+                return new List<object>(SummarizeV4Range(f4, l4).Cast<object>());
             }
             if (first is IPv6Address f6 && last is IPv6Address l6)
             {
-                return new List<object>(SummarizeV6Range(f6, l6).Cast<object>().ToList());
+                return new List<object>(SummarizeV6Range(f6, l6).Cast<object>());
             }
 
             throw new TypeError("first and last must be the same type (both IPv4Address or both IPv6Address)");

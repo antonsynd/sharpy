@@ -63,7 +63,7 @@ namespace Sharpy
         /// <returns>A list of column name strings.</returns>
         public List<string> Keys()
         {
-            return new List<string>(new System.Collections.Generic.List<string>(_columnNames));
+            return new List<string>(_columnNames);
         }
 
         /// <summary>Gets the number of columns in the row.</summary>

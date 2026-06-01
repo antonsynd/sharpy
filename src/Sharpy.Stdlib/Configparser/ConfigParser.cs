@@ -41,7 +41,7 @@ namespace Sharpy
         /// <summary>Returns the non-default section names.</summary>
         public List<string> Sections()
         {
-            return new List<string>(new System.Collections.Generic.List<string>(_sections.Keys));
+            return new List<string>(_sections.Keys);
         }
 
         /// <summary>Adds a new section.</summary>
@@ -249,7 +249,7 @@ namespace Sharpy
         {
             if (string.Equals(section, DefaultSectionName, StringComparison.OrdinalIgnoreCase))
             {
-                return new List<string>(new System.Collections.Generic.List<string>(_defaults.Keys));
+                return new List<string>(_defaults.Keys);
             }
             if (!_sections.ContainsKey(section))
             {
@@ -265,7 +265,7 @@ namespace Sharpy
             {
                 result.Add(key);
             }
-            return new List<string>(new System.Collections.Generic.List<string>(result));
+            return new List<string>(result);
         }
 
         /// <summary>Returns the section items with defaults applied.</summary>
