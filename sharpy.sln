@@ -125,6 +125,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Stdlib.Configparser"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Stdlib.Ipaddress", "src\Sharpy.Stdlib\modules\Sharpy.Stdlib.Ipaddress.csproj", "{88BDD378-8BA9-4730-925E-DB613ABA6B7C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Stdlib.Xml", "src\Sharpy.Stdlib\modules\Sharpy.Stdlib.Xml.csproj", "{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -831,6 +833,18 @@ Global
 		{88BDD378-8BA9-4730-925E-DB613ABA6B7C}.Release|x64.Build.0 = Release|Any CPU
 		{88BDD378-8BA9-4730-925E-DB613ABA6B7C}.Release|x86.ActiveCfg = Release|Any CPU
 		{88BDD378-8BA9-4730-925E-DB613ABA6B7C}.Release|x86.Build.0 = Release|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Debug|x64.Build.0 = Debug|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Debug|x86.Build.0 = Debug|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Release|x64.ActiveCfg = Release|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Release|x64.Build.0 = Release|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Release|x86.ActiveCfg = Release|Any CPU
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -894,5 +908,6 @@ Global
 		{DEF7BAD5-3AFE-4A96-90AE-4F033F239CCA} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
 		{C307A587-05BB-47C0-8D0F-70315B22B9D3} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
 		{88BDD378-8BA9-4730-925E-DB613ABA6B7C} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
+		{6F2DCF82-8AF3-4769-BF6C-3EC79B5124F0} = {AD9C0489-1F5C-A63C-EDC4-9804630F0C71}
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,11 @@
+"""HTML processing tools — escaping, unescaping, and parsing."""
+
+from sharpy import HTMLParser
+
+def escape(s: str, quote: bool = True) -> str:
+    """Replace special characters with HTML-safe sequences."""
+    return ""
+
+def unescape(s: str) -> str:
+    """Convert named and numeric character references to Unicode characters."""
+    return ""
