@@ -52,7 +52,7 @@ internal static class BuildCommand
             {
                 return 1;
             }
-            var compileResult = CompileToBinary(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            var compileResult = CompileToBinary(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration: "Debug");
             return compileResult == null ? 1 : 0;
         });
 
@@ -76,7 +76,8 @@ internal static class BuildCommand
         FileInfo? metricsOutput,
         bool warnAsError = false,
         string? nowarn = null,
-        int? maxErrors = null)
+        int? maxErrors = null,
+        string configuration = "Debug")
     {
         try
         {
@@ -138,7 +139,7 @@ internal static class BuildCommand
                 assemblyName: assemblyName,
                 outputType: outputType,
                 targetFramework: "net10.0",
-                configuration: "Debug",
+                configuration: configuration,
                 sourceFiles: new List<string> { inputFile.FullName },
                 references: allReferences,
                 modulePaths: modulePaths.ToList(),
