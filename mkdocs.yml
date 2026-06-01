@@ -205,6 +205,7 @@ nav:
       - csv: stdlib/csv.md
       - datetime: stdlib/datetime.md
       - difflib: stdlib/difflib.md
+      - email: stdlib/email.md
       - fnmatch: stdlib/fnmatch.md
       - fractions: stdlib/fractions.md
       - functools: stdlib/functools.md
@@ -215,6 +216,7 @@ nav:
       - heapq: stdlib/heapq.md
       - hmac: stdlib/hmac.md
       - html: stdlib/html.md
+      - http: stdlib/http.md
       - io: stdlib/io.md
       - ipaddress: stdlib/ipaddress.md
       - itertools: stdlib/itertools.md
@@ -240,6 +242,7 @@ nav:
       - struct: stdlib/struct.md
       - subprocess: stdlib/subprocess.md
       - sys: stdlib/sys.md
+      - tarfile: stdlib/tarfile.md
       - tempfile: stdlib/tempfile.md
       - textwrap: stdlib/textwrap.md
       - threading: stdlib/threading.md
