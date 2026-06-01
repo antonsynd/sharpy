@@ -2208,5 +2208,145 @@
         "error": "compile failed: STDERR: \nSTDOUT:   Determining projects to restore...\n  Restored /tmp/tmpjgbfnmic/bench.csproj (in 44 ms).\n/tmp/tmpjgbfnmic/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmpjgbfnmic/bench.csproj]\n\nBuild FAILED.\n\n/tmp/tmpjgbfnmic/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmpjgbfnmic/bench.cspr"
       }
     ]
+  },
+  {
+    "date": "2026-06-01",
+    "results": [
+      {
+        "name": "fibonacci",
+        "language": "Python",
+        "compile_seconds": 0.00046270500001810433,
+        "execute_seconds": 0.1904730889999655,
+        "total_seconds": 0.19093579399998362,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "Sharpy",
+        "compile_seconds": 0.557947127000034,
+        "execute_seconds": 1.1675444999999627,
+        "total_seconds": 1.7254916269999967,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "C#",
+        "compile_seconds": 1.245325643000001,
+        "execute_seconds": 0,
+        "total_seconds": 1.245325643000001,
+        "success": false,
+        "error": "compile failed: STDERR: \nSTDOUT:   Determining projects to restore...\n  Restored /tmp/tmpvxowy52s/bench.csproj (in 75 ms).\n/tmp/tmpvxowy52s/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmpvxowy52s/bench.csproj]\n\nBuild FAILED.\n\n/tmp/tmpvxowy52s/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmpvxowy52s/bench.csproj]\n    0 Warning(s)\n    1 Error(s)\n\nTime Elapsed 00:00:01.07\n"
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Python",
+        "compile_seconds": 0.00043580700003076345,
+        "execute_seconds": 0.053130535000036616,
+        "total_seconds": 0.05356634200006738,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Sharpy",
+        "compile_seconds": 0.5857524089999515,
+        "execute_seconds": 1.3903355880000845,
+        "total_seconds": 1.976087997000036,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "C#",
+        "compile_seconds": 1.269149868999989,
+        "execute_seconds": 0,
+        "total_seconds": 1.269149868999989,
+        "success": false,
+        "error": "compile failed: STDERR: \nSTDOUT:   Determining projects to restore...\n  Restored /tmp/tmp_la46t9f/bench.csproj (in 78 ms).\n/tmp/tmp_la46t9f/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmp_la46t9f/bench.csproj]\n\nBuild FAILED.\n\n/tmp/tmp_la46t9f/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmp_la46t9f/bench.csproj]\n    0 Warning(s)\n    1 Error(s)\n\nTime Elapsed 00:00:01.09\n"
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Python",
+        "compile_seconds": 0.0005982360000871267,
+        "execute_seconds": 0.6705239059999712,
+        "total_seconds": 0.6711221420000584,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Sharpy",
+        "compile_seconds": 0.5993914880000375,
+        "execute_seconds": 1.7226325359999919,
+        "total_seconds": 2.3220240240000294,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "C#",
+        "compile_seconds": 1.2395264940000743,
+        "execute_seconds": 0,
+        "total_seconds": 1.2395264940000743,
+        "success": false,
+        "error": "compile failed: STDERR: \nSTDOUT:   Determining projects to restore...\n  Restored /tmp/tmpwyxep68y/bench.csproj (in 74 ms).\n/tmp/tmpwyxep68y/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmpwyxep68y/bench.csproj]\n/tmp/tmpwyxep68y/bench.cs(11,64): error CS0246: The type or namespace name 'Sharpy' could not be found (are you missing a using directive or an assembly reference?) [/tmp/tmpwyxep68y/bench.csproj]\n/tmp/tmpwyxep68y/bench.cs(11,76): error CS0246: The type or namespace name 'Sharpy' could not be found (are you missing a using directive or an assembly reference?) [/tmp/tmpwyxep68y/bench.csproj]\n/tmp/tmpwyxep68y/bench.cs(11,97): error CS0246: The type or namespace name 'Sharpy' could not be found (are you missing a using directive or an assembly reference?) [/tmp/tmpwyxep68y/bench.csproj]\n/tmp/tmpwyxep68y/bench.cs(11,109): error CS0246: The type or namespace name 'Sharpy' could not be found (are you missing"
+      },
+      {
+        "name": "sorting",
+        "language": "Python",
+        "compile_seconds": 0.00047702000006211165,
+        "execute_seconds": 0.16709104000005937,
+        "total_seconds": 0.16756806000012148,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Sharpy",
+        "compile_seconds": 0.636961886999984,
+        "execute_seconds": 1.695952158999944,
+        "total_seconds": 2.332914045999928,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "C#",
+        "compile_seconds": 1.2602348770000162,
+        "execute_seconds": 0,
+        "total_seconds": 1.2602348770000162,
+        "success": false,
+        "error": "compile failed: STDERR: \nSTDOUT:   Determining projects to restore...\n  Restored /tmp/tmpbh9zax1r/bench.csproj (in 79 ms).\n/tmp/tmpbh9zax1r/bench.cs(8,24): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmpbh9zax1r/bench.csproj]\n/tmp/tmpbh9zax1r/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmpbh9zax1r/bench.csproj]\n/tmp/tmpbh9zax1r/bench.cs(12,46): error CS0246: The type or namespace name 'Sharpy' could not be found (are you missing a using directive or an assembly reference?) [/tmp/tmpbh9zax1r/bench.csproj]\n/tmp/tmpbh9zax1r/bench.cs(12,19): error CS0246: The type or namespace name 'Sharpy' could not be found (are you missing a using directive or an assembly reference?) [/tmp/tmpbh9zax1r/bench.csproj]\n\nBuild FAILED.\n\n/tmp/tmpbh9zax1r/bench.cs(8,24): error CS0400: The type or namespace name 'Sharpy' could not be found "
+      },
+      {
+        "name": "string_ops",
+        "language": "Python",
+        "compile_seconds": 0.00037841699997898104,
+        "execute_seconds": 0.14050996799994664,
+        "total_seconds": 0.14088838499992562,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Sharpy",
+        "compile_seconds": 0.5842188919999671,
+        "execute_seconds": 1.3645985540000538,
+        "total_seconds": 1.948817446000021,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "C#",
+        "compile_seconds": 1.2331648609999775,
+        "execute_seconds": 0,
+        "total_seconds": 1.2331648609999775,
+        "success": false,
+        "error": "compile failed: STDERR: \nSTDOUT:   Determining projects to restore...\n  Restored /tmp/tmpwwm7sg1r/bench.csproj (in 82 ms).\n/tmp/tmpwwm7sg1r/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmpwwm7sg1r/bench.csproj]\n\nBuild FAILED.\n\n/tmp/tmpwwm7sg1r/bench.cs(7,15): error CS0400: The type or namespace name 'Sharpy' could not be found in the global namespace (are you missing an assembly reference?) [/tmp/tmpwwm7sg1r/bench.csproj]\n    0 Warning(s)\n    1 Error(s)\n\nTime Elapsed 00:00:01.05\n"
+      }
+    ]
   }
 ]
