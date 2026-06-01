@@ -133,26 +133,27 @@ def execute_python(bench_dir: Path) -> tuple[float, bool, str]:
 # --- Sharpy ---
 
 def compile_sharpy(cli_dll: Path, spy_file: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
-    """Compile .spy to .dll via Sharpy CLI. Returns (time, success, error, output_dll)."""
+    """Compile .spy to .dll via the Sharpy CLI 'compile' command.
+
+    This measures the full Sharpy-to-.NET-assembly pipeline (front-end +
+    codegen + Roslyn assembly generation), matching how the C# benchmark
+    times 'dotnet build'. Returns (time, success, error, output_dll).
+    """
     output_dll = tmp_dir / "bench_output.dll"
     cmd = [
-        "dotnet", str(cli_dll), "emit", "csharp", str(spy_file)
+        "dotnet", str(cli_dll), "compile", str(spy_file), "-o", str(output_dll)
     ]
-    # Use 'run' which compiles and executes — but we want compile-only.
-    # The CLI doesn't have a compile-to-dll command, so we time 'run' and
-    # subtract execution by also timing execution separately.
-    # Actually: use 'emit csharp' to measure pure compilation, then 'run' for execute.
     start = time.perf_counter()
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     elapsed = time.perf_counter() - start
     if result.returncode != 0:
-        return elapsed, False, result.stderr[:500], output_dll
+        return elapsed, False, result.stderr[:500] or result.stdout[:500], output_dll
     return elapsed, True, "", output_dll
 
 
-def execute_sharpy(cli_dll: Path, spy_file: Path) -> tuple[float, bool, str]:
-    """Execute .spy via Sharpy CLI (includes re-compilation overhead)."""
-    cmd = ["dotnet", str(cli_dll), "run", str(spy_file)]
+def execute_sharpy(output_dll: Path) -> tuple[float, bool, str]:
+    """Execute the compiled .dll directly (pure execution, no recompilation)."""
+    cmd = ["dotnet", str(output_dll)]
     elapsed, success, err, _ = time_command(cmd)
     return elapsed, success, err
 
@@ -274,40 +275,40 @@ def run_benchmark(bench_dir: Path, cli_dll: Path, warmup: bool = False) -> dict[
 
     # --- Sharpy ---
     spy_file = bench_dir / "bench.spy"
-    # Compilation phase (emit csharp measures front-end + codegen without execution)
-    compile_times = []
-    compile_ok = True
-    compile_err = ""
-    for _ in range(TIMED_RUNS):
-        with tempfile.TemporaryDirectory() as tmp:
-            ct, ok, err, _ = compile_sharpy(cli_dll, spy_file, Path(tmp))
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        # Compilation phase: compile .spy → .dll (full pipeline, no execution)
+        compile_times = []
+        compile_ok = True
+        compile_err = ""
+        output_dll = tmp_path / "bench_output.dll"
+        for _ in range(TIMED_RUNS):
+            ct, ok, err, output_dll = compile_sharpy(cli_dll, spy_file, tmp_path)
             compile_times.append(ct)
             if not ok:
                 compile_ok = False
                 compile_err = err
                 break
-    compile_t = median(compile_times) if compile_ok else compile_times[0]
+        compile_t = median(compile_times) if compile_ok else compile_times[0]
 
-    if not compile_ok:
-        results["Sharpy"] = BenchResult(bench_dir.name, "Sharpy", compile_t, 0, compile_t, False, compile_err)
-    else:
-        # Execution phase (run = compile + execute; subtract compile to isolate execution)
-        run_times = []
-        exec_ok = True
-        exec_err = ""
-        for _ in range(TIMED_RUNS):
-            et, ok, err = execute_sharpy(cli_dll, spy_file)
-            run_times.append(et)
-            if not ok:
-                exec_ok = False
-                exec_err = err
-                break
-        run_t = median(run_times) if exec_ok else run_times[0]
-        # execution ≈ run - compile (both include dotnet startup, so this is approximate)
-        exec_t = max(0, run_t - compile_t)
-        results["Sharpy"] = BenchResult(
-            bench_dir.name, "Sharpy", compile_t, exec_t, run_t, exec_ok, exec_err
-        )
+        if not compile_ok:
+            results["Sharpy"] = BenchResult(bench_dir.name, "Sharpy", compile_t, 0, compile_t, False, compile_err)
+        else:
+            # Execution phase: run the compiled .dll directly (pure execution)
+            exec_times = []
+            exec_ok = True
+            exec_err = ""
+            for _ in range(TIMED_RUNS):
+                et, ok, err = execute_sharpy(output_dll)
+                exec_times.append(et)
+                if not ok:
+                    exec_ok = False
+                    exec_err = err
+                    break
+            exec_t = median(exec_times) if exec_ok else exec_times[0]
+            results["Sharpy"] = BenchResult(
+                bench_dir.name, "Sharpy", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
+            )
 
     # --- C# ---
     with tempfile.TemporaryDirectory() as tmp:
@@ -427,9 +428,11 @@ def main():
         # Warmup Python
         subprocess.run([sys.executable, str(bench_dir / "bench.py")],
                        capture_output=True, timeout=120)
-        # Warmup Sharpy (compile + run)
-        subprocess.run(["dotnet", str(cli_dll), "run", str(spy_file)],
-                       capture_output=True, timeout=120)
+        # Warmup Sharpy (compile to .dll, then execute the .dll)
+        with tempfile.TemporaryDirectory() as tmp:
+            _, ok, _, output_dll = compile_sharpy(cli_dll, spy_file, Path(tmp))
+            if ok:
+                execute_sharpy(output_dll)
         # Warmup C# — build in temp then run
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
