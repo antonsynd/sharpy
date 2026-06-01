@@ -89,6 +89,8 @@ internal static class RunCommand
             isTempOutput = true;
         }
 
+        IReadOnlySet<string>? copiedDeps = null;
+
         try
         {
             var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
@@ -97,18 +99,13 @@ internal static class RunCommand
                 return 1;
             }
 
-            var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
-            var sharpyCorePath = sharpyCoreAssembly.Location;
             var outputDir = Path.GetDirectoryName(outputPath)!;
-            var sharpyCoreDestPath = Path.Combine(outputDir, "Sharpy.Core.dll");
-            File.Copy(sharpyCorePath, sharpyCoreDestPath, overwrite: true);
-
-            var cliDir = Path.GetDirectoryName(sharpyCorePath)!;
-            CopyUsedStdlibDependencies(cliDir, outputDir, compileResult.UsedAssemblyPaths);
+            copiedDeps = RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, compileResult.UsedAssemblyPaths);
 
             if (selfContained)
             {
-                return HandleSelfContainedRun(inputFile, outputPath, sharpyCorePath, args, isTempOutput, compileResult.UsedAssemblyPaths);
+                var sharpyCorePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
+                return HandleSelfContainedRun(inputFile, outputPath, sharpyCorePath, args, isTempOutput, compileResult.UsedAssemblyPaths, copiedDeps);
             }
 
             Console.WriteLine();
@@ -141,7 +138,7 @@ internal static class RunCommand
                         File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
                         File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
                         File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
-                        CleanupRuntimeDependencies(basePath);
+                        CleanupRuntimeDependencies(basePath, copiedDeps);
                     }
                     catch
                     {
@@ -164,7 +161,7 @@ internal static class RunCommand
                     File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
                     File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
                     File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
-                    CleanupRuntimeDependencies(basePath);
+                    CleanupRuntimeDependencies(basePath, copiedDeps);
                 }
                 catch
                 {
@@ -180,7 +177,8 @@ internal static class RunCommand
         string sharpyCorePath,
         string[] args,
         bool isTempOutput,
-        IReadOnlySet<string> usedAssemblyPaths)
+        IReadOnlySet<string> usedAssemblyPaths,
+        IReadOnlySet<string>? copiedDeps)
     {
         var rid = RuntimeInformation.RuntimeIdentifier;
         var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
@@ -312,76 +310,13 @@ internal static class RunCommand
                     File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
                     File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
                     File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
-                    CleanupRuntimeDependencies(basePath);
+                    CleanupRuntimeDependencies(basePath, copiedDeps);
                 }
                 catch { }
             }
         }
     }
 
-    private static readonly string[] NumpyNuGetDeps = new[] { "MathNet.Numerics.dll" };
-    private static readonly string[] Sqlite3NuGetDeps = new[]
-    {
-        "Microsoft.Data.Sqlite.dll",
-        "SQLitePCLRaw.batteries_v2.dll",
-        "SQLitePCLRaw.core.dll",
-        "SQLitePCLRaw.provider.e_sqlite3.dll",
-    };
-    private static readonly string[] TomlNuGetDeps = new[] { "Tomlyn.dll" };
-
-    private static readonly Dictionary<string, string[]> PerModuleNuGetDeps = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Sharpy.Stdlib.Numpy.dll"] = NumpyNuGetDeps,
-        ["Sharpy.Stdlib.Sqlite3.dll"] = Sqlite3NuGetDeps,
-        ["Sharpy.Stdlib.Toml.dll"] = TomlNuGetDeps,
-        ["Sharpy.Stdlib.dll"] = NumpyNuGetDeps.Concat(Sqlite3NuGetDeps).Concat(TomlNuGetDeps).ToArray(),
-    };
-
-    static void CopyUsedStdlibDependencies(string cliDir, string outputDir, IReadOnlySet<string> usedAssemblyPaths)
-    {
-        var copiedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Sharpy.Core.dll" };
-        foreach (var assemblyPath in usedAssemblyPaths)
-        {
-            var fileName = Path.GetFileName(assemblyPath);
-            if (fileName.Equals("Sharpy.Core.dll", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            CopyRuntimeDependency(cliDir, outputDir, fileName);
-            copiedFiles.Add(fileName);
-
-            if (PerModuleNuGetDeps.TryGetValue(fileName, out var nugetDeps))
-            {
-                foreach (var dep in nugetDeps)
-                {
-                    CopyRuntimeDependency(cliDir, outputDir, dep);
-                    copiedFiles.Add(dep);
-                }
-            }
-        }
-
-        _lastCopiedDependencies = copiedFiles;
-    }
-
-    [ThreadStatic]
-    private static HashSet<string>? _lastCopiedDependencies;
-
-    static void CopyRuntimeDependency(string sourceDir, string destDir, string fileName)
-    {
-        var src = Path.Combine(sourceDir, fileName);
-        if (File.Exists(src))
-            File.Copy(src, Path.Combine(destDir, fileName), overwrite: true);
-    }
-
-    static void CleanupRuntimeDependencies(string dir)
-    {
-        var deps = _lastCopiedDependencies;
-        if (deps == null)
-            return;
-        foreach (var dep in deps)
-        {
-            var path = Path.Combine(dir, dep);
-            if (File.Exists(path))
-                File.Delete(path);
-        }
-    }
+    static void CleanupRuntimeDependencies(string dir, IReadOnlySet<string>? copiedDeps)
+        => RuntimeDependencyHelper.CleanupRuntimeDependencies(dir, copiedDeps);
 }
