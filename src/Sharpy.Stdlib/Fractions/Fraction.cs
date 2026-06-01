@@ -60,7 +60,8 @@ namespace Sharpy
             exponent -= 1075; // 1023 (bias) + 52 (mantissa bits)
 
             BigInteger num = new BigInteger(mantissa);
-            if (negative) num = -num;
+            if (negative)
+                num = -num;
 
             BigInteger den;
             if (exponent >= 0)
@@ -141,7 +142,8 @@ namespace Sharpy
                         intPart = intPart.Substring(1);
                     }
 
-                    if (intPart.Length == 0) intPart = "0";
+                    if (intPart.Length == 0)
+                        intPart = "0";
 
                     string digits = intPart + fracPart;
                     if (!BigInteger.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out numerator))
@@ -159,7 +161,8 @@ namespace Sharpy
                         denominator = BigInteger.One;
                     }
 
-                    if (isNegative) numerator = -numerator;
+                    if (isNegative)
+                        numerator = -numerator;
                 }
                 else
                 {
@@ -181,6 +184,11 @@ namespace Sharpy
             var gcd = BigInteger.GreatestCommonDivisor(BigInteger.Abs(numerator), denominator);
             Numerator = numerator / gcd;
             Denominator = denominator / gcd;
+        }
+
+        public Fraction LimitDenominator(long maxDenominator = 1000000)
+        {
+            return LimitDenominator(new BigInteger(maxDenominator));
         }
 
         public Fraction LimitDenominator(BigInteger maxDenominator)
@@ -340,16 +348,21 @@ namespace Sharpy
 
         public bool Equals(Fraction? other)
         {
-            if (other is null) return false;
+            if (other is null)
+                return false;
             return Numerator == other.Numerator && Denominator == other.Denominator;
         }
 
         public override bool Equals(object? obj)
         {
-            if (obj is Fraction f) return Equals(f);
-            if (obj is int i) return Equals(new Fraction(i));
-            if (obj is long l) return Equals(new Fraction(l));
-            if (obj is double d) return Equals(new Fraction(d));
+            if (obj is Fraction f)
+                return Equals(f);
+            if (obj is int i)
+                return Equals(new Fraction(i));
+            if (obj is long l)
+                return Equals(new Fraction(l));
+            if (obj is double d)
+                return Equals(new Fraction(d));
             return false;
         }
 
@@ -372,21 +385,26 @@ namespace Sharpy
 
         public int CompareTo(Fraction? other)
         {
-            if (other is null) return 1;
+            if (other is null)
+                return 1;
             return (Numerator * other.Denominator).CompareTo(other.Numerator * Denominator);
         }
 
         int IComparable.CompareTo(object? obj)
         {
-            if (obj is Fraction f) return CompareTo(f);
-            if (obj is int i) return CompareTo(new Fraction(i));
-            if (obj is long l) return CompareTo(new Fraction(l));
+            if (obj is Fraction f)
+                return CompareTo(f);
+            if (obj is int i)
+                return CompareTo(new Fraction(i));
+            if (obj is long l)
+                return CompareTo(new Fraction(l));
             return 1;
         }
 
         public static bool operator ==(Fraction? a, Fraction? b)
         {
-            if (a is null) return b is null;
+            if (a is null)
+                return b is null;
             return a.Equals(b);
         }
 

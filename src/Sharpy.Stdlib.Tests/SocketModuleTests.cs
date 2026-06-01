@@ -441,5 +441,34 @@ namespace Sharpy.Tests
             var (conn, _) = server.Accept();
             conn.Dispose();
         }
+
+        // ---- Setblocking / Getblocking ----
+
+        [Fact]
+        public void Setblocking_False_SetsNonBlocking()
+        {
+            using var s = SocketModule.Socket(SocketModule.AF_INET, SocketModule.SOCK_STREAM);
+            s.Setblocking(false);
+            s.Getblocking().Should().BeFalse();
+        }
+
+        [Fact]
+        public void Setblocking_True_SetsBlocking()
+        {
+            using var s = SocketModule.Socket(SocketModule.AF_INET, SocketModule.SOCK_STREAM);
+            s.Setblocking(false);
+            s.Setblocking(true);
+            s.Getblocking().Should().BeTrue();
+        }
+
+        // ---- Getnameinfo ----
+
+        [Fact]
+        public void Getnameinfo_Localhost_ReturnsHostAndService()
+        {
+            var (host, service) = SocketModule.Getnameinfo(("127.0.0.1", 80));
+            host.Should().NotBeNullOrEmpty();
+            service.Should().Be("80");
+        }
     }
 }

@@ -50,7 +50,8 @@ namespace Sharpy
 
         private void ChainB()
         {
-            if (_b2j != null) return;
+            if (_b2j != null)
+                return;
 
             int bCount = _b.Count;
             var b2j = new Dictionary<T, System.Collections.Generic.List<int>>();
@@ -115,8 +116,10 @@ namespace Sharpy
                 {
                     foreach (int j in indices)
                     {
-                        if (j < bLo) continue;
-                        if (j >= bHi) break;
+                        if (j < bLo)
+                            continue;
+                        if (j >= bHi)
+                            break;
                         int k = (j2len.TryGetValue(j - 1, out int prev) ? prev : 0) + 1;
                         newJ2len[j] = k;
                         if (k > bestSize)
@@ -169,7 +172,8 @@ namespace Sharpy
 
         public System.Collections.Generic.List<(int a, int b, int size)> GetMatchingBlocks()
         {
-            if (_matchingBlocks != null) return _matchingBlocks;
+            if (_matchingBlocks != null)
+                return _matchingBlocks;
 
             int aCount = _a.Count;
             int bCount = _b.Count;
@@ -197,9 +201,11 @@ namespace Sharpy
             matching.Sort((x, y) =>
             {
                 int cmp = x.a.CompareTo(y.a);
-                if (cmp != 0) return cmp;
+                if (cmp != 0)
+                    return cmp;
                 cmp = x.b.CompareTo(y.b);
-                if (cmp != 0) return cmp;
+                if (cmp != 0)
+                    return cmp;
                 return x.size.CompareTo(y.size);
             });
 
@@ -230,16 +236,20 @@ namespace Sharpy
 
         public System.Collections.Generic.List<(string tag, int i1, int i2, int j1, int j2)> GetOpcodes()
         {
-            if (_opcodes != null) return _opcodes;
+            if (_opcodes != null)
+                return _opcodes;
 
             int i = 0, j = 0;
             var opcodes = new System.Collections.Generic.List<(string tag, int i1, int i2, int j1, int j2)>();
             foreach (var block in GetMatchingBlocks())
             {
                 string tag = "";
-                if (i < block.a && j < block.b) tag = "replace";
-                else if (i < block.a) tag = "delete";
-                else if (j < block.b) tag = "insert";
+                if (i < block.a && j < block.b)
+                    tag = "replace";
+                else if (i < block.a)
+                    tag = "delete";
+                else if (j < block.b)
+                    tag = "insert";
 
                 if (tag.Length > 0)
                     opcodes.Add((tag, i, block.a, j, block.b));

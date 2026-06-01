@@ -357,6 +357,16 @@ namespace Sharpy
             return _timeout;
         }
 
+        public void Setblocking(bool flag)
+        {
+            Settimeout(flag ? (double?)null : 0.0);
+        }
+
+        public bool Getblocking()
+        {
+            return _socket.Blocking;
+        }
+
         /// <summary>
         /// Shut down one or both halves of the connection, similar to Python's
         /// <c>socket.shutdown()</c>.

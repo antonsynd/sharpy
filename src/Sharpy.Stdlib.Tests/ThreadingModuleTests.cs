@@ -250,8 +250,10 @@ public class ThreadingModuleTests
             threads.Add(t);
         }
 
-        foreach (var t in threads) t.Start();
-        foreach (var t in threads) t.Join(timeout: 5.0);
+        foreach (var t in threads)
+            t.Start();
+        foreach (var t in threads)
+            t.Join(timeout: 5.0);
 
         count.Should().Be(3);
     }
@@ -379,6 +381,42 @@ public class ThreadingModuleTests
         t.Should().NotBeNull();
         t.Should().BeOfType<Timer>();
         t.Cancel();
+    }
+
+    [Fact]
+    public void Barrier_Broken_IsFalseInitially()
+    {
+        var barrier = new Barrier(2);
+        barrier.Broken.Should().BeFalse();
+        barrier.Dispose();
+    }
+
+    [Fact]
+    public void Barrier_Abort_SetsBroken()
+    {
+        var barrier = new Barrier(2);
+        barrier.Abort();
+        barrier.Broken.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Barrier_Wait_ReturnsPhaseNumber()
+    {
+        var barrier = new Barrier(1);
+        int phase = barrier.Wait();
+        phase.Should().BeGreaterThanOrEqualTo(0);
+        barrier.Dispose();
+    }
+
+    [Fact]
+    public void Barrier_Reset_ClearsBroken()
+    {
+        var barrier = new Barrier(2);
+        barrier.Abort();
+        barrier.Broken.Should().BeTrue();
+        barrier.Reset();
+        barrier.Broken.Should().BeFalse();
+        barrier.Dispose();
     }
 
     private class TestThread : Thread

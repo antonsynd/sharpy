@@ -208,6 +208,25 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Resolve a socket address to a host name and service name,
+        /// similar to Python's <c>socket.getnameinfo()</c>.
+        /// </summary>
+        public static (string host, string service) Getnameinfo((string host, int port) sockaddr, int flags = 0)
+        {
+            try
+            {
+                var entry = Dns.GetHostEntry(sockaddr.host);
+                string host = entry.HostName;
+                string service = sockaddr.port.ToString();
+                return (host, service);
+            }
+            catch (SocketException ex)
+            {
+                throw new SharpySocketGaiError(ex.Message, ex, (int)ex.SocketErrorCode);
+            }
+        }
+
+        /// <summary>
         /// Get the fully qualified domain name for the local host, similar to Python's
         /// <c>socket.getfqdn()</c>.
         /// </summary>
