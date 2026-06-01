@@ -805,5 +805,90 @@ namespace Sharpy.Tests
         }
 
         #endregion
+
+        #region Multi-step XPath paths
+
+        [Fact]
+        public void FindAll_MultiStepPath_FindsNestedElements()
+        {
+            Element root = Xml.Fromstring("<root><a><b>1</b></a><a><b>2</b></a></root>");
+            List<Element> results = root.FindAll("a/b");
+            Assert.Equal(2, ((ICollection<Element>)results).Count);
+            Assert.Equal("1", results[0].Text);
+            Assert.Equal("2", results[1].Text);
+        }
+
+        [Fact]
+        public void Find_MultiStepPath_FindsFirstMatch()
+        {
+            Element root = Xml.Fromstring("<root><a><b>found</b></a></root>");
+            Element? result = root.Find("a/b");
+            Assert.NotNull(result);
+            Assert.Equal("found", result!.Text);
+        }
+
+        #endregion
+
+        #region ElementTree.Parse and ParseString
+
+        [Fact]
+        public void ElementTree_Parse_Static_FromFile()
+        {
+            string tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid().ToString() + ".xml");
+            try
+            {
+                System.IO.File.WriteAllText(tempFile, "<root><child>text</child></root>");
+                ElementTree tree = ElementTree.Parse(tempFile);
+                Element? root = tree.Getroot();
+                Assert.NotNull(root);
+                Assert.Equal("root", root!.Tag);
+            }
+            finally
+            {
+                System.IO.File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public void ElementTree_ParseString_ReturnsTree()
+        {
+            ElementTree tree = ElementTree.ParseString("<doc><item/></doc>");
+            Element? root = tree.Getroot();
+            Assert.NotNull(root);
+            Assert.Equal("doc", root!.Tag);
+            Assert.Equal(1, root.Len());
+        }
+
+        [Fact]
+        public void ElementTree_ParseString_InvalidXml_ThrowsParseError()
+        {
+            Assert.Throws<ParseError>(() => ElementTree.ParseString("<invalid>"));
+        }
+
+        #endregion
+
+        #region RegisterNamespace
+
+        [Fact]
+        public void RegisterNamespace_StoresMapping()
+        {
+            Xml.RegisterNamespace("test", "http://example.com/test");
+            Assert.True(Xml._registeredNamespaces.ContainsKey("test"));
+            Assert.Equal("http://example.com/test", Xml._registeredNamespaces["test"]);
+            Xml._registeredNamespaces.Remove("test");
+        }
+
+        #endregion
+
+        #region Tostring method validation
+
+        [Fact]
+        public void Tostring_UnknownMethod_ThrowsValueError()
+        {
+            Element el = new Element("root");
+            Assert.Throws<ValueError>(() => Xml.Tostring(el, method: "html"));
+        }
+
+        #endregion
     }
 }

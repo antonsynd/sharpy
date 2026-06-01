@@ -104,6 +104,11 @@ namespace Sharpy
                 throw new TypeError("expected Element, got NoneType");
             }
 
+            if (method != "xml" && method != "text")
+            {
+                throw new ValueError("unknown method: '" + method + "'");
+            }
+
             if (method == "text")
             {
                 return element.Underlying.Value;
@@ -146,6 +151,30 @@ namespace Sharpy
                 return enc.GetString(ms.ToArray());
             }
         }
+
+        /// <summary>
+        /// Register a namespace prefix for serialization.
+        /// When serializing, registered prefixes will be used instead of auto-generated ones.
+        /// </summary>
+        /// <param name="prefix">The namespace prefix (e.g., "ns").</param>
+        /// <param name="uri">The namespace URI.</param>
+        public static void RegisterNamespace(string prefix, string uri)
+        {
+            if (prefix == null)
+            {
+                throw new TypeError("expected str, got NoneType");
+            }
+
+            if (uri == null)
+            {
+                throw new TypeError("expected str, got NoneType");
+            }
+
+            _registeredNamespaces[prefix] = uri;
+        }
+
+        internal static readonly System.Collections.Generic.Dictionary<string, string> _registeredNamespaces =
+            new System.Collections.Generic.Dictionary<string, string>();
 
         internal const string CommentTag = "{sharpy:internal}comment";
         internal const string PITagPrefix = "{sharpy:internal}pi-";

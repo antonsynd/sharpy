@@ -12,6 +12,7 @@ namespace Sharpy
     {
         private readonly bool _convertCharrefs;
         private string _buffer = "";
+        private string? _lastStarttagText;
         private int _line = 1;
         private int _column = 0;
 
@@ -84,6 +85,14 @@ namespace Sharpy
         public (int, int) Getpos()
         {
             return (_line, _column);
+        }
+
+        /// <summary>
+        /// Return the text of the most recently opened start tag.
+        /// </summary>
+        public string? GetStarttagText()
+        {
+            return _lastStarttagText;
         }
 
         // ---- Virtual callback methods (users override these) ----
@@ -445,10 +454,12 @@ namespace Sharpy
 
                     if (selfClosing)
                     {
+                        _lastStarttagText = _buffer.Substring(start, totalLen);
                         HandleStartendtag(tagName, attrs);
                     }
                     else
                     {
+                        _lastStarttagText = _buffer.Substring(start, totalLen);
                         HandleStarttag(tagName, attrs);
                         // If CDATA element, consume raw content until matching end tag
                         if (CdataElements.Contains(tagName))

@@ -54,6 +54,8 @@ public class NativeStdlibCompilationTests
         "subprocess_module",
         "configparser_module",
         "ipaddress_module",
+        "xml_module",
+        "html_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)

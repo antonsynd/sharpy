@@ -9,11 +9,11 @@ class Element:
     tail: str?
     attrib: dict[str, str]
 
-    def __init__(self, tag: str, attrib: dict[str, str]? = None):
+    def __init__(self, tag: str, attrib: dict[str, str]? = None()):
         """Create a new Element with the given tag and optional attributes."""
         self.tag = tag
 
-    def get(self, key: str, default: str? = None) -> str?:
+    def get(self, key: str, default: str? = None()) -> str?:
         """Get the value of an attribute, or a default value."""
         return default
 
@@ -49,20 +49,24 @@ class Element:
         """Remove all child elements and text."""
         pass
 
-    def find(self, path: str, namespaces: dict[str, str]? = None) -> Element?:
+    def find(self, path: str, namespaces: dict[str, str]? = None()) -> Element?:
         """Find the first matching child element by path."""
-        return None
+        return None()
 
-    def find_all(self, path: str, namespaces: dict[str, str]? = None) -> list[Element]:
+    def find_all(self, path: str, namespaces: dict[str, str]? = None()) -> list[Element]:
         """Find all matching child elements by path."""
         return []
 
-    def find_text(self, path: str, default: str? = None, namespaces: dict[str, str]? = None) -> str?:
+    def find_text(self, path: str, default: str? = None(), namespaces: dict[str, str]? = None()) -> str?:
         """Find the text content of the first matching child element."""
         return default
 
-    def iter(self, tag: str? = None) -> list[Element]:
+    def iter(self, tag: str? = None()) -> list[Element]:
         """Iterate over all descendant elements matching the given tag."""
+        return []
+
+    def iter_find(self, path: str, namespaces: dict[str, str]? = None()) -> list[Element]:
+        """Lazily find all matching elements by path."""
         return []
 
     def iter_text(self) -> list[str]:
@@ -75,19 +79,19 @@ class Element:
 
 class ElementTree:
     """Represents an XML document as an element tree."""
-    def __init__(self, root: Element? = None):
+    def __init__(self, root: Element? = None()):
         """Create a new ElementTree with an optional root element."""
         pass
 
     def getroot(self) -> Element?:
         """Get the root element of the tree."""
-        return None
+        return None()
 
-    def find(self, path: str, namespaces: dict[str, str]? = None) -> Element?:
+    def find(self, path: str, namespaces: dict[str, str]? = None()) -> Element?:
         """Find the first matching element by path from the root."""
-        return None
+        return None()
 
-    def find_all(self, path: str, namespaces: dict[str, str]? = None) -> list[Element]:
+    def find_all(self, path: str, namespaces: dict[str, str]? = None()) -> list[Element]:
         """Find all matching elements by path from the root."""
         return []
 
@@ -95,11 +99,11 @@ class ElementTree:
         """Write the XML tree to a file."""
         pass
 
-def create_element(tag: str, attrib: dict[str, str]? = None) -> Element:
+def create_element(tag: str, attrib: dict[str, str]? = None()) -> Element:
     """Create a new Element with the given tag and optional attributes."""
     return Element(tag)
 
-def sub_element(parent: Element, tag: str, attrib: dict[str, str]? = None) -> Element:
+def sub_element(parent: Element, tag: str, attrib: dict[str, str]? = None()) -> Element:
     """Create a child element and append it to the parent."""
     return Element(tag)
 
@@ -119,7 +123,7 @@ def comment(text: str) -> Element:
     """Create a comment element with the given text."""
     return Element("comment")
 
-def processing_instruction(target: str, text: str? = None) -> Element:
+def processing_instruction(target: str, text: str? = None()) -> Element:
     """Create a processing instruction element."""
     return Element("pi-" + target)
 
@@ -133,4 +137,8 @@ def indent(element: Element, space: str = "  ", level: int = 0):
 
 def indent_tree(tree: ElementTree, space: str = "  ", level: int = 0):
     """Add indentation to an element tree for pretty-printing."""
+    pass
+
+def register_namespace(prefix: str, uri: str):
+    """Register a namespace prefix for XML serialization."""
     pass

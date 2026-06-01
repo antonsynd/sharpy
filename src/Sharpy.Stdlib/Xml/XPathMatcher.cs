@@ -34,6 +34,31 @@ namespace Sharpy
                 throw new TypeError("expected str, got NoneType");
             }
 
+            // Handle .// prefix (descendant search) as a single step
+            if (path.StartsWith(".//"))
+            {
+                return FindSingleStep(root, path, namespaces);
+            }
+
+            // Strip leading ./ (current element) for multi-step resolution
+            string effectivePath = path;
+            if (path.StartsWith("./"))
+            {
+                effectivePath = path.Substring(2);
+            }
+
+            // Multi-step path: split on '/' and walk each step
+            string[] steps = SplitPath(effectivePath);
+            if (steps.Length > 1)
+            {
+                return FindMultiStep(root, steps, namespaces);
+            }
+
+            return FindSingleStep(root, path, namespaces);
+        }
+
+        private static IEnumerable<Element> FindSingleStep(XElement root, string path, Dict<string, string>? namespaces)
+        {
             if (path == ".")
             {
                 return new Element[] { new Element(root) };
@@ -67,6 +92,61 @@ namespace Sharpy
 
             // Simple tag match against direct children
             return FindChildren(root, path, namespaces);
+        }
+
+        private static string[] SplitPath(string path)
+        {
+            // Split on '/' but not inside curly braces (namespace notation)
+            var parts = new List<string>();
+            int start = 0;
+            int depth = 0;
+            for (int i = 0; i < path.Length; i++)
+            {
+                if (path[i] == '{')
+                {
+                    depth++;
+                }
+                else if (path[i] == '}')
+                {
+                    depth--;
+                }
+                else if (path[i] == '/' && depth == 0)
+                {
+                    if (i > start)
+                    {
+                        parts.Add(path.Substring(start, i - start));
+                    }
+                    start = i + 1;
+                }
+            }
+            if (start < path.Length)
+            {
+                parts.Add(path.Substring(start));
+            }
+            return parts.ToArray();
+        }
+
+        private static IEnumerable<Element> FindMultiStep(XElement root, string[] steps, Dict<string, string>? namespaces)
+        {
+            IEnumerable<XElement> current = new XElement[] { root };
+
+            for (int i = 0; i < steps.Length; i++)
+            {
+                string step = steps[i];
+                var next = new List<XElement>();
+
+                foreach (XElement el in current)
+                {
+                    foreach (Element match in FindSingleStep(el, step, namespaces))
+                    {
+                        next.Add(match.Underlying);
+                    }
+                }
+
+                current = next;
+            }
+
+            return WrapElements(current);
         }
 
         /// <summary>Find the first element matching the path expression, or null.</summary>

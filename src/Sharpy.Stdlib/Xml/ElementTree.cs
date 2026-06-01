@@ -40,6 +40,54 @@ namespace Sharpy
         internal XDocument Underlying => _document;
 
         /// <summary>
+        /// Parse an XML file and return an ElementTree.
+        /// </summary>
+        /// <param name="source">The file path to parse.</param>
+        /// <returns>An ElementTree representing the parsed document.</returns>
+        /// <exception cref="ParseError">If the XML is malformed.</exception>
+        public static ElementTree Parse(string source)
+        {
+            if (source == null)
+            {
+                throw new TypeError("expected str, got NoneType");
+            }
+
+            try
+            {
+                XDocument doc = XDocument.Load(source);
+                return new ElementTree(doc);
+            }
+            catch (XmlException ex)
+            {
+                throw ParseError.FromXmlException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Parse an XML string and return an ElementTree.
+        /// </summary>
+        /// <param name="text">The XML string to parse.</param>
+        /// <returns>An ElementTree representing the parsed document.</returns>
+        /// <exception cref="ParseError">If the XML is malformed.</exception>
+        public static ElementTree ParseString(string text)
+        {
+            if (text == null)
+            {
+                throw new TypeError("expected str, got NoneType");
+            }
+
+            try
+            {
+                XDocument doc = XDocument.Parse(text);
+                return new ElementTree(doc);
+            }
+            catch (XmlException ex)
+            {
+                throw ParseError.FromXmlException(ex);
+            }
+        }
+
+        /// <summary>
         /// Get the root element of the tree.
         /// </summary>
         /// <returns>The root element, or null if the tree is empty.</returns>

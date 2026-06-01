@@ -498,4 +498,19 @@ public class HtmlModuleTests
         combined.Should().Contain("a");
         combined.Should().Contain("b");
     }
+
+    [Fact]
+    public void Parser_GetStarttagText_ReturnsLastStartTag()
+    {
+        var p = new TestParser();
+        p.Feed("<div class=\"main\">");
+        p.GetStarttagText().Should().Be("<div class=\"main\">");
+    }
+
+    [Fact]
+    public void Parser_GetStarttagText_NullBeforeAnyTag()
+    {
+        var p = new TestParser();
+        p.GetStarttagText().Should().BeNull();
+    }
 }
