@@ -1,0 +1,3 @@
+"""Text comparison and diffing utilities, matching Python's difflib module."""
+
+from sharpy import SequenceMatcher, Differ

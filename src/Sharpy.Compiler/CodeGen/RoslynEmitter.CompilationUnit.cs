@@ -566,6 +566,7 @@ internal partial class RoslynEmitter
         { "zipfile", "ZipfileModule" },
         { "shlex", "ShlexModule" },
         { "subprocess", "SubprocessModule" },
+        { "socket", "SocketModule" },
     };
 
     /// <summary>
