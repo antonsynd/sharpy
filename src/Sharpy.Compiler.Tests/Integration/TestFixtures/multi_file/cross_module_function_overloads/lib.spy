@@ -1,0 +1,11 @@
+def join(items: list[str]) -> str:
+    return ", ".join(items)
+
+def join(items: list[str], sep: str) -> str:
+    return sep.join(items)
+
+def describe(x: int) -> str:
+    return "int:" + str(x)
+
+def describe(x: str) -> str:
+    return "str:" + x

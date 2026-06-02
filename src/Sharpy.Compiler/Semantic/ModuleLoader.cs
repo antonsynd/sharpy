@@ -254,6 +254,13 @@ internal class ModuleLoader
                     NameDeclarationColumn = functionDef.NameColumnStart
                 };
                 moduleInfo.ExportedSymbols[functionDef.Name] = funcSymbol;
+
+                if (!moduleInfo.FunctionOverloads.TryGetValue(functionDef.Name, out var overloadList))
+                {
+                    overloadList = new List<FunctionSymbol>();
+                    moduleInfo.FunctionOverloads[functionDef.Name] = overloadList;
+                }
+                overloadList.Add(funcSymbol);
                 break;
 
             case ClassDef classDef:

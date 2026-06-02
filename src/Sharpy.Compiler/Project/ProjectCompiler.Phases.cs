@@ -275,6 +275,11 @@ internal partial class ProjectCompiler
                                     {
                                         importedSymbolSources[name] = sourceModule;
                                     }
+
+                                    if (moduleInfo.FunctionOverloads.TryGetValue(name, out var overloads) && overloads.Count > 1)
+                                    {
+                                        SymbolTable.DefineFunctionOverloads(name, overloads);
+                                    }
                                 }
                             }
                             else
@@ -296,6 +301,12 @@ internal partial class ProjectCompiler
                                         else
                                         {
                                             importedSymbolSources[symbolName] = sourceModule;
+                                        }
+
+                                        var lookupName = importAlias.Name;
+                                        if (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
+                                        {
+                                            SymbolTable.DefineFunctionOverloads(symbolName, overloads);
                                         }
                                     }
                                 }

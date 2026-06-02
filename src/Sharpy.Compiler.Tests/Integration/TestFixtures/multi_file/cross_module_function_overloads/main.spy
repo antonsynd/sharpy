@@ -1,0 +1,7 @@
+from lib import join, describe
+
+def main():
+    print(join(["a", "b", "c"]))
+    print(join(["a", "b", "c"], "-"))
+    print(describe(42))
+    print(describe("hello"))
