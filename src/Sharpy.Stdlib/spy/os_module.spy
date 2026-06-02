@@ -91,19 +91,20 @@ def path_exists(path: str) -> bool:
     """Test whether a path exists."""
     return File.exists(path) or Directory.exists(path)
 
-def _to_unix_seconds(dt: DateTime) -> float:
-    """Convert a UTC DateTime to a fractional Unix timestamp."""
-    off: DateTimeOffset = DateTimeOffset(dt)
-    return off.to_unix_time_seconds() + off.Millisecond / 1000.0
-
 def stat(path: str) -> StatResult:
     """Perform the equivalent of a stat() system call on the given path."""
     if File.exists(path):
         finfo: FileInfo = FileInfo(path)
-        return StatResult(finfo.Length, _to_unix_seconds(finfo.LastWriteTimeUtc), _to_unix_seconds(finfo.CreationTimeUtc), _to_unix_seconds(finfo.LastAccessTimeUtc), Convert.to_int32(finfo.Attributes))
+        mtime: float = DateTimeOffset(finfo.LastWriteTimeUtc).to_unix_time_seconds()
+        ctime: float = DateTimeOffset(finfo.CreationTimeUtc).to_unix_time_seconds()
+        atime: float = DateTimeOffset(finfo.LastAccessTimeUtc).to_unix_time_seconds()
+        return StatResult(finfo.Length, mtime, ctime, atime, Convert.to_int32(finfo.Attributes))
     if Directory.exists(path):
         dinfo: DirectoryInfo = DirectoryInfo(path)
-        return StatResult(0, _to_unix_seconds(dinfo.LastWriteTimeUtc), _to_unix_seconds(dinfo.CreationTimeUtc), _to_unix_seconds(dinfo.LastAccessTimeUtc), Convert.to_int32(dinfo.Attributes))
+        mtime2: float = DateTimeOffset(dinfo.LastWriteTimeUtc).to_unix_time_seconds()
+        ctime2: float = DateTimeOffset(dinfo.CreationTimeUtc).to_unix_time_seconds()
+        atime2: float = DateTimeOffset(dinfo.LastAccessTimeUtc).to_unix_time_seconds()
+        return StatResult(0, mtime2, ctime2, atime2, Convert.to_int32(dinfo.Attributes))
     raise FileNotFoundError("No such file or directory: '" + path + "'")
 
 def walk(top: str) -> tuple[str, list[str], list[str]]:
