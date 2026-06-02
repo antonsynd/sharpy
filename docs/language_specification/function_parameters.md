@@ -97,9 +97,9 @@ search(query="hello")                      # ❌ ERROR: 'query' is positional-on
 search("hello", 20, True)                  # ❌ ERROR: 'case_sensitive' is keyword-only
 ```
 
-## Method Overloading
+## Function and Method Overloading
 
-Sharpy supports method overloading following C# semantics. Multiple functions can share the same name if they differ in parameter count or types:
+Sharpy supports overloading following C# semantics. Multiple functions or methods can share the same name if they differ in parameter count or types. This applies to both module-level functions and class methods. For detailed examples including module-level and cross-file overloading, see [Function and Method Overloading](method_overloading.md#module-level-function-overloading).
 
 ```python
 def process(value: int) -> str:

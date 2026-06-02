@@ -1,8 +1,42 @@
-# Method Overloading
+# Function and Method Overloading
 
-Sharpy supports defining multiple methods with the same name in a class, provided their parameter signatures differ. This follows C# method overloading semantics.
+Sharpy supports defining multiple functions or methods with the same name, provided their parameter signatures differ. This follows C# overloading semantics.
 
 For general overload resolution rules (applicable to both functions and methods), see [Function Parameters — Overload Resolution Rules](function_parameters.md#overload-resolution-rules).
+
+## Module-Level Function Overloading
+
+Multiple `def` statements with the same name can appear at module level if they have different parameter signatures (arity or types). Unlike Python, which replaces previous definitions, Sharpy creates overloads — consistent with class method behavior.
+
+```python
+def describe(x: int) -> str:
+    return "int:" + str(x)
+
+def describe(x: str) -> str:
+    return "str:" + x
+
+def describe(x: int, verbose: bool) -> str:
+    return f"int({x}, verbose={verbose})"
+```
+
+```python
+print(describe(42))           # "int:42"
+print(describe("hello"))      # "str:hello"
+print(describe(42, True))     # "int(42, verbose=True)"
+```
+
+Module-level overloads are importable across files:
+
+```python
+# main.spy
+from lib import describe
+
+print(describe(42))       # Resolves to describe(int) in lib
+print(describe("hello"))  # Resolves to describe(str) in lib
+```
+
+*Implementation*
+- *✅ Native - C# supports method overloading directly. Each overload emits as a separate static method in the module class.*
 
 ## Basic Method Overloading
 
