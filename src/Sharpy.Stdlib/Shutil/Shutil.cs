@@ -136,6 +136,87 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return the path to an executable which would be run if name were called, or None if not found.
+        /// </summary>
+        public static string? Which(string name)
+        {
+            if (name == "")
+            {
+                return default;
+            }
+
+            string sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
+            string altSep = global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar);
+            if (name.Find(sep) >= 0 || name.Find(altSep) >= 0)
+            {
+                if (global::System.IO.File.Exists(name))
+                {
+                    return global::System.IO.Path.GetFullPath(name);
+                }
+
+                return default;
+            }
+
+            var rawPath = global::System.Environment.GetEnvironmentVariable("PATH");
+            if (rawPath == null)
+            {
+                return default;
+            }
+
+            string pathEnv = rawPath;
+            if (pathEnv.Length == 0)
+            {
+                return default;
+            }
+
+            bool isWindows = sep == "\\";
+            Sharpy.List<string> extensions = new Sharpy.List<string>()
+            {
+                ""
+            };
+            if (isWindows)
+            {
+                var rawExt = global::System.Environment.GetEnvironmentVariable("PATHEXT");
+                string extValue = rawExt != null ? rawExt : "";
+                if (extValue.Length > 0)
+                {
+                    extensions = extValue.Split(";");
+                }
+                else
+                {
+                    extensions = new Sharpy.List<string>()
+                    {
+                        ".COM",
+                        ".EXE",
+                        ".BAT",
+                        ".CMD"
+                    };
+                }
+            }
+
+            foreach (var __loopVar_0 in pathEnv.Split(global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator)))
+            {
+                var dirPath = __loopVar_0;
+                if (dirPath == "")
+                {
+                    continue;
+                }
+
+                foreach (var __loopVar_1 in extensions)
+                {
+                    var ext = __loopVar_1;
+                    string candidate = global::System.IO.Path.Combine(dirPath, name + ext);
+                    if (global::System.IO.File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+
+            return default;
+        }
+
+        /// <summary>
         /// Resolve the final destination path, appending the source filename if dst is a directory.
         /// </summary>
         public static string _ResolveDestination(string src, string dst)
@@ -154,16 +235,16 @@ namespace Sharpy
         public static void _CopyDirectoryRecursive(string src, string dst)
         {
             global::System.IO.Directory.CreateDirectory(dst);
-            foreach (var __loopVar_0 in global::System.IO.Directory.GetFiles(src))
+            foreach (var __loopVar_2 in global::System.IO.Directory.GetFiles(src))
             {
-                var filePath = __loopVar_0;
+                var filePath = __loopVar_2;
                 string destFile = global::System.IO.Path.Combine(dst, global::System.IO.Path.GetFileName(filePath));
                 global::System.IO.File.Copy(filePath, destFile, true);
             }
 
-            foreach (var __loopVar_1 in global::System.IO.Directory.GetDirectories(src))
+            foreach (var __loopVar_3 in global::System.IO.Directory.GetDirectories(src))
             {
-                var dirPath = __loopVar_1;
+                var dirPath = __loopVar_3;
                 string destDir = global::System.IO.Path.Combine(dst, global::System.IO.Path.GetFileName(dirPath));
                 _CopyDirectoryRecursive(dirPath, destDir);
             }

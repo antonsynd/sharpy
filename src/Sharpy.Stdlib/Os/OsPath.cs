@@ -24,6 +24,61 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Normalize a pathname, eliminating double slashes and resolving '.'/'..' references.
+        /// </summary>
+        public static string Normpath(string path)
+        {
+            if (path == "")
+            {
+                return ".";
+            }
+
+            string sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
+            bool isAbsolute = global::Sharpy.StringHelpers.GetItem(path, 0) == "/" || global::Sharpy.StringHelpers.GetItem(path, 0) == "\\" || (path.Length >= 2 && global::Sharpy.StringHelpers.GetItem(path, 1) == ":");
+            Sharpy.List<string> stack = new Sharpy.List<string>()
+            {
+            };
+            foreach (var __loopVar_0 in path.Replace("\\", "/").Split("/"))
+            {
+                var part = __loopVar_0;
+                if (part == "" || part == ".")
+                {
+                    continue;
+                }
+
+                if (part == "..")
+                {
+                    if (global::Sharpy.Builtins.Len(stack) > 0 && stack[global::Sharpy.Builtins.Len(stack) - 1] != "..")
+                    {
+                        stack.Pop();
+                    }
+                    else if (!isAbsolute)
+                    {
+                        stack.Append("..");
+                    }
+                }
+                else
+                {
+                    stack.Append(part);
+                }
+            }
+
+            string body = sep.Join(stack);
+            if (isAbsolute)
+            {
+                string prefix = (path.Length >= 2 && global::Sharpy.StringHelpers.GetItem(path, 1) == ":") ? path.Substring(0, 2) + sep : sep;
+                return prefix + body;
+            }
+
+            if (global::Sharpy.Builtins.Len(stack) > 0)
+            {
+                return body;
+            }
+
+            return ".";
+        }
+
+        /// <summary>
         /// Test whether a path exists.
         /// </summary>
         public static bool Exists(string path)

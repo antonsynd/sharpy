@@ -383,6 +383,57 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return the least common multiple of a and b.
+        /// </summary>
+        public static long Lcm(long a, long b)
+        {
+            if (a == 0 || b == 0)
+            {
+                return 0;
+            }
+
+            a = global::System.Math.Abs(a);
+            b = global::System.Math.Abs(b);
+            return (Gcd(a, b) == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(a) / Gcd(a, b)))) * b;
+        }
+
+        /// <summary>
+        /// Return the number of ways to choose k items from n items without repetition and without order.
+        /// </summary>
+        public static long Comb(int n, int k)
+        {
+            if (n < 0)
+            {
+                throw new global::Sharpy.ValueError("n must not be negative");
+            }
+
+            if (k < 0)
+            {
+                throw new global::Sharpy.ValueError("k must not be negative");
+            }
+
+            if (k > n)
+            {
+                return 0;
+            }
+
+            if (k > n - k)
+            {
+                k = n - k;
+            }
+
+            long result = 1;
+            int i = 0;
+            while (i < k)
+            {
+                result = ((i + 1) == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(result * (n - i)) / (i + 1))));
+                i = i + 1;
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Return an accurate floating-point sum of values in the iterable.
         /// </summary>
         public static double Fsum(Sharpy.List<double> iterable)

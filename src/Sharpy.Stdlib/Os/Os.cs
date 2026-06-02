@@ -196,5 +196,76 @@ namespace Sharpy
         {
             return global::System.IO.File.Exists(path) || global::System.IO.Directory.Exists(path);
         }
+
+        /// <summary>
+        /// Perform the equivalent of a stat() system call on the given path.
+        /// </summary>
+        public static global::Sharpy.StatResult Stat(string path)
+        {
+            if (global::System.IO.File.Exists(path))
+            {
+                global::System.IO.FileInfo finfo = new global::System.IO.FileInfo(path);
+                global::System.DateTimeOffset fw = new global::System.DateTimeOffset(finfo.LastWriteTimeUtc);
+                global::System.DateTimeOffset fc = new global::System.DateTimeOffset(finfo.CreationTimeUtc);
+                global::System.DateTimeOffset fa = new global::System.DateTimeOffset(finfo.LastAccessTimeUtc);
+                return new global::Sharpy.StatResult(finfo.Length, fw.ToUnixTimeSeconds() + fw.Millisecond / 1000.0d, fc.ToUnixTimeSeconds() + fc.Millisecond / 1000.0d, fa.ToUnixTimeSeconds() + fa.Millisecond / 1000.0d, global::System.Convert.ToInt32(finfo.Attributes));
+            }
+
+            if (global::System.IO.Directory.Exists(path))
+            {
+                global::System.IO.DirectoryInfo dinfo = new global::System.IO.DirectoryInfo(path);
+                global::System.DateTimeOffset dw = new global::System.DateTimeOffset(dinfo.LastWriteTimeUtc);
+                global::System.DateTimeOffset dc = new global::System.DateTimeOffset(dinfo.CreationTimeUtc);
+                global::System.DateTimeOffset da = new global::System.DateTimeOffset(dinfo.LastAccessTimeUtc);
+                return new global::Sharpy.StatResult(0, dw.ToUnixTimeSeconds() + dw.Millisecond / 1000.0d, dc.ToUnixTimeSeconds() + dc.Millisecond / 1000.0d, da.ToUnixTimeSeconds() + da.Millisecond / 1000.0d, global::System.Convert.ToInt32(dinfo.Attributes));
+            }
+
+            throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
+        }
+
+        /// <summary>
+        /// Directory tree generator yielding (dirpath, dirnames, filenames) for each directory in the tree rooted at top.
+        /// </summary>
+        public static System.Collections.Generic.IEnumerable<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> Walk(string top)
+        {
+            if (!global::System.IO.Directory.Exists(top))
+            {
+                yield break;
+            }
+
+            Sharpy.List<string> pending = new Sharpy.List<string>()
+            {
+                top
+            };
+            while (global::Sharpy.Builtins.Len(pending) > 0)
+            {
+                string current = pending.Pop();
+                Sharpy.List<string> dirnames = new Sharpy.List<string>()
+                {
+                };
+                Sharpy.List<string> filenames = new Sharpy.List<string>()
+                {
+                };
+                foreach (var __loopVar_1 in global::System.IO.Directory.GetDirectories(current))
+                {
+                    var dirEntry = __loopVar_1;
+                    dirnames.Append(global::System.IO.Path.GetFileName(dirEntry));
+                }
+
+                foreach (var __loopVar_2 in global::System.IO.Directory.GetFiles(current))
+                {
+                    var fileEntry = __loopVar_2;
+                    filenames.Append(global::System.IO.Path.GetFileName(fileEntry));
+                }
+
+                yield return (current, dirnames, filenames);
+                int i = global::Sharpy.Builtins.Len(dirnames) - 1;
+                while (i >= 0)
+                {
+                    pending.Append(global::System.IO.Path.Combine(current, dirnames[i]));
+                    i = i - 1;
+                }
+            }
+        }
     }
 }
