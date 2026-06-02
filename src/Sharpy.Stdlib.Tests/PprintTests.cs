@@ -70,7 +70,7 @@ public class PprintTests
         pp.Pformat(dict).Should().Be("{'a': 1, 'b': 2}");
     }
 
-    [Fact(Skip = "Blocked by #805: PrettyPrinter ignores Sharpy generic collections (sortDicts not applied)")]
+    [Fact]
     public void Pformat_Dict_SortsKeysByDefault()
     {
         var pp = new PrettyPrinter();
@@ -116,7 +116,7 @@ public class PprintTests
         pp.Pformat(new List<int>()).Should().Be("[]");
     }
 
-    [Fact(Skip = "Blocked by #805: PrettyPrinter ignores Sharpy generic collections (width wrapping not applied)")]
+    [Fact]
     public void Pformat_LongList_WrapsAcrossLines()
     {
         var pp = new PrettyPrinter(width: 20);
@@ -125,7 +125,7 @@ public class PprintTests
         result.Should().Contain("\n");
     }
 
-    [Fact(Skip = "Blocked by #805: PrettyPrinter ignores Sharpy generic collections (compact not applied)")]
+    [Fact]
     public void Pformat_CompactList_PacksMultiplePerLine()
     {
         var compact = new PrettyPrinter(width: 20, compact: true);
@@ -146,7 +146,7 @@ public class PprintTests
         pp.Pformat(set).Should().Be("{1, 2, 3}");
     }
 
-    [Fact(Skip = "Blocked by #805: PrettyPrinter ignores Sharpy generic collections (empty set renders as {} not set())")]
+    [Fact]
     public void Pformat_EmptySet_ReturnsSetCall()
     {
         var pp = new PrettyPrinter();
@@ -171,7 +171,7 @@ public class PprintTests
 
     // ----- Depth limiting -----
 
-    [Fact(Skip = "Blocked by #805: PrettyPrinter ignores Sharpy generic collections (depth not applied)")]
+    [Fact]
     public void Pformat_DepthOne_TruncatesInnerCollections()
     {
         var pp = new PrettyPrinter(depth: 1);
@@ -200,7 +200,7 @@ public class PprintTests
         pp.Isreadable(list).Should().BeFalse();
     }
 
-    [Fact(Skip = "Blocked by #805: PrettyPrinter ignores Sharpy generic collections (self-ref Pformat stack-overflows via ToString)")]
+    [Fact]
     public void Pformat_SelfReferencingList_ShowsRecursionMarker()
     {
         var list = new List<object>();
@@ -217,7 +217,7 @@ public class PprintTests
         pp.Isrecursive(list).Should().BeFalse();
     }
 
-    [Fact(Skip = "Blocked by #805: PrettyPrinter ignores Sharpy generic collections (Isreadable returns False for plain list)")]
+    [Fact]
     public void Isreadable_SimpleList_ReturnsTrue()
     {
         var list = new List<int>(new[] { 1, 2, 3 });
@@ -241,7 +241,7 @@ public class PprintTests
         act.Should().Throw<ValueError>();
     }
 
-    [Fact(Skip = "Blocked by #805: PrettyPrinter ignores Sharpy generic collections (width/indent wrapping not applied)")]
+    [Fact]
     public void Pformat_CustomIndentAndWidth_WrapsWithIndent()
     {
         var pp = new PrettyPrinter(indent: 4, width: 10);
@@ -260,7 +260,7 @@ public class PprintTests
         PprintModule.Pformat(42).Should().Be("42");
     }
 
-    [Fact(Skip = "Blocked by #805: PrettyPrinter ignores Sharpy generic collections (sortDicts not applied)")]
+    [Fact]
     public void Module_Pformat_Dict_SortsKeys()
     {
         var dict = new Dict<string, int>();
