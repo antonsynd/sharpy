@@ -3,7 +3,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
     <!-- Sharpy toolchain version (single version for Compiler + Core + CLI + LSP) -->
-    <SharpyVersion>0.1.5</SharpyVersion>
+    <SharpyVersion>0.2.0</SharpyVersion>
     <Version>$(SharpyVersion)</Version>
     <AssemblyVersion>$(SharpyVersion).0</AssemblyVersion>
     <FileVersion>$(SharpyVersion).0</FileVersion>
