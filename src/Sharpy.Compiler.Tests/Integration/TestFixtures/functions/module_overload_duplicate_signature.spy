@@ -1,0 +1,8 @@
+def process(x: int) -> int:
+    return x + 1
+
+def process(x: int) -> str:
+    return str(x)
+
+def main():
+    print(process(1))

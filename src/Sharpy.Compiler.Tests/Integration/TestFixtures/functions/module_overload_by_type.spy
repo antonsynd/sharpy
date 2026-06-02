@@ -1,0 +1,13 @@
+def describe(x: int) -> str:
+    return "int:" + str(x)
+
+def describe(x: str) -> str:
+    return "str:" + x
+
+def describe(x: bool) -> str:
+    return "bool:" + str(x)
+
+def main():
+    print(describe(42))
+    print(describe("hello"))
+    print(describe(True))

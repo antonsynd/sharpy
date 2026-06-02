@@ -1,0 +1,8 @@
+def combine(a: int, b: float) -> float:
+    return a + b
+
+def combine(a: float, b: int) -> float:
+    return a + b
+
+def main():
+    print(combine(1, 2))

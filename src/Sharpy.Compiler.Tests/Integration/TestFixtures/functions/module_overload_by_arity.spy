@@ -1,0 +1,13 @@
+def greet(name: str) -> str:
+    return "Hello, " + name
+
+def greet(name: str, greeting: str) -> str:
+    return greeting + ", " + name
+
+def greet(name: str, greeting: str, punctuation: str) -> str:
+    return greeting + ", " + name + punctuation
+
+def main():
+    print(greet("World"))
+    print(greet("World", "Hi"))
+    print(greet("World", "Hey", "!"))
