@@ -18,7 +18,6 @@ Usage:
 
 import argparse
 import json
-import os
 import py_compile
 import shutil
 import subprocess
@@ -163,58 +162,29 @@ def execute_sharpy(output_dll: Path) -> tuple[float, bool, str]:
 # --- C# ---
 
 def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
-    """Compile .cs to executable using dotnet build in a fully isolated project."""
+    """Compile .cs to executable using dotnet build in a temp directory."""
     cs_file = bench_dir / "bench.cs"
 
-    # Create a completely standalone project with no inheritance
     proj_content = """<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Optimize>true</Optimize>
     <ImplicitUsings>disable</ImplicitUsings>
-    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
     <Nullable>disable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <NoWarn>CS8981</NoWarn>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <GenerateGlobalUsings>false</GenerateGlobalUsings>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="bench.cs" />
-  </ItemGroup>
 </Project>"""
     proj_path = tmp_dir / "bench.csproj"
     proj_path.write_text(proj_content)
     shutil.copy2(cs_file, tmp_dir / "bench.cs")
 
-    # Block ALL MSBuild directory traversal and NuGet source leakage
-    (tmp_dir / "Directory.Build.props").write_text('<Project></Project>')
-    (tmp_dir / "Directory.Build.targets").write_text('<Project></Project>')
-    (tmp_dir / "Directory.Packages.props").write_text('<Project></Project>')
-    (tmp_dir / "nuget.config").write_text(
-        '<?xml version="1.0" encoding="utf-8"?>\n'
-        '<configuration>\n'
-        '  <packageSources>\n'
-        '    <clear />\n'
-        '    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />\n'
-        '  </packageSources>\n'
-        '</configuration>\n'
-    )
-
     start = time.perf_counter()
-    env = os.environ.copy()
-    env["DOTNET_CLI_HOME"] = str(tmp_dir)
-    env["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
-    # Build with maximum isolation
     result = subprocess.run(
         ["dotnet", "build", str(proj_path), "-c", "Release", "--nologo",
-         f"-o", str(tmp_dir / "out"),
-         f"/p:BaseIntermediateOutputPath={tmp_dir / 'obj'}/",
-         "/p:ImportDirectoryBuildProps=false",
-         "/p:ImportDirectoryBuildTargets=false",
-         "/p:ImportDirectoryPackagesProps=false"],
-        cwd=tmp_dir, capture_output=True, text=True, timeout=120, env=env
+         "-o", str(tmp_dir / "out")],
+        cwd=tmp_dir, capture_output=True, text=True, timeout=120,
     )
     elapsed = time.perf_counter() - start
     if result.returncode != 0:
