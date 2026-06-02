@@ -528,6 +528,12 @@ internal class CodeGenInfoComputer
 
             if (seen.TryGetValue(info.CSharpName, out var existing))
             {
+                // Overloads of the same module-level function share an identical
+                // Python name and intentionally compile to the same C# name — this
+                // is not a collision.
+                if (symbolName == existing.originalName)
+                    continue;
+
                 _diagnostics.AddError(
                     $"Name collision: '{symbolName}' and '{existing.originalName}' both compile to " +
                     $"'{info.CSharpName}'. Rename one of the conflicting symbols.",
