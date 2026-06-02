@@ -155,6 +155,23 @@ public class CompileCommandTests
     }
 
     [Fact]
+    public void Parses_EmitCSharpFlag()
+    {
+        var result = CliTestHarness.Parse("compile main.spy --emit-csharp");
+
+        result.Errors.Should().BeEmpty();
+        result.GetValue<bool>("--emit-csharp").Should().BeTrue();
+    }
+
+    [Fact]
+    public void EmitCSharp_DefaultsToFalse()
+    {
+        var result = CliTestHarness.Parse("compile main.spy");
+
+        result.GetValue<bool>("--emit-csharp").Should().BeFalse();
+    }
+
+    [Fact]
     public void Rejects_UnknownOption()
     {
         var result = CliTestHarness.Parse("compile main.spy --frobnicate");
@@ -245,6 +262,36 @@ public class CompileCommandTests
         invocation.ExitCode.Should().Be(0);
         File.Exists(outPath).Should().BeTrue();
         File.Exists(Path.Combine(outDir, "Sharpy.Core.dll")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Compile_EmitCSharp_WritesCSharpFileAlongsideDll()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy("def main():\n    print(\"hello\")\n", "hello.spy");
+        var outDir = ws.PathFor("out");
+        var outPath = Path.Combine(outDir, "hello.dll");
+
+        var invocation = CliTestHarness.Invoke($"compile \"{spy}\" -o \"{outPath}\" --emit-csharp");
+
+        invocation.ExitCode.Should().Be(0);
+        File.Exists(outPath).Should().BeTrue();
+        File.Exists(Path.Combine(outDir, "hello.cs")).Should().BeTrue();
+        invocation.StdOut.Should().Contain("Generated");
+    }
+
+    [Fact]
+    public void Compile_WithoutEmitCSharp_DoesNotWriteCSharpFile()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy("def main():\n    print(\"hello\")\n", "hello.spy");
+        var outDir = ws.PathFor("out");
+        var outPath = Path.Combine(outDir, "hello.dll");
+
+        var invocation = CliTestHarness.Invoke($"compile \"{spy}\" -o \"{outPath}\"");
+
+        invocation.ExitCode.Should().Be(0);
+        File.Exists(Path.Combine(outDir, "hello.cs")).Should().BeFalse();
     }
 
     [Theory]

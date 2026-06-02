@@ -34,6 +34,7 @@ internal static class CompileCommand
         var noDepsOpt = new Option<bool>("--no-deps") { Description = "Skip copying runtime dependencies alongside the output" };
         var incrementalOpt = new Option<bool>("--incremental") { Description = "Enable incremental compilation for .spyproj projects" };
         var cleanOpt = new Option<bool>("--clean") { Description = "Delete bin/ and obj/ before building a .spyproj project" };
+        var emitCSharpOpt = new Option<bool>("--emit-csharp") { Description = "Write generated C# source files alongside the output" };
 
         command.Arguments.Add(inputArg);
         command.Options.Add(outputOpt);
@@ -46,6 +47,7 @@ internal static class CompileCommand
         command.Options.Add(noDepsOpt);
         command.Options.Add(incrementalOpt);
         command.Options.Add(cleanOpt);
+        command.Options.Add(emitCSharpOpt);
 
         command.SetAction((parseResult) =>
         {
@@ -60,6 +62,7 @@ internal static class CompileCommand
             var noDeps = parseResult.GetValue(noDepsOpt);
             var incremental = parseResult.GetValue(incrementalOpt);
             var clean = parseResult.GetValue(cleanOpt);
+            var emitCSharp = parseResult.GetValue(emitCSharpOpt);
             var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(globals.LogFile);
             var metricsFormat = parseResult.GetValue(globals.MetricsFormat);
@@ -72,10 +75,10 @@ internal static class CompileCommand
 
             if (input.Extension.Equals(".spyproj", StringComparison.OrdinalIgnoreCase))
             {
-                return CompileProject(input, configuration, clean, incremental, noDeps, selfContained, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+                return CompileProject(input, configuration, clean, incremental, noDeps, selfContained, emitCSharp, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
             }
 
-            return CompileSingleFile(input, output, configuration, type, reference, projectReference, modulePath, noDeps, selfContained, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            return CompileSingleFile(input, output, configuration, type, reference, projectReference, modulePath, noDeps, selfContained, emitCSharp, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
         });
 
         root.Subcommands.Add(command);
@@ -91,6 +94,7 @@ internal static class CompileCommand
         string[] modulePaths,
         bool noDeps,
         bool selfContained,
+        bool emitCSharp,
         ICompilerLogger logger,
         string? metricsFormat,
         FileInfo? metricsOutput,
@@ -133,6 +137,11 @@ internal static class CompileCommand
             return 1;
         }
 
+        if (emitCSharp)
+        {
+            EmitGeneratedCSharp(compileResult.GeneratedCSharpFiles, outputDir);
+        }
+
         if (selfContained)
         {
             var entryTypeName = Path.GetFileNameWithoutExtension(inputFile.Name);
@@ -161,6 +170,7 @@ internal static class CompileCommand
         bool incremental,
         bool noDeps,
         bool selfContained,
+        bool emitCSharp,
         ICompilerLogger logger,
         CompilerLogLevel logLevel,
         string? metricsFormat,
@@ -248,6 +258,14 @@ internal static class CompileCommand
             CliHelpers.OutputVerboseTimingSummary(result.Metrics, logger);
             CliHelpers.OutputProjectMetrics(result.Metrics, metricsFormat, metricsOutput);
 
+            if (emitCSharp && result.GeneratedCSharpFiles.Count > 0)
+            {
+                var csOutputDir = outputPath != null
+                    ? Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory()
+                    : Directory.GetCurrentDirectory();
+                EmitGeneratedCSharp(result.GeneratedCSharpFiles, csOutputDir);
+            }
+
             if (outputPath != null)
             {
                 ReportOutput(outputPath);
@@ -278,6 +296,30 @@ internal static class CompileCommand
             }
             return 1;
         }
+    }
+
+    static void EmitGeneratedCSharp(IReadOnlyDictionary<string, string> generatedFiles, string outputDir)
+    {
+        if (generatedFiles.Count == 0)
+        {
+            return;
+        }
+
+        if (!Directory.Exists(outputDir))
+        {
+            Directory.CreateDirectory(outputDir);
+        }
+
+        var csCount = 0;
+        foreach (var (modulePath, moduleCode) in generatedFiles)
+        {
+            var moduleFileName = Path.GetFileNameWithoutExtension(modulePath) + ".cs";
+            var moduleOutputPath = Path.Combine(outputDir, moduleFileName);
+            var processedCode = CliHelpers.StripLineDirectives(moduleCode);
+            File.WriteAllText(moduleOutputPath, processedCode);
+            csCount++;
+        }
+        Console.WriteLine($"Generated {csCount} C# file(s) in: {outputDir}");
     }
 
     static void ReportOutput(string outputPath)
