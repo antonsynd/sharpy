@@ -11,27 +11,6 @@ internal partial class NameResolver
     {
         _logger.LogDebug($"Resolving function declaration: {functionDef.Name}");
 
-        var existingSymbol = _symbolTable.Lookup(functionDef.Name, searchParents: false);
-        if (existingSymbol != null)
-        {
-            // If this function was already registered by the pre-pass, skip it
-            if (existingSymbol is FunctionSymbol && existingSymbol.DeclarationSpan == functionDef.Span)
-            {
-                return;
-            }
-
-            // Allow shadowing builtins (which have no source location)
-            // This matches Python behavior where user code can shadow builtins
-            bool isBuiltin = existingSymbol.DeclarationLine == null;
-            if (!isBuiltin)
-            {
-                AddError($"Function '{functionDef.Name}' is already defined",
-                    functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: functionDef.Span);
-                return;
-            }
-            // For builtins, we'll replace the symbol below
-        }
-
         // Add parameters to the function symbol (types will be resolved later by TypeChecker)
         var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
         {
@@ -60,9 +39,62 @@ internal partial class NameResolver
             DeclarationColumn = functionDef.ColumnStart,
             NameDeclarationLine = functionDef.NameLineStart,
             NameDeclarationColumn = functionDef.NameColumnStart,
+            SignatureKey = GetMethodSignatureKey(functionDef),
             Documentation = functionDef.DocString,
             DeprecationMessage = GetDeprecationMessage(functionDef.Decorators)
         };
+
+        var existingSymbol = _symbolTable.Lookup(functionDef.Name, searchParents: false);
+        if (existingSymbol != null)
+        {
+            // If this function was already registered by the pre-pass, skip it
+            if (existingSymbol is FunctionSymbol && existingSymbol.DeclarationSpan == functionDef.Span)
+            {
+                return;
+            }
+
+            // Allow shadowing builtins (which have no source location)
+            // This matches Python behavior where user code can shadow builtins
+            bool isBuiltin = existingSymbol.DeclarationLine == null;
+            if (isBuiltin)
+            {
+                // Replace the builtin symbol with the user-defined function
+                _symbolTable.Define(funcSymbol);
+                return;
+            }
+
+            // Module-level function overloading by arity/signature:
+            // when the existing symbol is a user-defined function, allow additional
+            // overloads as long as they have distinct signatures.
+            if (existingSymbol is FunctionSymbol existingFunc)
+            {
+                // Reuse the existing overload list if one was already registered,
+                // otherwise seed a new list with the primary (first) symbol.
+                var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name)
+                    ?? new List<FunctionSymbol> { existingFunc };
+
+                bool isDuplicate = overloads.Any(o => o.SignatureKey == funcSymbol.SignatureKey);
+                if (isDuplicate)
+                {
+                    AddError($"Function '{functionDef.Name}' is already defined with the same signature",
+                        functionDef.LineStart, functionDef.ColumnStart,
+                        code: DiagnosticCodes.Semantic.DuplicateDefinition, span: functionDef.Span);
+                    return;
+                }
+
+                overloads.Add(funcSymbol);
+                // The first overload remains the primary symbol in the symbol table;
+                // all overloads (including the primary) are tracked in the overload list.
+                _symbolTable.DefineFunctionOverloads(functionDef.Name, overloads);
+                _logger.LogDebug($"Registered module-level function overload: {functionDef.Name} (params: {functionDef.Parameters.Length})");
+                return;
+            }
+
+            // Existing symbol is not a function (e.g., variable, type) — genuine duplicate.
+            AddError($"Function '{functionDef.Name}' is already defined",
+                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: functionDef.Span);
+            return;
+        }
 
         _symbolTable.Define(funcSymbol);
     }
