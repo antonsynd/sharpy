@@ -332,7 +332,12 @@ internal class CodeGenInfoComputer
 
     private void ProcessFunctionDef(FunctionDef funcDef, bool isModuleLevel)
     {
-        var funcSymbol = _symbolTable.Lookup(funcDef.Name) as FunctionSymbol;
+        // For overloaded module-level functions, the symbol table only holds the
+        // first overload, so resolve the specific symbol by declaration line.
+        var overloads = _symbolTable.LookupFunctionOverloads(funcDef.Name);
+        var funcSymbol = overloads is { Count: > 1 }
+            ? overloads.FirstOrDefault(o => o.DeclarationLine == funcDef.LineStart)
+            : _symbolTable.Lookup(funcDef.Name) as FunctionSymbol;
         if (funcSymbol != null)
         {
             SetCodeGenInfo(funcSymbol, new CodeGenInfo
