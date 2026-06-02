@@ -271,7 +271,14 @@ internal partial class TypeChecker
         }
         else
         {
-            // For top-level functions, look up from symbol table
+            // For top-level functions, look up from symbol table.
+            // When the function is overloaded, the symbol table only holds the first
+            // overload, so resolve the specific symbol by declaration line.
+            var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
+            if (overloads is { Count: > 1 })
+            {
+                return overloads.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart);
+            }
             return _symbolTable.LookupFunction(functionDef.Name);
         }
     }
