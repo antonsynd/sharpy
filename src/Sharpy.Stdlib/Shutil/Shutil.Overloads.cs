@@ -6,66 +6,6 @@ namespace Sharpy
     /// <summary>High-level file operations (copy, move, remove trees).</summary>
     public static partial class ShutilModule
     {
-        /// <summary>Given a command, return the path which conforms to the given mode on the PATH, or <c>null</c> if no such file exists.</summary>
-        public static string? Which(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-            {
-                return null;
-            }
-
-            if (name.IndexOf(System.IO.Path.DirectorySeparatorChar) >= 0 ||
-                name.IndexOf(System.IO.Path.AltDirectorySeparatorChar) >= 0)
-            {
-                if (File.Exists(name))
-                {
-                    return System.IO.Path.GetFullPath(name);
-                }
-                return null;
-            }
-
-            string? pathEnv = Environment.GetEnvironmentVariable("PATH");
-            if (string.IsNullOrEmpty(pathEnv))
-            {
-                return null;
-            }
-
-            string[] pathDirs = pathEnv.Split(System.IO.Path.PathSeparator);
-
-            bool isWindows = System.IO.Path.DirectorySeparatorChar == '\\';
-            string[] extensions;
-            if (isWindows)
-            {
-                string? pathExt = Environment.GetEnvironmentVariable("PATHEXT");
-                extensions = !string.IsNullOrEmpty(pathExt)
-                    ? pathExt.Split(';')
-                    : new[] { ".COM", ".EXE", ".BAT", ".CMD" };
-            }
-            else
-            {
-                extensions = new[] { "" };
-            }
-
-            foreach (string dir in pathDirs)
-            {
-                if (string.IsNullOrEmpty(dir))
-                {
-                    continue;
-                }
-
-                foreach (string ext in extensions)
-                {
-                    string candidate = System.IO.Path.Combine(dir, name + ext);
-                    if (File.Exists(candidate))
-                    {
-                        return candidate;
-                    }
-                }
-            }
-
-            return null;
-        }
-
         /// <summary>Return disk usage statistics about the given path as a (total, used, free) tuple.</summary>
         public static (long, long, long) DiskUsage(string path)
         {
