@@ -8,14 +8,6 @@ import math
 
 ## Functions
 
-### `math.lcm(a: long, b: long) -> long`
-
-Return the least common multiple of a and b.
-
-### `math.comb(n: int, k: int) -> long`
-
-Return the number of ways to choose k items from n items without repetition and without order.
-
 ### `math.perm(n: int) -> long`
 
 Return the number of permutations of n items, equivalent to n factorial.
@@ -159,6 +151,14 @@ Determine whether two floating-point numbers are close in value.
 ### `math.perm(n: int, k: int) -> long`
 
 Return the number of ways to choose k items from n items without repetition and with order.
+
+### `math.lcm(a: long, b: long) -> long`
+
+Return the least common multiple of a and b.
+
+### `math.comb(n: int, k: int) -> long`
+
+Return the number of ways to choose k items from n items without repetition and without order.
 
 ### `math.fsum(iterable: list[float]) -> float`
 

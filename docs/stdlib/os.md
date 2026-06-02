@@ -22,10 +22,6 @@ import os
 
 Get an environment variable, return *default_* if it doesn't exist.
 
-### `os.stat(path: str) -> StatResult`
-
-Perform a stat system call on the given path.
-
 ### `os.remove(path: str)`
 
 Remove a file (same as unlink).
@@ -78,13 +74,13 @@ Join three pathname components, inserting '/' as needed.
 
 Join four pathname components, inserting '/' as needed.
 
-### `os.normpath(path: str) -> str`
-
-Normalize path, eliminating double slashes, etc.
-
 ### `os.join(a: str, b: str) -> str`
 
 Join two pathname components, inserting '/' as needed.
+
+### `os.normpath(path: str) -> str`
+
+Normalize a pathname, eliminating double slashes and resolving '.'/'..' references.
 
 ### `os.exists(path: str) -> bool`
 
