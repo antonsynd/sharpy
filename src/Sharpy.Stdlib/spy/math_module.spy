@@ -187,6 +187,31 @@ def perm(n: int, k: int) -> long:
         i = i + 1
     return result
 
+def lcm(a: long, b: long) -> long:
+    """Return the least common multiple of a and b."""
+    if a == 0 or b == 0:
+        return 0
+    a = SysMath.abs(a)
+    b = SysMath.abs(b)
+    return a // gcd(a, b) * b
+
+def comb(n: int, k: int) -> long:
+    """Return the number of ways to choose k items from n items without repetition and without order."""
+    if n < 0:
+        raise ValueError("n must not be negative")
+    if k < 0:
+        raise ValueError("k must not be negative")
+    if k > n:
+        return 0
+    if k > n - k:
+        k = n - k
+    result: long = 1
+    i: int = 0
+    while i < k:
+        result = result * (n - i) // (i + 1)
+        i = i + 1
+    return result
+
 def fsum(iterable: list[float]) -> float:
     """Return an accurate floating-point sum of values in the iterable."""
     total: float = 0.0
