@@ -19,7 +19,12 @@ internal partial class TypeChecker
     /// </summary>
     private void ResolveModuleFunctionSignature(FunctionDef functionDef)
     {
-        var functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
+        // For overloaded module-level functions, the symbol table only holds the
+        // first overload, so resolve the specific symbol by declaration line.
+        var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
+        var functionSymbol = overloads is { Count: > 1 }
+            ? overloads.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
+            : _symbolTable.LookupFunction(functionDef.Name);
         if (functionSymbol == null)
             return;
 
