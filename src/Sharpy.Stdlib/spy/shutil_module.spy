@@ -1,6 +1,7 @@
 """High-level file operations (copy, move, remove trees)."""
 
 from system.io import Path as IoPath, File, Directory, IOException
+from system import Environment
 
 def copy(src: str, dst: str) -> str:
     """Copy data and mode bits ("cp src dst"). Return the file's destination."""
@@ -59,6 +60,40 @@ def move(src: str, dst: str) -> str:
         Directory.move(src, dst)
         return dst
     raise OSError("No such file or directory: '" + src + "'")
+
+def which(name: str) -> str | None:
+    """Return the path to an executable which would be run if name were called, or None if not found."""
+    if name == "":
+        return None
+    sep: str = str(IoPath.DirectorySeparatorChar)
+    alt_sep: str = str(IoPath.AltDirectorySeparatorChar)
+    if name.find(sep) >= 0 or name.find(alt_sep) >= 0:
+        if File.exists(name):
+            return IoPath.get_full_path(name)
+        return None
+    raw_path = Environment.get_environment_variable("PATH")
+    if raw_path is None:
+        return None
+    path_env: str = raw_path
+    if len(path_env) == 0:
+        return None
+    is_windows: bool = sep == "\\"
+    extensions: list[str] = [""]
+    if is_windows:
+        raw_ext = Environment.get_environment_variable("PATHEXT")
+        ext_value: str = raw_ext if raw_ext is not None else ""
+        if len(ext_value) > 0:
+            extensions = ext_value.split(";")
+        else:
+            extensions = [".COM", ".EXE", ".BAT", ".CMD"]
+    for dir_path in path_env.split(str(IoPath.PathSeparator)):
+        if dir_path == "":
+            continue
+        for ext in extensions:
+            candidate: str = IoPath.combine(dir_path, name + ext)
+            if File.exists(candidate):
+                return candidate
+    return None
 
 def _resolve_destination(src: str, dst: str) -> str:
     """Resolve the final destination path, appending the source filename if dst is a directory."""

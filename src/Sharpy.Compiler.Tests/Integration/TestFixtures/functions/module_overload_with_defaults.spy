@@ -1,0 +1,13 @@
+def format_value(x: int) -> str:
+    return str(x)
+
+def format_value(x: int, width: int, fill: str = " ") -> str:
+    result = str(x)
+    while len(result) < width:
+        result = fill + result
+    return result
+
+def main():
+    print(format_value(42))
+    print(format_value(42, 6))
+    print(format_value(42, 6, "0"))

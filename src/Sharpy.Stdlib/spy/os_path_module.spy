@@ -7,6 +7,31 @@ def join(a: str, b: str) -> str:
     """Join two pathname components, inserting '/' as needed."""
     return IoPath.combine(a, b)
 
+def normpath(path: str) -> str:
+    """Normalize a pathname, eliminating double slashes and resolving '.'/'..' references."""
+    if path == "":
+        return "."
+    sep: str = str(IoPath.DirectorySeparatorChar)
+    is_absolute: bool = path[0] == "/" or path[0] == "\\" or (len(path) >= 2 and path[1] == ":")
+    stack: list[str] = []
+    for part in path.replace("\\", "/").split("/"):
+        if part == "" or part == ".":
+            continue
+        if part == "..":
+            if len(stack) > 0 and stack[len(stack) - 1] != "..":
+                stack.pop()
+            elif not is_absolute:
+                stack.append("..")
+        else:
+            stack.append(part)
+    body: str = sep.join(stack)
+    if is_absolute:
+        prefix: str = path.substring(0, 2) + sep if (len(path) >= 2 and path[1] == ":") else sep
+        return prefix + body
+    if len(stack) > 0:
+        return body
+    return "."
+
 def exists(path: str) -> bool:
     """Test whether a path exists."""
     return File.exists(path) or Directory.exists(path)

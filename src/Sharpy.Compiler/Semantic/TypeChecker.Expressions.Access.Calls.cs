@@ -174,6 +174,14 @@ internal partial class TypeChecker
             if (overloadResult != null)
                 return overloadResult;
 
+            // Resolve user-defined module-level function overloads (same compilation)
+            {
+                var userOverloadResult = ResolveUserDefinedFunctionOverload(
+                    id, argTypes, totalArgCount, call);
+                if (userOverloadResult != null)
+                    return userOverloadResult;
+            }
+
             // Resolve imported function overloads (e.g., from os.path import join)
             {
                 var importedOverloadResult = ResolveImportedFunctionOverload(
@@ -838,6 +846,44 @@ internal partial class TypeChecker
             return new NullableType { UnderlyingType = returnType };
         }
         return returnType;
+    }
+
+    /// <summary>
+    /// Resolves calls to overloaded module-level functions defined in the current
+    /// compilation (i.e., not imported). Reads overloads from
+    /// SymbolTable.LookupFunctionOverloads and dispatches to the matching overload
+    /// by arity/signature. Imported overloads are handled separately by
+    /// ResolveImportedFunctionOverload.
+    /// </summary>
+    private SemanticType? ResolveUserDefinedFunctionOverload(
+        Identifier id, List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
+    {
+        var overloads = _symbolTable.LookupFunctionOverloads(id.Name);
+        if (overloads == null || overloads.Count <= 1)
+            return null;
+
+        // Only handle overloads declared in the current file. Imported overloads
+        // (different DeclaringFilePath) are resolved by ResolveImportedFunctionOverload.
+        if (_currentFilePath == null || overloads[0].DeclaringFilePath != _currentFilePath)
+            return null;
+
+        var kwNames = ExtractKeywordArgNames(call);
+        var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
+            new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
+                SkipUnknownTypes: true, KeywordArgNames: kwNames));
+
+        if (isAmbiguous || matchingOverload == null)
+        {
+            ReportOverloadError(id.Name, call, isAmbiguous, arityCandidates, totalArgCount);
+            return SemanticType.Unknown;
+        }
+
+        // Update the identifier symbol to point to the matching overload
+        _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
+        // Record the resolved call target for codegen
+        _semanticInfo.SetCallTarget(call, matchingOverload);
+
+        return matchingOverload.ReturnType;
     }
 
     /// <summary>

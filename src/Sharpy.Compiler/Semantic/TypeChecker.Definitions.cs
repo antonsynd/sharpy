@@ -19,7 +19,12 @@ internal partial class TypeChecker
     /// </summary>
     private void ResolveModuleFunctionSignature(FunctionDef functionDef)
     {
-        var functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
+        // For overloaded module-level functions, the symbol table only holds the
+        // first overload, so resolve the specific symbol by declaration line.
+        var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
+        var functionSymbol = overloads is { Count: > 1 }
+            ? overloads.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
+            : _symbolTable.LookupFunction(functionDef.Name);
         if (functionSymbol == null)
             return;
 
@@ -266,7 +271,14 @@ internal partial class TypeChecker
         }
         else
         {
-            // For top-level functions, look up from symbol table
+            // For top-level functions, look up from symbol table.
+            // When the function is overloaded, the symbol table only holds the first
+            // overload, so resolve the specific symbol by declaration line.
+            var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
+            if (overloads is { Count: > 1 })
+            {
+                return overloads.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart);
+            }
             return _symbolTable.LookupFunction(functionDef.Name);
         }
     }
@@ -585,10 +597,20 @@ internal partial class TypeChecker
         // Update the symbol in the symbol table
         _symbolTable.UpdateSymbol(updatedSymbol);
 
-        // Also update the reference in the owning TypeSymbol's lists.
-        // The symbol table and TypeSymbol.Methods/Constructors are separate storage;
-        // without this sync, FindMethodInHierarchy reads stale Unknown return types.
-        if (_currentClass != null)
+        // Also update the reference in the owning TypeSymbol's lists or the
+        // module-level overload list.  Without this sync, downstream consumers
+        // (FindMethodInHierarchy, ResolveOverloadCore) read stale return types.
+        if (_currentClass == null)
+        {
+            var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
+            if (overloads != null)
+            {
+                var idx = overloads.IndexOf(functionSymbol);
+                if (idx >= 0)
+                    overloads[idx] = updatedSymbol;
+            }
+        }
+        else
         {
             if (functionDef.Name == DunderNames.Init)
             {
@@ -652,8 +674,10 @@ internal partial class TypeChecker
         // so the symbol table doesn't contain the method. The Methods list has the
         // updatedSymbol (from the return type update), which is also the same
         // reference stored in ProtocolMethods/OperatorMethods.
-        // For top-level functions, fall back to the symbol table.
+        // For top-level functions, check the overload list first (disambiguate by line),
+        // then fall back to the symbol table for non-overloaded functions.
         var currentSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
+            ?? _symbolTable.LookupFunctionOverloads(functionDef.Name)?.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
             ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
         Debug.Assert(currentSymbol != null, $"Generator function '{functionDef.Name}' not found in Methods list or SymbolTable");
         if (currentSymbol != null)
@@ -693,6 +717,7 @@ internal partial class TypeChecker
             return;
 
         var asyncSymbol = _currentClass?.Methods.FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
+            ?? _symbolTable.LookupFunctionOverloads(functionDef.Name)?.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
             ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
         if (asyncSymbol == null)
             return;
@@ -732,6 +757,7 @@ internal partial class TypeChecker
         // because the TypeChecker class scope is already popped at this point.
         var currentSymbol = _currentClass?.Methods.FirstOrDefault(m =>
                 m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart)
+            ?? _symbolTable.LookupFunctionOverloads(functionDef.Name)?.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart)
             ?? _symbolTable.Lookup(functionDef.Name) as FunctionSymbol;
         if (currentSymbol == null)
             return;

@@ -4,16 +4,20 @@ from sharpy import PrettyPrinter
 
 def pprint(obj: object, indent: int = 1, width: int = 80, depth: int | None = None, compact: bool = False, sort_dicts: bool = True) -> None:
     """Pretty-print a Python object to a stream."""
-    ...
+    printer: PrettyPrinter = PrettyPrinter(indent, width, depth, compact, sort_dicts)
+    printer.pprint(obj)
 
 def pformat(obj: object, indent: int = 1, width: int = 80, depth: int | None = None, compact: bool = False, sort_dicts: bool = True) -> str:
     """Format a Python object into a pretty-printed representation."""
-    ...
+    printer: PrettyPrinter = PrettyPrinter(indent, width, depth, compact, sort_dicts)
+    return printer.pformat(obj)
 
 def isreadable(obj: object) -> bool:
     """Determine if the object's representation is readable."""
-    ...
+    printer: PrettyPrinter = PrettyPrinter()
+    return printer.isreadable(obj)
 
 def isrecursive(obj: object) -> bool:
     """Determine if the object requires a recursive representation."""
-    ...
+    printer: PrettyPrinter = PrettyPrinter()
+    return printer.isrecursive(obj)
