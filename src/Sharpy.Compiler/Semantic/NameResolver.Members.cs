@@ -73,6 +73,13 @@ internal partial class NameResolver
                 var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name)
                     ?? new List<FunctionSymbol> { existingFunc };
 
+                // If this exact overload was already registered (e.g., by an earlier
+                // resolution pass over the same FunctionDef), skip re-registering it.
+                if (overloads.Any(o => o.DeclarationSpan == functionDef.Span))
+                {
+                    return;
+                }
+
                 bool isDuplicate = overloads.Any(o => o.SignatureKey == funcSymbol.SignatureKey);
                 if (isDuplicate)
                 {
