@@ -10,20 +10,21 @@ A warmup pass runs each benchmark once (discarded) to prime JIT, caches, and
 OS filesystem buffers before the timed runs.
 
 Usage:
-    python3 benchmarks/cross-language/run_benchmarks.py [benchmark_name...]
-    python3 benchmarks/cross-language/run_benchmarks.py --json
+    python3 run_benchmarks.py [benchmark_name...]
+    python3 run_benchmarks.py --json
+    python3 run_benchmarks.py --languages C# --json
+    python3 run_benchmarks.py --languages Python,Sharpy --merge csharp-results.json --json
 """
 
-import compileall
+import argparse
 import json
-import os
 import py_compile
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -161,58 +162,29 @@ def execute_sharpy(output_dll: Path) -> tuple[float, bool, str]:
 # --- C# ---
 
 def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
-    """Compile .cs to executable using dotnet build in a fully isolated project."""
+    """Compile .cs to executable using dotnet build in a temp directory."""
     cs_file = bench_dir / "bench.cs"
 
-    # Create a completely standalone project with no inheritance
     proj_content = """<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Optimize>true</Optimize>
     <ImplicitUsings>disable</ImplicitUsings>
-    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
     <Nullable>disable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <NoWarn>CS8981</NoWarn>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <GenerateGlobalUsings>false</GenerateGlobalUsings>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="bench.cs" />
-  </ItemGroup>
 </Project>"""
     proj_path = tmp_dir / "bench.csproj"
     proj_path.write_text(proj_content)
     shutil.copy2(cs_file, tmp_dir / "bench.cs")
 
-    # Block ALL MSBuild directory traversal and NuGet source leakage
-    (tmp_dir / "Directory.Build.props").write_text('<Project></Project>')
-    (tmp_dir / "Directory.Build.targets").write_text('<Project></Project>')
-    (tmp_dir / "Directory.Packages.props").write_text('<Project></Project>')
-    (tmp_dir / "nuget.config").write_text(
-        '<?xml version="1.0" encoding="utf-8"?>\n'
-        '<configuration>\n'
-        '  <packageSources>\n'
-        '    <clear />\n'
-        '    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />\n'
-        '  </packageSources>\n'
-        '</configuration>\n'
-    )
-
     start = time.perf_counter()
-    env = os.environ.copy()
-    env["DOTNET_CLI_HOME"] = str(tmp_dir)
-    env["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
-    # Build with maximum isolation
     result = subprocess.run(
         ["dotnet", "build", str(proj_path), "-c", "Release", "--nologo",
-         f"-o", str(tmp_dir / "out"),
-         f"/p:BaseIntermediateOutputPath={tmp_dir / 'obj'}/",
-         "/p:ImportDirectoryBuildProps=false",
-         "/p:ImportDirectoryBuildTargets=false",
-         "/p:ImportDirectoryPackagesProps=false"],
-        cwd=tmp_dir, capture_output=True, text=True, timeout=120, env=env
+         "-o", str(tmp_dir / "out")],
+        cwd=tmp_dir, capture_output=True, text=True, timeout=120,
     )
     elapsed = time.perf_counter() - start
     if result.returncode != 0:
@@ -247,90 +219,95 @@ def execute_csharp(tmp_dir: Path) -> tuple[float, bool, str]:
 
 # --- Main ---
 
-def run_benchmark(bench_dir: Path, cli_dll: Path, warmup: bool = False) -> dict[str, BenchResult]:
-    """Run all languages for one benchmark. Returns dict keyed by language."""
+ALL_LANGUAGES = {"Python", "Sharpy", "C#"}
+
+
+def run_benchmark(
+    bench_dir: Path, cli_dll: Path | None, languages: set[str] | None = None,
+) -> dict[str, BenchResult]:
+    """Run selected languages for one benchmark. Returns dict keyed by language."""
+    langs = languages or ALL_LANGUAGES
     results = {}
 
-    # --- Python ---
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
-        compile_t, compile_ok, compile_err, _ = compile_python(bench_dir, tmp_path)
-        if not compile_ok:
-            results["Python"] = BenchResult(bench_dir.name, "Python", compile_t, 0, compile_t, False, compile_err)
-        else:
-            exec_times = []
-            exec_ok = True
-            exec_err = ""
-            for _ in range(TIMED_RUNS):
-                et, ok, err = execute_python(bench_dir)
-                exec_times.append(et)
-                if not ok:
-                    exec_ok = False
-                    exec_err = err
-                    break
-            exec_t = median(exec_times) if exec_ok else exec_times[0]
-            results["Python"] = BenchResult(
-                bench_dir.name, "Python", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
-            )
+    if "Python" in langs:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            compile_t, compile_ok, compile_err, _ = compile_python(bench_dir, tmp_path)
+            if not compile_ok:
+                results["Python"] = BenchResult(bench_dir.name, "Python", compile_t, 0, compile_t, False, compile_err)
+            else:
+                exec_times = []
+                exec_ok = True
+                exec_err = ""
+                for _ in range(TIMED_RUNS):
+                    et, ok, err = execute_python(bench_dir)
+                    exec_times.append(et)
+                    if not ok:
+                        exec_ok = False
+                        exec_err = err
+                        break
+                exec_t = median(exec_times) if exec_ok else exec_times[0]
+                results["Python"] = BenchResult(
+                    bench_dir.name, "Python", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
+                )
 
-    # --- Sharpy ---
-    spy_file = bench_dir / "bench.spy"
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
-        # Compilation phase: compile .spy → .dll (full pipeline, no execution)
-        compile_times = []
-        compile_ok = True
-        compile_err = ""
-        output_dll = tmp_path / "bench_output.dll"
-        for _ in range(TIMED_RUNS):
-            ct, ok, err, output_dll = compile_sharpy(cli_dll, spy_file, tmp_path)
-            compile_times.append(ct)
-            if not ok:
-                compile_ok = False
-                compile_err = err
-                break
-        compile_t = median(compile_times) if compile_ok else compile_times[0]
-
-        if not compile_ok:
-            results["Sharpy"] = BenchResult(bench_dir.name, "Sharpy", compile_t, 0, compile_t, False, compile_err)
-        else:
-            # Execution phase: run the compiled .dll directly (pure execution)
-            exec_times = []
-            exec_ok = True
-            exec_err = ""
+    if "Sharpy" in langs:
+        assert cli_dll is not None, "cli_dll required when running Sharpy benchmarks"
+        spy_file = bench_dir / "bench.spy"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            compile_times = []
+            compile_ok = True
+            compile_err = ""
+            output_dll = tmp_path / "bench_output.dll"
             for _ in range(TIMED_RUNS):
-                et, ok, err = execute_sharpy(output_dll)
-                exec_times.append(et)
+                ct, ok, err, output_dll = compile_sharpy(cli_dll, spy_file, tmp_path)
+                compile_times.append(ct)
                 if not ok:
-                    exec_ok = False
-                    exec_err = err
+                    compile_ok = False
+                    compile_err = err
                     break
-            exec_t = median(exec_times) if exec_ok else exec_times[0]
-            results["Sharpy"] = BenchResult(
-                bench_dir.name, "Sharpy", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
-            )
+            compile_t = median(compile_times) if compile_ok else compile_times[0]
 
-    # --- C# ---
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
-        compile_t, compile_ok, compile_err, _ = compile_csharp(bench_dir, tmp_path)
-        if not compile_ok:
-            results["C#"] = BenchResult(bench_dir.name, "C#", compile_t, 0, compile_t, False, f"compile failed: {compile_err}")
-        else:
-            exec_times = []
-            exec_ok = True
-            exec_err = ""
-            for _ in range(TIMED_RUNS):
-                et, ok, err = execute_csharp(tmp_path)
-                exec_times.append(et)
-                if not ok:
-                    exec_ok = False
-                    exec_err = f"run {len(exec_times)} failed: {err}"
-                    break
-            exec_t = median(exec_times) if exec_ok else exec_times[0]
-            results["C#"] = BenchResult(
-                bench_dir.name, "C#", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
-            )
+            if not compile_ok:
+                results["Sharpy"] = BenchResult(bench_dir.name, "Sharpy", compile_t, 0, compile_t, False, compile_err)
+            else:
+                exec_times = []
+                exec_ok = True
+                exec_err = ""
+                for _ in range(TIMED_RUNS):
+                    et, ok, err = execute_sharpy(output_dll)
+                    exec_times.append(et)
+                    if not ok:
+                        exec_ok = False
+                        exec_err = err
+                        break
+                exec_t = median(exec_times) if exec_ok else exec_times[0]
+                results["Sharpy"] = BenchResult(
+                    bench_dir.name, "Sharpy", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
+                )
+
+    if "C#" in langs:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            compile_t, compile_ok, compile_err, _ = compile_csharp(bench_dir, tmp_path)
+            if not compile_ok:
+                results["C#"] = BenchResult(bench_dir.name, "C#", compile_t, 0, compile_t, False, f"compile failed: {compile_err}")
+            else:
+                exec_times = []
+                exec_ok = True
+                exec_err = ""
+                for _ in range(TIMED_RUNS):
+                    et, ok, err = execute_csharp(tmp_path)
+                    exec_times.append(et)
+                    if not ok:
+                        exec_ok = False
+                        exec_err = f"run {len(exec_times)} failed: {err}"
+                        break
+                exec_t = median(exec_times) if exec_ok else exec_times[0]
+                results["C#"] = BenchResult(
+                    bench_dir.name, "C#", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
+                )
 
     return results
 
@@ -402,42 +379,114 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
     print()
 
 
-def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("-")]
-    json_output = "--json" in sys.argv
-    verbose = not json_output
+def merge_results(
+    all_results: dict[str, dict[str, BenchResult]], merge_file: Path,
+) -> dict[str, dict[str, BenchResult]]:
+    """Merge results from a JSON file. Fresh results win on (name, language) conflicts."""
+    with open(merge_file) as f:
+        data = json.load(f)
+    for entry in data:
+        name = entry["name"]
+        lang = entry["language"]
+        if name not in all_results:
+            all_results[name] = {}
+        if lang not in all_results[name]:
+            all_results[name][lang] = BenchResult(
+                name=name,
+                language=lang,
+                compile_seconds=entry["compile_seconds"],
+                execute_seconds=entry["execute_seconds"],
+                total_seconds=entry["total_seconds"],
+                success=entry["success"],
+                error=entry.get("error", ""),
+            )
+    return all_results
 
-    bench_dirs = find_benchmarks(args if args else None)
+
+def results_to_json(all_results: dict[str, dict[str, BenchResult]]) -> list[dict]:
+    output = []
+    for name in sorted(all_results):
+        for lang, r in all_results[name].items():
+            output.append({
+                "name": r.name,
+                "language": r.language,
+                "compile_seconds": r.compile_seconds,
+                "execute_seconds": r.execute_seconds,
+                "total_seconds": r.total_seconds,
+                "success": r.success,
+                "error": r.error,
+            })
+    return output
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Cross-language benchmark harness")
+    parser.add_argument("benchmarks", nargs="*", help="Benchmark names to run (default: all)")
+    parser.add_argument("--json", action="store_true", help="Output results as JSON")
+    parser.add_argument(
+        "--languages", type=str, default=None,
+        help="Comma-separated languages to run (e.g., 'C#' or 'Python,Sharpy')",
+    )
+    parser.add_argument(
+        "--merge", type=str, default=None, metavar="FILE",
+        help="JSON file of partial results to merge (fresh results win on conflict)",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    verbose = not args.json
+
+    languages: set[str] | None = None
+    if args.languages:
+        languages = {l.strip() for l in args.languages.split(",")}
+        unknown = languages - ALL_LANGUAGES
+        if unknown:
+            print(f"Warning: unknown languages ignored: {', '.join(sorted(unknown))}", file=sys.stderr)
+            languages = languages & ALL_LANGUAGES
+        if not languages:
+            print("No valid languages specified.", file=sys.stderr)
+            sys.exit(1)
+
+    if args.merge and not Path(args.merge).exists():
+        print(f"Error: merge file not found: {args.merge}", file=sys.stderr)
+        sys.exit(1)
+
+    bench_dirs = find_benchmarks(args.benchmarks if args.benchmarks else None)
     if not bench_dirs:
         print("No benchmarks found.", file=sys.stderr)
         sys.exit(1)
 
+    active_langs = languages or ALL_LANGUAGES
     if verbose:
         print(f"Running {len(bench_dirs)} benchmarks: {', '.join(d.name for d in bench_dirs)}")
+        print(f"  Languages: {', '.join(sorted(active_langs))}")
         print(f"  Warmup runs: {WARMUP_RUNS}, Timed runs: {TIMED_RUNS} (median)")
         print()
 
-    # Pre-build Sharpy CLI
-    cli_dll = prebuild_sharpy_cli(verbose)
+    cli_dll: Path | None = None
+    if "Sharpy" in active_langs:
+        cli_dll = prebuild_sharpy_cli(verbose)
 
-    # Warmup pass — run each benchmark once to prime JIT/caches
+    # Warmup pass
     if verbose:
         print("  Warmup pass...", end=" ", flush=True)
     for bench_dir in bench_dirs:
-        spy_file = bench_dir / "bench.spy"
-        # Warmup Python
-        subprocess.run([sys.executable, str(bench_dir / "bench.py")],
-                       capture_output=True, timeout=120)
-        # Warmup Sharpy (compile to .dll, then execute the .dll)
-        with tempfile.TemporaryDirectory() as tmp:
-            _, ok, _, output_dll = compile_sharpy(cli_dll, spy_file, Path(tmp))
-            if ok:
-                execute_sharpy(output_dll)
-        # Warmup C# — build in temp then run
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            compile_csharp(bench_dir, tmp_path)
-            execute_csharp(tmp_path)
+        if "Python" in active_langs:
+            subprocess.run([sys.executable, str(bench_dir / "bench.py")],
+                           capture_output=True, timeout=120)
+        if "Sharpy" in active_langs and cli_dll is not None:
+            spy_file = bench_dir / "bench.spy"
+            with tempfile.TemporaryDirectory() as tmp:
+                _, ok, _, output_dll = compile_sharpy(cli_dll, spy_file, Path(tmp))
+                if ok:
+                    execute_sharpy(output_dll)
+        if "C#" in active_langs:
+            with tempfile.TemporaryDirectory() as tmp:
+                tmp_path = Path(tmp)
+                compile_csharp(bench_dir, tmp_path)
+                execute_csharp(tmp_path)
     if verbose:
         print("done")
         print()
@@ -448,30 +497,23 @@ def main():
         if verbose:
             print(f"  {bench_dir.name}...", end=" ", flush=True)
 
-        results = run_benchmark(bench_dir, cli_dll)
+        results = run_benchmark(bench_dir, cli_dll, languages)
         all_results[bench_dir.name] = results
 
         if verbose:
             statuses = []
             for lang in ["Python", "Sharpy", "C#"]:
+                if lang not in active_langs:
+                    continue
                 r = results.get(lang)
                 statuses.append(f"{lang}={'ok' if r and r.success else 'FAIL'}")
             print(" | ".join(statuses))
 
-    if json_output:
-        output = []
-        for name in sorted(all_results):
-            for lang, r in all_results[name].items():
-                output.append({
-                    "name": r.name,
-                    "language": r.language,
-                    "compile_seconds": r.compile_seconds,
-                    "execute_seconds": r.execute_seconds,
-                    "total_seconds": r.total_seconds,
-                    "success": r.success,
-                    "error": r.error,
-                })
-        print(json.dumps(output, indent=2))
+    if args.merge:
+        all_results = merge_results(all_results, Path(args.merge))
+
+    if args.json:
+        print(json.dumps(results_to_json(all_results), indent=2))
     else:
         print_table(all_results)
 

@@ -57,6 +57,107 @@ namespace Sharpy
             return HasCircularReference(obj, new HashSet<int>());
         }
 
+        private static bool IsGenericDict(object obj)
+        {
+            foreach (var iface in obj.GetType().GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IDictionary<,>))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool IsGenericList(object obj)
+        {
+            foreach (var iface in obj.GetType().GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IList<>))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool IsGenericSet(object obj)
+        {
+            foreach (var iface in obj.GetType().GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(ISet<>))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool IsAnyCollection(object obj)
+        {
+            return obj is IDictionary || obj is IList || obj is ICollection
+                || IsGenericDict(obj) || IsGenericList(obj) || IsGenericSet(obj);
+        }
+
+        private static int GetCollectionCount(object obj)
+        {
+            if (obj is ICollection col)
+                return col.Count;
+
+            foreach (var iface in obj.GetType().GetInterfaces())
+            {
+                if (iface.IsGenericType)
+                {
+                    var def = iface.GetGenericTypeDefinition();
+                    if (def == typeof(ICollection<>) || def == typeof(IReadOnlyCollection<>))
+                        return (int)iface.GetProperty("Count")!.GetValue(obj)!;
+                }
+            }
+            return 0;
+        }
+
+        private static object? GetListItem(object obj, int index)
+        {
+            if (obj is IList list)
+                return list[index];
+
+            foreach (var iface in obj.GetType().GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IList<>))
+                    return iface.GetProperty("Item")!.GetValue(obj, new object[] { index });
+            }
+            return null;
+        }
+
+        private static System.Collections.Generic.List<object?> GetDictKeys(object obj)
+        {
+            var keys = new System.Collections.Generic.List<object?>();
+            if (obj is IDictionary dict)
+            {
+                foreach (var key in dict.Keys)
+                    keys.Add(key);
+                return keys;
+            }
+
+            foreach (var iface in obj.GetType().GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IDictionary<,>))
+                {
+                    foreach (var key in (IEnumerable)iface.GetProperty("Keys")!.GetValue(obj)!)
+                        keys.Add(key);
+                    return keys;
+                }
+            }
+            return keys;
+        }
+
+        private static object? GetDictValue(object obj, object? key)
+        {
+            if (obj is IDictionary dict)
+                return dict[key!];
+
+            foreach (var iface in obj.GetType().GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IDictionary<,>))
+                    return iface.GetProperty("Item")!.GetValue(obj, new[] { key });
+            }
+            return null;
+        }
+
         private void FormatObject(StringBuilder sb, object? obj, int currentIndent, int currentDepth, HashSet<int> seen)
         {
             if (obj == null)
@@ -108,7 +209,7 @@ namespace Sharpy
 
             int id = RuntimeHelpers.GetHashCode(obj);
 
-            if (obj is IDictionary || obj is IList || obj is ICollection)
+            if (IsAnyCollection(obj))
             {
                 if (seen.Contains(id))
                 {
@@ -131,31 +232,31 @@ namespace Sharpy
 
             try
             {
-                if (obj is IDictionary dict)
-                    FormatDict(sb, dict, currentIndent, currentDepth, seen);
-                else if (obj is IList list)
-                    FormatList(sb, list, currentIndent, currentDepth, seen);
-                else if (obj is ICollection set)
-                    FormatSet(sb, set, currentIndent, currentDepth, seen);
+                if (obj is IDictionary || IsGenericDict(obj))
+                    FormatDict(sb, obj, currentIndent, currentDepth, seen);
+                else if (obj is IList || IsGenericList(obj))
+                    FormatList(sb, obj, currentIndent, currentDepth, seen);
+                else if (obj is ICollection || IsGenericSet(obj))
+                    FormatSet(sb, obj, currentIndent, currentDepth, seen);
                 else
                     sb.Append(Builtins.Repr(obj));
             }
             finally
             {
-                if (obj is IDictionary || obj is IList || obj is ICollection)
+                if (IsAnyCollection(obj))
                     seen.Remove(id);
             }
         }
 
-        private void FormatDict(StringBuilder sb, IDictionary dict, int currentIndent, int currentDepth, HashSet<int> seen)
+        private void FormatDict(StringBuilder sb, object obj, int currentIndent, int currentDepth, HashSet<int> seen)
         {
-            if (dict.Count == 0)
+            if (GetCollectionCount(obj) == 0)
             {
                 sb.Append("{}");
                 return;
             }
 
-            string singleLine = FormatDictSingleLine(dict, currentDepth, new HashSet<int>(seen));
+            string singleLine = FormatDictSingleLine(obj, currentDepth, new HashSet<int>(seen));
             if (singleLine.Length + currentIndent <= _width)
             {
                 sb.Append(singleLine);
@@ -168,7 +269,7 @@ namespace Sharpy
             sb.Append('{');
             bool first = true;
 
-            var keys = GetSortedDictKeys(dict);
+            var keys = GetSortedDictKeys(obj);
             foreach (var key in keys)
             {
                 if (!first)
@@ -177,16 +278,16 @@ namespace Sharpy
                 sb.Append(indentStr);
                 FormatObject(sb, key, childIndent, currentDepth + 1, seen);
                 sb.Append(": ");
-                FormatObject(sb, dict[key!], childIndent + GetFormattedLength(key) + 2, currentDepth + 1, seen);
+                FormatObject(sb, GetDictValue(obj, key), childIndent + GetFormattedLength(key) + 2, currentDepth + 1, seen);
                 first = false;
             }
 
             sb.Append('}');
         }
 
-        private void FormatList(StringBuilder sb, IList list, int currentIndent, int currentDepth, HashSet<int> seen)
+        private void FormatList(StringBuilder sb, object obj, int currentIndent, int currentDepth, HashSet<int> seen)
         {
-            FormatSequence(sb, list, currentIndent, currentDepth, seen, '[', ']');
+            FormatSequence(sb, obj, currentIndent, currentDepth, seen, '[', ']');
         }
 
         private void FormatTuple(StringBuilder sb, object tuple, int currentIndent, int currentDepth, HashSet<int> seen)
@@ -223,15 +324,15 @@ namespace Sharpy
             sb.Append(')');
         }
 
-        private void FormatSet(StringBuilder sb, ICollection set, int currentIndent, int currentDepth, HashSet<int> seen)
+        private void FormatSet(StringBuilder sb, object obj, int currentIndent, int currentDepth, HashSet<int> seen)
         {
-            if (set.Count == 0)
+            if (GetCollectionCount(obj) == 0)
             {
                 sb.Append("set()");
                 return;
             }
 
-            string singleLine = FormatSetSingleLine(set, currentDepth, new HashSet<int>(seen));
+            string singleLine = FormatSetSingleLine(obj, currentDepth, new HashSet<int>(seen));
             if (singleLine.Length + currentIndent <= _width)
             {
                 sb.Append(singleLine);
@@ -243,7 +344,7 @@ namespace Sharpy
 
             sb.Append('{');
             bool first = true;
-            foreach (var item in (IEnumerable)set)
+            foreach (var item in (IEnumerable)obj)
             {
                 if (!first)
                     sb.Append(',');
@@ -256,16 +357,17 @@ namespace Sharpy
             sb.Append('}');
         }
 
-        private void FormatSequence(StringBuilder sb, IList list, int currentIndent, int currentDepth, HashSet<int> seen, char open, char close)
+        private void FormatSequence(StringBuilder sb, object obj, int currentIndent, int currentDepth, HashSet<int> seen, char open, char close)
         {
-            if (list.Count == 0)
+            int count = GetCollectionCount(obj);
+            if (count == 0)
             {
                 sb.Append(open);
                 sb.Append(close);
                 return;
             }
 
-            string singleLine = FormatSequenceSingleLine(list, currentDepth, new HashSet<int>(seen), open, close);
+            string singleLine = FormatSequenceSingleLine(obj, count, currentDepth, new HashSet<int>(seen), open, close);
             if (singleLine.Length + currentIndent <= _width)
             {
                 sb.Append(singleLine);
@@ -279,34 +381,34 @@ namespace Sharpy
 
             if (_compact)
             {
-                FormatCompactSequence(sb, list, childIndent, currentDepth, seen, indentStr);
+                FormatCompactSequence(sb, obj, count, childIndent, currentDepth, seen, indentStr);
             }
             else
             {
-                for (int i = 0; i < list.Count; i++)
+                for (int i = 0; i < count; i++)
                 {
                     if (i > 0)
                         sb.Append(',');
                     sb.Append('\n');
                     sb.Append(indentStr);
-                    FormatObject(sb, list[i], childIndent, currentDepth + 1, seen);
+                    FormatObject(sb, GetListItem(obj, i), childIndent, currentDepth + 1, seen);
                 }
             }
 
             sb.Append(close);
         }
 
-        private void FormatCompactSequence(StringBuilder sb, IList list, int childIndent, int currentDepth, HashSet<int> seen, string indentStr)
+        private void FormatCompactSequence(StringBuilder sb, object obj, int count, int childIndent, int currentDepth, HashSet<int> seen, string indentStr)
         {
             sb.Append('\n');
             sb.Append(indentStr);
             int lineLength = childIndent;
             bool firstOnLine = true;
 
-            for (int i = 0; i < list.Count; i++)
+            for (int i = 0; i < count; i++)
             {
                 var itemSb = new StringBuilder();
-                FormatObject(itemSb, list[i], childIndent, currentDepth + 1, seen);
+                FormatObject(itemSb, GetListItem(obj, i), childIndent, currentDepth + 1, seen);
                 string itemStr = itemSb.ToString();
 
                 int itemLength = firstOnLine ? itemStr.Length : itemStr.Length + 2;
@@ -331,34 +433,34 @@ namespace Sharpy
             }
         }
 
-        private string FormatDictSingleLine(IDictionary dict, int currentDepth, HashSet<int> seen)
+        private string FormatDictSingleLine(object obj, int currentDepth, HashSet<int> seen)
         {
             var sb = new StringBuilder();
             sb.Append('{');
             bool first = true;
-            var keys = GetSortedDictKeys(dict);
+            var keys = GetSortedDictKeys(obj);
             foreach (var key in keys)
             {
                 if (!first)
                     sb.Append(", ");
                 FormatObject(sb, key, 0, currentDepth + 1, seen);
                 sb.Append(": ");
-                FormatObject(sb, dict[key!], 0, currentDepth + 1, seen);
+                FormatObject(sb, GetDictValue(obj, key), 0, currentDepth + 1, seen);
                 first = false;
             }
             sb.Append('}');
             return sb.ToString();
         }
 
-        private string FormatSequenceSingleLine(IList list, int currentDepth, HashSet<int> seen, char open, char close)
+        private string FormatSequenceSingleLine(object obj, int count, int currentDepth, HashSet<int> seen, char open, char close)
         {
             var sb = new StringBuilder();
             sb.Append(open);
-            for (int i = 0; i < list.Count; i++)
+            for (int i = 0; i < count; i++)
             {
                 if (i > 0)
                     sb.Append(", ");
-                FormatObject(sb, list[i], 0, currentDepth + 1, seen);
+                FormatObject(sb, GetListItem(obj, i), 0, currentDepth + 1, seen);
             }
             sb.Append(close);
             return sb.ToString();
@@ -380,12 +482,12 @@ namespace Sharpy
             return sb.ToString();
         }
 
-        private string FormatSetSingleLine(ICollection set, int currentDepth, HashSet<int> seen)
+        private string FormatSetSingleLine(object obj, int currentDepth, HashSet<int> seen)
         {
             var sb = new StringBuilder();
             sb.Append('{');
             bool first = true;
-            foreach (var item in (IEnumerable)set)
+            foreach (var item in (IEnumerable)obj)
             {
                 if (!first)
                     sb.Append(", ");
@@ -396,11 +498,9 @@ namespace Sharpy
             return sb.ToString();
         }
 
-        private System.Collections.Generic.List<object?> GetSortedDictKeys(IDictionary dict)
+        private System.Collections.Generic.List<object?> GetSortedDictKeys(object obj)
         {
-            var keys = new System.Collections.Generic.List<object?>();
-            foreach (var key in dict.Keys)
-                keys.Add(key);
+            var keys = GetDictKeys(obj);
             if (_sortDicts)
                 keys.Sort(CompareObjects);
             return keys;
@@ -442,10 +542,12 @@ namespace Sharpy
 
         private static string GetTypeName(object obj)
         {
-            if (obj is IDictionary)
+            if (obj is IDictionary || IsGenericDict(obj))
                 return "dict";
-            if (obj is IList)
+            if (obj is IList || IsGenericList(obj))
                 return "list";
+            if (IsGenericSet(obj))
+                return "set";
             return obj.GetType().Name;
         }
 
@@ -500,6 +602,17 @@ namespace Sharpy
                             return true;
                     }
                 }
+                else if (IsGenericDict(obj))
+                {
+                    foreach (var entry in (IEnumerable)obj)
+                    {
+                        var entryType = entry.GetType();
+                        var key = entryType.GetProperty("Key")!.GetValue(entry);
+                        var value = entryType.GetProperty("Value")!.GetValue(entry);
+                        if (HasCircularReference(key, seen) || HasCircularReference(value, seen))
+                            return true;
+                    }
+                }
                 else if (obj is IList list)
                 {
                     for (int i = 0; i < list.Count; i++)
@@ -540,11 +653,34 @@ namespace Sharpy
                 return true;
             }
 
+            if (IsGenericDict(obj))
+            {
+                foreach (var entry in (IEnumerable)obj)
+                {
+                    var entryType = entry.GetType();
+                    var key = entryType.GetProperty("Key")!.GetValue(entry);
+                    var value = entryType.GetProperty("Value")!.GetValue(entry);
+                    if (!IsReadableValue(key, seen, depth + 1) || !IsReadableValue(value, seen, depth + 1))
+                        return false;
+                }
+                return true;
+            }
+
             if (obj is IList list)
             {
                 for (int i = 0; i < list.Count; i++)
                 {
                     if (!IsReadableValue(list[i], seen, depth + 1))
+                        return false;
+                }
+                return true;
+            }
+
+            if (IsGenericList(obj) || IsGenericSet(obj))
+            {
+                foreach (var item in (IEnumerable)obj)
+                {
+                    if (!IsReadableValue(item, seen, depth + 1))
                         return false;
                 }
                 return true;
