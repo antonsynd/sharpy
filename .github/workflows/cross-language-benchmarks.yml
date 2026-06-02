@@ -1,5 +1,7 @@
 # Weekly cross-language benchmark: Sharpy vs C# vs Python
-# Runs equivalent programs, commits results to benchmarks/cross-language/results/
+# Two-job design: C# benchmarks run in a clean environment (no Sharpy in NuGet
+# cache), then Python/Sharpy benchmarks run after building the Sharpy CLI.
+# Results are merged into a single report.
 
 name: Cross-Language Benchmarks
 
@@ -9,7 +11,40 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
+  # Job 1: Run C# benchmarks in a clean environment before any Sharpy build
+  # contaminates the NuGet global packages cache with Sharpy.Core.
+  benchmark-csharp:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        ref: dev
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Run C# benchmarks
+      run: |
+        python3 benchmarks/cross-language/run_benchmarks.py --languages C# --json > csharp-results.json
+
+    - name: Upload C# results
+      uses: actions/upload-artifact@v4
+      with:
+        name: csharp-results
+        path: csharp-results.json
+        retention-days: 1
+
+  # Job 2: Build Sharpy CLI, run Python + Sharpy benchmarks, merge all results.
   benchmark:
+    needs: benchmark-csharp
     runs-on: ubuntu-latest
 
     permissions:
@@ -30,12 +65,17 @@ jobs:
       with:
         python-version: '3.12'
 
+    - name: Download C# results
+      uses: actions/download-artifact@v4
+      with:
+        name: csharp-results
+
     - name: Build Sharpy CLI (Release)
       run: dotnet build src/Sharpy.Cli -c Release --nologo -v q
 
-    - name: Run cross-language benchmarks
+    - name: Run Python + Sharpy benchmarks and merge
       run: |
-        python3 benchmarks/cross-language/run_benchmarks.py --json > benchmarks/cross-language/results/latest.json
+        python3 benchmarks/cross-language/run_benchmarks.py --languages Python,Sharpy --merge csharp-results.json --json > benchmarks/cross-language/results/latest.json
 
     - name: Generate markdown report
       run: |
