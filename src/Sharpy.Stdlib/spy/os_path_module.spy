@@ -7,6 +7,14 @@ def join(a: str, b: str) -> str:
     """Join two pathname components, inserting '/' as needed."""
     return IoPath.combine(a, b)
 
+def join(a: str, b: str, c: str) -> str:
+    """Join three pathname components, inserting '/' as needed."""
+    return IoPath.combine(a, b, c)
+
+def join(a: str, b: str, c: str, d: str) -> str:
+    """Join four pathname components, inserting '/' as needed."""
+    return IoPath.combine(a, b, c, d)
+
 def normpath(path: str) -> str:
     """Normalize a pathname, eliminating double slashes and resolving '.'/'..' references."""
     if path == "":

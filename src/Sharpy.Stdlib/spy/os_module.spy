@@ -83,6 +83,13 @@ def getenv(key: str) -> str | None:
         return None
     return result
 
+def getenv(key: str, default: str) -> str:
+    """Get an environment variable, return default if it doesn't exist."""
+    result = Environment.get_environment_variable(key)
+    if result is None:
+        return default
+    return result
+
 def putenv(key: str, value: str) -> None:
     """Change or add an environment variable."""
     Environment.set_environment_variable(key, value)

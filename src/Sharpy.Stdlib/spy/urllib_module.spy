@@ -49,3 +49,7 @@ def parse_qsl(qs: str, separator: str = "&") -> list[tuple[str, str]]:
 def urlencode(query: dict[str, object], doseq: bool = False) -> str:
     """Encode a mapping or sequence of two-element tuples into a percent-encoded query string."""
     return ""
+
+def urlencode(query: list[tuple[str, str]]) -> str:
+    """Encode a sequence of two-element tuples into a percent-encoded query string."""
+    return ""

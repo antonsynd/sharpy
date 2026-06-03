@@ -40,6 +40,12 @@ def shuffle[T](x: list[T]) -> None:
         x[j] = temp
         i = i - 1
 
+def randrange(stop: int) -> int:
+    """Return a randomly selected element from range(stop)."""
+    if stop <= 0:
+        raise ValueError(f"empty range for randrange() (0, {stop})")
+    return _random.next(stop)
+
 def randrange(start: int, stop: int, step: int = 1) -> int:
     """Return a randomly selected element from range(start, stop, step)."""
     if step == 0:

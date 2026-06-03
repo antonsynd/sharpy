@@ -41,6 +41,10 @@ def log(x: float) -> float:
     """Return the natural logarithm of x (base e)."""
     return SysMath.log(x)
 
+def log(x: float, base: float) -> float:
+    """Return the logarithm of x to the given base."""
+    return SysMath.log(x, base)
+
 def log10(x: float) -> float:
     """Return the base 10 logarithm of x."""
     return SysMath.log10(x)
@@ -171,6 +175,10 @@ def isclose(a: float, b: float, rel_tol: float = 1e-9, abs_tol: float = 0.0) -> 
         return False
     diff: float = SysMath.abs(b - a)
     return diff <= SysMath.max(rel_tol * SysMath.max(SysMath.abs(a), SysMath.abs(b)), abs_tol)
+
+def perm(n: int) -> long:
+    """Return the number of permutations of n items, equivalent to n factorial."""
+    return factorial(n)
 
 def perm(n: int, k: int) -> long:
     """Return the number of ways to choose k items from n items without repetition and with order."""
