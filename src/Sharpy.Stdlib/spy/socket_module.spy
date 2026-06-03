@@ -2,6 +2,7 @@
 
 from sharpy import SocketWrapper, SocketModule
 from sharpy import SharpySocketError, SharpySocketTimeout, SharpySocketGaiError, SharpySocketHError
+from system.net import IPAddress
 
 # ---- Address family constants (mirror System.Net.Sockets.AddressFamily) ----
 AF_INET: int = 2
@@ -93,17 +94,20 @@ def ntohl(x: int) -> int:
 
 def inet_aton(ip_string: str) -> bytes:
     """Convert an IPv4 address string to 32-bit packed binary format."""
-    # TODO(#820): .spy module class shadows imported C# SocketModule — call can't resolve
-    ...
+    addr: IPAddress = IPAddress.parse(ip_string)
+    return bytes(addr.get_address_bytes())
 
 def inet_ntoa(packed_ip: bytes) -> str:
     """Convert a 32-bit packed binary IPv4 address to a string."""
-    ...
+    addr: IPAddress = IPAddress(packed_ip.to_array())
+    return addr.to_string()
 
 def inet_pton(af: int, ip_string: str) -> bytes:
     """Convert an IP address string to packed binary format for the given family."""
-    ...
+    addr: IPAddress = IPAddress.parse(ip_string)
+    return bytes(addr.get_address_bytes())
 
 def inet_ntop(af: int, packed_ip: bytes) -> str:
     """Convert a packed binary IP address to string form for the given family."""
-    ...
+    addr: IPAddress = IPAddress(packed_ip.to_array())
+    return addr.to_string()
