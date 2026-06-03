@@ -1,3 +1,62 @@
 """Text comparison and diffing utilities, matching Python's difflib module."""
 
+# SequenceMatcher and Differ are fully implemented in C#
+# (src/Sharpy.Stdlib/Difflib/) and re-exported here.
 from sharpy import SequenceMatcher, Differ
+from sharpy import ValueError
+
+def unified_diff(a: list[str], b: list[str], fromfile: str = "", tofile: str = "", fromfiledate: str = "", tofiledate: str = "", n: int = 3, lineterm: str = "\n") -> list[str]:
+    """Compare two sequences of lines; return a delta in unified diff format."""
+    # Provided by the C# implementation (DifflibModule.UnifiedDiff); building
+    # the delta requires SequenceMatcher.GetGroupedOpcodes(), whose opcode
+    # tuples cannot be destructured in Sharpy source yet.
+    ...
+
+def context_diff(a: list[str], b: list[str], fromfile: str = "", tofile: str = "", fromfiledate: str = "", tofiledate: str = "", n: int = 3, lineterm: str = "\n") -> list[str]:
+    """Compare two sequences of lines; return a delta in context diff format."""
+    # Provided by the C# implementation (DifflibModule.ContextDiff); building
+    # the delta requires SequenceMatcher.GetGroupedOpcodes(), whose opcode
+    # tuples cannot be destructured in Sharpy source yet.
+    ...
+
+def get_close_matches(word: str, possibilities: list[str], n: int = 3, cutoff: float = 0.6) -> list[str]:
+    """Return a list of the best 'good enough' matches for word."""
+    # Provided by the C# implementation (DifflibModule.GetCloseMatches);
+    # scoring requires a character-level SequenceMatcher (SequenceMatcher<char>
+    # over char arrays), which cannot be expressed in Sharpy source yet.
+    ...
+
+def ndiff(a: list[str], b: list[str]) -> list[str]:
+    """Compare two sequences of lines; return a Differ-style delta."""
+    d: Differ = Differ()
+    result: list[str] = []
+    for line in d.compare(a, b):
+        result.append(line)
+    return result
+
+def restore(delta: list[str], which: int) -> list[str]:
+    """Extract one of the two sequences that generated an ndiff delta.
+
+    which=1 restores the first sequence, which=2 restores the second.
+    """
+    if which != 1 and which != 2:
+        raise ValueError("unknown delta choice (must be 1 or 2)")
+    tag: str = "- "
+    if which == 2:
+        tag = "+ "
+    result: list[str] = []
+    for line in delta:
+        if len(line) >= 2:
+            prefix: str = line[0:2]
+            if prefix == tag or prefix == "  ":
+                result.append(line[2:])
+    return result
+
+def is_line_junk(line: str) -> bool:
+    """Return True if line is blank or contains at most a single '#'."""
+    stripped: str = line.strip()
+    return stripped == "" or stripped == "#"
+
+def is_character_junk(ch: str) -> bool:
+    """Return True if ch is a space or tab character."""
+    return ch == " " or ch == "\t"

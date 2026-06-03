@@ -1,3 +1,8 @@
 """Exact rational number arithmetic, matching Python's fractions module."""
 
+# Fraction is fully implemented in C# (src/Sharpy.Stdlib/Fractions/Fraction.cs)
+# on top of System.Numerics.BigInteger and is re-exported here. It supports
+# construction from integers, floats, strings ("3/7", "1.5", "2e-3"), and other
+# Fractions, plus exact arithmetic operators, comparisons, abs()/pow()/mod(),
+# limit_denominator(), and truncating int / float conversion.
 from sharpy import Fraction

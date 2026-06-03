@@ -1,6 +1,13 @@
 """Configuration file parser compatible with Python's configparser module."""
 
+# ConfigParser, SectionProxy, the interpolation engines, and the full error
+# hierarchy are implemented in C# (src/Sharpy.Stdlib/Configparser/) and
+# re-exported here.
 from sharpy import ConfigParser, SectionProxy, BasicInterpolation, ExtendedInterpolation
 from sharpy import ConfigparserError, NoSectionError, NoOptionError
 from sharpy import DuplicateSectionError, DuplicateOptionError
 from sharpy import ParsingError, MissingSectionHeaderError, InterpolationError
+from sharpy import InterpolationDepthError, InterpolationMissingOptionError, InterpolationSyntaxError
+
+DEFAULTSECT: str = "DEFAULT"
+MAX_INTERPOLATION_DEPTH: int = 10

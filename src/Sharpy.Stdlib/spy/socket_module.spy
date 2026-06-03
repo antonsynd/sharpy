@@ -1,4 +1,109 @@
 """Low-level networking interface (TCP, UDP, DNS)."""
 
-from sharpy import SocketWrapper
+from sharpy import SocketWrapper, SocketModule
 from sharpy import SharpySocketError, SharpySocketTimeout, SharpySocketGaiError, SharpySocketHError
+
+# ---- Address family constants (mirror System.Net.Sockets.AddressFamily) ----
+AF_INET: int = 2
+AF_INET6: int = 23
+AF_UNIX: int = 1
+
+# ---- Socket type constants (mirror System.Net.Sockets.SocketType) ----
+SOCK_STREAM: int = 1
+SOCK_DGRAM: int = 2
+SOCK_RAW: int = 3
+
+# ---- Protocol constants (mirror System.Net.Sockets.ProtocolType) ----
+IPPROTO_IP: int = 0
+IPPROTO_TCP: int = 6
+IPPROTO_UDP: int = 17
+
+# ---- Socket option constants (mirror System.Net.Sockets option enums) ----
+SOL_SOCKET: int = 65535
+SO_REUSEADDR: int = 4
+SO_KEEPALIVE: int = 8
+SO_BROADCAST: int = 32
+SO_RCVBUF: int = 4098
+SO_SNDBUF: int = 4097
+TCP_NODELAY: int = 1
+
+# ---- Shutdown constants (mirror System.Net.Sockets.SocketShutdown) ----
+SHUT_RD: int = 0
+SHUT_WR: int = 1
+SHUT_RDWR: int = 2
+
+# ---- Other constants ----
+SOMAXCONN: int = 128
+
+def socket(family: int = 2, sock_type: int = 1, proto: int = 0) -> SocketWrapper:
+    """Create a new socket. Defaults are AF_INET (2) and SOCK_STREAM (1)."""
+    return SocketModule.socket(family, sock_type, proto)
+
+def create_connection(address: tuple[str, int], timeout: float | None = None) -> SocketWrapper:
+    """Connect to a TCP (host, port) address and return the connected socket."""
+    sock: SocketWrapper = socket(2, 1, 0)
+    try:
+        if timeout is not None:
+            sock.settimeout(timeout)
+        sock.connect(address)
+        return sock
+    except Exception:
+        sock.close()
+        raise
+
+def gethostname() -> str:
+    """Return the hostname of the current machine."""
+    return SocketModule.gethostname()
+
+def gethostbyname(hostname: str) -> str:
+    """Resolve a hostname to an IPv4 address string."""
+    return SocketModule.gethostbyname(hostname)
+
+def getfqdn() -> str:
+    """Return the fully qualified domain name of the local host."""
+    return SocketModule.getfqdn()
+
+def getnameinfo(sockaddr: tuple[str, int], flags: int = 0) -> tuple[str, str]:
+    """Resolve a socket address to a (host, service) tuple."""
+    return SocketModule.getnameinfo(sockaddr, flags)
+
+def getdefaulttimeout() -> float | None:
+    """Return the default timeout in seconds for new socket objects, or None."""
+    return SocketModule.getdefaulttimeout()
+
+def setdefaulttimeout(timeout: float | None) -> None:
+    """Set the default timeout for new socket objects. None means blocking mode."""
+    SocketModule.setdefaulttimeout(timeout)
+
+def htons(x: int) -> int:
+    """Convert a 16-bit integer from host byte order to network byte order."""
+    return SocketModule.htons(x)
+
+def htonl(x: int) -> int:
+    """Convert a 32-bit integer from host byte order to network byte order."""
+    return SocketModule.htonl(x)
+
+def ntohs(x: int) -> int:
+    """Convert a 16-bit integer from network byte order to host byte order."""
+    return SocketModule.ntohs(x)
+
+def ntohl(x: int) -> int:
+    """Convert a 32-bit integer from network byte order to host byte order."""
+    return SocketModule.ntohl(x)
+
+def inet_aton(ip_string: str) -> bytes:
+    """Convert an IPv4 address string to 32-bit packed binary format."""
+    ...
+
+def inet_ntoa(packed_ip: bytes) -> str:
+    """Convert a 32-bit packed binary IPv4 address to a string."""
+    # C# method is Inet_ntoa (underscore) which doesn't match Sharpy name mangling
+    ...
+
+def inet_pton(af: int, ip_string: str) -> bytes:
+    """Convert an IP address string to packed binary format for the given family."""
+    ...
+
+def inet_ntop(af: int, packed_ip: bytes) -> str:
+    """Convert a packed binary IP address to string form for the given family."""
+    ...

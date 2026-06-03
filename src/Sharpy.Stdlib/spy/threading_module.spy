@@ -1,3 +1,32 @@
 """Thread-based concurrency primitives, similar to Python's threading module."""
 
 from sharpy import Thread, Lock, RLock, Event, Semaphore, BoundedSemaphore, Barrier, Timer
+from sharpy import BrokenBarrierError
+from sharpy import ThreadingModule
+
+def active_count() -> int:
+    """Return the number of threads currently alive in the process."""
+    return ThreadingModule.active_count()
+
+def current_thread() -> Thread:
+    """Return the Thread object for the caller's thread of control."""
+    return ThreadingModule.current_thread()
+
+def main_thread() -> Thread:
+    """Return the main Thread object."""
+    return ThreadingModule.main_thread()
+
+def enumerate() -> list[Thread]:
+    """Return a list of all Thread objects currently alive.
+
+    .NET does not track managed Thread wrapper objects globally, so this
+    returns only the calling thread.
+    """
+    result: list[Thread] = []
+    result.append(ThreadingModule.current_thread())
+    return result
+
+def get_ident() -> int:
+    """Return the thread identifier of the current thread."""
+    # Thread.ident property not accessible via Sharpy name mangling
+    ...
