@@ -84,7 +84,7 @@ internal partial class RoslynEmitter
         }
 
         // Process decorators to determine modifiers
-        var modifiers = GenerateModifiersFromDecorators(func.Decorators);
+        var modifiers = GenerateModifiersFromDecorators(func.Decorators, func.Name);
 
         // Reorder parameters for C# compliance (required before optional, params last)
         var orderedParams = ReorderParametersForCSharp(func.Parameters);
@@ -285,17 +285,19 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Convenience overload for member-level modifier generation (functions/methods).
+    /// When <paramref name="memberName"/> is provided, underscore-prefixed names get
+    /// reduced visibility (internal for _name, private for __name) instead of public.
     /// </summary>
-    private SyntaxTokenList GenerateModifiersFromDecorators(IReadOnlyList<Decorator> decorators)
+    private SyntaxTokenList GenerateModifiersFromDecorators(IReadOnlyList<Decorator> decorators, string? memberName = null)
     {
-        return GenerateModifiersFromDecorators(decorators, ModifierContext.Member);
+        return GenerateModifiersFromDecorators(decorators, ModifierContext.Member, memberName);
     }
 
     /// <summary>
     /// Generates C# modifier tokens from Sharpy decorators. The <paramref name="context"/> parameter
     /// controls which non-access modifiers are recognized and whether a mandatory static default is added.
     /// </summary>
-    private SyntaxTokenList GenerateModifiersFromDecorators(IReadOnlyList<Decorator> decorators, ModifierContext context)
+    private SyntaxTokenList GenerateModifiersFromDecorators(IReadOnlyList<Decorator> decorators, ModifierContext context, string? memberName = null)
     {
         var tokens = new List<SyntaxToken>();
 
@@ -326,10 +328,16 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Default to public if no access modifier specified
         if (!hasAccessModifier)
         {
-            tokens.Add(Token(SyntaxKind.PublicKeyword));
+            if (memberName != null)
+            {
+                tokens.Add(Token(GetModuleLevelAccessModifier(memberName)));
+            }
+            else
+            {
+                tokens.Add(Token(SyntaxKind.PublicKeyword));
+            }
         }
 
         // Check for other modifiers (context-dependent)

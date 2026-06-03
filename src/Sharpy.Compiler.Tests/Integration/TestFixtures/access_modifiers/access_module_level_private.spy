@@ -1,0 +1,11 @@
+def public_func() -> int:
+    return _helper(1) + __internal_helper(2)
+
+def _helper(x: int) -> int:
+    return x + 1
+
+def __internal_helper(x: int) -> int:
+    return x * 2
+
+def main():
+    print(public_func())

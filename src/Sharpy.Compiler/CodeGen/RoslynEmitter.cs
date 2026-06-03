@@ -1207,4 +1207,20 @@ internal partial class RoslynEmitter : ICodeEmitter
             _ => SyntaxKind.PublicKeyword,
         };
     }
+
+    /// <summary>
+    /// Maps underscore naming convention to access modifiers for module-level functions.
+    /// Unlike class members where _name → protected, module-level _name → internal
+    /// (assembly-private, matching Python's "module-private" convention).
+    /// </summary>
+    private static SyntaxKind GetModuleLevelAccessModifier(string functionName)
+    {
+        var level = AccessLevelConventions.FromName(functionName);
+        return level switch
+        {
+            AccessLevel.Private => SyntaxKind.PrivateKeyword,
+            AccessLevel.Protected => SyntaxKind.InternalKeyword,
+            _ => SyntaxKind.PublicKeyword,
+        };
+    }
 }
