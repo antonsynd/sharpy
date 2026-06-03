@@ -272,4 +272,33 @@ def test():
 
         typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
+
+    // ========== CLR primitive casts (#825) ==========
+
+    [Theory]
+    [InlineData("short")]
+    [InlineData("int16")]
+    [InlineData("byte")]
+    [InlineData("uint8")]
+    [InlineData("sbyte")]
+    [InlineData("int8")]
+    [InlineData("ushort")]
+    [InlineData("uint16")]
+    [InlineData("uint")]
+    [InlineData("uint32")]
+    [InlineData("ulong")]
+    [InlineData("uint64")]
+    public void CastToClrPrimitiveType_IsValid(string targetType)
+    {
+        var source = $@"
+def test():
+    x: int = 42
+    y = x to {targetType}
+";
+        var (module, _, _, typeChecker, _) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            $"casting int to {targetType} should be valid");
+    }
 }

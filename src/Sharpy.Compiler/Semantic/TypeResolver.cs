@@ -284,7 +284,55 @@ internal class TypeResolver
             _ => null!
         };
 
-        return type != null;
+        if (type != null)
+            return true;
+
+        // Fall back to PrimitiveCatalog for CLR interop types (short, byte, uint, etc.)
+        var primitiveInfo = PrimitiveCatalog.GetByName(name);
+        if (primitiveInfo != null)
+        {
+            var resolved = ClrTypeToSemanticType(primitiveInfo.ClrType);
+            if (resolved != null)
+            {
+                type = resolved;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static SemanticType? ClrTypeToSemanticType(Type clrType)
+    {
+        if (clrType == typeof(sbyte))
+            return SemanticType.SByte;
+        if (clrType == typeof(byte))
+            return SemanticType.Byte;
+        if (clrType == typeof(short))
+            return SemanticType.Short;
+        if (clrType == typeof(ushort))
+            return SemanticType.UShort;
+        if (clrType == typeof(int))
+            return SemanticType.Int;
+        if (clrType == typeof(long))
+            return SemanticType.Long;
+        if (clrType == typeof(uint))
+            return SemanticType.UInt;
+        if (clrType == typeof(ulong))
+            return SemanticType.ULong;
+        if (clrType == typeof(float))
+            return SemanticType.Float32;
+        if (clrType == typeof(double))
+            return SemanticType.Double;
+        if (clrType == typeof(decimal))
+            return SemanticType.Decimal;
+        if (clrType == typeof(bool))
+            return SemanticType.Bool;
+        if (clrType == typeof(string))
+            return SemanticType.Str;
+        if (clrType == typeof(void))
+            return SemanticType.Void;
+        return null;
     }
 
     private SemanticType ResolveGenericType(TypeAnnotation annotation)

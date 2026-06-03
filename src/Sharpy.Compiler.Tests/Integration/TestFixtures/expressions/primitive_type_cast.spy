@@ -1,0 +1,15 @@
+def main():
+    x: int = 42
+    # Cast to CLR primitive types
+    s: short = x to short
+    print(s)
+    b: byte = x to byte
+    print(b)
+    # Cast using Sharpy-style names
+    s2: int16 = x to int16
+    print(s2)
+    b2: uint8 = x to uint8
+    print(b2)
+    # Cast between CLR primitives
+    u: ushort = s to ushort
+    print(u)

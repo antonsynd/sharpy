@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sharpy.Stdlib.Tests" />
+    <InternalsVisibleTo Include="Sharpy.Stdlib.Spy" />
   </ItemGroup>
 
   <!-- Exclude .spy source directory from C# compilation (contains .spy files

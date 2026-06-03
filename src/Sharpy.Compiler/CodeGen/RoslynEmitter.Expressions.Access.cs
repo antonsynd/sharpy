@@ -320,6 +320,36 @@ internal partial class RoslynEmitter
                 }
             }
 
+            // Handle static method calls on generic CLR types: Comparer[object].create(cmp)
+            // IndexAccess(TypeName, TypeArgs) must emit GenericName<TypeArgs> (angle brackets),
+            // not ElementAccess[TypeArgs] (square brackets).
+            if (memberAccess.Object is IndexAccess genericStaticIndexAccess
+                && genericStaticIndexAccess.Object is Identifier genericStaticTypeId)
+            {
+                var genericStaticSym = _context.LookupSymbol(genericStaticTypeId.Name);
+                if (genericStaticSym is TypeSymbol { IsGeneric: true })
+                {
+                    var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(genericStaticIndexAccess.Index);
+                    var csharpTypeName = NameCasing.ResolveType(genericStaticTypeId.Name, genericStaticTypeId.IsNameBacktickEscaped);
+                    var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpTypeName, typeArgsSyntax);
+
+                    var genericMethodSym = (Symbol?)_context.SemanticInfo?.GetCallTarget(call)
+                        ?? _context.SemanticInfo?.GetMemberAccessResolution(memberAccess)?.Member;
+                    var genericClrMethodName = GetClrMethodName(genericMethodSym);
+                    var genericMethodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
+                        ?? NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, genericClrMethodName);
+
+                    var genericCallArgs = GenerateReorderedCallArguments(call, genericMethodSym as FunctionSymbol);
+
+                    return InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            genericTypeSyntax,
+                            IdentifierName(genericMethodName)))
+                        .WithArgumentList(ArgumentList(SeparatedList(genericCallArgs)));
+                }
+            }
+
             var obj = GenerateExpression(memberAccess.Object);
 
             // Cross-dunder calls: transform operator dunders to C# operator expressions.
