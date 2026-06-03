@@ -93,17 +93,16 @@ def ntohl(x: int) -> int:
 
 def inet_aton(ip_string: str) -> bytes:
     """Convert an IPv4 address string to 32-bit packed binary format."""
-    ...
+    return SocketModule.inet_aton(ip_string)
 
 def inet_ntoa(packed_ip: bytes) -> str:
     """Convert a 32-bit packed binary IPv4 address to a string."""
-    # C# method is Inet_ntoa (underscore) which doesn't match Sharpy name mangling
-    ...
+    return SocketModule.inet_ntoa(packed_ip)
 
 def inet_pton(af: int, ip_string: str) -> bytes:
     """Convert an IP address string to packed binary format for the given family."""
-    ...
+    return SocketModule.inet_pton(af, ip_string)
 
 def inet_ntop(af: int, packed_ip: bytes) -> str:
     """Convert a packed binary IP address to string form for the given family."""
-    ...
+    return SocketModule.inet_ntop(af, packed_ip)
