@@ -2,7 +2,7 @@
 
 from sharpy import SocketWrapper, SocketModule
 from sharpy import SharpySocketError, SharpySocketTimeout, SharpySocketGaiError, SharpySocketHError
-from system.net import IPAddress
+from system.net import IPAddress, Dns
 
 # ---- Address family constants (mirror System.Net.Sockets.AddressFamily) ----
 AF_INET: int = 2
@@ -54,27 +54,43 @@ def create_connection(address: tuple[str, int], timeout: float? = None) -> Socke
 
 def gethostname() -> str:
     """Return the hostname of the current machine."""
-    return SocketModule.gethostname()
+    return Dns.get_host_name()
 
 def gethostbyname(hostname: str) -> str:
     """Resolve a hostname to an IPv4 address string."""
-    return SocketModule.gethostbyname(hostname)
+    addresses = Dns.get_host_addresses(hostname)
+    i: int = 0
+    while i < len(addresses):
+        if (addresses[i].address_family to int) == AF_INET:
+            return addresses[i].to_string()
+        i = i + 1
+    if len(addresses) > 0:
+        return addresses[0].to_string()
+    raise SharpySocketGaiError("Name or service not known", 11001)
 
 def getfqdn() -> str:
     """Return the fully qualified domain name of the local host."""
-    return SocketModule.getfqdn()
+    try:
+        host_name: str = Dns.get_host_name()
+        entry = Dns.get_host_entry(host_name)
+        return entry.host_name
+    except Exception:
+        return "localhost"
 
 def getnameinfo(sockaddr: tuple[str, int], flags: int = 0) -> tuple[str, str]:
     """Resolve a socket address to a (host, service) tuple."""
-    return SocketModule.getnameinfo(sockaddr, flags)
+    entry = Dns.get_host_entry(sockaddr[0])
+    host: str = entry.host_name
+    service: str = str(sockaddr[1])
+    return (host, service)
 
 def getdefaulttimeout() -> float?:
     """Return the default timeout in seconds for new socket objects, or None."""
-    return SocketModule.getdefaulttimeout()
+    ...
 
 def setdefaulttimeout(timeout: float?) -> None:
     """Set the default timeout for new socket objects. None means blocking mode."""
-    SocketModule.setdefaulttimeout(timeout)
+    ...
 
 def htons(x: int) -> int:
     """Convert a 16-bit integer from host byte order to network byte order."""

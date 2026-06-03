@@ -605,15 +605,38 @@ internal class ModuleRegistry
         if (tpaString == null)
             return;
 
-        var prefix = netNamespace + ".";
+        // Build match prefixes: the namespace itself plus parent namespaces.
+        // .NET distributes types across assemblies that don't always match the
+        // namespace — e.g., System.Net.Sockets.AddressFamily is in
+        // System.Net.Primitives.dll. Loading parent-namespace assemblies
+        // catches these cross-assembly cases.
+        var prefixes = new List<string>();
+        prefixes.Add(netNamespace + ".");
+        prefixes.Add(netNamespace);
+        var parts = netNamespace.Split('.');
+        for (int i = parts.Length - 1; i >= 2; i--)
+        {
+            var parent = string.Join(".", parts, 0, i);
+            prefixes.Add(parent + ".");
+        }
+
         foreach (var path in tpaString.Split(Path.PathSeparator))
         {
             var fileName = Path.GetFileNameWithoutExtension(path);
             if (fileName == null)
                 continue;
 
-            if (!fileName.StartsWith(prefix, StringComparison.Ordinal) &&
-                !string.Equals(fileName, netNamespace, StringComparison.Ordinal))
+            bool matches = false;
+            foreach (var prefix in prefixes)
+            {
+                if (fileName.StartsWith(prefix, StringComparison.Ordinal) ||
+                    string.Equals(fileName, prefix.TrimEnd('.'), StringComparison.Ordinal))
+                {
+                    matches = true;
+                    break;
+                }
+            }
+            if (!matches)
                 continue;
 
             if (AppDomain.CurrentDomain.GetAssemblies().Any(
