@@ -23,10 +23,9 @@ def enumerate() -> list[Thread]:
     returns only the calling thread.
     """
     result: list[Thread] = []
-    result.append(ThreadingModule.current_thread())
+    result.append(current_thread())
     return result
 
 def get_ident() -> int:
     """Return the thread identifier of the current thread."""
-    # Thread.ident property not accessible via Sharpy name mangling
     ...

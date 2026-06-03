@@ -40,7 +40,7 @@ def socket(family: int = 2, sock_type: int = 1, proto: int = 0) -> SocketWrapper
     """Create a new socket. Defaults are AF_INET (2) and SOCK_STREAM (1)."""
     return SocketModule.socket(family, sock_type, proto)
 
-def create_connection(address: tuple[str, int], timeout: float | None = None) -> SocketWrapper:
+def create_connection(address: tuple[str, int], timeout: float? = None) -> SocketWrapper:
     """Connect to a TCP (host, port) address and return the connected socket."""
     sock: SocketWrapper = socket(2, 1, 0)
     try:
@@ -68,11 +68,11 @@ def getnameinfo(sockaddr: tuple[str, int], flags: int = 0) -> tuple[str, str]:
     """Resolve a socket address to a (host, service) tuple."""
     return SocketModule.getnameinfo(sockaddr, flags)
 
-def getdefaulttimeout() -> float | None:
+def getdefaulttimeout() -> float?:
     """Return the default timeout in seconds for new socket objects, or None."""
     return SocketModule.getdefaulttimeout()
 
-def setdefaulttimeout(timeout: float | None) -> None:
+def setdefaulttimeout(timeout: float?) -> None:
     """Set the default timeout for new socket objects. None means blocking mode."""
     SocketModule.setdefaulttimeout(timeout)
 
