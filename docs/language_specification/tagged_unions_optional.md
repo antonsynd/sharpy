@@ -105,12 +105,12 @@ union Optional[T]:
             case Some(value):
                 return Some(f(value))
             case None:
-                return None()
+                return None
 ```
 
 ## Constructor Shorthand
 
-When the expected type is known, you can use `Some(value)` and `None()`
+When the expected type is known, you can use `Some(value)` and `None`
 without qualifying with the type name:
 
 ```python

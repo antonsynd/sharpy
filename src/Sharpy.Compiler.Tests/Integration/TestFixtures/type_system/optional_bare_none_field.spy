@@ -1,0 +1,13 @@
+class Config:
+    timeout: int? = None
+    name: str? = None
+
+    def __init__(self):
+        pass
+
+def main():
+    c = Config()
+    print(c.timeout.is_none)
+    print(c.name.is_none)
+    c.timeout = Some(30)
+    print(c.timeout)
