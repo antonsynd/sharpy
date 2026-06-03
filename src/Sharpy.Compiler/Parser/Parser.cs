@@ -118,8 +118,10 @@ public partial class Parser
         for (int i = 2; ; i++)
         {
             var type = Peek(i).Type;
-            if (type == TokenType.Eof) return true;
-            if (type == TokenType.LeftParen) depth++;
+            if (type == TokenType.Eof)
+                return true;
+            if (type == TokenType.LeftParen)
+                depth++;
             else if (type == TokenType.RightParen)
             {
                 depth--;

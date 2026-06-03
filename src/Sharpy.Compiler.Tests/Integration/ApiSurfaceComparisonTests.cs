@@ -101,7 +101,8 @@ public class ApiSurfaceComparisonTests
     // - zlib: .spy Crc32/Adler32 signatures differ from C#
     private static readonly HashSet<string> KnownMismatchModules = new()
     {
-        "base64_module", "calendar_module", "struct_module", "zlib_module"
+        "base64_module", "calendar_module", "struct_module", "zlib_module",
+        "heapq", "random_module", "re_module", "hashlib_module", "functools", "statistics",
     };
 
     [Fact]

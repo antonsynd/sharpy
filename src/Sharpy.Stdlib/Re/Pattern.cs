@@ -53,7 +53,7 @@ namespace Sharpy
         /// <summary>The internal .NET Regex object.</summary>
         internal Regex InternalRegex => _regex;
 
-        internal RePattern(string pattern, int flags)
+        public RePattern(string pattern, int flags)
         {
             PatternStr = pattern;
             Flags = flags;

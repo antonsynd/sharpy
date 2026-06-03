@@ -13,3 +13,13 @@ def reduce[T](func: (T, T) -> T, iterable: list[T]) -> T:
         accumulator = func(accumulator, items[i])
         i = i + 1
     return accumulator
+
+def reduce[T](func: (T, T) -> T, iterable: list[T], initial: T) -> T:
+    """Apply function of two arguments cumulatively to the items of iterable, starting with initial value."""
+    accumulator: T = initial
+    items: list[T] = list(iterable)
+    i: int = 0
+    while i < len(items):
+        accumulator = func(accumulator, items[i])
+        i = i + 1
+    return accumulator

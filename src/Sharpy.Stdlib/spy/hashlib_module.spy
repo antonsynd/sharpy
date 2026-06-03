@@ -36,3 +36,38 @@ def sha512(data: str = "") -> HashObject:
     if len(data) > 0:
         obj.update(data)
     return obj
+
+def sha224(data: str = "") -> HashObject:
+    """Return a new hash object for SHA-224, optionally initialized with data."""
+    obj: HashObject = HashObject("sha224", 28)
+    if len(data) > 0:
+        obj.update(data)
+    return obj
+
+def sha3_256(data: str = "") -> HashObject:
+    """Return a new hash object for SHA3-256, optionally initialized with data."""
+    obj: HashObject = HashObject("sha3_256", 32)
+    if len(data) > 0:
+        obj.update(data)
+    return obj
+
+def sha3_512(data: str = "") -> HashObject:
+    """Return a new hash object for SHA3-512, optionally initialized with data."""
+    obj: HashObject = HashObject("sha3_512", 64)
+    if len(data) > 0:
+        obj.update(data)
+    return obj
+
+def blake2b(data: str = "") -> HashObject:
+    """Return a new hash object for BLAKE2b, optionally initialized with data."""
+    obj: HashObject = HashObject("blake2b", 64)
+    if len(data) > 0:
+        obj.update(data)
+    return obj
+
+def blake2s(data: str = "") -> HashObject:
+    """Return a new hash object for BLAKE2s, optionally initialized with data."""
+    obj: HashObject = HashObject("blake2s", 32)
+    if len(data) > 0:
+        obj.update(data)
+    return obj

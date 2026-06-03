@@ -69,6 +69,30 @@ def nsmallest[T: IComparable[T]](n: int, iterable: list[T]) -> list[T]:
         return sorted_copy
     return sorted_copy[:n]
 
+def merge[T: IComparable[T]](list1: list[T], list2: list[T]) -> list[T]:
+    """Merge two sorted inputs into a single sorted output."""
+    result: list[T] = []
+    i: int = 0
+    j: int = 0
+    while i < len(list1) and j < len(list2):
+        if list1[i].compare_to(list2[j]) <= 0:
+            result.append(list1[i])
+            i = i + 1
+        else:
+            result.append(list2[j])
+            j = j + 1
+    while i < len(list1):
+        result.append(list1[i])
+        i = i + 1
+    while j < len(list2):
+        result.append(list2[j])
+        j = j + 1
+    return result
+
+def merge[T: IComparable[T]](list1: list[T], list2: list[T], list3: list[T]) -> list[T]:
+    """Merge three sorted inputs into a single sorted output."""
+    return merge(merge(list1, list2), list3)
+
 def _sift_up[T: IComparable[T]](heap: list[T], index: int) -> None:
     """Bubble element at index up to restore the heap invariant."""
     while index > 0:

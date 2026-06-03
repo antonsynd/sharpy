@@ -8,31 +8,42 @@ DOTALL: int = 16
 
 def compile(pattern: str, flags: int = 0) -> RePattern:
     """Compile a regular expression pattern into a pattern object."""
-    ...
+    return RePattern(pattern, flags)
 
-def search(pattern: str, s: str, flags: int = 0) -> ReMatch | None:
+def search(pattern: str, s: str, flags: int = 0) -> ReMatch?:
     """Scan through string looking for the first match."""
-    return None
+    p: RePattern = RePattern(pattern, flags)
+    return p.search(s)
 
-def fullmatch(pattern: str, s: str, flags: int = 0) -> ReMatch | None:
+def match(pattern: str, s: str, flags: int = 0) -> ReMatch?:
+    """Try to apply the pattern at the start of the string."""
+    p: RePattern = RePattern(pattern, flags)
+    return p.match(s)
+
+def fullmatch(pattern: str, s: str, flags: int = 0) -> ReMatch?:
     """Try to apply the pattern to the entire string."""
-    return None
+    p: RePattern = RePattern(pattern, flags)
+    return p.fullmatch(s)
 
 def findall(pattern: str, s: str, flags: int = 0) -> list[object]:
     """Return all non-overlapping matches of pattern in string."""
-    return []
+    p: RePattern = RePattern(pattern, flags)
+    return p.findall(s)
 
 def finditer(pattern: str, s: str, flags: int = 0) -> list[ReMatch]:
     """Return an iterator yielding match objects over all non-overlapping matches."""
-    return []
+    p: RePattern = RePattern(pattern, flags)
+    return p.finditer(s)
 
 def sub(pattern: str, repl: str, s: str, count: int = 0, flags: int = 0) -> str:
     """Return the string obtained by replacing the leftmost non-overlapping occurrences."""
-    return s
+    p: RePattern = RePattern(pattern, flags)
+    return p.sub(repl, s, count)
 
 def split(pattern: str, s: str, maxsplit: int = 0, flags: int = 0) -> list[str]:
     """Split string by the occurrences of pattern."""
-    return []
+    p: RePattern = RePattern(pattern, flags)
+    return p.split(s, maxsplit)
 
 def purge() -> None:
     """Clear the regular expression cache."""

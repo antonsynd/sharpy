@@ -495,10 +495,12 @@ internal class ModuleRegistry
 
     private static string PascalCaseSegment(string segment)
     {
-        if (segment.Length == 0) return segment;
+        if (segment.Length == 0)
+            return segment;
 
         // Handle abbreviations: "io" → "IO", "http" → "Http"
-        if (segment == "io") return "IO";
+        if (segment == "io")
+            return "IO";
 
         var parts = segment.Split('_');
         var sb = new System.Text.StringBuilder();

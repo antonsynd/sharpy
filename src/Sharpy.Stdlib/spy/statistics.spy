@@ -113,3 +113,73 @@ def _sum_of_squared_deviations(values: list[float], m: float) -> float:
         diff: float = v - m
         ss = ss + diff * diff
     return ss
+
+def _ints_to_floats(data: list[int]) -> list[float]:
+    """Convert a list of ints to a list of floats."""
+    result: list[float] = []
+    for v in data:
+        result.append(float(v))
+    return result
+
+def _longs_to_floats(data: list[long]) -> list[float]:
+    """Convert a list of longs to a list of floats."""
+    result: list[float] = []
+    for v in data:
+        result.append(float(v))
+    return result
+
+def mean(data: list[int]) -> float:
+    """Return the sample arithmetic mean of integer data."""
+    return mean(_ints_to_floats(data))
+
+def mean(data: list[long]) -> float:
+    """Return the sample arithmetic mean of long integer data."""
+    return mean(_longs_to_floats(data))
+
+def fmean(data: list[int]) -> float:
+    """Convert integer data to floats and compute the arithmetic mean."""
+    return mean(_ints_to_floats(data))
+
+def fmean(data: list[long]) -> float:
+    """Convert long integer data to floats and compute the arithmetic mean."""
+    return mean(_longs_to_floats(data))
+
+def median(data: list[int]) -> float:
+    """Return the median (middle value) of integer data."""
+    return median(_ints_to_floats(data))
+
+def median(data: list[long]) -> float:
+    """Return the median (middle value) of long integer data."""
+    return median(_longs_to_floats(data))
+
+def stdev(data: list[int]) -> float:
+    """Return the square root of the sample variance for integer data."""
+    return stdev(_ints_to_floats(data))
+
+def stdev(data: list[long]) -> float:
+    """Return the square root of the sample variance for long integer data."""
+    return stdev(_longs_to_floats(data))
+
+def variance(data: list[int]) -> float:
+    """Return the sample variance of integer data."""
+    return variance(_ints_to_floats(data))
+
+def variance(data: list[long]) -> float:
+    """Return the sample variance of long integer data."""
+    return variance(_longs_to_floats(data))
+
+def pstdev(data: list[int]) -> float:
+    """Return the square root of the population variance for integer data."""
+    return pstdev(_ints_to_floats(data))
+
+def pstdev(data: list[long]) -> float:
+    """Return the square root of the population variance for long integer data."""
+    return pstdev(_longs_to_floats(data))
+
+def pvariance(data: list[int]) -> float:
+    """Return the population variance of integer data."""
+    return pvariance(_ints_to_floats(data))
+
+def pvariance(data: list[long]) -> float:
+    """Return the population variance of long integer data."""
+    return pvariance(_longs_to_floats(data))

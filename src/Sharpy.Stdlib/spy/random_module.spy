@@ -80,3 +80,37 @@ def getrandbits(k: int) -> int:
     if k > 30:
         raise ValueError("number of bits must be <= 30 for int return")
     return _random.next(1 << k)
+
+def choices[T](population: list[T], k: int = 1) -> list[T]:
+    """Return a list of k elements chosen from population with replacement."""
+    n: int = len(population)
+    if n == 0:
+        raise IndexError("Cannot choose from an empty population")
+    result: list[T] = []
+    i: int = 0
+    while i < k:
+        result.append(population[_random.next(n)])
+        i = i + 1
+    return result
+
+def sample[T](population: list[T], k: int) -> list[T]:
+    """Return k unique elements from population without replacement."""
+    n: int = len(population)
+    if k < 0:
+        raise ValueError("Sample larger than population or is negative")
+    if k > n:
+        raise ValueError("Sample larger than population or is negative")
+    pool: list[T] = list(population)
+    i: int = 0
+    while i < k:
+        j: int = _random.next(i, n)
+        temp: T = pool[i]
+        pool[i] = pool[j]
+        pool[j] = temp
+        i = i + 1
+    result: list[T] = []
+    i = 0
+    while i < k:
+        result.append(pool[i])
+        i = i + 1
+    return result

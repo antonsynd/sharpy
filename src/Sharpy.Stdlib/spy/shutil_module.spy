@@ -1,6 +1,6 @@
 """High-level file operations (copy, move, remove trees)."""
 
-from system.io import Path as IoPath, File, Directory, IOException
+from system.io import Path as IoPath, File, Directory, IOException, DriveInfo
 from system import Environment
 
 def copy(src: str, dst: str) -> str:
@@ -94,6 +94,14 @@ def which(name: str) -> str | None:
             if File.exists(candidate):
                 return candidate
     return None
+
+def disk_usage(path: str) -> tuple[long, long, long]:
+    """Return disk usage statistics about the given path as a (total, used, free) tuple."""
+    drive: DriveInfo = DriveInfo(path)
+    total: long = drive.total_size
+    free: long = drive.available_free_space
+    used: long = total - free
+    return (total, used, free)
 
 def _resolve_destination(src: str, dst: str) -> str:
     """Resolve the final destination path, appending the source filename if dst is a directory."""
