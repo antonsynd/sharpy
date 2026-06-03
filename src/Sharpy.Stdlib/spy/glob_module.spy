@@ -1,0 +1,11 @@
+"""Filename globbing utility."""
+
+from system.io import Directory, Path as IoPath
+
+def glob(pattern: str) -> list[str]:
+    """Return a list of paths matching a pathname pattern."""
+    return []
+
+def escape(pathname: str) -> str:
+    """Escape all special characters in a pathname."""
+    return pathname

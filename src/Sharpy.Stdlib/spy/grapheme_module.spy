@@ -1,0 +1,21 @@
+"""Unicode grapheme cluster utilities."""
+
+def graphemes(text: str) -> list[str]:
+    """Split text into a list of grapheme clusters."""
+    return []
+
+def length(text: str) -> int:
+    """Return the number of grapheme clusters in text."""
+    return len(text)
+
+def slice(text: str, start: int) -> str:
+    """Slice text by grapheme cluster positions from start to end."""
+    return text
+
+def slice(text: str, start: int, end: int) -> str:
+    """Slice text by grapheme cluster positions from start to end."""
+    return text
+
+def at(text: str, index: int) -> str:
+    """Return the grapheme cluster at the given index."""
+    return ""

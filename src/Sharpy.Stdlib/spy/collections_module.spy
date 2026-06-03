@@ -1,0 +1,3 @@
+"""High-performance container datatypes."""
+
+from sharpy import OrderedDict, Counter, Deque, DefaultDict, ChainMap

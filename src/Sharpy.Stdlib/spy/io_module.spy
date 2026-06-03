@@ -1,0 +1,3 @@
+"""Core tools for working with streams and file-like objects."""
+
+from sharpy import StringIO

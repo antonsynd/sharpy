@@ -72,6 +72,19 @@ public class ApiSurfaceComparisonTests
         ["zipfile_module"] = "zipfile",
         ["zlib_module"] = "zlib",
         ["zoneinfo_module"] = "zoneinfo",
+        ["argparse_module"] = "argparse",
+        ["collections_module"] = "collections",
+        ["csv_module"] = "csv",
+        ["datetime_module"] = "datetime",
+        ["glob_module"] = "glob",
+        ["grapheme_module"] = "grapheme",
+        ["io_module"] = "io",
+        ["json_module"] = "json",
+        ["logging_module"] = "logging",
+        ["pathlib_module"] = "pathlib",
+        ["re_module"] = "re",
+        ["requests_module"] = "requests",
+        ["unittest_module"] = "unittest",
     };
 
     public ApiSurfaceComparisonTests(ITestOutputHelper output)

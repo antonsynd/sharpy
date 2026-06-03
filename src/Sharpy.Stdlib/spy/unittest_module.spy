@@ -1,0 +1,39 @@
+"""Unit testing framework."""
+
+from sharpy import TestCase
+
+def assert_true(value: object) -> None:
+    """Test that value is truthy."""
+    ...
+
+def assert_false(value: object) -> None:
+    """Test that value is falsy."""
+    ...
+
+def assert_is_none(value: object) -> None:
+    """Test that value is None."""
+    ...
+
+def assert_is_not_none(value: object) -> None:
+    """Test that value is not None."""
+    ...
+
+def assert_greater(a: object, b: object) -> None:
+    """Test that a is greater than b."""
+    ...
+
+def assert_less(a: object, b: object) -> None:
+    """Test that a is less than b."""
+    ...
+
+def assert_in(item: object, collection: object) -> None:
+    """Test that item is in collection."""
+    ...
+
+def assert_not_in(item: object, collection: object) -> None:
+    """Test that item is not in collection."""
+    ...
+
+def assert_almost_equal(actual: float, expected: float, places: int = 7, delta: float = 0.0) -> None:
+    """Test that actual and expected are approximately equal."""
+    ...

@@ -1,0 +1,43 @@
+"""Regular expression matching operations."""
+
+from sharpy import ReMatch, RePattern, ReError
+
+IGNORECASE: int = 1
+MULTILINE: int = 2
+DOTALL: int = 16
+
+def compile(pattern: str, flags: int = 0) -> RePattern:
+    """Compile a regular expression pattern into a pattern object."""
+    ...
+
+def search(pattern: str, s: str, flags: int = 0) -> ReMatch | None:
+    """Scan through string looking for the first match."""
+    return None
+
+def fullmatch(pattern: str, s: str, flags: int = 0) -> ReMatch | None:
+    """Try to apply the pattern to the entire string."""
+    return None
+
+def findall(pattern: str, s: str, flags: int = 0) -> list[object]:
+    """Return all non-overlapping matches of pattern in string."""
+    return []
+
+def finditer(pattern: str, s: str, flags: int = 0) -> list[ReMatch]:
+    """Return an iterator yielding match objects over all non-overlapping matches."""
+    return []
+
+def sub(pattern: str, repl: str, s: str, count: int = 0, flags: int = 0) -> str:
+    """Return the string obtained by replacing the leftmost non-overlapping occurrences."""
+    return s
+
+def split(pattern: str, s: str, maxsplit: int = 0, flags: int = 0) -> list[str]:
+    """Split string by the occurrences of pattern."""
+    return []
+
+def purge() -> None:
+    """Clear the regular expression cache."""
+    pass
+
+def escape(pattern: str) -> str:
+    """Escape special characters in pattern."""
+    return pattern

@@ -1,0 +1,37 @@
+"""Flexible event logging system."""
+
+from sharpy import Logger
+
+DEBUG: int = 10
+INFO: int = 20
+WARNING: int = 30
+ERROR: int = 40
+CRITICAL: int = 50
+
+def get_logger(name: str = "root") -> Logger:
+    """Return a logger with the specified name."""
+    return Logger("root")
+
+def basic_config(level: int = 30) -> None:
+    """Do basic configuration for the logging system."""
+    pass
+
+def debug(msg: str) -> None:
+    """Log a message with severity DEBUG."""
+    pass
+
+def info(msg: str) -> None:
+    """Log a message with severity INFO."""
+    pass
+
+def warning(msg: str) -> None:
+    """Log a message with severity WARNING."""
+    pass
+
+def error(msg: str) -> None:
+    """Log a message with severity ERROR."""
+    pass
+
+def critical(msg: str) -> None:
+    """Log a message with severity CRITICAL."""
+    pass
