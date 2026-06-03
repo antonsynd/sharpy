@@ -104,6 +104,32 @@ public partial class Parser
     private bool IsAtEnd => Current.Type == TokenType.Eof;
 
     /// <summary>
+    /// Determines whether <c>match</c> at the current position is a soft-keyword
+    /// function call (e.g. <c>match(args)</c>) rather than a match statement/expression.
+    /// Returns true when <c>match</c> is followed by <c>(</c> and the matching <c>)</c>
+    /// is NOT followed by <c>:</c> — i.e., it's a call, not <c>match (scrutinee):</c>.
+    /// </summary>
+    private bool IsMatchSoftKeywordCall()
+    {
+        if (Peek().Type != TokenType.LeftParen)
+            return false;
+
+        int depth = 1;
+        for (int i = 2; ; i++)
+        {
+            var type = Peek(i).Type;
+            if (type == TokenType.Eof) return true;
+            if (type == TokenType.LeftParen) depth++;
+            else if (type == TokenType.RightParen)
+            {
+                depth--;
+                if (depth == 0)
+                    return Peek(i + 1).Type != TokenType.Colon;
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets the TextSpan of the current token, or null if position tracking is unavailable.
     /// Convenience accessor for use in ReportError calls.
     /// </summary>
@@ -515,6 +541,9 @@ public partial class Parser
         if (Current.Type == TokenType.Nonlocal)
             throw ReportError("Sharpy does not support 'nonlocal' — C# scoping rules apply (Axiom 1)", Current.Line, Current.Column, DiagnosticCodes.Parser.RejectedPythonKeyword, span: CurrentSpan);
 
+        if (Current.Type == TokenType.Match && !IsMatchSoftKeywordCall())
+            return ParseMatchStatement();
+
         return Current.Type switch
         {
             TokenType.Def => ParseFunctionDef(),
@@ -541,7 +570,6 @@ public partial class Parser
             TokenType.Import => ParseImportStatement(),
             TokenType.From => ParseFromImportStatement(),
             TokenType.Const => ParseConstDeclaration(),
-            TokenType.Match => ParseMatchStatement(),
             _ => ParseSimpleStatement()
         };
     }

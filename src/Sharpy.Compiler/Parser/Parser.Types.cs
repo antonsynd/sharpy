@@ -500,12 +500,15 @@ public partial class Parser
 
     private string ExpectIdentifier()
     {
-        if (Current.Type != TokenType.Identifier)
+        if (Current.Type != TokenType.Identifier && !IsSoftKeyword(Current.Type))
             throw ReportError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedIdentifier, span: CurrentSpan);
         var value = Current.Value;
         Advance();
         return value;
     }
+
+    private static bool IsSoftKeyword(TokenType type) =>
+        type is TokenType.Match or TokenType.Case;
 
     /// <summary>
     /// Expects an identifier or keyword token and returns its value as a string.

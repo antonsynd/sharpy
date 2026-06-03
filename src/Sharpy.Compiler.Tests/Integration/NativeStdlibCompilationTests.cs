@@ -67,6 +67,21 @@ public class NativeStdlibCompilationTests
         "http_module",
         "tarfile_module",
         "email_module",
+        "argparse_module",
+        "collections_module",
+        "csv_module",
+        "datetime_module",
+        "glob_module",
+        "grapheme_module",
+        "io_module",
+        "json_module",
+        "logging_module",
+        "pathlib_module",
+        "re_module",
+        "requests_module",
+        "sys_module",
+        "time_module",
+        "unittest_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)

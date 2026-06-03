@@ -1,0 +1,16 @@
+def match(x: int) -> str:
+    return "matched " + str(x)
+
+def case(x: int) -> str:
+    return "cased " + str(x)
+
+def main():
+    print(match(1))
+    print(case(2))
+
+    x: int = 10
+    match x:
+        case 10:
+            print("ten")
+        case _:
+            print("other")

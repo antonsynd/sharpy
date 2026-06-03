@@ -315,6 +315,9 @@ internal class ModuleRegistry
         if (netNamespace == null)
             return types;
 
+        // Ensure runtime assemblies for this namespace are loaded (e.g., System.IO.FileSystem for System.IO)
+        EnsureRuntimeAssembliesLoaded(netNamespace);
+
         // Search all loaded assemblies for types in this namespace
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
@@ -556,6 +559,49 @@ internal class ModuleRegistry
         }
 
         return null;
+    }
+
+    private static readonly HashSet<string> _loadedRuntimeNamespaces = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Loads runtime assemblies whose names match or start with the given .NET namespace.
+    /// This ensures types like System.IO.DriveInfo (in System.IO.FileSystem.dll) are
+    /// discoverable even when the hosting assembly isn't loaded by default.
+    /// </summary>
+    private void EnsureRuntimeAssembliesLoaded(string netNamespace)
+    {
+        if (!_loadedRuntimeNamespaces.Add(netNamespace))
+            return;
+
+        var tpaString = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
+        if (tpaString == null)
+            return;
+
+        var prefix = netNamespace + ".";
+        foreach (var path in tpaString.Split(Path.PathSeparator))
+        {
+            var fileName = Path.GetFileNameWithoutExtension(path);
+            if (fileName == null)
+                continue;
+
+            if (!fileName.StartsWith(prefix, StringComparison.Ordinal) &&
+                !string.Equals(fileName, netNamespace, StringComparison.Ordinal))
+                continue;
+
+            if (AppDomain.CurrentDomain.GetAssemblies().Any(
+                a => string.Equals(a.GetName().Name, fileName, StringComparison.Ordinal)))
+                continue;
+
+            try
+            {
+                Assembly.LoadFrom(path);
+                _logger.LogDebug($"Loaded runtime assembly '{fileName}' for namespace '{netNamespace}'");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Failed to load runtime assembly '{fileName}': {ex.Message}");
+            }
+        }
     }
 
 }

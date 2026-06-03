@@ -800,7 +800,36 @@ public partial class Parser
                 }
 
             case TokenType.Match:
+                if (IsMatchSoftKeywordCall())
+                {
+                    var matchToken = Current;
+                    Advance();
+                    return new Identifier
+                    {
+                        Name = "match",
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(matchToken)
+                    };
+                }
                 return ParseMatchExpression();
+
+            case TokenType.Case:
+                {
+                    var caseToken = Current;
+                    Advance();
+                    return new Identifier
+                    {
+                        Name = "case",
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = GetSpanFromToken(caseToken)
+                    };
+                }
 
             default:
                 throw ReportError($"Unexpected token: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);

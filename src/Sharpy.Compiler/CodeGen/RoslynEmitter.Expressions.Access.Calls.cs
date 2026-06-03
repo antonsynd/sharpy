@@ -295,7 +295,7 @@ internal partial class RoslynEmitter
     private static string ConvertModuleToNamespace(string modulePath)
     {
         var parts = modulePath.Split('.');
-        return string.Join(".", parts.Select(p => NameCasing.ResolveType(p, isBacktickEscaped: false)));
+        return string.Join(".", parts.Select(NameMangler.ToNamespacePart));
     }
 
     // ============================================================
