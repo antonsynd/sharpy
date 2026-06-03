@@ -8,12 +8,39 @@ DEVNULL: int = -3
 
 def run(args: list[str], capture_output: bool = False, text: bool = True, check: bool = False, timeout: float | None = None, input: str | None = None, cwd: str | None = None, env: dict[str, str] | None = None, shell: bool = False, stdin: int = 0, stdout: int = 0, stderr: int = 0) -> CompletedProcess:
     """Run command with arguments and return a CompletedProcess instance."""
-    return CompletedProcess(args, 0)
+    if len(args) == 0:
+        raise ValueError("args must be a non-empty list")
+    if not text:
+        raise NotImplementedError("binary mode (text=False) is not supported; Sharpy subprocess operates in text mode only")
+    stdin_mode: int = stdin
+    stdout_mode: int = stdout
+    stderr_mode: int = stderr
+    if capture_output:
+        stdout_mode = PIPE
+        stderr_mode = PIPE
+    if input is not None:
+        stdin_mode = PIPE
+    proc: Popen = Popen(args, stdin_mode, stdout_mode, stderr_mode, shell, cwd, env)
+    output: tuple[str | None, str | None] = proc.communicate(input, timeout)
+    out_str: str | None = output[0]
+    err_str: str | None = output[1]
+    code: int | None = proc.returncode
+    exit_code: int = 0
+    if code is not None:
+        exit_code = code
+    if check and exit_code != 0:
+        raise CalledProcessError(exit_code, args, out_str, err_str)
+    return CompletedProcess(args, exit_code, out_str, err_str)
 
 def check_output(args: list[str], text: bool = True, timeout: float | None = None, input: str | None = None, cwd: str | None = None, env: dict[str, str] | None = None, shell: bool = False, stderr: int = 0) -> str:
     """Run command with arguments and return its output, raising CalledProcessError on non-zero exit."""
-    return ""
+    result: CompletedProcess = run(args, capture_output=True, text=text, check=True, timeout=timeout, input=input, cwd=cwd, env=env, shell=shell, stderr=stderr)
+    out: str | None = result.stdout
+    if out is None:
+        return ""
+    return out
 
 def check_call(args: list[str], timeout: float | None = None, cwd: str | None = None, env: dict[str, str] | None = None, shell: bool = False) -> int:
     """Run command with arguments, raising CalledProcessError on non-zero exit."""
-    return 0
+    result: CompletedProcess = run(args, check=True, timeout=timeout, cwd=cwd, env=env, shell=shell)
+    return result.returncode

@@ -1,72 +1,83 @@
 """Read and write ZIP-format archive files."""
 
-from sharpy import BadZipFile, LargeZipFile, KeyError
+from sharpy import ZipFileArchive, ZipInfo, BadZipFile, LargeZipFile
+from system.io import File, Path as IoPath
 
 ZIP_STORED: int = 0
 ZIP_DEFLATED: int = 8
 
-class ZipInfo:
-    """Metadata about a member of a ZIP archive."""
-    filename: str
-    date_time: list[int]
-    compress_type: int
-    file_size: int
-    compress_size: int
-
-    def __init__(self, filename: str = "NoName"):
-        """Create a ZipInfo instance for the given filename."""
-        self.filename = filename
-
-    def is_dir(self) -> bool:
-        """Return True if this archive member is a directory."""
-        return False
-
 class ZipFile:
     """Class for reading and writing ZIP files."""
+    _impl: ZipFileArchive
+
     def __init__(self, file: str, mode: str = "r", compression: int = 8, allow_zip64: bool = True):
         """Open a ZIP file for reading, writing, or appending."""
-        pass
+        self._impl = ZipFileArchive(file, mode, compression, allow_zip64)
 
     def namelist(self) -> list[str]:
         """Return a list of archive members by name."""
-        return []
+        return self._impl.namelist()
 
     def infolist(self) -> list[ZipInfo]:
         """Return a list of ZipInfo objects for all archive members."""
-        return []
+        return self._impl.infolist()
 
     def getinfo(self, name: str) -> ZipInfo:
         """Return a ZipInfo object with information about the archive member name."""
-        return ZipInfo()
+        return self._impl.getinfo(name)
 
     def read(self, name: str) -> bytes:
         """Return the bytes of the file name in the archive."""
-        return bytes()
+        return self._impl.read(name)
 
-    def write(self, filename: str, arcname: str = "", compress_type: int = 0):
+    def write(self, filename: str, arcname: str = "", compress_type: int = -1) -> None:
         """Write the file named filename to the archive, giving it the archive name arcname."""
-        pass
+        target: str = arcname
+        if target == "":
+            base = IoPath.get_file_name(filename)
+            if base is not None:
+                target = base
+        if compress_type < 0:
+            self._impl.write(filename, target)
+        else:
+            self._impl.write(filename, target, compress_type)
 
-    def writestr(self, arcname: str, data: str, compress_type: int = 0):
+    def writestr(self, arcname: str, data: str, compress_type: int = -1) -> None:
         """Write a string directly into the archive under the given name."""
-        pass
+        if compress_type < 0:
+            self._impl.writestr(arcname, data)
+        else:
+            self._impl.writestr(arcname, data, compress_type)
 
     def extract(self, member: str, path: str = "") -> str:
         """Extract a member from the archive to the current working directory or path."""
-        return ""
+        if path == "":
+            return self._impl.extract(member)
+        return self._impl.extract(member, path)
 
-    def extractall(self, path: str = ""):
+    def extractall(self, path: str = "") -> None:
         """Extract all members from the archive to the current working directory or path."""
-        pass
+        if path == "":
+            self._impl.extractall()
+        else:
+            self._impl.extractall(path)
 
-    def mkdir(self, zinf_or_arcname: str):
+    def mkdir(self, zinf_or_arcname: str) -> None:
         """Create a directory inside the archive."""
-        pass
+        self._impl.mkdir(zinf_or_arcname)
 
-    def close(self):
+    def close(self) -> None:
         """Close the archive file."""
-        pass
+        self._impl.close()
 
 def is_zipfile(filename: str) -> bool:
-    """Return True if filename is a valid ZIP file based on its magic number."""
-    return False
+    """Return True if filename is a valid ZIP file that can be read."""
+    if not File.exists(filename):
+        return False
+    try:
+        zf: ZipFile = ZipFile(filename, "r")
+        zf.namelist()
+        zf.close()
+        return True
+    except Exception:
+        return False

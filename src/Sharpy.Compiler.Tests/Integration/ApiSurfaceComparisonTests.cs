@@ -103,6 +103,7 @@ public class ApiSurfaceComparisonTests
     {
         "base64_module", "calendar_module", "struct_module", "zlib_module",
         "heapq", "random_module", "re_module", "hashlib_module", "functools", "statistics",
+        "itertools", "tempfile_module",
     };
 
     [Fact]

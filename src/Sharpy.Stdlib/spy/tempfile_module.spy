@@ -7,6 +7,10 @@ def gettempdir() -> str:
     temp: str = IoPath.get_temp_path()
     return temp.trim_end(IoPath.DirectorySeparatorChar, IoPath.AltDirectorySeparatorChar)
 
+def gettempprefix() -> str:
+    """Return the filename prefix used to create temporary files."""
+    return "tmp"
+
 def mkdtemp(prefix: str = "tmp") -> str:
     """Create and return a unique temporary directory."""
     try:
@@ -28,3 +32,132 @@ def mkstemp(prefix: str = "tmp", suffix: str = "") -> tuple[int, str]:
         return (0, full_path)
     except Exception as ex:
         raise OSError("Failed to create temporary file: " + ex.Message)
+
+class NamedTemporaryFile:
+    """A temporary file with a visible name, deleted on close by default."""
+    name: str
+    mode: str
+    delete: bool
+    _closed: bool
+
+    def __init__(self, mode: str = "w+b", suffix: str = "", prefix: str = "tmp", delete: bool = True):
+        """Create a named temporary file in the default temporary directory."""
+        random_part: str = IoPath.get_random_file_name().replace(".", "")
+        self.name = IoPath.combine(IoPath.get_temp_path(), prefix + random_part + suffix)
+        File.write_all_text(self.name, "")
+        self.mode = mode
+        self.delete = delete
+        self._closed = False
+
+    def write(self, data: str) -> int:
+        """Write a string to the file, returning the number of characters written."""
+        File.append_all_text(self.name, data)
+        return len(data)
+
+    def read(self) -> str:
+        """Read the entire contents of the file."""
+        return File.read_all_text(self.name)
+
+    def close(self) -> None:
+        """Close the file, deleting it if delete is True."""
+        if self._closed:
+            return
+        self._closed = True
+        if self.delete:
+            if File.exists(self.name):
+                File.delete(self.name)
+
+    def __enter__(self) -> NamedTemporaryFile:
+        return self
+
+    def __exit__(self):
+        self.close()
+
+class TemporaryDirectory:
+    """A temporary directory, recursively deleted on cleanup or context exit."""
+    name: str
+
+    def __init__(self, suffix: str = "", prefix: str = "tmp"):
+        """Create a temporary directory in the default temporary directory."""
+        random_part: str = IoPath.get_random_file_name().replace(".", "")
+        self.name = IoPath.combine(IoPath.get_temp_path(), prefix + random_part + suffix)
+        Directory.create_directory(self.name)
+
+    def cleanup(self) -> None:
+        """Recursively delete the temporary directory and its contents."""
+        if Directory.exists(self.name):
+            Directory.delete(self.name, True)
+
+    def __enter__(self) -> str:
+        return self.name
+
+    def __exit__(self):
+        self.cleanup()
+
+class SpooledTemporaryFile:
+    """A temporary file kept in memory until it exceeds max_size, then written to disk."""
+    max_size: int
+    mode: str
+    name: str | None
+    _buffer: str
+    _rolled: bool
+    _closed: bool
+
+    def __init__(self, max_size: int = 0, mode: str = "w+b"):
+        """Create a spooled temporary file that rolls over to disk when max_size is exceeded."""
+        self.max_size = max_size
+        self.mode = mode
+        self.name = None
+        self._buffer = ""
+        self._rolled = False
+        self._closed = False
+
+    def rollover(self) -> None:
+        """Write the in-memory buffer to a real temporary file on disk."""
+        if self._rolled:
+            return
+        random_part: str = IoPath.get_random_file_name().replace(".", "")
+        path: str = IoPath.combine(IoPath.get_temp_path(), "tmp" + random_part)
+        File.write_all_text(path, self._buffer)
+        self.name = path
+        self._buffer = ""
+        self._rolled = True
+
+    def write(self, data: str) -> int:
+        """Write a string to the spooled file, rolling over to disk if max_size is exceeded."""
+        if self._rolled:
+            path: str | None = self.name
+            if path is not None:
+                File.append_all_text(path, data)
+            return len(data)
+        self._buffer = self._buffer + data
+        if self.max_size > 0:
+            if len(self._buffer) > self.max_size:
+                self.rollover()
+        return len(data)
+
+    def read(self) -> str:
+        """Read the entire contents of the spooled file."""
+        if self._rolled:
+            path: str | None = self.name
+            if path is not None:
+                return File.read_all_text(path)
+            return ""
+        return self._buffer
+
+    def close(self) -> None:
+        """Close the spooled file, deleting any on-disk file."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._rolled:
+            path: str | None = self.name
+            if path is not None:
+                if File.exists(path):
+                    File.delete(path)
+
+    def __enter__(self) -> SpooledTemporaryFile:
+        return self
+
+    def __exit__(self):
+        self.close()

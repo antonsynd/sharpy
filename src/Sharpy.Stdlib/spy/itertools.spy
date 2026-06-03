@@ -1,5 +1,7 @@
 """Functions creating iterators for efficient looping."""
 
+from system import IEquatable
+
 def count(start: int = 0, step: int = 1) -> int:
     """Make an iterator that returns evenly spaced values starting with number start."""
     n: int = start
@@ -90,3 +92,245 @@ def pairwise[T](iterable: list[T]) -> tuple[T, T]:
     while i < len(items) - 1:
         yield (items[i], items[i + 1])
         i = i + 1
+
+def accumulate(iterable: list[int]) -> int:
+    """Make an iterator that returns accumulated sums."""
+    items: list[int] = list(iterable)
+    if len(items) == 0:
+        return
+    total: int = items[0]
+    yield total
+    i: int = 1
+    while i < len(items):
+        total = total + items[i]
+        yield total
+        i = i + 1
+
+def accumulate[T](iterable: list[T], func: (T, T) -> T) -> T:
+    """Make an iterator that returns accumulated results of a binary function."""
+    items: list[T] = list(iterable)
+    if len(items) == 0:
+        return
+    total: T = items[0]
+    yield total
+    i: int = 1
+    while i < len(items):
+        total = func(total, items[i])
+        yield total
+        i = i + 1
+
+def accumulate[T](iterable: list[T], func: (T, T) -> T, initial: T) -> T:
+    """Make an iterator that returns accumulated results of a binary function, starting with an initial value."""
+    total: T = initial
+    yield total
+    for item in iterable:
+        total = func(total, item)
+        yield total
+
+def chain[T](first: list[T], second: list[T]) -> T:
+    """Make an iterator that returns elements from the first iterable until it is exhausted, then proceeds to the next iterable."""
+    for x in first:
+        yield x
+    for y in second:
+        yield y
+
+def chain[T](first: list[T], second: list[T], third: list[T]) -> T:
+    """Make an iterator that returns elements from each iterable in turn until all are exhausted."""
+    for x in first:
+        yield x
+    for y in second:
+        yield y
+    for z in third:
+        yield z
+
+def chain_from_iterable[T](iterables: list[list[T]]) -> T:
+    """Make an iterator that chains all iterables from a single list of iterables."""
+    for inner in iterables:
+        for item in inner:
+            yield item
+
+def starmap[T1, T2, R](func: (T1, T2) -> R, iterable: list[tuple[T1, T2]]) -> R:
+    """Make an iterator that computes the function using arguments obtained from the iterable."""
+    for a, b in iterable:
+        yield func(a, b)
+
+def zip_longest[T](first: list[T], second: list[T], fillvalue: T) -> tuple[T, T]:
+    """Make an iterator that aggregates elements from each iterable, filling missing values with fillvalue."""
+    len_first: int = len(first)
+    len_second: int = len(second)
+    limit: int = len_first if len_first > len_second else len_second
+    i: int = 0
+    while i < limit:
+        x: T = first[i] if i < len_first else fillvalue
+        y: T = second[i] if i < len_second else fillvalue
+        yield (x, y)
+        i = i + 1
+
+def groupby[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> tuple[K, list[T]]:
+    """Make an iterator that returns consecutive keys and groups from the iterable."""
+    items: list[T] = list(iterable)
+    if len(items) == 0:
+        return
+    current_key: K = key(items[0])
+    group: list[T] = [items[0]]
+    i: int = 1
+    while i < len(items):
+        item_key: K = key(items[i])
+        if item_key.equals(current_key):
+            group.append(items[i])
+        else:
+            yield (current_key, group)
+            current_key = item_key
+            group = [items[i]]
+        i = i + 1
+    yield (current_key, group)
+
+def product[T1, T2](first: list[T1], second: list[T2]) -> tuple[T1, T2]:
+    """Cartesian product of two input iterables, equivalent to nested for-loops."""
+    for x in first:
+        for y in second:
+            yield (x, y)
+
+def product[T1, T2, T3](first: list[T1], second: list[T2], third: list[T3]) -> tuple[T1, T2, T3]:
+    """Cartesian product of three input iterables, equivalent to nested for-loops."""
+    for x in first:
+        for y in second:
+            for z in third:
+                yield (x, y, z)
+
+def combinations[T](iterable: list[T], r: int) -> list[T]:
+    """Return successive r-length combinations of elements in the iterable."""
+    if r < 0:
+        raise ValueError("r must be non-negative")
+    pool: list[T] = list(iterable)
+    n: int = len(pool)
+    if r > n:
+        return
+    indices: list[int] = []
+    i: int = 0
+    while i < r:
+        indices.append(i)
+        i = i + 1
+    results: list[list[T]] = []
+    first: list[T] = []
+    j: int = 0
+    while j < r:
+        first.append(pool[indices[j]])
+        j = j + 1
+    results.append(first)
+    while True:
+        i = r - 1
+        while i >= 0 and indices[i] == n - r + i:
+            i = i - 1
+        if i < 0:
+            break
+        indices[i] = indices[i] + 1
+        k: int = i + 1
+        while k < r:
+            indices[k] = indices[k - 1] + 1
+            k = k + 1
+        combo: list[T] = []
+        m: int = 0
+        while m < r:
+            combo.append(pool[indices[m]])
+            m = m + 1
+        results.append(combo)
+    for result in results:
+        yield result
+
+def permutations[T](iterable: list[T], r: int = -1) -> list[T]:
+    """Return successive r-length permutations of elements in the iterable. A negative r means full length."""
+    pool: list[T] = list(iterable)
+    n: int = len(pool)
+    size: int = n if r < 0 else r
+    if size > n:
+        return
+    indices: list[int] = []
+    i: int = 0
+    while i < n:
+        indices.append(i)
+        i = i + 1
+    cycles: list[int] = []
+    c: int = n
+    while c > n - size:
+        cycles.append(c)
+        c = c - 1
+    results: list[list[T]] = []
+    first: list[T] = []
+    j: int = 0
+    while j < size:
+        first.append(pool[indices[j]])
+        j = j + 1
+    results.append(first)
+    done: bool = n == 0
+    while not done:
+        advanced: bool = False
+        i = size - 1
+        while i >= 0:
+            cycles[i] = cycles[i] - 1
+            if cycles[i] == 0:
+                rotated: int = indices[i]
+                k: int = i
+                while k < n - 1:
+                    indices[k] = indices[k + 1]
+                    k = k + 1
+                indices[n - 1] = rotated
+                cycles[i] = n - i
+            else:
+                swap_idx: int = n - cycles[i]
+                temp: int = indices[i]
+                indices[i] = indices[swap_idx]
+                indices[swap_idx] = temp
+                perm: list[T] = []
+                m: int = 0
+                while m < size:
+                    perm.append(pool[indices[m]])
+                    m = m + 1
+                results.append(perm)
+                advanced = True
+                break
+            i = i - 1
+        if not advanced:
+            done = True
+    for result in results:
+        yield result
+
+def combinations_with_replacement[T](iterable: list[T], r: int) -> list[T]:
+    """Return successive r-length combinations of elements in the iterable allowing individual elements to be repeated."""
+    if r < 0:
+        raise ValueError("r must be non-negative")
+    pool: list[T] = list(iterable)
+    n: int = len(pool)
+    if n == 0 and r > 0:
+        return
+    indices: list[int] = []
+    i: int = 0
+    while i < r:
+        indices.append(0)
+        i = i + 1
+    results: list[list[T]] = []
+    first: list[T] = []
+    j: int = 0
+    while j < r:
+        first.append(pool[indices[j]])
+        j = j + 1
+    results.append(first)
+    while True:
+        i = r - 1
+        while i >= 0 and indices[i] == n - 1:
+            i = i - 1
+        if i < 0:
+            break
+        new_val: int = indices[i] + 1
+        k: int = i
+        while k < r:
+            indices[k] = new_val
+            k = k + 1
+        combo: list[T] = []
+        m: int = 0
+        while m < r:
+            combo.append(pool[indices[m]])
+            m = m + 1
+        results.append(combo)
+    for result in results:
+        yield result

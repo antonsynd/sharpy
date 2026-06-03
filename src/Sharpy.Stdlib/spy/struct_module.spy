@@ -8,46 +8,71 @@ class error(Exception):
 
 def pack(format: str, *values: object) -> bytes:
     """Return a bytes object containing values packed according to the format string."""
-    return bytes()
+    s: StructClass = StructClass(format)
+    return s.pack(*values)
 
 def unpack(format: str, buffer: bytes) -> list[object]:
     """Unpack from the buffer according to the format string."""
-    return []
+    s: StructClass = StructClass(format)
+    return s.unpack(buffer)
 
 def unpack_from(format: str, buffer: bytes, offset: int = 0) -> list[object]:
     """Unpack from the buffer starting at the given offset."""
-    return []
+    s: StructClass = StructClass(format)
+    return s.unpack_from(buffer, offset)
 
 def calcsize(format: str) -> int:
     """Return the size of the struct described by the format string."""
-    return 0
+    s: StructClass = StructClass(format)
+    return s.Size
 
 def iter_unpack(format: str, buffer: bytes) -> list[list[object]]:
     """Iteratively unpack from the buffer according to the format string."""
-    return []
+    s: StructClass = StructClass(format)
+    if s.Size == 0:
+        raise StructError("cannot iteratively unpack with a struct of length 0")
+    if len(buffer) % s.Size != 0:
+        raise StructError("iterative unpacking requires a buffer of a multiple of " + str(s.Size) + " bytes")
+    result: list[list[object]] = []
+    offset: int = 0
+    while offset < len(buffer):
+        result.append(s.unpack_from(buffer, offset))
+        offset = offset + s.Size
+    return result
 
 class Struct:
     """Compiled struct format object for repeated packing/unpacking operations."""
     format: str
     size: int
+    _compiled: StructClass
 
     def __init__(self, format: str):
         """Create a new Struct object with the given format string."""
         self.format = format
-        self.size = 0
+        self._compiled = StructClass(format)
+        self.size = self._compiled.Size
 
     def pack(self, *values: object) -> bytes:
         """Pack values according to the compiled format."""
-        return bytes()
+        return self._compiled.pack(*values)
 
     def unpack(self, buffer: bytes) -> list[object]:
         """Unpack from the buffer according to the compiled format."""
-        return []
+        return self._compiled.unpack(buffer)
 
     def unpack_from(self, buffer: bytes, offset: int = 0) -> list[object]:
         """Unpack from the buffer starting at the given offset."""
-        return []
+        return self._compiled.unpack_from(buffer, offset)
 
     def iter_unpack(self, buffer: bytes) -> list[list[object]]:
         """Iteratively unpack from the buffer according to the compiled format."""
-        return []
+        if self.size == 0:
+            raise StructError("cannot iteratively unpack with a struct of length 0")
+        if len(buffer) % self.size != 0:
+            raise StructError("iterative unpacking requires a buffer of a multiple of " + str(self.size) + " bytes")
+        result: list[list[object]] = []
+        offset: int = 0
+        while offset < len(buffer):
+            result.append(self._compiled.unpack_from(buffer, offset))
+            offset = offset + self.size
+        return result

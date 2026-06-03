@@ -1,85 +1,27 @@
 """Read and write tar archive files."""
 
+# TarFile and TarInfo are fully implemented in C# (src/Sharpy.Stdlib/Tarfile/)
+# on top of System.Formats.Tar and are re-exported here. Their constructors are
+# internal; instances are created via open() / TarFile methods.
 from sharpy import TarFile, TarInfo, TarError, ReadError, CompressionError, ExtractError
 
 REGTYPE: int = 0
-DIRTYPE: int = 5
-SYMTYPE: int = 2
 LNKTYPE: int = 1
+SYMTYPE: int = 2
+DIRTYPE: int = 5
 
-def Open(name: str, mode: str = "r") -> TarFile:
-    """Open a tar archive for reading or writing."""
+def open(name: str, mode: str = "r") -> TarFile:
+    """Open a tar archive for reading or writing.
+
+    Supported modes: "r" (auto-detects gzip), "w", "r:", "w:", "r:gz", "w:gz".
+    """
+    # Provided by the C# implementation (TarfileModule.Open); the TarFile
+    # constructor is internal and gzip auto-detection requires raw stream
+    # access, so this cannot be expressed in Sharpy.
     ...
 
-def IsTarfile(name: str) -> bool:
+def is_tarfile(name: str) -> bool:
     """Return True if name appears to be a tar archive."""
+    # Provided by the C# implementation (TarfileModule.IsTarfile); detection
+    # requires reading tar headers via System.Formats.Tar.TarReader.
     ...
-
-class TarInfo:
-    """Metadata about a tar archive member."""
-    Name: str
-    Size: int
-    Mtime: float
-    Mode: int
-    Type: int
-    Linkname: str
-    Uid: int
-    Gid: int
-    Uname: str
-    Gname: str
-
-    def Isfile(self) -> bool:
-        """Return True if this is a regular file."""
-        ...
-
-    def Isdir(self) -> bool:
-        """Return True if this is a directory."""
-        ...
-
-    def Issym(self) -> bool:
-        """Return True if this is a symbolic link."""
-        ...
-
-    def Islnk(self) -> bool:
-        """Return True if this is a hard link."""
-        ...
-
-class TarFile:
-    """Tar archive for reading or writing."""
-    Name: str
-
-    def Getnames(self) -> list[str]:
-        """Return a list of names of all archive members."""
-        ...
-
-    def Getmembers(self) -> list[TarInfo]:
-        """Return a list of TarInfo objects for all members."""
-        ...
-
-    def Getmember(self, name: str) -> TarInfo:
-        """Return a TarInfo object for the named member."""
-        ...
-
-    def Extractfile(self, name: str) -> bytes | None:
-        """Extract a member as bytes. Returns None for directories."""
-        ...
-
-    def Extractall(self, path: str | None = None) -> None:
-        """Extract all members to the specified directory."""
-        ...
-
-    def Extract(self, name: str, path: str | None = None) -> None:
-        """Extract a single member."""
-        ...
-
-    def Add(self, name: str, arcname: str | None = None, recursive: bool = True) -> None:
-        """Add a file or directory to the archive."""
-        ...
-
-    def Addfile(self, tarinfo: TarInfo) -> None:
-        """Add a TarInfo entry to the archive."""
-        ...
-
-    def Close(self) -> None:
-        """Close the archive."""
-        ...

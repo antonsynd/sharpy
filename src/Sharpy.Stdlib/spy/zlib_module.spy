@@ -26,45 +26,113 @@ Z_FINISH: int = 4
 Z_BLOCK: int = 5
 Z_TREES: int = 6
 
-class error(Exception):
-    """Exception raised on compression and decompression errors."""
-    pass
 
 class compressobj:
     """Compression object for incremental compression of data."""
+    _buffer: bytes
+    _flushed: bool
+    _level: int
+
+    def __init__(self, level: int = -1):
+        """Create a compression object with the given compression level."""
+        self._buffer = b""
+        self._flushed = False
+        self._level = level
+
     def compress(self, data: bytes) -> bytes:
         """Compress data, returning a bytes object with at least part of the compressed data."""
-        return bytes()
+        if self._flushed:
+            raise ZlibError("compressobj may not be used after flush()")
+        self._buffer = self._buffer + data
+        return b""
 
     def flush(self, mode: int = 4) -> bytes:
         """Flush the internal buffers and return any remaining compressed output."""
+        if self._flushed:
+            raise ZlibError("compressobj may not be used after flush()")
+        self._flushed = True
+        # Cannot call module-level compress() from here due to name resolution
+        # shadowing by self.compress(). The module-level compress() is itself
+        # a stub (blocked on CLR enum support), so return empty bytes for now.
         return bytes()
 
 class decompressobj:
     """Decompression object for incremental decompression of data."""
     unconsumed_tail: bytes
     eof: bool
+    _buffer: bytes
+    _finished: bool
+
+    def __init__(self, wbits: int = 15):
+        """Create a decompression object with the given window size."""
+        self.unconsumed_tail = b""
+        self.eof = False
+        self._buffer = b""
+        self._finished = False
 
     def decompress(self, data: bytes, max_length: int = 0) -> bytes:
         """Decompress data, returning a bytes object with at least part of the uncompressed data."""
-        return bytes()
+        if self._finished:
+            raise ZlibError("decompressobj may not be used after flush()")
+        self._buffer = self._buffer + data
+        return b""
 
     def flush(self, length: int = 16384) -> bytes:
         """Flush the internal buffers and return any remaining uncompressed output."""
+        if self._finished:
+            raise ZlibError("decompressobj may not be used after flush()")
+        self._finished = True
+        self.eof = True
+        # Cannot call module-level decompress() from here due to name resolution
+        # shadowing by self.decompress(). The module-level decompress() is itself
+        # a stub (blocked on CLR enum support), so return empty bytes for now.
         return bytes()
 
 def compress(data: bytes, level: int = 6) -> bytes:
     """Compress data at the given level, returning a bytes object."""
+    # Blocked: constructing System.IO.Compression.ZLibStream requires CLR enum
+    # arguments (CompressionMode/CompressionLevel), which Sharpy source cannot
+    # express yet. Implement once CLR enum member access is supported.
     return bytes()
 
 def decompress(data: bytes, wbits: int = 15, bufsize: int = 16384) -> bytes:
     """Decompress data, returning a bytes object containing the uncompressed data."""
+    # Blocked: constructing System.IO.Compression.ZLibStream requires CLR enum
+    # arguments (CompressionMode/CompressionLevel), which Sharpy source cannot
+    # express yet. Implement once CLR enum member access is supported.
     return bytes()
 
-def crc32(data: bytes, value: int = 0) -> int:
-    """Compute a CRC-32 checksum of data, starting with an optional initial value."""
-    return 0
+def _make_crc_table() -> list[long]:
+    """Build the CRC-32 lookup table for the polynomial 0xEDB88320."""
+    table: list[long] = []
+    i: long = 0
+    while i < 256:
+        crc: long = i
+        j: int = 0
+        while j < 8:
+            if (crc & 1) == 1:
+                crc = (crc >> 1) ^ 0xEDB88320
+            else:
+                crc = crc >> 1
+            j = j + 1
+        table.append(crc)
+        i = i + 1
+    return table
 
-def adler32(data: bytes, value: int = 1) -> int:
+def crc32(data: bytes, value: long = 0) -> long:
+    """Compute a CRC-32 checksum of data, starting with an optional initial value."""
+    table: list[long] = _make_crc_table()
+    crc: long = (value & 0xFFFFFFFF) ^ 0xFFFFFFFF
+    for b in data:
+        idx: int = int((crc ^ b) & 0xFF)
+        crc = (crc >> 8) ^ table[idx]
+    return (crc ^ 0xFFFFFFFF) & 0xFFFFFFFF
+
+def adler32(data: bytes, value: long = 1) -> long:
     """Compute an Adler-32 checksum of data, starting with an optional initial value."""
-    return 0
+    s1: long = value & 0xFFFF
+    s2: long = (value >> 16) & 0xFFFF
+    for b in data:
+        s1 = (s1 + b) % 65521
+        s2 = (s2 + s1) % 65521
+    return ((s2 << 16) | s1) & 0xFFFFFFFF

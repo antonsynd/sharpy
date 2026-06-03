@@ -1,44 +1,28 @@
 """Support for gzip-compatible file compression and decompression."""
 
-from sharpy import BadGzipFile
-
-class GzipFile:
-    """Represents a gzip-compressed file object for reading or writing."""
-    name: str
-    mode: int
-
-    def read(self, size: int = -1) -> bytes:
-        """Read at most size uncompressed bytes, or all remaining data if size is -1."""
-        return bytes()
-
-    def write(self, data: bytes) -> int:
-        """Write data to the gzip file, returning the number of uncompressed bytes written."""
-        return 0
-
-    def close(self):
-        """Flush and close the gzip file."""
-        pass
-
-    def readable(self) -> bool:
-        """Return whether the file was opened for reading."""
-        return False
-
-    def writable(self) -> bool:
-        """Return whether the file was opened for writing."""
-        return False
-
-    def seekable(self) -> bool:
-        """Return whether the file supports seeking."""
-        return False
+from sharpy import GzipFile, BadGzipFile
+from system.io import MemoryStream
 
 def compress(data: bytes, compresslevel: int = 9) -> bytes:
     """Compress data, returning a bytes object containing the compressed data."""
-    return bytes()
+    if compresslevel != -1 and (compresslevel < 0 or compresslevel > 9):
+        raise ValueError("Bad compression level: " + str(compresslevel))
+    output: MemoryStream = MemoryStream()
+    gz: GzipFile = GzipFile("", "wb", compresslevel, output)
+    gz.write(data)
+    gz.close()
+    return bytes(output.to_array())
 
 def decompress(data: bytes) -> bytes:
     """Decompress data, returning a bytes object containing the uncompressed data."""
-    return bytes()
+    source: MemoryStream = MemoryStream(data.to_array())
+    gz: GzipFile = GzipFile("", "rb", 9, source)
+    result: bytes = gz.read()
+    gz.close()
+    return result
 
 def open(filename: str, mode: str = "rb", compresslevel: int = 9) -> GzipFile:
-    """Open a gzip-compressed file in binary or text mode."""
-    return GzipFile()
+    """Open a gzip-compressed file in binary mode."""
+    if mode == "rt" or mode == "wt" or mode == "at":
+        raise ValueError("text mode not supported")
+    return GzipFile(filename, mode, compresslevel)
