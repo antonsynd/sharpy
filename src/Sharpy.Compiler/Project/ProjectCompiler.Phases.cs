@@ -289,7 +289,8 @@ internal partial class ProjectCompiler
                                 {
                                     var lookupName = importAlias.Name;
                                     var symbolName = importAlias.AsName ?? importAlias.Name;
-                                    if (symbolsToImport.TryGetValue(symbolName, out var symbol))
+                                    if (symbolsToImport.TryGetValue(lookupName, out var symbol) ||
+                                        (lookupName != symbolName && symbolsToImport.TryGetValue(symbolName, out symbol)))
                                     {
                                         var originalName = importAlias.Name;
                                         var symbolToRegister = importAlias.AsName == null
