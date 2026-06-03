@@ -1,0 +1,15 @@
+"""SQLite3 database interface, matching Python's sqlite3 module."""
+
+# Sqlite3Connection, Sqlite3Cursor, Sqlite3Row, and the error hierarchy
+# are fully implemented in C# (src/Sharpy.Stdlib/Sqlite3/) wrapping
+# Microsoft.Data.Sqlite NuGet package.
+from sharpy import Sqlite3, Sqlite3Connection, Sqlite3Cursor, Sqlite3Row
+from sharpy import Sqlite3Error, Sqlite3DatabaseError, Sqlite3OperationalError
+from sharpy import Sqlite3IntegrityError, Sqlite3ProgrammingError, Sqlite3InterfaceError
+
+PARSE_DECLTYPES: int = 1
+PARSE_COLNAMES: int = 2
+
+def connect(database: str) -> Sqlite3Connection:
+    """Open a connection to the SQLite database file."""
+    return Sqlite3.connect(database)

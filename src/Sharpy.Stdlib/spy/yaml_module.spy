@@ -1,0 +1,34 @@
+"""YAML parser and emitter, matching Python's PyYAML/ruamel.yaml module."""
+
+# Yaml, error types, and CommentedMap/CommentedSeq are fully implemented
+# in C# (src/Sharpy.Stdlib/Yaml/) wrapping the YamlDotNet NuGet package.
+from sharpy import Yaml, YAMLError, YAMLParseError
+from sharpy import CommentedMap, CommentedSeq, CommentInfo, TextFile
+
+def safe_load(text: str) -> object:
+    """Parse a YAML string and return a Python object (safe mode)."""
+    return Yaml.safe_load(text)
+
+def safe_dump(data: object, default_flow_style: bool = False, indent: int = 2) -> str:
+    """Serialize a Python object to a YAML string (safe mode)."""
+    return Yaml.safe_dump(data, default_flow_style, indent)
+
+def safe_load_all(text: str) -> list[object]:
+    """Parse all YAML documents in a string."""
+    return Yaml.safe_load_all(text)
+
+def safe_dump_all(documents: list[object], default_flow_style: bool = False, indent: int = 2) -> str:
+    """Serialize multiple Python objects to a multi-document YAML string."""
+    return Yaml.safe_dump_all(documents, default_flow_style, indent)
+
+def safe_load_file(fp: TextFile) -> object:
+    """Parse YAML from a file-like object."""
+    return Yaml.safe_load_file(fp)
+
+def roundtrip_load(text: str) -> object:
+    """Parse YAML preserving comments and formatting."""
+    return Yaml.roundtrip_load(text)
+
+def roundtrip_dump(data: object, indent: int = 2) -> str:
+    """Serialize to YAML preserving comments and formatting."""
+    return Yaml.roundtrip_dump(data, indent)

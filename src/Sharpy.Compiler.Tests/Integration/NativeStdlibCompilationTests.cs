@@ -82,6 +82,10 @@ public class NativeStdlibCompilationTests
         "sys_module",
         "time_module",
         "unittest_module",
+        "toml_module",
+        "yaml_module",
+        "sqlite3_module",
+        "numpy_module",
     };
 
     public NativeStdlibCompilationTests(ITestOutputHelper output)

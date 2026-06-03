@@ -1,0 +1,29 @@
+"""TOML configuration file parser, matching Python's tomllib/tomli module."""
+
+# Toml and TOMLDecodeError are fully implemented in C#
+# (src/Sharpy.Stdlib/Toml/) wrapping the Tomlyn NuGet package.
+from sharpy import Toml, TOMLDecodeError, TextFile
+
+def loads(s: str) -> dict[str, object]:
+    """Parse a TOML string and return a dict."""
+    return Toml.loads(s)
+
+def dumps(obj: object) -> str:
+    """Serialize a dict to a TOML string."""
+    return Toml.dumps(obj)
+
+def load(fp: TextFile) -> dict[str, object]:
+    """Parse TOML from a file-like object and return a dict."""
+    return Toml.load(fp)
+
+def dump(obj: object, fp: TextFile) -> None:
+    """Serialize a dict to a file-like object in TOML format."""
+    Toml.dump(obj, fp)
+
+def load_file(path: str) -> dict[str, object]:
+    """Parse a TOML file by path and return a dict."""
+    return Toml.load_file(path)
+
+def dump_file(obj: object, path: str) -> None:
+    """Serialize a dict to a file in TOML format."""
+    Toml.dump_file(obj, path)

@@ -1,0 +1,37 @@
+"""Numerical computing library, matching a subset of Python's NumPy."""
+
+# NdArray and the Numpy module class (with sub-modules Linalg, Random, Fft)
+# are fully implemented in C# (src/Sharpy.Stdlib/Numpy/) wrapping
+# MathNet.Numerics NuGet package.
+#
+# NdArray is generic (NdArray[float], NdArray[int], etc.). The sub-module
+# classes (NumpyLinalg, NumpyRandom, NumpyFft) are re-exported directly.
+from sharpy import NdArray, Numpy, NumpyLinalg, NumpyRandom, NumpyFft, SliceSpec
+
+def array(data: list[float]) -> NdArray[float]:
+    """Create a 1-D array from a list of values."""
+    return Numpy.array(data)
+
+def zeros(n: int) -> NdArray[float]:
+    """Create a 1-D array of n zeros."""
+    return Numpy.zeros(n)
+
+def ones(n: int) -> NdArray[float]:
+    """Create a 1-D array of n ones."""
+    return Numpy.ones(n)
+
+def arange(start: float, stop: float, step: float = 1.0) -> NdArray[float]:
+    """Create an array with evenly spaced values within a given interval."""
+    return Numpy.arange(start, stop, step)
+
+def linspace(start: float, stop: float, num: int = 50) -> NdArray[float]:
+    """Create an array with evenly spaced values between start and stop."""
+    return Numpy.linspace(start, stop, num)
+
+def eye(n: int) -> NdArray[float]:
+    """Create a 2-D identity matrix of size n x n."""
+    return Numpy.eye(n)
+
+def empty(n: int) -> NdArray[float]:
+    """Create an uninitialized 1-D array of n elements."""
+    return Numpy.empty(n)
