@@ -10,7 +10,7 @@ CRITICAL: int = 50
 
 def get_logger(name: str = "root") -> Logger:
     """Return a logger with the specified name."""
-    return Logger("root")
+    ...
 
 def basic_config(level: int = 30) -> None:
     """Do basic configuration for the logging system."""
