@@ -23,6 +23,7 @@ internal class ModuleRegistry
     private readonly DiagnosticBag _diagnostics = new();
     private readonly ConcurrentDictionary<string, string> _assemblyNameToPath = new();
     private readonly ConcurrentDictionary<string, byte> _usedAssemblyPaths = new();
+    private readonly ConcurrentDictionary<string, string?> _dynamicNamespaceCache = new();
 
     public ModuleRegistry(ICompilerLogger? logger = null, OverloadIndexCache? cache = null)
     {
@@ -475,22 +476,47 @@ internal class ModuleRegistry
         if (lower == "sharpy")
             return "Sharpy";
 
-        if (!lower.StartsWith("system"))
-            return null;
-
         if (lower == "system")
             return "System";
 
-        if (!lower.StartsWith("system."))
-            return null;
-
-        var segments = lower.Split('.');
-        var result = new string[segments.Length];
-        for (int i = 0; i < segments.Length; i++)
+        if (lower.StartsWith("system."))
         {
-            result[i] = PascalCaseSegment(segments[i]);
+            var segments = lower.Split('.');
+            var result = new string[segments.Length];
+            for (int i = 0; i < segments.Length; i++)
+            {
+                result[i] = PascalCaseSegment(segments[i]);
+            }
+            return string.Join(".", result);
         }
-        return string.Join(".", result);
+
+        // For non-system/sharpy prefixes (e.g., NuGet packages), try PascalCase
+        // conversion and verify the namespace exists in a loaded assembly.
+        return _dynamicNamespaceCache.GetOrAdd(lower, _ =>
+        {
+            var segments = lower.Split('.');
+            var candidate = new string[segments.Length];
+            for (int i = 0; i < segments.Length; i++)
+            {
+                candidate[i] = PascalCaseSegment(segments[i]);
+            }
+            var candidateNs = string.Join(".", candidate);
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    if (assembly.GetTypes().Any(t => t.IsPublic && t.Namespace == candidateNs))
+                        return candidateNs;
+                }
+                catch (ReflectionTypeLoadException)
+                {
+                    // Skip assemblies that can't be fully loaded
+                }
+            }
+
+            return null;
+        });
     }
 
     private static string PascalCaseSegment(string segment)

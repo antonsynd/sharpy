@@ -288,7 +288,8 @@ public sealed class CompilerApi
     /// </summary>
     private ModuleRegistry? BuildModuleRegistry(ProjectConfig config)
     {
-        if (_defaultReferences.Length == 0 && config.References.Count == 0 && config.ModulePaths.Count == 0)
+        if (_defaultReferences.Length == 0 && config.References.Count == 0
+            && config.ModulePaths.Count == 0 && config.PackageReferences.Count == 0)
             return null;
 
         var registry = new ModuleRegistry(_logger);
@@ -298,6 +299,13 @@ public sealed class CompilerApi
 
         foreach (var reference in config.References)
             registry.LoadReference(reference);
+
+        foreach (var packageRef in config.PackageReferences)
+        {
+            var packageAssemblies = Project.NuGetResolver.ResolvePackage(packageRef, config.TargetFramework, _logger);
+            foreach (var assemblyPath in packageAssemblies)
+                registry.LoadReference(assemblyPath);
+        }
 
         foreach (var modulePath in config.ModulePaths)
             registry.AddModulePath(modulePath);

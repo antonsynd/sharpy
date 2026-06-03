@@ -110,6 +110,17 @@ public class Compiler
         mergedSuppressed.UnionWith(projectConfig.SuppressedWarnings);
         var warnAsErrors = _options.WarningsAsErrors || projectConfig.WarningsAsErrors;
 
+        // Resolve NuGet package references so their types are available during semantic analysis
+        if (_moduleRegistry != null && projectConfig.PackageReferences.Count > 0)
+        {
+            foreach (var packageRef in projectConfig.PackageReferences)
+            {
+                var packageAssemblies = Project.NuGetResolver.ResolvePackage(packageRef, projectConfig.TargetFramework, _logger);
+                foreach (var assemblyPath in packageAssemblies)
+                    _moduleRegistry.LoadReference(assemblyPath);
+            }
+        }
+
         var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
             warnAsErrors, mergedSuppressed, _options.MaxErrors, _options.Incremental,
             _emitterFactory);
