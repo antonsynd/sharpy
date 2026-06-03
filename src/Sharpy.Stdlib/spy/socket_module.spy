@@ -36,6 +36,8 @@ SHUT_RDWR: int = 2
 # ---- Other constants ----
 SOMAXCONN: int = 128
 
+_default_timeout: float? = None
+
 def socket(family: int = 2, sock_type: int = 1, proto: int = 0) -> SocketWrapper:
     """Create a new socket. Defaults are AF_INET (2) and SOCK_STREAM (1)."""
     return SocketModule.socket(family, sock_type, proto)
@@ -86,11 +88,11 @@ def getnameinfo(sockaddr: tuple[str, int], flags: int = 0) -> tuple[str, str]:
 
 def getdefaulttimeout() -> float?:
     """Return the default timeout in seconds for new socket objects, or None."""
-    ...
+    return _default_timeout
 
 def setdefaulttimeout(timeout: float?) -> None:
     """Set the default timeout for new socket objects. None means blocking mode."""
-    ...
+    _default_timeout = timeout
 
 def htons(x: int) -> int:
     """Convert a 16-bit integer from host byte order to network byte order."""
