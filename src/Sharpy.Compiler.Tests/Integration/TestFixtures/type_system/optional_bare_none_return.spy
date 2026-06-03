@@ -1,0 +1,7 @@
+def get_value() -> int?:
+    return None
+
+def main():
+    result: int? = get_value()
+    print(result.is_none)
+    print(result)

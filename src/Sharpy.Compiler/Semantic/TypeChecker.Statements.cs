@@ -272,14 +272,7 @@ internal partial class TypeChecker
         // Use assignmentTargetType (declared type) for fields where narrowing may differ
         if (!IsAssignable(valueType, assignmentTargetType))
         {
-            // Special case: Provide helpful error messages for None misuse
-            if (valueType is VoidType && assignmentTargetType is OptionalType)
-            {
-                AddError($"Cannot assign 'None' to '{assignmentTargetType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
-                    span: assignment.Value.Span);
-            }
-            else if (valueType is VoidType && assignmentTargetType is not NullableType)
+            if (valueType is VoidType && assignmentTargetType is not NullableType and not OptionalType)
             {
                 AddError($"Cannot assign 'None' to non-nullable type '{assignmentTargetType.GetDisplayName()}'",
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
@@ -323,14 +316,7 @@ internal partial class TypeChecker
                 {
                     // Literal narrowing is safe — no runtime data loss risk
                 }
-                // Special case: Provide helpful error messages for None misuse
-                else if (initType is VoidType && declaredType is OptionalType)
-                {
-                    AddError($"Cannot assign 'None' to '{declaredType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
-                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
-                        span: varDecl.InitialValue!.Span);
-                }
-                else if (initType is VoidType && declaredType is not NullableType)
+                else if (initType is VoidType && declaredType is not NullableType and not OptionalType)
                 {
                     AddError($"Cannot assign 'None' to non-nullable type '{declaredType.GetDisplayName()}'",
                         varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
@@ -449,18 +435,9 @@ internal partial class TypeChecker
             _expectedType = previousExpectedType;
             if (!IsAssignable(returnType, _currentFunctionReturnType))
             {
-                if (returnType is VoidType && _currentFunctionReturnType is OptionalType)
-                {
-                    AddError($"Cannot return 'None' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'. 'None' is the C# null literal. Did you mean 'None()' to construct an empty Optional?",
-                        returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,
-                        span: returnStmt.Span);
-                }
-                else
-                {
-                    AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
-                        returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,
-                        span: returnStmt.Span);
-                }
+                AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
+                    returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,
+                    span: returnStmt.Span);
             }
         }
         else if (_currentFunctionReturnType != SemanticType.Void && !_currentFunctionIsGenerator)

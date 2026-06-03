@@ -1,12 +1,18 @@
 # None Literal
 
-`None` represents the absence of a value and corresponds to `null` in C#. It is used with `T | None` types for .NET interop:
+`None` represents the absence of a value. It is valid for both nullable types (`T | None`) and optional types (`T?`):
 
 ```python
+# Nullable (C# interop)
 value: str | None = None
+
+# Optional (Sharpy-native)
+x: int? = None
 ```
 
-> **Note:** For Sharpy-native optionals, use `None()` (with parentheses) with `T?` (which is `Optional[T]`). Bare `None` is the C# null literal for `T | None`. See [Optional Type](tagged_unions_optional.md).
+For `T | None`, bare `None` emits C# `null`. For `T?` (`Optional[T]`), bare `None` emits C# `default`, producing an empty optional. `None()` remains valid as an explicit alternative for `T?`.
+
+See [Optional Type](tagged_unions_optional.md) for details on `T?`.
 
 *Implementation*
-- *✅ Native - `None` → `null`.*
+- *✅ Native - `None` → `null` for `T | None`, `default` for `T?`.*

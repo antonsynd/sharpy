@@ -164,9 +164,8 @@ public sealed record VoidType : SemanticType
 
     public override bool IsAssignableTo(SemanticType other)
     {
-        // Bare None is the C# null literal — only valid for nullable types (T | None)
-        // For optional types (T?), use None() instead
-        if (other is NullableType)
+        // Bare None is valid for nullable types (T | None) and optional types (T?)
+        if (other is NullableType or OptionalType)
             return true;
 
         return base.IsAssignableTo(other);

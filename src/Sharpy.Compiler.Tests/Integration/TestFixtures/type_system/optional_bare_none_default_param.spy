@@ -1,0 +1,8 @@
+def greet(name: str, title: str? = None) -> str:
+    if title is not None:
+        return f"Hello, {title} {name}"
+    return f"Hello, {name}"
+
+def main():
+    print(greet("Alice"))
+    print(greet("Bob", Some("Dr.")))

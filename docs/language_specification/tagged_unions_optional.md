@@ -19,16 +19,19 @@ The `Optional` type is part of the standard library and provides special syntax 
 ## Creating Optional Values
 
 ```python
-# Shorthand (preferred)
+# Bare None (preferred)
 value: int? = Some(42)
+empty: int? = None
+
+# None() (explicit alternative)
 empty: int? = None()
 
-# Explicit (equivalent)
+# Fully qualified (equivalent)
 value: Optional[int] = Optional.Some(42)
 empty: Optional[int] = Optional.None()
 ```
 
-> **Note:** `None()` (with parentheses) constructs an empty Optional. Bare `None` (without parentheses) is the C# null literal for `T | None` (NullableType). See [Nullable Types](nullable_types.md).
+Bare `None` and `None()` are interchangeable for `T?`. Bare `None` is the more ergonomic form. For `T | None` (C# nullable interop), only bare `None` is valid — see [Nullable Types](nullable_types.md).
 
 ## Pattern Matching
 
@@ -39,7 +42,7 @@ def find_user(id: int) -> User?:
     user = database.find(id)
     if user is not None:
         return Some(user)
-    return None()
+    return None
 
 result = find_user(123)
 match result:
@@ -113,14 +116,14 @@ without qualifying with the type name:
 ```python
 # With type annotation - shorthand works
 x: int? = Some(42)
-y: int? = None()
+y: int? = None
 
 # Function return - shorthand works
 def get_value() -> int?:
     return Some(42)
 
 # Default parameter - shorthand works
-def foo(x: int? = None()) -> None:
+def foo(x: int? = None) -> None:
     pass
 
 # Without type context - error (type cannot be inferred)
@@ -136,7 +139,7 @@ calling `Optional<T>.Some(value)` or using `Optional<T>.None()`.
 |---------|----------------------|---------------------------|
 | Meaning | Safe tagged union | C# nullable reference/value |
 | Has value | `Some(value)` | `value` |
-| No value | `None()` | `None` |
+| No value | `None` or `None()` | `None` |
 | Type safety | Works with any `T` | Only reference types and `Nullable<T>` |
 | Pattern matching | `case Some(v):` | `if x is not None:` |
 | Heap allocation | **No** (struct) | No |
@@ -167,7 +170,7 @@ See [Nullable Types](nullable_types.md) for details on `T | None`.
 def get_config_value(config: dict[str, str], key: str) -> str?:
     if key in config:
         return Some(config[key])
-    return None()
+    return None
 
 # Using the result
 value = get_config_value(config, "timeout")
@@ -184,11 +187,11 @@ match value:
 def get_user_city(user_id: int) -> str?:
     user = find_user(user_id)
     if user.is_none:
-        return None()
+        return None
 
     address = user.unwrap().get_address()
     if address.is_none:
-        return None()
+        return None
 
     return Some(address.unwrap().city)
 ```
@@ -201,9 +204,9 @@ opt_number: int? = Some(42)
 opt_string = opt_number.map(lambda x: f"The answer is {x}")
 # Result: Some("The answer is 42")
 
-opt_nothing: int? = None()
+opt_nothing: int? = None
 opt_result = opt_nothing.map(lambda x: x * 2)
-# Result: None()
+# Result: None
 ```
 
 ## Converting Between Optional and C# Nullable

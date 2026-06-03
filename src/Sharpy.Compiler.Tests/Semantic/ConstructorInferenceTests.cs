@@ -180,7 +180,7 @@ def foo() -> None:
     }
 
     [Fact]
-    public void None_BareOnOptional_ProducesHelpfulError()
+    public void None_BareOnOptional_IsAccepted()
     {
         var source = @"
 x: int? = None
@@ -188,7 +188,7 @@ x: int? = None
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Did you mean 'None()'"));
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
     #endregion

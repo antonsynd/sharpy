@@ -219,9 +219,10 @@ internal partial class RoslynEmitter
         if (param.DefaultValue != null)
         {
             ExpressionSyntax defaultExpr;
-            // None() as default param → default (Optional<T> is a struct, default = None)
-            if (param.DefaultValue is FunctionCall { Function: NoneLiteral } noneCall
-                && noneCall.Arguments.Length == 0
+            // None or None() as default param → default (Optional<T> is a struct, default = None)
+            if ((param.DefaultValue is NoneLiteral
+                || (param.DefaultValue is FunctionCall { Function: NoneLiteral } noneCall
+                    && noneCall.Arguments.Length == 0))
                 && param.Type is { IsOptional: true })
             {
                 defaultExpr = LiteralExpression(SyntaxKind.DefaultLiteralExpression);

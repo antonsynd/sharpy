@@ -1,0 +1,6 @@
+def main():
+    x: int? = Some(42)
+    print(x.is_some)
+    x = None
+    print(x.is_none)
+    print(x)
