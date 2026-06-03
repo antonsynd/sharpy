@@ -145,14 +145,14 @@ internal partial class ImportResolver
                                 continue;
 
                             _logger.LogDebug($"  Defining symbol (import *): {name}");
-                            TryDefineFromImport(symbolTable, symbol, name, sourceModule,
+                            var defined = TryDefineFromImport(symbolTable, symbol, name, sourceModule,
                                 importedSymbolSources, fromImport, importAlias: null);
 
                             if (moduleInfo.IsStub)
                                 _deferredCycleSymbols.Add(name);
 
-                            // Propagate function overloads for wildcard imports
-                            if (moduleInfo.FunctionOverloads.TryGetValue(name, out var wildOverloads) && wildOverloads.Count > 1)
+                            // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
+                            if (defined && moduleInfo.FunctionOverloads.TryGetValue(name, out var wildOverloads) && wildOverloads.Count > 1)
                             {
                                 symbolTable.DefineFunctionOverloads(name, wildOverloads);
                             }
@@ -171,14 +171,14 @@ internal partial class ImportResolver
                                 {
                                     symbol = CloneSymbolWithName(symbol, registerName);
                                 }
-                                TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
+                                var defined = TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
                                     importedSymbolSources, fromImport, importAlias);
 
                                 if (moduleInfo.IsStub)
                                     _deferredCycleSymbols.Add(registerName);
 
-                                // Propagate function overloads for named imports
-                                if (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
+                                // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
+                                if (defined && moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
                                 {
                                     symbolTable.DefineFunctionOverloads(registerName, overloads);
                                 }
@@ -187,14 +187,14 @@ internal partial class ImportResolver
                             {
                                 // Fallback: error recovery modules may register symbols under alias name
                                 _logger.LogDebug($"  Defining imported symbol (alias fallback): {registerName} ({symbol.Kind})");
-                                TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
+                                var defined = TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
                                     importedSymbolSources, fromImport, importAlias);
 
                                 if (moduleInfo.IsStub)
                                     _deferredCycleSymbols.Add(registerName);
 
-                                // Propagate function overloads for alias fallback path
-                                if (moduleInfo.FunctionOverloads.TryGetValue(registerName, out var fallbackOverloads) && fallbackOverloads.Count > 1)
+                                // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
+                                if (defined && moduleInfo.FunctionOverloads.TryGetValue(registerName, out var fallbackOverloads) && fallbackOverloads.Count > 1)
                                 {
                                     symbolTable.DefineFunctionOverloads(registerName, fallbackOverloads);
                                 }

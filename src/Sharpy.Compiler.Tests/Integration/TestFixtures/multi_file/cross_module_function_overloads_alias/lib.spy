@@ -1,0 +1,5 @@
+def describe(x: int) -> str:
+    return "int:" + str(x)
+
+def describe(x: str) -> str:
+    return "str:" + x

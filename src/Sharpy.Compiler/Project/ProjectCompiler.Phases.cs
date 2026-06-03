@@ -274,11 +274,12 @@ internal partial class ProjectCompiler
                                     else
                                     {
                                         importedSymbolSources[name] = sourceModule;
-                                    }
 
-                                    if (moduleInfo.FunctionOverloads.TryGetValue(name, out var overloads) && overloads.Count > 1)
-                                    {
-                                        SymbolTable.DefineFunctionOverloads(name, overloads);
+                                        // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
+                                        if (moduleInfo.FunctionOverloads.TryGetValue(name, out var overloads) && overloads.Count > 1)
+                                        {
+                                            SymbolTable.DefineFunctionOverloads(name, overloads);
+                                        }
                                     }
                                 }
                             }
@@ -286,6 +287,7 @@ internal partial class ProjectCompiler
                             {
                                 foreach (var importAlias in fromImport.Names)
                                 {
+                                    var lookupName = importAlias.Name;
                                     var symbolName = importAlias.AsName ?? importAlias.Name;
                                     if (symbolsToImport.TryGetValue(symbolName, out var symbol))
                                     {
@@ -301,12 +303,12 @@ internal partial class ProjectCompiler
                                         else
                                         {
                                             importedSymbolSources[symbolName] = sourceModule;
-                                        }
 
-                                        var lookupName = importAlias.Name;
-                                        if (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
-                                        {
-                                            SymbolTable.DefineFunctionOverloads(symbolName, overloads);
+                                            // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
+                                            if (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
+                                            {
+                                                SymbolTable.DefineFunctionOverloads(symbolName, overloads);
+                                            }
                                         }
                                     }
                                 }

@@ -1,0 +1,5 @@
+from lib import *
+
+def main():
+    print(describe(42))
+    print(describe("hello"))

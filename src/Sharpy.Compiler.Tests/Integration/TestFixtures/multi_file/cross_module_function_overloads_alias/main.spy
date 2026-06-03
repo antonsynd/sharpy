@@ -1,0 +1,5 @@
+from lib import describe as d
+
+def main():
+    print(d(42))
+    print(d("hello"))
