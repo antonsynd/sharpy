@@ -1,0 +1,11 @@
+"""System-specific parameters and functions."""
+
+from system import Environment
+
+def exit(code: int = 0) -> None:
+    """Exit the interpreter by raising SystemExit with the given exit code."""
+    Environment.exit(code)
+
+def getsizeof(obj: object) -> int:
+    """Return the size of an object in bytes (approximate)."""
+    return -1
