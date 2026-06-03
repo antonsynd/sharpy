@@ -540,8 +540,23 @@ internal partial class TypeChecker
             allIsInstance.Add(n with { NarrowInThenBranch = true });
         foreach (var n in elseDecision.IsInstanceNarrowings)
             allIsInstance.Add(n with { NarrowInThenBranch = false });
+
+        // #817: When the then-branch unconditionally exits (return/raise/break/continue)
+        // and there are no elif/else branches, the else-branch narrowings apply to all
+        // statements after the if (e.g., `if x is None: return` narrows `x` to non-nullable
+        // for the rest of the body). Restricted to if statements at the top level of a
+        // function/module body (_controlFlowDepth == 0) so the narrowing's region — the
+        // rest of the current narrowing scope here, and the rest of the method in codegen —
+        // exactly matches the region where the narrowing is valid.
+        var narrowsFollowingStatements = _controlFlowDepth == 0
+            && ifStmt.ElifClauses.Length == 0
+            && ifStmt.ElseBody.Length == 0
+            && narrowedTypesInElse.Count > 0
+            && BodyExitsUnconditionally(ifStmt.ThenBody);
+
         if (allOptional.Count > 0 || allIsInstance.Count > 0)
-            _semanticInfo.SetNarrowingDecision(ifStmt.Test, new NarrowingDecision(allOptional, allIsInstance));
+            _semanticInfo.SetNarrowingDecision(ifStmt.Test,
+                new NarrowingDecision(allOptional, allIsInstance, narrowsFollowingStatements));
 
         // Check then branch with its own narrowing scope
         using (_narrowingContext.EnterScope())
@@ -599,6 +614,11 @@ internal partial class TypeChecker
                 _symbolTable.ExitScope();
             }
         }
+
+        // #817: Apply inverse narrowings to the current (post-if) scope when the
+        // then-branch unconditionally exits. See narrowsFollowingStatements above.
+        if (narrowsFollowingStatements)
+            _narrowingContext.ApplyNarrowings(narrowedTypesInElse);
     }
 
     private void CheckWhile(WhileStatement whileStmt)

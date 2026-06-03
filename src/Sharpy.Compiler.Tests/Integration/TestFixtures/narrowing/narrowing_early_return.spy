@@ -1,0 +1,25 @@
+# Regression test for #817: type narrowing via early return.
+# After `if x is None: return`, x is narrowed to non-nullable
+# for the remainder of the function body.
+
+def greet(name: str?) -> str:
+    if name is None:
+        return "Hello, stranger!"
+    return "Hello, " + name + "!"
+
+def double_or_default(x: int | None) -> int:
+    if x is None:
+        return 0
+    return x * 2
+
+def must_have(value: str?) -> str:
+    if value is None:
+        raise ValueError("value required")
+    return "got " + value
+
+def main():
+    print(greet("World"))
+    print(greet(None))
+    print(double_or_default(21))
+    print(double_or_default(None))
+    print(must_have("it"))

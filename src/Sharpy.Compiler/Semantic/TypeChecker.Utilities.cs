@@ -230,6 +230,30 @@ internal partial class TypeChecker
     private string? ExtractNarrowingKey(Expression expr) => AstHelper.ExtractNarrowingKey(expr);
 
     /// <summary>
+    /// Returns true if a statement body unconditionally transfers control out of the
+    /// enclosing block (ends with return/raise/break/continue, possibly via an if
+    /// statement whose branches all exit). Used to propagate inverse type narrowing
+    /// past early-exit guards like <c>if x is None: return</c> (#817).
+    /// </summary>
+    private static bool BodyExitsUnconditionally(System.Collections.Immutable.ImmutableArray<Statement> body)
+        => body.Length > 0 && StatementExitsUnconditionally(body[^1]);
+
+    /// <summary>
+    /// Returns true if executing the statement always transfers control out of the
+    /// enclosing block. Conservative: only recognizes direct exit statements and
+    /// if statements whose then/elif/else branches all exit.
+    /// </summary>
+    private static bool StatementExitsUnconditionally(Statement statement) => statement switch
+    {
+        ReturnStatement or RaiseStatement or BreakStatement or ContinueStatement => true,
+        IfStatement ifStmt => ifStmt.ElseBody.Length > 0
+            && BodyExitsUnconditionally(ifStmt.ThenBody)
+            && ifStmt.ElifClauses.All(elif => BodyExitsUnconditionally(elif.Body))
+            && BodyExitsUnconditionally(ifStmt.ElseBody),
+        _ => false
+    };
+
+    /// <summary>
     /// Returns true if the given type contains any <see cref="TypeParameterType"/>
     /// (e.g., Iterator&lt;T&gt; contains T). Used during overload resolution to
     /// skip type-matching for generic parameters that C# will infer later.

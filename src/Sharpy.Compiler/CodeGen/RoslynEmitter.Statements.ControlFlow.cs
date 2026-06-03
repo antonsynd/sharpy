@@ -385,7 +385,37 @@ internal partial class RoslynEmitter
         // then-branch scope is restored (deliberate asymmetry for variable versioning).
         RestoreScope(postThenScope);
 
+        // #817: When the then-branch unconditionally exits (e.g., `if x is None: return`),
+        // the TypeChecker narrows the else-branch optionals for the statements following
+        // the if statement. Mirror that here so subsequent references emit .Unwrap()/.Value.
+        ApplyPostIfNarrowings(ifStmt.Test);
+
         return IfStatement(condition, thenBlock, elseClause);
+    }
+
+    /// <summary>
+    /// Applies else-branch Optional/Nullable narrowings to the statements following an
+    /// if statement whose then-branch unconditionally exits (#817). The TypeChecker only
+    /// sets <see cref="NarrowingDecision.NarrowsFollowingStatements"/> for if statements
+    /// at the top level of a function/module body, so the pushed narrowing is intentionally
+    /// not popped — it remains valid for the rest of the method and is cleaned up by
+    /// <see cref="NarrowingState.Reset"/> at the next method boundary.
+    /// </summary>
+    private void ApplyPostIfNarrowings(Expression test)
+    {
+        var decision = _context.SemanticInfo?.GetNarrowingDecision(test);
+        if (decision is not { NarrowsFollowingStatements: true })
+            return;
+
+        foreach (var n in decision.OptionalNarrowings)
+        {
+            if (n.NarrowInThenBranch)
+                continue;
+
+            _narrowing.PushNarrowing(n.VariableName);
+            if (n.IsValueTypeNullable)
+                _narrowing.AddNullableNarrowing(n.VariableName);
+        }
     }
 
     /// <summary>

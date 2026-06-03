@@ -612,9 +612,18 @@ public enum ContextManagerKind
 /// Records all type narrowings that a condition's test expression implies,
 /// so codegen can emit the correct accessor patterns (e.g., <c>.Value</c> for value-type nullables).
 /// </summary>
+/// <param name="OptionalNarrowings">Optional/Nullable narrowings implied by the test.</param>
+/// <param name="IsInstanceNarrowings">isinstance() narrowings implied by the test.</param>
+/// <param name="NarrowsFollowingStatements">
+/// True if the else-branch narrowings (entries with <c>NarrowInThenBranch == false</c>) also apply
+/// to the statements following the if statement, because the then-branch unconditionally exits
+/// (e.g., <c>if x is None: return</c>). Only set by the TypeChecker for if statements at the top
+/// level of a function/module body so the narrowing's lifetime matches the rest of the method (#817).
+/// </param>
 public sealed record NarrowingDecision(
     IReadOnlyList<OptionalNarrowing> OptionalNarrowings,
-    IReadOnlyList<IsInstanceNarrowing> IsInstanceNarrowings);
+    IReadOnlyList<IsInstanceNarrowing> IsInstanceNarrowings,
+    bool NarrowsFollowingStatements = false);
 
 /// <summary>
 /// A variable narrowed from <see cref="OptionalType"/> or <see cref="NullableType"/> to its underlying type.
