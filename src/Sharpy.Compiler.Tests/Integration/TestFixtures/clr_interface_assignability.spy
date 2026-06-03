@@ -1,0 +1,11 @@
+from system.collections.generic import IEnumerable
+
+def sum_items(items: IEnumerable[int]) -> int:
+    total: int = 0
+    for item in items:
+        total = total + item
+    return total
+
+def main() -> None:
+    nums: list[int] = [10, 20, 30]
+    print(sum_items(nums))

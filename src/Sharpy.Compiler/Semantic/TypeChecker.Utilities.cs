@@ -362,6 +362,42 @@ internal partial class TypeChecker
                         _ => null,
                     };
                     if (openType == null)
+                    {
+                        var candidateClr = gt.GenericDefinition?.ClrType
+                            ?? _symbolTable.LookupType(gt.Name)?.ClrType;
+                        if (candidateClr != null && candidateClr.IsGenericTypeDefinition
+                            && candidateClr.GetGenericArguments().Length == gt.TypeArguments.Count)
+                        {
+                            openType = candidateClr;
+                        }
+                        else if (candidateClr != null && !candidateClr.IsGenericTypeDefinition)
+                        {
+                            // ClrType is non-generic (e.g., IEnumerable instead of IEnumerable<T>).
+                            // Search loaded assemblies for the generic version with matching arity.
+                            var arity = gt.TypeArguments.Count;
+                            var genericName = candidateClr.Name.Contains('`', StringComparison.Ordinal)
+                                ? candidateClr.Name
+                                : candidateClr.Name + "`" + arity;
+                            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                try
+                                {
+                                    var match = asm.GetType(candidateClr.Namespace + "." + genericName)
+                                        ?? asm.GetTypes().FirstOrDefault(t =>
+                                            t.IsGenericTypeDefinition
+                                            && Shared.ClrNameHelper.StripArity(t.Name) == gt.Name
+                                            && t.GetGenericArguments().Length == arity);
+                                    if (match != null)
+                                    {
+                                        openType = match;
+                                        break;
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                    if (openType == null || !openType.IsGenericTypeDefinition)
                         return null;
                     var clrTypeArgs = gt.TypeArguments.Select(ta => TryGetClrType(ta) ?? typeof(object)).ToArray();
                     if (clrTypeArgs.Length != openType.GetGenericArguments().Length)

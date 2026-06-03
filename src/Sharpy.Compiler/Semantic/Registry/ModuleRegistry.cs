@@ -462,29 +462,53 @@ internal class ModuleRegistry
     }
 
     /// <summary>
-    /// Map a Sharpy module name to a .NET namespace.
-    /// Uses lowercase Python-style names (e.g., "system" -> "System").
+    /// Map a Sharpy module name to a .NET namespace by converting snake_case segments
+    /// to PascalCase (e.g., "system.io" → "System.IO", "system.text.regular_expressions"
+    /// → "System.Text.RegularExpressions"). Accepts any "system.*" prefix and "sharpy".
     /// </summary>
     private string? MapModuleToNamespace(string moduleName)
     {
-        // Standard .NET namespace mappings
-        return moduleName.ToLowerInvariant() switch
+        var lower = moduleName.ToLowerInvariant();
+        if (lower == "sharpy")
+            return "Sharpy";
+
+        if (!lower.StartsWith("system"))
+            return null;
+
+        if (lower == "system")
+            return "System";
+
+        if (!lower.StartsWith("system."))
+            return null;
+
+        var segments = lower.Split('.');
+        var result = new string[segments.Length];
+        for (int i = 0; i < segments.Length; i++)
         {
-            "system" => "System",
-            "system.collections" => "System.Collections",
-            "system.collections.generic" => "System.Collections.Generic",
-            "system.io" => "System.IO",
-            "system.text" => "System.Text",
-            "system.text.regular_expressions" => "System.Text.RegularExpressions",
-            "system.linq" => "System.Linq",
-            "system.threading" => "System.Threading",
-            "system.threading.tasks" => "System.Threading.Tasks",
-            "system.net" => "System.Net",
-            "system.net.http" => "System.Net.Http",
-            "system.runtime.interop_services" => "System.Runtime.InteropServices",
-            "sharpy" => "Sharpy",
-            _ => null
-        };
+            result[i] = PascalCaseSegment(segments[i]);
+        }
+        return string.Join(".", result);
+    }
+
+    private static string PascalCaseSegment(string segment)
+    {
+        if (segment.Length == 0) return segment;
+
+        // Handle abbreviations: "io" → "IO", "http" → "Http"
+        if (segment == "io") return "IO";
+
+        var parts = segment.Split('_');
+        var sb = new System.Text.StringBuilder();
+        foreach (var part in parts)
+        {
+            if (part.Length > 0)
+            {
+                sb.Append(char.ToUpperInvariant(part[0]));
+                if (part.Length > 1)
+                    sb.Append(part.Substring(1));
+            }
+        }
+        return sb.ToString();
     }
 
     /// <summary>
