@@ -535,7 +535,10 @@ internal class BuiltinRegistry
             return null;
         }
 
-        var kind = clrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
+        var kind = clrType.IsInterface ? TypeKind.Interface
+            : clrType.IsEnum ? TypeKind.Enum
+            : clrType.IsValueType ? TypeKind.Struct
+            : TypeKind.Class;
         var typeSymbol = new TypeSymbol
         {
             Name = name,
@@ -559,7 +562,18 @@ internal class BuiltinRegistry
             "System",
             "System.Collections.Generic",
             "System.IO",
-            "System.Text"
+            "System.Text",
+            "System.IO.Compression",
+            "System.Net",
+            "System.Net.Sockets",
+            "System.Net.Http",
+            "System.Numerics",
+            "System.Threading",
+            "System.Threading.Tasks",
+            "System.Text.RegularExpressions",
+            "System.Security.Cryptography",
+            "System.Diagnostics",
+            "System.Linq"
         };
 
         foreach (var ns in namespaces)
