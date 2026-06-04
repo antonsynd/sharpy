@@ -236,14 +236,6 @@ public record TypeSymbol : Symbol
     public IReadOnlyList<VariableSymbol>? DataclassFields { get; internal set; }
 
     /// <summary>
-    /// Whether this generic type is covariant in its type parameters.
-    /// For built-in types, set by BuiltinRegistry during registration.
-    /// Currently only applies to single-type-parameter types (list, set).
-    /// The covariance check in TypeChecker.Utilities uses TypeArguments[0] only.
-    /// </summary>
-    public bool IsCovariant { get; init; }
-
-    /// <summary>
     /// The module path that defines this type (e.g., "animal" for a type imported from animal.spy).
     /// Null for types defined in the current module.
     /// </summary>

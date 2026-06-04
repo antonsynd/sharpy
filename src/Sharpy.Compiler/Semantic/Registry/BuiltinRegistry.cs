@@ -207,6 +207,17 @@ internal class BuiltinRegistry
         // e.g., IEnumerable registered as System.Collections.IEnumerable) (#827).
         typeParams = ApplyClrVariance(typeParams, varianceSource ?? clrType);
 
+        // list and set are covariant in their element type by language design: Sharpy
+        // treats list[Dog] as assignable to list[Animal] even though Sharpy.List<T> is
+        // invariant in C#. This expresses per-parameter what the removed
+        // TypeSymbol.IsCovariant flag previously declared for the whole type (#827).
+        if (sharpyName is BuiltinNames.List or BuiltinNames.Set)
+        {
+            typeParams = typeParams
+                .Select(tp => tp with { Variance = TypeParameterVariance.Covariant })
+                .ToList();
+        }
+
         var methods = discovered?.Methods ?? new List<FunctionSymbol>();
         var operatorMethods = discovered?.OperatorMethods ?? new Dictionary<string, List<FunctionSymbol>>();
         var protocolMethods = discovered?.ProtocolMethods ?? new Dictionary<string, List<FunctionSymbol>>();
@@ -223,7 +234,6 @@ internal class BuiltinRegistry
             ClrType = clrType,
             TypeParameters = typeParams,
             AccessLevel = AccessLevel.Public,
-            IsCovariant = IsCovariant(sharpyName),
             Methods = methods,
             OperatorMethods = operatorMethods,
             ProtocolMethods = protocolMethods,
@@ -719,11 +729,6 @@ internal class BuiltinRegistry
     /// These are handled by the type checker via expected type inference, not as regular functions.
     /// </summary>
     public bool IsTaggedUnionConstructor(string name) => TaggedUnionConstructors.Contains(name);
-
-    /// <summary>
-    /// Returns whether the given builtin type is covariant in its type parameters.
-    /// </summary>
-    public static bool IsCovariant(string typeName) => typeName is BuiltinNames.List or BuiltinNames.Set;
 
     public IEnumerable<(string Name, TypeSymbol Type)> GetAllTypes() => _types.Select(kv => (kv.Key, kv.Value));
     public IEnumerable<(string Name, FunctionSymbol Function)> GetAllFunctions() =>

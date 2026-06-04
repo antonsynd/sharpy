@@ -330,19 +330,14 @@ internal partial class TypeChecker
             }
         }
 
-        // Handle covariance for generic collection types (list, set)
-        if (source is GenericType sourceGeneric && target is GenericType targetGeneric)
+        // Generic variance (#827): same-name generics check per-type-parameter variance
+        // from the definition's TypeParameterDefs; different-name generics check
+        // assignability through implemented interfaces and base classes
+        // (e.g., list[int] → IEnumerable[int], MyList[int] → list[int]).
+        if (source is GenericType sourceGeneric && target is GenericType targetGeneric
+            && IsGenericAssignableWithVariance(sourceGeneric, targetGeneric))
         {
-            if (sourceGeneric.Name == targetGeneric.Name &&
-                sourceGeneric.TypeArguments.Count == targetGeneric.TypeArguments.Count)
-            {
-                // Check TypeSymbol metadata for covariance
-                var sourceTypeSymbol = _symbolTable.BuiltinRegistry.GetType(sourceGeneric.Name);
-                if (sourceTypeSymbol?.IsCovariant == true)
-                {
-                    return IsAssignable(sourceGeneric.TypeArguments[0], targetGeneric.TypeArguments[0]);
-                }
-            }
+            return true;
         }
 
         // CLR fallback: when both types have CLR metadata (e.g., module-discovered types like
@@ -356,6 +351,88 @@ internal partial class TypeChecker
             return true;
 
         return false;
+    }
+
+    /// <summary>
+    /// Checks generic-to-generic assignability using per-type-parameter variance (#827).
+    /// Same-name generics compare each argument position under the definition's declared
+    /// variance; different-name generics walk the source's instantiated supertypes
+    /// (interfaces and base classes) to find one matching the target, then apply the
+    /// supertype definition's variance.
+    /// </summary>
+    private bool IsGenericAssignableWithVariance(GenericType source, GenericType target)
+    {
+        if (source.Name == target.Name)
+        {
+            if (source.TypeArguments.Count != target.TypeArguments.Count)
+                return false;
+
+            var definition = GenericInstantiationWalker.ResolveDefinition(source, _symbolTable);
+            if (definition == null || definition.TypeParameters.Count != source.TypeArguments.Count)
+                return false;
+
+            return TypeArgumentsSatisfyVariance(
+                definition.TypeParameters, source.TypeArguments, target.TypeArguments);
+        }
+
+        // Interface or base-class assignment: find an instantiated supertype of the
+        // source matching the target's name and arity.
+        foreach (var supertype in GenericInstantiationWalker.EnumerateSupertypes(
+                     source, _symbolTable, SemanticBinding, _typeResolver))
+        {
+            if (supertype.Definition.Name != target.Name
+                || supertype.TypeArguments.Count != target.TypeArguments.Count)
+            {
+                continue;
+            }
+
+            if (TypeArgumentsSatisfyVariance(
+                    supertype.Definition.TypeParameters, supertype.TypeArguments, target.TypeArguments))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks each type-argument position under the corresponding type parameter's
+    /// declared variance: covariant (out) positions require source → target
+    /// assignability, contravariant (in) positions require target → source, and
+    /// invariant positions require equivalent types.
+    /// </summary>
+    private bool TypeArgumentsSatisfyVariance(
+        IReadOnlyList<TypeParameterDef> typeParameters,
+        IReadOnlyList<SemanticType> sourceArguments,
+        IReadOnlyList<SemanticType> targetArguments)
+    {
+        for (int i = 0; i < sourceArguments.Count; i++)
+        {
+            var variance = i < typeParameters.Count
+                ? typeParameters[i].Variance
+                : TypeParameterVariance.None;
+            var sourceArg = sourceArguments[i];
+            var targetArg = targetArguments[i];
+
+            // UnknownType acts as a wildcard — allows empty collection literals
+            // (list[<?>], dict[<?>,<?>]) to satisfy any argument position.
+            if (sourceArg is UnknownType || targetArg is UnknownType)
+                continue;
+
+            var satisfied = variance switch
+            {
+                TypeParameterVariance.Covariant => IsAssignable(sourceArg, targetArg),
+                TypeParameterVariance.Contravariant => IsAssignable(targetArg, sourceArg),
+                _ => sourceArg.Equals(targetArg)
+                     || (sourceArg.IsAssignableTo(targetArg) && targetArg.IsAssignableTo(sourceArg)),
+            };
+
+            if (!satisfied)
+                return false;
+        }
+
+        return true;
     }
 
     /// <summary>

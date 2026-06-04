@@ -1,0 +1,16 @@
+# Test: generic type arguments are inferred through implemented interfaces (#827)
+# Passing list[int] to IEnumerable[T] infers T=int by walking list's interface list
+
+def first_item[T](items: IEnumerable[T]) -> T:
+    for item in items:
+        return item
+    raise ValueError("empty")
+
+def main():
+    nums: list[int] = [10, 20, 30]
+    x = first_item(nums)
+    print(x + 5)
+
+    words: set[str] = {"hello"}
+    w = first_item(words)
+    print(w)

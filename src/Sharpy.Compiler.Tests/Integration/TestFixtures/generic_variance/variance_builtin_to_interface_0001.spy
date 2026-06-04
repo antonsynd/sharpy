@@ -1,0 +1,20 @@
+# Test: builtin collections are assignable to covariant CLR interfaces (#827)
+# list[Dog] -> IEnumerable[Animal] uses IEnumerable's covariant (out T) parameter
+
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+def describe(animals: IEnumerable[Animal]) -> None:
+    for a in animals:
+        print(a.name)
+
+def main():
+    dogs: list[Dog] = [Dog("Rex"), Dog("Fido")]
+    describe(dogs)
