@@ -406,6 +406,22 @@ internal class ModuleRegistry
             }
         }
 
+        // Collect enum members as Fields so TypeChecker can resolve EnumType.Member
+        var enumFields = new List<VariableSymbol>();
+        if (typeKind == TypeKind.Enum)
+        {
+            foreach (var field in clrType.GetFields(BindingFlags.Public | BindingFlags.Static))
+            {
+                enumFields.Add(new VariableSymbol
+                {
+                    Name = field.Name,
+                    Kind = SymbolKind.Variable,
+                    AccessLevel = AccessLevel.Public,
+                    IsStatic = true
+                });
+            }
+        }
+
         var typeSymbol = new TypeSymbol
         {
             Name = typeName,
@@ -417,7 +433,8 @@ internal class ModuleRegistry
             BaseType = baseTypeSymbol,
             Interfaces = interfaces,
             Constructors = ctorSymbols,
-            TypeParameters = typeParameters
+            TypeParameters = typeParameters,
+            Fields = enumFields
         };
 
         return typeSymbol;
