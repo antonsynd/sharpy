@@ -1,0 +1,8 @@
+from system import StringComparison
+
+def compare_strings(a: str, b: str, comp: StringComparison) -> bool:
+    return a.equals(b, comp)
+
+def main() -> None:
+    print(compare_strings("hello", "HELLO", StringComparison.OrdinalIgnoreCase))
+    print(compare_strings("hello", "HELLO", StringComparison.Ordinal))

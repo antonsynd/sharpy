@@ -906,14 +906,14 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    // Integer enums use PascalCase member names
-                    var enumMemberName = NameMangler.ToEnumMemberName(memberAccess.Member);
+                    // CLR enums already have correct PascalCase member names — skip mangling
+                    var enumMemberName = enumSymbol.ClrType != null
+                        ? memberAccess.Member
+                        : NameMangler.ToEnumMemberName(memberAccess.Member);
                     var enumMemberAccess = MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         enumType,
                         IdentifierName(enumMemberName));
-                    // Return the enum member directly (not cast to int)
-                    // The .value property is used to get the underlying int value
                     return enumMemberAccess;
                 }
             }
