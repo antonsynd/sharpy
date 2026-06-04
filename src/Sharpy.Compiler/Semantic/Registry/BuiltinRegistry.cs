@@ -1,4 +1,5 @@
 extern alias SharpyRT;
+using System.Collections.Immutable;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Discovery;
@@ -19,6 +20,21 @@ internal class BuiltinRegistry
     private readonly Dictionary<string, TypeSymbol> _types = new();
     private readonly Dictionary<string, List<FunctionSymbol>> _functions = new();
     private readonly CachedModuleDiscovery _discovery;
+    private readonly ClrTypeMapper _clrTypeMapper = new();
+
+    /// <summary>
+    /// Deferred interface population work recorded by <see cref="RegisterType"/> and processed
+    /// after all builtin types are registered, so that interface definitions can be resolved
+    /// against already-registered symbols (e.g., IEnumerable, IEnumerator).
+    /// </summary>
+    private readonly List<(TypeSymbol Symbol, TypeParameterType[] TypeParams)> _pendingInterfacePopulation = new();
+
+    /// <summary>
+    /// Cache of minimal interface TypeSymbols keyed by the open-generic (or non-generic) CLR
+    /// interface definition, so all builtin types implementing the same interface share one
+    /// definition symbol.
+    /// </summary>
+    private readonly Dictionary<Type, TypeSymbol> _interfaceSymbols = new();
 
     /// <summary>
     /// Primitive types to register from PrimitiveCatalog.
@@ -116,6 +132,10 @@ internal class BuiltinRegistry
         {
             RegisterType("Exception", typeof(System.Exception), TypeKind.Class);
         }
+
+        // Populate CLR interface information on registered TypeSymbols. Deferred until all
+        // types are registered so interface definitions resolve to registered symbols (#827).
+        PopulateClrInterfaces();
     }
 
     private void LoadBuiltinTypes()
@@ -205,6 +225,194 @@ internal class BuiltinRegistry
 
         PopulateMethodOverloads(typeSymbol);
         _types[sharpyName] = typeSymbol;
+
+        // Defer interface population until all builtin types are registered, so that
+        // interface definitions (e.g., IEnumerable) resolve to the registered symbols.
+        _pendingInterfacePopulation.Add((typeSymbol, sharedTypeParams));
+    }
+
+    /// <summary>
+    /// Processes all deferred interface population work recorded by <see cref="RegisterType"/>.
+    /// Populates <see cref="TypeSymbol.Interfaces"/> from CLR reflection so that
+    /// TypeHierarchyService and generic inference can walk interface hierarchies of
+    /// builtin types (#827).
+    /// </summary>
+    private void PopulateClrInterfaces()
+    {
+        foreach (var (typeSymbol, typeParams) in _pendingInterfacePopulation)
+        {
+            PopulateClrInterfaces(typeSymbol, typeParams);
+        }
+        _pendingInterfacePopulation.Clear();
+    }
+
+    private void PopulateClrInterfaces(TypeSymbol typeSymbol, TypeParameterType[] sharedTypeParams)
+    {
+        var clrType = typeSymbol.ClrType;
+
+        // Skip placeholder registrations (typeof(object)/typeof(void)) and interface symbols
+        // themselves — only concrete builtin classes/structs get interface lists here.
+        if (clrType == null || clrType == typeof(object) || clrType == typeof(void))
+            return;
+        if (typeSymbol.TypeKind == TypeKind.Interface)
+            return;
+        if (typeSymbol.Interfaces.Count > 0)
+            return;
+
+        var allInterfaces = clrType.GetInterfaces()
+            .Where(IsPublicInterface)
+            .ToList();
+
+        // When both generic and non-generic forms share a stripped name (IEnumerable vs
+        // IEnumerable<T>), keep only the generic form — the non-generic form carries no
+        // additional information and would create an ambiguous duplicate reference.
+        var genericNames = new HashSet<string>(
+            allInterfaces
+                .Where(i => i.IsGenericType)
+                .Select(i => ClrNameHelper.StripArity(i.GetGenericTypeDefinition().Name)));
+
+        foreach (var iface in allInterfaces)
+        {
+            if (!iface.IsGenericType)
+            {
+                if (genericNames.Contains(iface.Name))
+                    continue;
+
+                typeSymbol.Interfaces.Add(new InterfaceReference
+                {
+                    Definition = GetOrCreateInterfaceSymbol(iface)
+                });
+                continue;
+            }
+
+            // Map the CLR interface's type arguments. Generic parameters of the implementing
+            // type are mapped positionally to the shared TypeParameterType instances so that
+            // list[T0] is recorded as implementing IEnumerable[T0], etc.
+            var resolvedArgs = new List<SemanticType>();
+            var resolvable = true;
+            foreach (var arg in iface.GetGenericArguments())
+            {
+                var mapped = MapClrInterfaceArgument(arg, sharedTypeParams);
+                if (mapped == null)
+                {
+                    resolvable = false;
+                    break;
+                }
+                resolvedArgs.Add(mapped);
+            }
+
+            if (!resolvable)
+                continue;
+
+            typeSymbol.Interfaces.Add(new InterfaceReference
+            {
+                Definition = GetOrCreateInterfaceSymbol(iface.GetGenericTypeDefinition()),
+                ResolvedTypeArguments = resolvedArgs.ToImmutableArray()
+            });
+        }
+    }
+
+    /// <summary>
+    /// Maps a CLR interface type argument to a SemanticType. Generic parameters of the
+    /// implementing type map positionally to <paramref name="sharedTypeParams"/> (T0, T1, ...)
+    /// so name-based substitution lines up with the TypeSymbol's TypeParameters.
+    /// Returns null when the argument cannot be represented (interface is then skipped).
+    /// </summary>
+    private SemanticType? MapClrInterfaceArgument(Type arg, TypeParameterType[] sharedTypeParams)
+    {
+        if (arg.IsGenericParameter)
+        {
+            var position = arg.GenericParameterPosition;
+            return position < sharedTypeParams.Length ? sharedTypeParams[position] : null;
+        }
+
+        if (arg.IsGenericType)
+        {
+            var mappedArgs = new List<SemanticType>();
+            foreach (var nested in arg.GetGenericArguments())
+            {
+                var mapped = MapClrInterfaceArgument(nested, sharedTypeParams);
+                if (mapped == null)
+                    return null;
+                mappedArgs.Add(mapped);
+            }
+
+            var def = arg.GetGenericTypeDefinition();
+
+            // KeyValuePair<K, V> -> tuple[K, V] (matches ClrTypeMapper's mapping)
+            if (def == typeof(KeyValuePair<,>))
+                return new TupleType { ElementTypes = mappedArgs };
+
+            return new GenericType
+            {
+                Name = ClrNameHelper.StripArity(def.Name),
+                TypeArguments = mappedArgs
+            };
+        }
+
+        // Unrepresentable open-generic leftovers (e.g., arrays of generic parameters).
+        if (arg.ContainsGenericParameters)
+            return null;
+
+        // Concrete leaf type (e.g., int in IEquatable<int>) — reuse the standard CLR mapping.
+        return _clrTypeMapper.MapClrTypeToSemanticType(arg);
+    }
+
+    /// <summary>
+    /// Finds or creates the TypeSymbol for an interface definition. Prefers symbols already
+    /// registered in <see cref="_types"/> (e.g., IEnumerable, IEnumerator); otherwise creates
+    /// a minimal interface TypeSymbol, cached per CLR definition so all implementers share it.
+    /// </summary>
+    private TypeSymbol GetOrCreateInterfaceSymbol(Type interfaceDef)
+    {
+        var name = ClrNameHelper.StripArity(interfaceDef.Name);
+
+        if (_types.TryGetValue(name, out var registered) && registered.TypeKind == TypeKind.Interface)
+            return registered;
+
+        if (_interfaceSymbols.TryGetValue(interfaceDef, out var cached))
+            return cached;
+
+        var clrArgs = interfaceDef.IsGenericTypeDefinition
+            ? interfaceDef.GetGenericArguments()
+            : Type.EmptyTypes;
+        var typeParams = clrArgs
+            .Select((arg, i) => new TypeParameterDef { Name = $"T{i}", Variance = GetClrVariance(arg) })
+            .ToList();
+
+        var symbol = new TypeSymbol
+        {
+            Name = name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Interface,
+            ClrType = interfaceDef,
+            TypeParameters = typeParams,
+            AccessLevel = AccessLevel.Public
+        };
+        _interfaceSymbols[interfaceDef] = symbol;
+        return symbol;
+    }
+
+    /// <summary>
+    /// Returns true when the interface (or its generic definition) is publicly visible.
+    /// </summary>
+    private static bool IsPublicInterface(Type iface)
+    {
+        var def = iface.IsGenericType ? iface.GetGenericTypeDefinition() : iface;
+        return def.IsVisible;
+    }
+
+    /// <summary>
+    /// Reads the declared CLR variance (out/in) of a generic parameter.
+    /// </summary>
+    private static TypeParameterVariance GetClrVariance(Type genericParameter)
+    {
+        return (genericParameter.GenericParameterAttributes & GenericParameterAttributes.VarianceMask) switch
+        {
+            GenericParameterAttributes.Covariant => TypeParameterVariance.Covariant,
+            GenericParameterAttributes.Contravariant => TypeParameterVariance.Contravariant,
+            _ => TypeParameterVariance.None
+        };
     }
 
     /// <summary>
