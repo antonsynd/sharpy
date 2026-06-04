@@ -1,9 +1,12 @@
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Reflection;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
+using TypeParameterDef = Sharpy.Compiler.Parser.Ast.TypeParameterDef;
+using TypeParameterVariance = Sharpy.Compiler.Parser.Ast.TypeParameterVariance;
 
 namespace Sharpy.Compiler.Discovery;
 
@@ -356,23 +359,142 @@ internal class ClrTypeMapper
     }
 
     /// <summary>
-    /// Builds the interface list for a CLR type, synthesizing IDisposable if implemented.
-    /// Returns an empty list if no interfaces are synthesized.
+    /// Cache of minimal interface TypeSymbols keyed by the open-generic (or non-generic)
+    /// CLR interface definition, so all mapped types implementing the same interface share
+    /// one definition symbol.
     /// </summary>
-    private static List<InterfaceReference> BuildInterfaceList(Type clrType)
-    {
-        if (!typeof(System.IDisposable).IsAssignableFrom(clrType))
-            return new List<InterfaceReference>();
+    private readonly ConcurrentDictionary<Type, TypeSymbol> _interfaceSymbolCache = new();
 
-        var disposableSymbol = new TypeSymbol
+    /// <summary>
+    /// Types whose interface lists are currently being built on this thread. Guards against
+    /// infinite recursion through self-referential interface arguments
+    /// (e.g., <c>Foo : IEquatable&lt;Foo&gt;</c>) and indirect cycles between types.
+    /// </summary>
+    [ThreadStatic]
+    private static HashSet<Type>? _interfaceListInProgress;
+
+    /// <summary>
+    /// Builds the interface list for a CLR type with resolved type arguments (#827).
+    /// All public CLR interfaces are enumerated; generic interfaces carry
+    /// ResolvedTypeArguments. Non-generic duplicates of generic forms (IEnumerable vs
+    /// IEnumerable&lt;T&gt;) are filtered out.
+    /// </summary>
+    private List<InterfaceReference> BuildInterfaceList(Type clrType)
+    {
+        var result = new List<InterfaceReference>();
+
+        _interfaceListInProgress ??= new HashSet<Type>();
+        if (!_interfaceListInProgress.Add(clrType))
+            return result; // Re-entrant on the same type — break the cycle
+
+        try
         {
-            Name = "IDisposable",
-            Kind = SymbolKind.Type,
-            TypeKind = TypeKind.Interface
-        };
-        return new List<InterfaceReference>
+            var allInterfaces = clrType.GetInterfaces()
+                .Where(IsPublicInterface)
+                .ToList();
+
+            // When both generic and non-generic forms share a stripped name (IEnumerable vs
+            // IEnumerable<T>), keep only the generic form — the non-generic form carries no
+            // additional information and would create an ambiguous duplicate reference.
+            var genericNames = new HashSet<string>(
+                allInterfaces
+                    .Where(i => i.IsGenericType)
+                    .Select(i => ClrNameHelper.StripArity(i.GetGenericTypeDefinition().Name)));
+
+            foreach (var iface in allInterfaces)
+            {
+                if (!iface.IsGenericType)
+                {
+                    if (genericNames.Contains(iface.Name))
+                        continue;
+
+                    result.Add(new InterfaceReference
+                    {
+                        Definition = GetOrCreateInterfaceSymbol(iface)
+                    });
+                    continue;
+                }
+
+                var resolvedArgs = iface.GetGenericArguments()
+                    .Select(arg => MapInterfaceArgument(arg, clrType))
+                    .ToImmutableArray();
+
+                result.Add(new InterfaceReference
+                {
+                    Definition = GetOrCreateInterfaceSymbol(iface.GetGenericTypeDefinition()),
+                    ResolvedTypeArguments = resolvedArgs
+                });
+            }
+
+            return result;
+        }
+        finally
         {
-            new InterfaceReference { Definition = disposableSymbol }
+            _interfaceListInProgress.Remove(clrType);
+        }
+    }
+
+    /// <summary>
+    /// Maps a CLR interface type argument to a SemanticType. Self-referential arguments
+    /// (e.g., <c>Foo</c> in <c>Foo : IEquatable&lt;Foo&gt;</c>) and types whose interface
+    /// lists are currently being built map to a shallow UserDefinedType to avoid recursing
+    /// back through <see cref="MapTypeInternal"/>.
+    /// </summary>
+    private SemanticType MapInterfaceArgument(Type arg, Type declaringType)
+    {
+        if (arg == declaringType || (_interfaceListInProgress?.Contains(arg) == true))
+            return new UserDefinedType { Name = arg.Name };
+
+        return MapClrTypeToSemanticType(arg);
+    }
+
+    /// <summary>
+    /// Finds or creates the TypeSymbol for an interface definition, cached per CLR
+    /// definition so all implementers share one symbol. Type parameters follow the
+    /// discovery naming convention (T0, T1, ...) with CLR variance preserved.
+    /// </summary>
+    private TypeSymbol GetOrCreateInterfaceSymbol(Type interfaceDef)
+    {
+        return _interfaceSymbolCache.GetOrAdd(interfaceDef, static def =>
+        {
+            var clrArgs = def.IsGenericTypeDefinition
+                ? def.GetGenericArguments()
+                : Type.EmptyTypes;
+            var typeParams = clrArgs
+                .Select((arg, i) => new TypeParameterDef { Name = $"T{i}", Variance = GetClrVariance(arg) })
+                .ToList();
+
+            return new TypeSymbol
+            {
+                Name = ClrNameHelper.StripArity(def.Name),
+                Kind = SymbolKind.Type,
+                TypeKind = TypeKind.Interface,
+                ClrType = def,
+                TypeParameters = typeParams,
+                AccessLevel = AccessLevel.Public
+            };
+        });
+    }
+
+    /// <summary>
+    /// Returns true when the interface (or its generic definition) is publicly visible.
+    /// </summary>
+    internal static bool IsPublicInterface(Type iface)
+    {
+        var def = iface.IsGenericType ? iface.GetGenericTypeDefinition() : iface;
+        return def.IsVisible;
+    }
+
+    /// <summary>
+    /// Reads the declared CLR variance (out/in) of a generic parameter.
+    /// </summary>
+    internal static TypeParameterVariance GetClrVariance(Type genericParameter)
+    {
+        return (genericParameter.GenericParameterAttributes & GenericParameterAttributes.VarianceMask) switch
+        {
+            GenericParameterAttributes.Covariant => TypeParameterVariance.Covariant,
+            GenericParameterAttributes.Contravariant => TypeParameterVariance.Contravariant,
+            _ => TypeParameterVariance.None
         };
     }
 }

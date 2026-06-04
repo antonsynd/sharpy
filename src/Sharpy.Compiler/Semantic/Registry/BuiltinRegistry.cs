@@ -260,7 +260,7 @@ internal class BuiltinRegistry
             return;
 
         var allInterfaces = clrType.GetInterfaces()
-            .Where(IsPublicInterface)
+            .Where(ClrTypeMapper.IsPublicInterface)
             .ToList();
 
         // When both generic and non-generic forms share a stripped name (IEnumerable vs
@@ -377,7 +377,7 @@ internal class BuiltinRegistry
             ? interfaceDef.GetGenericArguments()
             : Type.EmptyTypes;
         var typeParams = clrArgs
-            .Select((arg, i) => new TypeParameterDef { Name = $"T{i}", Variance = GetClrVariance(arg) })
+            .Select((arg, i) => new TypeParameterDef { Name = $"T{i}", Variance = ClrTypeMapper.GetClrVariance(arg) })
             .ToList();
 
         var symbol = new TypeSymbol
@@ -391,28 +391,6 @@ internal class BuiltinRegistry
         };
         _interfaceSymbols[interfaceDef] = symbol;
         return symbol;
-    }
-
-    /// <summary>
-    /// Returns true when the interface (or its generic definition) is publicly visible.
-    /// </summary>
-    private static bool IsPublicInterface(Type iface)
-    {
-        var def = iface.IsGenericType ? iface.GetGenericTypeDefinition() : iface;
-        return def.IsVisible;
-    }
-
-    /// <summary>
-    /// Reads the declared CLR variance (out/in) of a generic parameter.
-    /// </summary>
-    private static TypeParameterVariance GetClrVariance(Type genericParameter)
-    {
-        return (genericParameter.GenericParameterAttributes & GenericParameterAttributes.VarianceMask) switch
-        {
-            GenericParameterAttributes.Covariant => TypeParameterVariance.Covariant,
-            GenericParameterAttributes.Contravariant => TypeParameterVariance.Contravariant,
-            _ => TypeParameterVariance.None
-        };
     }
 
     /// <summary>

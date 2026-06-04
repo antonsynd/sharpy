@@ -221,7 +221,55 @@ public class ClrTypeMapperTests
         var udt = (UserDefinedType)result;
         Assert.Equal("Uri", udt.Name);
         Assert.NotNull(udt.Symbol);
-        Assert.Empty(udt.Symbol!.Interfaces);
+        Assert.DoesNotContain(udt.Symbol!.Interfaces, i => i.Definition.Name == "IDisposable");
+    }
+
+    [Fact]
+    public void BuildInterfaceList_GenericInterfaceCarriesResolvedTypeArguments()
+    {
+        // Arrange & Act - Uri implements IEquatable<Uri> (#827)
+        var result = _mapper.MapClrTypeToSemanticType(typeof(System.Uri));
+
+        // Assert
+        var udt = Assert.IsType<UserDefinedType>(result);
+        Assert.NotNull(udt.Symbol);
+        var equatableRef = udt.Symbol!.Interfaces
+            .SingleOrDefault(i => i.Definition.Name == "IEquatable");
+        Assert.NotNull(equatableRef);
+        var arg = Assert.Single(equatableRef.ResolvedTypeArguments);
+        // Self-referential argument (Uri : IEquatable<Uri>) maps to a shallow reference
+        var selfArg = Assert.IsType<UserDefinedType>(arg);
+        Assert.Equal("Uri", selfArg.Name);
+    }
+
+    [Fact]
+    public void BuildInterfaceList_SharesInterfaceDefinitionSymbolAcrossTypes()
+    {
+        // Arrange & Act - both implement IEquatable<T>
+        var uri = (UserDefinedType)_mapper.MapClrTypeToSemanticType(typeof(System.Uri));
+        var version = (UserDefinedType)_mapper.MapClrTypeToSemanticType(typeof(System.Version));
+
+        // Assert - the IEquatable definition symbol is shared
+        var uriEquatable = uri.Symbol!.Interfaces.Single(i => i.Definition.Name == "IEquatable");
+        var versionEquatable = version.Symbol!.Interfaces.Single(i => i.Definition.Name == "IEquatable");
+        Assert.Same(uriEquatable.Definition, versionEquatable.Definition);
+        Assert.Single(uriEquatable.Definition.TypeParameters);
+        Assert.Equal("T0", uriEquatable.Definition.TypeParameters[0].Name);
+    }
+
+    [Fact]
+    public void BuildInterfaceList_FiltersNonGenericDuplicateOfGenericForm()
+    {
+        // Arrange & Act - Version implements both IComparable and IComparable<Version>
+        var result = _mapper.MapClrTypeToSemanticType(typeof(System.Version));
+
+        // Assert - only the generic form survives
+        var udt = Assert.IsType<UserDefinedType>(result);
+        var comparableRefs = udt.Symbol!.Interfaces
+            .Where(i => i.Definition.Name == "IComparable")
+            .ToList();
+        var singleRef = Assert.Single(comparableRefs);
+        Assert.NotEmpty(singleRef.ResolvedTypeArguments);
     }
 
     [Fact]
