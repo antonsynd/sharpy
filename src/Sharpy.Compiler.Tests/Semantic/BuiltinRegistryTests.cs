@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Semantic;
+using TypeParameterVariance = Sharpy.Compiler.Parser.Ast.TypeParameterVariance;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 
@@ -157,5 +158,46 @@ public class BuiltinRegistryTests
             .ToList();
         var singleRef = Assert.Single(enumerableRefs);
         Assert.NotEmpty(singleRef.ResolvedTypeArguments);
+    }
+
+    [Fact]
+    public void ClrVariance_RegisteredIEnumerable_IsCovariant()
+    {
+        // IEnumerable<out T> — the registered builtin interface symbol must carry
+        // the CLR-declared covariance on its type parameter (#827)
+        var enumerableSymbol = _registry.GetType("IEnumerable");
+
+        Assert.NotNull(enumerableSymbol);
+        var typeParam = Assert.Single(enumerableSymbol.TypeParameters);
+        Assert.Equal(TypeParameterVariance.Covariant, typeParam.Variance);
+    }
+
+    [Fact]
+    public void ClrVariance_InterfaceSymbolFromImplementer_IsCovariant()
+    {
+        // The IEnumerable definition referenced from list's interface list must also
+        // carry covariance (it is the same registered symbol)
+        var listSymbol = _registry.GetType("list");
+
+        Assert.NotNull(listSymbol);
+        var enumerableRef = listSymbol.Interfaces
+            .Single(i => i.Definition.Name == "IEnumerable");
+        var typeParam = Assert.Single(enumerableRef.Definition.TypeParameters);
+        Assert.Equal(TypeParameterVariance.Covariant, typeParam.Variance);
+    }
+
+    [Fact]
+    public void ClrVariance_CreatedInterfaceSymbol_ReadsClrCovariance()
+    {
+        // IReadOnlyList<out T> has no builtin registration, so its symbol is created by
+        // GetOrCreateInterfaceSymbol — verify CLR covariance is read during creation.
+        var listSymbol = _registry.GetType("list");
+
+        Assert.NotNull(listSymbol);
+        var readOnlyListRef = listSymbol.Interfaces
+            .FirstOrDefault(i => i.Definition.Name == "IReadOnlyList");
+        Assert.NotNull(readOnlyListRef);
+        var typeParam = Assert.Single(readOnlyListRef.Definition.TypeParameters);
+        Assert.Equal(TypeParameterVariance.Covariant, typeParam.Variance);
     }
 }

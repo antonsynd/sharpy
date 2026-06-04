@@ -367,7 +367,11 @@ internal class ModuleRegistry
         {
             foreach (var arg in clrType.GetGenericArguments())
             {
-                typeParameters.Add(new TypeParameterDef { Name = arg.Name });
+                typeParameters.Add(new TypeParameterDef
+                {
+                    Name = arg.Name,
+                    Variance = ClrTypeMapper.GetClrVariance(arg)
+                });
             }
         }
 

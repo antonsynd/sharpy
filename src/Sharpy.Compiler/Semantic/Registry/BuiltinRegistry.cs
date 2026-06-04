@@ -103,8 +103,10 @@ internal class BuiltinRegistry
         // Iterator/iterable types (used by generators and reversed())
         // ClrType is typeof(object) as a placeholder — codegen resolves via CSharpTypeNames.
         RegisterType(BuiltinNames.Iterator, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 1);
-        RegisterType(BuiltinNames.IEnumerable, typeof(System.Collections.IEnumerable), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
-        RegisterType(BuiltinNames.IEnumerator, typeof(System.Collections.IEnumerator), TypeKind.Interface, isGeneric: true, typeParamCount: 1);
+        RegisterType(BuiltinNames.IEnumerable, typeof(System.Collections.IEnumerable), TypeKind.Interface, isGeneric: true, typeParamCount: 1,
+            varianceSource: typeof(IEnumerable<>));
+        RegisterType(BuiltinNames.IEnumerator, typeof(System.Collections.IEnumerator), TypeKind.Interface, isGeneric: true, typeParamCount: 1,
+            varianceSource: typeof(IEnumerator<>));
 
         // Result and Optional (for semantic-time method/property resolution)
         RegisterType("Result", typeof(SharpyRT::Sharpy.Result<,>), TypeKind.Struct, isGeneric: true, typeParamCount: 2);
@@ -176,7 +178,7 @@ internal class BuiltinRegistry
         }
     }
 
-    private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
+    private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0, Type? varianceSource = null)
     {
         // Build shared TypeParameterType instances for generic types so all methods
         // reference the same objects (required for consistent name-based substitution).
@@ -199,6 +201,11 @@ internal class BuiltinRegistry
                     .Select(i => new TypeParameterDef { Name = $"T{i}" })
                     .ToList()
                 : new List<TypeParameterDef>());
+
+        // Apply CLR-declared variance (out/in) from the registered CLR type or an explicit
+        // variance source (used when the registered ClrType is a non-generic placeholder,
+        // e.g., IEnumerable registered as System.Collections.IEnumerable) (#827).
+        typeParams = ApplyClrVariance(typeParams, varianceSource ?? clrType);
 
         var methods = discovered?.Methods ?? new List<FunctionSymbol>();
         var operatorMethods = discovered?.OperatorMethods ?? new Dictionary<string, List<FunctionSymbol>>();
@@ -229,6 +236,28 @@ internal class BuiltinRegistry
         // Defer interface population until all builtin types are registered, so that
         // interface definitions (e.g., IEnumerable) resolve to the registered symbols.
         _pendingInterfacePopulation.Add((typeSymbol, sharedTypeParams));
+    }
+
+    /// <summary>
+    /// Applies CLR-declared variance (out/in) to type parameter definitions by reading
+    /// <see cref="System.Reflection.GenericParameterAttributes"/> from the generic type
+    /// definition's parameters (#827). Non-generic sources leave the definitions unchanged.
+    /// </summary>
+    private static List<TypeParameterDef> ApplyClrVariance(List<TypeParameterDef> typeParams, Type? clrSource)
+    {
+        if (typeParams.Count == 0 || clrSource is not { IsGenericTypeDefinition: true })
+            return typeParams;
+
+        var clrArgs = clrSource.GetGenericArguments();
+        if (clrArgs.Length != typeParams.Count)
+            return typeParams;
+
+        var result = new List<TypeParameterDef>(typeParams.Count);
+        for (int i = 0; i < typeParams.Count; i++)
+        {
+            result.Add(typeParams[i] with { Variance = ClrTypeMapper.GetClrVariance(clrArgs[i]) });
+        }
+        return result;
     }
 
     /// <summary>

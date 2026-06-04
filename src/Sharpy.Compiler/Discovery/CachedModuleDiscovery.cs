@@ -255,7 +255,11 @@ internal class CachedModuleDiscovery
             var clrArgs = clrType.GetGenericArguments();
             for (int i = 0; i < clrArgs.Length; i++)
             {
-                typeParams.Add(new Parser.Ast.TypeParameterDef { Name = $"T{i}" });
+                typeParams.Add(new Parser.Ast.TypeParameterDef
+                {
+                    Name = $"T{i}",
+                    Variance = ClrTypeMapper.GetClrVariance(clrArgs[i])
+                });
             }
         }
 
