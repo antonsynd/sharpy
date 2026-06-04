@@ -1151,6 +1151,214 @@ public class GenericTypeInferenceServiceTests
 
     #endregion
 
+    #region Interface-Walking Unification (#827)
+
+    [Fact]
+    public void UnifyTypes_IEnumerableFormal_ListActual_InfersT()
+    {
+        // Formal: IEnumerable[T], Actual: list[int] → T=int
+        // list implements IEnumerable[T0]; substituting T0→int yields IEnumerable[int]
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "IEnumerable",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { SemanticType.Int }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void UnifyTypes_ICollectionFormal_SetActual_InfersT()
+    {
+        // Formal: ICollection[T], Actual: set[str] → T=str
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "ICollection",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "set",
+                TypeArguments = new List<SemanticType> { SemanticType.Str }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void UnifyTypes_IEnumerableFormal_DictActual_InfersTupleElement()
+    {
+        // Formal: IEnumerable[T], Actual: dict[str, int] → T=tuple[str, int]
+        // (Dictionary implements IEnumerable[KeyValuePair[K, V]], mapped to tuple)
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "IEnumerable",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "dict",
+                TypeArguments = new List<SemanticType> { SemanticType.Str, SemanticType.Int }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        var tuple = result!["T"].Should().BeOfType<Sharpy.Compiler.Semantic.TupleType>().Subject;
+        tuple.ElementTypes.Should().HaveCount(2);
+        tuple.ElementTypes[0].Should().Be(SemanticType.Str);
+        tuple.ElementTypes[1].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void UnifyTypes_NestedInterfaceFormal_InfersT()
+    {
+        // Formal: IEnumerable[IEnumerable[T]], Actual: list[list[int]] → T=int
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "IEnumerable",
+                TypeArguments = new List<SemanticType>
+                {
+                    new GenericType
+                    {
+                        Name = "IEnumerable",
+                        TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+                    }
+                }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType>
+                {
+                    new GenericType
+                    {
+                        Name = "list",
+                        TypeArguments = new List<SemanticType> { SemanticType.Int }
+                    }
+                }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void UnifyTypes_UnrelatedGenericFormal_StillLenient()
+    {
+        // Formal: dict[K, V], Actual: list[int] → no bindings, but not a failure
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "dict",
+                TypeArguments = new List<SemanticType>
+                {
+                    new TypeParameterType { Name = "K" },
+                    new TypeParameterType { Name = "V" }
+                }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { SemanticType.Int }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void InferTypeArguments_IEnumerableParameter_ListArgument()
+    {
+        // def consume[T](items: IEnumerable[T]) -> None, called with list[int] → T=int
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "consume",
+            Kind = SymbolKind.Function,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            },
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol
+                {
+                    Name = "items",
+                    Type = new GenericType
+                    {
+                        Name = "IEnumerable",
+                        TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+                    }
+                }
+            },
+            ReturnType = SemanticType.Void
+        };
+
+        var argumentTypes = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { SemanticType.Int }
+            }
+        };
+        var result = _service.InferTypeArguments(funcSymbol, argumentTypes);
+
+        result.Success.Should().BeTrue();
+        result.InferredTypes.Should().HaveCount(1);
+        result.InferredTypes![0].Should().Be(SemanticType.Int);
+    }
+
+    #endregion
+
     #region SubstituteTypeParameters
 
     [Fact]

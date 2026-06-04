@@ -1,4 +1,6 @@
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -226,12 +228,21 @@ internal class GenericTypeInferenceService
     /// <summary>
     /// Attempt to unify a formal type with an actual type, binding type parameters.
     /// </summary>
-    private InferenceResult Unify(SemanticType formal, SemanticType actual, Dictionary<string, SemanticType> substitutions)
+    /// <param name="variance">
+    /// Variance of the position being unified (from the enclosing generic definition's
+    /// type parameter), used to resolve conflicting bindings when unifying through
+    /// variance-annotated supertypes (#827). Defaults to invariant.
+    /// </param>
+    private InferenceResult Unify(
+        SemanticType formal,
+        SemanticType actual,
+        Dictionary<string, SemanticType> substitutions,
+        TypeParameterVariance variance = TypeParameterVariance.None)
     {
         // Case 1: Formal type is a type parameter
         if (formal is TypeParameterType typeParam)
         {
-            return UnifyTypeParameter(typeParam.Name, actual, substitutions);
+            return UnifyTypeParameter(typeParam.Name, actual, substitutions, variance);
         }
 
         // Case 2: Both are generic types (e.g., list[T] vs list[int])
@@ -297,7 +308,11 @@ internal class GenericTypeInferenceService
     /// <summary>
     /// Unify a type parameter with a concrete type.
     /// </summary>
-    private InferenceResult UnifyTypeParameter(string paramName, SemanticType actual, Dictionary<string, SemanticType> substitutions)
+    private InferenceResult UnifyTypeParameter(
+        string paramName,
+        SemanticType actual,
+        Dictionary<string, SemanticType> substitutions,
+        TypeParameterVariance variance = TypeParameterVariance.None)
     {
         if (substitutions.TryGetValue(paramName, out var existing))
         {
@@ -342,9 +357,10 @@ internal class GenericTypeInferenceService
         // Names must match (e.g., both must be "list")
         if (formal.Name != actual.Name)
         {
-            // Different generic types — can't extract type parameter bindings from this pair,
-            // but don't abort inference (other arguments may provide bindings)
-            return InferenceResult.Succeeded(new List<SemanticType>());
+            // The actual type may implement/extend the formal generic type (e.g.,
+            // list[int] implements IEnumerable[int]). Walk the supertype hierarchy
+            // to extract type-parameter bindings before giving up (#827).
+            return UnifyThroughSupertypes(formal, actual, substitutions);
         }
 
         // Must have same number of type arguments
@@ -364,6 +380,129 @@ internal class GenericTypeInferenceService
         }
 
         return InferenceResult.Succeeded(new List<SemanticType>());
+    }
+
+    /// <summary>
+    /// Unify a formal generic type with an actual generic type of a different name by
+    /// walking the actual type's supertype hierarchy (#827). For example, unifying
+    /// <c>IEnumerable[T]</c> with <c>list[int]</c> finds that list implements
+    /// <c>IEnumerable[int]</c> and binds <c>T → int</c>.
+    /// </summary>
+    /// <remarks>
+    /// Recursion terminates because nested <see cref="Unify"/> calls always operate on
+    /// strictly smaller formal types; the walker itself guards cycles with a visited set.
+    /// </remarks>
+    private InferenceResult UnifyThroughSupertypes(GenericType formal, GenericType actual, Dictionary<string, SemanticType> substitutions)
+    {
+        foreach (var supertype in GenericInstantiationWalker.EnumerateSupertypes(
+                     actual, _symbolTable, SemanticBinding, _typeResolver))
+        {
+            if (supertype.Definition.Name != formal.Name
+                || supertype.TypeArguments.Count != formal.TypeArguments.Count)
+            {
+                continue;
+            }
+
+            return UnifyInstantiatedArguments(formal, supertype, substitutions);
+        }
+
+        // CLR reflection fallback: the actual type's TypeSymbol may lack interface data
+        // (e.g., module-discovered types registered before interface population existed).
+        if (TryUnifyViaClrReflection(formal, actual, substitutions, out var clrResult))
+            return clrResult;
+
+        // No supertype match — different generic types; can't extract type parameter
+        // bindings from this pair, but don't abort inference (other arguments may
+        // provide bindings).
+        return InferenceResult.Succeeded(new List<SemanticType>());
+    }
+
+    /// <summary>
+    /// Unify the formal generic type's arguments against an instantiated supertype's
+    /// arguments, threading per-position variance from the supertype definition.
+    /// </summary>
+    private InferenceResult UnifyInstantiatedArguments(
+        GenericType formal,
+        GenericInstantiationWalker.InstantiatedSupertype supertype,
+        Dictionary<string, SemanticType> substitutions)
+    {
+        for (int i = 0; i < formal.TypeArguments.Count; i++)
+        {
+            var variance = i < supertype.Definition.TypeParameters.Count
+                ? supertype.Definition.TypeParameters[i].Variance
+                : TypeParameterVariance.None;
+
+            var result = Unify(formal.TypeArguments[i], supertype.TypeArguments[i], substitutions, variance);
+            if (!result.Success)
+            {
+                return result;
+            }
+        }
+
+        return InferenceResult.Succeeded(new List<SemanticType>());
+    }
+
+    /// <summary>
+    /// CLR reflection fallback for supertype unification: resolves the actual type's open
+    /// CLR generic definition and scans its interfaces for one matching the formal name.
+    /// Only interface arguments that map directly to the actual type's own generic
+    /// parameters are unified; concrete CLR argument positions are skipped.
+    /// </summary>
+    private bool TryUnifyViaClrReflection(
+        GenericType formal,
+        GenericType actual,
+        Dictionary<string, SemanticType> substitutions,
+        out InferenceResult result)
+    {
+        result = InferenceResult.Succeeded(new List<SemanticType>());
+
+        var clrDefinition = _symbolTable.BuiltinRegistry.GetType(actual.Name)?.ClrType
+            ?? actual.GenericDefinition?.ClrType
+            ?? _symbolTable.LookupType(actual.Name)?.ClrType;
+
+        if (clrDefinition is not { IsGenericTypeDefinition: true }
+            || clrDefinition.GetGenericArguments().Length != actual.TypeArguments.Count)
+        {
+            return false;
+        }
+
+        foreach (var clrInterface in clrDefinition.GetInterfaces())
+        {
+            if (!clrInterface.IsGenericType)
+                continue;
+
+            var interfaceDefinition = clrInterface.GetGenericTypeDefinition();
+            if (ClrNameHelper.StripArity(interfaceDefinition.Name) != formal.Name)
+                continue;
+
+            var interfaceArguments = clrInterface.GetGenericArguments();
+            if (interfaceArguments.Length != formal.TypeArguments.Count)
+                continue;
+
+            var definitionArguments = interfaceDefinition.GetGenericArguments();
+            for (int i = 0; i < interfaceArguments.Length; i++)
+            {
+                if (!interfaceArguments[i].IsGenericParameter)
+                    continue;
+
+                var position = interfaceArguments[i].GenericParameterPosition;
+                if (position >= actual.TypeArguments.Count)
+                    continue;
+
+                var variance = ClrTypeMapper.GetClrVariance(definitionArguments[i]);
+                var unifyResult = Unify(
+                    formal.TypeArguments[i], actual.TypeArguments[position], substitutions, variance);
+                if (!unifyResult.Success)
+                {
+                    result = unifyResult;
+                    return true;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
