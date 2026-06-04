@@ -152,6 +152,22 @@ def median(data: list[long]) -> float:
     """Return the median (middle value) of long integer data."""
     return median(_longs_to_floats(data))
 
+def median_low(data: list[int]) -> float:
+    """Return the low median of integer data."""
+    return median_low(_ints_to_floats(data))
+
+def median_low(data: list[long]) -> float:
+    """Return the low median of long integer data."""
+    return median_low(_longs_to_floats(data))
+
+def median_high(data: list[int]) -> float:
+    """Return the high median of integer data."""
+    return median_high(_ints_to_floats(data))
+
+def median_high(data: list[long]) -> float:
+    """Return the high median of long integer data."""
+    return median_high(_longs_to_floats(data))
+
 def stdev(data: list[int]) -> float:
     """Return the square root of the sample variance for integer data."""
     return stdev(_ints_to_floats(data))
