@@ -1,0 +1,9 @@
+from system.collections.generic import IComparer, Comparer
+
+def make_comparer() -> IComparer[int]:
+    return Comparer[int].create(lambda a, b: a - b)
+
+def main() -> None:
+    cmp: IComparer[int] = make_comparer()
+    result: int = cmp.compare(3, 1)
+    print(result > 0)

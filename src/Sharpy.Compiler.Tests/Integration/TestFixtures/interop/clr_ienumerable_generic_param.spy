@@ -1,0 +1,13 @@
+from system.collections.generic import IEnumerable
+
+def count_items[T](items: IEnumerable[T]) -> int:
+    total: int = 0
+    for item in items:
+        total = total + 1
+    return total
+
+def main() -> None:
+    nums: list[int] = [5, 10, 15]
+    print(count_items[int](nums))
+    names: list[str] = ["a", "b"]
+    print(count_items[str](names))

@@ -1,0 +1,8 @@
+from system.text import StringBuilder
+
+def main() -> None:
+    sb: StringBuilder = StringBuilder()
+    sb.append("hello")
+    sb.append(" ")
+    sb.append("world")
+    print(sb.to_string())

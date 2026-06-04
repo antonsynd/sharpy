@@ -1,0 +1,8 @@
+from system.collections.generic import IEnumerable
+
+def get_items() -> IEnumerable[int]:
+    return [1, 2, 3]
+
+def main() -> None:
+    for item in get_items():
+        print(item)

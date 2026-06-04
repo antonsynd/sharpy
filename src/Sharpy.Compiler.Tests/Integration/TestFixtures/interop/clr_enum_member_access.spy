@@ -1,0 +1,11 @@
+from system import DayOfWeek
+
+def get_day_name(day: DayOfWeek) -> str:
+    if day == DayOfWeek.Monday:
+        return "monday"
+    return "other"
+
+def main() -> None:
+    day: DayOfWeek = DayOfWeek.Monday
+    print(get_day_name(day))
+    print(DayOfWeek.Friday)

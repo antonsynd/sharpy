@@ -1,0 +1,8 @@
+from system.collections.generic import IList
+
+def get_count(items: IList[str]) -> int:
+    return items.count
+
+def main() -> None:
+    names: list[str] = ["alice", "bob", "charlie"]
+    print(get_count(names))
