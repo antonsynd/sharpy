@@ -333,6 +333,26 @@ internal class GenericTypeInferenceService
                     $"Conflicting types for type parameter '{paramName}': " +
                     $"inferred '{existing.GetDisplayName()}' earlier, but now got '{actual.GetDisplayName()}'");
             }
+
+            // Variance-aware refinement (#827): when unifying through a variance-annotated
+            // supertype position, reconcile compatible-but-different bindings.
+            // Covariant (out) positions require every source to be assignable to the final
+            // binding, so widen to the more general type (e.g., T bound to Dog then Animal
+            // arrives → T becomes Animal). Contravariant (in) positions require the final
+            // binding to be assignable from the parameter's perspective by every source,
+            // so narrow to the more specific type. Invariant positions keep the existing
+            // binding (lenient, matching prior behavior).
+            if (variance == TypeParameterVariance.Covariant
+                && existing.IsAssignableTo(actual) && !actual.IsAssignableTo(existing))
+            {
+                substitutions[paramName] = actual;
+            }
+            else if (variance == TypeParameterVariance.Contravariant
+                && actual.IsAssignableTo(existing) && !existing.IsAssignableTo(actual))
+            {
+                substitutions[paramName] = actual;
+            }
+
             // Already bound to compatible type - success
             return InferenceResult.Succeeded(new List<SemanticType>());
         }

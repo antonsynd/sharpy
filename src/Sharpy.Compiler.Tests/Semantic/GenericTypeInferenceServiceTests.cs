@@ -1443,6 +1443,107 @@ public class GenericTypeInferenceServiceTests
 
     #endregion
 
+    #region Variance-Aware Conflict Resolution (#827)
+
+    private (UserDefinedType Animal, UserDefinedType Dog) CreateAnimalHierarchy()
+    {
+        var animalSymbol = new TypeSymbol
+        {
+            Name = "Animal",
+            Kind = SymbolKind.Type,
+            TypeKind = Sharpy.Compiler.Semantic.TypeKind.Class,
+            AccessLevel = AccessLevel.Public
+        };
+        var dogSymbol = new TypeSymbol
+        {
+            Name = "Dog",
+            Kind = SymbolKind.Type,
+            TypeKind = Sharpy.Compiler.Semantic.TypeKind.Class,
+            AccessLevel = AccessLevel.Public
+        };
+        dogSymbol.BaseType = animalSymbol;
+
+        return (
+            new UserDefinedType { Name = "Animal", Symbol = animalSymbol },
+            new UserDefinedType { Name = "Dog", Symbol = dogSymbol });
+    }
+
+    [Fact]
+    public void UnifyTypes_CovariantPosition_WidensToMoreGeneralType()
+    {
+        // Formal: (IEnumerable[T], IEnumerable[T]); Actual: (list[Dog], list[Animal])
+        // IEnumerable's T is covariant (out T), so T widens from Dog to Animal
+        var (animal, dog) = CreateAnimalHierarchy();
+
+        var enumerableOfT = new GenericType
+        {
+            Name = "IEnumerable",
+            TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+        };
+        var formals = new List<SemanticType> { enumerableOfT, enumerableOfT };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { dog } },
+            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { animal } }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(animal);
+    }
+
+    [Fact]
+    public void UnifyTypes_CovariantPosition_GeneralFirst_KeepsGeneralType()
+    {
+        // Same as above with reversed argument order: T binds to Animal first and
+        // the subsequent Dog binding must not narrow it
+        var (animal, dog) = CreateAnimalHierarchy();
+
+        var enumerableOfT = new GenericType
+        {
+            Name = "IEnumerable",
+            TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+        };
+        var formals = new List<SemanticType> { enumerableOfT, enumerableOfT };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { animal } },
+            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { dog } }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(animal);
+    }
+
+    [Fact]
+    public void UnifyTypes_CovariantPosition_UnrelatedTypes_Conflicts()
+    {
+        // Formal: (IEnumerable[T], IEnumerable[T]); Actual: (list[str], list[bool])
+        // str and bool are unrelated → conflict regardless of variance
+        var enumerableOfT = new GenericType
+        {
+            Name = "IEnumerable",
+            TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+        };
+        var formals = new List<SemanticType> { enumerableOfT, enumerableOfT };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { SemanticType.Str } },
+            new GenericType { Name = "list", TypeArguments = new List<SemanticType> { SemanticType.Bool } }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().BeNull();
+    }
+
+    #endregion
+
     #region SubstituteTypeParameters
 
     [Fact]
