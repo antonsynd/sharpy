@@ -413,7 +413,8 @@ internal class TypeResolver
         }
 
         var typeSymbol = _symbolTable.LookupType(annotation.Name)
-            ?? LookupNestedType(annotation.Name);
+            ?? LookupNestedType(annotation.Name)
+            ?? _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
         if (typeSymbol == null)
         {
             var genericMessage = $"Generic type '{annotation.Name}' not found";
