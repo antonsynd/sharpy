@@ -1285,6 +1285,158 @@ public class GenericTypeInferenceServiceTests
     }
 
     [Fact]
+    public void UnifyTypes_IDictionaryFormal_DictActual_InfersKAndV()
+    {
+        // Formal: IDictionary[K, V], Actual: dict[str, int] → K=str, V=int
+        // (Sharpy.Dict implements IDictionary<K, V>; the interface walk binds both positions)
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "IDictionary",
+                TypeArguments = new List<SemanticType>
+                {
+                    new TypeParameterType { Name = "K" },
+                    new TypeParameterType { Name = "V" }
+                }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "dict",
+                TypeArguments = new List<SemanticType> { SemanticType.Str, SemanticType.Int }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().HaveCount(2);
+        result!["K"].Should().Be(SemanticType.Str);
+        result["V"].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void UnifyTypes_IEnumerableFormal_UserDefinedImplementerActual_InfersT()
+    {
+        // Simulates: class Stream[T](IEnumerable[T]) — a user-defined generic class
+        // implementing a generic interface directly. Unifying IEnumerable[T] with
+        // Stream[int] walks the declared interface list and binds T=int.
+        var streamSymbol = new TypeSymbol
+        {
+            Name = "Stream",
+            Kind = SymbolKind.Type,
+            TypeKind = Sharpy.Compiler.Semantic.TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            }
+        };
+        streamSymbol.Interfaces.Add(new InterfaceReference
+        {
+            Definition = _builtinRegistry.GetType("IEnumerable")!,
+            ResolvedTypeArguments = ImmutableArray.Create<SemanticType>(
+                new TypeParameterType { Name = "T" })
+        });
+        _symbolTable.Define(streamSymbol);
+
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "IEnumerable",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "Stream",
+                TypeArguments = new List<SemanticType> { SemanticType.Int }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void UnifyTypes_MultipleInterfaceCandidates_OnlyFormalMatchBinds()
+    {
+        // Simulates: class Widget[T](IProducer[T], IConsumer[str]) — the actual type
+        // implements two generic interfaces, but only the one matching the formal
+        // parameter (IProducer) contributes a binding.
+        var producerIface = new TypeSymbol
+        {
+            Name = "IProducer",
+            Kind = SymbolKind.Type,
+            TypeKind = Sharpy.Compiler.Semantic.TypeKind.Interface,
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } }
+        };
+        var consumerIface = new TypeSymbol
+        {
+            Name = "IConsumer",
+            Kind = SymbolKind.Type,
+            TypeKind = Sharpy.Compiler.Semantic.TypeKind.Interface,
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } }
+        };
+        var widgetSymbol = new TypeSymbol
+        {
+            Name = "Widget",
+            Kind = SymbolKind.Type,
+            TypeKind = Sharpy.Compiler.Semantic.TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } }
+        };
+        widgetSymbol.Interfaces.Add(new InterfaceReference
+        {
+            Definition = producerIface,
+            ResolvedTypeArguments = ImmutableArray.Create<SemanticType>(
+                new TypeParameterType { Name = "T" })
+        });
+        widgetSymbol.Interfaces.Add(new InterfaceReference
+        {
+            Definition = consumerIface,
+            ResolvedTypeArguments = ImmutableArray.Create<SemanticType>(SemanticType.Str)
+        });
+        _symbolTable.Define(producerIface);
+        _symbolTable.Define(consumerIface);
+        _symbolTable.Define(widgetSymbol);
+
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "IProducer",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "U" } }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "Widget",
+                TypeArguments = new List<SemanticType> { SemanticType.Int }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().HaveCount(1);
+        result!["U"].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
     public void UnifyTypes_UnrelatedGenericFormal_StillLenient()
     {
         // Formal: dict[K, V], Actual: list[int] → no bindings, but not a failure

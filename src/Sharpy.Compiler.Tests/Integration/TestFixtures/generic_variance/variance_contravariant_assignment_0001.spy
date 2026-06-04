@@ -1,0 +1,26 @@
+# Test: contravariant assignment through the CLR IComparer interface (#827)
+# IComparer[in T] is contravariant, so an IComparer[Animal] can be used
+# wherever an IComparer[Dog] is expected
+
+from system.collections.generic import IComparer, Comparer
+
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+def pick_first(cmp: IComparer[Dog], a: Dog, b: Dog) -> Dog:
+    if cmp.compare(a, b) <= 0:
+        return a
+    return b
+
+def main():
+    by_name_length: IComparer[Animal] = Comparer[Animal].create(
+        lambda x, y: len(x.name) - len(y.name))
+    best = pick_first(by_name_length, Dog("rex"), Dog("bartholomew"))
+    print(best.name)

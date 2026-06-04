@@ -1,0 +1,4 @@
+# NOTE(#829): currently rejected by the C# compiler (CS1503) rather than the
+# Sharpy type checker; update to the Sharpy diagnostic when #829 is fixed.
+CS1503
+cannot convert

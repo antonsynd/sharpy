@@ -1,0 +1,13 @@
+# Test: invariant interface type parameters reject mismatched arguments (#827)
+# IList[T] is invariant in T (it has read and write members), so list[int]
+# cannot be passed where IList[object] is expected even though int -> object
+# would satisfy covariance
+
+from system.collections.generic import IList
+
+def mutate(items: IList[object]) -> None:
+    pass
+
+def main():
+    nums: list[int] = [1, 2, 3]
+    mutate(nums)

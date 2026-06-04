@@ -1,0 +1,22 @@
+# Test: generic type arguments are inferred through the base-class chain (#827)
+# Passing LabeledBox[int] to Box[T] infers T=int by walking the base-class hierarchy
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+class LabeledBox[T](Box[T]):
+    def __init__(self, value: T):
+        super().__init__(value)
+
+def unwrap[T](box: Box[T]) -> T:
+    return box.value
+
+def main():
+    b: LabeledBox[int] = LabeledBox(41)
+    print(unwrap(b) + 1)
+
+    s: LabeledBox[str] = LabeledBox("hello")
+    print(unwrap(s))

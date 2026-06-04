@@ -1,0 +1,28 @@
+# Test: contravariant assignment of a generic class through a Sharpy interface (#827)
+# ISink[in T] is contravariant, so a Sink[Animal] (which implements ISink[Animal])
+# can be assigned where an ISink[Dog] is expected
+
+interface ISink[in T]:
+    def accept(self, value: T) -> None: ...
+
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+class Sink[T](ISink[T]):
+    def __init__(self):
+        pass
+
+    @override
+    def accept(self, value: T) -> None:
+        print("accepted")
+
+def main():
+    s: ISink[Dog] = Sink[Animal]()
+    s.accept(Dog("rex"))

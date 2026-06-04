@@ -1,0 +1,11 @@
+# Test: generic type arguments are inferred through imported CLR interfaces (#827)
+# Passing list[int] to IList[T] infers T=int via list's CLR interface list
+
+from system.collections.generic import IList
+
+def get_count[T](items: IList[T]) -> int:
+    return items.count
+
+def main():
+    nums: list[int] = [1, 2, 3]
+    print(get_count(nums))
