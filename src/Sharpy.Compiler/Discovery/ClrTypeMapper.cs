@@ -280,6 +280,32 @@ internal class ClrTypeMapper
             };
         }
 
+        // IComparer<T> — preserve as CLR interface type
+        if (IsGenericTypeDefinition(genericDef, typeof(IComparer<>)))
+        {
+            return new GenericType
+            {
+                Name = "IComparer",
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0])
+                }
+            };
+        }
+
+        // IEqualityComparer<T> — preserve as CLR interface type
+        if (IsGenericTypeDefinition(genericDef, typeof(IEqualityComparer<>)))
+        {
+            return new GenericType
+            {
+                Name = "IEqualityComparer",
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0])
+                }
+            };
+        }
+
         // Tuple types
         if (genericDef.FullName?.StartsWith("System.Tuple") == true ||
             genericDef.FullName?.StartsWith("System.ValueTuple") == true)
