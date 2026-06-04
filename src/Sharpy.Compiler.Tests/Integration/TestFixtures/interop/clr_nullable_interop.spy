@@ -1,0 +1,8 @@
+from system import Nullable
+from system.collections.generic import Dictionary
+
+def main() -> None:
+    d: Dictionary[str, int] = Dictionary[str, int]()
+    d.add("x", 42)
+    print(d.contains_key("x"))
+    print(d.contains_key("y"))

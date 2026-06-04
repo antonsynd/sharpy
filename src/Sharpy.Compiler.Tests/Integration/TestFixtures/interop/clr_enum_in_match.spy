@@ -1,0 +1,11 @@
+from system import DayOfWeek
+
+def is_weekend(day: DayOfWeek) -> bool:
+    if day == DayOfWeek.Saturday or day == DayOfWeek.Sunday:
+        return True
+    return False
+
+def main() -> None:
+    print(is_weekend(DayOfWeek.Monday))
+    print(is_weekend(DayOfWeek.Saturday))
+    print(is_weekend(DayOfWeek.Sunday))

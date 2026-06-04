@@ -1,0 +1,13 @@
+from system import IComparable
+
+def clamp[T: IComparable[T]](value: T, low: T, high: T) -> T:
+    if value.compare_to(low) < 0:
+        return low
+    if value.compare_to(high) > 0:
+        return high
+    return value
+
+def main() -> None:
+    print(clamp(5, 1, 10))
+    print(clamp(-3, 0, 100))
+    print(clamp(999, 0, 100))

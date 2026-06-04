@@ -1,0 +1,19 @@
+from system.text import StringBuilder
+
+class Writer:
+    _sb: StringBuilder
+
+    def __init__(self) -> None:
+        self._sb = StringBuilder()
+
+    def write(self, text: str) -> None:
+        self._sb.append(text)
+
+    def result(self) -> str:
+        return self._sb.to_string()
+
+def main() -> None:
+    w: Writer = Writer()
+    w.write("hello ")
+    w.write("world")
+    print(w.result())
