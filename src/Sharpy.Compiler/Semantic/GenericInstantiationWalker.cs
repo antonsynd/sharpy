@@ -76,7 +76,57 @@ internal static class GenericInstantiationWalker
                 if (nextSubstitution != null)
                     queue.Enqueue((interfaceRef.Definition, nextSubstitution));
             }
+
+            // Walk the base class chain so types like `class MyList[T](list[T])`
+            // expose list (and list's interfaces) as instantiated supertypes.
+            var baseSupertype = InstantiateBaseType(symbol, substitution, binding);
+            if (baseSupertype == null)
+                continue;
+
+            if (!visited.Add(MakeKey(baseSupertype.Definition, baseSupertype.TypeArguments)))
+                continue;
+
+            yield return baseSupertype;
+
+            var baseSubstitution = BuildSubstitution(
+                baseSupertype.Definition.TypeParameters, baseSupertype.TypeArguments);
+            if (baseSubstitution != null)
+                queue.Enqueue((baseSupertype.Definition, baseSubstitution));
         }
+    }
+
+    /// <summary>
+    /// Instantiates a symbol's direct base class with the current substitution. Generic
+    /// base classes are instantiated by mapping the derived type's own type parameters
+    /// positionally onto the base's parameters (the dominant pattern, e.g.
+    /// <c>class MyList[T](list[T])</c>); base annotations with reordered or partially
+    /// concrete arguments are not yet representable on TypeSymbol, so mismatched arities
+    /// are skipped conservatively. Returns null when there is no walkable base.
+    /// </summary>
+    private static InstantiatedSupertype? InstantiateBaseType(
+        TypeSymbol symbol,
+        Dictionary<string, SemanticType> substitution,
+        SemanticBinding? binding)
+    {
+        var baseSymbol = binding?.GetBaseType(symbol) ?? symbol.BaseType;
+        if (baseSymbol == null || ReferenceEquals(baseSymbol, symbol))
+            return null;
+
+        if (!baseSymbol.IsGeneric)
+            return new InstantiatedSupertype(baseSymbol, Array.Empty<SemanticType>());
+
+        if (symbol.TypeParameters.Count != baseSymbol.TypeParameters.Count)
+            return null;
+
+        var baseArguments = new List<SemanticType>(symbol.TypeParameters.Count);
+        foreach (var typeParam in symbol.TypeParameters)
+        {
+            baseArguments.Add(substitution.TryGetValue(typeParam.Name, out var bound)
+                ? bound
+                : new TypeParameterType { Name = typeParam.Name });
+        }
+
+        return new InstantiatedSupertype(baseSymbol, baseArguments);
     }
 
     /// <summary>

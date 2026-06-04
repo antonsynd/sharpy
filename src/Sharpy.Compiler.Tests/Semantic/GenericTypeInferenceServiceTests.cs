@@ -1359,6 +1359,90 @@ public class GenericTypeInferenceServiceTests
 
     #endregion
 
+    #region Base-Class Generic Inference (#827)
+
+    private TypeSymbol DefineMyListSubclass()
+    {
+        // Simulates: class MyList[T](list[T])
+        var myListSymbol = new TypeSymbol
+        {
+            Name = "MyList",
+            Kind = SymbolKind.Type,
+            TypeKind = Sharpy.Compiler.Semantic.TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef { Name = "T" }
+            }
+        };
+        myListSymbol.BaseType = _builtinRegistry.GetType("list");
+        _symbolTable.Define(myListSymbol);
+        return myListSymbol;
+    }
+
+    [Fact]
+    public void UnifyTypes_ListFormal_SubclassActual_InfersT()
+    {
+        // Formal: list[T], Actual: MyList[int] where class MyList[T](list[T]) → T=int
+        DefineMyListSubclass();
+
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "MyList",
+                TypeArguments = new List<SemanticType> { SemanticType.Int }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void UnifyTypes_IEnumerableFormal_SubclassActual_InfersTransitively()
+    {
+        // Formal: IEnumerable[T], Actual: MyList[str] → T=str
+        // (MyList[str] → base list[str] → IEnumerable[str])
+        DefineMyListSubclass();
+
+        var formals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "IEnumerable",
+                TypeArguments = new List<SemanticType> { new TypeParameterType { Name = "T" } }
+            }
+        };
+        var actuals = new List<SemanticType>
+        {
+            new GenericType
+            {
+                Name = "MyList",
+                TypeArguments = new List<SemanticType> { SemanticType.Str }
+            }
+        };
+
+        var result = _service.UnifyTypes(formals, actuals);
+
+        result.Should().NotBeNull();
+        result.Should().ContainKey("T");
+        result!["T"].Should().Be(SemanticType.Str);
+    }
+
+    #endregion
+
     #region SubstituteTypeParameters
 
     [Fact]
