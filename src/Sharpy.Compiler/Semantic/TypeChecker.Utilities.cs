@@ -334,10 +334,14 @@ internal partial class TypeChecker
         // from the definition's TypeParameterDefs; different-name generics check
         // assignability through implemented interfaces and base classes
         // (e.g., list[int] → IEnumerable[int], MyList[int] → list[int]).
-        if (source is GenericType sourceGeneric && target is GenericType targetGeneric
-            && IsGenericAssignableWithVariance(sourceGeneric, targetGeneric))
+        if (source is GenericType sourceGeneric && target is GenericType targetGeneric)
         {
-            return true;
+            var varianceResult = IsGenericAssignableWithVariance(sourceGeneric, targetGeneric);
+            if (varianceResult == true)
+                return true;
+            if (varianceResult == false)
+                return false;
+            // null → no opinion, continue to CLR fallback
         }
 
         // CLR fallback: when both types have CLR metadata (e.g., module-discovered types like
@@ -359,8 +363,12 @@ internal partial class TypeChecker
     /// variance; different-name generics walk the source's instantiated supertypes
     /// (interfaces and base classes) to find one matching the target, then apply the
     /// supertype definition's variance.
+    /// Returns <c>true</c> when assignable (variance satisfied), <c>false</c> when
+    /// authoritatively rejected (a matching definition was found but variance is
+    /// violated), and <c>null</c> when no opinion (no matching definition/supertype
+    /// found; the CLR reflection fallback is appropriate) (#829).
     /// </summary>
-    private bool IsGenericAssignableWithVariance(GenericType source, GenericType target)
+    private bool? IsGenericAssignableWithVariance(GenericType source, GenericType target)
     {
         if (source.Name == target.Name)
         {
@@ -369,7 +377,7 @@ internal partial class TypeChecker
 
             var definition = GenericInstantiationWalker.ResolveDefinition(source, _symbolTable);
             if (definition == null || definition.TypeParameters.Count != source.TypeArguments.Count)
-                return false;
+                return null;
 
             return TypeArgumentsSatisfyVariance(
                 definition.TypeParameters, source.TypeArguments, target.TypeArguments);
@@ -377,6 +385,7 @@ internal partial class TypeChecker
 
         // Interface or base-class assignment: find an instantiated supertype of the
         // source matching the target's name and arity.
+        var rejected = false;
         foreach (var supertype in GenericInstantiationWalker.EnumerateSupertypes(
                      source, _symbolTable, SemanticBinding, _typeResolver))
         {
@@ -391,9 +400,11 @@ internal partial class TypeChecker
             {
                 return true;
             }
+
+            rejected = true;
         }
 
-        return false;
+        return rejected ? false : (bool?)null;
     }
 
     /// <summary>
