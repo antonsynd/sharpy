@@ -1,10 +1,8 @@
 # Test: invariant interface rejection with user-defined type arguments (#827)
 # IList[T] is invariant in T, so list[Dog] cannot be passed where IList[Animal]
 # is expected.
-# NOTE(#829): the rejection currently happens at the C# emit stage (CS1503)
-# because the type checker's CLR fallback erodes user-defined type arguments to
-# object. When #829 is fixed, this should become a Sharpy-level diagnostic and
-# the .error file should be updated.
+# The Sharpy type checker correctly rejects this at the semantic level (SPY0220)
+# because IList[T] is invariant and Dog is not the same type as Animal.
 
 from system.collections.generic import IList
 

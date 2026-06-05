@@ -1,4 +1,1 @@
-# NOTE(#829): currently rejected by the C# compiler (CS1503) rather than the
-# Sharpy type checker; update to the Sharpy diagnostic when #829 is fixed.
-CS1503
-cannot convert
+Cannot pass argument of type 'list[Dog]' to parameter of type 'IList[Animal]' @20:12
