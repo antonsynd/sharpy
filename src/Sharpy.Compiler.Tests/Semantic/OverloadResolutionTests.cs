@@ -345,4 +345,27 @@ def main():
         result.Success.Should().BeFalse();
         string.Join(" ", result.CompilationErrors).Should().Contain("Ambiguous");
     }
+
+    [Fact]
+    public void GenericOverloads_EqualConcretePositions_RemainsAmbiguous()
+    {
+        var source = @"
+class Processor:
+    def __init__(self):
+        pass
+
+    def calc[T](self, x: int, y: T) -> str:
+        return ""generic-T""
+
+    def calc[T](self, x: int, y: list[T]) -> str:
+        return ""generic-list-T""
+
+def main():
+    p: Processor = Processor()
+    p.calc(5, [1, 2, 3])
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse();
+        string.Join(" ", result.CompilationErrors).Should().Contain("Ambiguous");
+    }
 }

@@ -1,0 +1,7 @@
+def convert[T](x: int, y: T) -> str:
+    return "int"
+def convert[T](x: float, y: T) -> str:
+    return "float"
+
+def main():
+    print(convert(5, "hello"))
