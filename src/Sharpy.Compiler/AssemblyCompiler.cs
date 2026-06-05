@@ -170,7 +170,15 @@ internal class AssemblyCompiler
             foreach (var assemblyPath in trustedPlatformAssemblies.Split(Path.PathSeparator))
             {
                 if (File.Exists(assemblyPath) && addedPaths.Add(assemblyPath))
-                    references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                {
+                    try
+                    {
+                        references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                    }
+                    catch
+                    {
+                    }
+                }
             }
         }
         else
@@ -213,7 +221,14 @@ internal class AssemblyCompiler
             {
                 if (File.Exists(assemblyPath) && addedPaths.Add(assemblyPath))
                 {
-                    references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                    try
+                    {
+                        references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug($"Skipping TPA assembly {assemblyPath}: {ex.Message}");
+                    }
                 }
             }
         }
@@ -233,6 +248,25 @@ internal class AssemblyCompiler
                     if (File.Exists(path) && addedPaths.Add(path))
                         references.Add(MetadataReference.CreateFromFile(path));
                 }
+            }
+        }
+
+        // Add assemblies loaded into AppDomain during semantic analysis that TPA
+        // may have missed (e.g., File.Exists returned false transiently on CI).
+        // EnsureRuntimeAssembliesLoaded() loads assemblies for CLR interop types;
+        // Roslyn needs matching metadata references to compile the generated C#.
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            try
+            {
+                if (!assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location)
+                    && addedPaths.Add(assembly.Location))
+                {
+                    references.Add(MetadataReference.CreateFromFile(assembly.Location));
+                }
+            }
+            catch
+            {
             }
         }
 
