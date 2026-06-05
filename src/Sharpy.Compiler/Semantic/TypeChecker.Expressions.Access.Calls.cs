@@ -550,10 +550,121 @@ internal partial class TypeChecker
             if (fewerTypeParamMatches.Count == 1)
                 return (fewerTypeParamMatches[0], arityCandidates, false);
 
+            // Specificity tiebreaker: prefer the overload whose parameter types are
+            // strictly more specific (e.g., list[int] beats IEnumerable<int>).
+            // Follows C#'s "better function member" rule (§12.6.4.3).
+            var specificityWinner = FindMostSpecificOverload(fewerTypeParamMatches, context);
+            if (specificityWinner != null)
+                return (specificityWinner, arityCandidates, false);
+
             return (null, arityCandidates, true);
         }
 
         return (matchingOverloads.Count == 1 ? matchingOverloads[0] : null, arityCandidates, false);
+    }
+
+    /// <summary>
+    /// Determines whether overload <paramref name="a"/> has strictly more specific parameter
+    /// types than overload <paramref name="b"/> for the given call arguments.  A parameter is
+    /// "more specific" when its type is assignable to the other's but not vice-versa
+    /// (e.g., <c>list[int]</c> is more specific than <c>IEnumerable&lt;int&gt;</c>).
+    /// Mirrors C#'s "better function member" rule (§12.6.4.3).
+    /// </summary>
+    private bool IsMoreSpecificOverload(FunctionSymbol a, FunctionSymbol b, OverloadResolutionContext context)
+    {
+        int SelfOffset(FunctionSymbol o) =>
+            context.SkipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+
+        var selfOffsetA = SelfOffset(a);
+        var selfOffsetB = SelfOffset(b);
+        var variadicA = a.Parameters.Skip(selfOffsetA).FirstOrDefault(p => p.IsVariadic);
+        var variadicB = b.Parameters.Skip(selfOffsetB).FirstOrDefault(p => p.IsVariadic);
+
+        bool hasStrictlyBetter = false;
+
+        for (int i = 0; i < context.ArgTypes.Count; i++)
+        {
+            SemanticType GetParamType(FunctionSymbol o, int selfOff, ParameterSymbol? variadic)
+            {
+                var paramIdx = i + selfOff;
+                if (paramIdx < o.Parameters.Count && !o.Parameters[paramIdx].IsVariadic)
+                    return o.Parameters[paramIdx].Type;
+                if (variadic != null)
+                    return variadic.Type;
+                return SemanticType.Unknown;
+            }
+
+            var paramTypeA = GetParamType(a, selfOffsetA, variadicA);
+            var paramTypeB = GetParamType(b, selfOffsetB, variadicB);
+
+            if (context.TypeSubstitution != null)
+            {
+                paramTypeA = context.TypeSubstitution(paramTypeA);
+                paramTypeB = context.TypeSubstitution(paramTypeB);
+            }
+
+            // Equal types contribute nothing to the comparison.
+            if (paramTypeA.Equals(paramTypeB))
+                continue;
+
+            // Type parameters are wildcards — skip positions involving them.
+            if (paramTypeA is TypeParameterType || ContainsTypeParameter(paramTypeA))
+                continue;
+            if (paramTypeB is TypeParameterType || ContainsTypeParameter(paramTypeB))
+                continue;
+
+            var aToB = IsAssignable(paramTypeA, paramTypeB);
+            var bToA = IsAssignable(paramTypeB, paramTypeA);
+
+            if (aToB && !bToA)
+            {
+                // A's parameter is strictly more specific at this position.
+                hasStrictlyBetter = true;
+            }
+            else if (bToA && !aToB)
+            {
+                // A's parameter is strictly less specific at this position — A cannot win.
+                return false;
+            }
+            // Both assignable or neither: no preference at this position.
+        }
+
+        return hasStrictlyBetter;
+    }
+
+    /// <summary>
+    /// Finds the single candidate whose parameter types are more specific than all other
+    /// candidates (the "best" function member).  Returns <see langword="null"/> if no single
+    /// candidate dominates or if the list has fewer than two entries.
+    /// </summary>
+    private FunctionSymbol? FindMostSpecificOverload(List<FunctionSymbol> candidates, OverloadResolutionContext context)
+    {
+        if (candidates.Count < 2)
+            return null;
+
+        FunctionSymbol? best = null;
+        foreach (var candidate in candidates)
+        {
+            bool beatsAll = true;
+            foreach (var other in candidates)
+            {
+                if (ReferenceEquals(candidate, other))
+                    continue;
+                if (!IsMoreSpecificOverload(candidate, other, context))
+                {
+                    beatsAll = false;
+                    break;
+                }
+            }
+            if (beatsAll)
+            {
+                if (best != null)
+                    return null; // Two candidates both beat all others — still ambiguous.
+                best = candidate;
+            }
+        }
+
+        return best;
     }
 
     /// <summary>
