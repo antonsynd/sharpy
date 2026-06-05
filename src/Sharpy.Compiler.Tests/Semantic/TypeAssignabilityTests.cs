@@ -75,11 +75,8 @@ def main():
     public void ListDog_NotAssignableTo_IListAnimal_Invariant()
     {
         // IList[T] is invariant in T, so list[Dog] must be rejected where
-        // IList[Animal] is expected.
-        // NOTE(#829): with user-defined type arguments the rejection currently
-        // comes from the C# emit stage (CS1503) because the type checker's CLR
-        // fallback erodes user-defined type arguments to object. Tighten this
-        // assertion to the Sharpy diagnostic when #829 is fixed.
+        // IList[Animal] is expected. The Sharpy type checker catches this at the
+        // semantic level (SPY0220) via the tri-state variance check (#829).
         var source = @"
 from system.collections.generic import IList
 
@@ -102,7 +99,7 @@ def main():
         Assert.False(result.Success, "Expected compilation to fail: IList[T] is invariant in T");
         Assert.NotEmpty(result.CompilationErrors);
         var errorText = string.Join(" ", result.CompilationErrors).ToLowerInvariant();
-        Assert.Contains("cannot convert", errorText);
+        Assert.Contains("cannot pass argument", errorText);
     }
 
     [Fact]
