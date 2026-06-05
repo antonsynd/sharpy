@@ -251,22 +251,25 @@ internal class AssemblyCompiler
             }
         }
 
-        // Add assemblies loaded into AppDomain during semantic analysis that TPA
+        // Fallback: scan the .NET runtime directory for assemblies that TPA
         // may have missed (e.g., File.Exists returned false transiently on CI).
-        // EnsureRuntimeAssembliesLoaded() loads assemblies for CLR interop types;
-        // Roslyn needs matching metadata references to compile the generated C#.
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        // Only adds from the runtime dir to avoid pulling in project assemblies
+        // that could cause CS0433 duplicate type errors.
+        var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
+        if (!string.IsNullOrEmpty(runtimeDir))
         {
-            try
+            foreach (var dllPath in Directory.GetFiles(runtimeDir, "*.dll"))
             {
-                if (!assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location)
-                    && addedPaths.Add(assembly.Location))
+                if (addedPaths.Add(dllPath))
                 {
-                    references.Add(MetadataReference.CreateFromFile(assembly.Location));
+                    try
+                    {
+                        references.Add(MetadataReference.CreateFromFile(dllPath));
+                    }
+                    catch
+                    {
+                    }
                 }
-            }
-            catch
-            {
             }
         }
 
