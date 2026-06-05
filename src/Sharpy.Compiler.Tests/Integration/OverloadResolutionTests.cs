@@ -144,9 +144,10 @@ def main():
     }
 
     [Fact]
-    public void IntToFloat_AmbiguousOverload()
+    public void IntVsFloat_PrefersExactIntOverload()
     {
-        // int is assignable to float, so calling with int arg matches both overloads
+        // Specificity-based disambiguation: int is more specific than float,
+        // so the int overload is preferred when calling with an int argument.
         var source = @"
 class MathOps:
     def __init__(self):
@@ -163,8 +164,8 @@ def main():
     print(m.compute(5))
 ";
         var result = CompileAndExecute(source);
-        Assert.False(result.Success);
-        Assert.Contains(result.CompilationErrors, e => e.Contains("Ambiguous"));
+        Assert.True(result.Success, FormatErrors(result));
+        Assert.Equal("10\n", result.StandardOutput);
     }
 
     [Fact]
