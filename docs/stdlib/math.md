@@ -8,17 +8,9 @@ import math
 
 ## Functions
 
-### `math.perm(n: int) -> long`
-
-Return the number of permutations of n items, equivalent to n factorial.
-
 ### `math.prod(iterable: Iterable[int], start: long = 1) -> long`
 
 Return the product of all the elements in the iterable, starting with the given start value.
-
-### `math.log(x: float, base_value: float) -> float`
-
-Return the logarithm of x to the given base.
 
 ### `math.ceil(x: float) -> float`
 
@@ -51,6 +43,10 @@ Return e raised to the power of x.
 ### `math.log(x: float) -> float`
 
 Return the natural logarithm of x (base e).
+
+### `math.log(x: float, @base: float) -> float`
+
+Return the logarithm of x to the given base.
 
 ### `math.log10(x: float) -> float`
 
@@ -147,6 +143,10 @@ Return n factorial. Raises ValueError for negative n and OverflowError for n > 2
 ### `math.isclose(a: float, b: float, rel_tol: float = 1e-9d, abs_tol: float = 0.0d) -> bool`
 
 Determine whether two floating-point numbers are close in value.
+
+### `math.perm(n: int) -> long`
+
+Return the number of permutations of n items, equivalent to n factorial.
 
 ### `math.perm(n: int, k: int) -> long`
 

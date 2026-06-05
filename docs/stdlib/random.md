@@ -32,14 +32,6 @@ Shuffle the sequence x in place.
 
 - `TypeError` -- Thrown if *x* is null.
 
-### `random.randrange(stop: int) -> int`
-
-Return a randomly-selected element from range(stop).
-
-### `random.randrange(start: int, stop: int) -> int`
-
-Return a randomly-selected element from range(start, stop).
-
 ### `random.choices(population: IList[T], weights: IList[float] | None = None, k: int = 1) -> list[T]`
 
 Return a k sized list of elements chosen from the population with replacement,
@@ -82,6 +74,10 @@ Return a random element from the non-empty sequence seq.
 
 Shuffle the sequence x in place.
 
+### `random.randrange(stop: int) -> int`
+
+Return a randomly selected element from range(stop).
+
 ### `random.randrange(start: int, stop: int, step: int = 1) -> int`
 
 Return a randomly selected element from range(start, stop, step).
@@ -93,3 +89,11 @@ Return a random floating point number with Gaussian distribution.
 ### `random.getrandbits(k: int) -> int`
 
 Return an int with k random bits.
+
+### `random.choices(population: list[T], k: int = 1) -> list[T]`
+
+Return a list of k elements chosen from population with replacement.
+
+### `random.sample(population: list[T], k: int) -> list[T]`
+
+Return k unique elements from population without replacement.

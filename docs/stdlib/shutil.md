@@ -31,11 +31,3 @@ Recursively move a file or directory to another location.
 ### `shutil.which(name: str) -> str | None`
 
 Return the path to an executable which would be run if name were called, or None if not found.
-
-### `shutil._resolve_destination(src: str, dst: str) -> str`
-
-Resolve the final destination path, appending the source filename if dst is a directory.
-
-### `shutil._copy_directory_recursive(src: str, dst: str)`
-
-Recursively copy a directory tree from src to dst.

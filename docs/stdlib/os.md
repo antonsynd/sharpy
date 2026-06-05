@@ -18,10 +18,6 @@ import os
 
 ## Functions
 
-### `os.getenv(key: str, default_: str) -> str`
-
-Get an environment variable, return *default_* if it doesn't exist.
-
 ### `os.remove(path: str)`
 
 Remove a file (same as unlink).
@@ -58,6 +54,10 @@ Change the current working directory to the specified path.
 
 Get an environment variable, return None if it doesn't exist.
 
+### `os.getenv(key: str, @default: str) -> str`
+
+Get an environment variable, return default if it doesn't exist.
+
 ### `os.putenv(key: str, value: str)`
 
 Change or add an environment variable.
@@ -66,6 +66,10 @@ Change or add an environment variable.
 
 Test whether a path exists.
 
+### `os.join(a: str, b: str) -> str`
+
+Join two pathname components, inserting '/' as needed.
+
 ### `os.join(a: str, b: str, c: str) -> str`
 
 Join three pathname components, inserting '/' as needed.
@@ -73,10 +77,6 @@ Join three pathname components, inserting '/' as needed.
 ### `os.join(a: str, b: str, c: str, d: str) -> str`
 
 Join four pathname components, inserting '/' as needed.
-
-### `os.join(a: str, b: str) -> str`
-
-Join two pathname components, inserting '/' as needed.
 
 ### `os.normpath(path: str) -> str`
 

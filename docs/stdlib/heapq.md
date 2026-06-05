@@ -8,14 +8,6 @@ import heapq
 
 ## Functions
 
-### `heapq.merge(a: list[T], b: list[T]) -> Iterable[T]`
-
-Merge two sorted inputs into a single sorted output.
-
-### `heapq.merge(a: list[T], b: list[T], c: list[T]) -> Iterable[T]`
-
-Merge three sorted inputs into a single sorted output.
-
 ### `heapq.merge(iterables: list[list[T]]) -> Iterable[T]`
 
 Merge multiple sorted inputs into a single sorted output.
@@ -80,10 +72,10 @@ Find the n largest elements in a dataset.
 
 Find the n smallest elements in a dataset.
 
-### `heapq._sift_up(heap: list[T], index: int)`
+### `heapq.merge(list1: list[T], list2: list[T]) -> list[T]`
 
-Bubble element at index up to restore the heap invariant.
+Merge two sorted inputs into a single sorted output.
 
-### `heapq._sift_down(heap: list[T], index: int)`
+### `heapq.merge(list1: list[T], list2: list[T], list3: list[T]) -> list[T]`
 
-Push element at index down to restore the heap invariant.
+Merge three sorted inputs into a single sorted output.

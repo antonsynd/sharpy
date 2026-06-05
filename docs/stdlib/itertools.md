@@ -98,3 +98,43 @@ Make an iterator that returns selected elements from the iterable.
 ### `itertools.islice_range(iterable: list[T], start: int, stop: int, step: int = 1) -> Iterable[T]`
 
 Make an iterator that returns selected elements from the iterable with start, stop, and step.
+
+### `itertools.accumulate(iterable: list[int]) -> Iterable[int]`
+
+Make an iterator that returns accumulated sums.
+
+### `itertools.accumulate(iterable: list[T], func: (T, T) -> T) -> Iterable[T]`
+
+Make an iterator that returns accumulated results of a binary function.
+
+### `itertools.accumulate(iterable: list[T], func: (T, T) -> T, initial: T) -> Iterable[T]`
+
+Make an iterator that returns accumulated results of a binary function, starting with an initial value.
+
+### `itertools.chain(first: list[T], second: list[T]) -> Iterable[T]`
+
+Make an iterator that returns elements from the first iterable until it is exhausted, then proceeds to the next iterable.
+
+### `itertools.chain(first: list[T], second: list[T], third: list[T]) -> Iterable[T]`
+
+Make an iterator that returns elements from each iterable in turn until all are exhausted.
+
+### `itertools.chain_from_iterable(iterables: list[list[T]]) -> Iterable[T]`
+
+Make an iterator that chains all iterables from a single list of iterables.
+
+### `itertools.starmap(func: (T1, T2) -> R, iterable: list[tuple[T1, T2]]) -> Iterable[R]`
+
+Make an iterator that computes the function using arguments obtained from the iterable.
+
+### `itertools.combinations(iterable: list[T], r: int) -> Iterable[list[T]]`
+
+Return successive r-length combinations of elements in the iterable.
+
+### `itertools.permutations(iterable: list[T], r: int = -1) -> Iterable[list[T]]`
+
+Return successive r-length permutations of elements in the iterable. A negative r means full length.
+
+### `itertools.combinations_with_replacement(iterable: list[T], r: int) -> Iterable[list[T]]`
+
+Return successive r-length combinations of elements in the iterable allowing individual elements to be repeated.

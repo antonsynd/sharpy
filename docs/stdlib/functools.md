@@ -12,13 +12,13 @@ import functools
 
 Apply function of two arguments cumulatively to the items of iterable, with an initial value.
 
-### `functools.cmp_to_key(func: (T, T) -> int) -> Comparer[T]`
-
-Transform a comparison function into a key function for use with sorted() and friends.
-
 ### `functools.reduce(func: (T, T) -> T, iterable: list[T]) -> T`
 
 Apply function of two arguments cumulatively to the items of iterable, so as to reduce the iterable to a single value.
+
+### `functools.reduce(func: (T, T) -> T, iterable: list[T], initial: T) -> T`
+
+Apply function of two arguments cumulatively to the items of iterable, starting with initial value.
 
 ### `functools.cache_info(hits: int, misses: int, max_size: int | None, current_size: int) -> record`
 
