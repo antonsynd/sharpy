@@ -404,6 +404,12 @@ public record ParameterSymbol
     public bool IsKeywordOnly { get; init; }
     public bool IsLateBound { get; init; }
     public Parser.Ast.ParameterModifier Modifier { get; init; } = Parser.Ast.ParameterModifier.None;
+    /// <summary>
+    /// The original CLR type name (assembly-qualified for non-generic, generic definition AQN
+    /// for generic types). Preserves the CLR identity lost by <see cref="Discovery.ClrTypeMapper"/>
+    /// (e.g., IEnumerable&lt;T&gt; mapped to list[T]). Used for overload specificity comparison.
+    /// </summary>
+    public string? ClrTypeName { get; init; }
 }
 
 /// <summary>

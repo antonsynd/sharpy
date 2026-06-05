@@ -583,7 +583,10 @@ internal class OverloadIndexBuilder
         var signature = new TypeSignature
         {
             Name = semanticType.GetDisplayName(),
-            ClrTypeName = clrType.AssemblyQualifiedName ?? clrType.FullName ?? clrType.Name
+            ClrTypeName = clrType.IsGenericType
+                ? (clrType.GetGenericTypeDefinition().AssemblyQualifiedName
+                    ?? clrType.GetGenericTypeDefinition().FullName ?? clrType.Name)
+                : (clrType.AssemblyQualifiedName ?? clrType.FullName ?? clrType.Name)
         };
 
         // For generic CLR types, recurse via CreateTypeSignature using CLR generic arguments

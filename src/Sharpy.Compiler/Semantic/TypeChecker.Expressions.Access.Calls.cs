@@ -603,15 +603,22 @@ internal partial class TypeChecker
                 paramTypeB = context.TypeSubstitution(paramTypeB);
             }
 
-            // Equal types contribute nothing to the comparison.
+            // Equal types contribute nothing to the comparison — unless the
+            // underlying CLR types differ (e.g., ClrTypeMapper maps IEnumerable<T>
+            // and Sharpy.List<T> both to list[T]).
             if (paramTypeA.Equals(paramTypeB))
+            {
+                var clrTypeA = ResolveClrParameterType(a, i + selfOffsetA, paramTypeA);
+                var clrTypeB = ResolveClrParameterType(b, i + selfOffsetB, paramTypeB);
+                if (clrTypeA != null && clrTypeB != null && clrTypeA != clrTypeB)
+                {
+                    if (clrTypeB.IsAssignableFrom(clrTypeA) && !clrTypeA.IsAssignableFrom(clrTypeB))
+                        hasStrictlyBetter = true;
+                    else if (clrTypeA.IsAssignableFrom(clrTypeB) && !clrTypeB.IsAssignableFrom(clrTypeA))
+                        return false;
+                }
                 continue;
-
-            // Type parameters are wildcards — skip positions involving them.
-            if (paramTypeA is TypeParameterType || ContainsTypeParameter(paramTypeA))
-                continue;
-            if (paramTypeB is TypeParameterType || ContainsTypeParameter(paramTypeB))
-                continue;
+            }
 
             var aToB = IsAssignable(paramTypeA, paramTypeB);
             var bToA = IsAssignable(paramTypeB, paramTypeA);
@@ -630,6 +637,64 @@ internal partial class TypeChecker
         }
 
         return hasStrictlyBetter;
+    }
+
+    /// <summary>
+    /// Returns the effective CLR type for a parameter, with generic type parameters
+    /// replaced by <c>typeof(object)</c> so <see cref="Type.IsAssignableFrom"/> works.
+    /// Prefers the original CLR metadata from <see cref="FunctionSymbol.ClrMethod"/>
+    /// (preserving IEnumerable vs List distinction that <see cref="Discovery.ClrTypeMapper"/>
+    /// erases), falling back to <see cref="TryGetClrType"/> for source-defined overloads.
+    /// </summary>
+    private Type? ResolveClrParameterType(FunctionSymbol func, int paramIdx, SemanticType semanticType)
+    {
+        if (func.ClrMethod != null)
+        {
+            var clrParams = func.ClrMethod.GetParameters();
+            if (paramIdx < clrParams.Length)
+                return SubstituteGenericParameters(clrParams[paramIdx].ParameterType);
+        }
+
+        if (paramIdx < func.Parameters.Count)
+        {
+            var clrTypeName = func.Parameters[paramIdx].ClrTypeName;
+            if (!string.IsNullOrEmpty(clrTypeName))
+            {
+                var clrType = Type.GetType(clrTypeName);
+                if (clrType == null)
+                {
+                    clrType = AppDomain.CurrentDomain.GetAssemblies()
+                        .Select(a => a.GetType(clrTypeName!))
+                        .FirstOrDefault(t => t != null);
+                }
+                if (clrType != null)
+                {
+                    if (clrType.IsGenericTypeDefinition)
+                        return clrType.MakeGenericType(
+                            Enumerable.Repeat(typeof(object), clrType.GetGenericArguments().Length).ToArray());
+                    return clrType;
+                }
+            }
+        }
+
+        return TryGetClrType(semanticType);
+    }
+
+    private static Type SubstituteGenericParameters(Type type)
+    {
+        if (type.IsGenericParameter)
+            return typeof(object);
+        if (type.IsGenericType)
+        {
+            var args = type.GetGenericArguments();
+            var resolved = new Type[args.Length];
+            for (int i = 0; i < args.Length; i++)
+                resolved[i] = SubstituteGenericParameters(args[i]);
+            return type.GetGenericTypeDefinition().MakeGenericType(resolved);
+        }
+        if (type.IsArray)
+            return SubstituteGenericParameters(type.GetElementType()!).MakeArrayType();
+        return type;
     }
 
     /// <summary>

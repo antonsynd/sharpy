@@ -329,7 +329,7 @@ namespace Sharpy
         /// </summary>
         public static System.Collections.Generic.IEnumerable<R> Starmap<T1, T2, R>(global::System.Func<T1, T2, R> func, Sharpy.List<global::System.ValueTuple<T1, T2>> iterable)
         {
-            foreach (var(a, b)in iterable)
+            foreach (var (a, b) in iterable)
             {
                 yield return func(a, b);
             }
