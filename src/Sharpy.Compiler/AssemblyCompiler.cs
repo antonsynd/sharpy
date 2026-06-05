@@ -251,28 +251,6 @@ internal class AssemblyCompiler
             }
         }
 
-        // Fallback: scan the .NET runtime directory for assemblies that TPA
-        // may have missed (e.g., File.Exists returned false transiently on CI).
-        // Only adds from the runtime dir to avoid pulling in project assemblies
-        // that could cause CS0433 duplicate type errors.
-        var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
-        if (!string.IsNullOrEmpty(runtimeDir))
-        {
-            foreach (var dllPath in Directory.GetFiles(runtimeDir, "*.dll"))
-            {
-                if (addedPaths.Add(dllPath))
-                {
-                    try
-                    {
-                        references.Add(MetadataReference.CreateFromFile(dllPath));
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-        }
-
         // Add Sharpy.Core reference
         var sharpyCorePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
         if (addedPaths.Add(sharpyCorePath))

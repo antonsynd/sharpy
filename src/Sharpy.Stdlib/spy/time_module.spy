@@ -1,21 +1,15 @@
 """Time access and conversions."""
 
-from system import DateTimeOffset, Convert
-from system.threading import Thread
+from sharpy import TimeModule
 
 def time() -> float:
     """Return the time in seconds since the epoch as a floating point number."""
-    return DateTimeOffset.UtcNow.to_unix_time_milliseconds() / 1000.0
+    return TimeModule.time()
 
 def time_ns() -> long:
     """Return the time in nanoseconds since the epoch."""
-    return DateTimeOffset.UtcNow.to_unix_time_milliseconds() * 1000000
+    return TimeModule.time_ns()
 
 def sleep(secs: float) -> None:
     """Suspend execution for the given number of seconds."""
-    if secs < 0.0:
-        raise ValueError("sleep length must be non-negative")
-    ms: long = Convert.to_int64(secs * 1000.0)
-    if ms > 2147483647:
-        ms = 2147483647
-    Thread.sleep(Convert.to_int32(ms))
+    TimeModule.sleep(secs)
