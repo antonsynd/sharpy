@@ -1,0 +1,9 @@
+def dispatch(x: int, y: object) -> str:
+    return "int-object"
+def dispatch(x: object, y: int) -> str:
+    return "object-int"
+def dispatch(x: float, y: float) -> str:
+    return "float-float"
+
+def main():
+    print(dispatch(1, 2))

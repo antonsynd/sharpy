@@ -1,0 +1,9 @@
+def process(x: int) -> str:
+    return "int"
+def process(x: float) -> str:
+    return "float"
+def process(x: object) -> str:
+    return "object"
+
+def main():
+    print(process(5))
