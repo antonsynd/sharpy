@@ -1,0 +1,7 @@
+def process(*args: int) -> str:
+    return "int-variadic"
+def process(*args: float) -> str:
+    return "float-variadic"
+
+def main():
+    print(process(1, 2, 3))
