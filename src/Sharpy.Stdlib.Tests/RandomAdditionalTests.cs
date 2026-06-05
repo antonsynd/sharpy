@@ -192,10 +192,10 @@ public class RandomAdditional_Tests
     }
 
     [Fact]
-    public void Choices_EmptyPopulation_ThrowsValueError()
+    public void Choices_EmptyPopulation_ThrowsIndexError()
     {
         FluentActions.Invoking(() => Sharpy.RandomModule.Choices(new List<int>(), k: 1))
-            .Should().Throw<ValueError>();
+            .Should().Throw<IndexError>();
     }
 
     [Fact]

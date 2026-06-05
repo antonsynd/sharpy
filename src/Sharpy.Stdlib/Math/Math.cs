@@ -86,6 +86,14 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return the logarithm of x to the given base.
+        /// </summary>
+        public static double Log(double x, double @base)
+        {
+            return global::System.Math.Log(x, @base);
+        }
+
+        /// <summary>
         /// Return the base 10 logarithm of x.
         /// </summary>
         public static double Log10(double x)
@@ -349,6 +357,14 @@ namespace Sharpy
 
             double diff = global::System.Math.Abs(b - a);
             return diff <= global::System.Math.Max(relTol * global::System.Math.Max(global::System.Math.Abs(a), global::System.Math.Abs(b)), absTol);
+        }
+
+        /// <summary>
+        /// Return the number of permutations of n items, equivalent to n factorial.
+        /// </summary>
+        public static long Perm(int n)
+        {
+            return Factorial(n);
         }
 
         /// <summary>

@@ -172,7 +172,7 @@ namespace Sharpy
         /// <summary>
         /// Copy data to a new list, raising StatisticsError if empty.
         /// </summary>
-        public static Sharpy.List<double> _Materialize(Sharpy.List<double> data)
+        internal static Sharpy.List<double> _Materialize(Sharpy.List<double> data)
         {
             Sharpy.List<double> result = new global::Sharpy.List<double>(data);
             if (global::Sharpy.Builtins.Len(result) == 0)
@@ -186,7 +186,7 @@ namespace Sharpy
         /// <summary>
         /// Copy data to a sorted list, raising StatisticsError if empty.
         /// </summary>
-        public static Sharpy.List<double> _MaterializeSorted(Sharpy.List<double> data)
+        internal static Sharpy.List<double> _MaterializeSorted(Sharpy.List<double> data)
         {
             Sharpy.List<double> result = _Materialize(data);
             result.Sort();
@@ -196,7 +196,7 @@ namespace Sharpy
         /// <summary>
         /// Return the sum of all values in the list.
         /// </summary>
-        public static double _Sum(Sharpy.List<double> values)
+        internal static double _Sum(Sharpy.List<double> values)
         {
             double total = 0.0d;
             foreach (var __loopVar_1 in values)
@@ -211,7 +211,7 @@ namespace Sharpy
         /// <summary>
         /// Return the sum of squared deviations from the mean m.
         /// </summary>
-        public static double _SumOfSquaredDeviations(Sharpy.List<double> values, double m)
+        internal static double _SumOfSquaredDeviations(Sharpy.List<double> values, double m)
         {
             double ss = 0.0d;
             foreach (var __loopVar_2 in values)
@@ -222,6 +222,184 @@ namespace Sharpy
             }
 
             return ss;
+        }
+
+        /// <summary>
+        /// Convert a list of ints to a list of floats.
+        /// </summary>
+        internal static Sharpy.List<double> _IntsToFloats(Sharpy.List<int> data)
+        {
+            Sharpy.List<double> result = new Sharpy.List<double>()
+            {
+            };
+            foreach (var __loopVar_3 in data)
+            {
+                var v = __loopVar_3;
+                result.Append(global::Sharpy.Builtins.Float(v));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Convert a list of longs to a list of floats.
+        /// </summary>
+        internal static Sharpy.List<double> _LongsToFloats(Sharpy.List<long> data)
+        {
+            Sharpy.List<double> result = new Sharpy.List<double>()
+            {
+            };
+            foreach (var __loopVar_4 in data)
+            {
+                var v = __loopVar_4;
+                result.Append(global::Sharpy.Builtins.Float(v));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return the sample arithmetic mean of integer data.
+        /// </summary>
+        public static double Mean(Sharpy.List<int> data)
+        {
+            return Mean(_IntsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the sample arithmetic mean of long integer data.
+        /// </summary>
+        public static double Mean(Sharpy.List<long> data)
+        {
+            return Mean(_LongsToFloats(data));
+        }
+
+        /// <summary>
+        /// Convert integer data to floats and compute the arithmetic mean.
+        /// </summary>
+        public static double Fmean(Sharpy.List<int> data)
+        {
+            return Mean(_IntsToFloats(data));
+        }
+
+        /// <summary>
+        /// Convert long integer data to floats and compute the arithmetic mean.
+        /// </summary>
+        public static double Fmean(Sharpy.List<long> data)
+        {
+            return Mean(_LongsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the median (middle value) of integer data.
+        /// </summary>
+        public static double Median(Sharpy.List<int> data)
+        {
+            return Median(_IntsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the median (middle value) of long integer data.
+        /// </summary>
+        public static double Median(Sharpy.List<long> data)
+        {
+            return Median(_LongsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the low median of integer data.
+        /// </summary>
+        public static double MedianLow(Sharpy.List<int> data)
+        {
+            return MedianLow(_IntsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the low median of long integer data.
+        /// </summary>
+        public static double MedianLow(Sharpy.List<long> data)
+        {
+            return MedianLow(_LongsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the high median of integer data.
+        /// </summary>
+        public static double MedianHigh(Sharpy.List<int> data)
+        {
+            return MedianHigh(_IntsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the high median of long integer data.
+        /// </summary>
+        public static double MedianHigh(Sharpy.List<long> data)
+        {
+            return MedianHigh(_LongsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the square root of the sample variance for integer data.
+        /// </summary>
+        public static double Stdev(Sharpy.List<int> data)
+        {
+            return Stdev(_IntsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the square root of the sample variance for long integer data.
+        /// </summary>
+        public static double Stdev(Sharpy.List<long> data)
+        {
+            return Stdev(_LongsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the sample variance of integer data.
+        /// </summary>
+        public static double Variance(Sharpy.List<int> data)
+        {
+            return Variance(_IntsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the sample variance of long integer data.
+        /// </summary>
+        public static double Variance(Sharpy.List<long> data)
+        {
+            return Variance(_LongsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the square root of the population variance for integer data.
+        /// </summary>
+        public static double Pstdev(Sharpy.List<int> data)
+        {
+            return Pstdev(_IntsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the square root of the population variance for long integer data.
+        /// </summary>
+        public static double Pstdev(Sharpy.List<long> data)
+        {
+            return Pstdev(_LongsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the population variance of integer data.
+        /// </summary>
+        public static double Pvariance(Sharpy.List<int> data)
+        {
+            return Pvariance(_IntsToFloats(data));
+        }
+
+        /// <summary>
+        /// Return the population variance of long integer data.
+        /// </summary>
+        public static double Pvariance(Sharpy.List<long> data)
+        {
+            return Pvariance(_LongsToFloats(data));
         }
     }
 }

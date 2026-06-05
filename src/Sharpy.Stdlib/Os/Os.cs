@@ -182,6 +182,20 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Get an environment variable, return default if it doesn't exist.
+        /// </summary>
+        public static string Getenv(string key, string @default)
+        {
+            var result = global::System.Environment.GetEnvironmentVariable(key);
+            if (result == null)
+            {
+                return @default;
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Change or add an environment variable.
         /// </summary>
         public static void Putenv(string key, string value)

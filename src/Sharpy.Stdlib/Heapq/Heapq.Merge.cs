@@ -7,18 +7,6 @@ namespace Sharpy
     /// <summary>Heap queue algorithm (priority queue).</summary>
     public static partial class Heapq
     {
-        /// <summary>Merge two sorted inputs into a single sorted output.</summary>
-        public static IEnumerable<T> Merge<T>(Sharpy.List<T> a, Sharpy.List<T> b) where T : IComparable<T>
-        {
-            return MergeInternal(new Sharpy.List<T>[] { a, b });
-        }
-
-        /// <summary>Merge three sorted inputs into a single sorted output.</summary>
-        public static IEnumerable<T> Merge<T>(Sharpy.List<T> a, Sharpy.List<T> b, Sharpy.List<T> c) where T : IComparable<T>
-        {
-            return MergeInternal(new Sharpy.List<T>[] { a, b, c });
-        }
-
         /// <summary>Merge multiple sorted inputs into a single sorted output.</summary>
         public static IEnumerable<T> Merge<T>(params Sharpy.List<T>[] iterables) where T : IComparable<T>
         {

@@ -238,7 +238,7 @@ namespace Sharpy
         /// <summary>
         /// Collapse runs of whitespace into a single space and strip leading/trailing whitespace.
         /// </summary>
-        public static string _CollapseWhitespace(string text)
+        internal static string _CollapseWhitespace(string text)
         {
             global::System.Text.StringBuilder sb = new global::System.Text.StringBuilder(text.Length);
             bool inWhitespace = false;
@@ -272,7 +272,7 @@ namespace Sharpy
         /// <summary>
         /// Return True if line contains only whitespace characters.
         /// </summary>
-        public static bool _IsWhitespaceOnly(string line)
+        internal static bool _IsWhitespaceOnly(string line)
         {
             foreach (var __loopVar_4 in global::Sharpy.StringHelpers.Iterate(line))
             {
@@ -289,7 +289,7 @@ namespace Sharpy
         /// <summary>
         /// Return the leading whitespace of a line.
         /// </summary>
-        public static string _GetLeadingWhitespace(string line)
+        internal static string _GetLeadingWhitespace(string line)
         {
             int i = 0;
             while (i < line.Length && global::Sharpy.StringHelpers.GetItem(line, i).Isspace())
@@ -303,7 +303,7 @@ namespace Sharpy
         /// <summary>
         /// Return the longest common prefix of strings a and b.
         /// </summary>
-        public static string _CommonPrefix(string a, string b)
+        internal static string _CommonPrefix(string a, string b)
         {
             int minLen = global::System.Math.Min(a.Length, b.Length);
             int i = 0;
@@ -318,7 +318,7 @@ namespace Sharpy
         /// <summary>
         /// Split text into lines, preserving line endings.
         /// </summary>
-        public static Sharpy.List<string> _SplitKeepEnds(string text)
+        internal static Sharpy.List<string> _SplitKeepEnds(string text)
         {
             Sharpy.List<string> lines = new Sharpy.List<string>()
             {

@@ -85,6 +85,19 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return a randomly selected element from range(stop).
+        /// </summary>
+        public static int Randrange(int stop)
+        {
+            if (stop <= 0)
+            {
+                throw new global::Sharpy.ValueError(FormattableString.Invariant($"empty range for randrange() (0, {(stop)})"));
+            }
+
+            return _Random.Next(stop);
+        }
+
+        /// <summary>
         /// Return a randomly selected element from range(start, stop, step).
         /// </summary>
         public static int Randrange(int start, int stop, int step = 1)
@@ -155,6 +168,70 @@ namespace Sharpy
             }
 
             return _Random.Next(1 << k);
+        }
+
+        /// <summary>
+        /// Return a list of k elements chosen from population with replacement.
+        /// </summary>
+        public static Sharpy.List<T> Choices<T>(Sharpy.List<T> population, int k = 1)
+        {
+            int n = global::Sharpy.Builtins.Len(population);
+            if (n == 0)
+            {
+                throw new global::Sharpy.IndexError("Cannot choose from an empty population");
+            }
+
+            Sharpy.List<T> result = new Sharpy.List<T>()
+            {
+            };
+            int i = 0;
+            while (i < k)
+            {
+                result.Append(population[_Random.Next(n)]);
+                i = i + 1;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Return k unique elements from population without replacement.
+        /// </summary>
+        public static Sharpy.List<T> Sample<T>(Sharpy.List<T> population, int k)
+        {
+            int n = global::Sharpy.Builtins.Len(population);
+            if (k < 0)
+            {
+                throw new global::Sharpy.ValueError("Sample larger than population or is negative");
+            }
+
+            if (k > n)
+            {
+                throw new global::Sharpy.ValueError("Sample larger than population or is negative");
+            }
+
+            Sharpy.List<T> pool = new global::Sharpy.List<T>(population);
+            int i = 0;
+            while (i < k)
+            {
+                int j = _Random.Next(i, n);
+                T temp = pool[i];
+                pool[i] = pool[j];
+                pool[j] = temp;
+                i = i + 1;
+            }
+
+            Sharpy.List<T> result = new Sharpy.List<T>()
+            {
+            };
+            i = 0;
+            while (i < k)
+            {
+                result.Append(pool[i]);
+                i = i + 1;
+            }
+
+            return result;
         }
     }
 }

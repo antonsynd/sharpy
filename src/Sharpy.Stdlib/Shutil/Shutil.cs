@@ -217,9 +217,21 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return disk usage statistics about the given path as a (total, used, free) tuple.
+        /// </summary>
+        public static global::System.ValueTuple<long, long, long> DiskUsage(string path)
+        {
+            global::System.IO.DriveInfo drive = new global::System.IO.DriveInfo(path);
+            long total = drive.TotalSize;
+            long free = drive.AvailableFreeSpace;
+            long used = total - free;
+            return (total, used, free);
+        }
+
+        /// <summary>
         /// Resolve the final destination path, appending the source filename if dst is a directory.
         /// </summary>
-        public static string _ResolveDestination(string src, string dst)
+        internal static string _ResolveDestination(string src, string dst)
         {
             if (global::System.IO.Directory.Exists(dst))
             {
@@ -232,7 +244,7 @@ namespace Sharpy
         /// <summary>
         /// Recursively copy a directory tree from src to dst.
         /// </summary>
-        public static void _CopyDirectoryRecursive(string src, string dst)
+        internal static void _CopyDirectoryRecursive(string src, string dst)
         {
             global::System.IO.Directory.CreateDirectory(dst);
             foreach (var __loopVar_2 in global::System.IO.Directory.GetFiles(src))

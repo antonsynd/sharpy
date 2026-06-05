@@ -58,22 +58,6 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Return a randomly-selected element from range(stop).
-        /// </summary>
-        public static int Randrange(int stop)
-        {
-            return Randrange(0, stop, 1);
-        }
-
-        /// <summary>
-        /// Return a randomly-selected element from range(start, stop).
-        /// </summary>
-        public static int Randrange(int start, int stop)
-        {
-            return Randrange(start, stop, 1);
-        }
-
-        /// <summary>
         /// Return a k sized list of elements chosen from the population with replacement,
         /// optionally weighted.
         /// </summary>

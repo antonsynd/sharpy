@@ -84,5 +84,75 @@ namespace Sharpy
 
             return obj;
         }
+
+        /// <summary>
+        /// Return a new hash object for SHA-224, optionally initialized with data.
+        /// </summary>
+        public static global::Sharpy.HashObject Sha224(string data = "")
+        {
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha224", 28);
+            if (data.Length > 0)
+            {
+                obj.Update(data);
+            }
+
+            return obj;
+        }
+
+        /// <summary>
+        /// Return a new hash object for SHA3-256, optionally initialized with data.
+        /// </summary>
+        public static global::Sharpy.HashObject Sha3256(string data = "")
+        {
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha3_256", 32);
+            if (data.Length > 0)
+            {
+                obj.Update(data);
+            }
+
+            return obj;
+        }
+
+        /// <summary>
+        /// Return a new hash object for SHA3-512, optionally initialized with data.
+        /// </summary>
+        public static global::Sharpy.HashObject Sha3512(string data = "")
+        {
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("sha3_512", 64);
+            if (data.Length > 0)
+            {
+                obj.Update(data);
+            }
+
+            return obj;
+        }
+
+        /// <summary>
+        /// Return a new hash object for BLAKE2b, optionally initialized with data.
+        /// </summary>
+        public static global::Sharpy.HashObject Blake2b(string data = "")
+        {
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("blake2b", 64);
+            if (data.Length > 0)
+            {
+                obj.Update(data);
+            }
+
+            return obj;
+        }
+
+        /// <summary>
+        /// Return a new hash object for BLAKE2s, optionally initialized with data.
+        /// </summary>
+        public static global::Sharpy.HashObject Blake2s(string data = "")
+        {
+            global::Sharpy.HashObject obj = new global::Sharpy.HashObject("blake2s", 32);
+            if (data.Length > 0)
+            {
+                obj.Update(data);
+            }
+
+            return obj;
+        }
     }
 }

@@ -149,9 +149,58 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Merge two sorted inputs into a single sorted output.
+        /// </summary>
+        public static Sharpy.List<T> Merge<T>(Sharpy.List<T> list1, Sharpy.List<T> list2)
+            where T : global::System.IComparable<T>
+        {
+            Sharpy.List<T> result = new Sharpy.List<T>()
+            {
+            };
+            int i = 0;
+            int j = 0;
+            while (i < global::Sharpy.Builtins.Len(list1) && j < global::Sharpy.Builtins.Len(list2))
+            {
+                if (list1[i].CompareTo(list2[j]) <= 0)
+                {
+                    result.Append(list1[i]);
+                    i = i + 1;
+                }
+                else
+                {
+                    result.Append(list2[j]);
+                    j = j + 1;
+                }
+            }
+
+            while (i < global::Sharpy.Builtins.Len(list1))
+            {
+                result.Append(list1[i]);
+                i = i + 1;
+            }
+
+            while (j < global::Sharpy.Builtins.Len(list2))
+            {
+                result.Append(list2[j]);
+                j = j + 1;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Merge three sorted inputs into a single sorted output.
+        /// </summary>
+        public static Sharpy.List<T> Merge<T>(Sharpy.List<T> list1, Sharpy.List<T> list2, Sharpy.List<T> list3)
+            where T : global::System.IComparable<T>
+        {
+            return Merge(Merge(list1, list2), list3);
+        }
+
+        /// <summary>
         /// Bubble element at index up to restore the heap invariant.
         /// </summary>
-        public static void _SiftUp<T>(Sharpy.List<T> heap, int index)
+        internal static void _SiftUp<T>(Sharpy.List<T> heap, int index)
             where T : global::System.IComparable<T>
         {
             while (index > 0)
@@ -174,7 +223,7 @@ namespace Sharpy
         /// <summary>
         /// Push element at index down to restore the heap invariant.
         /// </summary>
-        public static void _SiftDown<T>(Sharpy.List<T> heap, int index)
+        internal static void _SiftDown<T>(Sharpy.List<T> heap, int index)
             where T : global::System.IComparable<T>
         {
             int count = global::Sharpy.Builtins.Len(heap);
