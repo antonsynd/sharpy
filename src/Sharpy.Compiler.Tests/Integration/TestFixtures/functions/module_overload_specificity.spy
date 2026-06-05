@@ -1,0 +1,7 @@
+def compute(x: int) -> str:
+    return "int"
+def compute(x: float) -> str:
+    return "float"
+
+def main():
+    print(compute(5))

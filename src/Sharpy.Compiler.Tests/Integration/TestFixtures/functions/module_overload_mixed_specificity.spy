@@ -1,0 +1,7 @@
+def transform(a: int, b: float) -> str:
+    return "int-float"
+def transform(a: float, b: int) -> str:
+    return "float-int"
+
+def main():
+    print(transform(1, 2))

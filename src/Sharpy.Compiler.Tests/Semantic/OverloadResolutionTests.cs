@@ -299,4 +299,50 @@ def main():
         result.Success.Should().BeTrue(string.Join(", ", result.CompilationErrors));
         result.StandardOutput.Should().Be("int\nstr\nbool\n");
     }
+
+    [Fact]
+    public void MoreSpecificType_SelectedOverAmbiguousMatch()
+    {
+        var source = @"
+class Calc:
+    def __init__(self):
+        pass
+
+    def compute(self, x: int) -> int:
+        return x * 3
+
+    def compute(self, x: float) -> float:
+        return x * 3.0
+
+def main():
+    c: Calc = Calc()
+    print(c.compute(7))
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Should().Be("21\n");
+    }
+
+    [Fact]
+    public void EqualSpecificity_RemainsAmbiguous()
+    {
+        var source = @"
+class Calc:
+    def __init__(self):
+        pass
+
+    def compute(self, x: int, y: float) -> float:
+        return float(x) + y
+
+    def compute(self, x: float, y: int) -> float:
+        return x + float(y)
+
+def main():
+    c: Calc = Calc()
+    c.compute(1, 2)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse();
+        string.Join(" ", result.CompilationErrors).Should().Contain("Ambiguous");
+    }
 }

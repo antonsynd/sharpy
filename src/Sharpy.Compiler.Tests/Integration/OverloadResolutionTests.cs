@@ -9,7 +9,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// Edge case tests for overload resolution in the Sharpy compiler.
 /// </summary>
 [Collection("HeavyCompilation")]
-public class OverloadResolutionTests : IntegrationTestBase
+public class OverloadResolutionTests : StdlibAwareIntegrationTestBase
 {
     public OverloadResolutionTests(ITestOutputHelper output) : base(output)
     {
@@ -309,6 +309,21 @@ def main():
         var result = CompileAndExecute(source);
         Assert.True(result.Success, FormatErrors(result));
         Assert.Equal("xy\nyx\nabc\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void StatisticsMean_ListInt_PrefersSpyOverload()
+    {
+        var source = @"
+import statistics
+
+def main() -> None:
+    data: list[int] = [1, 2, 3, 4, 5]
+    print(statistics.mean(data))
+";
+        var result = CompileAndExecute(source);
+        Assert.True(result.Success, FormatErrors(result));
+        Assert.Equal("3.0\n", result.StandardOutput);
     }
 
     private static string FormatErrors(ExecutionResult result)
