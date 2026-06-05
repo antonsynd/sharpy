@@ -1,0 +1,23 @@
+# Test: covariant assignment with user-defined type arguments (#829)
+# IReadOnlyList[out T] is covariant, so list[Dog] can be passed where
+# IReadOnlyList[Animal] is expected because Dog extends Animal
+
+from system.collections.generic import IReadOnlyList
+
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+def describe(animals: IReadOnlyList[Animal]) -> None:
+    for a in animals:
+        print(a.name)
+
+def main():
+    dogs: list[Dog] = [Dog("Rex"), Dog("Fido")]
+    describe(dogs)

@@ -1,0 +1,22 @@
+# Test: covariant rejection with user-defined type arguments (#829)
+# IReadOnlyList[out T] is covariant, but Animal is NOT assignable to Dog,
+# so list[Animal] cannot be passed where IReadOnlyList[Dog] is expected
+
+from system.collections.generic import IReadOnlyList
+
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+def process(dogs: IReadOnlyList[Dog]) -> None:
+    pass
+
+def main():
+    animals: list[Animal] = [Animal("cat")]
+    process(animals)
