@@ -1,0 +1,5 @@
+property get version(self) -> str:
+    return "1.0"
+
+def main():
+    print(version)

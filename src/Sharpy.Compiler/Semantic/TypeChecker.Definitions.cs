@@ -1613,6 +1613,20 @@ internal partial class TypeChecker
         if (!propDef.IsFunctionStyle)
             return;
 
+        // Module-level properties are implicitly static; reject 'self'
+        foreach (var param in propDef.Parameters)
+        {
+            if (param.Name == "self")
+            {
+                AddError(
+                    "Module-level properties cannot have a 'self' parameter (they are implicitly static)",
+                    param.LineStart, param.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidSelfUsage,
+                    span: param.Span);
+                return;
+            }
+        }
+
         // Function-style: type-check the accessor body like a function body
         _symbolTable.EnterScope($"property:{propDef.Name}:{propDef.Accessor}");
 
