@@ -1,0 +1,10 @@
+from unittest import assert_raises
+
+@test
+def test_capture_exception():
+    with assert_raises(ValueError) as exc:
+        raise ValueError("bad input")
+    assert "bad input" in str(exc)
+
+def main():
+    print("ok")

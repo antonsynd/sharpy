@@ -276,6 +276,49 @@ def main():
     }
 
     [Fact]
+    public void AssertRaises_WithCapture_GeneratesVarDeclarationFromAssertThrows()
+    {
+        var source = @"
+from unittest import assert_raises
+
+@test
+def test_capture():
+    with assert_raises(ValueError) as exc:
+        raise ValueError(""bad input"")
+    assert ""bad input"" in str(exc)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        // `with assert_raises(E) as exc:` captures the thrown exception:
+        //   var exc = Xunit.Assert.Throws<E>((Action)(() => { ... }));
+        code.Should().Contain("var exc = Xunit.Assert.Throws<ValueError>");
+        // The captured variable must be usable in subsequent assertions
+        code.Should().Contain("Xunit.Assert.Contains(\"bad input\", global::Sharpy.Builtins.Str(exc))");
+    }
+
+    [Fact]
+    public void AssertRaises_WithoutCapture_DoesNotDeclareVariable()
+    {
+        var source = @"
+from unittest import assert_raises
+
+@test
+def test_raises():
+    with assert_raises(ValueError):
+        raise ValueError(""oops"")
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        // No `as` name → plain expression statement, no local declaration
+        code.Should().Contain("Xunit.Assert.Throws<ValueError>");
+        code.Should().NotContain("= Xunit.Assert.Throws");
+    }
+
+    [Fact]
     public void AssertAlmostEqual_GeneratesXunitAssertEqualWithPrecision()
     {
         var source = @"
@@ -388,6 +431,78 @@ def main():
         var code = CompileToCSharp(source);
         code.Should().Contain("Xunit.FactAttribute");
         code.Should().Contain("TestAddition");
+    }
+
+    #endregion
+
+    #region @test.parametrize with variable reference (#836)
+
+    [Fact]
+    public void Parametrize_VariableReference_GeneratesMemberData()
+    {
+        // @test.parametrize(VARIABLE) emits [Theory] + a single [MemberData]
+        // pointing at a generated wrapper property on the module class instead
+        // of one [InlineData] per row.
+        var source = @"
+const TEST_DATA: list[tuple[int, int, int]] = [(1, 2, 3), (4, 5, 9)]
+
+@test.parametrize(TEST_DATA)
+def test_add(a: int, b: int, expected: int):
+    assert a + b == expected
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, fileName: "param_var.spy");
+        code.Should().Contain("Xunit.TheoryAttribute");
+        code.Should().Contain(
+            "Xunit.MemberDataAttribute(nameof(ParamVar.TestDataMemberData), MemberType = typeof(ParamVar))");
+        // Wrapper property adapts list[tuple[...]] to xUnit's IEnumerable<object[]>
+        code.Should().Contain(
+            "public static global::System.Collections.Generic.IEnumerable<object[]> TestDataMemberData");
+        code.Should().Contain("new object[] { row.Item1, row.Item2, row.Item3 }");
+        code.Should().NotContain("InlineData");
+    }
+
+    [Fact]
+    public void Parametrize_VariableReference_SingleParameter_WrapsEachElement()
+    {
+        // For non-tuple element types (single-parameter tests), each element is
+        // wrapped directly into a one-element object array.
+        var source = @"
+const FLAGS: list[bool] = [True, False]
+
+@test.parametrize(FLAGS)
+def test_flag(flag: bool):
+    assert flag == True or flag == False
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, fileName: "param_single.spy");
+        code.Should().Contain(
+            "Xunit.MemberDataAttribute(nameof(ParamSingle.FLAGSMemberData), MemberType = typeof(ParamSingle))");
+        code.Should().Contain("new object[] { row }");
+        code.Should().NotContain("InlineData");
+    }
+
+    [Fact]
+    public void Parametrize_UndefinedVariableReference_ReportsError()
+    {
+        // Referencing a name that doesn't exist must fail validation.
+        var source = @"
+@test.parametrize(MISSING_DATA)
+def test_add(a: int, b: int, expected: int):
+    assert a + b == expected
+
+def main():
+    print(""ok"")
+";
+        var compiler = new Compiler();
+        var result = compiler.Compile(source, "param_missing.spy");
+        result.Success.Should().BeFalse();
+        result.Diagnostics.GetErrors().Should().Contain(e =>
+            e.Message.Contains("references undefined variable 'MISSING_DATA'"));
     }
 
     #endregion

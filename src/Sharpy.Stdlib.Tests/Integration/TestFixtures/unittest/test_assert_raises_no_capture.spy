@@ -1,0 +1,9 @@
+from unittest import assert_raises
+
+@test
+def test_no_capture():
+    with assert_raises(ValueError):
+        raise ValueError("oops")
+
+def main():
+    print("ok")
