@@ -13,32 +13,17 @@ class HashObject:
     property digest_size: int
 
     _data: list[byte]
+    _factory: () -> HashAlgorithm
 
-    def __init__(self, algorithm_name: str, digest_size: int):
+    def __init__(self, algorithm_name: str, digest_size: int, factory: () -> HashAlgorithm):
         """Create a new hash object for the specified algorithm."""
-        if algorithm_name not in ["md5", "sha1", "sha256", "sha384", "sha512"]:
-            raise ValueError("unsupported hash type '" + algorithm_name + "'")
         self.name = algorithm_name
         self.digest_size = digest_size
         self._data = []
-
-    def _create_algorithm(self) -> HashAlgorithm:
-        match self.name:
-            case "md5":
-                return MD5.create()
-            case "sha1":
-                return SHA1.create()
-            case "sha256":
-                return SHA256.create()
-            case "sha384":
-                return SHA384.create()
-            case "sha512":
-                return SHA512.create()
-            case _:
-                raise ValueError("unsupported hash type '" + self.name + "'")
+        self._factory = factory
 
     def _compute_hash(self) -> list[byte]:
-        with self._create_algorithm() as algorithm:
+        with self._factory() as algorithm:
             return algorithm.compute_hash(self._data.to_array())
 
     def update(self, data: str) -> None:
@@ -65,77 +50,62 @@ class HashObject:
 
     def copy(self) -> HashObject:
         """Return a copy of the hash object with the same accumulated data."""
-        new_obj: HashObject = HashObject(self.name, self.digest_size)
+        new_obj: HashObject = HashObject(self.name, self.digest_size, self._factory)
         for b in self._data:
             new_obj._data.append(b)
         return new_obj
 
 def md5(data: str = "") -> HashObject:
     """Return a new hash object for MD5, optionally initialized with data."""
-    obj: HashObject = HashObject("md5", 16)
+    obj: HashObject = HashObject("md5", 16, lambda: MD5.create())
     if len(data) > 0:
         obj.update(data)
     return obj
 
 def sha1(data: str = "") -> HashObject:
     """Return a new hash object for SHA-1, optionally initialized with data."""
-    obj: HashObject = HashObject("sha1", 20)
+    obj: HashObject = HashObject("sha1", 20, lambda: SHA1.create())
     if len(data) > 0:
         obj.update(data)
     return obj
 
 def sha256(data: str = "") -> HashObject:
     """Return a new hash object for SHA-256, optionally initialized with data."""
-    obj: HashObject = HashObject("sha256", 32)
+    obj: HashObject = HashObject("sha256", 32, lambda: SHA256.create())
     if len(data) > 0:
         obj.update(data)
     return obj
 
 def sha384(data: str = "") -> HashObject:
     """Return a new hash object for SHA-384, optionally initialized with data."""
-    obj: HashObject = HashObject("sha384", 48)
+    obj: HashObject = HashObject("sha384", 48, lambda: SHA384.create())
     if len(data) > 0:
         obj.update(data)
     return obj
 
 def sha512(data: str = "") -> HashObject:
     """Return a new hash object for SHA-512, optionally initialized with data."""
-    obj: HashObject = HashObject("sha512", 64)
+    obj: HashObject = HashObject("sha512", 64, lambda: SHA512.create())
     if len(data) > 0:
         obj.update(data)
     return obj
 
 def sha224(data: str = "") -> HashObject:
     """Return a new hash object for SHA-224, optionally initialized with data."""
-    obj: HashObject = HashObject("sha224", 28)
-    if len(data) > 0:
-        obj.update(data)
-    return obj
+    raise ValueError("unsupported hash type 'sha224'")
 
 def sha3_256(data: str = "") -> HashObject:
     """Return a new hash object for SHA3-256, optionally initialized with data."""
-    obj: HashObject = HashObject("sha3_256", 32)
-    if len(data) > 0:
-        obj.update(data)
-    return obj
+    raise ValueError("unsupported hash type 'sha3_256'")
 
 def sha3_512(data: str = "") -> HashObject:
     """Return a new hash object for SHA3-512, optionally initialized with data."""
-    obj: HashObject = HashObject("sha3_512", 64)
-    if len(data) > 0:
-        obj.update(data)
-    return obj
+    raise ValueError("unsupported hash type 'sha3_512'")
 
 def blake2b(data: str = "") -> HashObject:
     """Return a new hash object for BLAKE2b, optionally initialized with data."""
-    obj: HashObject = HashObject("blake2b", 64)
-    if len(data) > 0:
-        obj.update(data)
-    return obj
+    raise ValueError("unsupported hash type 'blake2b'")
 
 def blake2s(data: str = "") -> HashObject:
     """Return a new hash object for BLAKE2s, optionally initialized with data."""
-    obj: HashObject = HashObject("blake2s", 32)
-    if len(data) > 0:
-        obj.update(data)
-    return obj
+    raise ValueError("unsupported hash type 'blake2s'")

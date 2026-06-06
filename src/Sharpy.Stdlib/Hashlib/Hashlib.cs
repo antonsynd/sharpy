@@ -21,28 +21,10 @@ namespace Sharpy
         public class HashObject
         {
             protected Sharpy.List<byte> _Data;
-            protected global::System.Security.Cryptography.HashAlgorithm _CreateAlgorithm()
-            {
-                switch (this.Name)
-                {
-                    case "md5":
-                        return global::System.Security.Cryptography.MD5.Create();
-                    case "sha1":
-                        return global::System.Security.Cryptography.SHA1.Create();
-                    case "sha256":
-                        return global::System.Security.Cryptography.SHA256.Create();
-                    case "sha384":
-                        return global::System.Security.Cryptography.SHA384.Create();
-                    case "sha512":
-                        return global::System.Security.Cryptography.SHA512.Create();
-                    default:
-                        throw new global::Sharpy.ValueError("unsupported hash type '" + this.Name + "'");
-                }
-            }
-
+            protected global::System.Func<global::System.Security.Cryptography.HashAlgorithm> _Factory;
             protected Sharpy.List<byte> _ComputeHash()
             {
-                using (var algorithm = this._CreateAlgorithm())
+                using (var algorithm = this._Factory())
                 {
                     return algorithm.ComputeHash(this._Data.ToArray());
                 }
@@ -100,7 +82,7 @@ namespace Sharpy
             /// </summary>
             public HashObject Copy()
             {
-                HashObject newObj = new HashObject(this.Name, this.DigestSize);
+                HashObject newObj = new HashObject(this.Name, this.DigestSize, this._Factory);
                 foreach (var __loopVar_3 in this._Data)
                 {
                     var b = __loopVar_3;
@@ -116,25 +98,14 @@ namespace Sharpy
             /// <summary>
             /// Create a new hash object for the specified algorithm.
             /// </summary>
-            public HashObject(string algorithmName, int digestSize)
+            public HashObject(string algorithmName, int digestSize, global::System.Func<global::System.Security.Cryptography.HashAlgorithm> factory)
             {
-                if (!new Sharpy.List<string>()
-                {
-                    "md5",
-                    "sha1",
-                    "sha256",
-                    "sha384",
-                    "sha512"
-                }.Contains(algorithmName))
-                {
-                    throw new global::Sharpy.ValueError("unsupported hash type '" + algorithmName + "'");
-                }
-
                 this.Name = algorithmName;
                 this.DigestSize = digestSize;
                 this._Data = new Sharpy.List<byte>()
                 {
                 };
+                this._Factory = factory;
             }
         }
 
@@ -143,7 +114,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Md5(string data = "")
         {
-            HashObject obj = new HashObject("md5", 16);
+            HashObject obj = new HashObject("md5", 16, () => global::System.Security.Cryptography.MD5.Create());
             if (data.Length > 0)
             {
                 obj.Update(data);
@@ -157,7 +128,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Sha1(string data = "")
         {
-            HashObject obj = new HashObject("sha1", 20);
+            HashObject obj = new HashObject("sha1", 20, () => global::System.Security.Cryptography.SHA1.Create());
             if (data.Length > 0)
             {
                 obj.Update(data);
@@ -171,7 +142,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Sha256(string data = "")
         {
-            HashObject obj = new HashObject("sha256", 32);
+            HashObject obj = new HashObject("sha256", 32, () => global::System.Security.Cryptography.SHA256.Create());
             if (data.Length > 0)
             {
                 obj.Update(data);
@@ -185,7 +156,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Sha384(string data = "")
         {
-            HashObject obj = new HashObject("sha384", 48);
+            HashObject obj = new HashObject("sha384", 48, () => global::System.Security.Cryptography.SHA384.Create());
             if (data.Length > 0)
             {
                 obj.Update(data);
@@ -199,7 +170,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Sha512(string data = "")
         {
-            HashObject obj = new HashObject("sha512", 64);
+            HashObject obj = new HashObject("sha512", 64, () => global::System.Security.Cryptography.SHA512.Create());
             if (data.Length > 0)
             {
                 obj.Update(data);
@@ -213,13 +184,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Sha224(string data = "")
         {
-            HashObject obj = new HashObject("sha224", 28);
-            if (data.Length > 0)
-            {
-                obj.Update(data);
-            }
-
-            return obj;
+            throw new global::Sharpy.ValueError("unsupported hash type 'sha224'");
         }
 
         /// <summary>
@@ -227,13 +192,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Sha3256(string data = "")
         {
-            HashObject obj = new HashObject("sha3_256", 32);
-            if (data.Length > 0)
-            {
-                obj.Update(data);
-            }
-
-            return obj;
+            throw new global::Sharpy.ValueError("unsupported hash type 'sha3_256'");
         }
 
         /// <summary>
@@ -241,13 +200,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Sha3512(string data = "")
         {
-            HashObject obj = new HashObject("sha3_512", 64);
-            if (data.Length > 0)
-            {
-                obj.Update(data);
-            }
-
-            return obj;
+            throw new global::Sharpy.ValueError("unsupported hash type 'sha3_512'");
         }
 
         /// <summary>
@@ -255,13 +208,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Blake2b(string data = "")
         {
-            HashObject obj = new HashObject("blake2b", 64);
-            if (data.Length > 0)
-            {
-                obj.Update(data);
-            }
-
-            return obj;
+            throw new global::Sharpy.ValueError("unsupported hash type 'blake2b'");
         }
 
         /// <summary>
@@ -269,13 +216,7 @@ namespace Sharpy
         /// </summary>
         public static HashObject Blake2s(string data = "")
         {
-            HashObject obj = new HashObject("blake2s", 32);
-            if (data.Length > 0)
-            {
-                obj.Update(data);
-            }
-
-            return obj;
+            throw new global::Sharpy.ValueError("unsupported hash type 'blake2s'");
         }
     }
 }
