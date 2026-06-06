@@ -1,0 +1,8 @@
+const FLAGS: list[bool] = [True, False, True]
+
+@test.parametrize(FLAGS)
+def test_bool(flag: bool):
+    assert flag == True or flag == False
+
+def main():
+    print("ok")

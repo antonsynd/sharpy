@@ -1,0 +1,6 @@
+@test.parametrize(MISSING_DATA)
+def test_add(a: int, b: int, expected: int):
+    assert a + b == expected
+
+def main():
+    print("ok")
