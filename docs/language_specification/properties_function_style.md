@@ -207,6 +207,72 @@ public static bool DebugMode {
 }
 ```
 
+## Module-Level Properties
+
+Properties can be declared at module level (outside any class). This allows modules to expose computed values that look like attributes — for example, `os.environ` computes a fresh `dict[str, str]` on each access:
+
+```python
+# os.spy (module level, no enclosing class)
+
+# Function-style getter — computed on each access
+property get environ() -> dict[str, str]:
+    result: dict[str, str] = {}
+    # ... populate from process environment ...
+    return result
+
+# Getter/setter pair sharing a module-level backing variable
+_debug_mode: bool = False
+
+property get debug_mode() -> bool:
+    return _debug_mode
+
+property set debug_mode(value: bool):
+    _debug_mode = value
+
+# Auto-property form — backing field and accessors generated
+property default_timeout: float = 30.0
+```
+
+```python
+# Usage from another module
+import os
+
+print(os.environ["PATH"])
+os.debug_mode = True
+```
+
+**Semantics:**
+
+- Module-level properties take **no `self` parameter** — they are implicitly static. Writing `self` in a module-level accessor is an error (there is no instance).
+- The `@static` decorator is neither required nor allowed; module level implies static.
+- **Auto-property form**: `property name: T = default` generates a backing field and both accessors, exactly like the class-level auto-property form.
+- **Split accessors are merged**: a separate `property get name() ...` and `property set name(value: T):` for the same name combine into a single property, following the same rules as class-level split accessors (type must match across accessors; a get-only property is read-only).
+- Access modifiers (`@private`, `@internal`, ...) apply per accessor, as at class level.
+
+**Code generation:** Module-level properties are emitted as `public static` properties on the module's static class (`Exports`/`Program`), alongside module-level functions and variables:
+
+*Implementation: ✅ Native*
+```csharp
+public static partial class Exports
+{
+    public static Sharpy.Dict<string, string> Environ
+    {
+        get
+        {
+            // ... computed on each access ...
+        }
+    }
+
+    public static bool DebugMode
+    {
+        get => _debugMode;
+        set => _debugMode = value;
+    }
+
+    public static double DefaultTimeout { get; set; } = 30.0;
+}
+```
+
 ## Property and Method Name Conflicts
 
 A property and a method cannot share the same name within a class:
