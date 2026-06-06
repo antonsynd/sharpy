@@ -122,6 +122,13 @@ internal partial class RoslynEmitter
         // - The module is not an entry point (non-entry-point modules always use static fields)
         _forceModuleLevelFields = hasMainFunction || !_context.IsEntryPoint;
 
+        // Resolve the module class name up front so [MemberData] attributes generated for
+        // @test.parametrize(VARIABLE) decorators (emitted both during the statement loop for
+        // class-based tests and after this method for module-level tests) can reference the
+        // module class via MemberType = typeof(...).
+        _resolvedModuleClassName = GetModuleClassName(hasMainFunction);
+        _memberDataVariables.Clear();
+
         // First pre-scan: register @test.fixture functions so that test methods declared later
         // in the same module — or earlier — can resolve their fixture parameters consistently
         // regardless of file order.
@@ -232,6 +239,12 @@ internal partial class RoslynEmitter
                 executableStatements.Add(stmt);
             }
         }
+
+        // Emit MemberData wrapper properties for module-level variables referenced by
+        // @test.parametrize(VARIABLE). xUnit's [MemberData] requires a public static member
+        // returning IEnumerable<object[]>, so each referenced list variable gets a companion
+        // property projecting its rows into object arrays.
+        moduleDeclarations.AddRange(GenerateParametrizeMemberDataProperties(statements));
 
         // main() is required for entry points — no synthesized Main() needed.
         // If there's a main function with bare executable statements, report an error.
@@ -491,6 +504,142 @@ internal partial class RoslynEmitter
             return "module";
 
         return fileName;
+    }
+
+    /// <summary>
+    /// Generates one MemberData wrapper property per module-level variable referenced by a
+    /// @test.parametrize(VARIABLE) decorator. The property adapts the variable (a list of
+    /// tuples, or a flat list for single-parameter tests) to xUnit's MemberData contract:
+    /// <c>public static IEnumerable&lt;object[]&gt;</c>. Scans module-level test functions and
+    /// methods of module-level classes; emission follows first-reference source order.
+    /// </summary>
+    private IEnumerable<MemberDeclarationSyntax> GenerateParametrizeMemberDataProperties(
+        List<Statement> statements)
+    {
+        // Ordered, de-duplicated collection of referenced variable names.
+        var referencedNames = new List<string>();
+        var seen = new HashSet<string>();
+
+        void Collect(IEnumerable<Decorator> decorators)
+        {
+            foreach (var decorator in decorators)
+            {
+                if (decorator.Name == DecoratorNames.TestParametrize
+                    && decorator.Arguments.Length == 1
+                    && decorator.Arguments[0] is Identifier id
+                    && seen.Add(id.Name))
+                {
+                    referencedNames.Add(id.Name);
+                }
+            }
+        }
+
+        foreach (var stmt in statements)
+        {
+            switch (stmt)
+            {
+                case FunctionDef func:
+                    Collect(func.Decorators);
+                    break;
+                case ClassDef classDef:
+                    foreach (var member in classDef.Body.OfType<FunctionDef>())
+                    {
+                        Collect(member.Decorators);
+                    }
+                    break;
+            }
+        }
+
+        foreach (var name in referencedNames)
+        {
+            _memberDataVariables.Add(name);
+            var property = GenerateMemberDataProperty(name, statements);
+            if (property != null)
+            {
+                yield return property;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds the MemberData wrapper property for one parametrize data variable:
+    /// <c>public static IEnumerable&lt;object[]&gt; VarMemberData =&gt;
+    /// System.Linq.Enumerable.Select(VAR, row =&gt; new object[] { row.Item1, ..., row.ItemN });</c>
+    /// For non-tuple element types (single-parameter tests), each element is wrapped directly:
+    /// <c>row =&gt; new object[] { row }</c>. Returns null when the variable is not declared in
+    /// this module (no wrapper can be generated here).
+    /// </summary>
+    private PropertyDeclarationSyntax? GenerateMemberDataProperty(
+        string variableName, List<Statement> statements)
+    {
+        // Mirror the module-level field naming rules from GenerateModuleLevelField.
+        var varDecl = statements
+            .OfType<Parser.Ast.VariableDeclaration>()
+            .FirstOrDefault(v => v.Name == variableName);
+        if (varDecl == null)
+        {
+            return null;
+        }
+
+        string fieldName;
+        if (varDecl.IsConst || NameFormDetector.IsConstantCaseName(variableName))
+        {
+            fieldName = NameMangler.ToConstantCase(variableName);
+        }
+        else
+        {
+            fieldName = NameCasing.ResolveField(variableName, varDecl.IsNameBacktickEscaped);
+        }
+
+        // Row arity from the variable's semantic type: list[tuple[...]] → tuple arity
+        // (row.Item1..ItemN); any other element type → single-parameter rows (row itself).
+        int arity = 1;
+        if (_context.LookupSymbol(variableName) is VariableSymbol
+            {
+                Type: GenericType { TypeArguments.Count: 1 } listType
+            }
+            && listType.TypeArguments[0] is Semantic.TupleType tupleType)
+        {
+            arity = tupleType.ElementTypes.Count;
+        }
+
+        var rowElements = arity >= 2
+            ? Enumerable.Range(1, arity)
+                .Select(i => (ExpressionSyntax)MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("row"),
+                    IdentifierName($"Item{i}")))
+                .ToArray()
+            : new ExpressionSyntax[] { IdentifierName("row") };
+
+        // new object[] { row.Item1, ..., row.ItemN }
+        var rowArray = ArrayCreationExpression(
+            ArrayType(PredefinedType(Token(SyntaxKind.ObjectKeyword)))
+                .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(
+                    SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression())))))
+            .WithInitializer(InitializerExpression(
+                SyntaxKind.ArrayInitializerExpression,
+                SeparatedList(rowElements)));
+
+        // global::System.Linq.Enumerable.Select(VAR, row => new object[] { ... })
+        var selectCall = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                ParseName("global::System.Linq.Enumerable"),
+                IdentifierName("Select")),
+            ArgumentList(SeparatedList(new[]
+            {
+                Argument(IdentifierName(fieldName)),
+                Argument(SimpleLambdaExpression(Parameter(Identifier("row")))
+                    .WithExpressionBody(rowArray)),
+            })));
+
+        return PropertyDeclaration(
+                ParseTypeName("global::System.Collections.Generic.IEnumerable<object[]>"),
+                Identifier(GetMemberDataPropertyName(variableName)))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithExpressionBody(ArrowExpressionClause(selectCall))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
     /// <summary>

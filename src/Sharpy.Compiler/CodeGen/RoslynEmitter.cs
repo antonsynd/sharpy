@@ -144,6 +144,17 @@ internal partial class RoslynEmitter : ICodeEmitter
     // be emitted into a sibling test class instead of the regular module class.
     private readonly List<FunctionDef> _pendingTestFunctions = new();
 
+    // The resolved module class name (e.g., "TestParametrize" or "Program"). Set early in
+    // GenerateModuleMembers so [MemberData] attributes generated for
+    // @test.parametrize(VARIABLE) decorators can reference the module class via MemberType.
+    private string? _resolvedModuleClassName;
+
+    // Module-level variable names (original Sharpy names) referenced by
+    // @test.parametrize(VARIABLE) decorators. Populated by a pre-scan in
+    // GenerateModuleMembers; each entry gets a companion MemberData wrapper property
+    // on the module class satisfying xUnit's IEnumerable<object[]> contract.
+    private readonly HashSet<string> _memberDataVariables = new();
+
     // Collects module-level @test.fixture functions during module member generation. Each is
     // emitted as a sibling fixture class (parameterless constructor for setup, optional
     // IDisposable for yield-based teardown). Test methods consuming these by parameter name
