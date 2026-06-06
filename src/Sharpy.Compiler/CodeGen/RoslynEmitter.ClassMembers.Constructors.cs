@@ -166,6 +166,10 @@ internal partial class RoslynEmitter
                         {
                             _targetTypeContext = previousTargetType;
                         }
+
+                        // Method group → Optional<delegate> field needs an explicit delegate cast
+                        assignValue = ApplyOptionalDelegateConversion(
+                            assign.Value, assignValue, GetExpressionSemanticType(assign.Target));
                     }
 
                     var selfAssign = ExpressionStatement(

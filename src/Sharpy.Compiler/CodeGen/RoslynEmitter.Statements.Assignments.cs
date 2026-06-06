@@ -67,6 +67,11 @@ internal partial class RoslynEmitter
                     // Clear any Optional narrowing since the variable is being reassigned
                     _narrowing.ClearNarrowing(name.Name);
                     var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false);
+
+                    // Method group → Optional<delegate> needs an explicit delegate cast
+                    if (symbol is VariableSymbol declaredVarSym)
+                        value = ApplyOptionalDelegateConversion(assign.Value, value, declaredVarSym.Type);
+
                     return ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
@@ -230,8 +235,10 @@ internal partial class RoslynEmitter
 
             var target = GenerateMemberAccess(memberAccess);
 
+            // Method group → Optional<delegate> field needs an explicit delegate cast
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
-                ? value
+                ? ApplyOptionalDelegateConversion(assign.Value, value,
+                    GetExpressionSemanticType(assign.Target))
                 : GenerateAugmentedValue(assign.Operator, target, value, assign.Target, assign.Value);
 
             return ExpressionStatement(
@@ -662,6 +669,17 @@ internal partial class RoslynEmitter
 
         // Track this variable as declared
         _declaredVariables.Add(varName);
+
+        // Method group → Optional<delegate> needs an explicit delegate cast:
+        // f: ((str) -> None)? = printer → Optional<Action<string>> f = (Action<string>)printer
+        if (initialValue != null && varDecl.InitialValue != null
+            && varDecl.Type is { IsOptional: true, Name: "function" } optFuncAnnotation
+            && IsMethodGroupOrLambda(varDecl.InitialValue))
+        {
+            var delegateTypeSyntax = _typeMapper.MapType(optFuncAnnotation with { IsOptional = false });
+            initialValue = ParenthesizedExpression(
+                CastExpression(delegateTypeSyntax, ParenthesizedExpression(initialValue)));
+        }
 
         VariableDeclaratorSyntax declarator = initialValue != null
             ? VariableDeclarator(Identifier(varName)).WithInitializer(EqualsValueClause(initialValue))

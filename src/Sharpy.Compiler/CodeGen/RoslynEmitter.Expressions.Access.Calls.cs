@@ -399,6 +399,53 @@ internal partial class RoslynEmitter
         => WrapInOptionalSome(GenerateExpression(call.Arguments[0]), opt);
 
     /// <summary>
+    /// When the target type is an Optional wrapping a function type and the source
+    /// expression is a method group (identifier resolving to a function) or a lambda,
+    /// C# cannot perform the two-step implicit conversion
+    /// (method group/lambda → delegate → Optional&lt;delegate&gt;).
+    /// Wraps the generated expression in an explicit delegate cast so the implicit
+    /// Optional&lt;T&gt; conversion can apply: Printer → (Action&lt;string&gt;)Printer.
+    /// Returns the expression unchanged when no conversion is needed.
+    /// </summary>
+    private ExpressionSyntax ApplyOptionalDelegateConversion(
+        Expression sourceExpr, ExpressionSyntax generated, Semantic.SemanticType? targetType)
+    {
+        if (targetType is not OptionalType { UnderlyingType: Semantic.FunctionType ft }
+            || ft.HasUnresolvedTypes())
+        {
+            return generated;
+        }
+
+        if (!IsMethodGroupOrLambda(sourceExpr))
+            return generated;
+
+        var delegateType = _typeMapper.MapSemanticType(ft);
+        return ParenthesizedExpression(
+            CastExpression(delegateType, ParenthesizedExpression(generated)));
+    }
+
+    /// <summary>
+    /// Returns true if the expression is a method group (an identifier or member access
+    /// resolving to a function symbol rather than a delegate-typed variable) or a lambda.
+    /// These require an explicit delegate cast before user-defined implicit conversions
+    /// (e.g., to Optional&lt;T&gt;) can apply.
+    /// </summary>
+    private bool IsMethodGroupOrLambda(Expression expr)
+    {
+        while (expr is Parenthesized paren)
+            expr = paren.Expression;
+
+        return expr switch
+        {
+            LambdaExpression => true,
+            Identifier id => _context.LookupSymbol(id.Name) is FunctionSymbol,
+            MemberAccess ma =>
+                _context.SemanticInfo?.GetMemberAccessResolution(ma)?.Member is FunctionSymbol,
+            _ => false,
+        };
+    }
+
+    /// <summary>
     /// Generates: Result&lt;T, E&gt;.Ok(value)
     /// </summary>
     private ExpressionSyntax GenerateOkExpression(FunctionCall call, ResultType res)
@@ -699,17 +746,20 @@ internal partial class RoslynEmitter
         if (!NeedsParameterReordering(funcSymbol))
         {
             // No reordering — use the existing positional + keyword pattern
-            var positionalArgs = GeneratePositionalArguments(call.Arguments);
+            var positionalArgs = GeneratePositionalArguments(call.Arguments, funcSymbol);
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
             {
                 var csharpName = NameMangler.ToCamelCase(kwarg.Name);
+                var kwargValue = GenerateExpression(kwarg.Value);
                 if (funcSymbol != null)
                 {
                     var targetParam = funcSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
                     if (targetParam is { IsLateBound: true })
                         csharpName += LateBoundSuffix;
+                    if (targetParam != null)
+                        kwargValue = ApplyOptionalDelegateConversion(kwarg.Value, kwargValue, targetParam.Type);
                 }
-                return Argument(GenerateExpression(kwarg.Value))
+                return Argument(kwargValue)
                     .WithNameColon(NameColon(IdentifierName(csharpName)));
             });
             if (prependedArgument != null)
@@ -754,7 +804,9 @@ internal partial class RoslynEmitter
 
             if (keywordArgsByName.TryGetValue(param.Name, out var kwarg))
             {
-                argByParam[param.Name] = Argument(GenerateExpression(kwarg.Value))
+                argByParam[param.Name] = Argument(
+                    ApplyOptionalDelegateConversion(
+                        kwarg.Value, GenerateExpression(kwarg.Value), param.Type))
                     .WithNameColon(NameColon(IdentifierName(csharpParamName)));
                 keywordArgsByName.Remove(param.Name);
             }
@@ -780,7 +832,9 @@ internal partial class RoslynEmitter
                     }
                     return result.ToArray();
                 }
-                argByParam[param.Name] = Argument(GenerateExpression(argExpr))
+                argByParam[param.Name] = Argument(
+                    ApplyOptionalDelegateConversion(
+                        argExpr, GenerateExpression(argExpr), param.Type))
                     .WithNameColon(NameColon(IdentifierName(csharpParamName)));
                 positionalIndex++;
             }
@@ -840,12 +894,25 @@ internal partial class RoslynEmitter
     /// For spread of an iterable type → generates .ToArray() and passes as a single argument.
     /// </summary>
     private IEnumerable<ArgumentSyntax> GeneratePositionalArguments(
-        System.Collections.Immutable.ImmutableArray<Expression> arguments)
+        System.Collections.Immutable.ImmutableArray<Expression> arguments,
+        FunctionSymbol? funcSymbol = null)
     {
+        // Positional parameter list (excluding self/cls) for target-typed argument
+        // conversions (e.g., method group → Optional<delegate> needs an explicit cast).
+        var positionalParams = funcSymbol?.Parameters
+            .Where(p => p.Name != PythonNames.Self && p.Name != PythonNames.Cls)
+            .ToList();
+
+        int argIndex = -1;
+        bool sawSpread = false;
         foreach (var arg in arguments)
         {
+            argIndex++;
             if (arg is SpreadElement spread)
             {
+                // Spreads expand to a variable number of arguments, so positional
+                // index → parameter mapping is no longer reliable past this point.
+                sawSpread = true;
                 var spreadType = GetExpressionSemanticType(spread.Value);
                 var spreadExpr = GenerateExpression(spread.Value);
 
@@ -926,7 +993,16 @@ internal partial class RoslynEmitter
             }
             else
             {
-                yield return Argument(GenerateExpression(arg));
+                var generated = GenerateExpression(arg);
+                if (positionalParams != null && !sawSpread
+                    && argIndex < positionalParams.Count
+                    && !positionalParams[argIndex].IsVariadic
+                    && !positionalParams[argIndex].IsKeywordOnly)
+                {
+                    generated = ApplyOptionalDelegateConversion(
+                        arg, generated, positionalParams[argIndex].Type);
+                }
+                yield return Argument(generated);
             }
         }
     }
