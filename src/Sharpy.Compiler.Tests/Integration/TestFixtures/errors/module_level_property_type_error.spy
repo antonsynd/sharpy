@@ -1,0 +1,5 @@
+property get count() -> int:
+    return "not an int"
+
+def main():
+    print(count)

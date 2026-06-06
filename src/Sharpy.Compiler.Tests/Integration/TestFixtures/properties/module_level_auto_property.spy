@@ -1,0 +1,4 @@
+property name: str = "default"
+
+def main():
+    print(name)

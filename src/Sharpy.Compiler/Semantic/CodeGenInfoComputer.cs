@@ -96,7 +96,30 @@ internal class CodeGenInfoComputer
                 case FromImportStatement fromImport:
                     ProcessFromImport(fromImport);
                     break;
+                case PropertyDef propDef:
+                    ProcessModuleLevelProperty(propDef);
+                    break;
             }
+        }
+    }
+
+    private void ProcessModuleLevelProperty(PropertyDef propDef)
+    {
+        var symbol = _symbolTable.Lookup(propDef.Name);
+        if (symbol is VariableSymbol { IsModuleProperty: true } varSymbol && varSymbol.CodeGenInfo == null)
+        {
+            var escaped = propDef.IsNameBacktickEscaped;
+            var csharpName = NameCasing.ResolveField(propDef.Name, escaped);
+
+            SetCodeGenInfo(varSymbol, new CodeGenInfo
+            {
+                CSharpName = csharpName,
+                OriginalName = propDef.Name,
+                Version = 0,
+                IsModuleLevel = true,
+                IsConstant = false,
+                HasExecutionOrderIssues = false
+            });
         }
     }
 

@@ -1,0 +1,11 @@
+counter: int = 0
+
+property get count() -> int:
+    return counter
+
+property get greeting() -> str:
+    return "hello world"
+
+def main():
+    print(greeting)
+    print(count)
