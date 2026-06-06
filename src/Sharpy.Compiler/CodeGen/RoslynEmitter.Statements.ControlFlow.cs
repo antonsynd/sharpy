@@ -153,7 +153,7 @@ internal partial class RoslynEmitter
                     Argument(GenerateExpression(notInOp.Right))));
         }
 
-        // assert isinstance(a, T) → Xunit.Assert.IsType<T>(a)
+        // assert isinstance(a, T) → Xunit.Assert.IsAssignableFrom<T>(a)
         if (test is FunctionCall { Function: Identifier { Name: "isinstance" } } isinstCall
             && isinstCall.Arguments.Length == 2
             && isinstCall.Arguments[1] is Identifier)
@@ -161,9 +161,49 @@ internal partial class RoslynEmitter
             var typeSyntax = _typeMapper.MapTypeFromExpression(isinstCall.Arguments[1]);
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert,
-                    GenericName(Identifier("IsType"))
+                    GenericName(Identifier("IsAssignableFrom"))
                         .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(typeSyntax)))))
                 .AddArgumentListArguments(Argument(GenerateExpression(isinstCall.Arguments[0]))));
+        }
+
+        // assert isinstance(a, (T1, T2, ...)) → Xunit.Assert.True(a is T1 || a is T2 || ...)
+        if (test is FunctionCall { Function: Identifier { Name: "isinstance" } } isinstTupleCall
+            && isinstTupleCall.Arguments.Length == 2
+            && isinstTupleCall.Arguments[1] is TupleLiteral typeTuple)
+        {
+            var subject = GenerateExpression(isinstTupleCall.Arguments[0]);
+            var isChecks = typeTuple.Elements.Select(typeExpr =>
+                (ExpressionSyntax)BinaryExpression(SyntaxKind.IsExpression,
+                    subject, _typeMapper.MapTypeFromExpression(typeExpr)));
+            var combined = isChecks.Aggregate((left, right) =>
+                BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("True")))
+                .AddArgumentListArguments(Argument(combined)));
+        }
+
+        // assert not isinstance(a, T) → Xunit.Assert.False(a is T)
+        if (test is UnaryOp { Operator: UnaryOperator.Not, Operand: FunctionCall { Function: Identifier { Name: "isinstance" } } negIsinstCall }
+            && negIsinstCall.Arguments.Length == 2)
+        {
+            var subject = GenerateExpression(negIsinstCall.Arguments[0]);
+            ExpressionSyntax isCheck;
+            if (negIsinstCall.Arguments[1] is TupleLiteral negTypeTuple)
+            {
+                var checks = negTypeTuple.Elements.Select(typeExpr =>
+                    (ExpressionSyntax)BinaryExpression(SyntaxKind.IsExpression,
+                        subject, _typeMapper.MapTypeFromExpression(typeExpr)));
+                isCheck = checks.Aggregate((left, right) =>
+                    BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
+            }
+            else
+            {
+                isCheck = BinaryExpression(SyntaxKind.IsExpression,
+                    subject, _typeMapper.MapTypeFromExpression(negIsinstCall.Arguments[1]));
+            }
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("False")))
+                .AddArgumentListArguments(Argument(isCheck)));
         }
 
         // assert not expr → Xunit.Assert.False(expr)

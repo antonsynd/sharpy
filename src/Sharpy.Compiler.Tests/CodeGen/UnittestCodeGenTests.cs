@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// 1. Assert rewriting inside <c>@test</c> functions (Plan Task 20):
 ///    each Python-style <c>assert</c> is rewritten to a specialized
 ///    <c>Xunit.Assert.*</c> call (Equal, NotEqual, Null, NotNull, Contains,
-///    DoesNotContain, IsType, False, True). Outside <c>@test</c>, asserts
+///    DoesNotContain, IsAssignableFrom, False, True). Outside <c>@test</c>, asserts
 ///    continue to emit <c>System.Diagnostics.Debug.Assert(...)</c>.
 ///
 /// 2. Unittest module transforms (Plan Task 22):
@@ -148,7 +148,7 @@ def main():
     }
 
     [Fact]
-    public void AssertRewrite_Isinstance_GeneratesXunitAssertIsType()
+    public void AssertRewrite_Isinstance_GeneratesXunitAssertIsAssignableFrom()
     {
         var source = @"
 @test
@@ -160,7 +160,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.IsType<int>(x)");
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<int>(x)");
     }
 
     [Fact]
@@ -503,6 +503,75 @@ def main():
         result.Success.Should().BeFalse();
         result.Diagnostics.GetErrors().Should().Contain(e =>
             e.Message.Contains("references undefined variable 'MISSING_DATA'"));
+    }
+
+    #endregion
+
+    #region isinstance assert rewriting (#841)
+
+    [Fact]
+    public void AssertIsinstance_UsesIsAssignableFrom()
+    {
+        var source = @"
+@test
+def test_type():
+    x: object = 42
+    assert isinstance(x, int)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<int>(x)");
+        code.Should().NotContain("IsType");
+    }
+
+    [Fact]
+    public void AssertIsinstance_NegatedForm_GeneratesAssertFalse()
+    {
+        var source = @"
+@test
+def test_not_type():
+    x: object = ""hello""
+    assert not isinstance(x, int)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.Assert.False(x is int)");
+    }
+
+    [Fact]
+    public void AssertIsinstance_TupleForm_GeneratesMultiTypeCheck()
+    {
+        var source = @"
+@test
+def test_multi_type():
+    x: object = 42
+    assert isinstance(x, (int, str))
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.Assert.True(x is int || x is string)");
+    }
+
+    [Fact]
+    public void AssertIsinstance_NegatedTupleForm_GeneratesAssertFalse()
+    {
+        var source = @"
+@test
+def test_not_multi_type():
+    x: object = 3.14
+    assert not isinstance(x, (int, str))
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.Assert.False(x is int || x is string)");
     }
 
     #endregion

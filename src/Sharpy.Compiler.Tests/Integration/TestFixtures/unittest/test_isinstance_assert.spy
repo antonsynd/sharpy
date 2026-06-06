@@ -1,0 +1,22 @@
+@test
+def test_isinstance_single():
+    x: object = 42
+    assert isinstance(x, int)
+
+@test
+def test_isinstance_negated():
+    x: object = "hello"
+    assert not isinstance(x, int)
+
+@test
+def test_isinstance_tuple():
+    x: object = 42
+    assert isinstance(x, (int, str))
+
+@test
+def test_isinstance_negated_tuple():
+    x: object = 3.14
+    assert not isinstance(x, (int, str))
+
+def main():
+    print("ok")
