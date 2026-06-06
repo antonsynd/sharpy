@@ -252,6 +252,15 @@ namespace Sharpy
             return result;
         }
 
+        public static Sharpy.Dict<string, string> Environ
+        {
+            get
+            {
+                _ = "A mapping object representing the string environment.";
+                return GetEnviron();
+            }
+        }
+
         /// <summary>
         /// Test whether a path exists.
         /// </summary>
