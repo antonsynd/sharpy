@@ -898,6 +898,35 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Semantic.AwaitOutsideAsync, span: withStmt.Span);
         }
 
+        // For `with assert_raises(E) as exc:`, define the capture variable in the
+        // enclosing scope so it's accessible after the with block. The codegen
+        // transforms this to `var exc = Assert.Throws<E>(...)` which is in the
+        // enclosing scope.
+        if (withStmt.Items.Length == 1 && withStmt.Items[0].Name != null
+            && IsAssertRaisesExpression(withStmt.Items[0].ContextExpression))
+        {
+            var item = withStmt.Items[0];
+            CheckExpression(item.ContextExpression);
+
+            var exceptionType = ResolveAssertRaisesExceptionType(item.ContextExpression);
+            var varSymbol = new VariableSymbol
+            {
+                Name = item.Name!,
+                Kind = SymbolKind.Variable,
+                Type = exceptionType,
+                AccessLevel = AccessLevel.Public,
+                DeclarationLine = item.LineStart,
+                DeclarationColumn = item.ColumnStart,
+                NameDeclarationLine = item.NameLineStart,
+                NameDeclarationColumn = item.NameColumnStart,
+                DeclarationSpan = item.Span,
+                DeclaringFilePath = _currentFilePath
+            };
+            _symbolTable.Define(varSymbol);
+            SemanticBinding.SetVariableType(varSymbol, exceptionType);
+            _semanticInfo.SetWithItemSymbol(item, varSymbol);
+        }
+
         _symbolTable.EnterScope("with");
         _controlFlowDepth++;
 
@@ -935,7 +964,8 @@ internal partial class TypeChecker
                     asVarType = enterType;
             }
 
-            if (item.Name != null)
+            // Skip if already defined in the enclosing scope (assert_raises capture)
+            if (item.Name != null && !IsAssertRaisesExpression(item.ContextExpression))
             {
                 var varSymbol = new VariableSymbol
                 {
@@ -962,6 +992,27 @@ internal partial class TypeChecker
 
         _controlFlowDepth--;
         _symbolTable.ExitScope();
+    }
+
+    private static bool IsAssertRaisesExpression(Expression expr)
+    {
+        return expr is FunctionCall call && call.Function switch
+        {
+            Identifier { Name: "assert_raises" } => true,
+            MemberAccess { Member: "assert_raises" } => true,
+            _ => false
+        };
+    }
+
+    private SemanticType ResolveAssertRaisesExceptionType(Expression contextExpr)
+    {
+        if (contextExpr is FunctionCall { Arguments.Length: 1 } call)
+        {
+            var argType = CheckExpression(call.Arguments[0]);
+            if (argType is UserDefinedType udt)
+                return udt;
+        }
+        return SemanticType.Unknown;
     }
 
     /// <summary>
