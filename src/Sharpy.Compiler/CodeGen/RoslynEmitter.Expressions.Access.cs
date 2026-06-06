@@ -228,7 +228,15 @@ internal partial class RoslynEmitter
             {
                 funcCSharpName = NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped, GetClrMethodName(symbol));
             }
-            return InvocationExpression(ParseName(funcCSharpName))
+
+            // If the callee is a narrowed Optional delegate (e.g., `if cb is not None: cb(x)`),
+            // generate through GenerateExpression so .Unwrap() is applied before invocation.
+            ExpressionSyntax calleeExpr;
+            if (_narrowing.IsNarrowed(funcName.Name))
+                calleeExpr = GenerateExpression(call.Function);
+            else
+                calleeExpr = ParseName(funcCSharpName);
+            return InvocationExpression(calleeExpr)
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
@@ -348,6 +356,20 @@ internal partial class RoslynEmitter
                             IdentifierName(genericMethodName)))
                         .WithArgumentList(ArgumentList(SeparatedList(genericCallArgs)));
                 }
+            }
+
+            // Narrowed Optional delegate field invocation: self._cb(msg) after
+            // `if self._cb is not None`. The callee is a delegate-typed field, not a
+            // method — generate through GenerateMemberAccess so the Optional narrowing
+            // (.Unwrap()) is applied to the callee, then invoke the resulting delegate.
+            var calleeDottedPath = TryBuildDottedPath(memberAccess);
+            if (calleeDottedPath != null && _narrowing.IsNarrowed(calleeDottedPath)
+                && GetExpressionSemanticType(memberAccess) is Semantic.FunctionType)
+            {
+                var delegateCallee = GenerateMemberAccess(memberAccess);
+                var delegateArgs = GenerateReorderedCallArguments(call, funcSymbol: null);
+                return InvocationExpression(ParenthesizedExpression(delegateCallee))
+                    .WithArgumentList(ArgumentList(SeparatedList(delegateArgs)));
             }
 
             var obj = GenerateExpression(memberAccess.Object);
