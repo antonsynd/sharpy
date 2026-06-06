@@ -431,6 +431,65 @@ public class TypeAnnotationShorthandTests
         annotation.TypeArguments[1].Name.Should().Be("tuple");
     }
 
+    [Fact]
+    public void ParseFunctionType_ParenthesizedNullable()
+    {
+        // ((str) -> None)? is a nullable function type, not tuple[(str) -> None]?
+        var annotation = ParseTypeAnnotation("((str) -> None)?");
+        annotation.Name.Should().Be("function");
+        annotation.IsOptional.Should().BeTrue();
+        annotation.TypeArguments.Should().HaveCount(2);
+        annotation.TypeArguments[0].Name.Should().Be("str");
+        annotation.TypeArguments[1].Name.Should().Be("None");
+    }
+
+    [Fact]
+    public void ParseFunctionType_ParenthesizedNullable_MultipleParams()
+    {
+        var annotation = ParseTypeAnnotation("((int, str) -> bool)?");
+        annotation.Name.Should().Be("function");
+        annotation.IsOptional.Should().BeTrue();
+        annotation.TypeArguments.Should().HaveCount(3);
+        annotation.TypeArguments[0].Name.Should().Be("int");
+        annotation.TypeArguments[1].Name.Should().Be("str");
+        annotation.TypeArguments[2].Name.Should().Be("bool");
+    }
+
+    [Fact]
+    public void ParseFunctionType_AsParameterOfFunctionType()
+    {
+        // ((int) -> str) -> bool: the inner function type is a parameter of the outer
+        var annotation = ParseTypeAnnotation("((int) -> str) -> bool");
+        annotation.Name.Should().Be("function");
+        annotation.TypeArguments.Should().HaveCount(2);
+        annotation.TypeArguments[0].Name.Should().Be("function");
+        annotation.TypeArguments[0].TypeArguments[0].Name.Should().Be("int");
+        annotation.TypeArguments[0].TypeArguments[1].Name.Should().Be("str");
+        annotation.TypeArguments[1].Name.Should().Be("bool");
+    }
+
+    [Fact]
+    public void ParseTupleShorthand_FunctionTypeWithTrailingComma()
+    {
+        // Trailing comma forces tuple, like Python's (x,)
+        var annotation = ParseTypeAnnotation("((str) -> None,)");
+        annotation.Name.Should().Be("tuple");
+        annotation.TypeArguments.Should().HaveCount(1);
+        annotation.TypeArguments[0].Name.Should().Be("function");
+    }
+
+    [Fact]
+    public void ParseFunctionType_Parenthesized_NoNullable()
+    {
+        // ((str) -> None) unwraps to the function type itself
+        var annotation = ParseTypeAnnotation("((str) -> None)");
+        annotation.Name.Should().Be("function");
+        annotation.IsOptional.Should().BeFalse();
+        annotation.TypeArguments.Should().HaveCount(2);
+        annotation.TypeArguments[0].Name.Should().Be("str");
+        annotation.TypeArguments[1].Name.Should().Be("None");
+    }
+
     #endregion
 
     #region AST Equivalence Tests

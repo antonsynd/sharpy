@@ -1,0 +1,1 @@
+Blocked on #848 — narrowed optional function types not callable (Semantic) and Optional<delegate> wrap/unwrap missing (CodeGen). Parser fix for #847 landed; remove this .skip when #848 is fixed.

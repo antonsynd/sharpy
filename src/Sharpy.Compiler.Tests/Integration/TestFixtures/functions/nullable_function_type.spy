@@ -1,0 +1,18 @@
+class OptionalCallback:
+    _cb: ((str) -> None)?
+
+    def __init__(self, cb: ((str) -> None)? = None):
+        self._cb = cb
+
+    def invoke(self, msg: str):
+        if self._cb is not None:
+            self._cb(msg)
+
+def printer(msg: str):
+    print(msg)
+
+def main():
+    oc = OptionalCallback(printer)
+    oc.invoke("hello")
+    oc2 = OptionalCallback()
+    oc2.invoke("should not print")

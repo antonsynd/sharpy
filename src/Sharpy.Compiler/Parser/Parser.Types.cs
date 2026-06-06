@@ -378,6 +378,7 @@ public partial class Parser
         Advance(); // consume '('
 
         var types = new List<TypeAnnotation>();
+        var trailingComma = false;
 
         // Parse type list
         if (Current.Type != TokenType.RightParen)
@@ -385,6 +386,7 @@ public partial class Parser
             _lastLoopPosition = -1;
             do
             {
+                trailingComma = false;
                 if (!CheckLoopProgress())
                     break;
 
@@ -393,6 +395,7 @@ public partial class Parser
                 if (Current.Type == TokenType.Comma)
                 {
                     Advance();
+                    trailingComma = true;
                 }
                 else
                 {
@@ -402,6 +405,14 @@ public partial class Parser
         }
 
         Expect(TokenType.RightParen);
+
+        // Unwrap parenthesized function type: ((T) -> R) is grouping, not a tuple.
+        // A trailing comma forces tuple: ((T) -> R,) stays as tuple.
+        // An outer arrow means the function type is a parameter: ((T) -> R) -> S.
+        if (types.Count == 1 && types[0].Name == "function" && !trailingComma && Current.Type != TokenType.Arrow)
+        {
+            return types[0];
+        }
 
         // Check if this is a function type (has '->')
         if (Current.Type == TokenType.Arrow)
