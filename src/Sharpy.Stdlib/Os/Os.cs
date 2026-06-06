@@ -15,6 +15,30 @@ namespace Sharpy
     /// </summary>
     public static partial class OsModule
     {
+        /// <summary>
+        /// Result of os.stat(), similar to Python's os.stat_result.
+        /// </summary>
+        public class StatResult
+        {
+            public long StSize { get; }
+            public double StMtime { get; }
+            public double StCtime { get; }
+            public double StAtime { get; }
+            public int StMode { get; }
+
+            /// <summary>
+            /// Create a new stat result.
+            /// </summary>
+            public StatResult(long stSize, double stMtime, double stCtime, double stAtime, int stMode)
+            {
+                this.StSize = stSize;
+                this.StMtime = stMtime;
+                this.StCtime = stCtime;
+                this.StAtime = stAtime;
+                this.StMode = stMode;
+            }
+        }
+
         public static string Sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
         public static string Linesep = global::System.Environment.NewLine;
         public static string Name = Sep == "\\" ? "nt" : "posix";
@@ -204,6 +228,31 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return a mapping object representing the string environment.
+        /// </summary>
+        public static Sharpy.Dict<string, string> GetEnviron()
+        {
+            Sharpy.Dict<string, string> result = new Sharpy.Dict<string, string>()
+            {
+            };
+            foreach (var __loopVar_1 in global::System.Environment.GetEnvironmentVariables())
+            {
+                var entry = __loopVar_1;
+                if (entry is global::System.Collections.DictionaryEntry)
+                {
+                    var k = ((global::System.Collections.DictionaryEntry)entry).Key;
+                    var v = ((global::System.Collections.DictionaryEntry)entry).Value;
+                    if (k is string && v is string)
+                    {
+                        result[((string)k)] = ((string)v);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Test whether a path exists.
         /// </summary>
         public static bool PathExists(string path)
@@ -214,7 +263,7 @@ namespace Sharpy
         /// <summary>
         /// Perform the equivalent of a stat() system call on the given path.
         /// </summary>
-        public static global::Sharpy.StatResult Stat(string path)
+        public static StatResult Stat(string path)
         {
             if (global::System.IO.File.Exists(path))
             {
@@ -222,7 +271,7 @@ namespace Sharpy
                 global::System.DateTimeOffset fw = new global::System.DateTimeOffset(finfo.LastWriteTimeUtc);
                 global::System.DateTimeOffset fc = new global::System.DateTimeOffset(finfo.CreationTimeUtc);
                 global::System.DateTimeOffset fa = new global::System.DateTimeOffset(finfo.LastAccessTimeUtc);
-                return new global::Sharpy.StatResult(finfo.Length, fw.ToUnixTimeSeconds() + fw.Millisecond / 1000.0d, fc.ToUnixTimeSeconds() + fc.Millisecond / 1000.0d, fa.ToUnixTimeSeconds() + fa.Millisecond / 1000.0d, global::System.Convert.ToInt32(finfo.Attributes));
+                return new StatResult(finfo.Length, fw.ToUnixTimeSeconds() + fw.Millisecond / 1000.0d, fc.ToUnixTimeSeconds() + fc.Millisecond / 1000.0d, fa.ToUnixTimeSeconds() + fa.Millisecond / 1000.0d, global::System.Convert.ToInt32(finfo.Attributes));
             }
 
             if (global::System.IO.Directory.Exists(path))
@@ -231,7 +280,7 @@ namespace Sharpy
                 global::System.DateTimeOffset dw = new global::System.DateTimeOffset(dinfo.LastWriteTimeUtc);
                 global::System.DateTimeOffset dc = new global::System.DateTimeOffset(dinfo.CreationTimeUtc);
                 global::System.DateTimeOffset da = new global::System.DateTimeOffset(dinfo.LastAccessTimeUtc);
-                return new global::Sharpy.StatResult(0, dw.ToUnixTimeSeconds() + dw.Millisecond / 1000.0d, dc.ToUnixTimeSeconds() + dc.Millisecond / 1000.0d, da.ToUnixTimeSeconds() + da.Millisecond / 1000.0d, global::System.Convert.ToInt32(dinfo.Attributes));
+                return new StatResult(0, dw.ToUnixTimeSeconds() + dw.Millisecond / 1000.0d, dc.ToUnixTimeSeconds() + dc.Millisecond / 1000.0d, da.ToUnixTimeSeconds() + da.Millisecond / 1000.0d, global::System.Convert.ToInt32(dinfo.Attributes));
             }
 
             throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
@@ -260,15 +309,15 @@ namespace Sharpy
                 Sharpy.List<string> filenames = new Sharpy.List<string>()
                 {
                 };
-                foreach (var __loopVar_1 in global::System.IO.Directory.GetDirectories(current))
+                foreach (var __loopVar_2 in global::System.IO.Directory.GetDirectories(current))
                 {
-                    var dirEntry = __loopVar_1;
+                    var dirEntry = __loopVar_2;
                     dirnames.Append(global::System.IO.Path.GetFileName(dirEntry));
                 }
 
-                foreach (var __loopVar_2 in global::System.IO.Directory.GetFiles(current))
+                foreach (var __loopVar_3 in global::System.IO.Directory.GetFiles(current))
                 {
-                    var fileEntry = __loopVar_2;
+                    var fileEntry = __loopVar_3;
                     filenames.Append(global::System.IO.Path.GetFileName(fileEntry));
                 }
 

@@ -2,7 +2,33 @@
 
 from system.io import Path as IoPath, File, Directory, FileInfo, DirectoryInfo
 from system import Environment, UnauthorizedAccessException, DateTimeOffset, Convert
-from sharpy import StatResult
+from system.collections import DictionaryEntry
+
+class StatResult:
+    """Result of os.stat(), similar to Python's os.stat_result."""
+
+    @readonly
+    property st_size: long
+
+    @readonly
+    property st_mtime: float
+
+    @readonly
+    property st_ctime: float
+
+    @readonly
+    property st_atime: float
+
+    @readonly
+    property st_mode: int
+
+    def __init__(self, st_size: long, st_mtime: float, st_ctime: float, st_atime: float, st_mode: int):
+        """Create a new stat result."""
+        self.st_size = st_size
+        self.st_mtime = st_mtime
+        self.st_ctime = st_ctime
+        self.st_atime = st_atime
+        self.st_mode = st_mode
 
 sep: str = str(IoPath.DirectorySeparatorChar)
 linesep: str = Environment.NewLine
@@ -93,6 +119,17 @@ def getenv(key: str, default: str) -> str:
 def putenv(key: str, value: str) -> None:
     """Change or add an environment variable."""
     Environment.set_environment_variable(key, value)
+
+def get_environ() -> dict[str, str]:
+    """Return a mapping object representing the string environment."""
+    result: dict[str, str] = {}
+    for entry in Environment.get_environment_variables():
+        if isinstance(entry, DictionaryEntry):
+            k = entry.Key
+            v = entry.Value
+            if isinstance(k, str) and isinstance(v, str):
+                result[k] = v
+    return result
 
 def path_exists(path: str) -> bool:
     """Test whether a path exists."""
