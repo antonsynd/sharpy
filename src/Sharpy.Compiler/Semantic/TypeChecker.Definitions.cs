@@ -1141,6 +1141,12 @@ internal partial class TypeChecker
             {
                 CheckFunction(method);
             }
+            else if (statement is PropertyDef propDef)
+            {
+                // Default property implementations; abstract/body-less
+                // declarations are skipped inside CheckClassProperty (#849)
+                CheckClassProperty(propDef);
+            }
         }
 
         _currentClass = previousClass;
@@ -1526,7 +1532,7 @@ internal partial class TypeChecker
     /// NameResolver.ResolveModulePropertyDeclaration, then checks the accessor
     /// body (function-style) or the default value (auto-property).
     /// Class/struct/interface properties are handled via ResolvePropertyTypes
-    /// instead; their accessor bodies are not yet checked (#849).
+    /// and CheckClassProperty instead.
     /// </summary>
     private void CheckModuleProperty(PropertyDef propDef)
     {
@@ -1638,6 +1644,137 @@ internal partial class TypeChecker
         foreach (var param in propDef.Parameters)
         {
             var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            var paramSymbol = new VariableSymbol
+            {
+                Name = param.Name,
+                Kind = SymbolKind.Parameter,
+                Type = paramType,
+                IsParameter = true,
+                DeclarationLine = param.LineStart,
+                DeclarationColumn = param.ColumnStart,
+                NameDeclarationLine = param.LineStart,
+                NameDeclarationColumn = param.ColumnStart
+            };
+            _symbolTable.Define(paramSymbol);
+            SemanticBinding.SetVariableType(paramSymbol, paramType);
+        }
+
+        // Getter bodies must return the property type; setter bodies return nothing
+        var previousFunctionReturnType = _currentFunctionReturnType;
+        _currentFunctionReturnType = isSetter ? SemanticType.Void : propertyType;
+
+        var previousMethodName = _currentMethodName;
+        var previousControlFlowDepth = _controlFlowDepth;
+        var previousIsGenerator = _currentFunctionIsGenerator;
+        var previousIsAsync = _currentFunctionIsAsync;
+        _currentMethodName = propDef.Name;
+        _controlFlowDepth = 0;
+        _currentFunctionIsGenerator = false;
+        _currentFunctionIsAsync = false;
+
+        foreach (var stmt in propDef.Body)
+        {
+            CheckStatement(stmt);
+        }
+
+        _currentMethodName = previousMethodName;
+        _controlFlowDepth = previousControlFlowDepth;
+        _currentFunctionIsGenerator = previousIsGenerator;
+        _currentFunctionIsAsync = previousIsAsync;
+        _currentFunctionReturnType = previousFunctionReturnType;
+
+        _symbolTable.ExitScope();
+    }
+
+    /// <summary>
+    /// Type-checks a class/struct/interface property declaration (#849).
+    /// The declared property type is resolved by ResolvePropertyTypes; this
+    /// method checks the default value (auto-property) or the accessor body
+    /// (function-style), registering 'self' and accessor parameters like a
+    /// method body. Abstract/body-less declarations are skipped.
+    /// </summary>
+    private void CheckClassProperty(PropertyDef propDef)
+    {
+        if (_currentClass == null)
+            return;
+
+        _logger.LogDebug($"Type checking property: {_currentClass.Name}.{propDef.Name}");
+
+        // Setter and init accessor bodies return nothing; getters return the property type
+        bool isSetter = propDef.Accessor == PropertyAccessor.Set
+            || propDef.Accessor == PropertyAccessor.Init;
+
+        // The declared property type was resolved by ResolvePropertyTypes
+        var propSymbol = _currentClass.Properties.FirstOrDefault(p => p.Name == propDef.Name);
+        var propertyType = propSymbol?.Type ?? SemanticType.Unknown;
+
+        // Fallback: re-resolve from this accessor's annotation if the merged
+        // symbol type is still unknown (e.g. resolution from another accessor failed)
+        if (propertyType is UnknownType)
+        {
+            if (propDef.IsFunctionStyle && propDef.ReturnType != null)
+            {
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType);
+            }
+            else if (!propDef.IsFunctionStyle && propDef.Type != null)
+            {
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Type);
+            }
+        }
+
+        // Auto-property: check the default value against the declared type
+        if (!propDef.IsFunctionStyle)
+        {
+            if (propDef.DefaultValue != null)
+            {
+                var previousExpectedType = _expectedType;
+                _expectedType = propertyType is UnknownType ? null : propertyType;
+                var defaultType = CheckExpression(propDef.DefaultValue);
+                _expectedType = previousExpectedType;
+
+                if (propertyType is not UnknownType && !IsAssignable(defaultType, propertyType))
+                {
+                    AddError(
+                        $"Cannot assign type '{defaultType.GetDisplayName()}' to property of type '{propertyType.GetDisplayName()}'",
+                        propDef.LineStart, propDef.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: propDef.DefaultValue.Span);
+                }
+            }
+            return;
+        }
+
+        // Skip abstract properties and body-less declarations (single ellipsis
+        // or pass) — there is no body to check
+        bool isAbstractBody = propDef.Body.Length == 0 ||
+            (propDef.Body.Length == 1 &&
+                (propDef.Body[0] is PassStatement ||
+                 (propDef.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral)));
+        if ((propSymbol?.IsAbstract ?? false) || isAbstractBody)
+            return;
+
+        // Function-style: type-check the accessor body like a method body
+        _symbolTable.EnterScope($"property:{propDef.Name}:{propDef.Accessor}");
+
+        // Isolate control-flow narrowing from the enclosing scope (see CheckFunction)
+        using var _ = _narrowingContext.EnterIsolatedScope();
+
+        // Register accessor parameters in scope. 'self' (first parameter on
+        // instance properties) is typed as the current class; static properties
+        // have no self parameter, so none is registered.
+        for (int i = 0; i < propDef.Parameters.Length; i++)
+        {
+            var param = propDef.Parameters[i];
+            SemanticType paramType;
+            if (i == 0 && param.Name == PythonNames.Self)
+            {
+                paramType = new UserDefinedType { Name = _currentClass.Name, Symbol = _currentClass };
+            }
+            else
+            {
+                paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            }
+
             var paramSymbol = new VariableSymbol
             {
                 Name = param.Name,

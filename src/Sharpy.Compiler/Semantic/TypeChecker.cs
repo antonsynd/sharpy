@@ -448,10 +448,10 @@ internal partial class TypeChecker
                 CheckModuleProperty(propDef);
                 break;
 
-            case PropertyDef:
-                // Class/struct/interface properties: declared types are resolved via
-                // ResolvePropertyTypes; structural rules are validated by PropertyValidator.
-                // TODO(#849): accessor bodies are not yet type-checked
+            case PropertyDef propDef when _currentClass != null:
+                // Class/struct/interface property: declared types are resolved via
+                // ResolvePropertyTypes; check the accessor body / default value (#849)
+                CheckClassProperty(propDef);
                 break;
 
             case EventDef eventDef:
