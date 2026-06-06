@@ -153,10 +153,12 @@ internal partial class TypeChecker
                     return SemanticType.Unknown;
                 }
 
-                // Check if it's a variable with a FunctionType or delegate type - those are callable
+                // Check if it's a variable with a FunctionType or delegate type - those are callable.
+                // Use calleeType (the narrowed type) so an Optional function type narrowed via
+                // `is not None` is recognized as callable.
                 if (symbol is VariableSymbol varSym &&
-                    (GetVariableType(varSym) is FunctionType
-                     || TryGetDelegateInvokeMethod(GetVariableType(varSym)) != null))
+                    (calleeType is FunctionType
+                     || TryGetDelegateInvokeMethod(calleeType) != null))
                 {
                     // Let the FunctionType / delegate handling below deal with this
                 }
