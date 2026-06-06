@@ -1336,4 +1336,126 @@ class Foo:
     }
 
     #endregion
+
+    #region Module-level properties (#844)
+
+    [Fact]
+    public void ModuleLevelProperty_FunctionStyleGetter_RegistersStaticPropertySymbol()
+    {
+        var source = @"
+property get version() -> str:
+    return '1.0'
+";
+        var (resolver, module, symbolTable) = CreateResolver(source);
+        resolver.ResolveDeclarations(module);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+
+        var propVar = symbolTable.LookupVariable("version");
+        Assert.NotNull(propVar);
+        Assert.True(propVar.IsModuleProperty);
+        Assert.True(propVar.IsStatic);
+        Assert.True(propVar.HasPropertyGetter);
+        Assert.False(propVar.HasPropertySetter);
+    }
+
+    [Fact]
+    public void ModuleLevelProperty_AutoStyle_RegistersStaticPropertySymbol()
+    {
+        var source = @"
+property counter: int = 0
+";
+        var (resolver, module, symbolTable) = CreateResolver(source);
+        resolver.ResolveDeclarations(module);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+
+        var propVar = symbolTable.LookupVariable("counter");
+        Assert.NotNull(propVar);
+        Assert.True(propVar.IsModuleProperty);
+        Assert.True(propVar.IsStatic);
+        Assert.True(propVar.HasPropertyGetter);
+        Assert.True(propVar.HasDefaultValue);
+    }
+
+    [Fact]
+    public void ModuleLevelProperty_GetterAndSetter_MergeOntoSingleSymbol()
+    {
+        var source = @"
+property get counter() -> int:
+    return 1
+
+property set counter(value: int):
+    pass
+";
+        var (resolver, module, symbolTable) = CreateResolver(source);
+        resolver.ResolveDeclarations(module);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+
+        var propVar = symbolTable.LookupVariable("counter");
+        Assert.NotNull(propVar);
+        Assert.True(propVar.IsModuleProperty);
+        Assert.True(propVar.HasPropertyGetter);
+        Assert.True(propVar.HasPropertySetter);
+    }
+
+    [Fact]
+    public void ModuleLevelProperty_DuplicateGetter_ReportsError()
+    {
+        var source = @"
+property get version() -> str:
+    return '1.0'
+
+property get version() -> str:
+    return '2.0'
+";
+        var (resolver, module, symbolTable) = CreateResolver(source);
+        resolver.ResolveDeclarations(module);
+
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains("already defined", resolver.Diagnostics.GetErrors()[0].Message);
+        Assert.Equal(DiagCodes.Semantic.DuplicateDefinition, resolver.Diagnostics.GetErrors()[0].Code);
+    }
+
+    [Fact]
+    public void ModuleLevelProperty_NameConflictsWithFunction_ReportsError()
+    {
+        var source = @"
+def version() -> str:
+    return 'f'
+
+property get version() -> str:
+    return '1.0'
+";
+        var (resolver, module, symbolTable) = CreateResolver(source);
+        resolver.ResolveDeclarations(module);
+
+        Assert.Single(resolver.Diagnostics.GetErrors());
+        Assert.Contains("already defined", resolver.Diagnostics.GetErrors()[0].Message);
+    }
+
+    [Fact]
+    public void ClassLevelProperty_DoesNotRegisterModulePropertySymbol()
+    {
+        var source = @"
+class Config:
+    property get version(self) -> str:
+        return '1.0'
+";
+        var (resolver, module, symbolTable) = CreateResolver(source);
+        resolver.ResolveDeclarations(module);
+
+        Assert.False(resolver.Diagnostics.HasErrors);
+
+        // The property lives on the type symbol, not as a module-level variable
+        var configType = symbolTable.LookupType("Config");
+        Assert.NotNull(configType);
+        Assert.Contains(configType.Properties, p => p.Name == "version");
+
+        var moduleVar = symbolTable.LookupVariable("version");
+        Assert.Null(moduleVar);
+    }
+
+    #endregion
 }

@@ -46,8 +46,10 @@ internal partial class NameResolver
                 ResolveTypeAliasDeclaration(typeAlias);
                 break;
 
-            case PropertyDef:
-                // Property declarations are resolved as part of class/struct/interface bodies
+            case PropertyDef propDef:
+                // Class/struct/interface properties are resolved as part of their type
+                // bodies; this case only sees module-level property declarations (#844).
+                ResolveModulePropertyDeclaration(propDef);
                 break;
 
                 // Other statements are handled in later passes

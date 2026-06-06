@@ -485,6 +485,80 @@ internal partial class NameResolver
         _symbolTable.Define(varSymbol);
     }
 
+    private void ResolveModulePropertyDeclaration(PropertyDef propDef)
+    {
+        _logger.LogDebug($"Resolving module-level property declaration: {propDef.Name}");
+
+        // Mirror class-level accessor classification (see ResolvePropertyDeclaration):
+        // auto-properties (Accessor.None) and `property get` declare a getter,
+        // `property set` declares a setter. An `init` accessor records neither —
+        // it is meaningless at module level (no construction phase) and is
+        // rejected during validation, not during name binding.
+        bool hasGetter = propDef.Accessor is PropertyAccessor.Get or PropertyAccessor.None;
+        bool hasSetter = propDef.Accessor == PropertyAccessor.Set;
+
+        var existingSymbol = _symbolTable.Lookup(propDef.Name, searchParents: false);
+        if (existingSymbol != null)
+        {
+            // Merge accessors when the getter and setter are declared as separate
+            // `property get`/`property set` definitions for the same name.
+            if (existingSymbol is VariableSymbol { IsModuleProperty: true } existingProp)
+            {
+                // If this exact declaration was already resolved (e.g., re-resolution
+                // of the same AST), skip it — mirrors ResolveFunctionDeclaration.
+                if (existingProp.DeclarationSpan == propDef.Span)
+                    return;
+
+                bool duplicateAccessor = (hasGetter && existingProp.HasPropertyGetter)
+                    || (hasSetter && existingProp.HasPropertySetter);
+                if (duplicateAccessor)
+                {
+                    AddError($"Property '{propDef.Name}' is already defined",
+                        propDef.LineStart, propDef.ColumnStart,
+                        code: DiagnosticCodes.Semantic.DuplicateDefinition, span: propDef.Span);
+                    return;
+                }
+
+                existingProp.HasPropertyGetter |= hasGetter;
+                existingProp.HasPropertySetter |= hasSetter;
+                return;
+            }
+
+            // Allow shadowing builtins (which have no source location),
+            // matching module-level function resolution.
+            bool isBuiltin = existingSymbol.DeclarationLine == null;
+            if (!isBuiltin)
+            {
+                AddError($"Property '{propDef.Name}' is already defined",
+                    propDef.LineStart, propDef.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DuplicateDefinition, span: propDef.Span);
+                return;
+            }
+        }
+
+        var propSymbol = new VariableSymbol
+        {
+            Name = propDef.Name,
+            Kind = SymbolKind.Variable,
+            IsNameBacktickEscaped = propDef.IsNameBacktickEscaped,
+            AccessLevel = AccessLevel.Public,
+            // Module-level members are implicitly static (emitted on the static module class)
+            IsStatic = true,
+            IsModuleProperty = true,
+            HasPropertyGetter = hasGetter,
+            HasPropertySetter = hasSetter,
+            HasDefaultValue = propDef.DefaultValue != null,
+            DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = propDef.Span,
+            DeclarationLine = propDef.LineStart,
+            DeclarationColumn = propDef.ColumnStart,
+            NameDeclarationLine = propDef.NameLineStart,
+            NameDeclarationColumn = propDef.NameColumnStart
+        };
+
+        _symbolTable.Define(propSymbol);
+    }
+
     private void ResolveTypeAliasDeclaration(TypeAlias typeAlias)
     {
         _logger.LogDebug($"Resolving type alias declaration: {typeAlias.Name}");

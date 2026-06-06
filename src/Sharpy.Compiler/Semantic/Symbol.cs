@@ -137,6 +137,37 @@ public record VariableSymbol : Symbol
     public bool HasDefaultValue { get; init; }
     public Parser.Ast.ParameterModifier ParameterModifier { get; init; } = Parser.Ast.ParameterModifier.None;
 
+    /// <summary>
+    /// True when this symbol represents a module-level property declaration
+    /// (a <c>PropertyDef</c> at module scope, see #844). Module-level properties
+    /// are implicitly static and are emitted as static C# properties on the
+    /// module class. Reads type-check like variable reads; assignment is only
+    /// valid when <see cref="HasPropertySetter"/> is true.
+    /// </summary>
+    public bool IsModuleProperty { get; init; }
+
+    /// <summary>
+    /// True when a module-level property has a getter accessor
+    /// (<c>property get name() -> T:</c> or auto-property style).
+    /// Only meaningful when <see cref="IsModuleProperty"/> is true.
+    /// </summary>
+    /// <remarks>
+    /// Uses 'internal set' because separate <c>property get</c>/<c>property set</c>
+    /// declarations for the same name are merged onto one symbol during name resolution.
+    /// </remarks>
+    public bool HasPropertyGetter { get; internal set; }
+
+    /// <summary>
+    /// True when a module-level property has a setter accessor
+    /// (<c>property set name(value: T):</c>).
+    /// Only meaningful when <see cref="IsModuleProperty"/> is true.
+    /// </summary>
+    /// <remarks>
+    /// Uses 'internal set' because separate <c>property get</c>/<c>property set</c>
+    /// declarations for the same name are merged onto one symbol during name resolution.
+    /// </remarks>
+    public bool HasPropertySetter { get; internal set; }
+
     public virtual bool Equals(VariableSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

@@ -134,7 +134,10 @@ internal partial class ImportResolver
                 NameDeclarationLine = var.NameDeclarationLine,
                 NameDeclarationColumn = var.NameDeclarationColumn,
                 IsReExport = true,
-                OriginalModule = fromImport.Module
+                OriginalModule = fromImport.Module,
+                IsModuleProperty = var.IsModuleProperty,
+                HasPropertyGetter = var.HasPropertyGetter,
+                HasPropertySetter = var.HasPropertySetter
             },
             _ => originalSymbol
         };

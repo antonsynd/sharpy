@@ -192,7 +192,10 @@ internal static class SymbolSerializer
             {
                 ["IsParameter"] = vs.IsParameter,
                 ["IsConstant"] = vs.IsConstant,
-                ["HasDefaultValue"] = vs.HasDefaultValue
+                ["HasDefaultValue"] = vs.HasDefaultValue,
+                ["IsModuleProperty"] = vs.IsModuleProperty,
+                ["HasPropertyGetter"] = vs.HasPropertyGetter,
+                ["HasPropertySetter"] = vs.HasPropertySetter
             }
         };
     }
@@ -442,6 +445,9 @@ internal static class SymbolSerializer
             IsParameter = GetBoolProperty(props, "IsParameter"),
             IsConstant = GetBoolProperty(props, "IsConstant"),
             HasDefaultValue = GetBoolProperty(props, "HasDefaultValue"),
+            IsModuleProperty = GetBoolProperty(props, "IsModuleProperty"),
+            HasPropertyGetter = GetBoolProperty(props, "HasPropertyGetter"),
+            HasPropertySetter = GetBoolProperty(props, "HasPropertySetter"),
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
