@@ -81,6 +81,73 @@ public class ControlFlowAnalysisTests
     }
 
     [Fact]
+    public void FindUnreachableCode_AfterAssertRaisesBlockWithRaise_Empty()
+    {
+        // with assert_raises(E): raise ... compiles to Xunit.Assert.Throws
+        // wrapping the body, so the raised exception is caught and the
+        // statement after the with-block is reachable (#840).
+        var func = new FunctionDef
+        {
+            Name = "test_raises",
+            Body = ImmutableArray.Create<Statement>(
+                new WithStatement
+                {
+                    Items = ImmutableArray.Create(new WithItem
+                    {
+                        ContextExpression = new FunctionCall
+                        {
+                            Function = Id("assert_raises"),
+                            Arguments = ImmutableArray.Create<Expression>(Id("ValueError"))
+                        }
+                    }),
+                    Body = ImmutableArray.Create<Statement>(
+                        new RaiseStatement
+                        {
+                            Exception = new FunctionCall { Function = Id("ValueError") }
+                        })
+                },
+                new ExpressionStatement { Expression = Id("x") }
+            )
+        };
+
+        var cfg = _builder.Build(func);
+        var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
+
+        Assert.Empty(unreachable);
+    }
+
+    [Fact]
+    public void FindUnreachableCode_AfterRegularWithBlockWithRaise_NotEmpty()
+    {
+        // A regular with-block does not catch exceptions: an unconditional
+        // raise in the body makes the following statement unreachable.
+        var func = new FunctionDef
+        {
+            Name = "regular_with",
+            Body = ImmutableArray.Create<Statement>(
+                new WithStatement
+                {
+                    Items = ImmutableArray.Create(new WithItem
+                    {
+                        ContextExpression = new FunctionCall { Function = Id("open") }
+                    }),
+                    Body = ImmutableArray.Create<Statement>(
+                        new RaiseStatement
+                        {
+                            Exception = new FunctionCall { Function = Id("ValueError") }
+                        })
+                },
+                new ExpressionStatement { Expression = Id("x") }
+            )
+        };
+
+        var cfg = _builder.Build(func);
+        var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
+
+        Assert.NotEmpty(unreachable);
+    }
+
+    [Fact]
     public void ValidateLoopControlFlow_ValidBreak_NoErrors()
     {
         var func = new FunctionDef

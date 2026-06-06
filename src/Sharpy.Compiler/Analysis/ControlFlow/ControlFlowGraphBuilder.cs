@@ -711,9 +711,59 @@ internal class ControlFlowGraphBuilder
 
     private void BuildWith(WithStatement stmt)
     {
+        // `with assert_raises(E):` (unittest) compiles to Xunit.Assert.Throws
+        // wrapping the body in a lambda, so an exception raised anywhere in the
+        // body is caught and control always continues after the block. Model it
+        // like a try with a catch-all handler so statements after the block are
+        // not reported as unreachable when the body unconditionally raises.
+        if (IsAssertRaisesWith(stmt))
+        {
+            var bodyBlock = CreateBlock("assert_raises_body");
+            Connect(_currentBlock, bodyBlock);
+            _currentBlock.Terminator = new BranchTerminator(bodyBlock);
+
+            _currentBlock = bodyBlock;
+            BuildStatements(stmt.Body);
+
+            var mergeBlock = CreateBlock("assert_raises_merge");
+
+            // Exception edge: the raised exception is caught by Assert.Throws,
+            // so the continuation is reachable from the body entry.
+            ConnectException(bodyBlock, mergeBlock);
+
+            // Normal exit path (body may also complete without raising —
+            // Assert.Throws then fails the test at runtime, but for CFG
+            // purposes control still flows to the continuation).
+            if (_currentBlock.Terminator == null)
+            {
+                Connect(_currentBlock, mergeBlock);
+                _currentBlock.Terminator = new BranchTerminator(mergeBlock);
+            }
+
+            _currentBlock = mergeBlock;
+            return;
+        }
+
         // With statement is a straight-through block (like try without handlers).
         // The body executes linearly; disposal happens at the end.
         BuildStatements(stmt.Body);
+    }
+
+    /// <summary>
+    /// Returns true if the with statement's single context manager is a call to
+    /// unittest's assert_raises (bare or qualified). Mirrors the detection used
+    /// by the emitter (RoslynEmitter.IsAssertRaisesCall).
+    /// </summary>
+    private static bool IsAssertRaisesWith(WithStatement stmt)
+    {
+        if (stmt.Items.Length != 1)
+            return false;
+
+        return stmt.Items[0].ContextExpression is FunctionCall
+        {
+            Function: Identifier { Name: "assert_raises" }
+                or MemberAccess { Member: "assert_raises" }
+        };
     }
 
     private void BuildMatch(MatchStatement stmt)
