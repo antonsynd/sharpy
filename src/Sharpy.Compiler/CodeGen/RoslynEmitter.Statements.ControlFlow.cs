@@ -893,6 +893,18 @@ internal partial class RoslynEmitter
                             SingletonSeparatedList(exceptionType)))))
             .AddArgumentListArguments(Argument(lambda));
 
+        if (captureName != null)
+        {
+            // with assert_raises(E) as exc: -> var exc = Xunit.Assert.Throws<E>(...);
+            var mangledName = GetMangledVariableName(captureName, isNewDeclaration: true);
+            _declaredVariables.Add(mangledName);
+            return LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(mangledName))
+                            .WithInitializer(EqualsValueClause(throwsCall)))));
+        }
+
         return ExpressionStatement(throwsCall);
     }
 
