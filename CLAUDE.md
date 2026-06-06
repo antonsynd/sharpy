@@ -29,6 +29,8 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect lexer tok
 
 > **CRITICAL — Serialized dotnet execution:** When multiple agents run in parallel, **NEVER** call `dotnet build` or `dotnet test` directly. Use the serialized wrapper `.claude/scripts/dotnet-serialized` which acquires an exclusive flock so only one dotnet process runs at a time. Concurrent `dotnet test` invocations each consume 5-10 GB RAM (Roslyn + 9600 tests); three in parallel will OOM and crash the system. The wrapper is a drop-in replacement — same args, same output, same exit code. Example: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer" --no-build`.
 
+> **Test output logs:** The serialized wrapper tees all stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (rotating deque of 3 slots). `.claude/tmp/dotnet-serialized-latest.log` symlinks to the most recent run. Agents should read these logs to filter/grep test output instead of re-running the full test suite (~8 min). The 3-slot rotation means an agent reading an older log won't be clobbered by a new run writing to a different slot.
+
 ## Architecture
 
 ```

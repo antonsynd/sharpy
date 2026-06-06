@@ -6,11 +6,20 @@
 # Drop-in replacement for `dotnet`: same arguments, same stdout/stderr, same exit code.
 # The ONLY difference is that concurrent calls block until the lock is free.
 #
+# All stdout+stderr is tee'd to .claude/tmp/dotnet-serialized-{0,1,2}.log (rotating
+# deque of 3). Agents can read these logs instead of re-running an 8-minute test suite.
+# The symlink .claude/tmp/dotnet-serialized-latest.log always points to the current run.
+#
 # Usage:  .claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q
 #         .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer"
 
 LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
 TIMEOUT=900  # 15 minutes
+
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+LOG_DIR="${SCRIPT_DIR}/tmp"
+LOG_DEQUE_SIZE=3
+LOG_INDEX_FILE="${LOG_DIR}/dotnet-serialized-index"
 
 cleanup() {
     rm -rf "$LOCK_DIR" 2>/dev/null
@@ -26,7 +35,6 @@ is_lock_stale() {
     if [ -z "$lock_pid" ]; then
         return 0
     fi
-    # Check if the process is still running
     if ! kill -0 "$lock_pid" 2>/dev/null; then
         return 0
     fi
@@ -49,16 +57,32 @@ acquire_lock() {
         sleep 2
         waited=$((waited + 2))
     done
-    # Store our PID so stale locks can be identified
     echo $$ > "$LOCK_DIR/pid"
     trap cleanup EXIT
+}
+
+next_log_slot() {
+    mkdir -p "$LOG_DIR"
+    local idx=0
+    if [ -f "$LOG_INDEX_FILE" ]; then
+        idx=$(cat "$LOG_INDEX_FILE" 2>/dev/null)
+        idx=$(( (idx + 1) % LOG_DEQUE_SIZE ))
+    fi
+    echo "$idx" > "$LOG_INDEX_FILE"
+    echo "$idx"
 }
 
 mkdir -p "${HOME}/.claude/locks"
 acquire_lock
 
-dotnet "$@"
-EXIT_CODE=$?
+SLOT=$(next_log_slot)
+LOG_FILE="${LOG_DIR}/dotnet-serialized-${SLOT}.log"
+
+: > "$LOG_FILE"
+ln -sf "dotnet-serialized-${SLOT}.log" "${LOG_DIR}/dotnet-serialized-latest.log"
+
+dotnet "$@" 2>&1 | tee "$LOG_FILE"
+EXIT_CODE=${PIPESTATUS[0]}
 
 cleanup
 trap - EXIT

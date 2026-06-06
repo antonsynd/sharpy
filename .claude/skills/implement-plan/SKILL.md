@@ -94,6 +94,12 @@ Multiple concurrent dotnet test runs will consume 5-10 GB RAM EACH and crash the
 The wrapper is a drop-in replacement — same args, same output, same exit code.
 You MUST use `dangerouslyDisableSandbox: true` for all dotnet commands.
 
+TEST OUTPUT LOGS:
+The serialized wrapper tees all output to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (rotating deque of 3).
+`.claude/tmp/dotnet-serialized-latest.log` symlinks to the most recent run.
+Before re-running the full test suite (~8 min), check if a recent log already has the output you need:
+  grep -i "FAIL\|error" .claude/tmp/dotnet-serialized-latest.log
+
 WORKFLOW:
 1. Read the plan section for your task
 2. Read existing code patterns in the area you're modifying
