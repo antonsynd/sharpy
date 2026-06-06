@@ -158,11 +158,31 @@ internal partial class DecoratorValidator
         }
 
         var argument = parametrize.Arguments[0];
+
+        // Variable reference form: @test.parametrize(TEST_DATA) — the data lives in a
+        // module-level variable. Validate the name resolves; row arity cannot be checked
+        // statically here (the emitter generates a MemberData wrapper that defers to xUnit).
+        if (argument is Identifier identifier)
+        {
+            var referenced = Context.SymbolTable.Lookup(identifier.Name);
+            if (referenced == null)
+            {
+                AddError(
+                    $"'@test.parametrize' on '{definitionName}' references undefined variable " +
+                    $"'{identifier.Name}'.",
+                    identifier.LineStart,
+                    identifier.ColumnStart,
+                    code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
+                    span: identifier.Span);
+            }
+            return;
+        }
+
         if (argument is not ListLiteral listLiteral)
         {
             AddWarning(
                 $"'@test.parametrize' argument on '{definitionName}' must be a list literal " +
-                "of tuples (e.g. [(1, 2), (3, 4)]).",
+                "of tuples (e.g. [(1, 2), (3, 4)]) or a reference to a module-level variable.",
                 argument.LineStart,
                 argument.ColumnStart,
                 code: DiagnosticCodes.Validation.TestDecoratorInvalidArgument,
