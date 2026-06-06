@@ -484,6 +484,21 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return the product of all the elements in the iterable, starting with the given start value.
+        /// </summary>
+        public static long Prod(Sharpy.List<int> iterable, long start = 1)
+        {
+            long result = start;
+            foreach (var __loopVar_2 in iterable)
+            {
+                var value = __loopVar_2;
+                result = result * value;
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Return the Euclidean distance, sqrt(x*x + y*y).
         /// </summary>
         public static double Hypot(double x, double y)

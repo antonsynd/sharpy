@@ -238,6 +238,13 @@ def prod(iterable: list[float], start: float = 1.0) -> float:
         result = result * value
     return result
 
+def prod(iterable: list[int], start: long = 1) -> long:
+    """Return the product of all the elements in the iterable, starting with the given start value."""
+    result: long = start
+    for value in iterable:
+        result = result * value
+    return result
+
 def hypot(x: float, y: float) -> float:
     """Return the Euclidean distance, sqrt(x*x + y*y)."""
     return SysMath.sqrt(x * x + y * y)
