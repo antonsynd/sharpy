@@ -169,6 +169,12 @@ internal partial class RoslynEmitter
                 .NormalizeWhitespace();
         }
 
+        // Fix a Roslyn NormalizeWhitespace quirk: tuple deconstructions render
+        // without spaces around the designation — "var(a, b) = ..." and
+        // "foreach (var(a, b)in items)". Must run AFTER NormalizeWhitespace,
+        // which replaces all trivia (so construction-time trivia is stripped).
+        compilationUnit = (CompilationUnitSyntax)DeconstructionSpacingRewriter.Instance.Visit(compilationUnit)!;
+
         // Add #nullable enable directive to enable C# nullable reference types
         // This aligns with Sharpy's "null-safe by default" principle (Axiom 3)
         // Must be added AFTER NormalizeWhitespace to preserve leading position
@@ -637,5 +643,34 @@ internal partial class RoslynEmitter
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// Works around a Roslyn NormalizeWhitespace quirk where a
+    /// DeclarationExpression with a ParenthesizedVariableDesignation loses
+    /// the spaces around it: "var(a, b) = ..." instead of "var (a, b) = ...",
+    /// and "foreach (var(a, b)in items)" instead of "foreach (var (a, b) in items)".
+    /// Restores the space after the type keyword and, for foreach deconstruction,
+    /// the space before the "in" keyword. See issue #846.
+    /// </summary>
+    private sealed class DeconstructionSpacingRewriter : CSharpSyntaxRewriter
+    {
+        public static readonly DeconstructionSpacingRewriter Instance = new();
+
+        public override SyntaxNode? VisitDeclarationExpression(DeclarationExpressionSyntax node)
+        {
+            var visited = (DeclarationExpressionSyntax)base.VisitDeclarationExpression(node)!;
+            if (visited.Designation is not ParenthesizedVariableDesignationSyntax)
+                return visited;
+
+            // "var(a, b)" -> "var (a, b)"
+            visited = visited.WithType(visited.Type.WithTrailingTrivia(Space));
+
+            // "var (a, b)in items" -> "var (a, b) in items"
+            if (node.Parent is ForEachVariableStatementSyntax)
+                visited = visited.WithTrailingTrivia(Space);
+
+            return visited;
+        }
     }
 }

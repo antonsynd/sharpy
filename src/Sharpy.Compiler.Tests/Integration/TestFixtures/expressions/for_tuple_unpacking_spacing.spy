@@ -1,0 +1,5 @@
+def main():
+    pairs: list[tuple[int, str]] = [(1, "a"), (2, "b")]
+    for num, label in pairs:
+        print(num)
+        print(label)
