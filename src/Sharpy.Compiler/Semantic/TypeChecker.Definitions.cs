@@ -1521,6 +1521,152 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Type-checks a module-level property declaration (#844).
+    /// Resolves the property type onto the VariableSymbol registered by
+    /// NameResolver.ResolveModulePropertyDeclaration, then checks the accessor
+    /// body (function-style) or the default value (auto-property).
+    /// Class/struct/interface properties are handled via ResolvePropertyTypes
+    /// instead; their accessor bodies are not yet checked (#849).
+    /// </summary>
+    private void CheckModuleProperty(PropertyDef propDef)
+    {
+        _logger.LogDebug($"Type checking module-level property: {propDef.Name}");
+
+        bool isSetter = propDef.Accessor == PropertyAccessor.Set;
+
+        // Resolve the declared property type from the accessor signature,
+        // mirroring class-level ResolvePropertyTypes.
+        SemanticType propertyType;
+        if (propDef.IsFunctionStyle)
+        {
+            if (propDef.ReturnType != null && !isSetter)
+            {
+                // Getter: type comes from the return annotation
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.ReturnType);
+            }
+            else if (isSetter && propDef.Parameters.Length > 0)
+            {
+                // Setter: type comes from the value parameter (last parameter)
+                propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Parameters[^1].Type);
+            }
+            else
+            {
+                propertyType = SemanticType.Unknown;
+            }
+        }
+        else
+        {
+            // Auto-property: type comes from the type annotation
+            propertyType = _typeResolver.ResolveTypeAnnotation(propDef.Type);
+        }
+
+        // Auto-property: check the default value against the declared type,
+        // inferring the type from the initializer when no annotation is given
+        // (mirrors CheckVariableDeclaration).
+        if (!propDef.IsFunctionStyle && propDef.DefaultValue != null)
+        {
+            var previousExpectedType = _expectedType;
+            _expectedType = propertyType is UnknownType ? null : propertyType;
+            var defaultType = CheckExpression(propDef.DefaultValue);
+            _expectedType = previousExpectedType;
+
+            if (propertyType is UnknownType)
+            {
+                propertyType = defaultType;
+                if (propDef.Type != null)
+                {
+                    _semanticInfo.SetTypeAnnotation(propDef.Type, defaultType);
+                }
+            }
+            else if (!IsAssignable(defaultType, propertyType))
+            {
+                AddError(
+                    $"Cannot assign type '{defaultType.GetDisplayName()}' to property of type '{propertyType.GetDisplayName()}'",
+                    propDef.LineStart, propDef.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: propDef.DefaultValue.Span);
+            }
+        }
+
+        // Update the symbol registered by NameResolver (pass 1). Getter and
+        // setter declarations share one merged symbol; the first accessor to
+        // resolve sets the type, subsequent accessors must agree with it.
+        if (_symbolTable.Lookup(propDef.Name) is VariableSymbol { IsModuleProperty: true } propSymbol)
+        {
+            var currentType = GetVariableType(propSymbol);
+            if (currentType is UnknownType)
+            {
+                propSymbol.Type = propertyType;
+                SemanticBinding.SetVariableType(propSymbol, propertyType);
+            }
+            else if (propertyType is not UnknownType
+                && (!IsAssignable(propertyType, currentType) || !IsAssignable(currentType, propertyType)))
+            {
+                AddError(
+                    $"Property '{propDef.Name}' accessor type '{propertyType.GetDisplayName()}' does not match previously declared type '{currentType.GetDisplayName()}'",
+                    propDef.LineStart, propDef.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: propDef.Span);
+            }
+        }
+
+        if (!propDef.IsFunctionStyle)
+            return;
+
+        // Function-style: type-check the accessor body like a function body
+        _symbolTable.EnterScope($"property:{propDef.Name}:{propDef.Accessor}");
+
+        // Isolate control-flow narrowing from the enclosing scope (see CheckFunction)
+        using var _ = _narrowingContext.EnterIsolatedScope();
+
+        // Register accessor parameters in scope (the setter value parameter;
+        // module-level properties have no self)
+        foreach (var param in propDef.Parameters)
+        {
+            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            var paramSymbol = new VariableSymbol
+            {
+                Name = param.Name,
+                Kind = SymbolKind.Parameter,
+                Type = paramType,
+                IsParameter = true,
+                DeclarationLine = param.LineStart,
+                DeclarationColumn = param.ColumnStart,
+                NameDeclarationLine = param.LineStart,
+                NameDeclarationColumn = param.ColumnStart
+            };
+            _symbolTable.Define(paramSymbol);
+            SemanticBinding.SetVariableType(paramSymbol, paramType);
+        }
+
+        // Getter bodies must return the property type; setter bodies return nothing
+        var previousFunctionReturnType = _currentFunctionReturnType;
+        _currentFunctionReturnType = isSetter ? SemanticType.Void : propertyType;
+
+        var previousMethodName = _currentMethodName;
+        var previousControlFlowDepth = _controlFlowDepth;
+        var previousIsGenerator = _currentFunctionIsGenerator;
+        var previousIsAsync = _currentFunctionIsAsync;
+        _currentMethodName = propDef.Name;
+        _controlFlowDepth = 0;
+        _currentFunctionIsGenerator = false;
+        _currentFunctionIsAsync = false;
+
+        foreach (var stmt in propDef.Body)
+        {
+            CheckStatement(stmt);
+        }
+
+        _currentMethodName = previousMethodName;
+        _controlFlowDepth = previousControlFlowDepth;
+        _currentFunctionIsGenerator = previousIsGenerator;
+        _currentFunctionIsAsync = previousIsAsync;
+        _currentFunctionReturnType = previousFunctionReturnType;
+
+        _symbolTable.ExitScope();
+    }
+
+    /// <summary>
     /// Resolves property types from their type annotations in the AST.
     /// Must be called after field type resolution and before member checking.
     /// For mixed auto+custom properties, also synthesizes a backing field.

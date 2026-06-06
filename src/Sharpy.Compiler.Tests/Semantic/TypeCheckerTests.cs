@@ -2393,4 +2393,154 @@ def main():
     }
 
     #endregion
+
+    #region Module-level properties (#844)
+
+    [Fact]
+    public void ModuleProperty_GetterReturnType_SetOnSymbol()
+    {
+        var source = @"
+property get version() -> str:
+    return '1.0'
+";
+        var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        var propSymbol = symbolTable.LookupVariable("version");
+        propSymbol.Should().NotBeNull();
+        propSymbol!.IsModuleProperty.Should().BeTrue();
+        propSymbol.Type.Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void ModuleProperty_BodyReturnTypeMismatch_ReportsError()
+    {
+        var source = @"
+property get version() -> str:
+    return 42
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle()
+            .Which.Message.Should().Contain("Cannot return type 'int'");
+    }
+
+    [Fact]
+    public void ModuleProperty_UndefinedNameInBody_ReportsError()
+    {
+        var source = @"
+property get version() -> str:
+    return some_undefined_var
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle()
+            .Which.Message.Should().Contain("Undefined identifier");
+    }
+
+    [Fact]
+    public void ModuleProperty_SetterValueParameterUsableInBody()
+    {
+        var source = @"
+property get counter() -> int:
+    return 1
+
+property set counter(value: int):
+    print(value + 1)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ModuleProperty_GetterSetterTypeDisagreement_ReportsError()
+    {
+        var source = @"
+property get counter() -> int:
+    return 1
+
+property set counter(value: str):
+    pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle()
+            .Which.Message.Should().Contain("does not match previously declared type");
+    }
+
+    [Fact]
+    public void ModuleProperty_AutoProperty_TypeFromAnnotation()
+    {
+        var source = @"
+property counter: int = 0
+";
+        var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        var propSymbol = symbolTable.LookupVariable("counter");
+        propSymbol.Should().NotBeNull();
+        propSymbol!.Type.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void ModuleProperty_AutoPropertyDefaultMismatch_ReportsError()
+    {
+        var source = @"
+property counter: int = 'oops'
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle()
+            .Which.Message.Should().Contain("Cannot assign type 'str'");
+    }
+
+    [Fact]
+    public void ModuleProperty_UsageSite_SeesPropertyType()
+    {
+        var source = @"
+property get version() -> str:
+    return '1.0'
+
+def use() -> None:
+    x: int = version
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle()
+            .Which.Message.Should().Contain("Cannot assign type 'str' to variable of type 'int'");
+    }
+
+    [Fact]
+    public void ClassProperty_StillResolvedViaTypeSymbol_NoModulePropertyPath()
+    {
+        var source = @"
+class Config:
+    property get version(self) -> str:
+        return '1.0'
+";
+        var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+
+        var configType = symbolTable.LookupType("Config");
+        configType.Should().NotBeNull();
+        configType!.Properties.Should().ContainSingle(p => p.Name == "version")
+            .Which.Type.Should().Be(SemanticType.Str);
+
+        symbolTable.LookupVariable("version").Should().BeNull();
+    }
+
+    #endregion
 }

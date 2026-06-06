@@ -442,8 +442,16 @@ internal partial class TypeChecker
                 RegisterScopedTypeAlias(typeAlias);
                 break;
 
+            case PropertyDef propDef when _currentClass == null:
+                // Module-level property: resolve its type and check the accessor
+                // body / default value (#844)
+                CheckModuleProperty(propDef);
+                break;
+
             case PropertyDef:
-                // Property validation handled elsewhere (property-specific validation)
+                // Class/struct/interface properties: declared types are resolved via
+                // ResolvePropertyTypes; structural rules are validated by PropertyValidator.
+                // TODO(#849): accessor bodies are not yet type-checked
                 break;
 
             case EventDef eventDef:
