@@ -140,6 +140,22 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Pre-group module-level properties by name so split get/set declarations
+        // merge into a single C# property (same rules as class-level split accessors).
+        var modulePropertyGroups = new Dictionary<string, List<PropertyDef>>();
+        foreach (var stmt in statements)
+        {
+            if (stmt is PropertyDef propDef)
+            {
+                if (!modulePropertyGroups.TryGetValue(propDef.Name, out var group))
+                {
+                    group = new List<PropertyDef>();
+                    modulePropertyGroups[propDef.Name] = group;
+                }
+                group.Add(propDef);
+            }
+        }
+
         foreach (var stmt in statements)
         {
             // Module-level @test.fixture functions are emitted as standalone sibling classes,
@@ -175,6 +191,26 @@ internal partial class RoslynEmitter
             if (stmt is FunctionDef cachedFunc && IsLruCacheDecorated(cachedFunc))
             {
                 moduleDeclarations.AddRange(GenerateLruCacheWrappedFunction(cachedFunc, isModuleLevel: true));
+                _declaredVariables.Clear();
+                _variableVersions.Clear();
+                _constVariables.Clear();
+                _narrowing.Reset();
+                continue;
+            }
+
+            // Module-level properties are emitted as static members on the module class.
+            // The whole name-group is emitted at its first occurrence (split get/set
+            // declarations merge into one C# property; mixed auto+custom groups emit a
+            // backing field plus a property), so later occurrences are skipped. Like
+            // @lru_cache functions above, groups can expand into multiple members, so
+            // they bypass the single-member GenerateStatement dispatcher.
+            if (stmt is PropertyDef moduleProp)
+            {
+                var propGroup = modulePropertyGroups[moduleProp.Name];
+                if (ReferenceEquals(propGroup[0], moduleProp))
+                {
+                    moduleDeclarations.AddRange(GenerateModuleLevelProperty(propGroup));
+                }
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
                 _constVariables.Clear();
@@ -1002,8 +1038,33 @@ internal partial class RoslynEmitter
             Assignment assign => GenerateAssignment(assign),
             ImportStatement => null,       // Imports are resolved at semantic level, no C# output
             FromImportStatement => null,   // Imports are resolved at semantic level, no C# output
+            // Note: PropertyDef is intercepted in GenerateModuleClass before this dispatcher
+            // (property groups can expand into multiple members; see GenerateModuleLevelProperty).
             _ => EmitUnrecognizedStatementDiagnostic(stmt)
         };
     }
 
+    /// <summary>
+    /// Generates static C# members from a group of module-level PropertyDef nodes
+    /// sharing the same name. Reuses the class-level grouped property generation
+    /// (split get/set merging, mixed auto+custom backing fields, auto-properties)
+    /// and forces the static modifier: module-level properties have no instance,
+    /// so they are always static members of the module class (#844).
+    /// Function-style accessors are already emitted static (no self parameter);
+    /// this additionally covers auto-properties and generated backing fields.
+    /// </summary>
+    private IEnumerable<MemberDeclarationSyntax> GenerateModuleLevelProperty(List<PropertyDef> propGroup)
+    {
+        foreach (var member in GenerateGroupedProperty(propGroup))
+        {
+            yield return member switch
+            {
+                PropertyDeclarationSyntax prop when !prop.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword))
+                    => prop.AddModifiers(Token(SyntaxKind.StaticKeyword)),
+                FieldDeclarationSyntax field when !field.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword))
+                    => field.AddModifiers(Token(SyntaxKind.StaticKeyword)),
+                _ => member
+            };
+        }
+    }
 }
