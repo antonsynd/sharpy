@@ -1,6 +1,74 @@
 """Secure hash and message digest algorithms (MD5, SHA-1, SHA-2 family)."""
 
-from sharpy import HashObject
+from system.security.cryptography import MD5, SHA1, SHA256, SHA384, SHA512, HashAlgorithm
+from system.text import Encoding, StringBuilder
+
+class HashObject:
+    """Represents a hash object that accumulates data and computes cryptographic hashes. Mirrors Python's hashlib hash object API."""
+
+    @readonly
+    property name: str
+
+    @readonly
+    property digest_size: int
+
+    _data: list[byte]
+
+    def __init__(self, algorithm_name: str, digest_size: int):
+        """Create a new hash object for the specified algorithm."""
+        if algorithm_name not in ["md5", "sha1", "sha256", "sha384", "sha512"]:
+            raise ValueError("unsupported hash type '" + algorithm_name + "'")
+        self.name = algorithm_name
+        self.digest_size = digest_size
+        self._data = []
+
+    def _create_algorithm(self) -> HashAlgorithm:
+        match self.name:
+            case "md5":
+                return MD5.create()
+            case "sha1":
+                return SHA1.create()
+            case "sha256":
+                return SHA256.create()
+            case "sha384":
+                return SHA384.create()
+            case "sha512":
+                return SHA512.create()
+            case _:
+                raise ValueError("unsupported hash type '" + self.name + "'")
+
+    def _compute_hash(self) -> list[byte]:
+        with self._create_algorithm() as algorithm:
+            return algorithm.compute_hash(self._data.to_array())
+
+    def update(self, data: str) -> None:
+        """Append data to the hash object. The data is encoded as UTF-8."""
+        new_bytes: list[byte] = Encoding.UTF8.get_bytes(data)
+        for b in new_bytes:
+            self._data.append(b)
+
+    def hexdigest(self) -> str:
+        """Return the hex-encoded string of the hash digest."""
+        hash_bytes: list[byte] = self._compute_hash()
+        sb: StringBuilder = StringBuilder()
+        for b in hash_bytes:
+            sb.append(b.to_string("x2"))
+        return sb.to_string()
+
+    def digest(self) -> list[int]:
+        """Return the raw hash digest as a list of integers (byte values 0-255)."""
+        hash_bytes: list[byte] = self._compute_hash()
+        result: list[int] = []
+        for b in hash_bytes:
+            result.append(int(b))
+        return result
+
+    def copy(self) -> HashObject:
+        """Return a copy of the hash object with the same accumulated data."""
+        new_obj: HashObject = HashObject(self.name, self.digest_size)
+        for b in self._data:
+            new_obj._data.append(b)
+        return new_obj
 
 def md5(data: str = "") -> HashObject:
     """Return a new hash object for MD5, optionally initialized with data."""
