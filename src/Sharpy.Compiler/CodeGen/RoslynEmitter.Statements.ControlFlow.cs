@@ -816,7 +816,7 @@ internal partial class RoslynEmitter
             var ctxExpr = withStmt.Items[0].ContextExpression;
             if (ctxExpr is FunctionCall call && IsAssertRaisesCall(call) && call.Arguments.Length == 1)
             {
-                return GenerateAssertThrows(call.Arguments[0], withStmt.Body);
+                return GenerateAssertThrows(call.Arguments[0], withStmt.Body, withStmt.Items[0].Name);
             }
         }
 
@@ -860,10 +860,14 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates xUnit's Assert.Throws&lt;TException&gt;(() =&gt; { body }) for assert_raises blocks.
+    /// When <paramref name="captureName"/> is provided (from <c>with assert_raises(E) as exc:</c>),
+    /// the thrown exception is captured into a local variable:
+    /// <c>var exc = Xunit.Assert.Throws&lt;TException&gt;((Action)(() =&gt; { body }));</c>.
     /// </summary>
     private StatementSyntax GenerateAssertThrows(
         Expression exceptionTypeExpr,
-        IReadOnlyList<Statement> body)
+        IReadOnlyList<Statement> body,
+        string? captureName = null)
     {
         TypeSyntax exceptionType = exceptionTypeExpr switch
         {
