@@ -821,8 +821,9 @@ public partial class RoslynEmitterDefinitionTests
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
-        // Assert - Type names preserve exact casing, method names are PascalCased
-        Assert.Contains("public class game_object : IUpdateable", code);
+        // Assert - Type names are PascalCased (consistent with type references),
+        // method names are PascalCased
+        Assert.Contains("public class GameObject : IUpdateable", code);
         Assert.Contains("public void OnUpdate(double deltaTime)", code);
     }
 

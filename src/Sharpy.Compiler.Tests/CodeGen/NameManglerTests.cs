@@ -208,8 +208,8 @@ public class NameManglerTests
     #region Context-Aware Transform Tests
 
     [Theory]
-    [InlineData(NameContext.Type, "MyClass", "MyClass")]  // Types preserve user's casing
-    [InlineData(NameContext.Type, "my_class", "my_class")]  // Even snake_case is preserved
+    [InlineData(NameContext.Type, "MyClass", "MyClass")]  // PascalCase passes through unchanged
+    [InlineData(NameContext.Type, "my_class", "MyClass")]  // snake_case is PascalCased (consistent with references)
     [InlineData(NameContext.Method, "get_value", "GetValue")]
     [InlineData(NameContext.Function, "calculate", "Calculate")]
     [InlineData(NameContext.Variable, "user_name", "userName")]

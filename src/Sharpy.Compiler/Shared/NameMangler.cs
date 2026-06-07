@@ -23,8 +23,14 @@ internal static class NameMangler
         if (string.IsNullOrEmpty(name))
             return name;
 
-        // Types preserve user's exact casing
-        return EscapeKeywordIfNeeded(name);
+        // Type declarations must use the same casing as type references
+        // (which go through ToPascalCase via NameCasing.ResolveType / TypeSyntaxMapper).
+        // ToPascalCase is idempotent on already-PascalCase names (e.g. CsvReader, HTTPServer),
+        // so existing PascalCase types are unaffected, while Python-style lowercase type names
+        // (e.g. socket's `error`, `timeout`) are mangled consistently in both declaration and
+        // reference positions. Without this, `class error` would declare `error` but be
+        // referenced as `Error`, producing non-compiling C#.
+        return EscapeKeywordIfNeeded(ToPascalCase(name));
     }
 
     /// <summary>

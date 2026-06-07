@@ -767,6 +767,19 @@ internal partial class TypeChecker
                     };
                 }
 
+                // When the parent has multiple constructor overloads, defer argument
+                // validation to the C# compiler — mirroring how direct constructor calls
+                // (CheckConstructorCall) skip strict validation for overloaded __init__.
+                if (currentType.Constructors.Count > 1)
+                {
+                    return new FunctionType
+                    {
+                        ParameterTypes = new List<SemanticType>(),
+                        ReturnType = SemanticType.Void,
+                        SkipArgumentValidation = true
+                    };
+                }
+
                 var parentCtor = currentType.Constructors.FirstOrDefault();
                 if (parentCtor != null)
                 {
@@ -785,6 +798,20 @@ internal partial class TypeChecker
 
         if (parentMethod != null)
         {
+            // __init__ is stored in both Methods and Constructors. When the owning type
+            // has multiple constructor overloads, defer argument validation to the C#
+            // compiler — mirroring how direct constructor calls (CheckConstructorCall)
+            // skip strict validation for overloaded __init__.
+            if (memberName == DunderNames.Init && methodOwner != null && methodOwner.Constructors.Count > 1)
+            {
+                return new FunctionType
+                {
+                    ParameterTypes = new List<SemanticType>(),
+                    ReturnType = SemanticType.Void,
+                    SkipArgumentValidation = true
+                };
+            }
+
             var methodParameters = parentMethod.Parameters.Skip(1).ToList();
             var paramTypes = methodParameters.Select(p => p.Type).ToList();
             return new FunctionType
