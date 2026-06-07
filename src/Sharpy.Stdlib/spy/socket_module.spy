@@ -98,7 +98,9 @@ class socket(IDisposable):
     Supports TCP and UDP communication, socket options, and timeout handling.
     """
 
+    @private
     _socket: NetSocket
+    @private
     _timeout: float | None
 
     def __init__(self, family: int = 2, sock_type: int = 1, proto: int = 0):
@@ -170,7 +172,9 @@ class socket(IDisposable):
         """Accept a connection, returning (new socket, (remote_host, remote_port))."""
         try:
             accepted = self._socket.accept()
-            remote: EndPoint = accepted.remote_end_point
+            remote = accepted.remote_end_point
+            if remote is None:
+                raise error("Accepted connection has no remote endpoint.")
             remote_ep: IPEndPoint = remote to IPEndPoint
             conn: socket = socket(accepted)
             return (conn, (remote_ep.address.to_string(), remote_ep.port))
@@ -257,7 +261,10 @@ class socket(IDisposable):
     def getsockopt(self, level: int, optname: int) -> int:
         """Get a socket option value."""
         try:
-            return self._socket.get_socket_option(level to SocketOptionLevel, optname to SocketOptionName) to int
+            opt = self._socket.get_socket_option(level to SocketOptionLevel, optname to SocketOptionName)
+            if opt is None:
+                return 0
+            return opt to int
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
