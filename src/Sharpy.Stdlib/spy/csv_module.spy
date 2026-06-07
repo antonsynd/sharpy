@@ -1,3 +1,214 @@
 """CSV file reading and writing."""
 
-from sharpy import CsvReader, CsvWriter, CsvDictReader, CsvDictWriter
+from system.io import TextWriter
+from system.text import StringBuilder
+
+QUOTE_ALL: int = 1
+QUOTE_MINIMAL: int = 0
+QUOTE_NONE: int = 3
+QUOTE_NONNUMERIC: int = 2
+
+def _parse_line(line: str) -> list[str]:
+    """Parse a single CSV line into a list of fields."""
+    fields: list[str] = []
+    field: StringBuilder = StringBuilder()
+    in_quotes: bool = False
+    i: int = 0
+    while i < len(line):
+        c: str = line[i]
+        if in_quotes:
+            if c == '"':
+                if i + 1 < len(line) and line[i + 1] == '"':
+                    field.append('"')
+                    i += 2
+                else:
+                    in_quotes = False
+                    i += 1
+            else:
+                field.append(c)
+                i += 1
+        else:
+            if c == '"':
+                in_quotes = True
+                i += 1
+            elif c == ',':
+                fields.append(field.to_string())
+                field.clear()
+                i += 1
+            else:
+                field.append(c)
+                i += 1
+    fields.append(field.to_string())
+    return fields
+
+def _quote_field(field: str) -> str:
+    """Quote a field if it contains special characters."""
+    needs_quoting: bool = False
+    for c in field:
+        if c == ',' or c == '"' or c == '\n' or c == '\r':
+            needs_quoting = True
+            break
+    if not needs_quoting:
+        return field
+    sb: StringBuilder = StringBuilder()
+    sb.append('"')
+    for c in field:
+        if c == '"':
+            sb.append('""')
+        else:
+            sb.append(c)
+    sb.append('"')
+    return sb.to_string()
+
+class CsvReader:
+    """Reads CSV data from a list of lines, parsing each line into a list of fields."""
+
+    _lines: list[str]
+    _line_num: int
+
+    property get line_num(self) -> int:
+        return self._line_num
+
+    def __init__(self, lines: list[str]):
+        if lines is None:
+            raise TypeError("'NoneType' is not iterable")
+        self._lines = lines
+        self._line_num = 0
+
+    def __iter__(self) -> list[str]:
+        for line in self._lines:
+            self._line_num += 1
+            yield _parse_line(line)
+
+class CsvWriter:
+    """Writes CSV data to a TextWriter."""
+
+    _output: TextWriter
+
+    def __init__(self, output: TextWriter):
+        if output is None:
+            raise TypeError("'NoneType' object is not valid as output")
+        self._output = output
+
+    def writerow(self, row: list[str]) -> None:
+        """Write a single row of fields to the CSV output."""
+        if row is None:
+            raise TypeError("'NoneType' is not iterable")
+        sb: StringBuilder = StringBuilder()
+        first: bool = True
+        for field in row:
+            if not first:
+                sb.append(',')
+            first = False
+            sb.append(_quote_field(field))
+        self._output.write_line(sb.to_string())
+
+    def writerows(self, rows: list[list[str]]) -> None:
+        """Write multiple rows of fields to the CSV output."""
+        if rows is None:
+            raise TypeError("'NoneType' is not iterable")
+        for row in rows:
+            self.writerow(row)
+
+class CsvDictReader:
+    """Reads CSV data and maps each row to a dictionary keyed by field names."""
+
+    _lines: list[str]
+    _fieldnames: list[str]?
+
+    property get fieldnames(self) -> list[str]?:
+        return self._fieldnames
+
+    def __init__(self, lines: list[str], fieldnames: list[str]? = None):
+        if lines is None:
+            raise TypeError("'NoneType' is not iterable")
+        self._lines = lines
+        self._fieldnames = fieldnames
+
+    def __iter__(self) -> dict[str, str]:
+        is_first_row: bool = self._fieldnames is None
+        for line in self._lines:
+            fields: list[str] = _parse_line(line)
+            if is_first_row:
+                self._fieldnames = fields
+                is_first_row = False
+                continue
+            if self._fieldnames is not None:
+                names: list[str] = self._fieldnames
+                d: dict[str, str] = {}
+                i: int = 0
+                while i < len(names):
+                    key: str = names[i]
+                    value: str = ""
+                    if i < len(fields):
+                        value = fields[i]
+                    d[key] = value
+                    i += 1
+                yield d
+
+class CsvDictWriter:
+    """Writes CSV data from dictionaries keyed by field names."""
+
+    _output: TextWriter
+    _fieldnames: list[str]
+
+    property get fieldnames(self) -> list[str]:
+        return self._fieldnames
+
+    def __init__(self, output: TextWriter, fieldnames: list[str]):
+        if output is None:
+            raise TypeError("'NoneType' object is not valid as output")
+        if fieldnames is None:
+            raise TypeError("fieldnames must not be None")
+        self._output = output
+        self._fieldnames = fieldnames
+
+    def writeheader(self) -> None:
+        """Write the field names as a header row."""
+        sb: StringBuilder = StringBuilder()
+        first: bool = True
+        for name in self._fieldnames:
+            if not first:
+                sb.append(',')
+            first = False
+            sb.append(_quote_field(name))
+        self._output.write_line(sb.to_string())
+
+    def writerow(self, row: dict[str, str]) -> None:
+        """Write a single row from a dictionary in field name order."""
+        if row is None:
+            raise TypeError("'NoneType' is not iterable")
+        sb: StringBuilder = StringBuilder()
+        first: bool = True
+        for name in self._fieldnames:
+            if not first:
+                sb.append(',')
+            first = False
+            value: str = ""
+            if name in row:
+                value = row[name]
+            sb.append(_quote_field(value))
+        self._output.write_line(sb.to_string())
+
+    def writerows(self, rows: list[dict[str, str]]) -> None:
+        """Write multiple rows from dictionaries."""
+        if rows is None:
+            raise TypeError("'NoneType' is not iterable")
+        for row in rows:
+            self.writerow(row)
+
+def reader(lines: list[str]) -> CsvReader:
+    """Create a CSV reader from a list of lines."""
+    return CsvReader(lines)
+
+def writer(output: TextWriter) -> CsvWriter:
+    """Create a CSV writer that writes to a TextWriter."""
+    return CsvWriter(output)
+
+def dict_reader(lines: list[str], fieldnames: list[str]? = None) -> CsvDictReader:
+    """Create a CSV DictReader from a list of lines."""
+    return CsvDictReader(lines, fieldnames)
+
+def dict_writer(output: TextWriter, fieldnames: list[str]) -> CsvDictWriter:
+    """Create a CSV DictWriter that writes to a TextWriter."""
+    return CsvDictWriter(output, fieldnames)

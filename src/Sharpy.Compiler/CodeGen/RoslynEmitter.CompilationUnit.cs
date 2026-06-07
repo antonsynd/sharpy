@@ -547,6 +547,7 @@ internal partial class RoslynEmitter
         { "base64", "Base64Module" },
         { "bisect", "BisectModule" },
         { "calendar", "CalendarModule" },
+        { "csv", "CsvModule" },
         { "fnmatch", "FnmatchModule" },
         { "pathlib", "PathlibModule" },
         { "string", "StringModule" },

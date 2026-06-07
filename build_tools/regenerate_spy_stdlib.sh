@@ -43,6 +43,7 @@ MODULES=(
     "shutil_module:Shutil/Shutil.cs"
     "random_module:Random/Random.cs"
     "hashlib_module:Hashlib/Hashlib.cs"
+    "csv_module:Csv/CsvModule.cs"
 )
 
 mode="regenerate"

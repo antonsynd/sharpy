@@ -11,7 +11,7 @@ public class CsvModuleTests
     public void Reader_SimpleLine()
     {
         var lines = new string[] { "a,b,c" };
-        var reader = Sharpy.Csv.Reader(lines);
+        var reader = Sharpy.CsvModule.Reader(lines);
         var rows = new System.Collections.Generic.List<Sharpy.List<string>>();
         foreach (var row in reader)
         {
@@ -28,7 +28,7 @@ public class CsvModuleTests
     public void Reader_QuotedFieldWithComma()
     {
         var lines = new string[] { "a,\"hello, world\",c" };
-        var reader = Sharpy.Csv.Reader(lines);
+        var reader = Sharpy.CsvModule.Reader(lines);
         var rows = new System.Collections.Generic.List<Sharpy.List<string>>();
         foreach (var row in reader)
         {
@@ -45,7 +45,7 @@ public class CsvModuleTests
     {
         // CSV: a,"say ""hello""",c => fields: a | say "hello" | c
         var lines = new string[] { "a,\"say \"\"hello\"\"\",c" };
-        var reader = Sharpy.Csv.Reader(lines);
+        var reader = Sharpy.CsvModule.Reader(lines);
         var rows = new System.Collections.Generic.List<Sharpy.List<string>>();
         foreach (var row in reader)
         {
@@ -59,7 +59,7 @@ public class CsvModuleTests
     public void Reader_MultipleRows()
     {
         var lines = new string[] { "a,b", "c,d", "e,f" };
-        var reader = Sharpy.Csv.Reader(lines);
+        var reader = Sharpy.CsvModule.Reader(lines);
         int count = 0;
         foreach (var row in reader)
         {
@@ -73,7 +73,7 @@ public class CsvModuleTests
     public void Writer_SimpleRow()
     {
         var sw = new StringWriter();
-        var writer = Sharpy.Csv.Writer(sw);
+        var writer = Sharpy.CsvModule.Writer(sw);
         writer.Writerow(new string[] { "a", "b", "c" });
         sw.ToString().Should().Be("a,b,c" + System.Environment.NewLine);
     }
@@ -82,7 +82,7 @@ public class CsvModuleTests
     public void Writer_QuotesFieldWithComma()
     {
         var sw = new StringWriter();
-        var writer = Sharpy.Csv.Writer(sw);
+        var writer = Sharpy.CsvModule.Writer(sw);
         writer.Writerow(new string[] { "hello, world", "test" });
         // Should contain quoted field
         sw.ToString().Should().Contain("\"hello, world\"");
@@ -92,8 +92,8 @@ public class CsvModuleTests
     public void Writer_Writerows_MultipleRows()
     {
         var sw = new StringWriter();
-        var writer = Sharpy.Csv.Writer(sw);
-        var rows = new System.Collections.Generic.List<string[]>
+        var writer = Sharpy.CsvModule.Writer(sw);
+        var rows = new Sharpy.List<Sharpy.List<string>>
         {
             new string[] { "a", "b" },
             new string[] { "c", "d" }
@@ -107,17 +107,17 @@ public class CsvModuleTests
     [Fact]
     public void Constants_HaveCorrectValues()
     {
-        Sharpy.Csv.QUOTE_ALL.Should().Be(1);
-        Sharpy.Csv.QUOTE_MINIMAL.Should().Be(0);
-        Sharpy.Csv.QUOTE_NONE.Should().Be(3);
-        Sharpy.Csv.QUOTE_NONNUMERIC.Should().Be(2);
+        Sharpy.CsvModule.QUOTE_ALL.Should().Be(1);
+        Sharpy.CsvModule.QUOTE_MINIMAL.Should().Be(0);
+        Sharpy.CsvModule.QUOTE_NONE.Should().Be(3);
+        Sharpy.CsvModule.QUOTE_NONNUMERIC.Should().Be(2);
     }
 
     [Fact]
     public void Reader_LineNum_TracksLinesRead()
     {
         var lines = new string[] { "a,b", "c,d", "e,f" };
-        var reader = Sharpy.Csv.Reader(lines);
+        var reader = Sharpy.CsvModule.Reader(lines);
         reader.LineNum.Should().Be(0);
 
         int count = 0;

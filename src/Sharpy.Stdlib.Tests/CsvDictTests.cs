@@ -16,7 +16,7 @@ public class CsvDictTests
     public void DictReader_AutoDetectsFieldnamesFromFirstRow()
     {
         var lines = new string[] { "name,age", "Alice,30" };
-        var reader = Sharpy.Csv.DictReader(lines);
+        var reader = Sharpy.CsvModule.DictReader(lines);
 
         // Fieldnames is null until iteration starts
         var rows = new System.Collections.Generic.List<Sharpy.Dict<string, string>>();
@@ -25,16 +25,16 @@ public class CsvDictTests
             rows.Add(row);
         }
 
-        reader.Fieldnames.Should().NotBeNull();
-        reader.Fieldnames![0].Should().Be("name");
-        reader.Fieldnames[1].Should().Be("age");
+        reader.Fieldnames.IsSome.Should().BeTrue();
+        reader.Fieldnames.Unwrap()[0].Should().Be("name");
+        reader.Fieldnames.Unwrap()[1].Should().Be("age");
     }
 
     [Fact]
     public void DictReader_AutoDetect_RowHasCorrectValues()
     {
         var lines = new string[] { "name,age", "Alice,30", "Bob,25" };
-        var reader = Sharpy.Csv.DictReader(lines);
+        var reader = Sharpy.CsvModule.DictReader(lines);
         var rows = new System.Collections.Generic.List<Sharpy.Dict<string, string>>();
         foreach (var row in reader)
         {
@@ -54,7 +54,7 @@ public class CsvDictTests
         // When fieldnames are supplied, NO row is consumed as headers
         var fieldnames = new Sharpy.List<string>(new string[] { "name", "age" });
         var lines = new string[] { "Alice,30", "Bob,25" };
-        var reader = Sharpy.Csv.DictReader(lines, fieldnames);
+        var reader = Sharpy.CsvModule.DictReader(lines, fieldnames);
         var rows = new System.Collections.Generic.List<Sharpy.Dict<string, string>>();
         foreach (var row in reader)
         {
@@ -71,12 +71,12 @@ public class CsvDictTests
     {
         var fieldnames = new Sharpy.List<string>(new string[] { "x", "y" });
         var lines = new string[] { "1,2" };
-        var reader = Sharpy.Csv.DictReader(lines, fieldnames);
+        var reader = Sharpy.CsvModule.DictReader(lines, fieldnames);
 
         // Fieldnames should be set even before iteration
-        reader.Fieldnames.Should().NotBeNull();
-        reader.Fieldnames![0].Should().Be("x");
-        reader.Fieldnames[1].Should().Be("y");
+        reader.Fieldnames.IsSome.Should().BeTrue();
+        reader.Fieldnames.Unwrap()[0].Should().Be("x");
+        reader.Fieldnames.Unwrap()[1].Should().Be("y");
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class CsvDictTests
     {
         // Row has fewer fields than fieldnames; missing field should be ""
         var lines = new string[] { "name,age,city", "Alice,30" };
-        var reader = Sharpy.Csv.DictReader(lines);
+        var reader = Sharpy.CsvModule.DictReader(lines);
         var rows = new System.Collections.Generic.List<Sharpy.Dict<string, string>>();
         foreach (var row in reader)
         {
@@ -102,7 +102,7 @@ public class CsvDictTests
     {
         // Row has more fields than fieldnames; extra fields are silently dropped
         var lines = new string[] { "name,age", "Alice,30,extra_value" };
-        var reader = Sharpy.Csv.DictReader(lines);
+        var reader = Sharpy.CsvModule.DictReader(lines);
         var rows = new System.Collections.Generic.List<Sharpy.Dict<string, string>>();
         foreach (var row in reader)
         {
@@ -119,7 +119,7 @@ public class CsvDictTests
     public void DictReader_QuotedFields_ParsedCorrectly()
     {
         var lines = new string[] { "name,desc", "Alice,\"hello, world\"" };
-        var reader = Sharpy.Csv.DictReader(lines);
+        var reader = Sharpy.CsvModule.DictReader(lines);
         var rows = new System.Collections.Generic.List<Sharpy.Dict<string, string>>();
         foreach (var row in reader)
         {
@@ -132,7 +132,7 @@ public class CsvDictTests
     [Fact]
     public void DictReader_NullLines_ThrowsTypeError()
     {
-        Action act = () => Sharpy.Csv.DictReader(null!);
+        Action act = () => Sharpy.CsvModule.DictReader(null!);
         act.Should().Throw<Sharpy.TypeError>();
     }
 
@@ -140,7 +140,7 @@ public class CsvDictTests
     public void DictReader_SingleColumn_Works()
     {
         var lines = new string[] { "value", "42", "99" };
-        var reader = Sharpy.Csv.DictReader(lines);
+        var reader = Sharpy.CsvModule.DictReader(lines);
         var rows = new System.Collections.Generic.List<Sharpy.Dict<string, string>>();
         foreach (var row in reader)
         {
@@ -161,7 +161,7 @@ public class CsvDictTests
     {
         var sw = new StringWriter();
         var fieldnames = new Sharpy.List<string>(new string[] { "name", "age" });
-        var writer = Sharpy.Csv.DictWriter(sw, fieldnames);
+        var writer = Sharpy.CsvModule.DictWriter(sw, fieldnames);
 
         writer.Fieldnames[0].Should().Be("name");
         writer.Fieldnames[1].Should().Be("age");
@@ -172,7 +172,7 @@ public class CsvDictTests
     {
         var sw = new StringWriter();
         var fieldnames = new Sharpy.List<string>(new string[] { "name", "age", "city" });
-        var writer = Sharpy.Csv.DictWriter(sw, fieldnames);
+        var writer = Sharpy.CsvModule.DictWriter(sw, fieldnames);
         writer.Writeheader();
 
         sw.ToString().TrimEnd().Should().Be("name,age,city");
@@ -183,7 +183,7 @@ public class CsvDictTests
     {
         var sw = new StringWriter();
         var fieldnames = new Sharpy.List<string>(new string[] { "name", "age" });
-        var writer = Sharpy.Csv.DictWriter(sw, fieldnames);
+        var writer = Sharpy.CsvModule.DictWriter(sw, fieldnames);
 
         var row = new Sharpy.Dict<string, string>();
         row["name"] = "Alice";
@@ -198,7 +198,7 @@ public class CsvDictTests
     {
         var sw = new StringWriter();
         var fieldnames = new Sharpy.List<string>(new string[] { "name", "age", "city" });
-        var writer = Sharpy.Csv.DictWriter(sw, fieldnames);
+        var writer = Sharpy.CsvModule.DictWriter(sw, fieldnames);
 
         var row = new Sharpy.Dict<string, string>();
         row["name"] = "Alice";
@@ -214,7 +214,7 @@ public class CsvDictTests
     {
         var sw = new StringWriter();
         var fieldnames = new Sharpy.List<string>(new string[] { "name", "address" });
-        var writer = Sharpy.Csv.DictWriter(sw, fieldnames);
+        var writer = Sharpy.CsvModule.DictWriter(sw, fieldnames);
 
         var row = new Sharpy.Dict<string, string>();
         row["name"] = "Alice";
@@ -230,7 +230,7 @@ public class CsvDictTests
     {
         var sw = new StringWriter();
         var fieldnames = new Sharpy.List<string>(new string[] { "name", "age" });
-        var writer = Sharpy.Csv.DictWriter(sw, fieldnames);
+        var writer = Sharpy.CsvModule.DictWriter(sw, fieldnames);
 
         var row1 = new Sharpy.Dict<string, string>();
         row1["name"] = "Alice";
@@ -252,7 +252,7 @@ public class CsvDictTests
     {
         var sw = new StringWriter();
         var fieldnames = new Sharpy.List<string>(new string[] { "name", "score" });
-        var writer = Sharpy.Csv.DictWriter(sw, fieldnames);
+        var writer = Sharpy.CsvModule.DictWriter(sw, fieldnames);
 
         writer.Writeheader();
 
@@ -272,7 +272,7 @@ public class CsvDictTests
     {
         var sw = new StringWriter();
         var fieldnames = new Sharpy.List<string>(new string[] { "name", "age" });
-        var writer = Sharpy.Csv.DictWriter(sw, fieldnames);
+        var writer = Sharpy.CsvModule.DictWriter(sw, fieldnames);
 
         writer.Writeheader();
 
@@ -283,7 +283,7 @@ public class CsvDictTests
 
         var csv = sw.ToString();
         var lines = csv.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-        var reader = Sharpy.Csv.DictReader(lines);
+        var reader = Sharpy.CsvModule.DictReader(lines);
         var rows = new System.Collections.Generic.List<Sharpy.Dict<string, string>>();
         foreach (var r in reader)
         {
@@ -299,7 +299,7 @@ public class CsvDictTests
     public void DictWriter_NullOutput_ThrowsTypeError()
     {
         var fieldnames = new Sharpy.List<string>(new string[] { "name" });
-        Action act = () => Sharpy.Csv.DictWriter(null!, fieldnames);
+        Action act = () => Sharpy.CsvModule.DictWriter(null!, fieldnames);
         act.Should().Throw<Sharpy.TypeError>();
     }
 
@@ -307,7 +307,7 @@ public class CsvDictTests
     public void DictWriter_NullFieldnames_ThrowsTypeError()
     {
         var sw = new StringWriter();
-        Action act = () => Sharpy.Csv.DictWriter(sw, null!);
+        Action act = () => Sharpy.CsvModule.DictWriter(sw, null!);
         act.Should().Throw<Sharpy.TypeError>();
     }
 }
