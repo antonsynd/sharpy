@@ -1,6 +1,8 @@
 """Low-level networking interface (TCP, UDP, DNS)."""
 
-from system.net.sockets import SocketException, SocketError
+from system import IDisposable, Array
+from system.net import IPAddress, IPEndPoint, EndPoint, Dns
+from system.net.sockets import Socket as NetSocket, AddressFamily, SocketType, ProtocolType, SocketOptionLevel, SocketOptionName, SocketShutdown, SocketFlags, SocketException, SocketError
 
 class error(Exception):
     """Base exception for socket-related errors. Corresponds to Python's socket.error."""
@@ -53,3 +55,252 @@ class herror(error):
     def __init__(self, message: str, inner: Exception, errno: int = 0):
         """Create an herror wrapping an inner exception."""
         super().__init__(message, inner, errno)
+
+@final
+class socket(IDisposable):
+    """Wraps System.Net.Sockets.Socket to provide a Python-like socket API.
+
+    Supports TCP and UDP communication, socket options, and timeout handling.
+    """
+
+    _socket: NetSocket
+    _timeout: float | None
+
+    def __init__(self, family: int = 2, sock_type: int = 1, proto: int = 0):
+        """Create a new socket with the given address family, type, and protocol."""
+        self._socket = NetSocket(family to AddressFamily, sock_type to SocketType, proto to ProtocolType)
+        self._timeout = None
+
+    def __init__(self, existing: NetSocket):
+        """Wrap an existing .NET socket (used for accepted connections)."""
+        self._socket = existing
+        self._timeout = None
+
+    # ---- Properties ----
+
+    property get family(self) -> int:
+        """The address family of the socket."""
+        return self._socket.address_family to int
+
+    property get `type`(self) -> int:
+        """The socket type."""
+        return self._socket.socket_type to int
+
+    property get proto(self) -> int:
+        """The protocol type."""
+        return self._socket.protocol_type to int
+
+    # ---- Connection methods ----
+
+    def connect(self, address: tuple[host: str, port: int]) -> None:
+        """Connect to a remote (host, port) address."""
+        try:
+            ip_addresses = Dns.get_host_addresses(address[0])
+            if len(ip_addresses) == 0:
+                raise gaierror("Name or service not known", (SocketError.HostNotFound to int))
+            endpoint: IPEndPoint = IPEndPoint(ip_addresses[0], address[1])
+            self._socket.connect(endpoint)
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
+            raise timeout("timed out", ex, (ex.socket_error_code to int))
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    def bind(self, address: tuple[host: str, port: int]) -> None:
+        """Bind the socket to a local (host, port) address."""
+        try:
+            ip_addr: IPAddress = IPAddress.Any
+            host: str = address[0]
+            if host == "" or host == "0.0.0.0":
+                ip_addr = IPAddress.Any
+            elif host == "::":
+                ip_addr = IPAddress.IPv6Any
+            else:
+                ip_addr = IPAddress.parse(host)
+            endpoint: IPEndPoint = IPEndPoint(ip_addr, address[1])
+            self._socket.bind(endpoint)
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    def listen(self, backlog: int = 5) -> None:
+        """Enable a server to accept connections with the given backlog."""
+        try:
+            self._socket.listen(backlog)
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    def accept(self) -> tuple[conn: socket, addr: tuple[host: str, port: int]]:
+        """Accept a connection, returning (new socket, (remote_host, remote_port))."""
+        try:
+            accepted = self._socket.accept()
+            remote: EndPoint = accepted.remote_end_point
+            remote_ep: IPEndPoint = remote to IPEndPoint
+            conn: socket = socket(accepted)
+            return (conn, (remote_ep.address.to_string(), remote_ep.port))
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
+            raise timeout("timed out", ex, (ex.socket_error_code to int))
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    # ---- Data transfer methods ----
+
+    def send(self, data: bytes) -> int:
+        """Send data to the socket, returning the number of bytes sent."""
+        try:
+            return self._socket.send(data.to_array())
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
+            raise timeout("timed out", ex, (ex.socket_error_code to int))
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    def sendall(self, data: bytes) -> None:
+        """Send all data to the socket, continuing until every byte is sent."""
+        try:
+            buffer = data.to_array()
+            total: int = len(data)
+            total_sent: int = 0
+            while total_sent < total:
+                sent: int = self._socket.send(buffer, total_sent, total - total_sent, SocketFlags.None)
+                if sent == 0:
+                    raise error("Connection reset by peer", (SocketError.ConnectionReset to int))
+                total_sent = total_sent + sent
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
+            raise timeout("timed out", ex, (ex.socket_error_code to int))
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    def recv(self, bufsize: int) -> bytes:
+        """Receive up to bufsize bytes from the socket."""
+        try:
+            buffer = array[byte](bufsize)
+            received: int = self._socket.receive(buffer)
+            result = array[byte](received)
+            Array.copy(buffer, result, received)
+            return bytes(result)
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
+            raise timeout("timed out", ex, (ex.socket_error_code to int))
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    def sendto(self, data: bytes, address: tuple[host: str, port: int]) -> int:
+        """Send data to a specific (host, port) address (UDP)."""
+        try:
+            ip_addr: IPAddress = IPAddress.parse(address[0])
+            endpoint: IPEndPoint = IPEndPoint(ip_addr, address[1])
+            return self._socket.send_to(data.to_array(), endpoint)
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
+            raise timeout("timed out", ex, (ex.socket_error_code to int))
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    def recvfrom(self, bufsize: int) -> tuple[data: bytes, addr: tuple[host: str, port: int]]:
+        """Receive data and the sender's address (UDP)."""
+        try:
+            buffer = array[byte](bufsize)
+            remote: EndPoint = IPEndPoint(IPAddress.Any, 0)
+            received: int = self._socket.receive_from(buffer, ref remote)
+            result = array[byte](received)
+            Array.copy(buffer, result, received)
+            ep: IPEndPoint = remote to IPEndPoint
+            return (bytes(result), (ep.address.to_string(), ep.port))
+        except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
+            raise timeout("timed out", ex, (ex.socket_error_code to int))
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    # ---- Socket options ----
+
+    def setsockopt(self, level: int, optname: int, value: int) -> None:
+        """Set a socket option (e.g., SOL_SOCKET, SO_REUSEADDR)."""
+        try:
+            self._socket.set_socket_option(level to SocketOptionLevel, optname to SocketOptionName, value)
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    def getsockopt(self, level: int, optname: int) -> int:
+        """Get a socket option value."""
+        try:
+            return self._socket.get_socket_option(level to SocketOptionLevel, optname to SocketOptionName) to int
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    # ---- Lifecycle methods ----
+
+    def settimeout(self, timeout: float | None) -> None:
+        """Set the timeout in seconds for blocking operations, or None for blocking mode."""
+        self._timeout = timeout
+        if timeout is None:
+            self._socket.blocking = True
+            self._socket.receive_timeout = 0
+            self._socket.send_timeout = 0
+        else:
+            value: float = timeout
+            if value == 0.0:
+                self._socket.blocking = False
+            else:
+                self._socket.blocking = True
+                ms: int = (value * 1000.0) to int
+                self._socket.receive_timeout = ms
+                self._socket.send_timeout = ms
+
+    def gettimeout(self) -> float | None:
+        """Return the timeout in seconds, or None if in blocking mode."""
+        return self._timeout
+
+    def setblocking(self, flag: bool) -> None:
+        """Set blocking (True) or non-blocking (False) mode."""
+        if flag:
+            self.settimeout(None)
+        else:
+            self.settimeout(0.0)
+
+    def getblocking(self) -> bool:
+        """Return whether the socket is in blocking mode."""
+        return self._socket.blocking
+
+    def shutdown(self, how: int) -> None:
+        """Shut down one or both halves of the connection (SHUT_RD/WR/RDWR)."""
+        try:
+            self._socket.shutdown(how to SocketShutdown)
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
+
+    def close(self) -> None:
+        """Close the socket."""
+        self._socket.close()
+
+    def getsockname(self) -> tuple[host: str, port: int]:
+        """Return the local (host, port) address the socket is bound to."""
+        endpoint = self._socket.local_end_point
+        if endpoint is None:
+            raise error("Socket is not bound to an address.")
+        ep: IPEndPoint = endpoint to IPEndPoint
+        return (ep.address.to_string(), ep.port)
+
+    def getpeername(self) -> tuple[host: str, port: int]:
+        """Return the remote (host, port) address the socket is connected to."""
+        endpoint = self._socket.remote_end_point
+        if endpoint is None:
+            raise error("Socket is not connected.")
+        ep: IPEndPoint = endpoint to IPEndPoint
+        return (ep.address.to_string(), ep.port)
+
+    def fileno(self) -> int:
+        """Return the socket handle (file descriptor) as an integer."""
+        return self._socket.handle.to_int64() to int
+
+    def dispose(self) -> None:
+        """Dispose the underlying socket resources."""
+        self._socket.dispose()
+
+    def __enter__(self) -> socket:
+        return self
+
+    def __exit__(self):
+        self.dispose()
+
+    def __str__(self) -> str:
+        fd: int = self.fileno()
+        fam: int = self.family
+        typ: int = self.`type`
+        pr: int = self.proto
+        return f"<socket fd={fd}, family={fam}, type={typ}, proto={pr}>"
