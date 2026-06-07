@@ -1,131 +1,55 @@
 """Low-level networking interface (TCP, UDP, DNS)."""
 
-from sharpy import SocketWrapper, SocketModule
-from sharpy import SharpySocketError, SharpySocketTimeout, SharpySocketGaiError, SharpySocketHError
-from system.net import IPAddress, Dns
+from system.net.sockets import SocketException, SocketError
 
-# ---- Address family constants (mirror System.Net.Sockets.AddressFamily) ----
-AF_INET: int = 2
-AF_INET6: int = 23
-AF_UNIX: int = 1
+class error(Exception):
+    """Base exception for socket-related errors. Corresponds to Python's socket.error."""
 
-# ---- Socket type constants (mirror System.Net.Sockets.SocketType) ----
-SOCK_STREAM: int = 1
-SOCK_DGRAM: int = 2
-SOCK_RAW: int = 3
+    errno: int
 
-# ---- Protocol constants (mirror System.Net.Sockets.ProtocolType) ----
-IPPROTO_IP: int = 0
-IPPROTO_TCP: int = 6
-IPPROTO_UDP: int = 17
+    def __init__(self, message: str, errno: int = 0):
+        """Create a socket error with the specified message and optional errno."""
+        super().__init__(message)
+        self.errno = errno
 
-# ---- Socket option constants (mirror System.Net.Sockets option enums) ----
-SOL_SOCKET: int = 65535
-SO_REUSEADDR: int = 4
-SO_KEEPALIVE: int = 8
-SO_BROADCAST: int = 32
-SO_RCVBUF: int = 4098
-SO_SNDBUF: int = 4097
-TCP_NODELAY: int = 1
+    def __init__(self, message: str, inner: Exception, errno: int = 0):
+        """Create a socket error wrapping an inner exception."""
+        super().__init__(message, inner)
+        self.errno = errno
 
-# ---- Shutdown constants (mirror System.Net.Sockets.SocketShutdown) ----
-SHUT_RD: int = 0
-SHUT_WR: int = 1
-SHUT_RDWR: int = 2
+    def from_socket_exception(ex: SocketException) -> error:
+        """Create a socket error from a .NET SocketException."""
+        return error(ex.Message, ex, (ex.socket_error_code to int))
 
-# ---- Other constants ----
-SOMAXCONN: int = 128
+class timeout(error):
+    """Raised when a socket operation times out. Corresponds to Python's socket.timeout."""
 
-_default_timeout: float? = None
+    def __init__(self, message: str, errno: int = 0):
+        """Create a socket timeout error with the specified message."""
+        super().__init__(message, errno)
 
-def socket(family: int = 2, sock_type: int = 1, proto: int = 0) -> SocketWrapper:
-    """Create a new socket. Defaults are AF_INET (2) and SOCK_STREAM (1)."""
-    return SocketModule.socket(family, sock_type, proto)
+    def __init__(self, message: str, inner: Exception, errno: int = 0):
+        """Create a socket timeout error wrapping an inner exception."""
+        super().__init__(message, inner, errno)
 
-def create_connection(address: tuple[str, int], timeout: float? = None) -> SocketWrapper:
-    """Connect to a TCP (host, port) address and return the connected socket."""
-    sock: SocketWrapper = socket(2, 1, 0)
-    try:
-        if timeout is not None:
-            sock.settimeout(timeout)
-        sock.connect(address)
-        return sock
-    except Exception:
-        sock.close()
-        raise
+class gaierror(error):
+    """Raised for address-related errors (e.g., DNS failures). Python's socket.gaierror."""
 
-def gethostname() -> str:
-    """Return the hostname of the current machine."""
-    return Dns.get_host_name()
+    def __init__(self, message: str, errno: int = 0):
+        """Create a GAI error with the specified message."""
+        super().__init__(message, errno)
 
-def gethostbyname(hostname: str) -> str:
-    """Resolve a hostname to an IPv4 address string."""
-    addresses = Dns.get_host_addresses(hostname)
-    i: int = 0
-    while i < len(addresses):
-        if (addresses[i].address_family to int) == AF_INET:
-            return addresses[i].to_string()
-        i = i + 1
-    if len(addresses) > 0:
-        return addresses[0].to_string()
-    raise SharpySocketGaiError("Name or service not known", 11001)
+    def __init__(self, message: str, inner: Exception, errno: int = 0):
+        """Create a GAI error wrapping an inner exception."""
+        super().__init__(message, inner, errno)
 
-def getfqdn() -> str:
-    """Return the fully qualified domain name of the local host."""
-    try:
-        host_name: str = Dns.get_host_name()
-        entry = Dns.get_host_entry(host_name)
-        return entry.host_name
-    except Exception:
-        return "localhost"
+class herror(error):
+    """Raised for legacy address-related errors. Corresponds to Python's socket.herror."""
 
-def getnameinfo(sockaddr: tuple[str, int], flags: int = 0) -> tuple[str, str]:
-    """Resolve a socket address to a (host, service) tuple."""
-    entry = Dns.get_host_entry(sockaddr[0])
-    host: str = entry.host_name
-    service: str = str(sockaddr[1])
-    return (host, service)
+    def __init__(self, message: str, errno: int = 0):
+        """Create an herror with the specified message."""
+        super().__init__(message, errno)
 
-def getdefaulttimeout() -> float?:
-    """Return the default timeout in seconds for new socket objects, or None."""
-    return _default_timeout
-
-def setdefaulttimeout(timeout: float?) -> None:
-    """Set the default timeout for new socket objects. None means blocking mode."""
-    _default_timeout = timeout
-
-def htons(x: int) -> int:
-    """Convert a 16-bit integer from host byte order to network byte order."""
-    return SocketModule.htons(x)
-
-def htonl(x: int) -> int:
-    """Convert a 32-bit integer from host byte order to network byte order."""
-    return SocketModule.htonl(x)
-
-def ntohs(x: int) -> int:
-    """Convert a 16-bit integer from network byte order to host byte order."""
-    return SocketModule.ntohs(x)
-
-def ntohl(x: int) -> int:
-    """Convert a 32-bit integer from network byte order to host byte order."""
-    return SocketModule.ntohl(x)
-
-def inet_aton(ip_string: str) -> bytes:
-    """Convert an IPv4 address string to 32-bit packed binary format."""
-    addr: IPAddress = IPAddress.parse(ip_string)
-    return bytes(addr.get_address_bytes())
-
-def inet_ntoa(packed_ip: bytes) -> str:
-    """Convert a 32-bit packed binary IPv4 address to a string."""
-    addr: IPAddress = IPAddress(packed_ip.to_array())
-    return addr.to_string()
-
-def inet_pton(af: int, ip_string: str) -> bytes:
-    """Convert an IP address string to packed binary format for the given family."""
-    addr: IPAddress = IPAddress.parse(ip_string)
-    return bytes(addr.get_address_bytes())
-
-def inet_ntop(af: int, packed_ip: bytes) -> str:
-    """Convert a packed binary IP address to string form for the given family."""
-    addr: IPAddress = IPAddress(packed_ip.to_array())
-    return addr.to_string()
+    def __init__(self, message: str, inner: Exception, errno: int = 0):
+        """Create an herror wrapping an inner exception."""
+        super().__init__(message, inner, errno)
