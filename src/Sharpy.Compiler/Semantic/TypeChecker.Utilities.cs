@@ -795,6 +795,13 @@ internal partial class TypeChecker
             };
         }
 
+        // Also check properties in the parent hierarchy (e.g. super().age in
+        // an @override property getter). Properties generate C# base.Property
+        // so they resolve at runtime; we just need the property type here.
+        var (parentProperty, _) = FindPropertyInHierarchy(classBaseType, memberName);
+        if (parentProperty != null)
+            return parentProperty.Type;
+
         AddError($"No method '{memberName}' found in parent class hierarchy of '{_currentClass.Name}'",
             memberAccess.LineStart, memberAccess.ColumnStart,
             code: DiagnosticCodes.Semantic.UndefinedMember,

@@ -1798,10 +1798,14 @@ internal partial class TypeChecker
         var previousControlFlowDepth = _controlFlowDepth;
         var previousIsGenerator = _currentFunctionIsGenerator;
         var previousIsAsync = _currentFunctionIsAsync;
+        var previousMethodIsOverride = _currentMethodIsOverride;
+        var previousMethodIsDunder = _currentMethodIsDunder;
         _currentMethodName = propDef.Name;
         _controlFlowDepth = 0;
         _currentFunctionIsGenerator = false;
         _currentFunctionIsAsync = false;
+        _currentMethodIsOverride = propDef.Decorators.Any(d => d.Name == DecoratorNames.Override);
+        _currentMethodIsDunder = false;
 
         foreach (var stmt in propDef.Body)
         {
@@ -1812,6 +1816,8 @@ internal partial class TypeChecker
         _controlFlowDepth = previousControlFlowDepth;
         _currentFunctionIsGenerator = previousIsGenerator;
         _currentFunctionIsAsync = previousIsAsync;
+        _currentMethodIsOverride = previousMethodIsOverride;
+        _currentMethodIsDunder = previousMethodIsDunder;
         _currentFunctionReturnType = previousFunctionReturnType;
 
         _symbolTable.ExitScope();
