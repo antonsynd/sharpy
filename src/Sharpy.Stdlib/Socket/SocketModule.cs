@@ -151,7 +151,7 @@ namespace Sharpy
                     global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(ipAddresses[0], address.Item2);
                     this._Socket.Connect(endpoint);
                 }
-                catch (global::System.Net.Sockets.SocketException ex)when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -225,7 +225,7 @@ namespace Sharpy
                     Socket conn = new Socket(accepted);
                     return (conn, (remoteEp.Address.ToString(), remoteEp.Port));
                 }
-                catch (global::System.Net.Sockets.SocketException ex)when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -244,7 +244,7 @@ namespace Sharpy
                 {
                     return this._Socket.Send(data.ToArray());
                 }
-                catch (global::System.Net.Sockets.SocketException ex)when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -275,7 +275,7 @@ namespace Sharpy
                         totalSent = totalSent + sent;
                     }
                 }
-                catch (global::System.Net.Sockets.SocketException ex)when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -298,7 +298,7 @@ namespace Sharpy
                     global::System.Array.Copy(buffer, result, received);
                     return new global::Sharpy.Bytes(result);
                 }
-                catch (global::System.Net.Sockets.SocketException ex)when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -319,7 +319,7 @@ namespace Sharpy
                     global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(ipAddr, address.Item2);
                     return this._Socket.SendTo(data.ToArray(), endpoint);
                 }
-                catch (global::System.Net.Sockets.SocketException ex)when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
@@ -344,7 +344,7 @@ namespace Sharpy
                     global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)remote;
                     return (new global::Sharpy.Bytes(result), (ep.Address.ToString(), ep.Port));
                 }
-                catch (global::System.Net.Sockets.SocketException ex)when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
+                catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
