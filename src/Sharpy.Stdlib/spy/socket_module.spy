@@ -4,6 +4,41 @@ from system import IDisposable, Array
 from system.net import IPAddress, IPEndPoint, EndPoint, Dns
 from system.net.sockets import Socket as NetSocket, AddressFamily, SocketType, ProtocolType, SocketOptionLevel, SocketOptionName, SocketShutdown, SocketFlags, SocketException, SocketError
 
+# ---- Address family constants (mirror System.Net.Sockets.AddressFamily) ----
+AF_INET: int = AddressFamily.InterNetwork to int
+AF_INET6: int = AddressFamily.InterNetworkV6 to int
+AF_UNIX: int = AddressFamily.Unix to int
+
+# ---- Socket type constants (mirror System.Net.Sockets.SocketType) ----
+SOCK_STREAM: int = SocketType.Stream to int
+SOCK_DGRAM: int = SocketType.Dgram to int
+SOCK_RAW: int = SocketType.Raw to int
+
+# ---- Protocol constants (mirror System.Net.Sockets.ProtocolType) ----
+IPPROTO_IP: int = ProtocolType.IP to int
+IPPROTO_TCP: int = ProtocolType.Tcp to int
+IPPROTO_UDP: int = ProtocolType.Udp to int
+
+# ---- Socket option constants (mirror System.Net.Sockets option enums) ----
+SOL_SOCKET: int = SocketOptionLevel.Socket to int
+SO_REUSEADDR: int = SocketOptionName.ReuseAddress to int
+SO_KEEPALIVE: int = SocketOptionName.KeepAlive to int
+SO_BROADCAST: int = SocketOptionName.Broadcast to int
+SO_RCVBUF: int = SocketOptionName.ReceiveBuffer to int
+SO_SNDBUF: int = SocketOptionName.SendBuffer to int
+TCP_NODELAY: int = SocketOptionName.NoDelay to int
+
+# ---- Shutdown constants (mirror System.Net.Sockets.SocketShutdown) ----
+SHUT_RD: int = SocketShutdown.Receive to int
+SHUT_WR: int = SocketShutdown.Send to int
+SHUT_RDWR: int = SocketShutdown.Both to int
+
+# ---- Other constants ----
+SOMAXCONN: int = 128
+
+# Default timeout applied to newly created sockets (None means blocking mode).
+_default_timeout: float | None = None
+
 class error(Exception):
     """Base exception for socket-related errors. Corresponds to Python's socket.error."""
 
@@ -70,6 +105,9 @@ class socket(IDisposable):
         """Create a new socket with the given address family, type, and protocol."""
         self._socket = NetSocket(family to AddressFamily, sock_type to SocketType, proto to ProtocolType)
         self._timeout = None
+        default: float | None = _default_timeout
+        if default is not None:
+            self.settimeout(default)
 
     def __init__(self, existing: NetSocket):
         """Wrap an existing .NET socket (used for accepted connections)."""
@@ -304,3 +342,67 @@ class socket(IDisposable):
         typ: int = self.`type`
         pr: int = self.proto
         return f"<socket fd={fd}, family={fam}, type={typ}, proto={pr}>"
+
+# ---- Default timeout ----
+
+def getdefaulttimeout() -> float | None:
+    """Return the default timeout in seconds for new sockets, or None."""
+    return _default_timeout
+
+def setdefaulttimeout(timeout: float | None) -> None:
+    """Set the default timeout for new sockets. None means blocking mode."""
+    _default_timeout = timeout
+
+# ---- Connection helper ----
+
+def create_connection(address: tuple[host: str, port: int], timeout: float | None = None) -> socket:
+    """Connect to a TCP (host, port) address and return the connected socket."""
+    sock: socket = socket(AF_INET, SOCK_STREAM, 0)
+    try:
+        if timeout is not None:
+            sock.settimeout(timeout)
+        sock.connect(address)
+        return sock
+    except Exception:
+        sock.close()
+        raise
+
+# ---- DNS functions ----
+
+def gethostname() -> str:
+    """Return the hostname of the current machine."""
+    return Dns.get_host_name()
+
+def gethostbyname(hostname: str) -> str:
+    """Resolve a hostname to an IPv4 address string."""
+    try:
+        addresses = Dns.get_host_addresses(hostname)
+        i: int = 0
+        while i < len(addresses):
+            if (addresses[i].address_family to int) == AF_INET:
+                return addresses[i].to_string()
+            i = i + 1
+        if len(addresses) > 0:
+            return addresses[0].to_string()
+        raise gaierror("Name or service not known", (SocketError.HostNotFound to int))
+    except SocketException as ex:
+        raise gaierror(ex.Message, ex, (ex.socket_error_code to int))
+
+def getfqdn() -> str:
+    """Return the fully qualified domain name of the local host."""
+    try:
+        host_name: str = Dns.get_host_name()
+        entry = Dns.get_host_entry(host_name)
+        return entry.host_name
+    except Exception:
+        return "localhost"
+
+def getnameinfo(sockaddr: tuple[host: str, port: int], flags: int = 0) -> tuple[host: str, service: str]:
+    """Resolve a socket address to a (host, service) tuple."""
+    try:
+        entry = Dns.get_host_entry(sockaddr[0])
+        host: str = entry.host_name
+        service: str = str(sockaddr[1])
+        return (host, service)
+    except SocketException as ex:
+        raise gaierror(ex.Message, ex, (ex.socket_error_code to int))
