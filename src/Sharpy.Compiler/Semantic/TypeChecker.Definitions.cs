@@ -28,6 +28,38 @@ internal partial class TypeChecker
         if (functionSymbol == null)
             return;
 
+        ResolveFunctionSignatureInto(functionSymbol, functionDef);
+    }
+
+    /// <summary>
+    /// Pre-pass: resolve parameter and return types for all methods of a class so that
+    /// forward references between methods (e.g., __init__ calling a method declared later
+    /// in the body) see resolved types instead of Unknown. Without this, the type checker
+    /// processes method bodies in declaration order, so a call to a method defined later
+    /// reads a null/Unknown return type and produces an internal error (SPY0907).
+    /// Must run after _currentClass is set so LookupFunctionSymbol resolves class members.
+    /// </summary>
+    private void ResolveClassMethodSignatures(IReadOnlyList<Statement> body)
+    {
+        foreach (var statement in body)
+        {
+            if (statement is FunctionDef methodDef)
+            {
+                var methodSymbol = LookupFunctionSymbol(methodDef);
+                if (methodSymbol != null)
+                    ResolveFunctionSignatureInto(methodSymbol, methodDef);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Resolves a function/method symbol's parameter and return types from its
+    /// annotations and writes them onto the symbol in-place. Shared by the module-level
+    /// and class-method signature pre-passes. The 'self' parameter is left untouched —
+    /// it is typed as the enclosing class when the method body is checked.
+    /// </summary>
+    private void ResolveFunctionSignatureInto(FunctionSymbol functionSymbol, FunctionDef functionDef)
+    {
         // Enter a temporary scope for generic type parameters
         _symbolTable.EnterScope($"pre-pass:{functionDef.Name}");
 
@@ -48,6 +80,16 @@ internal partial class TypeChecker
             _symbolTable.Define(typeParamSymbol);
         }
 
+        // Set static context for Self type validation before resolving types, mirroring
+        // CheckFunction. A method is static if it has @static or no self parameter.
+        // This must match the body-check path so the (cached) Self resolution emits the
+        // correct diagnostic exactly once.
+        bool isStaticMethod = _currentClass != null &&
+            (functionDef.Decorators.Any(d => d.Name == DecoratorNames.Static) ||
+             functionDef.Parameters.Length == 0 ||
+             functionDef.Parameters[0].Name != PythonNames.Self);
+        _typeResolver.SetIsStaticContext(isStaticMethod);
+
         // Resolve return type from annotation
         var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
         if (functionDef.Name == DunderNames.Init)
@@ -59,12 +101,15 @@ internal partial class TypeChecker
             returnType = SemanticType.Void;
         }
 
-        // Resolve parameter types from annotations
+        // Resolve parameter types from annotations (skip 'self' — it is typed during
+        // body checking against the enclosing class).
         for (int i = 0; i < functionDef.Parameters.Length; i++)
         {
             var param = functionDef.Parameters[i];
+            if (param.Name == PythonNames.Self)
+                continue;
             var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
-            if (param.Type == null && param.Name != PythonNames.Self)
+            if (param.Type == null)
             {
                 paramType = SemanticType.Unknown;
             }
@@ -73,6 +118,8 @@ internal partial class TypeChecker
                 functionSymbol.Parameters[i] = functionSymbol.Parameters[i] with { Type = paramType };
             }
         }
+
+        _typeResolver.SetIsStaticContext(false);
 
         // Mutate the function symbol in-place so that all scopes referencing
         // this symbol (e.g., importing module scopes) see the updated return type.
@@ -906,6 +953,10 @@ internal partial class TypeChecker
         _currentClass = classSymbol;
         _typeResolver.SetCurrentTypeContext(classSymbol);
 
+        // Pre-pass: resolve method signatures so forward references between methods
+        // (e.g., __init__ calling a method declared later) see resolved return types.
+        ResolveClassMethodSignatures(classDef.Body);
+
         // Check all members
         foreach (var statement in classDef.Body)
         {
@@ -1004,6 +1055,10 @@ internal partial class TypeChecker
         var previousClass = _currentClass;
         _currentClass = structSymbol;
         _typeResolver.SetCurrentTypeContext(structSymbol);
+
+        // Pre-pass: resolve method signatures so forward references between methods
+        // (e.g., a method calling another declared later) see resolved return types.
+        ResolveClassMethodSignatures(structDef.Body);
 
         // Check all members
         foreach (var statement in structDef.Body)
