@@ -14,7 +14,7 @@ public class ItertoolsGrouping_Tests
     {
         var groups = new List<(int, List<int>)>();
 
-        foreach (var (key, group) in Itertools.Groupby<int, int>(Array.Empty<int>(), x => x))
+        foreach (var (key, group) in Itertools.Groupby(new Sharpy.List<int>(), (Func<int, int>)(x => x)))
         {
             var items = new List<int>();
             foreach (int item in group)
@@ -31,7 +31,7 @@ public class ItertoolsGrouping_Tests
         var groups = new List<(int, List<int>)>();
 
         // Python: groupby([1,2,1,2]) creates 4 groups, not 2
-        foreach (var (key, group) in Itertools.Groupby<int, int>(new[] { 1, 2, 1, 2 }, x => x))
+        foreach (var (key, group) in Itertools.Groupby(new Sharpy.List<int>(new[] { 1, 2, 1, 2 }), (Func<int, int>)(x => x)))
         {
             var items = new List<int>();
             foreach (int item in group)
@@ -50,10 +50,10 @@ public class ItertoolsGrouping_Tests
     public void Groupby_ByStringLength_GroupsStringsCorrectly()
     {
         var groups = new List<(int, List<string>)>();
-        var data = new[] { "a", "ab", "b", "bc" };
+        var data = new Sharpy.List<string>(new[] { "a", "ab", "b", "bc" });
 
         // Python: groupby([a,ab,b,bc], key=len) -> (1,[a]), (2,[ab]), (1,[b]), (2,[bc])
-        foreach (var (key, group) in Itertools.Groupby<string, int>(data, s => s.Length))
+        foreach (var (key, group) in Itertools.Groupby(data, (Func<string, int>)(s => s.Length)))
         {
             var items = new List<string>();
             foreach (string item in group)
@@ -77,7 +77,7 @@ public class ItertoolsGrouping_Tests
     {
         var groups = new List<(int, List<int>)>();
 
-        foreach (var (key, group) in Itertools.Groupby<int, int>(new[] { 5, 5, 5 }, x => x))
+        foreach (var (key, group) in Itertools.Groupby(new Sharpy.List<int>(new[] { 5, 5, 5 }), (Func<int, int>)(x => x)))
         {
             var items = new List<int>();
             foreach (int item in group)
@@ -96,7 +96,7 @@ public class ItertoolsGrouping_Tests
     public void Pairwise_TwoElements_ReturnsSinglePair()
     {
         var result = new List<(int, int)>();
-        foreach (var pair in Itertools.Pairwise(new[] { 10, 20 }))
+        foreach (var pair in Itertools.Pairwise(new Sharpy.List<int>(new[] { 10, 20 })))
         {
             result.Add(pair);
         }
@@ -112,7 +112,7 @@ public class ItertoolsGrouping_Tests
     public void Starmap_EmptyIterable_ReturnsEmpty()
     {
         var result = new List<int>();
-        foreach (int n in Itertools.Starmap<int, int, int>((a, b) => a + b, Array.Empty<(int, int)>()))
+        foreach (int n in Itertools.Starmap<int, int, int>((a, b) => a + b, new Sharpy.List<(int, int)>()))
         {
             result.Add(n);
         }
@@ -124,7 +124,7 @@ public class ItertoolsGrouping_Tests
     public void Starmap_SinglePair_ReturnsOneResult()
     {
         var result = new List<int>();
-        foreach (int n in Itertools.Starmap<int, int, int>((a, b) => a * b, new[] { (3, 7) }))
+        foreach (int n in Itertools.Starmap<int, int, int>((a, b) => a * b, new Sharpy.List<(int, int)>(new[] { (3, 7) })))
         {
             result.Add(n);
         }
@@ -137,26 +137,26 @@ public class ItertoolsGrouping_Tests
     [Fact]
     public void ZipLongest_EmptyAndNonEmpty_FillsWithDefault()
     {
-        var result = new List<int[]>();
+        var result = new List<(int, int)>();
         // Python: list(itertools.zip_longest([], [1,2])) == [(None, 1), (None, 2)]
         // For int: default(int) == 0
-        foreach (int[] arr in Itertools.ZipLongest(new IEnumerable<int>[] { Array.Empty<int>(), new[] { 1, 2 } }, 0))
+        foreach (var pair in Itertools.ZipLongest(new Sharpy.List<int>(), new Sharpy.List<int>(new[] { 1, 2 }), 0))
         {
-            result.Add(arr);
+            result.Add(pair);
         }
 
         result.Should().HaveCount(2);
-        result[0].Should().Equal(0, 1);
-        result[1].Should().Equal(0, 2);
+        result[0].Should().Be((0, 1));
+        result[1].Should().Be((0, 2));
     }
 
     [Fact]
     public void ZipLongest_BothEmpty_ReturnsEmpty()
     {
-        var result = new List<int[]>();
-        foreach (int[] arr in Itertools.ZipLongest(new IEnumerable<int>[] { Array.Empty<int>(), Array.Empty<int>() }, 0))
+        var result = new List<(int, int)>();
+        foreach (var pair in Itertools.ZipLongest(new Sharpy.List<int>(), new Sharpy.List<int>(), 0))
         {
-            result.Add(arr);
+            result.Add(pair);
         }
 
         result.Should().BeEmpty();
@@ -165,17 +165,20 @@ public class ItertoolsGrouping_Tests
     [Fact]
     public void ZipLongest_WithFillvalue_UsesCustomFillvalue()
     {
-        var result = new List<int[]>();
+        var result = new List<(int, int)>();
         // Python: list(itertools.zip_longest([1,2,3],[4,5], fillvalue=99)) == [(1,4),(2,5),(3,99)]
-        foreach (int[] arr in Itertools.ZipLongest(new IEnumerable<int>[] { new[] { 1, 2, 3 }, new[] { 4, 5 } }, 99))
+        foreach (var pair in Itertools.ZipLongest(
+            new Sharpy.List<int>(new[] { 1, 2, 3 }),
+            new Sharpy.List<int>(new[] { 4, 5 }),
+            99))
         {
-            result.Add(arr);
+            result.Add(pair);
         }
 
         result.Should().HaveCount(3);
-        result[0].Should().Equal(1, 4);
-        result[1].Should().Equal(2, 5);
-        result[2].Should().Equal(3, 99);
+        result[0].Should().Be((1, 4));
+        result[1].Should().Be((2, 5));
+        result[2].Should().Be((3, 99));
     }
 
     // --- Chain (static method) ---
@@ -235,7 +238,7 @@ public class ItertoolsGrouping_Tests
     {
         var result = new List<int>();
         // Python: list(itertools.accumulate([1,2,3,4])) == [1,3,6,10]
-        foreach (int n in Itertools.Accumulate(new[] { 1, 2, 3, 4 }))
+        foreach (int n in Itertools.Accumulate(new Sharpy.List<int>(new[] { 1, 2, 3, 4 })))
         {
             result.Add(n);
         }

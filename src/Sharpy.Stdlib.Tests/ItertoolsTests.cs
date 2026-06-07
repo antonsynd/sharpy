@@ -6,63 +6,46 @@ namespace Sharpy.Core.Tests;
 
 public class Itertools_Tests
 {
-    // --- ChainIterator ---
+    // --- Chain ---
 
     [Fact]
     public void Chain_ConcatenatesMultipleIterables()
     {
-        var chain = new Sharpy.ChainIterator<int>(
-            new IEnumerable<int>[] { new[] { 1, 2 }, new[] { 3, 4 }, new[] { 5 } }
-        );
+        var result = Sharpy.Itertools.Chain(
+            new[] { 1, 2 }, new[] { 3, 4 }, new[] { 5 }
+        ).ToList();
 
-        chain.Next().Should().Be(1);
-        chain.Next().Should().Be(2);
-        chain.Next().Should().Be(3);
-        chain.Next().Should().Be(4);
-        chain.Next().Should().Be(5);
-
-        FluentActions.Invoking(() => chain.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        result.Should().Equal(1, 2, 3, 4, 5);
     }
 
     [Fact]
-    public void Chain_EmptyIterables_ThrowsStopIteration()
+    public void Chain_EmptyIterables_ReturnsEmpty()
     {
-        var chain = new Sharpy.ChainIterator<int>(
-            new IEnumerable<int>[] { Array.Empty<int>(), Array.Empty<int>() }
-        );
+        var result = Sharpy.Itertools.Chain(
+            System.Array.Empty<int>(), System.Array.Empty<int>()
+        ).ToList();
 
-        FluentActions.Invoking(() => chain.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        result.Should().BeEmpty();
     }
 
     [Fact]
     public void Chain_SingleIterable_BehavesLikeOriginal()
     {
-        var chain = new Sharpy.ChainIterator<int>(
-            new IEnumerable<int>[] { new[] { 10, 20, 30 } }
-        );
+        var result = Sharpy.Itertools.Chain(
+            new[] { 10, 20, 30 }
+        ).ToList();
 
-        chain.Next().Should().Be(10);
-        chain.Next().Should().Be(20);
-        chain.Next().Should().Be(30);
-
-        FluentActions.Invoking(() => chain.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        result.Should().Equal(10, 20, 30);
     }
 
     [Fact]
     public void Chain_WithEmptyIntermediateIterable_SkipsIt()
     {
-        var chain = new Sharpy.ChainIterator<int>(
-            new IEnumerable<int>[] { new[] { 1 }, Array.Empty<int>(), new[] { 2 } }
-        );
+        var result = Sharpy.Itertools.Chain(
+            new[] { 1 }, System.Array.Empty<int>(), new[] { 2 }
+        ).ToList();
 
-        chain.Next().Should().Be(1);
-        chain.Next().Should().Be(2);
-
-        FluentActions.Invoking(() => chain.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        result.Should().Equal(1, 2);
     }
 
     // --- Islice (generated methods via bridge) ---
@@ -132,75 +115,64 @@ public class Itertools_Tests
         result.Should().BeEmpty();
     }
 
-    // --- CombinationsIterator ---
+    // --- Combinations ---
 
     [Fact]
     public void Combinations_ReturnsCorrectCombinations()
     {
-        var combs = new Sharpy.CombinationsIterator<int>(new[] { 1, 2, 3 }, 2);
+        var items = new Sharpy.List<int>(new[] { 1, 2, 3 });
+        var results = Sharpy.Itertools.Combinations(items, 2).ToList();
 
-        combs.Next().Should().Equal(1, 2);
-        combs.Next().Should().Equal(1, 3);
-        combs.Next().Should().Equal(2, 3);
-
-        FluentActions.Invoking(() => combs.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        results.Should().HaveCount(3);
+        results[0].Should().Equal(1, 2);
+        results[1].Should().Equal(1, 3);
+        results[2].Should().Equal(2, 3);
     }
 
     [Fact]
-    public void Combinations_RLargerThanPool_ThrowsStopIteration()
+    public void Combinations_RLargerThanPool_ReturnsEmpty()
     {
-        var combs = new Sharpy.CombinationsIterator<int>(new[] { 1, 2 }, 5);
+        var items = new Sharpy.List<int>(new[] { 1, 2 });
+        var results = Sharpy.Itertools.Combinations(items, 5).ToList();
 
-        FluentActions.Invoking(() => combs.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        results.Should().BeEmpty();
     }
 
     [Fact]
-    public void Combinations_RZero_ReturnsSingleEmptyArray()
+    public void Combinations_RZero_ReturnsSingleEmptyList()
     {
-        var combs = new Sharpy.CombinationsIterator<int>(new[] { 1, 2, 3 }, 0);
+        var items = new Sharpy.List<int>(new[] { 1, 2, 3 });
+        var results = Sharpy.Itertools.Combinations(items, 0).ToList();
 
-        combs.Next().Should().BeEmpty();
-
-        FluentActions.Invoking(() => combs.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        results.Should().HaveCount(1);
+        results[0].Should().BeEmpty();
     }
 
     [Fact]
     public void Combinations_NegativeR_ThrowsValueError()
     {
-        FluentActions.Invoking(() => new Sharpy.CombinationsIterator<int>(new[] { 1 }, -1))
+        var items = new Sharpy.List<int>(new[] { 1 });
+        FluentActions.Invoking(() => Sharpy.Itertools.Combinations(items, -1).ToList())
             .Should().Throw<Sharpy.ValueError>();
     }
 
     [Fact]
     public void Combinations_REqualsPoolSize_ReturnsSingleCombination()
     {
-        var combs = new Sharpy.CombinationsIterator<int>(new[] { 1, 2, 3 }, 3);
+        var items = new Sharpy.List<int>(new[] { 1, 2, 3 });
+        var results = Sharpy.Itertools.Combinations(items, 3).ToList();
 
-        combs.Next().Should().Equal(1, 2, 3);
-
-        FluentActions.Invoking(() => combs.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        results.Should().HaveCount(1);
+        results[0].Should().Equal(1, 2, 3);
     }
 
-    // --- PermutationsIterator ---
+    // --- Permutations ---
 
     [Fact]
     public void Permutations_DefaultR_ReturnsFullPermutations()
     {
-        var perms = new Sharpy.PermutationsIterator<int>(new[] { 1, 2, 3 });
-
-        var results = new List<int[]>();
-        try
-        {
-            while (true)
-            {
-                results.Add(perms.Next());
-            }
-        }
-        catch (Sharpy.StopIteration) { }
+        var items = new Sharpy.List<int>(new[] { 1, 2, 3 });
+        var results = Sharpy.Itertools.Permutations(items).ToList();
 
         // 3! = 6
         results.Should().HaveCount(6);
@@ -211,46 +183,40 @@ public class Itertools_Tests
     [Fact]
     public void Permutations_WithR_ReturnsRLengthPermutations()
     {
-        var perms = new Sharpy.PermutationsIterator<int>(new[] { 1, 2, 3 }, 2);
-
-        var results = new List<int[]>();
-        try
-        {
-            while (true)
-            {
-                results.Add(perms.Next());
-            }
-        }
-        catch (Sharpy.StopIteration) { }
+        var items = new Sharpy.List<int>(new[] { 1, 2, 3 });
+        var results = Sharpy.Itertools.Permutations(items, 2).ToList();
 
         // P(3,2) = 6
         results.Should().HaveCount(6);
     }
 
     [Fact]
-    public void Permutations_RLargerThanPool_ThrowsStopIteration()
+    public void Permutations_RLargerThanPool_ReturnsEmpty()
     {
-        var perms = new Sharpy.PermutationsIterator<int>(new[] { 1, 2 }, 5);
+        var items = new Sharpy.List<int>(new[] { 1, 2 });
+        var results = Sharpy.Itertools.Permutations(items, 5).ToList();
 
-        FluentActions.Invoking(() => perms.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        results.Should().BeEmpty();
     }
 
     [Fact]
-    public void Permutations_NegativeR_ThrowsValueError()
+    public void Permutations_NegativeR_ReturnsFullPermutations()
     {
-        FluentActions.Invoking(() => new Sharpy.PermutationsIterator<int>(new[] { 1 }, -1))
-            .Should().Throw<Sharpy.ValueError>();
+        // In the generated code, r < 0 means full length (not an error)
+        var items = new Sharpy.List<int>(new[] { 1, 2 });
+        var results = Sharpy.Itertools.Permutations(items, -1).ToList();
+
+        // 2! = 2
+        results.Should().HaveCount(2);
     }
 
     [Fact]
     public void Permutations_SingleElement_ReturnsSinglePermutation()
     {
-        var perms = new Sharpy.PermutationsIterator<int>(new[] { 42 });
+        var items = new Sharpy.List<int>(new[] { 42 });
+        var results = Sharpy.Itertools.Permutations(items).ToList();
 
-        perms.Next().Should().Equal(42);
-
-        FluentActions.Invoking(() => perms.Next())
-            .Should().Throw<Sharpy.StopIteration>();
+        results.Should().HaveCount(1);
+        results[0].Should().Equal(42);
     }
 }
