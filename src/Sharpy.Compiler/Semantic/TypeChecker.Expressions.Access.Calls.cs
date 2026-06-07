@@ -1015,7 +1015,7 @@ internal partial class TypeChecker
         // Record the resolved call target for codegen
         _semanticInfo.SetCallTarget(call, matchingOverload);
 
-        var returnType = matchingOverload.ReturnType;
+        var returnType = InferGenericReturnType(matchingOverload, argTypes, call);
 
         if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
         {
@@ -1061,7 +1061,7 @@ internal partial class TypeChecker
         // Record the resolved call target for codegen
         _semanticInfo.SetCallTarget(call, matchingOverload);
 
-        return matchingOverload.ReturnType;
+        return InferGenericReturnType(matchingOverload, argTypes, call);
     }
 
     /// <summary>
@@ -1107,7 +1107,7 @@ internal partial class TypeChecker
         // Record the resolved call target for codegen
         _semanticInfo.SetCallTarget(call, matchingOverload);
 
-        return matchingOverload.ReturnType;
+        return InferGenericReturnType(matchingOverload, argTypes, call);
     }
 
     /// <summary>
@@ -1143,6 +1143,25 @@ internal partial class TypeChecker
             }
         }
         return false;
+    }
+
+    private SemanticType InferGenericReturnType(
+        FunctionSymbol overload, List<SemanticType> argTypes, FunctionCall call)
+    {
+        if (!overload.IsGeneric)
+            return overload.ReturnType;
+
+        var inferenceResult = _genericInference.InferTypeArguments(overload, argTypes);
+        if (inferenceResult.Success && inferenceResult.InferredTypes != null)
+        {
+            _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
+            return SubstituteTypeParameters(
+                overload.ReturnType,
+                overload.TypeParameters,
+                inferenceResult.InferredTypes);
+        }
+
+        return overload.ReturnType;
     }
 
     /// <summary>
