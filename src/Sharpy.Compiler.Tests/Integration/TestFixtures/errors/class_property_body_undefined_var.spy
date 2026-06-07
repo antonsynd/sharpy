@@ -1,0 +1,3 @@
+class Bar:
+    property get name(self) -> str:
+        return undefined_var

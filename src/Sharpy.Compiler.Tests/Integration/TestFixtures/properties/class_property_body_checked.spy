@@ -1,0 +1,27 @@
+class Account:
+    _balance: float
+    _owner: str
+
+    def __init__(self, owner: str, balance: float):
+        self._owner = owner
+        self._balance = balance
+
+    property get balance(self) -> float:
+        return self._balance
+
+    property set balance(self, value: float):
+        if value < 0.0:
+            self._balance = 0.0
+        else:
+            self._balance = value
+
+    property get label(self) -> str:
+        return self._owner + ": " + str(self._balance)
+
+def main():
+    a = Account("alice", 10.5)
+    print(a.balance)
+    a.balance = -3.0
+    print(a.balance)
+    a.balance = 42.25
+    print(a.label)

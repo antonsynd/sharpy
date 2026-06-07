@@ -1,0 +1,3 @@
+class Foo:
+    property get version(self) -> str:
+        return 42
