@@ -8,10 +8,6 @@ import math
 
 ## Functions
 
-### `math.prod(iterable: Iterable[int], start: long = 1) -> long`
-
-Return the product of all the elements in the iterable, starting with the given start value.
-
 ### `math.ceil(x: float) -> float`
 
 Return the ceiling of x as a float.
@@ -167,6 +163,10 @@ Return an accurate floating-point sum of values in the iterable.
 ### `math.prod(iterable: list[float], start: float = 1.0d) -> float`
 
 Return the product of all the elements in the iterable.
+
+### `math.prod(iterable: list[int], start: long = 1) -> long`
+
+Return the product of all the elements in the iterable, starting with the given start value.
 
 ### `math.hypot(x: float, y: float) -> float`
 

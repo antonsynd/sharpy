@@ -6,40 +6,67 @@ Secure hash and message digest algorithms.
 import hashlib
 ```
 
-## HashObject
-
-Represents a hash object that accumulates data and computes cryptographic hashes.
-Mirrors Python's hashlib hash object API.
-
-### Properties
+## Properties
 
 | Name | Type | Description |
 |------|------|-------------|
-| `digest_size` | `int` | The size of the resulting hash in bytes. |
-| `name` | `str` | The canonical name of this hashing algorithm (e.g., "sha256"). |
+| `name` | `str` |  |
+| `digest_size` | `int` |  |
 
-### `update(data: str)`
+## Functions
+
+### `hashlib.update(data: str)`
 
 Append data to the hash object. The data is encoded as UTF-8.
 
-**Parameters:**
-
-- `data` (str) -- The string data to append.
-
-### `hexdigest() -> str`
+### `hashlib.hexdigest() -> str`
 
 Return the hex-encoded string of the hash digest.
 
-**Returns:** A lowercase hex string of the computed hash.
-
-### `digest() -> list[int]`
+### `hashlib.digest() -> list[int]`
 
 Return the raw hash digest as a list of integers (byte values 0-255).
 
-**Returns:** A `List{T}` of integer byte values.
-
-### `copy() -> HashObject`
+### `hashlib.copy() -> HashObject`
 
 Return a copy of the hash object with the same accumulated data.
 
-**Returns:** A new `HashObject` with the same state.
+### `hashlib.md5(data: str = "") -> HashObject`
+
+Return a new hash object for MD5, optionally initialized with data.
+
+### `hashlib.sha1(data: str = "") -> HashObject`
+
+Return a new hash object for SHA-1, optionally initialized with data.
+
+### `hashlib.sha256(data: str = "") -> HashObject`
+
+Return a new hash object for SHA-256, optionally initialized with data.
+
+### `hashlib.sha384(data: str = "") -> HashObject`
+
+Return a new hash object for SHA-384, optionally initialized with data.
+
+### `hashlib.sha512(data: str = "") -> HashObject`
+
+Return a new hash object for SHA-512, optionally initialized with data.
+
+### `hashlib.sha224(data: str = "") -> HashObject`
+
+Return a new hash object for SHA-224, optionally initialized with data.
+
+### `hashlib.sha3256(data: str = "") -> HashObject`
+
+Return a new hash object for SHA3-256, optionally initialized with data.
+
+### `hashlib.sha3512(data: str = "") -> HashObject`
+
+Return a new hash object for SHA3-512, optionally initialized with data.
+
+### `hashlib.blake2b(data: str = "") -> HashObject`
+
+Return a new hash object for BLAKE2b, optionally initialized with data.
+
+### `hashlib.blake2s(data: str = "") -> HashObject`
+
+Return a new hash object for BLAKE2s, optionally initialized with data.

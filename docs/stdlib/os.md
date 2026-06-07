@@ -10,11 +10,11 @@ import os
 
 | Name | Type | Description |
 |------|------|-------------|
-| `st_size` | `long` | Size in bytes (0 for directories). |
-| `st_mtime` | `float` | Time of last modification (Unix timestamp). |
-| `st_ctime` | `float` | Time of creation (Unix timestamp). |
-| `st_atime` | `float` | Time of last access (Unix timestamp). |
-| `st_mode` | `int` | File mode / attributes. |
+| `st_size` | `long` |  |
+| `st_mtime` | `float` |  |
+| `st_ctime` | `float` |  |
+| `st_atime` | `float` |  |
+| `st_mode` | `int` |  |
 
 ## Functions
 
@@ -62,9 +62,17 @@ Get an environment variable, return default if it doesn't exist.
 
 Change or add an environment variable.
 
+### `os.get_environ() -> dict[str, str]`
+
+Return a mapping object representing the string environment.
+
 ### `os.path_exists(path: str) -> bool`
 
 Test whether a path exists.
+
+### `os.stat(path: str) -> StatResult`
+
+Perform the equivalent of a stat() system call on the given path.
 
 ### `os.join(a: str, b: str) -> str`
 
