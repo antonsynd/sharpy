@@ -60,7 +60,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`secrets`](secrets.md) | Generate cryptographically strong random numbers suitable for managing secrets. |
 | [`shlex`](shlex.md) | Simple lexical analysis of shell-style syntaxes. |
 | [`shutil`](shutil.md) | Utility functions for copying and removal of files and directory trees. |
-| [`socket`](socket.md) | Low-level networking interface, similar to Python's socket module. |
+| [`socket`](socket.md) | Low-level networking interface, similar to Python's socket module. The bulk of this module (constants, the \`socket\` wrapper class, the exception hierarchy, DNS helpers, and \`create_connection\`) is generated from \`src/Sharpy.Stdlib/spy/socket_module.spy\` into \`SocketModule.cs\`. The byte-order, inet, and \`getaddrinfo\` helpers below stay hand-written because they involve \`short\`/\`byte[]\` interop and runtime-constructed tuple lists that are cleaner to express directly in C#. |
 | [`sqlite3`](sqlite3.md) | DB-API interface for SQLite databases. |
 | [`statistics`](statistics.md) | Mathematical statistics functions. |
 | [`string`](string.md) | Common string constants and operations. |
