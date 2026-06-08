@@ -321,7 +321,7 @@ class Pattern:
             result.append(MatchResult(m, s, self._pattern_str, pos, actual_endpos, self))
         return result
 
-    # TODO(#855, #856): sub(callable), subn(str), subn(callable) are in __Init__.cs
+    # TODO(#861): sub(callable), subn(str), subn(callable) are in __Init__.cs
     def sub(self, repl: str, s: str, count: int = 0) -> str:
         """Return the string obtained by replacing occurrences using a string."""
         translated: str = _translate_replacement(repl)
@@ -406,11 +406,10 @@ class MatchResult:
         idx: int | None = self.lastindex
         if idx is None:
             return None
-        pat: Pattern | None = self._re
-        if pat is None:
+        if self._re is None:
             return None
         grp_idx: int = idx
-        name: str = pat.regex.group_name_from_number(grp_idx)
+        name: str = self._re.regex.group_name_from_number(grp_idx)
         if name == str(grp_idx):
             return None
         return name
@@ -424,9 +423,8 @@ class MatchResult:
 
     def group(self, name: str) -> str | None:
         """Return the string matched by a named group."""
-        pat: Pattern | None = self._re
-        if pat is not None:
-            if pat.regex.group_number_from_name(name) == -1:
+        if self._re is not None:
+            if self._re.regex.group_number_from_name(name) == -1:
                 raise IndexError("no such group")
         g: NetGroup = self._match.groups[name]
         return g.value if g.success else None
@@ -444,10 +442,9 @@ class MatchResult:
     def groupdict(self) -> dict[str, str | None]:
         """Return a dict of all named subgroups."""
         result: dict[str, str | None] = {}
-        pat: Pattern | None = self._re
-        if pat is None:
+        if self._re is None:
             return result
-        names = pat.regex.get_group_names()
+        names = self._re.regex.get_group_names()
         for name in names:
             if not name.isdigit():
                 g: NetGroup = self._match.groups[name]
