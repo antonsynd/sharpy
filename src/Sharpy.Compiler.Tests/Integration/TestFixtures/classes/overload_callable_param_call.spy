@@ -1,0 +1,22 @@
+@final
+class MatchData:
+    _value: str
+    def __init__(self, value: str):
+        self._value = value
+    def get(self) -> str:
+        return self._value
+
+@final
+class Processor:
+    def process(self, repl: str, text: str) -> str:
+        return text.replace("x", repl)
+
+    def process(self, repl: (MatchData) -> str, text: str) -> str:
+        r: MatchData = MatchData("x")
+        replacement: str = repl(r)
+        return text.replace("x", replacement)
+
+def main():
+    p: Processor = Processor()
+    print(p.process("y", "axbxc"))
+    print(p.process(lambda r: r.get().upper(), "axbxc"))

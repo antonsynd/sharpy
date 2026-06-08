@@ -1,0 +1,12 @@
+@final
+class Formatter:
+    def format(self, value: str) -> str:
+        return value
+
+    def format(self, transform: (str) -> str) -> str:
+        return transform("hello")
+
+def main():
+    f: Formatter = Formatter()
+    print(f.format("world"))
+    print(f.format(lambda s: s.upper()))
