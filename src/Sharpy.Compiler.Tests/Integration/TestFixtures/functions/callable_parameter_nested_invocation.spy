@@ -1,0 +1,7 @@
+def apply(fn: (str) -> str, text: str) -> str:
+    def do_it() -> str:
+        return fn(text)
+    return do_it()
+
+def main():
+    print(apply(lambda s: s.upper(), "hello"))

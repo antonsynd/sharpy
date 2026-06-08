@@ -181,6 +181,14 @@ internal partial class RoslynEmitter
             _variableVersions[baseName] = 0;
         }
 
+        // Carry forward captured outer variables/parameters so delegate invocations
+        // inside the nested function resolve to the original (camelCase) name
+        foreach (var (k, v) in savedVersions)
+        {
+            _variableVersions.TryAdd(k, v);
+            _declaredVariables.Add(k);
+        }
+
         // Generate body (recursive — supports nested-nested functions)
         var body = AttachLineDirectiveToBlock(
             Block(func.Body.SelectMany(GenerateBodyStatements)), func.LineStart);

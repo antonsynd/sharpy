@@ -215,14 +215,13 @@ internal partial class RoslynEmitter
             // before falling back to PascalCase for module-level functions
             var codeGenInfo = symbol != null ? GetCodeGenInfo(symbol) : null;
             string funcCSharpName;
-            if (codeGenInfo?.CSharpName != null)
+            if (_variableVersions.ContainsKey(_nameResolutionService.GetBaseName(funcName.Name)))
+            {
+                funcCSharpName = GetMangledVariableName(funcName.Name, isNewDeclaration: false);
+            }
+            else if (codeGenInfo?.CSharpName != null)
             {
                 funcCSharpName = codeGenInfo.CSharpName;
-            }
-            else if (_variableVersions.ContainsKey(_nameResolutionService.GetBaseName(funcName.Name)))
-            {
-                // Parameter or local variable with callable type — use camelCase resolution
-                funcCSharpName = GetMangledVariableName(funcName.Name, isNewDeclaration: false);
             }
             else
             {
