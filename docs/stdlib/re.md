@@ -2,11 +2,6 @@
 
 Regular expression operations.
 
-The classes (Pattern, Match, Error), pattern translator, and flag constants
-are generated from `src/Sharpy.Stdlib/spy/re_module.spy` into `ReModule.cs`.
-Module-level convenience functions and callable sub/subn overloads stay here
-because they involve delegate interop and name-resolution constraints.
-
 ```python
 import re
 ```
@@ -36,6 +31,10 @@ Return a list of MatchResult objects over all non-overlapping matches.
 ### `re.sub(repl: str, s: str, count: int = 0) -> str`
 
 Return the string obtained by replacing occurrences using a string.
+
+### `re.sub(repl: (MatchResult) -> str, s: str, count: int = 0) -> str`
+
+Return the string obtained by replacing occurrences using a callable.
 
 ### `re.split(s: str, maxsplit: int = 0) -> list[str]`
 
@@ -71,7 +70,7 @@ Return the string obtained by doing backslash substitution on the template.
 
 ### `re.compile(pattern: str, flags: int = 0) -> Pattern`
 
-Compile a pattern into a Pattern object.
+Compile a regular expression pattern into a Pattern object.
 
 ### `re.search(pattern: str, s: str, flags: int = 0) -> MatchResult | None`
 
@@ -112,7 +111,3 @@ Clear the regular expression cache (no-op on .NET).
 ### `re.escape(pattern: str) -> str`
 
 Escape special characters in pattern.
-
-### `re.sub(pattern: this ReModule.Pattern, repl: (ReModule.MatchResult) -> str, s: str, count: int = 0) -> str`
-
-Return the string obtained by replacing occurrences using a callable.
