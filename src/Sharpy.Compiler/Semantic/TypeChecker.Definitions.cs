@@ -297,6 +297,8 @@ internal partial class TypeChecker
     /// <summary>
     /// Look up the function symbol for a FunctionDef — from the class's Methods/Constructors
     /// list for class methods, or from the symbol table for top-level functions.
+    /// Nested functions inside class methods are looked up from the symbol table
+    /// (they're registered there, not in the class methods list).
     /// </summary>
     private FunctionSymbol? LookupFunctionSymbol(FunctionDef functionDef)
     {
@@ -312,22 +314,25 @@ internal partial class TypeChecker
             else
             {
                 // Find the method in the class's Methods list by name and line number
-                return _currentClass.Methods
+                var classMethod = _currentClass.Methods
                     .FirstOrDefault(m => m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart);
+                if (classMethod != null)
+                    return classMethod;
+
+                // Not found in class methods — this is a nested function inside a class method.
+                // Fall through to symbol table lookup below.
             }
         }
-        else
+
+        // For top-level/nested functions, look up from symbol table.
+        // When the function is overloaded, the symbol table only holds the first
+        // overload, so resolve the specific symbol by declaration line.
+        var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
+        if (overloads is { Count: > 1 })
         {
-            // For top-level functions, look up from symbol table.
-            // When the function is overloaded, the symbol table only holds the first
-            // overload, so resolve the specific symbol by declaration line.
-            var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
-            if (overloads is { Count: > 1 })
-            {
-                return overloads.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart);
-            }
-            return _symbolTable.LookupFunction(functionDef.Name);
+            return overloads.FirstOrDefault(o => o.DeclarationLine == functionDef.LineStart);
         }
+        return _symbolTable.LookupFunction(functionDef.Name);
     }
 
     /// <summary>
