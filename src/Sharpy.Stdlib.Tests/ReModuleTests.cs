@@ -59,7 +59,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_AtStart_Matches()
         {
-            var m = ReModule.Match("hello", "hello world");
+            var m = ReModule.Compile("hello").Match("hello world");
             Assert.NotNull(m);
             Assert.Equal("hello", m!.Group());
         }
@@ -67,7 +67,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_NotAtStart_ReturnsNull()
         {
-            var m = ReModule.Match("world", "hello world");
+            var m = ReModule.Compile("world").Match("hello world");
             Assert.Null(m);
         }
 
@@ -98,7 +98,7 @@ namespace Sharpy.Tests
         public void Findall_MultipleMatches_ReturnsAll()
         {
             var result = ReModule.Findall(@"\d+", "abc 123 def 456");
-            Assert.Equal(2, ((ICollection<object?>)result).Count);
+            Assert.Equal(2, ((ICollection<object>)result).Count);
             Assert.Equal("123", result[0]);
             Assert.Equal("456", result[1]);
         }
@@ -115,7 +115,7 @@ namespace Sharpy.Tests
         {
             var result = ReModule.Findall(@"(\w+)@(\w+)", "a@b c@d");
             // Multiple groups → returns list of lists
-            Assert.Equal(2, ((ICollection<object?>)result).Count);
+            Assert.Equal(2, ((ICollection<object>)result).Count);
         }
 
         #endregion
@@ -126,7 +126,7 @@ namespace Sharpy.Tests
         public void Finditer_MultipleMatches_ReturnsMatchObjects()
         {
             var result = ReModule.Finditer(@"\d+", "abc 123 def 456");
-            Assert.Equal(2, ((ICollection<ReMatch>)result).Count);
+            Assert.Equal(2, ((ICollection<ReModule.Match>)result).Count);
             Assert.Equal("123", result[0].Group());
             Assert.Equal("456", result[1].Group());
         }

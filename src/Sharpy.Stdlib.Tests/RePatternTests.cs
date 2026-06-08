@@ -90,7 +90,7 @@ namespace Sharpy.Tests
         {
             var pattern = ReModule.Compile(@"\d+");
             var result = pattern.Findall("a1b22c333");
-            Assert.Equal(3, ((ICollection<object?>)result).Count);
+            Assert.Equal(3, ((ICollection<object>)result).Count);
             Assert.Equal("1", result[0]);
             Assert.Equal("22", result[1]);
             Assert.Equal("333", result[2]);
@@ -109,7 +109,7 @@ namespace Sharpy.Tests
         {
             var pattern = ReModule.Compile(@"(\d+)");
             var result = pattern.Findall("a1b2c3");
-            Assert.Equal(3, ((ICollection<object?>)result).Count);
+            Assert.Equal(3, ((ICollection<object>)result).Count);
             Assert.Equal("1", result[0]);
             Assert.Equal("2", result[1]);
             Assert.Equal("3", result[2]);
@@ -124,7 +124,7 @@ namespace Sharpy.Tests
         {
             var pattern = ReModule.Compile(@"\w+");
             var matches = pattern.Finditer("hello world");
-            Assert.Equal(2, ((ICollection<ReMatch>)matches).Count);
+            Assert.Equal(2, ((ICollection<ReModule.Match>)matches).Count);
             Assert.Equal("hello", matches[0].Group());
             Assert.Equal("world", matches[1].Group());
         }
@@ -134,7 +134,7 @@ namespace Sharpy.Tests
         {
             var pattern = ReModule.Compile(@"\d+");
             var matches = pattern.Finditer("abc 123 def 456");
-            Assert.Equal(2, ((ICollection<ReMatch>)matches).Count);
+            Assert.Equal(2, ((ICollection<ReModule.Match>)matches).Count);
             Assert.Equal(4, matches[0].Start());
             Assert.Equal(7, matches[0].End());
             Assert.Equal(12, matches[1].Start());
@@ -245,7 +245,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Group_OutOfRange_ThrowsIndexError()
         {
-            var m = ReModule.Match(@"(\d+)", "123");
+            var m = ReModule.Compile(@"(\d+)").Match("123");
             Assert.NotNull(m);
             Assert.Throws<IndexError>(() => m!.Group(99));
         }
@@ -253,7 +253,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Group_NegativeIndex_ThrowsIndexError()
         {
-            var m = ReModule.Match(@"(\d+)", "123");
+            var m = ReModule.Compile(@"(\d+)").Match("123");
             Assert.NotNull(m);
             Assert.Throws<IndexError>(() => m!.Group(-1));
         }
@@ -514,14 +514,13 @@ namespace Sharpy.Tests
 
         #endregion
 
-        #region RePattern.Pattern Property
+        #region RePattern.PatternStr Property
 
         [Fact]
-        public void Pattern_PatternProperty_EqualsPatternStr()
+        public void Pattern_PatternStrProperty_ReturnsOriginal()
         {
             var pattern = ReModule.Compile(@"\d+");
-            Assert.Equal(@"\d+", pattern.Pattern);
-            Assert.Equal(pattern.PatternStr, pattern.Pattern);
+            Assert.Equal(@"\d+", pattern.PatternStr);
         }
 
         #endregion
@@ -651,18 +650,18 @@ namespace Sharpy.Tests
 
         #endregion
 
-        #region ReError
+        #region ReModule.Error
 
         [Fact]
         public void Compile_InvalidPattern_ThrowsReError()
         {
-            Assert.Throws<ReError>(() => ReModule.Compile("[invalid"));
+            Assert.Throws<ReModule.Error>(() => ReModule.Compile("[invalid"));
         }
 
         [Fact]
         public void ReError_HasMessageProperty()
         {
-            var ex = Assert.Throws<ReError>(() => ReModule.Compile("[invalid"));
+            var ex = Assert.Throws<ReModule.Error>(() => ReModule.Compile("[invalid"));
             Assert.NotEmpty(ex.Msg);
             Assert.Equal("[invalid", ex.Pattern);
         }
@@ -670,7 +669,7 @@ namespace Sharpy.Tests
         [Fact]
         public void ReError_Properties_SetCorrectly()
         {
-            var err = new ReError("test error", "abc(", 3);
+            var err = new ReModule.Error("test error", "abc(", 3);
             Assert.Equal("test error", err.Msg);
             Assert.Equal("abc(", err.Pattern);
             Assert.Equal(3, err.Pos);
@@ -681,7 +680,7 @@ namespace Sharpy.Tests
         [Fact]
         public void ReError_NullPattern_NullPos()
         {
-            var err = new ReError("test error");
+            var err = new ReModule.Error("test error");
             Assert.Equal("test error", err.Msg);
             Assert.Null(err.Pattern);
             Assert.Null(err.Pos);

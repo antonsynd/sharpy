@@ -17,7 +17,7 @@ namespace Sharpy.Tests
         public void Findall_NoGroups_ReturnsFullMatches()
         {
             var result = ReModule.Findall(@"\d+", "a1b2c3");
-            Assert.Equal(3, ((ICollection<object?>)result).Count);
+            Assert.Equal(3, ((ICollection<object>)result).Count);
             Assert.Equal("1", result[0]);
             Assert.Equal("2", result[1]);
             Assert.Equal("3", result[2]);
@@ -28,7 +28,7 @@ namespace Sharpy.Tests
         {
             // Python: re.findall(r'(\d+)', 'a1b2c3') == ['1', '2', '3']
             var result = ReModule.Findall(@"(\d+)", "a1b2c3");
-            Assert.Equal(3, ((ICollection<object?>)result).Count);
+            Assert.Equal(3, ((ICollection<object>)result).Count);
             Assert.Equal("1", result[0]);
             Assert.Equal("2", result[1]);
             Assert.Equal("3", result[2]);
@@ -45,7 +45,7 @@ namespace Sharpy.Tests
         public void Findall_WithFlags_IgnoreCase()
         {
             var result = ReModule.Findall("[a-z]+", "Hello World", flags: ReModule.IGNORECASE);
-            Assert.Equal(2, ((ICollection<object?>)result).Count);
+            Assert.Equal(2, ((ICollection<object>)result).Count);
             Assert.Equal("Hello", result[0]);
             Assert.Equal("World", result[1]);
         }
@@ -58,7 +58,7 @@ namespace Sharpy.Tests
         public void Finditer_ReturnsMatchObjectsWithCorrectGroups()
         {
             var matches = ReModule.Finditer(@"(\w+)=(\d+)", "x=1 y=42 z=100");
-            Assert.Equal(3, ((ICollection<ReMatch>)matches).Count);
+            Assert.Equal(3, ((ICollection<ReModule.Match>)matches).Count);
             Assert.Equal("x", matches[0].Group(1));
             Assert.Equal("1", matches[0].Group(2));
             Assert.Equal("y", matches[1].Group(1));
@@ -76,7 +76,7 @@ namespace Sharpy.Tests
         public void Finditer_SpansAreCorrect()
         {
             var matches = ReModule.Finditer(@"\d+", "ab12cd34");
-            Assert.Equal(2, ((ICollection<ReMatch>)matches).Count);
+            Assert.Equal(2, ((ICollection<ReModule.Match>)matches).Count);
             Assert.Equal((2, 4), matches[0].Span());
             Assert.Equal((6, 8), matches[1].Span());
         }
@@ -215,7 +215,7 @@ namespace Sharpy.Tests
             var m = ReModule.Search(result, ".");
             Assert.NotNull(m);
             // It should NOT match a non-dot
-            var noMatch = ReModule.Match(result, "a");
+            var noMatch = ReModule.Compile(result).Match("a");
             Assert.Null(noMatch);
         }
 
