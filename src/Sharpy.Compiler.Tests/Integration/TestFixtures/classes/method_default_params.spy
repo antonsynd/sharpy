@@ -1,0 +1,25 @@
+class Greeter:
+    _name: str
+
+    def __init__(self, name: str):
+        self._name = name
+
+    def greet(self, greeting: str = "Hello", punctuation: str = "!") -> str:
+        return f"{greeting}, {self._name}{punctuation}"
+
+def make_greeting(name: str) -> str:
+    g: Greeter = Greeter(name)
+    return g.greet()
+
+def make_custom(name: str, greeting: str) -> str:
+    g: Greeter = Greeter(name)
+    return g.greet(greeting)
+
+def make_full(name: str, greeting: str, punct: str) -> str:
+    g: Greeter = Greeter(name)
+    return g.greet(greeting, punct)
+
+def main():
+    print(make_greeting("World"))
+    print(make_custom("World", "Hi"))
+    print(make_full("World", "Hey", "."))

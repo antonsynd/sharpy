@@ -96,7 +96,8 @@ internal partial class TypeChecker
                     {
                         ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
                         ReturnType = funcSymbol.ReturnType,
-                        VariadicParameterIndex = GetVariadicIndex(funcSymbol.Parameters)
+                        VariadicParameterIndex = GetVariadicIndex(funcSymbol.Parameters),
+                        OptionalParameterCount = funcSymbol.Parameters.Count(p => p.HasDefault)
                     },
                     TypeSymbol typeSymbol => new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol },
                     ModuleSymbol nestedModule => new ModuleType { Symbol = nestedModule },
@@ -156,7 +157,8 @@ internal partial class TypeChecker
                     {
                         ParameterTypes = paramTypes,
                         ReturnType = clrMethod.ReturnType ?? SemanticType.Unknown,
-                        VariadicParameterIndex = GetVariadicIndex(clrParameters)
+                        VariadicParameterIndex = GetVariadicIndex(clrParameters),
+                        OptionalParameterCount = clrParameters.Count(p => p.HasDefault)
                     };
                 }
 
@@ -310,7 +312,8 @@ internal partial class TypeChecker
                 {
                     ParameterTypes = paramTypes,
                     ReturnType = method.ReturnType,
-                    VariadicParameterIndex = GetVariadicIndex(methodParameters)
+                    VariadicParameterIndex = GetVariadicIndex(methodParameters),
+                    OptionalParameterCount = methodParameters.Count(p => p.HasDefault)
                 };
 
                 // For null conditional method access, we don't wrap the FunctionType itself,
@@ -544,7 +547,8 @@ internal partial class TypeChecker
                 {
                     ParameterTypes = paramTypes,
                     ReturnType = method.ReturnType,
-                    VariadicParameterIndex = GetVariadicIndex(method.Parameters)
+                    VariadicParameterIndex = GetVariadicIndex(method.Parameters),
+                    OptionalParameterCount = method.Parameters.Count(p => p.HasDefault)
                 };
                 _semanticInfo.SetExpressionType(memberAccess, funcType);
                 return funcType;

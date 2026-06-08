@@ -1,0 +1,7 @@
+class Processor:
+    def run(self, data: str, mode: int = 0) -> str:
+        return data
+
+def main():
+    p: Processor = Processor()
+    p.run()

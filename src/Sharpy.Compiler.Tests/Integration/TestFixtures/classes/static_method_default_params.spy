@@ -1,0 +1,8 @@
+class Formatter:
+    def format(value: str, width: int = 10, fill: str = "*") -> str:
+        return f"{fill}{value}{fill}"
+
+def main():
+    print(Formatter.format("hi"))
+    print(Formatter.format("hi", 20))
+    print(Formatter.format("hi", 20, "-"))
