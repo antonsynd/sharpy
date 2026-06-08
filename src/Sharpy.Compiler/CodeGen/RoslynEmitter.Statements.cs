@@ -125,6 +125,7 @@ internal partial class RoslynEmitter
         var savedConsts = new HashSet<string>(_constVariables);
         var savedSourceNames = new HashSet<string>(_sourceVariableNames);
         var savedNarrowing = _narrowing.Snapshot();
+        var savedLocalFuncs = new Dictionary<string, string>(_localFunctionNames);
 
         // Clear scope for the local function
         _declaredVariables.Clear();
@@ -225,6 +226,13 @@ internal partial class RoslynEmitter
         _sourceVariableNames.Clear();
         _sourceVariableNames.UnionWith(savedSourceNames);
         _narrowing.Restore(savedNarrowing);
+        _localFunctionNames.Clear();
+        foreach (var (k, v) in savedLocalFuncs)
+            _localFunctionNames[k] = v;
+
+        // Register the local function name in the enclosing scope so that
+        // subsequent references (e.g., passing as a delegate) resolve to PascalCase
+        _localFunctionNames[func.Name] = mangledName;
 
         return localFunc;
     }

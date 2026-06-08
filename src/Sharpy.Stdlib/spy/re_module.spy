@@ -321,13 +321,49 @@ class Pattern:
             result.append(MatchResult(m, s, self._pattern_str, pos, actual_endpos, self))
         return result
 
-    # TODO(#861): sub(callable), subn(str), subn(callable) are in __Init__.cs
     def sub(self, repl: str, s: str, count: int = 0) -> str:
         """Return the string obtained by replacing occurrences using a string."""
         translated: str = _translate_replacement(repl)
         if count == 0:
             return self._regex.replace(s, translated)
         return self._regex.replace(s, translated, count)
+
+    def sub(self, repl: (MatchResult) -> str, s: str, count: int = 0) -> str:
+        """Return the string obtained by replacing occurrences using a callable."""
+        replaced: list[int] = [0]
+        def evaluator(m: NetMatch) -> str:
+            if count > 0 and replaced[0] >= count:
+                return m.value
+            replaced[0] = replaced[0] + 1
+            re_match: MatchResult = MatchResult(m, s, self._pattern_str, 0, len(s), self)
+            return repl(re_match)
+        return self._regex.replace(s, evaluator)
+
+    def subn(self, repl: str, s: str, count: int = 0) -> tuple[str, int]:
+        """Like sub(), but returns (new_string, number_of_subs_made)."""
+        translated: str = _translate_replacement(repl)
+        replacement_count: list[int] = [0]
+        def str_evaluator(m: NetMatch) -> str:
+            replacement_count[0] = replacement_count[0] + 1
+            return m.result(translated)
+        result: str
+        if count == 0:
+            result = self._regex.replace(s, str_evaluator)
+        else:
+            result = self._regex.replace(s, str_evaluator, count)
+        return (result, replacement_count[0])
+
+    def subn(self, repl: (MatchResult) -> str, s: str, count: int = 0) -> tuple[str, int]:
+        """Like sub() with callable, but returns (new_string, number_of_subs_made)."""
+        replacement_count: list[int] = [0]
+        def callable_evaluator(m: NetMatch) -> str:
+            if count > 0 and replacement_count[0] >= count:
+                return m.value
+            replacement_count[0] = replacement_count[0] + 1
+            re_match: MatchResult = MatchResult(m, s, self._pattern_str, 0, len(s), self)
+            return repl(re_match)
+        result: str = self._regex.replace(s, callable_evaluator)
+        return (result, replacement_count[0])
 
     def split(self, s: str, maxsplit: int = 0) -> list[str]:
         """Split string by the occurrences of the pattern."""
@@ -494,5 +530,69 @@ def _apply_endpos(s: str, endpos: int | None) -> str:
     return s.substring(0, ep)
 
 def _escape_pattern(pattern: str) -> str:
-    """Escape special characters in pattern. Called from hand-written C#."""
+    """Escape special characters in pattern."""
     return NetRegex.escape(pattern)
+
+# ---- Module-level convenience functions ----
+
+def compile(pattern: str, flags: int = 0) -> Pattern:
+    """Compile a regular expression pattern into a Pattern object."""
+    return Pattern(pattern, flags)
+
+def search(pattern: str, s: str, flags: int = 0) -> MatchResult | None:
+    """Scan through string looking for the first match."""
+    p: Pattern = compile(pattern, flags)
+    return p.search(s, 0, None)
+
+def match(pattern: str, s: str, flags: int = 0) -> MatchResult | None:
+    """Try to apply the pattern at the start of the string."""
+    p: Pattern = compile(pattern, flags)
+    return p.match(s, 0, None)
+
+def fullmatch(pattern: str, s: str, flags: int = 0) -> MatchResult | None:
+    """Try to apply the pattern to the entire string."""
+    p: Pattern = compile(pattern, flags)
+    return p.fullmatch(s, 0, None)
+
+def findall(pattern: str, s: str, flags: int = 0) -> list[object]:
+    """Return all non-overlapping matches of pattern in string."""
+    p: Pattern = compile(pattern, flags)
+    return p.findall(s, 0, None)
+
+def finditer(pattern: str, s: str, flags: int = 0) -> list[MatchResult]:
+    """Return a list of match objects over all non-overlapping matches."""
+    p: Pattern = compile(pattern, flags)
+    return p.finditer(s, 0, None)
+
+def sub(pattern: str, repl: str, s: str, count: int = 0, flags: int = 0) -> str:
+    """Return the string obtained by replacing occurrences."""
+    p: Pattern = compile(pattern, flags)
+    return p.sub(repl, s, count)
+
+def sub(pattern: str, repl: (MatchResult) -> str, s: str, count: int = 0, flags: int = 0) -> str:
+    """Return the string obtained by replacing occurrences using a callable."""
+    p: Pattern = compile(pattern, flags)
+    return p.sub(repl, s, count)
+
+def subn(pattern: str, repl: str, s: str, count: int = 0, flags: int = 0) -> tuple[str, int]:
+    """Like sub(), but returns (new_string, number_of_subs_made)."""
+    p: Pattern = compile(pattern, flags)
+    return p.subn(repl, s, count)
+
+def subn(pattern: str, repl: (MatchResult) -> str, s: str, count: int = 0, flags: int = 0) -> tuple[str, int]:
+    """Like sub() with callable, but returns (new_string, number_of_subs_made)."""
+    p: Pattern = compile(pattern, flags)
+    return p.subn(repl, s, count)
+
+def split(pattern: str, s: str, maxsplit: int = 0, flags: int = 0) -> list[str]:
+    """Split string by the occurrences of pattern."""
+    p: Pattern = compile(pattern, flags)
+    return p.split(s, maxsplit)
+
+def purge():
+    """Clear the regular expression cache (no-op on .NET)."""
+    pass
+
+def escape(pattern: str) -> str:
+    """Escape special characters in pattern."""
+    return _escape_pattern(pattern)

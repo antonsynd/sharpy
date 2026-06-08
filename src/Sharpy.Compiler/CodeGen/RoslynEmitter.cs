@@ -61,6 +61,13 @@ internal partial class RoslynEmitter : ICodeEmitter
     private readonly HashSet<string> _constVariables = new();
 
     /// <summary>
+    /// Maps local function source names to their PascalCase C# names within the
+    /// current scope. Populated after GenerateLocalFunction so that subsequent
+    /// references (e.g., passing as a delegate argument) resolve correctly.
+    /// </summary>
+    private readonly Dictionary<string, string> _localFunctionNames = new();
+
+    /// <summary>
     /// Tracks module-level field names (C# names) to prevent duplicate field declarations.
     /// This is still needed during emission even with CodeGenInfo because we need to
     /// track which C# field names have already been emitted.
@@ -391,6 +398,7 @@ internal partial class RoslynEmitter : ICodeEmitter
         _variableVersions.Clear();
         _constVariables.Clear();
         _sourceVariableNames.Clear();
+        _localFunctionNames.Clear();
         _currentVariadicParams.Clear();
         _narrowing.Reset();
 
@@ -626,6 +634,10 @@ internal partial class RoslynEmitter : ICodeEmitter
         {
             return overrideName;
         }
+
+        // Check if this is a reference to a local function (nested def)
+        if (!isNewDeclaration && _localFunctionNames.TryGetValue(name, out var localFuncMangledName))
+            return localFuncMangledName;
 
         // FIRST: Check if this is a local variable (including parameters)
         // Local variables take precedence over module-level variables and CodeGenInfo

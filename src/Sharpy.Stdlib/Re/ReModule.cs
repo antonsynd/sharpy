@@ -1,5 +1,3 @@
-// Generated from src/Sharpy.Stdlib/spy/re_module.spy — do not edit directly.
-// To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/re_module.spy -t library -n Sharpy
 #nullable enable
 
 using System;
@@ -509,6 +507,84 @@ namespace Sharpy
             }
 
             /// <summary>
+            /// Return the string obtained by replacing occurrences using a callable.
+            /// </summary>
+            public string Sub(global::System.Func<MatchResult, string> repl, string s, int count = 0)
+            {
+                Sharpy.List<int> replaced = new Sharpy.List<int>()
+                {
+                    0
+                };
+                string Evaluator(global::System.Text.RegularExpressions.Match m)
+                {
+                    if (count > 0 && replaced[0] >= count)
+                    {
+                        return m.Value;
+                    }
+
+                    replaced[0] = replaced[0] + 1;
+                    MatchResult reMatch = new MatchResult(m, s, this._PatternStr, 0, s.Length, this);
+                    return repl(reMatch);
+                }
+
+                return this._Regex.Replace(s, Evaluator);
+            }
+
+            /// <summary>
+            /// Like sub(), but returns (new_string, number_of_subs_made).
+            /// </summary>
+            public global::System.ValueTuple<string, int> Subn(string repl, string s, int count = 0)
+            {
+                string translated = _TranslateReplacement(repl);
+                Sharpy.List<int> replacementCount = new Sharpy.List<int>()
+                {
+                    0
+                };
+                string StrEvaluator(global::System.Text.RegularExpressions.Match m)
+                {
+                    replacementCount[0] = replacementCount[0] + 1;
+                    return m.Result(translated);
+                }
+
+                string result;
+                if (count == 0)
+                {
+                    result = this._Regex.Replace(s, StrEvaluator);
+                }
+                else
+                {
+                    result = this._Regex.Replace(s, StrEvaluator, count);
+                }
+
+                return (result, replacementCount[0]);
+            }
+
+            /// <summary>
+            /// Like sub() with callable, but returns (new_string, number_of_subs_made).
+            /// </summary>
+            public global::System.ValueTuple<string, int> Subn(global::System.Func<MatchResult, string> repl, string s, int count = 0)
+            {
+                Sharpy.List<int> replacementCount = new Sharpy.List<int>()
+                {
+                    0
+                };
+                string CallableEvaluator(global::System.Text.RegularExpressions.Match m)
+                {
+                    if (count > 0 && replacementCount[0] >= count)
+                    {
+                        return m.Value;
+                    }
+
+                    replacementCount[0] = replacementCount[0] + 1;
+                    MatchResult reMatch = new MatchResult(m, s, this._PatternStr, 0, s.Length, this);
+                    return repl(reMatch);
+                }
+
+                string result = this._Regex.Replace(s, CallableEvaluator);
+                return (result, replacementCount[0]);
+            }
+
+            /// <summary>
             /// Split string by the occurrences of the pattern.
             /// </summary>
             public Sharpy.List<string> Split(string s, int maxsplit = 0)
@@ -906,11 +982,125 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Escape special characters in pattern. Called from hand-written C#.
+        /// Escape special characters in pattern.
         /// </summary>
         internal static string _EscapePattern(string pattern)
         {
             return global::System.Text.RegularExpressions.Regex.Escape(pattern);
+        }
+
+        /// <summary>
+        /// Compile a regular expression pattern into a Pattern object.
+        /// </summary>
+        public static Pattern Compile(string pattern, int flags = 0)
+        {
+            return new Pattern(pattern, flags);
+        }
+
+        /// <summary>
+        /// Scan through string looking for the first match.
+        /// </summary>
+        public static MatchResult? Search(string pattern, string s, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Search(s, 0, default);
+        }
+
+        /// <summary>
+        /// Try to apply the pattern at the start of the string.
+        /// </summary>
+        public static MatchResult? Match(string pattern, string s, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Match(s, 0, default);
+        }
+
+        /// <summary>
+        /// Try to apply the pattern to the entire string.
+        /// </summary>
+        public static MatchResult? Fullmatch(string pattern, string s, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Fullmatch(s, 0, default);
+        }
+
+        /// <summary>
+        /// Return all non-overlapping matches of pattern in string.
+        /// </summary>
+        public static Sharpy.List<object> Findall(string pattern, string s, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Findall(s, 0, default);
+        }
+
+        /// <summary>
+        /// Return a list of match objects over all non-overlapping matches.
+        /// </summary>
+        public static Sharpy.List<MatchResult> Finditer(string pattern, string s, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Finditer(s, 0, default);
+        }
+
+        /// <summary>
+        /// Return the string obtained by replacing occurrences.
+        /// </summary>
+        public static string Sub(string pattern, string repl, string s, int count = 0, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Sub(repl, s, count);
+        }
+
+        /// <summary>
+        /// Return the string obtained by replacing occurrences using a callable.
+        /// </summary>
+        public static string Sub(string pattern, global::System.Func<MatchResult, string> repl, string s, int count = 0, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Sub(repl, s, count);
+        }
+
+        /// <summary>
+        /// Like sub(), but returns (new_string, number_of_subs_made).
+        /// </summary>
+        public static global::System.ValueTuple<string, int> Subn(string pattern, string repl, string s, int count = 0, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Subn(repl, s, count);
+        }
+
+        /// <summary>
+        /// Like sub() with callable, but returns (new_string, number_of_subs_made).
+        /// </summary>
+        public static global::System.ValueTuple<string, int> Subn(string pattern, global::System.Func<MatchResult, string> repl, string s, int count = 0, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Subn(repl, s, count);
+        }
+
+        /// <summary>
+        /// Split string by the occurrences of pattern.
+        /// </summary>
+        public static Sharpy.List<string> Split(string pattern, string s, int maxsplit = 0, int flags = 0)
+        {
+            Pattern p = Compile(pattern, flags);
+            return p.Split(s, maxsplit);
+        }
+
+        /// <summary>
+        /// Clear the regular expression cache (no-op on .NET).
+        /// </summary>
+        public static void Purge()
+        {
+            ;
+        }
+
+        /// <summary>
+        /// Escape special characters in pattern.
+        /// </summary>
+        public static string Escape(string pattern)
+        {
+            return _EscapePattern(pattern);
         }
     }
 }
