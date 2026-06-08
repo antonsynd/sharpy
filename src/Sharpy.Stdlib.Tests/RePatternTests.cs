@@ -124,7 +124,7 @@ namespace Sharpy.Tests
         {
             var pattern = ReModule.Compile(@"\w+");
             var matches = pattern.Finditer("hello world");
-            Assert.Equal(2, ((ICollection<ReModule.Match>)matches).Count);
+            Assert.Equal(2, ((ICollection<ReModule.MatchResult>)matches).Count);
             Assert.Equal("hello", matches[0].Group());
             Assert.Equal("world", matches[1].Group());
         }
@@ -134,7 +134,7 @@ namespace Sharpy.Tests
         {
             var pattern = ReModule.Compile(@"\d+");
             var matches = pattern.Finditer("abc 123 def 456");
-            Assert.Equal(2, ((ICollection<ReModule.Match>)matches).Count);
+            Assert.Equal(2, ((ICollection<ReModule.MatchResult>)matches).Count);
             Assert.Equal(4, matches[0].Start());
             Assert.Equal(7, matches[0].End());
             Assert.Equal(12, matches[1].Start());
@@ -245,7 +245,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Group_OutOfRange_ThrowsIndexError()
         {
-            var m = ReModule.Compile(@"(\d+)").Match("123");
+            var m = ReModule.Match(@"(\d+)", "123");
             Assert.NotNull(m);
             Assert.Throws<IndexError>(() => m!.Group(99));
         }
@@ -253,7 +253,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Group_NegativeIndex_ThrowsIndexError()
         {
-            var m = ReModule.Compile(@"(\d+)").Match("123");
+            var m = ReModule.Match(@"(\d+)", "123");
             Assert.NotNull(m);
             Assert.Throws<IndexError>(() => m!.Group(-1));
         }

@@ -10,7 +10,7 @@ def main():
 
     # Pattern properties
     p2 = re.compile("(?P<year>\\d{4})-(?P<month>\\d{2})")
-    print(p2.pattern)
+    print(p2.pattern_str)
     print(p2.groups)
     gi = p2.groupindex
     print(gi["year"])

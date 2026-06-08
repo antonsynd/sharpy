@@ -248,7 +248,7 @@ class Pattern:
         """The internal .NET Regex object."""
         return self._regex
 
-    def search(self, s: str, pos: int = 0, endpos: int | None = None) -> Match | None:
+    def search(self, s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None:
         """Scan through string looking for the first match."""
         target: str = _apply_endpos(s, endpos)
         m: NetMatch = self._regex.match(target, pos)
@@ -257,9 +257,9 @@ class Pattern:
         actual_endpos: int = len(s)
         if endpos is not None:
             actual_endpos = endpos
-        return Match(m, s, self._pattern_str, pos, actual_endpos, self)
+        return MatchResult(m, s, self._pattern_str, pos, actual_endpos, self)
 
-    def match(self, s: str, pos: int = 0, endpos: int | None = None) -> Match | None:
+    def match(self, s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None:
         """Try to apply the pattern at the start of the string."""
         target: str = _apply_endpos(s, endpos)
         m: NetMatch = self._regex.match(target, pos)
@@ -268,9 +268,9 @@ class Pattern:
         actual_endpos: int = len(s)
         if endpos is not None:
             actual_endpos = endpos
-        return Match(m, s, self._pattern_str, pos, actual_endpos, self)
+        return MatchResult(m, s, self._pattern_str, pos, actual_endpos, self)
 
-    def fullmatch(self, s: str, pos: int = 0, endpos: int | None = None) -> Match | None:
+    def fullmatch(self, s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None:
         """Try to apply the pattern to the entire string."""
         target: str = _apply_endpos(s, endpos)
         m: NetMatch = self._regex.match(target, pos)
@@ -279,7 +279,7 @@ class Pattern:
         actual_endpos: int = len(s)
         if endpos is not None:
             actual_endpos = endpos
-        return Match(m, s, self._pattern_str, pos, actual_endpos, self)
+        return MatchResult(m, s, self._pattern_str, pos, actual_endpos, self)
 
     def findall(self, s: str, pos: int = 0, endpos: int | None = None) -> list[object]:
         """Return all non-overlapping matches as a list."""
@@ -306,11 +306,11 @@ class Pattern:
                 result.append(group_values)
         return result
 
-    def finditer(self, s: str, pos: int = 0, endpos: int | None = None) -> list[Match]:
-        """Return a list of Match objects over all non-overlapping matches."""
+    def finditer(self, s: str, pos: int = 0, endpos: int | None = None) -> list[MatchResult]:
+        """Return a list of MatchResult objects over all non-overlapping matches."""
         target: str = _apply_endpos(s, endpos)
         matches: MatchCollection = self._regex.matches(target)
-        result: list[Match] = []
+        result: list[MatchResult] = []
         actual_endpos: int = len(s)
         if endpos is not None:
             actual_endpos = endpos
@@ -318,7 +318,7 @@ class Pattern:
             m: NetMatch = m_raw to NetMatch
             if m.index < pos:
                 continue
-            result.append(Match(m, s, self._pattern_str, pos, actual_endpos, self))
+            result.append(MatchResult(m, s, self._pattern_str, pos, actual_endpos, self))
         return result
 
     def sub(self, repl: str, s: str, count: int = 0) -> str:
@@ -346,8 +346,8 @@ class Pattern:
 # ---- Match class ----
 
 @final
-class Match:
-    """Wraps a .NET Match with Python-compatible API."""
+class MatchResult:
+    """Wraps a .NET Match with Python-compatible regex match API."""
 
     @private
     _match: NetMatch
@@ -363,7 +363,7 @@ class Match:
     _re: Pattern | None
 
     def __init__(self, net_match: NetMatch, string: str, pattern_str: str, pos: int, endpos: int, compiled_pattern: Pattern | None = None):
-        """Create a Match wrapping a .NET Match object."""
+        """Create a MatchResult wrapping a .NET Match object."""
         self._match = net_match
         self._string = string
         self._pattern_str = pattern_str

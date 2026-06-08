@@ -24,13 +24,19 @@ namespace Sharpy
         }
 
         /// <summary>Scan through string looking for the first match.</summary>
-        public static Match? Search(string pattern, string s, int flags = 0)
+        public static MatchResult? Search(string pattern, string s, int flags = 0)
         {
             return Compile(pattern, flags).Search(s);
         }
 
+        /// <summary>Try to apply the pattern at the start of the string.</summary>
+        public static MatchResult? Match(string pattern, string s, int flags = 0)
+        {
+            return Compile(pattern, flags).Match(s);
+        }
+
         /// <summary>Try to apply the pattern to the entire string.</summary>
-        public static Match? Fullmatch(string pattern, string s, int flags = 0)
+        public static MatchResult? Fullmatch(string pattern, string s, int flags = 0)
         {
             return Compile(pattern, flags).Fullmatch(s);
         }
@@ -42,7 +48,7 @@ namespace Sharpy
         }
 
         /// <summary>Return a list of match objects over all non-overlapping matches.</summary>
-        public static List<Match> Finditer(string pattern, string s, int flags = 0)
+        public static List<MatchResult> Finditer(string pattern, string s, int flags = 0)
         {
             return Compile(pattern, flags).Finditer(s);
         }
@@ -54,7 +60,7 @@ namespace Sharpy
         }
 
         /// <summary>Return the string obtained by replacing occurrences using a callable.</summary>
-        public static string Sub(string pattern, Func<Match, string> repl, string s, int count = 0, int flags = 0)
+        public static string Sub(string pattern, Func<MatchResult, string> repl, string s, int count = 0, int flags = 0)
         {
             return Compile(pattern, flags).Sub(repl, s, count);
         }
@@ -66,7 +72,7 @@ namespace Sharpy
         }
 
         /// <summary>Like Sub() with callable, but returns (new_string, number_of_subs_made).</summary>
-        public static (string, int) Subn(string pattern, Func<Match, string> repl, string s, int count = 0, int flags = 0)
+        public static (string, int) Subn(string pattern, Func<MatchResult, string> repl, string s, int count = 0, int flags = 0)
         {
             return Compile(pattern, flags).Subn(repl, s, count);
         }
@@ -98,7 +104,7 @@ namespace Sharpy
         /// <summary>
         /// Return the string obtained by replacing occurrences using a callable.
         /// </summary>
-        public static string Sub(this ReModule.Pattern pattern, Func<ReModule.Match, string> repl, string s, int count = 0)
+        public static string Sub(this ReModule.Pattern pattern, Func<ReModule.MatchResult, string> repl, string s, int count = 0)
         {
             int replaced = 0;
             return pattern.Regex.Replace(s, m =>
@@ -106,7 +112,7 @@ namespace Sharpy
                 if (count > 0 && replaced >= count)
                     return m.Value;
                 replaced++;
-                var reMatch = new ReModule.Match(m, s, pattern.PatternStr, 0, s.Length, pattern);
+                var reMatch = new ReModule.MatchResult(m, s, pattern.PatternStr, 0, s.Length, pattern);
                 return repl(reMatch);
             });
         }
@@ -142,7 +148,7 @@ namespace Sharpy
         /// <summary>
         /// Like Sub() with callable, but returns (new_string, number_of_subs_made).
         /// </summary>
-        public static (string, int) Subn(this ReModule.Pattern pattern, Func<ReModule.Match, string> repl, string s, int count = 0)
+        public static (string, int) Subn(this ReModule.Pattern pattern, Func<ReModule.MatchResult, string> repl, string s, int count = 0)
         {
             int replacementCount = 0;
             string result = pattern.Regex.Replace(s, m =>
@@ -150,7 +156,7 @@ namespace Sharpy
                 if (count > 0 && replacementCount >= count)
                     return m.Value;
                 replacementCount++;
-                var reMatch = new ReModule.Match(m, s, pattern.PatternStr, 0, s.Length, pattern);
+                var reMatch = new ReModule.MatchResult(m, s, pattern.PatternStr, 0, s.Length, pattern);
                 return repl(reMatch);
             });
             return (result, replacementCount);

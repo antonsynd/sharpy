@@ -354,7 +354,7 @@ namespace Sharpy
             /// <summary>
             /// Scan through string looking for the first match.
             /// </summary>
-            public Match? Search(string s, int pos = 0, int? endpos = default)
+            public MatchResult? Search(string s, int pos = 0, int? endpos = default)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
@@ -369,13 +369,13 @@ namespace Sharpy
                     actualEndpos = endpos.Value;
                 }
 
-                return new Match(m, s, this._PatternStr, pos, actualEndpos, this);
+                return new MatchResult(m, s, this._PatternStr, pos, actualEndpos, this);
             }
 
             /// <summary>
             /// Try to apply the pattern at the start of the string.
             /// </summary>
-            public Match? Match(string s, int pos = 0, int? endpos = default)
+            public MatchResult? Match(string s, int pos = 0, int? endpos = default)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
@@ -390,13 +390,13 @@ namespace Sharpy
                     actualEndpos = endpos.Value;
                 }
 
-                return new Match(m, s, this._PatternStr, pos, actualEndpos, this);
+                return new MatchResult(m, s, this._PatternStr, pos, actualEndpos, this);
             }
 
             /// <summary>
             /// Try to apply the pattern to the entire string.
             /// </summary>
-            public Match? Fullmatch(string s, int pos = 0, int? endpos = default)
+            public MatchResult? Fullmatch(string s, int pos = 0, int? endpos = default)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
@@ -411,7 +411,7 @@ namespace Sharpy
                     actualEndpos = endpos.Value;
                 }
 
-                return new Match(m, s, this._PatternStr, pos, actualEndpos, this);
+                return new MatchResult(m, s, this._PatternStr, pos, actualEndpos, this);
             }
 
             /// <summary>
@@ -464,13 +464,13 @@ namespace Sharpy
             }
 
             /// <summary>
-            /// Return a list of Match objects over all non-overlapping matches.
+            /// Return a list of MatchResult objects over all non-overlapping matches.
             /// </summary>
-            public Sharpy.List<Match> Finditer(string s, int pos = 0, int? endpos = default)
+            public Sharpy.List<MatchResult> Finditer(string s, int pos = 0, int? endpos = default)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.MatchCollection matches = this._Regex.Matches(target);
-                Sharpy.List<Match> result = new Sharpy.List<Match>()
+                Sharpy.List<MatchResult> result = new Sharpy.List<MatchResult>()
                 {
                 };
                 int actualEndpos = s.Length;
@@ -488,7 +488,7 @@ namespace Sharpy
                         continue;
                     }
 
-                    result.Append(new Match(m, s, this._PatternStr, pos, actualEndpos, this));
+                    result.Append(new MatchResult(m, s, this._PatternStr, pos, actualEndpos, this));
                 }
 
                 return result;
@@ -629,9 +629,9 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Wraps a .NET Match with Python-compatible API.
+        /// Wraps a .NET Match with Python-compatible regex match API.
         /// </summary>
-        public sealed class Match
+        public sealed class MatchResult
         {
             private global::System.Text.RegularExpressions.Match _Match;
             private string _String;
@@ -876,9 +876,9 @@ namespace Sharpy
             }
 
             /// <summary>
-            /// Create a Match wrapping a .NET Match object.
+            /// Create a MatchResult wrapping a .NET Match object.
             /// </summary>
-            public Match(global::System.Text.RegularExpressions.Match netMatch, string @string, string patternStr, int pos, int endpos, Pattern? compiledPattern = default)
+            public MatchResult(global::System.Text.RegularExpressions.Match netMatch, string @string, string patternStr, int pos, int endpos, Pattern? compiledPattern = default)
             {
                 this._Match = netMatch;
                 this._String = @string;

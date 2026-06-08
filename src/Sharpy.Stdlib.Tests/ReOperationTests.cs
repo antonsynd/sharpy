@@ -58,7 +58,7 @@ namespace Sharpy.Tests
         public void Finditer_ReturnsMatchObjectsWithCorrectGroups()
         {
             var matches = ReModule.Finditer(@"(\w+)=(\d+)", "x=1 y=42 z=100");
-            Assert.Equal(3, ((ICollection<ReModule.Match>)matches).Count);
+            Assert.Equal(3, ((ICollection<ReModule.MatchResult>)matches).Count);
             Assert.Equal("x", matches[0].Group(1));
             Assert.Equal("1", matches[0].Group(2));
             Assert.Equal("y", matches[1].Group(1));
@@ -76,7 +76,7 @@ namespace Sharpy.Tests
         public void Finditer_SpansAreCorrect()
         {
             var matches = ReModule.Finditer(@"\d+", "ab12cd34");
-            Assert.Equal(2, ((ICollection<ReModule.Match>)matches).Count);
+            Assert.Equal(2, ((ICollection<ReModule.MatchResult>)matches).Count);
             Assert.Equal((2, 4), matches[0].Span());
             Assert.Equal((6, 8), matches[1].Span());
         }
