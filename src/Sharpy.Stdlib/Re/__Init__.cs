@@ -15,6 +15,9 @@ namespace Sharpy
     [SharpyModule("re")]
     public static partial class ReModule
     {
+        // TODO(#855): Move callable sub/subn overloads to re_module.spy once function type params work in overloads.
+        // TODO(#856): Move Subn string overload to re_module.spy once nested def works in class methods.
+
         // ---- Module-level functions ----
 
         /// <summary>Compile a pattern into a Pattern object.</summary>

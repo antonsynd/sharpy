@@ -321,6 +321,7 @@ class Pattern:
             result.append(MatchResult(m, s, self._pattern_str, pos, actual_endpos, self))
         return result
 
+    # TODO(#855, #856): sub(callable), subn(str), subn(callable) are in __Init__.cs
     def sub(self, repl: str, s: str, count: int = 0) -> str:
         """Return the string obtained by replacing occurrences using a string."""
         translated: str = _translate_replacement(repl)
