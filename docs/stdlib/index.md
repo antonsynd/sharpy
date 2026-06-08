@@ -55,7 +55,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 | [`platform`](platform.md) | Access to underlying platform's identifying data. |
 | [`pprint`](pprint.md) |  |
 | [`random`](random.md) | Generate pseudo-random numbers with various distributions. |
-| [`re`](re.md) | Regular expression operations. |
+| [`re`](re.md) | Regular expression operations. The classes (Pattern, Match, Error), pattern translator, and flag constants are generated from \`src/Sharpy.Stdlib/spy/re_module.spy\` into \`ReModule.cs\`. Module-level convenience functions and callable sub/subn overloads stay here because they involve delegate interop and name-resolution constraints. |
 | [`requests`](requests.md) | HTTP library for making requests (GET, POST, PUT, DELETE, etc.). |
 | [`secrets`](secrets.md) | Generate cryptographically strong random numbers suitable for managing secrets. |
 | [`shlex`](shlex.md) | Simple lexical analysis of shell-style syntaxes. |
