@@ -7,7 +7,7 @@ namespace Sharpy
     /// Python-compatible regular expression module.
     /// Wraps .NET's System.Text.RegularExpressions with Python-compatible API.
     /// </summary>
-    public static partial class Re
+    public static partial class ReModule
     {
         // Flags — match Python's re module constants
         /// <summary>Perform case-insensitive matching.</summary>

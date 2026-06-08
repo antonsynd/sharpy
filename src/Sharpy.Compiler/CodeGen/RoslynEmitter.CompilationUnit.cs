@@ -574,6 +574,7 @@ internal partial class RoslynEmitter
         { "shlex", "ShlexModule" },
         { "subprocess", "SubprocessModule" },
         { "socket", "SocketModule" },
+        { "re", "ReModule" },
     };
 
     /// <summary>

@@ -44,6 +44,7 @@ MODULES=(
     "random_module:Random/Random.cs"
     "hashlib_module:Hashlib/Hashlib.cs"
     "csv_module:Csv/CsvModule.cs"
+    "re_module:Re/ReModule.cs"
 )
 
 mode="regenerate"

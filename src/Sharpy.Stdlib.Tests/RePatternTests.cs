@@ -7,7 +7,7 @@ namespace Sharpy.Tests
 {
     /// <summary>
     /// Tests for RePattern compiled object instance methods and ReMatch position-based access.
-    /// These complement ReModuleTests.cs which tests the static Re.* API.
+    /// These complement ReModuleTests.cs which tests the static ReModule.* API.
     /// </summary>
     public class RePatternTests
     {
@@ -16,7 +16,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Match_AtStart_ReturnsMatch()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var m = pattern.Match("123abc");
             Assert.NotNull(m);
             Assert.Equal("123", m!.Group());
@@ -25,7 +25,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Match_NotAtStart_ReturnsNull()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var m = pattern.Match("abc123");
             Assert.Null(m);
         }
@@ -33,7 +33,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Match_WithPos_MatchesFromPosition()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             // pos=3 shifts start so digits start at index 3
             var m = pattern.Match("abc123", pos: 3);
             Assert.NotNull(m);
@@ -43,7 +43,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Match_EmptyString_EmptyPatternMatches()
         {
-            var pattern = Re.Compile(@".*");
+            var pattern = ReModule.Compile(@".*");
             var m = pattern.Match("");
             Assert.NotNull(m);
             Assert.Equal("", m!.Group());
@@ -56,7 +56,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Fullmatch_EntireString_ReturnsMatch()
         {
-            var pattern = Re.Compile(@"[a-z]+");
+            var pattern = ReModule.Compile(@"[a-z]+");
             var m = pattern.Fullmatch("hello");
             Assert.NotNull(m);
             Assert.Equal("hello", m!.Group());
@@ -65,7 +65,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Fullmatch_PartialString_ReturnsNull()
         {
-            var pattern = Re.Compile(@"[a-z]+");
+            var pattern = ReModule.Compile(@"[a-z]+");
             var m = pattern.Fullmatch("hello123");
             Assert.Null(m);
         }
@@ -73,7 +73,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Fullmatch_WithGroups_CapturesAllGroups()
         {
-            var pattern = Re.Compile(@"(\d{4})-(\d{2})-(\d{2})");
+            var pattern = ReModule.Compile(@"(\d{4})-(\d{2})-(\d{2})");
             var m = pattern.Fullmatch("2024-01-15");
             Assert.NotNull(m);
             Assert.Equal("2024", m!.Group(1));
@@ -88,7 +88,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Findall_MultipleMatches_ReturnsAll()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var result = pattern.Findall("a1b22c333");
             Assert.Equal(3, ((ICollection<object?>)result).Count);
             Assert.Equal("1", result[0]);
@@ -99,7 +99,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Findall_NoMatches_ReturnsEmptyList()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var result = pattern.Findall("abcdef");
             Assert.Empty(result);
         }
@@ -107,7 +107,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Findall_SingleGroup_ReturnsGroupValues()
         {
-            var pattern = Re.Compile(@"(\d+)");
+            var pattern = ReModule.Compile(@"(\d+)");
             var result = pattern.Findall("a1b2c3");
             Assert.Equal(3, ((ICollection<object?>)result).Count);
             Assert.Equal("1", result[0]);
@@ -122,7 +122,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Finditer_ReturnsMatchObjects()
         {
-            var pattern = Re.Compile(@"\w+");
+            var pattern = ReModule.Compile(@"\w+");
             var matches = pattern.Finditer("hello world");
             Assert.Equal(2, ((ICollection<ReMatch>)matches).Count);
             Assert.Equal("hello", matches[0].Group());
@@ -132,7 +132,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Finditer_PositionsAreCorrect()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var matches = pattern.Finditer("abc 123 def 456");
             Assert.Equal(2, ((ICollection<ReMatch>)matches).Count);
             Assert.Equal(4, matches[0].Start());
@@ -148,7 +148,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Sub_ReplacesAll()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             string result = pattern.Sub("NUM", "a1b2c3");
             Assert.Equal("aNUMbNUMcNUM", result);
         }
@@ -156,7 +156,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Sub_WithCount_ReplacesLimited()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             string result = pattern.Sub("NUM", "a1b2c3", count: 2);
             Assert.Equal("aNUMbNUMc3", result);
         }
@@ -164,7 +164,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Sub_Count0_ReplacesAll()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             string result = pattern.Sub("X", "1a2b3c", count: 0);
             Assert.Equal("XaXbXc", result);
         }
@@ -176,7 +176,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Split_SplitsOnPattern()
         {
-            var pattern = Re.Compile(@"\s+");
+            var pattern = ReModule.Compile(@"\s+");
             var result = pattern.Split("one two   three");
             Assert.Equal(3, ((ICollection<string>)result).Count);
             Assert.Equal("one", result[0]);
@@ -187,7 +187,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Split_WithMaxsplit_LimitsResults()
         {
-            var pattern = Re.Compile(@",");
+            var pattern = ReModule.Compile(@",");
             var result = pattern.Split("a,b,c,d", maxsplit: 2);
             Assert.Equal(3, ((ICollection<string>)result).Count);
             Assert.Equal("a", result[0]);
@@ -202,21 +202,21 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Flags_ReflectsCompileFlags()
         {
-            var pattern = Re.Compile(@"\d+", flags: Re.IGNORECASE);
-            Assert.Equal(Re.IGNORECASE, pattern.Flags);
+            var pattern = ReModule.Compile(@"\d+", flags: ReModule.IGNORECASE);
+            Assert.Equal(ReModule.IGNORECASE, pattern.Flags);
         }
 
         [Fact]
         public void Pattern_Flags_Zero_WhenNoFlags()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             Assert.Equal(0, pattern.Flags);
         }
 
         [Fact]
         public void Pattern_ToString_ContainsPatternStr()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             string s = pattern.ToString();
             Assert.Contains(@"\d+", s, StringComparison.Ordinal);
         }
@@ -224,7 +224,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Compile_CombinedFlags_Work()
         {
-            var pattern = Re.Compile("^hello", flags: Re.IGNORECASE | Re.MULTILINE);
+            var pattern = ReModule.Compile("^hello", flags: ReModule.IGNORECASE | ReModule.MULTILINE);
             var m = pattern.Search("HELLO\nWORLD");
             Assert.NotNull(m);
             Assert.Equal("HELLO", m!.Group());
@@ -233,7 +233,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Compile_Dotall_DotMatchesNewline()
         {
-            var pattern = Re.Compile("a.b", flags: Re.DOTALL);
+            var pattern = ReModule.Compile("a.b", flags: ReModule.DOTALL);
             var m = pattern.Fullmatch("a\nb");
             Assert.NotNull(m);
         }
@@ -245,7 +245,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Group_OutOfRange_ThrowsIndexError()
         {
-            var m = Re.Match(@"(\d+)", "123");
+            var m = ReModule.Match(@"(\d+)", "123");
             Assert.NotNull(m);
             Assert.Throws<IndexError>(() => m!.Group(99));
         }
@@ -253,7 +253,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Group_NegativeIndex_ThrowsIndexError()
         {
-            var m = Re.Match(@"(\d+)", "123");
+            var m = ReModule.Match(@"(\d+)", "123");
             Assert.NotNull(m);
             Assert.Throws<IndexError>(() => m!.Group(-1));
         }
@@ -261,7 +261,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Group_ZeroIsFullMatch()
         {
-            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            var m = ReModule.Search(@"(\w+)\s(\w+)", "hello world");
             Assert.NotNull(m);
             Assert.Equal("hello world", m!.Group(0));
         }
@@ -273,7 +273,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Start_WithGroup_ReturnsGroupStart()
         {
-            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            var m = ReModule.Search(@"(\w+)\s(\w+)", "hello world");
             Assert.NotNull(m);
             Assert.Equal(6, m!.Start(2));
         }
@@ -281,7 +281,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_End_WithGroup_ReturnsGroupEnd()
         {
-            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            var m = ReModule.Search(@"(\w+)\s(\w+)", "hello world");
             Assert.NotNull(m);
             Assert.Equal(11, m!.End(2));
         }
@@ -289,7 +289,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Span_WithGroup_ReturnsTuple()
         {
-            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            var m = ReModule.Search(@"(\w+)\s(\w+)", "hello world");
             Assert.NotNull(m);
             Assert.Equal((6, 11), m!.Span(2));
         }
@@ -297,7 +297,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Start_DefaultGroupZero_IsFullMatchStart()
         {
-            var m = Re.Search("world", "hello world");
+            var m = ReModule.Search("world", "hello world");
             Assert.NotNull(m);
             Assert.Equal(6, m!.Start(0));
         }
@@ -309,7 +309,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_NamedGroup_MatchReturnsNamedGroup()
         {
-            var pattern = Re.Compile(@"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})");
+            var pattern = ReModule.Compile(@"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})");
             var m = pattern.Fullmatch("2024-03-15");
             Assert.NotNull(m);
             Assert.Equal("2024", m!.Group("year"));
@@ -320,7 +320,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Groupdict_ReturnsNamedGroupDict()
         {
-            var pattern = Re.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
+            var pattern = ReModule.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
             var m = pattern.Search("Jane Doe");
             Assert.NotNull(m);
             var gd = m!.Groupdict();
@@ -335,7 +335,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Search_EmptyString_EmptyPatternMatches()
         {
-            var pattern = Re.Compile(@"");
+            var pattern = ReModule.Compile(@"");
             var m = pattern.Search("");
             Assert.NotNull(m);
             Assert.Equal("", m!.Group());
@@ -344,7 +344,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Search_EmptyString_NonEmptyPattern_ReturnsNull()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var m = pattern.Search("");
             Assert.Null(m);
         }
@@ -352,7 +352,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Match_NoMatch_ReturnsNullNotException()
         {
-            var pattern = Re.Compile(@"\d{10}");
+            var pattern = ReModule.Compile(@"\d{10}");
             var m = pattern.Match("abc");
             Assert.Null(m);
         }
@@ -364,7 +364,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Re_ReturnsCompiledPattern()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var m = pattern.Search("abc 123");
             Assert.NotNull(m);
             Assert.Same(pattern, m!.Re);
@@ -373,7 +373,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Re_FromStaticApi_IsNotNull()
         {
-            var m = Re.Search(@"\d+", "abc 123");
+            var m = ReModule.Search(@"\d+", "abc 123");
             Assert.NotNull(m);
             Assert.NotNull(m!.Re);
         }
@@ -385,7 +385,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Lastindex_ReturnsLastMatchedGroupIndex()
         {
-            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            var m = ReModule.Search(@"(\w+)\s(\w+)", "hello world");
             Assert.NotNull(m);
             Assert.Equal(2, m!.Lastindex);
         }
@@ -393,7 +393,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Lastindex_NoGroups_ReturnsNull()
         {
-            var m = Re.Search(@"\w+", "hello");
+            var m = ReModule.Search(@"\w+", "hello");
             Assert.NotNull(m);
             Assert.Null(m!.Lastindex);
         }
@@ -402,7 +402,7 @@ namespace Sharpy.Tests
         public void Match_Lastindex_FirstAlternative_ReturnsCorrectIndex()
         {
             // Only the first alternative matches → group 1 is the last matched
-            var m = Re.Search(@"(\w+)|(\d+)", "hello");
+            var m = ReModule.Search(@"(\w+)|(\d+)", "hello");
             Assert.NotNull(m);
             Assert.Equal(1, m!.Lastindex);
         }
@@ -410,7 +410,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Lastgroup_NamedGroup_ReturnsName()
         {
-            var pattern = Re.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
+            var pattern = ReModule.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
             var m = pattern.Search("hello world");
             Assert.NotNull(m);
             Assert.Equal("last", m!.Lastgroup);
@@ -419,7 +419,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Lastgroup_UnnamedGroup_ReturnsNull()
         {
-            var pattern = Re.Compile(@"(\w+)\s(\w+)");
+            var pattern = ReModule.Compile(@"(\w+)\s(\w+)");
             var m = pattern.Search("hello world");
             Assert.NotNull(m);
             Assert.Null(m!.Lastgroup);
@@ -428,7 +428,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Lastgroup_NoGroups_ReturnsNull()
         {
-            var pattern = Re.Compile(@"\w+");
+            var pattern = ReModule.Compile(@"\w+");
             var m = pattern.Search("hello");
             Assert.NotNull(m);
             Assert.Null(m!.Lastgroup);
@@ -441,7 +441,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Expand_BackslashDigit_ExpandsGroup()
         {
-            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            var m = ReModule.Search(@"(\w+)\s(\w+)", "hello world");
             Assert.NotNull(m);
             string result = m!.Expand(@"\2 \1");
             Assert.Equal("world hello", result);
@@ -450,7 +450,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Expand_BackslashG_ExpandsNamedGroup()
         {
-            var pattern = Re.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
+            var pattern = ReModule.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
             var m = pattern.Search("hello world");
             Assert.NotNull(m);
             string result = m!.Expand(@"\g<last> \g<first>");
@@ -460,7 +460,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Expand_BackslashG_NumericReference()
         {
-            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            var m = ReModule.Search(@"(\w+)\s(\w+)", "hello world");
             Assert.NotNull(m);
             string result = m!.Expand(@"\g<2> \g<1>");
             Assert.Equal("world hello", result);
@@ -469,7 +469,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Expand_PlainText_PassedThrough()
         {
-            var m = Re.Search(@"\w+", "hello");
+            var m = ReModule.Search(@"\w+", "hello");
             Assert.NotNull(m);
             string result = m!.Expand("result: \\0");
             Assert.Equal("result: hello", result);
@@ -482,7 +482,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Indexer_ZeroReturnsFullMatch()
         {
-            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            var m = ReModule.Search(@"(\w+)\s(\w+)", "hello world");
             Assert.NotNull(m);
             Assert.Equal("hello world", m![0]);
         }
@@ -490,7 +490,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Indexer_GroupReturnsGroupValue()
         {
-            var m = Re.Search(@"(\w+)\s(\w+)", "hello world");
+            var m = ReModule.Search(@"(\w+)\s(\w+)", "hello world");
             Assert.NotNull(m);
             Assert.Equal("hello", m![1]);
             Assert.Equal("world", m![2]);
@@ -499,7 +499,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_Indexer_OutOfRange_ThrowsIndexError()
         {
-            var m = Re.Search(@"\w+", "hello");
+            var m = ReModule.Search(@"\w+", "hello");
             Assert.NotNull(m);
             Assert.Throws<IndexError>(() => m![99]);
         }
@@ -507,7 +507,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Match_GroupByName_NonexistentName_ThrowsIndexError()
         {
-            var m = Re.Search(@"(?P<word>\w+)", "hello");
+            var m = ReModule.Search(@"(?P<word>\w+)", "hello");
             Assert.NotNull(m);
             Assert.Throws<IndexError>(() => m!.Group("nonexistent"));
         }
@@ -519,7 +519,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_PatternProperty_EqualsPatternStr()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             Assert.Equal(@"\d+", pattern.Pattern);
             Assert.Equal(pattern.PatternStr, pattern.Pattern);
         }
@@ -531,21 +531,21 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Groups_ReturnsGroupCount()
         {
-            var pattern = Re.Compile(@"(\w+)\s(\w+)");
+            var pattern = ReModule.Compile(@"(\w+)\s(\w+)");
             Assert.Equal(2, pattern.Groups);
         }
 
         [Fact]
         public void Pattern_Groups_NoGroups_ReturnsZero()
         {
-            var pattern = Re.Compile(@"\w+");
+            var pattern = ReModule.Compile(@"\w+");
             Assert.Equal(0, pattern.Groups);
         }
 
         [Fact]
         public void Pattern_Groups_NamedGroups_CountedCorrectly()
         {
-            var pattern = Re.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
+            var pattern = ReModule.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
             Assert.Equal(2, pattern.Groups);
         }
 
@@ -556,7 +556,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Groupindex_ReturnsNameToNumberMapping()
         {
-            var pattern = Re.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
+            var pattern = ReModule.Compile(@"(?P<first>\w+)\s(?P<last>\w+)");
             var gi = pattern.Groupindex;
             Assert.Equal(1, gi["first"]);
             Assert.Equal(2, gi["last"]);
@@ -565,7 +565,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Groupindex_NoNamedGroups_ReturnsEmptyDict()
         {
-            var pattern = Re.Compile(@"(\w+)\s(\w+)");
+            var pattern = ReModule.Compile(@"(\w+)\s(\w+)");
             var gi = pattern.Groupindex;
             Assert.Empty(gi);
         }
@@ -573,7 +573,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Groupindex_MixedNamedUnnamed_OnlyNamed()
         {
-            var pattern = Re.Compile(@"(?P<name>\w+)\s(\d+)");
+            var pattern = ReModule.Compile(@"(?P<name>\w+)\s(\d+)");
             var gi = pattern.Groupindex;
             Assert.Single((ICollection<KeyValuePair<string, int>>)gi);
             // .NET numbers unnamed groups first, then named groups
@@ -587,7 +587,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Subn_ReturnsStringAndCount()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var (result, count) = pattern.Subn("NUM", "a1b2c3");
             Assert.Equal("aNUMbNUMcNUM", result);
             Assert.Equal(3, count);
@@ -596,7 +596,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Subn_WithCount_LimitsReplacements()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var (result, count) = pattern.Subn("NUM", "a1b2c3", count: 2);
             Assert.Equal("aNUMbNUMc3", result);
             Assert.Equal(2, count);
@@ -605,7 +605,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Subn_NoMatch_ReturnsOriginalAndZero()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var (result, count) = pattern.Subn("NUM", "no numbers");
             Assert.Equal("no numbers", result);
             Assert.Equal(0, count);
@@ -618,7 +618,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Sub_Callable_Works()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             string result = pattern.Sub(m => "[" + m.Group() + "]", "a1b2c3");
             Assert.Equal("a[1]b[2]c[3]", result);
         }
@@ -626,7 +626,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Sub_Callable_WithCount_LimitsReplacements()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             string result = pattern.Sub(m => "X", "a1b2c3", count: 1);
             Assert.Equal("aXb2c3", result);
         }
@@ -634,7 +634,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Subn_Callable_Works()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var (result, count) = pattern.Subn(m => "X", "a1b2c3");
             Assert.Equal("aXbXcX", result);
             Assert.Equal(3, count);
@@ -643,7 +643,7 @@ namespace Sharpy.Tests
         [Fact]
         public void Pattern_Subn_Callable_WithCount_LimitsReplacements()
         {
-            var pattern = Re.Compile(@"\d+");
+            var pattern = ReModule.Compile(@"\d+");
             var (result, count) = pattern.Subn(m => "X", "a1b2c3", count: 2);
             Assert.Equal("aXbXc3", result);
             Assert.Equal(2, count);
@@ -656,13 +656,13 @@ namespace Sharpy.Tests
         [Fact]
         public void Compile_InvalidPattern_ThrowsReError()
         {
-            Assert.Throws<ReError>(() => Re.Compile("[invalid"));
+            Assert.Throws<ReError>(() => ReModule.Compile("[invalid"));
         }
 
         [Fact]
         public void ReError_HasMessageProperty()
         {
-            var ex = Assert.Throws<ReError>(() => Re.Compile("[invalid"));
+            var ex = Assert.Throws<ReError>(() => ReModule.Compile("[invalid"));
             Assert.NotEmpty(ex.Msg);
             Assert.Equal("[invalid", ex.Pattern);
         }
@@ -696,7 +696,7 @@ namespace Sharpy.Tests
         [Fact]
         public void InlineFlag_CaseInsensitive_Works()
         {
-            var m = Re.Search(@"(?i)hello", "HELLO world");
+            var m = ReModule.Search(@"(?i)hello", "HELLO world");
             Assert.NotNull(m);
             Assert.Equal("HELLO", m!.Group());
         }
@@ -705,7 +705,7 @@ namespace Sharpy.Tests
         public void InlineFlag_AsciiStripped_Works()
         {
             // (?a) should be stripped (no-op on .NET), pattern should still match
-            var m = Re.Search(@"(?a)\w+", "hello");
+            var m = ReModule.Search(@"(?a)\w+", "hello");
             Assert.NotNull(m);
             Assert.Equal("hello", m!.Group());
         }
@@ -714,7 +714,7 @@ namespace Sharpy.Tests
         public void InlineFlag_UnicodeStripped_Works()
         {
             // (?u) should be stripped (no-op on .NET)
-            var m = Re.Search(@"(?u)\w+", "hello");
+            var m = ReModule.Search(@"(?u)\w+", "hello");
             Assert.NotNull(m);
             Assert.Equal("hello", m!.Group());
         }
@@ -723,7 +723,7 @@ namespace Sharpy.Tests
         public void InlineFlag_ScopedWithColon_Works()
         {
             // (?i:hello) should apply case-insensitive to the group
-            var m = Re.Search(@"(?i:hello) world", "HELLO world");
+            var m = ReModule.Search(@"(?i:hello) world", "HELLO world");
             Assert.NotNull(m);
             Assert.Equal("HELLO world", m!.Group());
         }
@@ -732,7 +732,7 @@ namespace Sharpy.Tests
         public void InlineFlag_ScopedAsciiStripped_Works()
         {
             // (?a:hello) — strip 'a' flag, emit as (?:hello)
-            var m = Re.Search(@"(?a:hello) world", "hello world");
+            var m = ReModule.Search(@"(?a:hello) world", "hello world");
             Assert.NotNull(m);
             Assert.Equal("hello world", m!.Group());
         }
@@ -741,7 +741,7 @@ namespace Sharpy.Tests
         public void InlineFlag_MixedFlags_StripsOnlyPythonOnly()
         {
             // (?ai) — strip 'a', keep 'i'
-            var m = Re.Search(@"(?ai)hello", "HELLO");
+            var m = ReModule.Search(@"(?ai)hello", "HELLO");
             Assert.NotNull(m);
             Assert.Equal("HELLO", m!.Group());
         }

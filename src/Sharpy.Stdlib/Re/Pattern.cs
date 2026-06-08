@@ -281,22 +281,22 @@ namespace Sharpy
         internal static RegexOptions FlagsToOptions(int flags)
         {
             var options = RegexOptions.None;
-            if ((flags & Re.IGNORECASE) != 0)
+            if ((flags & ReModule.IGNORECASE) != 0)
             {
                 options |= RegexOptions.IgnoreCase;
             }
 
-            if ((flags & Re.MULTILINE) != 0)
+            if ((flags & ReModule.MULTILINE) != 0)
             {
                 options |= RegexOptions.Multiline;
             }
 
-            if ((flags & Re.DOTALL) != 0)
+            if ((flags & ReModule.DOTALL) != 0)
             {
                 options |= RegexOptions.Singleline;
             }
 
-            if ((flags & Re.VERBOSE) != 0)
+            if ((flags & ReModule.VERBOSE) != 0)
             {
                 options |= RegexOptions.IgnorePatternWhitespace;
             }
