@@ -183,7 +183,7 @@ internal partial class RoslynEmitter
         ExpressionSyntax expr = IdentifierName(mangledName);
 
         // If this variable has been narrowed from Optional<T>/Nullable<T> to T,
-        // emit .Unwrap() for Optional or .Value for value-type Nullable
+        // emit .Unwrap() for Optional, .Value for value-type Nullable, or ! for reference-type Nullable
         if (_narrowing.IsNarrowed(name.Name))
         {
             if (_narrowing.IsNullableNarrowed(name.Name))
@@ -193,6 +193,12 @@ internal partial class RoslynEmitter
                     SyntaxKind.SimpleMemberAccessExpression,
                     expr,
                     IdentifierName("Value"));
+            }
+            else if (_narrowing.IsReferenceNullableNarrowed(name.Name))
+            {
+                // Reference-type nullable (string?, MyClass?, etc.) → !
+                // C# only auto-narrows locals after null checks, not fields.
+                expr = PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression, expr);
             }
             else
             {

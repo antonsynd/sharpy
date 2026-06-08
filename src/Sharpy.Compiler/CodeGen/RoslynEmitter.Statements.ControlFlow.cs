@@ -455,6 +455,8 @@ internal partial class RoslynEmitter
             _narrowing.PushNarrowing(n.VariableName);
             if (n.IsValueTypeNullable)
                 _narrowing.AddNullableNarrowing(n.VariableName);
+            else if (n.IsReferenceTypeNullable)
+                _narrowing.AddReferenceNullableNarrowing(n.VariableName);
         }
     }
 
@@ -480,6 +482,8 @@ internal partial class RoslynEmitter
                 // Preserve AddNullableNarrowing side effect for value-type nullables
                 if (n.IsValueTypeNullable)
                     _narrowing.AddNullableNarrowing(n.VariableName);
+                else if (n.IsReferenceTypeNullable)
+                    _narrowing.AddReferenceNullableNarrowing(n.VariableName);
             }
         }
 

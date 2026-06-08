@@ -203,10 +203,17 @@ internal partial class RoslynEmitter : ICodeEmitter
         /// <summary>
         /// Tracks variable names that are narrowed from NullableType (T | None) rather than
         /// OptionalType. For value-type nullables (int?, bool?, etc.), the emitter generates
-        /// .Value instead of .Unwrap(). Reference-type nullables (string?) don't need .Value
-        /// because C# narrows them automatically after a null check.
+        /// .Value instead of .Unwrap().
         /// </summary>
         private readonly HashSet<string> _isNullableNarrowing = new();
+
+        /// <summary>
+        /// Tracks variable names that are narrowed from a reference-type NullableType
+        /// (string | None, MyClass | None, etc.). C# only auto-narrows locals after null
+        /// checks, not fields — so we emit a null-forgiving operator (!) to suppress
+        /// CS8602 warnings.
+        /// </summary>
+        private readonly HashSet<string> _isReferenceNullableNarrowing = new();
 
         /// <summary>
         /// Tracks variables narrowed by isinstance() checks.
@@ -259,12 +266,25 @@ internal partial class RoslynEmitter : ICodeEmitter
             => _isNullableNarrowing.Add(variableName);
 
         /// <summary>
+        /// Returns true if the variable is narrowed as a reference-type nullable (needs !).
+        /// </summary>
+        public bool IsReferenceNullableNarrowed(string variableName)
+            => _isReferenceNullableNarrowing.Contains(variableName);
+
+        /// <summary>
+        /// Marks a variable as narrowed from a reference-type nullable (needs ! operator).
+        /// </summary>
+        public void AddReferenceNullableNarrowing(string variableName)
+            => _isReferenceNullableNarrowing.Add(variableName);
+
+        /// <summary>
         /// Clears narrowing for a variable (e.g., after reassignment).
         /// </summary>
         public void ClearNarrowing(string variableName)
         {
             _narrowedOptionals.Remove(variableName);
             _isNullableNarrowing.Remove(variableName);
+            _isReferenceNullableNarrowing.Remove(variableName);
             _isInstanceNarrowed.Remove(variableName);
         }
 
@@ -302,32 +322,36 @@ internal partial class RoslynEmitter : ICodeEmitter
         {
             _narrowedOptionals.Clear();
             _isNullableNarrowing.Clear();
+            _isReferenceNullableNarrowing.Clear();
             _isInstanceNarrowed.Clear();
         }
 
         /// <summary>
         /// Captures a snapshot of narrowing state for save/restore around local functions.
         /// </summary>
-        public (Dictionary<string, int> Optionals, HashSet<string> Nullables, Dictionary<string, Stack<string>> Instance) Snapshot()
+        public (Dictionary<string, int> Optionals, HashSet<string> Nullables, HashSet<string> ReferenceNullables, Dictionary<string, Stack<string>> Instance) Snapshot()
         {
             var optionals = new Dictionary<string, int>(_narrowedOptionals);
             var nullables = new HashSet<string>(_isNullableNarrowing);
+            var referenceNullables = new HashSet<string>(_isReferenceNullableNarrowing);
             var instance = new Dictionary<string, Stack<string>>();
             foreach (var (k, v) in _isInstanceNarrowed)
                 instance[k] = new Stack<string>(v.Reverse());
-            return (optionals, nullables, instance);
+            return (optionals, nullables, referenceNullables, instance);
         }
 
         /// <summary>
         /// Restores narrowing state from a snapshot.
         /// </summary>
-        public void Restore((Dictionary<string, int> Optionals, HashSet<string> Nullables, Dictionary<string, Stack<string>> Instance) snapshot)
+        public void Restore((Dictionary<string, int> Optionals, HashSet<string> Nullables, HashSet<string> ReferenceNullables, Dictionary<string, Stack<string>> Instance) snapshot)
         {
             _narrowedOptionals.Clear();
             foreach (var (k, v) in snapshot.Optionals)
                 _narrowedOptionals[k] = v;
             _isNullableNarrowing.Clear();
             _isNullableNarrowing.UnionWith(snapshot.Nullables);
+            _isReferenceNullableNarrowing.Clear();
+            _isReferenceNullableNarrowing.UnionWith(snapshot.ReferenceNullables);
             _isInstanceNarrowed.Clear();
             foreach (var (k, v) in snapshot.Instance)
                 _isInstanceNarrowed[k] = v;

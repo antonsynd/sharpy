@@ -1,0 +1,17 @@
+# Test: value-type nullable field narrowing (regression test for existing behavior)
+class Box:
+    _count: int | None
+
+    def __init__(self, count: int | None):
+        self._count = count
+
+    def get_or_default(self) -> int:
+        if self._count is not None:
+            return self._count
+        return 0
+
+def main():
+    b1: Box = Box(42)
+    b2: Box = Box(None)
+    print(b1.get_or_default())
+    print(b2.get_or_default())

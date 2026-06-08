@@ -636,7 +636,8 @@ public sealed record OptionalNarrowing(
     string VariableName,
     SemanticType NarrowedType,
     bool IsValueTypeNullable,
-    bool NarrowInThenBranch);
+    bool NarrowInThenBranch,
+    bool IsReferenceTypeNullable = false);
 
 /// <summary>
 /// A variable narrowed via an <c>isinstance()</c> check.

@@ -1072,13 +1072,18 @@ internal partial class RoslynEmitter
                     result));
         }
 
-        // Optional<T> narrowing for member access paths (self.field is not None)
+        // Optional<T>/Nullable<T> narrowing for member access paths (self.field is not None)
         if (dottedPath != null && _narrowing.IsNarrowed(dottedPath))
         {
             if (_narrowing.IsNullableNarrowed(dottedPath))
             {
                 result = MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression, result, IdentifierName("Value"));
+            }
+            else if (_narrowing.IsReferenceNullableNarrowed(dottedPath))
+            {
+                // Reference-type nullable field → ! (null-forgiving operator)
+                result = PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression, result);
             }
             else
             {

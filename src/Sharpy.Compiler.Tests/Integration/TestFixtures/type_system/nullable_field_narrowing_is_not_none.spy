@@ -1,0 +1,17 @@
+# Test: reference-type nullable field narrowing with `is not None`
+class Container:
+    _data: str | None
+
+    def __init__(self, data: str | None):
+        self._data = data
+
+    def get_length(self) -> int:
+        if self._data is not None:
+            return len(self._data)
+        return -1
+
+def main():
+    c1: Container = Container("hello")
+    c2: Container = Container(None)
+    print(c1.get_length())
+    print(c2.get_length())
