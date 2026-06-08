@@ -138,5 +138,145 @@
         "error": ""
       }
     ]
+  },
+  {
+    "date": "2026-06-08",
+    "results": [
+      {
+        "name": "fibonacci",
+        "language": "Python",
+        "compile_seconds": 0.0005162519999828419,
+        "execute_seconds": 0.2054627699999969,
+        "total_seconds": 0.20597902199997975,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "Sharpy",
+        "compile_seconds": 1.8907598909999876,
+        "execute_seconds": 0.04035946400000512,
+        "total_seconds": 1.9311193549999928,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "C#",
+        "compile_seconds": 1.5018177580000156,
+        "execute_seconds": 0.03726786300001095,
+        "total_seconds": 1.5390856210000265,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Python",
+        "compile_seconds": 0.0004979279999872688,
+        "execute_seconds": 0.0558309740000027,
+        "total_seconds": 0.056328901999989966,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Sharpy",
+        "compile_seconds": 2.131965989000008,
+        "execute_seconds": 0.0898392140000226,
+        "total_seconds": 2.221805203000031,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "C#",
+        "compile_seconds": 1.4396574020000799,
+        "execute_seconds": 0.09998954599996068,
+        "total_seconds": 1.5396469480000405,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Python",
+        "compile_seconds": 0.0007254829999965295,
+        "execute_seconds": 0.7431557829999917,
+        "total_seconds": 0.7438812659999883,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Sharpy",
+        "compile_seconds": 2.1955803609999975,
+        "execute_seconds": 0.1564886000000172,
+        "total_seconds": 2.3520689610000147,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "C#",
+        "compile_seconds": 1.484324593999986,
+        "execute_seconds": 0.05130878099998881,
+        "total_seconds": 1.5356333749999749,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Python",
+        "compile_seconds": 0.0005856020000010176,
+        "execute_seconds": 0.17786000800001034,
+        "total_seconds": 0.17844561000001136,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Sharpy",
+        "compile_seconds": 2.4308598089999975,
+        "execute_seconds": 0.27751715400000876,
+        "total_seconds": 2.7083769630000063,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "C#",
+        "compile_seconds": 1.4428126180000618,
+        "execute_seconds": 0.23295678200008751,
+        "total_seconds": 1.6757694000001493,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Python",
+        "compile_seconds": 0.00040549599998485064,
+        "execute_seconds": 0.16553557399998908,
+        "total_seconds": 0.16594106999997393,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Sharpy",
+        "compile_seconds": 1.9624422130000028,
+        "execute_seconds": 0.19278780999999867,
+        "total_seconds": 2.1552300230000014,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "C#",
+        "compile_seconds": 1.435586863000026,
+        "execute_seconds": 0.18506660299999567,
+        "total_seconds": 1.6206534660000216,
+        "success": true,
+        "error": ""
+      }
+    ]
   }
 ]
