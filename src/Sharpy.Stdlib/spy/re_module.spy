@@ -330,14 +330,12 @@ class Pattern:
 
     def sub(self, repl: (MatchResult) -> str, s: str, count: int = 0) -> str:
         """Return the string obtained by replacing occurrences using a callable."""
-        replaced: list[int] = [0]
         def evaluator(m: NetMatch) -> str:
-            if count > 0 and replaced[0] >= count:
-                return m.value
-            replaced[0] = replaced[0] + 1
             re_match: MatchResult = MatchResult(m, s, self._pattern_str, 0, len(s), self)
             return repl(re_match)
-        return self._regex.replace(s, evaluator)
+        if count == 0:
+            return self._regex.replace(s, evaluator)
+        return self._regex.replace(s, evaluator, count)
 
     def subn(self, repl: str, s: str, count: int = 0) -> tuple[str, int]:
         """Like sub(), but returns (new_string, number_of_subs_made)."""
@@ -357,12 +355,14 @@ class Pattern:
         """Like sub() with callable, but returns (new_string, number_of_subs_made)."""
         replacement_count: list[int] = [0]
         def callable_evaluator(m: NetMatch) -> str:
-            if count > 0 and replacement_count[0] >= count:
-                return m.value
             replacement_count[0] = replacement_count[0] + 1
             re_match: MatchResult = MatchResult(m, s, self._pattern_str, 0, len(s), self)
             return repl(re_match)
-        result: str = self._regex.replace(s, callable_evaluator)
+        result: str
+        if count == 0:
+            result = self._regex.replace(s, callable_evaluator)
+        else:
+            result = self._regex.replace(s, callable_evaluator, count)
         return (result, replacement_count[0])
 
     def split(self, s: str, maxsplit: int = 0) -> list[str]:

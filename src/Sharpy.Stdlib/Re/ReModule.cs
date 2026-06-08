@@ -1,3 +1,5 @@
+// Generated from src/Sharpy.Stdlib/spy/re_module.spy — do not edit directly.
+// To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/re_module.spy -t library -n Sharpy
 #nullable enable
 
 using System;
@@ -511,23 +513,18 @@ namespace Sharpy
             /// </summary>
             public string Sub(global::System.Func<MatchResult, string> repl, string s, int count = 0)
             {
-                Sharpy.List<int> replaced = new Sharpy.List<int>()
-                {
-                    0
-                };
                 string Evaluator(global::System.Text.RegularExpressions.Match m)
                 {
-                    if (count > 0 && replaced[0] >= count)
-                    {
-                        return m.Value;
-                    }
-
-                    replaced[0] = replaced[0] + 1;
                     MatchResult reMatch = new MatchResult(m, s, this._PatternStr, 0, s.Length, this);
                     return repl(reMatch);
                 }
 
-                return this._Regex.Replace(s, Evaluator);
+                if (count == 0)
+                {
+                    return this._Regex.Replace(s, Evaluator);
+                }
+
+                return this._Regex.Replace(s, Evaluator, count);
             }
 
             /// <summary>
@@ -570,17 +567,21 @@ namespace Sharpy
                 };
                 string CallableEvaluator(global::System.Text.RegularExpressions.Match m)
                 {
-                    if (count > 0 && replacementCount[0] >= count)
-                    {
-                        return m.Value;
-                    }
-
                     replacementCount[0] = replacementCount[0] + 1;
                     MatchResult reMatch = new MatchResult(m, s, this._PatternStr, 0, s.Length, this);
                     return repl(reMatch);
                 }
 
-                string result = this._Regex.Replace(s, CallableEvaluator);
+                string result;
+                if (count == 0)
+                {
+                    result = this._Regex.Replace(s, CallableEvaluator);
+                }
+                else
+                {
+                    result = this._Regex.Replace(s, CallableEvaluator, count);
+                }
+
                 return (result, replacementCount[0]);
             }
 
