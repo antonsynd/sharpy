@@ -319,9 +319,9 @@ namespace Sharpy
                     int line = 1;
                     int col = pos.Value + 1;
                     int idx = 0;
-                    while (idx < pos.Value && idx < pattern.Length)
+                    while (idx < pos.Value && idx < pattern!.Length)
                     {
-                        if (global::Sharpy.StringHelpers.GetItem(pattern, idx) == "\n")
+                        if (global::Sharpy.StringHelpers.GetItem(pattern!, idx) == "\n")
                         {
                             line = line + 1;
                             col = pos.Value - idx;
@@ -658,10 +658,9 @@ namespace Sharpy
             /// </summary>
             public string? Group(string name)
             {
-                Pattern? pat = this._Re;
-                if (pat != null)
+                if (this._Re != null)
                 {
-                    if (pat.Regex.GroupNumberFromName(name) == -1)
+                    if (this._Re!.Regex.GroupNumberFromName(name) == -1)
                     {
                         throw new global::Sharpy.IndexError("no such group");
                     }
@@ -698,13 +697,12 @@ namespace Sharpy
                 Sharpy.Dict<string, string?> result = new Sharpy.Dict<string, string?>()
                 {
                 };
-                Pattern? pat = this._Re;
-                if (pat == null)
+                if (this._Re == null)
                 {
                     return result;
                 }
 
-                var names = pat.Regex.GetGroupNames();
+                var names = this._Re!.Regex.GetGroupNames();
                 foreach (var __loopVar_5 in names)
                 {
                     var name = __loopVar_5;
@@ -847,14 +845,13 @@ namespace Sharpy
                         return default;
                     }
 
-                    Pattern? pat = this._Re;
-                    if (pat == null)
+                    if (this._Re == null)
                     {
                         return default;
                     }
 
                     int grpIdx = idx.Value;
-                    string name = pat.Regex.GroupNameFromNumber(grpIdx);
+                    string name = this._Re!.Regex.GroupNameFromNumber(grpIdx);
                     if (name == global::Sharpy.Builtins.Str(grpIdx))
                     {
                         return default;

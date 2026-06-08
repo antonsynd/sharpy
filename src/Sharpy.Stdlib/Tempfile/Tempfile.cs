@@ -217,7 +217,7 @@ namespace Sharpy
                     string? path = this.Name;
                     if (path != null)
                     {
-                        global::System.IO.File.AppendAllText(path, data);
+                        global::System.IO.File.AppendAllText(path!, data);
                     }
 
                     return data.Length;
@@ -245,7 +245,7 @@ namespace Sharpy
                     string? path = this.Name;
                     if (path != null)
                     {
-                        return global::System.IO.File.ReadAllText(path);
+                        return global::System.IO.File.ReadAllText(path!);
                     }
 
                     return "";
@@ -270,9 +270,9 @@ namespace Sharpy
                     string? path = this.Name;
                     if (path != null)
                     {
-                        if (global::System.IO.File.Exists(path))
+                        if (global::System.IO.File.Exists(path!))
                         {
-                            global::System.IO.File.Delete(path);
+                            global::System.IO.File.Delete(path!);
                         }
                     }
                 }
