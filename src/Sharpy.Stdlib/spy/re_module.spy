@@ -57,11 +57,7 @@ def _filter_inline_flags(flags: str) -> str:
     return sb.to_string()
 
 def _translate_pattern(pattern: str) -> str:
-    """Translate Python regex syntax to .NET regex syntax.
-
-    Handles (?P<name>...) -> (?<name>...), (?P=name) -> \\k<name>,
-    and inline flags with a/u/L stripping.
-    """
+    """Translate Python regex syntax to .NET regex syntax."""
     if pattern is None:
         raise TypeError("expected string, got NoneType")
     if not _needs_translation(pattern):
@@ -121,10 +117,7 @@ def _translate_pattern(pattern: str) -> str:
     return sb.to_string()
 
 def _translate_replacement(template: str) -> str:
-    """Translate Python replacement syntax to .NET replacement syntax.
-
-    Handles \\g<name> -> ${name} and \\N -> $N.
-    """
+    """Translate Python replacement syntax to .NET replacement syntax."""
     sb: StringBuilder = StringBuilder(len(template))
     i: int = 0
     while i < len(template):
