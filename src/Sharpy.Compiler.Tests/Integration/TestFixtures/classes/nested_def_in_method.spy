@@ -1,0 +1,23 @@
+class Greeter:
+    def greet(self, name: str) -> str:
+        def make_greeting(n: str) -> str:
+            return "Hello, " + n + "!"
+        return make_greeting(name)
+
+    def greet_with_title(self, name: str, title: str) -> str:
+        def format_name(n: str) -> str:
+            return title + " " + n
+        return "Hello, " + format_name(name) + "!"
+
+    def count_chars(self, text: str) -> int:
+        counts: list[int] = [0]
+        def add_length(s: str):
+            counts[0] = counts[0] + len(s)
+        add_length(text)
+        return counts[0]
+
+def main():
+    g: Greeter = Greeter()
+    print(g.greet("World"))
+    print(g.greet_with_title("Smith", "Dr."))
+    print(g.count_chars("hello"))

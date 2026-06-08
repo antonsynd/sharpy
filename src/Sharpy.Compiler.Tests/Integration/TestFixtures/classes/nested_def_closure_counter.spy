@@ -1,0 +1,19 @@
+class Replacer:
+    def replace_all(self, text: str, old: str, new_val: str) -> tuple[str, int]:
+        count: list[int] = [0]
+        def do_replace(s: str) -> str:
+            count[0] = count[0] + 1
+            return new_val
+        parts: list[str] = text.split(old)
+        result: str = parts[0]
+        i: int = 1
+        while i < len(parts):
+            result = result + do_replace(old) + parts[i]
+            i = i + 1
+        return (result, count[0])
+
+def main():
+    r: Replacer = Replacer()
+    result: tuple[str, int] = r.replace_all("a-b-c-d", "-", "_")
+    print(result[0])
+    print(result[1])

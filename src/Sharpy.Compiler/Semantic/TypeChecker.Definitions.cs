@@ -133,10 +133,10 @@ internal partial class TypeChecker
     {
         _logger.LogDebug($"Type checking function: {functionDef.Name}");
 
-        // Nested function: if we're inside a function (not at module level) and not inside a class,
+        // Nested function: if we're inside a function (not at module level),
         // register the nested function symbol in the enclosing scope so it can be called by name.
         // NameResolver only handles module-level declarations, so nested functions need registration here.
-        if (_currentFunctionReturnType != null && _currentClass == null)
+        if (_currentFunctionReturnType != null)
         {
             var existingSymbol = _symbolTable.Lookup(functionDef.Name, searchParents: false);
             if (existingSymbol == null)
