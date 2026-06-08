@@ -1,54 +1,507 @@
 """Regular expression matching operations."""
 
-from sharpy import ReMatch, RePattern, ReError
+from system.text import StringBuilder
+from system.text.regular_expressions import Regex as NetRegex, RegexOptions, Match as NetMatch, MatchCollection, Group as NetGroup
 
-IGNORECASE: int = 1
-MULTILINE: int = 2
+# ---- Flag constants (match Python's re module values) ----
+
+IGNORECASE: int = 2
+I: int = 2
+MULTILINE: int = 8
+M: int = 8
 DOTALL: int = 16
+S: int = 16
+VERBOSE: int = 64
+X: int = 64
+UNICODE: int = 32
+U: int = 32
+ASCII: int = 256
+A: int = 256
 
-def compile(pattern: str, flags: int = 0) -> RePattern:
-    """Compile a regular expression pattern into a pattern object."""
-    return RePattern(pattern, flags)
+# ---- Private helper functions (pattern translation) ----
 
-def search(pattern: str, s: str, flags: int = 0) -> ReMatch?:
-    """Scan through string looking for the first match."""
-    p: RePattern = RePattern(pattern, flags)
-    return p.search(s)
+def _needs_translation(pattern: str) -> bool:
+    """Fast path: check if pattern contains Python-specific syntax."""
+    i: int = 0
+    while i < len(pattern):
+        if pattern[i] == "\\" and i + 1 < len(pattern):
+            i = i + 2
+            continue
+        if pattern[i] == "(" and i + 1 < len(pattern) and pattern[i + 1] == "?":
+            if i + 2 < len(pattern) and pattern[i + 2] == "P":
+                return True
+            if i + 2 < len(pattern) and _is_inline_flag_char(pattern[i + 2]):
+                j: int = i + 2
+                while j < len(pattern) and _is_inline_flag_char(pattern[j]):
+                    j = j + 1
+                if j < len(pattern) and (pattern[j] == ")" or pattern[j] == ":"):
+                    flags: str = pattern.substring(i + 2, j - (i + 2))
+                    if "a" in flags or "u" in flags or "L" in flags:
+                        return True
+        i = i + 1
+    return False
 
-def match(pattern: str, s: str, flags: int = 0) -> ReMatch?:
-    """Try to apply the pattern at the start of the string."""
-    p: RePattern = RePattern(pattern, flags)
-    return p.match(s)
+def _is_inline_flag_char(c: str) -> bool:
+    """Check if character is a valid inline flag character."""
+    return c in "aiLmsux"
 
-def fullmatch(pattern: str, s: str, flags: int = 0) -> ReMatch?:
-    """Try to apply the pattern to the entire string."""
-    p: RePattern = RePattern(pattern, flags)
-    return p.fullmatch(s)
+def _filter_inline_flags(flags: str) -> str:
+    """Strip Python-only flags (a, u, L), keep .NET-compatible ones (i, m, s, x)."""
+    sb: StringBuilder = StringBuilder(len(flags))
+    i: int = 0
+    while i < len(flags):
+        c: str = flags[i]
+        if c != "a" and c != "u" and c != "L":
+            sb.append(c)
+        i = i + 1
+    return sb.to_string()
 
-def findall(pattern: str, s: str, flags: int = 0) -> list[object]:
-    """Return all non-overlapping matches of pattern in string."""
-    p: RePattern = RePattern(pattern, flags)
-    return p.findall(s)
+def _translate_pattern(pattern: str) -> str:
+    """Translate Python regex syntax to .NET regex syntax.
 
-def finditer(pattern: str, s: str, flags: int = 0) -> list[ReMatch]:
-    """Return an iterator yielding match objects over all non-overlapping matches."""
-    p: RePattern = RePattern(pattern, flags)
-    return p.finditer(s)
+    Handles (?P<name>...) -> (?<name>...), (?P=name) -> \\k<name>,
+    and inline flags with a/u/L stripping.
+    """
+    if pattern is None:
+        raise TypeError("expected string, got NoneType")
+    if not _needs_translation(pattern):
+        return pattern
+    sb: StringBuilder = StringBuilder(len(pattern))
+    i: int = 0
+    while i < len(pattern):
+        if pattern[i] == "\\" and i + 1 < len(pattern):
+            sb.append(pattern[i])
+            sb.append(pattern[i + 1])
+            i = i + 2
+            continue
+        if pattern[i] == "(" and i + 1 < len(pattern) and pattern[i + 1] == "?":
+            if i + 2 < len(pattern) and pattern[i + 2] == "P":
+                if i + 3 < len(pattern) and pattern[i + 3] == "<":
+                    sb.append("(?<")
+                    i = i + 4
+                    continue
+                if i + 3 < len(pattern) and pattern[i + 3] == "=":
+                    i = i + 4
+                    name_start: int = i
+                    while i < len(pattern) and pattern[i] != ")":
+                        i = i + 1
+                    name: str = pattern.substring(name_start, i - name_start)
+                    sb.append("\\k<")
+                    sb.append(name)
+                    sb.append(">")
+                    if i < len(pattern):
+                        i = i + 1
+                    continue
+            if i + 2 < len(pattern) and _is_inline_flag_char(pattern[i + 2]):
+                flag_start: int = i + 2
+                j: int = flag_start
+                while j < len(pattern) and _is_inline_flag_char(pattern[j]):
+                    j = j + 1
+                if j < len(pattern) and (pattern[j] == ")" or pattern[j] == ":"):
+                    flags_str: str = pattern.substring(flag_start, j - flag_start)
+                    filtered: str = _filter_inline_flags(flags_str)
+                    if pattern[j] == ")":
+                        if len(filtered) > 0:
+                            sb.append("(?")
+                            sb.append(filtered)
+                            sb.append(")")
+                        i = j + 1
+                        continue
+                    else:
+                        if len(filtered) > 0:
+                            sb.append("(?")
+                            sb.append(filtered)
+                            sb.append(":")
+                        else:
+                            sb.append("(?:")
+                        i = j + 1
+                        continue
+        sb.append(pattern[i])
+        i = i + 1
+    return sb.to_string()
 
-def sub(pattern: str, repl: str, s: str, count: int = 0, flags: int = 0) -> str:
-    """Return the string obtained by replacing the leftmost non-overlapping occurrences."""
-    p: RePattern = RePattern(pattern, flags)
-    return p.sub(repl, s, count)
+def _translate_replacement(template: str) -> str:
+    """Translate Python replacement syntax to .NET replacement syntax.
 
-def split(pattern: str, s: str, maxsplit: int = 0, flags: int = 0) -> list[str]:
-    """Split string by the occurrences of pattern."""
-    p: RePattern = RePattern(pattern, flags)
-    return p.split(s, maxsplit)
+    Handles \\g<name> -> ${name} and \\N -> $N.
+    """
+    sb: StringBuilder = StringBuilder(len(template))
+    i: int = 0
+    while i < len(template):
+        if template[i] == "\\" and i + 1 < len(template):
+            if template[i + 1] == "g" and i + 2 < len(template) and template[i + 2] == "<":
+                i = i + 3
+                name_start: int = i
+                while i < len(template) and template[i] != ">":
+                    i = i + 1
+                grp_name: str = template.substring(name_start, i - name_start)
+                sb.append("${")
+                sb.append(grp_name)
+                sb.append("}")
+                if i < len(template):
+                    i = i + 1
+                continue
+            if template[i + 1].isdigit():
+                sb.append("$")
+                sb.append(template[i + 1])
+                i = i + 2
+                continue
+            sb.append(template[i])
+            sb.append(template[i + 1])
+            i = i + 2
+            continue
+        sb.append(template[i])
+        i = i + 1
+    return sb.to_string()
 
-def purge() -> None:
-    """Clear the regular expression cache."""
-    pass
+def _flags_to_options(flags: int) -> RegexOptions:
+    """Map Python flag ints to .NET RegexOptions."""
+    options: int = 0
+    if (flags & IGNORECASE) != 0:
+        options = options | (RegexOptions.IgnoreCase to int)
+    if (flags & MULTILINE) != 0:
+        options = options | (RegexOptions.Multiline to int)
+    if (flags & DOTALL) != 0:
+        options = options | (RegexOptions.Singleline to int)
+    if (flags & VERBOSE) != 0:
+        options = options | (RegexOptions.IgnorePatternWhitespace to int)
+    return options to RegexOptions
 
-def escape(pattern: str) -> str:
-    """Escape special characters in pattern."""
-    return pattern
+# ---- Exception class ----
+
+class error(Exception):
+    """Exception raised when a regex pattern is invalid."""
+
+    msg: str
+    pattern: str | None
+    pos: int | None
+    lineno: int | None
+    colno: int | None
+
+    def __init__(self, msg: str, pattern: str | None = None, pos: int | None = None):
+        """Create an error with the specified message and optional pattern/position info."""
+        super().__init__(msg)
+        self.msg = msg
+        self.pattern = pattern
+        self.pos = pos
+        if pos is not None and pattern is not None:
+            line: int = 1
+            col: int = pos + 1
+            idx: int = 0
+            while idx < pos and idx < len(pattern):
+                if pattern[idx] == "\n":
+                    line = line + 1
+                    col = pos - idx
+                idx = idx + 1
+            self.lineno = line
+            self.colno = col
+        else:
+            self.lineno = None
+            self.colno = None
+
+# ---- Pattern class ----
+
+@final
+class Pattern:
+    """Compiled regular expression pattern, wrapping .NET Regex."""
+
+    @private
+    _regex: NetRegex
+    @private
+    _pattern_str: str
+    @private
+    _flags: int
+    @private
+    _groupindex: dict[str, int]
+    @private
+    _groupindex_cached: bool
+
+    def __init__(self, pattern_str: str, flags: int = 0):
+        """Compile a regular expression pattern."""
+        self._pattern_str = pattern_str
+        self._flags = flags
+        self._groupindex = {}
+        self._groupindex_cached = False
+        translated: str = _translate_pattern(pattern_str)
+        try:
+            self._regex = NetRegex(translated, _flags_to_options(flags))
+        except Exception as ex:
+            raise error(ex.message, pattern_str)
+
+    property get pattern_str(self) -> str:
+        """The original pattern string."""
+        return self._pattern_str
+
+    property get flags(self) -> int:
+        """The flags used to compile this pattern."""
+        return self._flags
+
+    property get groups(self) -> int:
+        """The number of capturing groups in the pattern."""
+        return len(self._regex.get_group_numbers()) - 1
+
+    property get groupindex(self) -> dict[str, int]:
+        """A dictionary mapping named group names to group numbers."""
+        if len(self._groupindex) > 0 or self._groupindex_cached:
+            return self._groupindex
+        names = self._regex.get_group_names()
+        for name in names:
+            if not name.isdigit():
+                self._groupindex[name] = self._regex.group_number_from_name(name)
+        self._groupindex_cached = True
+        return self._groupindex
+
+    property get regex(self) -> NetRegex:
+        """The internal .NET Regex object."""
+        return self._regex
+
+    def search(self, s: str, pos: int = 0, endpos: int | None = None) -> Match | None:
+        """Scan through string looking for the first match."""
+        target: str = _apply_endpos(s, endpos)
+        m: NetMatch = self._regex.match(target, pos)
+        if not m.success:
+            return None
+        actual_endpos: int = len(s)
+        if endpos is not None:
+            actual_endpos = endpos
+        return Match(m, s, self._pattern_str, pos, actual_endpos, self)
+
+    def match(self, s: str, pos: int = 0, endpos: int | None = None) -> Match | None:
+        """Try to apply the pattern at the start of the string."""
+        target: str = _apply_endpos(s, endpos)
+        m: NetMatch = self._regex.match(target, pos)
+        if not m.success or m.index != pos:
+            return None
+        actual_endpos: int = len(s)
+        if endpos is not None:
+            actual_endpos = endpos
+        return Match(m, s, self._pattern_str, pos, actual_endpos, self)
+
+    def fullmatch(self, s: str, pos: int = 0, endpos: int | None = None) -> Match | None:
+        """Try to apply the pattern to the entire string."""
+        target: str = _apply_endpos(s, endpos)
+        m: NetMatch = self._regex.match(target, pos)
+        if not m.success or m.index != pos or m.length != len(target) - pos:
+            return None
+        actual_endpos: int = len(s)
+        if endpos is not None:
+            actual_endpos = endpos
+        return Match(m, s, self._pattern_str, pos, actual_endpos, self)
+
+    def findall(self, s: str, pos: int = 0, endpos: int | None = None) -> list[object]:
+        """Return all non-overlapping matches as a list."""
+        target: str = _apply_endpos(s, endpos)
+        matches: MatchCollection = self._regex.matches(target)
+        result: list[object] = []
+        has_groups: bool = len(self._regex.get_group_numbers()) > 1
+        for m_raw in matches:
+            m: NetMatch = m_raw to NetMatch
+            if m.index < pos:
+                continue
+            if not has_groups:
+                result.append(m.value)
+            elif m.groups.count == 2:
+                g: NetGroup = m.groups[1]
+                result.append(g.value if g.success else "")
+            else:
+                group_values: list[object] = []
+                gi: int = 1
+                while gi < m.groups.count:
+                    grp: NetGroup = m.groups[gi]
+                    group_values.append(grp.value if grp.success else "")
+                    gi = gi + 1
+                result.append(group_values)
+        return result
+
+    def finditer(self, s: str, pos: int = 0, endpos: int | None = None) -> list[Match]:
+        """Return a list of Match objects over all non-overlapping matches."""
+        target: str = _apply_endpos(s, endpos)
+        matches: MatchCollection = self._regex.matches(target)
+        result: list[Match] = []
+        actual_endpos: int = len(s)
+        if endpos is not None:
+            actual_endpos = endpos
+        for m_raw in matches:
+            m: NetMatch = m_raw to NetMatch
+            if m.index < pos:
+                continue
+            result.append(Match(m, s, self._pattern_str, pos, actual_endpos, self))
+        return result
+
+    def sub(self, repl: str, s: str, count: int = 0) -> str:
+        """Return the string obtained by replacing occurrences using a string."""
+        translated: str = _translate_replacement(repl)
+        if count == 0:
+            return self._regex.replace(s, translated)
+        return self._regex.replace(s, translated, count)
+
+    def split(self, s: str, maxsplit: int = 0) -> list[str]:
+        """Split string by the occurrences of the pattern."""
+        result: list[str] = []
+        if maxsplit == 0:
+            for part in self._regex.split(s):
+                result.append(part)
+        else:
+            for part in self._regex.split(s, maxsplit + 1):
+                result.append(part)
+        return result
+
+    def __str__(self) -> str:
+        """Returns a string representation of the compiled pattern."""
+        return "re.compile('" + self._pattern_str + "')"
+
+# ---- Match class ----
+
+@final
+class Match:
+    """Wraps a .NET Match with Python-compatible API."""
+
+    @private
+    _match: NetMatch
+    @private
+    _string: str
+    @private
+    _pattern_str: str
+    @private
+    _pos: int
+    @private
+    _endpos: int
+    @private
+    _re: Pattern | None
+
+    def __init__(self, net_match: NetMatch, string: str, pattern_str: str, pos: int, endpos: int, compiled_pattern: Pattern | None = None):
+        """Create a Match wrapping a .NET Match object."""
+        self._match = net_match
+        self._string = string
+        self._pattern_str = pattern_str
+        self._pos = pos
+        self._endpos = endpos
+        self._re = compiled_pattern
+
+    property get string(self) -> str:
+        """The input string."""
+        return self._string
+
+    property get pattern(self) -> str:
+        """The pattern string."""
+        return self._pattern_str
+
+    property get pos(self) -> int:
+        """The start position of the search."""
+        return self._pos
+
+    property get endpos(self) -> int:
+        """The end position of the search."""
+        return self._endpos
+
+    property get re(self) -> Pattern | None:
+        """The compiled pattern object that produced this match."""
+        return self._re
+
+    property get lastindex(self) -> int | None:
+        """The integer index of the last matched capturing group."""
+        i: int = self._match.groups.count - 1
+        while i >= 1:
+            if self._match.groups[i].success:
+                return i
+            i = i - 1
+        return None
+
+    property get lastgroup(self) -> str | None:
+        """The name of the last matched capturing group, or None if unnamed."""
+        idx: int | None = self.lastindex
+        if idx is None:
+            return None
+        pat: Pattern | None = self._re
+        if pat is None:
+            return None
+        grp_idx: int = idx
+        name: str = pat.regex.group_name_from_number(grp_idx)
+        if name == str(grp_idx):
+            return None
+        return name
+
+    def group(self, n: int = 0) -> str | None:
+        """Return the string matched by group number."""
+        if n < 0 or n >= self._match.groups.count:
+            raise IndexError("no such group")
+        g: NetGroup = self._match.groups[n]
+        return g.value if g.success else None
+
+    def group(self, name: str) -> str | None:
+        """Return the string matched by a named group."""
+        pat: Pattern | None = self._re
+        if pat is not None:
+            if pat.regex.group_number_from_name(name) == -1:
+                raise IndexError("no such group")
+        g: NetGroup = self._match.groups[name]
+        return g.value if g.success else None
+
+    def groups(self) -> list[str | None]:
+        """Return a list of all subgroups (groups 1..n)."""
+        result: list[str | None] = []
+        i: int = 1
+        while i < self._match.groups.count:
+            g: NetGroup = self._match.groups[i]
+            result.append(g.value if g.success else None)
+            i = i + 1
+        return result
+
+    def groupdict(self) -> dict[str, str | None]:
+        """Return a dict of all named subgroups."""
+        result: dict[str, str | None] = {}
+        pat: Pattern | None = self._re
+        if pat is None:
+            return result
+        names = pat.regex.get_group_names()
+        for name in names:
+            if not name.isdigit():
+                g: NetGroup = self._match.groups[name]
+                result[name] = g.value if g.success else None
+        return result
+
+    def start(self, group_num: int = 0) -> int:
+        """Start index of the matched group."""
+        if group_num < 0 or group_num >= self._match.groups.count:
+            raise IndexError("no such group")
+        g: NetGroup = self._match.groups[group_num]
+        return g.index if g.success else -1
+
+    def end(self, group_num: int = 0) -> int:
+        """End index of the matched group."""
+        if group_num < 0 or group_num >= self._match.groups.count:
+            raise IndexError("no such group")
+        g: NetGroup = self._match.groups[group_num]
+        return g.index + g.length if g.success else -1
+
+    def span(self, group_num: int = 0) -> tuple[int, int]:
+        """Returns (start, end) for the matched group."""
+        return (self.start(group_num), self.end(group_num))
+
+    def expand(self, template: str) -> str:
+        """Return the string obtained by doing backslash substitution on the template."""
+        translated: str = _translate_replacement(template)
+        return self._match.result(translated)
+
+    def __getitem__(self, n: int) -> str | None:
+        """Access group by index."""
+        return self.group(n)
+
+    def __str__(self) -> str:
+        """String representation of the match."""
+        return "<re.Match object; span=(" + str(self._match.index) + ", " + str(self._match.index + self._match.length) + "), match='" + self._match.value + "'>"
+
+# ---- Private helpers ----
+
+def _apply_endpos(s: str, endpos: int | None) -> str:
+    """Apply endpos truncation to a string."""
+    if endpos is None:
+        return s
+    ep: int = endpos
+    if ep >= len(s):
+        return s
+    return s.substring(0, ep)
+
+def _escape_pattern(pattern: str) -> str:
+    """Escape special characters in pattern. Called from hand-written C#."""
+    return NetRegex.escape(pattern)
