@@ -1,0 +1,17 @@
+class Transformer:
+    _prefix: str
+
+    def __init__(self, prefix: str):
+        self._prefix = prefix
+
+    def _apply(self, fn: (str) -> str, text: str) -> str:
+        return fn(text)
+
+    def transform(self, text: str) -> str:
+        def add_prefix(s: str) -> str:
+            return self._prefix + s
+        return self._apply(add_prefix, text)
+
+def main():
+    t: Transformer = Transformer("Hello, ")
+    print(t.transform("world"))
