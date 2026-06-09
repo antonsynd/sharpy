@@ -424,6 +424,46 @@ def main():
     }
 
     [Fact]
+    public void AssertRewrite_ApproxPositionalPlacesAndAbs_AbsWins()
+    {
+        var source = @"
+from unittest import approx
+
+@test
+def test_approx():
+    assert 0.1 + 0.2 == approx(0.3, 3, 1e-9)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        // positional form: approx(expected, places, abs) — abs (3rd positional) wins
+        code.Should().Contain("Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 1e-9d)");
+        code.Should().NotContain(", 3)");
+    }
+
+    [Fact]
+    public void AssertRewrite_ApproxNotEqual_FallsThroughToNotEqual()
+    {
+        var source = @"
+from unittest import approx
+
+@test
+def test_approx():
+    assert 0.1 + 0.2 != approx(0.4)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        // `!=` is not special-cased — falls through to the generic NotEqual rewrite,
+        // leaving the approx marker call in place (throws NotSupportedException at runtime)
+        code.Should().Contain("Xunit.Assert.NotEqual(");
+        code.Should().Contain("Approx(0.4d");
+        code.Should().NotContain("Xunit.Assert.Equal(0.4d");
+    }
+
+    [Fact]
     public void AssertRewrite_ApproxOutsideTest_NotRewritten()
     {
         // The approx rewrite is gated to @test functions. In an ordinary function the

@@ -1,0 +1,9 @@
+from unittest import assert_raises
+
+@test
+def test_nonstring_match():
+    with assert_raises(ValueError, 123):
+        raise ValueError("bad input")
+
+def main():
+    pass
