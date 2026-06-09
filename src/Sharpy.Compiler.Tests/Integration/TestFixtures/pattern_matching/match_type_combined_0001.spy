@@ -1,0 +1,29 @@
+# JSON-like serializer dispatching on an `object` scrutinee via type patterns,
+# exercising None/bool/int/str/list collection patterns together (#866, #867).
+
+def serialize(value: object) -> str:
+    match value:
+        case None:
+            return "null"
+        case bool() as b:
+            if b:
+                return "true"
+            return "false"
+        case int() as n:
+            return str(n)
+        case str() as s:
+            return "\"" + s + "\""
+        case list() as items:
+            parts: list[str] = []
+            for item in items:
+                parts.append(serialize(item))
+            return "[" + ", ".join(parts) + "]"
+        case _:
+            return "unknown"
+
+def main():
+    print(serialize(None))
+    print(serialize(True))
+    print(serialize(42))
+    print(serialize("hello"))
+    print(serialize([1, 2, 3]))

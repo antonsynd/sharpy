@@ -1,4 +1,4 @@
-null
+nothing
+bool: True
 int: 42
-str: hi
-other
+str: hello

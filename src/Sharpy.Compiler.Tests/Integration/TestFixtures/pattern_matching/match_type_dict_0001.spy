@@ -1,0 +1,18 @@
+# Match an `object` parameter against a bare `case dict()` collection pattern.
+# Semantic layer infers object type args; codegen lowers to a non-generic
+# IDictionary check (#867).
+#
+# NOTE: iterating the bound dict via `.items()` / `d[k]` / key-iteration is
+# blocked by #869 (the binding is non-generic IDictionary), so this fixture
+# verifies dispatch + len(). Add an `.items()` iteration case once #869 lands.
+
+def process(value: object) -> None:
+    match value:
+        case dict() as d:
+            print("dict with " + str(len(d)) + " entries")
+        case _:
+            print("not a dict")
+
+def main():
+    process({"a": 1, "b": 2})
+    process(42)

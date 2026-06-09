@@ -1,19 +1,22 @@
-# Match a `object` parameter against `case None` and concrete type patterns.
+# Match an `object` parameter against `case None` and concrete type patterns.
 # `case None` must emit a C# `case null:` constant pattern (see #866).
+# `bool()` precedes `int()` so True is classified as bool (Python semantics).
 
-def serialize(value: object) -> str:
+def describe(value: object) -> str:
     match value:
         case None:
-            return "null"
+            return "nothing"
+        case bool() as b:
+            return f"bool: {b}"
         case int() as n:
-            return "int: " + str(n)
+            return f"int: {n}"
         case str() as s:
-            return "str: " + s
+            return f"str: {s}"
         case _:
             return "other"
 
 def main():
-    print(serialize(None))
-    print(serialize(42))
-    print(serialize("hi"))
-    print(serialize(3.14))
+    print(describe(None))
+    print(describe(True))
+    print(describe(42))
+    print(describe("hello"))

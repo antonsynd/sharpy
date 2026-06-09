@@ -1,0 +1,14 @@
+# Match an `object` parameter against a bare `case list()` collection pattern.
+# Codegen lowers bare `list()` to a non-generic IList check (#867).
+
+def process(value: object) -> None:
+    match value:
+        case list() as items:
+            for item in items:
+                print(item)
+        case _:
+            print("not a list")
+
+def main():
+    process([1, 2, 3])
+    process("hello")
