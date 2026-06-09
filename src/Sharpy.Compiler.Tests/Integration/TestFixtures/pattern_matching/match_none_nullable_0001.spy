@@ -1,0 +1,15 @@
+# Match a .NET-interop nullable (`int | None`) against `case None`.
+# `case None` must emit a C# `case null:` constant pattern (see #866).
+
+def describe(x: int | None) -> str:
+    match x:
+        case None:
+            return "none"
+        case int() as n:
+            return "int: " + str(n)
+        case _:
+            return "other"
+
+def main():
+    print(describe(None))
+    print(describe(7))

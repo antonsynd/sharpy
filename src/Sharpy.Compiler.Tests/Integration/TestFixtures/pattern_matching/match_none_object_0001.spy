@@ -1,0 +1,19 @@
+# Match a `object` parameter against `case None` and concrete type patterns.
+# `case None` must emit a C# `case null:` constant pattern (see #866).
+
+def serialize(value: object) -> str:
+    match value:
+        case None:
+            return "null"
+        case int() as n:
+            return "int: " + str(n)
+        case str() as s:
+            return "str: " + s
+        case _:
+            return "other"
+
+def main():
+    print(serialize(None))
+    print(serialize(42))
+    print(serialize("hi"))
+    print(serialize(3.14))
