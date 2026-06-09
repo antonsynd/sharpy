@@ -331,6 +331,100 @@ def main():
 
     #endregion
 
+    #region approx equality assert rewriting (#837)
+
+    [Fact]
+    public void AssertRewrite_ApproxDefault_GeneratesEqualWithPrecision7()
+    {
+        var source = @"
+from unittest import approx
+
+@test
+def test_approx():
+    assert 0.1 + 0.2 == approx(0.3)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        // expected (from approx), actual, default precision 7
+        code.Should().Contain("Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 7)");
+    }
+
+    [Fact]
+    public void AssertRewrite_ApproxPlaces_GeneratesEqualWithPrecision()
+    {
+        var source = @"
+from unittest import approx
+
+@test
+def test_approx():
+    assert 0.1 + 0.2 == approx(0.3, places=10)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        code.Should().Contain("Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 10)");
+    }
+
+    [Fact]
+    public void AssertRewrite_ApproxAbs_GeneratesEqualWithTolerance()
+    {
+        var source = @"
+from unittest import approx
+
+@test
+def test_approx():
+    assert 0.1 + 0.2 == approx(0.3, abs=1e-9)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        // abs=d selects the tolerance overload (double argument)
+        code.Should().Contain("Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 1e-9d)");
+    }
+
+    [Fact]
+    public void AssertRewrite_ApproxOnLeft_UsesApproxArgAsExpected()
+    {
+        var source = @"
+from unittest import approx
+
+@test
+def test_approx():
+    assert approx(0.3) == 0.1 + 0.2
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        // approx's argument is the expected value regardless of operand position
+        code.Should().Contain("Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 7)");
+    }
+
+    [Fact]
+    public void AssertRewrite_ApproxBothAbsAndPlaces_AbsWins()
+    {
+        var source = @"
+from unittest import approx
+
+@test
+def test_approx():
+    assert 0.1 + 0.2 == approx(0.3, places=3, abs=1e-9)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        // abs wins over places — tolerance overload, not precision 3
+        code.Should().Contain("Xunit.Assert.Equal(0.3d, 0.1d + 0.2d, 1e-9d)");
+        code.Should().NotContain(", 3)");
+    }
+
+    #endregion
+
     #region Unittest transforms (Plan Task 22)
 
     [Fact]

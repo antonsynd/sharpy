@@ -77,6 +77,44 @@ internal partial class RoslynEmitter
         var xunitAssert = ParseName("Xunit.Assert");
         var test = assert.Test;
 
+        // assert x == approx(y[, places=n | abs=d]) → tolerance/precision-based Xunit.Assert.Equal.
+        // Checked ahead of the generic `==` pattern. The approx(...) call's first argument is the
+        // expected value; the other operand of `==` is the actual value.
+        //   - abs=d (a double, keyword or 3rd positional) selects Assert.Equal(double, double, double tolerance)
+        //   - places=n (an int, keyword or 2nd positional) selects Assert.Equal(double, double, int precision)
+        //   - abs wins when both are present; default precision is 7.
+        // Only the `==` form is rewritten; `assert x != approx(y)` falls through to NotEqual.
+        if (test is BinaryOp { Operator: BinaryOperator.Equal } approxEq
+            && (AsApproxCall(approxEq.Left) ?? AsApproxCall(approxEq.Right)) is FunctionCall approxCall
+            && approxCall.Arguments.Length >= 1)
+        {
+            var actualExpr = AsApproxCall(approxEq.Left) != null ? approxEq.Right : approxEq.Left;
+            var expected = GenerateExpression(approxCall.Arguments[0]);
+            var actual = GenerateExpression(actualExpr);
+
+            var absKw = approxCall.KeywordArguments.FirstOrDefault(k => k.Name == "abs");
+            var placesKw = approxCall.KeywordArguments.FirstOrDefault(k => k.Name == "places");
+
+            ExpressionSyntax toleranceArg;
+            if (absKw != null)
+                toleranceArg = GenerateExpression(absKw.Value);
+            else if (approxCall.Arguments.Length >= 3)
+                toleranceArg = GenerateExpression(approxCall.Arguments[2]);   // abs (positional)
+            else if (placesKw != null)
+                toleranceArg = GenerateExpression(placesKw.Value);
+            else if (approxCall.Arguments.Length >= 2)
+                toleranceArg = GenerateExpression(approxCall.Arguments[1]);   // places (positional)
+            else
+                toleranceArg = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7));
+
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Equal")))
+                .AddArgumentListArguments(
+                    Argument(expected),
+                    Argument(actual),
+                    Argument(toleranceArg)));
+        }
+
         // assert a == b → Xunit.Assert.Equal(b, a)  (expected, actual order)
         if (test is BinaryOp { Operator: BinaryOperator.Equal } eq)
         {
@@ -911,6 +949,21 @@ internal partial class RoslynEmitter
         }
 
         return innermost;
+    }
+
+    /// <summary>
+    /// If the expression is a call to unittest.approx (bare <c>approx(...)</c> or qualified
+    /// <c>m.approx(...)</c>), returns the call; otherwise null. Used by the approx equality
+    /// assert rewrite.
+    /// </summary>
+    private static FunctionCall? AsApproxCall(Expression expr)
+    {
+        if (expr is FunctionCall call
+            && call.Function is Identifier { Name: "approx" } or MemberAccess { Member: "approx" })
+        {
+            return call;
+        }
+        return null;
     }
 
     /// <summary>

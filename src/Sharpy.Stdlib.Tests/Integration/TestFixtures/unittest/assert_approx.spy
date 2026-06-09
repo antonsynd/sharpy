@@ -1,0 +1,20 @@
+from unittest import approx
+
+@test
+def test_approx_default():
+    assert 0.1 + 0.2 == approx(0.3)
+
+@test
+def test_approx_places():
+    assert 0.1 + 0.2 == approx(0.3, places=10)
+
+@test
+def test_approx_abs():
+    assert 0.1 + 0.2 == approx(0.3, abs=1e-9)
+
+@test
+def test_approx_left():
+    assert approx(0.3) == 0.1 + 0.2
+
+def main():
+    print("ok")
