@@ -182,5 +182,20 @@ namespace Sharpy
             throw new System.NotSupportedException(
                 "assert_not_in is a compiler-transformed function and should not be called directly.");
         }
+
+        /// <summary>
+        /// Create a <see cref="Sharpy.CapturedOutput"/> context manager that captures
+        /// everything written to the console while active. Exposed to Sharpy as
+        /// <c>captured_output()</c> and intended for use in a <c>with</c> statement:
+        /// <c>with captured_output() as out: ...</c>.
+        /// </summary>
+        /// <remarks>
+        /// Unlike the assertion markers, this is a real runtime helper — it is not
+        /// rewritten by the compiler and may be called directly.
+        /// </remarks>
+        public static CapturedOutput CapturedOutput()
+        {
+            return new CapturedOutput();
+        }
     }
 }
