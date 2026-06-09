@@ -278,6 +278,35 @@ internal partial class TypeChecker
     private void CheckTypePattern(TypePattern typePattern, SemanticType scrutineeType)
     {
         var resolvedType = _typeResolver.ResolveTypeAnnotation(typePattern.Type);
+
+        // Unparameterized collection patterns (e.g., `case list()`) against an
+        // `object` scrutinee resolve to a GenericType with zero type arguments.
+        // CodeGen cannot emit a non-generic `Sharpy.List` reference, so fill in
+        // default `object` type arguments here. The specialized type is recorded
+        // in SemanticInfo so CodeGen emits e.g. `Sharpy.List<object>`.
+        if (resolvedType is GenericType { TypeArguments.Count: 0 } genericPattern
+            && typePattern.Type.TypeArguments.Length == 0
+            && IsObjectType(scrutineeType))
+        {
+            var arity = genericPattern.Name switch
+            {
+                "list" => 1,
+                "set" => 1,
+                "dict" => 2,
+                _ => 0
+            };
+            if (arity > 0)
+            {
+                var defaultArgs = new List<SemanticType>(arity);
+                for (var i = 0; i < arity; i++)
+                {
+                    defaultArgs.Add(SemanticType.Object);
+                }
+                resolvedType = genericPattern with { TypeArguments = defaultArgs };
+                _semanticInfo.SetPatternType(typePattern, resolvedType);
+            }
+        }
+
         if (resolvedType is UnknownType)
         {
             // Try to resolve as a union case (e.g., case Point(): when matching Shape)

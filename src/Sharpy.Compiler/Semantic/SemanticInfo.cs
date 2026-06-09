@@ -74,6 +74,14 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Pattern, VariableSymbol> _patternConstants =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map TypePatterns to their fully-resolved SemanticType when the TypeChecker
+    // computed a type that differs from a naive resolution of the AST type node
+    // (e.g., unparameterized collection patterns like `case list()` against an
+    // `object` scrutinee get default `object` type arguments filled in). CodeGen
+    // prefers this over re-resolving the AST type node.
+    private readonly ConcurrentDictionary<Pattern, SemanticType> _patternTypes =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track expressions whose type was set to UnknownType due to a user error
     // (i.e., a diagnostic was already emitted for the node). This distinguishes
     // expected error-recovery Unknown types from unexpected ones (compiler bugs).
@@ -267,6 +275,26 @@ public class SemanticInfo : ISemanticQuery
     public VariableSymbol? GetPatternConstantSymbol(Pattern pattern)
     {
         return _patternConstants.TryGetValue(pattern, out var symbol) ? symbol : null;
+    }
+
+    /// <summary>
+    /// Records the fully-resolved SemanticType the TypeChecker computed for a pattern.
+    /// Used for type patterns where the resolved type differs from a naive resolution
+    /// of the AST type node (e.g., default `object` type arguments filled in for
+    /// unparameterized collection patterns).
+    /// </summary>
+    public void SetPatternType(Pattern pattern, SemanticType type)
+    {
+        _patternTypes[pattern] = type;
+    }
+
+    /// <summary>
+    /// Gets the fully-resolved SemanticType recorded for a pattern, if one was recorded.
+    /// Returns null if the TypeChecker did not record a specialized type.
+    /// </summary>
+    public SemanticType? GetPatternType(Pattern pattern)
+    {
+        return _patternTypes.TryGetValue(pattern, out var type) ? type : null;
     }
 
     /// <summary>
@@ -480,6 +508,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._patternConstants)
             _patternConstants.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._patternTypes)
+            _patternTypes.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._errorRecoveryNodes)
             _errorRecoveryNodes.TryAdd(kvp.Key, kvp.Value);
