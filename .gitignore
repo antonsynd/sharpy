@@ -1,3 +1,14 @@
+.bash_profile
+.bashrc
+.claude/commands
+.gitconfig
+.gitmodules
+.idea
+.profile
+.ripgreprc
+.zprofile
+.zshrc
+
 .sbx/
 
 editors/vscode/out/
