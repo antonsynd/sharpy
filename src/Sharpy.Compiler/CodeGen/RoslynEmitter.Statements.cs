@@ -346,6 +346,25 @@ internal partial class RoslynEmitter
             return GenerateAssertAlmostEqual(almostCall);
         }
 
+        // assert_count_equal(a, b) → Xunit.Assert.Equal(Sorted(b), Sorted(a)) — an
+        // order-insensitive, multiplicity-respecting comparison (matching Python's
+        // assertCountEqual). Elements must be comparable (Sorted throws at runtime otherwise).
+        if (_isInTestFunction && expr is FunctionCall countEqualCall
+            && IsAssertCountEqualCall(countEqualCall)
+            && countEqualCall.Arguments.Length == 2)
+        {
+            return GenerateAssertCountEqual(countEqualCall);
+        }
+
+        // assert_regex(text, pattern) → Xunit.Assert.Matches(pattern, text). Note the
+        // argument swap: Sharpy follows Python's (text, pattern) order; xUnit takes pattern first.
+        if (_isInTestFunction && expr is FunctionCall regexCall
+            && IsAssertRegexCall(regexCall)
+            && regexCall.Arguments.Length == 2)
+        {
+            return GenerateAssertRegex(regexCall);
+        }
+
         // Custom unittest assertion helpers: assert_true, assert_false, assert_is_none,
         // assert_is_not_none, assert_greater, assert_less, assert_in, assert_not_in.
         // Each is rewritten to the matching Xunit.Assert.* call.
@@ -465,6 +484,87 @@ internal partial class RoslynEmitter
                 Argument(expected),
                 Argument(actual),
                 Argument(precision)));
+    }
+
+    /// <summary>
+    /// Returns true if the given call targets unittest.assert_count_equal (bare or qualified).
+    /// </summary>
+    private static bool IsAssertCountEqualCall(FunctionCall call)
+    {
+        return call.Function switch
+        {
+            Identifier { Name: "assert_count_equal" } => true,
+            MemberAccess { Member: "assert_count_equal" } => true,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Rewrites assert_count_equal(a, b) to an order-insensitive, multiplicity-respecting
+    /// comparison: Xunit.Assert.Equal(Sorted(b), Sorted(a)). Sorting both operands yields a
+    /// rich positional sequence diff on failure. Elements must be comparable —
+    /// global::Sharpy.Builtins.Sorted carries no compile-time constraint and throws at runtime
+    /// for non-comparable elements (the same failure mode as the sorted() builtin).
+    /// </summary>
+    private StatementSyntax GenerateAssertCountEqual(FunctionCall call)
+    {
+        // expected = Sorted(b)  (second arg);  actual = Sorted(a)  (first arg).
+        var expected = SortedCall(call.Arguments[1]);
+        var actual = SortedCall(call.Arguments[0]);
+
+        return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ParseName("Xunit.Assert"),
+                    IdentifierName("Equal")))
+            .AddArgumentListArguments(
+                Argument(expected),
+                Argument(actual)));
+    }
+
+    /// <summary>
+    /// Builds <c>global::Sharpy.Builtins.Sorted(expr)</c> (the type argument is left to C#
+    /// inference), matching the lowering of the sorted() builtin.
+    /// </summary>
+    private ExpressionSyntax SortedCall(Expression arg)
+        => InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                    IdentifierName("Sorted")))
+            .AddArgumentListArguments(Argument(GenerateExpression(arg)));
+
+    /// <summary>
+    /// Returns true if the given call targets unittest.assert_regex (bare or qualified).
+    /// </summary>
+    private static bool IsAssertRegexCall(FunctionCall call)
+    {
+        return call.Function switch
+        {
+            Identifier { Name: "assert_regex" } => true,
+            MemberAccess { Member: "assert_regex" } => true,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Rewrites assert_regex(text, pattern) to Xunit.Assert.Matches(pattern, text). Note the
+    /// argument swap: Sharpy follows Python's assertRegex(text, pattern) order, while
+    /// Xunit.Assert.Matches takes the pattern first.
+    /// </summary>
+    private StatementSyntax GenerateAssertRegex(FunctionCall call)
+    {
+        var text = GenerateExpression(call.Arguments[0]);
+        var pattern = GenerateExpression(call.Arguments[1]);
+
+        return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ParseName("Xunit.Assert"),
+                    IdentifierName("Matches")))
+            .AddArgumentListArguments(
+                Argument(pattern),
+                Argument(text)));
     }
 
     /// <summary>

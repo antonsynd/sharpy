@@ -573,6 +573,46 @@ def main():
     }
 
     [Fact]
+    public void AssertCountEqual_GeneratesSortedEqual()
+    {
+        // assert_count_equal(a, b) → Xunit.Assert.Equal(Sorted(b), Sorted(a))
+        var source = @"
+from unittest import assert_count_equal
+
+@test
+def test_count():
+    assert_count_equal([3, 1, 2], [1, 2, 3])
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        code.Should().Contain("Xunit.Assert.Equal(global::Sharpy.Builtins.Sorted(");
+        // expected = Sorted(b), actual = Sorted(a) — both operands sorted
+        code.Should().MatchRegex(
+            @"Xunit\.Assert\.Equal\(global::Sharpy\.Builtins\.Sorted\(.*\), global::Sharpy\.Builtins\.Sorted\(.*\)\)");
+    }
+
+    [Fact]
+    public void AssertRegex_GeneratesAssertMatchesWithSwappedArgs()
+    {
+        // assert_regex(text, pattern) → Xunit.Assert.Matches(pattern, text)
+        var source = @"
+from unittest import assert_regex
+
+@test
+def test_regex():
+    assert_regex(""2026-06-09"", ""[0-9]+"")
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        // pattern first, text second
+        code.Should().Contain("Xunit.Assert.Matches(\"[0-9]+\", \"2026-06-09\")");
+    }
+
+    [Fact]
     public void TestCase_LifecycleSynthesized()
     {
         // TestCase subclasses must have:

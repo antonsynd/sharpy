@@ -1,0 +1,12 @@
+from unittest import assert_regex
+
+@test
+def test_date_format():
+    assert_regex("2026-06-09", r"\d{4}-\d{2}-\d{2}")
+
+@test
+def test_substring():
+    assert_regex("hello world", "world")
+
+def main():
+    print("ok")

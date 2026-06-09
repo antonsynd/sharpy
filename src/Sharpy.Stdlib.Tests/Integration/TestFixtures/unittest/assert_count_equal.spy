@@ -1,0 +1,18 @@
+from unittest import assert_count_equal
+
+@test
+def test_same_order_independent():
+    assert_count_equal([3, 1, 2], [1, 2, 3])
+
+@test
+def test_respects_multiplicity():
+    assert_count_equal([1, 2, 2], [2, 1, 2])
+
+@test
+def test_empty():
+    a: list[int] = []
+    b: list[int] = []
+    assert_count_equal(a, b)
+
+def main():
+    print("ok")
