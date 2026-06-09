@@ -295,7 +295,7 @@ namespace Sharpy
             {
                 this.MaxSize = maxSize;
                 this.Mode = mode;
-                this.Name = default;
+                this.Name = null;
                 this._Buffer = "";
                 this._Rolled = false;
                 this._Closed = false;

@@ -199,7 +199,7 @@ namespace Sharpy
             var result = global::System.Environment.GetEnvironmentVariable(key);
             if (result == null)
             {
-                return default;
+                return null;
             }
 
             return result;

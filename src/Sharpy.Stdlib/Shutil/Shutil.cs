@@ -142,7 +142,7 @@ namespace Sharpy
         {
             if (name == "")
             {
-                return default;
+                return null;
             }
 
             string sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar);
@@ -154,19 +154,19 @@ namespace Sharpy
                     return global::System.IO.Path.GetFullPath(name);
                 }
 
-                return default;
+                return null;
             }
 
             var rawPath = global::System.Environment.GetEnvironmentVariable("PATH");
             if (rawPath == null)
             {
-                return default;
+                return null;
             }
 
             string pathEnv = rawPath;
             if (pathEnv.Length == 0)
             {
-                return default;
+                return null;
             }
 
             bool isWindows = sep == "\\";
@@ -213,7 +213,7 @@ namespace Sharpy
                 }
             }
 
-            return default;
+            return null;
         }
 
         /// <summary>

@@ -309,7 +309,7 @@ namespace Sharpy
             /// <summary>
             /// Create an error with the specified message and optional pattern/position info.
             /// </summary>
-            public Error(string msg, string? pattern = default, int? pos = default) : base(msg)
+            public Error(string msg, string? pattern = null, int? pos = null) : base(msg)
             {
                 this.Msg = msg;
                 this.Pattern = pattern;
@@ -335,8 +335,8 @@ namespace Sharpy
                 }
                 else
                 {
-                    this.Lineno = default;
-                    this.Colno = default;
+                    this.Lineno = null;
+                    this.Colno = null;
                 }
             }
         }
@@ -354,13 +354,13 @@ namespace Sharpy
             /// <summary>
             /// Scan through string looking for the first match.
             /// </summary>
-            public MatchResult? Search(string s, int pos = 0, int? endpos = default)
+            public MatchResult? Search(string s, int pos = 0, int? endpos = null)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
                 if (!m.Success)
                 {
-                    return default;
+                    return null;
                 }
 
                 int actualEndpos = s.Length;
@@ -375,13 +375,13 @@ namespace Sharpy
             /// <summary>
             /// Try to apply the pattern at the start of the string.
             /// </summary>
-            public MatchResult? Match(string s, int pos = 0, int? endpos = default)
+            public MatchResult? Match(string s, int pos = 0, int? endpos = null)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
                 if (!m.Success || m.Index != pos)
                 {
-                    return default;
+                    return null;
                 }
 
                 int actualEndpos = s.Length;
@@ -396,13 +396,13 @@ namespace Sharpy
             /// <summary>
             /// Try to apply the pattern to the entire string.
             /// </summary>
-            public MatchResult? Fullmatch(string s, int pos = 0, int? endpos = default)
+            public MatchResult? Fullmatch(string s, int pos = 0, int? endpos = null)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
                 if (!m.Success || m.Index != pos || m.Length != target.Length - pos)
                 {
-                    return default;
+                    return null;
                 }
 
                 int actualEndpos = s.Length;
@@ -417,7 +417,7 @@ namespace Sharpy
             /// <summary>
             /// Return all non-overlapping matches as a list.
             /// </summary>
-            public Sharpy.List<object> Findall(string s, int pos = 0, int? endpos = default)
+            public Sharpy.List<object> Findall(string s, int pos = 0, int? endpos = null)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.MatchCollection matches = this._Regex.Matches(target);
@@ -466,7 +466,7 @@ namespace Sharpy
             /// <summary>
             /// Return a list of MatchResult objects over all non-overlapping matches.
             /// </summary>
-            public Sharpy.List<MatchResult> Finditer(string s, int pos = 0, int? endpos = default)
+            public Sharpy.List<MatchResult> Finditer(string s, int pos = 0, int? endpos = null)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.MatchCollection matches = this._Regex.Matches(target);
@@ -727,7 +727,7 @@ namespace Sharpy
                 }
 
                 global::System.Text.RegularExpressions.Group g = this._Match.Groups[n];
-                return g.Success ? g.Value : default;
+                return g.Success ? g.Value : null;
             }
 
             /// <summary>
@@ -744,7 +744,7 @@ namespace Sharpy
                 }
 
                 global::System.Text.RegularExpressions.Group g = this._Match.Groups[name];
-                return g.Success ? g.Value : default;
+                return g.Success ? g.Value : null;
             }
 
             /// <summary>
@@ -759,7 +759,7 @@ namespace Sharpy
                 while (i < this._Match.Groups.Count)
                 {
                     global::System.Text.RegularExpressions.Group g = this._Match.Groups[i];
-                    result.Append(g.Success ? g.Value : default);
+                    result.Append(g.Success ? g.Value : null);
                     i = i + 1;
                 }
 
@@ -786,7 +786,7 @@ namespace Sharpy
                     if (!name.Isdigit())
                     {
                         global::System.Text.RegularExpressions.Group g = this._Match.Groups[name];
-                        result[name] = g.Success ? g.Value : default;
+                        result[name] = g.Success ? g.Value : null;
                     }
                 }
 
@@ -907,7 +907,7 @@ namespace Sharpy
                         i = i - 1;
                     }
 
-                    return default;
+                    return null;
                 }
             }
 
@@ -919,19 +919,19 @@ namespace Sharpy
                     int? idx = this.Lastindex;
                     if (idx == null)
                     {
-                        return default;
+                        return null;
                     }
 
                     if (this._Re == null)
                     {
-                        return default;
+                        return null;
                     }
 
                     int grpIdx = idx.Value;
                     string name = this._Re!.Regex.GroupNameFromNumber(grpIdx);
                     if (name == global::Sharpy.Builtins.Str(grpIdx))
                     {
-                        return default;
+                        return null;
                     }
 
                     return name;
@@ -952,7 +952,7 @@ namespace Sharpy
             /// <summary>
             /// Create a MatchResult wrapping a .NET Match object.
             /// </summary>
-            public MatchResult(global::System.Text.RegularExpressions.Match netMatch, string @string, string patternStr, int pos, int endpos, Pattern? compiledPattern = default)
+            public MatchResult(global::System.Text.RegularExpressions.Match netMatch, string @string, string patternStr, int pos, int endpos, Pattern? compiledPattern = null)
             {
                 this._Match = netMatch;
                 this._String = @string;
@@ -1004,7 +1004,7 @@ namespace Sharpy
         public static MatchResult? Search(string pattern, string s, int flags = 0)
         {
             Pattern p = Compile(pattern, flags);
-            return p.Search(s, 0, default);
+            return p.Search(s, 0, null);
         }
 
         /// <summary>
@@ -1013,7 +1013,7 @@ namespace Sharpy
         public static MatchResult? Match(string pattern, string s, int flags = 0)
         {
             Pattern p = Compile(pattern, flags);
-            return p.Match(s, 0, default);
+            return p.Match(s, 0, null);
         }
 
         /// <summary>
@@ -1022,7 +1022,7 @@ namespace Sharpy
         public static MatchResult? Fullmatch(string pattern, string s, int flags = 0)
         {
             Pattern p = Compile(pattern, flags);
-            return p.Fullmatch(s, 0, default);
+            return p.Fullmatch(s, 0, null);
         }
 
         /// <summary>
@@ -1031,7 +1031,7 @@ namespace Sharpy
         public static Sharpy.List<object> Findall(string pattern, string s, int flags = 0)
         {
             Pattern p = Compile(pattern, flags);
-            return p.Findall(s, 0, default);
+            return p.Findall(s, 0, null);
         }
 
         /// <summary>
@@ -1040,7 +1040,7 @@ namespace Sharpy
         public static Sharpy.List<MatchResult> Finditer(string pattern, string s, int flags = 0)
         {
             Pattern p = Compile(pattern, flags);
-            return p.Finditer(s, 0, default);
+            return p.Finditer(s, 0, null);
         }
 
         /// <summary>
