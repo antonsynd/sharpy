@@ -1,10 +1,13 @@
+import os.path
+
+# tmp_path is recognized by parameter name (no import, no @test.fixture): the test
+# class gains a per-test global::Sharpy.TmpPathFixture field + IDisposable cleanup.
 @test
 def test_writes_file(tmp_path: str):
-    target: str = tmp_path + "/data.txt"
+    target: str = os.path.join(tmp_path, "data.txt")
     with open(target, "w") as f:
         f.write("content")
-    with open(target, "r") as g:
-        assert g.read() == "content"
+    assert os.path.exists(target)
 
 def main():
     print("ok")

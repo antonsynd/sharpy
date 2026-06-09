@@ -5,13 +5,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
+using os_path = global::Sharpy.OsPathModule;
 using Xunit;
 
 public static partial class TmpPathBasic
 {
     public static void Main()
     {
-#line (10, 5) - (10, 16) 1 "tmp_path_basic.spy"
+#line (13, 5) - (13, 16) 1 "tmp_path_basic.spy"
         global::Sharpy.Builtins.Print("ok");
     }
 }
@@ -23,21 +24,17 @@ public partial class TmpPathBasicTests : global::System.IDisposable
     public void TestWritesFile()
     {
         string tmpPath = _tmpPathFixture.Value;
-#line (3, 5) - (3, 42) 1 "tmp_path_basic.spy"
-        string target = tmpPath + "/data.txt";
-#line (4, 5) - (6, 1) 1 "tmp_path_basic.spy"
+#line (7, 5) - (7, 54) 1 "tmp_path_basic.spy"
+        string target = os_path.Join(tmpPath, "data.txt");
+#line (8, 5) - (10, 1) 1 "tmp_path_basic.spy"
         using (var f = global::Sharpy.Builtins.Open(target, "w"))
         {
-#line (5, 9) - (5, 27) 1 "tmp_path_basic.spy"
+#line (9, 9) - (9, 27) 1 "tmp_path_basic.spy"
             f.Write("content");
         }
 
-#line (6, 5) - (9, 1) 1 "tmp_path_basic.spy"
-        using (var g = global::Sharpy.Builtins.Open(target, "r"))
-        {
-#line (7, 9) - (7, 38) 1 "tmp_path_basic.spy"
-            Xunit.Assert.Equal("content", g.Read());
-        }
+#line (10, 5) - (10, 35) 1 "tmp_path_basic.spy"
+        Xunit.Assert.True(os_path.Exists(target));
     }
 
     public void Dispose()

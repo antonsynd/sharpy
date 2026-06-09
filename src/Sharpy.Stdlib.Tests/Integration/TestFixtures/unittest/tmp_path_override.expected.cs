@@ -11,7 +11,7 @@ public static partial class TmpPathOverride
 {
     public static void Main()
     {
-#line (10, 5) - (10, 16) 1 "tmp_path_override.spy"
+#line (13, 5) - (13, 16) 1 "tmp_path_override.spy"
         global::Sharpy.Builtins.Print("ok");
     }
 }
@@ -22,7 +22,7 @@ public class TmpPathFixture
 
     public TmpPathFixture()
     {
-        Value = "/custom/path";
+        Value = "/custom/override";
     }
 }
 
@@ -35,10 +35,10 @@ public partial class TmpPathOverrideTests : Xunit.IClassFixture<TmpPathFixture>
     }
 
     [Xunit.FactAttribute]
-    public void TestOverride()
+    public void TestUsesOverride()
     {
         string tmpPath = _tmpPathFixture.Value;
-#line (7, 5) - (7, 39) 1 "tmp_path_override.spy"
-        Xunit.Assert.Equal("/custom/path", tmpPath);
+#line (10, 5) - (10, 43) 1 "tmp_path_override.spy"
+        Xunit.Assert.Equal("/custom/override", tmpPath);
     }
 }

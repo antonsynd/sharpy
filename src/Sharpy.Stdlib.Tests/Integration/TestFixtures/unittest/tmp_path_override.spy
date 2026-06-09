@@ -1,10 +1,13 @@
+# A user-defined @test.fixture named tmp_path overrides the built-in: the registry
+# is consulted first, so consumption uses the shared IClassFixture<T> path (ctor
+# injection), NOT the per-test built-in field + IDisposable.
 @test.fixture
 def tmp_path() -> str:
-    return "/custom/path"
+    return "/custom/override"
 
 @test
-def test_override(tmp_path: str):
-    assert tmp_path == "/custom/path"
+def test_uses_override(tmp_path: str):
+    assert tmp_path == "/custom/override"
 
 def main():
     print("ok")
