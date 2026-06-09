@@ -520,6 +520,41 @@ public sealed record FunctionType : SemanticType
     /// </summary>
     public int? VariadicParameterIndex { get; init; }
 
+    /// <summary>
+    /// Creates a <see cref="FunctionType"/> from a parameter list, automatically computing
+    /// <see cref="OptionalParameterCount"/> and <see cref="VariadicParameterIndex"/>.
+    /// </summary>
+    /// <param name="parameters">The full parameter list (including self, if present).</param>
+    /// <param name="returnType">The function's return type.</param>
+    /// <param name="skipLeading">Number of leading parameters to skip (e.g., 1 to skip self).</param>
+    public static FunctionType FromParameters(
+        IReadOnlyList<ParameterSymbol> parameters,
+        SemanticType returnType,
+        int skipLeading = 0)
+    {
+        var effectiveParams = skipLeading > 0
+            ? parameters.Skip(skipLeading).ToList()
+            : (IReadOnlyList<ParameterSymbol>)parameters;
+
+        int? variadicIndex = null;
+        for (int i = 0; i < effectiveParams.Count; i++)
+        {
+            if (effectiveParams[i].IsVariadic)
+            {
+                variadicIndex = i;
+                break;
+            }
+        }
+
+        return new FunctionType
+        {
+            ParameterTypes = effectiveParams.Select(p => p.Type).ToList(),
+            ReturnType = returnType,
+            VariadicParameterIndex = variadicIndex,
+            OptionalParameterCount = effectiveParams.Count(p => p.HasDefault && !p.IsVariadic)
+        };
+    }
+
     public override string GetDisplayName()
     {
         var parts = new List<string>(ParameterTypes.Count);
