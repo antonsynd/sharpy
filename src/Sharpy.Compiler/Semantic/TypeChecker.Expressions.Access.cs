@@ -286,7 +286,8 @@ internal partial class TypeChecker
                     {
                         ParameterTypes = paramTypes,
                         ReturnType = invokeMethod.ReturnType,
-                        VariadicParameterIndex = GetVariadicIndex(invokeMethod.Parameters)
+                        VariadicParameterIndex = GetVariadicIndex(invokeMethod.Parameters),
+                        OptionalParameterCount = invokeMethod.Parameters.Count(p => p.HasDefault && !p.IsVariadic)
                     };
                 }
             }
@@ -364,7 +365,8 @@ internal partial class TypeChecker
                 {
                     ParameterTypes = paramTypes,
                     ReturnType = invokeMethod.ReturnType,
-                    VariadicParameterIndex = GetVariadicIndex(invokeMethod.Parameters)
+                    VariadicParameterIndex = GetVariadicIndex(invokeMethod.Parameters),
+                    OptionalParameterCount = invokeMethod.Parameters.Count(p => p.HasDefault && !p.IsVariadic)
                 };
             }
         }
@@ -414,7 +416,8 @@ internal partial class TypeChecker
                         {
                             ParameterTypes = resolvedParams,
                             ReturnType = resolvedReturnType,
-                            VariadicParameterIndex = GetVariadicIndex(methodSymbol.Parameters)
+                            VariadicParameterIndex = GetVariadicIndex(methodSymbol.Parameters),
+                            OptionalParameterCount = methodSymbol.Parameters.Count(p => p.HasDefault && !p.IsVariadic)
                         };
                     }
                 }
