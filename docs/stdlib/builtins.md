@@ -782,6 +782,28 @@ Return the length of an ISized type (user-defined types with __len__).
 
 - `TypeError` -- Thrown when *sized* is null
 
+### `len(list: list[T]) -> int`
+
+Return the length of a Sharpy list.
+
+!!! note
+    This concrete overload disambiguates between the
+    `ICollection` and `ISized`
+    overloads, both of which `Sharpy.List{T}` now satisfies (it
+    implements the non-generic `IList`).
+    An identity conversion to the concrete parameter type is preferred
+    over the interface conversions, so this overload wins.
+
+### `len(dict: dict[K, V]) -> int`
+
+Return the length of a Sharpy dictionary.
+
+!!! note
+    This concrete overload disambiguates between the
+    `ICollection` and `ISized`
+    overloads, both of which `Dict{K, V}` now satisfies (it
+    implements the non-generic `IDictionary`).
+
 ### `len(s: str) -> int`
 
 Return the length of a string.
