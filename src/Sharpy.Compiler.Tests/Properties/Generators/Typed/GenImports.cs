@@ -6,14 +6,14 @@ internal static class GenImports
 {
     private static readonly string[] SimpleTypes = { "int", "str", "bool" };
 
-    public static Gen<(string LibSource, string[] ExportedNames)> LibraryModule(TypeEnv env, int fuel) =>
+    public static Gen<(string LibSource, (string Name, string ParamType)[] Exports)> LibraryModule(TypeEnv env, int fuel) =>
         Gen.Select(
             Gen.Int[1, 3],
             Gen.OneOfConst(SimpleTypes),
             (count, retType) =>
             {
                 var lines = new List<string>();
-                var exports = new List<string>();
+                var exports = new List<(string Name, string ParamType)>();
 
                 for (int i = 0; i < count; i++)
                 {
@@ -28,20 +28,20 @@ internal static class GenImports
                         _ => "    return 0"
                     });
                     lines.Add("");
-                    exports.Add(funcName);
+                    exports.Add((funcName, paramType));
                 }
 
                 lines.Add($"LIB_CONST: {retType} = {DefaultLiteral(retType)}");
-                exports.Add("LIB_CONST");
+                exports.Add(("LIB_CONST", retType));
 
                 return (string.Join("\n", lines) + "\n", exports.ToArray());
             });
 
     public static Gen<(string MainSource, string LibSource)> ImportingModule(TypeEnv env, int fuel) =>
         LibraryModule(env, fuel).SelectMany(lib =>
-            Gen.Int[0, lib.ExportedNames.Length - 1].Select(importIdx =>
+            Gen.Int[0, lib.Exports.Length - 1].Select(importIdx =>
             {
-                var importName = lib.ExportedNames[importIdx];
+                var (importName, paramType) = lib.Exports[importIdx];
                 var mainLines = new List<string>
                 {
                     $"from lib import {importName}",
@@ -51,7 +51,7 @@ internal static class GenImports
 
                 if (importName.StartsWith("lib_func_"))
                 {
-                    mainLines.Add($"    print({importName}(42))");
+                    mainLines.Add($"    print({importName}({DefaultLiteral(paramType)}))");
                 }
                 else
                 {
