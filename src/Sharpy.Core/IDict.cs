@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Sharpy
@@ -16,8 +17,13 @@ namespace Sharpy
     /// key behave as if the key is absent (KeyError / false / null); writes cast to the
     /// underlying generic parameters and let .NET throw on mismatch.
     /// </para>
+    /// <para>
+    /// Inherits non-generic <see cref="IEnumerable"/> (not <c>IEnumerable&lt;object?&gt;</c>)
+    /// to avoid adding a second generic IEnumerable to Dict&lt;K,V&gt; which would break
+    /// LINQ type inference. Foreach over IDict yields keys as <c>object</c>.
+    /// </para>
     /// </summary>
-    public interface IDict : ISized, IEnumerable<object?>
+    public interface IDict : ISized, IEnumerable
     {
         /// <summary>
         /// Gets or sets the value associated with the specified key.
