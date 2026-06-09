@@ -16,6 +16,7 @@ namespace Sharpy
     public sealed partial class Dict<K, V>
         : IDictionary<K, V>,
           IReadOnlyDictionary<K, V>,
+          System.Collections.IDictionary,
           System.IEquatable<Dict<K, V>>,
           ISized,
           IDeepCopyable,

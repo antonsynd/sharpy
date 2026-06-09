@@ -48,6 +48,47 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return the length of a Sharpy list.
+        /// </summary>
+        /// <remarks>
+        /// This concrete overload disambiguates between the
+        /// <see cref="System.Collections.ICollection"/> and <see cref="ISized"/>
+        /// overloads, both of which <see cref="Sharpy.List{T}"/> now satisfies (it
+        /// implements the non-generic <see cref="System.Collections.IList"/>).
+        /// An identity conversion to the concrete parameter type is preferred
+        /// over the interface conversions, so this overload wins.
+        /// </remarks>
+        public static int Len<T>(List<T> list)
+        {
+            if (list is null)
+            {
+                throw TypeError.ArgNone("len", "sized");
+            }
+
+            return ((ISized)list).Count;
+        }
+
+        /// <summary>
+        /// Return the length of a Sharpy dictionary.
+        /// </summary>
+        /// <remarks>
+        /// This concrete overload disambiguates between the
+        /// <see cref="System.Collections.ICollection"/> and <see cref="ISized"/>
+        /// overloads, both of which <see cref="Dict{K, V}"/> now satisfies (it
+        /// implements the non-generic <see cref="System.Collections.IDictionary"/>).
+        /// </remarks>
+        public static int Len<K, V>(Dict<K, V> dict)
+            where K : notnull
+        {
+            if (dict is null)
+            {
+                throw TypeError.ArgNone("len", "sized");
+            }
+
+            return ((ISized)dict).Count;
+        }
+
+        /// <summary>
         /// Return the length of a string.
         /// </summary>
         public static int Len(string s)

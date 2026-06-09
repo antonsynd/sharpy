@@ -133,5 +133,55 @@ namespace Sharpy
         }
 
         #endregion
+
+        #region System.Collections.IDictionary (non-generic)
+
+        /// <summary>Gets a value indicating whether the dictionary has a fixed size. Always false.</summary>
+        bool IDictionary.IsFixedSize => false;
+
+        /// <summary>Gets a value indicating whether the dictionary is read-only. Always false.</summary>
+        bool IDictionary.IsReadOnly => false;
+
+        /// <summary>Gets a collection containing the keys (non-generic).</summary>
+        ICollection IDictionary.Keys => ((IDictionary)_dict).Keys;
+
+        /// <summary>Gets a collection containing the values (non-generic).</summary>
+        ICollection IDictionary.Values => ((IDictionary)_dict).Values;
+
+        /// <summary>Gets or sets the value associated with the specified key (non-generic).</summary>
+        object? IDictionary.this[object key]
+        {
+            get => ((IDictionary)_dict)[key];
+            set => ((IDictionary)_dict)[key] = value;
+        }
+
+        /// <summary>Adds an element with the provided key and value (non-generic).</summary>
+        void IDictionary.Add(object key, object? value) => ((IDictionary)_dict).Add(key, value);
+
+        /// <summary>Determines whether the dictionary contains an element with the specified key (non-generic).</summary>
+        bool IDictionary.Contains(object key) => ((IDictionary)_dict).Contains(key);
+
+        /// <summary>Returns an enumerator that iterates through the dictionary (non-generic).</summary>
+        IDictionaryEnumerator IDictionary.GetEnumerator() => ((IDictionary)_dict).GetEnumerator();
+
+        /// <summary>Removes the element with the specified key (non-generic).</summary>
+        void IDictionary.Remove(object key) => ((IDictionary)_dict).Remove(key);
+
+        /// <summary>Removes all elements from the dictionary.</summary>
+        void IDictionary.Clear() => _dict.Clear();
+
+        /// <summary>Copies the elements of the dictionary to an array.</summary>
+        void ICollection.CopyTo(System.Array array, int index) => ((ICollection)_dict).CopyTo(array, index);
+
+        /// <summary>Gets a value indicating whether access to the dictionary is synchronized. Always false.</summary>
+        bool ICollection.IsSynchronized => false;
+
+        /// <summary>Gets an object that can be used to synchronize access to the dictionary.</summary>
+        object ICollection.SyncRoot => ((ICollection)_dict).SyncRoot;
+
+        /// <summary>Gets the number of key/value pairs in the dictionary.</summary>
+        int ICollection.Count => _dict.Count;
+
+        #endregion
     }
 }

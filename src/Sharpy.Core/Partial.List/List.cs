@@ -10,6 +10,7 @@ namespace Sharpy
     public sealed partial class List<T>
         : IList<T>,
           IReadOnlyList<T>,
+          System.Collections.IList,
           System.IEquatable<List<T>>,
           ISized,
           IDeepCopyable,
