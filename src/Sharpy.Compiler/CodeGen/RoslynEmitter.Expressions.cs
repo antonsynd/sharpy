@@ -25,7 +25,7 @@ internal partial class RoslynEmitter
             StringLiteral strLit => GenerateStringLiteral(strLit),
             BytesLiteralExpression bytesLit => GenerateBytesLiteral(bytesLit),
             BooleanLiteral boolLit => LiteralExpression(boolLit.Value ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
-            NoneLiteral => LiteralExpression(SyntaxKind.DefaultLiteralExpression),
+            NoneLiteral => GenerateNoneLiteral(),
             EllipsisLiteral => GenerateEllipsisLiteral(),
 
             // Collections
@@ -109,6 +109,43 @@ internal partial class RoslynEmitter
                 $"Unsupported expression type in code generation: '{expr.GetType().Name}'",
                 DiagnosticCodes.CodeGen.UnsupportedExpressionType, expr.LineStart, expr.ColumnStart)
         };
+    }
+
+    /// <summary>
+    /// Generates a bare <c>None</c> literal as a C# <c>null</c> literal. This converts to
+    /// object/nullable targets and forms valid <c>case null:</c> patterns. Coercion of a
+    /// bare <c>None</c> to <c>Optional&lt;T&gt;.None</c> is handled at the specific
+    /// <em>direct</em> value sites (variable/field initializers, returns, assignments) via
+    /// <see cref="TryGenerateBareNoneForOptional"/>, rather than here — using the ambient
+    /// target-type context would incorrectly fire for <c>None</c> nested inside call
+    /// arguments (e.g. <c>convert(None)</c> against a nullable parameter).
+    /// </summary>
+    private static ExpressionSyntax GenerateNoneLiteral()
+        => LiteralExpression(SyntaxKind.NullLiteralExpression);
+
+    /// <summary>
+    /// When <paramref name="valueAst"/> is a bare <c>None</c> and <paramref name="targetType"/>
+    /// is an <see cref="OptionalType"/>, emits <c>Optional&lt;T&gt;.None</c>. Returns
+    /// <c>null</c> otherwise so callers fall back to normal expression generation.
+    /// </summary>
+    private ExpressionSyntax? TryGenerateBareNoneForOptional(Expression valueAst, SemanticType? targetType)
+        => valueAst is NoneLiteral && targetType is OptionalType opt
+            ? GenerateOptionalNone(opt)
+            : null;
+
+    /// <summary>
+    /// Generates a direct initializer/default value expression for a declared target whose
+    /// type is given by <paramref name="targetAnnotation"/>. A bare <c>None</c> against an
+    /// <see cref="OptionalType"/> target produces <c>Optional&lt;T&gt;.None</c>; everything
+    /// else falls back to normal expression generation.
+    /// </summary>
+    private ExpressionSyntax GenerateInitializerValue(Expression valueAst, TypeAnnotation? targetAnnotation)
+    {
+        var targetType = targetAnnotation != null
+            ? _context.SemanticInfo?.GetTypeAnnotation(targetAnnotation)
+            : null;
+        return TryGenerateBareNoneForOptional(valueAst, targetType)
+            ?? GenerateExpression(valueAst);
     }
 
     /// <summary>

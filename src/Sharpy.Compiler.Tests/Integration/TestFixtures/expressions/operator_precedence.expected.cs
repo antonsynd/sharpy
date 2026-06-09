@@ -17,7 +17,7 @@ public static partial class OperatorPrecedence
 #line (8, 5) - (8, 23) 1 "operator_precedence.spy"
         global::Sharpy.Builtins.Print((2 + 3) * 4);
 #line (10, 5) - (10, 26) 1 "operator_precedence.spy"
-        int? x = default;
+        int? x = null;
 #line (11, 5) - (11, 25) 1 "operator_precedence.spy"
         int y = x ?? 5 + 3;
 #line (12, 5) - (12, 13) 1 "operator_precedence.spy"

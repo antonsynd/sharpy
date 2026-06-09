@@ -49,7 +49,7 @@ internal partial class RoslynEmitter
             _targetTypeContext = varDecl.Type;
             try
             {
-                var initExpr = GenerateExpression(varDecl.InitialValue);
+                var initExpr = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
                 variable = variable.WithInitializer(EqualsValueClause(initExpr));
             }
             finally

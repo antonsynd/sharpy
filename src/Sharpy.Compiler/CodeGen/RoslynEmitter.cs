@@ -68,6 +68,14 @@ internal partial class RoslynEmitter : ICodeEmitter
     private readonly Dictionary<string, string> _localFunctionNames = new();
 
     /// <summary>
+    /// Maps local variable base names (C# camelCase) to their declared semantic type
+    /// within the current function scope. Used so that reassignments such as
+    /// <c>x = None</c> can target <c>Optional&lt;T&gt;.None</c> when <c>x</c> is Optional
+    /// (the assignment LHS node is not always annotated in SemanticInfo).
+    /// </summary>
+    private readonly Dictionary<string, SemanticType> _localVariableTypes = new();
+
+    /// <summary>
     /// Tracks module-level field names (C# names) to prevent duplicate field declarations.
     /// This is still needed during emission even with CodeGenInfo because we need to
     /// track which C# field names have already been emitted.
@@ -124,6 +132,11 @@ internal partial class RoslynEmitter : ICodeEmitter
     // Target type context for collection literal type inference
     // Set before generating expressions that need target type information
     private TypeAnnotation? _targetTypeContext;
+
+    // Resolved return type of the function/method currently being generated.
+    // Used so that a bare `return None` against an Optional<T> return type emits
+    // Optional<T>.None rather than a bare `null` (which won't convert to the struct).
+    private SemanticType? _currentReturnType;
 
     // Track if we're currently generating methods for an abstract class
     // Used for implicit abstract method detection (ellipsis body in abstract class = abstract method)
@@ -399,8 +412,14 @@ internal partial class RoslynEmitter : ICodeEmitter
         _constVariables.Clear();
         _sourceVariableNames.Clear();
         _localFunctionNames.Clear();
+        _localVariableTypes.Clear();
         _currentVariadicParams.Clear();
         _narrowing.Reset();
+
+        // Resolve the current return type so `return None` can target Optional<T>.None.
+        _currentReturnType = funcDef?.ReturnType != null
+            ? _context.SemanticInfo?.GetTypeAnnotation(funcDef.ReturnType)
+            : null;
 
         // Track variadic parameter names so codegen can distinguish
         // `for x in str_var:` (needs Iterate) from `for x in variadic_params:` (already T[])

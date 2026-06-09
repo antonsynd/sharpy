@@ -61,7 +61,7 @@ internal partial class RoslynEmitter
             _targetTypeContext = varDecl.Type;
             try
             {
-                var initExpr = GenerateExpression(varDecl.InitialValue);
+                var initExpr = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
                 propDecl = propDecl.WithInitializer(EqualsValueClause(initExpr))
                     .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
             }
@@ -150,7 +150,7 @@ internal partial class RoslynEmitter
                     .FirstOrDefault(v => v.Name == field.Name);
                 if (fieldDecl?.InitialValue != null)
                 {
-                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue);
+                    var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue, fieldDecl.Type);
                     param = param.WithDefault(EqualsValueClause(defaultExpr));
                 }
             }

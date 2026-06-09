@@ -175,6 +175,13 @@ internal partial class RoslynEmitter
                             LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(strLit.Value)));
                     }
 
+                    // For None against a non-Optional scrutinee (e.g. object), emit
+                    // `null` so the C# constant pattern is valid (avoids CS8505 from `default`).
+                    if (literal.Literal is NoneLiteral)
+                    {
+                        return ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression));
+                    }
+
                     var literalExpr = GenerateExpression(literal.Literal);
                     return ConstantPattern(literalExpr);
                 }

@@ -80,7 +80,7 @@ public static partial class NullConditional0005
 #line (40, 5) - (40, 19) 1 "null_conditional_0005.spy"
         global::Sharpy.Builtins.Print(street1);
 #line (43, 5) - (43, 34) 1 "null_conditional_0005.spy"
-        var person2 = new Person("Bob", default);
+        var person2 = new Person("Bob", null);
 #line (45, 5) - (45, 43) 1 "null_conditional_0005.spy"
         Optional<string> city2 = person2.GetCityName();
 #line (46, 5) - (46, 17) 1 "null_conditional_0005.spy"
@@ -90,7 +90,7 @@ public static partial class NullConditional0005
 #line (49, 5) - (49, 19) 1 "null_conditional_0005.spy"
         global::Sharpy.Builtins.Print(street2);
 #line (52, 5) - (52, 36) 1 "null_conditional_0005.spy"
-        var addr3 = new Address(default, "Boston");
+        var addr3 = new Address(null, "Boston");
 #line (53, 5) - (53, 39) 1 "null_conditional_0005.spy"
         var person3 = new Person("Charlie", addr3);
 #line (55, 5) - (55, 43) 1 "null_conditional_0005.spy"

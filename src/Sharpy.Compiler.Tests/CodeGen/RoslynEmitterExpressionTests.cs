@@ -122,7 +122,10 @@ public class RoslynEmitterExpressionTests
         var result = InvokeGenerateExpression(expr);
 
         // Assert
-        result.ToString().Should().Be("default");
+        // A bare None with no Optional target context emits `null` (valid for object/
+        // nullable targets and `case null:` patterns). Optional<T> targets are handled
+        // separately via GenerateOptionalNone.
+        result.ToString().Should().Be("null");
     }
 
     #endregion

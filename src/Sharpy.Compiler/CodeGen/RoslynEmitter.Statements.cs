@@ -590,7 +590,11 @@ internal partial class RoslynEmitter
 
         if (ret.Value != null)
         {
-            return ReturnStatement(GenerateExpression(ret.Value));
+            // `return None` against an Optional<T> return type must produce Optional<T>.None
+            // rather than a bare `null` (which cannot convert to the Optional<T> struct).
+            var value = TryGenerateBareNoneForOptional(ret.Value, _currentReturnType)
+                ?? GenerateExpression(ret.Value);
+            return ReturnStatement(value);
         }
         return ReturnStatement();
     }

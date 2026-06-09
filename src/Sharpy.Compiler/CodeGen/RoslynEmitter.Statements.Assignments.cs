@@ -68,9 +68,24 @@ internal partial class RoslynEmitter
                     _narrowing.ClearNarrowing(name.Name);
                     var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false);
 
-                    // Method group → Optional<delegate> needs an explicit delegate cast
-                    if (symbol is VariableSymbol declaredVarSym)
+                    // `x = None` for an Optional<T> variable must produce Optional<T>.None
+                    // rather than a bare `null` (which cannot convert to the struct).
+                    // Prefer the tracked local declared type (the authoritative declared
+                    // type; assignment LHS nodes are not reliably annotated in SemanticInfo),
+                    // then the target expression type, then the declared symbol type.
+                    _localVariableTypes.TryGetValue(baseName, out var trackedLocalType);
+                    var assignTargetType = trackedLocalType
+                        ?? GetExpressionSemanticType(assign.Target)
+                        ?? (symbol as VariableSymbol)?.Type;
+                    var bareNoneValue = TryGenerateBareNoneForOptional(assign.Value, assignTargetType);
+                    if (bareNoneValue != null)
+                    {
+                        value = bareNoneValue;
+                    }
+                    else if (symbol is VariableSymbol declaredVarSym)
+                    {
                         value = ApplyOptionalDelegateConversion(assign.Value, value, declaredVarSym.Type);
+                    }
 
                     return ExpressionStatement(
                         AssignmentExpression(
@@ -235,10 +250,12 @@ internal partial class RoslynEmitter
 
             var target = GenerateMemberAccess(memberAccess);
 
-            // Method group → Optional<delegate> field needs an explicit delegate cast
+            // Method group → Optional<delegate> field needs an explicit delegate cast.
+            // `obj.field = None` for an Optional<T> field must produce Optional<T>.None.
+            var targetMemberType = GetExpressionSemanticType(assign.Target);
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
-                ? ApplyOptionalDelegateConversion(assign.Value, value,
-                    GetExpressionSemanticType(assign.Target))
+                ? TryGenerateBareNoneForOptional(assign.Value, targetMemberType)
+                    ?? ApplyOptionalDelegateConversion(assign.Value, value, targetMemberType)
                 : GenerateAugmentedValue(assign.Operator, target, value, assign.Target, assign.Value);
 
             return ExpressionStatement(
@@ -603,6 +620,12 @@ internal partial class RoslynEmitter
             return GenerateLambdaAsLocalFunction(lambdaWithDefaults, localFuncName);
         }
 
+        // Resolve the declared type up front so a direct `x: T? = None` initializer can
+        // target Optional<T>.None and later reassignments can do the same.
+        var declaredType = varDecl.Type != null
+            ? _context.SemanticInfo?.GetTypeAnnotation(varDecl.Type)
+            : null;
+
         // IMPORTANT: Generate the initializer expression FIRST, before updating version tracking.
         // This ensures that references to the same variable in the initializer (e.g., x: int = x + 1)
         // use the PREVIOUS version of the variable, not the new one being declared.
@@ -615,7 +638,9 @@ internal partial class RoslynEmitter
             _targetTypeContext = varDecl.Type;
             try
             {
-                initialValue = GenerateExpression(varDecl.InitialValue);
+                // `x: T? = None` (direct bare None) must produce Optional<T>.None.
+                initialValue = TryGenerateBareNoneForOptional(varDecl.InitialValue, declaredType)
+                    ?? GenerateExpression(varDecl.InitialValue);
             }
             finally
             {
@@ -627,6 +652,13 @@ internal partial class RoslynEmitter
         var varName = varDecl.IsConst
             ? NameMangler.ToConstantCase(varDecl.Name)
             : GetMangledVariableName(varDecl.Name, isNewDeclaration: true);
+
+        // Record the declared local variable type so later reassignments (e.g. `x = None`)
+        // can target Optional<T>.None when the variable is Optional.
+        if (declaredType is not null and not UnknownType)
+        {
+            _localVariableTypes[NameMangler.ToCamelCase(varDecl.Name)] = declaredType;
+        }
 
         // Handle 'auto' type annotation - use 'var' in C#
         // For const without type annotation, infer type from initializer (C# const can't use 'var')
@@ -778,7 +810,7 @@ internal partial class RoslynEmitter
             _targetTypeContext = varDecl.Type;
             try
             {
-                var value = GenerateExpression(varDecl.InitialValue);
+                var value = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
                 declarator = VariableDeclarator(Identifier(varName))
                     .WithInitializer(EqualsValueClause(value));
             }

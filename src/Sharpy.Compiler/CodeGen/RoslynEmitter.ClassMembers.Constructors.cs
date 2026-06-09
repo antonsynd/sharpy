@@ -154,13 +154,18 @@ internal partial class RoslynEmitter
                     {
                         // Set target type context for collection literal inference (e.g., self.items = [])
                         var previousTargetType = _targetTypeContext;
-                        if (fieldTypeMapping.TryGetValue(memberAccess.Member, out var fieldType))
+                        var hasFieldType = fieldTypeMapping.TryGetValue(memberAccess.Member, out var fieldType);
+                        if (hasFieldType)
                         {
                             _targetTypeContext = fieldType;
                         }
                         try
                         {
-                            assignValue = GenerateExpression(assign.Value);
+                            // `self.field = None` for an Optional<T> field → Optional<T>.None.
+                            assignValue = (hasFieldType
+                                    ? GenerateInitializerValue(assign.Value, fieldType)
+                                    : null)
+                                ?? GenerateExpression(assign.Value);
                         }
                         finally
                         {
@@ -261,7 +266,7 @@ internal partial class RoslynEmitter
                 _targetTypeContext = fieldDecl.Type;
                 try
                 {
-                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue!);
+                    var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue!, fieldDecl.Type);
                     parameterlessStatements.Add(ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
@@ -302,7 +307,7 @@ internal partial class RoslynEmitter
                 _targetTypeContext = fieldDecl.Type;
                 try
                 {
-                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue);
+                    var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue, fieldDecl.Type);
                     param = param.WithDefault(EqualsValueClause(defaultExpr));
                 }
                 finally
