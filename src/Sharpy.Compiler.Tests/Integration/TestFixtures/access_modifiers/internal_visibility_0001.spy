@@ -1,0 +1,24 @@
+# Test the @internal visibility decorator on a method and a property.
+# Internal members are callable from within the same module.
+
+class Service:
+    _name: str
+
+    def __init__(self) -> None:
+        self._name = "MyService"
+
+    @internal
+    def get_secret(self) -> str:
+        return "secret-42"
+
+    @internal
+    property get label(self) -> str:
+        return self._name
+
+    def public_method(self) -> str:
+        return self.get_secret()
+
+def main():
+    s: Service = Service()
+    print(s.public_method())
+    print(s.label)
