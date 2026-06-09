@@ -860,8 +860,12 @@ internal partial class RoslynEmitter
 
             // Determine which parameters are fixture-injected and exclude them from the
             // emitted parameter list (xUnit's [Fact] takes no params; for [Theory], only
-            // the parametrize columns remain).
-            var consumedForFunc = GetConsumedFixtures(func);
+            // the parametrize columns remain). User fixtures (IClassFixture-injected) and
+            // built-in per-test fixtures (e.g. tmp_path) are handled the same way per-method
+            // (stripped + prelude); they differ only in class-level wiring.
+            var consumedForFunc = GetConsumedFixtures(func)
+                .Concat(GetConsumedBuiltinFixtures(func))
+                .ToList();
             var fixtureParamNames = new HashSet<string>(
                 consumedForFunc.Select(c => c.Parameter.Name),
                 System.StringComparer.Ordinal);
@@ -952,15 +956,21 @@ internal partial class RoslynEmitter
         var moduleClassName = GetModuleClassName(willGenerateMainMethod: false, functionNames: new HashSet<string>());
         var testClassName = moduleClassName + "Tests";
 
-        // If any tests consume fixtures, prepend fixture fields and a constructor that
-        // captures the injected instances. Build the base list with one Xunit.IClassFixture<T>
-        // per unique consumed fixture.
+        // Compose class-level fixture wiring. Two mechanisms can coexist:
+        //   - User fixtures: Xunit.IClassFixture<T> base types + ctor injection + readonly fields
+        //     (shared once per test class).
+        //   - Built-in tmp_path: a per-test TmpPathFixture instance field + System.IDisposable
+        //     (fresh per test method, disposed after each — pytest's per-test lifecycle).
+        // Member order is deterministic: fields (user, then tmp_path), ctor, test methods, Dispose.
         var baseTypes = new List<BaseTypeSyntax>();
+        var fieldMembers = new List<MemberDeclarationSyntax>();
+        ConstructorDeclarationSyntax? ctor = null;
+        var suffixMembers = new List<MemberDeclarationSyntax>();
+
         if (consumedFixtures.Count > 0)
         {
             var ctorParams = new List<ParameterSyntax>();
             var ctorStmts = new List<StatementSyntax>();
-            var fieldMembers = new List<MemberDeclarationSyntax>();
 
             // Sort by fixture name for deterministic output.
             foreach (var fixture in consumedFixtures.Values
@@ -990,17 +1000,47 @@ internal partial class RoslynEmitter
                     IdentifierName(paramName))));
             }
 
-            // Build ctor and prepend fields/ctor to members.
-            var ctor = ConstructorDeclaration(testClassName)
+            ctor = ConstructorDeclaration(testClassName)
                 .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                 .WithParameterList(ParameterList(SeparatedList(ctorParams)))
                 .WithBody(Block(ctorStmts));
+        }
 
-            // Prepend in deterministic order: fields then ctor then existing test methods.
+        // Built-in tmp_path: per-test instance field + System.IDisposable + Dispose().
+        bool usesTmpPath = testFunctions.Any(f => GetConsumedBuiltinFixtures(f).Count > 0);
+        if (usesTmpPath)
+        {
+            var tmpPathType = MakeGlobalQualifiedName("Sharpy", "TmpPathFixture");
+
+            // private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();
+            fieldMembers.Add(FieldDeclaration(
+                    VariableDeclaration(tmpPathType)
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(BuiltinTmpPathFixture.FieldName)
+                                .WithInitializer(EqualsValueClause(
+                                    ObjectCreationExpression(tmpPathType).WithArgumentList(ArgumentList()))))))
+                .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword))));
+
+            baseTypes.Add(SimpleBaseType(MakeGlobalQualifiedName("System", "IDisposable")));
+
+            // public void Dispose() { _tmpPathFixture.Dispose(); }
+            suffixMembers.Add(MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), "Dispose")
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithBody(Block(ExpressionStatement(InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(BuiltinTmpPathFixture.FieldName),
+                        IdentifierName("Dispose")))))));
+        }
+
+        if (fieldMembers.Count > 0 || ctor != null || suffixMembers.Count > 0)
+        {
             var newMembers = new List<MemberDeclarationSyntax>();
             newMembers.AddRange(fieldMembers);
-            newMembers.Add(ctor);
+            if (ctor != null)
+                newMembers.Add(ctor);
             newMembers.AddRange(members);
+            newMembers.AddRange(suffixMembers);
             members = newMembers;
         }
 

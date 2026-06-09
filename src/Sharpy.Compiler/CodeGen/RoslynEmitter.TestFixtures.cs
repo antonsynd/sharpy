@@ -237,6 +237,47 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// The built-in <c>tmp_path</c> per-test fixture descriptor. Unlike user fixtures it is
+    /// not an <c>IClassFixture&lt;T&gt;</c> (which would be shared across the class); the test
+    /// class instead holds a fresh <c>global::Sharpy.TmpPathFixture</c> per test method and
+    /// disposes it after each (giving pytest's per-test lifecycle).
+    /// </summary>
+    private static readonly FixtureInfo BuiltinTmpPathFixture = new FixtureInfo(
+        SharpyName: PythonNames.TmpPath,
+        ClassName: "global::Sharpy.TmpPathFixture",
+        ValueType: PredefinedType(Token(SyntaxKind.StringKeyword)),
+        FieldName: "_tmpPathFixture",
+        IsDisposable: false);
+
+    /// <summary>
+    /// Returns the parameters of a test function that bind to a built-in per-test fixture
+    /// (currently only <c>tmp_path</c>). A user-defined <c>@test.fixture</c> of the same name
+    /// takes precedence (the registry is consulted first), so <c>tmp_path</c> is treated as
+    /// built-in only when no user fixture shadows it.
+    /// </summary>
+    private List<(Parameter Parameter, FixtureInfo Fixture)> GetConsumedBuiltinFixtures(FunctionDef func)
+    {
+        var result = new List<(Parameter, FixtureInfo)>();
+        if (_fixtureRegistry.ContainsKey(PythonNames.TmpPath))
+            return result;  // user fixture named tmp_path wins
+
+        foreach (var p in func.Parameters)
+        {
+            if (string.Equals(p.Name, PythonNames.Self, System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(p.Name, PythonNames.Cls, System.StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (string.Equals(p.Name, PythonNames.TmpPath, System.StringComparison.Ordinal))
+            {
+                result.Add((p, BuiltinTmpPathFixture));
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
     /// For a test function, returns the list of parameters whose names match a registered
     /// fixture. These parameters are stripped from the emitted method signature and
     /// replaced by a leading `var name = _fixtureField.Value;` statement.

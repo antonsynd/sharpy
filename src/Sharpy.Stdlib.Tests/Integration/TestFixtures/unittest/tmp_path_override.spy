@@ -1,0 +1,10 @@
+@test.fixture
+def tmp_path() -> str:
+    return "/custom/path"
+
+@test
+def test_override(tmp_path: str):
+    assert tmp_path == "/custom/path"
+
+def main():
+    print("ok")

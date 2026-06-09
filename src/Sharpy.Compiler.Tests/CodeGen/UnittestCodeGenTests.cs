@@ -833,4 +833,81 @@ def main():
     }
 
     #endregion
+
+    #region tmp_path built-in per-test fixture (#842)
+
+    [Fact]
+    public void TmpPath_BuiltinFixture_EmitsPerTestFieldAndIDisposable()
+    {
+        var source = @"
+@test
+def test_writes(tmp_path: str):
+    assert len(tmp_path) > 0
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        // Per-test instance field (not IClassFixture<T>), System.IDisposable, Dispose().
+        code.Should().Contain(": global::System.IDisposable");
+        code.Should().Contain(
+            "private readonly global::Sharpy.TmpPathFixture _tmpPathFixture = new global::Sharpy.TmpPathFixture();");
+        code.Should().Contain("string tmpPath = _tmpPathFixture.Value;");
+        code.Should().Contain("public void Dispose()");
+        code.Should().Contain("_tmpPathFixture.Dispose();");
+        // tmp_path is NOT an IClassFixture (that would share one dir across tests).
+        code.Should().NotContain("IClassFixture<global::Sharpy.TmpPathFixture>");
+    }
+
+    [Fact]
+    public void TmpPath_UserFixtureOverridesBuiltin()
+    {
+        // A user-defined @test.fixture named tmp_path wins: the IClassFixture path is used
+        // and the built-in per-test field / IDisposable is NOT emitted.
+        var source = @"
+@test.fixture
+def tmp_path() -> str:
+    return ""/custom""
+
+@test
+def test_override(tmp_path: str):
+    assert tmp_path == ""/custom""
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.IClassFixture<TmpPathFixture>");
+        code.Should().NotContain("new global::Sharpy.TmpPathFixture()");
+    }
+
+    [Fact]
+    public void TmpPath_ComposesWithUserFixture()
+    {
+        // A test consuming both tmp_path (built-in) and a user fixture gets both mechanisms:
+        // IClassFixture<T> + ctor injection for the user fixture, and the per-test
+        // TmpPathFixture field + IDisposable for tmp_path.
+        var source = @"
+@test.fixture
+def greeting() -> str:
+    return ""hi""
+
+@test
+def test_both(tmp_path: str, greeting: str):
+    assert greeting == ""hi""
+    assert len(tmp_path) > 0
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.IClassFixture<GreetingFixture>");
+        code.Should().Contain("global::System.IDisposable");
+        code.Should().Contain("new global::Sharpy.TmpPathFixture()");
+        code.Should().Contain("string greeting = _greetingFixture.Value;");
+        code.Should().Contain("string tmpPath = _tmpPathFixture.Value;");
+        code.Should().Contain("_tmpPathFixture.Dispose();");
+    }
+
+    #endregion
 }

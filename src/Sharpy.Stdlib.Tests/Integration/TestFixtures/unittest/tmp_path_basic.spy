@@ -1,0 +1,10 @@
+@test
+def test_writes_file(tmp_path: str):
+    target: str = tmp_path + "/data.txt"
+    with open(target, "w") as f:
+        f.write("content")
+    with open(target, "r") as g:
+        assert g.read() == "content"
+
+def main():
+    print("ok")
