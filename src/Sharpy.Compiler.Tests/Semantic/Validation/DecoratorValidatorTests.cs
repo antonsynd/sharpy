@@ -1033,6 +1033,46 @@ def db_connection() -> int:
             && w.Message.Contains("does not accept arguments"));
     }
 
+    // The validator does not inspect FunctionDef.IsAsync; async fixtures must flow
+    // through cleanly (async setup/teardown is an IAsyncLifetime codegen concern, #839).
+    // These tests pin that behavior so the async-fixture codegen work cannot silently
+    // introduce a validator regression.
+    [Fact]
+    public void TestFixture_AsyncWithYield_NoError()
+    {
+        var code = @"
+@test.fixture
+async def db_connection() -> int:
+    value = await open_connection()
+    yield value
+    await close_connection(value)
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
+    [Fact]
+    public void TestFixture_AsyncReturn_NoError()
+    {
+        var code = @"
+@test.fixture
+async def db_connection() -> int:
+    return await open_connection()
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetWarnings());
+    }
+
     #endregion
 
     #region @test.mark decorator
