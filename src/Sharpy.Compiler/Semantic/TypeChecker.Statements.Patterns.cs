@@ -279,22 +279,43 @@ internal partial class TypeChecker
     {
         var resolvedType = _typeResolver.ResolveTypeAnnotation(typePattern.Type);
 
-        // Unparameterized collection patterns (e.g., `case list()`) against an
-        // `object` scrutinee resolve to a GenericType with zero type arguments.
-        // CodeGen cannot emit a non-generic `Sharpy.List` reference, so fill in
-        // default `object` type arguments here. The specialized type is recorded
-        // in SemanticInfo so CodeGen emits e.g. `Sharpy.List<object>`.
-        if (resolvedType is GenericType { TypeArguments.Count: 0 } genericPattern
-            && typePattern.Type.TypeArguments.Length == 0
-            && IsObjectType(scrutineeType))
+        // Unparameterized collection patterns (e.g., `case list()`, `case dict()`)
+        // against an `object` scrutinee. Fill in default `object` type arguments so
+        // member access (indexing, .items(), etc.) resolves at the semantic level.
+        //
+        // Two resolution paths reach here:
+        //   1. GenericType with zero type args — if TypeResolver happens to produce it.
+        //   2. UserDefinedType backed by the BuiltinRegistry TypeSymbol — the common
+        //      path for bare `dict`/`list`/`set` (zero-arg names skip ResolveGenericType
+        //      and land in the user-defined-type leg of TypeResolver).
+        if (typePattern.Type.TypeArguments.Length == 0 && IsObjectType(scrutineeType))
         {
-            var arity = genericPattern.Name switch
+            string? collectionName = null;
+            int arity = 0;
+            TypeSymbol? genericDef = null;
+
+            if (resolvedType is GenericType { TypeArguments.Count: 0 } genericPattern)
             {
-                "list" => 1,
-                "set" => 1,
-                "dict" => 2,
-                _ => 0
-            };
+                collectionName = genericPattern.Name;
+                genericDef = genericPattern.GenericDefinition;
+            }
+            else if (resolvedType is UserDefinedType { Symbol: TypeSymbol ts } && ts.IsGeneric)
+            {
+                collectionName = ts.Name;
+                genericDef = ts;
+            }
+
+            if (collectionName != null)
+            {
+                arity = collectionName switch
+                {
+                    BuiltinNames.List => 1,
+                    BuiltinNames.Set => 1,
+                    BuiltinNames.Dict => 2,
+                    _ => 0
+                };
+            }
+
             if (arity > 0)
             {
                 var defaultArgs = new List<SemanticType>(arity);
@@ -302,7 +323,12 @@ internal partial class TypeChecker
                 {
                     defaultArgs.Add(SemanticType.Object);
                 }
-                resolvedType = genericPattern with { TypeArguments = defaultArgs };
+                resolvedType = new GenericType
+                {
+                    Name = collectionName!,
+                    TypeArguments = defaultArgs,
+                    GenericDefinition = genericDef
+                };
                 _semanticInfo.SetPatternType(typePattern, resolvedType);
             }
         }
