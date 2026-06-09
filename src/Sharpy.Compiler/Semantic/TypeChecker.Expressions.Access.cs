@@ -92,13 +92,7 @@ internal partial class TypeChecker
                 var exportedType = exportedSymbol switch
                 {
                     VariableSymbol varSymbol => GetVariableType(varSymbol),
-                    FunctionSymbol funcSymbol => new FunctionType
-                    {
-                        ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
-                        ReturnType = funcSymbol.ReturnType,
-                        VariadicParameterIndex = GetVariadicIndex(funcSymbol.Parameters),
-                        OptionalParameterCount = funcSymbol.Parameters.Count(p => p.HasDefault && !p.IsVariadic)
-                    },
+                    FunctionSymbol funcSymbol => FunctionType.FromParameters(funcSymbol.Parameters, funcSymbol.ReturnType),
                     TypeSymbol typeSymbol => new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol },
                     ModuleSymbol nestedModule => new ModuleType { Symbol = nestedModule },
                     _ => SemanticType.Unknown
@@ -147,19 +141,11 @@ internal partial class TypeChecker
                 var clrMethod = udt.Symbol.Methods.FirstOrDefault(m => m.Name == clrMemberName);
                 if (clrMethod != null)
                 {
-                    var clrParameters = clrMethod.Parameters
-                        .Where(p => p.Name != "self")
-                        .ToList();
-                    var paramTypes = clrParameters
-                        .Select(p => p.Type ?? SemanticType.Unknown)
-                        .ToList();
-                    return new FunctionType
-                    {
-                        ParameterTypes = paramTypes,
-                        ReturnType = clrMethod.ReturnType ?? SemanticType.Unknown,
-                        VariadicParameterIndex = GetVariadicIndex(clrParameters),
-                        OptionalParameterCount = clrParameters.Count(p => p.HasDefault && !p.IsVariadic)
-                    };
+                    var selfOffset = clrMethod.Parameters.Count > 0
+                        && clrMethod.Parameters[0].Name == PythonNames.Self
+                        ? 1 : 0;
+                    return FunctionType.FromParameters(
+                        clrMethod.Parameters, clrMethod.ReturnType, skipLeading: selfOffset);
                 }
 
                 // Check fields
@@ -281,14 +267,7 @@ internal partial class TypeChecker
                 if (invokeMethod != null)
                 {
                     // Build a FunctionType from the delegate's Invoke signature
-                    var paramTypes = invokeMethod.Parameters.Select(p => p.Type).ToList();
-                    return new FunctionType
-                    {
-                        ParameterTypes = paramTypes,
-                        ReturnType = invokeMethod.ReturnType,
-                        VariadicParameterIndex = GetVariadicIndex(invokeMethod.Parameters),
-                        OptionalParameterCount = invokeMethod.Parameters.Count(p => p.HasDefault && !p.IsVariadic)
-                    };
+                    return FunctionType.FromParameters(invokeMethod.Parameters, invokeMethod.ReturnType);
                 }
             }
 
@@ -306,16 +285,9 @@ internal partial class TypeChecker
                 var selfOffset = method.Parameters.Count > 0
                     && method.Parameters[0].Name == PythonNames.Self
                     ? 1 : 0;
-                var methodParameters = method.Parameters.Skip(selfOffset).ToList();
-                var paramTypes = methodParameters.Select(p => p.Type).ToList();
 
-                var methodFunctionType = new FunctionType
-                {
-                    ParameterTypes = paramTypes,
-                    ReturnType = method.ReturnType,
-                    VariadicParameterIndex = GetVariadicIndex(methodParameters),
-                    OptionalParameterCount = methodParameters.Count(p => p.HasDefault && !p.IsVariadic)
-                };
+                var methodFunctionType = FunctionType.FromParameters(
+                    method.Parameters, method.ReturnType, skipLeading: selfOffset);
 
                 // For null conditional method access, we don't wrap the FunctionType itself,
                 // but the eventual call result should be nullable (handled in CheckFunctionCall)
@@ -360,14 +332,7 @@ internal partial class TypeChecker
             var invokeMethod = TryGetDelegateInvokeMethod(memberLookupType);
             if (invokeMethod != null)
             {
-                var paramTypes = invokeMethod.Parameters.Select(p => p.Type).ToList();
-                return new FunctionType
-                {
-                    ParameterTypes = paramTypes,
-                    ReturnType = invokeMethod.ReturnType,
-                    VariadicParameterIndex = GetVariadicIndex(invokeMethod.Parameters),
-                    OptionalParameterCount = invokeMethod.Parameters.Count(p => p.HasDefault && !p.IsVariadic)
-                };
+                return FunctionType.FromParameters(invokeMethod.Parameters, invokeMethod.ReturnType);
             }
         }
 
@@ -407,18 +372,13 @@ internal partial class TypeChecker
                     // return types like Result<U, E> from map()). Let the codegen fallback handle these.
                     if (resolvedReturnType is not UserDefinedType { Name: "object" })
                     {
-                        var resolvedParams = methodSymbol.Parameters
-                            .Select(p => builtinTypeArgs != null
-                                ? SubstituteTypeParameters(p.Type, builtinTypeSymbol.TypeParameters, builtinTypeArgs)
-                                : p.Type)
-                            .ToList();
-                        return new FunctionType
-                        {
-                            ParameterTypes = resolvedParams,
-                            ReturnType = resolvedReturnType,
-                            VariadicParameterIndex = GetVariadicIndex(methodSymbol.Parameters),
-                            OptionalParameterCount = methodSymbol.Parameters.Count(p => p.HasDefault && !p.IsVariadic)
-                        };
+                        var substitutedParams = builtinTypeArgs != null
+                            ? methodSymbol.Parameters.Select(p => p with
+                            {
+                                Type = SubstituteTypeParameters(p.Type, builtinTypeSymbol.TypeParameters, builtinTypeArgs)
+                            }).ToList()
+                            : methodSymbol.Parameters;
+                        return FunctionType.FromParameters(substitutedParams, resolvedReturnType);
                     }
                 }
 
@@ -545,14 +505,7 @@ internal partial class TypeChecker
             if (method != null)
             {
                 _semanticInfo.SetMemberAccessResolution(memberAccess, typeSym, method);
-                var paramTypes = method.Parameters.Select(p => p.Type).ToList();
-                var funcType = new FunctionType
-                {
-                    ParameterTypes = paramTypes,
-                    ReturnType = method.ReturnType,
-                    VariadicParameterIndex = GetVariadicIndex(method.Parameters),
-                    OptionalParameterCount = method.Parameters.Count(p => p.HasDefault && !p.IsVariadic)
-                };
+                var funcType = FunctionType.FromParameters(method.Parameters, method.ReturnType);
                 _semanticInfo.SetExpressionType(memberAccess, funcType);
                 return funcType;
             }

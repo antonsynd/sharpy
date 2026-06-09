@@ -312,12 +312,7 @@ internal partial class TypeChecker
         var identifierType = symbol switch
         {
             VariableSymbol varSymbol => GetVariableType(varSymbol),
-            FunctionSymbol funcSymbol => new FunctionType
-            {
-                ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
-                ReturnType = funcSymbol.ReturnType,
-                VariadicParameterIndex = GetVariadicIndex(funcSymbol.Parameters)
-            },
+            FunctionSymbol funcSymbol => FunctionType.FromParameters(funcSymbol.Parameters, funcSymbol.ReturnType),
             ModuleSymbol moduleSymbol => new ModuleType { Symbol = moduleSymbol },
             // Primitive type names (int, str, bool, float, etc.) used as function references
             // (e.g., map(int, items)) get a synthesized FunctionType so downstream consumers

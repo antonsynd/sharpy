@@ -784,14 +784,8 @@ internal partial class TypeChecker
                 var parentCtor = currentType.Constructors.FirstOrDefault();
                 if (parentCtor != null)
                 {
-                    var ctorParameters = parentCtor.Parameters.Skip(1).ToList();
-                    var paramTypes = ctorParameters.Select(p => p.Type).ToList();
-                    return new FunctionType
-                    {
-                        ParameterTypes = paramTypes,
-                        ReturnType = SemanticType.Void,
-                        VariadicParameterIndex = GetVariadicIndex(ctorParameters)
-                    };
+                    return FunctionType.FromParameters(
+                        parentCtor.Parameters, SemanticType.Void, skipLeading: 1);
                 }
                 currentType = GetBaseType(currentType);
             }
@@ -813,14 +807,8 @@ internal partial class TypeChecker
                 };
             }
 
-            var methodParameters = parentMethod.Parameters.Skip(1).ToList();
-            var paramTypes = methodParameters.Select(p => p.Type).ToList();
-            return new FunctionType
-            {
-                ParameterTypes = paramTypes,
-                ReturnType = parentMethod.ReturnType,
-                VariadicParameterIndex = GetVariadicIndex(methodParameters)
-            };
+            return FunctionType.FromParameters(
+                parentMethod.Parameters, parentMethod.ReturnType, skipLeading: 1);
         }
 
         // Also check properties in the parent hierarchy (e.g. super().age in

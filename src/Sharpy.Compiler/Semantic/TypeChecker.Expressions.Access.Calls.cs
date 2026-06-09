@@ -2193,22 +2193,7 @@ internal partial class TypeChecker
     /// </summary>
     private static FunctionType BuildFunctionTypeFromSymbol(FunctionSymbol funcSymbol)
     {
-        var paramTypes = new List<SemanticType>(funcSymbol.Parameters.Count);
-        var optionalCount = 0;
-        foreach (var p in funcSymbol.Parameters)
-        {
-            paramTypes.Add(p.Type);
-            if (p.HasDefault)
-            {
-                optionalCount++;
-            }
-        }
-        return new FunctionType
-        {
-            ParameterTypes = paramTypes,
-            ReturnType = funcSymbol.ReturnType,
-            OptionalParameterCount = optionalCount,
-        };
+        return FunctionType.FromParameters(funcSymbol.Parameters, funcSymbol.ReturnType);
     }
 
     /// <summary>
