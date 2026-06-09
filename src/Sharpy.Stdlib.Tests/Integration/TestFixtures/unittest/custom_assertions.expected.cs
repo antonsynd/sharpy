@@ -37,7 +37,7 @@ public partial class CustomAssertionsTests
     public void TestAssertIsNone()
     {
 #line (13, 5) - (13, 25) 1 "custom_assertions.spy"
-        Xunit.Assert.Null(default);
+        Xunit.Assert.Null(null);
     }
 
     [Xunit.FactAttribute]
