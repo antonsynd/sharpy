@@ -17,7 +17,8 @@ internal sealed record FixtureInfo(
     string ClassName,            // C# fixture class name, e.g. "DbConnectionFixture"
     TypeSyntax ValueType,        // Type of the .Value property (the fixture function's return type)
     string FieldName,            // Field name used in consuming test classes, e.g. "_dbConnectionFixture"
-    bool IsDisposable);          // True for yield-based fixtures (implements IDisposable)
+    bool IsDisposable,           // True for yield-based fixtures (teardown after yield)
+    bool IsAsync = false);       // True for async def fixtures (implements Xunit.IAsyncLifetime)
 
 /// <summary>
 /// RoslynEmitter partial class: @test.fixture code generation.
@@ -61,7 +62,7 @@ internal partial class RoslynEmitter
         var fieldName = "_" + NameMangler.ToCamelCase(func.Name) + "Fixture";
         bool hasYield = FindFirstYield(func.Body) >= 0;
 
-        var info = new FixtureInfo(func.Name, className, valueType, fieldName, hasYield);
+        var info = new FixtureInfo(func.Name, className, valueType, fieldName, hasYield, func.IsAsync);
         _fixtureRegistry[func.Name] = info;
         return info;
     }
@@ -128,6 +129,12 @@ internal partial class RoslynEmitter
                 exposedValueExpr = null;
             }
             teardownStmts = new List<Statement>();
+        }
+
+        // Async fixtures implement Xunit.IAsyncLifetime instead of a ctor + IDisposable.
+        if (info.IsAsync)
+        {
+            return GenerateAsyncFixtureClass(func, info, setupStmts, teardownStmts, exposedValueExpr);
         }
 
         // Body of the constructor: setup statements + `Value = expr;` (if any).
@@ -277,5 +284,167 @@ internal partial class RoslynEmitter
                                     IdentifierName(fixture.FieldName),
                                     IdentifierName("Value")))))));
         }
+    }
+
+    /// <summary>
+    /// Generates a C# class implementing <c>Xunit.IAsyncLifetime</c> for an async
+    /// <c>@test.fixture</c> function. Setup (including awaits) and <c>Value = expr;</c> move into
+    /// <c>InitializeAsync</c>; yield-based teardown runs in <c>DisposeAsync</c> via an async
+    /// teardown lambda. Return-based async fixtures emit a <c>DisposeAsync</c> that returns
+    /// <c>Task.CompletedTask</c>. Consuming test classes are unchanged — xUnit drives
+    /// <c>IAsyncLifetime</c> automatically through <c>IClassFixture&lt;T&gt;</c>.
+    /// </summary>
+    private ClassDeclarationSyntax GenerateAsyncFixtureClass(
+        FunctionDef func,
+        FixtureInfo info,
+        List<Statement> setupStmts,
+        List<Statement> teardownStmts,
+        Expression? exposedValueExpr)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        // public T Value { get; private set; } = default!;  (identical to the sync path)
+        var valueProp = PropertyDeclaration(info.ValueType, "Value")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithAccessorList(AccessorList(List(new[]
+            {
+                AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+                AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                    .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)))
+                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+            })))
+            .WithInitializer(EqualsValueClause(
+                PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression,
+                    LiteralExpression(SyntaxKind.DefaultLiteralExpression, Token(SyntaxKind.DefaultKeyword)))))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        members.Add(valueProp);
+
+        // For yield-based fixtures: private System.Func<System.Threading.Tasks.Task>? _teardown;
+        if (info.IsDisposable)
+        {
+            members.Add(FieldDeclaration(
+                    VariableDeclaration(NullableType(FuncOfTaskType()))
+                        .WithVariables(SingletonSeparatedList(VariableDeclarator("_teardown"))))
+                .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword))));
+        }
+
+        // Build InitializeAsync body under async scope so awaits lower correctly.
+        var initStmts = new List<StatementSyntax>();
+        using (SetAsyncScope(true))
+        {
+            foreach (var stmt in setupStmts)
+                initStmts.AddRange(GenerateBodyStatements(stmt));
+
+            if (exposedValueExpr != null)
+            {
+                initStmts.Add(ExpressionStatement(AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName("Value"),
+                    GenerateExpression(exposedValueExpr))));
+            }
+
+            if (info.IsDisposable)
+            {
+                // _teardown = async () => { ...teardown... };
+                var teardownBodyStmts = new List<StatementSyntax>();
+                foreach (var stmt in teardownStmts)
+                    teardownBodyStmts.AddRange(GenerateBodyStatements(stmt));
+
+                // CS1998 guard for the async teardown lambda when its body has no await.
+                if (!HasTopLevelAwait(teardownBodyStmts))
+                    teardownBodyStmts.Add(ExpressionStatement(AwaitExpression(TaskCompletedTask())));
+
+                initStmts.Add(ExpressionStatement(AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName("_teardown"),
+                    ParenthesizedLambdaExpression()
+                        .WithAsyncKeyword(Token(SyntaxKind.AsyncKeyword))
+                        .WithBlock(Block(teardownBodyStmts)))));
+            }
+        }
+
+        // Guard against CS1998 ("async method lacks await") when no top-level await was
+        // emitted into InitializeAsync (awaits nested inside the teardown lambda don't count).
+        if (!HasTopLevelAwait(initStmts))
+        {
+            initStmts.Add(ExpressionStatement(AwaitExpression(TaskCompletedTask())));
+        }
+
+        // public async System.Threading.Tasks.Task InitializeAsync() { ... }
+        members.Add(MethodDeclaration(TaskType(), "InitializeAsync")
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.AsyncKeyword)))
+            .WithBody(Block(initStmts)));
+
+        // DisposeAsync
+        if (info.IsDisposable)
+        {
+            // public async System.Threading.Tasks.Task DisposeAsync()
+            // { if (_teardown != null) { await _teardown(); } }
+            var disposeBody = Block(IfStatement(
+                BinaryExpression(SyntaxKind.NotEqualsExpression,
+                    IdentifierName("_teardown"),
+                    LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                Block(ExpressionStatement(AwaitExpression(
+                    InvocationExpression(IdentifierName("_teardown")))))));
+
+            members.Add(MethodDeclaration(TaskType(), "DisposeAsync")
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.AsyncKeyword)))
+                .WithBody(disposeBody));
+        }
+        else
+        {
+            // public System.Threading.Tasks.Task DisposeAsync()
+            // { return System.Threading.Tasks.Task.CompletedTask; }
+            members.Add(MethodDeclaration(TaskType(), "DisposeAsync")
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithBody(Block(ReturnStatement(TaskCompletedTask()))));
+        }
+
+        var classDecl = ClassDeclaration(info.ClassName)
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+            .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
+                SimpleBaseType(ParseName("Xunit.IAsyncLifetime")))))
+            .WithMembers(List(members));
+
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            classDecl = classDecl.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return classDecl;
+    }
+
+    /// <summary>global::System.Func&lt;System.Threading.Tasks.Task&gt;</summary>
+    private static NameSyntax FuncOfTaskType()
+        => QualifiedName(
+            AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), IdentifierName("System")),
+            GenericName(Identifier("Func"))
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(TaskType()))));
+
+    /// <summary>System.Threading.Tasks.Task.CompletedTask</summary>
+    private static ExpressionSyntax TaskCompletedTask()
+        => MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            MakeGlobalQualifiedName("System", "Threading", "Tasks", "Task"),
+            IdentifierName("CompletedTask"));
+
+    /// <summary>
+    /// True if any of the given statements contains an await expression at the method's own
+    /// level — i.e. not nested inside a lambda or local function (whose awaits belong to a
+    /// different async context).
+    /// </summary>
+    private static bool HasTopLevelAwait(IEnumerable<StatementSyntax> statements)
+    {
+        foreach (var stmt in statements)
+        {
+            foreach (var node in stmt.DescendantNodesAndSelf(descendIntoChildren: n =>
+                n is not AnonymousFunctionExpressionSyntax && n is not LocalFunctionStatementSyntax))
+            {
+                if (node is AwaitExpressionSyntax)
+                    return true;
+            }
+        }
+        return false;
     }
 }

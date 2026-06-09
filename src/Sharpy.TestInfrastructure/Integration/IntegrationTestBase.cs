@@ -58,6 +58,12 @@ public abstract class IntegrationTestBase
             // emitted by assert_regex and assert_raises(..., match=...). Real net10.0
             // test projects reference it implicitly via the framework.
             MetadataReference.CreateFromFile(Assembly.Load("System.Text.RegularExpressions").Location),
+            // System.Threading.Tasks (the facade assembly, v4.0.0.0) is needed for async
+            // @test.fixture classes that implement Xunit.IAsyncLifetime — xunit's interface
+            // metadata references Task through this facade, so it must be referenced even
+            // though Task's implementation lives in System.Private.CoreLib. Real net10.0
+            // test projects reference it implicitly.
+            MetadataReference.CreateFromFile(Assembly.Load("System.Threading.Tasks").Location),
         };
 
         string? runtimePath = null;

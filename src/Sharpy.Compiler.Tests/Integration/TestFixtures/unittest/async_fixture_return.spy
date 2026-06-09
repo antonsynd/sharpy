@@ -1,0 +1,10 @@
+@test.fixture
+async def resource() -> int:
+    return 42
+
+@test
+async def test_uses_resource(resource: int):
+    assert resource == 42
+
+def main():
+    print("ok")
