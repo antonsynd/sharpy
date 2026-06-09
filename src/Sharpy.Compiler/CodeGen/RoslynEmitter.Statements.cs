@@ -51,6 +51,27 @@ internal partial class RoslynEmitter
             _hoistedStatements.Clear();
         }
 
+        // assert_raises(E, match=...) lowers to two flat statements (a captured Throws
+        // followed by Assert.Matches) so that an `as` capture remains visible to statements
+        // after the with. Handled here rather than in GenerateWith because GenerateWith
+        // returns a single StatementSyntax (which would force a scope-introducing block).
+        if (stmt is WithStatement matchWith
+            && TryGenerateAssertRaisesWithMatch(matchWith, out var matchStatements))
+        {
+            var matchOutput = new List<StatementSyntax>();
+            if (_hoistedStatements.Count > 0)
+            {
+                matchOutput.AddRange(_hoistedStatements);
+                _hoistedStatements.Clear();
+            }
+            if (matchStatements.Count > 0)
+                matchStatements[0] = AttachLineDirective(matchStatements[0], stmt);
+            matchOutput.AddRange(matchStatements);
+            if (savedWalrus != null)
+                _hoistedStatements.AddRange(savedWalrus);
+            return matchOutput;
+        }
+
         var result = stmt switch
         {
             ReturnStatement ret => GenerateReturn(ret),

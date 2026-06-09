@@ -1,0 +1,14 @@
+from unittest import assert_raises
+
+@test
+def test_match_basic():
+    with assert_raises(ValueError, "bad.*input"):
+        raise ValueError("bad input")
+
+@test
+def test_match_substring():
+    with assert_raises(RuntimeError, "fail"):
+        raise RuntimeError("operation failed")
+
+def main():
+    print("ok")

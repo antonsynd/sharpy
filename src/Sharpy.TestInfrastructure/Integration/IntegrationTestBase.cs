@@ -53,6 +53,11 @@ public abstract class IntegrationTestBase
             MetadataReference.CreateFromFile(Assembly.Load("System.Collections.Concurrent").Location),
             MetadataReference.CreateFromFile(Assembly.Load("System.ObjectModel").Location),
             MetadataReference.CreateFromFile(Assembly.Load("System.Collections.Immutable").Location),
+            // System.Text.RegularExpressions is needed for overload resolution of
+            // Xunit.Assert.Matches (the Regex overload's signature must be loadable),
+            // emitted by assert_regex and assert_raises(..., match=...). Real net10.0
+            // test projects reference it implicitly via the framework.
+            MetadataReference.CreateFromFile(Assembly.Load("System.Text.RegularExpressions").Location),
         };
 
         string? runtimePath = null;

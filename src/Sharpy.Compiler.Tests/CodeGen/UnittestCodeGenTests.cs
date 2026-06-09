@@ -492,6 +492,51 @@ def main():
     }
 
     [Fact]
+    public void AssertRaises_WithMatch_GeneratesAssertMatchesOnMessage()
+    {
+        // assert_raises(E, "pattern") (positional match) → captured Throws + Assert.Matches
+        // on the exception Message (re.search semantics). The captured local is a temp.
+        var source = @"
+from unittest import assert_raises
+
+@test
+def test_match():
+    with assert_raises(ValueError, ""bad.*input""):
+        raise ValueError(""bad input"")
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        code.Should().Contain("= Xunit.Assert.Throws<ValueError>");
+        code.Should().MatchRegex(@"Xunit\.Assert\.Matches\(""bad\.\*input"", __ex_\d+\.Message\)");
+    }
+
+    [Fact]
+    public void AssertRaises_WithMatchAndCapture_ReusesCapturedName()
+    {
+        // assert_raises(E, "pattern") as exc → the captured name is reused for Assert.Matches
+        // and remains visible to statements after the with (flat, no scoping block).
+        var source = @"
+from unittest import assert_raises
+
+@test
+def test_match_capture():
+    with assert_raises(ValueError, ""bad"") as exc:
+        raise ValueError(""bad input"")
+    assert str(exc) == ""bad input""
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        code.Should().Contain("var exc = Xunit.Assert.Throws<ValueError>");
+        code.Should().Contain("Xunit.Assert.Matches(\"bad\", exc.Message)");
+        // exc is still visible afterward → assert str(exc) == ... lowers using exc
+        code.Should().Contain("global::Sharpy.Builtins.Str(exc)");
+    }
+
+    [Fact]
     public void AssertAlmostEqual_GeneratesXunitAssertEqualWithPrecision()
     {
         var source = @"

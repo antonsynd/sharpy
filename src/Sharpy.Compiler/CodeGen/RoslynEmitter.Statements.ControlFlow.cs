@@ -917,10 +917,14 @@ internal partial class RoslynEmitter
         // is rewritten to xUnit:
         //   Xunit.Assert.Throws<ExceptionType>(() => { body });
         // assert_raises is a marker (no runtime implementation) — codegen handles it.
+        // Note: the assert_raises(..., match=...) form (which emits two flat statements so
+        // an `as` capture stays visible) is intercepted earlier in GenerateBodyStatements.
+        // Here we only handle the simple no-match form.
         if (_isInTestFunction && withStmt.Items.Length == 1)
         {
             var ctxExpr = withStmt.Items[0].ContextExpression;
-            if (ctxExpr is FunctionCall call && IsAssertRaisesCall(call) && call.Arguments.Length == 1)
+            if (ctxExpr is FunctionCall call && IsAssertRaisesCall(call)
+                && call.Arguments.Length == 1 && GetAssertRaisesMatchArgument(call) == null)
             {
                 return GenerateAssertThrows(call.Arguments[0], withStmt.Body, withStmt.Items[0].Name);
             }
@@ -980,6 +984,45 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// If the statement is <c>with assert_raises(E, match=...) [as exc]:</c> inside a @test
+    /// function, emits the two flat statements (captured Throws + Assert.Matches) and returns
+    /// true. Returns false for the no-match form (handled by <see cref="GenerateWith"/>).
+    /// </summary>
+    private bool TryGenerateAssertRaisesWithMatch(WithStatement withStmt, out List<StatementSyntax> statements)
+    {
+        statements = null!;
+        if (!_isInTestFunction || withStmt.Items.Length != 1)
+            return false;
+        if (withStmt.Items[0].ContextExpression is not FunctionCall call || !IsAssertRaisesCall(call))
+            return false;
+
+        var matchExpr = GetAssertRaisesMatchArgument(call);
+        if (matchExpr == null)
+            return false;
+
+        statements = GenerateAssertThrowsStatements(
+            call.Arguments[0], withStmt.Body, withStmt.Items[0].Name, matchExpr);
+        return true;
+    }
+
+    /// <summary>
+    /// Returns the match pattern expression for an assert_raises call, or null if none.
+    /// Accepts either a <c>match=</c> keyword argument or a second positional argument
+    /// (mirroring pytest's <c>raises(E, match=...)</c> / <c>raises(E, "pattern")</c>).
+    /// </summary>
+    private static Expression? GetAssertRaisesMatchArgument(FunctionCall call)
+    {
+        foreach (var kw in call.KeywordArguments)
+        {
+            if (kw.Name == "match")
+                return kw.Value;
+        }
+        if (call.Arguments.Length >= 2)
+            return call.Arguments[1];
+        return null;
+    }
+
+    /// <summary>
     /// Generates xUnit's Assert.Throws&lt;TException&gt;(() =&gt; { body }) for assert_raises blocks.
     /// When <paramref name="captureName"/> is provided (from <c>with assert_raises(E) as exc:</c>),
     /// the thrown exception is captured into a local variable:
@@ -989,6 +1032,27 @@ internal partial class RoslynEmitter
         Expression exceptionTypeExpr,
         IReadOnlyList<Statement> body,
         string? captureName = null)
+    {
+        // No match → exactly one statement.
+        return GenerateAssertThrowsStatements(exceptionTypeExpr, body, captureName, matchExpr: null)[0];
+    }
+
+    /// <summary>
+    /// Generates the statement(s) for an assert_raises block, supporting an optional
+    /// regex <paramref name="matchExpr"/> (re.search semantics, like pytest's
+    /// <c>raises(E, match=...)</c>). Returns a flat list (never a wrapping block) so that an
+    /// <c>as</c> capture remains visible to statements following the <c>with</c>:
+    /// <code>
+    /// var exc = Xunit.Assert.Throws&lt;E&gt;((System.Action)(() =&gt; { body }));
+    /// Xunit.Assert.Matches(matchExpr, exc.Message);
+    /// </code>
+    /// When there is no capture but a match is present, a temporary local is introduced.
+    /// </summary>
+    private List<StatementSyntax> GenerateAssertThrowsStatements(
+        Expression exceptionTypeExpr,
+        IReadOnlyList<Statement> body,
+        string? captureName,
+        Expression? matchExpr)
     {
         TypeSyntax exceptionType = exceptionTypeExpr switch
         {
@@ -1014,19 +1078,51 @@ internal partial class RoslynEmitter
                             SingletonSeparatedList(exceptionType)))))
             .AddArgumentListArguments(Argument(lambda));
 
+        var result = new List<StatementSyntax>();
+
+        // A local variable is needed when the caller captures the exception (`as exc`)
+        // or when a match assertion must reference the thrown exception's Message.
+        string? localName = null;
         if (captureName != null)
         {
-            // with assert_raises(E) as exc: -> var exc = Xunit.Assert.Throws<E>(...);
-            var mangledName = GetMangledVariableName(captureName, isNewDeclaration: true);
-            _declaredVariables.Add(mangledName);
-            return LocalDeclarationStatement(
-                VariableDeclaration(IdentifierName("var"))
-                    .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(mangledName))
-                            .WithInitializer(EqualsValueClause(throwsCall)))));
+            localName = GetMangledVariableName(captureName, isNewDeclaration: true);
+            _declaredVariables.Add(localName);
+        }
+        else if (matchExpr != null)
+        {
+            localName = GenerateTempVarName("ex");
         }
 
-        return ExpressionStatement(throwsCall);
+        if (localName != null)
+        {
+            result.Add(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(localName))
+                            .WithInitializer(EqualsValueClause(throwsCall))))));
+        }
+        else
+        {
+            result.Add(ExpressionStatement(throwsCall));
+        }
+
+        if (matchExpr != null)
+        {
+            // Xunit.Assert.Matches(matchExpr, localName.Message);  (re.search semantics)
+            result.Add(ExpressionStatement(InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ParseName("Xunit.Assert"),
+                        IdentifierName("Matches")))
+                .AddArgumentListArguments(
+                    Argument(GenerateExpression(matchExpr)),
+                    Argument(MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(localName!),
+                        IdentifierName("Message"))))));
+        }
+
+        return result;
     }
 
     /// <summary>

@@ -248,40 +248,44 @@ var exc = Xunit.Assert.Throws<ValueError>((System.Action)(() =>
 Xunit.Assert.Equal("bad input", exc.Message);
 ```
 
-### Matching the exception message (`match=`)
+### Matching the exception message
 
-`assert_raises` accepts an optional `match=` keyword (or a second positional string) that asserts
-the exception's message matches a regular expression. Semantics follow Python's
-`pytest.raises(match=...)` / `re.search` — the pattern matches anywhere in `str(exc)` (not
-anchored):
+`assert_raises` accepts an optional second argument that asserts the exception's message matches a
+regular expression. Semantics follow Python's `pytest.raises(match=...)` / `re.search` — the
+pattern matches anywhere in `str(exc)` (not anchored):
 
 ```python
 @test
 def test_match():
-    with assert_raises(ValueError, match="bad.*input"):
+    with assert_raises(ValueError, "bad.*input"):
         raise ValueError("bad input")
 ```
 
 Generated C#:
 ```csharp
-var __ex0 = Xunit.Assert.Throws<ValueError>((System.Action)(() =>
+var __ex_0 = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
 {
     throw new ValueError("bad input");
 }));
-Xunit.Assert.Matches("bad.*input", __ex0.Message);
+Xunit.Assert.Matches("bad.*input", __ex_0.Message);
 ```
 
-`match=` combines with `as`: the captured name is reused for the `Assert.Matches` call.
+> **Spelling:** the pytest-style keyword form `assert_raises(ValueError, match="bad.*input")` is
+> also accepted by code generation, but `match` is currently a reserved keyword in the parser, so
+> the keyword-argument spelling does not yet parse (tracked by issue #872). Use the **positional**
+> form shown above for now.
+
+The match argument combines with `as`: the captured name is reused for the `Assert.Matches` call.
 
 ```python
-with assert_raises(ValueError, match="bad") as exc:
+with assert_raises(ValueError, "bad") as exc:
     raise ValueError("bad input")
 assert exc.message == "bad input"
 ```
 
 Generated C#:
 ```csharp
-var exc = Xunit.Assert.Throws<ValueError>((System.Action)(() =>
+var exc = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
 {
     throw new ValueError("bad input");
 }));
