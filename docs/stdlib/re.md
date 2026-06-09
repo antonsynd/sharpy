@@ -8,23 +8,23 @@ import re
 
 ## Functions
 
-### `re.search(s: str, pos: int = 0, endpos: int | None = default) -> MatchResult | None`
+### `re.search(s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None`
 
 Scan through string looking for the first match.
 
-### `re.match(s: str, pos: int = 0, endpos: int | None = default) -> MatchResult | None`
+### `re.match(s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None`
 
 Try to apply the pattern at the start of the string.
 
-### `re.fullmatch(s: str, pos: int = 0, endpos: int | None = default) -> MatchResult | None`
+### `re.fullmatch(s: str, pos: int = 0, endpos: int | None = None) -> MatchResult | None`
 
 Try to apply the pattern to the entire string.
 
-### `re.findall(s: str, pos: int = 0, endpos: int | None = default) -> list[object]`
+### `re.findall(s: str, pos: int = 0, endpos: int | None = None) -> list[object]`
 
 Return all non-overlapping matches as a list.
 
-### `re.finditer(s: str, pos: int = 0, endpos: int | None = default) -> list[MatchResult]`
+### `re.finditer(s: str, pos: int = 0, endpos: int | None = None) -> list[MatchResult]`
 
 Return a list of MatchResult objects over all non-overlapping matches.
 
