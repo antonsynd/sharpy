@@ -229,6 +229,43 @@ match value:
 
 *Implementation: ✅ Implemented — maps to C# declaration pattern (`case int n:`) with binding, or type pattern with discard designation when no binding is needed.*
 
+### Bare Collection Patterns (`dict()`, `list()`, `set()`)
+
+When matching an `object` scrutinee against a bare collection type pattern (no type arguments), the compiler specializes the binding type to use `object` type arguments:
+
+```python
+def process(value: object) -> None:
+    match value:
+        case dict() as d:
+            # d is typed as dict[object, object]
+            for k, v in d.items():
+                print(f"{k}: {v}")
+            print(d["key"])       # indexing works
+            print("x" in d)       # membership works
+            print(len(d))         # len() works (ISized)
+        case list() as items:
+            # items is typed as list[object]
+            pass
+        case set() as s:
+            # s is typed as set[object]
+            pass
+```
+
+**Semantic behavior:** The binding variable receives the specialized generic type (`dict[object, object]`, `list[object]`, or `set[object]`), so all collection methods are available through normal type-checked member access.
+
+**Runtime check (`dict`):** The `case dict()` pattern checks against `Sharpy.IDict` — the non-generic Pythonic protocol interface implemented by every `Dict<K, V>` instantiation. This means:
+- Any `Dict[K, V]` matches, regardless of type arguments.
+- The bound variable provides the full dict surface: `.items()`, `.keys()`, `.values()`, `[key]` indexing, `key in d` membership, `len(d)`, `.get()`, `.pop()`, etc.
+- **Aliasing preserved:** The binding is the same object, not a copy. Mutation through `d` is visible via the original reference.
+
+**Type-erased access semantics (Axiom 1 — .NET first):**
+- Reads with a wrong-typed key behave as if the key is absent: indexer raises `KeyError`, `.get()` returns `None`, `in` returns `False`.
+- Writes cast key/value to the underlying generic types; a type mismatch throws at runtime.
+
+**Interop note:** Raw .NET `Dictionary<K, V>` boxed as `object` does **not** match bare `case dict()`, because the runtime check is against `Sharpy.IDict` (which only `Sharpy.Dict<K, V>` implements). Sharpy values flow through Sharpy collections; this is an intentional Axiom 1 resolution.
+
+**Runtime check (`list`/`set`):** Currently checked against `System.Collections.IList` and `System.Collections.IEnumerable` respectively. Pending dedicated `IList`/`ISet` protocol interfaces (#876, #877).
+
 **Pattern Forms:**
 
 | Pattern | Syntax | Use Case | Status |
