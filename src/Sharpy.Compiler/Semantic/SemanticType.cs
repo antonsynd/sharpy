@@ -492,8 +492,14 @@ public sealed record NullableType : SemanticType
 }
 
 /// <summary>
-/// Function type (for lambdas and delegates)
+/// Function type (for lambdas and delegates).
 /// </summary>
+/// <remarks>
+/// When creating from a parameter list (<see cref="ParameterSymbol"/>), prefer
+/// <see cref="FromParameters"/> — it computes <see cref="OptionalParameterCount"/> and
+/// <see cref="VariadicParameterIndex"/> automatically. Use the record initializer only for
+/// type annotations, CLR type mapping, and deserialization where no parameter metadata exists.
+/// </remarks>
 public sealed record FunctionType : SemanticType
 {
     public List<SemanticType> ParameterTypes { get; init; } = new();
