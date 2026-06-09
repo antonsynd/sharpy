@@ -252,6 +252,85 @@ def main():
 
     #endregion
 
+    #region startswith / endswith assert rewriting (#837)
+
+    [Fact]
+    public void AssertRewrite_StrStartswith_GeneratesXunitAssertStartsWith()
+    {
+        var source = @"
+@test
+def test_prefix():
+    name: str = ""hello world""
+    assert name.startswith(""hello"")
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        // assert s.startswith(p) → Xunit.Assert.StartsWith(p, s)  (pattern, actual order)
+        code.Should().Contain("Xunit.Assert.StartsWith(\"hello\", name)");
+    }
+
+    [Fact]
+    public void AssertRewrite_StrEndswith_GeneratesXunitAssertEndsWith()
+    {
+        var source = @"
+@test
+def test_suffix():
+    name: str = ""hello world""
+    assert name.endswith(""world"")
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.Assert.EndsWith(\"world\", name)");
+    }
+
+    [Fact]
+    public void AssertRewrite_NonStrStartswith_FallsBackToAssertTrue()
+    {
+        // Type-gated: a non-str receiver (here a user-defined class with its own
+        // startswith method) must NOT be rewritten to Xunit.Assert.StartsWith — it
+        // falls through to the Assert.True fallback so there is no surprising behavior.
+        var source = @"
+class Matcher:
+    def startswith(self, prefix: str) -> bool:
+        return True
+
+@test
+def test_user_type(m: Matcher):
+    assert m.startswith(""x"")
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().NotContain("Xunit.Assert.StartsWith");
+        code.Should().Contain("Xunit.Assert.True(");
+    }
+
+    [Fact]
+    public void AssertRewrite_StartswithWithStartArg_FallsBackToAssertTrue()
+    {
+        // Multi-argument startswith (start offset) is not the single-arg shape we
+        // rewrite, so it falls through to Assert.True.
+        var source = @"
+@test
+def test_multi_arg():
+    name: str = ""hello world""
+    assert name.startswith(""hello"", 0)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().NotContain("Xunit.Assert.StartsWith");
+        code.Should().Contain("Xunit.Assert.True(");
+    }
+
+    #endregion
+
     #region Unittest transforms (Plan Task 22)
 
     [Fact]

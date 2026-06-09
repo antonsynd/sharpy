@@ -1,0 +1,12 @@
+@test
+def test_str_startswith():
+    name: str = "hello world"
+    assert name.startswith("hello")
+
+@test
+def test_str_endswith():
+    name: str = "hello world"
+    assert name.endswith("world")
+
+def main():
+    print("ok")

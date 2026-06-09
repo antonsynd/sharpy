@@ -206,6 +206,30 @@ internal partial class RoslynEmitter
                 .AddArgumentListArguments(Argument(isCheck)));
         }
 
+        // assert s.startswith(p) → Xunit.Assert.StartsWith(p, s)
+        // assert s.endswith(p)   → Xunit.Assert.EndsWith(p, s)
+        // Type-gated: only when the receiver is typed `str` and there is exactly one
+        // positional argument (no start/end slice args, no keyword args). User-defined
+        // types with a startswith/endswith method fall through to the Assert.True fallback.
+        if (test is FunctionCall
+            {
+                Function: MemberAccess { Member: "startswith" or "endswith" } affixReceiver
+            } affixCall
+            && affixCall.Arguments.Length == 1
+            && affixCall.KeywordArguments.Length == 0)
+        {
+            var receiverType = _context.SemanticInfo?.GetEffectiveType(affixReceiver.Object);
+            if (receiverType == SemanticType.Str)
+            {
+                var affixMethod = affixReceiver.Member == "startswith" ? "StartsWith" : "EndsWith";
+                return ExpressionStatement(InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName(affixMethod)))
+                    .AddArgumentListArguments(
+                        Argument(GenerateExpression(affixCall.Arguments[0])),
+                        Argument(GenerateExpression(affixReceiver.Object))));
+            }
+        }
+
         // assert not expr → Xunit.Assert.False(expr)
         if (test is UnaryOp { Operator: UnaryOperator.Not } notOp)
         {
