@@ -241,9 +241,9 @@ def test_message():
 
 Generated C#:
 ```csharp
-var exc = Xunit.Assert.Throws<ValueError>((System.Action)(() =>
+var exc = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
 {
-    throw new ValueError("bad input");
+    throw new global::Sharpy.ValueError("bad input");
 }));
 Xunit.Assert.Equal("bad input", exc.Message);
 ```
@@ -252,7 +252,9 @@ Xunit.Assert.Equal("bad input", exc.Message);
 
 `assert_raises` accepts an optional second argument that asserts the exception's message matches a
 regular expression. Semantics follow Python's `pytest.raises(match=...)` / `re.search` — the
-pattern matches anywhere in `str(exc)` (not anchored):
+pattern matches anywhere in the exception's `.Message` property (not anchored). This mirrors
+pytest, which matches against `str(exc)` — equivalent to `.Message` for standard exceptions
+(note that .NET's `Exception.ToString()`, by contrast, includes the type name and stack trace):
 
 ```python
 @test
@@ -265,7 +267,7 @@ Generated C#:
 ```csharp
 var __ex_0 = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
 {
-    throw new ValueError("bad input");
+    throw new global::Sharpy.ValueError("bad input");
 }));
 Xunit.Assert.Matches("bad.*input", __ex_0.Message);
 ```
@@ -287,7 +289,7 @@ Generated C#:
 ```csharp
 var exc = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
 {
-    throw new ValueError("bad input");
+    throw new global::Sharpy.ValueError("bad input");
 }));
 Xunit.Assert.Matches("bad", exc.Message);
 ```
@@ -351,7 +353,7 @@ def test_format():
 
 Generated C#:
 ```csharp
-Xunit.Assert.Matches(@"\d{4}-\d{2}-\d{2}", "2026-06-09");
+Xunit.Assert.Matches("\\d{4}-\\d{2}-\\d{2}", "2026-06-09");
 ```
 
 Note the argument swap: Sharpy follows Python's `(text, pattern)` order, while
@@ -373,12 +375,13 @@ def test_print():
         assert output.getvalue() == "hello\n"
 ```
 
-Generated C#:
+Generated C# (the compilation unit imports the module via `using static global::Sharpy.Unittest;`,
+so the factory call is unqualified):
 ```csharp
 [Xunit.FactAttribute]
 public void TestPrint()
 {
-    using (var output = global::Sharpy.Unittest.CapturedOutput())
+    using (var output = CapturedOutput())
     {
         global::Sharpy.Builtins.Print("hello");
         Xunit.Assert.Equal("hello\n", output.Getvalue());
@@ -556,7 +559,7 @@ public partial class MyModuleTests : System.IDisposable
     [Xunit.FactAttribute]
     public void TestWritesFile()
     {
-        string tmp_path = _tmpPathFixture.Value;
+        string tmpPath = _tmpPathFixture.Value;
         // ... test body ...
     }
 
