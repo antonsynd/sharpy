@@ -214,6 +214,31 @@ internal partial class RoslynEmitter
                         return DeclarationPattern(caseTypeSyntax, DiscardDesignation());
                     }
 
+                    // Non-generic collection fallback: `case list()` / `case dict()` /
+                    // `case set()` (no type arguments) against an `object` scrutinee cannot
+                    // use the generic Sharpy collection type (e.g. Sharpy.List<object>), which
+                    // would only match that exact closed generic. Emit the non-generic .NET
+                    // interface so the pattern matches any list/dict/set-like instance.
+                    if (typePattern.Type.TypeArguments.Length == 0 && IsObjectType(scrutineeType))
+                    {
+                        var nonGenericInterface = typePattern.Type.Name switch
+                        {
+                            BuiltinNames.List => MakeGlobalQualifiedName("System", "Collections", "IList"),
+                            BuiltinNames.Dict => MakeGlobalQualifiedName("System", "Collections", "IDictionary"),
+                            BuiltinNames.Set => MakeGlobalQualifiedName("System", "Collections", "IEnumerable"),
+                            _ => null
+                        };
+                        if (nonGenericInterface != null)
+                        {
+                            if (typePattern.BindingName != null)
+                            {
+                                var bindVarName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);
+                                return DeclarationPattern(nonGenericInterface, SingleVariableDesignation(Identifier(bindVarName)));
+                            }
+                            return DeclarationPattern(nonGenericInterface, DiscardDesignation());
+                        }
+                    }
+
                     var typeSyntax = _typeMapper.MapType(typePattern.Type);
                     if (typePattern.BindingName != null)
                     {
