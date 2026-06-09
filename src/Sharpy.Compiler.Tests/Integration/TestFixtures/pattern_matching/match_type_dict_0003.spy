@@ -1,0 +1,15 @@
+# Bare `case dict() as d` — indexing + key iteration (#869).
+# d[k] indexing must work through the type-erased IDict surface.
+# `for k in d:` must iterate keys (not DictionaryEntry objects).
+
+def process(value: object) -> None:
+    match value:
+        case dict() as d:
+            print(d["x"])
+            for k in d:
+                print(k)
+        case _:
+            print("not a dict")
+
+def main():
+    process({"x": 10, "y": 20, "z": 30})

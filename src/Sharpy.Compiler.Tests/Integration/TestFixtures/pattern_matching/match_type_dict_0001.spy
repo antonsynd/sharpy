@@ -1,10 +1,6 @@
 # Match an `object` parameter against a bare `case dict()` collection pattern.
-# Semantic layer infers object type args; codegen lowers to a non-generic
-# IDictionary check (#867).
-#
-# NOTE: iterating the bound dict via `.items()` / `d[k]` / key-iteration is
-# blocked by #869 (the binding is non-generic IDictionary), so this fixture
-# verifies dispatch + len(). Add an `.items()` iteration case once #869 lands.
+# Semantic layer infers dict[object, object]; codegen lowers to Sharpy.IDict (#869).
+# Verifies dispatch + len() — the original regression guard.
 
 def process(value: object) -> None:
     match value:

@@ -1,0 +1,15 @@
+# Bare `case dict() as d` — .items() iteration with f-string output (#869).
+# The #869 repro: d.items() must yield (key, value) tuples that deconstruct
+# in a for loop. Also tests non-dict falls to case _.
+
+def process(value: object) -> None:
+    match value:
+        case dict() as d:
+            for k, v in d.items():
+                print(f"{k}: {v}")
+        case _:
+            print("not a dict")
+
+def main():
+    process({"a": 1, "b": 2})
+    process(42)
