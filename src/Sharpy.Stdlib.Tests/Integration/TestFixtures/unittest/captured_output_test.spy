@@ -1,0 +1,12 @@
+from unittest import captured_output
+
+# Verifies the @test lowering shape: with captured_output() as out -> using block,
+# and "assert out.getvalue() == ..." rewrites to Xunit.Assert.Equal.
+@test
+def test_print():
+    with captured_output() as output:
+        print("hello")
+        assert output.getvalue() == "hello\n"
+
+def main():
+    print("ok")
