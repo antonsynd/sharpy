@@ -1,0 +1,42 @@
+# End-to-end smoke for the test-framework additions (#837, #838, #839, #842).
+# Each @test exercises one feature; the whole module compiles to a single xUnit
+# test class. See README.md for the verified compile-and-run procedure.
+import os.path
+from unittest import approx, assert_raises, captured_output
+
+# #839 - async fixture with yield-based teardown (lowers to Xunit.IAsyncLifetime).
+@test.fixture
+async def resource() -> int:
+    value: int = 42
+    yield value
+    value = 0
+
+@test
+async def test_async_fixture(resource: int):
+    assert resource == 42
+
+# #837 - approx tolerance assertion (lowers to Xunit.Assert.Equal with precision).
+@test
+def test_approx():
+    assert 0.1 + 0.2 == approx(0.3)
+
+# #837 - assert_raises match= exception-message assertion (Xunit.Assert.Matches).
+@test
+def test_match():
+    with assert_raises(ValueError, "bad.*input"):
+        raise ValueError("bad input")
+
+# #838 - captured_output assertion (redirect Console.Out, then Assert.Equal).
+@test
+def test_captured_output():
+    with captured_output() as out:
+        print("hello")
+        assert out.getvalue() == "hello\n"
+
+# #842 - tmp_path per-test temporary directory (built-in TmpPathFixture field).
+@test
+def test_tmp_path(tmp_path: str):
+    target: str = os.path.join(tmp_path, "data.txt")
+    with open(target, "w") as f:
+        f.write("content")
+    assert os.path.exists(target)
