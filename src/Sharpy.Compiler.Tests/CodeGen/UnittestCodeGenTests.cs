@@ -423,6 +423,29 @@ def main():
         code.Should().NotContain(", 3)");
     }
 
+    [Fact]
+    public void AssertRewrite_ApproxOutsideTest_NotRewritten()
+    {
+        // The approx rewrite is gated to @test functions. In an ordinary function the
+        // assert lowers to System.Diagnostics.Debug.Assert and the approx() call is left
+        // as the runtime marker (which throws NotSupportedException), matching the
+        // behavior of every other unittest marker outside a test.
+        var source = @"
+from unittest import approx
+
+def helper():
+    value: float = 1.0
+    assert value == approx(1.0)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        code.Should().Contain("System.Diagnostics.Debug.Assert(value == Approx(1.0d))");
+        // No tolerance/precision Xunit.Assert.Equal rewrite outside a @test function.
+        code.Should().NotContain("Xunit.Assert.Equal");
+    }
+
     #endregion
 
     #region Unittest transforms (Plan Task 22)
