@@ -1,0 +1,12 @@
+# Generic delegate invoke with optional parameters omitted
+delegate Transformer[T](value: T, prefix: str = "item") -> str
+
+def to_string(value: int, prefix: str = "item") -> str:
+    return prefix + ":" + str(value)
+
+def main():
+    t: Transformer[int] = to_string
+    result = t.invoke(42)
+    print(result)
+    result2 = t.invoke(42, "num")
+    print(result2)

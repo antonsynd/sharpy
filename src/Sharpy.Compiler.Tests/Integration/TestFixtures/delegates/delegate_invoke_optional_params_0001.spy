@@ -1,0 +1,12 @@
+# Delegate invoke with optional parameters omitted
+delegate Greeter(name: str, greeting: str = "Hello") -> str
+
+def greet(name: str, greeting: str = "Hello") -> str:
+    return greeting + ", " + name
+
+def main():
+    g: Greeter = greet
+    result = g.invoke("World")
+    print(result)
+    result2 = g.invoke("World", "Hi")
+    print(result2)
