@@ -49,14 +49,16 @@ Running `sharpyc project tests.spyproj` to produce a directly-`dotnet test`-able
 does **not** work end-to-end today, for two implementation reasons (reported to the
 project/compiler owners — not test bugs):
 
-1. **`NuGetResolver` does no transitive dependency resolution** (`src/Sharpy.Compiler/Project/NuGetResolver.cs`).
+1. **`NuGetResolver` does no transitive dependency resolution** (tracked: #874;
+   `src/Sharpy.Compiler/Project/NuGetResolver.cs`).
    `xunit` is a meta-package with an empty `lib/`, so a `.spyproj` that references only
    `xunit` (as the spec's Project Setup example shows) fails to compile with
    `CS0103: The name 'Xunit' does not exist`. Workaround: reference the concrete
    assemblies (`xunit.assert`, `xunit.extensibility.core`, …) explicitly.
 2. **`TestProjectScaffold`'s generated `.csproj` doesn't wire in the compiled assembly
-   or the generated source** (`src/Sharpy.Compiler/Project/TestProjectScaffold.cs`), so
-   `dotnet test` on the scaffold output discovers no tests.
+   or the generated source** (tracked: #875;
+   `src/Sharpy.Compiler/Project/TestProjectScaffold.cs`), so `dotnet test` on the
+   scaffold output discovers no tests.
 
 The emit-then-compile procedure above sidesteps both and confirms the generated test
 code itself is runtime-correct.
