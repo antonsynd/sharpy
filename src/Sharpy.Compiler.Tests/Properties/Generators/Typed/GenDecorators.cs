@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 internal static class GenDecorators
 {
     private static readonly string[] ValidMethodDecorators =
-        { "staticmethod", "virtual" };
+        { "virtual", "final" };
 
     private static readonly string[] ValidClassDecorators =
         { "dataclass" };
@@ -41,59 +41,29 @@ internal static class GenDecorators
     {
         var moduleBody = ImmutableArray.CreateBuilder<Statement>();
 
-        if (decorator == "staticmethod")
+        var baseDef = new ClassDef
         {
-            var classDef = new ClassDef
-            {
-                Name = "Utils",
-                Body = ImmutableArray.Create<Statement>(
-                    new FunctionDef
-                    {
-                        Name = "__init__",
-                        Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
-                        Body = ImmutableArray.Create<Statement>(new PassStatement())
-                    },
-                    new FunctionDef
-                    {
-                        Name = "helper",
-                        Decorators = ImmutableArray.Create(
-                            new Decorator { QualifiedParts = ImmutableArray.Create("staticmethod") }),
-                        Parameters = ImmutableArray.Create(
-                            new Parameter { Name = "x", Type = new TypeAnnotation { Name = "int" } }),
-                        ReturnType = new TypeAnnotation { Name = "int" },
-                        Body = ImmutableArray.Create<Statement>(
-                            new ReturnStatement { Value = new Identifier { Name = "x" } })
-                    })
-            };
-            moduleBody.Add(classDef);
-            moduleBody.Add(BuildMainWithClassCall("Utils", "helper", isStatic: true));
-        }
-        else if (decorator == "virtual" || decorator == "final")
-        {
-            var baseDef = new ClassDef
-            {
-                Name = "Base",
-                Body = ImmutableArray.Create<Statement>(
-                    new FunctionDef
-                    {
-                        Name = "__init__",
-                        Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
-                        Body = ImmutableArray.Create<Statement>(new PassStatement())
-                    },
-                    new FunctionDef
-                    {
-                        Name = "action",
-                        Decorators = ImmutableArray.Create(
-                            new Decorator { QualifiedParts = ImmutableArray.Create(decorator) }),
-                        Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
-                        ReturnType = new TypeAnnotation { Name = "str" },
-                        Body = ImmutableArray.Create<Statement>(
-                            new ReturnStatement { Value = new StringLiteral { Value = "base" } })
-                    })
-            };
-            moduleBody.Add(baseDef);
-            moduleBody.Add(BuildMainWithClassCall("Base", "action", isStatic: false));
-        }
+            Name = "Base",
+            Body = ImmutableArray.Create<Statement>(
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
+                    Body = ImmutableArray.Create<Statement>(new PassStatement())
+                },
+                new FunctionDef
+                {
+                    Name = "action",
+                    Decorators = ImmutableArray.Create(
+                        new Decorator { QualifiedParts = ImmutableArray.Create(decorator) }),
+                    Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
+                    ReturnType = new TypeAnnotation { Name = "str" },
+                    Body = ImmutableArray.Create<Statement>(
+                        new ReturnStatement { Value = new StringLiteral { Value = "base" } })
+                })
+        };
+        moduleBody.Add(baseDef);
+        moduleBody.Add(BuildMainWithClassCall("Base", "action"));
 
         return new Module { Body = moduleBody.ToImmutable() };
     }
@@ -164,7 +134,7 @@ internal static class GenDecorators
         {
             Body = ImmutableArray.Create<Statement>(
                 classDef,
-                BuildMainWithClassCall("Service", "compute", isStatic: false))
+                BuildMainWithClassCall("Service", "compute"))
         };
     }
 
@@ -231,34 +201,10 @@ internal static class GenDecorators
         };
     }
 
-    private static FunctionDef BuildMainWithClassCall(string className, string methodName, bool isStatic)
+    private static FunctionDef BuildMainWithClassCall(string className, string methodName)
     {
-        var mainBody = ImmutableArray.CreateBuilder<Statement>();
-
-        if (isStatic)
-        {
-            mainBody.Add(new ExpressionStatement
-            {
-                Expression = new FunctionCall
-                {
-                    Function = new Identifier { Name = "print" },
-                    Arguments = ImmutableArray.Create<Expression>(
-                        new FunctionCall
-                        {
-                            Function = new MemberAccess
-                            {
-                                Object = new Identifier { Name = className },
-                                Member = methodName
-                            },
-                            Arguments = ImmutableArray.Create<Expression>(
-                                new IntegerLiteral { Value = "5" })
-                        })
-                }
-            });
-        }
-        else
-        {
-            mainBody.Add(new VariableDeclaration
+        var mainBody = ImmutableArray.Create<Statement>(
+            new VariableDeclaration
             {
                 Name = "obj",
                 InitialValue = new FunctionCall
@@ -266,8 +212,8 @@ internal static class GenDecorators
                     Function = new Identifier { Name = className },
                     Arguments = ImmutableArray<Expression>.Empty
                 }
-            });
-            mainBody.Add(new ExpressionStatement
+            },
+            new ExpressionStatement
             {
                 Expression = new FunctionCall
                 {
@@ -284,8 +230,7 @@ internal static class GenDecorators
                         })
                 }
             });
-        }
 
-        return new FunctionDef { Name = "main", Body = mainBody.ToImmutable() };
+        return new FunctionDef { Name = "main", Body = mainBody };
     }
 }
