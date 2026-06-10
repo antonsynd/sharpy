@@ -1,0 +1,19 @@
+# Module-qualified type annotations (#881): once a module is imported, its
+# exported types may be referenced as module.TypeName in annotation position.
+# Covers return types, parameters, and locals using an imported user module.
+import geometry
+
+# Module-qualified annotation on a return type.
+def make_point(x: int, y: int) -> geometry.Point:
+    return geometry.Point(x, y)
+
+# Module-qualified annotation on a parameter.
+def describe(p: geometry.Point) -> str:
+    return str(p)
+
+def main() -> None:
+    # Module-qualified annotation on a local.
+    p: geometry.Point = make_point(3, 4)
+    print(describe(p))
+    print(p.x)
+    print(p.y)

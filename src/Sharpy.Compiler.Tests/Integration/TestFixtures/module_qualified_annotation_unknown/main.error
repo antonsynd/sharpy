@@ -1,0 +1,2 @@
+Type 'geometry.DoesNotExist' not found @8:27
+Type 'count.Foo' not found @11:31

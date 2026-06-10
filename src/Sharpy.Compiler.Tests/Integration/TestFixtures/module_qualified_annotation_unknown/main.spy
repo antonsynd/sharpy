@@ -1,0 +1,15 @@
+# Negative cases for module-qualified type annotations (#881). Resolution must
+# still fail for: (a) a real module with no such exported type, and (b) a dotted
+# prefix that is a variable rather than a module.
+import geometry
+
+count: int = 5
+
+def bad_unknown_member(p: geometry.DoesNotExist) -> None:
+    print("unreachable")
+
+def bad_variable_prefix(item: count.Foo) -> None:
+    print("unreachable")
+
+def main() -> None:
+    print("done")
