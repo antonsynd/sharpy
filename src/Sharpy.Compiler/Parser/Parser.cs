@@ -132,6 +132,14 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Checks whether a keyword token type can be used as an identifier in
+    /// certain contexts (e.g., keyword arguments in function calls).
+    /// These correspond to Python's soft keywords: <c>match</c>, <c>case</c>, and <c>type</c>.
+    /// </summary>
+    private static bool IsKeywordUsableAsIdentifier(TokenType type) => type is
+        TokenType.Match or TokenType.Case or TokenType.Type;
+
+    /// <summary>
     /// Gets the TextSpan of the current token, or null if position tracking is unavailable.
     /// Convenience accessor for use in ReportError calls.
     /// </summary>
@@ -831,8 +839,8 @@ public partial class Parser
                         });
                     }
                 }
-                // Check for keyword argument
-                else if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
+                // Check for keyword argument (also accept soft keywords match/case/type as kwarg names)
+                else if ((Current.Type == TokenType.Identifier || IsKeywordUsableAsIdentifier(Current.Type)) && Peek().Type == TokenType.Assign)
                 {
                     seenKeywordArg = true;
                     var kwargStartLine = Current.Line;
