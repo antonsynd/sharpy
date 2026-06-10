@@ -519,7 +519,7 @@ public partial class Parser
     }
 
     private static bool IsSoftKeyword(TokenType type) =>
-        type is TokenType.Match or TokenType.Case;
+        type is TokenType.Match or TokenType.Case or TokenType.Type;
 
     /// <summary>
     /// Expects an identifier or keyword token and returns its value as a string.
