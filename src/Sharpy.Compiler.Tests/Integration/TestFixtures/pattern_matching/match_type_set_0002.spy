@@ -1,0 +1,22 @@
+# Dispatch correctness: bare set()/list()/dict()/str() patterns resolve to
+# distinct Sharpy protocol interfaces, not overlapping .NET base types (#877).
+
+def classify(x: object) -> str:
+    match x:
+        case set():
+            return "set"
+        case list():
+            return "list"
+        case dict():
+            return "dict"
+        case str():
+            return "str"
+        case _:
+            return "other"
+
+def main():
+    print(classify({1, 2}))
+    print(classify([1, 2]))
+    print(classify({"a": 1}))
+    print(classify("hello"))
+    print(classify(42))

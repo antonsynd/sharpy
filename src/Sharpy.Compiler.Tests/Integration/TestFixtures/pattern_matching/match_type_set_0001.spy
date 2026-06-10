@@ -1,0 +1,14 @@
+# Bare `case set() as s` binding with Pythonic operations via Sharpy.ISet (#877).
+# Tests add, len(), and containment check.
+
+def process(x: object):
+    match x:
+        case set() as s:
+            s.add(99)
+            print(len(s))
+            print(99 in s)
+        case _:
+            print("not a set")
+
+def main():
+    process({1, 2, 3})

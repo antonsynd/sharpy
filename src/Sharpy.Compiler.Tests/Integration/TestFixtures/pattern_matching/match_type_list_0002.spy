@@ -1,0 +1,17 @@
+# Bare `case list() as l` binding with Pythonic operations via Sharpy.IList (#876).
+# Tests append, len(), indexing (positive and negative), and iteration.
+
+def process(x: object):
+    match x:
+        case list() as l:
+            l.append(99)
+            print(len(l))
+            print(l[0])
+            print(l[-1])
+            for item in l:
+                print(item)
+        case _:
+            print("not a list")
+
+def main():
+    process([1, 2, 3])
