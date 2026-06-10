@@ -1,0 +1,11 @@
+# Test that match= and case= work as keyword argument names in function calls.
+# Motivating use case from issue #872: assert_raises(ValueError, match="pattern")
+# This verifies parser + codegen accept soft keywords as kwarg names.
+
+def search(text: str, match: str = "", case: int = 0) -> None:
+    print(text)
+
+def main():
+    search("first", match="pat1")
+    search("second", match="pat2", case=1)
+    search(text="third", case=2)

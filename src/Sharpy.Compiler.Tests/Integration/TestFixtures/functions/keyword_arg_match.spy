@@ -1,0 +1,21 @@
+# Test that soft keywords (match, case) can be used as keyword argument names
+# in function calls. Python 3.10+ treats match/case as soft keywords.
+# This test verifies the parser accepts match= and case= in call expressions.
+
+def greet(name: str, match: str = "hi") -> None:
+    # 'match' parameter is received but we print the other param to verify the call worked
+    print(name)
+
+def check(value: int, case: int = 0) -> None:
+    # 'case' parameter is received but we print the other param to verify the call worked
+    print(value)
+
+def combine(a: str, match: str = "", case: int = 0) -> None:
+    print(a)
+
+def main():
+    greet("alice", match="hello")
+    greet(name="bob", match="world")
+    check(42, case=1)
+    check(value=99, case=2)
+    combine("test", match="pat", case=3)
