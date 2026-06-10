@@ -779,4 +779,74 @@ def foo(x: int) -> int:
     }
 
     #endregion
+
+    #region Bare Collection Pattern Type Specialization (#869)
+
+    [Fact]
+    public void BareDict_PatternBinding_NoSPY0907_OnIndexAccess()
+    {
+        var source = @"
+def process(value: object) -> None:
+    match value:
+        case dict() as d:
+            print(d[""key""])
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(
+            e => e.Code == "SPY0907",
+            "bare dict() binding should be typed dict[object, object], not UnknownType");
+    }
+
+    [Fact]
+    public void BareDict_PatternBinding_ItemsCallSucceeds()
+    {
+        var source = @"
+def process(value: object) -> None:
+    match value:
+        case dict() as d:
+            for k, v in d.items():
+                print(k)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            "d.items() should resolve on dict[object, object]");
+    }
+
+    [Fact]
+    public void BareList_PatternBinding_NoErrors()
+    {
+        var source = @"
+def process(value: object) -> None:
+    match value:
+        case list() as items:
+            print(len(items))
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            "bare list() binding should be typed list[object]");
+    }
+
+    [Fact]
+    public void BareSet_PatternBinding_NoErrors()
+    {
+        var source = @"
+def process(value: object) -> None:
+    match value:
+        case set() as s:
+            print(len(s))
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            "bare set() binding should be typed set[object]");
+    }
+
+    #endregion
 }

@@ -717,6 +717,38 @@ public class HoverTests : IDisposable
         innerType!.GetDisplayName().Should().Be("int");
     }
 
+    [Fact]
+    public async Task Hover_PatternBoundDict_ShowsSpecializedType()
+    {
+        // Line 3: "        case dict() as d:" — d at col 24
+        // Line 4: "            print(d)"     — d at col 19
+        var source = "def process(value: object) -> None:\n    match value:\n        case dict() as d:\n            print(d)\ndef main():\n    pass";
+        _workspace.OpenDocument("file:///test_dict_pattern.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_dict_pattern.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        // Find the Identifier "d" in print(d) on line 4
+        var node = _api.FindNodeAtPosition(analysis.Ast!, 4, 19);
+        node.Should().NotBeNull("should find a node at the d identifier position");
+
+        if (node is Identifier id)
+        {
+            var type = analysis.SemanticQuery!.GetEffectiveType(id);
+            type.Should().NotBeNull("pattern-bound d should have a resolved type");
+            type.Should().BeOfType<GenericType>();
+            var genericType = (GenericType)type!;
+            genericType.Name.Should().Be("dict");
+            genericType.TypeArguments.Should().HaveCount(2);
+            genericType.GetDisplayName().Should().Be("dict[object, object]");
+        }
+        else
+        {
+            node.Should().BeOfType<Identifier>("expected Identifier at d's position");
+        }
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();
