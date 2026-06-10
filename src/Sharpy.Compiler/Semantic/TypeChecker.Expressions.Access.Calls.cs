@@ -321,10 +321,10 @@ internal partial class TypeChecker
 
         // Special handling for generic type instantiation: Box[int](42) or Pair[int, str](1, "a")
         // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int or TupleLiteral), Arguments: [...])
+        // The object may be a bare identifier (Box) or a module-qualified member access
+        // (difflib.SequenceMatcher), both of which can resolve to a generic TypeSymbol.
         if (call.Function is IndexAccess indexAccess &&
-            indexAccess.Object is Identifier genericTypeId &&
-            _symbolTable.Lookup(genericTypeId.Name) is TypeSymbol genericTypeSymbol &&
-            genericTypeSymbol.IsGeneric)
+            TryResolveGenericTypeSymbolFromIndexObject(indexAccess.Object) is { IsGeneric: true } genericTypeSymbol)
         {
             // The "index" is actually type argument(s) - try to resolve them as types
             var typeArgs = TryResolveTypeArguments(indexAccess.Index);
@@ -1027,6 +1027,19 @@ internal partial class TypeChecker
 
         return null;
     }
+
+    /// <summary>
+    /// Resolves the object of a generic-instantiation index access (e.g., the <c>Box</c> in
+    /// <c>Box[int](42)</c> or the <c>difflib.SequenceMatcher</c> in
+    /// <c>difflib.SequenceMatcher[str](...)</c>) to its underlying <see cref="TypeSymbol"/>.
+    /// Returns null when the object is neither a known type identifier nor a module-exported type.
+    /// </summary>
+    private TypeSymbol? TryResolveGenericTypeSymbolFromIndexObject(Expression indexObject) => indexObject switch
+    {
+        Identifier id => _symbolTable.Lookup(id.Name) as TypeSymbol,
+        MemberAccess ma => TryResolveTypeSymbolFromMemberAccess(ma),
+        _ => null
+    };
 
     /// <summary>
     /// Resolves overloaded module-level functions (e.g., os.path.join with different arities).

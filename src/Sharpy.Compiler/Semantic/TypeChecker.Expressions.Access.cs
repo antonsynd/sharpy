@@ -599,19 +599,41 @@ internal partial class TypeChecker
                         memName = pascalName;
                 }
 
-                if (modType.Symbol.Exports.TryGetValue(memName, out var exportedSym)
-                    && exportedSym is FunctionSymbol modFuncSymbol
-                    && modFuncSymbol.IsGeneric)
+                if (modType.Symbol.Exports.TryGetValue(memName, out var exportedSym))
                 {
-                    var typeArgs = TryResolveTypeArguments(indexAccess.Index);
-                    if (typeArgs != null)
+                    // Generic function reference (e.g., json.loads[int])
+                    if (exportedSym is FunctionSymbol modFuncSymbol && modFuncSymbol.IsGeneric)
                     {
-                        _semanticInfo.SetExpressionType(indexAccess, new GenericFunctionType
+                        var typeArgs = TryResolveTypeArguments(indexAccess.Index);
+                        if (typeArgs != null)
                         {
-                            FunctionSymbol = modFuncSymbol,
-                            TypeArguments = typeArgs
-                        });
-                        return _semanticInfo.GetExpressionType(indexAccess)!;
+                            _semanticInfo.SetExpressionType(indexAccess, new GenericFunctionType
+                            {
+                                FunctionSymbol = modFuncSymbol,
+                                TypeArguments = typeArgs
+                            });
+                            return _semanticInfo.GetExpressionType(indexAccess)!;
+                        }
+                    }
+
+                    // Generic type reference (e.g., difflib.SequenceMatcher[str]).
+                    // Mirror the bare Box[int] handling (lines 555-568): return the
+                    // GenericType *before* the index-access fallthrough below so no
+                    // container type is recorded for indexAccess.Object — this keeps
+                    // ProtocolValidator.ValidateIndexAccess quiet (it skips when the
+                    // object has no recorded expression type).
+                    if (exportedSym is TypeSymbol modTypeSymbol && modTypeSymbol.IsGeneric)
+                    {
+                        var typeArgs = TryResolveTypeArguments(indexAccess.Index);
+                        if (typeArgs != null)
+                        {
+                            return new GenericType
+                            {
+                                Name = modTypeSymbol.Name,
+                                TypeArguments = typeArgs,
+                                GenericDefinition = modTypeSymbol
+                            };
+                        }
                     }
                 }
             }
