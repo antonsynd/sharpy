@@ -203,6 +203,14 @@ internal partial class TypeChecker
         // Skip super() calls - they're already validated by ValidateSuperMemberAccess
         else if (call.Function is MemberAccess memberAccessCall && memberAccessCall.Object is not SuperExpression)
         {
+            // Module-qualified constructor call (e.g., fractions.Fraction(1, 2)): resolve the
+            // member to an exported TypeSymbol and route into the shared constructor-checking
+            // path, which validates arguments, abstract-class usage, and deprecation.
+            if (TryResolveTypeSymbolFromMemberAccess(memberAccessCall) is { } moduleTypeSymbol)
+            {
+                return CheckConstructorCall(call, moduleTypeSymbol, argTypes, kwargTypes, totalArgCount);
+            }
+
             funcSymbol = ResolveFunctionSymbolFromMemberAccess(memberAccessCall);
 
             // Try module function overloads (e.g., os.path.join with different arities)
@@ -982,6 +990,41 @@ internal partial class TypeChecker
                 return exportedSymbol as FunctionSymbol;
             }
         }
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves a member access whose object is an (possibly nested) imported module and whose
+    /// member is an exported <see cref="TypeSymbol"/> — e.g., <c>fractions.Fraction</c> or
+    /// <c>email.message.Message</c>. Applies a PascalCase fallback for .NET modules. Returns the
+    /// exported type symbol, or null when the object is not a module or the member is not a type.
+    /// </summary>
+    private TypeSymbol? TryResolveTypeSymbolFromMemberAccess(MemberAccess memberAccess)
+    {
+        // Re-evaluate the object to get the module. Nested module access (email.message)
+        // returns a ModuleType, so this handles both direct and nested module qualifiers.
+        var objectType = CheckExpression(memberAccess.Object);
+        if (objectType is not ModuleType moduleType)
+            return null;
+
+        var moduleSymbol = moduleType.Symbol;
+        var memberName = memberAccess.Member;
+
+        // For .NET modules, try PascalCase conversion if the exact name isn't found
+        // (mirrors the module branch in CheckMemberAccess / CheckIndexAccess).
+        if (!moduleSymbol.Exports.ContainsKey(memberName) && moduleSymbol.IsNetModule)
+        {
+            var pascalName = NameMangler.ToPascalCase(memberName);
+            if (moduleSymbol.Exports.ContainsKey(pascalName))
+                memberName = pascalName;
+        }
+
+        if (moduleSymbol.Exports.TryGetValue(memberName, out var exportedSymbol)
+            && exportedSymbol is TypeSymbol typeSymbol)
+        {
+            return typeSymbol;
+        }
+
         return null;
     }
 
