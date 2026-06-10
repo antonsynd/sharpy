@@ -613,10 +613,11 @@ public partial class Lexer
                 _line, _column, DiagnosticCodes.Lexer.UnicodeEscapeInByteString);
         }
 
-        return ProcessEscapeSequence();
+        // Byte escapes reject \u/\U, so every remaining escape produces a single char.
+        return ProcessEscapeSequence()[0];
     }
 
-    private char ProcessEscapeSequence()
+    private string ProcessEscapeSequence()
     {
         var escaped = _source[_position];
         _position++;
@@ -625,29 +626,29 @@ public partial class Lexer
         switch (escaped)
         {
             case 'n':
-                return '\n';
+                return "\n";
             case 'r':
-                return '\r';
+                return "\r";
             case 't':
-                return '\t';
+                return "\t";
             case 'b':
-                return '\b';
+                return "\b";
             case 'f':
-                return '\f';
+                return "\f";
             case '0':
-                return '\0';
+                return "\0";
             case '\\':
-                return '\\';
+                return "\\";
             case '\'':
-                return '\'';
+                return "'";
             case '"':
-                return '"';
+                return "\"";
             case '/':
-                return '/';
+                return "/";
             case 'a':
-                return '\a';
+                return "\a";
             case 'v':
-                return '\v';
+                return "\v";
 
             // Hex escape: \xhh (2 hex digits)
             case 'x':
@@ -661,7 +662,7 @@ public partial class Lexer
 
                     _position += 2;
                     _column += 2;
-                    return (char)value;
+                    return ((char)value).ToString();
                 }
 
             // Unicode escape: \uhhhh (4 hex digits) or \Uhhhhhhhh (8 hex digits)
@@ -676,7 +677,7 @@ public partial class Lexer
 
                     _position += 4;
                     _column += 4;
-                    return (char)value;
+                    return ((char)value).ToString();
                 }
 
             case 'U':
@@ -690,7 +691,16 @@ public partial class Lexer
 
                     _position += 8;
                     _column += 8;
-                    return (char)value;
+
+                    if (value > 0x10FFFF)
+                        throw ReportError($"Invalid unicode escape \\U{hex}: code point out of range", _line, _column, DiagnosticCodes.Lexer.InvalidUnicodeEscape);
+
+                    // Astral code points (> U+FFFF) need a UTF-16 surrogate pair. Lone
+                    // surrogates (0xD800-0xDFFF) are <= 0xFFFF, so they take the single-char
+                    // path below — Python permits them in str literals, so we preserve them.
+                    return value > 0xFFFF
+                        ? char.ConvertFromUtf32(value)
+                        : ((char)value).ToString();
                 }
 
             // Octal escape: \ooo (1-3 octal digits)
@@ -714,7 +724,7 @@ public partial class Lexer
                     if (value > 255)
                         throw ReportError($"Octal escape value {octal} exceeds maximum (377)", _line, _column, DiagnosticCodes.Lexer.OctalEscapeOverflow);
 
-                    return (char)value;
+                    return ((char)value).ToString();
                 }
 
             default:
