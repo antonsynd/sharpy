@@ -89,8 +89,8 @@ internal class CachedModuleDiscovery
         //           _moduleTypeSymbols so cross-references get a stable instance.
         //   Pass 3: Populate members on each skeleton. Member resolution may
         //           call ConvertTypeSignature, which now finds the skeleton.
-        var pendingTypeInfos = new List<(string fullName, Caching.DiscoveredTypeInfo typeInfo)>();
-        foreach (var moduleOverloads in index.Modules.Values)
+        var pendingTypeInfos = new List<(string fullName, string moduleName, Caching.DiscoveredTypeInfo typeInfo)>();
+        foreach (var (moduleName, moduleOverloads) in index.Modules)
         {
             foreach (var typeInfo in moduleOverloads.Types)
             {
@@ -98,16 +98,16 @@ internal class CachedModuleDiscovery
                 {
                     var fullName = typeInfo.Namespace + "." + typeInfo.Name;
                     _moduleTypeNames.TryAdd(fullName, 0);
-                    pendingTypeInfos.Add((fullName, typeInfo));
+                    pendingTypeInfos.Add((fullName, moduleName, typeInfo));
                 }
             }
         }
 
-        foreach (var (fullName, typeInfo) in pendingTypeInfos)
+        foreach (var (fullName, moduleName, typeInfo) in pendingTypeInfos)
         {
             if (!_moduleTypeSymbols.ContainsKey(fullName))
             {
-                var skeleton = CreateSkeletonTypeSymbol(typeInfo);
+                var skeleton = CreateSkeletonTypeSymbol(typeInfo, DefiningModuleFor(moduleName));
                 if (skeleton != null)
                 {
                     _moduleTypeSymbols.TryAdd(fullName, skeleton);
@@ -130,7 +130,7 @@ internal class CachedModuleDiscovery
             }
         }
 
-        foreach (var (fullName, typeInfo) in pendingTypeInfos)
+        foreach (var (fullName, _, typeInfo) in pendingTypeInfos)
         {
             if (_moduleTypeSymbols.TryGetValue(fullName, out var skeleton))
             {
@@ -190,7 +190,7 @@ internal class CachedModuleDiscovery
                 }
                 else
                 {
-                    var typeSymbol = ConvertToTypeSymbol(typeInfo);
+                    var typeSymbol = ConvertToTypeSymbol(typeInfo, definingModule: DefiningModuleFor(moduleName));
                     if (typeSymbol != null)
                         types.Add(typeSymbol);
                 }
@@ -203,24 +203,35 @@ internal class CachedModuleDiscovery
     /// <summary>
     /// Convert a cached DiscoveredTypeInfo to a TypeSymbol.
     /// </summary>
-    private TypeSymbol? ConvertToTypeSymbol(Caching.DiscoveredTypeInfo typeInfo)
+    private TypeSymbol? ConvertToTypeSymbol(Caching.DiscoveredTypeInfo typeInfo, string? definingModule = null)
     {
-        return ConvertToTypeSymbol(typeInfo, sharedTypeParams: null);
+        return ConvertToTypeSymbol(typeInfo, sharedTypeParams: null, definingModule);
     }
 
     /// <summary>
     /// Convert a cached DiscoveredTypeInfo to a TypeSymbol, optionally remapping generic type
-    /// parameters to shared instances.
+    /// parameters to shared instances. When <paramref name="definingModule"/> is supplied, it is
+    /// recorded on the symbol so the emitter fully-qualifies module-exported types.
     /// </summary>
     private TypeSymbol? ConvertToTypeSymbol(
-        Caching.DiscoveredTypeInfo typeInfo, TypeParameterType[]? sharedTypeParams)
+        Caching.DiscoveredTypeInfo typeInfo, TypeParameterType[]? sharedTypeParams, string? definingModule = null)
     {
-        var skeleton = CreateSkeletonTypeSymbol(typeInfo);
+        var skeleton = CreateSkeletonTypeSymbol(typeInfo, definingModule);
         if (skeleton == null)
             return null;
         PopulateTypeSymbolMembers(skeleton, typeInfo, sharedTypeParams);
         return skeleton;
     }
+
+    /// <summary>
+    /// Maps a discovery module name to the value recorded as <see cref="Symbol.DefiningModule"/>.
+    /// Returns null for the synthetic "builtins" module so globally-available types (ValueError,
+    /// Complex, etc.) keep emitting by their simple name; named stdlib modules (fractions,
+    /// datetime, ...) get their module recorded so the emitter fully-qualifies module-exported
+    /// references (e.g. <c>x: fractions.Fraction</c>).
+    /// </summary>
+    private static string? DefiningModuleFor(string moduleName)
+        => string.IsNullOrEmpty(moduleName) || moduleName == "builtins" ? null : moduleName;
 
     /// <summary>
     /// Create a TypeSymbol with only identity fields (Name, Kind, ClrType) populated.
@@ -229,8 +240,11 @@ internal class CachedModuleDiscovery
     /// via <see cref="_moduleTypeSymbols"/>.
     /// For generic CLR types, TypeParameters are populated so that
     /// <see cref="TypeSymbol.IsGeneric"/> returns true.
+    /// When <paramref name="definingModule"/> is supplied (module-exported types), it is recorded
+    /// on the symbol so the emitter fully-qualifies references via its CLR type name; this matches
+    /// the from-import re-export path (CreateReExportedTypeSymbol), which also sets DefiningModule.
     /// </summary>
-    private TypeSymbol? CreateSkeletonTypeSymbol(Caching.DiscoveredTypeInfo typeInfo)
+    private TypeSymbol? CreateSkeletonTypeSymbol(Caching.DiscoveredTypeInfo typeInfo, string? definingModule = null)
     {
         Type? clrType = Type.GetType(typeInfo.ClrTypeName);
         if (clrType == null)
@@ -272,7 +286,8 @@ internal class CachedModuleDiscovery
             TypeParameters = typeParams,
             AccessLevel = AccessLevel.Public,
             IsAbstract = clrType?.IsAbstract == true && !clrType.IsInterface,
-            Documentation = typeInfo.Documentation
+            Documentation = typeInfo.Documentation,
+            DefiningModule = definingModule
         };
     }
 
