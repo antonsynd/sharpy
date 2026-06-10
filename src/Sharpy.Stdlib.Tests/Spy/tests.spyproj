@@ -8,7 +8,7 @@
     <NoWarn>SPY0451,SPY0452,SPY0453</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Temporarily excluded modules blocked by constructor-call-on-module-types compiler limitation -->
+    <!-- Temporarily excluded modules blocked by compiler limitations — see PORTING.md residuals -->
     <SourceFile Include="**/*.spy" Exclude="argparse/**;calendar/**;difflib/**;email/**;fractions/**;functools/functools_tests.spy;heapq/heapq_tests.spy;hmac/**;html/**;http/**;ipaddress/**;pprint/**;shlex/**;uuid/**;zoneinfo/**" />
   </ItemGroup>
 </Project>
