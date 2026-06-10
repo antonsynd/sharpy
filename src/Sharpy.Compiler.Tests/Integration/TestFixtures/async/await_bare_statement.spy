@@ -1,0 +1,6 @@
+async def make_value() -> int:
+    return 42
+
+async def main():
+    await make_value()
+    print("done")

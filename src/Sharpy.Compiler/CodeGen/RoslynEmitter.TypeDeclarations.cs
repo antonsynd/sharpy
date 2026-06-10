@@ -72,8 +72,10 @@ internal partial class RoslynEmitter
         }
         else if (isAsync)
         {
-            // For non-generator async functions, wrap return type in Task<T> or Task
-            if (func.ReturnType != null)
+            // For non-generator async functions, wrap return type in Task<T> or Task.
+            // An explicit `-> None` annotation maps to `void`, which must become bare
+            // `Task` (not `Task<void>` — that is invalid C#).
+            if (func.ReturnType != null && !IsVoidType(returnType))
             {
                 returnType = WrapInTask(returnType);
             }

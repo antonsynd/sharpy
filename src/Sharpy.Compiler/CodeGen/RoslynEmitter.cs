@@ -551,6 +551,17 @@ internal partial class RoslynEmitter : ICodeEmitter
     }
 
     /// <summary>
+    /// Returns true when the given TypeSyntax represents the <c>void</c> keyword.
+    /// Used to distinguish <c>async def f() -> None</c> (which must map to <c>Task</c>)
+    /// from <c>async def f() -> int</c> (which must map to <c>Task&lt;long&gt;</c>).
+    /// </summary>
+    private static bool IsVoidType(TypeSyntax type)
+    {
+        return type is PredefinedTypeSyntax predefined
+            && predefined.Keyword.IsKind(SyntaxKind.VoidKeyword);
+    }
+
+    /// <summary>
     /// Restores the local scope state from a snapshot.
     /// Variables declared inside the block are removed from scope.
     /// </summary>

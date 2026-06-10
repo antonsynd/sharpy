@@ -178,7 +178,9 @@ internal partial class RoslynEmitter
         }
         else if (isAsync)
         {
-            if (func.ReturnType != null)
+            // An explicit `-> None` annotation maps to `void`, which must become bare
+            // `Task` (not `Task<void>` — that is invalid C#).
+            if (func.ReturnType != null && !IsVoidType(returnType))
             {
                 returnType = WrapInTask(returnType);
             }
