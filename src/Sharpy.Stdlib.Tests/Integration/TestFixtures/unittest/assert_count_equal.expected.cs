@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using static global::Sharpy.Unittest;
 using Xunit;
+using static AssertCountEqual;
 
 public static partial class AssertCountEqual
 {

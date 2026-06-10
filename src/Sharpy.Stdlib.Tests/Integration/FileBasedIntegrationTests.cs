@@ -10,7 +10,7 @@ public class FileBasedIntegrationTests : FileBasedIntegrationTestsBase
 {
     private static readonly string FixturesPathValue = IOPath.GetFullPath(IOPath.Combine(
         IOPath.GetDirectoryName(typeof(FileBasedIntegrationTests).Assembly.Location)!,
-        "Integration", "TestFixtures"));
+        "..", "..", "..", "Integration", "TestFixtures"));
 
     private static readonly string[] StdlibPaths = ResolveStdlibPaths();
 

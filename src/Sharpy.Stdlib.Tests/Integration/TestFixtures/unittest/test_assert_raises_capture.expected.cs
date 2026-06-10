@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using static global::Sharpy.Unittest;
 using Xunit;
+using static TestAssertRaisesCapture;
 
 public static partial class TestAssertRaisesCapture
 {

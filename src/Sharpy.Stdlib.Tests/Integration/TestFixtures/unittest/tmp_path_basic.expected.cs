@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using global::Sharpy;
 using os_path = global::Sharpy.OsPathModule;
 using Xunit;
+using static TmpPathBasic;
 
 public static partial class TmpPathBasic
 {
