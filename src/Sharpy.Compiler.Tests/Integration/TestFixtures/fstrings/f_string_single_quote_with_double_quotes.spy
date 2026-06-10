@@ -1,0 +1,6 @@
+# Test f-string with single-quote delimiter containing double quotes in text
+
+def main():
+    s: str = "hello"
+    print(f'"{s}"')
+    print(f'say "{s}" loudly')

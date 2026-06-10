@@ -59,12 +59,14 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitFStringLiteral(FStringLiteral node)
     {
-        _w.Write("f\"");
+        char delim = ChooseFStringDelimiter(node.Parts);
+        string delimStr = delim.ToString();
+        _w.Write("f" + delimStr);
         foreach (var part in node.Parts)
         {
             if (part.Text != null)
             {
-                _w.Write(EscapeFStringText(part.Text));
+                _w.Write(EscapeFStringText(part.Text, delim));
             }
             else if (part.Expression != null)
             {
@@ -78,17 +80,19 @@ internal sealed partial class UnparseVisitor
                 _w.Write("}");
             }
         }
-        _w.Write("\"");
+        _w.Write(delimStr);
     }
 
     public override void VisitTStringLiteral(TStringLiteral node)
     {
-        _w.Write("t\"");
+        char delim = ChooseFStringDelimiter(node.Parts);
+        string delimStr = delim.ToString();
+        _w.Write("t" + delimStr);
         foreach (var part in node.Parts)
         {
             if (part.Text != null)
             {
-                _w.Write(EscapeFStringText(part.Text));
+                _w.Write(EscapeFStringText(part.Text, delim));
             }
             else if (part.Expression != null)
             {
@@ -102,7 +106,7 @@ internal sealed partial class UnparseVisitor
                 _w.Write("}");
             }
         }
-        _w.Write("\"");
+        _w.Write(delimStr);
     }
 
     public override void VisitBooleanLiteral(BooleanLiteral node)

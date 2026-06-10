@@ -89,6 +89,21 @@ internal partial class RoslynEmitter
             .Cast<MemberDeclarationSyntax>()
             .ToList();
 
+        if (testClass != null || fixtureClasses.Count > 0)
+        {
+            var moduleClassName = _resolvedModuleClassName ?? GetModuleClassName();
+            var parts = new List<string>();
+            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                parts.Add(_context.ProjectNamespace!);
+            parts.AddRange(wrapperNames);
+            parts.Add(moduleClassName);
+            var fqn = string.Join(".", parts);
+
+            usingDirectives.Add(
+                UsingDirective(ParseName(fqn))
+                    .WithStaticKeyword(Token(SyntaxKind.StaticKeyword)));
+        }
+
         // Build wrapper classes from inside out — wrap the module class, test class, and
         // any fixture classes in the same directory wrapper hierarchy so they appear as
         // siblings within those wrapper classes.

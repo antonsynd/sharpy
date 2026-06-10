@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using global::Sharpy;
 using Xunit;
+using static AsyncFixtureYield;
 
 public static partial class AsyncFixtureYield
 {

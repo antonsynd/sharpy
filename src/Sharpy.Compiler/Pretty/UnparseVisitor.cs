@@ -595,37 +595,66 @@ internal sealed partial class UnparseVisitor : AstVisitor
                     .Replace("\"\"\"", "\\\"\\\"\\\"", System.StringComparison.Ordinal);
     }
 
-    private static string EscapeFStringText(string value)
+    private static string EscapeFStringText(string value) => EscapeFStringText(value, '"');
+
+    private static string EscapeFStringText(string value, char quoteChar)
     {
         var sb = new System.Text.StringBuilder(value.Length);
         foreach (char c in value)
         {
-            switch (c)
+            if (c == quoteChar)
             {
-                case '\\':
-                    sb.Append("\\\\");
-                    break;
-                case '{':
-                    sb.Append("{{");
-                    break;
-                case '}':
-                    sb.Append("}}");
-                    break;
-                case '\n':
-                    sb.Append("\\n");
-                    break;
-                case '\r':
-                    sb.Append("\\r");
-                    break;
-                case '\t':
-                    sb.Append("\\t");
-                    break;
-                default:
-                    sb.Append(c);
-                    break;
+                sb.Append('\\');
+                sb.Append(c);
+            }
+            else
+            {
+                switch (c)
+                {
+                    case '\\':
+                        sb.Append("\\\\");
+                        break;
+                    case '{':
+                        sb.Append("{{");
+                        break;
+                    case '}':
+                        sb.Append("}}");
+                        break;
+                    case '\n':
+                        sb.Append("\\n");
+                        break;
+                    case '\r':
+                        sb.Append("\\r");
+                        break;
+                    case '\t':
+                        sb.Append("\\t");
+                        break;
+                    default:
+                        sb.Append(c);
+                        break;
+                }
             }
         }
         return sb.ToString();
+    }
+
+    private static char ChooseFStringDelimiter(System.Collections.Immutable.ImmutableArray<FStringPart> parts)
+    {
+        bool hasDouble = false;
+        bool hasSingle = false;
+        foreach (var part in parts)
+        {
+            if (part.Text == null)
+                continue;
+            if (part.Text.Contains('"', System.StringComparison.Ordinal))
+                hasDouble = true;
+            if (part.Text.Contains('\'', System.StringComparison.Ordinal))
+                hasSingle = true;
+        }
+
+        if (hasDouble && !hasSingle)
+            return '\'';
+        return '"';
     }
 
     #endregion
