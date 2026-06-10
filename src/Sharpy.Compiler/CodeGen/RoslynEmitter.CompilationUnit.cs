@@ -600,6 +600,8 @@ internal partial class RoslynEmitter
         { "bisect", "BisectModule" },
         { "calendar", "CalendarModule" },
         { "csv", "CsvModule" },
+        { "difflib", "DifflibModule" },
+        { "fractions", "FractionsModule" },
         { "fnmatch", "FnmatchModule" },
         { "pathlib", "PathlibModule" },
         { "string", "StringModule" },

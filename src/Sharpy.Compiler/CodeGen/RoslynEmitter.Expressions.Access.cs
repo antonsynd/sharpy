@@ -44,6 +44,11 @@ internal partial class RoslynEmitter
             result = GenerateModuleGenericFunctionCall(nestedIndexAccess, nestedMemberAccess, call);
             if (result != null)
                 return result;
+
+            // Generic module-qualified type instantiation: difflib.SequenceMatcher[str](None, a, b)
+            result = GenerateModuleGenericTypeInstantiation(nestedIndexAccess, nestedMemberAccess, call);
+            if (result != null)
+                return result;
         }
 
         if (call.Function is Identifier funcName)
@@ -308,6 +313,23 @@ internal partial class RoslynEmitter
 
                     return ObjectCreationExpression(qualifiedName)
                         .WithArgumentList(ArgumentList(SeparatedList(nestedAllArgs)));
+                }
+            }
+
+            // Check for module-qualified constructor call: fractions.Fraction(1, 2) →
+            // new global::...Fraction(1, 2). Resolve the member through the module-export
+            // machinery; if it is an exported class/struct TypeSymbol, emit object creation
+            // (routing through the shared instantiation helper for generic-arg handling).
+            {
+                var moduleType = TryResolveModuleExportedType(memberAccess);
+                if (moduleType is { } mt
+                    && (mt.Symbol.TypeKind == Semantic.TypeKind.Class
+                        || mt.Symbol.TypeKind == Semantic.TypeKind.Struct))
+                {
+                    var ctorTarget = ResolveConstructorForCall(mt.Symbol, call);
+                    var ctorArgs = GenerateReorderedCallArguments(call, ctorTarget);
+                    var baseName = GetFullyQualifiedTypeName(mt.Symbol, mt.OriginalName);
+                    return GenerateTypeInstantiation(call, baseName, ctorArgs);
                 }
             }
 
@@ -664,6 +686,151 @@ internal partial class RoslynEmitter
         var allArgs = GenerateReorderedCallArguments(call, funcSymbol);
         return InvocationExpression(qualifiedCall)
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+    }
+
+    /// <summary>
+    /// Handles generic instantiation of a module-qualified type:
+    /// <c>difflib.SequenceMatcher[str](None, a, b)</c> →
+    /// <c>new global::...SequenceMatcher&lt;string&gt;(None, a, b)</c>.
+    /// Parsed as FunctionCall(Function: IndexAccess(Object: MemberAccess(module, Type), Index: T), Arguments).
+    /// Returns null if the member access does not denote a generic module-exported type.
+    /// </summary>
+    private ExpressionSyntax? GenerateModuleGenericTypeInstantiation(
+        IndexAccess indexAccess, MemberAccess memberAccess, FunctionCall call)
+    {
+        var moduleType = TryResolveModuleExportedType(memberAccess);
+        if (moduleType is not { } mt || !mt.Symbol.IsGeneric
+            || (mt.Symbol.TypeKind != Semantic.TypeKind.Class
+                && mt.Symbol.TypeKind != Semantic.TypeKind.Struct))
+        {
+            return null;
+        }
+
+        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var baseName = GetFullyQualifiedTypeName(mt.Symbol, mt.OriginalName);
+        var (dottedName, globalQualified) = NormalizeTypeName(baseName);
+        var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(
+            dottedName, globalQualified, typeArgsSyntax);
+
+        var ctorTarget = ResolveConstructorForCall(mt.Symbol, call);
+        var allArgs = GenerateReorderedCallArguments(call, ctorTarget);
+        return ObjectCreationExpression(genericTypeSyntax)
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+    }
+
+    /// <summary>
+    /// Emits an <c>ObjectCreationExpression</c> for a constructor call, supplying explicit
+    /// generic type arguments when the resolved type is generic (C# has no generic constructor
+    /// inference). Shared by the module-qualified member-access constructor path.
+    /// <paramref name="baseCSharpName"/> is the C# type name WITHOUT type arguments (possibly
+    /// <c>global::</c>-prefixed and/or dotted), as produced by <see cref="GetFullyQualifiedTypeName"/>.
+    /// </summary>
+    private ExpressionSyntax GenerateTypeInstantiation(
+        FunctionCall call, string baseCSharpName, ArgumentSyntax[] allArgs)
+    {
+        var (dottedName, globalQualified) = NormalizeTypeName(baseCSharpName);
+
+        // Explicit generic type arguments from the resolved expression type
+        // (e.g., a generic module type called without an explicit subscript).
+        var exprType = _context.SemanticInfo?.GetExpressionType(call);
+        if (exprType is GenericType resolvedGeneric && resolvedGeneric.TypeArguments.Count > 0
+            && resolvedGeneric.TypeArguments.All(t => t is not UnknownType))
+        {
+            var typeArgsSyntax = resolvedGeneric.TypeArguments
+                .Select(t => _typeMapper.MapSemanticType(t))
+                .ToArray();
+            return ObjectCreationExpression(
+                    TypeSyntaxMapper.QualifiedGenericName(dottedName, globalQualified, typeArgsSyntax))
+                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+        }
+
+        // Fallback: inferred type arguments from generic constructor inference.
+        var inferredTypeArgs = _context.SemanticInfo?.GetInferredTypeArguments(call);
+        if (inferredTypeArgs is { Count: > 0 })
+        {
+            var typeArgsSyntax = inferredTypeArgs
+                .Select(t => _typeMapper.MapSemanticType(t))
+                .ToArray();
+            return ObjectCreationExpression(
+                    TypeSyntaxMapper.QualifiedGenericName(dottedName, globalQualified, typeArgsSyntax))
+                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+        }
+
+        // Non-generic construction.
+        NameSyntax typeSyntax = globalQualified
+            ? MakeGlobalQualifiedName(dottedName.Split('.'))
+            : ParseName(dottedName);
+        return ObjectCreationExpression(typeSyntax)
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+    }
+
+    /// <summary>
+    /// Splits a C# type name (as produced by <see cref="GetFullyQualifiedTypeName"/>) into its
+    /// dotted form and a flag indicating whether it must be <c>global::</c>-qualified. A name
+    /// already carrying a <c>global::</c> prefix is stripped and flagged; otherwise it is flagged
+    /// when a project namespace is active and the name is dotted (to avoid namespace prepending).
+    /// </summary>
+    private (string Dotted, bool GlobalQualified) NormalizeTypeName(string baseCSharpName)
+    {
+        if (baseCSharpName.StartsWith("global::", StringComparison.Ordinal))
+            return (baseCSharpName.Substring("global::".Length), true);
+
+        var globalQualified = !string.IsNullOrEmpty(_context.ProjectNamespace)
+            && baseCSharpName.Contains('.', StringComparison.Ordinal);
+        return (baseCSharpName, globalQualified);
+    }
+
+    /// <summary>
+    /// Resolves a member access of the form <c>module.TypeName</c> (or nested
+    /// <c>module.sub.TypeName</c>) to its exported <see cref="TypeSymbol"/>, applying the
+    /// PascalCase fallback for .NET modules. Returns the symbol and the export key used to
+    /// resolve it (for fully-qualified name generation), or null when the member access does
+    /// not denote a module-exported type.
+    /// </summary>
+    private (TypeSymbol Symbol, string OriginalName)? TryResolveModuleExportedType(MemberAccess memberAccess)
+    {
+        var moduleSymbol = ResolveModuleFromExpression(memberAccess.Object);
+        if (moduleSymbol == null)
+            return null;
+
+        var memberName = memberAccess.Member;
+        if (!moduleSymbol.Exports.ContainsKey(memberName) && moduleSymbol.IsNetModule)
+        {
+            var pascalName = NameCasing.ResolveType(memberName, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
+            if (moduleSymbol.Exports.ContainsKey(pascalName))
+                memberName = pascalName;
+        }
+
+        if (moduleSymbol.Exports.TryGetValue(memberName, out var exported)
+            && exported is TypeSymbol typeSymbol)
+        {
+            return (typeSymbol, memberName);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves an expression to a <see cref="ModuleSymbol"/>: a bare identifier referencing an
+    /// imported module, or a nested module member access (e.g., <c>email.message</c>).
+    /// Returns null when the expression does not denote a module.
+    /// </summary>
+    private ModuleSymbol? ResolveModuleFromExpression(Expression expr)
+    {
+        if (expr is Identifier id)
+            return _context.LookupSymbol(id.Name) as ModuleSymbol;
+
+        if (expr is MemberAccess ma)
+        {
+            var parent = ResolveModuleFromExpression(ma.Object);
+            if (parent != null && parent.Exports.TryGetValue(ma.Member, out var sym)
+                && sym is ModuleSymbol nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
