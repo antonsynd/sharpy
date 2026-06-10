@@ -619,7 +619,7 @@ namespace Sharpy
             }
 
             // Try non-generic IList first (covers System.Collections.Generic.List<T>, arrays, etc.)
-            if (value is IList nonGenericList)
+            if (value is System.Collections.IList nonGenericList)
             {
                 if (int.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out int idx))
                 {

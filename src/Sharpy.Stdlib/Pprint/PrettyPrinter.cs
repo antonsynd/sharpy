@@ -89,7 +89,7 @@ namespace Sharpy
 
         private static bool IsAnyCollection(object obj)
         {
-            return obj is IDictionary || obj is IList || obj is ICollection
+            return obj is IDictionary || obj is System.Collections.IList || obj is ICollection
                 || IsGenericDict(obj) || IsGenericList(obj) || IsGenericSet(obj);
         }
 
@@ -112,7 +112,7 @@ namespace Sharpy
 
         private static object? GetListItem(object obj, int index)
         {
-            if (obj is IList list)
+            if (obj is System.Collections.IList list)
                 return list[index];
 
             foreach (var iface in obj.GetType().GetInterfaces())
@@ -234,7 +234,7 @@ namespace Sharpy
             {
                 if (obj is IDictionary || IsGenericDict(obj))
                     FormatDict(sb, obj, currentIndent, currentDepth, seen);
-                else if (obj is IList || IsGenericList(obj))
+                else if (obj is System.Collections.IList || IsGenericList(obj))
                     FormatList(sb, obj, currentIndent, currentDepth, seen);
                 else if (obj is ICollection || IsGenericSet(obj))
                     FormatSet(sb, obj, currentIndent, currentDepth, seen);
@@ -544,7 +544,7 @@ namespace Sharpy
         {
             if (obj is IDictionary || IsGenericDict(obj))
                 return "dict";
-            if (obj is IList || IsGenericList(obj))
+            if (obj is System.Collections.IList || IsGenericList(obj))
                 return "list";
             if (IsGenericSet(obj))
                 return "set";
@@ -613,7 +613,7 @@ namespace Sharpy
                             return true;
                     }
                 }
-                else if (obj is IList list)
+                else if (obj is System.Collections.IList list)
                 {
                     for (int i = 0; i < list.Count; i++)
                     {
@@ -666,7 +666,7 @@ namespace Sharpy
                 return true;
             }
 
-            if (obj is IList list)
+            if (obj is System.Collections.IList list)
             {
                 for (int i = 0; i < list.Count; i++)
                 {
