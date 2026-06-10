@@ -1,0 +1,30 @@
+# Astral \U escapes produce UTF-16 surrogate pairs; len() counts UTF-16 code
+# units, not code points (Axiom 1: .NET string semantics). See #879.
+def main():
+    # A single astral code point is one Unicode scalar but two UTF-16 units.
+    man: str = "\U0001F468"
+    print(len(man))                            # 2
+
+    # \U00000041 is the BMP code point 'A' (single unit, round-trips to "A").
+    a: str = "\U00000041"
+    print(a)                                   # A
+    print(len(a))                              # 1
+
+    # ZWJ family emoji built entirely from \U / \u escapes:
+    # 4 astral emoji (2 units each) + 3 ZWJ (1 unit each) = 11 UTF-16 units.
+    family_escaped: str = "\U0001F468‍\U0001F469‍\U0001F467‍\U0001F466"
+    print(len(family_escaped))                 # 11
+
+    # The same sequence written with literal emoji glyphs and literal ZWJ chars.
+    family_literal: str = "👨‍👩‍👧‍👦"
+    print(len(family_literal))                 # 11
+
+    # Escape-built and literal-built strings are code-unit-for-code-unit equal,
+    # proving neither the astral emoji nor the ZWJ joiners are lost or truncated.
+    print(family_escaped == family_literal)    # True
+
+    # Maximum valid code point U+10FFFF is preserved as a surrogate pair.
+    print(len("\U0010FFFF"))                   # 2
+
+    # Mixed ASCII and astral content.
+    print(len("hi\U0001F600x"))                # 5

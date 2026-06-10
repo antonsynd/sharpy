@@ -1085,6 +1085,81 @@ y = 2";
         errorMessage.Should().NotBeEmpty();
     }
 
+    #region Astral \U Escapes (#879)
+
+    private static LexerNs.Token FirstStringToken(string source)
+        => Tokenize(source).First(t => t.Type == TokenType.String);
+
+    [Fact]
+    public void EightDigitUnicodeEscapeAboveBmpProducesSurrogatePair()
+    {
+        // \U0001F468 (MAN) is an astral code point; UTF-16 represents it as a
+        // surrogate pair, so the decoded value must be two code units, not a
+        // single truncated (char)0x1F468.
+        var token = FirstStringToken("\"\\U0001F468\"");
+
+        token.Value.Should().Be("\U0001F468");
+        token.Value!.Length.Should().Be(2);
+        char.IsHighSurrogate(token.Value[0]).Should().BeTrue();
+        char.IsLowSurrogate(token.Value[1]).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EightDigitUnicodeEscapeForBmpCharDecodesToSingleCodeUnit()
+    {
+        // \U00000041 is the BMP code point 'A' and must stay a single code unit.
+        var token = FirstStringToken("\"\\U00000041\"");
+
+        token.Value.Should().Be("A");
+        token.Value!.Length.Should().Be(1);
+    }
+
+    [Fact]
+    public void MaxValidEightDigitUnicodeEscapeDecodesToSurrogatePair()
+    {
+        // U+10FFFF is the highest valid Unicode scalar value.
+        var token = FirstStringToken("\"\\U0010FFFF\"");
+
+        token.Value.Should().Be("\U0010FFFF");
+        token.Value!.Length.Should().Be(2);
+    }
+
+    [Fact]
+    public void EightDigitUnicodeEscapeOutOfRangeReportsError()
+    {
+        // U+110000 is past the Unicode ceiling; Python raises SyntaxError. The
+        // lexer must diagnose this rather than silently truncating to 16 bits.
+        var source = "\"\\U00110000\"";
+        var errorMessage = TokenizeExpectingError(source);
+        errorMessage.Should().Contain("out of range");
+    }
+
+    [Fact]
+    public void LoneSurrogateUnicodeEscapeIsPreserved()
+    {
+        // A lone high surrogate (\uD83D) is <= 0xFFFF and stays a single code
+        // unit — Python permits lone surrogates in str literals.
+        var token = FirstStringToken("\"\\uD83D\"");
+
+        token.Value!.Length.Should().Be(1);
+        ((int)token.Value[0]).Should().Be(0xD83D);
+        char.IsHighSurrogate(token.Value[0]).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EscapedAndLiteralAstralEmojiDecodeIdentically()
+    {
+        // The \U escape and the literal surrogate-pair glyph must decode to the
+        // same two code units, proving the escape path is not lossy.
+        var escaped = FirstStringToken("\"\\U0001F600\"");
+        var literal = FirstStringToken("\"\U0001F600\"");
+
+        escaped.Value.Should().Be(literal.Value);
+        escaped.Value!.Length.Should().Be(2);
+    }
+
+    #endregion
+
     [Fact]
     public void ReportsErrorOnInvalidEscapeCharacter()
     {

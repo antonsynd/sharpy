@@ -27,11 +27,10 @@ def test_length_surrogate_pair_emoji_is_single_grapheme():
     # U+1F600 GRINNING FACE
     assert grapheme.length("\U0001F600") == 1
 
-# TODO(#879): ZWJ chars lost during .spy → C# emission
-# @test
-# def test_length_zwj_family_sequence_is_single_grapheme():
-#     family: str = "\U0001F468‍\U0001F469‍\U0001F467‍\U0001F466"
-#     assert grapheme.length(family) == 1
+@test
+def test_length_zwj_family_sequence_is_single_grapheme():
+    family: str = "\U0001F468‍\U0001F469‍\U0001F467‍\U0001F466"
+    assert grapheme.length(family) == 1
 
 @test
 def test_length_mixed_ascii_and_emoji_counts_correctly():
