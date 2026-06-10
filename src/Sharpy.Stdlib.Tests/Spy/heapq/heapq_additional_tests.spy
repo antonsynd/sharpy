@@ -1,0 +1,90 @@
+from unittest import assert_raises
+
+import heapq
+
+@test
+def test_heapreplace_single_element_returns_old_value_and_replaces():
+    h: list[int] = [42]
+    result: int = heapq.heapreplace(h, 7)
+    assert result == 42
+    assert h[0] == 7
+    assert len(h) == 1
+
+@test
+def test_heappushpop_empty_heap_returns_item_directly():
+    h: list[int] = []
+    result: int = heapq.heappushpop(h, 99)
+    assert result == 99
+    assert len(h) == 0
+
+@test
+def test_heappushpop_value_equal_to_smallest_returns_item():
+    h: list[int] = [1, 2, 3]
+    result: int = heapq.heappushpop(h, 1)
+    assert result == 1
+    assert len(h) == 3
+
+@test
+def test_heapify_single_element_remains_unchanged():
+    h: list[int] = [42]
+    heapq.heapify(h)
+    assert h == [42]
+
+@test
+def test_heapify_already_valid_heap_preserves_heap_property():
+    h: list[int] = [1, 2, 3]
+    heapq.heapify(h)
+    assert h[0] == 1
+    # Verify full heap property
+    i: int = 0
+    while i < len(h):
+        left: int = 2 * i + 1
+        right: int = 2 * i + 2
+        if left < len(h):
+            assert h[i] <= h[left]
+        if right < len(h):
+            assert h[i] <= h[right]
+        i = i + 1
+
+@test
+def test_nsmallest_zero_n_returns_empty():
+    data: list[int] = [1, 2, 3]
+    result: list[int] = heapq.nsmallest(0, data)
+    assert len(result) == 0
+
+@test
+def test_nlargest_n_greater_than_list_returns_all_descending():
+    data: list[int] = [3, 1, 2]
+    result: list[int] = heapq.nlargest(10, data)
+    assert result == [3, 2, 1]
+
+@test
+def test_nlargest_n_equals_list_length_returns_all_descending():
+    data: list[int] = [5, 3, 8]
+    result: list[int] = heapq.nlargest(3, data)
+    assert result == [8, 5, 3]
+
+@test
+def test_nsmallest_n_equals_list_length_returns_all_ascending():
+    data: list[int] = [5, 3, 8]
+    result: list[int] = heapq.nsmallest(3, data)
+    assert result == [3, 5, 8]
+
+@test
+def test_nlargest_with_duplicates_preserves_all_instances():
+    data: list[int] = [5, 5, 3, 3, 1]
+    result: list[int] = heapq.nlargest(3, data)
+    assert result == [5, 5, 3]
+
+@test
+def test_nsmallest_with_duplicates_preserves_all_instances():
+    data: list[int] = [5, 5, 3, 3, 1]
+    result: list[int] = heapq.nsmallest(3, data)
+    assert result == [1, 3, 3]
+
+@test
+def test_heappop_after_draining_throws_index_error():
+    h: list[int] = [1]
+    heapq.heappop(h)
+    with assert_raises(IndexError):
+        heapq.heappop(h)

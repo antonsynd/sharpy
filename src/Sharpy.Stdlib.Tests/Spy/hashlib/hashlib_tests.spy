@@ -1,0 +1,100 @@
+import hashlib
+
+# --- SHA-256 ---
+
+@test
+def test_sha256_hello_produces_known_hash():
+    h = hashlib.sha256("hello")
+    assert h.hexdigest() == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+
+# --- MD5 ---
+
+@test
+def test_md5_hello_produces_known_hash():
+    h = hashlib.md5("hello")
+    assert h.hexdigest() == "5d41402abc4b2a76b9719d911017c592"
+
+# --- SHA-1 ---
+
+@test
+def test_sha1_hello_produces_known_hash():
+    h = hashlib.sha1("hello")
+    assert h.hexdigest() == "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"
+
+# --- SHA-384 ---
+
+@test
+def test_sha384_hello_produces_known_hash():
+    h = hashlib.sha384("hello")
+    assert h.hexdigest() == "59e1748777448c69de6b800d7a33bbfb9ff1b463e44354c3553bcdb9c666fa90125a3c79f90397bdf5f6a13de828684f"
+
+# --- SHA-512 ---
+
+@test
+def test_sha512_hello_produces_known_hash():
+    h = hashlib.sha512("hello")
+    assert h.hexdigest() == "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043"
+
+# --- Update ---
+
+@test
+def test_update_then_hexdigest_matches_python():
+    h = hashlib.sha256()
+    h.update("hello")
+    assert h.hexdigest() == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+
+@test
+def test_update_multiple_calls_accumulate():
+    h1 = hashlib.sha256("helloworld")
+    h2 = hashlib.sha256("hello")
+    h2.update("world")
+    assert h2.hexdigest() == h1.hexdigest()
+
+# --- DigestSize ---
+
+@test
+def test_digest_size_returns_correct_values():
+    assert hashlib.md5().digest_size == 16
+    assert hashlib.sha1().digest_size == 20
+    assert hashlib.sha256().digest_size == 32
+    assert hashlib.sha384().digest_size == 48
+    assert hashlib.sha512().digest_size == 64
+
+# --- Name ---
+
+@test
+def test_name_returns_algorithm_name():
+    assert hashlib.md5().name == "md5"
+    assert hashlib.sha1().name == "sha1"
+    assert hashlib.sha256().name == "sha256"
+    assert hashlib.sha384().name == "sha384"
+    assert hashlib.sha512().name == "sha512"
+
+# --- Digest ---
+
+@test
+def test_digest_returns_raw_bytes():
+    h = hashlib.md5("hello")
+    digest = h.digest()
+    assert len(digest) == 16
+    # First byte of MD5("hello") is 93 (0x5d)
+    assert digest[0] == 93
+
+# --- Copy ---
+
+@test
+def test_copy_produces_independent_clone():
+    h = hashlib.sha256("hello")
+    copy = h.copy()
+    copy.update("world")
+    # Original should be unchanged
+    assert h.hexdigest() == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+    # Copy should have "helloworld"
+    assert copy.hexdigest() == hashlib.sha256("helloworld").hexdigest()
+
+# --- Empty string ---
+
+@test
+def test_empty_string_produces_known_hash():
+    h = hashlib.sha256()
+    assert h.hexdigest() == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"

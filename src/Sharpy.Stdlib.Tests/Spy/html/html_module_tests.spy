@@ -1,0 +1,398 @@
+import html
+from html import HTMLParser
+
+# ---- Helper classes ----
+
+class TestParser(HTMLParser):
+    events: list[str]
+
+    def __init__(self, convert_charrefs: bool = True):
+        super().__init__(convertCharrefs=convert_charrefs)
+        self.events = []
+
+    @override
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str?]]) -> None:
+        attr_str: str = ", ".join(_to_string_list(attrs))
+        self.events.append(f"starttag:{tag} [{attr_str}]")
+
+    @override
+    def handle_endtag(self, tag: str) -> None:
+        self.events.append(f"endtag:{tag}")
+
+    @override
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str?]]) -> None:
+        attr_str: str = ", ".join(_to_string_list(attrs))
+        self.events.append(f"startendtag:{tag} [{attr_str}]")
+
+    @override
+    def handle_data(self, data: str) -> None:
+        self.events.append(f"data:{data}")
+
+    @override
+    def handle_comment(self, data: str) -> None:
+        self.events.append(f"comment:{data}")
+
+    @override
+    def handle_entityref(self, name: str) -> None:
+        self.events.append(f"entityref:{name}")
+
+    @override
+    def handle_charref(self, name: str) -> None:
+        self.events.append(f"charref:{name}")
+
+    @override
+    def handle_decl(self, decl: str) -> None:
+        self.events.append(f"decl:{decl}")
+
+    @override
+    def handle_pi(self, data: str) -> None:
+        self.events.append(f"pi:{data}")
+
+
+class DefaultHandlerParser(HTMLParser):
+    events: list[str]
+
+    def __init__(self, convert_charrefs: bool = True):
+        super().__init__(convertCharrefs=convert_charrefs)
+        self.events = []
+
+    @override
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str?]]) -> None:
+        self.events.append(f"starttag:{tag}")
+
+    @override
+    def handle_endtag(self, tag: str) -> None:
+        self.events.append(f"endtag:{tag}")
+
+    @override
+    def handle_data(self, data: str) -> None:
+        self.events.append(f"data:{data}")
+
+
+def _to_string_list(attrs: list[tuple[str, str?]]) -> list[str]:
+    result: list[str] = []
+    for attr in attrs:
+        if attr[1] is None:
+            result.append(f"({attr[0]}, null)")
+        else:
+            result.append(f"({attr[0]}, {attr[1]})")
+    return result
+
+
+# ---- Escape tests ----
+
+@test
+def test_escape_script_tag():
+    assert html.escape("<script>alert(1)</script>") == "&lt;script&gt;alert(1)&lt;/script&gt;"
+
+@test
+def test_escape_double_quotes_default():
+    assert html.escape('"hello"') == "&quot;hello&quot;"
+
+@test
+def test_escape_double_quotes_quote_false():
+    assert html.escape('"hello"', quote=False) == '"hello"'
+
+@test
+def test_escape_single_quotes_default():
+    assert html.escape("it's") == "it&#x27;s"
+
+@test
+def test_escape_single_quotes_quote_false():
+    assert html.escape("it's", quote=False) == "it's"
+
+@test
+def test_escape_ampersand():
+    assert html.escape("a & b") == "a &amp; b"
+
+@test
+def test_escape_empty_string():
+    assert html.escape("") == ""
+
+@test
+def test_escape_no_special_chars():
+    assert html.escape("hello world") == "hello world"
+
+@test
+def test_escape_all_special_chars():
+    assert html.escape("<>&\"'") == "&lt;&gt;&amp;&quot;&#x27;"
+
+# ---- Unescape tests ----
+
+@test
+def test_unescape_named_entities():
+    assert html.unescape("&lt;b&gt;") == "<b>"
+
+@test
+def test_unescape_decimal_char_ref():
+    assert html.unescape("&#60;") == "<"
+
+@test
+def test_unescape_hex_char_ref():
+    assert html.unescape("&#x3c;") == "<"
+
+@test
+def test_unescape_ampersand_entity():
+    assert html.unescape("&amp;") == "&"
+
+@test
+def test_unescape_empty_string():
+    assert html.unescape("") == ""
+
+@test
+def test_unescape_no_entities():
+    assert html.unescape("hello world") == "hello world"
+
+@test
+def test_roundtrip_escape_unescape():
+    original: str = '<div class="test">it\'s & cool</div>'
+    escaped: str = html.escape(original)
+    unescaped: str = html.unescape(escaped)
+    assert unescaped == original
+
+# ---- HTMLParser tests ----
+
+@test
+def test_parser_start_tag_simple():
+    p = TestParser()
+    p.feed("<div>")
+    assert len(p.events) == 1
+    assert p.events[0] == "starttag:div []"
+
+@test
+def test_parser_start_tag_with_attributes():
+    p = TestParser()
+    p.feed('<p class="main">')
+    assert len(p.events) == 1
+    assert p.events[0] == "starttag:p [(class, main)]"
+
+@test
+def test_parser_start_tag_multiple_attributes():
+    p = TestParser()
+    p.feed('<input disabled type=text name="foo">')
+    assert len(p.events) == 1
+    assert p.events[0] == "starttag:input [(disabled, null), (type, text), (name, foo)]"
+
+@test
+def test_parser_start_tag_single_quoted_attr():
+    p = TestParser()
+    p.feed("<div class='main'>")
+    assert len(p.events) == 1
+    assert p.events[0] == "starttag:div [(class, main)]"
+
+@test
+def test_parser_end_tag():
+    p = TestParser()
+    p.feed("</div>")
+    assert len(p.events) == 1
+    assert p.events[0] == "endtag:div"
+
+@test
+def test_parser_self_closing_slash():
+    p = TestParser()
+    p.feed("<br/>")
+    assert len(p.events) == 1
+    assert p.events[0] == "startendtag:br []"
+
+@test
+def test_parser_self_closing_space_slash():
+    p = TestParser()
+    p.feed("<br />")
+    assert len(p.events) == 1
+    assert p.events[0] == "startendtag:br []"
+
+@test
+def test_parser_bare_br_not_self_closing():
+    p = TestParser()
+    p.feed("<br>")
+    assert len(p.events) == 1
+    assert p.events[0] == "starttag:br []"
+
+@test
+def test_parser_default_startendtag_calls_start_and_end():
+    # Use parser with default HandleStartendtag
+    p = DefaultHandlerParser()
+    p.feed("<br/>")
+    assert len(p.events) == 2
+    assert p.events[0] == "starttag:br"
+    assert p.events[1] == "endtag:br"
+
+@test
+def test_parser_data_simple_text():
+    p = TestParser()
+    p.feed("hello world")
+    p.close()
+    assert len(p.events) == 1
+    assert p.events[0] == "data:hello world"
+
+@test
+def test_parser_comment():
+    p = TestParser()
+    p.feed("<!-- comment -->")
+    assert len(p.events) == 1
+    assert p.events[0] == "comment: comment "
+
+@test
+def test_parser_doctype():
+    p = TestParser()
+    p.feed("<!DOCTYPE html>")
+    assert len(p.events) == 1
+    assert p.events[0] == "decl:DOCTYPE html"
+
+@test
+def test_parser_processing_instruction():
+    p = TestParser()
+    p.feed('<?xml version="1.0"?>')
+    assert len(p.events) == 1
+    assert p.events[0] == 'pi:xml version="1.0"'
+
+@test
+def test_parser_entity_ref_convert_charrefs_off():
+    p = TestParser(convert_charrefs=False)
+    p.feed("&amp;")
+    p.close()
+    assert len(p.events) == 1
+    assert p.events[0] == "entityref:amp"
+
+@test
+def test_parser_char_ref_decimal_convert_charrefs_off():
+    p = TestParser(convert_charrefs=False)
+    p.feed("&#60;")
+    p.close()
+    assert len(p.events) == 1
+    assert p.events[0] == "charref:60"
+
+@test
+def test_parser_char_ref_hex_convert_charrefs_off():
+    p = TestParser(convert_charrefs=False)
+    p.feed("&#x3c;")
+    p.close()
+    assert len(p.events) == 1
+    assert p.events[0] == "charref:x3c"
+
+@test
+def test_parser_convert_charrefs_default():
+    p = TestParser()
+    p.feed("&amp; &#60; &#x3c;")
+    p.close()
+    # All entities should be converted and delivered as data
+    combined: str = ""
+    for e in p.events:
+        if e.startswith("data:"):
+            combined = combined + e[5:]
+    assert combined == "& < <"
+
+@test
+def test_parser_entity_ref_mixed_with_text_convert_charrefs_off():
+    p = TestParser(convert_charrefs=False)
+    p.feed("&amp; &#60; &#x3c;")
+    p.close()
+    assert len(p.events) == 5
+    assert p.events[0] == "entityref:amp"
+    assert p.events[1] == "data: "
+    assert p.events[2] == "charref:60"
+    assert p.events[3] == "data: "
+    assert p.events[4] == "charref:x3c"
+
+@test
+def test_parser_script_content():
+    p = TestParser()
+    p.feed("<script>var x = 1 < 2;</script>")
+    assert len(p.events) == 3
+    assert p.events[0] == "starttag:script []"
+    assert p.events[1] == "data:var x = 1 < 2;"
+    assert p.events[2] == "endtag:script"
+
+@test
+def test_parser_style_content():
+    p = TestParser()
+    p.feed("<style>h1 > h2 { color: red; }</style>")
+    assert len(p.events) == 3
+    assert p.events[0] == "starttag:style []"
+    assert p.events[1] == "data:h1 > h2 { color: red; }"
+    assert p.events[2] == "endtag:style"
+
+@test
+def test_parser_tags_are_lowercased():
+    p = TestParser()
+    p.feed('<DIV CLASS="test"></DIV>')
+    assert len(p.events) == 2
+    assert p.events[0] == "starttag:div [(class, test)]"
+    assert p.events[1] == "endtag:div"
+
+@test
+def test_parser_multiple_feeds_chunked():
+    p = TestParser()
+    p.feed("<di")
+    p.feed("v>")
+    p.feed("hello")
+    p.feed("</div>")
+    p.close()
+    assert len(p.events) == 3
+    assert p.events[0] == "starttag:div []"
+    assert p.events[1] == "data:hello"
+    assert p.events[2] == "endtag:div"
+
+@test
+def test_parser_complete_document():
+    p = TestParser()
+    p.feed("<!DOCTYPE html><html><head><title>Test</title></head><body><p>Hello</p></body></html>")
+    assert "decl:DOCTYPE html" in p.events
+    assert "starttag:html []" in p.events
+    assert "starttag:head []" in p.events
+    assert "starttag:title []" in p.events
+    assert "data:Test" in p.events
+    assert "endtag:title" in p.events
+    assert "endtag:head" in p.events
+    assert "starttag:body []" in p.events
+    assert "starttag:p []" in p.events
+    assert "data:Hello" in p.events
+    assert "endtag:p" in p.events
+    assert "endtag:body" in p.events
+    assert "endtag:html" in p.events
+
+@test
+def test_parser_getpos_tracking():
+    p = TestParser()
+    p.feed("<div>\nline2</div>")
+    pos: tuple[int, int] = p.getpos()
+    # After parsing the whole string, position should advance
+    assert pos[0] > 0
+
+@test
+def test_parser_reset():
+    p = TestParser()
+    p.feed("<div>")
+    assert len(p.events) == 1
+    p.reset()
+    # After reset, position is back to (1, 0)
+    pos: tuple[int, int] = p.getpos()
+    assert pos[0] == 1
+    assert pos[1] == 0
+    # Can still parse after reset
+    p.feed("<span>")
+    assert len(p.events) == 2
+
+@test
+def test_parser_malformed_bare_angle_bracket():
+    p = TestParser()
+    p.feed("a < b")
+    p.close()
+    # The bare '<' should be delivered as data somehow
+    combined: str = ""
+    for e in p.events:
+        if e.startswith("data:"):
+            combined = combined + e[5:]
+    assert "a" in combined
+    assert "b" in combined
+
+@test
+def test_parser_get_starttag_text_returns_last_start_tag():
+    p = TestParser()
+    p.feed('<div class="main">')
+    assert p.get_starttag_text() == '<div class="main">'
+
+@test
+def test_parser_get_starttag_text_null_before_any_tag():
+    p = TestParser()
+    assert p.get_starttag_text() is None

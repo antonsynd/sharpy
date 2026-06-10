@@ -1,0 +1,81 @@
+from unittest import assert_raises
+
+import base64
+
+@test
+def test_b64encode_hello_world():
+    result: bytes = base64.b64encode(b"hello world")
+    assert result.decode("ascii") == "aGVsbG8gd29ybGQ="
+
+@test
+def test_b64decode_roundtrip():
+    original: bytes = b"test data"
+    encoded: bytes = base64.b64encode(original)
+    decoded: bytes = base64.b64decode(encoded)
+    assert decoded == original
+
+@test
+def test_urlsafe_b64encode_replaces_chars():
+    data: bytes = bytes.fromhex("fffefd")
+    result: bytes = base64.urlsafe_b64encode(data)
+    result_str: str = result.decode("ascii")
+    assert "+" not in result_str
+    assert "/" not in result_str
+
+@test
+def test_b32encode_hello():
+    result: bytes = base64.b32encode(b"hello")
+    assert result.decode("ascii") == "NBSWY3DP"
+
+@test
+def test_b32decode_rejects_lowercase_by_default():
+    input_data: bytes = b"nbswy3dp"
+    with assert_raises(ValueError):
+        base64.b32decode(input_data)
+
+@test
+def test_b32decode_accepts_lowercase_with_casefold():
+    input_data: bytes = b"nbswy3dp"
+    result: bytes = base64.b32decode(input_data, casefold=True)
+    assert result.decode("ascii") == "hello"
+
+@test
+def test_b16encode_produces_uppercase():
+    result: bytes = base64.b16encode(bytes.fromhex("dead"))
+    assert result.decode("ascii") == "DEAD"
+
+@test
+def test_b16decode_rejects_lowercase_by_default():
+    input_data: bytes = b"dead"
+    with assert_raises(ValueError):
+        base64.b16decode(input_data)
+
+@test
+def test_b16decode_accepts_lowercase_with_casefold():
+    input_data: bytes = b"dead"
+    result: bytes = base64.b16decode(input_data, casefold=True)
+    assert result == bytes.fromhex("dead")
+
+@test
+def test_b85encode_roundtrip():
+    original: bytes = b"Hello World!"
+    encoded: bytes = base64.b85encode(original)
+    decoded: bytes = base64.b85decode(encoded)
+    assert decoded == original
+
+@test
+def test_a85encode_roundtrip():
+    original: bytes = b"Hello World!"
+    encoded: bytes = base64.a85encode(original)
+    decoded: bytes = base64.a85decode(encoded)
+    assert decoded == original
+
+@test
+def test_b64decode_string_overload():
+    result: bytes = base64.b64decode("aGVsbG8=")
+    assert result.decode("ascii") == "hello"
+
+@test
+def test_b64encode_empty():
+    result: bytes = base64.b64encode(b"")
+    assert result.decode("ascii") == ""

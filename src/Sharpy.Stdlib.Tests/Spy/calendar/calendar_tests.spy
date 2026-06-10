@@ -1,0 +1,215 @@
+from unittest import assert_raises
+
+import calendar
+
+# --- Isleap (parametrized) ---
+
+@test.parametrize([(2024, True), (2025, False), (2000, True), (1900, False)])
+def test_isleap_returns_expected(year: int, expected: bool):
+    assert calendar.isleap(year) == expected
+
+# --- Leapdays ---
+
+@test
+def test_leapdays_forward_range_counts_leap_years():
+    assert calendar.leapdays(2000, 2024) == 6
+
+@test
+def test_leapdays_reversed_range_returns_negative():
+    assert calendar.leapdays(2024, 2000) == -6
+
+# --- Weekday ---
+
+@test
+def test_weekday_thursday_returns_three():
+    assert calendar.weekday(2026, 5, 28) == 3
+
+@test
+def test_weekday_monday_returns_zero():
+    assert calendar.weekday(2026, 6, 1) == 0
+
+# --- Monthrange ---
+
+@test
+def test_monthrange_feb_non_leap_returns_sunday_and_28():
+    result: tuple[int, int] = calendar.monthrange(2026, 2)
+    assert result == (6, 28)
+
+@test
+def test_monthrange_feb_leap_returns_thursday_and_29():
+    result: tuple[int, int] = calendar.monthrange(2024, 2)
+    assert result == (3, 29)
+
+@test
+def test_monthrange_january_returns_thursday_and_31():
+    result: tuple[int, int] = calendar.monthrange(2026, 1)
+    assert result == (3, 31)
+
+# --- Monthcalendar ---
+
+@test
+def test_monthcalendar_june_2026_first_week_starts_on_day_one():
+    calendar.setfirstweekday(0)
+    cal: list[list[int]] = calendar.monthcalendar(2026, 6)
+    # Each week has 7 days
+    for week in cal:
+        assert len(week) == 7
+    # June 1, 2026 is a Monday, so the first week is exactly 1..7
+    first_week: list[int] = cal[0]
+    assert first_week == [1, 2, 3, 4, 5, 6, 7]
+    # The last real day (30) appears, padded with trailing zeros
+    last_week: list[int] = cal[len(cal) - 1]
+    assert last_week[0] == 29
+    assert last_week[1] == 30
+    assert last_week[2] == 0
+    # Reset
+    calendar.setfirstweekday(0)
+
+# --- Constants ---
+
+@test
+def test_constants_weekday_values_are_correct():
+    assert calendar.MONDAY == 0
+    assert calendar.TUESDAY == 1
+    assert calendar.SATURDAY == 5
+    assert calendar.SUNDAY == 6
+
+@test
+def test_constants_day_name_has_seven_entries_starting_monday():
+    assert len(calendar.DayName) == 7
+    assert calendar.DayName[0] == "Monday"
+    assert calendar.DayName[6] == "Sunday"
+
+@test
+def test_constants_month_name_first_entry_empty_then_january():
+    assert calendar.MonthName[0] == ""
+    assert calendar.MonthName[1] == "January"
+    assert calendar.MonthName[12] == "December"
+
+@test
+def test_constants_month_abbr_first_entry_empty_then_jan():
+    assert calendar.MonthAbbr[0] == ""
+    assert calendar.MonthAbbr[1] == "Jan"
+
+# --- Itermonthdays (padding) ---
+
+@test
+def test_itermonthdays_feb_2026_pads_leading_zeros():
+    cal = calendar.Calendar(0)
+    days: list[int] = list(cal.itermonthdays(2026, 2))
+    # Feb 1, 2026 is a Sunday -> 6 leading zeros before day 1
+    for i in range(6):
+        assert days[i] == 0
+    assert days[6] == 1
+    # Total count is a multiple of 7
+    assert len(days) % 7 == 0
+    # All non-zero days 1..28 are present
+    non_zero: list[int] = [d for d in days if d != 0]
+    assert non_zero == list(range(1, 29))
+
+# --- Firstweekday ---
+
+@test
+def test_itermonthdays2_firstweekday_sunday_first_weekday_is_six():
+    cal = calendar.Calendar(6)
+    pairs = list(cal.itermonthdays2(2026, 6))
+    # With Sunday as first weekday, the first slot's weekday is 6
+    assert pairs[0][1] == 6
+    # June 1 (Monday) lands in the second slot with weekday 0
+    assert pairs[1][0] == 1
+    assert pairs[1][1] == 0
+
+# --- TextCalendar.Formatmonth ---
+
+@test
+def test_text_calendar_formatmonth_contains_key_content():
+    cal = calendar.TextCalendar(0)
+    output: str = cal.formatmonth(2026, 6)
+    assert "June" in output
+    assert "2026" in output
+    assert "Mo" in output
+    assert "Su" in output
+    assert "15" in output
+    assert "30" in output
+
+# --- HTMLCalendar.Formatmonth ---
+
+@test
+def test_html_calendar_formatmonth_contains_table_and_days():
+    cal = calendar.HTMLCalendar(0)
+    output: str = cal.formatmonth(2026, 6)
+    assert "<table" in output
+    assert 'class="month"' in output
+    assert "June 2026" in output
+    assert 'class="mon"' in output
+    assert 'class="noday"' in output
+    assert ">15</td>" in output
+    assert ">30</td>" in output
+    assert "</table>" in output
+
+@test
+def test_html_calendar_formatmonth_without_year_omits_year():
+    cal = calendar.HTMLCalendar(0)
+    output: str = cal.formatmonth(2026, 6, withyear=False)
+    assert ">June</th>" in output
+    assert "June 2026" not in output
+
+# --- Timegm ---
+
+@test
+def test_timegm_epoch_returns_zero():
+    assert calendar.timegm(1970, 1, 1, 0, 0, 0) == 0
+
+@test
+def test_timegm_known_date_returns_expected_seconds():
+    assert calendar.timegm(2026, 1, 1, 0, 0, 0) == 1767225600
+
+# --- Setfirstweekday ---
+
+@test
+def test_setfirstweekday_changes_module_month_output():
+    calendar.setfirstweekday(0)
+    monday_first: str = calendar.month(2026, 6)
+    calendar.setfirstweekday(6)
+    sunday_first: str = calendar.month(2026, 6)
+    # The day-header row differs depending on the first weekday
+    assert monday_first != sunday_first
+    assert "Mo Tu We Th Fr Sa Su" in monday_first
+    assert "Su Mo Tu We Th Fr Sa" in sunday_first
+    # Reset
+    calendar.setfirstweekday(0)
+
+@test
+def test_setfirstweekday_invalid_value_throws():
+    with assert_raises(ValueError):
+        calendar.setfirstweekday(7)
+    with assert_raises(ValueError):
+        calendar.setfirstweekday(-1)
+
+# --- Edge cases ---
+
+@test
+def test_monthrange_leap_vs_non_leap_february_differs_in_day_count():
+    leap: tuple[int, int] = calendar.monthrange(2024, 2)
+    non_leap: tuple[int, int] = calendar.monthrange(2025, 2)
+    assert leap[1] == 29
+    assert non_leap[1] == 28
+
+@test
+def test_monthrange_december_returns_31_days():
+    result: tuple[int, int] = calendar.monthrange(2026, 12)
+    assert result[1] == 31
+
+@test
+def test_monthcalendar_december_2026_has_all_days():
+    calendar.setfirstweekday(0)
+    cal: list[list[int]] = calendar.monthcalendar(2026, 12)
+    all_days: list[int] = []
+    for week in cal:
+        for d in week:
+            if d != 0:
+                all_days.append(d)
+    all_days.sort()
+    assert all_days == list(range(1, 32))
+    # Reset
+    calendar.setfirstweekday(0)

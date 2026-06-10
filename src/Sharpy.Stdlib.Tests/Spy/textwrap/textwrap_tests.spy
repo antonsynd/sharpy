@@ -1,0 +1,163 @@
+from unittest import assert_raises
+
+import textwrap
+
+# --- wrap ---
+
+@test
+def test_wrap_basic_word_wrap():
+    result: list[str] = textwrap.wrap("Hello World", 5)
+    assert len(result) == 2
+    assert result[0] == "Hello"
+    assert result[1] == "World"
+
+@test
+def test_wrap_empty_string_returns_empty_list():
+    result: list[str] = textwrap.wrap("", 5)
+    assert len(result) == 0
+
+@test
+def test_wrap_whitespace_only_returns_empty_list():
+    result: list[str] = textwrap.wrap("   ", 5)
+    assert len(result) == 0
+
+@test
+def test_wrap_long_word_breaks_word():
+    result: list[str] = textwrap.wrap("abcdefgh", 5)
+    assert len(result) == 2
+    assert result[0] == "abcde"
+    assert result[1] == "fgh"
+
+@test
+def test_wrap_very_long_word_breaks_into_multiple_chunks():
+    result: list[str] = textwrap.wrap("abcdefghijklmnop", 5)
+    assert len(result) == 4
+    assert result[0] == "abcde"
+    assert result[1] == "fghij"
+    assert result[2] == "klmno"
+    assert result[3] == "p"
+
+@test
+def test_wrap_default_width_70():
+    text: str = "a" * 100
+    result: list[str] = textwrap.wrap(text)
+    assert len(result) == 2
+    assert len(result[0]) == 70
+    assert len(result[1]) == 30
+
+@test
+def test_wrap_collapses_whitespace():
+    result: list[str] = textwrap.wrap("hello   world", 70)
+    assert len(result) == 1
+    assert result[0] == "hello world"
+
+@test
+def test_wrap_collapses_newlines():
+    result: list[str] = textwrap.wrap("hello\nworld", 70)
+    assert len(result) == 1
+    assert result[0] == "hello world"
+
+# --- fill ---
+
+@test
+def test_fill_joins_with_newlines():
+    result: str = textwrap.fill("Hello World", 5)
+    assert result == "Hello\nWorld"
+
+@test
+def test_fill_empty_string_returns_empty():
+    result: str = textwrap.fill("", 5)
+    assert result == ""
+
+# --- dedent ---
+
+@test
+def test_dedent_removes_common_indentation():
+    result: str = textwrap.dedent("  hello\n  world")
+    assert result == "hello\nworld"
+
+@test
+def test_dedent_partial_common_indentation():
+    result: str = textwrap.dedent("  hello\n    world")
+    assert result == "hello\n  world"
+
+@test
+def test_dedent_empty_lines_ignored():
+    result: str = textwrap.dedent("  hello\n\n  world")
+    assert result == "hello\n\nworld"
+
+@test
+def test_dedent_no_common_indentation():
+    result: str = textwrap.dedent("hello\nworld")
+    assert result == "hello\nworld"
+
+@test
+def test_dedent_tab_indentation():
+    result: str = textwrap.dedent("\thello\n\tworld")
+    assert result == "hello\nworld"
+
+@test
+def test_dedent_empty_string():
+    result: str = textwrap.dedent("")
+    assert result == ""
+
+# --- indent ---
+
+@test
+def test_indent_adds_prefix():
+    result: str = textwrap.indent("hello\nworld", "  ")
+    assert result == "  hello\n  world"
+
+@test
+def test_indent_skips_empty_lines():
+    result: str = textwrap.indent("hello\n\nworld", "> ")
+    assert result == "> hello\n\n> world"
+
+@test
+def test_indent_skips_whitespace_only_lines():
+    result: str = textwrap.indent("hello\n  \nworld", "> ")
+    assert result == "> hello\n  \n> world"
+
+@test
+def test_indent_preserves_trailing_newline():
+    result: str = textwrap.indent("hello\n\nworld\n", "> ")
+    assert result == "> hello\n\n> world\n"
+
+@test
+def test_indent_empty_string():
+    result: str = textwrap.indent("", "  ")
+    assert result == ""
+
+# --- shorten ---
+
+@test
+def test_shorten_fits_within_width():
+    result: str = textwrap.shorten("Hello", 5)
+    assert result == "Hello"
+
+@test
+def test_shorten_truncates_with_placeholder():
+    result: str = textwrap.shorten("Hello World", 10)
+    assert len(result) <= 10
+    assert "[...]" in result
+
+@test
+def test_shorten_collapses_whitespace():
+    result: str = textwrap.shorten("Hello  World", 11)
+    assert result == "Hello World"
+
+@test
+def test_shorten_very_small_width_throws():
+    with assert_raises(ValueError):
+        textwrap.shorten("Hello World", 3)
+
+@test
+def test_shorten_collapsed_text_fits_exactly():
+    result: str = textwrap.shorten("Hello  World", 12)
+    assert result == "Hello World"
+
+@test
+def test_shorten_single_long_word():
+    result: str = textwrap.shorten("Supercalifragilistic", 10)
+    assert "[...]" in result
+    assert len(result) <= 10

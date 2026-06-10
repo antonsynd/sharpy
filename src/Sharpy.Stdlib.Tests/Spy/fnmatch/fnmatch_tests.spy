@@ -1,0 +1,120 @@
+import fnmatch
+
+# --- fnmatchcase (always case-sensitive) ---
+
+# Theory: FnMatchCase_BasicPatterns (7 inline data rows)
+@test.parametrize([
+    ("foo.txt", "*.txt", True),
+    ("foo.py", "*.txt", False),
+    ("foo.TXT", "*.txt", False),
+    ("foo", "foo", True),
+    ("foo", "f?o", True),
+    ("fo", "f?o", False),
+    ("fooo", "f?o", False),
+])
+def test_fnmatchcase_basic_patterns(name: str, pat: str, expected: bool):
+    assert fnmatch.fnmatchcase(name, pat) == expected
+
+# Theory: FnMatchCase_CharacterClass (2 inline data rows)
+@test.parametrize([
+    ("foo", "f[oa]o", True),
+    ("fbo", "f[oa]o", False),
+])
+def test_fnmatchcase_character_class(name: str, pat: str, expected: bool):
+    assert fnmatch.fnmatchcase(name, pat) == expected
+
+# Theory: FnMatchCase_NegatedCharacterClass (3 inline data rows)
+@test.parametrize([
+    ("fxo", "f[!ab]o", True),
+    ("fao", "f[!ab]o", False),
+    ("fbo", "f[!ab]o", False),
+])
+def test_fnmatchcase_negated_character_class(name: str, pat: str, expected: bool):
+    assert fnmatch.fnmatchcase(name, pat) == expected
+
+@test
+def test_fnmatchcase_wildcard_matches_anything():
+    assert fnmatch.fnmatchcase("anything", "*")
+    assert fnmatch.fnmatchcase("", "*")
+
+@test
+def test_fnmatchcase_question_mark_matches_single_char():
+    assert fnmatch.fnmatchcase("a", "?")
+    assert not fnmatch.fnmatchcase("", "?")
+    assert not fnmatch.fnmatchcase("ab", "?")
+
+@test
+def test_fnmatchcase_special_chars_escaped():
+    assert fnmatch.fnmatchcase("file.txt", "file.txt")
+    assert not fnmatch.fnmatchcase("fileatxt", "file.txt")
+
+@test
+def test_fnmatchcase_case_sensitive():
+    assert not fnmatch.fnmatchcase("FOO.TXT", "*.txt")
+    assert fnmatch.fnmatchcase("FOO.TXT", "*.TXT")
+
+# --- fnmatch (platform-dependent case sensitivity) ---
+
+@test
+def test_fnmatch_case_sensitive_on_unix():
+    # On non-Windows, fnmatch is case-sensitive (Unix/macOS only)
+    assert not fnmatch.fnmatch("FOO.TXT", "*.txt")
+
+@test
+def test_fnmatch_basic_match():
+    assert fnmatch.fnmatch("foo.txt", "*.txt")
+    assert not fnmatch.fnmatch("foo.py", "*.txt")
+
+# --- filter ---
+
+@test
+def test_filter_returns_matching_names():
+    names: list[str] = ["foo.txt", "bar.py", "baz.txt"]
+    result: list[str] = fnmatch.filter(names, "*.txt")
+    assert len(result) == 2
+    assert result[0] == "foo.txt"
+    assert result[1] == "baz.txt"
+
+@test
+def test_filter_no_matches_returns_empty_list():
+    names: list[str] = ["foo.py", "bar.py"]
+    result: list[str] = fnmatch.filter(names, "*.txt")
+    assert len(result) == 0
+
+@test
+def test_filter_empty_list_returns_empty_list():
+    names: list[str] = []
+    result: list[str] = fnmatch.filter(names, "*")
+    assert len(result) == 0
+
+# --- translate ---
+
+@test
+def test_translate_star_to_regex():
+    result: str = fnmatch.translate("*.txt")
+    assert result == "\\A(?s:.*\\.txt)\\Z"
+
+@test
+def test_translate_question_mark_to_regex():
+    result: str = fnmatch.translate("?.txt")
+    assert result == "\\A(?s:.\\.txt)\\Z"
+
+@test
+def test_translate_character_class_to_regex():
+    result: str = fnmatch.translate("[abc]")
+    assert result == "\\A(?s:[abc])\\Z"
+
+@test
+def test_translate_negated_class_to_regex():
+    result: str = fnmatch.translate("[!abc]")
+    assert result == "\\A(?s:[^abc])\\Z"
+
+@test
+def test_translate_unclosed_bracket_treated_as_literal():
+    result: str = fnmatch.translate("[abc")
+    assert "\\[" in result
+
+@test
+def test_translate_star_only():
+    result: str = fnmatch.translate("*")
+    assert result == "\\A(?s:.*)\\Z"

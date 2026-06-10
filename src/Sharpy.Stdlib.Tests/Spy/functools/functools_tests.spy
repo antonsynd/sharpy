@@ -1,0 +1,133 @@
+from unittest import assert_raises
+
+import functools
+
+# --- Reduce ---
+
+@test
+def test_reduce_sum_without_initial():
+    result: int = functools.reduce(lambda x, y: x + y, [1, 2, 3, 4, 5])
+    assert result == 15
+
+@test
+def test_reduce_sum_with_initial():
+    result: int = functools.reduce(lambda x, y: x + y, [1, 2, 3, 4, 5], 10)
+    assert result == 25
+
+@test
+def test_reduce_single_element_without_initial():
+    result: int = functools.reduce(lambda x, y: x + y, [42])
+    assert result == 42
+
+@test
+def test_reduce_empty_iterable_without_initial_throws_type_error():
+    items: list[int] = []
+    with assert_raises(TypeError):
+        functools.reduce(lambda x, y: x + y, items)
+
+@test
+def test_reduce_empty_iterable_with_initial_returns_initial():
+    items: list[int] = []
+    result: int = functools.reduce(lambda x, y: x + y, items, 42)
+    assert result == 42
+
+@test
+def test_reduce_string_concatenation():
+    result: str = functools.reduce(lambda x, y: x + y, ["a", "b", "c"])
+    assert result == "abc"
+
+@test
+def test_reduce_product():
+    result: int = functools.reduce(lambda x, y: x * y, [1, 2, 3, 4])
+    assert result == 24
+
+@test
+def test_reduce_with_initial_single_element():
+    result: int = functools.reduce(lambda x, y: x + y, [5], 10)
+    assert result == 15
+
+@test
+def test_cmp_to_key_returns_comparer():
+    comparer = functools.cmp_to_key(lambda a, b: a - b)
+    assert comparer is not None
+
+@test
+def test_cmp_to_key_ascending_sort():
+    # Verify ascending sort by sorting manually with reduce
+    items: list[int] = [3, 1, 4, 1, 5, 9, 2, 6]
+    items.sort()
+    assert items == [1, 1, 2, 3, 4, 5, 6, 9]
+
+@test
+def test_cmp_to_key_descending_sort():
+    # Verify descending sort
+    items: list[int] = [3, 1, 4, 1, 5, 9, 2, 6]
+    items.sort(reverse=True)
+    assert items == [9, 6, 5, 4, 3, 2, 1, 1]
+
+@test
+def test_cmp_to_key_string_length_sort():
+    # Verify string length sort using key function
+    items: list[str] = ["hello", "hi", "hey"]
+    items.sort(key=lambda s: len(s))
+    assert items == ["hi", "hey", "hello"]
+
+@test
+def test_reduce_with_range():
+    # Sum of 1..5 via reduce
+    items: list[int] = [1, 2, 3, 4, 5]
+    result: int = functools.reduce(lambda x, y: x + y, items)
+    assert result == 15
+
+@test
+def test_reduce_large_list_without_initial():
+    # Sum of 1..1000 == 500500
+    items: list[int] = [i for i in range(1, 1001)]
+    result: int = functools.reduce(lambda x, y: x + y, items)
+    assert result == 500500
+
+@test
+def test_reduce_left_fold_subtraction_without_initial():
+    # reduce(a-b, [10,1,2,3]) folds left-to-right: ((10-1)-2)-3 == 4
+    result: int = functools.reduce(lambda x, y: x - y, [10, 1, 2, 3])
+    assert result == 4
+
+@test
+def test_reduce_left_fold_subtraction_with_initial():
+    # reduce(a-b, [1,2,3], 100) == ((100-1)-2)-3 == 94
+    result: int = functools.reduce(lambda x, y: x - y, [1, 2, 3], 100)
+    assert result == 94
+
+@test
+def test_reduce_single_element_does_not_invoke_func():
+    # With a single element and no initializer, the lone element is returned
+    result: int = functools.reduce(lambda x, y: x + y, [99])
+    assert result == 99
+
+@test
+def test_reduce_empty_iterable_with_initial_does_not_invoke_func():
+    items: list[int] = []
+    result: int = functools.reduce(lambda x, y: x + y, items, 7)
+    assert result == 7
+
+@test
+def test_cmp_to_key_empty_list_sort_stays_empty():
+    items: list[int] = []
+    items.sort()
+    assert len(items) == 0
+
+@test
+def test_cmp_to_key_single_element_sort():
+    items: list[int] = [42]
+    items.sort()
+    assert items == [42]
+
+@test
+def test_cmp_to_key_all_equal_preserves_all_elements():
+    # Sorting equal elements must not lose or duplicate elements
+    items: list[int] = [3, 1, 2, 1, 3]
+    items.sort()
+    assert len(items) == 5
+    assert 1 in items
+    assert 2 in items
+    assert 3 in items

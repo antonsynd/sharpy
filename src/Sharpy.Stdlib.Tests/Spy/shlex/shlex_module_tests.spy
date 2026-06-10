@@ -1,0 +1,167 @@
+from unittest import assert_raises
+
+import shlex
+
+# --- Split ---
+
+@test
+def test_split_simple_words():
+    assert shlex.split("hello world") == ["hello", "world"]
+
+@test
+def test_split_single_quoted_string():
+    assert shlex.split("echo 'hello world'") == ["echo", "hello world"]
+
+@test
+def test_split_double_quoted_string():
+    result: list[str] = shlex.split('echo "hello world"')
+    assert result == ["echo", "hello world"]
+
+@test
+def test_split_backslash_escaping():
+    assert shlex.split("hello\\ world") == ["hello world"]
+
+@test
+def test_split_backslash_in_double_quotes():
+    result: list[str] = shlex.split('"hello\\"world"')
+    assert result == ['hello"world']
+
+@test
+def test_split_pipes_and_redirects():
+    result: list[str] = shlex.split("cat file.txt | grep pattern > output.txt")
+    assert result == ["cat", "file.txt", "|", "grep", "pattern", ">", "output.txt"]
+
+@test
+def test_split_empty_string():
+    assert len(shlex.split("")) == 0
+
+@test
+def test_split_whitespace_only():
+    assert len(shlex.split("   \t  \n  ")) == 0
+
+@test
+def test_split_multiple_spaces():
+    assert shlex.split("a   b     c") == ["a", "b", "c"]
+
+@test
+def test_split_unicode_in_quotes():
+    result: list[str] = shlex.split("echo '日本語テスト'")
+    assert result == ["echo", "日本語テスト"]
+
+@test
+def test_split_adjacent_quoted_strings():
+    assert shlex.split("'hello ''world'") == ["hello world"]
+
+@test
+def test_split_mixed_quotes():
+    result: list[str] = shlex.split("echo 'single' \"double\"")
+    assert result == ["echo", "single", "double"]
+
+@test
+def test_split_hash_not_comment_by_default():
+    result: list[str] = shlex.split("echo foo#bar")
+    assert result == ["echo", "foo#bar"]
+
+@test
+def test_split_hash_as_comment_when_enabled():
+    result: list[str] = shlex.split("echo foo #comment", comments=True)
+    assert result == ["echo", "foo"]
+
+@test
+def test_split_hash_inside_quotes_not_comment():
+    result: list[str] = shlex.split("echo 'foo#bar'", comments=True)
+    assert result == ["echo", "foo#bar"]
+
+@test
+def test_split_unclosed_single_quote_throws():
+    with assert_raises(ValueError):
+        shlex.split("echo 'hello")
+
+@test
+def test_split_unclosed_double_quote_throws():
+    with assert_raises(ValueError):
+        shlex.split('echo "hello')
+
+@test
+def test_split_trailing_backslash_throws():
+    with assert_raises(ValueError):
+        shlex.split("echo test\\")
+
+@test
+def test_split_non_posix_mode_throws():
+    with assert_raises(ValueError):
+        shlex.split("test", posix=False)
+
+@test
+def test_split_none_throws_type_error():
+    with assert_raises(TypeError):
+        shlex.split(None)
+
+@test
+def test_split_tab_and_newline_as_delimiters():
+    assert shlex.split("a\tb\nc") == ["a", "b", "c"]
+
+@test
+def test_split_non_special_backslash_in_double_quotes():
+    result: list[str] = shlex.split('"hello\\nworld"')
+    assert result == ["hello\\nworld"]
+
+# --- Quote ---
+
+@test
+def test_quote_safe_string_no_quoting():
+    assert shlex.quote("hello") == "hello"
+
+@test
+def test_quote_empty_string():
+    assert shlex.quote("") == "''"
+
+@test
+def test_quote_string_with_spaces():
+    assert shlex.quote("hello world") == "'hello world'"
+
+@test
+def test_quote_string_with_single_quote():
+    assert shlex.quote("it's") == "'it'\"'\"'s'"
+
+@test
+def test_quote_string_with_special_chars():
+    assert shlex.quote("hello;world") == "'hello;world'"
+
+@test
+def test_quote_safe_chars_not_quoted():
+    assert shlex.quote("file-name_v2.0/path") == "file-name_v2.0/path"
+
+@test
+def test_quote_none_throws_type_error():
+    with assert_raises(TypeError):
+        shlex.quote(None)
+
+# --- Join ---
+
+@test
+def test_join_simple_tokens():
+    assert shlex.join(["echo", "hello world"]) == "echo 'hello world'"
+
+@test
+def test_join_empty_list():
+    tokens: list[str] = []
+    assert shlex.join(tokens) == ""
+
+@test
+def test_join_single_token():
+    assert shlex.join(["hello"]) == "hello"
+
+@test
+def test_join_none_throws_type_error():
+    with assert_raises(TypeError):
+        shlex.join(None)
+
+# --- Roundtrip ---
+
+@test
+def test_split_join_roundtrip():
+    tokens: list[str] = ["echo", "hello world", "|", "grep", "hello"]
+    joined: str = shlex.join(tokens)
+    split_result: list[str] = shlex.split(joined)
+    assert split_result == tokens

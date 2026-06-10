@@ -1,0 +1,396 @@
+from unittest import assert_raises, approx
+
+import fractions
+import math
+
+# --- Construction ---
+
+@test
+def test_fraction_from_ints_reduces_to_lowest_terms():
+    f = fractions.Fraction(2, 4)
+    assert f.numerator == 1
+    assert f.denominator == 2
+
+@test
+def test_fraction_from_int_has_denominator_one():
+    f = fractions.Fraction(5)
+    assert f.numerator == 5
+    assert f.denominator == 1
+
+@test
+def test_fraction_negative_denominator_normalizes_sign():
+    f = fractions.Fraction(1, -3)
+    assert f.numerator == -1
+    assert f.denominator == 3
+
+@test
+def test_fraction_both_negative_becomes_positive():
+    f = fractions.Fraction(-2, -6)
+    assert f.numerator == 1
+    assert f.denominator == 3
+
+@test
+def test_fraction_zero_denominator_throws():
+    with assert_raises(ZeroDivisionError):
+        fractions.Fraction(1, 0)
+
+@test
+def test_fraction_from_double_exact_representation_half():
+    f = fractions.Fraction(0.5)
+    assert f.numerator == 1
+    assert f.denominator == 2
+
+@test
+def test_fraction_from_double_exact_representation_quarter():
+    f = fractions.Fraction(0.25)
+    assert f.numerator == 1
+    assert f.denominator == 4
+
+@test
+def test_fraction_from_double_0_1_exact_binary_representation():
+    # Python: Fraction(0.1) == Fraction(3602879701896397, 36028797018963968)
+    f = fractions.Fraction(0.1)
+    assert f.numerator == 3602879701896397
+    assert f.denominator == 36028797018963968
+
+@test
+def test_fraction_from_nan_throws():
+    with assert_raises(ValueError):
+        fractions.Fraction(math.Nan)
+
+@test
+def test_fraction_from_infinity_throws():
+    with assert_raises(ValueError):
+        fractions.Fraction(math.Inf)
+
+@test
+def test_fraction_copy_constructor():
+    original = fractions.Fraction(3, 7)
+    copy = fractions.Fraction(original)
+    assert copy.numerator == 3
+    assert copy.denominator == 7
+
+# --- String construction ---
+
+@test
+def test_fraction_from_string_slash_format():
+    f = fractions.Fraction("3/7")
+    assert f.numerator == 3
+    assert f.denominator == 7
+
+@test
+def test_fraction_from_string_decimal_format():
+    f = fractions.Fraction("3.14")
+    assert f.numerator == 157
+    assert f.denominator == 50
+
+@test
+def test_fraction_from_string_integer_format():
+    f = fractions.Fraction("42")
+    assert f.numerator == 42
+    assert f.denominator == 1
+
+@test
+def test_fraction_from_string_negative():
+    f = fractions.Fraction("-1/3")
+    assert f.numerator == -1
+    assert f.denominator == 3
+
+@test
+def test_fraction_from_string_negative_decimal():
+    f = fractions.Fraction("-0.5")
+    assert f.numerator == -1
+    assert f.denominator == 2
+
+@test
+def test_fraction_from_string_empty_throws():
+    with assert_raises(ValueError):
+        fractions.Fraction("")
+
+@test
+def test_fraction_from_string_scientific_notation_negative_exponent():
+    f = fractions.Fraction("1e-2")
+    assert f.numerator == 1
+    assert f.denominator == 100
+
+@test
+def test_fraction_from_string_scientific_notation_positive_exponent():
+    f = fractions.Fraction("1.5e2")
+    assert f.numerator == 150
+    assert f.denominator == 1
+
+# --- Arithmetic ---
+
+@test
+def test_fraction_addition():
+    result = fractions.Fraction(1, 3) + fractions.Fraction(1, 6)
+    assert result.numerator == 1
+    assert result.denominator == 2
+
+@test
+def test_fraction_subtraction():
+    result = fractions.Fraction(1, 2) - fractions.Fraction(1, 3)
+    assert result.numerator == 1
+    assert result.denominator == 6
+
+@test
+def test_fraction_multiplication():
+    result = fractions.Fraction(2, 3) * fractions.Fraction(3, 4)
+    assert result.numerator == 1
+    assert result.denominator == 2
+
+@test
+def test_fraction_division():
+    result = fractions.Fraction(1, 2) / fractions.Fraction(1, 4)
+    assert result.numerator == 2
+    assert result.denominator == 1
+
+@test
+def test_fraction_division_by_zero_throws():
+    with assert_raises(ZeroDivisionError):
+        fractions.Fraction(1, 2) / fractions.Fraction(0)
+
+@test
+def test_fraction_negation():
+    f = -fractions.Fraction(3, 4)
+    assert f.numerator == -3
+    assert f.denominator == 4
+
+@test
+def test_fraction_modulo_operator():
+    result = fractions.Fraction(7, 2) % fractions.Fraction(3, 2)
+    assert result == fractions.Fraction(1, 2)
+
+# --- FloorDiv ---
+
+@test
+def test_fraction_floor_div_returns_long():
+    result: int = fractions.Fraction(7, 2).floor_div(fractions.Fraction(3, 2))
+    assert result == 2
+
+@test
+def test_fraction_floor_div_negative_returns_long():
+    result: int = fractions.Fraction(-7, 2).floor_div(fractions.Fraction(3, 2))
+    assert result == -3
+
+@test
+def test_fraction_floor_div_exact():
+    result: int = fractions.Fraction(6, 1).floor_div(fractions.Fraction(3, 1))
+    assert result == 2
+
+@test
+def test_fraction_floor_div_by_zero_throws():
+    with assert_raises(ZeroDivisionError):
+        fractions.Fraction(1, 2).floor_div(fractions.Fraction(0))
+
+# --- Mod ---
+
+@test
+def test_fraction_mod():
+    result = fractions.Fraction.mod(fractions.Fraction(7, 2), fractions.Fraction(3, 2))
+    assert result == fractions.Fraction(1, 2)
+
+@test
+def test_fraction_mod_by_zero_throws():
+    with assert_raises(ZeroDivisionError):
+        fractions.Fraction.mod(fractions.Fraction(1), fractions.Fraction(0))
+
+# --- Pow ---
+
+@test
+def test_fraction_pow_positive():
+    result = fractions.Fraction(2, 3).pow(3)
+    assert result.numerator == 8
+    assert result.denominator == 27
+
+@test
+def test_fraction_pow_negative():
+    result = fractions.Fraction(2, 3).pow(-2)
+    assert result.numerator == 9
+    assert result.denominator == 4
+
+@test
+def test_fraction_pow_zero():
+    result = fractions.Fraction(2, 3).pow(0)
+    assert result == fractions.Fraction(1)
+
+# --- Abs ---
+
+@test
+def test_fraction_abs_negative():
+    result = fractions.Fraction(-3, 4).abs()
+    assert result.numerator == 3
+    assert result.denominator == 4
+
+@test
+def test_fraction_abs_positive():
+    result = fractions.Fraction(3, 4).abs()
+    assert result.numerator == 3
+    assert result.denominator == 4
+
+@test
+def test_fraction_abs_zero():
+    result = fractions.Fraction(0).abs()
+    assert result == fractions.Fraction(0)
+
+# --- ToLong ---
+
+@test
+def test_fraction_to_long_positive():
+    # Python: int(Fraction(7,2)) == 3 (truncate toward zero)
+    assert fractions.Fraction(7, 2).to_long() == 3
+
+@test
+def test_fraction_to_long_negative():
+    # Python: int(Fraction(-7,2)) == -3 (truncate toward zero)
+    assert fractions.Fraction(-7, 2).to_long() == -3
+
+@test
+def test_fraction_to_long_exact():
+    assert fractions.Fraction(6, 3).to_long() == 2
+
+# --- Mixed arithmetic with int ---
+
+@test
+def test_fraction_add_int():
+    result = fractions.Fraction(1, 2) + 3
+    assert result == fractions.Fraction(7, 2)
+
+@test
+def test_int_add_fraction():
+    result = 3 + fractions.Fraction(1, 2)
+    assert result == fractions.Fraction(7, 2)
+
+@test
+def test_fraction_subtract_int():
+    result = fractions.Fraction(7, 2) - 1
+    assert result == fractions.Fraction(5, 2)
+
+@test
+def test_int_subtract_fraction():
+    result = 3 - fractions.Fraction(1, 2)
+    assert result == fractions.Fraction(5, 2)
+
+@test
+def test_fraction_multiply_int():
+    result = fractions.Fraction(1, 3) * 6
+    assert result == fractions.Fraction(2)
+
+@test
+def test_int_multiply_fraction():
+    result = 6 * fractions.Fraction(1, 3)
+    assert result == fractions.Fraction(2)
+
+@test
+def test_fraction_divide_int():
+    result = fractions.Fraction(3, 2) / 3
+    assert result == fractions.Fraction(1, 2)
+
+@test
+def test_int_divide_fraction():
+    result = 3 / fractions.Fraction(2, 1)
+    assert result == fractions.Fraction(3, 2)
+
+@test
+def test_fraction_mod_int():
+    result = fractions.Fraction(7, 2) % 2
+    assert result == fractions.Fraction(3, 2)
+
+@test
+def test_int_mod_fraction():
+    # Python: 7 % Fraction(3, 2) == 1
+    result = 7 % fractions.Fraction(3, 2)
+    assert result == fractions.Fraction(1)
+
+# --- Comparison ---
+
+@test
+def test_fraction_equality():
+    a = fractions.Fraction(2, 4)
+    b = fractions.Fraction(1, 2)
+    assert a == b
+
+@test
+def test_fraction_inequality():
+    a = fractions.Fraction(1, 3)
+    b = fractions.Fraction(1, 2)
+    assert a != b
+
+@test
+def test_fraction_less_than():
+    assert fractions.Fraction(1, 3) < fractions.Fraction(1, 2)
+
+@test
+def test_fraction_greater_than():
+    assert fractions.Fraction(2, 3) > fractions.Fraction(1, 2)
+
+@test
+def test_fraction_compare_with_int():
+    f = fractions.Fraction(3, 1)
+    assert f == fractions.Fraction(3)
+
+# --- LimitDenominator ---
+
+@test
+def test_fraction_limit_denominator_pi():
+    pi = fractions.Fraction("3.141592653589793")
+    approx_pi = pi.limit_denominator(1000)
+    assert approx_pi.numerator == 355
+    assert approx_pi.denominator == 113
+
+@test
+def test_fraction_limit_denominator_already_below():
+    f = fractions.Fraction(1, 3)
+    result = f.limit_denominator(10)
+    assert result == f
+
+@test
+def test_fraction_limit_denominator_invalid_max_throws():
+    f = fractions.Fraction(1, 3)
+    with assert_raises(ValueError):
+        f.limit_denominator(0)
+
+@test
+def test_fraction_limit_denominator_355_113_max_denom_100():
+    # Python: Fraction(355, 113).limit_denominator(100) == Fraction(311, 99)
+    f = fractions.Fraction(355, 113)
+    result = f.limit_denominator(100)
+    assert result.numerator == 311
+    assert result.denominator == 99
+
+@test
+def test_fraction_limit_denominator_0_1_max_denom_10():
+    # Python: Fraction(0.1).limit_denominator(10) == Fraction(1, 10)
+    f = fractions.Fraction(0.1)
+    result = f.limit_denominator(10)
+    assert result.numerator == 1
+    assert result.denominator == 10
+
+# --- ToString ---
+
+@test
+def test_fraction_to_string_fraction():
+    assert str(fractions.Fraction(1, 3)) == "1/3"
+
+@test
+def test_fraction_to_string_integer():
+    assert str(fractions.Fraction(4, 2)) == "2"
+
+@test
+def test_fraction_to_string_zero():
+    assert str(fractions.Fraction(0, 5)) == "0"
+
+# --- Large numbers ---
+
+@test
+def test_fraction_large_numerator_denominator():
+    big = 10 ** 50
+    f = fractions.Fraction(big, big * 2)
+    assert f.numerator == 1
+    assert f.denominator == 2
+
+# --- ToDouble ---
+
+@test
+def test_fraction_to_double():
+    assert fractions.Fraction(1, 3).to_double() == approx(1.0 / 3.0, abs=1e-15)

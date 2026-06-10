@@ -1,0 +1,119 @@
+from unittest import assert_raises, approx
+from sharpy import StatisticsError
+
+import statistics
+
+# -- Pstdev with single element: population stdev of one value is 0 --
+
+@test
+def test_pstdev_single_element_returns_zero():
+    assert statistics.pstdev([5.0]) == 0.0
+
+# -- Variance and Pvariance with all identical values --
+
+@test
+def test_variance_all_identical_throws_when_single_element():
+    with assert_raises(StatisticsError):
+        statistics.variance([7.0])
+
+@test
+def test_variance_all_identical_returns_zero():
+    result: float = statistics.variance([3.0, 3.0, 3.0, 3.0])
+    assert result == 0.0
+
+@test
+def test_pvariance_all_identical_returns_zero():
+    result: float = statistics.pvariance([3.0, 3.0, 3.0, 3.0])
+    assert result == 0.0
+
+# -- Integer and long overloads for Variance, Pvariance, Pstdev --
+
+@test
+def test_variance_int_overload_matches_double_result():
+    expected: float = statistics.variance([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])
+    result: float = statistics.variance([2, 4, 4, 4, 5, 5, 7, 9])
+    assert result == approx(expected, abs=1e-10)
+
+@test
+def test_pvariance_int_overload_matches_double_result():
+    expected: float = statistics.pvariance([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])
+    result: float = statistics.pvariance([2, 4, 4, 4, 5, 5, 7, 9])
+    assert result == approx(expected, abs=1e-10)
+
+@test
+def test_pstdev_int_overload_matches_double_result():
+    expected: float = statistics.pstdev([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])
+    result: float = statistics.pstdev([2, 4, 4, 4, 5, 5, 7, 9])
+    assert result == approx(expected, abs=1e-10)
+
+@test
+def test_variance_long_overload_matches_double_result():
+    expected: float = statistics.variance([10.0, 20.0, 30.0])
+    result: float = statistics.variance([10, 20, 30])
+    assert result == approx(expected, abs=1e-10)
+
+@test
+def test_pvariance_long_overload_matches_double_result():
+    expected: float = statistics.pvariance([10.0, 20.0, 30.0])
+    result: float = statistics.pvariance([10, 20, 30])
+    assert result == approx(expected, abs=1e-10)
+
+@test
+def test_pstdev_long_overload_matches_double_result():
+    expected: float = statistics.pstdev([10.0, 20.0, 30.0])
+    result: float = statistics.pstdev([10, 20, 30])
+    assert result == approx(expected, abs=1e-10)
+
+# -- Fmean edge cases --
+
+@test
+def test_fmean_single_element_returns_that_element():
+    assert statistics.fmean([42.0]) == 42.0
+
+@test
+def test_fmean_empty_data_throws_statistics_error():
+    empty: list[float] = []
+    with assert_raises(StatisticsError):
+        statistics.fmean(empty)
+
+@test
+def test_fmean_int_overload_matches_mean():
+    expected: float = statistics.mean([1, 2, 3, 4, 5])
+    assert statistics.fmean([1, 2, 3, 4, 5]) == expected
+
+# -- Stdev with minimum two elements --
+
+@test
+def test_stdev_two_elements_returns_correct_result():
+    result: float = statistics.stdev([1.0, 3.0])
+    assert result == approx(1.4142135623730951, abs=1e-10)
+
+@test
+def test_variance_two_elements_returns_correct_result():
+    result: float = statistics.variance([1.0, 3.0])
+    assert result == approx(2.0, abs=1e-10)
+
+# -- Mode: all unique values, first encountered wins --
+
+@test
+def test_mode_all_unique_returns_first_encountered():
+    assert statistics.mode([3, 1, 4, 1]) == 1
+
+@test
+def test_mode_double_values_returns_mode():
+    assert statistics.mode([1.5, 1.5, 2.0]) == 1.5
+
+# -- Mean does not mutate input --
+
+@test
+def test_mean_does_not_mutate_input():
+    data: list[float] = [4.0, 1.0, 3.0, 2.0]
+    statistics.mean(data)
+    assert data == [4.0, 1.0, 3.0, 2.0]
+
+# -- Mean with floats: verify floating-point result --
+
+@test
+def test_mean_floating_point_values_returns_correct_average():
+    result: float = statistics.mean([0.1, 0.2, 0.3])
+    assert result == approx(0.2, abs=1e-14)

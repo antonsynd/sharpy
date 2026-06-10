@@ -1,0 +1,77 @@
+from unittest import assert_raises
+
+import uuid
+
+@test
+def test_uuid4_generates_valid_version_4():
+    id: uuid.UUID = uuid.uuid4()
+    assert id.Version == 4
+    assert id.Variant == "specified in RFC 4122"
+
+@test
+def test_uuid4_generates_unique_values():
+    id1: uuid.UUID = uuid.uuid4()
+    id2: uuid.UUID = uuid.uuid4()
+    assert id1 != id2
+
+@test
+def test_uuid_parse_from_string_standard_format():
+    id: uuid.UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    assert str(id) == "12345678-1234-5678-1234-567812345678"
+
+@test
+def test_uuid_parse_from_string_no_braces():
+    id: uuid.UUID = uuid.UUID("12345678123456781234567812345678")
+    assert id.Hex == "12345678123456781234567812345678"
+
+@test
+def test_uuid_parse_from_string_invalid_throws_value_error():
+    with assert_raises(ValueError):
+        uuid.UUID("not-a-uuid")
+
+@test
+def test_uuid_hex_returns_no_dashes():
+    id: uuid.UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    assert id.Hex == "12345678123456781234567812345678"
+    assert len(id.Hex) == 32
+
+@test
+def test_uuid_uuid_bytes_returns_16_bytes():
+    id: uuid.UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    assert len(id.UuidBytes) == 16
+
+@test
+def test_uuid_equality():
+    id1: uuid.UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    id2: uuid.UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    assert id1 == id2
+
+@test
+def test_uuid_urn():
+    id: uuid.UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    assert id.Urn == "urn:uuid:12345678-1234-5678-1234-567812345678"
+
+@test
+def test_uuid3_known_value():
+    result: uuid.UUID = uuid.uuid3(uuid.NAMESPACE_DNS, "example.com")
+    assert str(result) == "9073926b-929f-31c2-abc9-fad77ae3e8eb"
+    assert result.Version == 3
+
+@test
+def test_uuid5_known_value():
+    result: uuid.UUID = uuid.uuid5(uuid.NAMESPACE_DNS, "example.com")
+    assert str(result) == "cfbff0d1-9375-5685-968c-48ce8b15ae17"
+    assert result.Version == 5
+
+@test
+def test_uuid1_generates_version_1():
+    id: uuid.UUID = uuid.uuid1()
+    assert id.Version == 1
+    assert id.Variant == "specified in RFC 4122"
+
+@test
+def test_uuid_rfc_fields():
+    id: uuid.UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    assert id.TimeLow == 0x12345678
+    assert id.TimeMid == 0x1234
+    assert id.TimeHiVersion == 0x5678

@@ -1,0 +1,175 @@
+from unittest import assert_raises
+
+import argparse
+
+# --- FormatHelp Additional ---
+
+@test
+def test_format_help_non_empty_when_no_args():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(prog="test")
+    help_text: str = parser.format_help()
+    assert len(help_text) > 0
+    assert "test" in help_text
+
+@test
+def test_format_help_with_positional_shows_positional_section():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(prog="tool", addHelp=False)
+    parser.add_argument("input", help="the input file")
+    help_text: str = parser.format_help()
+    assert "positional arguments" in help_text
+    assert "input" in help_text
+    assert "the input file" in help_text
+
+@test
+def test_format_help_with_optional_shows_options_section():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(prog="tool", addHelp=False)
+    parser.add_optional_argument("--verbose", action="store_true", help="verbose output")
+    help_text: str = parser.format_help()
+    assert "options" in help_text
+    assert "--verbose" in help_text
+    assert "verbose output" in help_text
+
+@test
+def test_format_help_usage_line_contains_prog():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(prog="myprogram", addHelp=False)
+    help_text: str = parser.format_help()
+    assert "usage: myprogram" in help_text
+
+# --- ArgumentParser.Prog ---
+
+@test
+def test_prog_default_value_is_prog_string():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser()
+    assert parser.Prog == "prog"
+
+@test
+def test_prog_can_be_set_after_construction():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(prog="old")
+    parser.Prog = "new"
+    assert parser.Prog == "new"
+    assert "new" in parser.format_help()
+
+# --- Namespace.ToString Additional ---
+
+@test
+def test_namespace_to_string_none_value_shows_none():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser.add_optional_argument("--output")
+    ns: argparse.Namespace = parser.parse_args([])
+    s: str = str(ns)
+    assert "Namespace(" in s
+    assert "output=None" in s
+
+@test
+def test_namespace_to_string_int_value_shows_number():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser.add_optional_argument("--count", type="int", defaultValue=42)
+    ns: argparse.Namespace = parser.parse_args([])
+    s: str = str(ns)
+    assert "count=42" in s
+
+# --- Float Type Conversion ---
+
+@test
+def test_parse_args_float_positional_parsed():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser.add_argument("ratio", type="float")
+    ns: argparse.Namespace = parser.parse_args(["3.14"])
+    s: str = str(ns)
+    assert "ratio=3.14" in s
+
+@test
+def test_parse_args_float_optional_parsed():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser.add_optional_argument("--threshold", type="float", defaultValue=0.5)
+    ns: argparse.Namespace = parser.parse_args(["--threshold", "0.75"])
+    s: str = str(ns)
+    assert "threshold=0.75" in s
+
+# --- Missing Optional Value ---
+
+@test
+def test_parse_args_optional_missing_value_throws_argument_error():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser.add_optional_argument("--name")
+    with assert_raises(ArgumentError):
+        parser.parse_args(["--name"])
+
+@test
+def test_parse_args_short_option_missing_value_throws_argument_error():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser.add_optional_argument("--name", shortName="-n")
+    with assert_raises(ArgumentError):
+        parser.parse_args(["-n"])
+
+# --- Nargs Plus with Multiple Values ---
+
+@test
+def test_parse_args_nargs_plus_multiple_values_collects_all():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser.add_argument("files", nargs="+")
+    ns: argparse.Namespace = parser.parse_args(["a.txt", "b.txt", "c.txt"])
+    assert ns.Contains("files")
+    assert ns["files"] is not None
+
+# --- ArgumentGroup with Positional ---
+
+@test
+def test_add_argument_group_with_positional_parses_to_namespace():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    group: argparse.ArgumentGroup = parser.add_argument_group("Input options")
+    group.add_argument("source", help="source file")
+    ns: argparse.Namespace = parser.parse_args(["input.txt"])
+    assert ns["source"] == "input.txt"
+
+@test
+def test_add_argument_group_multiple_groups_both_parsed_correctly():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    g1: argparse.ArgumentGroup = parser.add_argument_group("Network")
+    g1.add_optional_argument("--host", defaultValue="localhost")
+    g2: argparse.ArgumentGroup = parser.add_argument_group("Auth")
+    g2.add_optional_argument("--token", defaultValue="none")
+    ns: argparse.Namespace = parser.parse_args(["--host", "example.com", "--token", "secret"])
+    assert ns["host"] == "example.com"
+    assert ns["token"] == "secret"
+
+# --- Multiple Mutually Exclusive Groups ---
+
+@test
+def test_two_mutually_exclusive_groups_each_enforced_independently():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    g1: argparse.MutuallyExclusiveGroup = parser.add_mutually_exclusive_group()
+    g1.add_optional_argument("--verbose", action="store_true")
+    g1.add_optional_argument("--quiet", action="store_true")
+    g2: argparse.MutuallyExclusiveGroup = parser.add_mutually_exclusive_group()
+    g2.add_optional_argument("--json", action="store_true")
+    g2.add_optional_argument("--csv", action="store_true")
+    # One from each group is fine
+    ns: argparse.Namespace = parser.parse_args(["--verbose", "--json"])
+    s: str = str(ns)
+    assert "verbose=True" in s
+    assert "json=True" in s
+    # Both from same group should fail
+    with assert_raises(ArgumentError):
+        parser.parse_args(["--verbose", "--quiet"])
+
+# --- Subparsers with Dest=empty ---
+
+@test
+def test_add_subparsers_no_dest_subcommand_parsed():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    subparsers: argparse.SubparsersAction = parser.add_subparsers()
+    sub: argparse.ArgumentParser = subparsers.add_parser("run")
+    sub.add_argument("file")
+    ns: argparse.Namespace = parser.parse_args(["run", "script.spy"])
+    assert ns["file"] == "script.spy"
+
+@test
+def test_add_subparsers_with_title_subcommand_parsed():
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    subparsers: argparse.SubparsersAction = parser.add_subparsers(title="commands", dest="cmd")
+    subparsers.add_parser("build")
+    ns: argparse.Namespace = parser.parse_args(["build"])
+    assert ns["cmd"] == "build"
+
+# SetOutput_RedirectsHelpOutput omitted (requires System.IO.StringWriter)

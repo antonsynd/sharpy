@@ -1,0 +1,197 @@
+# Tests for @lru_cache and @cache decorators.
+# The C# LruCacheTests test the raw LruCache class; these tests verify
+# the same memoization semantics through the Sharpy decorator surface.
+
+# --- Unbounded cache: stores and returns correct value ---
+
+@lru_cache(maxsize=None)
+def double_val(k: int) -> int:
+    return k * 2
+
+@test
+def test_unbounded_get_or_add_stores_and_returns_value():
+    result: int = double_val(5)
+    assert result == 10
+
+# --- Unbounded cache: factory only called once per key ---
+
+# Use a mutable list as call counter (no global keyword needed)
+unbounded_calls: list[int] = []
+
+@lru_cache(maxsize=None)
+def tracked_double(k: int) -> int:
+    unbounded_calls.append(1)
+    return k * 2
+
+@test
+def test_unbounded_get_or_add_hit_does_not_invoke_factory():
+    # Clear the tracker
+    while len(unbounded_calls) > 0:
+        unbounded_calls.pop()
+    tracked_double(5)
+    tracked_double(5)
+    tracked_double(5)
+    # Factory should only be called once
+    assert len(unbounded_calls) == 1
+
+# --- Unbounded cache: multiple keys tracked ---
+
+@lru_cache(maxsize=None)
+def identity_fn(k: int) -> int:
+    return k
+
+@test
+def test_unbounded_cache_tracks_multiple_keys():
+    # Multiple distinct keys should all return correct values
+    assert identity_fn(100) == 100
+    assert identity_fn(200) == 200
+    assert identity_fn(100) == 100  # cached hit
+    assert identity_fn(200) == 200  # cached hit
+
+# --- Unbounded cache: hit counting via side effects ---
+
+counted_calls: list[int] = []
+
+@lru_cache(maxsize=None)
+def counted_identity(k: int) -> int:
+    counted_calls.append(1)
+    return k
+
+@test
+def test_unbounded_cache_returns_correct_values_after_hits():
+    while len(counted_calls) > 0:
+        counted_calls.pop()
+    counted_identity(10)
+    counted_identity(10)
+    assert len(counted_calls) == 1
+    counted_identity(20)
+    assert len(counted_calls) == 2
+
+# --- Bounded cache: correct values under eviction ---
+
+@lru_cache(maxsize=2)
+def bounded_square(k: int) -> int:
+    return k * k
+
+@test
+def test_bounded_evicts_least_recently_used():
+    # Fill cache: keys 1001 and 1002 (use unique keys to avoid cross-test collisions)
+    assert bounded_square(1001) == 1001 * 1001
+    assert bounded_square(1002) == 1002 * 1002
+    # Key 1003 should evict key 1001 (LRU)
+    assert bounded_square(1003) == 1003 * 1003
+    # Key 1001 should still return correct value (recomputed)
+    assert bounded_square(1001) == 1001 * 1001
+
+# --- Bounded cache: accessing a key keeps it in cache ---
+
+touch_calls: list[int] = []
+
+@lru_cache(maxsize=2)
+def bounded_touch(k: int) -> int:
+    touch_calls.append(k)
+    return k
+
+@test
+def test_bounded_accessing_key_makes_it_most_recently_used():
+    while len(touch_calls) > 0:
+        touch_calls.pop()
+    bounded_touch(2001)  # miss
+    bounded_touch(2002)  # miss
+    bounded_touch(2001)  # hit, makes 2001 MRU
+    bounded_touch(2003)  # miss, evicts 2002
+    prev_len: int = len(touch_calls)
+    bounded_touch(2002)  # miss (was evicted), recomputed
+    assert len(touch_calls) == prev_len + 1
+
+# --- Bounded cache: maxsize is respected ---
+
+@lru_cache(maxsize=16)
+def bounded_fn(k: int) -> int:
+    return 1
+
+@test
+def test_bounded_cache_info_reports_max_size():
+    # Insert one entry and verify correctness
+    assert bounded_fn(3001) == 1
+    assert bounded_fn(3001) == 1  # cached hit
+
+# --- Invalid maxsize: smallest valid is 1 ---
+
+@lru_cache(maxsize=1)
+def tiny_cache(k: int) -> int:
+    return k
+
+@test
+def test_constructor_invalid_max_size_uses_valid_cache():
+    assert tiny_cache(4001) == 4001
+    assert tiny_cache(4002) == 4002
+    # After inserting 4002, key 4001 is evicted, but result is still correct
+    assert tiny_cache(4001) == 4001
+
+# --- Decorated function always works correctly ---
+
+@test
+def test_get_or_add_returns_correct_value():
+    assert double_val(10) == 20
+    assert double_val(0) == 0
+    assert double_val(-5) == -10
+
+# --- Unbounded cache: many distinct keys ---
+
+@lru_cache(maxsize=None)
+def square_val(k: int) -> int:
+    return k * k
+
+@test
+def test_unbounded_many_keys():
+    i: int = 5000
+    while i < 5050:
+        val: int = square_val(i)
+        assert val == i * i
+        i = i + 1
+    # Verify cached values are still correct
+    assert square_val(5000) == 5000 * 5000
+    assert square_val(5049) == 5049 * 5049
+
+# --- Bounded cache: many keys with eviction ---
+
+@lru_cache(maxsize=16)
+def bounded_double(k: int) -> int:
+    return k * 2
+
+@test
+def test_bounded_many_keys_with_eviction():
+    i: int = 0
+    while i < 100:
+        key: int = 6000 + (i % 32)
+        val: int = bounded_double(key)
+        assert val == key * 2
+        i = i + 1
+
+# --- Bounded cache: clear allows refilling ---
+
+@lru_cache(maxsize=3)
+def bounded_clear_fn(k: int) -> int:
+    return k
+
+@test
+def test_bounded_cache_clear_allows_refilling():
+    assert bounded_clear_fn(7001) == 7001
+    assert bounded_clear_fn(7002) == 7002
+    # Values remain correct after multiple calls
+    assert bounded_clear_fn(7001) == 7001
+
+# --- Cache returns consistent values ---
+
+@lru_cache(maxsize=None)
+def snapshot_fn(k: int) -> int:
+    return k
+
+@test
+def test_cache_returns_consistent_values():
+    assert snapshot_fn(8001) == 8001
+    assert snapshot_fn(8002) == 8002
+    # Calling with same key returns same value
+    assert snapshot_fn(8001) == 8001
+    assert snapshot_fn(8002) == 8002

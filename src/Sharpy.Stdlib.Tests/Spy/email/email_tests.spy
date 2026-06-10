@@ -1,0 +1,245 @@
+from unittest import assert_raises
+
+import email
+
+# --- EmailMessage: Empty message ---
+
+@test
+def test_empty_message_has_no_headers():
+    msg = email.EmailMessage()
+    assert len(msg.keys()) == 0
+    assert msg.get_content() == ""
+
+# --- Header access ---
+
+@test
+def test_set_item_get_item_round_trip():
+    msg = email.EmailMessage()
+    msg.set_item("Subject", "Hello")
+    assert msg.get_item("Subject") == "Hello"
+
+@test
+def test_get_item_case_insensitive():
+    msg = email.EmailMessage()
+    msg.set_item("Subject", "Hello")
+    assert msg.get_item("subject") == "Hello"
+    assert msg.get_item("SUBJECT") == "Hello"
+
+@test
+def test_get_item_missing_returns_none():
+    msg = email.EmailMessage()
+    assert msg.get_item("Missing") is None
+
+@test
+def test_contains_existing_header_returns_true():
+    msg = email.EmailMessage()
+    msg.set_item("From", "a@b.com")
+    assert msg.contains("From")
+    assert msg.contains("from")
+
+@test
+def test_contains_missing_header_returns_false():
+    msg = email.EmailMessage()
+    assert not msg.contains("Missing")
+
+@test
+def test_set_item_replaces_existing():
+    msg = email.EmailMessage()
+    msg.set_item("Subject", "Old")
+    msg.set_item("Subject", "New")
+    assert msg.get_item("Subject") == "New"
+    assert len(msg.keys()) == 1
+
+@test
+def test_del_item_removes_all_occurrences():
+    msg = email.EmailMessage()
+    msg.add_header("Received", "from server1")
+    msg.add_header("Received", "from server2")
+    msg.del_item("Received")
+    assert not msg.contains("Received")
+
+@test
+def test_add_header_allows_duplicates():
+    msg = email.EmailMessage()
+    msg.add_header("Received", "from server1")
+    msg.add_header("Received", "from server2")
+    all_vals: list[str]? = msg.get_all("Received")
+    assert all_vals is not None
+    assert len(all_vals) == 2
+
+@test
+def test_get_all_non_existent_returns_none():
+    msg = email.EmailMessage()
+    assert msg.get_all("Missing") is None
+
+@test
+def test_replace_header_replaces_first():
+    msg = email.EmailMessage()
+    msg.add_header("Subject", "Old")
+    msg.replace_header("Subject", "New")
+    assert msg.get_item("Subject") == "New"
+
+@test
+def test_replace_header_adds_if_missing():
+    msg = email.EmailMessage()
+    msg.replace_header("Subject", "Added")
+    assert msg.get_item("Subject") == "Added"
+
+@test
+def test_keys_returns_all_names():
+    msg = email.EmailMessage()
+    msg.set_item("From", "a@b.com")
+    msg.set_item("To", "c@d.com")
+    assert len(msg.keys()) == 2
+
+@test
+def test_items_returns_all_pairs():
+    msg = email.EmailMessage()
+    msg.set_item("From", "a@b.com")
+    msg.set_item("To", "c@d.com")
+    items = msg.items()
+    assert len(items) == 2
+
+# --- Content ---
+
+@test
+def test_set_content_sets_body():
+    msg = email.EmailMessage()
+    msg.set_content("Hello world")
+    assert msg.get_content() == "Hello world"
+
+@test
+def test_set_content_html_sets_content_type():
+    msg = email.EmailMessage()
+    msg.set_content("<b>HTML</b>", "html")
+    ct: str? = msg.get_item("Content-Type")
+    assert ct is not None
+    assert "text/html" in ct
+
+@test
+def test_is_multipart_simple_message_returns_false():
+    msg = email.EmailMessage()
+    msg.set_content("plain text")
+    assert not msg.is_multipart()
+
+@test
+def test_add_attachment_makes_multipart():
+    msg = email.EmailMessage()
+    msg.set_content("body text")
+    msg.add_attachment(b"\x01\x02\x03", filename="test.bin")
+    assert msg.is_multipart()
+
+@test
+def test_iter_attachments_returns_attachments():
+    msg = email.EmailMessage()
+    msg.add_attachment(b"\x01\x02\x03", filename="a.bin")
+    msg.add_attachment(b"\x04\x05", filename="b.bin")
+    assert len(msg.iter_attachments()) == 2
+
+@test
+def test_get_payload_returns_body():
+    msg = email.EmailMessage()
+    msg.set_content("payload")
+    assert msg.get_payload() == "payload"
+
+@test
+def test_get_payload_empty_message_returns_none():
+    msg = email.EmailMessage()
+    assert msg.get_payload() is None
+
+# --- Serialization ---
+
+@test
+def test_as_string_simple_message_produces_rfc5322():
+    msg = email.EmailMessage()
+    msg.set_item("Subject", "Test")
+    msg.set_item("From", "sender@example.com")
+    msg.set_content("Hello")
+    result: str = msg.as_string()
+    assert "Subject: Test\r\n" in result
+    assert "From: sender@example.com\r\n" in result
+    assert "Hello" in result
+
+@test
+def test_as_string_multipart_message_has_boundaries():
+    msg = email.EmailMessage()
+    msg.set_content("body")
+    msg.add_attachment(b"\x01\x02\x03", filename="test.bin")
+    result: str = msg.as_string()
+    assert "--" in result
+    assert "Content-Transfer-Encoding: base64" in result
+
+@test
+def test_as_bytes_returns_utf8():
+    msg = email.EmailMessage()
+    msg.set_item("Subject", "Test")
+    msg.set_content("Hello")
+    b: bytes = msg.as_bytes()
+    assert len(b) > 0
+
+# --- Parsing ---
+
+@test
+def test_message_from_string_parses_headers_and_body():
+    msg = email.message_from_string("Subject: test\nFrom: a@b.com\n\nBody text")
+    assert msg.get_item("Subject") == "test"
+    assert msg.get_item("From") == "a@b.com"
+    assert msg.get_content() == "Body text"
+
+@test
+def test_message_from_string_continuation_lines():
+    msg = email.message_from_string("Subject: long\n subject\n\nBody")
+    assert msg.get_item("Subject") == "long subject"
+
+@test
+def test_message_from_string_empty_string_returns_empty():
+    msg = email.message_from_string("")
+    assert len(msg.keys()) == 0
+    assert msg.get_content() == ""
+
+@test
+def test_message_from_string_headers_only():
+    msg = email.message_from_string("Subject: test\nFrom: a@b.com")
+    assert msg.get_item("Subject") == "test"
+    assert msg.get_content() == ""
+
+@test
+def test_message_from_string_crlf_line_endings():
+    msg = email.message_from_string("Subject: test\r\nFrom: a@b.com\r\n\r\nBody")
+    assert msg.get_item("Subject") == "test"
+    assert msg.get_content() == "Body"
+
+@test
+def test_message_from_bytes_parses_utf8():
+    data: bytes = b"Subject: test\n\nHello"
+    msg = email.message_from_bytes(data)
+    assert msg.get_item("Subject") == "test"
+    assert msg.get_content() == "Hello"
+
+@test
+def test_roundtrip_create_and_parse():
+    original = email.EmailMessage()
+    original.set_item("Subject", "Round Trip")
+    original.set_item("From", "sender@example.com")
+    original.set_content("Test body")
+    parsed = email.message_from_string(original.as_string())
+    assert parsed.get_item("Subject") == "Round Trip"
+    assert parsed.get_item("From") == "sender@example.com"
+    assert "Test body" in parsed.get_content()
+
+# --- Error types ---
+
+@test
+def test_message_error_is_exception():
+    err = email.MessageError("test")
+    assert isinstance(err, Exception)
+
+@test
+def test_message_parse_error_inherits_from_message_error():
+    err = email.MessageParseError("test")
+    assert isinstance(err, email.MessageError)
+
+@test
+def test_header_parse_error_inherits_from_message_error():
+    err = email.HeaderParseError("test")
+    assert isinstance(err, email.MessageError)

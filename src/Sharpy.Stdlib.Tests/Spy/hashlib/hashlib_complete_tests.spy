@@ -1,0 +1,149 @@
+import hashlib
+
+# --- Empty string hashes (known values) ---
+
+@test
+def test_md5_empty_string_produces_known_hash():
+    h = hashlib.md5()
+    assert h.hexdigest() == "d41d8cd98f00b204e9800998ecf8427e"
+
+@test
+def test_sha1_empty_string_produces_known_hash():
+    h = hashlib.sha1()
+    assert h.hexdigest() == "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+
+@test
+def test_sha384_empty_string_produces_known_hash():
+    h = hashlib.sha384()
+    assert h.hexdigest() == "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b"
+
+@test
+def test_sha512_empty_string_produces_known_hash():
+    h = hashlib.sha512()
+    assert h.hexdigest() == "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"
+
+# --- Digest() lengths for all algorithms ---
+
+@test
+def test_sha1_digest_length_is_20():
+    h = hashlib.sha1("hello")
+    assert len(h.digest()) == 20
+
+@test
+def test_sha256_digest_length_is_32():
+    h = hashlib.sha256("hello")
+    assert len(h.digest()) == 32
+
+@test
+def test_sha384_digest_length_is_48():
+    h = hashlib.sha384("hello")
+    assert len(h.digest()) == 48
+
+@test
+def test_sha512_digest_length_is_64():
+    h = hashlib.sha512("hello")
+    assert len(h.digest()) == 64
+
+# --- Digest() byte value verification ---
+
+@test
+def test_sha256_digest_first_byte_matches_hexdigest():
+    h = hashlib.sha256("hello")
+    # sha256("hello") starts with "2c" = 0x2c = 44
+    digest = h.digest()
+    assert digest[0] == 44
+
+@test
+def test_sha1_digest_first_byte_matches_hexdigest():
+    h = hashlib.sha1("hello")
+    # sha1("hello") starts with "aa" = 0xaa = 170
+    digest = h.digest()
+    assert digest[0] == 170
+
+# --- DigestSize matches Hexdigest length ---
+
+@test
+def test_md5_hexdigest_length_is_digest_size_times_two():
+    h = hashlib.md5("hello")
+    assert len(h.hexdigest()) == h.digest_size * 2
+
+@test
+def test_sha256_hexdigest_length_is_digest_size_times_two():
+    h = hashlib.sha256("hello")
+    assert len(h.hexdigest()) == h.digest_size * 2
+
+@test
+def test_sha512_hexdigest_length_is_digest_size_times_two():
+    h = hashlib.sha512("hello")
+    assert len(h.hexdigest()) == h.digest_size * 2
+
+# --- Hexdigest is lowercase ---
+
+@test
+def test_md5_hexdigest_is_lowercase():
+    h = hashlib.md5("hello")
+    hex_str = h.hexdigest()
+    assert hex_str == hex_str.lower()
+
+@test
+def test_sha256_hexdigest_is_lowercase():
+    h = hashlib.sha256("hello")
+    hex_str = h.hexdigest()
+    assert hex_str == hex_str.lower()
+
+# --- Copy() for various algorithms ---
+
+@test
+def test_md5_copy_produces_independent_clone():
+    h = hashlib.md5("hello")
+    copy = h.copy()
+    copy.update("world")
+    # Original should be unchanged
+    assert h.hexdigest() == "5d41402abc4b2a76b9719d911017c592"
+    # Copy should have "helloworld"
+    assert copy.hexdigest() == hashlib.md5("helloworld").hexdigest()
+
+@test
+def test_sha1_copy_produces_independent_clone():
+    h = hashlib.sha1("hello")
+    copy = h.copy()
+    copy.update("world")
+    # Original should be unchanged
+    assert h.hexdigest() == "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"
+    # Copy should have "helloworld"
+    assert copy.hexdigest() == hashlib.sha1("helloworld").hexdigest()
+
+# --- Update with empty string ---
+
+@test
+def test_update_empty_string_does_not_change_hash():
+    h1 = hashlib.sha256("hello")
+    h2 = hashlib.sha256("hello")
+    h2.update("")
+    assert h2.hexdigest() == h1.hexdigest()
+
+# --- Update chaining equivalence ---
+
+@test
+def test_md5_incremental_update_matches_single_update():
+    h1 = hashlib.md5("helloworld")
+    h2 = hashlib.md5("hello")
+    h2.update("world")
+    assert h2.hexdigest() == h1.hexdigest()
+
+@test
+def test_sha512_incremental_update_matches_single_update():
+    h1 = hashlib.sha512("helloworld")
+    h2 = hashlib.sha512("hello")
+    h2.update("world")
+    assert h2.hexdigest() == h1.hexdigest()
+
+# --- Name property ---
+
+@test
+def test_md5_name_is_md5():
+    assert hashlib.md5().name == "md5"
+
+@test
+def test_sha256_name_is_sha256():
+    assert hashlib.sha256().name == "sha256"

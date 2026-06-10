@@ -1,0 +1,500 @@
+from unittest import assert_raises
+
+import ipaddress
+
+# ============================================================
+# IPv4Address tests
+# ============================================================
+
+@test
+def test_ipv4_address_from_string():
+    addr: ipaddress.IPv4Address = ipaddress.IPv4Address("192.168.1.1")
+    assert str(addr) == "192.168.1.1"
+    assert addr.Version == 4
+
+@test
+def test_ipv4_address_from_int():
+    addr: ipaddress.IPv4Address = ipaddress.IPv4Address(3232235777)
+    assert str(addr) == "192.168.1.1"
+
+# IPv4Address_FromBytes omitted (bytes() constructor from list[int] not verified in Sharpy)
+
+@test
+def test_ipv4_address_invalid():
+    with assert_raises(ValueError):
+        ipaddress.IPv4Address("invalid")
+
+@test
+def test_ipv4_address_is_private():
+    assert ipaddress.IPv4Address("192.168.1.1").IsPrivate
+    assert ipaddress.IPv4Address("10.0.0.1").IsPrivate
+    assert ipaddress.IPv4Address("172.16.0.1").IsPrivate
+    assert not ipaddress.IPv4Address("8.8.8.8").IsPrivate
+
+@test
+def test_ipv4_address_is_loopback():
+    assert ipaddress.IPv4Address("127.0.0.1").IsLoopback
+    assert ipaddress.IPv4Address("127.255.255.255").IsLoopback
+    assert not ipaddress.IPv4Address("8.8.8.8").IsLoopback
+
+@test
+def test_ipv4_address_is_multicast():
+    assert ipaddress.IPv4Address("224.0.0.1").IsMulticast
+    assert ipaddress.IPv4Address("239.255.255.255").IsMulticast
+    assert not ipaddress.IPv4Address("8.8.8.8").IsMulticast
+
+@test
+def test_ipv4_address_is_reserved():
+    assert ipaddress.IPv4Address("240.0.0.1").IsReserved
+    assert not ipaddress.IPv4Address("8.8.8.8").IsReserved
+
+@test
+def test_ipv4_address_is_link_local():
+    assert ipaddress.IPv4Address("169.254.1.1").IsLinkLocal
+    assert not ipaddress.IPv4Address("8.8.8.8").IsLinkLocal
+
+@test
+def test_ipv4_address_is_global():
+    assert ipaddress.IPv4Address("8.8.8.8").IsGlobal
+    assert not ipaddress.IPv4Address("192.168.1.1").IsGlobal
+
+@test
+def test_ipv4_address_is_unspecified():
+    assert ipaddress.IPv4Address("0.0.0.0").IsUnspecified
+    assert not ipaddress.IPv4Address("8.8.8.8").IsUnspecified
+
+@test
+def test_ipv4_address_packed():
+    addr: ipaddress.IPv4Address = ipaddress.IPv4Address("192.168.1.1")
+    packed: bytes = addr.Packed
+    assert len(packed) == 4
+    assert packed[0] == 192
+    assert packed[1] == 168
+    assert packed[2] == 1
+    assert packed[3] == 1
+
+@test
+def test_ipv4_address_to_int():
+    assert ipaddress.IPv4Address("192.168.1.1").ToInt() == 3232235777
+
+@test
+def test_ipv4_address_arithmetic():
+    addr: ipaddress.IPv4Address = ipaddress.IPv4Address("192.168.1.1")
+    assert str(addr + 1) == "192.168.1.2"
+    assert str(addr - 1) == "192.168.1.0"
+
+@test
+def test_ipv4_address_comparison():
+    a: ipaddress.IPv4Address = ipaddress.IPv4Address("1.0.0.0")
+    b: ipaddress.IPv4Address = ipaddress.IPv4Address("2.0.0.0")
+    assert a < b
+    assert b > a
+
+@test
+def test_ipv4_address_equality():
+    a: ipaddress.IPv4Address = ipaddress.IPv4Address("1.1.1.1")
+    b: ipaddress.IPv4Address = ipaddress.IPv4Address("1.1.1.1")
+    assert a == b
+
+@test
+def test_ipv4_address_overflow_throws():
+    addr: ipaddress.IPv4Address = ipaddress.IPv4Address("255.255.255.255")
+    with assert_raises(ValueError):
+        _ = addr + 1
+
+# ============================================================
+# IPv6Address tests
+# ============================================================
+
+@test
+def test_ipv6_address_from_string():
+    addr: ipaddress.IPv6Address = ipaddress.IPv6Address("::1")
+    assert addr.Version == 6
+    assert addr.IsLoopback
+
+@test
+def test_ipv6_address_compressed():
+    addr: ipaddress.IPv6Address = ipaddress.IPv6Address("2001:db8::1")
+    assert "2001:db8::1" in addr.Compressed
+
+@test
+def test_ipv6_address_exploded():
+    addr: ipaddress.IPv6Address = ipaddress.IPv6Address("::1")
+    assert addr.Exploded == "0000:0000:0000:0000:0000:0000:0000:0001"
+
+@test
+def test_ipv6_address_is_link_local():
+    assert ipaddress.IPv6Address("fe80::1").IsLinkLocal
+    assert not ipaddress.IPv6Address("2001:db8::1").IsLinkLocal
+
+@test
+def test_ipv6_address_is_multicast():
+    assert ipaddress.IPv6Address("ff02::1").IsMulticast
+
+@test
+def test_ipv6_address_ipv4_mapped():
+    addr: ipaddress.IPv6Address = ipaddress.IPv6Address("::ffff:192.168.1.1")
+    assert addr.Ipv4Mapped is not None
+    assert str(addr.Ipv4Mapped) == "192.168.1.1"
+
+@test
+def test_ipv6_address_ipv4_mapped_null():
+    addr: ipaddress.IPv6Address = ipaddress.IPv6Address("2001:db8::1")
+    assert addr.Ipv4Mapped is None
+
+@test
+def test_ipv6_address_arithmetic():
+    addr: ipaddress.IPv6Address = ipaddress.IPv6Address("::1")
+    assert "::2" in str(addr + 1)
+
+@test
+def test_ipv6_address_equality():
+    a: ipaddress.IPv6Address = ipaddress.IPv6Address("::1")
+    b: ipaddress.IPv6Address = ipaddress.IPv6Address("::1")
+    assert a == b
+
+# IPv6Address_FromBigInteger omitted (BigInteger not available from Sharpy)
+
+# ============================================================
+# IPv4Network tests
+# ============================================================
+
+@test
+def test_ipv4_network_basic():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/24")
+    assert str(net.NetworkAddress) == "192.168.1.0"
+    assert str(net.BroadcastAddress) == "192.168.1.255"
+    assert net.Prefixlen == 24
+    assert str(net.Netmask) == "255.255.255.0"
+
+@test
+def test_ipv4_network_num_addresses():
+    assert ipaddress.IPv4Network("192.168.1.0/24").NumAddresses == 256
+    assert ipaddress.IPv4Network("192.168.1.0/32").NumAddresses == 1
+    assert ipaddress.IPv4Network("0.0.0.0/0").NumAddresses == 4294967296
+
+@test
+def test_ipv4_network_hosts_24():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/24")
+    hosts: list[ipaddress.IPv4Address] = list(net.Hosts())
+    assert len(hosts) == 254
+    assert str(hosts[0]) == "192.168.1.1"
+    assert str(hosts[253]) == "192.168.1.254"
+
+@test
+def test_ipv4_network_hosts_31():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/31")
+    hosts: list[ipaddress.IPv4Address] = list(net.Hosts())
+    assert len(hosts) == 2
+
+@test
+def test_ipv4_network_hosts_32():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.1/32")
+    hosts: list[ipaddress.IPv4Address] = list(net.Hosts())
+    assert len(hosts) == 1
+    assert str(hosts[0]) == "192.168.1.1"
+
+@test
+def test_ipv4_network_contains():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/24")
+    assert net.Contains(ipaddress.IPv4Address("192.168.1.5"))
+    assert not net.Contains(ipaddress.IPv4Address("10.0.0.1"))
+
+@test
+def test_ipv4_network_overlaps():
+    a: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/24")
+    b: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.128/25")
+    assert a.Overlaps(b)
+
+@test
+def test_ipv4_network_subnets():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/24")
+    subnets: list[ipaddress.IPv4Network] = net.Subnets()
+    assert len(subnets) == 2
+    assert str(subnets[0]) == "192.168.1.0/25"
+    assert str(subnets[1]) == "192.168.1.128/25"
+
+@test
+def test_ipv4_network_supernet():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/24")
+    sup: ipaddress.IPv4Network = net.Supernet()
+    assert str(sup) == "192.168.0.0/23"
+
+@test
+def test_ipv4_network_subnet_of():
+    small: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/25")
+    big: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/24")
+    assert small.SubnetOf(big)
+    assert not big.SubnetOf(small)
+
+@test
+def test_ipv4_network_strict_host_bits_set():
+    with assert_raises(ValueError):
+        ipaddress.IPv4Network("192.168.1.1/24")
+
+@test
+def test_ipv4_network_not_strict_masks_host_bits():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.1/24", strict=False)
+    assert str(net.NetworkAddress) == "192.168.1.0"
+
+@test
+def test_ipv4_network_single_address():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.1")
+    assert net.Prefixlen == 32
+    assert str(net.NetworkAddress) == "192.168.1.1"
+
+@test
+def test_ipv4_network_with_prefixlen():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/24")
+    assert net.WithPrefixlen == "192.168.1.0/24"
+
+@test
+def test_ipv4_network_iteration():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("192.168.1.0/30")
+    all_addrs: list[ipaddress.IPv4Address] = list(net)
+    assert len(all_addrs) == 4
+    assert str(all_addrs[0]) == "192.168.1.0"
+    assert str(all_addrs[3]) == "192.168.1.3"
+
+# ============================================================
+# IPv6Network tests
+# ============================================================
+
+@test
+def test_ipv6_network_basic():
+    net: ipaddress.IPv6Network = ipaddress.IPv6Network("2001:db8::/32")
+    assert net.Prefixlen == 32
+    assert net.Version == 6
+
+@test
+def test_ipv6_network_contains():
+    net: ipaddress.IPv6Network = ipaddress.IPv6Network("2001:db8::/32")
+    assert net.Contains(ipaddress.IPv6Address("2001:db8::1"))
+    assert not net.Contains(ipaddress.IPv6Address("2001:db9::1"))
+
+@test
+def test_ipv6_network_num_addresses_128():
+    assert ipaddress.IPv6Network("::1/128").NumAddresses == 1
+
+# IPv6Network NumAddresses for ::/0 omitted (requires BigInteger comparison)
+
+# ============================================================
+# Interface tests
+# ============================================================
+
+@test
+def test_ipv4_interface_basic():
+    iface: ipaddress.IPv4Interface = ipaddress.IPv4Interface("192.168.1.1/24")
+    assert str(iface.Ip) == "192.168.1.1"
+    assert str(iface.Network.NetworkAddress) == "192.168.1.0"
+    assert iface.Network.Prefixlen == 24
+    assert str(iface) == "192.168.1.1/24"
+
+@test
+def test_ipv6_interface_basic():
+    iface: ipaddress.IPv6Interface = ipaddress.IPv6Interface("2001:db8::1/32")
+    assert "2001:db8::1" in str(iface.Ip)
+    assert iface.Network.Prefixlen == 32
+
+# ============================================================
+# Factory function tests
+# ============================================================
+
+@test
+def test_ip_address_ipv4():
+    result: object = ipaddress.ip_address("192.168.1.1")
+    assert str(result) == "192.168.1.1"
+
+@test
+def test_ip_address_ipv6():
+    result: object = ipaddress.ip_address("::1")
+    assert str(result) is not None
+
+@test
+def test_ip_address_invalid():
+    with assert_raises(ValueError):
+        ipaddress.ip_address("invalid")
+
+@test
+def test_ip_network_ipv4():
+    result: object = ipaddress.ip_network("192.168.1.0/24")
+    assert str(result) is not None
+
+@test
+def test_ip_interface_ipv4():
+    result: object = ipaddress.ip_interface("192.168.1.1/24")
+    assert str(result) is not None
+
+@test
+def test_collapse_addresses_merges_adjacent_networks():
+    networks: list[object] = [ipaddress.IPv4Network("192.168.1.0/25"), ipaddress.IPv4Network("192.168.1.128/25")]
+    result: list[object] = ipaddress.collapse_addresses(networks)
+    assert len(result) == 1
+    assert str(result[0]) == "192.168.1.0/24"
+
+@test
+def test_summarize_address_range_single_network():
+    result: list[object] = ipaddress.summarize_address_range(
+        ipaddress.IPv4Address("192.168.1.0"),
+        ipaddress.IPv4Address("192.168.1.255"))
+    assert len(result) == 1
+    assert str(result[0]) == "192.168.1.0/24"
+
+# ============================================================
+# Regression tests
+# ============================================================
+
+@test
+def test_ipv4_network_zero_prefix_broadcast_and_hostmask():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("0.0.0.0/0")
+    assert str(net.BroadcastAddress) == "255.255.255.255"
+    assert str(net.Hostmask) == "255.255.255.255"
+    assert str(net.Netmask) == "0.0.0.0"
+    assert net.NumAddresses == 4294967296
+
+@test
+def test_ipv4_network_zero_prefix_subnets_does_not_overflow():
+    net: ipaddress.IPv4Network = ipaddress.IPv4Network("0.0.0.0/0")
+    assert len(net.Subnets(prefixlenDiff=1)) == 2
+
+@test
+def test_ipv4_address_broadcast_is_reserved_not_global():
+    addr: ipaddress.IPv4Address = ipaddress.IPv4Address("255.255.255.255")
+    assert addr.IsReserved
+    assert not addr.IsGlobal
+
+@test
+def test_ipv6_network_hosts_excludes_anycast_first_address():
+    net: ipaddress.IPv6Network = ipaddress.IPv6Network("2001:db8::/120")
+    hosts: list[ipaddress.IPv6Address] = list(net.Hosts())
+    assert len(hosts) == 255
+
+@test
+def test_ipv6_network_hosts_single_and_point_to_point():
+    hosts_128: list[ipaddress.IPv6Address] = list(ipaddress.IPv6Network("2001:db8::/128").Hosts())
+    assert len(hosts_128) == 1
+    hosts_127: list[ipaddress.IPv6Address] = list(ipaddress.IPv6Network("2001:db8::/127").Hosts())
+    assert len(hosts_127) == 2
+
+@test
+def test_ipv6_network_subnets():
+    subnets: list[ipaddress.IPv6Network] = ipaddress.IPv6Network("2001:db8::/126").Subnets()
+    assert len(subnets) == 2
+    assert str(subnets[0]) == "2001:db8::/127"
+    assert str(subnets[1]) == "2001:db8::2/127"
+
+@test
+def test_ipv6_network_supernet():
+    assert str(ipaddress.IPv6Network("2001:db8::/120").Supernet()) == "2001:db8::/119"
+
+@test
+def test_ipv6_network_hostmask_and_with_netmask():
+    net: ipaddress.IPv6Network = ipaddress.IPv6Network("2001:db8::/120")
+    assert net.WithNetmask == "2001:db8::/ffff:ffff:ffff:ffff:ffff:ffff:ffff:ff00"
+    assert net.WithPrefixlen == "2001:db8::/120"
+
+@test
+def test_ipv6_network_iteration():
+    net: ipaddress.IPv6Network = ipaddress.IPv6Network("2001:db8::/126")
+    all_addrs: list[ipaddress.IPv6Address] = list(net)
+    assert len(all_addrs) == 4
+
+@test
+def test_ipv6_network_classification_properties():
+    assert ipaddress.IPv6Network("fc00::/7").IsPrivate
+    assert not ipaddress.IPv6Network("2001:db8::/32").IsGlobal
+
+@test
+def test_summarize_address_range_ipv6():
+    result: list[object] = ipaddress.summarize_address_range(
+        ipaddress.IPv6Address("2001:db8::"),
+        ipaddress.IPv6Address("2001:db8::ff"))
+    assert len(result) == 1
+    assert str(result[0]) == "2001:db8::/120"
+
+# ============================================================
+# CPython 3.12.13 classification parity tests (#791)
+# ============================================================
+
+# Theory: IPv4Address_Classification_MatchesCPython312 (16 inline data rows)
+@test.parametrize([
+    ("0.0.0.1", True, False, False),
+    ("10.5.5.5", True, False, False),
+    ("100.64.1.1", False, False, False),
+    ("169.254.1.1", True, False, False),
+    ("172.16.5.5", True, False, False),
+    ("192.0.0.1", True, False, False),
+    ("192.0.0.10", False, True, False),
+    ("192.0.2.5", True, False, False),
+    ("192.88.99.1", False, True, False),
+    ("192.168.1.1", True, False, False),
+    ("198.18.5.5", True, False, False),
+    ("198.51.100.5", True, False, False),
+    ("203.0.113.5", True, False, False),
+    ("240.0.0.1", True, False, True),
+    ("255.255.255.255", True, False, True),
+    ("8.8.8.8", False, True, False),
+])
+def test_ipv4_address_classification_matches_cpython312(addr: str, is_private: bool, is_global: bool, is_reserved: bool):
+    a: ipaddress.IPv4Address = ipaddress.IPv4Address(addr)
+    assert a.IsPrivate == is_private
+    assert a.IsGlobal == is_global
+    assert a.IsReserved == is_reserved
+
+# Theory: IPv4Network_Classification_MatchesCPython312 (10 inline data rows)
+@test.parametrize([
+    ("10.0.0.0/7", False, True, False),
+    ("10.0.0.0/8", True, False, False),
+    ("100.64.0.0/10", False, False, False),
+    ("172.16.0.0/12", True, False, False),
+    ("192.0.2.0/24", True, False, False),
+    ("198.18.0.0/15", True, False, False),
+    ("203.0.113.0/24", True, False, False),
+    ("8.8.8.0/24", False, True, False),
+    ("0.0.0.0/0", False, True, False),
+    ("240.0.0.0/4", True, False, True),
+])
+def test_ipv4_network_classification_matches_cpython312(net: str, is_private: bool, is_global: bool, is_reserved: bool):
+    n: ipaddress.IPv4Network = ipaddress.IPv4Network(net)
+    assert n.IsPrivate == is_private
+    assert n.IsGlobal == is_global
+    assert n.IsReserved == is_reserved
+
+# Theory: IPv6Address_Classification_MatchesCPython312 (10 inline data rows)
+@test.parametrize([
+    ("::1", True, False),
+    ("fe80::1", True, False),
+    ("fc00::1", True, False),
+    ("2001:db8::1", True, False),
+    ("2002::1", True, False),
+    ("2001:1::1", False, True),
+    ("64:ff9b:1::1", True, False),
+    ("2606:4700::1", False, True),
+    ("100::1", True, False),
+    ("3fff::1", True, False),
+])
+def test_ipv6_address_classification_matches_cpython312(addr: str, is_private: bool, is_global: bool):
+    a: ipaddress.IPv6Address = ipaddress.IPv6Address(addr)
+    assert a.IsPrivate == is_private
+    assert a.IsGlobal == is_global
+
+# Theory: IPv6Network_Classification_MatchesCPython312 (13 inline data rows)
+@test.parametrize([
+    ("fc00::/7", True, False),
+    ("2001:db8::/32", True, False),
+    ("::1/128", True, False),
+    ("fe80::/10", True, False),
+    ("2001::/23", True, False),
+    ("2606:4700::/32", False, True),
+    ("100::/64", True, False),
+    ("::/0", False, True),
+    ("2002::/16", True, False),
+    ("3fff::/20", True, False),
+    ("64:ff9b:1::/48", True, False),
+    ("2001::/16", False, True),
+    ("2001:1::/32", True, False),
+])
+def test_ipv6_network_classification_matches_cpython312(net: str, is_private: bool, is_global: bool):
+    n: ipaddress.IPv6Network = ipaddress.IPv6Network(net)
+    assert n.IsPrivate == is_private
+    assert n.IsGlobal == is_global

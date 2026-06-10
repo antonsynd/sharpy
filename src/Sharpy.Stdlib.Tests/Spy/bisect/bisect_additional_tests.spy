@@ -1,0 +1,102 @@
+import bisect
+
+# --- Single-element list: value < element ---
+
+@test
+def test_bisect_left_single_element_value_less_than_returns_zero():
+    a: list[int] = [5]
+    assert bisect.bisect_left(a, 3) == 0
+
+@test
+def test_bisect_right_single_element_value_less_than_returns_zero():
+    a: list[int] = [5]
+    assert bisect.bisect_right(a, 3) == 0
+
+# --- Single-element list: value > element ---
+
+@test
+def test_bisect_left_single_element_value_greater_than_returns_one():
+    a: list[int] = [5]
+    assert bisect.bisect_left(a, 7) == 1
+
+@test
+def test_bisect_right_single_element_value_greater_than_returns_one():
+    a: list[int] = [5]
+    assert bisect.bisect_right(a, 7) == 1
+
+# --- All elements equal ---
+
+@test
+def test_bisect_left_all_elements_equal_returns_zero():
+    a: list[int] = [3, 3, 3, 3, 3]
+    assert bisect.bisect_left(a, 3) == 0
+
+@test
+def test_bisect_right_all_elements_equal_returns_length():
+    a: list[int] = [3, 3, 3, 3, 3]
+    assert bisect.bisect_right(a, 3) == 5
+
+# --- BisectRight: value smaller/larger than all ---
+
+@test
+def test_bisect_right_value_smaller_than_all_returns_zero():
+    a: list[int] = [10, 20, 30]
+    assert bisect.bisect_right(a, 5) == 0
+
+@test
+def test_bisect_right_value_larger_than_all_returns_length():
+    a: list[int] = [10, 20, 30]
+    assert bisect.bisect_right(a, 35) == 3
+
+# --- BisectLeft with hi bound ---
+
+@test
+def test_bisect_left_with_hi_bounds_excludes_elements_beyond_hi():
+    a: list[int] = [1, 2, 3, 4, 5]
+    assert bisect.bisect_left(a, 4, hi=3) == 3
+
+# --- BisectRight with lo bound ---
+
+@test
+def test_bisect_right_with_lo_bounds_excludes_elements_before_lo():
+    a: list[int] = [1, 2, 3, 4, 5]
+    assert bisect.bisect_right(a, 3, lo=2) == 3
+
+# --- Combined lo + hi boundaries ---
+
+@test
+def test_bisect_left_combined_lo_hi_searches_subrange():
+    a: list[int] = [1, 2, 3, 4, 5]
+    assert bisect.bisect_left(a, 3, lo=1, hi=4) == 2
+
+@test
+def test_bisect_right_combined_lo_hi_searches_subrange():
+    a: list[int] = [1, 2, 3, 4, 5]
+    assert bisect.bisect_right(a, 3, lo=1, hi=4) == 3
+
+# --- InsortLeft into empty list ---
+
+@test
+def test_insort_left_into_empty_list_inserts_single_element():
+    a: list[int] = []
+    bisect.insort_left(a, 5)
+    assert a == [5]
+
+# --- InsortRight preserves sort order after multiple insertions ---
+
+@test
+def test_insort_right_multiple_insertions_maintains_sorted_order():
+    a: list[int] = []
+    bisect.insort_right(a, 3)
+    bisect.insort_right(a, 1)
+    bisect.insort_right(a, 5)
+    bisect.insort_right(a, 2)
+    assert a == [1, 2, 3, 5]
+
+# --- InsortRight with lo bound ---
+
+@test
+def test_insort_right_with_lo_bounds_inserts_after_lo():
+    a: list[int] = [1, 2, 5]
+    bisect.insort_right(a, 4, lo=2)
+    assert a == [1, 2, 4, 5]

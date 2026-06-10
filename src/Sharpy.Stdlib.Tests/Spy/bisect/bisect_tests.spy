@@ -1,0 +1,105 @@
+import bisect
+
+# --- BisectLeft ---
+
+@test
+def test_bisect_left_finds_leftmost_insertion_point():
+    a: list[int] = [1, 2, 3, 4, 5]
+    assert bisect.bisect_left(a, 3) == 2
+
+@test
+def test_bisect_right_finds_rightmost_insertion_point():
+    a: list[int] = [1, 2, 3, 4, 5]
+    assert bisect.bisect_right(a, 3) == 3
+
+@test
+def test_bisect_left_with_duplicates_returns_leftmost():
+    a: list[int] = [1, 1, 1]
+    assert bisect.bisect_left(a, 1) == 0
+
+@test
+def test_bisect_right_with_duplicates_returns_rightmost():
+    a: list[int] = [1, 1, 1]
+    assert bisect.bisect_right(a, 1) == 3
+
+@test
+def test_bisect_left_empty_list_returns_zero():
+    a: list[int] = []
+    assert bisect.bisect_left(a, 1) == 0
+
+@test
+def test_bisect_right_empty_list_returns_zero():
+    a: list[int] = []
+    assert bisect.bisect_right(a, 1) == 0
+
+@test
+def test_bisect_left_value_smaller_than_all_returns_zero():
+    a: list[int] = [10, 20, 30]
+    assert bisect.bisect_left(a, 5) == 0
+
+@test
+def test_bisect_left_value_larger_than_all_returns_length():
+    a: list[int] = [10, 20, 30]
+    assert bisect.bisect_left(a, 35) == 3
+
+@test
+def test_bisect_is_alias_for_bisect_right():
+    a: list[int] = [1, 2, 3, 4, 5]
+    assert bisect.bisect(a, 3) == bisect.bisect_right(a, 3)
+
+@test
+def test_bisect_left_with_lo_bounds():
+    a: list[int] = [1, 2, 3, 4, 5]
+    assert bisect.bisect_left(a, 3, lo=3) == 3
+
+@test
+def test_bisect_right_with_hi_bounds():
+    a: list[int] = [1, 2, 3, 4, 5]
+    assert bisect.bisect_right(a, 3, hi=2) == 2
+
+@test
+def test_insort_right_inserts_in_sorted_order():
+    a: list[int] = [1, 3, 5]
+    bisect.insort_right(a, 4)
+    assert a == [1, 3, 4, 5]
+
+@test
+def test_insort_left_inserts_at_left_position():
+    a: list[int] = [1, 3, 3, 5]
+    bisect.insort_left(a, 3)
+    assert a == [1, 3, 3, 3, 5]
+
+@test
+def test_insort_is_alias_for_insort_right():
+    a1: list[int] = [1, 3, 5]
+    a2: list[int] = [1, 3, 5]
+    bisect.insort(a1, 4)
+    bisect.insort_right(a2, 4)
+    assert a1 == a2
+
+@test
+def test_insort_into_empty_list():
+    a: list[int] = []
+    bisect.insort(a, 5)
+    assert a == [5]
+
+@test
+def test_insort_left_with_lo_bounds():
+    a: list[int] = [1, 2, 3, 5]
+    bisect.insort_left(a, 4, lo=2)
+    assert a == [1, 2, 3, 4, 5]
+
+@test
+def test_bisect_left_single_element_value_equal():
+    a: list[int] = [5]
+    assert bisect.bisect_left(a, 5) == 0
+
+@test
+def test_bisect_right_single_element_value_equal():
+    a: list[int] = [5]
+    assert bisect.bisect_right(a, 5) == 1
+
+@test
+def test_bisect_left_with_strings():
+    a: list[str] = ["apple", "banana", "cherry"]
+    assert bisect.bisect_left(a, "banana") == 1

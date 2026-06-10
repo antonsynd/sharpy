@@ -58,26 +58,13 @@ WORK_DIR="$(mktemp -d)"
 EMIT_DIR="$WORK_DIR/emitted"
 mkdir -p "$EMIT_DIR"
 
-# Check for stem collisions before emitting
-stems=()
-while IFS= read -r f; do
-    stem=$(basename "$f" .spy)
-    stems+=("$stem")
-done < <(find "$SPY_DIR" -name '*.spy' -not -path '*/generated/*' | sort)
-
-dupes=$(printf '%s\n' "${stems[@]}" | sort | uniq -d)
-if [[ -n "$dupes" ]]; then
-    echo "ERROR: Duplicate file stems detected (--emit-cs-to emits flat by stem):"
-    echo "$dupes"
-    exit 1
-fi
-
 # --- Emit all test modules in one project compilation pass ---
 
-echo "Emitting $spy_count .spy test modules via project compilation..."
+echo "Emitting .spy test modules via project compilation..."
 # The project compilation will fail at the C# compilation stage because the
 # spyproj doesn't reference xUnit packages. That's expected — we only need
 # the emitted C# files, which are saved before compilation is attempted.
+# Files excluded in the spyproj (via Exclude=) are not compiled and won't be emitted.
 $SHARPYC project "$SPYPROJ" --emit-cs-to "$EMIT_DIR" 2>/dev/null || true
 echo "Project emission done."
 echo ""
@@ -92,6 +79,13 @@ if [[ "$emitted_count" -eq 0 ]]; then
 fi
 
 echo "Emitted $emitted_count files."
+
+# Build stems array from the emitted .cs files (respects spyproj Exclude patterns)
+stems=()
+while IFS= read -r f; do
+    stem=$(basename "$f" .cs)
+    stems+=("$stem")
+done < <(find "$EMIT_DIR" -name '*.cs' | sort)
 
 # --- Post-process and sync ---
 

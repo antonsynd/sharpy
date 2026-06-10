@@ -1,0 +1,75 @@
+from unittest import assert_raises
+from sharpy import HmacObject
+
+import hmac
+
+@test
+def test_hmac_sha256_known_value():
+    h: HmacObject = hmac.new("secret", "message", "sha256")
+    assert h.hexdigest() == "8b5f48702995c1598c573db1e21866a9b825d4a794d169d7060a03605796360b"
+
+@test
+def test_hmac_sha256_incremental_update():
+    h: HmacObject = hmac.new("secret", digestmod="sha256")
+    h.update("message")
+    assert h.hexdigest() == "8b5f48702995c1598c573db1e21866a9b825d4a794d169d7060a03605796360b"
+
+@test
+def test_hmac_sha256_bytes_overload():
+    key: bytes = b"secret"
+    msg: bytes = b"message"
+    h: HmacObject = hmac.new(key, msg, "sha256")
+    assert h.hexdigest() == "8b5f48702995c1598c573db1e21866a9b825d4a794d169d7060a03605796360b"
+
+@test
+def test_copy_produces_independent_clone():
+    h1: HmacObject = hmac.new("key", "hello", "sha256")
+    h2: HmacObject = h1.copy()
+    h2.update(" world")
+    assert h1.hexdigest() != h2.hexdigest()
+
+@test
+def test_name_property():
+    h: HmacObject = hmac.new("key", digestmod="sha512")
+    assert h.name == "hmac-sha512"
+
+@test
+def test_digest_size_property():
+    assert hmac.new("key", digestmod="sha256").digest_size == 32
+    assert hmac.new("key", digestmod="sha512").digest_size == 64
+    assert hmac.new("key", digestmod="md5").digest_size == 16
+
+@test
+def test_block_size_property():
+    assert hmac.new("key", digestmod="sha256").block_size == 64
+    assert hmac.new("key", digestmod="sha512").block_size == 128
+
+@test
+def test_compare_digest_matching_strings():
+    assert hmac.compare_digest("hello", "hello")
+
+@test
+def test_compare_digest_non_matching_strings():
+    assert not hmac.compare_digest("hello", "world")
+
+@test
+def test_compare_digest_bytes():
+    a: bytes = bytes.fromhex("010203")
+    b: bytes = bytes.fromhex("010203")
+    assert hmac.compare_digest(a, b)
+
+@test
+def test_digest_one_shot_returns_bytes():
+    result: bytes = hmac.digest("secret", "message", "sha256")
+    assert len(result) == 32
+
+@test
+def test_unsupported_algorithm_throws_value_error():
+    with assert_raises(ValueError):
+        hmac.new("key", digestmod="unsupported")
+
+@test
+def test_update_with_bytes():
+    h: HmacObject = hmac.new("secret", digestmod="sha256")
+    h.update(b"message")
+    assert h.hexdigest() == "8b5f48702995c1598c573db1e21866a9b825d4a794d169d7060a03605796360b"

@@ -16,15 +16,15 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 
 | C# File | Tests | .spy File | Tests | Status |
 |---------|-------|-----------|-------|--------|
-| ArgparseTests.cs | 42 | | | pending |
-| ArgparseAdditionalTests.cs | 19 | | | pending |
+| ArgparseTests.cs | 42 | Spy/argparse/argparse_tests.spy | 42 | ported |
+| ArgparseAdditionalTests.cs | 19 | Spy/argparse/argparse_additional_tests.spy | 18 | ported (1 omitted: SetOutput/StringWriter) |
 | Base64Tests.cs | 13 | | | pending |
 | BisectTests.cs | 19 | | | pending |
 | BisectAdditionalTests.cs | 15 | | | pending |
 | CalendarTests.cs | 28 | | | pending |
 | CollectionsModuleTests.cs | 57 | | | pending |
 | CollectionsAdditionalTests.cs | 33 | | | pending |
-| ColorsysTests.cs | 32 | | | pending |
+| ColorsysTests.cs | 32 | Spy/colorsys/colorsys_tests.spy | 32 | ported |
 | ConfigparserTests.cs | 66 | | | pending |
 | CounterCompleteTests.cs | 20 | | | pending |
 | CsvModuleTests.cs | 9 | | | pending |
@@ -36,23 +36,23 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | DatetimeTimeTests.cs | 25 | | | pending |
 | DefaultDictTests.cs | 13 | | | pending |
 | DequeChainMapTests.cs | 16 | | | pending |
-| DifflibModuleTests.cs | 34 | | | pending |
+| DifflibModuleTests.cs | 34 | Spy/difflib/difflib_module_tests.spy | 34 | ported |
 | EmailTests.cs | 34 | | | pending |
-| FnmatchTests.cs | 27 | | | pending |
-| FractionsTests.cs | 66 | | | pending |
+| FnmatchTests.cs | 27 | Spy/fnmatch/fnmatch_tests.spy | 27 | ported |
+| FractionsTests.cs | 66 | Spy/fractions/fractions_tests.spy | 66 | ported |
 | FunctoolsTests.cs | 21 | | | pending |
 | GlobModuleTests.cs | 18 | | | pending |
-| GraphemeTests.cs | 27 | | | pending |
-| HashlibTests.cs | 12 | | | pending |
-| HashlibCompleteTests.cs | 22 | | | pending |
+| GraphemeTests.cs | 27 | Spy/grapheme/grapheme_tests.spy | 27 | ported |
+| HashlibTests.cs | 12 | Spy/hashlib/hashlib_tests.spy | 12 | ported |
+| HashlibCompleteTests.cs | 22 | Spy/hashlib/hashlib_complete_tests.spy | 22 | ported |
 | HeapqTests.cs | 31 | | | pending |
 | HeapqAdditionalTests.cs | 12 | | | pending |
 | HmacTests.cs | 13 | | | pending |
-| HtmlModuleTests.cs | 44 | | | pending |
-| HttpTests.cs | 35 | | | pending |
+| HtmlModuleTests.cs | 44 | Spy/html/html_module_tests.spy | 44 | ported |
+| HttpTests.cs | 35 | Spy/http/http_tests.spy | 26 | ported (9 omitted: 7 HTTPResponse internal ctor, 1 reflection, 1 StringWriter) |
 | IoModuleTests.cs | 15 | | | pending |
 | IoStringIOTests.cs | 27 | | | pending |
-| IpaddressTests.cs | 114 | | | pending |
+| IpaddressTests.cs | 114 | Spy/ipaddress/ipaddress_tests.spy | 112 | ported (2 omitted: BigInteger, Bytes ctor) |
 | ItertoolsTests.cs | 20 | | | pending |
 | ItertoolsAdditionalTests.cs | 34 | | | pending |
 | ItertoolsCombinatoricsTests.cs | 11 | | | pending |

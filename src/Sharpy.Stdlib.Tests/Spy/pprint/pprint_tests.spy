@@ -1,0 +1,218 @@
+from unittest import assert_raises
+
+import pprint
+
+# --- Basic scalar formatting ---
+
+@test
+def test_pformat_integer_returns_digits():
+    pp = pprint.PrettyPrinter()
+    assert pp.pformat(42) == "42"
+
+@test
+def test_pformat_string_returns_python_repr():
+    pp = pprint.PrettyPrinter()
+    assert pp.pformat("hello") == "'hello'"
+
+@test
+def test_pformat_none_returns_none():
+    pp = pprint.PrettyPrinter()
+    assert pp.pformat(None) == "None"
+
+@test
+def test_pformat_true_returns_true():
+    pp = pprint.PrettyPrinter()
+    assert pp.pformat(True) == "True"
+
+@test
+def test_pformat_false_returns_false():
+    pp = pprint.PrettyPrinter()
+    assert pp.pformat(False) == "False"
+
+@test
+def test_pformat_double_includes_decimal_point():
+    pp = pprint.PrettyPrinter()
+    result: str = pp.pformat(3.14)
+    assert "." in result
+    assert result == "3.14"
+
+@test
+def test_pformat_whole_double_appends_dot_zero():
+    pp = pprint.PrettyPrinter()
+    assert pp.pformat(5.0) == "5.0"
+
+# --- Dict formatting ---
+
+@test
+def test_pformat_simple_dict_formats_entries():
+    pp = pprint.PrettyPrinter()
+    d: dict[str, int] = {"a": 1, "b": 2}
+    assert pp.pformat(d) == "{'a': 1, 'b': 2}"
+
+@test
+def test_pformat_dict_sorts_keys_by_default():
+    pp = pprint.PrettyPrinter()
+    d: dict[str, int] = {}
+    d["b"] = 2
+    d["a"] = 1
+    d["c"] = 3
+    assert pp.pformat(d) == "{'a': 1, 'b': 2, 'c': 3}"
+
+@test
+def test_pformat_dict_sort_dicts_false_preserves_insertion_order():
+    pp = pprint.PrettyPrinter(sortDicts=False)
+    d: dict[str, int] = {}
+    d["b"] = 2
+    d["a"] = 1
+    d["c"] = 3
+    assert pp.pformat(d) == "{'b': 2, 'a': 1, 'c': 3}"
+
+@test
+def test_pformat_empty_dict_returns_braces():
+    pp = pprint.PrettyPrinter()
+    d: dict[str, int] = {}
+    assert pp.pformat(d) == "{}"
+
+# --- List formatting ---
+
+@test
+def test_pformat_short_list_single_line():
+    pp = pprint.PrettyPrinter()
+    lst: list[int] = [1, 2, 3]
+    assert pp.pformat(lst) == "[1, 2, 3]"
+
+@test
+def test_pformat_empty_list_returns_brackets():
+    pp = pprint.PrettyPrinter()
+    lst: list[int] = []
+    assert pp.pformat(lst) == "[]"
+
+@test
+def test_pformat_long_list_wraps_across_lines():
+    pp = pprint.PrettyPrinter(width=20)
+    lst: list[int] = [100, 200, 300, 400, 500, 600]
+    result: str = pp.pformat(lst)
+    assert "\n" in result
+
+@test
+def test_pformat_compact_list_packs_multiple_per_line():
+    compact = pprint.PrettyPrinter(width=20, compact=True)
+    lst: list[int] = [100, 200, 300, 400, 500, 600]
+    result: str = compact.pformat(lst)
+    assert "\n" in result
+    # Compact packing should fit more than one item on at least one line
+    assert ", " in result
+
+# --- Set formatting ---
+
+@test
+def test_pformat_set_formats_with_braces():
+    pp = pprint.PrettyPrinter()
+    s: set[int] = {1, 2, 3}
+    assert pp.pformat(s) == "{1, 2, 3}"
+
+@test
+def test_pformat_empty_set_returns_set_call():
+    pp = pprint.PrettyPrinter()
+    s: set[int] = set()
+    assert pp.pformat(s) == "set()"
+
+# --- Tuple formatting ---
+
+@test
+def test_pformat_tuple_formats_with_parens():
+    pp = pprint.PrettyPrinter()
+    assert pp.pformat((1, 2, 3)) == "(1, 2, 3)"
+
+@test
+def test_pformat_single_element_tuple_has_trailing_comma():
+    pp = pprint.PrettyPrinter()
+    assert pp.pformat((1,)) == "(1,)"
+
+# --- Depth limiting ---
+
+@test
+def test_pformat_depth_one_truncates_inner_collections():
+    pp = pprint.PrettyPrinter(depth=1)
+    inner: list[int] = [1, 2]
+    outer: list[object] = [inner]
+    assert pp.pformat(outer) == "[...]"
+
+# --- Circular reference detection ---
+
+@test
+def test_isrecursive_self_referencing_list_returns_true():
+    lst: list[object] = []
+    lst.append(lst)
+    pp = pprint.PrettyPrinter()
+    assert pp.isrecursive(lst)
+
+@test
+def test_isreadable_self_referencing_list_returns_false():
+    lst: list[object] = []
+    lst.append(lst)
+    pp = pprint.PrettyPrinter()
+    assert not pp.isreadable(lst)
+
+@test
+def test_pformat_self_referencing_list_shows_recursion_marker():
+    lst: list[object] = []
+    lst.append(lst)
+    pp = pprint.PrettyPrinter()
+    assert "<Recursion on list with id=" in pp.pformat(lst)
+
+@test
+def test_isrecursive_non_recursive_list_returns_false():
+    lst: list[int] = [1, 2, 3]
+    pp = pprint.PrettyPrinter()
+    assert not pp.isrecursive(lst)
+
+@test
+def test_isreadable_simple_list_returns_true():
+    lst: list[int] = [1, 2, 3]
+    pp = pprint.PrettyPrinter()
+    assert pp.isreadable(lst)
+
+# --- Constructor parameter validation ---
+
+@test
+def test_constructor_negative_indent_throws():
+    with assert_raises(ValueError):
+        pprint.PrettyPrinter(indent=-1)
+
+@test
+def test_constructor_zero_width_throws():
+    with assert_raises(ValueError):
+        pprint.PrettyPrinter(width=0)
+
+@test
+def test_pformat_custom_indent_and_width_wraps_with_indent():
+    pp = pprint.PrettyPrinter(indent=4, width=10)
+    lst: list[int] = [1, 2, 3, 4, 5]
+    result: str = pp.pformat(lst)
+    assert "\n" in result
+    # indent of 4 spaces should appear before wrapped items
+    assert "\n    " in result
+
+# --- Module-level functions ---
+
+@test
+def test_module_pformat_integer_works():
+    assert pprint.pformat(42) == "42"
+
+@test
+def test_module_pformat_dict_sorts_keys():
+    d: dict[str, int] = {}
+    d["b"] = 2
+    d["a"] = 1
+    assert pprint.pformat(d) == "{'a': 1, 'b': 2}"
+
+@test
+def test_module_isrecursive_self_referencing_returns_true():
+    lst: list[object] = []
+    lst.append(lst)
+    assert pprint.isrecursive(lst)
+
+@test
+def test_module_isreadable_simple_returns_true():
+    assert pprint.isreadable(42)

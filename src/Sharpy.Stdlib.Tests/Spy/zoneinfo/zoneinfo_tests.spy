@@ -1,0 +1,184 @@
+from unittest import assert_raises
+
+import datetime
+import zoneinfo
+
+# Helper datetimes for America/New_York DST tests
+def _winter_dt() -> datetime.datetime:
+    return datetime.datetime(2026, 1, 15, 12, 0)
+
+def _summer_dt() -> datetime.datetime:
+    return datetime.datetime(2026, 7, 15, 12, 0)
+
+# --- ZoneInfo creation ---
+
+@test
+def test_constructor_utc_key_is_utc():
+    zone = zoneinfo.ZoneInfo("UTC")
+    assert zone.Key == "UTC"
+
+@test
+def test_constructor_america_new_york_succeeds():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    assert zone is not None
+    assert len(zone.Key) > 0
+
+@test
+def test_constructor_europe_london_succeeds():
+    zone = zoneinfo.ZoneInfo("Europe/London")
+    assert zone is not None
+    assert len(zone.Key) > 0
+
+# --- Invalid zone names ---
+
+@test
+def test_constructor_invalid_zone_throws_zone_info_not_found_error():
+    with assert_raises(zoneinfo.ZoneInfoNotFoundError):
+        zoneinfo.ZoneInfo("Invalid/Zone")
+
+@test
+def test_constructor_empty_key_throws_zone_info_not_found_error():
+    with assert_raises(zoneinfo.ZoneInfoNotFoundError):
+        zoneinfo.ZoneInfo("")
+
+@test
+def test_zone_info_not_found_error_is_key_error():
+    caught: bool = False
+    try:
+        zoneinfo.ZoneInfo("Not/AZone")
+    except KeyError:
+        caught = True
+    assert caught
+
+# --- UTC offset ---
+
+@test
+def test_utcoffset_utc_is_zero():
+    zone = zoneinfo.ZoneInfo("UTC")
+    assert zone.utcoffset().TotalSeconds == 0.0
+
+@test
+def test_utcoffset_america_new_york_base_offset_is_minus_five_hours():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    # Utcoffset(None) returns BaseUtcOffset which for New York is always -5h
+    assert zone.utcoffset().TotalSeconds == -5.0 * 3600.0
+
+# --- DST-aware offsets ---
+
+@test
+def test_utcoffset_america_new_york_winter_is_minus_five_hours():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    assert zone.utcoffset(_winter_dt()).TotalSeconds == -5.0 * 3600.0
+
+@test
+def test_utcoffset_america_new_york_summer_is_minus_four_hours():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    assert zone.utcoffset(_summer_dt()).TotalSeconds == -4.0 * 3600.0
+
+# --- DST method ---
+
+@test
+def test_dst_null_dt_is_zero():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    assert zone.dst().TotalSeconds == 0.0
+
+@test
+def test_dst_winter_is_zero():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    assert zone.dst(_winter_dt()).TotalSeconds == 0.0
+
+@test
+def test_dst_summer_is_one_hour():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    assert zone.dst(_summer_dt()).TotalSeconds == 3600.0
+
+# --- Tzname ---
+
+@test
+def test_tzname_null_dt_returns_key():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    assert zone.tzname() == zone.Key
+
+@test
+def test_tzname_with_dt_returns_non_empty_name():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    assert len(zone.tzname(_winter_dt())) > 0
+    assert len(zone.tzname(_summer_dt())) > 0
+
+# --- Datetime integration ---
+
+@test
+def test_datetime_with_zone_info_tzinfo_constructs():
+    dt = datetime.datetime(2026, 6, 15, 12, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York"))
+    assert dt.Tzinfo is not None
+
+@test
+def test_datetime_with_zone_info_tzinfo_is_zone_info():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    dt = datetime.datetime(2026, 6, 15, 12, 0, tzinfo=zone)
+    assert isinstance(dt.Tzinfo, zoneinfo.ZoneInfo)
+
+# --- Astimezone ---
+
+@test
+def test_astimezone_summer_new_york_to_utc_shifts_hour_forward():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    dt = datetime.datetime(2026, 7, 15, 12, 0, tzinfo=zone)
+    utc = dt.astimezone(datetime.timezone.Utc)
+    # Summer offset is -4h, so 12:00 EDT == 16:00 UTC
+    assert utc.Hour == 16
+
+@test
+def test_astimezone_winter_new_york_to_utc_shifts_hour_forward():
+    zone = zoneinfo.ZoneInfo("America/New_York")
+    dt = datetime.datetime(2026, 1, 15, 12, 0, tzinfo=zone)
+    utc = dt.astimezone(datetime.timezone.Utc)
+    # Winter offset is -5h, so 12:00 EST == 17:00 UTC
+    assert utc.Hour == 17
+
+# --- Backward compatibility with fixed-offset Timezone ---
+
+@test
+def test_datetime_with_fixed_timezone_utc_still_works():
+    dt = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.Utc)
+    assert dt.Tzinfo is not None
+
+@test
+def test_timezone_utc_utcoffset_is_zero():
+    assert datetime.timezone.Utc.utcoffset().TotalSeconds == 0.0
+
+# --- AvailableTimezones ---
+
+@test
+def test_available_timezones_is_non_empty():
+    zones: set[str] = zoneinfo.available_timezones()
+    assert len(zones) > 0
+
+@test
+def test_available_timezones_contains_utc():
+    zones: set[str] = zoneinfo.available_timezones()
+    assert "UTC" in zones
+
+# --- Equality ---
+
+@test
+def test_equals_same_key_is_true():
+    assert zoneinfo.ZoneInfo("UTC") == zoneinfo.ZoneInfo("UTC")
+
+@test
+def test_equals_different_keys_is_false():
+    assert zoneinfo.ZoneInfo("America/New_York") != zoneinfo.ZoneInfo("Europe/London")
+
+@test
+def test_equals_none_is_false():
+    assert zoneinfo.ZoneInfo("UTC") != None
+
+@test
+def test_get_hash_code_same_key_is_equal():
+    assert hash(zoneinfo.ZoneInfo("UTC")) == hash(zoneinfo.ZoneInfo("UTC"))
+
+# --- ToString ---
+
+@test
+def test_to_string_utc_returns_utc():
+    assert str(zoneinfo.ZoneInfo("UTC")) == "UTC"

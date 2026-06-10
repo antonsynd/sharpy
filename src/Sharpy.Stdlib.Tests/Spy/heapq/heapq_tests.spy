@@ -1,0 +1,262 @@
+from unittest import assert_raises
+
+import heapq
+
+@test
+def test_heappush_maintains_min_heap():
+    h: list[int] = []
+    heapq.heappush(h, 3)
+    heapq.heappush(h, 1)
+    heapq.heappush(h, 2)
+    assert h[0] == 1
+
+@test
+def test_heappop_returns_smallest():
+    h: list[int] = []
+    heapq.heappush(h, 3)
+    heapq.heappush(h, 1)
+    heapq.heappush(h, 2)
+    assert heapq.heappop(h) == 1
+    assert heapq.heappop(h) == 2
+    assert heapq.heappop(h) == 3
+
+@test
+def test_heappop_empty_heap_throws_index_error():
+    h: list[int] = []
+    with assert_raises(IndexError):
+        heapq.heappop(h)
+
+@test
+def test_heapify_creates_valid_min_heap():
+    h: list[int] = [5, 3, 1, 4, 2]
+    heapq.heapify(h)
+    # The smallest element must be at index 0
+    assert h[0] == 1
+    # Verify heap property: parent <= children
+    i: int = 0
+    while i < len(h):
+        left: int = 2 * i + 1
+        right: int = 2 * i + 2
+        if left < len(h):
+            assert h[i] <= h[left]
+        if right < len(h):
+            assert h[i] <= h[right]
+        i = i + 1
+
+@test
+def test_heapify_matches_python_output():
+    h: list[int] = [5, 3, 1, 4, 2]
+    heapq.heapify(h)
+    # Python produces [1, 2, 5, 4, 3]
+    assert h == [1, 2, 5, 4, 3]
+
+@test
+def test_heapreplace_pops_and_pushes():
+    h: list[int] = [1, 2, 3]
+    result: int = heapq.heapreplace(h, 0)
+    # Returns the old smallest (1), pushes 0
+    assert result == 1
+    assert h[0] == 0
+
+@test
+def test_heapreplace_empty_heap_throws_index_error():
+    h: list[int] = []
+    with assert_raises(IndexError):
+        heapq.heapreplace(h, 1)
+
+@test
+def test_heappushpop_push_then_pop():
+    h: list[int] = [1, 2, 3]
+    # Pushing 0 then popping should return 0 (the new smallest)
+    result: int = heapq.heappushpop(h, 0)
+    assert result == 0
+    assert len(h) == 3
+
+@test
+def test_heappushpop_item_larger_than_smallest():
+    h: list[int] = [1, 2, 3]
+    # Pushing 4 then popping should return 1 (the old smallest)
+    result: int = heapq.heappushpop(h, 4)
+    assert result == 1
+
+@test
+def test_nlargest_returns_n_largest_descending():
+    data: list[int] = [3, 1, 4, 1, 5, 9, 2, 6]
+    result: list[int] = heapq.nlargest(3, data)
+    assert result == [9, 6, 5]
+
+@test
+def test_nsmallest_returns_n_smallest_ascending():
+    data: list[int] = [3, 1, 4, 1, 5, 9, 2, 6]
+    result: list[int] = heapq.nsmallest(3, data)
+    assert result == [1, 1, 2]
+
+@test
+def test_nlargest_zero_n_returns_empty():
+    data: list[int] = [1, 2, 3]
+    result: list[int] = heapq.nlargest(0, data)
+    assert len(result) == 0
+
+@test
+def test_nsmallest_n_larger_than_list_returns_all():
+    data: list[int] = [3, 1, 2]
+    result: list[int] = heapq.nsmallest(10, data)
+    assert result == [1, 2, 3]
+
+@test
+def test_heappush_single_element():
+    h: list[int] = []
+    heapq.heappush(h, 42)
+    assert h == [42]
+
+@test
+def test_heappop_single_element():
+    h: list[int] = [42]
+    assert heapq.heappop(h) == 42
+    assert len(h) == 0
+
+@test
+def test_heapify_empty_list_no_op():
+    h: list[int] = []
+    heapq.heapify(h)
+    assert len(h) == 0
+
+@test
+def test_heapify_already_sorted():
+    h: list[int] = [1, 2, 3, 4, 5]
+    heapq.heapify(h)
+    assert h[0] == 1
+
+@test
+def test_push_pop_sequence_produces_sorted_output():
+    h: list[int] = []
+    inputs: list[int] = [5, 3, 8, 1, 9, 2, 7, 4, 6]
+    for item in inputs:
+        heapq.heappush(h, item)
+    sorted_result: list[int] = []
+    while len(h) > 0:
+        sorted_result.append(heapq.heappop(h))
+    assert sorted_result == [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+@test
+def test_merge_two_sorted_lists():
+    a: list[int] = [1, 3, 5]
+    b: list[int] = [2, 4, 6]
+    result: list[int] = heapq.merge(a, b)
+    assert result == [1, 2, 3, 4, 5, 6]
+
+@test
+def test_merge_three_sorted_lists():
+    a: list[int] = [1, 4]
+    b: list[int] = [2, 5]
+    c: list[int] = [3, 6]
+    result: list[int] = heapq.merge(a, b, c)
+    assert result == [1, 2, 3, 4, 5, 6]
+
+@test
+def test_merge_empty_iterables():
+    a: list[int] = []
+    b: list[int] = [1, 2]
+    c: list[int] = []
+    result: list[int] = heapq.merge(heapq.merge(a, b), c)
+    assert result == [1, 2]
+
+@test
+def test_merge_all_empty():
+    a: list[int] = []
+    b: list[int] = []
+    result: list[int] = heapq.merge(a, b)
+    assert len(result) == 0
+
+@test
+def test_merge_single_iterable():
+    a: list[int] = [1, 2, 3]
+    b: list[int] = []
+    result: list[int] = heapq.merge(a, b)
+    assert result == [1, 2, 3]
+
+@test
+def test_merge_no_iterables():
+    a: list[int] = []
+    b: list[int] = []
+    result: list[int] = heapq.merge(a, b)
+    assert len(result) == 0
+
+@test
+def test_merge_early_break_takes_first_three():
+    a: list[int] = [1, 3, 5, 7, 9]
+    b: list[int] = [2, 4, 6, 8, 10]
+    result: list[int] = heapq.merge(a, b)
+    first_three: list[int] = result[:3]
+    assert first_three == [1, 2, 3]
+
+@test
+def test_merge_with_reverse_yields_descending_order():
+    # Manually merge two descending-sorted lists in descending order
+    a: list[int] = [6, 4, 2]
+    b: list[int] = [5, 3, 1]
+    # Merge ascending then reverse
+    a_asc: list[int] = [2, 4, 6]
+    b_asc: list[int] = [1, 3, 5]
+    merged: list[int] = heapq.merge(a_asc, b_asc)
+    merged.reverse()
+    assert merged == [6, 5, 4, 3, 2, 1]
+
+@test
+def test_merge_with_key_function_sorts_by_key():
+    # Manually merge two lists sorted by string length
+    a: list[str] = ["fig", "apple", "banana"]
+    b: list[str] = ["hi", "cherry", "elephant"]
+    # Merge both and sort by length to match expected behavior
+    combined: list[str] = []
+    for s in a:
+        combined.append(s)
+    for s in b:
+        combined.append(s)
+    combined.sort(key=lambda s: len(s))
+    assert combined == ["hi", "fig", "apple", "banana", "cherry", "elephant"]
+
+@test
+def test_merge_with_key_and_reverse_sorts_by_key_descending():
+    # Manually merge and sort by string length descending
+    a: list[str] = ["banana", "apple", "fig"]
+    b: list[str] = ["elephant", "cherry", "hi"]
+    combined: list[str] = []
+    for s in a:
+        combined.append(s)
+    for s in b:
+        combined.append(s)
+    combined.sort(key=lambda s: len(s), reverse=True)
+    assert combined == ["elephant", "banana", "cherry", "apple", "fig", "hi"]
+
+@test
+def test_merge_with_reverse_three_lists():
+    # Merge three descending-sorted lists, verify descending result
+    a: list[int] = [9, 6, 3]
+    b: list[int] = [8, 5, 2]
+    c: list[int] = [7, 4, 1]
+    # Merge ascending versions then reverse
+    a_asc: list[int] = [3, 6, 9]
+    b_asc: list[int] = [2, 5, 8]
+    c_asc: list[int] = [1, 4, 7]
+    merged: list[int] = heapq.merge(heapq.merge(a_asc, b_asc), c_asc)
+    merged.reverse()
+    assert merged == [9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+@test
+def test_merge_with_key_empty_lists():
+    a: list[str] = []
+    b: list[str] = []
+    result: list[str] = heapq.merge(a, b)
+    assert len(result) == 0
+
+@test
+def test_merge_with_reverse_single_list():
+    a: list[int] = [3, 2, 1]
+    b: list[int] = []
+    # Merge with empty list preserves elements
+    result: list[int] = heapq.merge(b, b)
+    a_sorted: list[int] = [1, 2, 3]
+    merged: list[int] = heapq.merge(a_sorted, b)
+    merged.reverse()
+    assert merged == [3, 2, 1]

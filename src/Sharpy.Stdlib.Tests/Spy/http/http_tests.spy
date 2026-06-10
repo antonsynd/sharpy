@@ -1,0 +1,123 @@
+from unittest import assert_raises
+
+import http
+
+# --- HTTPStatus ---
+
+@test
+def test_ok_has_correct_value():
+    assert http.HTTPStatus.OK.Value == 200
+
+@test
+def test_ok_has_correct_phrase():
+    assert http.HTTPStatus.OK.Phrase == "OK"
+
+@test
+def test_not_found_has_correct_value():
+    assert http.HTTPStatus.NOT_FOUND.Value == 404
+
+@test
+def test_not_found_has_correct_phrase():
+    assert http.HTTPStatus.NOT_FOUND.Phrase == "Not Found"
+
+@test
+def test_from_value_returns_correct_instance():
+    status: http.HTTPStatus = http.HTTPStatus.FromValue(200)
+    assert status == http.HTTPStatus.OK
+
+@test
+def test_from_value_unknown_code_throws_value_error():
+    with assert_raises(ValueError):
+        http.HTTPStatus.FromValue(999)
+
+@test
+def test_value_property_returns_int():
+    code: int = http.HTTPStatus.OK.Value
+    assert code == 200
+
+@test
+def test_to_string_returns_numeric_string():
+    assert str(http.HTTPStatus.OK) == "200"
+
+@test
+def test_equals_same_value_returns_true():
+    a: http.HTTPStatus = http.HTTPStatus.OK
+    b: http.HTTPStatus = http.HTTPStatus.FromValue(200)
+    assert a == b
+
+@test
+def test_get_hash_code_same_value_matches():
+    a: http.HTTPStatus = http.HTTPStatus.OK
+    b: http.HTTPStatus = http.HTTPStatus.FromValue(200)
+    assert hash(a) == hash(b)
+
+# Theory: FromValue_KnownCodes_HaveCorrectPhrase (6 inline data rows)
+@test.parametrize([
+    (100, "Continue"),
+    (201, "Created"),
+    (301, "Moved Permanently"),
+    (403, "Forbidden"),
+    (500, "Internal Server Error"),
+    (503, "Service Unavailable"),
+])
+def test_from_value_known_codes_have_correct_phrase(code: int, expected_phrase: str):
+    assert http.HTTPStatus.FromValue(code).Phrase == expected_phrase
+
+# --- HTTPConnection ---
+
+@test
+def test_http_connection_default_port_is_80():
+    conn: http.HTTPConnection = http.HTTPConnection("example.com")
+    assert conn.Port == 80
+    assert conn.Host == "example.com"
+
+@test
+def test_http_connection_custom_port():
+    conn: http.HTTPConnection = http.HTTPConnection("example.com", port=8080)
+    assert conn.Port == 8080
+
+@test
+def test_https_connection_default_port_is_443():
+    conn: http.HTTPSConnection = http.HTTPSConnection("example.com")
+    assert conn.Port == 443
+
+@test
+def test_http_connection_empty_host_throws_invalid_url():
+    with assert_raises(http.InvalidURL):
+        http.HTTPConnection("")
+
+@test
+def test_getresponse_before_request_throws_not_connected():
+    conn: http.HTTPConnection = http.HTTPConnection("example.com")
+    with assert_raises(http.NotConnected):
+        conn.Getresponse()
+
+# --- HTTPResponse tests omitted (HTTPResponse has internal constructor) ---
+# --- AllStatusCodes_HaveNonNullPhrase omitted (uses reflection) ---
+
+# --- HTTPException ---
+
+@test
+def test_http_exception_has_message():
+    ex: http.HTTPException = http.HTTPException("test")
+    assert "test" in str(ex)
+
+@test
+def test_invalid_url_has_message():
+    ex: http.InvalidURL = http.InvalidURL("bad url")
+    assert "bad url" in str(ex)
+
+@test
+def test_not_connected_has_message():
+    ex: http.NotConnected = http.NotConnected("no conn")
+    assert "no conn" in str(ex)
+
+# --- Constants ---
+
+@test
+def test_http_port_is_80():
+    assert http.HTTP_PORT == 80
+
+@test
+def test_https_port_is_443():
+    assert http.HTTPS_PORT == 443

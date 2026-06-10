@@ -1,0 +1,140 @@
+from unittest import approx
+
+import colorsys
+
+# --- RgbToHsv known values (verified against Python colorsys) ---
+
+@test
+def test_rgb_to_hsv_typical_value():
+    h, s, v = colorsys.rgb_to_hsv(0.2, 0.4, 0.6)
+    assert h == approx(0.5833333333333334, abs=1e-10)
+    assert s == approx(0.6666666666666666, abs=1e-10)
+    assert v == approx(0.6, abs=1e-10)
+
+@test
+def test_rgb_to_hsv_black():
+    h, s, v = colorsys.rgb_to_hsv(0.0, 0.0, 0.0)
+    assert h == approx(0.0, abs=1e-10)
+    assert s == approx(0.0, abs=1e-10)
+    assert v == approx(0.0, abs=1e-10)
+
+@test
+def test_rgb_to_hsv_white():
+    h, s, v = colorsys.rgb_to_hsv(1.0, 1.0, 1.0)
+    assert h == approx(0.0, abs=1e-10)
+    assert s == approx(0.0, abs=1e-10)
+    assert v == approx(1.0, abs=1e-10)
+
+@test
+def test_rgb_to_hsv_pure_red():
+    h, s, v = colorsys.rgb_to_hsv(1.0, 0.0, 0.0)
+    assert h == approx(0.0, abs=1e-10)
+    assert s == approx(1.0, abs=1e-10)
+    assert v == approx(1.0, abs=1e-10)
+
+@test
+def test_rgb_to_hsv_pure_green():
+    h, s, v = colorsys.rgb_to_hsv(0.0, 1.0, 0.0)
+    assert h == approx(0.3333333333333333, abs=1e-10)
+    assert s == approx(1.0, abs=1e-10)
+    assert v == approx(1.0, abs=1e-10)
+
+@test
+def test_rgb_to_hsv_pure_blue():
+    h, s, v = colorsys.rgb_to_hsv(0.0, 0.0, 1.0)
+    assert h == approx(0.6666666666666666, abs=1e-10)
+    assert s == approx(1.0, abs=1e-10)
+    assert v == approx(1.0, abs=1e-10)
+
+# --- RgbToHls known values ---
+
+@test
+def test_rgb_to_hls_typical_value():
+    h, l, s = colorsys.rgb_to_hls(0.2, 0.4, 0.6)
+    assert h == approx(0.5833333333333334, abs=1e-10)
+    assert l == approx(0.4, abs=1e-10)
+    assert s == approx(0.49999999999999994, abs=1e-10)
+
+@test
+def test_rgb_to_hls_black():
+    h, l, s = colorsys.rgb_to_hls(0.0, 0.0, 0.0)
+    assert h == approx(0.0, abs=1e-10)
+    assert l == approx(0.0, abs=1e-10)
+    assert s == approx(0.0, abs=1e-10)
+
+@test
+def test_rgb_to_hls_white():
+    h, l, s = colorsys.rgb_to_hls(1.0, 1.0, 1.0)
+    assert h == approx(0.0, abs=1e-10)
+    assert l == approx(1.0, abs=1e-10)
+    assert s == approx(0.0, abs=1e-10)
+
+# --- RgbToYiq known values ---
+
+@test
+def test_rgb_to_yiq_typical_value():
+    y, i, q = colorsys.rgb_to_yiq(0.2, 0.4, 0.6)
+    assert y == approx(0.362, abs=1e-10)
+    assert i == approx(-0.18413999999999997, abs=1e-10)
+    assert q == approx(0.019820000000000004, abs=1e-10)
+
+@test
+def test_rgb_to_yiq_white():
+    y, i, q = colorsys.rgb_to_yiq(1.0, 1.0, 1.0)
+    assert y == approx(1.0, abs=1e-10)
+    assert i == approx(0.0, abs=1e-10)
+    assert q == approx(0.0, abs=1e-10)
+
+# --- HSV roundtrip ---
+
+@test.parametrize([
+    (0.2, 0.4, 0.6),
+    (0.0, 0.0, 0.0),
+    (1.0, 1.0, 1.0),
+    (1.0, 0.0, 0.0),
+    (0.0, 1.0, 0.0),
+    (0.0, 0.0, 1.0),
+    (0.75, 0.25, 0.5),
+])
+def test_hsv_roundtrip_matches_original(r: float, g: float, b: float):
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    r2, g2, b2 = colorsys.hsv_to_rgb(h, s, v)
+    assert r2 == approx(r, abs=1e-10)
+    assert g2 == approx(g, abs=1e-10)
+    assert b2 == approx(b, abs=1e-10)
+
+# --- HLS roundtrip ---
+
+@test.parametrize([
+    (0.2, 0.4, 0.6),
+    (0.0, 0.0, 0.0),
+    (1.0, 1.0, 1.0),
+    (1.0, 0.0, 0.0),
+    (0.0, 1.0, 0.0),
+    (0.0, 0.0, 1.0),
+    (0.75, 0.25, 0.5),
+])
+def test_hls_roundtrip_matches_original(r: float, g: float, b: float):
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    r2, g2, b2 = colorsys.hls_to_rgb(h, l, s)
+    assert r2 == approx(r, abs=1e-10)
+    assert g2 == approx(g, abs=1e-10)
+    assert b2 == approx(b, abs=1e-10)
+
+# --- YIQ roundtrip ---
+
+@test.parametrize([
+    (0.2, 0.4, 0.6),
+    (0.0, 0.0, 0.0),
+    (1.0, 1.0, 1.0),
+    (1.0, 0.0, 0.0),
+    (0.0, 1.0, 0.0),
+    (0.0, 0.0, 1.0),
+    (0.75, 0.25, 0.5),
+])
+def test_yiq_roundtrip_matches_original(r: float, g: float, b: float):
+    y, i, q = colorsys.rgb_to_yiq(r, g, b)
+    r2, g2, b2 = colorsys.yiq_to_rgb(y, i, q)
+    assert r2 == approx(r, abs=1e-10)
+    assert g2 == approx(g, abs=1e-10)
+    assert b2 == approx(b, abs=1e-10)

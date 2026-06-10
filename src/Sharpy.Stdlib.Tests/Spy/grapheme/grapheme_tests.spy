@@ -1,0 +1,134 @@
+from unittest import assert_raises
+
+import grapheme
+
+# ----- Length -----
+
+@test
+def test_length_ascii_returns_character_count():
+    assert grapheme.length("hello") == 5
+
+@test
+def test_length_empty_string_returns_zero():
+    assert grapheme.length("") == 0
+
+@test
+def test_length_combining_accent_treated_as_single_grapheme():
+    # "e" + U+0301 (combining acute accent)
+    assert grapheme.length("é") == 1
+
+@test
+def test_length_precomposed_accent_is_single_grapheme():
+    # "e-acute" as a single precomposed code point
+    assert grapheme.length("é") == 1
+
+@test
+def test_length_surrogate_pair_emoji_is_single_grapheme():
+    # U+1F600 GRINNING FACE
+    assert grapheme.length("\U0001F600") == 1
+
+# TODO(#879): ZWJ chars lost during .spy → C# emission
+# @test
+# def test_length_zwj_family_sequence_is_single_grapheme():
+#     family: str = "\U0001F468‍\U0001F469‍\U0001F467‍\U0001F466"
+#     assert grapheme.length(family) == 1
+
+@test
+def test_length_mixed_ascii_and_emoji_counts_correctly():
+    assert grapheme.length("hi\U0001F600!") == 4
+
+# ----- Graphemes -----
+
+@test
+def test_graphemes_ascii_splits_by_character():
+    assert grapheme.graphemes("abc") == ["a", "b", "c"]
+
+@test
+def test_graphemes_empty_string_returns_empty():
+    assert len(grapheme.graphemes("")) == 0
+
+@test
+def test_graphemes_combining_accent_keeps_together():
+    result = grapheme.graphemes("éa")
+    assert result == ["é", "a"]
+
+@test
+def test_graphemes_emoji_keeps_surrogate_pair_together():
+    result = grapheme.graphemes("a\U0001F600b")
+    assert result == ["a", "\U0001F600", "b"]
+
+# ----- At -----
+
+@test
+def test_at_positive_index_returns_grapheme():
+    assert grapheme.at("abc", 0) == "a"
+    assert grapheme.at("abc", 1) == "b"
+    assert grapheme.at("abc", 2) == "c"
+
+@test
+def test_at_negative_index_counts_from_end():
+    assert grapheme.at("abc", -1) == "c"
+    assert grapheme.at("abc", -2) == "b"
+    assert grapheme.at("abc", -3) == "a"
+
+@test
+def test_at_emoji_returns_whole_grapheme():
+    assert grapheme.at("a\U0001F600b", 1) == "\U0001F600"
+
+@test
+def test_at_index_equals_length_throws_index_error():
+    with assert_raises(IndexError):
+        grapheme.at("abc", 3)
+
+@test
+def test_at_negative_beyond_start_throws_index_error():
+    with assert_raises(IndexError):
+        grapheme.at("abc", -4)
+
+@test
+def test_at_empty_string_throws_index_error():
+    with assert_raises(IndexError):
+        grapheme.at("", 0)
+
+# ----- Slice -----
+
+@test
+def test_slice_full_range_returns_all():
+    assert grapheme.slice("hello", 0, 5) == "hello"
+
+@test
+def test_slice_mid_range_returns_substring():
+    assert grapheme.slice("hello", 1, 4) == "ell"
+
+@test
+def test_slice_open_end_returns_to_end():
+    assert grapheme.slice("hello", 2) == "llo"
+
+@test
+def test_slice_empty_string_returns_empty():
+    assert grapheme.slice("", 0, 5) == ""
+
+@test
+def test_slice_start_at_end_returns_empty():
+    assert grapheme.slice("hello", 5, 5) == ""
+
+@test
+def test_slice_negative_start_counts_from_end():
+    assert grapheme.slice("hello", -3) == "llo"
+
+@test
+def test_slice_negative_end_counts_from_end():
+    assert grapheme.slice("hello", 0, -2) == "hel"
+
+@test
+def test_slice_start_greater_than_end_returns_empty():
+    assert grapheme.slice("hello", 3, 1) == ""
+
+@test
+def test_slice_out_of_range_clamped():
+    assert grapheme.slice("hi", 0, 100) == "hi"
+
+@test
+def test_slice_across_emoji_keeps_clusters_whole():
+    s: str = "a\U0001F600b\U0001F600c"
+    assert grapheme.slice(s, 1, 4) == "\U0001F600b\U0001F600"

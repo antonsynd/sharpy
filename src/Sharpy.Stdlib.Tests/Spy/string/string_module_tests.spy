@@ -1,0 +1,50 @@
+import string
+
+@test
+def test_ascii_lowercase_matches_python():
+    assert string.AsciiLowercase == "abcdefghijklmnopqrstuvwxyz"
+
+@test
+def test_ascii_uppercase_matches_python():
+    assert string.AsciiUppercase == "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+@test
+def test_ascii_letters_is_concatenation_of_lowercase_and_uppercase():
+    assert string.AsciiLetters == "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+@test
+def test_digits_matches_python():
+    assert string.Digits == "0123456789"
+
+@test
+def test_hexdigits_matches_python():
+    assert string.Hexdigits == "0123456789abcdefABCDEF"
+
+@test
+def test_octdigits_matches_python():
+    assert string.Octdigits == "01234567"
+
+@test
+def test_punctuation_matches_python():
+    assert string.Punctuation == "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+
+@test
+def test_whitespace_matches_python():
+    assert string.Whitespace == " \t\n\r\x0b\x0c"
+
+@test
+def test_printable_matches_python():
+    expected: str = "0123456789" + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" + "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~" + " \t\n\r\x0b\x0c"
+    assert string.Printable == expected
+
+@test
+def test_printable_has_correct_length():
+    assert len(string.Printable) == 100
+
+@test
+def test_punctuation_has_correct_length():
+    assert len(string.Punctuation) == 32
+
+@test
+def test_whitespace_has_correct_length():
+    assert len(string.Whitespace) == 6

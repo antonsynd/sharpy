@@ -1,0 +1,266 @@
+from unittest import assert_raises, approx
+
+import difflib
+
+# --- SequenceMatcher ---
+
+@test
+def test_sequence_matcher_ratio_matches_python():
+    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c", "d", "e"], ["a", "b", "d", "c", "e"])
+    assert sm.ratio() == approx(0.8, abs=0.001)
+
+@test
+def test_sequence_matcher_get_matching_blocks_returns_correct_blocks():
+    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c", "d", "e"], ["a", "b", "d", "c", "e"])
+    blocks = sm.get_matching_blocks()
+    last = blocks[len(blocks) - 1]
+    assert last == (5, 5, 0)
+    total_size: int = 0
+    for b in blocks:
+        total_size = total_size + b[2]
+    assert total_size == 4
+
+@test
+def test_sequence_matcher_get_opcodes_returns_correct_tags():
+    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c", "d", "e"], ["a", "b", "d", "c", "e"])
+    opcodes = sm.get_opcodes()
+    has_equal: bool = False
+    has_change: bool = False
+    for op in opcodes:
+        if op[0] == "equal":
+            has_equal = True
+        if op[0] == "insert" or op[0] == "delete" or op[0] == "replace":
+            has_change = True
+    assert has_equal
+    assert has_change
+
+@test
+def test_sequence_matcher_quick_ratio_is_upper_bound():
+    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c", "d", "e"], ["a", "b", "d", "c", "e"])
+    assert sm.quick_ratio() >= sm.ratio()
+
+@test
+def test_sequence_matcher_real_quick_ratio_is_upper_bound():
+    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c", "d", "e"], ["a", "b", "d", "c", "e"])
+    assert sm.real_quick_ratio() >= sm.quick_ratio()
+
+@test
+def test_sequence_matcher_empty_sequences_ratio_is_one():
+    sm = difflib.SequenceMatcher[str](None, [], [])
+    assert sm.ratio() == 1.0
+
+@test
+def test_sequence_matcher_one_empty_ratio_is_zero():
+    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c"], [])
+    assert sm.ratio() == 0.0
+
+@test
+def test_sequence_matcher_junk_function_excludes_elements():
+    sm = difflib.SequenceMatcher[str](lambda c: c == " ", ["a", " ", "b", " ", "c"], ["a", " ", " ", "b", " ", " ", "c"])
+    assert sm.ratio() > 0.5
+
+@test
+def test_sequence_matcher_set_seqs_resets_state():
+    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c"], ["a", "b", "c"])
+    assert sm.ratio() == 1.0
+    sm.set_seqs(["a", "b", "c"], ["x", "y", "z"])
+    assert sm.ratio() < 1.0
+
+@test
+def test_sequence_matcher_identical_sequences_ratio_is_one():
+    sm = difflib.SequenceMatcher[str](None, ["line1\n", "line2\n"], ["line1\n", "line2\n"])
+    assert sm.ratio() == 1.0
+
+# --- GetCloseMatches ---
+
+@test
+def test_get_close_matches_matches_python():
+    result = difflib.get_close_matches("appel", ["ape", "apple", "peach"])
+    assert result == ["apple", "ape"]
+
+@test
+def test_get_close_matches_high_cutoff_filters_worse():
+    result = difflib.get_close_matches("appel", ["ape", "apple", "peach"], cutoff=0.9)
+    assert "ape" not in result
+
+@test
+def test_get_close_matches_n1_returns_best_only():
+    result = difflib.get_close_matches("appel", ["ape", "apple", "peach"], n=1)
+    assert len(result) == 1
+    assert result[0] == "apple"
+
+@test
+def test_get_close_matches_no_matches_returns_empty():
+    result = difflib.get_close_matches("xyz", ["abc", "def"], cutoff=0.9)
+    assert len(result) == 0
+
+# --- IsLineJunk / IsCharacterJunk ---
+
+@test
+def test_is_line_junk_blank_line_returns_true():
+    assert difflib.is_line_junk("  \n")
+
+@test
+def test_is_line_junk_comment_line_returns_true():
+    assert difflib.is_line_junk("  #  \n")
+
+@test
+def test_is_line_junk_code_line_returns_false():
+    assert not difflib.is_line_junk("code\n")
+
+@test
+def test_is_character_junk_space_returns_true():
+    assert difflib.is_character_junk(" ")
+
+@test
+def test_is_character_junk_tab_returns_true():
+    assert difflib.is_character_junk("\t")
+
+@test
+def test_is_character_junk_newline_returns_false():
+    assert not difflib.is_character_junk("\n")
+
+@test
+def test_is_character_junk_letter_returns_false():
+    assert not difflib.is_character_junk("a")
+
+# --- UnifiedDiff ---
+
+@test
+def test_unified_diff_basic_output_has_correct_format():
+    a: list[str] = ["one\n", "two\n", "three\n"]
+    b: list[str] = ["one\n", "tree\n", "three\n"]
+    diff: list[str] = list(difflib.unified_diff(a, b, "a.txt", "b.txt"))
+    has_from: bool = False
+    has_to: bool = False
+    has_hunk: bool = False
+    for l in diff:
+        if l.startswith("--- "):
+            has_from = True
+        if l.startswith("+++ "):
+            has_to = True
+        if l.startswith("@@ "):
+            has_hunk = True
+    assert has_from
+    assert has_to
+    assert has_hunk
+
+@test
+def test_unified_diff_identical_inputs_no_output():
+    a: list[str] = ["one\n", "two\n"]
+    diff: list[str] = list(difflib.unified_diff(a, a))
+    assert len(diff) == 0
+
+@test
+def test_context_diff_has_correct_format():
+    a: list[str] = ["one\n", "two\n", "three\n"]
+    b: list[str] = ["one\n", "tree\n", "three\n"]
+    diff: list[str] = list(difflib.context_diff(a, b, "a.txt", "b.txt"))
+    has_stars: bool = False
+    has_dashes: bool = False
+    for l in diff:
+        if l.startswith("*** "):
+            has_stars = True
+        if l.startswith("--- "):
+            has_dashes = True
+    assert has_stars
+    assert has_dashes
+
+# --- Ndiff ---
+
+@test
+def test_ndiff_common_lines_prefixed_with_space():
+    a: list[str] = ["one\n", "two\n"]
+    b: list[str] = ["one\n", "two\n"]
+    diff: list[str] = list(difflib.ndiff(a, b))
+    for l in diff:
+        assert l.startswith("  ")
+
+@test
+def test_ndiff_removed_lines_prefixed_with_minus():
+    a: list[str] = ["one\n", "two\n"]
+    b: list[str] = ["one\n"]
+    diff: list[str] = list(difflib.ndiff(a, b))
+    has_minus: bool = False
+    for l in diff:
+        if l.startswith("- "):
+            has_minus = True
+    assert has_minus
+
+@test
+def test_ndiff_added_lines_prefixed_with_plus():
+    a: list[str] = ["one\n"]
+    b: list[str] = ["one\n", "two\n"]
+    diff: list[str] = list(difflib.ndiff(a, b))
+    has_plus: bool = False
+    for l in diff:
+        if l.startswith("+ "):
+            has_plus = True
+    assert has_plus
+
+# --- Differ ---
+
+@test
+def test_differ_compare_produces_delta():
+    d = difflib.Differ()
+    a: list[str] = ["one\n", "two\n", "three\n"]
+    b: list[str] = ["ore\n", "tree\n", "emu\n"]
+    result: list[str] = list(d.compare(a, b))
+    assert len(result) > 0
+
+# --- Restore ---
+
+@test
+def test_restore_which1_recovers_a():
+    a: list[str] = ["one\n", "two\n", "three\n"]
+    b: list[str] = ["ore\n", "tree\n", "emu\n"]
+    diff: list[str] = list(difflib.ndiff(a, b))
+    restored: list[str] = list(difflib.restore(diff, 1))
+    assert restored == a
+
+@test
+def test_restore_which2_recovers_b():
+    a: list[str] = ["one\n", "two\n", "three\n"]
+    b: list[str] = ["ore\n", "tree\n", "emu\n"]
+    diff: list[str] = list(difflib.ndiff(a, b))
+    restored: list[str] = list(difflib.restore(diff, 2))
+    assert restored == b
+
+@test
+def test_restore_invalid_which_throws():
+    with assert_raises(ValueError):
+        list(difflib.restore(["  line"], 3))
+
+@test
+def test_unified_diff_with_file_names_in_header():
+    a: list[str] = ["x\n"]
+    b: list[str] = ["y\n"]
+    diff: list[str] = list(difflib.unified_diff(a, b, "old.txt", "new.txt"))
+    has_old: bool = False
+    has_new: bool = False
+    for l in diff:
+        if "old.txt" in l:
+            has_old = True
+        if "new.txt" in l:
+            has_new = True
+    assert has_old
+    assert has_new
+
+# --- SequenceMatcher advanced ---
+
+@test
+def test_sequence_matcher_get_grouped_opcodes_groups_by_context():
+    a: list[str] = []
+    for i in range(1, 41):
+        a.append("line" + str(i) + "\n")
+    b: list[str] = list(a)
+    b[8] = "changed\n"
+    b[20] = "also changed\n"
+    sm = difflib.SequenceMatcher[str](None, a, b)
+    groups = sm.get_grouped_opcodes(3)
+    assert len(groups) >= 2
+
+@test
+def test_sequence_matcher_empty_input_get_opcodes_is_empty():
+    sm = difflib.SequenceMatcher[str](None, [], [])
+    assert len(sm.get_opcodes()) == 0
