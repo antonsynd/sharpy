@@ -31,7 +31,8 @@ All agents follow this priority order when axioms conflict:
 | `parser-expert` | AST construction | `Compiler/Parser/`, `Ast/*.cs` |
 | `semantic-expert` | Type checking, name resolution, symbols | `Compiler/Semantic/`, `TypeChecker*.cs` |
 | `codegen-expert` | C# emission via Roslyn | `Compiler/CodeGen/`, `RoslynEmitter*.cs` |
-| `core-library-expert` | Standard library | `Sharpy.Core/`, `Partial.*/` |
+| `core-library-expert` | Core runtime library | `Sharpy.Core/`, `Partial.*/` |
+| `stdlib-expert` | Stdlib modules (json, os, re, ...) | `Sharpy.Stdlib/`, `spy/`, `modules/` |
 | `lsp-expert` | LSP server, handlers, refactoring | `Sharpy.Lsp/`, `Handlers/`, `Refactoring/` |
 
 ### Axiom Guardians (Advisory, Read-Only)

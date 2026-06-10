@@ -27,7 +27,7 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect lexer tok
 
 > **Prefer skills over raw commands:** Use `/build`, `/run-tests`, `/spy-emit`, `/spy-run`, `/quick-check` instead of raw `dotnet` commands. Skills handle logging, truncation, and temp file management (avoiding bash escaping issues with `#` and backticks in Sharpy source).
 
-> **CRITICAL — Serialized dotnet execution:** When multiple agents run in parallel, **NEVER** call `dotnet build` or `dotnet test` directly. Use the serialized wrapper `.claude/scripts/dotnet-serialized` which acquires an exclusive flock so only one dotnet process runs at a time. Concurrent `dotnet test` invocations each consume 5-10 GB RAM (Roslyn + 9600 tests); three in parallel will OOM and crash the system. The wrapper is a drop-in replacement — same args, same output, same exit code. Example: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer" --no-build`.
+> **CRITICAL — Serialized dotnet execution:** When multiple agents run in parallel, **NEVER** call `dotnet build` or `dotnet test` directly. Use the serialized wrapper `.claude/scripts/dotnet-serialized` which acquires an exclusive flock so only one dotnet process runs at a time. Concurrent `dotnet test` invocations each consume 5-10 GB RAM (Roslyn + 9600 tests); three in parallel will OOM and crash the system. The wrapper is a drop-in replacement — same args, same output, same exit code. Example: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer" --no-build`. This is **enforced** by a PreToolUse hook (`.claude/hooks/enforce-dotnet-serialized.sh`) that blocks raw `dotnet build`/`dotnet test` Bash commands.
 
 > **Test output logs:** The serialized wrapper tees all stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (rotating deque of 3 slots). `.claude/tmp/dotnet-serialized-latest.log` symlinks to the most recent run. Agents should read these logs to filter/grep test output instead of re-running the full test suite (~8 min). The 3-slot rotation means an agent reading an older log won't be clobbered by a new run writing to a different slot.
 
@@ -41,7 +41,7 @@ Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline →
 |-----------|----------|---------|
 | Compiler | `src/Sharpy.Compiler/` | Lexer, Parser, Semantic, CodeGen |
 | Core | `src/Sharpy.Core/` | Runtime essentials: primitives, collections, builtins, protocol interfaces, `Partial.{Type}/` |
-| Stdlib | `src/Sharpy.Stdlib/` | Standard library modules (37 modules: json, os, re, numpy, etc.) |
+| Stdlib | `src/Sharpy.Stdlib/` | Standard library modules (60 modules: json, os, re, numpy, etc.) |
 | CLI | `src/Sharpy.Cli/` | Command-line interface (`sharpyc`, uses `System.CommandLine`) |
 | LSP | `src/Sharpy.Lsp/` | Language Server Protocol server (OmniSharp-based) |
 | Tests | `src/*.Tests/` | Unit and integration tests |
@@ -193,7 +193,7 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
 ## Code Generation
 
-The `RoslynEmitter` is split into 25 files (~19,680 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Events.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.LruCache.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`, `.TestFixtures.cs`, `RoslynEmitterFactory.cs`.
+The `RoslynEmitter` is split into 25 files (~21,050 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Events.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.LruCache.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`, `.TestFixtures.cs`, `RoslynEmitterFactory.cs`.
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
@@ -300,9 +300,10 @@ dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --increme
 
 ## Sharpy.Stdlib (Standard Library)
 
-- **47 stdlib modules** in `src/Sharpy.Stdlib/`: Argparse, Base64, Bisect, Collections, Configparser, Csv, Datetime, Fnmatch, Functools, Glob, Grapheme, Gzip, Hashlib, Heapq, Hmac, Io, Ipaddress, Itertools, Json, Logging, Math, Numpy, Os, Pathlib, Platform, Random, Re, Requests, Secrets, Shlex, Shutil, Sqlite3, Statistics, String, Struct, Subprocess, Sys, Tempfile, Textwrap, Time, Toml, Unittest, Urllib, Uuid, Yaml, Zipfile, Zlib
+- **60 stdlib modules** in `src/Sharpy.Stdlib/`: Argparse, Base64, Bisect, Calendar, Collections, Colorsys, Configparser, Csv, Datetime, Difflib, Email, Fnmatch, Fractions, Functools, Glob, Grapheme, Gzip, Hashlib, Heapq, Hmac, Html, Http, Io, Ipaddress, Itertools, Json, Logging, Math, Numpy, Os, Pathlib, Platform, Pprint, Random, Re, Requests, Secrets, Shlex, Shutil, Socket, Sqlite3, Statistics, String, Struct, Subprocess, Sys, Tarfile, Tempfile, Textwrap, Threading, Time, Toml, Unittest, Urllib, Uuid, Xml, Yaml, Zipfile, Zlib, Zoneinfo
+- **Special directories**: `spy/` holds `.spy` **source** modules — for spy-sourced modules (listed in the `MODULES` mapping in `build_tools/regenerate_spy_stdlib.sh`), the C# under `<Module>/` is *generated* from the `.spy` file; never hand-edit generated C#, run the script instead (CI verifies via `check_spy_staleness.sh`). `modules/` holds per-module `.csproj` packaging.
 - **Depends on Sharpy.Core** (ProjectReference), not the other way around
-- **NuGet deps**: MathNet.Numerics (numpy), Microsoft.Data.Sqlite (sqlite3)
+- **NuGet deps**: MathNet.Numerics (numpy), Microsoft.Data.Sqlite (sqlite3), Tomlyn (toml), YamlDotNet (yaml)
 - **Multi-target**: `net10.0;netstandard2.1` (same as Core)
 - **Compiler has zero compile-time dependency on Stdlib** — stdlib modules are discovered at runtime via `ModuleRegistry.LoadReference()`
 
@@ -350,6 +351,7 @@ All commands below log full output to `.claude/tmp/*.log` for investigation whil
 | `/format` | Format whitespace (auto-formatted on save by Claude hook) |
 | `/regenerate-snapshots` | Build + update `.expected.cs` files after codegen changes |
 | `/property-stress [rounds] [filter]` | Stress-test property tests across N rounds with fresh seeds (logs: `property-stress/`) |
+| `/benchmark` | Run compiler or cross-language benchmarks and compare results |
 
 ### Debug & Development
 
@@ -364,6 +366,7 @@ All `/spy-*` skills accept **inline source** or a file path. Inline source is wr
 | `/lsp-review` | Interactive LSP review session — report hover/coloring issues from VS Code |
 | `/verify-python <expr>` | Run Python 3 to verify behavior before implementing |
 | `/clean-dotnet` | Kill zombie dotnet processes that cause hangs |
+| `/playground` | Run the Sharpy playground (Blazor WASM) locally with hot reload |
 
 ### Git Workflow
 
@@ -385,6 +388,7 @@ All `/spy-*` skills accept **inline source** or a file path. Inline source is wr
 | `/implement-plan <plan.md>` | Implement a plan with a coordinated agent team |
 | `/verify-implementation <plan.md>` | Verify implementation, fix gaps/bugs/regressions |
 | `/add-test-fixture <desc>` | Create a file-based integration test (`.spy` + `.expected`/`.error`) |
+| `/add-stdlib-module <name>` | Scaffold a new stdlib module (spy-sourced or handwritten) with conventions, docs, tests |
 | `/gap-analysis` | Run all gap discovery tests and present a unified summary |
 
 **Investigate failures:** Read logs with `/read .claude/tmp/last-test-run.log` (or other log files).
@@ -409,7 +413,7 @@ Location: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 
 **Warning tests**: `.warning` file — empty means expect no warnings, non-empty lines are expected substrings. Can combine with `.expected`.
 
-**C# snapshot tests**: `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Used selectively for ~80 representative fixtures to detect codegen changes that don't affect runtime output. To regenerate: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
+**C# snapshot tests**: `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Used selectively for ~100 representative fixtures to detect codegen changes that don't affect runtime output. To regenerate: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
 
 **Skip**: Add a `.skip` file next to the `.spy` file.
 
@@ -435,7 +439,7 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 | `Discovery/Caching/` | `OverloadIndex`, `OverloadIndexCache`, `AssemblyIdentity` |
 | `Model/` | `CompilationUnit`, `CompilationUnitFactory`, `ProjectModel` |
 | `Logging/` | `ICompilerLogger`, `StructuredLogger`, `ConsoleCompilerLogger`, `NullLogger` |
-| `Project/` | `ProjectCompiler` (8 partial files), `SpyProject`, `DependencyGraph` |
+| `Project/` | `ProjectCompiler` (9 partial files), `SpyProject`, `DependencyGraph` |
 | `Services/` | `CompilerServices`, `CompilerServicesBuilder` (adapter pattern) |
 | `Text/` | `ILocatable`, `SourceText`, `TextSpan` |
 | `Utilities/` | `EditDistance`, `PathNormalizer` |
@@ -447,6 +451,7 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 - `docs.yml` — Deploy documentation (mkdocs + playground)
 - `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.12
 - `benchmarks.yml` — Performance benchmarks
+- `cross-language-benchmarks.yml` — Cross-language benchmark comparisons
 - `vscode-extension.yml` — VS Code extension CI
 - `auto-tag.yml` — Automatic version tagging
 - `release.yml` — Release workflow
@@ -455,9 +460,9 @@ An `.editorconfig` at the repo root enforces C# formatting and naming convention
 
 ## MCP Servers for Codebase Navigation
 
-Three MCP servers provide structural codebase understanding. Prefer them over raw Grep/Glob/Read for structural queries.
+MCP servers provide structural codebase understanding. Prefer them over raw Grep/Glob/Read for structural queries.
 
-> **Availability:** MCP servers are configured in `.mcp.json`. If a server is not connected in the current session, fall back to the next option in the decision guide below.
+> **Availability:** Project-level MCP servers are configured in `.mcp.json` (currently only `code-review-graph`); CodeGraphContext, if present, is user-configured. If a server is not connected in the current session, fall back to the next option in the decision guide below.
 
 ### Decision Guide
 
