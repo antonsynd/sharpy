@@ -414,8 +414,15 @@ internal partial class RoslynEmitter
                 // (e.g., Sharpy.Math would shadow a using Math = global::System.Math alias).
                 foreach (var importedName in fromImport.Names)
                 {
+                    // Skip generic types — C# cannot alias open generic types (e.g., IEquatable<T>).
+                    // We check both the symbol's TypeParameters AND query the CLR type
+                    // from the target namespace directly, because the symbol table lookup
+                    // may return a Sharpy type that shadows the CLR import name
+                    // (e.g., Sharpy.IList shadows System.Collections.Generic.IList<T>).
                     var symbol = _context.LookupSymbol(importedName.Name);
                     if (symbol is TypeSymbol { IsGeneric: true })
+                        continue;
+                    if (IsClrTypeGenericInNamespace(namespaceName, NameMangler.ToNamespacePart(importedName.Name)))
                         continue;
 
                     var csharpName = importedName.AsName ?? NameMangler.ToNamespacePart(importedName.Name);
@@ -527,6 +534,30 @@ internal partial class RoslynEmitter
 
         var firstPart = moduleName.Split('.')[0].ToLowerInvariant();
         return netPrefixes.Contains(firstPart);
+    }
+
+    /// <summary>
+    /// Check whether the CLR type with the given name in the given namespace is a generic
+    /// type definition.  Used when emitting using-aliases for CLR imports: C# cannot alias
+    /// open generic types (CS0305), so we must skip them.  This directly queries the CLR
+    /// metadata rather than the symbol table, which may return a Sharpy type that shadows
+    /// the CLR name (e.g., Sharpy.IList vs System.Collections.Generic.IList&lt;T&gt;).
+    /// </summary>
+    private static bool IsClrTypeGenericInNamespace(string namespaceName, string typeName)
+    {
+        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+        {
+            // Try with generic arity suffixes `1 through `4 (covers most BCL types)
+            for (int arity = 1; arity <= 4; arity++)
+            {
+                var fullName = $"{namespaceName}.{typeName}`{arity}";
+                var type = assembly.GetType(fullName, throwOnError: false);
+                if (type != null && type.IsGenericTypeDefinition)
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

@@ -112,10 +112,10 @@ namespace Sharpy
         #region System.Collections.IList (non-generic)
 
         /// <summary>Gets a value indicating whether the list has a fixed size. Always false.</summary>
-        bool IList.IsFixedSize => false;
+        bool System.Collections.IList.IsFixedSize => false;
 
         /// <summary>Gets a value indicating whether the list is read-only. Always false.</summary>
-        bool IList.IsReadOnly => false;
+        bool System.Collections.IList.IsReadOnly => false;
 
         /// <summary>Gets a value indicating whether access to the list is synchronized. Always false.</summary>
         bool ICollection.IsSynchronized => false;
@@ -127,32 +127,32 @@ namespace Sharpy
         int ICollection.Count => _list.Count;
 
         /// <summary>Gets or sets the element at the specified index (non-generic).</summary>
-        object? IList.this[int index]
+        object? System.Collections.IList.this[int index]
         {
             get => _list[index];
             set => _list[index] = (T)value!;
         }
 
         /// <summary>Adds an item to the list and returns its index.</summary>
-        int IList.Add(object? value) => ((IList)_list).Add(value);
+        int System.Collections.IList.Add(object? value) => ((System.Collections.IList)_list).Add(value);
 
         /// <summary>Determines whether the list contains a specific value.</summary>
-        bool IList.Contains(object? value) => ((IList)_list).Contains(value);
+        bool System.Collections.IList.Contains(object? value) => ((System.Collections.IList)_list).Contains(value);
 
         /// <summary>Returns the zero-based index of the first occurrence of a value.</summary>
-        int IList.IndexOf(object? value) => ((IList)_list).IndexOf(value);
+        int System.Collections.IList.IndexOf(object? value) => ((System.Collections.IList)_list).IndexOf(value);
 
         /// <summary>Inserts an item into the list at the specified index.</summary>
-        void IList.Insert(int index, object? value) => ((IList)_list).Insert(index, value);
+        void System.Collections.IList.Insert(int index, object? value) => ((System.Collections.IList)_list).Insert(index, value);
 
         /// <summary>Removes the first occurrence of a specific value from the list.</summary>
-        void IList.Remove(object? value) => ((IList)_list).Remove(value);
+        void System.Collections.IList.Remove(object? value) => ((System.Collections.IList)_list).Remove(value);
 
         /// <summary>Removes the element at the specified index.</summary>
-        void IList.RemoveAt(int index) => _list.RemoveAt(index);
+        void System.Collections.IList.RemoveAt(int index) => _list.RemoveAt(index);
 
         /// <summary>Removes all elements from the list.</summary>
-        void IList.Clear() => _list.Clear();
+        void System.Collections.IList.Clear() => _list.Clear();
 
         /// <summary>Copies the elements of the list to an array.</summary>
         void ICollection.CopyTo(System.Array array, int index) => ((ICollection)_list).CopyTo(array, index);
