@@ -218,16 +218,16 @@ internal partial class RoslynEmitter
                     // `case set()` (no type arguments) against an `object` scrutinee cannot
                     // use the generic Sharpy collection type (e.g. Sharpy.List<object>), which
                     // would only match that exact closed generic.
-                    // - dict uses Sharpy.IDict: the Pythonic protocol interface implemented by
-                    //   every Dict<K,V> (#869). Name-mangled member access resolves structurally.
-                    // - list/set still use non-generic .NET interfaces pending #876/#877.
+                    // All three use Sharpy protocol interfaces: IList (#876), IDict (#869),
+                    // ISet (#877). These are implemented by every generic instantiation via
+                    // explicit boxing adapters. Name-mangled member access resolves structurally.
                     if (typePattern.Type.TypeArguments.Length == 0 && IsObjectType(scrutineeType))
                     {
                         var nonGenericInterface = typePattern.Type.Name switch
                         {
-                            BuiltinNames.List => MakeGlobalQualifiedName("System", "Collections", "IList"),
+                            BuiltinNames.List => MakeGlobalQualifiedName("Sharpy", "IList"),
                             BuiltinNames.Dict => MakeGlobalQualifiedName("Sharpy", "IDict"),
-                            BuiltinNames.Set => MakeGlobalQualifiedName("System", "Collections", "IEnumerable"),
+                            BuiltinNames.Set => MakeGlobalQualifiedName("Sharpy", "ISet"),
                             _ => null
                         };
                         if (nonGenericInterface != null)
