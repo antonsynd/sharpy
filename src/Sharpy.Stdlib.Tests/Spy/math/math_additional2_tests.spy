@@ -1,0 +1,323 @@
+from unittest import assert_raises
+
+import math
+
+# --- Trigonometric functions ---
+
+@test
+def test_sin_zero_returns_zero():
+    assert math.sin(0.0) == 0.0
+
+@test
+def test_sin_pi_over_2_returns_one():
+    assert math.isclose(1.0, math.sin(math.Pi / 2.0), absTol=1e-15)
+
+@test
+def test_sin_pi_is_approximately_zero():
+    assert math.isclose(0.0, math.sin(math.Pi), absTol=1e-14)
+
+@test
+def test_cos_zero_returns_one():
+    assert math.cos(0.0) == 1.0
+
+@test
+def test_cos_pi_returns_negative_one():
+    assert math.isclose(-1.0, math.cos(math.Pi), absTol=1e-15)
+
+@test
+def test_tan_zero_returns_zero():
+    assert math.tan(0.0) == 0.0
+
+@test
+def test_tan_pi_over_4_is_approximately_one():
+    assert math.isclose(1.0, math.tan(math.Pi / 4.0), relTol=1e-14)
+
+# --- Inverse trigonometric functions ---
+
+@test
+def test_asin_one_returns_pi_over_2():
+    assert math.isclose(math.Pi / 2.0, math.asin(1.0), relTol=1e-14)
+
+@test
+def test_asin_zero_returns_zero():
+    assert math.asin(0.0) == 0.0
+
+@test
+def test_acos_one_returns_zero():
+    assert math.acos(1.0) == 0.0
+
+@test
+def test_acos_zero_returns_pi_over_2():
+    assert math.isclose(math.Pi / 2.0, math.acos(0.0), relTol=1e-14)
+
+@test
+def test_atan_zero_returns_zero():
+    assert math.atan(0.0) == 0.0
+
+@test
+def test_atan_one_returns_pi_over_4():
+    assert math.isclose(math.Pi / 4.0, math.atan(1.0), relTol=1e-14)
+
+@test
+def test_atan2_one_one_returns_pi_over_4():
+    assert math.isclose(math.Pi / 4.0, math.atan2(1.0, 1.0), relTol=1e-14)
+
+@test
+def test_atan2_negative_x_returns_pi():
+    assert math.isclose(math.Pi, math.atan2(0.0, -1.0), relTol=1e-14)
+
+# --- Hyperbolic functions ---
+
+@test
+def test_sinh_zero_returns_zero():
+    assert math.sinh(0.0) == 0.0
+
+@test
+def test_sinh_one_matches_known_value():
+    assert math.isclose(1.1752011936438014, math.sinh(1.0), relTol=1e-14)
+
+@test
+def test_cosh_zero_returns_one():
+    assert math.cosh(0.0) == 1.0
+
+@test
+def test_tanh_zero_returns_zero():
+    assert math.tanh(0.0) == 0.0
+
+# --- Exponential functions ---
+
+@test
+def test_exp_zero_returns_one():
+    assert math.exp(0.0) == 1.0
+
+@test
+def test_exp_one_returns_e():
+    assert math.isclose(math.E, math.exp(1.0), relTol=1e-14)
+
+# --- Logarithmic functions ---
+
+@test
+def test_log_one_returns_zero():
+    assert math.log(1.0) == 0.0
+
+@test
+def test_log_e_returns_one():
+    assert math.isclose(1.0, math.log(math.E), relTol=1e-14)
+
+@test
+def test_log_with_base10_returns_correct_value():
+    assert math.isclose(2.0, math.log(100.0, 10.0), relTol=1e-14)
+
+@test
+def test_log_with_base1_is_special_case():
+    assert math.isclose(0.0, math.log(1.0, 10.0), absTol=1e-14)
+
+@test
+def test_log10_hundred_returns_two():
+    assert math.log10(100.0) == 2.0
+
+@test
+def test_log10_one_returns_zero():
+    assert math.log10(1.0) == 0.0
+
+@test
+def test_log2_eight_returns_three():
+    assert math.isclose(3.0, math.log2(8.0), relTol=1e-14)
+
+@test
+def test_log2_one_returns_zero():
+    assert math.log2(1.0) == 0.0
+
+# --- Power and square root ---
+
+@test
+def test_sqrt_four_returns_two():
+    assert math.sqrt(4.0) == 2.0
+
+@test
+def test_sqrt_zero_returns_zero():
+    assert math.sqrt(0.0) == 0.0
+
+@test
+def test_sqrt_one_returns_one():
+    assert math.sqrt(1.0) == 1.0
+
+@test
+def test_sqrt_negative_number_returns_nan():
+    assert math.isnan(math.sqrt(-1.0))
+
+@test
+def test_pow_two_to_ten_returns_1024():
+    assert math.pow(2.0, 10.0) == 1024.0
+
+@test
+def test_pow_any_number_to_zero_returns_one():
+    assert math.pow(5.0, 0.0) == 1.0
+
+@test
+def test_pow_zero_to_positive_returns_zero():
+    assert math.pow(0.0, 3.0) == 0.0
+
+# --- Rounding functions ---
+
+@test
+def test_ceil_positive_fractional_rounds_up():
+    assert math.ceil(3.2) == 4.0
+
+@test
+def test_ceil_negative_fractional_rounds_toward_zero():
+    assert math.ceil(-0.5) == 0.0
+
+@test
+def test_floor_positive_fractional_rounds_down():
+    assert math.floor(3.7) == 3.0
+
+@test
+def test_floor_negative_fractional_rounds_away_from_zero():
+    assert math.floor(-0.5) == -1.0
+
+@test
+def test_trunc_positive_fractional_truncates_toward_zero():
+    assert math.trunc(3.7) == 3.0
+
+@test
+def test_trunc_negative_fractional_truncates_toward_zero():
+    assert math.trunc(-3.7) == -3.0
+
+@test
+def test_fabs_negative_value_returns_positive():
+    assert math.fabs(-3.7) == 3.7
+
+@test
+def test_fabs_positive_value_returns_same():
+    assert math.fabs(3.7) == 3.7
+
+@test
+def test_fabs_zero_returns_zero():
+    assert math.fabs(0.0) == 0.0
+
+# --- Degrees and radians ---
+
+@test
+def test_degrees_pi_returns_180():
+    assert math.isclose(180.0, math.degrees(math.Pi), relTol=1e-14)
+
+@test
+def test_degrees_zero_returns_zero():
+    assert math.degrees(0.0) == 0.0
+
+@test
+def test_radians_180_returns_pi():
+    assert math.isclose(math.Pi, math.radians(180.0), relTol=1e-14)
+
+@test
+def test_radians_zero_returns_zero():
+    assert math.radians(0.0) == 0.0
+
+# --- Special value checks ---
+
+@test
+def test_isfinite_normal_number_returns_true():
+    assert math.isfinite(1.0)
+
+@test
+def test_isfinite_positive_infinity_returns_false():
+    assert not math.isfinite(math.Inf)
+
+@test
+def test_isfinite_nan_returns_false():
+    assert not math.isfinite(math.Nan)
+
+@test
+def test_isinf_positive_infinity_returns_true():
+    assert math.isinf(math.Inf)
+
+@test
+def test_isinf_negative_infinity_returns_true():
+    assert math.isinf(-math.Inf)
+
+@test
+def test_isinf_normal_number_returns_false():
+    assert not math.isinf(42.0)
+
+@test
+def test_isnan_nan_returns_true():
+    assert math.isnan(math.Nan)
+
+@test
+def test_isnan_normal_number_returns_false():
+    assert not math.isnan(1.0)
+
+@test
+def test_isnan_infinity_returns_false():
+    assert not math.isnan(math.Inf)
+
+# --- Copysign ---
+
+@test
+def test_copysign_positive_magnitude_negative_sign_returns_negative():
+    assert math.copysign(1.0, -2.0) == -1.0
+
+@test
+def test_copysign_positive_magnitude_positive_sign_returns_positive():
+    assert math.copysign(5.0, 3.0) == 5.0
+
+@test
+def test_copysign_negative_magnitude_positive_sign_returns_positive():
+    assert math.copysign(-3.0, 1.0) == 3.0
+
+# --- GCD ---
+
+@test
+def test_gcd_twelve_and_eight_returns_four():
+    assert math.gcd(12, 8) == 4
+
+@test
+def test_gcd_coprime_pair_returns_one():
+    assert math.gcd(7, 11) == 1
+
+@test
+def test_gcd_zero_and_n_returns_n():
+    assert math.gcd(0, 5) == 5
+
+@test
+def test_gcd_negative_values_returns_positive():
+    assert math.gcd(-12, 8) == 4
+
+# --- Factorial ---
+
+@test
+def test_factorial_zero_returns_one():
+    assert math.factorial(0) == 1
+
+@test
+def test_factorial_five_returns_120():
+    assert math.factorial(5) == 120
+
+@test
+def test_factorial_negative_throws_value_error():
+    with assert_raises(ValueError):
+        math.factorial(-1)
+
+@test
+def test_factorial_too_large_throws_overflow_error():
+    with assert_raises(OverflowError):
+        math.factorial(21)
+
+# --- Log of zero ---
+
+@test
+def test_log_zero_returns_negative_infinity():
+    assert math.log(0.0) == -math.Inf
+
+# --- Fsum additional cases ---
+
+@test
+def test_fsum_negative_values_sums_correctly():
+    assert math.fsum([-1.0, -2.0, -3.0]) == -6.0
+
+# --- Isclose edge cases ---
+
+@test
+def test_isclose_floating_point_approximation_returns_true():
+    assert math.isclose(0.1 + 0.2, 0.3)

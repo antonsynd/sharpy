@@ -1,0 +1,252 @@
+from unittest import assert_raises
+
+import math
+
+# --- Lcm ---
+
+@test
+def test_lcm_basic_values():
+    assert math.lcm(4, 6) == 12
+    assert math.lcm(6, 4) == 12
+
+@test
+def test_lcm_coprime_pair():
+    assert math.lcm(5, 7) == 35
+
+@test
+def test_lcm_one_is_multiple_of_other():
+    assert math.lcm(4, 12) == 12
+
+@test
+def test_lcm_with_zero():
+    assert math.lcm(0, 5) == 0
+    assert math.lcm(5, 0) == 0
+    assert math.lcm(0, 0) == 0
+
+@test
+def test_lcm_negative_values():
+    assert math.lcm(-4, 6) == 12
+    assert math.lcm(4, -6) == 12
+    assert math.lcm(-4, -6) == 12
+
+@test
+def test_lcm_same_values():
+    assert math.lcm(7, 7) == 7
+
+# --- Isclose ---
+
+@test
+def test_isclose_equal_values():
+    assert math.isclose(1.0, 1.0)
+
+@test
+def test_isclose_close_values():
+    assert math.isclose(1.0, 1.0 + 1e-10)
+
+@test
+def test_isclose_not_close_values():
+    assert not math.isclose(1.0, 2.0)
+
+@test
+def test_isclose_with_abs_tol():
+    assert math.isclose(0.0, 0.001, absTol=0.01)
+    assert not math.isclose(0.0, 0.001, absTol=0.0001)
+
+@test
+def test_isclose_with_rel_tol():
+    assert math.isclose(100.0, 100.1, relTol=0.01)
+    assert not math.isclose(100.0, 102.0, relTol=0.01)
+
+@test
+def test_isclose_infinity():
+    assert math.isclose(math.Inf, math.Inf)
+    assert not math.isclose(math.Inf, 1.0)
+    assert not math.isclose(1.0, -math.Inf)
+
+@test
+def test_isclose_nan():
+    assert not math.isclose(math.Nan, math.Nan)
+    assert not math.isclose(math.Nan, 1.0)
+
+@test
+def test_isclose_negative_tolerance_throws():
+    with assert_raises(ValueError):
+        math.isclose(1.0, 1.0, relTol=-1.0)
+    with assert_raises(ValueError):
+        math.isclose(1.0, 1.0, absTol=-1.0)
+
+# --- Comb ---
+
+@test
+def test_comb_basic_values():
+    assert math.comb(5, 2) == 10
+    assert math.comb(5, 0) == 1
+    assert math.comb(5, 5) == 1
+    assert math.comb(5, 1) == 5
+
+@test
+def test_comb_k_greater_than_n():
+    assert math.comb(3, 5) == 0
+
+@test
+def test_comb_negative_n_throws():
+    with assert_raises(ValueError):
+        math.comb(-1, 2)
+
+@test
+def test_comb_negative_k_throws():
+    with assert_raises(ValueError):
+        math.comb(5, -1)
+
+@test
+def test_comb_larger_values():
+    assert math.comb(10, 3) == 120
+    assert math.comb(20, 10) == 184756
+
+# --- Perm ---
+
+@test
+def test_perm_basic_values():
+    assert math.perm(5, 2) == 20
+    assert math.perm(5, 0) == 1
+    assert math.perm(5, 5) == 120
+
+@test
+def test_perm_k_greater_than_n():
+    assert math.perm(3, 5) == 0
+
+@test
+def test_perm_negative_n_throws():
+    with assert_raises(ValueError):
+        math.perm(-1, 2)
+
+@test
+def test_perm_negative_k_throws():
+    with assert_raises(ValueError):
+        math.perm(5, -1)
+
+@test
+def test_perm_single_arg_returns_factorial():
+    assert math.perm(5) == 120
+    assert math.perm(0) == 1
+    assert math.perm(1) == 1
+
+# --- Fsum ---
+
+@test
+def test_fsum_basic_values():
+    assert math.fsum([1.0, 2.0, 3.0]) == 6.0
+
+@test
+def test_fsum_accuracy_test():
+    values: list[float] = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+    assert math.fsum(values) == 1.0
+
+@test
+def test_fsum_empty_iterable():
+    empty: list[float] = []
+    assert math.fsum(empty) == 0.0
+
+@test
+def test_fsum_single_value():
+    assert math.fsum([42.5]) == 42.5
+
+# --- Prod ---
+
+@test
+def test_prod_double_values():
+    assert math.prod([1.0, 2.0, 3.0, 4.0]) == 24.0
+
+@test
+def test_prod_int_values():
+    assert math.prod([1, 2, 3, 4]) == 24
+
+@test
+def test_prod_with_start():
+    assert math.prod([2.0, 3.0, 4.0], start=2.0) == 48.0
+
+@test
+def test_prod_empty_iterable():
+    empty_f: list[float] = []
+    empty_i: list[int] = []
+    assert math.prod(empty_f) == 1.0
+    assert math.prod(empty_i) == 1
+
+@test
+def test_prod_with_zero():
+    assert math.prod([1.0, 0.0, 3.0]) == 0.0
+
+# --- Hypot ---
+
+@test
+def test_hypot_three_four_five():
+    assert math.hypot(3.0, 4.0) == 5.0
+
+@test
+def test_hypot_zero_values():
+    assert math.hypot(0.0, 0.0) == 0.0
+    assert math.hypot(3.0, 0.0) == 3.0
+
+@test
+def test_hypot_negative_values():
+    assert math.hypot(-3.0, 4.0) == 5.0
+    assert math.hypot(3.0, -4.0) == 5.0
+
+# --- Expm1 ---
+
+@test
+def test_expm1_zero():
+    assert math.isclose(0.0, math.expm1(0.0), absTol=1e-15)
+
+@test
+def test_expm1_small_value():
+    result: float = math.expm1(1e-10)
+    assert math.isclose(1e-10, result, relTol=1e-6)
+
+@test
+def test_expm1_larger_value():
+    assert math.isclose(math.E - 1.0, math.expm1(1.0), relTol=1e-9)
+
+# --- Log1p ---
+
+@test
+def test_log1p_zero():
+    assert math.log1p(0.0) == 0.0
+
+@test
+def test_log1p_small_value():
+    result: float = math.log1p(1e-10)
+    assert math.isclose(1e-10, result, relTol=1e-6)
+
+@test
+def test_log1p_larger_value():
+    assert math.isclose(1.0, math.log1p(math.E - 1.0), relTol=1e-9)
+
+@test
+def test_log1p_negative_one_throws():
+    with assert_raises(ValueError):
+        math.log1p(-1.0)
+
+@test
+def test_log1p_below_negative_one_throws():
+    with assert_raises(ValueError):
+        math.log1p(-2.0)
+
+# --- Remainder ---
+
+@test
+def test_remainder_basic_values():
+    assert math.remainder(10.0, 3.0) == 1.0
+
+@test
+def test_remainder_negative_result():
+    assert math.remainder(11.0, 3.0) == -1.0
+
+@test
+def test_remainder_zero_divisor_throws():
+    with assert_raises(ValueError):
+        math.remainder(10.0, 0.0)
+
+@test
+def test_remainder_zero_dividend():
+    assert math.remainder(0.0, 3.0) == 0.0

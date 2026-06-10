@@ -9,7 +9,7 @@
     <IsTestProject>true</IsTestProject>
     <!-- Suppress nullable warnings in tests - test framework handles assertion failures -->
     <!-- CS1718: intentional self-comparison in equality tests -->
-    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718</NoWarn>
+    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718;CS8981</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -43,6 +43,15 @@
   <!-- Copy test fixture files to output directory -->
   <ItemGroup>
     <None Include="Integration\TestFixtures\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Integration\TestFixtures" />
+  </ItemGroup>
+
+  <!-- Spy test sources (.spy) and project file — not C# compilation targets -->
+  <ItemGroup>
+    <None Include="Spy\**\*.spy" />
+    <None Include="Spy\tests.spyproj" />
+    <None Include="Spy\PORTING.md" />
+    <None Include="Spy\generated\.gitkeep" />
+    <Compile Remove="Spy\**\*.spy" />
   </ItemGroup>
 
 </Project>

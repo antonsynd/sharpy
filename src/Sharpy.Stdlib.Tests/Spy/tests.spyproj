@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <RootNamespace>Sharpy.Stdlib.Tests.Spy</RootNamespace>
+    <OutputType>library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Sharpy.Stdlib.Tests.Spy</AssemblyName>
+    <NoWarn>SPY0451,SPY0452,SPY0453</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <SourceFile Include="**/*.spy" />
+  </ItemGroup>
+</Project>

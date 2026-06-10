@@ -66,6 +66,8 @@ jobs:
       run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
     - name: Verify .spy stdlib C# staleness
       run: bash build_tools/check_spy_staleness.sh
+    - name: Verify .spy test C# staleness
+      run: bash build_tools/check_spy_tests_staleness.sh
     - name: Log per-module stdlib assembly sizes
       run: |
         echo "=== Per-module stdlib assembly sizes (net10.0) ==="
