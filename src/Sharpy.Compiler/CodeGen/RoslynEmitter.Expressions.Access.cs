@@ -110,13 +110,34 @@ internal partial class RoslynEmitter
                     return GenerateGenericBuiltinCall(funcName.Name, call, allArgs);
                 }
 
-                // len(s) on strings → s.Length (string doesn't implement ISized)
-                if (funcName.Name == "len" && call.Arguments.Length == 1
-                    && GetExpressionSemanticType(call.Arguments[0]) == SemanticType.Str)
+                // len(s): unwrap an Optional receiver so the protocol op targets the underlying
+                // value (a None receiver throws Optional.Unwrap at runtime, matching Python).
+                if (funcName.Name == "len" && call.Arguments.Length == 1)
                 {
-                    return MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        allArgs[0].Expression,
-                        IdentifierName("Length"));
+                    var lenArgType = GetExpressionSemanticType(call.Arguments[0]);
+                    var lenCoreType = lenArgType switch
+                    {
+                        OptionalType o => o.UnderlyingType,
+                        NullableType n => n.UnderlyingType,
+                        _ => lenArgType
+                    };
+
+                    // len(s) on strings → s.Length (string doesn't implement ISized)
+                    if (lenCoreType == SemanticType.Str)
+                    {
+                        return MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            UnwrapIfOptional(allArgs[0].Expression, call.Arguments[0]),
+                            IdentifierName("Length"));
+                    }
+
+                    // Other ISized containers wrapped in Optional: unwrap before Builtins.Len(...).
+                    if (lenArgType is OptionalType)
+                    {
+                        allArgs = new[]
+                        {
+                            Argument(UnwrapIfOptional(allArgs[0].Expression, call.Arguments[0]))
+                        };
+                    }
                 }
 
                 // Use explicit AliasQualifiedName to handle all expression contexts (f-strings, etc.)
@@ -394,6 +415,14 @@ internal partial class RoslynEmitter
             }
 
             var obj = GenerateExpression(memberAccess.Object);
+
+            // Unwrap an Optional receiver for direct (non-?.) member calls so the call targets
+            // the underlying value rather than the Optional<T> struct (avoids CS1929). The
+            // null-conditional path keeps the raw Optional — GenerateNullConditionalMethodCall
+            // applies its own IsSome/Unwrap lowering. Optional-API calls (x.unwrap_or(0),
+            // x.map(f), ...) operate on the Optional itself and must NOT be unwrapped.
+            if (!memberAccess.IsNullConditional && !IsOptionalApiMember(memberAccess.Member))
+                obj = UnwrapIfOptional(obj, memberAccess.Object);
 
             // Cross-dunder calls: transform operator dunders to C# operator expressions.
             // e.g., self.__lt__(other) → this < other, self.__neg__() → -this
@@ -1058,6 +1087,55 @@ internal partial class RoslynEmitter
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
     }
 
+    /// <summary>
+    /// Appends <c>.Unwrap()</c> to a generated receiver expression when its Sharpy type is an
+    /// <see cref="OptionalType"/>, so protocol operations and method calls target the underlying
+    /// value rather than the <c>Optional&lt;T&gt;</c> struct. A None receiver throws at runtime
+    /// (<c>Optional.Unwrap</c>), matching Python's <c>TypeError</c> on None. <see cref="NullableType"/>
+    /// receivers are returned unchanged — reference-type member access compiles and the runtime NRE
+    /// is the intended failure. Already codegen-narrowed nodes are skipped to avoid double-unwrapping.
+    /// </summary>
+    private ExpressionSyntax UnwrapIfOptional(ExpressionSyntax expr, Expression astNode)
+    {
+        if (IsCodegenNarrowed(astNode))
+            return expr;
+
+        if (GetExpressionSemanticType(astNode) is OptionalType)
+        {
+            return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        expr, IdentifierName(ProtocolConstants.Unwrap)))
+                .WithArgumentList(ArgumentList());
+        }
+
+        return expr;
+    }
+
+    /// <summary>
+    /// Returns true when the emitter has already applied Optional/Nullable narrowing for this
+    /// AST node (so <see cref="GenerateExpression"/> emits <c>.Unwrap()</c>/<c>.Value</c>/<c>!</c>),
+    /// which means <see cref="UnwrapIfOptional"/> must not unwrap it again.
+    /// </summary>
+    private bool IsCodegenNarrowed(Expression astNode)
+    {
+        return astNode switch
+        {
+            Identifier id => _narrowing.IsNarrowed(id.Name),
+            MemberAccess ma => TryBuildDottedPath(ma) is { } path && _narrowing.IsNarrowed(path),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Returns true when the Python member name belongs to the <c>Optional&lt;T&gt;</c> API
+    /// (<c>unwrap</c>, <c>unwrap_or</c>, <c>unwrap_or_else</c>, <c>is_some</c>, <c>is_none</c>,
+    /// <c>map</c>). Calls to these operate on the Optional itself, so their receiver must not be
+    /// unwrapped by <see cref="UnwrapIfOptional"/>.
+    /// </summary>
+    private static bool IsOptionalApiMember(string member) =>
+        member is "unwrap" or "unwrap_or" or "unwrap_or_else"
+            or "is_some" or "is_none" or "map";
+
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess)
     {
         // Check for nested module access (e.g., lib.math.add -> Lib.Math.Add)
@@ -1455,12 +1533,23 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateIndexAccess(IndexAccess indexAccess)
     {
+        var objectType = GetExpressionSemanticType(indexAccess.Object);
+
+        // Unwrap an Optional/Nullable container so indexing targets the underlying value, and
+        // use the unwrapped type to select the str/array/element-access fast paths.
+        var coreObjectType = objectType switch
+        {
+            OptionalType o => o.UnderlyingType,
+            NullableType n => n.UnderlyingType,
+            _ => objectType
+        };
+
         // Tuple positional indexing: t[0] -> t.Item1, t[1] -> t.Item2, etc.
         // C# ValueTuples don't support [] indexing, so we emit .ItemN member access.
-        if (GetExpressionSemanticType(indexAccess.Object) is Semantic.TupleType
+        if (coreObjectType is Semantic.TupleType
             && TryGetConstantIntIndex(indexAccess.Index, out var tupleIndex))
         {
-            var obj = GenerateExpression(indexAccess.Object);
+            var obj = UnwrapIfOptional(GenerateExpression(indexAccess.Object), indexAccess.Object);
             var itemName = $"Item{tupleIndex + 1}";
             return MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
@@ -1468,14 +1557,12 @@ internal partial class RoslynEmitter
                 IdentifierName(itemName));
         }
 
-        var objExpr = GenerateExpression(indexAccess.Object);
+        var objExpr = UnwrapIfOptional(GenerateExpression(indexAccess.Object), indexAccess.Object);
         var index = GenerateExpression(indexAccess.Index);
-
-        var objectType = GetExpressionSemanticType(indexAccess.Object);
 
         // String indexing: s[i] -> StringHelpers.GetItem(s, i) to return string, not char,
         // and to support negative indexing
-        if (objectType == SemanticType.Str)
+        if (coreObjectType == SemanticType.Str)
         {
             return InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -1487,7 +1574,7 @@ internal partial class RoslynEmitter
         }
 
         // Array indexing: arr[i] -> ArrayHelpers.GetItem(arr, i) to support negative indexing
-        if (objectType is Semantic.GenericType { Name: BuiltinNames.Array })
+        if (coreObjectType is Semantic.GenericType { Name: BuiltinNames.Array })
         {
             return InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
