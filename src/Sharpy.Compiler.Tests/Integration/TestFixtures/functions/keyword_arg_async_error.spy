@@ -1,0 +1,8 @@
+# async is a hard keyword (Python 3.7+) and must NOT be usable as a kwarg name.
+# Only match, case, and type are soft keywords.
+
+def foo(x: int = 0) -> None:
+    print(x)
+
+def main():
+    foo(async=1)
