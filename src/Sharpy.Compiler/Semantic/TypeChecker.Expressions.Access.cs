@@ -101,6 +101,11 @@ internal partial class TypeChecker
                 // (e.g., TypeAliasSymbol) — these are resolved elsewhere, not a compiler bug.
                 if (exportedType is UnknownType)
                     MarkExpressionAsErrorRecovery(memberAccess);
+                // A module-qualified reference to an exported type denotes the type itself,
+                // not a value. Record this so argument validation can accept it for
+                // parameters backed by CLR System.Type (e.g., assert_raises(mod.SomeError)).
+                else if (exportedSymbol is TypeSymbol)
+                    _semanticInfo.MarkTypeReference(memberAccess);
                 return exportedType;
             }
 

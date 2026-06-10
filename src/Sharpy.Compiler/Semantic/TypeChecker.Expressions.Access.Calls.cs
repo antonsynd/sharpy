@@ -1402,6 +1402,22 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Returns true when the parameter type is backed by CLR <see cref="System.Type"/> — i.e., it
+    /// expects a type reference (e.g. assert_raises's exceptionType parameter). Discovery rehydrates
+    /// System.Type as a <see cref="BuiltinType"/>; ClrTypeMapper produces a <see cref="UserDefinedType"/>.
+    /// </summary>
+    private static bool IsSystemTypeParameter(SemanticType paramType)
+    {
+        var clrType = paramType switch
+        {
+            BuiltinType bt => bt.ClrType,
+            UserDefinedType udt => udt.Symbol?.ClrType,
+            _ => null
+        };
+        return clrType == typeof(System.Type);
+    }
+
+    /// <summary>
     /// Validates call arguments against a parameter list: argument count, types,
     /// and positional-only/keyword-only constraints. Used by both regular function
     /// calls and constructor calls (with __init__ params minus self).
@@ -1480,6 +1496,13 @@ internal partial class TypeChecker
                     {
                         // Allow — literal string expression satisfies LiteralString
                     }
+                    // A type-reference expression (e.g. module.SomeError) satisfies a
+                    // parameter backed by CLR System.Type (e.g. assert_raises's exceptionType).
+                    else if (IsSystemTypeParameter(param.Type) && i < call.Arguments.Length
+                        && _semanticInfo.IsTypeReference(call.Arguments[i]))
+                    {
+                        // Allow — type reference satisfies a System.Type parameter
+                    }
                     else
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{param.Type.GetDisplayName()}'",
@@ -1515,7 +1538,8 @@ internal partial class TypeChecker
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
                             span: kwarg.Value.Span);
                     }
-                    else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
+                    else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type)
+                        && !(IsSystemTypeParameter(param.Type) && _semanticInfo.IsTypeReference(kwarg.Value)))
                     {
                         AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,

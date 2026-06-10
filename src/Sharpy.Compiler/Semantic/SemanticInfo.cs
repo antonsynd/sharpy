@@ -64,6 +64,11 @@ public class SemanticInfo : ISemanticQuery
     // Track member access expressions that resolve to events (for codegen to emit +=/-= correctly)
     private readonly ConcurrentDictionary<Expression, byte> _eventAccessNodes = new(ReferenceEqualityComparer.Instance);
 
+    // Track expressions that denote a type rather than a value (e.g., a module-qualified
+    // reference to an exported TypeSymbol). Used to accept such expressions for parameters
+    // backed by CLR System.Type (e.g., assert_raises(zoneinfo.ZoneInfoNotFoundError)).
+    private readonly ConcurrentDictionary<Expression, byte> _typeReferenceNodes = new(ReferenceEqualityComparer.Instance);
+
     // Map patterns to their resolved union case type symbols
     // Used when a PositionalPattern or MemberAccessPattern matches a union case
     private readonly ConcurrentDictionary<Pattern, TypeSymbol> _patternUnionCases =
@@ -337,6 +342,17 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public bool IsEventAccess(Expression expr) => _eventAccessNodes.ContainsKey(expr);
 
+    /// <summary>
+    /// Marks an expression as denoting a type reference (rather than a value), e.g., a
+    /// module-qualified reference to an exported TypeSymbol.
+    /// </summary>
+    public void MarkTypeReference(Expression expr) => _typeReferenceNodes.TryAdd(expr, 0);
+
+    /// <summary>
+    /// Returns true if the expression has been marked as a type reference.
+    /// </summary>
+    public bool IsTypeReference(Expression expr) => _typeReferenceNodes.ContainsKey(expr);
+
     public void AddGeneratorBinding(Statement declaration, TypeSymbol generatorType, Decorator trigger)
     {
         var binding = new GeneratorBinding(generatorType, trigger);
@@ -502,6 +518,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._eventAccessNodes)
             _eventAccessNodes.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._typeReferenceNodes)
+            _typeReferenceNodes.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._patternUnionCases)
             _patternUnionCases.TryAdd(kvp.Key, kvp.Value);
