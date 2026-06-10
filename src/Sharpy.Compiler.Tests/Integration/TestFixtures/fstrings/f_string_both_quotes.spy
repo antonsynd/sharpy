@@ -1,0 +1,4 @@
+def main():
+    s: str = "world"
+    print(f"it's \"{s}\"")
+    print(f"it's \"{s}\" indeed")

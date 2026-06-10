@@ -99,9 +99,15 @@ internal partial class RoslynEmitter
             parts.Add(moduleClassName);
             var fqn = string.Join(".", parts);
 
-            usingDirectives.Add(
-                UsingDirective(ParseName(fqn))
-                    .WithStaticKeyword(Token(SyntaxKind.StaticKeyword)));
+            var alreadyPresent = usingDirectives.Any(u =>
+                u.StaticKeyword.IsKind(SyntaxKind.StaticKeyword) &&
+                u.Name?.ToString() == fqn);
+            if (!alreadyPresent)
+            {
+                usingDirectives.Add(
+                    UsingDirective(ParseName(fqn))
+                        .WithStaticKeyword(Token(SyntaxKind.StaticKeyword)));
+            }
         }
 
         // Build wrapper classes from inside out — wrap the module class, test class, and

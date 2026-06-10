@@ -595,9 +595,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
                     .Replace("\"\"\"", "\\\"\\\"\\\"", System.StringComparison.Ordinal);
     }
 
-    private static string EscapeFStringText(string value) => EscapeFStringText(value, '"');
-
-    private static string EscapeFStringText(string value, char quoteChar)
+    private static string EscapeFStringText(string value, char quoteChar = '"')
     {
         var sb = new System.Text.StringBuilder(value.Length);
         foreach (char c in value)
