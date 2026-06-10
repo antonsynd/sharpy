@@ -169,7 +169,8 @@ internal class TypeResolver
         else
         {
             var typeSymbol = _symbolTable.LookupType(annotation.Name)
-                ?? LookupNestedType(annotation.Name);
+                ?? LookupNestedType(annotation.Name)
+                ?? LookupModuleQualifiedType(annotation.Name);
 
             if (typeSymbol != null)
             {
@@ -264,6 +265,64 @@ internal class TypeResolver
         }
 
         return outerSymbol;
+    }
+
+    /// <summary>
+    /// Resolves a dotted name like "argparse.Namespace" or "email.message.Message" where the
+    /// leading part(s) are imported modules and the final part is an exported type. Walks nested
+    /// <see cref="ModuleSymbol.Exports"/> dictionaries, applying a PascalCase fallback for .NET
+    /// modules (mirrors the module branch in TypeChecker.Expressions.Access.cs).
+    /// </summary>
+    private TypeSymbol? LookupModuleQualifiedType(string dottedName)
+    {
+        if (!dottedName.Contains('.', StringComparison.Ordinal))
+            return null;
+
+        var parts = dottedName.Split('.');
+
+        // The leading part must resolve to an imported module.
+        if (_symbolTable.Lookup(parts[0]) is not ModuleSymbol moduleSymbol)
+            return null;
+
+        // Walk intermediate parts through nested module exports (e.g., email.message.Message).
+        for (int i = 1; i < parts.Length - 1; i++)
+        {
+            if (!TryGetModuleExport(moduleSymbol, parts[i], out var nestedSymbol)
+                || nestedSymbol is not ModuleSymbol nestedModule)
+            {
+                return null;
+            }
+
+            moduleSymbol = nestedModule;
+        }
+
+        // The final part must resolve to an exported type.
+        if (TryGetModuleExport(moduleSymbol, parts[^1], out var exportedSymbol)
+            && exportedSymbol is TypeSymbol typeSymbol)
+        {
+            return typeSymbol;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Looks up a member in a module's exports, applying a PascalCase fallback for .NET modules.
+    /// </summary>
+    private static bool TryGetModuleExport(ModuleSymbol moduleSymbol, string memberName, out Symbol exportedSymbol)
+    {
+        if (moduleSymbol.Exports.TryGetValue(memberName, out exportedSymbol!))
+            return true;
+
+        if (moduleSymbol.IsNetModule)
+        {
+            var pascalName = NameMangler.ToPascalCase(memberName);
+            if (moduleSymbol.Exports.TryGetValue(pascalName, out exportedSymbol!))
+                return true;
+        }
+
+        exportedSymbol = null!;
+        return false;
     }
 
     private bool TryResolveBuiltinType(string name, out SemanticType type)
@@ -414,6 +473,7 @@ internal class TypeResolver
 
         var typeSymbol = _symbolTable.LookupType(annotation.Name)
             ?? LookupNestedType(annotation.Name)
+            ?? LookupModuleQualifiedType(annotation.Name)
             ?? _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
         if (typeSymbol == null)
         {
