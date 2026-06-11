@@ -1,0 +1,16 @@
+import email
+
+
+def main() -> None:
+    # isinstance with a module-qualified type argument (#903).
+    err: email.MessageError = email.MessageParseError("bad message")
+    print(isinstance(err, email.MessageError))
+    print(isinstance(err, email.MessageParseError))
+    print(isinstance(err, email.HeaderParseError))
+
+    # The module-qualified isinstance also narrows in an if-branch:
+    # assigning to a MessageParseError-typed local only type-checks if `err`
+    # was narrowed from MessageError to MessageParseError.
+    if isinstance(err, email.MessageParseError):
+        narrowed: email.MessageParseError = err
+        print(isinstance(narrowed, email.MessageError))

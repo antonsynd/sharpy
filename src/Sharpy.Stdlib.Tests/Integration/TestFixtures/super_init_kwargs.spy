@@ -1,0 +1,48 @@
+from html import HTMLParser
+
+
+class Base:
+    label: str
+    amount: int
+
+    def __init__(self, label: str, amount: int):
+        self.label = label
+        self.amount = amount
+
+
+class Derived(Base):
+    def __init__(self):
+        # Keyword arguments, deliberately out of declared order, must reach the
+        # Sharpy-defined base constructor correctly reordered (#906).
+        super().__init__(amount=7, label="hello")
+
+
+class CharrefParser(HTMLParser):
+    events: list[str]
+
+    def __init__(self):
+        # The convertCharrefs kwarg must reach the CLR base constructor; with
+        # False, entity refs are dispatched to handle_entityref instead of
+        # being decoded into data (#906).
+        super().__init__(convertCharrefs=False)
+        self.events = []
+
+    @override
+    def handle_entityref(self, name: str) -> None:
+        self.events.append(f"entityref:{name}")
+
+    @override
+    def handle_data(self, data: str) -> None:
+        self.events.append(f"data:{data}")
+
+
+def main() -> None:
+    d = Derived()
+    print(d.label)
+    print(d.amount)
+
+    p = CharrefParser()
+    p.feed("&amp;")
+    p.close()
+    for e in p.events:
+        print(e)
