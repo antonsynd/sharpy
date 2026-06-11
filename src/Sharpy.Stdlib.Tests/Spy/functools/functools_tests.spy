@@ -48,7 +48,10 @@ def test_reduce_with_initial_single_element():
 
 @test
 def test_cmp_to_key_returns_comparer():
-    comparer = functools.cmp_to_key(lambda a, b: a - b)
+    # Sharpy requires the comparator lambda's parameters to be annotated so the
+    # generic type argument of cmp_to_key can be inferred (#904; SPY0237 guides
+    # users when annotations are missing).
+    comparer = functools.cmp_to_key(lambda a: int, b: int: a - b)
     assert comparer is not None
 
 @test
