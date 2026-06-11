@@ -21,7 +21,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | Base64Tests.cs | 13 | | | pending |
 | BisectTests.cs | 19 | | | pending |
 | BisectAdditionalTests.cs | 15 | | | pending |
-| CalendarTests.cs | 28 | | | pending |
+| CalendarTests.cs | 28 | Spy/calendar/calendar_tests.spy | 25 | ported (re-enabled #886-#892) |
 | CollectionsModuleTests.cs | 57 | | | pending |
 | CollectionsAdditionalTests.cs | 33 | | | pending |
 | ColorsysTests.cs | 32 | Spy/colorsys/colorsys_tests.spy | 32 | ported |
@@ -45,9 +45,9 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | GraphemeTests.cs | 27 | Spy/grapheme/grapheme_tests.spy | 27 | ported |
 | HashlibTests.cs | 12 | Spy/hashlib/hashlib_tests.spy | 12 | ported |
 | HashlibCompleteTests.cs | 22 | Spy/hashlib/hashlib_complete_tests.spy | 22 | ported |
-| HeapqTests.cs | 31 | | | pending |
+| HeapqTests.cs | 31 | Spy/heapq/heapq_tests.spy | 31 | ported (re-enabled #889) |
 | HeapqAdditionalTests.cs | 12 | | | pending |
-| HmacTests.cs | 13 | | | pending |
+| HmacTests.cs | 13 | Spy/hmac/hmac_tests.spy | 13 | ported (re-enabled #890) |
 | HtmlModuleTests.cs | 44 | Spy/html/html_module_tests.spy | 44 | ported |
 | HttpTests.cs | 35 | Spy/http/http_tests.spy | 26 | ported (9 omitted: 7 HTTPResponse internal ctor, 1 reflection, 1 StringWriter) |
 | IoModuleTests.cs | 15 | | | pending |
@@ -88,7 +88,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | OsPathAdditionalTests.cs | 24 | | | pending |
 | PathlibTests.cs | 61 | | | pending |
 | PathlibAdditionalTests.cs | 32 | | | pending |
-| PprintTests.cs | 32 | | | pending |
+| PprintTests.cs | 32 | Spy/pprint/pprint_tests.spy | 32 | ported (re-enabled #888) |
 | RandomTests.cs | 16 | | | pending |
 | RandomAdditionalTests.cs | 22 | | | pending |
 | RandomAdditionalTests2.cs | 23 | | | pending |
@@ -121,7 +121,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | TimeModuleTests.cs | 34 | | | pending |
 | TomlModuleTests.cs | 46 | | | pending |
 | TomlTypedDeserializationTests.cs | 6 | | | pending |
-| UuidModuleTests.cs | 13 | | | pending |
+| UuidModuleTests.cs | 13 | Spy/uuid/uuid_module_tests.spy | 13 | ported (re-enabled #886) |
 | XmlModuleTests.cs | 84 | | | pending |
 | YamlModuleTests.cs | 60 | | | pending |
 | YamlRoundtripTests.cs | 29 | | | pending |
@@ -146,18 +146,24 @@ excluded in `tests.spyproj` pending the gap fixes below. Where a test-code fix
 was necessary but not sufficient (a codegen/stdlib gap also blocks the module),
 the `.spy` source has already been fixed and is noted as "test-code fixed".
 
-| Module (.spy) | Issue | Theme | Notes |
-|---------------|-------|-------|-------|
-| calendar | #886 | A — tuple `==`/`!=` not synthesized | |
-| zoneinfo | #886 | A — `ZoneInfo ==`/`!=` not synthesized | `as exc` capture-variant test added (#883) |
-| uuid | #886 | A — `uuid.UUID ==`/`!=` not synthesized | |
-| http | #886 | A — `http.HTTPStatus` enum `==` not synthesized | |
-| fractions | #887 | B — `BigInteger == int` + reflected `int <op> Fraction` | |
-| pprint | #888 | C — `(1,)` parsed as scalar, not a 1-tuple | 1 runtime test |
-| heapq (`heapq_tests.spy`) | #889 | D — `sort(key=lambda)` param inferred as `object` | |
-| functools (`functools_tests.spy`) | #889 | D — `sort(key=lambda)` param inferred as `object` | |
-| hmac | #890 | E — `hmac.new(bytes, bytes, str)` overload not resolved | |
-| email | #891 | F — module alias emits `Sharpy.Email` not `Sharpy.EmailModule` (CS0234) | test-code fixed (`T?` → `T \| None`) |
-| ipaddress | #891 | F — module alias emits `Sharpy.Ipaddress` (CS0234) | |
-| difflib | #892 | G — tuple int-indexing not lowered to `.ItemN` in loops (CS0021) | test-code fixed (typed empty lists) |
-| html | #892 | G — tuple int-indexing not lowered to `.ItemN` in loops (CS0021) | test-code fixed (override `str?` → `str \| None`) |
+The #886–#893 fixes (plan f40f84) landed and **9 of these 13 modules now re-enable
+and pass** (calendar, uuid, http, fractions, pprint, heapq, hmac, ipaddress,
+difflib — 867 spy tests green). The remaining **4** are blocked by a *third* layer
+of out-of-scope gaps discovered during re-enablement and stay excluded in
+`tests.spyproj` pending those new issues.
+
+| Module (.spy) | Original gap | Status |
+|---------------|--------------|--------|
+| calendar | #886 (tuple `==`/`!=`) | ✅ re-enabled |
+| uuid | #886 (`uuid.UUID ==`/`!=`) | ✅ re-enabled |
+| http | #886 + #897 (`http.HTTPStatus` access) | ✅ re-enabled |
+| fractions | #887 (`BigInteger == int`, reflected ops) | ✅ re-enabled — `floor_div` annotated `long` (Axiom 1); 1 test omitted (`test_fraction_large_numerator_denominator`, needs arbitrary-precision `10 ** 50`, **#905**) |
+| pprint | #888 (`(1,)` 1-tuple) | ✅ re-enabled |
+| heapq (`heapq_tests.spy`) | #889 (`sort(key=lambda)`) | ✅ re-enabled |
+| hmac | #890 (`hmac.new` overload) | ✅ re-enabled |
+| ipaddress | #891 (module alias) + #898 | ✅ re-enabled |
+| difflib | #892 (tuple `.ItemN`) | ✅ re-enabled |
+| zoneinfo | #886 | ⛔ blocked: `==`/`!= None` on a CLR type emits SPY0222 — **#901** |
+| html | #892 | ⛔ blocked: tuple index inside an f-string interpolation leaks CS0021 — **#902** |
+| email | #891 | ⛔ blocked: `isinstance(x, mod.Type)` emits the type as a value (CS0119) — **#903** |
+| functools (`functools_tests.spy`) | #889 | ⛔ blocked: `cmp_to_key` generic free-function lambda inference fails (CS0411) — **#904** |

@@ -8,7 +8,12 @@
     <NoWarn>SPY0451,SPY0452,SPY0453</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Temporarily excluded modules blocked by compiler limitations — see PORTING.md residuals -->
-    <SourceFile Include="**/*.spy" Exclude="calendar/**;difflib/**;email/**;fractions/**;functools/functools_tests.spy;heapq/heapq_tests.spy;hmac/**;html/**;http/**;ipaddress/**;pprint/**;uuid/**;zoneinfo/**" />
+    <!-- Re-enabled by #886-#892 (plan f40f84): calendar, uuid, http, fractions, pprint, heapq,
+         hmac, ipaddress, difflib. Still blocked by out-of-scope gaps (see PORTING.md residuals):
+           zoneinfo  — ==/!= None on a CLR type emits SPY0222 (#901)
+           html      — tuple index inside an f-string interpolation leaks CS0021 (#902)
+           email     — isinstance with a module-qualified type emits the type as a value, CS0119 (#903)
+           functools — cmp_to_key generic free-function lambda inference fails, CS0411 (#904) -->
+    <SourceFile Include="**/*.spy" Exclude="email/**;functools/functools_tests.spy;html/**;zoneinfo/**" />
   </ItemGroup>
 </Project>
