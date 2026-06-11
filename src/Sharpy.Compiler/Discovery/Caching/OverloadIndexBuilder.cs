@@ -620,6 +620,18 @@ internal class OverloadIndexBuilder
                     .Select(CreateTypeSignature)
                     .ToList();
             }
+            else if (semanticType is NullableType)
+            {
+                // Emit value-type Nullable<T> (C# T?) under a sentinel so ConvertTypeSignature
+                // can reconstruct it as NullableType. Without this, Nullable<Bytes> fell through
+                // to the non-generic ClrTypeName branch and resolved to the OPEN Nullable<>
+                // type, breaking overload matching for e.g. hmac.new(bytes, bytes?, str) (#890).
+                signature.Name = TypeSignature.NullableSentinel;
+                signature.IsGeneric = true;
+                signature.TypeArguments = clrTypeArgs
+                    .Select(CreateTypeSignature)
+                    .ToList();
+            }
             else if (semanticType is ResultType)
             {
                 // Emit Result as a generic TypeSignature so ConvertTypeSignature

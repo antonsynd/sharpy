@@ -129,6 +129,9 @@ internal class TypeSignature
     /// <summary>Sentinel name encoding an Action&lt;...&gt; containing method-level type params.</summary>
     internal const string ActionSentinel = "__action__";
 
+    /// <summary>Sentinel name encoding a value-type <c>Nullable&lt;T&gt;</c> (C# <c>T?</c>) parameter.</summary>
+    internal const string NullableSentinel = "__nullable__";
+
     public string Name { get; set; } = string.Empty;
     public bool IsGeneric { get; set; }
     public List<TypeSignature> TypeArguments { get; set; } = new();

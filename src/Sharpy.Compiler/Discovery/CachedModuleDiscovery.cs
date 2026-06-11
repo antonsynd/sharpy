@@ -722,6 +722,15 @@ internal class CachedModuleDiscovery
                 };
             }
 
+            // Handle value-type Nullable<T> (C# T?) -> NullableType (#890)
+            if (signature.Name == Caching.TypeSignature.NullableSentinel && signature.TypeArguments.Count == 1)
+            {
+                return new NullableType
+                {
+                    UnderlyingType = ConvertTypeSignature(signature.TypeArguments[0], sharedTypeParams)
+                };
+            }
+
             // Handle __func__[T1, ..., TResult] -> FunctionType (from Func<...> CLR types)
             if (signature.Name == TypeSignature.FuncSentinel && signature.TypeArguments.Count >= 1)
             {

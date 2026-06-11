@@ -1,0 +1,18 @@
+import hmac
+
+
+def main() -> None:
+    # bytes overload: 3-arg, 2-arg (default digestmod), and 1-arg + update
+    a = hmac.new(b"secret", b"message", "sha256")
+    print(a.hexdigest())
+
+    b = hmac.new(b"secret", b"message")
+    print(b.hexdigest())
+
+    c = hmac.new(b"secret")
+    c.update(b"message")
+    print(c.hexdigest())
+
+    # str overload still resolves (no ambiguity with the bytes one)
+    d = hmac.new("secret", "message", "sha256")
+    print(d.hexdigest())

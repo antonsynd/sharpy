@@ -318,6 +318,14 @@ public sealed record UserDefinedType : SemanticType
         {
             if (Symbol != null && otherUdt.Symbol != null)
             {
+                // Two user-defined types backed by the same CLR type are the same type, even
+                // when their Sharpy names differ — e.g. the builtin `bytes` (registered with
+                // ClrType = Sharpy.Bytes) versus a CLR-discovered `Bytes` struct (the underlying
+                // type of a `Bytes?` parameter). This makes hmac.new(bytes, bytes?, str) and
+                // similar nullable-struct overloads resolve (#890).
+                if (Symbol.ClrType != null && Symbol.ClrType == otherUdt.Symbol.ClrType)
+                    return true;
+
                 // Same-type check using module-qualified identity
                 if (TypeHierarchyService.IsSameType(Symbol, otherUdt.Symbol))
                     return true;

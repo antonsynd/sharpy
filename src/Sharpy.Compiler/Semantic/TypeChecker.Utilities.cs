@@ -288,16 +288,19 @@ internal partial class TypeChecker
         if (source.IsAssignableTo(target))
             return true;
 
-        // Non-nullable type can be assigned to nullable version of the same type
+        // Non-nullable type can be assigned to nullable version of the same type.
+        // Recurse through IsAssignable (not just IsAssignableTo) so the underlying-type check
+        // also benefits from the CLR-metadata fallback below — this is what lets a builtin
+        // `bytes` argument bind to a `Bytes?` (Nullable<Bytes>) parameter (#890).
         if (target is NullableType nullable)
         {
-            return source.IsAssignableTo(nullable.UnderlyingType);
+            return IsAssignable(source, nullable.UnderlyingType);
         }
 
         // Non-optional type can be assigned to optional version of the same type
         if (target is OptionalType optional)
         {
-            return source.IsAssignableTo(optional.UnderlyingType);
+            return IsAssignable(source, optional.UnderlyingType);
         }
 
         // FunctionType is assignable to a delegate type if the signatures are compatible

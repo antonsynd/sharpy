@@ -14,7 +14,8 @@ internal class OverloadIndexCache
 {
     private readonly string _cacheDirectory;
     private readonly ICompilerLogger _logger;
-    internal const int CurrentCacheFormatVersion = 15;
+    // v16: value-type Nullable<T> parameters now serialize via the __nullable__ sentinel (#890).
+    internal const int CurrentCacheFormatVersion = 16;
 
     public CacheStatistics Statistics { get; } = new();
 
