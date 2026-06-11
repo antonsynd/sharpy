@@ -12,11 +12,11 @@ public static partial class Exponentiation0001
     public static void Main()
     {
 #line (2, 5) - (2, 21) 1 "exponentiation_0001.spy"
-        int x = (int)(global::System.Math.Pow(3, 2));
+        int x = 9;
 #line (3, 5) - (3, 13) 1 "exponentiation_0001.spy"
         global::Sharpy.Builtins.Print(x);
 #line (4, 5) - (4, 22) 1 "exponentiation_0001.spy"
-        int y = (int)(global::System.Math.Pow(2, 10));
+        int y = 1024;
 #line (5, 5) - (5, 13) 1 "exponentiation_0001.spy"
         global::Sharpy.Builtins.Print(y);
 #line (6, 5) - (6, 27) 1 "exponentiation_0001.spy"

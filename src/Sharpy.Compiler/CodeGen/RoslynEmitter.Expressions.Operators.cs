@@ -29,6 +29,17 @@ internal partial class RoslynEmitter
         switch (binOp.Operator)
         {
             case BinaryOperator.Power:
+            {
+                // Constant-folded integer power (#905): semantic records the value (widened to
+                // int/long, or SPY0328 when it exceeds long), so emit the literal directly
+                // instead of a lossy Math.Pow round-trip. e.g. `y: long = 10 ** 18`.
+                if (_context.SemanticInfo?.TryGetFoldedIntegerConstant(binOp, out var foldedPow) == true)
+                {
+                    return GetExpressionSemanticType(binOp) == SemanticType.Long
+                        ? LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(foldedPow))
+                        : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)foldedPow));
+                }
+
                 // x ** y → global::System.Math.Pow(x, y)
                 var powCall = InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -46,11 +57,40 @@ internal partial class RoslynEmitter
                     var castKind = resultType == SemanticType.Long
                         ? SyntaxKind.LongKeyword
                         : SyntaxKind.IntKeyword;
-                    return CastExpression(
+
+                    // Non-negative integer power → checked exponentiation-by-squaring
+                    // (Sharpy.Core CheckedIntPow): overflow raises OverflowError and large
+                    // results stay exact, instead of the saturating/lossy (int)/(long) cast of
+                    // Math.Pow (#905). The checked helper throws on a negative exponent, so a
+                    // runtime guard preserves the existing truncating double path for `x ** -n`
+                    // (Sharpy types int ** int as int; e.g. `2 ** -1` stays 0, unchanged). Only
+                    // emit the guard when the exponent is side-effect-free so it isn't evaluated
+                    // twice; otherwise keep the legacy cast path (behavior-preserving).
+                    var saturatingCast = CastExpression(
                         PredefinedType(Token(castKind)),
                         ParenthesizedExpression(powCall));
+
+                    if (!IsSideEffectFree(binOp.Right))
+                        return saturatingCast;
+
+                    var checkedPowCall = InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                            IdentifierName("CheckedIntPow")))
+                        .AddArgumentListArguments(
+                            Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
+                            Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
+
+                    var negativeExponent = BinaryExpression(
+                        SyntaxKind.LessThanExpression,
+                        right,
+                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
+
+                    return ParenthesizedExpression(
+                        ConditionalExpression(negativeExponent, saturatingCast, checkedPowCall));
                 }
                 return powCall;
+            }
 
             case BinaryOperator.Divide:
                 // User-defined types with __div__: emit plain left / right (C# operator overload)
