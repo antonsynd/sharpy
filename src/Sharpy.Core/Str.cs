@@ -46,7 +46,44 @@ namespace Sharpy
                 return FormatFloat(f);
             }
 
+            // ValueTuples (System.ValueTuple<...>): format with Python-style
+            // parentheses. Default ValueTuple.ToString() omits the trailing
+            // comma for single-element tuples ("(1)"); Python requires "(1,)".
+            var type = x.GetType();
+            if (type.IsValueType && type.FullName != null
+                && type.FullName.StartsWith("System.ValueTuple`", StringComparison.Ordinal))
+            {
+                return FormatValueTupleStr(x, type);
+            }
+
             return x.ToString() ?? "";
+        }
+
+        private static string FormatValueTupleStr(object tuple, Type type)
+        {
+            var fields = type.GetFields(
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+            var builder = new System.Text.StringBuilder();
+            builder.Append('(');
+            for (int i = 0; i < fields.Length; i++)
+            {
+                if (i > 0)
+                {
+                    builder.Append(", ");
+                }
+
+                builder.Append(Str(fields[i].GetValue(tuple)!));
+            }
+
+            // Single-element tuples render with a trailing comma to match Python:
+            // str((1,)) == "(1,)". Arity >= 2 is unaffected.
+            if (fields.Length == 1)
+            {
+                builder.Append(',');
+            }
+
+            builder.Append(')');
+            return builder.ToString();
         }
 
         /// <summary>

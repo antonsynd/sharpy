@@ -112,4 +112,18 @@ public class Print_Tests
         var output = writer.ToString();
         output.Should().Contain("a-b-c!");
     }
+
+    [Fact]
+    public void Print_SingleElementTuple_HasTrailingComma()
+    {
+        // Arrange — Python: print((1,)) outputs "(1,)"
+        var writer = new StringWriter();
+        Console.SetOut(writer);
+
+        // Act
+        Builtins.Print(System.ValueTuple.Create(1));
+
+        // Assert
+        writer.ToString().Should().Be("(1,)\n");
+    }
 }

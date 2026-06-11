@@ -187,4 +187,26 @@ public class StrTests
         // double.MaxValue = 1.7976931348623157E+308
         result.Should().Contain("e+308");
     }
+
+    [Fact]
+    public void Str_SingleElementTuple_HasTrailingComma()
+    {
+        // Python: str((1,)) == "(1,)" — ValueTuple.ToString() would give "(1)"
+        Builtins.Str(System.ValueTuple.Create(1)).Should().Be("(1,)");
+    }
+
+    [Fact]
+    public void Str_TwoElementTuple_NoTrailingComma()
+    {
+        // Python: str((1, 2)) == "(1, 2)"
+        Builtins.Str((1, 2)).Should().Be("(1, 2)");
+    }
+
+    [Fact]
+    public void Str_NestedSingleElementTuple_HasTrailingCommas()
+    {
+        // Python: str(((1,),)) == "((1,),)"
+        Builtins.Str(System.ValueTuple.Create(System.ValueTuple.Create(1)))
+            .Should().Be("((1,),)");
+    }
 }
