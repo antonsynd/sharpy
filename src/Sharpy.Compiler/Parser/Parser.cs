@@ -132,6 +132,45 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Lambda-parameter annotation disambiguation (#899): when a candidate type
+    /// name in lambda-parameter position is followed by '[', determine whether the
+    /// bracketed section is generic type arguments (`lambda t: list[int]: ...`) or a
+    /// subscript in the lambda body (`lambda t: t[0]`).
+    /// </summary>
+    /// <remarks>
+    /// Assumes the type name is at <c>Peek(1)</c> and the opening '[' is at
+    /// <c>Peek(2)</c>. Scans forward counting '['/']' depth to the matching ']', then
+    /// classifies as a type annotation only if the following token is one that can
+    /// continue a parameter list / annotation (',', '=', ':', '?', '!'). If EOF or a
+    /// newline is reached before the brackets balance, returns false (not an
+    /// annotation) so the construct is parsed as a body expression.
+    /// </remarks>
+    private bool IsBracketedTypeAnnotation()
+    {
+        int depth = 1;
+        for (int i = 3; ; i++)
+        {
+            var type = Peek(i).Type;
+            if (type is TokenType.Eof or TokenType.Newline)
+                return false;
+            if (type == TokenType.LeftBracket)
+            {
+                depth++;
+            }
+            else if (type == TokenType.RightBracket)
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return Peek(i + 1).Type is TokenType.Comma
+                        or TokenType.Assign or TokenType.Colon
+                        or TokenType.Question or TokenType.Bang;
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Checks whether a keyword token type can be used as an identifier in
     /// certain contexts (e.g., keyword arguments in function calls).
     /// These correspond to Python's soft keywords: <c>match</c>, <c>case</c>, and <c>type</c>.

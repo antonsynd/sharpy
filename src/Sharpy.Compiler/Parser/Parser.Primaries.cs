@@ -731,11 +731,23 @@ public partial class Parser
                                         // but `a | b` (where b is not None) is a bitwise-OR body.
                                         isTypeAnnotation = Peek(3).Type == TokenType.None;
                                     }
+                                    else if (afterType == TokenType.LeftBracket)
+                                    {
+                                        // Disambiguate generic type annotation from a subscript body (#899):
+                                        //   `lambda t: list[int]: len(t)`  → `[int]` is generic args
+                                        //   `lambda t: t[0]`                → `[0]` subscripts the body
+                                        // Scan forward, counting '['/']' depth, to the matching ']'.
+                                        // It's a type annotation only if the token AFTER the matching
+                                        // ']' confirms we're still in the parameter list / annotation
+                                        // (',', '=', ':', '?', '!'). EOF/Newline mid-scan → not an
+                                        // annotation (treat as body so we get a clean error downstream).
+                                        isTypeAnnotation = IsBracketedTypeAnnotation();
+                                    }
                                     else
                                     {
                                         isTypeAnnotation = afterType is TokenType.Comma
                                             or TokenType.Assign or TokenType.Colon
-                                            or TokenType.LeftBracket or TokenType.Question
+                                            or TokenType.Question
                                             or TokenType.Bang;
                                     }
                                 }
