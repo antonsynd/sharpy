@@ -682,12 +682,18 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Works around a Roslyn NormalizeWhitespace quirk where a
-    /// DeclarationExpression with a ParenthesizedVariableDesignation loses
-    /// the spaces around it: "var(a, b) = ..." instead of "var (a, b) = ...",
-    /// and "foreach (var(a, b)in items)" instead of "foreach (var (a, b) in items)".
-    /// Restores the space after the type keyword and, for foreach deconstruction,
-    /// the space before the "in" keyword. See issue #846.
+    /// Works around Roslyn NormalizeWhitespace quirks where adjacent tokens lose
+    /// the space between them:
+    /// <list type="bullet">
+    /// <item>A DeclarationExpression with a ParenthesizedVariableDesignation:
+    /// "var(a, b) = ..." instead of "var (a, b) = ...", and
+    /// "foreach (var(a, b)in items)" instead of "foreach (var (a, b) in items)"
+    /// (issue #846).</item>
+    /// <item>An IsPatternExpression whose operand ends in a close paren:
+    /// "new Thing()is not null" instead of "new Thing() is not null" — emitted by
+    /// the NoneCheck lowering for call-expression operands (#901).</item>
+    /// </list>
+    /// Restores the missing spaces. Must run after NormalizeWhitespace.
     /// </summary>
     private sealed class DeconstructionSpacingRewriter : CSharpSyntaxRewriter
     {
@@ -705,6 +711,22 @@ internal partial class RoslynEmitter
             // "var (a, b)in items" -> "var (a, b) in items"
             if (node.Parent is ForEachVariableStatementSyntax)
                 visited = visited.WithTrailingTrivia(Space);
+
+            return visited;
+        }
+
+        public override SyntaxNode? VisitIsPatternExpression(IsPatternExpressionSyntax node)
+        {
+            var visited = (IsPatternExpressionSyntax)base.VisitIsPatternExpression(node)!;
+
+            // "expr()is ..." -> "expr() is ...": NormalizeWhitespace omits the space
+            // before the `is` keyword when the operand's last token (e.g. a close paren)
+            // carries no trailing trivia.
+            if (!visited.IsKeyword.HasLeadingTrivia
+                && !visited.Expression.GetLastToken().HasTrailingTrivia)
+            {
+                visited = visited.WithIsKeyword(visited.IsKeyword.WithLeadingTrivia(Space));
+            }
 
             return visited;
         }

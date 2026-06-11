@@ -309,7 +309,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestEqualsNoneIsFalse()
             {
 #line (185, 5) - (185, 58) 1 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                bool isNotNone = new global::Sharpy.ZoneInfo("UTC")is not null;
+                bool isNotNone = new global::Sharpy.ZoneInfo("UTC") is not null;
 #line (186, 5) - (186, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 Xunit.Assert.True(isNotNone);
             }
