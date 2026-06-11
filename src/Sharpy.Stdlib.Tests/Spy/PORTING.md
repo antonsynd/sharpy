@@ -48,7 +48,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | HeapqTests.cs | 31 | Spy/heapq/heapq_tests.spy | 31 | ported (re-enabled #889) |
 | HeapqAdditionalTests.cs | 12 | | | pending |
 | HmacTests.cs | 13 | Spy/hmac/hmac_tests.spy | 13 | ported (re-enabled #890) |
-| HtmlModuleTests.cs | 44 | Spy/html/html_module_tests.spy | 44 | ported |
+| HtmlModuleTests.cs | 44 | Spy/html/html_module_tests.spy | 40 | ported (re-enabled #902; 4 omitted: convert_charrefs=False, #906) |
 | HttpTests.cs | 35 | Spy/http/http_tests.spy | 26 | ported (9 omitted: 7 HTTPResponse internal ctor, 1 reflection, 1 StringWriter) |
 | IoModuleTests.cs | 15 | | | pending |
 | IoStringIOTests.cs | 27 | | | pending |
@@ -146,10 +146,10 @@ excluded in `tests.spyproj` pending the gap fixes below. Where a test-code fix
 was necessary but not sufficient (a codegen/stdlib gap also blocks the module),
 the `.spy` source has already been fixed and is noted as "test-code fixed".
 
-The #886–#893 fixes (plan f40f84) landed and **9 of these 13 modules now re-enable
+The #886–#893 fixes (plan f40f84) landed and **10 of these 13 modules now re-enable
 and pass** (calendar, uuid, http, fractions, pprint, heapq, hmac, ipaddress,
-difflib — 867 spy tests green). The remaining **4** are blocked by a *third* layer
-of out-of-scope gaps discovered during re-enablement and stay excluded in
+difflib, html — 907 spy tests green). The remaining **3** are blocked by a *third*
+layer of out-of-scope gaps discovered during re-enablement and stay excluded in
 `tests.spyproj` pending those new issues.
 
 | Module (.spy) | Original gap | Status |
@@ -163,7 +163,7 @@ of out-of-scope gaps discovered during re-enablement and stay excluded in
 | hmac | #890 (`hmac.new` overload) | ✅ re-enabled |
 | ipaddress | #891 (module alias) + #898 | ✅ re-enabled |
 | difflib | #892 (tuple `.ItemN`) | ✅ re-enabled |
+| html | #892 + #902 (f-string tuple index, fixed by narrowing-key commit) | ✅ re-enabled — 4 `convert_charrefs=False` parser tests omitted (separate stdlib bug, **#906**) |
 | zoneinfo | #886 | ⛔ blocked: `==`/`!= None` on a CLR type emits SPY0222 — **#901** |
-| html | #892 | ⛔ blocked: tuple index inside an f-string interpolation leaks CS0021 — **#902** |
 | email | #891 | ⛔ blocked: `isinstance(x, mod.Type)` emits the type as a value (CS0119) — **#903** |
 | functools (`functools_tests.spy`) | #889 | ⛔ blocked: `cmp_to_key` generic free-function lambda inference fails (CS0411) — **#904** |
