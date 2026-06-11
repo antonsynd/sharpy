@@ -1,0 +1,5 @@
+def main() -> None:
+    # A non-nullable value type compared against None is statically always
+    # False and almost certainly a bug, so it keeps SPY0222 (#901 scope).
+    x: int = 5
+    print(x == None)

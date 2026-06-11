@@ -1,0 +1,7 @@
+def main() -> None:
+    # Constant int ** int that fits in int stays int (#905).
+    z = 2 ** 10
+    print(z)
+    # Result fits long: the literal is widened to long via the annotation.
+    y: long = 10 ** 18
+    print(y)

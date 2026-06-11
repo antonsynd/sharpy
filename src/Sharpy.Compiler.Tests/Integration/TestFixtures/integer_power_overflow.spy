@@ -1,0 +1,5 @@
+def main() -> None:
+    # Sharpy integers are fixed-width; a constant int ** int whose result
+    # exceeds long is a compile-time error rather than silent saturation (#905).
+    x = 10 ** 50
+    print(x)

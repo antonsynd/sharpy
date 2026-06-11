@@ -1,0 +1,19 @@
+class Box:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+
+def main() -> None:
+    # A live reference-type object is never == None (Python identity fallback).
+    b: Box = Box(5)
+    print(b == None)
+    print(b != None)
+    # Reversed operand order behaves identically (#901).
+    print(None == b)
+    print(None != b)
+    # str is also a reference-semantics type.
+    s: str = "hi"
+    print(s == None)
+    print(s != None)

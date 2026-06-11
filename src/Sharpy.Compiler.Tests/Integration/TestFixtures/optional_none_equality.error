@@ -1,0 +1,1 @@
+Type 'int?' does not support operator '==' with operand of type 'None' @6:11

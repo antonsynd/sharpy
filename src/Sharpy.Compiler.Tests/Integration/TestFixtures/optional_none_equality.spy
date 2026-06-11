@@ -1,0 +1,6 @@
+def main() -> None:
+    # Regression guard (#901): the strict Optional (T?) path is unchanged — it
+    # still requires `is None` / `is not None` narrowing and rejects `== None`
+    # with SPY0222, rather than being loosened by the CLR-reference NoneCheck.
+    n: int? = 5
+    print(n == None)
