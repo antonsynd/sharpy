@@ -1,0 +1,39 @@
+# Covers #887: BigInteger <cmp> int widening and reflected int <op> Fraction.
+# Uses `from fractions import Fraction` (not `import fractions`) only to sidestep
+# an unrelated type-only-module `using` alias bug (#898); the operator resolution
+# under test is identical either way.
+from fractions import Fraction
+
+
+def main() -> None:
+    # numerator/denominator are BigInteger; comparing to an int literal needs
+    # int -> BigInteger widening.
+    f: Fraction = Fraction(1, 2)
+    print(f.numerator == 1)
+    print(f.denominator == 2)
+    print(Fraction(2, 4).numerator == 1)
+
+    # reflected + both-order arithmetic (int <op> Fraction resolves via the
+    # (long, Fraction) overloads with int -> long widening).
+    print(3 + Fraction(1, 2))
+    print(Fraction(1, 2) + 3)
+    print(3 - Fraction(1, 2))
+    print(Fraction(1, 2) - 3)
+    print(3 * Fraction(1, 2))
+    print(Fraction(1, 2) * 3)
+    print(3 / Fraction(1, 2))
+    print(Fraction(1, 2) / 3)
+    print(7 % Fraction(3, 2))
+    print(Fraction(7, 2) % 3)
+
+    # mixed comparisons (int vs Fraction via implicit op_Implicit).
+    print(3 < Fraction(7, 2))
+    print(Fraction(7, 2) > 3)
+    print(Fraction(7, 2) >= 3)
+    print(3 <= Fraction(7, 2))
+    print(Fraction(3, 1) == 3)
+
+    # floor_div: Python '//' returns an arbitrary-precision int, but the faithful
+    # .NET mapping is long (Axiom 1), so annotate long here, not int (SPY0220).
+    q: long = Fraction(7, 2).floor_div(Fraction(3, 2))
+    print(q)

@@ -64,6 +64,10 @@ public abstract class IntegrationTestBase
             // though Task's implementation lives in System.Private.CoreLib. Real net10.0
             // test projects reference it implicitly.
             MetadataReference.CreateFromFile(Assembly.Load("System.Threading.Tasks").Location),
+            // System.Runtime.Numerics is needed for fixtures whose generated C# surfaces
+            // System.Numerics.BigInteger (e.g. fractions.Fraction.numerator/denominator).
+            // Real net10.0 test projects reference it implicitly via the framework.
+            MetadataReference.CreateFromFile(Assembly.Load("System.Runtime.Numerics").Location),
         };
 
         string? runtimePath = null;
