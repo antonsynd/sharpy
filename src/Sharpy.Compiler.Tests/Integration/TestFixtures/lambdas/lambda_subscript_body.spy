@@ -1,0 +1,16 @@
+def main() -> None:
+    # Un-parenthesized subscript at the lambda body start, as a sort key (#899).
+    pairs: list[tuple[int, str]] = [(3, "c"), (1, "a"), (2, "b")]
+    pairs.sort(key=lambda t: t[0])
+    for t in pairs:
+        print(t[0])
+
+    # Captured-variable subscript in a lambda body.
+    data: list[int] = [10, 20, 30]
+    get = lambda i: int: data[i]
+    print(get(2))
+
+    # Annotated generic-param lambda must still parse as a type annotation
+    # (regression guard for the disambiguation fix).
+    sizer = lambda t: list[int]: len(t)
+    print(sizer([1, 2, 3, 4]))

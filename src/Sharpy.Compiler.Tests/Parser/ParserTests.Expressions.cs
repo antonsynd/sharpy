@@ -80,6 +80,83 @@ public partial class ParserTests
         lambda.Body.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("42");
     }
 
+    [Fact]
+    public void ParseLambdaBodyParameterSubscript()
+    {
+        // #899: `lambda t: t[0]` is a subscript in the body, not a generic
+        // type annotation on the parameter.
+        var module = Parse("lambda t: t[0]");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(1);
+        lambda.Parameters[0].Name.Should().Be("t");
+        lambda.Parameters[0].Type.Should().BeNull();
+        var index = lambda.Body.Should().BeOfType<IndexAccess>().Subject;
+        index.Object.Should().BeOfType<Identifier>().Which.Name.Should().Be("t");
+        index.Index.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("0");
+    }
+
+    [Fact]
+    public void ParseLambdaBodyCapturedVariableSubscript()
+    {
+        // #899: subscript on a captured variable (not the parameter).
+        var module = Parse("lambda t: x[0]");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(1);
+        var index = lambda.Body.Should().BeOfType<IndexAccess>().Subject;
+        index.Object.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+    }
+
+    [Fact]
+    public void ParseLambdaGenericParameterAnnotationStillParses()
+    {
+        // #899 regression guard: a generic type annotation on the parameter
+        // (`list[int]`) must keep parsing as an annotation, distinguished from
+        // a body subscript by the trailing `:` after the matching `]`.
+        var module = Parse("lambda t: list[int]: len(t)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(1);
+        lambda.Parameters[0].Name.Should().Be("t");
+        lambda.Parameters[0].Type.Should().NotBeNull();
+        lambda.Parameters[0].Type!.Name.Should().Be("list");
+        lambda.Parameters[0].Type!.TypeArguments.Should().HaveCount(1);
+        lambda.Parameters[0].Type!.TypeArguments[0].Name.Should().Be("int");
+        lambda.Body.Should().BeOfType<FunctionCall>();
+    }
+
+    [Fact]
+    public void ParseLambdaNestedGenericParameterAnnotationStillParses()
+    {
+        // #899 regression guard: nested generics in the parameter annotation.
+        var module = Parse("lambda t: dict[str, list[int]]: len(t)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var lambda = exprStmt.Expression.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters[0].Type.Should().NotBeNull();
+        lambda.Parameters[0].Type!.Name.Should().Be("dict");
+        lambda.Parameters[0].Type!.TypeArguments.Should().HaveCount(2);
+        lambda.Body.Should().BeOfType<FunctionCall>();
+    }
+
+    [Fact]
+    public void ParseLambdaBodySubscriptEofAfterBracketIsCleanError()
+    {
+        // #899 edge case: EOF while scanning the bracket must not crash; it
+        // should surface a clean parser diagnostic.
+        Action act = () => Parse("lambda t: t[");
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ParseLambdaBodySubscriptUnbalancedBracketIsCleanError()
+    {
+        // #899 edge case: unbalanced brackets must produce a clean parse error,
+        // not an exception/crash.
+        Action act = () => Parse("lambda t: t[0");
+        act.Should().NotThrow();
+    }
+
     #endregion
 
     #region Type Annotations and Casts
