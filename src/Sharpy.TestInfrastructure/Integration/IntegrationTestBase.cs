@@ -640,7 +640,7 @@ public abstract class IntegrationTestBase
                     Success = false,
                     CompilationErrors = result.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
                     CompilationWarnings = projectWarnings,
-                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
                     RawDiagnostics = result.Diagnostics.GetAll().ToList()
                 };
             }
@@ -688,7 +688,7 @@ public abstract class IntegrationTestBase
                 {
                     Success = false,
                     CompilationErrors = errors,
-                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
+                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
                 };
             }
 
@@ -788,7 +788,7 @@ public abstract class IntegrationTestBase
                         TimedOut = true,
                         StandardOutput = stdout.ToString(),
                         StandardError = stderr.ToString(),
-                        GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                        GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
                         CompilationErrors = new List<string> { $"Execution timed out after {timeout}ms" }
                     };
                 }
@@ -800,7 +800,7 @@ public abstract class IntegrationTestBase
                         Success = false,
                         StandardOutput = stdout.ToString(),
                         StandardError = stderr.ToString(),
-                        GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                        GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
                         CompilationErrors = new List<string> { $"Process exited with code {process.ExitCode}: {stderr}" }
                     };
                 }
@@ -810,7 +810,7 @@ public abstract class IntegrationTestBase
                     Success = true,
                     StandardOutput = stdout.ToString(),
                     StandardError = stderr.ToString(),
-                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
                     CompilationWarnings = projectWarnings
                 };
             }
