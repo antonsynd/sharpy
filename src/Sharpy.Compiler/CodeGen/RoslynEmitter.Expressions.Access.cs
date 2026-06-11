@@ -133,87 +133,60 @@ internal partial class RoslynEmitter
                 var originalTypeName = GetCodeGenInfo(typeSymbolForName)?.OriginalImportName ?? funcName.Name;
                 var name = GetFullyQualifiedTypeName(typeSymbolForName, originalTypeName);
 
-                // For generic types called without explicit type arguments (e.g., set(), Cell(42)),
-                // use the resolved expression type to supply type arguments.
-                var exprType = _context.SemanticInfo?.GetExpressionType(call);
-                if (exprType is GenericType resolvedGeneric && resolvedGeneric.TypeArguments.Count > 0
-                    && resolvedGeneric.TypeArguments.All(t => t is not UnknownType))
-                {
-                    var typeArgsSyntax = resolvedGeneric.TypeArguments
-                        .Select(t => _typeMapper.MapSemanticType(t))
-                        .ToArray();
-                    var csharpCollectionName = CSharpTypeNames.FromSharpyName(funcName.Name)
-                        ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
-                    var needsGlobalQualification = !string.IsNullOrEmpty(_context.ProjectNamespace)
-                        && csharpCollectionName.Contains('.', StringComparison.Ordinal);
-                    var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpCollectionName,
-                            needsGlobalQualification, typeArgsSyntax);
+                // Generic instantiation resolves the name through CSharpTypeNames (builtin
+                // collections: set → Sharpy.Set) with a PascalCase fallback for user types.
+                var genericBaseName = CSharpTypeNames.FromSharpyName(funcName.Name)
+                    ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
 
+                var exprType = _context.SemanticInfo?.GetExpressionType(call);
+                var hasResolvedGenericArgs = exprType is GenericType resolvedGeneric
+                    && resolvedGeneric.TypeArguments.Count > 0
+                    && resolvedGeneric.TypeArguments.All(t => t is not UnknownType);
+                if (hasResolvedGenericArgs)
+                {
                     // DefaultDict: wrap type-reference arguments in factory lambdas.
                     // DefaultDict(list) → new DefaultDict<string, List<int>>(() => new List<int>())
+                    var genericExprType = (GenericType)exprType!;
                     if (string.Equals(funcName.Name, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase)
-                        && typeArgsSyntax.Length >= 2
+                        && genericExprType.TypeArguments.Count >= 2
                         && call.Arguments.Length >= 1)
                     {
-                        allArgs = WrapDefaultDictFactoryArgs(call, allArgs, typeArgsSyntax[1]);
+                        var valueTypeSyntax = _typeMapper.MapSemanticType(genericExprType.TypeArguments[1]);
+                        allArgs = WrapDefaultDictFactoryArgs(call, allArgs, valueTypeSyntax);
                     }
-
-                    return ObjectCreationExpression(genericTypeSyntax)
-                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }
-
-                // Fallback: if the expression type has UnknownType type args, check for
-                // inferred type arguments from semantic analysis (generic constructor inference).
-                // C# does not support generic constructor inference, so we must always emit
-                // explicit type arguments: Cell(42) -> new Cell<int>(42)
-                var inferredTypeArgs = _context.SemanticInfo?.GetInferredTypeArguments(call);
-                if (inferredTypeArgs is { Count: > 0 })
+                else if (_context.SemanticInfo?.GetInferredTypeArguments(call) is not { Count: > 0 })
                 {
-                    var typeArgsSyntax = inferredTypeArgs
-                        .Select(t => _typeMapper.MapSemanticType(t));
-                    var csharpName = CSharpTypeNames.FromSharpyName(funcName.Name)
-                        ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
-                    var needsGlobalQualification = !string.IsNullOrEmpty(_context.ProjectNamespace)
-                        && csharpName.Contains('.', StringComparison.Ordinal);
-                    var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpName,
-                            needsGlobalQualification, typeArgsSyntax.ToArray());
-                    return ObjectCreationExpression(genericTypeSyntax)
-                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-                }
-
-                // For builtin collection types, use the fully-qualified Sharpy.X name.
-                // If we reached here, the expression type didn't have valid generic args.
-                // Try to infer element type from the constructor argument's semantic type:
-                // list(d.keys()) → new Sharpy.List<string>(d.Keys) when d.keys() is IEnumerable<string>
-                var collectionName = CSharpTypeNames.FromSharpyName(funcName.Name);
-                if (collectionName != null)
-                {
-                    var needsGlobalQualification = !string.IsNullOrEmpty(_context.ProjectNamespace)
-                        && collectionName.Contains('.', StringComparison.Ordinal);
-                    if (call.Arguments.Length == 1)
+                    // For builtin collection types, use the fully-qualified Sharpy.X name.
+                    // If we reached here, neither the expression type nor inference supplied
+                    // generic args. Try to infer element type from the constructor argument:
+                    // list(d.keys()) → new Sharpy.List<string>(d.Keys) when d.keys() is IEnumerable<string>
+                    var collectionName = CSharpTypeNames.FromSharpyName(funcName.Name);
+                    if (collectionName != null)
                     {
-                        var elementType = TryInferElementTypeFromArg(call.Arguments[0]);
-                        if (elementType != null)
+                        var needsGlobalQualification = !string.IsNullOrEmpty(_context.ProjectNamespace)
+                            && collectionName.Contains('.', StringComparison.Ordinal);
+                        if (call.Arguments.Length == 1)
                         {
-                            var elementTypeSyntax = _typeMapper.MapSemanticType(elementType);
-                            var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(
-                                collectionName, needsGlobalQualification, elementTypeSyntax);
-                            return ObjectCreationExpression(genericTypeSyntax)
-                                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                            var elementType = TryInferElementTypeFromArg(call.Arguments[0]);
+                            if (elementType != null)
+                            {
+                                var elementTypeSyntax = _typeMapper.MapSemanticType(elementType);
+                                var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(
+                                    collectionName, needsGlobalQualification, elementTypeSyntax);
+                                return ObjectCreationExpression(genericTypeSyntax)
+                                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                            }
                         }
+                        NameSyntax collectionTypeSyntax = needsGlobalQualification
+                            ? MakeGlobalQualifiedName(collectionName.Split('.'))
+                            : ParseName(collectionName);
+                        return ObjectCreationExpression(collectionTypeSyntax)
+                            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                     }
-                    NameSyntax collectionTypeSyntax = needsGlobalQualification
-                        ? MakeGlobalQualifiedName(collectionName.Split('.'))
-                        : ParseName(collectionName);
-                    return ObjectCreationExpression(collectionTypeSyntax)
-                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                 }
 
-                NameSyntax typeSyntax = name.StartsWith("global::", StringComparison.Ordinal)
-                    ? MakeGlobalQualifiedName(name.Substring("global::".Length).Split('.'))
-                    : ParseName(name);
-                return ObjectCreationExpression(typeSyntax)
-                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                return GenerateTypeInstantiation(call, name, allArgs, genericBaseName);
             }
 
             // Regular function call — check if this is a local variable/parameter (callable)
@@ -721,17 +694,19 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Emits an <c>ObjectCreationExpression</c> for a constructor call, supplying explicit
     /// generic type arguments when the resolved type is generic (C# has no generic constructor
-    /// inference). Shared by the module-qualified member-access constructor path.
+    /// inference). Shared by the identifier-callee and module-qualified member-access
+    /// constructor paths.
     /// <paramref name="baseCSharpName"/> is the C# type name WITHOUT type arguments (possibly
     /// <c>global::</c>-prefixed and/or dotted), as produced by <see cref="GetFullyQualifiedTypeName"/>.
+    /// <paramref name="genericBaseName"/>, when supplied, overrides the type name used for
+    /// generic instantiation (the identifier path resolves builtin collections through
+    /// <see cref="CSharpTypeNames"/>, e.g. <c>set</c> → <c>Sharpy.Set</c>).
     /// </summary>
     private ExpressionSyntax GenerateTypeInstantiation(
-        FunctionCall call, string baseCSharpName, ArgumentSyntax[] allArgs)
+        FunctionCall call, string baseCSharpName, ArgumentSyntax[] allArgs, string? genericBaseName = null)
     {
-        var (dottedName, globalQualified) = NormalizeTypeName(baseCSharpName);
-
         // Explicit generic type arguments from the resolved expression type
-        // (e.g., a generic module type called without an explicit subscript).
+        // (e.g., a generic type called without an explicit subscript: set(), Cell(42)).
         var exprType = _context.SemanticInfo?.GetExpressionType(call);
         if (exprType is GenericType resolvedGeneric && resolvedGeneric.TypeArguments.Count > 0
             && resolvedGeneric.TypeArguments.All(t => t is not UnknownType))
@@ -739,24 +714,29 @@ internal partial class RoslynEmitter
             var typeArgsSyntax = resolvedGeneric.TypeArguments
                 .Select(t => _typeMapper.MapSemanticType(t))
                 .ToArray();
+            var (genericName, genericGlobal) = NormalizeTypeName(genericBaseName ?? baseCSharpName);
             return ObjectCreationExpression(
-                    TypeSyntaxMapper.QualifiedGenericName(dottedName, globalQualified, typeArgsSyntax))
+                    TypeSyntaxMapper.QualifiedGenericName(genericName, genericGlobal, typeArgsSyntax))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
         // Fallback: inferred type arguments from generic constructor inference.
+        // C# does not support generic constructor inference, so we must always emit
+        // explicit type arguments: Cell(42) -> new Cell<int>(42)
         var inferredTypeArgs = _context.SemanticInfo?.GetInferredTypeArguments(call);
         if (inferredTypeArgs is { Count: > 0 })
         {
             var typeArgsSyntax = inferredTypeArgs
                 .Select(t => _typeMapper.MapSemanticType(t))
                 .ToArray();
+            var (genericName, genericGlobal) = NormalizeTypeName(genericBaseName ?? baseCSharpName);
             return ObjectCreationExpression(
-                    TypeSyntaxMapper.QualifiedGenericName(dottedName, globalQualified, typeArgsSyntax))
+                    TypeSyntaxMapper.QualifiedGenericName(genericName, genericGlobal, typeArgsSyntax))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
         // Non-generic construction.
+        var (dottedName, globalQualified) = NormalizeTypeName(baseCSharpName);
         NameSyntax typeSyntax = globalQualified
             ? MakeGlobalQualifiedName(dottedName.Split('.'))
             : ParseName(dottedName);
@@ -773,7 +753,7 @@ internal partial class RoslynEmitter
     private (string Dotted, bool GlobalQualified) NormalizeTypeName(string baseCSharpName)
     {
         if (baseCSharpName.StartsWith("global::", StringComparison.Ordinal))
-            return (baseCSharpName.Substring("global::".Length), true);
+            return (baseCSharpName["global::".Length..], true);
 
         var globalQualified = !string.IsNullOrEmpty(_context.ProjectNamespace)
             && baseCSharpName.Contains('.', StringComparison.Ordinal);
