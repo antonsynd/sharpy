@@ -156,6 +156,14 @@ internal class ProtocolValidator : ValidatingAstWalker
     /// </summary>
     private bool HasProtocol(SemanticType type, string dunderName)
     {
+        // Optional/Nullable wrappers expose the protocols of their underlying type:
+        // protocol ops on T? (len/in/indexing/iteration) implicitly unwrap, throwing on None
+        // at runtime (see docs/language_specification/tagged_unions_optional.md).
+        if (type is NullableType nullableType)
+            return HasProtocol(nullableType.UnderlyingType, dunderName);
+        if (type is OptionalType optionalType)
+            return HasProtocol(optionalType.UnderlyingType, dunderName);
+
         // Check Sharpy built-in types first
         if (type == SemanticType.Str)
         {
