@@ -11,7 +11,7 @@ class TestParser(HTMLParser):
         self.events = []
 
     @override
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str?]]) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr_str: str = ", ".join(_to_string_list(attrs))
         self.events.append(f"starttag:{tag} [{attr_str}]")
 
@@ -20,7 +20,7 @@ class TestParser(HTMLParser):
         self.events.append(f"endtag:{tag}")
 
     @override
-    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str?]]) -> None:
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr_str: str = ", ".join(_to_string_list(attrs))
         self.events.append(f"startendtag:{tag} [{attr_str}]")
 
@@ -57,7 +57,7 @@ class DefaultHandlerParser(HTMLParser):
         self.events = []
 
     @override
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str?]]) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.events.append(f"starttag:{tag}")
 
     @override
@@ -69,7 +69,7 @@ class DefaultHandlerParser(HTMLParser):
         self.events.append(f"data:{data}")
 
 
-def _to_string_list(attrs: list[tuple[str, str?]]) -> list[str]:
+def _to_string_list(attrs: list[tuple[str, str | None]]) -> list[str]:
     result: list[str] = []
     for attr in attrs:
         if attr[1] is None:

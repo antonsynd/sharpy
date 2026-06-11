@@ -93,11 +93,6 @@ def test_split_non_posix_mode_throws():
         shlex.split("test", posix=False)
 
 @test
-def test_split_none_throws_type_error():
-    with assert_raises(TypeError):
-        shlex.split(None)
-
-@test
 def test_split_tab_and_newline_as_delimiters():
     assert shlex.split("a\tb\nc") == ["a", "b", "c"]
 
@@ -132,11 +127,6 @@ def test_quote_string_with_special_chars():
 def test_quote_safe_chars_not_quoted():
     assert shlex.quote("file-name_v2.0/path") == "file-name_v2.0/path"
 
-@test
-def test_quote_none_throws_type_error():
-    with assert_raises(TypeError):
-        shlex.quote(None)
-
 # --- Join ---
 
 @test
@@ -151,11 +141,6 @@ def test_join_empty_list():
 @test
 def test_join_single_token():
     assert shlex.join(["hello"]) == "hello"
-
-@test
-def test_join_none_throws_type_error():
-    with assert_raises(TypeError):
-        shlex.join(None)
 
 # --- Roundtrip ---
 

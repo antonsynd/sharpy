@@ -46,12 +46,14 @@ def test_sequence_matcher_real_quick_ratio_is_upper_bound():
 
 @test
 def test_sequence_matcher_empty_sequences_ratio_is_one():
-    sm = difflib.SequenceMatcher[str](None, [], [])
+    empty: list[str] = []
+    sm = difflib.SequenceMatcher[str](None, empty, empty)
     assert sm.ratio() == 1.0
 
 @test
 def test_sequence_matcher_one_empty_ratio_is_zero():
-    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c"], [])
+    empty: list[str] = []
+    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c"], empty)
     assert sm.ratio() == 0.0
 
 @test
@@ -262,5 +264,6 @@ def test_sequence_matcher_get_grouped_opcodes_groups_by_context():
 
 @test
 def test_sequence_matcher_empty_input_get_opcodes_is_empty():
-    sm = difflib.SequenceMatcher[str](None, [], [])
+    empty: list[str] = []
+    sm = difflib.SequenceMatcher[str](None, empty, empty)
     assert len(sm.get_opcodes()) == 0

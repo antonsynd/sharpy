@@ -63,7 +63,7 @@ def test_add_header_allows_duplicates():
     msg = email.EmailMessage()
     msg.add_header("Received", "from server1")
     msg.add_header("Received", "from server2")
-    all_vals: list[str]? = msg.get_all("Received")
+    all_vals: list[str] | None = msg.get_all("Received")
     assert all_vals is not None
     assert len(all_vals) == 2
 
@@ -112,7 +112,7 @@ def test_set_content_sets_body():
 def test_set_content_html_sets_content_type():
     msg = email.EmailMessage()
     msg.set_content("<b>HTML</b>", "html")
-    ct: str? = msg.get_item("Content-Type")
+    ct: str | None = msg.get_item("Content-Type")
     assert ct is not None
     assert "text/html" in ct
 
