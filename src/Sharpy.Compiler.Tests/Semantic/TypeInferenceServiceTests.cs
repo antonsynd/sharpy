@@ -467,6 +467,89 @@ public class TypeInferenceServiceTests
 
     #endregion
 
+    #region CLR reference type == / != None (#901)
+
+    private static UserDefinedType RefClass(string name = "Widget") => new()
+    {
+        Name = name,
+        Symbol = new TypeSymbol { Name = name, Kind = SymbolKind.Type, TypeKind = TypeKind.Class }
+    };
+
+    private static UserDefinedType ValueStruct(string name = "Point") => new()
+    {
+        Name = name,
+        Symbol = new TypeSymbol { Name = name, Kind = SymbolKind.Type, TypeKind = TypeKind.Struct }
+    };
+
+    [Fact]
+    public void InferBinaryOpType_RefTypeEqualsNone_ReturnsBool()
+    {
+        var widget = RefClass();
+        _service.InferBinaryOpType(BinaryOperator.Equal, widget, SemanticType.Void)
+            .Should().Be(SemanticType.Bool);
+        _service.InferBinaryOpType(BinaryOperator.NotEqual, widget, SemanticType.Void)
+            .Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void InferBinaryOpType_NoneEqualsRefType_ReversedOrder_ReturnsBool()
+    {
+        var widget = RefClass();
+        _service.InferBinaryOpType(BinaryOperator.Equal, SemanticType.Void, widget)
+            .Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void InferBinaryOpType_StrEqualsNone_ReturnsBool()
+    {
+        _service.InferBinaryOpType(BinaryOperator.Equal, SemanticType.Str, SemanticType.Void)
+            .Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void InferBinaryOpType_ListEqualsNone_ReturnsBool()
+    {
+        var listInt = new GenericType { Name = "list", TypeArguments = { SemanticType.Int } };
+        _service.InferBinaryOpType(BinaryOperator.Equal, listInt, SemanticType.Void)
+            .Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void GetBinaryOpLowering_RefTypeEqualsNone_ReturnsNoneCheck()
+    {
+        var widget = RefClass();
+        _service.GetBinaryOpLowering(BinaryOperator.Equal, widget, SemanticType.Void)
+            .Should().Be(BinaryOpLowering.NoneCheck);
+        _service.GetBinaryOpLowering(BinaryOperator.NotEqual, SemanticType.Void, widget)
+            .Should().Be(BinaryOpLowering.NoneCheck);
+    }
+
+    [Fact]
+    public void InferBinaryOpType_ValueTypeEqualsNone_ReturnsNull_KeepsSpy0222()
+    {
+        // A non-nullable value type == None is statically always-False — keep the error path.
+        var point = ValueStruct();
+        _service.InferBinaryOpType(BinaryOperator.Equal, point, SemanticType.Void)
+            .Should().BeNull();
+    }
+
+    [Fact]
+    public void InferBinaryOpType_IntEqualsNone_ReturnsNull()
+    {
+        _service.InferBinaryOpType(BinaryOperator.Equal, SemanticType.Int, SemanticType.Void)
+            .Should().BeNull();
+    }
+
+    [Fact]
+    public void GetBinaryOpLowering_ValueTypeEqualsNone_NotNoneCheck()
+    {
+        var point = ValueStruct();
+        _service.GetBinaryOpLowering(BinaryOperator.Equal, point, SemanticType.Void)
+            .Should().NotBe(BinaryOpLowering.NoneCheck);
+    }
+
+    #endregion
+
     #region Reflected CLR operators + numeric widening (#887)
 
     private static UserDefinedType Clr(Type clrType) => new()

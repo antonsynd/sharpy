@@ -133,13 +133,14 @@ internal class OperatorValidator : ValidatingAstWalker
 
             // Tuple equality and CLR Equals-based equality (==/!= on types that implement
             // Equals/IEquatable but define no op_Equality) are resolved by the inference service
-            // to an EqualsCall lowering. Those are genuinely supported, so don't emit SPY0402 —
+            // to an EqualsCall lowering. Reference-type ==/!= None is resolved to a NoneCheck
+            // (null pattern) lowering (#901). Those are genuinely supported, so don't emit SPY0402 —
             // but only for these specific cases, to preserve the error for user-defined types
-            // (and generics) that lack __eq__ entirely (#886).
+            // (and generics) that lack __eq__ entirely (#886), and for value-type == None (SPY0222).
             if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
                 && Context.TypeInference != null
                 && Context.TypeInference.GetBinaryOpLowering(binOp.Operator, leftType, rightType)
-                    == BinaryOpLowering.EqualsCall)
+                    is BinaryOpLowering.EqualsCall or BinaryOpLowering.NoneCheck)
             {
                 return;
             }

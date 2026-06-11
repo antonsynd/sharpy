@@ -749,5 +749,13 @@ public enum BinaryOpLowering
     /// Used for tuples and CLR types that implement <c>Equals</c>/<c>IEquatable</c> but define no
     /// <c>op_Equality</c>, where a native C# <c>==</c> would be wrong (reference equality) or fail to compile.
     /// </summary>
-    EqualsCall
+    EqualsCall,
+
+    /// <summary>
+    /// Lower to a C# null pattern check: <c>operand is null</c> (<c>==</c>) / <c>operand is not null</c>
+    /// (<c>!=</c>), where <c>operand</c> is the non-None side. Used for <c>x == None</c>/<c>x != None</c>
+    /// on reference-semantics types — this bypasses any overloaded <c>op_Equality</c> and matches Python's
+    /// identity fallback (a live object <c>== None</c> is <c>False</c>). Operand order is irrelevant (#901).
+    /// </summary>
+    NoneCheck
 }

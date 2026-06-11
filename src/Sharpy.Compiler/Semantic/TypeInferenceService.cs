@@ -76,6 +76,11 @@ internal class TypeInferenceService
     /// </summary>
     internal BinaryOpLowering GetBinaryOpLowering(BinaryOperator op, SemanticType left, SemanticType right)
     {
+        // `x == None` / `x != None` on a reference-semantics type lowers to a C# null pattern
+        // check (`x is null` / `x is not null`), bypassing any overloaded operator (#901).
+        if (IsNoneReferenceEquality(op, left, right))
+            return BinaryOpLowering.NoneCheck;
+
         if (IsTupleEquality(op, left, right) || IsClrEqualsFallback(op, left, right))
             return BinaryOpLowering.EqualsCall;
 
@@ -101,6 +106,14 @@ internal class TypeInferenceService
             case BinaryOperator.NullCoalesce:
                 return InferNullCoalesceType(left, right);
         }
+
+        // `x == None` / `x != None` against a reference-semantics type (#901): Python's
+        // `obj == None` falls back to identity (→ False for a live object), so we treat it as
+        // a null check that yields Bool. Codegen lowers it to a C# null pattern (NoneCheck).
+        // Non-nullable value types keep SPY0222 (statically always-False — almost surely a bug).
+        // NullableType/OptionalType have their own paths and are intentionally excluded here.
+        if (IsNoneReferenceEquality(op, left, right))
+            return SemanticType.Bool;
 
         // Try builtin types first
         var builtinResult = TryInferBuiltinBinaryOp(op, left, right);
@@ -665,6 +678,56 @@ internal class TypeInferenceService
     /// overrides <c>Equals(object)</c>, or is a value type / enum). Used for both type inference
     /// and the <see cref="BinaryOpLowering.EqualsCall"/> codegen decision.
     /// </summary>
+    /// <summary>
+    /// Returns true when an equality operation (<c>==</c>/<c>!=</c>) compares the None literal
+    /// (<see cref="VoidType"/>) against a reference-semantics type (a non-value-type
+    /// <see cref="UserDefinedType"/>, <c>str</c>, or a collection <see cref="GenericType"/>).
+    /// Such comparisons are a null check and yield <see cref="SemanticType.Bool"/>, lowered by
+    /// codegen to a C# null pattern (<see cref="BinaryOpLowering.NoneCheck"/>). Exactly one operand
+    /// must be the None literal. NullableType/OptionalType and non-nullable value types are excluded:
+    /// the former have dedicated handling, the latter must keep emitting SPY0222 (#901).
+    /// </summary>
+    private static bool IsNoneReferenceEquality(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))
+            return false;
+
+        var leftIsNone = left is VoidType;
+        var rightIsNone = right is VoidType;
+
+        // Exactly one operand must be the None literal.
+        if (leftIsNone == rightIsNone)
+            return false;
+
+        var other = leftIsNone ? right : left;
+        return IsNoneCheckReferenceType(other);
+    }
+
+    /// <summary>
+    /// Reference-semantics classification for the non-None operand of an <c>== None</c>/<c>!= None</c>
+    /// comparison: <c>str</c>, collection generics, and class/interface/delegate user-defined types
+    /// are reference types; numerics, bools, structs, enums, and unions are value types.
+    /// </summary>
+    private static bool IsNoneCheckReferenceType(SemanticType type) => type switch
+    {
+        // Among builtin primitives only str (System.String) is a reference type.
+        BuiltinType => type == SemanticType.Str,
+        // Collection generics (list/dict/set/...) are reference types.
+        GenericType => true,
+        UserDefinedType udt => IsReferenceUserType(udt),
+        _ => false,
+    };
+
+    private static bool IsReferenceUserType(UserDefinedType udt)
+    {
+        // Prefer CLR type info when available (CLR-discovered types): structs/enums are value types.
+        if (udt.ClrType is Type clr)
+            return !clr.IsValueType;
+
+        // Sharpy-defined types not yet mapped to a CLR type: classify by declared kind.
+        return udt.Symbol?.TypeKind is TypeKind.Class or TypeKind.Interface or TypeKind.Delegate;
+    }
+
     private bool IsClrEqualsFallback(BinaryOperator op, SemanticType left, SemanticType right)
     {
         if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))
