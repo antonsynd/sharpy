@@ -100,5 +100,25 @@ namespace Sharpy
 
             return s.Length;
         }
+
+        /// <summary>
+        /// Return the number of elements in a tuple.
+        /// </summary>
+        /// <remarks>
+        /// Tuples are emitted as <see cref="System.ValueTuple"/> instances, which
+        /// implement <see cref="System.Runtime.CompilerServices.ITuple"/> but
+        /// neither <see cref="System.Collections.ICollection"/> nor
+        /// <see cref="ISized"/>. This overload routes <c>len(tuple)</c> to
+        /// <see cref="System.Runtime.CompilerServices.ITuple.Length"/>.
+        /// </remarks>
+        public static int Len(System.Runtime.CompilerServices.ITuple tuple)
+        {
+            if (tuple is null)
+            {
+                throw TypeError.ArgNone("len", "sized");
+            }
+
+            return tuple.Length;
+        }
     }
 }

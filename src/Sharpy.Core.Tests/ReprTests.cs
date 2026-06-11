@@ -40,4 +40,33 @@ public class Repr_Tests
         // String contains single quote but no double quote → smart quoting picks double quotes
         Builtins.Repr("it's \a").Should().Be("\"it's \\x07\"");
     }
+
+    [Fact]
+    public void Repr_SingleElementTuple_HasTrailingComma()
+    {
+        // Python: repr((1,)) == "(1,)" — trailing comma disambiguates from grouping
+        Builtins.Repr(System.ValueTuple.Create(1)).Should().Be("(1,)");
+    }
+
+    [Fact]
+    public void Repr_TwoElementTuple_NoTrailingComma()
+    {
+        // Python: repr((1, 2)) == "(1, 2)"
+        Builtins.Repr((1, 2)).Should().Be("(1, 2)");
+    }
+
+    [Fact]
+    public void Repr_NestedSingleElementTuple_HasTrailingCommas()
+    {
+        // Python: repr(((1,),)) == "((1,),)"
+        Builtins.Repr(System.ValueTuple.Create(System.ValueTuple.Create(1)))
+            .Should().Be("((1,),)");
+    }
+
+    [Fact]
+    public void Repr_SingleElementStringTuple_QuotesElement()
+    {
+        // Python: repr(("a",)) == "('a',)"
+        Builtins.Repr(System.ValueTuple.Create("a")).Should().Be("('a',)");
+    }
 }

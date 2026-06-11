@@ -57,6 +57,12 @@ namespace Sharpy
                 builder.Append(Repr(fields[i].GetValue(tuple)));
             }
 
+            // Single-element tuples render with a trailing comma to match
+            // Python: repr((1,)) == "(1,)" (disambiguates from a parenthesized
+            // expression). Arity >= 2 is unaffected.
+            if (fields.Length == 1)
+                builder.Append(',');
+
             builder.Append(')');
             return builder.ToString();
         }
