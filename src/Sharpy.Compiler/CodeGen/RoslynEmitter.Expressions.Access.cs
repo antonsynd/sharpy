@@ -810,6 +810,18 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Builds a <see cref="NameSyntax"/> from a fully-qualified C# type name (as produced by
+    /// <see cref="GetFullyQualifiedTypeName"/>), preserving <c>global::</c> qualification.
+    /// </summary>
+    private NameSyntax BuildTypeNameFromFqn(string fqn)
+    {
+        var (dotted, globalQualified) = NormalizeTypeName(fqn);
+        return globalQualified
+            ? MakeGlobalQualifiedName(dotted.Split('.'))
+            : ParseName(dotted);
+    }
+
+    /// <summary>
     /// Resolves a member access of the form <c>module.TypeName</c> (or nested
     /// <c>module.sub.TypeName</c>) to its exported <see cref="TypeSymbol"/>, applying the
     /// PascalCase fallback for .NET modules. Returns the symbol and the export key used to

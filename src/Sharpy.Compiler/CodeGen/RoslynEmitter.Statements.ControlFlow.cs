@@ -1057,6 +1057,11 @@ internal partial class RoslynEmitter
         TypeSyntax exceptionType = exceptionTypeExpr switch
         {
             Identifier typeId => IdentifierName(NameMangler.Transform(typeId.Name, NameContext.Type)),
+            // Module-qualified exception type (e.g. zoneinfo.ZoneInfoNotFoundError):
+            // resolve the module-exported TypeSymbol to its fully-qualified C# name so we emit
+            // Throws<global::...Error> instead of MapTypeFromExpression's object fallback.
+            MemberAccess exceptionMemberAccess when TryResolveModuleExportedType(exceptionMemberAccess) is { } moduleExceptionType =>
+                BuildTypeNameFromFqn(GetFullyQualifiedTypeName(moduleExceptionType.Symbol, moduleExceptionType.OriginalName)),
             _ => _typeMapper.MapTypeFromExpression(exceptionTypeExpr)
         };
 
