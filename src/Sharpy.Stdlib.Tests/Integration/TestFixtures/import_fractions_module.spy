@@ -1,0 +1,10 @@
+import fractions
+
+
+def main() -> None:
+    half: fractions.Fraction = fractions.Fraction(1, 2)
+    third = fractions.Fraction(1, 3)
+    total = half + third
+    print(total.numerator)
+    print(total.denominator)
+    print(half == fractions.Fraction(2, 4))

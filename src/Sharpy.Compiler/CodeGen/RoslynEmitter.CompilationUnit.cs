@@ -343,6 +343,11 @@ internal partial class RoslynEmitter
                     // import math as m -> using m = global::Sharpy.Math;
                     var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(alias.Name);
                     var className = _context.SemanticBinding.GetNetModuleCSharpClassName(alias.Name);
+                    // Type-only stdlib modules (e.g. fractions) have no [SharpyModule] class to
+                    // alias; their types are referenced by fully-qualified name, so emitting an
+                    // alias would target a non-existent class (CS0234). Skip the alias (#898).
+                    if (className == null)
+                        continue;
                     var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
                     yield return UsingDirective(
                         NameEquals(alias.AsName),
@@ -379,6 +384,11 @@ internal partial class RoslynEmitter
                     var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_", StringComparison.Ordinal));
                     var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(alias.Name);
                     var className = _context.SemanticBinding.GetNetModuleCSharpClassName(alias.Name);
+                    // Type-only stdlib modules (e.g. fractions) have no [SharpyModule] class to
+                    // alias; their types are referenced by fully-qualified name, so emitting an
+                    // alias would target a non-existent class (CS0234). Skip the alias (#898).
+                    if (className == null)
+                        continue;
                     var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
                     yield return UsingDirective(
                         NameEquals(sanitizedAlias),
