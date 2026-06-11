@@ -247,6 +247,22 @@ internal partial class RoslynEmitter
                 DiagnosticCodes.CodeGen.UnsupportedOperator, binOp.LineStart, binOp.ColumnStart);
         }
 
+        // Honor the semantic-recorded NoneCheck lowering (#901): `x == None` / `x != None`
+        // on reference-semantics types lowers to a C# null pattern check (`x is null` /
+        // `x is not null`). This bypasses any overloaded op_Equality and matches Python's
+        // identity fallback (a live object == None is False). Operand order is irrelevant —
+        // detect the non-None side from the AST.
+        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
+            && _context.SemanticInfo?.GetBinaryOpLowering(binOp) == BinaryOpLowering.NoneCheck)
+        {
+            var operand = binOp.Left is NoneLiteral ? right : left;
+            PatternSyntax nullPattern = ConstantPattern(
+                LiteralExpression(SyntaxKind.NullLiteralExpression));
+            if (kind == SyntaxKind.NotEqualsExpression)
+                nullPattern = UnaryPattern(Token(SyntaxKind.NotKeyword), nullPattern);
+            return IsPatternExpression(operand, nullPattern);
+        }
+
         // For == and != on generic type parameters, use EqualityComparer<T>.Default.Equals()
         // because C# does not allow == on unconstrained generic types
         if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression)
