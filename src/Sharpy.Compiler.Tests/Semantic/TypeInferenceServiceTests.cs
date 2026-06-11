@@ -1,3 +1,5 @@
+extern alias SharpyStdlib;
+
 using FluentAssertions;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -474,7 +476,7 @@ public class TypeInferenceServiceTests
         {
             Name = clrType.Name,
             Kind = SymbolKind.Type,
-            TypeKind = TypeKind.Struct,
+            TypeKind = clrType.IsValueType ? TypeKind.Struct : TypeKind.Class,
             ClrType = clrType
         }
     };
@@ -515,6 +517,40 @@ public class TypeInferenceServiceTests
         var bigInt = Clr(typeof(System.Numerics.BigInteger));
         _service.InferBinaryOpType(BinaryOperator.LessThan, bigInt, SemanticType.Int)
             .Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void InferBinaryOpType_IntPlusFraction_ResolvesViaReflectedOperator_ReturnsFraction()
+    {
+        // Fraction.op_Addition(long, Fraction) lives on the RIGHT operand's type and accepts
+        // the int left operand via int -> long widening.
+        var fraction = Clr(typeof(SharpyStdlib::Sharpy.Fraction));
+        var result = _service.InferBinaryOpType(BinaryOperator.Add, SemanticType.Int, fraction);
+        result.Should().NotBeNull();
+        result!.GetDisplayName().Should().Contain("Fraction");
+    }
+
+    [Fact]
+    public void InferBinaryOpType_FractionModInt_ResolvesViaWidening_ReturnsFraction()
+    {
+        // Fraction.op_Modulus(Fraction, long) accepts the int right operand via widening.
+        var fraction = Clr(typeof(SharpyStdlib::Sharpy.Fraction));
+        var result = _service.InferBinaryOpType(BinaryOperator.Modulo, fraction, SemanticType.Int);
+        result.Should().NotBeNull();
+        result!.GetDisplayName().Should().Contain("Fraction");
+    }
+
+    [Fact]
+    public void InferBinaryOpType_FractionPlusLong_ExactBeatsWidening_ReturnsFraction()
+    {
+        // Fraction defines op_Addition(Fraction, long) (exact match) AND op_Addition(Fraction,
+        // Fraction) reachable through implicit operator Fraction(long). If ranking failed to
+        // prefer the exact match, the candidates would tie as ambiguous and resolution would
+        // return null.
+        var fraction = Clr(typeof(SharpyStdlib::Sharpy.Fraction));
+        var result = _service.InferBinaryOpType(BinaryOperator.Add, fraction, SemanticType.Long);
+        result.Should().NotBeNull();
+        result!.GetDisplayName().Should().Contain("Fraction");
     }
 
     #endregion

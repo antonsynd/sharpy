@@ -109,6 +109,22 @@ public class ClrTypeMapperTests
     }
 
     [Fact]
+    public void MapNullableBytesStruct_ToNullableOfConcreteBytes()
+    {
+        // Arrange & Act — Nullable<Bytes> (hmac.new's `msg: bytes?` parameter, #890) must map
+        // to a NullableType wrapping the concrete Bytes type so a plain `bytes` argument is
+        // assignable to it during overload resolution.
+        var result = _mapper.MapClrTypeToSemanticType(typeof(SharpyRT::Sharpy.Bytes?));
+
+        // Assert
+        Assert.IsType<NullableType>(result);
+        var nullableType = (NullableType)result;
+        var underlying = Assert.IsType<UserDefinedType>(nullableType.UnderlyingType);
+        Assert.Equal("Bytes", underlying.Name);
+        Assert.Equal(typeof(SharpyRT::Sharpy.Bytes), underlying.Symbol?.ClrType);
+    }
+
+    [Fact]
     public void MapTuple_ToTupleType()
     {
         // Arrange & Act
