@@ -60,6 +60,19 @@ internal partial class TypeChecker
             }
         }
 
+        // Constant-fold integer exponentiation so a result that fits a wider integer type
+        // widens (e.g. `10 ** 18` → long) and an out-of-range result is diagnosed (SPY0328)
+        // instead of being silently truncated by the runtime double cast. Only constant
+        // non-negative integer powers are folded; negative exponents keep the existing path
+        // (Python: `2 ** -1 == 0.5`). The folded value is recorded so codegen emits a literal (#905).
+        if (binOp.Operator == BinaryOperator.Power
+            && TypeUtils.IsInteger(leftType) && TypeUtils.IsInteger(rightType))
+        {
+            var folded = TryFoldIntegerPower(binOp);
+            if (folded != null)
+                return folded;
+        }
+
         // Warn when is/is not is used with value types — identity comparison is
         // meaningless because value types are boxed, so the result is always False.
         if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
@@ -83,6 +96,138 @@ internal partial class TypeChecker
         }
 
         return resultType;
+    }
+
+    /// <summary>
+    /// Constant-folds a <c>base ** exponent</c> expression when both operands are constant
+    /// integers and the exponent is non-negative. Returns <see cref="SemanticType.Int"/> or
+    /// <see cref="SemanticType.Long"/> (whichever fits) and records the folded value in
+    /// <see cref="SemanticInfo"/>; emits SPY0328 and returns <see cref="SemanticType.Unknown"/>
+    /// when the result exceeds <c>long</c>. Returns <c>null</c> when the expression is not a
+    /// constant non-negative integer power (caller keeps the regular inference result). (#905)
+    /// </summary>
+    private SemanticType? TryFoldIntegerPower(BinaryOp binOp)
+    {
+        if (!TryGetConstantInteger(binOp.Left, out var baseValue)
+            || !TryGetConstantInteger(binOp.Right, out var exponent))
+            return null;
+
+        // Negative exponents are not folded — they keep the existing (double/runtime) path.
+        if (exponent.Sign < 0)
+            return null;
+
+        // A constant exponent larger than int.MaxValue can never produce a fixed-width result
+        // (and BigInteger.Pow takes an int exponent), so treat it as overflow.
+        if (exponent > int.MaxValue)
+        {
+            ReportIntegerPowerOverflow(binOp);
+            return SemanticType.Unknown;
+        }
+
+        var result = System.Numerics.BigInteger.Pow(baseValue, (int)exponent);
+
+        if (result >= int.MinValue && result <= int.MaxValue)
+        {
+            _semanticInfo.SetFoldedIntegerConstant(binOp, (long)result);
+            return SemanticType.Int;
+        }
+
+        if (result >= long.MinValue && result <= long.MaxValue)
+        {
+            _semanticInfo.SetFoldedIntegerConstant(binOp, (long)result);
+            return SemanticType.Long;
+        }
+
+        ReportIntegerPowerOverflow(binOp);
+        return SemanticType.Unknown;
+    }
+
+    private void ReportIntegerPowerOverflow(BinaryOp binOp)
+    {
+        AddError(
+            "Result of integer exponentiation does not fit a 64-bit integer; Sharpy integers " +
+            "are fixed-width. Use a floating-point base (e.g. '10.0 ** 50') or restructure the computation.",
+            binOp.LineStart,
+            binOp.ColumnStart,
+            code: DiagnosticCodes.Semantic.IntegerPowerOverflow,
+            span: binOp.Span);
+    }
+
+    /// <summary>
+    /// Extracts a constant integer value (as <see cref="System.Numerics.BigInteger"/>) from an
+    /// expression, handling underscores, <c>0x</c>/<c>0o</c>/<c>0b</c> prefixes, and a leading
+    /// unary minus. Returns <c>false</c> for anything that is not a constant integer literal.
+    /// </summary>
+    private static bool TryGetConstantInteger(Expression expr, out System.Numerics.BigInteger value)
+    {
+        value = System.Numerics.BigInteger.Zero;
+
+        if (expr is IntegerLiteral intLit)
+            return TryParseIntegerLiteral(intLit.Value, out value);
+
+        if (expr is UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral negLit }
+            && TryParseIntegerLiteral(negLit.Value, out var magnitude))
+        {
+            value = -magnitude;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryParseIntegerLiteral(string raw, out System.Numerics.BigInteger value)
+    {
+        value = System.Numerics.BigInteger.Zero;
+        var text = raw.Replace("_", "", System.StringComparison.Ordinal);
+        if (text.Length == 0)
+            return false;
+
+        try
+        {
+            if (text.StartsWith("0x", System.StringComparison.OrdinalIgnoreCase))
+            {
+                // Force a non-negative interpretation by prefixing "0" (BigInteger treats a
+                // leading hex digit >= 8 as a negative two's-complement value otherwise).
+                return System.Numerics.BigInteger.TryParse(
+                    "0" + text[2..],
+                    System.Globalization.NumberStyles.HexNumber,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out value);
+            }
+            if (text.StartsWith("0o", System.StringComparison.OrdinalIgnoreCase))
+            {
+                value = ParseBase(text[2..], 8);
+                return true;
+            }
+            if (text.StartsWith("0b", System.StringComparison.OrdinalIgnoreCase))
+            {
+                value = ParseBase(text[2..], 2);
+                return true;
+            }
+
+            return System.Numerics.BigInteger.TryParse(
+                text,
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out value);
+        }
+        catch (System.FormatException)
+        {
+            return false;
+        }
+    }
+
+    private static System.Numerics.BigInteger ParseBase(string digits, int radix)
+    {
+        var result = System.Numerics.BigInteger.Zero;
+        foreach (var c in digits)
+        {
+            var digit = c >= '0' && c <= '9' ? c - '0' : -1;
+            if (digit < 0 || digit >= radix)
+                throw new System.FormatException($"Invalid digit '{c}' for base {radix}");
+            result = result * radix + digit;
+        }
+        return result;
     }
 
     private SemanticType CheckBooleanAndOp(BinaryOp andOp)

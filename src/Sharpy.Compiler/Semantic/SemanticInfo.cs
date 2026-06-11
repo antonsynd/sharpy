@@ -115,6 +115,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, BinaryOpLowering> _binaryOpLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map binary-op expressions whose value was constant-folded at semantic time to that
+    // value, so codegen can emit the literal directly instead of a runtime computation.
+    // Currently used for constant integer exponentiation (`2 ** 10` → 1024); the inferred
+    // type (Int/Long) lives in the normal type map. Keyed by node identity. (#905)
+    private readonly ConcurrentDictionary<Expression, long> _foldedIntegerConstants =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map declarations to their source generator bindings (bracket attributes that resolve to SourceGenerator subclasses)
     private readonly ConcurrentDictionary<Statement, List<GeneratorBinding>> _generatorBindings =
         new(ReferenceEqualityComparer.Instance);
@@ -515,6 +522,25 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records the constant value a binary operation folded to at semantic time (e.g. integer
+    /// exponentiation <c>2 ** 10</c> → <c>1024</c>). Codegen emits this literal directly instead
+    /// of a runtime computation; the inferred result type (Int/Long) comes from the type map. (#905)
+    /// </summary>
+    public void SetFoldedIntegerConstant(Expression expr, long value)
+    {
+        _foldedIntegerConstants[expr] = value;
+    }
+
+    /// <summary>
+    /// Gets the constant-folded integer value of a binary operation, if one was recorded.
+    /// Returns <c>true</c> and the value when present; otherwise <c>false</c>.
+    /// </summary>
+    public bool TryGetFoldedIntegerConstant(Expression expr, out long value)
+    {
+        return _foldedIntegerConstants.TryGetValue(expr, out value);
+    }
+
+    /// <summary>
     /// Merges all entries from another SemanticInfo into this instance.
     /// Used to combine per-file SemanticInfo back into a project-level instance.
     /// </summary>
@@ -573,6 +599,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._binaryOpLowerings)
             _binaryOpLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._foldedIntegerConstants)
+            _foldedIntegerConstants.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._generatedStatements)
             _generatedStatements.TryAdd(kvp.Key, kvp.Value);
