@@ -209,4 +209,21 @@ public class StrTests
         Builtins.Str(System.ValueTuple.Create(System.ValueTuple.Create(1)))
             .Should().Be("((1,),)");
     }
+
+    [Fact]
+    public void Str_EightElementTuple_FlattensRest()
+    {
+        // ValueTuple packs the 8th element into a nested TRest; str must flatten
+        // (and the Rest's arity-1 must NOT get a trailing comma when flattened).
+        // Python: str((1,2,3,4,5,6,7,8)) == "(1, 2, 3, 4, 5, 6, 7, 8)"
+        Builtins.Str((1, 2, 3, 4, 5, 6, 7, 8))
+            .Should().Be("(1, 2, 3, 4, 5, 6, 7, 8)");
+    }
+
+    [Fact]
+    public void Str_FifteenElementTuple_FlattensNestedRest()
+    {
+        Builtins.Str((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
+            .Should().Be("(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)");
+    }
 }

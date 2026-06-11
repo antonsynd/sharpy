@@ -61,23 +61,25 @@ namespace Sharpy
 
         private static string FormatValueTupleStr(object tuple, Type type)
         {
-            var fields = type.GetFields(
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+            // ITuple flattens the nested TRest that ValueTuple uses to pack more
+            // than 7 elements, so Length/indexer expose the logical arity
+            // (e.g. an 8-tuple reports Length 8, not "7 items + a 1-tuple Rest").
+            var t = (System.Runtime.CompilerServices.ITuple)tuple;
             var builder = new System.Text.StringBuilder();
             builder.Append('(');
-            for (int i = 0; i < fields.Length; i++)
+            for (int i = 0; i < t.Length; i++)
             {
                 if (i > 0)
                 {
                     builder.Append(", ");
                 }
 
-                builder.Append(Str(fields[i].GetValue(tuple)!));
+                builder.Append(Str(t[i]!));
             }
 
             // Single-element tuples render with a trailing comma to match Python:
             // str((1,)) == "(1,)". Arity >= 2 is unaffected.
-            if (fields.Length == 1)
+            if (t.Length == 1)
             {
                 builder.Append(',');
             }

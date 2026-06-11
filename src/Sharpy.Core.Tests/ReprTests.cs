@@ -69,4 +69,21 @@ public class Repr_Tests
         // Python: repr(("a",)) == "('a',)"
         Builtins.Repr(System.ValueTuple.Create("a")).Should().Be("('a',)");
     }
+
+    [Fact]
+    public void Repr_EightElementTuple_FlattensRest()
+    {
+        // ValueTuple packs the 8th element into a nested TRest; repr must flatten.
+        // Python: repr((1,2,3,4,5,6,7,8)) == "(1, 2, 3, 4, 5, 6, 7, 8)"
+        Builtins.Repr((1, 2, 3, 4, 5, 6, 7, 8))
+            .Should().Be("(1, 2, 3, 4, 5, 6, 7, 8)");
+    }
+
+    [Fact]
+    public void Repr_FifteenElementTuple_FlattensNestedRest()
+    {
+        // 15 elements span two levels of TRest nesting.
+        Builtins.Repr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
+            .Should().Be("(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)");
+    }
 }
