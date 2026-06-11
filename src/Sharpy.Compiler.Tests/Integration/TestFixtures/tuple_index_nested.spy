@@ -1,0 +1,24 @@
+def make() -> tuple[tuple[int, int], str]:
+    return ((1, 2), "x")
+
+
+def main() -> None:
+    t: tuple[tuple[int, int], str] = ((10, 20), "k")
+
+    # outer [0] yields the inner tuple (typed tuple[int, int]); a further [n] on it
+    # lowers to .ItemN again (#892).
+    inner: tuple[int, int] = t[0]
+    print(inner[0])
+    print(inner[1])
+
+    # chained directly: t[0][1]
+    print(t[0][1])
+    print(t[1])
+
+    # chained on a call result: make()[0][0]
+    print(make()[0][0])
+
+    # nested single-element tuple inside a tuple
+    nested_one: tuple[tuple[int], int] = ((7,), 9)
+    print(nested_one[0][0])
+    print(nested_one[1])
