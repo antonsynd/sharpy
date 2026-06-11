@@ -9,9 +9,8 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Re-enabled by #886-#892 (plan f40f84): calendar, uuid, http, fractions, pprint, heapq,
-         hmac, ipaddress, difflib, html. zoneinfo (#901) + functools (#904) re-enabled by plan f8a99f.
-         Still blocked by out-of-scope gaps (see PORTING.md residuals):
-           email     — isinstance with a module-qualified type emits the type as a value, CS0119 (#903) -->
-    <SourceFile Include="**/*.spy" Exclude="email/**" />
+         hmac, ipaddress, difflib, html. zoneinfo (#901) + functools (#904) + email (#903)
+         re-enabled by plan f8a99f. All previously-excluded modules now compile. -->
+    <SourceFile Include="**/*.spy" />
   </ItemGroup>
 </Project>

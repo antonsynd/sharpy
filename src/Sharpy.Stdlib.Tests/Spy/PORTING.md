@@ -165,5 +165,5 @@ layer of out-of-scope gaps discovered during re-enablement and stay excluded in
 | difflib | #892 (tuple `.ItemN`) | ✅ re-enabled |
 | html | #892 + #902 (f-string tuple index, fixed by narrowing-key commit) | ✅ re-enabled — 4 `convert_charrefs=False` parser tests omitted (separate stdlib bug, **#906**) |
 | zoneinfo | #886 | ✅ re-enabled — `==`/`!= None` on a CLR reference type now lowers to a null check (**#901**) |
-| email | #891 | ⛔ blocked: `isinstance(x, mod.Type)` emits the type as a value (CS0119) — **#903** |
+| email | #891 | ✅ re-enabled — `isinstance(x, mod.Type)` now lowers to a type test (**#903**) |
 | functools (`functools_tests.spy`) | #889 | ✅ re-enabled — `cmp_to_key` comparator lambda parameters must be annotated (`lambda a: int, b: int: ...`) so the generic type argument is inferable; unannotated comparators now get SPY0237 instead of leaking CS0411 (**#904**) |
