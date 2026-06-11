@@ -258,6 +258,18 @@ internal partial class RoslynEmitter
             return TupleExpression(SeparatedList(namedArgs));
         }
 
+        // A single-element tuple like `(x,)` is not representable as a C# TupleExpression
+        // (tuple literals require at least two elements); use ValueTuple.Create(x).
+        if (elements.Length == 1)
+        {
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("System.ValueTuple"),
+                    IdentifierName("Create")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(elements[0]))));
+        }
+
         // Unnamed tuple: (elem1, elem2, ...)
         return TupleExpression(SeparatedList(
             elements.Select(e => Argument(e))));
