@@ -1,5 +1,8 @@
 # Module-qualified constructor calls (#880): an imported module's exported
 # type can be instantiated as module.TypeName(args), including keyword args.
+# A user module is used because the integration harness references only
+# Sharpy.Core; stdlib constructor coverage (fractions.Fraction, zoneinfo.ZoneInfo)
+# lives in the Phase 6 spy tests, which reference all stdlib modules.
 import shapes
 
 def main() -> None:

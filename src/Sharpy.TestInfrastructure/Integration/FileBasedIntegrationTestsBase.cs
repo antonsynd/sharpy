@@ -273,7 +273,19 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
 
         using var workspace = new AdhocWorkspace();
         var formatted = Formatter.Format(root, workspace);
-        return formatted.ToFullString().Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd() + "\n";
+        var text = formatted.ToFullString().Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd() + "\n";
+
+        // Make multi-file snapshots machine-independent: in project compilations
+        // each #line directive embeds the absolute source path, which differs per
+        // checkout (developer machine vs CI). Reduce the path in any #line
+        // directive to its bare file name. Single-file fixtures already emit bare
+        // file names, so this is a no-op for them.
+        text = Regex.Replace(
+            text,
+            "(#line\\b[^\"\n]*?)\"[^\"\n]*[/\\\\]([^\"/\\\\\n]+)\"",
+            "$1\"$2\"");
+
+        return text;
     }
 
     private static string? ExtractSnapshotComment(string content)
