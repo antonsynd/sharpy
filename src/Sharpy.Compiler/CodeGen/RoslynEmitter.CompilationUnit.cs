@@ -343,9 +343,11 @@ internal partial class RoslynEmitter
                     // import math as m -> using m = global::Sharpy.Math;
                     var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(alias.Name);
                     var className = _context.SemanticBinding.GetNetModuleCSharpClassName(alias.Name);
-                    // Type-only stdlib modules (e.g. fractions) have no [SharpyModule] class to
-                    // alias; their types are referenced by fully-qualified name, so emitting an
-                    // alias would target a non-existent class (CS0234). Skip the alias (#898).
+                    // Modules whose [SharpyModule] class exports no functions or fields
+                    // (e.g. fractions) are not recorded in the overload index, so no class
+                    // name is discovered; their types are referenced by fully-qualified name.
+                    // Emitting the PascalCase fallback would target a non-existent class
+                    // (CS0234), so skip the alias. (#898)
                     if (className == null)
                         continue;
                     var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
@@ -384,9 +386,11 @@ internal partial class RoslynEmitter
                     var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_", StringComparison.Ordinal));
                     var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(alias.Name);
                     var className = _context.SemanticBinding.GetNetModuleCSharpClassName(alias.Name);
-                    // Type-only stdlib modules (e.g. fractions) have no [SharpyModule] class to
-                    // alias; their types are referenced by fully-qualified name, so emitting an
-                    // alias would target a non-existent class (CS0234). Skip the alias (#898).
+                    // Modules whose [SharpyModule] class exports no functions or fields
+                    // (e.g. fractions) are not recorded in the overload index, so no class
+                    // name is discovered; their types are referenced by fully-qualified name.
+                    // Emitting the PascalCase fallback would target a non-existent class
+                    // (CS0234), so skip the alias. (#898)
                     if (className == null)
                         continue;
                     var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
@@ -480,9 +484,17 @@ internal partial class RoslynEmitter
                 // e.g., "from os.path import join" → "using static global::Sharpy.OsPath;"
                 var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(fromImport.Module);
                 var className = _context.SemanticBinding.GetNetModuleCSharpClassName(fromImport.Module);
-                var fullModuleClass = ConvertNetModuleToFullyQualified(fromImport.Module, ns, className);
-                yield return UsingDirective(ParseName(fullModuleClass))
-                    .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
+                // Modules whose [SharpyModule] class exports no functions or fields
+                // (e.g. fractions) are not recorded in the overload index, so no class
+                // name is discovered. There is nothing to `using static` — their types
+                // are already reachable via `using global::Sharpy;` — and the PascalCase
+                // fallback would reference a non-existent class (CS0234). (#898)
+                if (className != null)
+                {
+                    var fullModuleClass = ConvertNetModuleToFullyQualified(fromImport.Module, ns, className);
+                    yield return UsingDirective(ParseName(fullModuleClass))
+                        .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
+                }
             }
         }
         else

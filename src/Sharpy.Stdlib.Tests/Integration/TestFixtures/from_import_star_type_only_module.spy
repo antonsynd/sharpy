@@ -1,0 +1,10 @@
+# Regression test for from-import-star on a module whose [SharpyModule] class
+# exports no functions or fields (fractions). The emitter must not emit a
+# `using static` against a PascalCase fallback class that does not exist (#898).
+from fractions import *
+
+
+def main() -> None:
+    f: Fraction = Fraction(1, 2)
+    print(f)
+    print(f + 1)
