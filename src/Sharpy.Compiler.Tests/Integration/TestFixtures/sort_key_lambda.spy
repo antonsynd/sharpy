@@ -1,0 +1,26 @@
+def main() -> None:
+    # #889: the lambda parameter is inferred from the list element type, so
+    # len(s)/s.* type-check without an explicit annotation.
+
+    # 1. list[str] sorted by length (keyword key=)
+    words: list[str] = ["ccc", "a", "bb", "dddd"]
+    words.sort(key=lambda s: len(s))
+    print(words)
+
+    # 2. positional key= lambda (Sharpy allows the key as a positional arg)
+    words2: list[str] = ["xx", "y", "zzz"]
+    words2.sort(lambda s: len(s))
+    print(words2)
+
+    # 3. list[tuple[int, str]] sorted by first element (combines with #892 tuple
+    #    indexing: t[0] is typed int and lowers to .Item1). The subscript is
+    #    parenthesized to dodge a lambda-body parse bug (#899); the inferred-key
+    #    behaviour under test is identical.
+    pairs: list[tuple[int, str]] = [(3, "z"), (1, "x"), (2, "y")]
+    pairs.sort(key=lambda t: (t[0]))
+    print(pairs)
+
+    # 4. reverse combined with key=
+    nums: list[str] = ["a", "ccc", "bb"]
+    nums.sort(key=lambda s: len(s), reverse=True)
+    print(nums)
