@@ -626,6 +626,25 @@ internal partial class TypeChecker
     /// Checks if a type contains any unresolved TypeParameterType instances.
     /// Used to detect method-level generic type parameters that need inference.
     /// </summary>
+    /// <summary>
+    /// Recursively checks whether <paramref name="type"/> references a type parameter with the
+    /// given <paramref name="name"/> (used to determine where a specific generic parameter appears).
+    /// </summary>
+    private static bool ReferencesTypeParameterNamed(SemanticType type, string name)
+    {
+        return type switch
+        {
+            TypeParameterType tp => tp.Name == name,
+            ResultType rt => ReferencesTypeParameterNamed(rt.OkType, name) || ReferencesTypeParameterNamed(rt.ErrorType, name),
+            OptionalType ot => ReferencesTypeParameterNamed(ot.UnderlyingType, name),
+            NullableType nt => ReferencesTypeParameterNamed(nt.UnderlyingType, name),
+            GenericType gt => gt.TypeArguments.Any(t => ReferencesTypeParameterNamed(t, name)),
+            FunctionType ft => ft.ParameterTypes.Any(t => ReferencesTypeParameterNamed(t, name)) || ReferencesTypeParameterNamed(ft.ReturnType, name),
+            TupleType tt => tt.ElementTypes.Any(t => ReferencesTypeParameterNamed(t, name)),
+            _ => false
+        };
+    }
+
     private static bool ContainsTypeParameterType(SemanticType type)
     {
         return type switch

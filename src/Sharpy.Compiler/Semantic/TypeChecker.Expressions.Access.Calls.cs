@@ -1256,6 +1256,13 @@ internal partial class TypeChecker
         // This is triggered when calling a generic function without explicit type arguments
         if (funcSymbol.IsGeneric)
         {
+            // Diagnose a type parameter that can only be inferred from a lambda argument whose
+            // parameters are unannotated (#904). Without this, inference binds the parameter to
+            // Unknown and the leak surfaces as a C# CS0411 in generated code. Annotated lambdas
+            // provide concrete types and are unaffected.
+            if (TryReportUninferrableLambdaTypeArg(call, funcSymbol))
+                return SemanticType.Unknown;
+
             var inferenceResult = _genericInference.InferTypeArguments(funcSymbol, argTypes);
             if (inferenceResult.Success && inferenceResult.InferredTypes != null)
             {
@@ -1299,6 +1306,90 @@ internal partial class TypeChecker
             return new NullableType { UnderlyingType = returnType };
         }
         return returnType;
+    }
+
+    /// <summary>
+    /// Emits SPY0237 when a generic function has a type parameter that appears only in
+    /// <see cref="FunctionType"/>-shaped parameter positions and the corresponding positional
+    /// argument is a lambda with one or more unannotated parameters — i.e. the type parameter
+    /// is genuinely uninferrable. Returns true (and reports) when such a case is found, so the
+    /// caller can stop instead of binding the parameter to Unknown and leaking CS0411 (#904).
+    /// Annotated lambdas supply concrete parameter types and never trigger this.
+    /// </summary>
+    private bool TryReportUninferrableLambdaTypeArg(FunctionCall call, FunctionSymbol funcSymbol)
+    {
+        if (!funcSymbol.IsGeneric || funcSymbol.TypeParameters.Count == 0)
+            return false;
+
+        foreach (var typeParam in funcSymbol.TypeParameters)
+        {
+            if (!IsTypeParameterUninferrableWithoutLambdaAnnotation(funcSymbol, typeParam.Name))
+                continue;
+
+            for (int i = 0; i < funcSymbol.Parameters.Count; i++)
+            {
+                var paramType = funcSymbol.Parameters[i].Type;
+                if (paramType is not FunctionType functionParam
+                    || !functionParam.ParameterTypes.Any(p => ReferencesTypeParameterNamed(p, typeParam.Name)))
+                    continue;
+
+                // The i-th formal parameter binds positionally to the i-th positional argument.
+                if (i < call.Arguments.Length
+                    && call.Arguments[i] is LambdaExpression lambda
+                    && lambda.Parameters.Any(p => p.Type == null))
+                {
+                    AddError(
+                        $"Cannot infer type argument '{typeParam.Name}' for generic function " +
+                        $"'{funcSymbol.Name}' from an unannotated lambda. Annotate the lambda " +
+                        "parameters (e.g. `lambda a: int, b: int: ...`).",
+                        call.LineStart, call.ColumnStart,
+                        code: DiagnosticCodes.Semantic.CannotInferGenericType,
+                        span: call.Span);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Returns true when the named type parameter can only be inferred from the <em>parameter</em>
+    /// types of a lambda/delegate argument — i.e. it appears in the parameter-type positions of some
+    /// <see cref="FunctionType"/> parameter and in no position that an argument could bind on its own:
+    /// a non-function parameter (bound directly from its argument) or a <see cref="FunctionType"/>
+    /// parameter's <em>return</em> position (inferred from the lambda body, no annotation needed).
+    /// This distinguishes <c>cmp_to_key(Func&lt;T,T,int&gt;)</c> (T only in lambda param positions →
+    /// needs annotation) from <c>list.sort(key=Func&lt;T,TKey&gt;)</c> (TKey is in the return position,
+    /// inferred from the body). The function's own outer return type is irrelevant — it can never
+    /// bind a type parameter from arguments.
+    /// </summary>
+    private static bool IsTypeParameterUninferrableWithoutLambdaAnnotation(FunctionSymbol funcSymbol, string name)
+    {
+        var inLambdaParamPosition = false;
+        var inInferablePosition = false;
+
+        foreach (var param in funcSymbol.Parameters)
+        {
+            var type = param.Type;
+            if (type is null || !ReferencesTypeParameterNamed(type, name))
+                continue;
+
+            if (type is FunctionType functionParam)
+            {
+                if (functionParam.ParameterTypes.Any(p => ReferencesTypeParameterNamed(p, name)))
+                    inLambdaParamPosition = true;
+                if (ReferencesTypeParameterNamed(functionParam.ReturnType, name))
+                    inInferablePosition = true;
+            }
+            else
+            {
+                // A non-function parameter binds the type parameter directly from its argument.
+                inInferablePosition = true;
+            }
+        }
+
+        return inLambdaParamPosition && !inInferablePosition;
     }
 
     /// <summary>
