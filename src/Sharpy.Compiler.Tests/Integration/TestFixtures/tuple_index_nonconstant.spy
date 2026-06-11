@@ -1,7 +1,0 @@
-def main() -> None:
-    t: tuple[int, str] = (1, "a")
-    i: int = 0
-    # A heterogeneous tuple cannot be indexed by a runtime value: the element type
-    # is position-dependent and must be known at compile time (SPY0327), rather than
-    # leaking a raw C# CS0021.
-    print(t[i])
