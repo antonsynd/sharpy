@@ -472,9 +472,21 @@ internal class TypeResolver
         }
 
         var typeSymbol = _symbolTable.LookupType(annotation.Name)
-            ?? LookupNestedType(annotation.Name)
-            ?? LookupModuleQualifiedType(annotation.Name)
-            ?? _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
+            ?? LookupNestedType(annotation.Name);
+
+        // Module-qualified generic type (e.g. difflib.SequenceMatcher[str], geometry.Box[int]).
+        // Track this so the GenericType name can be normalized to the bare type name below —
+        // the dotted annotation name would otherwise mismatch the bare name produced by
+        // generic instantiation (Box[int]) and emit a false assignment error.
+        var isModuleQualified = false;
+        if (typeSymbol == null)
+        {
+            typeSymbol = LookupModuleQualifiedType(annotation.Name);
+            if (typeSymbol != null)
+                isModuleQualified = true;
+        }
+
+        typeSymbol ??= _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
         if (typeSymbol == null)
         {
             var genericMessage = $"Generic type '{annotation.Name}' not found";
@@ -531,7 +543,10 @@ internal class TypeResolver
 
         return new GenericType
         {
-            Name = annotation.Name,
+            // For module-qualified generics, use the bare type name so identity matches the
+            // GenericType produced by `module.Type[T](...)` instantiation. Emission relies on
+            // GenericDefinition (which carries DefiningModule) to fully-qualify the name.
+            Name = isModuleQualified ? typeSymbol.Name : annotation.Name,
             TypeArguments = typeArgs,
             GenericDefinition = typeSymbol
         };

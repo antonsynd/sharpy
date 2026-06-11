@@ -146,12 +146,33 @@ internal class TypeSyntaxMapper
             return MakeArrayType(elementType);
         }
 
-        var baseTypeName = GetMappedTypeName(generic.Name);
+        // Module-qualified / cross-file generic types (e.g. difflib.SequenceMatcher[str],
+        // geometry.Box[int]) must be fully qualified via their resolved definition symbol —
+        // the bare/dotted generic.Name alone does not carry enough information for the name
+        // lookup. Mirrors the non-generic GetMappedTypeNameFromSymbol path (#17/#881).
+        var baseTypeName = generic.GenericDefinition is { } genDef && RequiresQualifiedName(genDef)
+            ? GetMappedTypeNameFromSymbol(new UserDefinedType { Name = generic.Name, Symbol = genDef })
+            : GetMappedTypeName(generic.Name);
         var typeArgs = generic.TypeArguments
             .Select(MapSemanticType)
             .ToArray();
 
         return QualifiedGenericName(baseTypeName, typeArgs);
+    }
+
+    /// <summary>
+    /// Returns true when a type symbol must be emitted with a fully-qualified C# name because it
+    /// belongs to an imported module or another file in the project. Mirrors the cross-file /
+    /// cross-module conditions in <see cref="GetMappedTypeNameFromSymbol"/>.
+    /// </summary>
+    private bool RequiresQualifiedName(TypeSymbol symbol)
+    {
+        if (!string.IsNullOrEmpty(symbol.DefiningModule))
+            return true;
+
+        return !string.IsNullOrEmpty(symbol.DefiningFilePath)
+            && !string.IsNullOrEmpty(_context.SourceFilePath)
+            && !string.Equals(symbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase);
     }
 
     private TypeSyntax MapSelfType(SelfType selfType)
