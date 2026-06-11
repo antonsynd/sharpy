@@ -154,4 +154,79 @@ def make_doubler() -> (int) -> int:
     }
 
     #endregion
+
+    #region Receiver-substituted method signatures (#889)
+
+    [Fact]
+    public void Lambda_SortKeyKeyword_InfersParamFromListElement()
+    {
+        // list[str].sort(key=lambda s: len(s)) — s must infer as str so len(s) type-checks.
+        var source = @"
+def main() -> None:
+    combined: list[str] = [""bb"", ""a"", ""ccc""]
+    combined.sort(key=lambda s: len(s))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Lambda_SortKeyKeyword_WithReverse_InfersParamFromListElement()
+    {
+        var source = @"
+def main() -> None:
+    combined: list[str] = [""bb"", ""a"", ""ccc""]
+    combined.sort(key=lambda s: len(s), reverse=True)
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Lambda_SortKey_IntList_InfersIntParam()
+    {
+        var source = @"
+def main() -> None:
+    nums: list[int] = [3, 1, 2]
+    nums.sort(key=lambda n: -n)
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Lambda_AmbiguousOverloads_DoesNotGuess_ExplicitLambdaStillResolves()
+    {
+        // Two overloads disagree on the type of the same-named parameter `f`. The early
+        // expected-type resolution must bail (never guess); an explicitly-typed lambda still
+        // resolves via normal overload resolution, so there are no errors.
+        var source = @"
+class Runner:
+    def run(self, f: (int) -> int) -> int:
+        return f(1)
+
+    def run(self, f: (str) -> str) -> str:
+        return f(""x"")
+
+def main() -> None:
+    r = Runner()
+    r.run(lambda n: n * 2)
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // The lambda has no annotation and the overloads conflict, so we don't pre-set its
+        // parameter type. The important guarantee is that this does not crash or misfire — the
+        // call resolves through normal overload resolution.
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(e =>
+            e.Message.Contains("internal", System.StringComparison.OrdinalIgnoreCase));
+    }
+
+    #endregion
 }

@@ -1972,6 +1972,12 @@ internal partial class TypeChecker
     /// <returns>The early-resolved function symbol and parameter offset (0 for functions, 1 for constructors skipping 'self').</returns>
     private (FunctionSymbol? Symbol, int ParamOffset) ResolveEarlyFunctionSymbol(FunctionCall call)
     {
+        // Method calls (obj.method(...)): resolve the method on the receiver type so lambda
+        // arguments get their parameter types inferred from the receiver-substituted signature
+        // (e.g. list[str].sort(key=lambda s: ...) → s: str). See #889.
+        if (call.Function is MemberAccess earlyMa && earlyMa.Object is not SuperExpression)
+            return ResolveEarlyMethodSymbol(call, earlyMa);
+
         if (call.Function is not Identifier earlyId)
             return (null, 0);
 
@@ -1999,6 +2005,167 @@ internal partial class TypeChecker
         }
 
         return (null, 0);
+    }
+
+    /// <summary>
+    /// Resolves a method symbol early for a member-access call (obj.method(...)) so that lambda
+    /// arguments can have their parameter types inferred from the method signature. Parameter
+    /// types are rewritten with the receiver's generic substitution applied (e.g. T → str for a
+    /// <c>list[str]</c> receiver), while method-level type parameters (e.g. TKey in
+    /// <c>Sort&lt;TKey&gt;(Func&lt;T, TKey&gt;, bool)</c>) are left unsubstituted — CheckLambda skips
+    /// those per-position. Returns a synthesized FunctionSymbol used only for expected-type hints;
+    /// the real overload is resolved later. Bails (null) when the method is missing or overloaded
+    /// candidates disagree on a parameter type, so we never guess (#889).
+    /// </summary>
+    private (FunctionSymbol? Symbol, int ParamOffset) ResolveEarlyMethodSymbol(FunctionCall call, MemberAccess memberAccess)
+    {
+        // Scope this to calls that actually pass a lambda — the only case that benefits from
+        // pre-resolved parameter types. This keeps every other method call on its existing
+        // expected-type path, avoiding over-constraining context-sensitive args like None() (#889).
+        if (!CallHasLambdaArgument(call))
+            return (null, 0);
+
+        var objectType = _semanticInfo.GetExpressionType(memberAccess.Object);
+        if (objectType is null or UnknownType)
+            return (null, 0);
+
+        // Resolve the receiver's TypeSymbol and (for builtin generics) its type arguments.
+        TypeSymbol? typeSymbol;
+        List<SemanticType>? typeArgs = null;
+        if (objectType is UserDefinedType { Symbol: { } udt })
+        {
+            typeSymbol = udt;
+        }
+        else
+        {
+            var (resolved, resolvedArgs) = ResolveBuiltinTypeInfo(objectType);
+            typeSymbol = resolved;
+            typeArgs = resolvedArgs;
+        }
+
+        if (typeSymbol == null)
+            return (null, 0);
+
+        // Gather candidate overloads for the method name. Prefer the explicit overload set;
+        // otherwise fall back to same-named entries in Methods (how builtin collection methods
+        // like list.sort are stored) and finally a single hierarchy lookup.
+        var candidates = new List<FunctionSymbol>();
+        var overloads = FindMethodOverloadsInHierarchy(typeSymbol, memberAccess.Member);
+        if (overloads != null && overloads.Count > 0)
+        {
+            candidates.AddRange(overloads);
+        }
+        else
+        {
+            candidates.AddRange(typeSymbol.Methods.Where(m => m.Name == memberAccess.Member));
+            if (candidates.Count == 0)
+            {
+                var (single, _) = FindMethodInHierarchy(typeSymbol, memberAccess.Member);
+                if (single != null)
+                    candidates.Add(single);
+            }
+        }
+
+        if (candidates.Count == 0)
+            return (null, 0);
+
+        // Build the receiver substitution (T → str for list[str]). Method-level type
+        // parameters (TKey) are not in typeSymbol.TypeParameters and stay unsubstituted.
+        Func<SemanticType, SemanticType> substitution = static t => t;
+        if (typeArgs != null && typeSymbol.TypeParameters.Count > 0
+            && typeSymbol.TypeParameters.Count == typeArgs.Count)
+        {
+            var capturedSymbol = typeSymbol;
+            var capturedArgs = typeArgs;
+            substitution = t => SubstituteTypeParameters(t, capturedSymbol.TypeParameters, capturedArgs);
+        }
+
+        // Keep only the overloads compatible with this call's keyword-argument names, so a
+        // `key=` call doesn't pick an overload that lacks `key` (e.g. list has both
+        // Sort(bool reverse) and Sort<TKey>(Func<T,TKey> key, bool reverse)).
+        var kwNames = ExtractKeywordArgNames(call);
+        if (kwNames != null && kwNames.Count > 0)
+        {
+            var compatible = candidates
+                .Where(c => kwNames.All(n => c.Parameters.Any(p => p.Name == n)))
+                .ToList();
+            if (compatible.Count > 0)
+                candidates = compatible;
+        }
+
+        // Only provide expected types when unambiguous: all candidates must agree on the
+        // substituted type of each parameter (by name). Otherwise bail — never guess.
+        if (candidates.Count > 1 && !OverloadsAgreeOnParameterTypes(candidates, substitution))
+            return (null, 0);
+
+        // Use the parameter-richest remaining overload as the expected-type source. Since the
+        // candidates agree per name, the superset gives the widest set of expected parameter
+        // types (e.g. both `key` and `reverse`) without conflicting with the others.
+        var chosen = candidates.OrderByDescending(c => c.Parameters.Count).First();
+        var substitutedParameters = chosen.Parameters
+            .Select(p => p with { Type = NormalizeExpectedParamType(substitution(p.Type)) })
+            .ToList();
+        var synthesized = chosen with { Parameters = substitutedParameters };
+        return (synthesized, 0);
+    }
+
+    /// <summary>
+    /// Maps an uninformative early-resolved parameter type to <see cref="SemanticType.Unknown"/>
+    /// so CheckCallArguments leaves <c>_expectedType</c> unset. The discovery layer collapses some
+    /// generic parameters (e.g. <c>list.append(T)</c>) to <c>object</c>; forcing that as an expected
+    /// type would wrongly constrain context-sensitive arguments such as <c>None()</c> (#889).
+    /// </summary>
+    private static SemanticType NormalizeExpectedParamType(SemanticType type)
+    {
+        return type is BuiltinType { Name: "object" } or UserDefinedType { Name: "object" }
+            ? SemanticType.Unknown
+            : type;
+    }
+
+    /// <summary>
+    /// Returns true when any positional or keyword argument of the call is a lambda
+    /// (possibly wrapped in parentheses).
+    /// </summary>
+    private static bool CallHasLambdaArgument(FunctionCall call)
+    {
+        static bool IsLambda(Expression e) =>
+            e is LambdaExpression || (e is Parenthesized p && p.Expression is LambdaExpression);
+
+        foreach (var arg in call.Arguments)
+            if (IsLambda(arg))
+                return true;
+        foreach (var kwarg in call.KeywordArguments)
+            if (IsLambda(kwarg.Value))
+                return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns true when every overload exposes the same substituted parameter type for each
+    /// parameter name shared across the candidates. Used to decide whether it is safe to pre-set
+    /// expected parameter types for lambda inference without guessing between conflicting overloads.
+    /// </summary>
+    private static bool OverloadsAgreeOnParameterTypes(
+        List<FunctionSymbol> candidates, Func<SemanticType, SemanticType> substitution)
+    {
+        var seen = new Dictionary<string, SemanticType>();
+        foreach (var candidate in candidates)
+        {
+            foreach (var parameter in candidate.Parameters)
+            {
+                var substituted = substitution(parameter.Type);
+                if (seen.TryGetValue(parameter.Name, out var existing))
+                {
+                    if (!existing.Equals(substituted))
+                        return false;
+                }
+                else
+                {
+                    seen[parameter.Name] = substituted;
+                }
+            }
+        }
+        return true;
     }
 
     /// <summary>
