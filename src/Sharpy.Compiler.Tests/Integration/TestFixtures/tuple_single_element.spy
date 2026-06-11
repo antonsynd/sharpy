@@ -1,0 +1,33 @@
+def describe(t: tuple[int]) -> None:
+    print(t[0])
+
+
+def main() -> None:
+    # literal + print/repr
+    t: tuple[int] = (1,)
+    print(t)
+    print(repr(t))
+    print(len(t))
+    print(t[0])
+
+    # single-element string tuple: repr quotes the element (str/print path is
+    # covered by 2-tuples elsewhere); here we exercise repr + len + indexing.
+    s: tuple[str] = ("hello",)
+    print(repr(s))
+    print(len(s))
+    print(s[0])
+
+    # passing a single-element tuple as an argument
+    describe((42,))
+
+    # nesting: ((1,), 2)
+    nested: tuple[tuple[int], int] = ((1,), 2)
+    print(nested)
+    print(nested[0])
+    print(nested[1])
+    print(len(nested))
+
+    # nested single in single: ((1,),)
+    deep: tuple[tuple[int]] = ((1,),)
+    print(deep)
+    print(len(deep))
