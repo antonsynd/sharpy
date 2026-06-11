@@ -89,6 +89,10 @@ done < <(find "$EMIT_DIR" -name '*.cs' | sort)
 
 # --- Post-process and sync ---
 
+# Escape REPO_ROOT once for safe use as a sed literal in #line path rewriting
+# (guards against regex metacharacters such as '[' in directory names).
+escaped_root=$(printf '%s' "$REPO_ROOT" | sed 's/\\/\\\\/g; s/\./\\./g; s/\*/\\*/g; s/\^/\\^/g; s/\$/\\$/g; s/\[/\\[/g; s/|/\\|/g')
+
 errors=0
 
 for stem in "${stems[@]}"; do
@@ -98,14 +102,17 @@ for stem in "${stems[@]}"; do
         errors=1
         continue
     fi
-
-    # Post-process: normalize CRLF→LF, strip trailing whitespace
+    # Post-process: normalize CRLF→LF, strip trailing whitespace,
+    # and normalize absolute repo paths in #line directives to repo-relative paths
+    # so the generated files are stable across machines.
     final_file="$WORK_DIR/${stem}_final.cs"
     {
         echo "// Generated from src/Sharpy.Stdlib.Tests/Spy — do not edit directly."
         echo "// To regenerate: bash build_tools/regenerate_spy_tests.sh"
         tr -d '\r' < "$emitted_file" \
-            | sed 's/[[:space:]]*$//'
+            | sed 's/[[:space:]]*$//' \
+            | sed '/^#line /s|\\\\|/|g' \
+            | sed "/^#line /s|\"${escaped_root}/|\"|g"
     } > "$final_file"
 
     # Ensure file ends with a newline
