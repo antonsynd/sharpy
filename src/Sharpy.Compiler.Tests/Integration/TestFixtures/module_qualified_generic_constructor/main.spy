@@ -1,0 +1,11 @@
+# Generic module-qualified constructor calls (#880): a generic exported type
+# can be instantiated as module.Type[T](args). Locals are inferred (no
+# module-qualified annotation, which is tracked separately under #885).
+import containers
+
+def main() -> None:
+    b = containers.Box[int](42)
+    print(b.get())
+
+    s = containers.Box[str]("hello")
+    print(s.get())

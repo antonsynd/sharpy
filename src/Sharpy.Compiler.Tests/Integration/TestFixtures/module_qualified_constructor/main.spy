@@ -1,0 +1,16 @@
+# Module-qualified constructor calls (#880): an imported module's exported
+# type can be instantiated as module.TypeName(args), including keyword args.
+import shapes
+
+def main() -> None:
+    # Plain positional module-qualified constructor.
+    p = shapes.Point(3, 4)
+    print(p)
+
+    # Keyword-argument module-qualified constructor.
+    c = shapes.Color("red", alpha=128)
+    print(c)
+
+    # Keyword argument relying on a default.
+    c2 = shapes.Color(name="blue")
+    print(c2)

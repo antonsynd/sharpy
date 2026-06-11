@@ -1,0 +1,7 @@
+# Negative: a module-qualified reference to a non-type (a module constant) is
+# not callable, even though module-qualified TYPES are (#880). Must still error.
+import constants
+
+def main() -> None:
+    x = constants.PI()
+    print(x)

@@ -1,0 +1,21 @@
+class Point:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return f"({self.x}, {self.y})"
+
+class Color:
+    name: str
+    alpha: int
+
+    def __init__(self, name: str, alpha: int = 255):
+        self.name = name
+        self.alpha = alpha
+
+    def __str__(self) -> str:
+        return f"{self.name}@{self.alpha}"
