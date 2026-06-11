@@ -168,6 +168,8 @@ internal partial class TypeChecker
             context.CurrentFilePath = _currentFilePath;
         // Thread SemanticBinding so validators can read from it
         context.SemanticBinding = SemanticBinding;
+        // Share the inference service so validators resolve operators with identical rules
+        context.TypeInference = _typeInference;
         context.DeferredCycleSymbols = DeferredCycleSymbols;
         context.DeferredCycleFiles = DeferredCycleFiles;
         return context;

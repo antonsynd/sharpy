@@ -31,6 +31,9 @@ public class OperatorValidatorTests
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         var context = new SemanticContext(symbolTable, semanticInfo, typeResolver);
+        // Mirror production wiring: the validator delegates the equality question to the
+        // same inference service the TypeChecker uses (see TypeChecker.CreateSemanticContext).
+        context.TypeInference = new TypeInferenceService(symbolTable, context.ClrCache);
         return (module, context);
     }
 
@@ -91,6 +94,42 @@ def foo() -> list[int]:
     a: list[int] = [1, 2]
     b: list[int] = [3, 4]
     return a + b
+";
+        var (module, context) = Parse(code);
+
+        var validator = new OperatorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void BinaryOp_TupleEquality_NoError()
+    {
+        // #886: (a, b) == (c, d) and != must not raise SPY0402 — the validator delegates
+        // the equality question to TypeInferenceService, which accepts equal-arity tuples.
+        var code = @"
+def foo() -> bool:
+    a: tuple[int, int] = (1, 2)
+    b: tuple[int, int] = (1, 2)
+    return a == b
+";
+        var (module, context) = Parse(code);
+
+        var validator = new OperatorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void BinaryOp_TupleInequality_NoError()
+    {
+        var code = @"
+def foo() -> bool:
+    a: tuple[str, int] = (""x"", 2)
+    b: tuple[str, int] = (""y"", 3)
+    return a != b
 ";
         var (module, context) = Parse(code);
 

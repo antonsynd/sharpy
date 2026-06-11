@@ -59,6 +59,14 @@ internal class SemanticContext
     public SemanticBinding SemanticBinding { get; set; } = new();
 
     /// <summary>
+    /// The same <see cref="TypeInferenceService"/> instance the TypeChecker used during
+    /// inference. Exposed so validators (e.g. <c>OperatorValidator</c>) can answer
+    /// "is this operation supported?" with the exact rules used during type checking,
+    /// avoiding logic drift. May be null when a context is created without a TypeChecker.
+    /// </summary>
+    internal TypeInferenceService? TypeInference { get; set; }
+
+    /// <summary>
     /// Symbol names imported from deferred circular imports (stubs).
     /// These symbols are only valid in type annotation positions.
     /// Null when no circular imports were deferred.
