@@ -1,4 +1,5 @@
 using Xunit;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -355,5 +356,51 @@ def foo() -> None:
         validator.Validate(module, context);
 
         Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    [Fact]
+    public void OptionalLen_EmitsSpy0326_NotSpy0320()
+    {
+        // A strict Optional used in len() must report the dedicated
+        // OptionalRequiresNarrowing code (SPY0326), distinct from a genuinely
+        // missing protocol (SPY0320). #893.
+        var code = @"
+def foo() -> None:
+    s: str? = ""hello""
+    n: int = len(s)
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.Contains(context.Diagnostics.GetErrors(),
+            d => d.Code == DiagnosticCodes.Semantic.OptionalRequiresNarrowing);
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(),
+            d => d.Code == DiagnosticCodes.Semantic.ProtocolMissingMethod);
+    }
+
+    [Fact]
+    public void MissingLenMethod_StillEmitsSpy0320()
+    {
+        // A genuine missing-__len__ case must keep emitting ProtocolMissingMethod (SPY0320),
+        // not the Optional-narrowing code.
+        var code = @"
+class NoLen:
+    x: int
+
+def foo() -> None:
+    obj: NoLen = NoLen()
+    n: int = len(obj)
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ProtocolValidator();
+        validator.Validate(module, context);
+
+        Assert.Contains(context.Diagnostics.GetErrors(),
+            d => d.Code == DiagnosticCodes.Semantic.ProtocolMissingMethod);
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(),
+            d => d.Code == DiagnosticCodes.Semantic.OptionalRequiresNarrowing);
     }
 }

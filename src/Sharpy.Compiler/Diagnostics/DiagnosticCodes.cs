@@ -324,7 +324,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region Protocol and operator (SPY0320-SPY0324)
+        #region Protocol and operator (SPY0320-SPY0326)
 
         public const string ProtocolMissingMethod = "SPY0320";      // Active
         public const string InvalidOperatorSignature = "SPY0321";   // Active
@@ -332,7 +332,8 @@ public static class DiagnosticCodes
         public const string ConflictingSynthesizedInterface = "SPY0323"; // Active
         public const string WithNotDisposable = "SPY0324";          // Active
         public const string InterfaceMethodNotImplemented = "SPY0325"; // Active
-        // SPY0326-SPY0339: Reserved for future protocol/operator diagnostics
+        public const string OptionalRequiresNarrowing = "SPY0326";  // Active
+        // SPY0327-SPY0339: Reserved for future protocol/operator diagnostics
 
         #endregion
 

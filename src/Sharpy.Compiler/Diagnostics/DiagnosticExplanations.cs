@@ -882,6 +882,16 @@ public static class DiagnosticExplanations
             "interface Drawable:\n    def draw(self) -> str:\n        ...\n\nclass Circle(Drawable):\n    pass",
             "Add the missing method implementation:\nclass Circle(Drawable):\n    def draw(self) -> str:\n        return \"circle\"");
 
+        Add(dict, DiagnosticCodes.Semantic.OptionalRequiresNarrowing,
+            "Optional requires narrowing",
+            "Semantic",
+            "A strict Optional value (T?) was used directly in a protocol operation such as len(), " +
+            "membership testing (in), indexing, or iteration. An Optional may be None, so it must be " +
+            "narrowed (if x is not None:) or unwrapped (x.unwrap()) before the underlying value's " +
+            "protocol is available. This is distinct from a genuinely missing protocol (SPY0320).",
+            "def main() -> None:\n    s: str? = \"hello\"\n    print(len(s))  # s may be None",
+            "Narrow or unwrap the Optional first:\n    if s is not None:\n        print(len(s))");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",

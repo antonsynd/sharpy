@@ -78,7 +78,7 @@ internal class ProtocolValidator : ValidatingAstWalker
         AddError(
             $"Optional type '{type.GetDisplayName()}' does not support {operation} directly. " +
             "Narrow it first (if x is not None:) or unwrap it (x.unwrap()).",
-            line, column, code: DiagnosticCodes.Semantic.ProtocolMissingMethod, span: span);
+            line, column, code: DiagnosticCodes.Semantic.OptionalRequiresNarrowing, span: span);
         return true;
     }
 

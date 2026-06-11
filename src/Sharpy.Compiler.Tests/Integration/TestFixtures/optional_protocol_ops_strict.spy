@@ -1,4 +1,4 @@
-# T? (Optional) is STRICT: protocol operations raise SPY0320 and direct member
+# T? (Optional) is STRICT: protocol operations raise SPY0326 and direct member
 # access raises SPY0229. The diagnostics suggest narrowing (if x is not None:),
 # unwrapping, or the ?. / Optional API. See #882.
 def main() -> None:
