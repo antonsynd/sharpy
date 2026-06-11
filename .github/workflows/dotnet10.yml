@@ -60,8 +60,14 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal --filter "Category!=Benchmark"
+    - name: Test Core
+      run: dotnet test src/Sharpy.Core.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
+    - name: Test Compiler
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
+    - name: Test Stdlib
+      run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
+    - name: Test LSP
+      run: dotnet test src/Sharpy.Lsp.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
     - name: Verify .spy stdlib native compilation
       run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
     - name: Verify .spy stdlib C# staleness
