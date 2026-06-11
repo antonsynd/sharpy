@@ -157,7 +157,7 @@ layer of out-of-scope gaps discovered during re-enablement and stay excluded in
 | calendar | #886 (tuple `==`/`!=`) | ✅ re-enabled |
 | uuid | #886 (`uuid.UUID ==`/`!=`) | ✅ re-enabled |
 | http | #886 + #897 (`http.HTTPStatus` access) | ✅ re-enabled |
-| fractions | #887 (`BigInteger == int`, reflected ops) | ✅ re-enabled — `floor_div` annotated `long` (Axiom 1); 1 test omitted (`test_fraction_large_numerator_denominator`, needs arbitrary-precision `10 ** 50`, **#905**) |
+| fractions | #887 (`BigInteger == int`, reflected ops) | ✅ re-enabled — `floor_div` annotated `long` (Axiom 1); 1 test stays omitted (`test_fraction_large_numerator_denominator`): its `10 ** 50` exceeds `long`, and since Sharpy integers are fixed-width (Axiom 1) that constant now fails loudly at compile time with **SPY0328** rather than saturating — arbitrary precision is out of scope (**#905**) |
 | pprint | #888 (`(1,)` 1-tuple) | ✅ re-enabled |
 | heapq (`heapq_tests.spy`) | #889 (`sort(key=lambda)`) | ✅ re-enabled |
 | hmac | #890 (`hmac.new` overload) | ✅ re-enabled |

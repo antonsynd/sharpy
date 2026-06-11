@@ -384,7 +384,9 @@ def test_fraction_to_string_zero():
 # --- Large numbers ---
 
 # Omitted: test_fraction_large_numerator_denominator — relies on Python's
-# arbitrary-precision `10 ** 50`, but Sharpy's int ** saturates to int.MaxValue (#905).
+# arbitrary-precision `10 ** 50`. Sharpy integers are fixed-width (Axiom 1), so a
+# constant int ** int whose result exceeds long is now a compile-time error
+# (SPY0328) rather than silent saturation; arbitrary precision is out of scope (#905).
 
 # --- ToDouble ---
 
