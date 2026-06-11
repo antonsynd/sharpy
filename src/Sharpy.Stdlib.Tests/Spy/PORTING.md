@@ -163,7 +163,7 @@ layer of out-of-scope gaps discovered during re-enablement and stay excluded in
 | hmac | #890 (`hmac.new` overload) | ✅ re-enabled |
 | ipaddress | #891 (module alias) + #898 | ✅ re-enabled |
 | difflib | #892 (tuple `.ItemN`) | ✅ re-enabled |
-| html | #892 + #902 (f-string tuple index, fixed by narrowing-key commit) | ✅ re-enabled — 4 `convert_charrefs=False` parser tests omitted (separate stdlib bug, **#906**) |
+| html | #892 + #902 (f-string tuple index, fixed by narrowing-key commit) | ✅ re-enabled — the 4 `convert_charrefs=False` parser tests are restored; root cause was codegen dropping kwargs in `super().__init__` (**#906**), not the stdlib HTMLParser |
 | zoneinfo | #886 | ✅ re-enabled — `==`/`!= None` on a CLR reference type now lowers to a null check (**#901**) |
 | email | #891 | ✅ re-enabled — `isinstance(x, mod.Type)` now lowers to a type test (**#903**) |
 | functools (`functools_tests.spy`) | #889 | ✅ re-enabled — `cmp_to_key` comparator lambda parameters must be annotated (`lambda a: int, b: int: ...`) so the generic type argument is inferable; unannotated comparators now get SPY0237 instead of leaking CS0411 (**#904**) |
