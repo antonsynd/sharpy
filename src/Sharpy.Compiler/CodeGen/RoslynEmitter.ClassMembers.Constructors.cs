@@ -77,7 +77,13 @@ internal partial class RoslynEmitter
                 if (ma.Object is SuperExpression)
                 {
                     initializerCallIndex = i;
-                    var baseArgs = initCall.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
+                    // Route through the regular call-argument pipeline so keyword arguments
+                    // (FunctionCall.KeywordArguments) reach the base constructor instead of
+                    // being silently dropped (#906). Resolve the target constructor symbol when
+                    // available for correct reordering; otherwise the pipeline falls back to
+                    // positional + C# named arguments so nothing is lost.
+                    var baseArgs = GenerateReorderedCallArguments(
+                        initCall, _context.SemanticInfo?.GetCallTarget(initCall));
                     constructorInitializer = ConstructorInitializer(
                         SyntaxKind.BaseConstructorInitializer,
                         ArgumentList(SeparatedList(baseArgs)));
@@ -87,7 +93,8 @@ internal partial class RoslynEmitter
                 if (ma.Object is Identifier { Name: PythonNames.Self })
                 {
                     initializerCallIndex = i;
-                    var thisArgs = initCall.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
+                    var thisArgs = GenerateReorderedCallArguments(
+                        initCall, _context.SemanticInfo?.GetCallTarget(initCall));
                     constructorInitializer = ConstructorInitializer(
                         SyntaxKind.ThisConstructorInitializer,
                         ArgumentList(SeparatedList(thisArgs)));
