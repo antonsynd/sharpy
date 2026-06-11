@@ -133,46 +133,6 @@ x = Some(42)   # Error: Cannot infer type for 'Some()'
 The compiler infers the full type from context. The shorthand is equivalent to
 calling `Optional<T>.Some(value)` or using `Optional<T>.None()`.
 
-## Protocol Operations on `T?`
-
-An optional value supports the same protocol operations as its underlying type
-`T` — `len()`, the `in` membership test, indexing (`x[i]`), iteration
-(`for item in x`), and direct method/attribute access all work on a `T?`
-receiver and implicitly unwrap it:
-
-```python
-s: str? = get_name()
-print(len(s))        # length of the underlying string
-print("a" in s)      # membership against the underlying string
-print(s[0])          # first character
-print(s.upper())     # method call on the underlying string
-
-xs: list[int]? = get_items()
-total = 0
-for v in xs:         # iterates the underlying list
-    total += v
-```
-
-The result type is inferred from the underlying type `T` (e.g. `s[0]` is `str`,
-iterating `list[int]?` yields `int`), exactly as if the value were a plain `T`.
-
-**Runtime semantics — throw on `None`.** Implicit unwrapping mirrors Python's
-behavior on `None`: if the optional is empty, the operation raises at runtime
-(`Optional.unwrap()` throws; a `T | None` C# nullable raises a
-`NullReferenceException`), analogous to Python's
-`TypeError: object of type 'NoneType' has no len()`. This is the "throw for
-bugs" policy — reach for an empty optional and the program fails fast.
-
-To avoid the throw, narrow first with `is not None` (which refines `T?` to `T`
-in the branch) or handle both cases with pattern matching:
-
-```python
-if s is not None:
-    print(len(s))    # narrowed to str — no implicit unwrap, no throw risk
-```
-
-The same implicit-unwrap rule applies to `T | None` (C# nullable) receivers.
-
 ## Comparison: `T?` (Optional) vs `T | None` (C# Nullable)
 
 | Feature | `T?` / `Optional[T]` | `T \| None` (C# Nullable) |
