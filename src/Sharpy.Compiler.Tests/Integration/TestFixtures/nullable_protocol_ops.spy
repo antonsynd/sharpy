@@ -1,0 +1,13 @@
+# T | None (Nullable) is LOOSE: len(), `in`, and indexing apply directly to
+# the receiver (a runtime null throws). This matches C# nullable semantics and
+# is the deliberate counterpart to the strict T? Optional type. See #882.
+def main() -> None:
+    s: str | None = "hello"
+    print(len(s))
+    print("e" in s)
+    print(s[0])
+
+    items: list[str] | None = ["a", "b", "c"]
+    print(len(items))
+    print("b" in items)
+    print(items[1])

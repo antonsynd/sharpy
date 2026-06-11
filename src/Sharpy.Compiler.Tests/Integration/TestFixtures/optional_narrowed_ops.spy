@@ -1,0 +1,27 @@
+# T? (Optional) becomes fully usable once narrowed (if x is not None:), and the
+# ?. operator, the Optional API (unwrap_or), and Some(v)/None matching work on
+# the optional directly. See #882.
+def main() -> None:
+    s: str? = "hello"
+
+    # Narrowing unlocks len(), indexing, and member access.
+    if s is not None:
+        print(len(s))
+        print(s[0])
+        print(s.upper())
+
+    # ?. yields an optional; unwrap_or reads it.
+    upper: str? = s?.upper()
+    print(upper.unwrap_or("none"))
+
+    # unwrap_or on a present and an absent optional.
+    print(s.unwrap_or("fallback"))
+    n: str? = None
+    print(n.unwrap_or("default"))
+
+    # Some(v) pattern match.
+    match s:
+        case Some(v):
+            print(v)
+        case None:
+            print("none")

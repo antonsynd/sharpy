@@ -1,0 +1,6 @@
+# T | None is loose at compile time, but applying a protocol op to a value that
+# is actually None throws at runtime (a Pythonic TypeError) instead of silently
+# miscompiling. This is the runtime counterpart to the strict T? errors. See #882.
+def main() -> None:
+    s: str | None = None
+    print(len(s))

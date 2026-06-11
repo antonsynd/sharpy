@@ -1,0 +1,4 @@
+Optional type 'str?' does not support len() directly @6:11
+does not support membership testing directly @7:11
+does not support indexing directly @8:11
+has no member 'upper' @9:11
