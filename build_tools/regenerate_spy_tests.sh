@@ -111,6 +111,7 @@ for stem in "${stems[@]}"; do
         echo "// To regenerate: bash build_tools/regenerate_spy_tests.sh"
         tr -d '\r' < "$emitted_file" \
             | sed 's/[[:space:]]*$//' \
+            | sed '/^#line /s|\\\\|/|g' \
             | sed "/^#line /s|\"${escaped_root}/|\"|g"
     } > "$final_file"
 
