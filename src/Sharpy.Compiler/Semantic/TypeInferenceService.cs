@@ -67,6 +67,21 @@ internal class TypeInferenceService
         return result;
     }
 
+    /// <summary>
+    /// Determines how codegen should emit an equality operation (<c>==</c>/<c>!=</c>) on the
+    /// given operand types. Returns <see cref="BinaryOpLowering.EqualsCall"/> for tuples and for
+    /// CLR types resolved via the Equals fallback (see <see cref="IsClrEqualsFallback"/>);
+    /// otherwise <see cref="BinaryOpLowering.NativeOperator"/>. The decision is a pure function of
+    /// the operand types, mirroring the inference rules so the emitter never has to re-derive it.
+    /// </summary>
+    public BinaryOpLowering GetBinaryOpLowering(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        if (IsTupleEquality(op, left, right) || IsClrEqualsFallback(op, left, right))
+            return BinaryOpLowering.EqualsCall;
+
+        return BinaryOpLowering.NativeOperator;
+    }
+
     private SemanticType? InferBinaryOpTypeUncached(BinaryOperator op, SemanticType left, SemanticType right)
     {
         // Handle special operators that don't use dunder methods
@@ -105,6 +120,12 @@ internal class TypeInferenceService
                 or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual)
                 return SemanticType.Bool;
         }
+
+        // Tuple equality: (a, b) == (c, d) when both are tuples of equal arity whose
+        // element pairs each support equality. Lowers to a structural Equals() call.
+        var tupleResult = TryInferTupleBinaryOp(op, left, right);
+        if (tupleResult != null)
+            return tupleResult;
 
         // Try user-defined types
         var userResult = TryInferUserDefinedBinaryOp(op, left, right);
@@ -279,6 +300,44 @@ internal class TypeInferenceService
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Infers the result of an equality operation on two tuple types. Returns
+    /// <see cref="SemanticType.Bool"/> when <paramref name="op"/> is <c>==</c>/<c>!=</c>,
+    /// both operands are tuples of equal arity, and every element pair itself supports
+    /// equality (checked recursively). Returns null otherwise so SPY0222 still fires for
+    /// mismatched-arity or incomparable tuples.
+    /// </summary>
+    private SemanticType? TryInferTupleBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        return IsTupleEquality(op, left, right) ? SemanticType.Bool : null;
+    }
+
+    /// <summary>
+    /// Returns true when <paramref name="op"/> is an equality operator and both operands are
+    /// tuples of equal arity whose element pairs each support equality. Used both for type
+    /// inference and to decide the <see cref="BinaryOpLowering.EqualsCall"/> codegen strategy.
+    /// </summary>
+    private bool IsTupleEquality(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))
+            return false;
+
+        if (left is not TupleType leftTuple || right is not TupleType rightTuple)
+            return false;
+
+        if (leftTuple.ElementTypes.Count != rightTuple.ElementTypes.Count)
+            return false;
+
+        for (int i = 0; i < leftTuple.ElementTypes.Count; i++)
+        {
+            // Each element pair must itself support equality (recursively).
+            if (InferBinaryOpType(BinaryOperator.Equal, leftTuple.ElementTypes[i], rightTuple.ElementTypes[i]) == null)
+                return false;
+        }
+
+        return true;
     }
 
     private SemanticType? InferListConcatType(GenericType leftList, GenericType rightList)
@@ -480,7 +539,73 @@ internal class TypeInferenceService
             }
         }
 
+        // Equality fallback: CLR types that implement IEquatable<self>, override Equals(object),
+        // or are value types/enums but define no op_Equality still support ==/!=. The result is
+        // bool; codegen lowers it to an Equals call (BinaryOpLowering.EqualsCall) because a native
+        // C# == would be reference equality (wrong) or fail to compile for elementless types.
+        if (IsClrEqualsFallback(op, left, right))
+            return SemanticType.Bool;
+
         return null;
+    }
+
+    /// <summary>
+    /// Returns true when an equality operation (<c>==</c>/<c>!=</c>) on two CLR-backed types
+    /// must be resolved via <c>Equals</c> rather than a native operator: the operands denote
+    /// the same (or mutually assignable) CLR type, that type defines no <c>op_Equality</c>, and
+    /// it nonetheless has meaningful value/structural equality (implements <c>IEquatable&lt;self&gt;</c>,
+    /// overrides <c>Equals(object)</c>, or is a value type / enum). Used for both type inference
+    /// and the <see cref="BinaryOpLowering.EqualsCall"/> codegen decision.
+    /// </summary>
+    private bool IsClrEqualsFallback(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))
+            return false;
+
+        // Only CLR-discovered user-defined types use this fallback. Builtin primitives
+        // (int, bool, str, …) already resolve via TryInferBuiltinBinaryOp with a native
+        // operator and must not be rerouted to Equals just because they are value types.
+        if (left is not UserDefinedType || right is not UserDefinedType)
+            return false;
+
+        var leftClrType = GetClrType(left);
+        var rightClrType = GetClrType(right);
+        if (leftClrType == null || rightClrType == null)
+            return false;
+
+        // Operands must denote the same CLR type, or be mutually assignable user-defined types.
+        if (!left.IsAssignableTo(right) && !right.IsAssignableTo(left))
+            return false;
+
+        // Enums support a native C# == (backed by their integer value); they are handled by
+        // the enum path during inference and must not be rerouted through a boxing Equals call.
+        if (leftClrType.IsEnum || rightClrType.IsEnum)
+            return false;
+
+        // If either side defines an op_Equality, the native-operator path owns this case.
+        if (DefinesEqualityOperator(leftClrType) || DefinesEqualityOperator(rightClrType))
+            return false;
+
+        // Supported when the type gives structural/value equality via Equals: it implements
+        // IEquatable<self>, overrides Equals(object), or is a (non-enum) value type — for which
+        // a native C# == would not even compile without an op_Equality.
+        return ImplementsSelfEquatable(leftClrType) || OverridesObjectEquals(leftClrType)
+            || leftClrType.IsValueType;
+    }
+
+    private bool DefinesEqualityOperator(Type clrType)
+        => _clrMemberCache.GetOperatorMethods(clrType).ContainsKey("op_Equality");
+
+    private static bool ImplementsSelfEquatable(Type clrType)
+    {
+        var equatable = typeof(IEquatable<>).MakeGenericType(clrType);
+        return equatable.IsAssignableFrom(clrType);
+    }
+
+    private static bool OverridesObjectEquals(Type clrType)
+    {
+        var equals = clrType.GetMethod(nameof(object.Equals), new[] { typeof(object) });
+        return equals != null && equals.DeclaringType != typeof(object);
     }
 
     #endregion

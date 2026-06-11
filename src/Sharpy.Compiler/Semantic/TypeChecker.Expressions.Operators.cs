@@ -48,6 +48,18 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // Record how equality (==/!=) should be lowered by codegen. Tuples and CLR types
+        // that resolve via Equals (no op_Equality) must emit an Equals call rather than a
+        // native C# operator. The emitter reads this annotation from SemanticInfo (#886).
+        if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual)
+        {
+            var lowering = _typeInference.GetBinaryOpLowering(binOp.Operator, leftType, rightType);
+            if (lowering != BinaryOpLowering.NativeOperator)
+            {
+                _semanticInfo.SetBinaryOpLowering(binOp, lowering);
+            }
+        }
+
         // Warn when is/is not is used with value types — identity comparison is
         // meaningless because value types are boxed, so the result is always False.
         if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)

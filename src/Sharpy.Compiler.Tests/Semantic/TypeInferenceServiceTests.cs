@@ -368,6 +368,103 @@ public class TypeInferenceServiceTests
 
     #endregion
 
+    #region Tuple Equality (#886)
+
+    [Fact]
+    public void InferBinaryOpType_TupleEqualsTuple_SameArity_ReturnsBool()
+    {
+        var left = new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Int } };
+        var right = new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Int } };
+        var result = _service.InferBinaryOpType(BinaryOperator.Equal, left, right);
+        result.Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void InferBinaryOpType_TupleNotEqualsTuple_SameArity_ReturnsBool()
+    {
+        var left = new TupleType { ElementTypes = { SemanticType.Str, SemanticType.Int } };
+        var right = new TupleType { ElementTypes = { SemanticType.Str, SemanticType.Int } };
+        var result = _service.InferBinaryOpType(BinaryOperator.NotEqual, left, right);
+        result.Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void InferBinaryOpType_TupleEqualsTuple_MismatchedArity_ReturnsNull()
+    {
+        var left = new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Int } };
+        var right = new TupleType { ElementTypes = { SemanticType.Int } };
+        var result = _service.InferBinaryOpType(BinaryOperator.Equal, left, right);
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void InferBinaryOpType_SingleElementTuples_ReturnBool()
+    {
+        var left = new TupleType { ElementTypes = { SemanticType.Int } };
+        var right = new TupleType { ElementTypes = { SemanticType.Int } };
+        _service.InferBinaryOpType(BinaryOperator.Equal, left, right).Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void GetBinaryOpLowering_TupleEquality_ReturnsEqualsCall()
+    {
+        var left = new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Int } };
+        var right = new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Int } };
+        _service.GetBinaryOpLowering(BinaryOperator.Equal, left, right)
+            .Should().Be(BinaryOpLowering.EqualsCall);
+        _service.GetBinaryOpLowering(BinaryOperator.NotEqual, left, right)
+            .Should().Be(BinaryOpLowering.EqualsCall);
+    }
+
+    [Fact]
+    public void GetBinaryOpLowering_PrimitiveEquality_ReturnsNativeOperator()
+    {
+        _service.GetBinaryOpLowering(BinaryOperator.Equal, SemanticType.Int, SemanticType.Int)
+            .Should().Be(BinaryOpLowering.NativeOperator);
+    }
+
+    [Fact]
+    public void InferBinaryOpType_ClrType_NoOpEquality_OverridesEquals_ReturnsBool()
+    {
+        // System.Tuple<int,int> overrides Equals(object) but defines no op_Equality —
+        // exactly the ZoneInfo/UUID/HTTPStatus shape. Equality must still type-check as bool.
+        var clrType = new UserDefinedType
+        {
+            Name = "CtorRef",
+            Symbol = new TypeSymbol
+            {
+                Name = "CtorRef",
+                Kind = SymbolKind.Type,
+                TypeKind = TypeKind.Class,
+                ClrType = typeof(System.Tuple<int, int>)
+            }
+        };
+
+        _service.InferBinaryOpType(BinaryOperator.Equal, clrType, clrType).Should().Be(SemanticType.Bool);
+        _service.InferBinaryOpType(BinaryOperator.NotEqual, clrType, clrType).Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void GetBinaryOpLowering_ClrEqualsFallback_ReturnsEqualsCall()
+    {
+        var clrType = new UserDefinedType
+        {
+            Name = "CtorRef",
+            Symbol = new TypeSymbol
+            {
+                Name = "CtorRef",
+                Kind = SymbolKind.Type,
+                TypeKind = TypeKind.Class,
+                ClrType = typeof(System.Tuple<int, int>)
+            }
+        };
+
+        _service.GetBinaryOpLowering(BinaryOperator.Equal, clrType, clrType)
+            .Should().Be(BinaryOpLowering.EqualsCall);
+    }
+
+    #endregion
+
     #region Protocol Inference - Index Access
 
     [Fact]
