@@ -108,6 +108,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, NarrowingDecision> _narrowingDecisions =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map binary-op expressions (==/!=) to the strategy codegen must use to emit them.
+    // Only present when the strategy differs from the default native operator — e.g.
+    // tuple equality and CLR types that implement Equals/IEquatable but define no
+    // op_Equality must lower to an Equals call instead of a C# `==`. Keyed by node identity.
+    private readonly ConcurrentDictionary<Expression, BinaryOpLowering> _binaryOpLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map declarations to their source generator bindings (bracket attributes that resolve to SourceGenerator subclasses)
     private readonly ConcurrentDictionary<Statement, List<GeneratorBinding>> _generatorBindings =
         new(ReferenceEqualityComparer.Instance);
@@ -487,6 +494,27 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records how an equality binary operation (<c>==</c>/<c>!=</c>) should be lowered by codegen.
+    /// Only set when the strategy is not the default <see cref="BinaryOpLowering.NativeOperator"/>;
+    /// the absence of an entry means codegen should emit a native C# operator.
+    /// </summary>
+    public void SetBinaryOpLowering(Expression binaryOp, BinaryOpLowering lowering)
+    {
+        _binaryOpLowerings[binaryOp] = lowering;
+    }
+
+    /// <summary>
+    /// Gets the lowering strategy for an equality binary operation.
+    /// Returns <see cref="BinaryOpLowering.NativeOperator"/> when no override was recorded.
+    /// </summary>
+    public BinaryOpLowering GetBinaryOpLowering(Expression binaryOp)
+    {
+        return _binaryOpLowerings.TryGetValue(binaryOp, out var lowering)
+            ? lowering
+            : BinaryOpLowering.NativeOperator;
+    }
+
+    /// <summary>
     /// Merges all entries from another SemanticInfo into this instance.
     /// Used to combine per-file SemanticInfo back into a project-level instance.
     /// </summary>
@@ -542,6 +570,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._narrowingDecisions)
             _narrowingDecisions.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._binaryOpLowerings)
+            _binaryOpLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._generatedStatements)
             _generatedStatements.TryAdd(kvp.Key, kvp.Value);
@@ -701,3 +732,22 @@ public sealed record IsInstanceNarrowing(
     bool NarrowInThenBranch);
 
 public sealed record GeneratorBinding(TypeSymbol GeneratorType, Decorator Trigger);
+
+/// <summary>
+/// How codegen should emit an equality binary operation (<c>==</c>/<c>!=</c>).
+/// The TypeChecker records this during inference because the emitter cannot re-derive
+/// it from the operand types alone (it needs the same operator-resolution rules).
+/// </summary>
+public enum BinaryOpLowering
+{
+    /// <summary>Emit a native C# operator (<c>left == right</c> / <c>left != right</c>). Default.</summary>
+    NativeOperator,
+
+    /// <summary>
+    /// Lower to an <c>Equals</c> call: <c>object.Equals(left, right)</c> for reference types or
+    /// <c>left.Equals(right)</c> for tuples/value types; <c>!=</c> wraps the result in <c>!(...)</c>.
+    /// Used for tuples and CLR types that implement <c>Equals</c>/<c>IEquatable</c> but define no
+    /// <c>op_Equality</c>, where a native C# <c>==</c> would be wrong (reference equality) or fail to compile.
+    /// </summary>
+    EqualsCall
+}
