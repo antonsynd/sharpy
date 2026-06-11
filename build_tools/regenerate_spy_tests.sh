@@ -91,7 +91,7 @@ done < <(find "$EMIT_DIR" -name '*.cs' | sort)
 
 # Escape REPO_ROOT once for safe use as a sed literal in #line path rewriting
 # (guards against regex metacharacters such as '[' in directory names).
-escaped_root=$(printf '%s' "$REPO_ROOT" | sed 's/\./\\./g; s/\[/\\[/g; s/|/\\|/g')
+escaped_root=$(printf '%s' "$REPO_ROOT" | sed 's/\\/\\\\/g; s/\./\\./g; s/\*/\\*/g; s/\^/\\^/g; s/\$/\\$/g; s/\[/\\[/g; s/|/\\|/g')
 
 errors=0
 
