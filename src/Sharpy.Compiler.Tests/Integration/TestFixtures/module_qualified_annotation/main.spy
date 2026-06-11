@@ -11,9 +11,17 @@ def make_point(x: int, y: int) -> geometry.Point:
 def describe(p: geometry.Point) -> str:
     return str(p)
 
+# Generic module-qualified annotation (module.Type[T]) on a parameter.
+def unbox(b: geometry.Box[int]) -> int:
+    return b.get()
+
 def main() -> None:
     # Module-qualified annotation on a local.
     p: geometry.Point = make_point(3, 4)
     print(describe(p))
     print(p.x)
     print(p.y)
+
+    # Generic module-qualified annotation on a local.
+    boxed: geometry.Box[int] = geometry.Box[int](42)
+    print(unbox(boxed))

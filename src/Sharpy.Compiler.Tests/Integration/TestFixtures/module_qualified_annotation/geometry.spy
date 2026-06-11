@@ -8,3 +8,12 @@ class Point:
 
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
