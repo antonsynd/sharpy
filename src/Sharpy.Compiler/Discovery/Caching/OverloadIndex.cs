@@ -24,6 +24,13 @@ internal class ModuleOverloads
     public Dictionary<string, FieldSignature> Fields { get; set; } = new();
     public string? Documentation { get; set; }
     public string? CSharpNamespace { get; set; }
+
+    /// <summary>
+    /// The simple class name of the [SharpyModule]-decorated type backing this module
+    /// (e.g. "EmailModule" for the <c>email</c> module). Used by code generation to emit
+    /// the correct C# alias target instead of guessing a PascalCase name.
+    /// </summary>
+    public string? CSharpClassName { get; set; }
 }
 
 /// <summary>
