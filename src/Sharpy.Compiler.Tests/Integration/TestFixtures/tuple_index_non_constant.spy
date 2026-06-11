@@ -1,0 +1,6 @@
+def main() -> None:
+    t: tuple[int, str] = (1, "two")
+    i: int = 1
+    # Tuples are heterogeneous, so a non-constant index cannot be type-checked
+    # at compile time and is rejected with SPY0327 (#900).
+    print(t[i])
