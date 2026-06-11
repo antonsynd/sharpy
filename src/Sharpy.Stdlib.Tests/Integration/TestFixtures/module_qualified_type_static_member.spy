@@ -1,0 +1,9 @@
+import http
+
+
+def main() -> None:
+    # Static member access through a module-qualified type annotation (#897).
+    s: http.HTTPStatus = http.HTTPStatus.OK
+    print(s.Value)
+    # Static member access directly off the module-qualified type expression.
+    print(http.HTTPStatus.NOT_FOUND.Value)
