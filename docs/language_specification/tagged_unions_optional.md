@@ -203,6 +203,8 @@ acceptable.
 | No value | `None` or `None()` | `None` |
 | Type safety | Works with any `T` | Only reference types and `Nullable<T>` |
 | Pattern matching | `case Some(v):` | `if x is not None:` |
+| Protocol ops (`len`, `in`, `[i]`, iteration) | Compile error — narrow or `unwrap()` first | Allowed — throws at runtime on `None` |
+| Member access (`x.method()`) | Compile error — only the Optional API (`unwrap`, `map`, …) | Allowed — throws at runtime on `None` |
 | Heap allocation | **No** (struct) | No |
 | Use case | Sharpy-native optionals | .NET interop boundaries |
 | Interop | May need conversion | Direct .NET interop |
