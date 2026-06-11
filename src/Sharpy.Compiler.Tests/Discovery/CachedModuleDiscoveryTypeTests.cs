@@ -221,4 +221,38 @@ public class CachedModuleDiscoveryTypeTests : IDisposable
             }
         }
     }
+
+    // #890: a value-type Nullable<T> parameter (e.g. hmac.new's `msg: Bytes?`) must round-trip
+    // through the overload-index cache as a NullableType wrapping the concrete element type, NOT
+    // the open System.Nullable<> definition. Before the fix, discovery serialized the OPEN
+    // Nullable<> type, so a plain `bytes` argument failed to match the `bytes?` parameter.
+    [Fact]
+    public void GetModuleFunctions_NullableStructParameter_MapsToNullableOfElementType()
+    {
+        var functions = _discovery.GetModuleFunctions("hmac");
+        var newFns = functions.Where(f => f.Name == "new").ToList();
+
+        var debug = string.Join("\n", newFns.Select(f =>
+            $"new({string.Join(", ", f.Parameters.Select(p => $"{p.Name}: {p.Type.GetType().Name}={p.Type.GetDisplayName()}"))})"));
+
+        // The bytes overload of hmac.new: New(Bytes key, Bytes? msg = null, string digestmod).
+        // Identify it by its first (non-nullable) Bytes key parameter. (The str overload's
+        // `string?` is a reference-type nullability annotation absent from metadata, so its msg
+        // stays a plain str — only the value-type Bytes? surfaces as a NullableType.)
+        var bytesNew = newFns.FirstOrDefault(f =>
+            f.Parameters.Count == 3
+            && f.Parameters[0].Type.GetDisplayName() == "Bytes");
+        Assert.True(bytesNew != null, $"No bytes overload of hmac.new found. Candidates:\n{debug}");
+
+        var msgParam = bytesNew!.Parameters[1];
+        Assert.Equal("msg", msgParam.Name);
+        Assert.True(msgParam.HasDefault, "msg should be an optional parameter");
+
+        // The crux of #890: the value-type `Bytes?` parameter round-trips through the cache as a
+        // NullableType wrapping the concrete Bytes element type — NOT the OPEN System.Nullable<>
+        // definition (which is what the pre-fix serialization produced, breaking overload match).
+        var nullable = Assert.IsType<NullableType>(msgParam.Type);
+        Assert.Equal("Bytes", nullable.UnderlyingType.GetDisplayName());
+        Assert.IsNotType<UnknownType>(nullable.UnderlyingType);
+    }
 }

@@ -1,0 +1,12 @@
+import hmac
+
+
+def main() -> None:
+    # Edge case (#890): explicitly pass None to the `bytes? msg` parameter — the loose
+    # nullable union must accept the None literal. Then feed the message via update().
+    h = hmac.new(b"secret", None, "sha256")
+    h.update(b"message")
+    print(h.hexdigest())
+
+    # Same digest as passing the message directly to the 2-arg/3-arg bytes overload.
+    print(h.hexdigest() == hmac.new(b"secret", b"message", "sha256").hexdigest())
