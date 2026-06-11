@@ -36,6 +36,16 @@ internal partial class RoslynEmitter
             return GenerateTypedLambdaExpression(lambda);
         }
 
+        // Python-style lambdas can also carry per-parameter type annotations
+        // (lambda a: int, b: int: a - b). C# requires explicitly-typed lambda
+        // parameter lists to be all-or-nothing, so only emit typed parameters when
+        // every parameter is annotated; otherwise fall through to the implicit path.
+        if (lambda.Parameters.Length > 0
+            && lambda.Parameters.All(p => p.Type != null))
+        {
+            return GenerateTypedLambdaExpression(lambda);
+        }
+
         // lambda x, y: x + y → (x, y) => x + y
         var parameters = lambda.Parameters
             .Select(p => Parameter(Identifier(NameMangler.ToCamelCase(p.Name))))
