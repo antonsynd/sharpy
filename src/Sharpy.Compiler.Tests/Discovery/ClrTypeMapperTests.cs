@@ -123,6 +123,20 @@ public class ClrTypeMapperTests
     }
 
     [Fact]
+    public void MapSingleElementValueTuple_ToOneElementTupleType()
+    {
+        // Arrange & Act — System.ValueTuple<int> must round-trip to a 1-element TupleType
+        // (#888): codegen maps tuple[int] -> ValueTuple<int>, and discovery must map it back.
+        var result = _mapper.MapClrTypeToSemanticType(typeof(System.ValueTuple<int>));
+
+        // Assert
+        Assert.IsType<TupleType>(result);
+        var tupleType = (TupleType)result;
+        Assert.Single(tupleType.ElementTypes);
+        Assert.Equal(SemanticType.Int, tupleType.ElementTypes[0]);
+    }
+
+    [Fact]
     public void MapEnum_ToInt()
     {
         // Arrange & Act

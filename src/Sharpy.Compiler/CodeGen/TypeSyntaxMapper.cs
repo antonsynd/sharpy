@@ -232,10 +232,11 @@ internal class TypeSyntaxMapper
             .Select(MapSemanticType)
             .ToArray();
 
-        // For single element, it's just the type (not a tuple)
+        // C# has no single-element tuple syntax (e.g. `(T)` is just `T`), so a 1-tuple
+        // must be emitted as the explicit generic form global::System.ValueTuple<T>.
         if (elementTypes.Length == 1)
         {
-            return elementTypes[0];
+            return QualifiedGenericName("System.ValueTuple", globalQualified: true, elementTypes);
         }
 
         // Named tuples use C# tuple syntax with element names: (double x, double y)
