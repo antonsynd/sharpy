@@ -74,7 +74,7 @@ internal class TypeInferenceService
     /// otherwise <see cref="BinaryOpLowering.NativeOperator"/>. The decision is a pure function of
     /// the operand types, mirroring the inference rules so the emitter never has to re-derive it.
     /// </summary>
-    public BinaryOpLowering GetBinaryOpLowering(BinaryOperator op, SemanticType left, SemanticType right)
+    internal BinaryOpLowering GetBinaryOpLowering(BinaryOperator op, SemanticType left, SemanticType right)
     {
         if (IsTupleEquality(op, left, right) || IsClrEqualsFallback(op, left, right))
             return BinaryOpLowering.EqualsCall;

@@ -509,7 +509,10 @@ internal partial class TypeChecker
         // Only resolve when there is exactly one overload: multiple overloads (default-parameter
         // expansions like Counter.most_common) need full overload resolution against the call's
         // arguments, and a self-referential generic return that collapsed to object (e.g.
-        // Counter.copy() -> Counter[T]) is left to codegen.
+        // Counter.copy() -> Counter[T]) is left to codegen. Caution: bailing here means the
+        // member's type stays unrecorded, so a tuple-returning method that gains a second
+        // overload would silently reintroduce the #892 symptom (CS0021 on .ItemN lowering) —
+        // extend this to full overload resolution if that ever occurs.
         var methods = genDef.Methods.Where(m => m.Name == member).ToList();
         if (methods.Count != 1)
             return null;

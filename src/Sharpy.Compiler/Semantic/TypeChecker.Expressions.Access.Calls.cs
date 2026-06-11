@@ -2117,7 +2117,7 @@ internal partial class TypeChecker
     /// </summary>
     private static SemanticType NormalizeExpectedParamType(SemanticType type)
     {
-        return type is BuiltinType { Name: "object" } or UserDefinedType { Name: "object" }
+        return type is BuiltinType { Name: BuiltinNames.Object } or UserDefinedType { Name: BuiltinNames.Object }
             ? SemanticType.Unknown
             : type;
     }
