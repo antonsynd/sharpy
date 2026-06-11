@@ -747,9 +747,26 @@ internal partial class TypeChecker
         var objectType = CheckExpression(indexAccess.Object);
         var indexType = CheckExpression(indexAccess.Index);
 
-        // Tuple positional indexing: validate constant integer indices at compile time
-        if (objectType is TupleType tupleType && TryGetConstantIntIndex(indexAccess.Index, out var constIndex))
+        // Tuple positional indexing: the index must be a compile-time constant because tuples
+        // are heterogeneous (each position can have a different type, and a C# ValueTuple has no
+        // runtime indexer — codegen lowers t[k] to .ItemN). Validate constant indices here and
+        // reject non-constant ones with a dedicated diagnostic rather than letting them reach CS0021.
+        if (objectType is TupleType tupleType)
         {
+            if (!TryGetConstantIntIndex(indexAccess.Index, out var constIndex))
+            {
+                AddError(
+                    "Tuple indexing requires a constant integer index because tuples are " +
+                    "heterogeneous (each position may have a different type, and the element type " +
+                    "must be known at compile time). Use a literal index (e.g. t[0]), unpack the " +
+                    "tuple (a, b = t), or iterate it — or use a list[T] if you need dynamic indexing.",
+                    indexAccess.Index.LineStart,
+                    indexAccess.Index.ColumnStart,
+                    DiagnosticCodes.Semantic.TupleNonConstantIndex,
+                    indexAccess.Index.Span);
+                return SemanticType.Unknown;
+            }
+
             if (constIndex < 0)
             {
                 AddError(

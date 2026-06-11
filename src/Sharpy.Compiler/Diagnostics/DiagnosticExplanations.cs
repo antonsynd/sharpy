@@ -892,6 +892,17 @@ public static class DiagnosticExplanations
             "def main() -> None:\n    s: str? = \"hello\"\n    print(len(s))  # s may be None",
             "Narrow or unwrap the Optional first:\n    if s is not None:\n        print(len(s))");
 
+        Add(dict, DiagnosticCodes.Semantic.TupleNonConstantIndex,
+            "Tuple index must be a constant",
+            "Semantic",
+            "A tuple was indexed with a non-constant value (e.g. a variable). Tuples are " +
+            "heterogeneous — each position can hold a different type — so the element type must be " +
+            "known at compile time. A C# ValueTuple also has no runtime indexer; indexing is lowered " +
+            "to .ItemN, which requires a literal index.",
+            "def main() -> None:\n    t: tuple[int, str] = (1, \"a\")\n    i: int = 0\n    print(t[i])  # i is not a constant",
+            "Use a literal index (print(t[0])), unpack the tuple (a, b = t), or use a list[T] " +
+            "if you genuinely need dynamic indexing.");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",

@@ -1,0 +1,5 @@
+# Test: non-constant tuple index error (tuples need a compile-time constant index)
+def main() -> None:
+    t: tuple[int, str] = (1, "a")
+    i: int = 0
+    print(t[i])
