@@ -84,6 +84,21 @@ internal partial class RoslynEmitter
                 return BinaryExpression(SyntaxKind.IsExpression, value, checkType);
             }
 
+            // isinstance(expr, module.Type) → expr is global::...Type (#903)
+            // A module-qualified type argument is a MemberAccess that resolves to an
+            // exported TypeSymbol; emit a type test against its fully-qualified name
+            // rather than letting it fall through to the value-expression path (CS0119).
+            if (funcName.Name == BuiltinFunctionNames.IsInstance
+                && call.Arguments.Length == 2
+                && call.Arguments[1] is MemberAccess typeMemberAccess
+                && TryResolveModuleExportedType(typeMemberAccess) is { } isInstanceTypeRef)
+            {
+                var value = GenerateExpression(call.Arguments[0]);
+                var checkType = BuildTypeNameFromFqn(
+                    GetFullyQualifiedTypeName(isInstanceTypeRef.Symbol, isInstanceTypeRef.OriginalName));
+                return BinaryExpression(SyntaxKind.IsExpression, value, checkType);
+            }
+
             // Check if this is a type instantiation (calling a class or struct constructor)
             // We use the symbol table which is populated during semantic analysis.
             // This handles both local type definitions and imported types.

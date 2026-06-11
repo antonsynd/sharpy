@@ -916,6 +916,16 @@ internal class TypeSyntaxMapper
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
         }
 
+        // Module-qualified type used as an expression (e.g. email.MessageError). The type
+        // checker records the referenced type on the MemberAccess node, so map that semantic
+        // type instead of falling back to object (#903).
+        if (expr is MemberAccess memberAccess
+            && _context.SemanticInfo?.GetExpressionType(memberAccess) is { } resolvedExprType
+            && resolvedExprType is not UnknownType)
+        {
+            return MapSemanticType(resolvedExprType);
+        }
+
         // For more complex expressions, fall back to object
         return PredefinedType(Token(SyntaxKind.ObjectKeyword));
     }

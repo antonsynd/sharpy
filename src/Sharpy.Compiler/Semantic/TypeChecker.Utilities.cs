@@ -217,6 +217,15 @@ internal partial class TypeChecker
                             }
                         }
                     }
+                    // Module-qualified type argument: isinstance(err, email.MessageError) (#903).
+                    // The condition was already type-checked, so the MemberAccess type argument's
+                    // type is recorded as the referenced UserDefinedType; narrow to it.
+                    else if (narrowingKey != null && call.Arguments[1] is MemberAccess typeMemberAccess
+                        && _semanticInfo.GetExpressionType(typeMemberAccess) is UserDefinedType qualifiedNarrowedType)
+                    {
+                        narrowedTypes[narrowingKey] = qualifiedNarrowedType;
+                        isInstanceNarrowings.Add(new IsInstanceNarrowing(narrowingKey, qualifiedNarrowedType, NarrowInThenBranch: true));
+                    }
                 }
             }
         }
