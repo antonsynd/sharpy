@@ -903,6 +903,17 @@ public static class DiagnosticExplanations
             "Use a literal index (print(t[0])), unpack the tuple (a, b = t), or use a list[T] " +
             "if you genuinely need dynamic indexing.");
 
+        Add(dict, DiagnosticCodes.Semantic.IntegerPowerOverflow,
+            "Integer exponentiation overflows a 64-bit integer",
+            "Semantic",
+            "A constant integer power (base ** exponent) was constant-folded at compile time and its " +
+            "result does not fit a 64-bit integer. Per Axiom 1, Sharpy integers are fixed-width (.NET " +
+            "int/long) rather than Python's arbitrary precision, so the overflow is reported at compile " +
+            "time instead of silently producing a truncated or lossy value.",
+            "def main() -> None:\n    x = 10 ** 50  # exceeds the range of long",
+            "Use a floating-point base to get an (approximate) double result (10.0 ** 50), or " +
+            "restructure the computation so intermediate values stay within long range.");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",
