@@ -273,6 +273,39 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Honor the semantic-recorded EqualsCall lowering (#886): tuples and CLR types that
+        // implement Equals/IEquatable but define no op_Equality. A native C# == would either be
+        // reference equality (wrong) or fail to compile (struct without op_Equality).
+        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
+            && _context.SemanticInfo?.GetBinaryOpLowering(binOp) == BinaryOpLowering.EqualsCall)
+        {
+            var leftType = GetExpressionSemanticType(binOp.Left);
+
+            // Value types (tuples, structs) use left.Equals(right) to avoid boxing; reference
+            // types use the null-safe object.Equals(left, right). Misclassifying a reference type
+            // as a value type would lose null-safety, so only definitive value types take the
+            // instance-call path.
+            var useInstanceEquals = leftType is Semantic.TupleType
+                || (leftType?.IsValueType ?? false)
+                || (leftType?.ClrType?.IsValueType ?? false);
+
+            ExpressionSyntax equalsInvocation = useInstanceEquals
+                ? InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            left,
+                            IdentifierName("Equals")))
+                    .AddArgumentListArguments(Argument(right))
+                : InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                            IdentifierName("Equals")))
+                    .AddArgumentListArguments(Argument(left), Argument(right));
+
+            return kind == SyntaxKind.NotEqualsExpression
+                ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(equalsInvocation))
+                : equalsInvocation;
+        }
+
         // For <, >, <=, >= on strings, emit string.Compare(left, right, StringComparison.Ordinal) <op> 0
         // because System.String does not define relational operators
         if (kind is SyntaxKind.LessThanExpression or SyntaxKind.GreaterThanExpression
