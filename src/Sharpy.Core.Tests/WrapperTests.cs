@@ -14,23 +14,22 @@ public class Wrapper_Tests
     public void Wrapper_Constructor()
     {
         // If
-        Wrapper<int>.ResetId();
-        var wrapper = new Wrapper<int>(1);
+        var first = new Wrapper<int>(1);
+        var second = new Wrapper<int>(2);
 
         // When/then
-        wrapper.Id.Should().Be(0);
-        wrapper.Value.Should().Be(1);
+        second.Id.Should().BeGreaterThan(first.Id);
+        first.Value.Should().Be(1);
+        second.Value.Should().Be(2);
     }
 
     [Fact]
     public void Wrapper_Implicit_Conversion()
     {
         // If
-        Wrapper<int>.ResetId();
         Wrapper<int> wrapper = 1;
 
         // When/then
-        wrapper.Id.Should().Be(0);
         wrapper.Value.Should().Be(1);
     }
 

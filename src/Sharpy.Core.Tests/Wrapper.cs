@@ -7,20 +7,15 @@ using static Sharpy.Builtins;
 /// </summary>
 public class Wrapper<T>(T value) : System.IEquatable<Wrapper<T>>, Sharpy.IBoolConvertible
 {
-    private static uint _id;
+    private static int _id;
 
-    public readonly uint Id = _id++;
+    public readonly uint Id = unchecked((uint)(System.Threading.Interlocked.Increment(ref _id) - 1));
 
     public readonly T Value = value;
 
     public static implicit operator Wrapper<T>(T value)
     {
         return new Wrapper<T>(value);
-    }
-
-    public static void ResetId()
-    {
-        _id = 0;
     }
 
     // Identifiable
