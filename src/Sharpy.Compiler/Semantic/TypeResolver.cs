@@ -321,7 +321,7 @@ internal class TypeResolver
                 return true;
         }
 
-        exportedSymbol = null!;
+        exportedSymbol = default!;
         return false;
     }
 

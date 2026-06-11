@@ -1001,9 +1001,12 @@ internal partial class TypeChecker
     /// </summary>
     private TypeSymbol? TryResolveTypeSymbolFromMemberAccess(MemberAccess memberAccess)
     {
-        // Re-evaluate the object to get the module. Nested module access (email.message)
+        // The object is usually already checked (CheckCall runs CheckExpression on the callee
+        // before routing here); fall back to checking it for paths that reach this helper
+        // first (e.g., generic index-access resolution). Nested module access (email.message)
         // returns a ModuleType, so this handles both direct and nested module qualifiers.
-        var objectType = CheckExpression(memberAccess.Object);
+        var objectType = _semanticInfo.GetExpressionType(memberAccess.Object)
+            ?? CheckExpression(memberAccess.Object);
         if (objectType is not ModuleType moduleType)
             return null;
 

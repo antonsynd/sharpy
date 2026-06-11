@@ -424,12 +424,6 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Maps a SemanticType to its BuiltinRegistry TypeSymbol and type arguments.
-    /// Returns (null, null) if the type is not a registered builtin.
-    /// Used by CheckMemberAccess and ResolveUserMethodOverload for uniform
-    /// property/method resolution across GenericType, ResultType, OptionalType, and BuiltinType.
-    /// </summary>
-    /// <summary>
     /// Returns true when <paramref name="memberName"/> is a member of the Optional API itself
     /// (e.g. unwrap, unwrap_or, unwrap_or_else, map, is_some, is_none) — the only members that may
     /// be accessed directly on a <c>T?</c> receiver. Resolved from the registered Optional
@@ -437,12 +431,33 @@ internal partial class TypeChecker
     /// </summary>
     private bool IsOptionalApiMember(SemanticType optionalType, string memberName)
     {
-        var (optionalSymbol, _) = ResolveBuiltinTypeInfo(optionalType);
-        return optionalSymbol != null
-            && (optionalSymbol.Methods.Any(m => m.Name == memberName)
-                || optionalSymbol.Properties.Any(p => p.Name == memberName));
+        if (_optionalApiMembers == null)
+        {
+            var (optionalSymbol, _) = ResolveBuiltinTypeInfo(optionalType);
+            if (optionalSymbol == null)
+            {
+                return false;
+            }
+
+            _optionalApiMembers = new HashSet<string>(optionalSymbol.Methods.Select(m => m.Name));
+            _optionalApiMembers.UnionWith(optionalSymbol.Properties.Select(p => p.Name));
+        }
+
+        return _optionalApiMembers.Contains(memberName);
     }
 
+    /// <summary>
+    /// Member names of the Optional API, built lazily from the registered Optional TypeSymbol
+    /// on first <c>T?</c> member access (the set is identical for every Optional instantiation).
+    /// </summary>
+    private HashSet<string>? _optionalApiMembers;
+
+    /// <summary>
+    /// Maps a SemanticType to its BuiltinRegistry TypeSymbol and type arguments.
+    /// Returns (null, null) if the type is not a registered builtin.
+    /// Used by CheckMemberAccess and ResolveUserMethodOverload for uniform
+    /// property/method resolution across GenericType, ResultType, OptionalType, and BuiltinType.
+    /// </summary>
     private (TypeSymbol? TypeSymbol, List<SemanticType>? TypeArgs) ResolveBuiltinTypeInfo(SemanticType type)
     {
         return type switch
