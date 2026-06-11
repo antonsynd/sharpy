@@ -1,0 +1,20 @@
+def main() -> None:
+    # equal / not-equal on 2-tuples
+    print((1, 2) == (1, 2))
+    print((1, 2) != (1, 3))
+    print((1, 2) == (3, 4))
+
+    # nested tuples compare element-wise, recursively
+    print((1, (2, 3)) == (1, (2, 3)))
+    print((1, (2, 3)) != (1, (2, 4)))
+
+    # single-element tuples
+    print((1,) == (1,))
+    print((1,) != (2,))
+
+    # via variables
+    a: tuple[int, str] = (1, "x")
+    b: tuple[int, str] = (1, "x")
+    c: tuple[int, str] = (2, "y")
+    print(a == b)
+    print(a != c)

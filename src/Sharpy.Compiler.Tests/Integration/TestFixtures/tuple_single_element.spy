@@ -31,3 +31,7 @@ def main() -> None:
     deep: tuple[tuple[int]] = ((1,),)
     print(deep)
     print(len(deep))
+
+    # single-element tuples compare element-wise (#886)
+    print((1,) == (1,))
+    print((1,) != (2,))

@@ -1,0 +1,18 @@
+import uuid
+import zoneinfo
+
+
+def main() -> None:
+    # uuid.UUID implements IEquatable<Guid>/Equals but defines no op_Equality,
+    # so ==/!= lower to an Equals call (issue #886).
+    u1: uuid.UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    u2: uuid.UUID = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    u3: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
+    print(u1 == u2)
+    print(u1 != u3)
+    print(u1 == u3)
+
+    # zoneinfo.ZoneInfo equality (same Equals-lowering path).
+    print(zoneinfo.ZoneInfo("UTC") == zoneinfo.ZoneInfo("UTC"))
+    print(zoneinfo.ZoneInfo("UTC") != zoneinfo.ZoneInfo("America/New_York"))
+    print(zoneinfo.ZoneInfo("UTC") == zoneinfo.ZoneInfo("America/New_York"))

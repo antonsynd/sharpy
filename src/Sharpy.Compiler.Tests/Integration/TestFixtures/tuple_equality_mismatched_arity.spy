@@ -1,0 +1,6 @@
+def main() -> None:
+    a: tuple[int, int] = (1, 2)
+    b: tuple[int, int, int] = (1, 2, 3)
+    # Different-arity tuples are distinct static types, so == is rejected
+    # at compile time (unlike Python, where it would evaluate to False).
+    print(a == b)

@@ -1,0 +1,1 @@
+does not support operator '==' with operand of type 'tuple[int, int, int]' @6:11
