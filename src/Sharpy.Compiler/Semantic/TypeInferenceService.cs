@@ -662,6 +662,10 @@ internal class TypeInferenceService
     /// </summary>
     public SemanticType? InferIterableElementType(SemanticType iterableType)
     {
+        // Protocol ops on T? implicitly unwrap (iterating T? yields the element type of T,
+        // throwing on None at runtime). See docs/language_specification/tagged_unions_optional.md.
+        iterableType = UnwrapOptionalOrNullable(iterableType);
+
         // Dict view types: items() yields (K, V) tuples, keys() yields K, values() yields V
         if (iterableType is GenericType { Name: BuiltinNames.DictItemsView } itemsView && itemsView.TypeArguments.Count == 2)
             return new TupleType { ElementTypes = new List<SemanticType>(itemsView.TypeArguments) };
@@ -780,6 +784,10 @@ internal class TypeInferenceService
     /// </summary>
     public SemanticType? InferIndexAccessType(SemanticType container, SemanticType index)
     {
+        // Protocol ops on T? implicitly unwrap (indexing T? yields the element type of T,
+        // throwing on None at runtime). See docs/language_specification/tagged_unions_optional.md.
+        container = UnwrapOptionalOrNullable(container);
+
         // Generic containers
         if (container is GenericType generic)
         {
@@ -893,6 +901,19 @@ internal class TypeInferenceService
             _ => null
         };
     }
+
+    /// <summary>
+    /// Recursively unwraps <see cref="NullableType"/>/<see cref="OptionalType"/> wrappers.
+    /// Used only for container/protocol-position inference (indexing, iteration), where a
+    /// T? receiver exposes the protocols of its underlying T (throwing on None at runtime).
+    /// Deliberately not applied to general assignability.
+    /// </summary>
+    private static SemanticType UnwrapOptionalOrNullable(SemanticType type) => type switch
+    {
+        NullableType nt => UnwrapOptionalOrNullable(nt.UnderlyingType),
+        OptionalType ot => UnwrapOptionalOrNullable(ot.UnderlyingType),
+        _ => type
+    };
 
     private Type? GetIteratorElementType(Type clrType)
     {
