@@ -9,10 +9,10 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Re-enabled by #886-#892 (plan f40f84): calendar, uuid, http, fractions, pprint, heapq,
-         hmac, ipaddress, difflib, html. Still blocked by out-of-scope gaps (see PORTING.md residuals):
-           zoneinfo  — ==/!= None on a CLR type emits SPY0222 (#901)
+         hmac, ipaddress, difflib, html. zoneinfo re-enabled by #901 (plan f8a99f).
+         Still blocked by out-of-scope gaps (see PORTING.md residuals):
            email     — isinstance with a module-qualified type emits the type as a value, CS0119 (#903)
            functools — cmp_to_key generic free-function lambda inference fails, CS0411 (#904) -->
-    <SourceFile Include="**/*.spy" Exclude="email/**;functools/functools_tests.spy;zoneinfo/**" />
+    <SourceFile Include="**/*.spy" Exclude="email/**;functools/functools_tests.spy" />
   </ItemGroup>
 </Project>

@@ -179,7 +179,11 @@ def test_equals_different_keys_is_false():
 
 @test
 def test_equals_none_is_false():
-    assert zoneinfo.ZoneInfo("UTC") != None
+    # Capture the `!= None` result in a bool first: this still exercises the
+    # #901 CLR-reference NoneCheck lowering, but avoids the assert-rewriter
+    # emitting Assert.NotEqual(null, x) which trips xUnit2003 (tracked in #908).
+    is_not_none: bool = zoneinfo.ZoneInfo("UTC") != None
+    assert is_not_none
 
 @test
 def test_get_hash_code_same_key_is_equal():
