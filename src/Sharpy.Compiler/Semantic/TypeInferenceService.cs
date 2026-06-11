@@ -524,20 +524,19 @@ internal class TypeInferenceService
         if (leftClrType == null || rightClrType == null)
             return null;
 
-        var operators = _clrMemberCache.GetOperatorMethods(leftClrType);
-        if (operators.TryGetValue(clrMethodName, out var operatorMethods))
-        {
-            foreach (var method in operatorMethods)
-            {
-                var parameters = method.GetParameters();
-                if (parameters.Length == 2 &&
-                    parameters[0].ParameterType == leftClrType &&
-                    parameters[1].ParameterType == rightClrType)
-                {
-                    return MapClrTypeToSemanticType(method.ReturnType);
-                }
-            }
-        }
+        // Collect operator candidates from BOTH operand types — C# overload resolution unions
+        // the user-defined operators declared on each operand's type before picking the best
+        // match. This lets `int + Fraction` see Fraction.op_Addition(long, Fraction) (#887).
+        var candidates = new List<System.Reflection.MethodInfo>();
+        CollectClrOperators(leftClrType, clrMethodName, candidates);
+        if (rightClrType != leftClrType)
+            CollectClrOperators(rightClrType, clrMethodName, candidates);
+
+        // Resolve using C# conversion rules: prefer exact parameter matches, then builtin
+        // numeric widening (int → long, …), then user-defined op_Implicit (int → Fraction, …).
+        var resolved = ResolveClrBinaryOperator(candidates, leftClrType, rightClrType);
+        if (resolved != null)
+            return MapClrTypeToSemanticType(resolved.ReturnType);
 
         // Equality fallback: CLR types that implement IEquatable<self>, override Equals(object),
         // or are value types/enums but define no op_Equality still support ==/!=. The result is
@@ -547,6 +546,115 @@ internal class TypeInferenceService
             return SemanticType.Bool;
 
         return null;
+    }
+
+    /// <summary>
+    /// Adds the operator overloads named <paramref name="clrMethodName"/> declared on
+    /// <paramref name="clrType"/> to <paramref name="into"/>, skipping duplicates.
+    /// </summary>
+    private void CollectClrOperators(Type clrType, string clrMethodName, List<System.Reflection.MethodInfo> into)
+    {
+        var operators = _clrMemberCache.GetOperatorMethods(clrType);
+        if (operators.TryGetValue(clrMethodName, out var methods))
+        {
+            foreach (var method in methods)
+            {
+                if (!into.Contains(method))
+                    into.Add(method);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Resolves a binary operator overload following C# rules: each candidate's two parameters
+    /// must accept the operand types by exact match, builtin numeric widening, or a user-defined
+    /// implicit conversion (in that order of preference, lower score = better). Returns the single
+    /// best candidate, or null when nothing matches or the best score is shared by candidates with
+    /// differing return types (ambiguous → SPY0222).
+    /// </summary>
+    private System.Reflection.MethodInfo? ResolveClrBinaryOperator(
+        List<System.Reflection.MethodInfo> candidates, Type leftClrType, Type rightClrType)
+    {
+        System.Reflection.MethodInfo? best = null;
+        int bestScore = int.MaxValue;
+        bool ambiguous = false;
+
+        foreach (var method in candidates)
+        {
+            var parameters = method.GetParameters();
+            if (parameters.Length != 2)
+                continue;
+
+            var leftRank = ClrConversionRank(leftClrType, parameters[0].ParameterType);
+            var rightRank = ClrConversionRank(rightClrType, parameters[1].ParameterType);
+            if (leftRank < 0 || rightRank < 0)
+                continue;
+
+            var score = leftRank + rightRank;
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = method;
+                ambiguous = false;
+            }
+            else if (score == bestScore && best != null && best.ReturnType != method.ReturnType)
+            {
+                ambiguous = true;
+            }
+        }
+
+        return ambiguous ? null : best;
+    }
+
+    /// <summary>
+    /// Conversion rank from an argument CLR type to a parameter CLR type: 0 = exact,
+    /// 1 = reference assignability or builtin numeric widening, 2 = user-defined implicit
+    /// conversion (op_Implicit). Returns -1 when no implicit conversion exists. Lower is preferred.
+    /// </summary>
+    private int ClrConversionRank(Type argClrType, Type paramClrType)
+    {
+        if (argClrType == paramClrType)
+            return 0;
+
+        // Reference / inheritance conversions (derived → base, type → interface).
+        if (paramClrType.IsAssignableFrom(argClrType))
+            return 1;
+
+        // Builtin numeric widening (int → long, int → double, float → double, …).
+        var fromInfo = PrimitiveCatalog.GetByClrType(argClrType);
+        var toInfo = PrimitiveCatalog.GetByClrType(paramClrType);
+        if (fromInfo != null && toInfo != null && PrimitiveCatalog.CanImplicitlyConvert(fromInfo, toInfo))
+            return 1;
+
+        // User-defined implicit conversions: op_Implicit may be declared on either the target
+        // (parameter) type or the source (argument) type.
+        if (HasImplicitConversion(paramClrType, argClrType, paramClrType)
+            || HasImplicitConversion(argClrType, argClrType, paramClrType))
+            return 2;
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Returns true when <paramref name="definingType"/> declares an <c>op_Implicit</c> that
+    /// converts from <paramref name="fromType"/> to <paramref name="toType"/>.
+    /// </summary>
+    private bool HasImplicitConversion(Type definingType, Type fromType, Type toType)
+    {
+        var operators = _clrMemberCache.GetOperatorMethods(definingType);
+        if (!operators.TryGetValue("op_Implicit", out var methods))
+            return false;
+
+        foreach (var method in methods)
+        {
+            var ps = method.GetParameters();
+            if (ps.Length == 1 && method.ReturnType == toType
+                && ps[0].ParameterType.IsAssignableFrom(fromType))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>

@@ -465,6 +465,60 @@ public class TypeInferenceServiceTests
 
     #endregion
 
+    #region Reflected CLR operators + numeric widening (#887)
+
+    private static UserDefinedType Clr(Type clrType) => new()
+    {
+        Name = clrType.Name,
+        Symbol = new TypeSymbol
+        {
+            Name = clrType.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Struct,
+            ClrType = clrType
+        }
+    };
+
+    [Fact]
+    public void InferBinaryOpType_BigIntegerEqualsInt_ResolvesViaWidening_ReturnsBool()
+    {
+        // BigInteger.op_Equality(BigInteger, long) matches `BigInteger == int` because int
+        // widens to long. Previously failed because int != long exactly (SPY0222).
+        var bigInt = Clr(typeof(System.Numerics.BigInteger));
+        _service.InferBinaryOpType(BinaryOperator.Equal, bigInt, SemanticType.Int)
+            .Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void InferBinaryOpType_IntPlusBigInteger_ConsidersRightOperand_ReturnsBigInteger()
+    {
+        // The candidate operator lives on the RIGHT operand's type (BigInteger); int converts
+        // to BigInteger via op_Implicit. C# unions both operands' operators.
+        var bigInt = Clr(typeof(System.Numerics.BigInteger));
+        var result = _service.InferBinaryOpType(BinaryOperator.Add, SemanticType.Int, bigInt);
+        result.Should().NotBeNull();
+        result!.GetDisplayName().Should().Contain("BigInteger");
+    }
+
+    [Fact]
+    public void InferBinaryOpType_BigIntegerPlusBigInteger_ExactMatch_ReturnsBigInteger()
+    {
+        var bigInt = Clr(typeof(System.Numerics.BigInteger));
+        var result = _service.InferBinaryOpType(BinaryOperator.Add, bigInt, bigInt);
+        result.Should().NotBeNull();
+        result!.GetDisplayName().Should().Contain("BigInteger");
+    }
+
+    [Fact]
+    public void InferBinaryOpType_BigIntegerLessThanInt_ResolvesViaWidening_ReturnsBool()
+    {
+        var bigInt = Clr(typeof(System.Numerics.BigInteger));
+        _service.InferBinaryOpType(BinaryOperator.LessThan, bigInt, SemanticType.Int)
+            .Should().Be(SemanticType.Bool);
+    }
+
+    #endregion
+
     #region Protocol Inference - Index Access
 
     [Fact]
