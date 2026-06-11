@@ -1,4 +1,9 @@
 Optional type 'str?' does not support len() directly @6:11
-does not support membership testing directly @7:11
-does not support indexing directly @8:11
-has no member 'upper' @9:11
+Optional type 'str?' does not support membership testing directly @7:11
+Optional type 'str?' does not support indexing directly @8:11
+Type 'str?' has no member 'upper' @9:11
+Optional type 'list[str]?' does not support len() directly @11:11
+Optional type 'list[str]?' does not support membership testing directly @12:11
+Optional type 'list[str]?' does not support indexing directly @13:11
+Type 'list[str]?' has no member 'count' @14:11
+Optional type 'list[str]?' does not support iteration directly @15:17

@@ -19,9 +19,20 @@ def main() -> None:
     n: str? = None
     print(n.unwrap_or("default"))
 
+    # ?. on an absent optional propagates None; unwrap_or supplies the default.
+    none_upper: str? = n?.upper()
+    print(none_upper.unwrap_or("absent"))
+
     # Some(v) pattern match.
     match s:
         case Some(v):
             print(v)
         case None:
             print("none")
+
+    # Narrowing works for Optional collections too, including iteration.
+    items: list[str]? = ["x", "y"]
+    if items is not None:
+        print(len(items))
+        for item in items:
+            print(item)

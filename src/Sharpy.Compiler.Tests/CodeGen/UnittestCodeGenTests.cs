@@ -555,6 +555,53 @@ def main():
     }
 
     [Fact]
+    public void AssertRaises_ModuleQualifiedExceptionType_GeneratesFullyQualifiedAssertThrows()
+    {
+        // #883: a module-qualified exception type (zoneinfo.ZoneInfoNotFoundError) must
+        // pass System.Type argument validation and emit the fully-qualified exception
+        // type, not <object>. Mirrors the excluded zoneinfo_tests.spy coverage so the
+        // path stays exercised while that module is blocked (#886).
+        var source = @"
+import zoneinfo
+from unittest import assert_raises
+
+@test
+def test_raises():
+    with assert_raises(zoneinfo.ZoneInfoNotFoundError):
+        z: zoneinfo.ZoneInfo = zoneinfo.ZoneInfo(""Invalid/Zone"")
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        code.Should().Contain("Xunit.Assert.Throws<global::Sharpy.ZoneInfoNotFoundError>");
+        code.Should().NotContain("Xunit.Assert.Throws<object>");
+    }
+
+    [Fact]
+    public void AssertRaises_ModuleQualifiedExceptionTypeWithCapture_DeclaresTypedCapture()
+    {
+        // #883 capture variant: `as exc` binds the thrown exception from the
+        // fully-qualified Assert.Throws and stays usable afterward.
+        var source = @"
+import zoneinfo
+from unittest import assert_raises
+
+@test
+def test_capture():
+    with assert_raises(zoneinfo.ZoneInfoNotFoundError) as exc:
+        z: zoneinfo.ZoneInfo = zoneinfo.ZoneInfo(""Invalid/Zone"")
+    assert ""Invalid/Zone"" in str(exc)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source, requiresSharpyCore: true);
+        code.Should().Contain("var exc = Xunit.Assert.Throws<global::Sharpy.ZoneInfoNotFoundError>");
+        code.Should().Contain("global::Sharpy.Builtins.Str(exc)");
+    }
+
+    [Fact]
     public void AssertRaises_WithMatch_GeneratesAssertMatchesOnMessage()
     {
         // assert_raises(E, "pattern") (positional match) → captured Throws + Assert.Matches

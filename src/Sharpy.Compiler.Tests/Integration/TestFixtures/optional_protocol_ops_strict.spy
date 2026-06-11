@@ -7,3 +7,10 @@ def main() -> None:
     print("e" in s)
     print(s[0])
     print(s.upper())
+    items: list[str]? = ["a", "b"]
+    print(len(items))
+    print("a" in items)
+    print(items[0])
+    print(items.count("a"))
+    for item in items:
+        print(item)
