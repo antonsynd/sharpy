@@ -99,13 +99,16 @@ for stem in "${stems[@]}"; do
         continue
     fi
 
-    # Post-process: normalize CRLF→LF, strip trailing whitespace
+    # Post-process: normalize CRLF→LF, strip trailing whitespace,
+    # and normalize absolute repo paths in #line directives to repo-relative paths
+    # so the generated files are stable across machines.
     final_file="$WORK_DIR/${stem}_final.cs"
     {
         echo "// Generated from src/Sharpy.Stdlib.Tests/Spy — do not edit directly."
         echo "// To regenerate: bash build_tools/regenerate_spy_tests.sh"
         tr -d '\r' < "$emitted_file" \
-            | sed 's/[[:space:]]*$//'
+            | sed 's/[[:space:]]*$//' \
+            | sed "s|\"$REPO_ROOT/|\"|g"
     } > "$final_file"
 
     # Ensure file ends with a newline
