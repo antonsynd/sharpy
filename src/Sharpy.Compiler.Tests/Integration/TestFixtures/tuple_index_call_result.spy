@@ -1,0 +1,15 @@
+def get_pairs() -> list[tuple[str, int]]:
+    result: list[tuple[str, int]] = []
+    result.append(("a", 1))
+    result.append(("b", 2))
+    return result
+
+
+def main() -> None:
+    # index a tuple that is a method/call result (pairs[i] is a tuple)
+    pairs = get_pairs()
+    for i in range(len(pairs)):
+        print(pairs[i][0])
+        print(pairs[i][1])
+    # chained on the call result directly
+    print(get_pairs()[0][0])

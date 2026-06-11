@@ -1,0 +1,20 @@
+def make(name: str, value: str | None) -> tuple[str, str | None]:
+    return (name, value)
+
+
+def describe(attrs: list[tuple[str, str | None]]) -> None:
+    for attr in attrs:
+        # integer-indexing a loop-variable tuple lowers to .ItemN
+        name: str = attr[0]
+        value: str | None = attr[1]
+        if value is None:
+            print(name + "=<none>")
+        else:
+            print(name + "=" + value)
+
+
+def main() -> None:
+    attrs: list[tuple[str, str | None]] = []
+    attrs.append(make("href", "x"))
+    attrs.append(make("checked", None))
+    describe(attrs)

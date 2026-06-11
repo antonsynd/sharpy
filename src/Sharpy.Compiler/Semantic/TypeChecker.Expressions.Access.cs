@@ -415,6 +415,19 @@ internal partial class TypeChecker
             }
         }
 
+        // Discovered generic module classes (e.g., difflib.SequenceMatcher[str]) are represented
+        // as GenericType carrying their definition's TypeSymbol with discovered methods/properties.
+        // The builtin path above doesn't cover them (they aren't registered builtins), so resolve
+        // members on the definition with the receiver's type-argument substitution applied. Without
+        // this, every method call returned Unknown — so e.g. get_opcodes() lost its list[tuple]
+        // type and tuple indexing on the loop variable couldn't lower to .ItemN (#892).
+        if (memberLookupType is GenericType { GenericDefinition: { ClrType: not null } genDef } genInstance)
+        {
+            var genericMember = ResolveGenericModuleClassMember(memberAccess, genDef, genInstance.TypeArguments);
+            if (genericMember != null)
+                return genericMember;
+        }
+
         // Intentional Unknown without error for non-UserDefinedType member access:
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
@@ -470,6 +483,48 @@ internal partial class TypeChecker
             BuiltinType bt => (_symbolTable.BuiltinRegistry.GetType(bt.Name), null),
             _ => (null, null)
         };
+    }
+
+    /// <summary>
+    /// Resolves a property/method/field access on a discovered generic module class (e.g.
+    /// <c>SequenceMatcher[str]</c>), applying the receiver's type-argument substitution
+    /// (definition type parameters → <paramref name="typeArgs"/>) to the result type. Returns null
+    /// when the member is not found on the definition, leaving the caller's existing fallback intact.
+    /// </summary>
+    private SemanticType? ResolveGenericModuleClassMember(
+        MemberAccess memberAccess, TypeSymbol genDef, List<SemanticType> typeArgs)
+    {
+        SemanticType Substitute(SemanticType t) =>
+            genDef.TypeParameters.Count > 0 && genDef.TypeParameters.Count == typeArgs.Count
+                ? SubstituteTypeParameters(t, genDef.TypeParameters, typeArgs)
+                : t;
+
+        var member = memberAccess.Member;
+
+        // Resolve methods only — deliberately not properties/fields. Discovered generic classes
+        // (especially dict subclasses like Counter/defaultdict) expose CLR properties such as
+        // `Keys` that shadow the callable `keys()` method; resolving those here would make
+        // `d.keys()` appear to call a collection. Leaving non-method members to the existing
+        // codegen fallback preserves their established behavior, while methods are what #892 needs.
+        // Only resolve when there is exactly one overload: multiple overloads (default-parameter
+        // expansions like Counter.most_common) need full overload resolution against the call's
+        // arguments, and a self-referential generic return that collapsed to object (e.g.
+        // Counter.copy() -> Counter[T]) is left to codegen.
+        var methods = genDef.Methods.Where(m => m.Name == member).ToList();
+        if (methods.Count != 1)
+            return null;
+
+        var method = methods[0];
+        var returnType = Substitute(method.ReturnType);
+        if (IsObjectType(returnType))
+            return null;
+
+        var selfOffset = method.Parameters.Count > 0 && method.Parameters[0].Name == PythonNames.Self
+            ? 1 : 0;
+        var substitutedParams = method.Parameters
+            .Select(p => p with { Type = Substitute(p.Type) })
+            .ToList();
+        return FunctionType.FromParameters(substitutedParams, returnType, skipLeading: selfOffset);
     }
 
     /// <summary>

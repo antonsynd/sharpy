@@ -1,0 +1,9 @@
+import difflib
+
+
+def main() -> None:
+    sm = difflib.SequenceMatcher[str](None, ["a", "b", "c", "d"], ["a", "b", "x", "d"])
+    # Loop variable over a generic-module-class method result; op is a tuple.
+    # Integer-indexing it must lower to .ItemN (#892).
+    for op in sm.get_opcodes():
+        print(op[0])
