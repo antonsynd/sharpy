@@ -138,6 +138,26 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 
 ## Residuals (blocked by compiler issues)
 
-| C# File | Test(s) | Blocking Issue | Status |
-|---------|---------|----------------|--------|
-| (none yet) | | | |
+Re-enabling the 15 modules that were excluded for #879–#883 surfaced a **second
+layer** of pre-existing compiler / codegen / inference gaps (previously masked
+behind #880/#881). After #879–#883 + #18 landed, **argparse** and **shlex**
+re-enable cleanly (513 spy tests pass, up from 454). The remaining modules stay
+excluded in `tests.spyproj` pending the gap fixes below. Where a test-code fix
+was necessary but not sufficient (a codegen/stdlib gap also blocks the module),
+the `.spy` source has already been fixed and is noted as "test-code fixed".
+
+| Module (.spy) | Issue | Theme | Notes |
+|---------------|-------|-------|-------|
+| calendar | #886 | A — tuple `==`/`!=` not synthesized | |
+| zoneinfo | #886 | A — `ZoneInfo ==`/`!=` not synthesized | `as exc` capture-variant test added (#883) |
+| uuid | #886 | A — `uuid.UUID ==`/`!=` not synthesized | |
+| http | #886 | A — `http.HTTPStatus` enum `==` not synthesized | |
+| fractions | #887 | B — `BigInteger == int` + reflected `int <op> Fraction` | |
+| pprint | #888 | C — `(1,)` parsed as scalar, not a 1-tuple | 1 runtime test |
+| heapq (`heapq_tests.spy`) | #889 | D — `sort(key=lambda)` param inferred as `object` | |
+| functools (`functools_tests.spy`) | #889 | D — `sort(key=lambda)` param inferred as `object` | |
+| hmac | #890 | E — `hmac.new(bytes, bytes, str)` overload not resolved | |
+| email | #891 | F — module alias emits `Sharpy.Email` not `Sharpy.EmailModule` (CS0234) | test-code fixed (`T?` → `T \| None`) |
+| ipaddress | #891 | F — module alias emits `Sharpy.Ipaddress` (CS0234) | |
+| difflib | #892 | G — tuple int-indexing not lowered to `.ItemN` in loops (CS0021) | test-code fixed (typed empty lists) |
+| html | #892 | G — tuple int-indexing not lowered to `.ItemN` in loops (CS0021) | test-code fixed (override `str?` → `str \| None`) |
