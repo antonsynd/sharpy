@@ -808,6 +808,17 @@ Return the length of a Sharpy dictionary.
 
 Return the length of a string.
 
+### `len(tuple: Runtime.CompilerServices.ITuple) -> int`
+
+Return the number of elements in a tuple.
+
+!!! note
+    Tuples are emitted as `System.ValueTuple` instances, which
+    implement `System.Runtime.CompilerServices.ITuple` but
+    neither `ICollection` nor
+    `ISized`. This overload routes `len(tuple)` to
+    `System.Runtime.CompilerServices.ITuple.Length`.
+
 ### `list(enumerable: Iterable[T]) -> list[T]`
 
 Convert IEnumerable to list
