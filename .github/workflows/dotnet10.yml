@@ -60,6 +60,18 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
+    - name: Verify all test projects are covered
+      run: |
+        # Fail CI if a test project exists in src/ but isn't listed below
+        known="Sharpy.Cli.Tests Sharpy.Compiler.Tests Sharpy.Core.Tests Sharpy.Lsp.Tests Sharpy.Stdlib.Tests"
+        found=$(find src -maxdepth 1 -name "*.Tests" -type d -printf '%f\n' | sort | tr '\n' ' ' | sed 's/ $//')
+        if [ "$found" != "$known" ]; then
+          echo "::error::Test project drift detected. Expected: [$known] Found: [$found]"
+          echo "Update the test steps in .github/workflows/dotnet10.yml"
+          exit 1
+        fi
+    - name: Test CLI
+      run: dotnet test src/Sharpy.Cli.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
     - name: Test Core
       run: dotnet test src/Sharpy.Core.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
     - name: Test Compiler
