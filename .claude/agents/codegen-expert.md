@@ -1,7 +1,7 @@
 ---
 name: codegen-expert
 description: Implements Sharpy code generation via Roslyn SyntaxFactory. Owns src/Sharpy.Compiler/CodeGen/. ~19,680 lines across 25 files.
-tools: Read, Edit, Glob, Grep, Bash
+tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 ---
 
 # CodeGen Expert

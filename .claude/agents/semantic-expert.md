@@ -1,7 +1,7 @@
 ---
 name: semantic-expert
 description: Implements and maintains Sharpy semantic analysis - type checking, name resolution, scope analysis. Owns src/Sharpy.Compiler/Semantic/.
-tools: Read, Edit, Glob, Grep, Bash
+tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 ---
 
 # Semantic Expert

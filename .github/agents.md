@@ -55,6 +55,12 @@ All agents follow this priority order when axioms conflict:
 |-------|---------|--------|
 | `dogfood-analyst` | Classifies dogfood failures (C1-C5), writes repro files, delegates to `verification-expert`/`test-expert` | Triage reports + test fixtures |
 
+## Teammate Compatibility
+
+Editing domain experts (`parser-expert`, `semantic-expert`, `codegen-expert`, `test-expert`, `core-library-expert`, `lsp-expert`, `stdlib-expert`), `implementer`, and `dogfood-analyst` include team-collaboration tools (`SendMessage`, `TaskUpdate`, `TaskList`, `TaskGet`) and can be spawned as teammates in `/implement-plan` teams. They can message the lead/peers and update the shared task board.
+
+**Read-only agents are NOT teammate-compatible:** `code-reviewer`, `verification-expert`, `net-axiom-guardian`, and `hallucination-defense` lack `SendMessage` and task tools by design. When used in teams, the team lead must pull their results from transcript JSONL or idle notifications — they cannot update the task board or respond to shutdown requests. Use them as standalone subagents (via `Agent` tool), not as teammates.
+
 ## MCP Tools for All Agents
 
 Two MCP servers are available for codebase navigation. Prefer them over Grep/Read for structural queries:

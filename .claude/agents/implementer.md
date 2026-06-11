@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: Full-stack implementation agent for Sharpy compiler and stdlib. Writes code, runs tests, creates branches, submits PRs.
-tools: Read, Edit, Write, Glob, Grep, Bash, Task
+tools: Read, Edit, Write, Glob, Grep, Bash, SendMessage, Task
 ---
 
 # Implementer

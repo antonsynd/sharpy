@@ -1,7 +1,7 @@
 ---
 name: stdlib-expert
 description: Implements and maintains Sharpy.Stdlib standard library modules (60 modules - json, os, re, numpy, etc.). Knows spy-sourced vs handwritten modules, error conventions, multi-targeting.
-tools: Read, Edit, Glob, Grep, Bash
+tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 ---
 
 # Stdlib Expert

@@ -1,7 +1,7 @@
 ---
 name: dogfood-analyst
 description: Investigates dogfood_output/ and classifies each failure by root cause. Produces structured triage reports. Can write temp files for reproductions and delegate to verification-expert/test-expert.
-tools: Read, Write, Glob, Grep, Bash, Task
+tools: Read, Write, Glob, Grep, Bash, SendMessage, Task
 disallowedTools: Edit
 ---
 

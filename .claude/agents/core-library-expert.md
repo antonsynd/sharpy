@@ -1,7 +1,7 @@
 ---
 name: core-library-expert
 description: Implements and maintains Sharpy.Core standard library - Pythonic collections, builtins, matching Python behavior. C# 9.0 only.
-tools: Read, Edit, Glob, Grep, Bash
+tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 ---
 
 # Core Library Expert

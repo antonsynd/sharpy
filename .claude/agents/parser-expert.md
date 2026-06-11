@@ -1,7 +1,7 @@
 ---
 name: parser-expert
 description: Implements and maintains the Sharpy parser - AST construction, grammar, recursive descent with precedence levels. Owns src/Sharpy.Compiler/Parser/.
-tools: Read, Edit, Glob, Grep, Bash
+tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 ---
 
 # Parser Expert

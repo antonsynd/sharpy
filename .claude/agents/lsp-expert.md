@@ -1,7 +1,7 @@
 ---
 name: lsp-expert
 description: Implements and maintains the Sharpy LSP server — handlers, workspace management, refactoring providers. Owns src/Sharpy.Lsp/.
-tools: Read, Edit, Glob, Grep, Bash
+tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 ---
 
 # LSP Expert

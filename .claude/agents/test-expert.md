@@ -1,7 +1,7 @@
 ---
 name: test-expert
 description: Designs and implements tests for Sharpy compiler and stdlib. Focuses on coverage, edge cases, regression prevention.
-tools: Read, Edit, Glob, Grep, Bash
+tools: Read, Edit, Write, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 ---
 
 # Test Expert
