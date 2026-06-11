@@ -1,0 +1,15 @@
+import http
+
+
+def describe(s: http.HTTPStatus) -> str:
+    return s.phrase
+
+
+def main() -> None:
+    ok: http.HTTPStatus = http.HTTPStatus.OK
+    nf = http.HTTPStatus.NOT_FOUND
+    print(ok.value)
+    print(nf.value)
+    print(describe(nf))
+    print(ok == http.HTTPStatus.OK)
+    print(ok == nf)

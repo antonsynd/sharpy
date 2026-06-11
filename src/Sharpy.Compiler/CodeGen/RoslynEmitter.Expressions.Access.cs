@@ -1052,6 +1052,18 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess)
     {
+        // A module-qualified type used as a value/type reference (e.g. the receiver
+        // `http.HTTPStatus` of `http.HTTPStatus.OK`). The module alias points at the module
+        // CLASS (using http = global::Sharpy.HttpModule), which has no such member, so emit the
+        // fully-qualified type name (global::Sharpy.HTTPStatus) instead of `alias.Type` (#897).
+        // This must precede TryExtractModulePath, which would otherwise treat the type segment
+        // as a module-path element and emit the broken alias-qualified access.
+        if (TryResolveModuleExportedType(memberAccess) is { } moduleTypeRef)
+        {
+            return BuildTypeNameFromFqn(
+                GetFullyQualifiedTypeName(moduleTypeRef.Symbol, moduleTypeRef.OriginalName));
+        }
+
         // Check for nested module access (e.g., lib.math.add -> Lib.Math.Add)
         // This must be checked before enum handling to ensure module paths take precedence
         if (TryExtractModulePath(memberAccess, out var modulePath))
