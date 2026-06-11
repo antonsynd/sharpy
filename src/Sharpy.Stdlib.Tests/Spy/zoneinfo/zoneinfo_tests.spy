@@ -37,6 +37,14 @@ def test_constructor_invalid_zone_throws_zone_info_not_found_error():
         zoneinfo.ZoneInfo("Invalid/Zone")
 
 @test
+def test_constructor_invalid_zone_capture_exposes_exception():
+    # 'as exc' capture binds the module-qualified exception (#883).
+    with assert_raises(zoneinfo.ZoneInfoNotFoundError) as exc:
+        zoneinfo.ZoneInfo("Invalid/Zone")
+    assert exc is not None
+    assert "Invalid/Zone" in str(exc)
+
+@test
 def test_constructor_empty_key_throws_zone_info_not_found_error():
     with assert_raises(zoneinfo.ZoneInfoNotFoundError):
         zoneinfo.ZoneInfo("")
