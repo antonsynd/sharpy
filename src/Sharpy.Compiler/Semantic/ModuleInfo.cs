@@ -48,6 +48,14 @@ internal class ModuleInfo
     public string? CSharpNamespace { get; init; }
 
     /// <summary>
+    /// The simple C# class name of the [SharpyModule] class backing this module
+    /// (e.g., "EmailModule" for "email"). Used by the emitter to alias the module
+    /// to its real class instead of guessing a PascalCase name. Null for .spy source
+    /// modules and CLR namespace modules.
+    /// </summary>
+    public string? CSharpClassName { get; init; }
+
+    /// <summary>
     /// Indicates if this is an error recovery module created when the actual module couldn't be found.
     /// Error recovery modules contain placeholder symbols that suppress cascading errors in TypeChecker.
     /// </summary>

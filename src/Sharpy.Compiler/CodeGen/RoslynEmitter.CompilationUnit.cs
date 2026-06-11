@@ -342,7 +342,8 @@ internal partial class RoslynEmitter
                 {
                     // import math as m -> using m = global::Sharpy.Math;
                     var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(alias.Name);
-                    var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns);
+                    var className = _context.SemanticBinding.GetNetModuleCSharpClassName(alias.Name);
+                    var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
                     yield return UsingDirective(
                         NameEquals(alias.AsName),
                         ParseName(fullModuleClass));
@@ -377,7 +378,8 @@ internal partial class RoslynEmitter
                     // import math -> using math = global::Sharpy.Math;
                     var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_", StringComparison.Ordinal));
                     var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(alias.Name);
-                    var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns);
+                    var className = _context.SemanticBinding.GetNetModuleCSharpClassName(alias.Name);
+                    var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
                     yield return UsingDirective(
                         NameEquals(sanitizedAlias),
                         ParseName(fullModuleClass));
@@ -467,7 +469,8 @@ internal partial class RoslynEmitter
                 // e.g., "from math import sqrt" → "using static global::Sharpy.Math;"
                 // e.g., "from os.path import join" → "using static global::Sharpy.OsPath;"
                 var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(fromImport.Module);
-                var fullModuleClass = ConvertNetModuleToFullyQualified(fromImport.Module, ns);
+                var className = _context.SemanticBinding.GetNetModuleCSharpClassName(fromImport.Module);
+                var fullModuleClass = ConvertNetModuleToFullyQualified(fromImport.Module, ns, className);
                 yield return UsingDirective(ParseName(fullModuleClass))
                     .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
             }
@@ -589,69 +592,24 @@ internal partial class RoslynEmitter
         => _context.SemanticBinding.IsNetModule(moduleName);
 
     /// <summary>
-    /// Mapping for stdlib modules whose C# class name differs from the default
-    /// PascalCase convention (e.g., because the bare name conflicts with an
-    /// existing type or a member name matching the enclosing type).
-    /// </summary>
-    private static readonly Dictionary<string, string> StdlibClassNameOverrides = new(StringComparer.Ordinal)
-    {
-        { "argparse", "ArgparseModule" },
-        { "base64", "Base64Module" },
-        { "bisect", "BisectModule" },
-        { "calendar", "CalendarModule" },
-        { "csv", "CsvModule" },
-        { "difflib", "DifflibModule" },
-        { "fractions", "FractionsModule" },
-        { "fnmatch", "FnmatchModule" },
-        { "pathlib", "PathlibModule" },
-        { "string", "StringModule" },
-        { "time", "TimeModule" },
-        { "uuid", "UuidModule" },
-        { "copy", "CopyModule" },
-        { "glob", "GlobModule" },
-        { "math", "MathModule" },
-        { "tempfile", "TempfileModule" },
-        { "os", "OsModule" },
-        { "os.path", "OsPathModule" },
-        { "shutil", "ShutilModule" },
-        { "random", "RandomModule" },
-        { "secrets", "SecretsModule" },
-        { "hashlib", "HashlibModule" },
-        { "hmac", "HmacModule" },
-        { "platform", "PlatformModule" },
-        { "pprint", "PprintModule" },
-        { "urllib", "UrllibModule" },
-        { "struct", "StructModule" },
-        { "zlib", "ZlibModule" },
-        { "gzip", "GzipModule" },
-        { "zipfile", "ZipfileModule" },
-        { "shlex", "ShlexModule" },
-        { "subprocess", "SubprocessModule" },
-        { "socket", "SocketModule" },
-        { "re", "ReModule" },
-    };
-
-    /// <summary>
     /// Convert a Sharpy stdlib module name to a fully qualified C# class name.
-    /// e.g., "math" -> "global::Sharpy.MathModule", "os.path" -> "global::Sharpy.OsPath"
-    /// Stdlib module classes live in the Sharpy namespace with PascalCase names
-    /// where dotted parts are concatenated (no dots in the class name).
+    /// e.g., "email" -> "global::Sharpy.EmailModule", "os.path" -> "global::Sharpy.OsPath".
+    /// The real backing class name comes from [SharpyModule] discovery
+    /// (<paramref name="csharpClassName"/>); only modules genuinely absent from
+    /// discovery fall back to a concatenated-PascalCase derivation of the module name.
     /// </summary>
-    private static string ConvertStdlibModuleToFullyQualified(string moduleName)
-    {
-        return ConvertNetModuleToFullyQualified(moduleName, csharpNamespace: null);
-    }
-
-    private static string ConvertNetModuleToFullyQualified(string moduleName, string? csharpNamespace)
+    private static string ConvertNetModuleToFullyQualified(string moduleName, string? csharpNamespace, string? csharpClassName)
     {
         var ns = csharpNamespace ?? "Sharpy";
 
-        if (StdlibClassNameOverrides.TryGetValue(moduleName, out var overrideName))
-            return $"global::{ns}.{overrideName}";
+        // Prefer the actual [SharpyModule]-decorated class name recorded during discovery.
+        if (!string.IsNullOrEmpty(csharpClassName))
+            return $"global::{ns}.{csharpClassName}";
 
+        // Fallback for modules genuinely absent from discovery: simple PascalCase
+        // (e.g., Json, Os) — not the NameMangler.ToNamespacePart acronym logic used for
+        // user module names (which would produce JSON).
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        // Stdlib classes use simple PascalCase (e.g., Json, Os, Re) — not the
-        // NameMangler.ToNamespacePart acronym logic used for user module names (which would produce JSON).
         var className = string.Concat(parts.Select(StdlibToPascalCase));
         return $"global::{ns}.{className}";
     }

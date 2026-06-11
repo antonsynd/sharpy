@@ -190,6 +190,15 @@ internal class ModuleRegistry
     }
 
     /// <summary>
+    /// Get the simple C# class name of the [SharpyModule] class for a module
+    /// (e.g. "EmailModule" for "email"), or null if not available.
+    /// </summary>
+    public string? GetModuleCSharpClassName(string moduleName)
+    {
+        return _discovery.GetModuleCSharpClassName(moduleName);
+    }
+
+    /// <summary>
     /// Get the XML documentation summary for a module, or null if not available.
     /// </summary>
     public string? GetModuleDocumentation(string moduleName)

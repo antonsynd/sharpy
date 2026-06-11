@@ -453,6 +453,25 @@ internal class CachedModuleDiscovery
     }
 
     /// <summary>
+    /// Get the simple C# class name of the [SharpyModule] class for a module
+    /// (e.g. "EmailModule" for "email"), or null if not available.
+    /// </summary>
+    public string? GetModuleCSharpClassName(string moduleName)
+    {
+        foreach (var lazy in _loadedIndices.Values)
+        {
+            var index = lazy.Value;
+            if (index.Modules.TryGetValue(moduleName, out var moduleOverloads)
+                && moduleOverloads.CSharpClassName != null)
+            {
+                return moduleOverloads.CSharpClassName;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Get the XML documentation summary for a module, or null if not available.
     /// </summary>
     public string? GetModuleDocumentation(string moduleName)

@@ -73,6 +73,10 @@ public class SemanticBinding
     // Value is the C# namespace of the [SharpyModule] class (null if not available).
     private readonly ConcurrentDictionary<string, string?> _netModuleNames = new();
 
+    // Maps a .NET stdlib module name to the simple class name of its [SharpyModule]
+    // class (e.g. "email" -> "EmailModule"), null if not available from discovery.
+    private readonly ConcurrentDictionary<string, string?> _netModuleClassNames = new();
+
     // Phase-gating freeze flags - prevent mutations after a phase completes.
     // Volatile for thread safety when per-file bindings are frozen concurrently.
     private volatile bool _inheritanceFrozen;
@@ -346,13 +350,17 @@ public class SemanticBinding
     /// <summary>
     /// Marks a module name as a .NET stdlib module for codegen to emit correct using directives.
     /// </summary>
-    public void MarkAsNetModule(string moduleName, string? csharpNamespace = null)
+    public void MarkAsNetModule(string moduleName, string? csharpNamespace = null, string? csharpClassName = null)
     {
         if (_netModuleNamesFrozen)
         {
             AssertNotFrozen("NetModuleNames", moduleName);
         }
         _netModuleNames[moduleName] = csharpNamespace;
+        if (csharpClassName != null)
+        {
+            _netModuleClassNames[moduleName] = csharpClassName;
+        }
     }
 
     /// <summary>
@@ -366,6 +374,13 @@ public class SemanticBinding
     /// </summary>
     public string? GetNetModuleCSharpNamespace(string moduleName)
         => _netModuleNames.TryGetValue(moduleName, out var ns) ? ns : null;
+
+    /// <summary>
+    /// Gets the simple C# class name of a .NET module's [SharpyModule] class
+    /// (e.g. "EmailModule" for "email"), or null if not available from discovery.
+    /// </summary>
+    public string? GetNetModuleCSharpClassName(string moduleName)
+        => _netModuleClassNames.TryGetValue(moduleName, out var name) ? name : null;
 
     #endregion
 }

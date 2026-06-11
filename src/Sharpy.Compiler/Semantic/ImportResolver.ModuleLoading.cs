@@ -280,7 +280,7 @@ internal partial class ImportResolver
 
             // Track .NET module names for codegen to emit correct using directives
             if (moduleInfo is { IsNetModule: true })
-                _semanticBinding.MarkAsNetModule(importAlias.Name, moduleInfo.CSharpNamespace);
+                _semanticBinding.MarkAsNetModule(importAlias.Name, moduleInfo.CSharpNamespace, moduleInfo.CSharpClassName);
 
             // If not found in .NET assemblies, try .spy file
             if (moduleInfo == null)
@@ -479,7 +479,7 @@ internal partial class ImportResolver
 
         // Track .NET module names for codegen to emit correct using directives
         if (moduleInfo is { IsNetModule: true })
-            _semanticBinding.MarkAsNetModule(fromImport.Module, moduleInfo.CSharpNamespace);
+            _semanticBinding.MarkAsNetModule(fromImport.Module, moduleInfo.CSharpNamespace, moduleInfo.CSharpClassName);
 
         // If not found in .NET assemblies or synthetic modules, try .spy file
         if (moduleInfo == null)
@@ -789,7 +789,8 @@ internal partial class ImportResolver
             Module = null!,
             ExportedSymbols = new Dictionary<string, Symbol>(),
             IsNetModule = true,
-            CSharpNamespace = _moduleRegistry.GetModuleCSharpNamespace(moduleName)
+            CSharpNamespace = _moduleRegistry.GetModuleCSharpNamespace(moduleName),
+            CSharpClassName = _moduleRegistry.GetModuleCSharpClassName(moduleName)
         };
 
         foreach (var function in functions)
