@@ -1,0 +1,18 @@
+def main() -> None:
+    # print()/str() of a tuple formats its elements with repr() semantics,
+    # so string elements keep their quotes (Python: print(('x','y')) -> ('x', 'y')).
+    pair: tuple[str, str] = ("x", "y")
+    print(pair)
+    print(str(pair))
+
+    # single-element string tuple keeps trailing comma and quotes
+    single: tuple[str] = ("x",)
+    print(single)
+
+    # mixed element types
+    mixed: tuple[int, str, int] = (1, "a", 2)
+    print(mixed)
+
+    # nested list element is repr'd, so its string members keep their quotes
+    nested: tuple[list[str], int] = (["a", "b"], 1)
+    print(nested)

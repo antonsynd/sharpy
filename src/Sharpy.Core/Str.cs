@@ -47,45 +47,18 @@ namespace Sharpy
             }
 
             // ValueTuples (System.ValueTuple<...>): format with Python-style
-            // parentheses. Default ValueTuple.ToString() omits the trailing
-            // comma for single-element tuples ("(1)"); Python requires "(1,)".
+            // parentheses. Like list/set/dict, str() of a tuple formats its
+            // elements with repr() semantics (e.g. str(('x', 'y')) == "('x', 'y')"),
+            // so this delegates to the shared repr formatter (which also handles
+            // the single-element trailing comma: str((1,)) == "(1,)").
             var type = x.GetType();
             if (type.IsValueType && type.FullName != null
                 && type.FullName.StartsWith("System.ValueTuple`", StringComparison.Ordinal))
             {
-                return FormatValueTupleStr(x, type);
+                return FormatValueTuple(x, type);
             }
 
             return x.ToString() ?? "";
-        }
-
-        private static string FormatValueTupleStr(object tuple, Type type)
-        {
-            // ITuple flattens the nested TRest that ValueTuple uses to pack more
-            // than 7 elements, so Length/indexer expose the logical arity
-            // (e.g. an 8-tuple reports Length 8, not "7 items + a 1-tuple Rest").
-            var t = (System.Runtime.CompilerServices.ITuple)tuple;
-            var builder = new System.Text.StringBuilder();
-            builder.Append('(');
-            for (int i = 0; i < t.Length; i++)
-            {
-                if (i > 0)
-                {
-                    builder.Append(", ");
-                }
-
-                builder.Append(Str(t[i]!));
-            }
-
-            // Single-element tuples render with a trailing comma to match Python:
-            // str((1,)) == "(1,)". Arity >= 2 is unaffected.
-            if (t.Length == 1)
-            {
-                builder.Append(',');
-            }
-
-            builder.Append(')');
-            return builder.ToString();
         }
 
         /// <summary>

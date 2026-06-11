@@ -226,4 +226,28 @@ public class StrTests
         Builtins.Str((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
             .Should().Be("(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)");
     }
+
+    [Fact]
+    public void Str_StringElementTuple_UsesReprForElements()
+    {
+        // Python: str(('x', 'y')) == "('x', 'y')" — container str() formats
+        // its elements with repr(), so strings keep their quotes.
+        Builtins.Str(("x", "y")).Should().Be("('x', 'y')");
+    }
+
+    [Fact]
+    public void Str_SingleStringElementTuple_UsesReprWithTrailingComma()
+    {
+        // Python: str(('x',)) == "('x',)"
+        Builtins.Str(System.ValueTuple.Create("x")).Should().Be("('x',)");
+    }
+
+    [Fact]
+    public void Str_NestedCollectionElementTuple_UsesReprForElements()
+    {
+        // Python: str((['a'], 1)) == "(['a'], 1)" — the list element is repr'd,
+        // so its string member keeps its quotes.
+        var list = new List<string> { "a" };
+        Builtins.Str((list, 1)).Should().Be("(['a'], 1)");
+    }
 }
