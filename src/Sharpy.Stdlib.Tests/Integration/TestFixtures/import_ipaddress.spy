@@ -1,0 +1,9 @@
+import ipaddress
+
+
+def main() -> None:
+    addr: ipaddress.IPv4Address = ipaddress.IPv4Address("192.168.1.1")
+    print(str(addr))
+    print(addr.IsPrivate)
+    print(ipaddress.IPv4Address("8.8.8.8").IsPrivate)
+    print(ipaddress.IPv4Address("127.0.0.1").IsLoopback)

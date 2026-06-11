@@ -1,0 +1,11 @@
+import email
+
+
+def main() -> None:
+    msg = email.EmailMessage()
+    msg.set_item("Subject", "Hello")
+    msg.set_item("From", "a@b.com")
+    print(msg.get_item("Subject"))
+    print(msg.get_item("subject"))
+    print(msg.contains("From"))
+    print(len(msg.keys()))
