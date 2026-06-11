@@ -3,6 +3,7 @@ using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
+using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -64,10 +65,31 @@ internal class ProtocolValidator : ValidatingAstWalker
         base.VisitFunctionCall(node);
     }
 
+    /// <summary>
+    /// Reports the strict-Optional protocol error for a <c>T?</c> receiver: protocol operations
+    /// (len/in/indexing/iteration) are not available on an Optional directly — it must be narrowed
+    /// or unwrapped first. Returns true when an error was reported (caller skips the generic check).
+    /// </summary>
+    private bool ReportOptionalProtocol(SemanticType type, string operation, int line, int column, TextSpan? span)
+    {
+        if (type is not OptionalType)
+            return false;
+
+        AddError(
+            $"Optional type '{type.GetDisplayName()}' does not support {operation} directly. " +
+            "Narrow it first (if x is not None:) or unwrap it (x.unwrap()).",
+            line, column, code: DiagnosticCodes.Semantic.ProtocolMissingMethod, span: span);
+        return true;
+    }
+
     private void ValidateIteration(ForStatement forStmt)
     {
         var iterableType = Context.SemanticInfo.GetExpressionType(forStmt.Iterator);
         if (iterableType == null || iterableType is UnknownType)
+            return;
+
+        if (ReportOptionalProtocol(iterableType, "iteration",
+                forStmt.Iterator.LineStart, forStmt.Iterator.ColumnStart, forStmt.Iterator.Span))
             return;
 
         // Async for loops use IAsyncEnumerable<T> protocol, not __iter__.
@@ -88,6 +110,10 @@ internal class ProtocolValidator : ValidatingAstWalker
         if (iterableType == null || iterableType is UnknownType)
             return;
 
+        if (ReportOptionalProtocol(iterableType, "iteration",
+                iterator.LineStart, iterator.ColumnStart, iterator.Span))
+            return;
+
         if (!HasProtocol(iterableType, DunderNames.Iter))
         {
             AddError(
@@ -104,6 +130,10 @@ internal class ProtocolValidator : ValidatingAstWalker
         if (containerType == null || containerType is UnknownType)
             return;
 
+        if (ReportOptionalProtocol(containerType, "indexing",
+                indexAccess.LineStart, indexAccess.ColumnStart, indexAccess.Span))
+            return;
+
         if (!HasProtocol(containerType, DunderNames.GetItem))
         {
             AddError(
@@ -118,6 +148,10 @@ internal class ProtocolValidator : ValidatingAstWalker
     {
         var containerType = Context.SemanticInfo.GetExpressionType(binOp.Right);
         if (containerType == null || containerType is UnknownType)
+            return;
+
+        if (ReportOptionalProtocol(containerType, "membership testing",
+                binOp.LineStart, binOp.ColumnStart, binOp.Span))
             return;
 
         if (!HasProtocol(containerType, DunderNames.Contains))
@@ -139,6 +173,10 @@ internal class ProtocolValidator : ValidatingAstWalker
             if (argType == null || argType is UnknownType)
                 return;
 
+            if (ReportOptionalProtocol(argType, "len()",
+                    call.LineStart, call.ColumnStart, call.Span))
+                return;
+
             if (!HasProtocol(argType, DunderNames.Len))
             {
                 AddError(
@@ -156,6 +194,13 @@ internal class ProtocolValidator : ValidatingAstWalker
     /// </summary>
     private bool HasProtocol(SemanticType type, string dunderName)
     {
+        // T | None (C# nullable, .NET interop) exposes the protocols of its underlying type —
+        // protocol ops are permitted and a null receiver fails at runtime (Python-parity).
+        // OptionalType (T?) is deliberately NOT unwrapped: it is strict and must be narrowed or
+        // unwrapped first (reported with an actionable message by the Validate* callers).
+        if (type is NullableType nullableType)
+            return HasProtocol(nullableType.UnderlyingType, dunderName);
+
         // Check Sharpy built-in types first
         if (type == SemanticType.Str)
         {

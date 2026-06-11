@@ -133,6 +133,67 @@ x = Some(42)   # Error: Cannot infer type for 'Some()'
 The compiler infers the full type from context. The shorthand is equivalent to
 calling `Optional<T>.Some(value)` or using `Optional<T>.None()`.
 
+## Protocol Operations and Member Access
+
+`T?` (`Optional[T]`) is **strict**: its safety guarantee is the whole point of the
+type, so the underlying value is never reached implicitly. Protocol operations
+(`len()`, the `in` membership test, indexing `x[i]`, and iteration
+`for v in x`) and direct member/method access on the underlying type are
+**compile errors** on a `T?` receiver:
+
+```python
+s: str? = get_name()
+print(len(s))    # error: Optional type 'str?' does not support len() directly
+print(s[0])      # error: Optional type 'str?' does not support indexing directly
+print(s.upper()) # error: 'str?' has no member 'upper'
+```
+
+Reach the underlying value explicitly — narrow it, use `?.`, pattern-match, or
+unwrap it:
+
+```python
+# Narrow with `is not None` (refines T? to T in the branch)
+if s is not None:
+    print(len(s))
+    print(s.upper())
+
+# Null-conditional access (?.)
+upper: str? = s?.upper()
+
+# Pattern matching
+match s:
+    case Some(v):
+        print(len(v))
+    case None:
+        print("empty")
+
+# Unwrap (throws on None)
+print(len(s.unwrap()))
+print(s.unwrap_or("default"))
+```
+
+The only members callable directly on a `T?` are `Optional`'s own API
+(`unwrap`, `unwrap_or`, `unwrap_or_else`, `map`, `is_some`, `is_none`).
+
+### `T | None` is loose
+
+By contrast, `T | None` (the C# nullable interop type — see
+[Nullable Types](nullable_types.md)) is **loose**: protocol operations and
+member access work directly on the underlying type, and a `None`/`null`
+receiver fails at runtime (a `NullReferenceException`, mirroring Python's
+`TypeError` / `AttributeError` on `None`). This matches .NET interop semantics,
+where nullable references flow into ordinary member access:
+
+```python
+s: str | None = dotnet_api()
+print(len(s))      # works; throws at runtime if s is None
+print(s.upper())   # works; throws at runtime if s is None
+```
+
+Choose `T?` when you want the compiler to force you to handle absence; choose
+`T | None` at .NET interop boundaries where Python-parity runtime semantics are
+acceptable.
+
 ## Comparison: `T?` (Optional) vs `T | None` (C# Nullable)
 
 | Feature | `T?` / `Optional[T]` | `T \| None` (C# Nullable) |

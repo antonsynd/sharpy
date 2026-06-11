@@ -662,6 +662,10 @@ internal class TypeInferenceService
     /// </summary>
     public SemanticType? InferIterableElementType(SemanticType iterableType)
     {
+        // T | None (C# nullable interop) is iterable as its underlying type (null fails at
+        // runtime — Python-parity). OptionalType (T?) is strict and is NOT unwrapped here.
+        iterableType = UnwrapNullable(iterableType);
+
         // Dict view types: items() yields (K, V) tuples, keys() yields K, values() yields V
         if (iterableType is GenericType { Name: BuiltinNames.DictItemsView } itemsView && itemsView.TypeArguments.Count == 2)
             return new TupleType { ElementTypes = new List<SemanticType>(itemsView.TypeArguments) };
@@ -780,6 +784,12 @@ internal class TypeInferenceService
     /// </summary>
     public SemanticType? InferIndexAccessType(SemanticType container, SemanticType index)
     {
+        // T | None (C# nullable interop) exposes the underlying type's protocols, so indexing a
+        // nullable yields the element type of T (a null receiver fails at runtime — Python-parity).
+        // OptionalType (T?) is intentionally NOT unwrapped: it is strict and the ProtocolValidator
+        // reports an actionable narrow/unwrap error instead.
+        container = UnwrapNullable(container);
+
         // Generic containers
         if (container is GenericType generic)
         {
@@ -893,6 +903,18 @@ internal class TypeInferenceService
             _ => null
         };
     }
+
+    /// <summary>
+    /// Recursively unwraps <see cref="NullableType"/> (C# nullable interop) wrappers for
+    /// container/protocol-position inference (indexing, iteration). <see cref="OptionalType"/>
+    /// is deliberately NOT unwrapped — T? is strict and must be narrowed/unwrapped explicitly.
+    /// Not applied to general assignability.
+    /// </summary>
+    private static SemanticType UnwrapNullable(SemanticType type) => type switch
+    {
+        NullableType nt => UnwrapNullable(nt.UnderlyingType),
+        _ => type
+    };
 
     private Type? GetIteratorElementType(Type clrType)
     {

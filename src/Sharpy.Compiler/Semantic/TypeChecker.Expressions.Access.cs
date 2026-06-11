@@ -72,6 +72,22 @@ internal partial class TypeChecker
             }
         }
 
+        // Strict Optional (T?): direct member access is only allowed for Optional's own API
+        // (unwrap, unwrap_or, unwrap_or_else, map, is_some, is_none, ...). Accessing a member of
+        // the underlying type requires narrowing (if x is not None:), '?.', or unwrapping. Without
+        // this guard the access silently type-checks and emits broken C# (Optional<T>.Member).
+        // Narrowed receivers never reach here — CheckExpression already returns the narrowed T.
+        if (objectType is OptionalType && !memberAccess.IsNullConditional
+            && !IsOptionalApiMember(objectType, memberAccess.Member))
+        {
+            AddError(
+                $"Type '{objectType.GetDisplayName()}' has no member '{memberAccess.Member}'. " +
+                "Narrow the optional first (if x is not None:), use '?.', or unwrap it (x.unwrap()).",
+                memberAccess.LineStart, memberAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.NullabilityViolation, span: memberAccess.Span);
+            return SemanticType.Unknown;
+        }
+
         // Handle module member access (e.g., config.MAX_SIZE, utils.helper())
         if (memberLookupType is ModuleType moduleType)
         {
@@ -413,6 +429,20 @@ internal partial class TypeChecker
     /// Used by CheckMemberAccess and ResolveUserMethodOverload for uniform
     /// property/method resolution across GenericType, ResultType, OptionalType, and BuiltinType.
     /// </summary>
+    /// <summary>
+    /// Returns true when <paramref name="memberName"/> is a member of the Optional API itself
+    /// (e.g. unwrap, unwrap_or, unwrap_or_else, map, is_some, is_none) — the only members that may
+    /// be accessed directly on a <c>T?</c> receiver. Resolved from the registered Optional
+    /// TypeSymbol so the set stays in sync with Sharpy.Core's Optional definition.
+    /// </summary>
+    private bool IsOptionalApiMember(SemanticType optionalType, string memberName)
+    {
+        var (optionalSymbol, _) = ResolveBuiltinTypeInfo(optionalType);
+        return optionalSymbol != null
+            && (optionalSymbol.Methods.Any(m => m.Name == memberName)
+                || optionalSymbol.Properties.Any(p => p.Name == memberName));
+    }
+
     private (TypeSymbol? TypeSymbol, List<SemanticType>? TypeArgs) ResolveBuiltinTypeInfo(SemanticType type)
     {
         return type switch
