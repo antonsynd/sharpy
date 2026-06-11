@@ -1,0 +1,22 @@
+# Narrowing one tuple element (t[1] is None) must not break .ItemN lowering of
+# sibling indices (t[0]) or of the narrowed element itself in the else branch (#892).
+def make(n: str, v: str | None) -> tuple[str, str | None]:
+    return (n, v)
+
+
+def to_strings(attrs: list[tuple[str, str | None]]) -> list[str]:
+    result: list[str] = []
+    for attr in attrs:
+        if attr[1] is None:
+            result.append(f"({attr[0]}, null)")
+        else:
+            result.append(f"({attr[0]}, {attr[1]})")
+    return result
+
+
+def main() -> None:
+    items: list[tuple[str, str | None]] = []
+    items.append(make("href", "x"))
+    items.append(make("checked", None))
+    for s in to_strings(items):
+        print(s)

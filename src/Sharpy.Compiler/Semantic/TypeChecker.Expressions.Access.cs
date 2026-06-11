@@ -628,6 +628,13 @@ internal partial class TypeChecker
             var narrowedType = _narrowingContext.GetNarrowedType(narrowingKey);
             if (narrowedType != null)
             {
+                // Still type-check (and thereby record) the object and index expressions so
+                // codegen can resolve container-specific lowering for the narrowed access —
+                // e.g. a narrowed tuple element t[1] must still lower to .Item2, which requires
+                // the object's TupleType to be recorded in SemanticInfo. CheckExpression is
+                // cached, so this is cheap and idempotent.
+                CheckExpression(indexAccess.Object);
+                CheckExpression(indexAccess.Index);
                 return narrowedType;
             }
         }
