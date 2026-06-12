@@ -8,7 +8,7 @@
 | `/` | Division* | `/` (with cast if necessary) |
 | `//` | Floor division** | `/` (with cast if necessary) |
 | `%` | Modulo | `%` |
-| `**` | Exponentiation | `Math.Pow(x, y)` |
+| `**` | Exponentiation | Integer: constant folding / checked integer power; float: `Math.Pow(x, y)` (see below) |
 
 ## Division Operator `/`
 
@@ -45,10 +45,23 @@ mathematical quotient (rounds toward negative infinity).
 7.0f // 2   # 3.0f (float32) - mixed: result is float32
 ```
 
+## Exponentiation Operator `**`
+
+Sharpy integers are fixed-width (Axiom 1), so integer exponentiation never
+silently saturates or loses precision:
+
+| Case | Behavior |
+|------|----------|
+| Constant `int ** int` (non-negative exponent) | Folded at compile time. Result is typed `int` if it fits, widened to `long` if it fits `long`; otherwise compile error **SPY0328** (`IntegerPowerOverflow`). |
+| Non-constant integer `**` (non-negative exponent) | Checked exponentiation-by-squaring (`Sharpy.Builtins.CheckedIntPow`); raises `OverflowError` on overflow. Results are exact across the full `long` range (no `Math.Pow` rounding above 2^53). |
+| Integer `**` negative exponent | Truncating `Math.Pow` double path (`int ** int` stays `int`, e.g. `2 ** -1` is `0`). |
+| Any float operand | `Math.Pow(x, y)`, result is float. |
+
 ## Implementation
 
 - *Standard: ✅ Native*
-- *`**`: 🔄 Lowered to `Math.Pow()`*
+- *`**`: 🔄 Constant-folded or lowered to `Sharpy.Builtins.CheckedIntPow()` for
+integers, `Math.Pow()` for floats. See table above.*
 - *`/`: 🔄 Lowered to floating-point division. See table above.*
 - *`//`: 🔄 Lowered to `(int)Math.Floor((double)a / b)` for integers,
 `Math.Floor(a / b)` for floats.*
