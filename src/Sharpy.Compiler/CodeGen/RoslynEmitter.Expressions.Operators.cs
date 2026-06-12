@@ -73,17 +73,21 @@ internal partial class RoslynEmitter
                         if (!IsSideEffectFree(binOp.Right))
                             return saturatingCast;
 
+                        // Generate fresh operand nodes per use site (rather than reusing `left`/
+                        // `right`, which already sit inside powCall) so no syntax node instance
+                        // occupies multiple tree positions. Safe to re-generate: the
+                        // IsSideEffectFree guard above limits this path to identifiers/literals.
                         var checkedPowCall = InvocationExpression(
                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                                 MakeGlobalQualifiedName("Sharpy", "Builtins"),
                                 IdentifierName("CheckedIntPow")))
                             .AddArgumentListArguments(
-                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
-                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
+                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(GenerateExpression(binOp.Left)))),
+                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(GenerateExpression(binOp.Right)))));
 
                         var negativeExponent = BinaryExpression(
                             SyntaxKind.LessThanExpression,
-                            right,
+                            GenerateExpression(binOp.Right),
                             LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
 
                         return ParenthesizedExpression(
