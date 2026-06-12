@@ -26,6 +26,28 @@ Run in parallel:
 
 If the branch is `main` or `mainline`, **warn the user** that they're about to push directly to the main branch and confirm before proceeding.
 
+### 1.5. Generated-artifact staleness gate
+
+CI fails (`check_spy_staleness.sh` / `check_spy_tests_staleness.sh`) when generated C# or generated docs fall out of sync with their sources. Catch this **before** pushing.
+
+Check which paths the outgoing commits touch:
+
+```bash
+git diff --name-only @{upstream}..HEAD 2>/dev/null || git diff --name-only origin/mainline...HEAD
+```
+
+Then run the matching regeneration checks (use `dangerouslyDisableSandbox` — these invoke dotnet):
+
+| Outgoing changes touch | Run |
+|------------------------|-----|
+| `src/Sharpy.Stdlib/spy/` or `src/Sharpy.Compiler/` or `src/Sharpy.Core/` | `bash build_tools/check_spy_staleness.sh` |
+| `src/Sharpy.Stdlib.Tests/Spy/` or `src/Sharpy.Compiler/` or `src/Sharpy.Core/` | `bash build_tools/check_spy_tests_staleness.sh` |
+| `src/Sharpy.Core/` or `src/Sharpy.Stdlib/` (public API / doc comments) | `python3 -m build_tools stdlib generate --force` then `git status --short -- docs/stdlib` |
+
+- If a staleness check reports STALE/MISSING files: run the corresponding regeneration script (`build_tools/regenerate_spy_stdlib.sh` or `build_tools/regenerate_spy_tests.sh`), commit the regenerated files, and re-run the check.
+- If the docs generator leaves `docs/stdlib` dirty: commit the regenerated docs (`docs(stdlib): regenerate ...`). Never hand-edit generated docs or generated C#.
+- Compiler changes matter too: codegen changes alter the *generated* spy-test C# even when no `.spy` file changed — that's why `src/Sharpy.Compiler/` is in the trigger column.
+
 ### 2. Push
 
 ```bash
