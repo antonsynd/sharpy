@@ -1,0 +1,16 @@
+# Issue #911: a None-returning (void) call used as a comparison operand is a
+# compile-time error (SPY0329). This deliberately diverges from Python (Axiom 3
+# type-safety > Axiom 2 syntax): Python would evaluate f() for its side effect
+# and compare "hello" == None -> False, printing "side effect" then "not equal".
+# Sharpy treats a None-valued comparison operand as a near-certain bug and
+# rejects it rather than silently dropping the call (the pre-#911 mis-lowering).
+def f() -> None:
+    print("side effect")
+
+
+def main():
+    s: str = "hello"
+    if s == f():
+        print("equal")
+    else:
+        print("not equal")
