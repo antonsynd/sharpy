@@ -1,0 +1,165 @@
+import csv
+import io
+
+# NOTE: DictReader_NullLines_ThrowsTypeError, DictWriter_NullOutput_ThrowsTypeError, and
+# DictWriter_NullFieldnames_ThrowsTypeError are omitted: they pass `null!` to non-nullable
+# parameters, which Sharpy rejects at compile time (Axiom 3 > Axiom 2). Type-unsafe by design.
+
+# --- CsvDictReader ---
+
+@test
+def test_dict_reader_auto_detects_fieldnames_from_first_row():
+    reader = csv.dict_reader(["name,age", "Alice,30"])
+    rows: list[dict[str, str]] = []
+    for row in reader:
+        rows.append(row)
+    assert reader.fieldnames.is_some
+    assert reader.fieldnames.unwrap()[0] == "name"
+    assert reader.fieldnames.unwrap()[1] == "age"
+
+@test
+def test_dict_reader_auto_detect_row_has_correct_values():
+    reader = csv.dict_reader(["name,age", "Alice,30", "Bob,25"])
+    rows: list[dict[str, str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 2
+    assert rows[0]["name"] == "Alice"
+    assert rows[0]["age"] == "30"
+    assert rows[1]["name"] == "Bob"
+    assert rows[1]["age"] == "25"
+
+@test
+def test_dict_reader_explicit_fieldnames_first_row_is_data():
+    # When fieldnames are supplied, NO row is consumed as headers
+    reader = csv.dict_reader(["Alice,30", "Bob,25"], ["name", "age"])
+    rows: list[dict[str, str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 2
+    assert rows[0]["name"] == "Alice"
+    assert rows[0]["age"] == "30"
+
+@test
+def test_dict_reader_explicit_fieldnames_accessible_before_iteration():
+    reader = csv.dict_reader(["1,2"], ["x", "y"])
+    # Fieldnames should be set even before iteration
+    assert reader.fieldnames.is_some
+    assert reader.fieldnames.unwrap()[0] == "x"
+    assert reader.fieldnames.unwrap()[1] == "y"
+
+@test
+def test_dict_reader_missing_field_produces_empty_string():
+    # Row has fewer fields than fieldnames; missing field should be ""
+    reader = csv.dict_reader(["name,age,city", "Alice,30"])
+    rows: list[dict[str, str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 1
+    assert rows[0]["name"] == "Alice"
+    assert rows[0]["age"] == "30"
+    assert rows[0]["city"] == ""
+
+@test
+def test_dict_reader_extra_fields_are_dropped():
+    # Row has more fields than fieldnames; extra fields are silently dropped
+    reader = csv.dict_reader(["name,age", "Alice,30,extra_value"])
+    rows: list[dict[str, str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 1
+    assert len(rows[0]) == 2
+    assert rows[0].contains_key("name")
+    assert rows[0].contains_key("age")
+
+@test
+def test_dict_reader_quoted_fields_parsed_correctly():
+    reader = csv.dict_reader(["name,desc", "Alice,\"hello, world\""])
+    rows: list[dict[str, str]] = []
+    for row in reader:
+        rows.append(row)
+    assert rows[0]["desc"] == "hello, world"
+
+@test
+def test_dict_reader_single_column_works():
+    reader = csv.dict_reader(["value", "42", "99"])
+    rows: list[dict[str, str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 2
+    assert rows[0]["value"] == "42"
+    assert rows[1]["value"] == "99"
+
+# --- CsvDictWriter ---
+
+@test
+def test_dict_writer_fieldnames_property_returns_fieldnames():
+    sw = io.StringIO()
+    writer = csv.dict_writer(sw, ["name", "age"])
+    assert writer.fieldnames[0] == "name"
+    assert writer.fieldnames[1] == "age"
+
+@test
+def test_dict_writer_writeheader_writes_fieldnames():
+    sw = io.StringIO()
+    writer = csv.dict_writer(sw, ["name", "age", "city"])
+    writer.writeheader()
+    assert sw.getvalue() == "name,age,city\n"
+
+@test
+def test_dict_writer_writerow_writes_values_in_field_order():
+    sw = io.StringIO()
+    writer = csv.dict_writer(sw, ["name", "age"])
+    row: dict[str, str] = {"name": "Alice", "age": "30"}
+    writer.writerow(row)
+    assert sw.getvalue() == "Alice,30\n"
+
+@test
+def test_dict_writer_writerow_missing_key_writes_empty_string():
+    sw = io.StringIO()
+    writer = csv.dict_writer(sw, ["name", "age", "city"])
+    # "city" key is absent
+    row: dict[str, str] = {"name": "Alice", "age": "30"}
+    writer.writerow(row)
+    assert sw.getvalue() == "Alice,30,\n"
+
+@test
+def test_dict_writer_writerow_field_with_comma_is_quoted():
+    sw = io.StringIO()
+    writer = csv.dict_writer(sw, ["name", "address"])
+    row: dict[str, str] = {"name": "Alice", "address": "123 Main St, Springfield"}
+    writer.writerow(row)
+    assert "\"123 Main St, Springfield\"" in sw.getvalue()
+
+@test
+def test_dict_writer_writerows_writes_multiple_rows():
+    sw = io.StringIO()
+    writer = csv.dict_writer(sw, ["name", "age"])
+    rows: list[dict[str, str]] = [{"name": "Alice", "age": "30"}, {"name": "Bob", "age": "25"}]
+    writer.writerows(rows)
+    assert sw.getvalue() == "Alice,30\nBob,25\n"
+
+@test
+def test_dict_writer_writeheader_then_rows_produces_full_csv():
+    sw = io.StringIO()
+    writer = csv.dict_writer(sw, ["name", "score"])
+    writer.writeheader()
+    row: dict[str, str] = {"name": "Alice", "score": "100"}
+    writer.writerow(row)
+    assert sw.getvalue() == "name,score\nAlice,100\n"
+
+@test
+def test_dict_writer_round_trip_dict_writer_then_dict_reader():
+    sw = io.StringIO()
+    writer = csv.dict_writer(sw, ["name", "age"])
+    writer.writeheader()
+    row1: dict[str, str] = {"name": "Alice", "age": "30"}
+    writer.writerow(row1)
+    lines: list[str] = [ln for ln in sw.getvalue().split("\n") if len(ln) > 0]
+    reader = csv.dict_reader(lines)
+    rows: list[dict[str, str]] = []
+    for r in reader:
+        rows.append(r)
+    assert len(rows) == 1
+    assert rows[0]["name"] == "Alice"
+    assert rows[0]["age"] == "30"
