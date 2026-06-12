@@ -92,9 +92,9 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | RandomTests.cs | 16 | | | pending |
 | RandomAdditionalTests.cs | 22 | | | pending |
 | RandomAdditionalTests2.cs | 23 | | | pending |
-| ReModuleTests.cs | 56 | | | pending |
-| ReOperationTests.cs | 24 | | | pending |
-| RePatternTests.cs | 74 | | | pending |
+| ReModuleTests.cs | 56 | Spy/re/re_module_tests.spy | 56 | ported |
+| ReOperationTests.cs | 24 | Spy/re/re_operation_tests.spy | 24 | ported |
+| RePatternTests.cs | 74 | Spy/re/re_pattern_tests.spy | 67 | ported (7 omitted: 4 re.error type-not-nameable + 3 MatchResult indexer __getitem__ — spy-sourced module member-type gap, #918) |
 | RequestsModuleTests.cs | 20 | | | pending |
 | RequestsResponseTests.cs | 38 | | | pending |
 | RequestsSessionTests.cs | 37 | | | pending |
