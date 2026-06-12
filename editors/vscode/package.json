@@ -2,7 +2,7 @@
   "name": "sharpy-lang",
   "displayName": "Sharpy",
   "description": "Sharpy language support — diagnostics, hover, go-to-definition, and syntax highlighting",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "antonsynd",
   "license": "MIT OR Apache-2.0",
   "engines": {
