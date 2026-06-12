@@ -1,0 +1,6 @@
+import functools
+
+
+def main() -> None:
+    key = functools.cmp_to_key(lambda a, b: a - b)
+    print(key)
