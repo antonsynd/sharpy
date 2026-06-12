@@ -115,6 +115,24 @@ internal partial class RoslynEmitter
                     Argument(toleranceArg)));
         }
 
+        // assert a == None / a != None on a reference-semantics operand → Xunit.Assert.Null / NotNull.
+        // Honors the semantic-recorded NoneCheck lowering (#901): reference-type ==/!= None is a null
+        // check, not an operator== call (see RoslynEmitter.Expressions.Operators.cs's NoneCheck branch).
+        // Checked ahead of the generic ==/!= patterns so the comparison maps to a dedicated null
+        // assertion. Operand order is irrelevant — detect the non-None side from the AST. NullableType/
+        // OptionalType operands never reach here: the type checker rejects their ==/!= None comparisons
+        // with SPY0222, so gating on NoneCheck alone is sufficient.
+        if (test is BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } noneEq
+            && (noneEq.Left is NoneLiteral) != (noneEq.Right is NoneLiteral)
+            && _context.SemanticInfo?.GetBinaryOpLowering(noneEq) == BinaryOpLowering.NoneCheck)
+        {
+            var nonNoneOperand = noneEq.Left is NoneLiteral ? noneEq.Right : noneEq.Left;
+            var nullAssert = noneEq.Operator == BinaryOperator.Equal ? "Null" : "NotNull";
+            return ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName(nullAssert)))
+                .AddArgumentListArguments(Argument(GenerateExpression(nonNoneOperand))));
+        }
+
         // assert a == b → Xunit.Assert.Equal(b, a)  (expected, actual order)
         if (test is BinaryOp { Operator: BinaryOperator.Equal } eq)
         {
