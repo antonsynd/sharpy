@@ -25,11 +25,11 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | CollectionsModuleTests.cs | 57 | | | pending |
 | CollectionsAdditionalTests.cs | 33 | | | pending |
 | ColorsysTests.cs | 32 | Spy/colorsys/colorsys_tests.spy | 32 | ported |
-| ConfigparserTests.cs | 66 | | | pending |
+| ConfigparserTests.cs | 66 | Spy/configparser/configparser_tests.spy | 66 | ported |
 | CounterCompleteTests.cs | 20 | | | pending |
-| CsvModuleTests.cs | 9 | | | pending |
-| CsvDictTests.cs | 19 | | | pending |
-| CsvReaderWriterTests.cs | 18 | | | pending |
+| CsvModuleTests.cs | 9 | Spy/csv/csv_module_tests.spy | 9 | ported |
+| CsvDictTests.cs | 19 | Spy/csv/csv_dict_tests.spy | 16 | ported (3 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
+| CsvReaderWriterTests.cs | 18 | Spy/csv/csv_reader_writer_tests.spy | 16 | ported (2 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
 | DatetimeTests.cs | 69 | | | pending |
 | DatetimeDateTests.cs | 20 | | | pending |
 | DatetimeDateTimeTests.cs | 19 | | | pending |
@@ -123,9 +123,9 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | TomlTypedDeserializationTests.cs | 6 | | | pending |
 | UuidModuleTests.cs | 13 | Spy/uuid/uuid_module_tests.spy | 13 | ported (re-enabled #886) |
 | XmlModuleTests.cs | 84 | | | pending |
-| YamlModuleTests.cs | 60 | | | pending |
-| YamlRoundtripTests.cs | 29 | | | pending |
-| YamlTypedDeserializationTests.cs | 6 | | | pending |
+| YamlModuleTests.cs | 60 | Spy/yaml/yaml_module_tests.spy | 55 | ported (5 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
+| YamlRoundtripTests.cs | 29 | Spy/yaml/yaml_roundtrip_tests.spy | 21 | ported (8 omitted: 1 null-arg/Axiom 3, 1 TryGetValue/`out`-param interop, 4 CommentInfo construction + 2 Keys-order — yaml surface gaps #919) |
+| YamlTypedDeserializationTests.cs | 6 | Spy/yaml/yaml_typed_deserialization_tests.spy | 5 | ported (1 omitted: null-arg TypeError, Axiom 3) |
 | ZoneinfoTests.cs | 28 | Spy/zoneinfo/zoneinfo_tests.spy | 29 | ported (re-enabled #901; +1 invalid-zone test) |
 
 ## Out of Scope (stay C#)
