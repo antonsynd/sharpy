@@ -1,0 +1,22 @@
+# Non-constant integer ** routes through Sharpy.Builtins.CheckedIntPow (#905):
+# results are exact (no lossy Math.Pow round-trip) and overflow raises
+# OverflowError instead of saturating. Operands are runtime variables so the
+# compile-time constant folding (SPY0328) path does not apply.
+def power(base: int, exp: int) -> int:
+    return base ** exp
+
+
+def main() -> None:
+    # In-range int ** int stays exact.
+    print(power(3, 5))
+
+    # long ** long is exact beyond 2**53 (Math.Pow would round this).
+    lb: long = 3
+    le: long = 39
+    print(lb ** le)
+
+    # int ** int overflowing 32-bit raises OverflowError (no saturation).
+    try:
+        print(power(2, 40))
+    except OverflowError:
+        print("overflow")
