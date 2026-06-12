@@ -48,6 +48,7 @@ def main() -> None:
 
         Assert.False(HasCode(result, "SPY0237"),
             $"Annotated lambda must not trigger SPY0237. Errors: {string.Join(", ", result.CompilationErrors)}");
+        Assert.True(result.Success, $"Expected success, got: {string.Join(", ", result.CompilationErrors)}");
     }
 
     [Fact]
@@ -80,6 +81,7 @@ def main() -> None:
 
         Assert.False(HasCode(result, "SPY0237"),
             $"Annotated lambda must not trigger SPY0237. Errors: {string.Join(", ", result.CompilationErrors)}");
+        Assert.True(result.Success, $"Expected success, got: {string.Join(", ", result.CompilationErrors)}");
     }
 
     [Fact]

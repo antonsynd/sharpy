@@ -121,7 +121,9 @@ internal partial class RoslynEmitter
         // Checked ahead of the generic ==/!= patterns so the comparison maps to a dedicated null
         // assertion. Operand order is irrelevant — detect the non-None side from the AST. NullableType/
         // OptionalType operands never reach here: the type checker rejects their ==/!= None comparisons
-        // with SPY0222, so gating on NoneCheck alone is sufficient.
+        // with SPY0222. The literal-shape guard below is load-bearing, not redundant: NoneCheck
+        // classifies by VoidType, which also matches void-returning calls (#911), so requiring exactly
+        // one NoneLiteral keeps the operand selection well-defined and lets that case fall through.
         if (test is BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } noneEq
             && (noneEq.Left is NoneLiteral) != (noneEq.Right is NoneLiteral)
             && _context.SemanticInfo?.GetBinaryOpLowering(noneEq) == BinaryOpLowering.NoneCheck)

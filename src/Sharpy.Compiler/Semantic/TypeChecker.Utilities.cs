@@ -882,7 +882,7 @@ internal partial class TypeChecker
         {
             // First type yielding constructors wins — return the full overload set.
             if (currentType.Constructors.Count > 0)
-                return currentType.Constructors.ToList();
+                return currentType.Constructors;
 
             // CLR-backed type with no enumerated constructors: no metadata to validate
             // against, so signal callers to skip rather than reject valid kwargs.

@@ -1317,7 +1317,8 @@ internal partial class TypeChecker
     /// keyword arguments into their matching formal parameter slots. Generic inference is
     /// index-aligned to <see cref="FunctionSymbol.Parameters"/>, so a lambda passed by keyword
     /// (e.g. <c>cmp_to_key(cmp=...)</c>) must be placed in its parameter slot to contribute its
-    /// type. When there are no keyword arguments the positional list is returned unchanged.
+    /// type. When there are no keyword arguments the positional list is returned unchanged — the
+    /// same <paramref name="argTypes"/> instance, not a copy, so callers must not mutate the result.
     /// Stops at the first parameter slot with neither a positional nor a keyword argument, since
     /// the index alignment cannot represent a gap.
     /// </summary>
@@ -2373,30 +2374,33 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
 
-        // Reports SPY0234 for any keyword argument whose name matches no non-self parameter of
-        // any candidate constructor overload. An empty candidate set (CLR base with no enumerated
-        // metadata, or no constructors) defers to the C# compiler and reports nothing.
-        void ValidateInitializerKeywordArguments(FunctionCall initCall, TypeSymbol? candidateRoot)
+    /// <summary>
+    /// Reports SPY0234 for any keyword argument of a <c>super().__init__</c>/<c>self.__init__</c>
+    /// call whose name matches no non-self parameter of any candidate constructor overload (#907).
+    /// An empty candidate set (CLR base with no enumerated metadata, or no constructors) defers to
+    /// the C# compiler and reports nothing.
+    /// </summary>
+    private void ValidateInitializerKeywordArguments(FunctionCall initCall, TypeSymbol? candidateRoot)
+    {
+        if (initCall.KeywordArguments.Length == 0 || candidateRoot == null)
+            return;
+
+        var candidates = ResolveInitializerConstructorCandidates(candidateRoot);
+        if (candidates.Count == 0)
+            return;
+
+        foreach (var kwarg in initCall.KeywordArguments)
         {
-            if (initCall.KeywordArguments.Length == 0 || candidateRoot == null)
-                return;
-
-            var candidates = ResolveInitializerConstructorCandidates(candidateRoot);
-            if (candidates.Count == 0)
-                return;
-
-            foreach (var kwarg in initCall.KeywordArguments)
+            var matchesSomeOverload = candidates.Any(
+                ctor => ctor.Parameters.Skip(1).Any(p => p.Name == kwarg.Name));
+            if (!matchesSomeOverload)
             {
-                var matchesSomeOverload = candidates.Any(
-                    ctor => ctor.Parameters.Skip(1).Any(p => p.Name == kwarg.Name));
-                if (!matchesSomeOverload)
-                {
-                    AddError($"Unknown keyword argument '{kwarg.Name}'",
-                        kwarg.LineStart, kwarg.ColumnStart,
-                        code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                        span: kwarg.Value.Span);
-                }
+                AddError($"Unknown keyword argument '{kwarg.Name}'",
+                    kwarg.LineStart, kwarg.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                    span: kwarg.Value.Span);
             }
         }
     }

@@ -34,8 +34,8 @@ class Widget:
 
 @test
 def test_none_equality():
-    # NoneCheck-classified operand (a class-UDT instance, not Optional/str?):
-    # == None rewrites to Assert.Null, != None rewrites to Assert.NotNull.
+    # NoneCheck-classified operand (a class-UDT instance, not Optional/str?): == None / != None
+    # rewrite to Assert.Null/NotNull. Deliberately contradictory — snapshot-only, never executed.
     w: Widget = Widget("gadget")
     assert w == None
     assert w != None
