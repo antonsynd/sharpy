@@ -10,9 +10,20 @@ using static AssertRewriting;
 
 public static partial class AssertRewriting
 {
+    public class Widget
+    {
+        public string Name;
+        public Widget(string name)
+#line 32 "assert_rewriting.spy"
+        {
+#line (33, 9) - (33, 25) 1 "assert_rewriting.spy"
+            this.Name = name;
+        }
+    }
+
     public static void Main()
     {
-#line (30, 5) - (30, 16) 1 "assert_rewriting.spy"
+#line (44, 5) - (44, 16) 1 "assert_rewriting.spy"
         global::Sharpy.Builtins.Print("ok");
     }
 }
@@ -74,5 +85,16 @@ public partial class AssertRewritingTests
         Xunit.Assert.Contains(1, items);
 #line (27, 5) - (27, 27) 1 "assert_rewriting.spy"
         Xunit.Assert.DoesNotContain(4, items);
+    }
+
+    [Xunit.FactAttribute]
+    public void TestNoneEquality()
+    {
+#line (39, 5) - (39, 34) 1 "assert_rewriting.spy"
+        Widget w = new Widget("gadget");
+#line (40, 5) - (40, 22) 1 "assert_rewriting.spy"
+        Xunit.Assert.Null(w);
+#line (41, 5) - (41, 22) 1 "assert_rewriting.spy"
+        Xunit.Assert.NotNull(w);
     }
 }

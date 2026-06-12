@@ -26,5 +26,19 @@ def test_membership():
     assert 1 in items
     assert 4 not in items
 
+class Widget:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+@test
+def test_none_equality():
+    # NoneCheck-classified operand (a class-UDT instance, not Optional/str?):
+    # == None rewrites to Assert.Null, != None rewrites to Assert.NotNull.
+    w: Widget = Widget("gadget")
+    assert w == None
+    assert w != None
+
 def main():
     print("ok")
