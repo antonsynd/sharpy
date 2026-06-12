@@ -1263,7 +1263,11 @@ internal partial class TypeChecker
             if (TryReportUninferrableLambdaTypeArg(call, funcSymbol))
                 return SemanticType.Unknown;
 
-            var inferenceResult = _genericInference.InferTypeArguments(funcSymbol, argTypes);
+            // Keyword arguments also carry type information for inference (e.g.
+            // cmp_to_key(cmp=lambda a: int, b: int: ...)). Map them into their formal
+            // parameter slots so the index-aligned inference can see them (#909).
+            var inferenceArgTypes = BuildInferenceArgumentTypes(funcSymbol, argTypes, kwargTypes);
+            var inferenceResult = _genericInference.InferTypeArguments(funcSymbol, inferenceArgTypes);
             if (inferenceResult.Success && inferenceResult.InferredTypes != null)
             {
                 // Inference succeeded - substitute type parameters and return the result
@@ -1309,11 +1313,43 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Builds the positionally-aligned argument-type list used for generic inference, filling
+    /// keyword arguments into their matching formal parameter slots. Generic inference is
+    /// index-aligned to <see cref="FunctionSymbol.Parameters"/>, so a lambda passed by keyword
+    /// (e.g. <c>cmp_to_key(cmp=...)</c>) must be placed in its parameter slot to contribute its
+    /// type. When there are no keyword arguments the positional list is returned unchanged.
+    /// Stops at the first parameter slot with neither a positional nor a keyword argument, since
+    /// the index alignment cannot represent a gap.
+    /// </summary>
+    private static List<SemanticType> BuildInferenceArgumentTypes(
+        FunctionSymbol funcSymbol,
+        List<SemanticType> argTypes,
+        Dictionary<string, SemanticType> kwargTypes)
+    {
+        if (kwargTypes.Count == 0)
+            return argTypes;
+
+        var ordered = new List<SemanticType>();
+        for (int i = 0; i < funcSymbol.Parameters.Count; i++)
+        {
+            if (i < argTypes.Count)
+                ordered.Add(argTypes[i]);
+            else if (kwargTypes.TryGetValue(funcSymbol.Parameters[i].Name, out var kwargType))
+                ordered.Add(kwargType);
+            else
+                break;
+        }
+
+        return ordered;
+    }
+
+    /// <summary>
     /// Emits SPY0237 when a generic function has a type parameter that appears only in
-    /// <see cref="FunctionType"/>-shaped parameter positions and the corresponding positional
-    /// argument is a lambda with one or more unannotated parameters — i.e. the type parameter
-    /// is genuinely uninferrable. Returns true (and reports) when such a case is found, so the
-    /// caller can stop instead of binding the parameter to Unknown and leaking CS0411 (#904).
+    /// <see cref="FunctionType"/>-shaped parameter positions and the argument bound to that
+    /// formal slot — positionally or by keyword name — is a lambda with one or more unannotated
+    /// parameters — i.e. the type parameter is genuinely uninferrable. Returns true (and reports)
+    /// when such a case is found, so the caller can stop instead of binding the parameter to
+    /// Unknown and leaking CS0411 (#904).
     /// Annotated lambdas supply concrete parameter types and never trigger this.
     /// </summary>
     private bool TryReportUninferrableLambdaTypeArg(FunctionCall call, FunctionSymbol funcSymbol)
@@ -1333,11 +1369,12 @@ internal partial class TypeChecker
                     || !functionParam.ParameterTypes.Any(p => ReferencesTypeParameterNamed(p, typeParam.Name)))
                     continue;
 
-                // The i-th formal parameter binds positionally to the i-th positional argument.
-                // TODO(#909): a lambda passed as a *keyword* argument is not matched here and
-                // leaks the downstream error instead of this SPY0237.
-                if (i < call.Arguments.Length
-                    && call.Arguments[i] is LambdaExpression lambda
+                // Bind the i-th formal parameter to its argument: positionally to the i-th
+                // positional argument, or by name to a matching keyword argument.
+                var boundArg = i < call.Arguments.Length
+                    ? call.Arguments[i]
+                    : call.KeywordArguments.FirstOrDefault(k => k.Name == funcSymbol.Parameters[i].Name)?.Value;
+                if (boundArg is LambdaExpression lambda
                     && lambda.Parameters.Any(p => p.Type == null))
                 {
                     AddError(

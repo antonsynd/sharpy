@@ -51,6 +51,38 @@ def main() -> None:
     }
 
     [Fact]
+    public void CmpToKey_UnannotatedLambdaAsKwarg_EmitsSpy0237()
+    {
+        var result = CompileAndExecute(@"
+import functools
+
+def main() -> None:
+    key = functools.cmp_to_key(cmp=lambda a, b: a - b)
+    print(key)
+");
+
+        Assert.True(HasCode(result, "SPY0237"),
+            $"Expected SPY0237, got: {string.Join(", ", result.CompilationErrors)}");
+        // The leak we are preventing must not surface.
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("CS0411"));
+    }
+
+    [Fact]
+    public void CmpToKey_AnnotatedLambdaAsKwarg_NoSpy0237()
+    {
+        var result = CompileAndExecute(@"
+import functools
+
+def main() -> None:
+    key = functools.cmp_to_key(cmp=lambda a: int, b: int: a - b)
+    print(key)
+");
+
+        Assert.False(HasCode(result, "SPY0237"),
+            $"Annotated lambda must not trigger SPY0237. Errors: {string.Join(", ", result.CompilationErrors)}");
+    }
+
+    [Fact]
     public void SortWithKeyLambda_NoSpy0237()
     {
         // Regression guard: key-selector lambdas (TKey inferred from the body, not the
