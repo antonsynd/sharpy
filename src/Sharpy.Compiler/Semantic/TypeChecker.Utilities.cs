@@ -857,6 +857,45 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Resolves the constructor (<c>__init__</c>) overload candidates that an initializer call —
+    /// <c>super().__init__(...)</c> or <c>self.__init__(...)</c> — could bind to. Walks
+    /// <paramref name="targetType"/> and its base hierarchy (via <see cref="GetBaseType"/>) and
+    /// returns <em>all</em> overloads of the first type that declares any constructors, mirroring
+    /// the hierarchy walk in <see cref="ValidateSuperMemberAccess"/> (first type yielding
+    /// constructors wins). For <c>super</c>, callers pass the base type; for <c>self</c>, callers
+    /// pass the current class.
+    /// <para>
+    /// Unlike <see cref="ValidateSuperMemberAccess"/> — which defers argument validation entirely
+    /// when a base has more than one overload — this returns the complete overload set so callers
+    /// can validate keyword-argument names against the <em>union</em> of overloads.
+    /// </para>
+    /// <para>
+    /// A CLR-backed type (<see cref="TypeSymbol.ClrType"/> != null) whose constructors are not
+    /// enumerated in metadata yields an empty list, signalling callers to skip validation rather
+    /// than reject otherwise-valid keyword arguments.
+    /// </para>
+    /// </summary>
+    private IReadOnlyList<FunctionSymbol> ResolveInitializerConstructorCandidates(TypeSymbol targetType)
+    {
+        var currentType = targetType;
+        while (currentType != null)
+        {
+            // First type yielding constructors wins — return the full overload set.
+            if (currentType.Constructors.Count > 0)
+                return currentType.Constructors.ToList();
+
+            // CLR-backed type with no enumerated constructors: no metadata to validate
+            // against, so signal callers to skip rather than reject valid kwargs.
+            if (currentType.ClrType != null)
+                return Array.Empty<FunctionSymbol>();
+
+            currentType = GetBaseType(currentType);
+        }
+
+        return Array.Empty<FunctionSymbol>();
+    }
+
+    /// <summary>
     /// Validate super() context rules based on current method type
     /// </summary>
     private void ValidateSuperContextRules(string calledMethodName, SuperExpression superExpr, MemberAccess memberAccess)
