@@ -1,0 +1,18 @@
+# Issue #907: an unknown keyword argument passed to super().__init__() must be
+# rejected at the semantic stage (SPY0234) instead of leaking to a CS1739
+# error from the generated C#.
+class Base:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+
+class Derived(Base):
+    def __init__(self):
+        super().__init__(bogus="x")
+
+
+def main():
+    d: Derived = Derived()
+    print(d.name)

@@ -1,0 +1,25 @@
+# super().__init__() with a keyword argument (b) that is valid only for the
+# second of the base's two constructor overloads. The union-of-overloads rule
+# accepts a kwarg that matches any candidate constructor, so this compiles.
+class Base:
+    a: int
+    b: int
+
+    def __init__(self, a: int):
+        self.a = a
+        self.b = 0
+
+    def __init__(self, a: int, b: int):
+        self.a = a
+        self.b = b
+
+
+class Derived(Base):
+    def __init__(self):
+        super().__init__(a=1, b=5)
+
+
+def main():
+    d: Derived = Derived()
+    print(d.a)
+    print(d.b)
