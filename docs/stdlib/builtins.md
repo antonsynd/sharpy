@@ -1160,6 +1160,46 @@ Return x raised to the power y.
 
 **Returns:** x raised to the power y
 
+### `checked_int_pow(x: int, y: int) -> int`
+
+Return x raised to the power y as an exact `int` using
+checked exponentiation-by-squaring. Unlike `Pow(int, int)`,
+this does not route through floating-point and therefore never silently
+loses precision or saturates: an out-of-range result raises
+`OverflowError`, matching Python's "diagnose, don't saturate"
+semantics for fixed-width integers.
+
+**Parameters:**
+
+- `x` (int) -- The base.
+- `y` (int) -- The exponent. Must be non-negative; negative exponents
+are handled by the caller's floating-point path (e.g. `2 ** -1 == 0.5`).
+
+**Returns:** x raised to the power y.
+
+**Raises:**
+
+- `OverflowError` -- The result does not fit in an `int`.
+- `System.ArgumentOutOfRangeException` -- y is negative.
+
+### `checked_int_pow(x: long, y: long) -> long`
+
+Return x raised to the power y as an exact `long` using
+checked exponentiation-by-squaring. See `CheckedIntPow(int, int)`
+for semantics; an out-of-range result raises `OverflowError`.
+
+**Parameters:**
+
+- `x` (long) -- The base.
+- `y` (long) -- The exponent. Must be non-negative.
+
+**Returns:** x raised to the power y.
+
+**Raises:**
+
+- `OverflowError` -- The result does not fit in a `long`.
+- `System.ArgumentOutOfRangeException` -- y is negative.
+
 ### `range(stop: int) -> RangeIterator`
 
 Return an iterator that produces integers from 0 up to (but not including) stop.
