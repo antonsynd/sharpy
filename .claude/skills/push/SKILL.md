@@ -26,6 +26,21 @@ Run in parallel:
 
 If the branch is `main` or `mainline`, **warn the user** that they're about to push directly to the main branch and confirm before proceeding.
 
+### 1.25. Version bump check (dev/mainline only)
+
+If the current branch is `dev` or `mainline`, check whether a version bump is needed before pushing:
+
+```bash
+git describe --tags --abbrev=0 2>/dev/null || echo "none"
+grep -oP '(?<=<SharpyVersion>)[^<]+' Directory.Build.props
+```
+
+If the current `SharpyVersion` in `Directory.Build.props` equals the last tag version (strip leading `v`), warn:
+
+> ⚠️ **Version not bumped:** `Directory.Build.props` is still at `X.Y.Z`, which matches the last tag `vX.Y.Z`. If this push is destined for a release, run `/bump-version --apply` first.
+
+This is advisory — the push is not blocked. Skip silently if the version already exceeds the last tag.
+
 ### 1.5. Generated-artifact staleness gate
 
 CI fails (`check_spy_staleness.sh` / `check_spy_tests_staleness.sh`) when generated C# or generated docs fall out of sync with their sources. Catch this **before** pushing.
