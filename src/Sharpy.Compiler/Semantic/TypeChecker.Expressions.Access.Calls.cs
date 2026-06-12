@@ -1334,6 +1334,8 @@ internal partial class TypeChecker
                     continue;
 
                 // The i-th formal parameter binds positionally to the i-th positional argument.
+                // TODO(#909): a lambda passed as a *keyword* argument is not matched here and
+                // leaks the downstream error instead of this SPY0237.
                 if (i < call.Arguments.Length
                     && call.Arguments[i] is LambdaExpression lambda
                     && lambda.Parameters.Any(p => p.Type == null))

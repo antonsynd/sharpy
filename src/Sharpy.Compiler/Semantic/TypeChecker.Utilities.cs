@@ -623,10 +623,6 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Checks if a type contains any unresolved TypeParameterType instances.
-    /// Used to detect method-level generic type parameters that need inference.
-    /// </summary>
-    /// <summary>
     /// Recursively checks whether <paramref name="type"/> references a type parameter with the
     /// given <paramref name="name"/> (used to determine where a specific generic parameter appears).
     /// </summary>
@@ -645,6 +641,10 @@ internal partial class TypeChecker
         };
     }
 
+    /// <summary>
+    /// Checks if a type contains any unresolved TypeParameterType instances.
+    /// Used to detect method-level generic type parameters that need inference.
+    /// </summary>
     private static bool ContainsTypeParameterType(SemanticType type)
     {
         return type switch

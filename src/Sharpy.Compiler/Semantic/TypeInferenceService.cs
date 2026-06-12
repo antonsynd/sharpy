@@ -671,14 +671,6 @@ internal class TypeInferenceService
     }
 
     /// <summary>
-    /// Returns true when an equality operation (<c>==</c>/<c>!=</c>) on two CLR-backed types
-    /// must be resolved via <c>Equals</c> rather than a native operator: the operands denote
-    /// the same (or mutually assignable) CLR type, that type defines no <c>op_Equality</c>, and
-    /// it nonetheless has meaningful value/structural equality (implements <c>IEquatable&lt;self&gt;</c>,
-    /// overrides <c>Equals(object)</c>, or is a value type / enum). Used for both type inference
-    /// and the <see cref="BinaryOpLowering.EqualsCall"/> codegen decision.
-    /// </summary>
-    /// <summary>
     /// Returns true when an equality operation (<c>==</c>/<c>!=</c>) compares the None literal
     /// (<see cref="VoidType"/>) against a reference-semantics type (a non-value-type
     /// <see cref="UserDefinedType"/>, <c>str</c>, or a collection <see cref="GenericType"/>).
@@ -725,9 +717,20 @@ internal class TypeInferenceService
             return !clr.IsValueType;
 
         // Sharpy-defined types not yet mapped to a CLR type: classify by declared kind.
+        // A null Symbol (error recovery / undiscovered CLR type) conservatively returns
+        // false: the comparison is excluded from the NoneCheck lowering and falls through
+        // to the pre-existing diagnostics path, never to a silent null check.
         return udt.Symbol?.TypeKind is TypeKind.Class or TypeKind.Interface or TypeKind.Delegate;
     }
 
+    /// <summary>
+    /// Returns true when an equality operation (<c>==</c>/<c>!=</c>) on two CLR-backed types
+    /// must be resolved via <c>Equals</c> rather than a native operator: the operands denote
+    /// the same (or mutually assignable) CLR type, that type defines no <c>op_Equality</c>, and
+    /// it nonetheless has meaningful value/structural equality (implements <c>IEquatable&lt;self&gt;</c>,
+    /// overrides <c>Equals(object)</c>, or is a value type / enum). Used for both type inference
+    /// and the <see cref="BinaryOpLowering.EqualsCall"/> codegen decision.
+    /// </summary>
     private bool IsClrEqualsFallback(BinaryOperator op, SemanticType left, SemanticType right)
     {
         if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))

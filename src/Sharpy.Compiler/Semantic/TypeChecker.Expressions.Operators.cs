@@ -217,6 +217,10 @@ internal partial class TypeChecker
         }
     }
 
+    // Only called for radix 2 and 8 (hex goes through BigInteger.TryParse above), so
+    // numeric digits suffice. Malformed digits throw FormatException, which the caller's
+    // try/catch converts to false — the lexer has already validated the literal, so this
+    // is pure defense.
     private static System.Numerics.BigInteger ParseBase(string digits, int radix)
     {
         var result = System.Numerics.BigInteger.Zero;

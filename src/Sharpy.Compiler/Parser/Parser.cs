@@ -143,7 +143,11 @@ public partial class Parser
     /// classifies as a type annotation only if the following token is one that can
     /// continue a parameter list / annotation (',', '=', ':', '?', '!'). If EOF or a
     /// newline is reached before the brackets balance, returns false (not an
-    /// annotation) so the construct is parsed as a body expression.
+    /// annotation) so the construct is parsed as a body expression. Only bracket
+    /// depth is tracked — parentheses inside the brackets (no current type syntax
+    /// produces them) would not confuse the bracket balance but a ']' inside a
+    /// parenthesized expression counts toward it; extend to track paren depth if
+    /// such type syntax is ever added.
     /// </remarks>
     private bool IsBracketedTypeAnnotation()
     {
