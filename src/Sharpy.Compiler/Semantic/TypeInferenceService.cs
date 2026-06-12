@@ -678,6 +678,13 @@ internal class TypeInferenceService
     /// codegen to a C# null pattern (<see cref="BinaryOpLowering.NoneCheck"/>). Exactly one operand
     /// must be the None literal. NullableType/OptionalType and non-nullable value types are excluded:
     /// the former have dedicated handling, the latter must keep emitting SPY0222 (#901).
+    /// <para>
+    /// Invariant (#911): a <see cref="VoidType"/> operand reaching equality inference/lowering is
+    /// guaranteed to be the <c>None</c> literal — void-returning call operands are rejected earlier
+    /// in <c>TypeChecker.CheckBinaryOp</c> with SPY0329 before this classifier or
+    /// <see cref="GetBinaryOpLowering"/> runs. (A third consumer, <c>OperatorValidator</c>, reads
+    /// the lowering type-wise only to suppress SPY0402; it never selects operands, so it is benign.)
+    /// </para>
     /// </summary>
     private static bool IsNoneReferenceEquality(BinaryOperator op, SemanticType left, SemanticType right)
     {
