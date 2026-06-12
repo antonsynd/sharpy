@@ -2335,6 +2335,13 @@ internal partial class TypeChecker
         if (call.Function is MemberAccess ma && ma.Object is SuperExpression && ma.Member == DunderNames.Init)
         {
             _superInitCalled = true;
+
+            // Validate keyword-argument names against the base constructor overloads so an
+            // unknown kwarg surfaces as SPY0234 here instead of leaking a C# CS1739 (#907).
+            // super()/no-parent context errors are already reported by ValidateSuperMemberAccess;
+            // a null base yields no candidates, so this stays silent in those cases.
+            if (_currentClass != null)
+                ValidateInitializerKeywordArguments(call, GetBaseType(_currentClass));
         }
 
         // Validate self.__init__() is only called inside a constructor
@@ -2356,9 +2363,42 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.ConflictingConstructorInitializers,
                     span: call.Span);
             }
+            else if (_currentClass != null)
+            {
+                // Context is valid — validate keyword-argument names against this class's own
+                // constructor overloads (#907). Skipped above to avoid double-reporting on calls
+                // already flagged as out-of-context or conflicting.
+                ValidateInitializerKeywordArguments(call, _currentClass);
+            }
         }
 
         return null;
+
+        // Reports SPY0234 for any keyword argument whose name matches no non-self parameter of
+        // any candidate constructor overload. An empty candidate set (CLR base with no enumerated
+        // metadata, or no constructors) defers to the C# compiler and reports nothing.
+        void ValidateInitializerKeywordArguments(FunctionCall initCall, TypeSymbol? candidateRoot)
+        {
+            if (initCall.KeywordArguments.Length == 0 || candidateRoot == null)
+                return;
+
+            var candidates = ResolveInitializerConstructorCandidates(candidateRoot);
+            if (candidates.Count == 0)
+                return;
+
+            foreach (var kwarg in initCall.KeywordArguments)
+            {
+                var matchesSomeOverload = candidates.Any(
+                    ctor => ctor.Parameters.Skip(1).Any(p => p.Name == kwarg.Name));
+                if (!matchesSomeOverload)
+                {
+                    AddError($"Unknown keyword argument '{kwarg.Name}'",
+                        kwarg.LineStart, kwarg.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                        span: kwarg.Value.Span);
+                }
+            }
+        }
     }
 
     /// <summary>
