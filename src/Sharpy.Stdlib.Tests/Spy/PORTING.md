@@ -18,9 +18,9 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 |---------|-------|-----------|-------|--------|
 | ArgparseTests.cs | 42 | Spy/argparse/argparse_tests.spy | 42 | ported |
 | ArgparseAdditionalTests.cs | 19 | Spy/argparse/argparse_additional_tests.spy | 18 | ported (1 omitted: SetOutput/StringWriter) |
-| Base64Tests.cs | 13 | | | pending |
-| BisectTests.cs | 19 | | | pending |
-| BisectAdditionalTests.cs | 15 | | | pending |
+| Base64Tests.cs | 13 | Spy/base64/base64_tests.spy | 13 | ported |
+| BisectTests.cs | 19 | Spy/bisect/bisect_tests.spy | 19 | ported |
+| BisectAdditionalTests.cs | 15 | Spy/bisect/bisect_additional_tests.spy | 15 | ported |
 | CalendarTests.cs | 28 | Spy/calendar/calendar_tests.spy | 25 | ported (re-enabled #886-#892) |
 | CollectionsModuleTests.cs | 57 | | | pending |
 | CollectionsAdditionalTests.cs | 33 | | | pending |
@@ -37,18 +37,18 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | DefaultDictTests.cs | 13 | | | pending |
 | DequeChainMapTests.cs | 16 | | | pending |
 | DifflibModuleTests.cs | 34 | Spy/difflib/difflib_module_tests.spy | 34 | ported |
-| EmailTests.cs | 34 | | | pending |
+| EmailTests.cs | 34 | Spy/email/email_tests.spy | 34 | ported (re-enabled #903) |
 | FnmatchTests.cs | 27 | Spy/fnmatch/fnmatch_tests.spy | 27 | ported |
 | FractionsTests.cs | 66 | Spy/fractions/fractions_tests.spy | 66 | ported |
-| FunctoolsTests.cs | 21 | | | pending |
+| FunctoolsTests.cs | 21 | Spy/functools/functools_tests.spy | 21 | ported (re-enabled #904; cmp_to_key lambdas annotated) |
 | GlobModuleTests.cs | 18 | | | pending |
 | GraphemeTests.cs | 27 | Spy/grapheme/grapheme_tests.spy | 27 | ported |
 | HashlibTests.cs | 12 | Spy/hashlib/hashlib_tests.spy | 12 | ported |
 | HashlibCompleteTests.cs | 22 | Spy/hashlib/hashlib_complete_tests.spy | 22 | ported |
 | HeapqTests.cs | 31 | Spy/heapq/heapq_tests.spy | 31 | ported (re-enabled #889) |
-| HeapqAdditionalTests.cs | 12 | | | pending |
+| HeapqAdditionalTests.cs | 12 | Spy/heapq/heapq_additional_tests.spy | 12 | ported |
 | HmacTests.cs | 13 | Spy/hmac/hmac_tests.spy | 13 | ported (re-enabled #890) |
-| HtmlModuleTests.cs | 44 | Spy/html/html_module_tests.spy | 40 | ported (re-enabled #902; 4 omitted: convert_charrefs=False, #906) |
+| HtmlModuleTests.cs | 44 | Spy/html/html_module_tests.spy | 44 | ported (re-enabled #902; 4 convert_charrefs=False tests restored #906) |
 | HttpTests.cs | 35 | Spy/http/http_tests.spy | 26 | ported (9 omitted: 7 HTTPResponse internal ctor, 1 reflection, 1 StringWriter) |
 | IoModuleTests.cs | 15 | | | pending |
 | IoStringIOTests.cs | 27 | | | pending |
@@ -65,7 +65,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | JsonTypedDeserializationTests.cs | 16 | | | pending |
 | LoggingModuleTests.cs | 14 | | | pending |
 | LoggingCompleteTests.cs | 22 | | | pending |
-| LruCacheTests.cs | 13 | | | pending |
+| LruCacheTests.cs | 13 | Spy/functools/lru_cache_tests.spy | 13 | ported |
 | MathAdditionalTests.cs | 48 | Spy/math/math_additional_tests.spy | 48 | ported |
 | MathAdditionalTests2.cs | 72 | Spy/math/math_additional2_tests.spy | 72 | ported |
 | ModuleIntegrationTests.cs | 7 | | | pending |
@@ -99,8 +99,8 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | RequestsResponseTests.cs | 38 | | | pending |
 | RequestsSessionTests.cs | 37 | | | pending |
 | RequestsAdvancedTests.cs | 34 | | | pending |
-| SecretsTests.cs | 21 | | | pending |
-| ShlexModuleTests.cs | 34 | | | pending |
+| SecretsTests.cs | 21 | Spy/secrets/secrets_tests.spy | 21 | ported |
+| ShlexModuleTests.cs | 34 | Spy/shlex/shlex_module_tests.spy | 31 | ported (3 omitted: Split/Quote/Join_Null_ThrowsTypeError — null→non-nullable rejected at compile time, Axiom 3) |
 | ShutilTests.cs | 15 | | | pending |
 | ShutilAdditionalTests.cs | 14 | | | pending |
 | SocketModuleTests.cs | 46 | | | pending |
@@ -108,15 +108,15 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | Sqlite3CursorTests.cs | 46 | | | pending |
 | Sqlite3ErrorTests.cs | 33 | | | pending |
 | Sqlite3RowTests.cs | 24 | | | pending |
-| StatisticsTests.cs | 31 | | | pending |
-| StatisticsAdditionalTests.cs | 19 | | | pending |
-| StringModuleTests.cs | 12 | | | pending |
+| StatisticsTests.cs | 31 | Spy/statistics/statistics_tests.spy | 31 | ported |
+| StatisticsAdditionalTests.cs | 19 | Spy/statistics/statistics_additional_tests.spy | 19 | ported |
+| StringModuleTests.cs | 12 | Spy/string/string_module_tests.spy | 12 | ported |
 | SubprocessModuleTests.cs | 36 | | | pending |
 | SysModuleTests.cs | 21 | | | pending |
 | TarfileTests.cs | 24 | | | pending |
 | TempfileTests.cs | 11 | | | pending |
 | TempfileCompleteTests.cs | 11 | | | pending |
-| TextwrapTests.cs | 27 | | | pending |
+| TextwrapTests.cs | 27 | Spy/textwrap/textwrap_tests.spy | 27 | ported |
 | ThreadingModuleTests.cs | 43 | | | pending |
 | TimeModuleTests.cs | 34 | | | pending |
 | TomlModuleTests.cs | 46 | | | pending |
@@ -126,7 +126,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | YamlModuleTests.cs | 60 | | | pending |
 | YamlRoundtripTests.cs | 29 | | | pending |
 | YamlTypedDeserializationTests.cs | 6 | | | pending |
-| ZoneinfoTests.cs | 28 | | | pending |
+| ZoneinfoTests.cs | 28 | Spy/zoneinfo/zoneinfo_tests.spy | 29 | ported (re-enabled #901; +1 invalid-zone test) |
 
 ## Out of Scope (stay C#)
 
