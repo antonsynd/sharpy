@@ -296,7 +296,15 @@ internal partial class RoslynEmitter
         // `x is not null`). This bypasses any overloaded op_Equality and matches Python's
         // identity fallback (a live object == None is False). Operand order is irrelevant —
         // detect the non-None side from the AST.
+        // The literal-shape guard `(Left is NoneLiteral) != (Right is NoneLiteral)` is an
+        // invariant assertion, mirroring the one in ControlFlow.cs: the #911 semantic gate
+        // (SPY0329) rejects any non-literal VoidType comparison operand before lowering, so
+        // a NoneCheck lowering always has exactly one NoneLiteral operand. The guard is
+        // defense-in-depth — a future regression that violated the invariant would fall
+        // through to the native `==`/`!=` operator (a loud C# compile error) rather than
+        // silently dropping the non-literal operand.
         if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
+            && (binOp.Left is NoneLiteral) != (binOp.Right is NoneLiteral)
             && _context.SemanticInfo?.GetBinaryOpLowering(binOp) == BinaryOpLowering.NoneCheck)
         {
             var operand = binOp.Left is NoneLiteral ? right : left;
