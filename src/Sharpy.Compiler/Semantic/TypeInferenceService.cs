@@ -1150,6 +1150,26 @@ internal class TypeInferenceService
     }
 
     /// <summary>
+    /// Infers the element/value type produced by a CLR type's parameterized indexer
+    /// (<c>this[...]</c> getter) on a <em>closed</em> CLR type. Used for discovery-backed
+    /// types whose indexer return type differs from the standard list/dict shape — e.g.
+    /// <c>collections.Counter&lt;T&gt;</c> whose indexer returns <c>int</c> (a count) rather
+    /// than <c>T</c>, or <c>ChainMap&lt;K,V&gt;</c> whose indexer returns the closed <c>V</c>.
+    /// Because the supplied type is closed, the property type is already substituted.
+    /// Returns null when the type exposes no readable indexer.
+    /// </summary>
+    public SemanticType? InferClrIndexerReturnType(System.Type closedClrType)
+    {
+        var indexer = closedClrType.GetProperties()
+            .FirstOrDefault(p => p.GetIndexParameters().Length > 0 && p.GetGetMethod() != null);
+        if (indexer == null)
+            return null;
+
+        var mapped = MapClrTypeToSemanticType(indexer.PropertyType);
+        return mapped is UnknownType ? null : mapped;
+    }
+
+    /// <summary>
     /// Infers the result type of a membership test (in/not in).
     /// Always returns Bool if valid, null if not.
     /// </summary>

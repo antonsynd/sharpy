@@ -230,10 +230,14 @@ internal class ProtocolValidator : ValidatingAstWalker
             if (typeSymbol != null)
                 return typeSymbol.ProtocolMethods.ContainsKey(dunderName);
 
-            // Fallback: check SymbolTable for discovery-loaded generic types (e.g., Counter, DefaultDict)
+            // Fallback: check the resolved generic definition, then the SymbolTable for
+            // discovery-loaded generic types (e.g., Counter, DefaultDict). The GenericDefinition is
+            // preferred because module-qualified types (collections.Counter) are not registered under
+            // their bare name in the top-level SymbolTable, so the by-name lookups below miss them.
             // Try the original name first, then PascalCase, then case-insensitive match
             // for Python-style names that don't split cleanly (e.g., "defaultdict" → "DefaultDict")
-            var symTableType = Context.SymbolTable.Lookup(generic.Name) as TypeSymbol
+            var symTableType = generic.GenericDefinition
+                ?? Context.SymbolTable.Lookup(generic.Name) as TypeSymbol
                 ?? Context.SymbolTable.Lookup(NameMangler.ToPascalCase(generic.Name)) as TypeSymbol
                 ?? Context.SymbolTable.LookupCaseInsensitive(generic.Name) as TypeSymbol;
             if (symTableType != null)
@@ -311,10 +315,37 @@ internal class ProtocolValidator : ValidatingAstWalker
                 return true;
         }
 
+        // Generic ICollection<T> / IReadOnlyCollection<T> -> __len__
+        // (mirrors what a `Count` property provides; ISized exposes the same surface).
+        // Needed for CLR types like collections.Deque that implement only the generic
+        // read-only collection interface, which is neither non-generic ICollection nor ISized.
+        if (dunderName == DunderNames.Len)
+        {
+            if (clrType.GetInterfaces().Any(i => i.IsGenericType
+                && (i.GetGenericTypeDefinition() == typeof(System.Collections.Generic.ICollection<>)
+                    || i.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IReadOnlyCollection<>))))
+                return true;
+        }
+
         // IList -> __getitem__, __setitem__
         if (dunderName is DunderNames.GetItem or DunderNames.SetItem)
         {
             if (typeof(System.Collections.IList).IsAssignableFrom(clrType))
+                return true;
+        }
+
+        // Plain parameterized indexer (this[...]) -> __getitem__ (getter) / __setitem__ (setter).
+        // Mirrors OverloadIndexBuilder.DiscoverTypeProtocols so CLR types that expose a C#
+        // indexer without implementing IList/IDictionary (e.g. collections.Counter, OrderedDict,
+        // ChainMap) are recognized as subscriptable. The setter check keeps read-only indexers
+        // (e.g. frozendict / IReadOnlyDictionary) from being treated as supporting __setitem__.
+        if (dunderName is DunderNames.GetItem or DunderNames.SetItem)
+        {
+            var indexers = clrType.GetProperties()
+                .Where(p => p.GetIndexParameters().Length > 0);
+            if (dunderName == DunderNames.GetItem && indexers.Any(p => p.GetGetMethod() != null))
+                return true;
+            if (dunderName == DunderNames.SetItem && indexers.Any(p => p.GetSetMethod() != null))
                 return true;
         }
 

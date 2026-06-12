@@ -802,6 +802,40 @@ internal partial class TypeChecker
             return tupleType.ElementTypes[constIndex];
         }
 
+        // Discovery-backed CLR types with a custom parameterized indexer (e.g. collections.Counter,
+        // OrderedDict, ChainMap). Their __getitem__ is recorded only as a typeless protocol stub, so
+        // the generic InferIndexAccessType fallback would mis-infer the element type as
+        // TypeArguments[0] (the key, while for Counter the value is int). Resolve the real indexer
+        // return type from the closed CLR type instead.
+        //
+        // Excluded:
+        //  - Builtin containers (list/dict/set/array/tuple): InferIndexAccessType already infers
+        //    these precisely from their type arguments; routing them through the closed CLR type is
+        //    redundant and would erase type parameters (see below).
+        //  - frozendict: an immutable builtin whose generic shape is handled by the existing path;
+        //    keep it off this route so its (separate) immutability handling is unchanged (#913).
+        //  - Types whose type arguments contain unresolved type parameters (e.g. `list[T]` inside a
+        //    generic function): TryGetClrType maps `T` to `object`, so the indexer would resolve to
+        //    `object` instead of `T`. Keep the precise generic path for those.
+        if (objectType is not GenericType
+            {
+                Name: BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set
+                    or BuiltinNames.Array or BuiltinNames.Tuple or BuiltinNames.FrozenDict
+            }
+            && (objectType is GenericType { GenericDefinition.ClrType: not null }
+                or UserDefinedType { Symbol.ClrType: not null })
+            && !(objectType is GenericType containerGeneric
+                && containerGeneric.TypeArguments.Any(ta => ta is TypeParameterType)))
+        {
+            var closedClrType = TryGetClrType(objectType);
+            if (closedClrType != null)
+            {
+                var clrIndexerType = _typeInference.InferClrIndexerReturnType(closedClrType);
+                if (clrIndexerType != null)
+                    return clrIndexerType;
+            }
+        }
+
         // Use TypeInferenceService for type inference (errors reported by validator in pipeline)
         var resultType = _typeInference.InferIndexAccessType(objectType, indexType);
 
