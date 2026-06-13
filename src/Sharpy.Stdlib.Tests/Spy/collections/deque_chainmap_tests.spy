@@ -1,0 +1,150 @@
+from unittest import assert_raises
+
+import collections
+
+# --- Deque Construction Edge Cases ---
+
+@test
+def test_deque_construct_from_empty_is_empty():
+    d: collections.Deque[int] = collections.Deque[int]()
+    n: int = d.count
+    assert n == 0
+    with assert_raises(IndexError):
+        d.pop()
+
+@test
+def test_deque_append_after_pop_count_returns_to_zero():
+    d: collections.Deque[int] = collections.Deque[int]()
+    d.append(42)
+    d.pop()
+    n: int = d.count
+    assert n == 0
+
+# --- Deque Extend Edge Cases ---
+
+@test
+def test_deque_extend_on_empty_adds_all_to_right():
+    d: collections.Deque[int] = collections.Deque[int]()
+    d.extend([1, 2, 3])
+    n: int = d.count
+    assert n == 3
+    assert d.popleft() == 1
+    assert d.popleft() == 2
+    assert d.popleft() == 3
+
+@test
+def test_deque_extendleft_on_empty_reverses_order():
+    d: collections.Deque[int] = collections.Deque[int]()
+    d.extendleft([1, 2, 3])
+    n: int = d.count
+    assert n == 3
+    assert d.popleft() == 3
+    assert d.popleft() == 2
+    assert d.popleft() == 1
+
+@test
+def test_deque_extend_empty_iterable_no_change():
+    d: collections.Deque[int] = collections.Deque[int]([1, 2])
+    empty: list[int] = []
+    d.extend(empty)
+    n: int = d.count
+    assert n == 2
+
+@test
+def test_deque_extendleft_empty_iterable_no_change():
+    d: collections.Deque[int] = collections.Deque[int]([1, 2])
+    empty: list[int] = []
+    d.extendleft(empty)
+    n: int = d.count
+    assert n == 2
+
+# --- Deque Clear and Rebuild ---
+
+@test
+def test_deque_clear_and_rebuild_works_correctly():
+    d: collections.Deque[str] = collections.Deque[str](["a", "b", "c"])
+    d.clear()
+    d.append("x")
+    d.append("y")
+    n: int = d.count
+    assert n == 2
+    assert d.popleft() == "x"
+    assert d.popleft() == "y"
+
+# --- ChainMap Contains Alias ---
+
+@test
+def test_chainmap_contains_searches_all_maps():
+    d1: dict[str, int] = {"a": 1}
+    d2: dict[str, int] = {"b": 2}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    assert cm.contains("a")
+    assert cm.contains("b")
+    assert not cm.contains("c")
+
+# --- ChainMap Pop Only from First Map ---
+
+@test
+def test_chainmap_pop_key_only_in_second_map_throws_key_error():
+    d1: dict[str, int] = {"x": 0}
+    d2: dict[str, int] = {"b": 2}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    with assert_raises(KeyError):
+        cm.pop("b")
+
+# --- ChainMap Get Without Default ---
+
+@test
+def test_chainmap_get_missing_key_no_default_returns_default_t():
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int]()
+    assert cm.get("missing") == 0
+
+@test
+def test_chainmap_get_existing_key_in_second_map():
+    d1: dict[str, int] = {"y": 0}
+    d2: dict[str, int] = {"x": 42}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    assert cm.get("x") == 42
+
+# --- ChainMap Write to Empty ---
+
+@test
+def test_chainmap_write_goes_to_first_map_makes_it_visible():
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int]()
+    cm["key"] = 99
+    assert cm["key"] == 99
+    assert cm.maps[0].contains_key("key")
+
+# --- ChainMap NewChild Write Isolation ---
+
+@test
+def test_chainmap_new_child_writes_to_child_map_not_parent():
+    parent: dict[str, int] = {"shared": 1}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](parent)
+    child: collections.ChainMap[str, int] = cm.new_child()
+    child["new"] = 99
+    # Parent should not see "new"
+    assert not parent.contains_key("new")
+    # Child sees both
+    assert child.contains_key("new")
+    assert child["shared"] == 1
+
+# --- ChainMap Maps Property ---
+
+@test
+def test_chainmap_maps_contains_correct_count():
+    d1: dict[str, int] = {"a": 0}
+    d2: dict[str, int] = {"b": 0}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    assert len(cm.maps) == 2
+
+@test
+def test_chainmap_maps_mutating_first_map_reflected_in_lookup():
+    d1: dict[str, int] = {"x": 0}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1)
+    # Directly mutate d1 after creating the ChainMap
+    d1["added_later"] = 55
+    assert cm["added_later"] == 55
+
+# 1 omitted: Deque_IterateTwice_YieldsSameElements — re-enumeration comparison not easily expressible
+# 1 omitted: ChainMap_Maps_ContainsOriginalReferences — BeSameAs (reference identity) not expressible in .spy

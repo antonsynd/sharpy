@@ -1,0 +1,280 @@
+from unittest import assert_raises
+
+import collections
+
+# --- OrderedDict ---
+
+@test
+def test_ordered_dict_maintains_insertion_order():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["c"] = 3
+    od["a"] = 1
+    od["b"] = 2
+    assert list(od.keys()) == ["c", "a", "b"]
+    assert list(od.values()) == [3, 1, 2]
+
+@test
+def test_ordered_dict_update_existing_key_preserves_order():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od["c"] = 3
+    od["b"] = 99
+    assert list(od.keys()) == ["a", "b", "c"]
+    assert od["b"] == 99
+
+@test
+def test_ordered_dict_move_to_end_last():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od["c"] = 3
+    od.move_to_end("a", last=True)
+    assert list(od.keys()) == ["b", "c", "a"]
+
+@test
+def test_ordered_dict_move_to_end_first():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od["c"] = 3
+    od.move_to_end("c", last=False)
+    assert list(od.keys()) == ["c", "a", "b"]
+
+@test
+def test_ordered_dict_move_to_end_missing_key_throws_key_error():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    with assert_raises(KeyError):
+        od.move_to_end("z")
+
+@test
+def test_ordered_dict_popitem_last():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od["c"] = 3
+    result: tuple[str, int] = od.popitem(last=True)
+    assert result[0] == "c"
+    assert result[1] == 3
+    assert od.count == 2
+    assert list(od.keys()) == ["a", "b"]
+
+@test
+def test_ordered_dict_popitem_first():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od["c"] = 3
+    result: tuple[str, int] = od.popitem(last=False)
+    assert result[0] == "a"
+    assert result[1] == 1
+    assert od.count == 2
+    assert list(od.keys()) == ["b", "c"]
+
+@test
+def test_ordered_dict_popitem_empty_throws_key_error():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    with assert_raises(KeyError):
+        od.popitem()
+
+@test
+def test_ordered_dict_pop_returns_value_and_removes():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    val: int = od.pop("a")
+    assert val == 1
+    assert od.count == 1
+    assert not od.contains_key("a")
+
+@test
+def test_ordered_dict_pop_missing_key_throws_key_error():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    with assert_raises(KeyError):
+        od.pop("z")
+
+@test
+def test_ordered_dict_pop_with_default_return_default():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    assert od.pop("z", 42) == 42
+
+@test
+def test_ordered_dict_contains_key():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    assert od.contains_key("a")
+    assert not od.contains_key("b")
+
+@test
+def test_ordered_dict_clear():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od.clear()
+    assert od.count == 0
+
+@test
+def test_ordered_dict_copy():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    copy: collections.OrderedDict[str, int] = od.copy()
+    assert list(copy.keys()) == ["a", "b"]
+    assert copy["a"] == 1
+    # Shallow copy - modifying copy doesn't affect original
+    copy["c"] = 3
+    assert not od.contains_key("c")
+
+@test
+def test_ordered_dict_get_existing_key():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    assert od.get("a") == 1
+
+@test
+def test_ordered_dict_get_missing_key_returns_default():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    assert od.get("a", 42) == 42
+
+@test
+def test_ordered_dict_items():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["x"] = 10
+    od["y"] = 20
+    items: list[tuple[str, int]] = list(od.items())
+    assert items == [("x", 10), ("y", 20)]
+
+@test
+def test_ordered_dict_construct_from_pairs():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]([("a", 1), ("b", 2), ("c", 3)])
+    assert list(od.keys()) == ["a", "b", "c"]
+    assert list(od.values()) == [1, 2, 3]
+
+@test
+def test_ordered_dict_get_missing_key_throws_key_error():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    with assert_raises(KeyError):
+        _val: int = od["z"]
+
+# --- ChainMap ---
+
+@test
+def test_chainmap_lookup_searches_through_chain():
+    d1: dict[str, int] = {"a": 1}
+    d2: dict[str, int] = {"b": 2, "a": 99}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    # First map takes priority
+    assert cm["a"] == 1
+    assert cm["b"] == 2
+
+@test
+def test_chainmap_writes_go_to_first_map():
+    d1: dict[str, int] = {"x": 0}
+    d2: dict[str, int] = {"a": 1}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    cm["x"] = 10
+    assert d1.contains_key("x")
+    assert not d2.contains_key("x")
+
+@test
+def test_chainmap_contains_key_searches_all_maps():
+    d1: dict[str, int] = {"a": 1}
+    d2: dict[str, int] = {"b": 2}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    assert cm.contains_key("a")
+    assert cm.contains_key("b")
+    assert not cm.contains_key("c")
+
+@test
+def test_chainmap_missing_key_throws_key_error():
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int]()
+    with assert_raises(KeyError):
+        _val: int = cm["z"]
+
+@test
+def test_chainmap_new_child():
+    d1: dict[str, int] = {"a": 1}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1)
+    child: dict[str, int] = {"a": 99, "b": 2}
+    child_cm: collections.ChainMap[str, int] = cm.new_child(child)
+    assert child_cm["a"] == 99
+    assert child_cm["b"] == 2
+    assert len(child_cm.maps) == 2
+
+@test
+def test_chainmap_new_child_null_creates_empty_dict():
+    d1: dict[str, int] = {"a": 1}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1)
+    child_cm: collections.ChainMap[str, int] = cm.new_child()
+    assert len(child_cm.maps) == 2
+    assert child_cm["a"] == 1
+
+@test
+def test_chainmap_parents():
+    d1: dict[str, int] = {"a": 1}
+    d2: dict[str, int] = {"b": 2}
+    d3: dict[str, int] = {"c": 3}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2, d3)
+    parents: collections.ChainMap[str, int] = cm.parents
+    assert len(parents.maps) == 2
+    assert parents.contains_key("b")
+    assert parents.contains_key("c")
+    assert not parents.contains_key("a")
+
+@test
+def test_chainmap_parents_single_map_returns_empty():
+    d1: dict[str, int] = {"a": 1}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1)
+    parents: collections.ChainMap[str, int] = cm.parents
+    assert len(parents.maps) == 1
+    assert not parents.contains_key("a")
+
+@test
+def test_chainmap_get_with_default():
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int]()
+    assert cm.get("x", 42) == 42
+
+@test
+def test_chainmap_keys_returns_unique_keys():
+    d1: dict[str, int] = {"a": 1, "b": 2}
+    d2: dict[str, int] = {"b": 20, "c": 30}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    keys: list[str] = list(cm.keys())
+    assert len(keys) == 3
+    assert "a" in keys
+    assert "b" in keys
+    assert "c" in keys
+
+@test
+def test_chainmap_count_returns_unique_key_count():
+    d1: dict[str, int] = {"a": 1}
+    d2: dict[str, int] = {"a": 10, "b": 20}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    assert cm.count == 2
+
+@test
+def test_chainmap_pop_removes_from_first_map():
+    d1: dict[str, int] = {"a": 1}
+    d2: dict[str, int] = {"a": 99}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    val: int = cm.pop("a")
+    assert val == 1
+    # Now "a" in first map is removed, so chainmap sees d2's value
+    assert cm["a"] == 99
+
+@test
+def test_chainmap_clear_clears_first_map():
+    d1: dict[str, int] = {"a": 1, "b": 2}
+    d2: dict[str, int] = {"c": 3}
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int](d1, d2)
+    cm.clear()
+    assert len(d1) == 0
+    assert len(d2) == 1
+    assert cm.contains_key("c")
+
+@test
+def test_chainmap_default_constructor_has_one_empty_map():
+    cm: collections.ChainMap[str, int] = collections.ChainMap[str, int]()
+    assert len(cm.maps) == 1
+    assert cm.count == 0

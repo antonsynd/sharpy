@@ -1,0 +1,168 @@
+import collections
+
+# --- Contains and ContainsKey ---
+
+@test
+def test_counter_contains_existing_key_returns_true():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b", "a"])
+    assert c.contains("a")
+
+@test
+def test_counter_contains_missing_key_returns_false():
+    c: collections.Counter[str] = collections.Counter[str](["a"])
+    assert not c.contains("z")
+
+@test
+def test_counter_contains_key_after_clear_returns_false():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b"])
+    c.clear()
+    assert not c.contains_key("a")
+    assert not c.contains_key("b")
+
+# --- Keys Property ---
+
+@test
+def test_counter_keys_contains_all_added_elements():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b", "c", "a"])
+    keys: list[str] = list(c.keys)
+    assert "a" in keys
+    assert "b" in keys
+    assert "c" in keys
+    assert len(keys) == 3
+
+@test
+def test_counter_keys_empty_returns_empty():
+    c: collections.Counter[str] = collections.Counter[str]()
+    keys: list[str] = list(c.keys)
+    assert len(keys) == 0
+
+# --- MostCommon Edge Cases ---
+
+@test
+def test_counter_most_common_zero_returns_empty_list():
+    c: collections.Counter[str] = collections.Counter[str](["a", "a", "b", "b", "c"])
+    result: list[tuple[str, int]] = c.most_common(0)
+    assert len(result) == 0
+
+@test
+def test_counter_most_common_n_greater_than_count_returns_all():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b"])
+    result: list[tuple[str, int]] = c.most_common(100)
+    assert len(result) == 2
+
+@test
+def test_counter_most_common_tie_break():
+    c: collections.Counter[str] = collections.Counter[str](["b", "a", "c"])
+    result: list[tuple[str, int]] = c.most_common()
+    assert len(result) == 3
+    # Each count is 1
+    assert result[0][1] == 1
+    assert result[1][1] == 1
+    assert result[2][1] == 1
+
+# --- Elements with Zero and Negative Counts ---
+
+@test
+def test_counter_elements_zero_count_not_yielded():
+    c: collections.Counter[str] = collections.Counter[str]()
+    c["a"] = 2
+    c["b"] = 0
+    elements: list[str] = list(c.elements())
+    assert "a" in elements
+    assert "b" not in elements
+    assert len(elements) == 2
+
+@test
+def test_counter_elements_negative_count_not_yielded():
+    c: collections.Counter[str] = collections.Counter[str]()
+    c["a"] = 2
+    c["b"] = -1
+    elements: list[str] = list(c.elements())
+    assert "a" in elements
+    assert "b" not in elements
+    assert len(elements) == 2
+
+@test
+def test_counter_elements_all_negative_returns_empty():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b"])
+    c.subtract(["a", "a", "b", "b"])
+    elements: list[str] = list(c.elements())
+    assert len(elements) == 0
+
+# --- Update Multiple Times ---
+
+@test
+def test_counter_update_twice_accumulates_counts():
+    c: collections.Counter[str] = collections.Counter[str](["a"])
+    c.update(["a", "b"])
+    c.update(["b", "c"])
+    assert c["a"] == 2
+    assert c["b"] == 2
+    assert c["c"] == 1
+
+@test
+def test_counter_update_empty_iterable_no_change():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b"])
+    empty: list[str] = []
+    c.update(empty)
+    assert c["a"] == 1
+    assert c["b"] == 1
+
+# --- Indexer Direct Set ---
+
+@test
+def test_counter_indexer_set_new_key_creates_entry():
+    c: collections.Counter[str] = collections.Counter[str]()
+    c["new"] = 5
+    assert c["new"] == 5
+    assert c.contains("new")
+
+@test
+def test_counter_indexer_set_overrides_existing_count():
+    c: collections.Counter[str] = collections.Counter[str](["a", "a", "a"])
+    c["a"] = 1
+    assert c["a"] == 1
+
+@test
+def test_counter_indexer_set_negative_count_is_negative():
+    c: collections.Counter[str] = collections.Counter[str]()
+    c["x"] = -3
+    assert c["x"] == -3
+    assert c.total() == -3
+
+# --- Copy Independence ---
+
+@test
+def test_counter_copy_modifying_copy_does_not_affect_original():
+    original: collections.Counter[str] = collections.Counter[str](["a", "b"])
+    copy: collections.Counter[str] = original.copy()
+    copy["a"] = 99
+    copy["new"] = 5
+    assert original["a"] == 1
+    assert not original.contains("new")
+
+# --- Arithmetic Edge Cases ---
+
+@test
+def test_counter_operator_subtract_all_go_zero_or_negative_empty_result():
+    c1: collections.Counter[str] = collections.Counter[str](["a"])
+    c2: collections.Counter[str] = collections.Counter[str](["a", "a", "a"])
+    result: collections.Counter[str] = c1 - c2
+    assert not result.contains_key("a")
+
+@test
+def test_counter_operator_add_includes_keys_from_both():
+    c1: collections.Counter[str] = collections.Counter[str](["a"])
+    c2: collections.Counter[str] = collections.Counter[str](["b"])
+    result: collections.Counter[str] = c1 + c2
+    assert result["a"] == 1
+    assert result["b"] == 1
+
+@test
+def test_counter_operator_and_only_includes_shared_keys():
+    c1: collections.Counter[str] = collections.Counter[str](["a", "a", "b"])
+    c2: collections.Counter[str] = collections.Counter[str](["b", "c"])
+    result: collections.Counter[str] = c1 & c2
+    assert not result.contains_key("a")
+    assert result["b"] == 1
+    assert not result.contains_key("c")
