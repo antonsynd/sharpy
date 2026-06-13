@@ -812,15 +812,13 @@ internal partial class TypeChecker
         //  - Builtin containers (list/dict/set/array/tuple): InferIndexAccessType already infers
         //    these precisely from their type arguments; routing them through the closed CLR type is
         //    redundant and would erase type parameters (see below).
-        //  - frozendict: an immutable builtin whose generic shape is handled by the existing path;
-        //    keep it off this route so its (separate) immutability handling is unchanged (#913).
         //  - Types whose type arguments contain unresolved type parameters (e.g. `list[T]` inside a
         //    generic function): TryGetClrType maps `T` to `object`, so the indexer would resolve to
         //    `object` instead of `T`. Keep the precise generic path for those.
         if (objectType is not GenericType
             {
                 Name: BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set
-                    or BuiltinNames.Array or BuiltinNames.Tuple or BuiltinNames.FrozenDict
+                    or BuiltinNames.Array or BuiltinNames.Tuple
             }
             && (objectType is GenericType { GenericDefinition.ClrType: not null }
                 or UserDefinedType { Symbol.ClrType: not null })
