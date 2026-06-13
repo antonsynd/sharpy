@@ -1,0 +1,267 @@
+from unittest import assert_raises
+from yaml import CommentedMap, CommentedSeq
+
+import yaml
+import operator
+
+# Ported from YamlRoundtripTests.cs (#843).
+# roundtrip_load() returns object? (a CommentedMap / CommentedSeq); results are
+# narrowed with match type-patterns and scalar values compared via operator.eq
+# (object '==' is rejected by Axiom 3). CommentInfo? returns from get_comment are
+# narrowed with `is not None`.
+# Omitted (documented in PORTING.md, gap tracked by issue):
+#   - RoundtripLoad_Null_ThrowsTypeError: passes null to a non-nullable str param,
+#     rejected at compile time (Axiom 3).
+#   - CommentedMap_TryGetValue: relies on a C# `out` parameter — a .NET interop
+#     idiom with no type-safe spy surface.
+#   - The 4 CommentInfo construction tests (HasComments_* / new CommentInfo()):
+#     CommentInfo lacks the [SharpyModuleType("yaml")] export attribute its
+#     siblings carry, so it cannot be imported/constructed from spy yet.
+#   - RoundtripLoad_PreservesKeyOrder, CommentedMap_PreservesInsertionOrder:
+#     CommentedMap.Keys returns IReadOnlyList<string>, which surfaces as an opaque
+#     `object` (not indexable/iterable) in spy.
+
+# --- RoundtripLoad - node types ---
+
+@test
+def test_roundtrip_load_mapping_returns_commented_map():
+    result: object = yaml.roundtrip_load("name: test\ncount: 42\n")
+    match result:
+        case CommentedMap() as m:
+            assert operator.eq(m["name"], "test")
+            assert operator.eq(m["count"], 42)
+        case _:
+            assert False
+
+@test
+def test_roundtrip_load_sequence_returns_commented_seq():
+    result: object = yaml.roundtrip_load("- 1\n- 2\n- 3\n")
+    match result:
+        case CommentedSeq() as s:
+            assert s.count == 3
+            assert operator.eq(s[0], 1)
+            assert operator.eq(s[2], 3)
+        case _:
+            assert False
+
+@test
+def test_roundtrip_load_scalar_types_resolved():
+    result: object = yaml.roundtrip_load("i: 5\nf: 2.5\nb: true\nn: null\ns: hello\n")
+    match result:
+        case CommentedMap() as m:
+            assert operator.eq(m["i"], 5)
+            assert operator.eq(m["f"], 2.5)
+            assert operator.eq(m["b"], True)
+            assert m["n"] is None
+            assert operator.eq(m["s"], "hello")
+        case _:
+            assert False
+
+@test
+def test_roundtrip_load_quoted_number_stays_string():
+    result: object = yaml.roundtrip_load("version: \"3\"\n")
+    match result:
+        case CommentedMap() as m:
+            assert isinstance(m["version"], str)
+            assert operator.eq(m["version"], "3")
+        case _:
+            assert False
+
+# --- RoundtripLoad - comment preservation ---
+
+@test
+def test_roundtrip_load_before_comment_preserved():
+    result: object = yaml.roundtrip_load("# this is a comment\nkey: value\n")
+    match result:
+        case CommentedMap() as m:
+            comment = m.get_comment("key")
+            assert comment is not None
+            before = comment.before_comment
+            assert before is not None
+            assert "this is a comment" in before
+        case _:
+            assert False
+
+@test
+def test_roundtrip_load_inline_comment_preserved():
+    result: object = yaml.roundtrip_load("key: value # trailing note\n")
+    match result:
+        case CommentedMap() as m:
+            comment = m.get_comment("key")
+            assert comment is not None
+            inline = comment.inline_comment
+            assert inline is not None
+            assert "trailing note" in inline
+        case _:
+            assert False
+
+@test
+def test_roundtrip_dump_preserves_comments():
+    loaded: object = yaml.roundtrip_load("# leading comment\nname: test # inline\n")
+    dumped: str = yaml.roundtrip_dump(loaded)
+    assert "leading comment" in dumped
+    assert "inline" in dumped
+    assert "name:" in dumped
+
+@test
+def test_roundtrip_comments_survive_reload():
+    loaded: object = yaml.roundtrip_load("# config header\nhost: localhost # the host\nport: 8080\n")
+    dumped: str = yaml.roundtrip_dump(loaded)
+    match yaml.roundtrip_load(dumped):
+        case CommentedMap() as reloaded:
+            assert operator.eq(reloaded["host"], "localhost")
+            assert operator.eq(reloaded["port"], 8080)
+            host_comment = reloaded.get_comment("host")
+            assert host_comment is not None
+            inline = host_comment.inline_comment
+            assert inline is not None
+            assert "the host" in inline
+        case _:
+            assert False
+
+# --- RoundtripDump - non-commented data ---
+
+@test
+def test_roundtrip_dump_plain_dict_round_trips():
+    data: dict[str, object] = {}
+    data["a"] = 1
+    data["b"] = "two"
+    dumped: str = yaml.roundtrip_dump(data)
+    match yaml.roundtrip_load(dumped):
+        case CommentedMap() as reloaded:
+            assert operator.eq(reloaded["a"], 1)
+            assert operator.eq(reloaded["b"], "two")
+        case _:
+            assert False
+
+@test
+def test_roundtrip_dump_plain_list_round_trips():
+    data: list[object] = []
+    data.append(1)
+    data.append(2)
+    data.append(3)
+    dumped: str = yaml.roundtrip_dump(data)
+    match yaml.roundtrip_load(dumped):
+        case CommentedSeq() as reloaded:
+            assert reloaded.count == 3
+            assert operator.eq(reloaded[0], 1)
+        case _:
+            assert False
+
+@test
+def test_roundtrip_dump_nested_commented_map_round_trips():
+    loaded: object = yaml.roundtrip_load("server:\n  host: localhost\n  port: 9000\ndebug: true\n")
+    dumped: str = yaml.roundtrip_dump(loaded)
+    match yaml.roundtrip_load(dumped):
+        case CommentedMap() as reloaded:
+            match reloaded["server"]:
+                case CommentedMap() as server:
+                    assert operator.eq(server["host"], "localhost")
+                    assert operator.eq(server["port"], 9000)
+                case _:
+                    assert False
+            assert operator.eq(reloaded["debug"], True)
+        case _:
+            assert False
+
+# --- CommentedMap operations ---
+
+@test
+def test_commented_map_add_and_indexer():
+    m = CommentedMap()
+    m.add("a", 1)
+    m["b"] = 2
+    assert operator.eq(m["a"], 1)
+    assert operator.eq(m["b"], 2)
+    assert m.count == 2
+
+@test
+def test_commented_map_contains_key():
+    m = CommentedMap()
+    m.add("present", 1)
+    assert m.contains_key("present")
+    assert not m.contains_key("absent")
+
+@test
+def test_commented_map_remove_removes_key_and_comment():
+    m = CommentedMap()
+    m.add("a", 1)
+    m.add("b", 2)
+    m.get_or_add_comment("a").inline_comment = "note"
+    assert m.remove("a")
+    assert not m.contains_key("a")
+    assert m.get_comment("a") is None
+    assert m.count == 1
+
+@test
+def test_commented_map_remove_missing_key_returns_false():
+    m = CommentedMap()
+    assert not m.remove("missing")
+
+@test
+def test_commented_map_overwrite_existing_key_does_not_duplicate_order():
+    m = CommentedMap()
+    m.add("a", 1)
+    m["a"] = 99
+    assert m.count == 1
+    assert operator.eq(m["a"], 99)
+
+# --- CommentedSeq operations ---
+
+@test
+def test_commented_seq_add_and_indexer():
+    s = CommentedSeq()
+    s.add(1)
+    s.add(2)
+    assert s.count == 2
+    assert operator.eq(s[0], 1)
+    s[0] = 99
+    assert operator.eq(s[0], 99)
+
+@test
+def test_commented_seq_insert_shifts_items():
+    s = CommentedSeq()
+    s.add(1)
+    s.add(3)
+    s.insert(1, 2)
+    assert s.count == 3
+    assert operator.eq(s[0], 1)
+    assert operator.eq(s[1], 2)
+    assert operator.eq(s[2], 3)
+
+@test
+def test_commented_seq_remove_at():
+    s = CommentedSeq()
+    s.add(1)
+    s.add(2)
+    s.add(3)
+    s.remove_at(1)
+    assert s.count == 2
+    assert operator.eq(s[0], 1)
+    assert operator.eq(s[1], 3)
+
+@test
+def test_commented_seq_insert_shifts_comments():
+    s = CommentedSeq()
+    s.add("a")
+    s.add("b")
+    s.get_or_add_comment(1).inline_comment = "b-comment"
+    s.insert(0, "z")
+    assert operator.eq(s[2], "b")
+    comment = s.get_comment(2)
+    assert comment is not None
+    assert comment.inline_comment == "b-comment"
+
+# --- CommentInfo (via get_or_add_comment; direct construction omitted) ---
+
+@test
+def test_commented_map_get_or_add_comment_returns_mutable_instance():
+    m = CommentedMap()
+    m.add("k", 1)
+    comment = m.get_or_add_comment("k")
+    comment.before_comment = "hi"
+    # Same instance is returned on subsequent calls.
+    assert comment is m.get_or_add_comment("k")
+    stored = m.get_comment("k")
+    assert stored is not None
+    assert stored.before_comment == "hi"

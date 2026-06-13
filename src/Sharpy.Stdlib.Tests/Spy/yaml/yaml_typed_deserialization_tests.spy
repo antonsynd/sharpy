@@ -1,0 +1,71 @@
+from unittest import assert_raises
+
+import yaml
+
+# Ported from YamlTypedDeserializationTests.cs (#843).
+# yaml.safe_load_typed[T]() returns Result<T, YAMLError>. SafeLoadTyped uses the
+# UnderscoredNamingConvention, so snake_case YAML keys map onto the class fields
+# (which mangle to PascalCase C# properties).
+# Omitted (documented in PORTING.md):
+#   - SafeLoadTyped_Null_ThrowsTypeError: passes null to a non-nullable str
+#     parameter, which Sharpy rejects at compile time (Axiom 3).
+
+
+class ServerConfig:
+    host: str = ""
+    port: int = 0
+    enabled: bool = False
+
+
+class SnakeCaseConfig:
+    service_name: str = ""
+    max_connections: int = 0
+
+
+class NestedConfig:
+    label: str = ""
+    server: ServerConfig = ServerConfig()
+
+
+# --- SafeLoadTyped — success ---
+
+@test
+def test_safe_load_typed_simple_class_deserializes():
+    result = yaml.safe_load_typed[ServerConfig]("host: localhost\nport: 8080\nenabled: true\n")
+    assert result.IsOk
+    config = result.Unwrap()
+    assert config.host == "localhost"
+    assert config.port == 8080
+    assert config.enabled
+
+@test
+def test_safe_load_typed_snake_case_keys_map_to_pascal_case():
+    result = yaml.safe_load_typed[SnakeCaseConfig]("service_name: api\nmax_connections: 100\n")
+    assert result.IsOk
+    config = result.Unwrap()
+    assert config.service_name == "api"
+    assert config.max_connections == 100
+
+@test
+def test_safe_load_typed_nested_class_deserializes():
+    result = yaml.safe_load_typed[NestedConfig]("label: outer\nserver:\n  host: db\n  port: 5432\n  enabled: false\n")
+    assert result.IsOk
+    config = result.Unwrap()
+    assert config.label == "outer"
+    assert config.server.host == "db"
+    assert config.server.port == 5432
+    assert not config.server.enabled
+
+# --- SafeLoadTyped — errors ---
+
+@test
+def test_safe_load_typed_type_mismatch_returns_err():
+    result = yaml.safe_load_typed[ServerConfig]("host: localhost\nport: not_a_number\nenabled: true\n")
+    assert result.IsErr
+    error = result.UnwrapErr()
+    assert isinstance(error, yaml.YAMLError)
+
+@test
+def test_safe_load_typed_malformed_yaml_returns_err():
+    result = yaml.safe_load_typed[ServerConfig]("host: [unbalanced\n")
+    assert result.IsErr
