@@ -184,16 +184,9 @@ namespace Sharpy
         /// </summary>
         public IEnumerator<KeyValuePair<K, V>> GetEnumerator()
         {
-            var seen = new System.Collections.Generic.HashSet<K>();
-            foreach (var map in _maps)
+            foreach (var key in Keys())
             {
-                foreach (var key in map)
-                {
-                    if (seen.Add(key))
-                    {
-                        yield return new KeyValuePair<K, V>(key, map[key]);
-                    }
-                }
+                yield return new KeyValuePair<K, V>(key, this[key]);
             }
         }
 
