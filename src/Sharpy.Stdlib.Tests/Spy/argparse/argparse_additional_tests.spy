@@ -1,6 +1,7 @@
 from unittest import assert_raises
 
 import argparse
+import operator
 
 # --- FormatHelp Additional ---
 
@@ -120,7 +121,7 @@ def test_add_argument_group_with_positional_parses_to_namespace():
     group: argparse.ArgumentGroup = parser.add_argument_group("Input options")
     group.add_argument("source", help="source file")
     ns: argparse.Namespace = parser.parse_args(["input.txt"])
-    assert ns["source"] == "input.txt"
+    assert operator.eq(ns["source"], "input.txt")
 
 @test
 def test_add_argument_group_multiple_groups_both_parsed_correctly():
@@ -130,8 +131,8 @@ def test_add_argument_group_multiple_groups_both_parsed_correctly():
     g2: argparse.ArgumentGroup = parser.add_argument_group("Auth")
     g2.add_optional_argument("--token", defaultValue="none")
     ns: argparse.Namespace = parser.parse_args(["--host", "example.com", "--token", "secret"])
-    assert ns["host"] == "example.com"
-    assert ns["token"] == "secret"
+    assert operator.eq(ns["host"], "example.com")
+    assert operator.eq(ns["token"], "secret")
 
 # --- Multiple Mutually Exclusive Groups ---
 
@@ -162,7 +163,7 @@ def test_add_subparsers_no_dest_subcommand_parsed():
     sub: argparse.ArgumentParser = subparsers.add_parser("run")
     sub.add_argument("file")
     ns: argparse.Namespace = parser.parse_args(["run", "script.spy"])
-    assert ns["file"] == "script.spy"
+    assert operator.eq(ns["file"], "script.spy")
 
 @test
 def test_add_subparsers_with_title_subcommand_parsed():
@@ -170,6 +171,6 @@ def test_add_subparsers_with_title_subcommand_parsed():
     subparsers: argparse.SubparsersAction = parser.add_subparsers(title="commands", dest="cmd")
     subparsers.add_parser("build")
     ns: argparse.Namespace = parser.parse_args(["build"])
-    assert ns["cmd"] == "build"
+    assert operator.eq(ns["cmd"], "build")
 
 # SetOutput_RedirectsHelpOutput omitted (requires System.IO.StringWriter)

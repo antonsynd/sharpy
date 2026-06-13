@@ -1,6 +1,7 @@
 from unittest import assert_raises
 
 import argparse
+import operator
 
 # --- Positional Arguments ---
 
@@ -9,7 +10,7 @@ def test_parse_args_single_positional_parsed():
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     parser.add_argument("filename")
     ns: argparse.Namespace = parser.parse_args(["test.txt"])
-    assert ns["filename"] == "test.txt"
+    assert operator.eq(ns["filename"], "test.txt")
 
 @test
 def test_parse_args_multiple_positionals_parsed():
@@ -17,8 +18,8 @@ def test_parse_args_multiple_positionals_parsed():
     parser.add_argument("source")
     parser.add_argument("dest")
     ns: argparse.Namespace = parser.parse_args(["a.txt", "b.txt"])
-    assert ns["source"] == "a.txt"
-    assert ns["dest"] == "b.txt"
+    assert operator.eq(ns["source"], "a.txt")
+    assert operator.eq(ns["dest"], "b.txt")
 
 @test
 def test_parse_args_positional_with_type_converted():
@@ -42,21 +43,21 @@ def test_parse_args_long_option_parsed():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
     parser.add_optional_argument("--name")
     ns: argparse.Namespace = parser.parse_args(["--name", "test"])
-    assert ns["name"] == "test"
+    assert operator.eq(ns["name"], "test")
 
 @test
 def test_parse_args_short_and_long_option_parsed():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
     parser.add_optional_argument("--name", shortName="-n")
     ns: argparse.Namespace = parser.parse_args(["-n", "test"])
-    assert ns["name"] == "test"
+    assert operator.eq(ns["name"], "test")
 
 @test
 def test_parse_args_optional_with_default_uses_default():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
     parser.add_optional_argument("--name", defaultValue="default")
     ns: argparse.Namespace = parser.parse_args([])
-    assert ns["name"] == "default"
+    assert operator.eq(ns["name"], "default")
 
 @test
 def test_parse_args_optional_with_type_converted():
@@ -123,7 +124,7 @@ def test_parse_args_valid_choice_accepted():
     choices: list[str] = ["debug", "info", "warning"]
     parser.add_optional_argument("--level", choices=choices)
     ns: argparse.Namespace = parser.parse_args(["--level", "info"])
-    assert ns["level"] == "info"
+    assert operator.eq(ns["level"], "info")
 
 @test
 def test_parse_args_invalid_choice_throws_error():
@@ -163,7 +164,7 @@ def test_parse_args_nargs_question_optional_value():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
     parser.add_optional_argument("--output", nargs="?", defaultValue="stdout")
     ns: argparse.Namespace = parser.parse_args(["--output"])
-    assert ns["output"] == "stdout"
+    assert operator.eq(ns["output"], "stdout")
 
 # --- Mixed Arguments ---
 
@@ -174,7 +175,7 @@ def test_parse_args_mixed_positional_and_optional_parsed():
     parser.add_optional_argument("--verbose", shortName="-v", action="store_true")
     parser.add_optional_argument("--count", type="int", defaultValue=1)
     ns: argparse.Namespace = parser.parse_args(["test.txt", "-v", "--count", "5"])
-    assert ns["filename"] == "test.txt"
+    assert operator.eq(ns["filename"], "test.txt")
     s: str = str(ns)
     assert "verbose=True" in s
     assert "count=5" in s
@@ -234,7 +235,7 @@ def test_namespace_get_wrong_type_throws_type_error():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
     parser.add_optional_argument("--name", defaultValue="test")
     ns: argparse.Namespace = parser.parse_args([])
-    assert ns["name"] == "test"
+    assert operator.eq(ns["name"], "test")
 
 @test
 def test_namespace_missing_attribute_throws_attribute_error():
@@ -269,7 +270,7 @@ def test_parse_args_custom_dest_uses_custom_dest():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
     parser.add_optional_argument("--output-file", dest="output")
     ns: argparse.Namespace = parser.parse_args(["--output-file", "out.txt"])
-    assert ns["output"] == "out.txt"
+    assert operator.eq(ns["output"], "out.txt")
 
 # --- Type Conversion Errors ---
 
@@ -296,8 +297,8 @@ def test_add_subparsers_add_parser_parses_subcommand():
     sub: argparse.ArgumentParser = subparsers.add_parser("run", help="Run a program")
     sub.add_argument("filename")
     ns: argparse.Namespace = parser.parse_args(["run", "test.spy"])
-    assert ns["command"] == "run"
-    assert ns["filename"] == "test.spy"
+    assert operator.eq(ns["command"], "run")
+    assert operator.eq(ns["filename"], "test.spy")
 
 @test
 def test_add_subparsers_multiple_subcommands():
@@ -308,12 +309,12 @@ def test_add_subparsers_multiple_subcommands():
     test_parser: argparse.ArgumentParser = subparsers.add_parser("test")
     test_parser.add_optional_argument("--filter")
     ns1: argparse.Namespace = parser.parse_args(["build", "--release"])
-    assert ns1["cmd"] == "build"
+    assert operator.eq(ns1["cmd"], "build")
     s1: str = str(ns1)
     assert "release=True" in s1
     ns2: argparse.Namespace = parser.parse_args(["test", "--filter", "Lexer"])
-    assert ns2["cmd"] == "test"
-    assert ns2["filter"] == "Lexer"
+    assert operator.eq(ns2["cmd"], "test")
+    assert operator.eq(ns2["filter"], "Lexer")
 
 @test
 def test_add_subparsers_duplicate_throws_error():
@@ -331,7 +332,7 @@ def test_add_argument_group_arguments_parsed_normally():
     group.add_optional_argument("--host", defaultValue="localhost")
     group.add_optional_argument("--port", type="int", defaultValue=8080)
     ns: argparse.Namespace = parser.parse_args(["--host", "example.com", "--port", "9090"])
-    assert ns["host"] == "example.com"
+    assert operator.eq(ns["host"], "example.com")
     s: str = str(ns)
     assert "port=9090" in s
 
@@ -341,7 +342,7 @@ def test_add_argument_group_defaults_work():
     group: argparse.ArgumentGroup = parser.add_argument_group("Options")
     group.add_optional_argument("--name", defaultValue="default")
     ns: argparse.Namespace = parser.parse_args([])
-    assert ns["name"] == "default"
+    assert operator.eq(ns["name"], "default")
 
 # --- Mutually Exclusive Groups ---
 
