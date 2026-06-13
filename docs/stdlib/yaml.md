@@ -6,15 +6,6 @@ YAML parser and emitter.
 import yaml
 ```
 
-## Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `before_comment` | `str | None` | Comment appearing on the line(s) before the associated node. |
-| `inline_comment` | `str | None` | Comment trailing the associated node on the same line. |
-| `after_comment` | `str | None` | Comment appearing on the line(s) after the associated node. |
-| `has_comments` | `bool` | Gets a value indicating whether this instance carries any comment text. |
-
 ## Functions
 
 ### `yaml.safe_load(text: str) -> object | None`
@@ -143,6 +134,20 @@ Deserialize a YAML string into a strongly-typed object.
 
 **Returns:** A `Result{T,E}` containing the deserialized value on success,
 or a `YAMLError` on failure.
+
+## CommentInfo
+
+Holds the comments associated with a single key (in a mapping) or item (in a
+sequence) for YAML roundtrip preservation, mirroring ruamel.yaml's comment model.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `before_comment` | `str | None` | Comment appearing on the line(s) before the associated node. |
+| `inline_comment` | `str | None` | Comment trailing the associated node on the same line. |
+| `after_comment` | `str | None` | Comment appearing on the line(s) after the associated node. |
+| `has_comments` | `bool` | Gets a value indicating whether this instance carries any comment text. |
 
 ## CommentedMap
 
