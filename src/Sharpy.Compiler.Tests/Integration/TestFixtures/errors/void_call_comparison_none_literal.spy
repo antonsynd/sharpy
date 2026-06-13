@@ -1,0 +1,11 @@
+# Issue #911: f() == None, where f() returns None, is also rejected (SPY0329).
+# The void call operand has no value, so the comparison is meaningless. Python
+# would run f() and compare None == None -> True; Sharpy rejects per Axiom 3
+# (type safety > Python syntax) — the void call operand is not a None literal.
+def f() -> None:
+    print("side effect")
+
+
+def main():
+    if f() == None:
+        print("none")

@@ -288,6 +288,20 @@ internal partial class RoslynEmitter
             return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
         }
 
+        // Honor the integer suffix (#921): without it, int-range values emit as C# int
+        // literals and box as int, so `object o = 42L` loses its declared width and
+        // Equals against a real long is false. Mirrors the float-suffix handling below.
+        if (literal.Suffix != null)
+        {
+            if (literal.Suffix.Equals("l", StringComparison.OrdinalIgnoreCase))
+                return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(value));
+            if (literal.Suffix.Equals("ul", StringComparison.OrdinalIgnoreCase)
+                || literal.Suffix.Equals("lu", StringComparison.OrdinalIgnoreCase))
+                return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((ulong)value));
+            if (literal.Suffix.Equals("u", StringComparison.OrdinalIgnoreCase))
+                return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((uint)value));
+        }
+
         if (value >= int.MinValue && value <= int.MaxValue)
             return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)value));
         else

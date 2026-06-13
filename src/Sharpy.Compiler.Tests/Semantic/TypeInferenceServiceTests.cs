@@ -666,6 +666,45 @@ public class TypeInferenceServiceTests
 
     #endregion
 
+    #region CLR indexer return-type inference (#913)
+
+    [Fact]
+    public void InferClrIndexerReturnType_CounterIndexer_ReturnsInt()
+    {
+        // collections.Counter<T> exposes `int this[T key]` — the value type is the count (int),
+        // NOT the key type. Closing over Counter<string> yields a concrete int indexer.
+        var result = _service.InferClrIndexerReturnType(typeof(SharpyStdlib::Sharpy.Counter<string>));
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferClrIndexerReturnType_ChainMapIndexer_SubstitutesValueType_ReturnsInt()
+    {
+        // ChainMap<K, V> exposes `V this[K key]`. The closed ChainMap<string, int> substitutes
+        // V -> int, so the indexer return type resolves to int.
+        var result = _service.InferClrIndexerReturnType(typeof(SharpyStdlib::Sharpy.ChainMap<string, int>));
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void InferClrIndexerReturnType_GenericList_ReturnsElementType()
+    {
+        // A plain BCL List<string> indexer returns string.
+        var result = _service.InferClrIndexerReturnType(typeof(System.Collections.Generic.List<string>));
+        result.Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void InferClrIndexerReturnType_TypeWithoutIndexer_ReturnsNull()
+    {
+        // collections.Deque<T> implements IReadOnlyCollection<T> but exposes no parameterized
+        // indexer, so index-type inference yields null (len() is handled separately).
+        var result = _service.InferClrIndexerReturnType(typeof(SharpyStdlib::Sharpy.Deque<int>));
+        result.Should().BeNull();
+    }
+
+    #endregion
+
     #region Protocol Inference - Other
 
     [Fact]

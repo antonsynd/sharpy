@@ -1,0 +1,125 @@
+from unittest import assert_raises
+
+import collections
+
+# --- Contains Alias ---
+
+@test
+def test_ordered_dict_contains_existing_key_returns_true():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    assert od.contains("a")
+
+@test
+def test_ordered_dict_contains_missing_key_returns_false():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    assert not od.contains("z")
+
+# --- Values Preserves Order ---
+
+@test
+def test_ordered_dict_values_preserves_insertion_order():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["c"] = 3
+    od["a"] = 1
+    od["b"] = 2
+    assert list(od.values()) == [3, 1, 2]
+
+@test
+def test_ordered_dict_values_after_update_order_by_first_insertion():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od["a"] = 99
+    assert list(od.values()) == [99, 2]
+
+# --- MoveToEnd Default Behavior ---
+
+@test
+def test_ordered_dict_move_to_end_default_is_last():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od["c"] = 3
+    od.move_to_end("a")
+    assert list(od.keys()) == ["b", "c", "a"]
+
+@test
+def test_ordered_dict_move_to_end_already_last_no_change():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od.move_to_end("b", last=True)
+    assert list(od.keys()) == ["a", "b"]
+
+@test
+def test_ordered_dict_move_to_end_already_first_no_change():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od.move_to_end("a", last=False)
+    assert list(od.keys()) == ["a", "b"]
+
+# --- Constructor from Tuples ---
+
+@test
+def test_ordered_dict_construct_from_tuples_preserves_order():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]([("x", 10), ("y", 20), ("z", 30)])
+    assert list(od.keys()) == ["x", "y", "z"]
+    assert list(od.values()) == [10, 20, 30]
+
+# --- Removal and Re-insertion ---
+
+@test
+def test_ordered_dict_after_removal_remaining_items_correctly_indexed():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od["c"] = 3
+    od.pop("b")
+    assert list(od.keys()) == ["a", "c"]
+    assert od["a"] == 1
+    assert od["c"] == 3
+
+@test
+def test_ordered_dict_after_removal_reinsert_goes_to_end():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["a"] = 1
+    od["b"] = 2
+    od["c"] = 3
+    od.pop("a")
+    od["a"] = 99
+    assert list(od.keys()) == ["b", "c", "a"]
+    assert od["a"] == 99
+
+# --- Items Preserves Order ---
+
+@test
+def test_ordered_dict_items_preserves_insertion_order():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    od["z"] = 26
+    od["a"] = 1
+    od["m"] = 13
+    items: list[tuple[str, int]] = list(od.items())
+    assert items == [("z", 26), ("a", 1), ("m", 13)]
+
+# --- Empty OrderedDict ---
+
+@test
+def test_ordered_dict_empty_count_is_zero():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    assert od.count == 0
+    empty_keys: list[str] = list(od.keys())
+    assert len(empty_keys) == 0
+    empty_vals: list[int] = list(od.values())
+    assert len(empty_vals) == 0
+    empty_items: list[tuple[str, int]] = list(od.items())
+    assert len(empty_items) == 0
+
+@test
+def test_ordered_dict_empty_contains_returns_false():
+    od: collections.OrderedDict[str, int] = collections.OrderedDict[str, int]()
+    assert not od.contains_key("anything")
+    assert not od.contains("anything")
+
+# 1 omitted: OrderedDict_ConstructFromKvps_PreservesOrder — KeyValuePair constructor not expressible in .spy

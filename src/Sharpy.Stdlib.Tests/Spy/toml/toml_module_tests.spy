@@ -1,0 +1,339 @@
+from unittest import assert_raises
+
+import toml
+import math
+import operator
+
+# Ported from TomlModuleTests.cs (#843).
+# toml.loads() returns dict[str, object?]; values are compared with operator.eq
+# (object '==' is rejected by Axiom 3) and structures navigated via match
+# type-patterns. TOML integers decode to long; the eq_long helper takes a long
+# parameter so the expected literal is boxed as long (a bare '42L' argument lowers
+# to a boxed int and would never equal the boxed long value).
+# Omitted (documented in PORTING.md):
+#   - Loads_OffsetDateTime/LocalDateTime/LocalDate/LocalTime: values surface as raw
+#     .NET DateTimeOffset/DateTime/TimeSpan, not checkable/navigable from .spy (#920).
+#   - Loads_NullInput, Load_NullFp, Dump_NullFp, LoadFile_NullPath, DumpFile_NullPath:
+#     pass null! to non-nullable parameters, rejected at compile time (Axiom 3).
+
+# --- Loads - Basic Types ---
+
+@test
+def test_loads_string_returns_dict():
+    result = toml.loads("key = \"hello\"")
+    assert operator.eq(result["key"], "hello")
+
+@test
+def test_loads_integer_returns_long():
+    result = toml.loads("count = 42")
+    assert eq_long(result["count"], 42)
+
+@test
+def test_loads_negative_integer_returns_long():
+    result = toml.loads("val = -10")
+    assert eq_long(result["val"], -10)
+
+@test
+def test_loads_float_returns_double():
+    result = toml.loads("pi = 3.14")
+    assert operator.eq(result["pi"], 3.14)
+
+@test
+def test_loads_boolean_returns_bool():
+    result = toml.loads("flag = true")
+    assert operator.eq(result["flag"], True)
+
+@test
+def test_loads_false_boolean_returns_bool():
+    result = toml.loads("flag = false")
+    assert operator.eq(result["flag"], False)
+
+# --- Loads - Collections ---
+
+@test
+def test_loads_array_returns_list():
+    result = toml.loads("arr = [1, 2, 3]")
+    match result["arr"]:
+        case list() as l:
+            assert len(l) == 3
+            assert eq_long(l[0], 1)
+            assert eq_long(l[1], 2)
+            assert eq_long(l[2], 3)
+        case _:
+            assert False
+
+@test
+def test_loads_table_returns_dict():
+    result = toml.loads("[server]\nhost = \"localhost\"\nport = 8080")
+    match result["server"]:
+        case dict() as server:
+            assert operator.eq(server["host"], "localhost")
+            assert eq_long(server["port"], 8080)
+        case _:
+            assert False
+
+@test
+def test_loads_nested_tables_returns_nested_dicts():
+    result = toml.loads("[a]\n[a.b]\n[a.b.c]\nval = 1")
+    match result["a"]:
+        case dict() as a:
+            match a["b"]:
+                case dict() as b:
+                    match b["c"]:
+                        case dict() as c:
+                            assert eq_long(c["val"], 1)
+                        case _:
+                            assert False
+                case _:
+                    assert False
+        case _:
+            assert False
+
+@test
+def test_loads_dotted_keys():
+    result = toml.loads("a.b.c = 42")
+    match result["a"]:
+        case dict() as a:
+            match a["b"]:
+                case dict() as b:
+                    assert eq_long(b["c"], 42)
+                case _:
+                    assert False
+        case _:
+            assert False
+
+@test
+def test_loads_inline_table():
+    result = toml.loads("point = {x = 1, y = 2}")
+    match result["point"]:
+        case dict() as point:
+            assert eq_long(point["x"], 1)
+            assert eq_long(point["y"], 2)
+        case _:
+            assert False
+
+@test
+def test_loads_array_of_tables():
+    result = toml.loads("[[products]]\nname = \"Hammer\"\n\n[[products]]\nname = \"Nail\"")
+    match result["products"]:
+        case list() as products:
+            assert len(products) == 2
+            match products[0]:
+                case dict() as p0:
+                    assert operator.eq(p0["name"], "Hammer")
+                case _:
+                    assert False
+            match products[1]:
+                case dict() as p1:
+                    assert operator.eq(p1["name"], "Nail")
+                case _:
+                    assert False
+        case _:
+            assert False
+
+# --- Loads - Strings ---
+
+@test
+def test_loads_multiline_basic_string():
+    result = toml.loads("s = \"\"\"\nhello\nworld\"\"\"")
+    match result["s"]:
+        case str() as s:
+            assert "hello" in s
+            assert "world" in s
+        case _:
+            assert False
+
+@test
+def test_loads_literal_string():
+    result = toml.loads("path = 'C:\\Users\\foo'")
+    assert operator.eq(result["path"], "C:\\Users\\foo")
+
+# --- Loads - Integers ---
+
+@test
+def test_loads_hex_integer():
+    result = toml.loads("val = 0xff")
+    assert eq_long(result["val"], 255)
+
+@test
+def test_loads_octal_integer():
+    result = toml.loads("val = 0o77")
+    assert eq_long(result["val"], 63)
+
+@test
+def test_loads_binary_integer():
+    result = toml.loads("val = 0b1010")
+    assert eq_long(result["val"], 10)
+
+@test
+def test_loads_underscore_integer():
+    result = toml.loads("val = 1_000_000")
+    assert eq_long(result["val"], 1000000)
+
+# --- Loads - Special Floats ---
+
+@test
+def test_loads_positive_infinity():
+    result = toml.loads("val = inf")
+    assert operator.eq(result["val"], math.Inf)
+
+@test
+def test_loads_negative_infinity():
+    result = toml.loads("val = -inf")
+    assert operator.eq(result["val"], -math.Inf)
+
+@test
+def test_loads_nan():
+    result = toml.loads("val = nan")
+    # NaN != NaN, but Object.Equals(NaN, NaN) is true (operator.eq uses Equals).
+    assert operator.eq(result["val"], math.Nan)
+
+# --- Loads - Edge Cases ---
+
+@test
+def test_loads_empty_document_returns_empty_dict():
+    result = toml.loads("")
+    assert len(result) == 0
+
+@test
+def test_loads_comment_only_returns_empty_dict():
+    result = toml.loads("# just a comment")
+    assert len(result) == 0
+
+# --- Dumps ---
+
+@test
+def test_dumps_simple_dict_returns_toml():
+    d: dict[str, object] = {}
+    d["name"] = "test"
+    d["count"] = 42L
+    result: str = toml.dumps(d)
+    assert "name = \"test\"" in result
+    assert "count = 42" in result
+
+@test
+def test_dumps_nested_dict_returns_toml():
+    inner: dict[str, object] = {}
+    inner["key"] = "val"
+    d: dict[str, object] = {}
+    d["section"] = inner
+    result: str = toml.dumps(d)
+    assert "[section]" in result
+    assert "key = \"val\"" in result
+
+@test
+def test_dumps_with_array_returns_toml():
+    items: list[object] = []
+    items.append("a")
+    items.append("b")
+    d: dict[str, object] = {}
+    d["tags"] = items
+    result: str = toml.dumps(d)
+    assert "tags" in result
+    assert "\"a\"" in result
+    assert "\"b\"" in result
+
+@test
+def test_dumps_sort_keys_sorts_alphabetically():
+    d: dict[str, object] = {}
+    d["zebra"] = 1L
+    d["alpha"] = 2L
+    result: str = toml.dumps(d, sortKeys=True)
+    assert result.index("alpha") < result.index("zebra")
+
+@test
+def test_dumps_non_dict_throws_type_error():
+    with assert_raises(TypeError):
+        toml.dumps("not a dict")
+
+@test
+def test_dumps_null_throws_type_error():
+    with assert_raises(TypeError):
+        toml.dumps(None)
+
+# --- Roundtrip ---
+
+@test
+def test_roundtrip_simple_dict():
+    d: dict[str, object] = {}
+    d["name"] = "test"
+    d["count"] = 42L
+    d["active"] = True
+    d["ratio"] = 3.14
+    result = toml.loads(toml.dumps(d))
+    assert operator.eq(result["name"], "test")
+    assert eq_long(result["count"], 42)
+    assert operator.eq(result["active"], True)
+    assert operator.eq(result["ratio"], 3.14)
+
+@test
+def test_roundtrip_nested_dict():
+    inner: dict[str, object] = {}
+    inner["host"] = "localhost"
+    inner["port"] = 8080L
+    d: dict[str, object] = {}
+    d["server"] = inner
+    result = toml.loads(toml.dumps(d))
+    match result["server"]:
+        case dict() as server:
+            assert operator.eq(server["host"], "localhost")
+            assert eq_long(server["port"], 8080)
+        case _:
+            assert False
+
+# --- Error Handling ---
+
+@test
+def test_loads_malformed_toml_throws_toml_decode_error():
+    with assert_raises(toml.TOMLDecodeError):
+        toml.loads("invalid = [")
+
+@test
+def test_loads_malformed_toml_error_is_value_error():
+    with assert_raises(toml.TOMLDecodeError) as ex:
+        toml.loads("invalid = [")
+    assert isinstance(ex, ValueError)
+
+@test
+def test_loads_malformed_toml_error_message_contains_line_column():
+    with assert_raises(toml.TOMLDecodeError) as ex:
+        toml.loads("valid = 1\ninvalid = [")
+    assert "line" in str(ex)
+    assert "column" in str(ex)
+    assert len(ex.Msg) > 0
+    assert "invalid" in ex.Doc
+
+# --- File I/O ---
+
+@test
+def test_load_file_roundtrip(tmp_path: str):
+    path = tmp_path + "/config.toml"
+    with open(path, "w") as fp:
+        fp.write("name = \"test\"\ncount = 42")
+    result = toml.load_file(path)
+    assert operator.eq(result["name"], "test")
+    assert eq_long(result["count"], 42)
+
+@test
+def test_dump_file_roundtrip(tmp_path: str):
+    path = tmp_path + "/out.toml"
+    d: dict[str, object] = {}
+    d["name"] = "test"
+    d["count"] = 42L
+    toml.dump_file(d, path)
+    result = toml.load_file(path)
+    assert operator.eq(result["name"], "test")
+    assert eq_long(result["count"], 42)
+
+@test
+def test_load_file_nonexistent_throws_file_not_found_error():
+    with assert_raises(FileNotFoundError):
+        toml.load_file("/nonexistent/path/file.toml")
+
+
+# --- Helpers ---
+
+def eq_long(value: object, expected: long) -> bool:
+    # expected is a long parameter so the literal argument is boxed as long,
+    # matching toml's long-typed integer values for operator.eq.
+    return operator.eq(value, expected)

@@ -914,6 +914,17 @@ public static class DiagnosticExplanations
             "Use a floating-point base to get an (approximate) double result (10.0 ** 50), or " +
             "restructure the computation so intermediate values stay within long range.");
 
+        Add(dict, DiagnosticCodes.Semantic.VoidComparisonOperand,
+            "Void-returning call used as a comparison operand",
+            "Semantic",
+            "A call to a function that returns None was used as an operand of == or !=. The call " +
+            "has no value to compare, so the comparison is almost certainly a bug. Python would " +
+            "evaluate the call and compare its None result, but per Axiom 3 Sharpy rejects this at " +
+            "compile time instead of silently comparing against nothing (the None literal itself " +
+            "remains valid: x == None is a null check).",
+            "def f() -> None:\n    print(\"side effect\")\n\ndef main() -> None:\n    s: str = \"hello\"\n    if s == f():  # f() has no value\n        pass",
+            "Call the function as a statement, then compare separately:\n    f()\n    if s == None:\n        pass");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",

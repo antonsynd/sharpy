@@ -1,0 +1,512 @@
+from unittest import assert_raises
+
+import re
+
+# Tests for compiled Pattern instance methods and MatchResult position-based access.
+# These complement re_module_tests.spy which tests the static re.* API.
+
+# --- Pattern Instance - Match ---
+
+@test
+def test_pattern_match_at_start_returns_match():
+    pattern = re.compile(r"\d+")
+    m = pattern.match("123abc")
+    assert m is not None
+    assert m.group() == "123"
+
+@test
+def test_pattern_match_not_at_start_returns_none():
+    pattern = re.compile(r"\d+")
+    m = pattern.match("abc123")
+    assert m is None
+
+@test
+def test_pattern_match_with_pos_matches_from_position():
+    pattern = re.compile(r"\d+")
+    # pos=3 shifts start so digits start at index 3
+    m = pattern.match("abc123", pos=3)
+    assert m is not None
+    assert m.group() == "123"
+
+@test
+def test_pattern_match_empty_string_empty_pattern_matches():
+    pattern = re.compile(r".*")
+    m = pattern.match("")
+    assert m is not None
+    assert m.group() == ""
+
+# --- Pattern Instance - Fullmatch ---
+
+@test
+def test_pattern_fullmatch_entire_string_returns_match():
+    pattern = re.compile(r"[a-z]+")
+    m = pattern.fullmatch("hello")
+    assert m is not None
+    assert m.group() == "hello"
+
+@test
+def test_pattern_fullmatch_partial_string_returns_none():
+    pattern = re.compile(r"[a-z]+")
+    m = pattern.fullmatch("hello123")
+    assert m is None
+
+@test
+def test_pattern_fullmatch_with_groups_captures_all_groups():
+    pattern = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+    m = pattern.fullmatch("2024-01-15")
+    assert m is not None
+    assert m.group(1) == "2024"
+    assert m.group(2) == "01"
+    assert m.group(3) == "15"
+
+# --- Pattern Instance - Findall ---
+
+@test
+def test_pattern_findall_multiple_matches_returns_all():
+    pattern = re.compile(r"\d+")
+    result = pattern.findall("a1b22c333")
+    assert len(result) == 3
+    # findall returns list[object]; wrap with str() for comparison
+    assert str(result[0]) == "1"
+    assert str(result[1]) == "22"
+    assert str(result[2]) == "333"
+
+@test
+def test_pattern_findall_no_matches_returns_empty_list():
+    pattern = re.compile(r"\d+")
+    result = pattern.findall("abcdef")
+    assert len(result) == 0
+
+@test
+def test_pattern_findall_single_group_returns_group_values():
+    pattern = re.compile(r"(\d+)")
+    result = pattern.findall("a1b2c3")
+    assert len(result) == 3
+    assert str(result[0]) == "1"
+    assert str(result[1]) == "2"
+    assert str(result[2]) == "3"
+
+# --- Pattern Instance - Finditer ---
+
+@test
+def test_pattern_finditer_returns_match_objects():
+    pattern = re.compile(r"\w+")
+    matches = pattern.finditer("hello world")
+    assert len(matches) == 2
+    assert matches[0].group() == "hello"
+    assert matches[1].group() == "world"
+
+@test
+def test_pattern_finditer_positions_are_correct():
+    pattern = re.compile(r"\d+")
+    matches = pattern.finditer("abc 123 def 456")
+    assert len(matches) == 2
+    assert matches[0].start() == 4
+    assert matches[0].end() == 7
+    assert matches[1].start() == 12
+    assert matches[1].end() == 15
+
+# --- Pattern Instance - Sub ---
+
+@test
+def test_pattern_sub_replaces_all():
+    pattern = re.compile(r"\d+")
+    result: str = pattern.sub("NUM", "a1b2c3")
+    assert result == "aNUMbNUMcNUM"
+
+@test
+def test_pattern_sub_with_count_replaces_limited():
+    pattern = re.compile(r"\d+")
+    result: str = pattern.sub("NUM", "a1b2c3", count=2)
+    assert result == "aNUMbNUMc3"
+
+@test
+def test_pattern_sub_count0_replaces_all():
+    pattern = re.compile(r"\d+")
+    result: str = pattern.sub("X", "1a2b3c", count=0)
+    assert result == "XaXbXc"
+
+# --- Pattern Instance - Split ---
+
+@test
+def test_pattern_split_splits_on_pattern():
+    pattern = re.compile(r"\s+")
+    result = pattern.split("one two   three")
+    assert len(result) == 3
+    assert result[0] == "one"
+    assert result[1] == "two"
+    assert result[2] == "three"
+
+@test
+def test_pattern_split_with_maxsplit_limits_results():
+    pattern = re.compile(r",")
+    result = pattern.split("a,b,c,d", maxsplit=2)
+    assert len(result) == 3
+    assert result[0] == "a"
+    assert result[1] == "b"
+    assert result[2] == "c,d"
+
+# --- Pattern Properties ---
+
+@test
+def test_pattern_flags_reflects_compile_flags():
+    pattern = re.compile(r"\d+", flags=re.IGNORECASE)
+    assert pattern.flags == re.IGNORECASE
+
+@test
+def test_pattern_flags_zero_when_no_flags():
+    pattern = re.compile(r"\d+")
+    assert pattern.flags == 0
+
+@test
+def test_pattern_to_string_contains_pattern_str():
+    pattern = re.compile(r"\d+")
+    s: str = str(pattern)
+    assert r"\d+" in s
+
+@test
+def test_pattern_compile_combined_flags_work():
+    pattern = re.compile("^hello", flags=re.IGNORECASE | re.MULTILINE)
+    m = pattern.search("HELLO\nWORLD")
+    assert m is not None
+    assert m.group() == "HELLO"
+
+@test
+def test_pattern_compile_dotall_dot_matches_newline():
+    pattern = re.compile("a.b", flags=re.DOTALL)
+    m = pattern.fullmatch("a\nb")
+    assert m is not None
+
+# --- MatchResult Group - Out-Of-Range and Edge Cases ---
+
+@test
+def test_match_group_out_of_range_throws_index_error():
+    m = re.match(r"(\d+)", "123")
+    assert m is not None
+    with assert_raises(IndexError):
+        m.group(99)
+
+@test
+def test_match_group_negative_index_throws_index_error():
+    m = re.match(r"(\d+)", "123")
+    assert m is not None
+    with assert_raises(IndexError):
+        m.group(-1)
+
+@test
+def test_match_group_zero_is_full_match():
+    m = re.search(r"(\w+)\s(\w+)", "hello world")
+    assert m is not None
+    assert m.group(0) == "hello world"
+
+# --- MatchResult Start/End/Span with group argument ---
+
+@test
+def test_match_start_with_group_returns_group_start():
+    m = re.search(r"(\w+)\s(\w+)", "hello world")
+    assert m is not None
+    assert m.start(2) == 6
+
+@test
+def test_match_end_with_group_returns_group_end():
+    m = re.search(r"(\w+)\s(\w+)", "hello world")
+    assert m is not None
+    assert m.end(2) == 11
+
+@test
+def test_match_span_with_group_returns_tuple():
+    m = re.search(r"(\w+)\s(\w+)", "hello world")
+    assert m is not None
+    assert m.span(2) == (6, 11)
+
+@test
+def test_match_start_default_group_zero_is_full_match_start():
+    m = re.search("world", "hello world")
+    assert m is not None
+    assert m.start(0) == 6
+
+# --- Named Groups via Compiled Pattern ---
+
+@test
+def test_pattern_named_group_match_returns_named_group():
+    pattern = re.compile(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})")
+    m = pattern.fullmatch("2024-03-15")
+    assert m is not None
+    assert m.group("year") == "2024"
+    assert m.group("month") == "03"
+    assert m.group("day") == "15"
+
+@test
+def test_pattern_groupdict_returns_named_group_dict():
+    pattern = re.compile(r"(?P<first>\w+)\s(?P<last>\w+)")
+    m = pattern.search("Jane Doe")
+    assert m is not None
+    gd = m.groupdict()
+    assert gd["first"] == "Jane"
+    assert gd["last"] == "Doe"
+
+# --- Empty String Edge Cases ---
+
+@test
+def test_pattern_search_empty_string_empty_pattern_matches():
+    pattern = re.compile(r"")
+    m = pattern.search("")
+    assert m is not None
+    assert m.group() == ""
+
+@test
+def test_pattern_search_empty_string_non_empty_pattern_returns_none():
+    pattern = re.compile(r"\d+")
+    m = pattern.search("")
+    assert m is None
+
+@test
+def test_pattern_match_no_match_returns_null_not_exception():
+    pattern = re.compile(r"\d{10}")
+    m = pattern.match("abc")
+    assert m is None
+
+# --- MatchResult.Re Property ---
+
+@test
+def test_match_re_returns_compiled_pattern():
+    pattern = re.compile(r"\d+")
+    m = pattern.search("abc 123")
+    assert m is not None
+    assert m.re is pattern
+
+@test
+def test_match_re_from_static_api_is_not_none():
+    m = re.search(r"\d+", "abc 123")
+    assert m is not None
+    assert m.re is not None
+
+# --- Lastindex / Lastgroup ---
+
+@test
+def test_match_lastindex_returns_last_matched_group_index():
+    m = re.search(r"(\w+)\s(\w+)", "hello world")
+    assert m is not None
+    assert m.lastindex == 2
+
+@test
+def test_match_lastindex_no_groups_returns_none():
+    m = re.search(r"\w+", "hello")
+    assert m is not None
+    assert m.lastindex is None
+
+@test
+def test_match_lastindex_first_alternative_returns_correct_index():
+    # Only the first alternative matches -> group 1 is the last matched
+    m = re.search(r"(\w+)|(\d+)", "hello")
+    assert m is not None
+    assert m.lastindex == 1
+
+@test
+def test_match_lastgroup_named_group_returns_name():
+    pattern = re.compile(r"(?P<first>\w+)\s(?P<last>\w+)")
+    m = pattern.search("hello world")
+    assert m is not None
+    assert m.lastgroup == "last"
+
+@test
+def test_match_lastgroup_unnamed_group_returns_none():
+    pattern = re.compile(r"(\w+)\s(\w+)")
+    m = pattern.search("hello world")
+    assert m is not None
+    assert m.lastgroup is None
+
+@test
+def test_match_lastgroup_no_groups_returns_none():
+    pattern = re.compile(r"\w+")
+    m = pattern.search("hello")
+    assert m is not None
+    assert m.lastgroup is None
+
+# --- Expand ---
+
+@test
+def test_match_expand_backslash_digit_expands_group():
+    m = re.search(r"(\w+)\s(\w+)", "hello world")
+    assert m is not None
+    result: str = m.expand(r"\2 \1")
+    assert result == "world hello"
+
+@test
+def test_match_expand_backslash_g_expands_named_group():
+    pattern = re.compile(r"(?P<first>\w+)\s(?P<last>\w+)")
+    m = pattern.search("hello world")
+    assert m is not None
+    result: str = m.expand(r"\g<last> \g<first>")
+    assert result == "world hello"
+
+@test
+def test_match_expand_backslash_g_numeric_reference():
+    m = re.search(r"(\w+)\s(\w+)", "hello world")
+    assert m is not None
+    result: str = m.expand(r"\g<2> \g<1>")
+    assert result == "world hello"
+
+@test
+def test_match_expand_plain_text_passed_through():
+    m = re.search(r"\w+", "hello")
+    assert m is not None
+    result: str = m.expand(r"result: \0")
+    assert result == "result: hello"
+
+# --- Indexer ---
+
+# NOTE: The MatchResult subscript tests (Match_Indexer_ZeroReturnsFullMatch,
+# Match_Indexer_GroupReturnsGroupValue, Match_Indexer_OutOfRange_ThrowsIndexError)
+# are omitted: re is a spy-sourced module and its MatchResult.__getitem__ is not
+# recognized for indexing from consuming spy code (SPY0320). See PORTING.md / #918.
+
+@test
+def test_match_group_by_name_nonexistent_name_throws_index_error():
+    m = re.search(r"(?P<word>\w+)", "hello")
+    assert m is not None
+    with assert_raises(IndexError):
+        m.group("nonexistent")
+
+# --- Pattern.PatternStr Property ---
+
+@test
+def test_pattern_pattern_str_property_returns_original():
+    pattern = re.compile(r"\d+")
+    assert pattern.pattern_str == r"\d+"
+
+# --- Pattern.Groups Count ---
+
+@test
+def test_pattern_groups_returns_group_count():
+    pattern = re.compile(r"(\w+)\s(\w+)")
+    assert pattern.groups == 2
+
+@test
+def test_pattern_groups_no_groups_returns_zero():
+    pattern = re.compile(r"\w+")
+    assert pattern.groups == 0
+
+@test
+def test_pattern_groups_named_groups_counted_correctly():
+    pattern = re.compile(r"(?P<first>\w+)\s(?P<last>\w+)")
+    assert pattern.groups == 2
+
+# --- Pattern.Groupindex ---
+
+@test
+def test_pattern_groupindex_returns_name_to_number_mapping():
+    pattern = re.compile(r"(?P<first>\w+)\s(?P<last>\w+)")
+    gi = pattern.groupindex
+    assert gi["first"] == 1
+    assert gi["last"] == 2
+
+@test
+def test_pattern_groupindex_no_named_groups_returns_empty_dict():
+    pattern = re.compile(r"(\w+)\s(\w+)")
+    gi = pattern.groupindex
+    assert len(gi) == 0
+
+@test
+def test_pattern_groupindex_mixed_named_unnamed_only_named():
+    pattern = re.compile(r"(?P<name>\w+)\s(\d+)")
+    gi = pattern.groupindex
+    assert len(gi) == 1
+    # .NET numbers unnamed groups first, then named groups
+    assert gi["name"] == 2
+
+# --- Pattern.Subn ---
+
+@test
+def test_pattern_subn_returns_string_and_count():
+    pattern = re.compile(r"\d+")
+    result: tuple[str, int] = pattern.subn("NUM", "a1b2c3")
+    assert result == ("aNUMbNUMcNUM", 3)
+
+@test
+def test_pattern_subn_with_count_limits_replacements():
+    pattern = re.compile(r"\d+")
+    result: tuple[str, int] = pattern.subn("NUM", "a1b2c3", count=2)
+    assert result == ("aNUMbNUMc3", 2)
+
+@test
+def test_pattern_subn_no_match_returns_original_and_zero():
+    pattern = re.compile(r"\d+")
+    result: tuple[str, int] = pattern.subn("NUM", "no numbers")
+    assert result == ("no numbers", 0)
+
+# --- Pattern Callable Sub/Subn ---
+
+@test
+def test_pattern_sub_callable_works():
+    pattern = re.compile(r"\d+")
+    # MatchResult parameter type inferred from the Pattern.sub overload.
+    result: str = pattern.sub(lambda m: "[" + m.group() + "]", "a1b2c3")
+    assert result == "a[1]b[2]c[3]"
+
+@test
+def test_pattern_sub_callable_with_count_limits_replacements():
+    pattern = re.compile(r"\d+")
+    result: str = pattern.sub(lambda m: "X", "a1b2c3", count=1)
+    assert result == "aXb2c3"
+
+@test
+def test_pattern_subn_callable_works():
+    pattern = re.compile(r"\d+")
+    result: tuple[str, int] = pattern.subn(lambda m: "X", "a1b2c3")
+    assert result == ("aXbXcX", 3)
+
+@test
+def test_pattern_subn_callable_with_count_limits_replacements():
+    pattern = re.compile(r"\d+")
+    result: tuple[str, int] = pattern.subn(lambda m: "X", "a1b2c3", count=2)
+    assert result == ("aXbXc3", 2)
+
+# NOTE: The re.error exception tests (Compile_InvalidPattern_ThrowsReError,
+# ReError_HasMessageProperty, ReError_Properties_SetCorrectly, ReError_NullPattern_NullPos)
+# are omitted: re is a spy-sourced module and its nested `error` exception type cannot be
+# named by qualified reference (re.error) from consuming spy code (SPY0202/SPY0203), so it
+# can be neither caught specifically via assert_raises nor constructed. See PORTING.md / #918.
+
+# --- Inline Flags ---
+
+@test
+def test_inline_flag_case_insensitive_works():
+    m = re.search(r"(?i)hello", "HELLO world")
+    assert m is not None
+    assert m.group() == "HELLO"
+
+@test
+def test_inline_flag_ascii_stripped_works():
+    # (?a) should be stripped (no-op on .NET), pattern should still match
+    m = re.search(r"(?a)\w+", "hello")
+    assert m is not None
+    assert m.group() == "hello"
+
+@test
+def test_inline_flag_unicode_stripped_works():
+    # (?u) should be stripped (no-op on .NET)
+    m = re.search(r"(?u)\w+", "hello")
+    assert m is not None
+    assert m.group() == "hello"
+
+@test
+def test_inline_flag_scoped_with_colon_works():
+    # (?i:hello) should apply case-insensitive to the group
+    m = re.search(r"(?i:hello) world", "HELLO world")
+    assert m is not None
+    assert m.group() == "HELLO world"
+
+@test
+def test_inline_flag_scoped_ascii_stripped_works():
+    # (?a:hello) -- strip 'a' flag, emit as (?:hello)
+    m = re.search(r"(?a:hello) world", "hello world")
+    assert m is not None
+    assert m.group() == "hello world"
+
+@test
+def test_inline_flag_mixed_flags_strips_only_python_only():
+    # (?ai) -- strip 'a', keep 'i'
+    m = re.search(r"(?ai)hello", "HELLO")
+    assert m is not None
+    assert m.group() == "HELLO"

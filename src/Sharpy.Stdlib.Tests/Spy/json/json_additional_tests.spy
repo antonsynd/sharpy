@@ -1,0 +1,107 @@
+from unittest import assert_raises, approx
+
+import json
+import operator
+
+# Ported from JsonModuleAdditionalTests.cs (#843).
+
+# --- Loads numeric boundaries ---
+
+@test
+def test_loads_int_max_value_returns_int():
+    # 2147483647 fits in int
+    r: object = json.loads("2147483647")
+    assert isinstance(r, int)
+    assert operator.eq(r, 2147483647)
+
+@test
+def test_loads_int_max_value_plus_one_returns_long():
+    # 2147483648 doesn't fit in int, should be long
+    r: object = json.loads("2147483648")
+    assert isinstance(r, long)
+    value: long = 2147483648
+    assert operator.eq(r, value)
+
+@test
+def test_loads_negative_float_returns_double():
+    r: object = json.loads("-3.14")
+    assert isinstance(r, float)
+    match r:
+        case float() as f:
+            assert f == approx(-3.14, abs=1e-10)
+        case _:
+            assert False
+
+@test
+def test_loads_negative_scientific_returns_double():
+    r: object = json.loads("-1.5e2")
+    assert isinstance(r, float)
+    assert operator.eq(r, -150.0)
+
+# --- Loads whitespace edge cases ---
+
+@test
+def test_loads_whitespace_only_throws_json_decode_error():
+    with assert_raises(json.JSONDecodeError):
+        json.loads("   ")
+
+@test
+def test_loads_with_leading_and_trailing_whitespace_parses_object():
+    r: object = json.loads("  {\"key\": 1}  ")
+    match r:
+        case dict() as d:
+            assert operator.eq(d["key"], 1)
+        case _:
+            assert False
+
+# --- Dumps: additional collection types ---
+
+@test
+def test_dumps_set_of_int_returns_json_array():
+    s: set[int] = {42}
+    assert json.dumps(s) == "[42]"
+
+@test
+def test_dumps_list_of_string_returns_json_array():
+    l: list[str] = ["hello", "world"]
+    assert json.dumps(l) == "[\"hello\", \"world\"]"
+
+# --- Dumps: pretty-print for arrays ---
+
+@test
+def test_dumps_list_with_indent_pretty_prints():
+    l: list[object] = []
+    l.append(1)
+    l.append(2)
+    l.append(3)
+    assert json.dumps(l, indent=2) == "[\n  1,\n  2,\n  3\n]"
+
+@test
+def test_dumps_nested_list_with_indent_pretty_prints():
+    inner: list[object] = []
+    inner.append("a")
+    inner.append("b")
+    outer: dict[str, object] = {}
+    outer["items"] = inner
+    result: str = json.dumps(outer, indent=2)
+    assert "\n" in result
+    assert "\"items\"" in result
+    assert "\"a\"" in result
+
+# --- Round-trips for additional types ---
+
+@test
+def test_round_trip_large_integer_preserves_value():
+    value: long = 9876543210
+    parsed: object = json.loads(json.dumps(value))
+    assert operator.eq(parsed, value)
+
+@test
+def test_round_trip_negative_int_preserves_value():
+    parsed: object = json.loads(json.dumps(-999))
+    assert operator.eq(parsed, -999)
+
+@test
+def test_round_trip_empty_string_preserves_value():
+    parsed: object = json.loads(json.dumps(""))
+    assert operator.eq(parsed, "")

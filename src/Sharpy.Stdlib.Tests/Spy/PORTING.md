@@ -18,54 +18,54 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 |---------|-------|-----------|-------|--------|
 | ArgparseTests.cs | 42 | Spy/argparse/argparse_tests.spy | 42 | ported |
 | ArgparseAdditionalTests.cs | 19 | Spy/argparse/argparse_additional_tests.spy | 18 | ported (1 omitted: SetOutput/StringWriter) |
-| Base64Tests.cs | 13 | | | pending |
-| BisectTests.cs | 19 | | | pending |
-| BisectAdditionalTests.cs | 15 | | | pending |
+| Base64Tests.cs | 13 | Spy/base64/base64_tests.spy | 13 | ported |
+| BisectTests.cs | 19 | Spy/bisect/bisect_tests.spy | 19 | ported |
+| BisectAdditionalTests.cs | 15 | Spy/bisect/bisect_additional_tests.spy | 15 | ported |
 | CalendarTests.cs | 28 | Spy/calendar/calendar_tests.spy | 25 | ported (re-enabled #886-#892) |
-| CollectionsModuleTests.cs | 57 | | | pending |
-| CollectionsAdditionalTests.cs | 33 | | | pending |
+| CollectionsModuleTests.cs | 57 | Spy/collections/collections_module_tests.spy | 54 | ported (3 omitted: typeof() reflection, List factory lambda, ToDictionary raw indexing) |
+| CollectionsAdditionalTests.cs | 33 | Spy/collections/collections_additional_tests.spy | 33 | ported |
 | ColorsysTests.cs | 32 | Spy/colorsys/colorsys_tests.spy | 32 | ported |
-| ConfigparserTests.cs | 66 | | | pending |
-| CounterCompleteTests.cs | 20 | | | pending |
-| CsvModuleTests.cs | 9 | | | pending |
-| CsvDictTests.cs | 19 | | | pending |
-| CsvReaderWriterTests.cs | 18 | | | pending |
+| ConfigparserTests.cs | 66 | Spy/configparser/configparser_tests.spy | 66 | ported |
+| CounterCompleteTests.cs | 20 | Spy/collections/counter_complete_tests.spy | 20 | ported |
+| CsvModuleTests.cs | 9 | Spy/csv/csv_module_tests.spy | 9 | ported |
+| CsvDictTests.cs | 19 | Spy/csv/csv_dict_tests.spy | 16 | ported (3 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
+| CsvReaderWriterTests.cs | 18 | Spy/csv/csv_reader_writer_tests.spy | 16 | ported (2 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
 | DatetimeTests.cs | 69 | | | pending |
 | DatetimeDateTests.cs | 20 | | | pending |
 | DatetimeDateTimeTests.cs | 19 | | | pending |
 | DatetimeTimeTests.cs | 25 | | | pending |
-| DefaultDictTests.cs | 13 | | | pending |
-| DequeChainMapTests.cs | 16 | | | pending |
+| DefaultDictTests.cs | 13 | Spy/collections/default_dict_tests.spy | 11 | ported (2 omitted: mutable closure capture, List factory lambda) |
+| DequeChainMapTests.cs | 16 | Spy/collections/deque_chainmap_tests.spy | 15 | ported (1 omitted: reference identity assertion) |
 | DifflibModuleTests.cs | 34 | Spy/difflib/difflib_module_tests.spy | 34 | ported |
-| EmailTests.cs | 34 | | | pending |
+| EmailTests.cs | 34 | Spy/email/email_tests.spy | 34 | ported (re-enabled #903) |
 | FnmatchTests.cs | 27 | Spy/fnmatch/fnmatch_tests.spy | 27 | ported |
 | FractionsTests.cs | 66 | Spy/fractions/fractions_tests.spy | 66 | ported |
-| FunctoolsTests.cs | 21 | | | pending |
+| FunctoolsTests.cs | 21 | Spy/functools/functools_tests.spy | 21 | ported (re-enabled #904; cmp_to_key lambdas annotated) |
 | GlobModuleTests.cs | 18 | | | pending |
 | GraphemeTests.cs | 27 | Spy/grapheme/grapheme_tests.spy | 27 | ported |
 | HashlibTests.cs | 12 | Spy/hashlib/hashlib_tests.spy | 12 | ported |
 | HashlibCompleteTests.cs | 22 | Spy/hashlib/hashlib_complete_tests.spy | 22 | ported |
 | HeapqTests.cs | 31 | Spy/heapq/heapq_tests.spy | 31 | ported (re-enabled #889) |
-| HeapqAdditionalTests.cs | 12 | | | pending |
+| HeapqAdditionalTests.cs | 12 | Spy/heapq/heapq_additional_tests.spy | 12 | ported |
 | HmacTests.cs | 13 | Spy/hmac/hmac_tests.spy | 13 | ported (re-enabled #890) |
-| HtmlModuleTests.cs | 44 | Spy/html/html_module_tests.spy | 40 | ported (re-enabled #902; 4 omitted: convert_charrefs=False, #906) |
+| HtmlModuleTests.cs | 44 | Spy/html/html_module_tests.spy | 44 | ported (re-enabled #902; 4 convert_charrefs=False tests restored #906) |
 | HttpTests.cs | 35 | Spy/http/http_tests.spy | 26 | ported (9 omitted: 7 HTTPResponse internal ctor, 1 reflection, 1 StringWriter) |
 | IoModuleTests.cs | 15 | | | pending |
 | IoStringIOTests.cs | 27 | | | pending |
 | IpaddressTests.cs | 114 | Spy/ipaddress/ipaddress_tests.spy | 112 | ported (2 omitted: BigInteger, Bytes ctor) |
-| ItertoolsTests.cs | 20 | | | pending |
-| ItertoolsAdditionalTests.cs | 34 | | | pending |
-| ItertoolsCombinatoricsTests.cs | 11 | | | pending |
-| ItertoolsFilterTests.cs | 16 | | | pending |
-| ItertoolsGroupingTests.cs | 15 | | | pending |
-| ItertoolsInfiniteTests.cs | 10 | | | pending |
-| JsonModuleTests.cs | 109 | | | pending |
-| JsonModuleAdditionalTests.cs | 13 | | | pending |
-| JsonEncoderDecoderTests.cs | 16 | | | pending |
-| JsonTypedDeserializationTests.cs | 16 | | | pending |
+| ItertoolsTests.cs | 20 | Spy/itertools/itertools_tests.spy | 20 | ported (inline collection literals bound to typed locals to work around codegen type-inference bug #917) |
+| ItertoolsAdditionalTests.cs | 34 | Spy/itertools/itertools_additional_tests.spy | 34 | ported |
+| ItertoolsCombinatoricsTests.cs | 11 | Spy/itertools/itertools_combinatorics_tests.spy | 11 | ported |
+| ItertoolsFilterTests.cs | 16 | Spy/itertools/itertools_filter_tests.spy | 16 | ported |
+| ItertoolsGroupingTests.cs | 15 | Spy/itertools/itertools_grouping_tests.spy | 15 | ported |
+| ItertoolsInfiniteTests.cs | 10 | Spy/itertools/itertools_infinite_tests.spy | 10 | ported |
+| JsonModuleTests.cs | 109 | Spy/json/json_module_tests.spy | 108 | ported (1 omitted: loads_null_throws_type_error passes null! to non-nullable — not expressible in type-safe Sharpy, Axiom 3) |
+| JsonModuleAdditionalTests.cs | 13 | Spy/json/json_additional_tests.spy | 13 | ported |
+| JsonEncoderDecoderTests.cs | 16 | Spy/json/json_encoder_decoder_tests.spy | 9 | ported (7 omitted: 2 need subclassing json.JSONEncoder, #914; 5 need an object_hook delegate, #915) |
+| JsonTypedDeserializationTests.cs | 16 | Spy/json/json_typed_deserialization_tests.spy | 14 | ported (2 omitted: type-unsafe null input, Axiom 3; required stdlib fix: IncludeFields + Optional converter for Sharpy field-lowered classes) |
 | LoggingModuleTests.cs | 14 | | | pending |
 | LoggingCompleteTests.cs | 22 | | | pending |
-| LruCacheTests.cs | 13 | | | pending |
+| LruCacheTests.cs | 13 | Spy/functools/lru_cache_tests.spy | 13 | ported |
 | MathAdditionalTests.cs | 48 | Spy/math/math_additional_tests.spy | 48 | ported |
 | MathAdditionalTests2.cs | 72 | Spy/math/math_additional2_tests.spy | 72 | ported |
 | ModuleIntegrationTests.cs | 7 | | | pending |
@@ -81,7 +81,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | NumpyManipulationTests.cs | 22 | | | pending |
 | NumpyMathTests.cs | 37 | | | pending |
 | NumpyRandomTests.cs | 17 | | | pending |
-| OrderedDictTests.cs | 13 | | | pending |
+| OrderedDictTests.cs | 13 | Spy/collections/ordered_dict_tests.spy | 13 | ported |
 | OsModuleTests.cs | 33 | | | pending |
 | OsModuleAdditionalTests.cs | 16 | | | pending |
 | OsPathTests.cs | 25 | | | pending |
@@ -92,15 +92,15 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | RandomTests.cs | 16 | | | pending |
 | RandomAdditionalTests.cs | 22 | | | pending |
 | RandomAdditionalTests2.cs | 23 | | | pending |
-| ReModuleTests.cs | 56 | | | pending |
-| ReOperationTests.cs | 24 | | | pending |
-| RePatternTests.cs | 74 | | | pending |
+| ReModuleTests.cs | 56 | Spy/re/re_module_tests.spy | 56 | ported |
+| ReOperationTests.cs | 24 | Spy/re/re_operation_tests.spy | 24 | ported |
+| RePatternTests.cs | 74 | Spy/re/re_pattern_tests.spy | 67 | ported (7 omitted: 4 re.error type-not-nameable + 3 MatchResult indexer __getitem__ — spy-sourced module member-type gap, #918) |
 | RequestsModuleTests.cs | 20 | | | pending |
 | RequestsResponseTests.cs | 38 | | | pending |
 | RequestsSessionTests.cs | 37 | | | pending |
 | RequestsAdvancedTests.cs | 34 | | | pending |
-| SecretsTests.cs | 21 | | | pending |
-| ShlexModuleTests.cs | 34 | | | pending |
+| SecretsTests.cs | 21 | Spy/secrets/secrets_tests.spy | 21 | ported |
+| ShlexModuleTests.cs | 34 | Spy/shlex/shlex_module_tests.spy | 31 | ported (3 omitted: Split/Quote/Join_Null_ThrowsTypeError — null→non-nullable rejected at compile time, Axiom 3) |
 | ShutilTests.cs | 15 | | | pending |
 | ShutilAdditionalTests.cs | 14 | | | pending |
 | SocketModuleTests.cs | 46 | | | pending |
@@ -108,25 +108,25 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | Sqlite3CursorTests.cs | 46 | | | pending |
 | Sqlite3ErrorTests.cs | 33 | | | pending |
 | Sqlite3RowTests.cs | 24 | | | pending |
-| StatisticsTests.cs | 31 | | | pending |
-| StatisticsAdditionalTests.cs | 19 | | | pending |
-| StringModuleTests.cs | 12 | | | pending |
+| StatisticsTests.cs | 31 | Spy/statistics/statistics_tests.spy | 31 | ported |
+| StatisticsAdditionalTests.cs | 19 | Spy/statistics/statistics_additional_tests.spy | 19 | ported |
+| StringModuleTests.cs | 12 | Spy/string/string_module_tests.spy | 12 | ported |
 | SubprocessModuleTests.cs | 36 | | | pending |
 | SysModuleTests.cs | 21 | | | pending |
 | TarfileTests.cs | 24 | | | pending |
 | TempfileTests.cs | 11 | | | pending |
 | TempfileCompleteTests.cs | 11 | | | pending |
-| TextwrapTests.cs | 27 | | | pending |
+| TextwrapTests.cs | 27 | Spy/textwrap/textwrap_tests.spy | 27 | ported |
 | ThreadingModuleTests.cs | 43 | | | pending |
 | TimeModuleTests.cs | 34 | | | pending |
-| TomlModuleTests.cs | 46 | | | pending |
-| TomlTypedDeserializationTests.cs | 6 | | | pending |
+| TomlModuleTests.cs | 46 | Spy/toml/toml_module_tests.spy | 37 | ported (9 omitted: 4 datetime types surface as raw .NET — not navigable from .spy, #920; 5 null-arg/Axiom 3) |
+| TomlTypedDeserializationTests.cs | 6 | Spy/toml/toml_typed_deserialization_tests.spy | 1 | ported (5 omitted: 3 Tomlyn property-vs-field binding gap, #922; 2 null-arg/Axiom 3) |
 | UuidModuleTests.cs | 13 | Spy/uuid/uuid_module_tests.spy | 13 | ported (re-enabled #886) |
 | XmlModuleTests.cs | 84 | | | pending |
-| YamlModuleTests.cs | 60 | | | pending |
-| YamlRoundtripTests.cs | 29 | | | pending |
-| YamlTypedDeserializationTests.cs | 6 | | | pending |
-| ZoneinfoTests.cs | 28 | | | pending |
+| YamlModuleTests.cs | 60 | Spy/yaml/yaml_module_tests.spy | 55 | ported (5 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
+| YamlRoundtripTests.cs | 29 | Spy/yaml/yaml_roundtrip_tests.spy | 21 | ported (8 omitted: 1 null-arg/Axiom 3, 1 TryGetValue/`out`-param interop, 4 CommentInfo construction + 2 Keys-order — yaml surface gaps #919) |
+| YamlTypedDeserializationTests.cs | 6 | Spy/yaml/yaml_typed_deserialization_tests.spy | 5 | ported (1 omitted: null-arg TypeError, Axiom 3) |
+| ZoneinfoTests.cs | 28 | Spy/zoneinfo/zoneinfo_tests.spy | 29 | ported (re-enabled #901; +1 invalid-zone test) |
 
 ## Out of Scope (stay C#)
 

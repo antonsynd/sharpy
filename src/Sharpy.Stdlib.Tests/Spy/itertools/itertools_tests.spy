@@ -1,0 +1,147 @@
+from unittest import assert_raises
+
+import itertools
+
+# --- Chain ---
+
+@test
+def test_chain_concatenates_multiple_iterables():
+    result: list[int] = list(itertools.chain([1, 2], [3, 4], [5]))
+    assert result == [1, 2, 3, 4, 5]
+
+@test
+def test_chain_empty_iterables_returns_empty():
+    empty: list[int] = []
+    result: list[int] = list(itertools.chain(empty, empty))
+    assert len(result) == 0
+
+@test
+def test_chain_single_iterable_behaves_like_original():
+    result: list[int] = list(itertools.chain([10, 20, 30]))
+    assert result == [10, 20, 30]
+
+@test
+def test_chain_with_empty_intermediate_iterable_skips_it():
+    empty: list[int] = []
+    result: list[int] = list(itertools.chain([1], empty, [2]))
+    assert result == [1, 2]
+
+# --- Islice ---
+
+@test
+def test_islice_stop_only_takes_first_n_elements():
+    source: list[int] = [10, 20, 30, 40, 50]
+    result: list[int] = list(itertools.islice(source, 3))
+    assert len(result) == 3
+    assert result[0] == 10
+    assert result[1] == 20
+    assert result[2] == 30
+
+@test
+def test_islice_start_and_stop_skips_to_start():
+    source: list[int] = [10, 20, 30, 40, 50]
+    result: list[int] = list(itertools.islice_range(source, 1, 4))
+    assert len(result) == 3
+    assert result[0] == 20
+    assert result[1] == 30
+    assert result[2] == 40
+
+@test
+def test_islice_with_step_skips_elements():
+    source: list[int] = [10, 20, 30, 40, 50, 60]
+    result: list[int] = list(itertools.islice_range(source, 0, 6, 2))
+    assert len(result) == 3
+    assert result[0] == 10
+    assert result[1] == 30
+    assert result[2] == 50
+
+@test
+def test_islice_negative_start_returns_empty():
+    source: list[int] = [1]
+    result: list[int] = list(itertools.islice_range(source, -1, 5))
+    assert len(result) == 0
+
+@test
+def test_islice_zero_step_yields_only_matching_index():
+    source: list[int] = [1, 2, 3]
+    result: list[int] = list(itertools.islice_range(source, 0, 5, 0))
+    assert len(result) == 1
+    assert result[0] == 1
+
+@test
+def test_islice_start_beyond_source_returns_empty():
+    source: list[int] = [1, 2]
+    result: list[int] = list(itertools.islice_range(source, 10, 20))
+    assert len(result) == 0
+
+# --- Combinations ---
+
+@test
+def test_combinations_returns_correct_combinations():
+    items: list[int] = [1, 2, 3]
+    results: list[list[int]] = list(itertools.combinations(items, 2))
+    assert len(results) == 3
+    assert results[0] == [1, 2]
+    assert results[1] == [1, 3]
+    assert results[2] == [2, 3]
+
+@test
+def test_combinations_r_larger_than_pool_returns_empty():
+    items: list[int] = [1, 2]
+    results: list[list[int]] = list(itertools.combinations(items, 5))
+    assert len(results) == 0
+
+@test
+def test_combinations_r_zero_returns_single_empty_list():
+    items: list[int] = [1, 2, 3]
+    results: list[list[int]] = list(itertools.combinations(items, 0))
+    assert len(results) == 1
+    assert len(results[0]) == 0
+
+@test
+def test_combinations_negative_r_throws_value_error():
+    items: list[int] = [1]
+    with assert_raises(ValueError):
+        list(itertools.combinations(items, -1))
+
+@test
+def test_combinations_r_equals_pool_size_returns_single_combination():
+    items: list[int] = [1, 2, 3]
+    results: list[list[int]] = list(itertools.combinations(items, 3))
+    assert len(results) == 1
+    assert results[0] == [1, 2, 3]
+
+# --- Permutations ---
+
+@test
+def test_permutations_default_r_returns_full_permutations():
+    items: list[int] = [1, 2, 3]
+    results: list[list[int]] = list(itertools.permutations(items))
+    assert len(results) == 6
+    assert results[0] == [1, 2, 3]
+    assert results[1] == [1, 3, 2]
+
+@test
+def test_permutations_with_r_returns_r_length_permutations():
+    items: list[int] = [1, 2, 3]
+    results: list[list[int]] = list(itertools.permutations(items, 2))
+    assert len(results) == 6
+
+@test
+def test_permutations_r_larger_than_pool_returns_empty():
+    items: list[int] = [1, 2]
+    results: list[list[int]] = list(itertools.permutations(items, 5))
+    assert len(results) == 0
+
+@test
+def test_permutations_negative_r_returns_full_permutations():
+    items: list[int] = [1, 2]
+    results: list[list[int]] = list(itertools.permutations(items, -1))
+    assert len(results) == 2
+
+@test
+def test_permutations_single_element_returns_single_permutation():
+    items: list[int] = [42]
+    results: list[list[int]] = list(itertools.permutations(items))
+    assert len(results) == 1
+    assert results[0] == [42]

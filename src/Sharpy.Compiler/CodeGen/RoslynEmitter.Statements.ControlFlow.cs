@@ -121,9 +121,12 @@ internal partial class RoslynEmitter
         // Checked ahead of the generic ==/!= patterns so the comparison maps to a dedicated null
         // assertion. Operand order is irrelevant — detect the non-None side from the AST. NullableType/
         // OptionalType operands never reach here: the type checker rejects their ==/!= None comparisons
-        // with SPY0222. The literal-shape guard below is load-bearing, not redundant: NoneCheck
-        // classifies by VoidType, which also matches void-returning calls (#911), so requiring exactly
-        // one NoneLiteral keeps the operand selection well-defined and lets that case fall through.
+        // with SPY0222. The literal-shape guard below is an invariant assertion (mirrored in
+        // RoslynEmitter.Expressions.Operators.cs's NoneCheck branch): NoneCheck classifies by VoidType,
+        // but the #911 semantic gate (SPY0329) now rejects any non-literal VoidType comparison operand
+        // before lowering, so a NoneCheck always has exactly one NoneLiteral. Requiring that here is
+        // defense-in-depth — a future regression would fall through to the generic ==/!= patterns
+        // rather than mis-selecting an operand.
         if (test is BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } noneEq
             && (noneEq.Left is NoneLiteral) != (noneEq.Right is NoneLiteral)
             && _context.SemanticInfo?.GetBinaryOpLowering(noneEq) == BinaryOpLowering.NoneCheck)

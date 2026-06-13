@@ -1,0 +1,296 @@
+# Literal arguments are bound to typed locals to avoid #917 (inline collection
+# literals passed to a generic call mis-infer their element type from the outer
+# result annotation, producing invalid C# with no Sharpy diagnostic).
+from unittest import assert_raises
+
+import itertools
+import math
+
+# --- Count ---
+
+@test
+def test_count_default_start_and_step():
+    result: list[int] = []
+    for n in itertools.count():
+        result.append(n)
+        if len(result) == 5:
+            break
+    assert result == [0, 1, 2, 3, 4]
+
+@test
+def test_count_custom_start_and_step():
+    result: list[int] = []
+    for n in itertools.count(10, 3):
+        result.append(n)
+        if len(result) == 4:
+            break
+    assert result == [10, 13, 16, 19]
+
+@test
+def test_count_negative_step():
+    result: list[int] = []
+    for n in itertools.count(5, -1):
+        result.append(n)
+        if len(result) == 4:
+            break
+    assert result == [5, 4, 3, 2]
+
+# --- Accumulate ---
+
+@test
+def test_accumulate_running_sum():
+    data: list[int] = [1, 2, 3, 4, 5]
+    result: list[int] = list(itertools.accumulate(data, lambda a: int, b: int: a + b))
+    assert result == [1, 3, 6, 10, 15]
+
+@test
+def test_accumulate_running_product():
+    data: list[int] = [1, 2, 3, 4]
+    result: list[int] = list(itertools.accumulate(data, lambda a: int, b: int: a * b))
+    assert result == [1, 2, 6, 24]
+
+@test
+def test_accumulate_with_initial():
+    data: list[int] = [1, 2, 3]
+    result: list[int] = list(itertools.accumulate(data, lambda a: int, b: int: a + b, 100))
+    assert result == [100, 101, 103, 106]
+
+@test
+def test_accumulate_empty_iterable():
+    empty: list[int] = []
+    result: list[int] = list(itertools.accumulate(empty, lambda a: int, b: int: a + b))
+    assert len(result) == 0
+
+@test
+def test_accumulate_single_element():
+    data: list[int] = [42]
+    result: list[int] = list(itertools.accumulate(data, lambda a: int, b: int: a + b))
+    assert result == [42]
+
+# --- Dropwhile ---
+
+@test
+def test_dropwhile_basic():
+    data: list[int] = [1, 4, 6, 4, 1]
+    result: list[int] = list(itertools.dropwhile(lambda x: int: x < 5, data))
+    assert result == [6, 4, 1]
+
+@test
+def test_dropwhile_none_dropped():
+    data: list[int] = [1, 2, 3]
+    result: list[int] = list(itertools.dropwhile(lambda x: int: x > 100, data))
+    assert result == [1, 2, 3]
+
+@test
+def test_dropwhile_all_dropped():
+    data: list[int] = [1, 2, 3]
+    result: list[int] = list(itertools.dropwhile(lambda x: int: x < 100, data))
+    assert len(result) == 0
+
+# --- Takewhile ---
+
+@test
+def test_takewhile_basic():
+    data: list[int] = [1, 4, 6, 4, 1]
+    result: list[int] = list(itertools.takewhile(lambda x: int: x < 5, data))
+    assert result == [1, 4]
+
+@test
+def test_takewhile_all_taken():
+    data: list[int] = [1, 2, 3]
+    result: list[int] = list(itertools.takewhile(lambda x: int: x < 100, data))
+    assert result == [1, 2, 3]
+
+@test
+def test_takewhile_none_taken():
+    data: list[int] = [1, 2, 3]
+    result: list[int] = list(itertools.takewhile(lambda x: int: x > 100, data))
+    assert len(result) == 0
+
+# --- Compress ---
+
+@test
+def test_compress_basic():
+    data: list[str] = ["A", "B", "C", "D", "E", "F"]
+    sel: list[bool] = [True, False, True, False, True, True]
+    result: list[str] = list(itertools.compress(data, sel))
+    assert result == ["A", "C", "E", "F"]
+
+@test
+def test_compress_shorter_selectors():
+    data: list[int] = [1, 2, 3, 4, 5]
+    sel: list[bool] = [True, True]
+    result: list[int] = list(itertools.compress(data, sel))
+    assert result == [1, 2]
+
+# --- Filterfalse ---
+
+@test
+def test_filterfalse_basic():
+    data: list[int] = [1, 2, 3, 4, 5, 6]
+    result: list[int] = list(itertools.filterfalse(lambda x: int: x % 2 == 0, data))
+    assert result == [1, 3, 5]
+
+@test
+def test_filterfalse_none_filtered():
+    data: list[int] = [1, 2, 3]
+    result: list[int] = list(itertools.filterfalse(lambda x: int: x > 100, data))
+    assert result == [1, 2, 3]
+
+# --- Starmap ---
+
+@test
+def test_starmap_basic():
+    pairs: list[tuple[int, int]] = [(2, 5), (3, 2), (10, 3)]
+    result: list[float] = list(itertools.starmap(lambda a: int, b: int: math.pow(a, b), pairs))
+    assert result == [32.0, 9.0, 1000.0]
+
+@test
+def test_starmap_addition():
+    pairs: list[tuple[int, int]] = [(1, 10), (2, 20), (3, 30)]
+    result: list[int] = list(itertools.starmap(lambda a: int, b: int: a + b, pairs))
+    assert result == [11, 22, 33]
+
+# --- ZipLongest ---
+
+@test
+def test_zip_longest_even_lengths():
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [4, 5, 6]
+    result: list[tuple[int, int]] = list(itertools.zip_longest(a, b, 0))
+    assert len(result) == 3
+    assert result[0] == (1, 4)
+    assert result[1] == (2, 5)
+    assert result[2] == (3, 6)
+
+@test
+def test_zip_longest_uneven_lengths():
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [4]
+    result: list[tuple[int, int]] = list(itertools.zip_longest(a, b, -1))
+    assert len(result) == 3
+    assert result[0] == (1, 4)
+    assert result[1] == (2, -1)
+    assert result[2] == (3, -1)
+
+# --- Product ---
+
+@test
+def test_product_two_iterables():
+    a: list[int] = [1, 2]
+    b: list[int] = [3, 4]
+    result: list[tuple[int, int]] = list(itertools.product(a, b))
+    assert len(result) == 4
+    assert result[0] == (1, 3)
+    assert result[1] == (1, 4)
+    assert result[2] == (2, 3)
+    assert result[3] == (2, 4)
+
+@test
+def test_product_with_repeat():
+    a: list[int] = [0, 1]
+    b: list[int] = [0, 1]
+    result: list[tuple[int, int]] = list(itertools.product(a, b))
+    assert len(result) == 4
+    assert result[0] == (0, 0)
+    assert result[1] == (0, 1)
+    assert result[2] == (1, 0)
+    assert result[3] == (1, 1)
+
+@test
+def test_product_empty_iterable():
+    a: list[int] = [1, 2]
+    empty: list[int] = []
+    result: list[tuple[int, int]] = list(itertools.product(a, empty))
+    assert len(result) == 0
+
+# --- Groupby ---
+
+@test
+def test_groupby_with_key_func():
+    data: list[str] = ["aa", "ab", "ba", "bb", "bc"]
+    groups: list[tuple[str, list[str]]] = []
+    for key, group in itertools.groupby(data, lambda s: str: s[0:1]):
+        items: list[str] = []
+        for item in group:
+            items.append(item)
+        groups.append((key, items))
+    assert len(groups) == 2
+    assert groups[0][0] == "a"
+    assert groups[0][1] == ["aa", "ab"]
+    assert groups[1][0] == "b"
+    assert groups[1][1] == ["ba", "bb", "bc"]
+
+@test
+def test_groupby_consecutive_identical():
+    data: list[int] = [1, 1, 2, 2, 2, 3]
+    groups: list[tuple[int, int]] = []
+    for key, group in itertools.groupby(data, lambda x: int: x):
+        count: int = 0
+        for unused in group:
+            count = count + 1
+        groups.append((key, count))
+    assert len(groups) == 3
+    assert groups[0] == (1, 2)
+    assert groups[1] == (2, 3)
+    assert groups[2] == (3, 1)
+
+# --- CombinationsWithReplacement ---
+
+@test
+def test_combinations_with_replacement_basic():
+    items: list[int] = [1, 2, 3]
+    result: list[list[int]] = list(itertools.combinations_with_replacement(items, 2))
+    assert len(result) == 6
+    assert result[0] == [1, 1]
+    assert result[1] == [1, 2]
+    assert result[2] == [1, 3]
+    assert result[3] == [2, 2]
+    assert result[4] == [2, 3]
+    assert result[5] == [3, 3]
+
+@test
+def test_combinations_with_replacement_r_zero():
+    items: list[int] = [1, 2]
+    result: list[list[int]] = list(itertools.combinations_with_replacement(items, 0))
+    assert len(result) == 1
+    assert len(result[0]) == 0
+
+@test
+def test_combinations_with_replacement_negative_r_throws():
+    items: list[int] = [1]
+    with assert_raises(ValueError):
+        list(itertools.combinations_with_replacement(items, -1))
+
+# --- Pairwise ---
+
+@test
+def test_pairwise_basic():
+    data: list[int] = [1, 2, 3, 4, 5]
+    result: list[tuple[int, int]] = list(itertools.pairwise(data))
+    assert len(result) == 4
+    assert result[0] == (1, 2)
+    assert result[1] == (2, 3)
+    assert result[2] == (3, 4)
+    assert result[3] == (4, 5)
+
+@test
+def test_pairwise_single_element():
+    data: list[int] = [1]
+    result: list[tuple[int, int]] = list(itertools.pairwise(data))
+    assert len(result) == 0
+
+@test
+def test_pairwise_empty():
+    empty: list[int] = []
+    result: list[tuple[int, int]] = list(itertools.pairwise(empty))
+    assert len(result) == 0
+
+@test
+def test_pairwise_strings():
+    data: list[str] = ["A", "B", "C", "D"]
+    result: list[tuple[str, str]] = list(itertools.pairwise(data))
+    assert len(result) == 3
+    assert result[0] == ("A", "B")
+    assert result[1] == ("B", "C")
+    assert result[2] == ("C", "D")

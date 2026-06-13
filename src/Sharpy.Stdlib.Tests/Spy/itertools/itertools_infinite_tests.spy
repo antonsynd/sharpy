@@ -1,0 +1,90 @@
+import itertools
+
+# --- Count ---
+
+@test
+def test_count_default_start_step_starts_at_zero_step_one():
+    result: list[int] = []
+    for n in itertools.count():
+        result.append(n)
+        if len(result) == 5:
+            break
+    assert result == [0, 1, 2, 3, 4]
+
+@test
+def test_count_custom_start_starts_at_ten():
+    result: list[int] = []
+    for n in itertools.count(10):
+        result.append(n)
+        if len(result) == 3:
+            break
+    assert result == [10, 11, 12]
+
+@test
+def test_count_step_two_yields_even_numbers():
+    result: list[int] = []
+    for n in itertools.count(0, 2):
+        result.append(n)
+        if len(result) == 4:
+            break
+    assert result == [0, 2, 4, 6]
+
+@test
+def test_count_negative_step_counts_down():
+    result: list[int] = []
+    for n in itertools.count(10, -1):
+        result.append(n)
+        if len(result) == 3:
+            break
+    assert result == [10, 9, 8]
+
+# --- Cycle ---
+
+@test
+def test_cycle_multiple_elements_cycles_correctly():
+    result: list[int] = []
+    for n in itertools.cycle([1, 2, 3]):
+        result.append(n)
+        if len(result) == 7:
+            break
+    assert result == [1, 2, 3, 1, 2, 3, 1]
+
+@test
+def test_cycle_single_element_repeats_single_element():
+    result: list[int] = []
+    for n in itertools.cycle([42]):
+        result.append(n)
+        if len(result) == 5:
+            break
+    assert result == [42, 42, 42, 42, 42]
+
+@test
+def test_cycle_empty_iterable_produces_no_elements():
+    empty: list[int] = []
+    result: list[int] = []
+    for n in itertools.cycle(empty):
+        result.append(n)
+        if len(result) == 10:
+            break
+    assert len(result) == 0
+
+# --- Repeat ---
+
+@test
+def test_repeat_infinite_mode_repeats_element_indefinitely():
+    result: list[str] = []
+    for s in itertools.repeat("hello"):
+        result.append(s)
+        if len(result) == 3:
+            break
+    assert result == ["hello", "hello", "hello"]
+
+@test
+def test_repeat_counted_mode_repeats_exact_number_of_times():
+    result: list[int] = list(itertools.repeat(7, 3))
+    assert result == [7, 7, 7]
+
+@test
+def test_repeat_count_zero_produces_no_elements():
+    result: list[int] = list(itertools.repeat(99, 0))
+    assert len(result) == 0

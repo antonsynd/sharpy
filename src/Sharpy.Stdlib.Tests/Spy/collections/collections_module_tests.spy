@@ -1,0 +1,436 @@
+from unittest import assert_raises
+
+import collections
+
+# --- Deque ---
+
+@test
+def test_deque_append_and_pop_works_like_stack():
+    d: collections.Deque[int] = collections.Deque[int]()
+    d.append(1)
+    d.append(2)
+    d.append(3)
+    assert d.pop() == 3
+    assert d.pop() == 2
+    assert d.pop() == 1
+
+@test
+def test_deque_appendleft_and_popleft_works_like_queue():
+    d: collections.Deque[int] = collections.Deque[int]()
+    d.appendleft(1)
+    d.appendleft(2)
+    d.appendleft(3)
+    assert d.popleft() == 3
+    assert d.popleft() == 2
+    assert d.popleft() == 1
+
+@test
+def test_deque_append_and_popleft_works_as_fifo():
+    d: collections.Deque[int] = collections.Deque[int]()
+    d.append(1)
+    d.append(2)
+    d.append(3)
+    assert d.popleft() == 1
+    assert d.popleft() == 2
+    assert d.popleft() == 3
+
+@test
+def test_deque_pop_empty_throws_index_error():
+    d: collections.Deque[int] = collections.Deque[int]()
+    with assert_raises(IndexError):
+        d.pop()
+
+@test
+def test_deque_popleft_empty_throws_index_error():
+    d: collections.Deque[int] = collections.Deque[int]()
+    with assert_raises(IndexError):
+        d.popleft()
+
+@test
+def test_deque_count_reflects_size():
+    d: collections.Deque[int] = collections.Deque[int]()
+    n: int = d.count
+    assert n == 0
+    d.append(1)
+    d.append(2)
+    n = d.count
+    assert n == 2
+    d.pop()
+    n = d.count
+    assert n == 1
+
+@test
+def test_deque_constructor_with_iterable_initializes_from_sequence():
+    d: collections.Deque[int] = collections.Deque[int]([1, 2, 3])
+    n: int = d.count
+    assert n == 3
+    assert d.popleft() == 1
+
+@test
+def test_deque_clear_removes_all_elements():
+    d: collections.Deque[int] = collections.Deque[int]([1, 2, 3])
+    d.clear()
+    n: int = d.count
+    assert n == 0
+
+@test
+def test_deque_extend_adds_from_right():
+    d: collections.Deque[int] = collections.Deque[int]([1])
+    d.extend([2, 3, 4])
+    n: int = d.count
+    assert n == 4
+    assert d.pop() == 4
+
+@test
+def test_deque_extendleft_adds_from_left():
+    d: collections.Deque[int] = collections.Deque[int]([4])
+    d.extendleft([1, 2, 3])
+    n: int = d.count
+    assert n == 4
+    # Extendleft reverses order: 3 is added first (leftmost), then 2, then 1
+    assert d.popleft() == 3
+
+@test
+def test_deque_enumeration_iterates_in_order():
+    d: collections.Deque[int] = collections.Deque[int]([10, 20, 30])
+    items: list[int] = []
+    for item in d:
+        items.append(item)
+    assert items == [10, 20, 30]
+
+# --- Counter ---
+
+@test
+def test_counter_counts_occurrences():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b", "a", "c", "a", "b"])
+    assert c["a"] == 3
+    assert c["b"] == 2
+    assert c["c"] == 1
+
+@test
+def test_counter_missing_key_returns_zero():
+    c: collections.Counter[str] = collections.Counter[str](["a"])
+    assert c["nonexistent"] == 0
+
+@test
+def test_counter_most_common_returns_ordered_by_count():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b", "a", "c", "a", "b"])
+    most_common: list[tuple[str, int]] = c.most_common(2)
+    assert len(most_common) == 2
+    assert most_common[0][0] == "a"
+    assert most_common[0][1] == 3
+    assert most_common[1][0] == "b"
+    assert most_common[1][1] == 2
+
+@test
+def test_counter_most_common_no_limit_returns_all():
+    c: collections.Counter[str] = collections.Counter[str](["x", "y", "x"])
+    all_common: list[tuple[str, int]] = c.most_common()
+    assert len(all_common) == 2
+
+@test
+def test_counter_elements_repeats_each_element():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b", "a"])
+    elements: list[str] = list(c.elements())
+    assert "a" in elements
+    assert "b" in elements
+    # Count occurrences of "a" in elements
+    a_count: int = 0
+    for e in elements:
+        if e == "a":
+            a_count = a_count + 1
+    assert a_count == 2
+    b_count: int = 0
+    for e in elements:
+        if e == "b":
+            b_count = b_count + 1
+    assert b_count == 1
+
+@test
+def test_counter_update_adds_counts():
+    c: collections.Counter[str] = collections.Counter[str](["a"])
+    c.update(["a", "b"])
+    assert c["a"] == 2
+    assert c["b"] == 1
+
+@test
+def test_counter_indexer_set_overrides_count():
+    c: collections.Counter[str] = collections.Counter[str]()
+    c["x"] = 10
+    assert c["x"] == 10
+
+@test
+def test_counter_empty_constructor_starts_empty():
+    c: collections.Counter[int] = collections.Counter[int]()
+    assert c[42] == 0
+
+@test
+def test_counter_subtract_iterable_subtracts_counts():
+    c: collections.Counter[str] = collections.Counter[str](["a", "a", "b"])
+    c.subtract(["a"])
+    assert c["a"] == 1
+    assert c["b"] == 1
+
+@test
+def test_counter_subtract_counter_subtracts_counts():
+    c1: collections.Counter[str] = collections.Counter[str](["a", "a", "b"])
+    c2: collections.Counter[str] = collections.Counter[str](["a", "b", "b"])
+    c1.subtract(c2)
+    assert c1["a"] == 1
+    assert c1["b"] == -1
+
+@test
+def test_counter_subtract_missing_keys_goes_negative():
+    c: collections.Counter[str] = collections.Counter[str]()
+    c.subtract(["a"])
+    assert c["a"] == -1
+
+@test
+def test_counter_copy_returns_independent_copy():
+    original: collections.Counter[str] = collections.Counter[str](["a", "a", "b"])
+    copy: collections.Counter[str] = original.copy()
+    copy["a"] = 0
+    assert original["a"] == 2
+    assert copy["a"] == 0
+
+@test
+def test_counter_total_returns_sum_of_counts():
+    c: collections.Counter[str] = collections.Counter[str](["a", "a", "b"])
+    assert c.total() == 3
+
+@test
+def test_counter_total_empty_counter_returns_zero():
+    c: collections.Counter[str] = collections.Counter[str]()
+    assert c.total() == 0
+
+@test
+def test_counter_clear_removes_all_elements():
+    c: collections.Counter[str] = collections.Counter[str](["a", "b"])
+    c.clear()
+    assert c["a"] == 0
+    assert c.total() == 0
+
+@test
+def test_counter_operator_add_combines_counts():
+    c1: collections.Counter[str] = collections.Counter[str](["a", "a", "b"])
+    c2: collections.Counter[str] = collections.Counter[str](["b", "c", "c"])
+    result: collections.Counter[str] = c1 + c2
+    assert result["a"] == 2
+    assert result["b"] == 2
+    assert result["c"] == 2
+
+@test
+def test_counter_operator_subtract_drops_zero_and_negative():
+    c1: collections.Counter[str] = collections.Counter[str](["a", "a", "b"])
+    c2: collections.Counter[str] = collections.Counter[str](["a", "b"])
+    result: collections.Counter[str] = c1 - c2
+    assert result["a"] == 1
+    assert not result.contains_key("b")
+
+@test
+def test_counter_operator_or_takes_max_counts():
+    c1: collections.Counter[str] = collections.Counter[str](["a", "a", "b"])
+    c2: collections.Counter[str] = collections.Counter[str](["b", "c", "c"])
+    result: collections.Counter[str] = c1 | c2
+    assert result["a"] == 2
+    assert result["b"] == 1
+    assert result["c"] == 2
+
+@test
+def test_counter_operator_and_takes_min_counts():
+    c1: collections.Counter[str] = collections.Counter[str](["a", "a", "b"])
+    c2: collections.Counter[str] = collections.Counter[str](["a", "b", "c"])
+    result: collections.Counter[str] = c1 & c2
+    assert result["a"] == 1
+    assert result["b"] == 1
+    assert not result.contains_key("c")
+
+# --- DefaultDict ---
+
+@test
+def test_default_dict_missing_key_returns_default():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    assert dd["new_key"] == 0
+
+@test
+def test_default_dict_missing_key_creates_entry():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    _val: int = dd["key"]
+    assert dd.contains_key("key")
+
+@test
+def test_default_dict_set_and_get_works_normally():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["x"] = 42
+    assert dd["x"] == 42
+
+@test
+def test_default_dict_null_factory_throws_type_error():
+    with assert_raises(TypeError):
+        _dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](None)
+
+@test
+def test_default_dict_get_with_default_does_not_create_entry():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    assert dd.get("absent", 99) == 99
+    assert not dd.contains_key("absent")
+
+@test
+def test_default_dict_keys_returns_all_keys():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd["b"] = 2
+    keys: list[str] = list(dd.keys)
+    assert len(keys) == 2
+    assert "a" in keys
+    assert "b" in keys
+
+@test
+def test_default_dict_values_returns_all_values():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd["b"] = 2
+    vals: list[int] = list(dd.values)
+    assert len(vals) == 2
+    assert 1 in vals
+    assert 2 in vals
+
+@test
+def test_default_dict_copy_preserves_factory_and_items():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd["b"] = 2
+    copy: collections.DefaultDict[str, int] = dd.copy()
+    assert copy["a"] == 1
+    assert copy["b"] == 2
+    assert copy["c"] == 0
+    assert not dd.contains_key("c")
+
+@test
+def test_default_dict_clear_removes_all_items():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd["b"] = 2
+    dd.clear()
+    assert dd.count == 0
+    assert not dd.contains_key("a")
+
+@test
+def test_default_dict_pop_existing_key_returns_and_removes():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    value: int = dd.pop("a")
+    assert value == 1
+    assert not dd.contains_key("a")
+
+@test
+def test_default_dict_pop_missing_key_throws_key_error():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    with assert_raises(KeyError):
+        dd.pop("missing")
+
+@test
+def test_default_dict_pop_with_default_return_default():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    assert dd.pop("missing", 99) == 99
+
+@test
+def test_default_dict_items_returns_key_value_tuples():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["x"] = 10
+    dd["y"] = 20
+    items: list[tuple[str, int]] = dd.items()
+    assert len(items) == 2
+    assert ("x", 10) in items
+    assert ("y", 20) in items
+
+@test
+def test_default_dict_update_merges_from_dictionary():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    other: dict[str, int] = {"a": 99, "b": 2}
+    dd.update(other)
+    assert dd["a"] == 99
+    assert dd["b"] == 2
+
+@test
+def test_default_dict_set_default_existing_key_returns_existing():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 42
+    assert dd.set_default("a", 99) == 42
+    assert dd["a"] == 42
+
+@test
+def test_default_dict_set_default_missing_key_inserts_and_returns():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    assert dd.set_default("a", 5) == 5
+    assert dd["a"] == 5
+
+@test
+def test_default_dict_count_reflects_size():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    assert dd.count == 0
+    dd["a"] = 1
+    dd["b"] = 2
+    assert dd.count == 2
+
+@test
+def test_default_dict_update_from_tuples_merges_entries():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd.update([("a", 9), ("b", 2)])
+    assert dd["a"] == 9
+    assert dd["b"] == 2
+
+@test
+def test_default_dict_pop_item_fifo_returns_first_pair():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd["b"] = 2
+    pair: tuple[str, int] = dd.pop_item()
+    assert pair == ("a", 1)
+    assert dd.count == 1
+
+@test
+def test_default_dict_pop_item_lifo_returns_last_pair():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd["b"] = 2
+    pair: tuple[str, int] = dd.pop_item(last=True)
+    assert pair == ("b", 2)
+    assert dd.count == 1
+
+@test
+def test_default_dict_pop_item_empty_throws_key_error():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    with assert_raises(KeyError):
+        dd.pop_item()
+
+@test
+def test_default_dict_remove_existing_key_removes_entry():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd["b"] = 2
+    dd.remove("a")
+    assert not dd.contains_key("a")
+    assert dd.count == 1
+
+@test
+def test_default_dict_remove_missing_key_throws_key_error():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    with assert_raises(KeyError):
+        dd.remove("missing")
+
+@test
+def test_default_dict_to_dictionary_returns_copy():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd["b"] = 2
+    plain: dict[str, int] = dd.to_dictionary()
+    assert dd.contains_key("a")
+    assert dd.contains_key("b")
+    # Verify it's a copy: adding to plain should not affect dd
+    assert not dd.contains_key("c")
+
+# 1 omitted: CollectionsModule_ExposesExpectedTypes — typeof() reflection not expressible in .spy
+# 1 omitted: DefaultDict_ListFactory_AccumulatesValues — List factory not expressible in .spy

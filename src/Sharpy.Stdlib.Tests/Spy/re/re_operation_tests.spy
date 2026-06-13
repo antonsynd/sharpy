@@ -1,0 +1,177 @@
+import re
+
+# Tests for re module operations: findall, finditer, split, sub, escape.
+# These complement re_module_tests.spy with edge cases and additional scenarios.
+
+# --- Findall Edge Cases ---
+
+@test
+def test_findall_no_groups_returns_full_matches():
+    result = re.findall(r"\d+", "a1b2c3")
+    assert len(result) == 3
+    # findall returns list[object]; wrap with str() for comparison
+    assert str(result[0]) == "1"
+    assert str(result[1]) == "2"
+    assert str(result[2]) == "3"
+
+@test
+def test_findall_single_group_returns_group_values():
+    # Python: re.findall(r'(\d+)', 'a1b2c3') == ['1', '2', '3']
+    result = re.findall(r"(\d+)", "a1b2c3")
+    assert len(result) == 3
+    assert str(result[0]) == "1"
+    assert str(result[1]) == "2"
+    assert str(result[2]) == "3"
+
+@test
+def test_findall_no_match_returns_empty_list():
+    result = re.findall(r"\d+", "no digits here")
+    assert len(result) == 0
+
+@test
+def test_findall_with_flags_ignore_case():
+    result = re.findall("[a-z]+", "Hello World", flags=re.IGNORECASE)
+    assert len(result) == 2
+    assert str(result[0]) == "Hello"
+    assert str(result[1]) == "World"
+
+# --- Finditer Edge Cases ---
+
+@test
+def test_finditer_returns_match_objects_with_correct_groups():
+    matches = re.finditer(r"(\w+)=(\d+)", "x=1 y=42 z=100")
+    assert len(matches) == 3
+    assert matches[0].group(1) == "x"
+    assert matches[0].group(2) == "1"
+    assert matches[1].group(1) == "y"
+    assert matches[1].group(2) == "42"
+
+@test
+def test_finditer_no_match_returns_empty_list():
+    matches = re.finditer(r"\d+", "no numbers")
+    assert len(matches) == 0
+
+@test
+def test_finditer_spans_are_correct():
+    matches = re.finditer(r"\d+", "ab12cd34")
+    assert len(matches) == 2
+    assert matches[0].span() == (2, 4)
+    assert matches[1].span() == (6, 8)
+
+# --- Split Edge Cases ---
+
+@test
+def test_split_comma_separated_splits_all():
+    result = re.split(",", "a,b,c")
+    assert len(result) == 3
+    assert result[0] == "a"
+    assert result[1] == "b"
+    assert result[2] == "c"
+
+@test
+def test_split_no_match_returns_single_element_list():
+    result = re.split(r"\d+", "no numbers")
+    assert len(result) == 1
+    assert result[0] == "no numbers"
+
+@test
+def test_split_with_maxsplit1_splits_once():
+    result = re.split(",", "a,b,c", maxsplit=1)
+    assert len(result) == 2
+    assert result[0] == "a"
+    assert result[1] == "b,c"
+
+@test
+def test_split_with_capturing_group_includes_delimiters():
+    # Python: re.split(r'(\W+)', 'Words, words') == ['Words', ', ', 'words']
+    result = re.split(r"(\W+)", "Words, words")
+    assert len(result) == 3
+    assert result[0] == "Words"
+    assert result[1] == ", "
+    assert result[2] == "words"
+
+@test
+def test_split_pattern_at_start_leads_with_empty_string():
+    result = re.split(",", ",a,b")
+    assert len(result) == 3
+    assert result[0] == ""
+    assert result[1] == "a"
+    assert result[2] == "b"
+
+@test
+def test_split_pattern_at_end_trails_with_empty_string():
+    result = re.split(",", "a,b,")
+    assert len(result) == 3
+    assert result[0] == "a"
+    assert result[1] == "b"
+    assert result[2] == ""
+
+# --- Sub Edge Cases ---
+
+@test
+def test_sub_replaces_all_occurrences():
+    result: str = re.sub(r"\d+", "NUM", "a1b2c3")
+    assert result == "aNUMbNUMcNUM"
+
+@test
+def test_sub_count1_replaces_first_only():
+    result: str = re.sub(r"\d+", "NUM", "a1b2c3", count=1)
+    assert result == "aNUMb2c3"
+
+@test
+def test_sub_no_match_returns_original_string():
+    result: str = re.sub(r"\d+", "NUM", "no numbers")
+    assert result == "no numbers"
+
+@test
+def test_sub_with_backreference_swaps_groups():
+    result: str = re.sub(r"(\w+)\s(\w+)", "$2 $1", "hello world")
+    assert result == "world hello"
+
+@test
+def test_sub_with_flags_case_insensitive():
+    result: str = re.sub("[a-z]+", "X", "Hello World", flags=re.IGNORECASE)
+    assert result == "X X"
+
+@test
+def test_sub_empty_string_returns_empty_string():
+    result: str = re.sub(r"\d+", "X", "")
+    assert result == ""
+
+# --- Escape Edge Cases ---
+
+@test
+def test_escape_empty_string_returns_empty_string():
+    result: str = re.escape("")
+    assert result == ""
+
+@test
+def test_escape_plain_alphanumeric_unchanged():
+    result: str = re.escape("hello123")
+    assert result == "hello123"
+
+@test
+def test_escape_dot_is_escaped():
+    result: str = re.escape(".")
+    # Escaped dot can be used as literal pattern
+    m = re.search(result, ".")
+    assert m is not None
+    # It should NOT match a non-dot
+    no_match = re.compile(result).match("a")
+    assert no_match is None
+
+@test
+def test_escape_special_chars_can_be_used_as_literal_pattern():
+    # Escaped pattern should match the literal string
+    literal: str = "a.b*c+d?"
+    escaped: str = re.escape(literal)
+    m = re.search(escaped, literal)
+    assert m is not None
+    assert m.group() == literal
+
+@test
+def test_escape_caret_is_escaped():
+    result: str = re.escape("^")
+    # The escaped string should match literal "^"
+    m = re.search(result, "a^b")
+    assert m is not None

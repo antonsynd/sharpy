@@ -1,0 +1,854 @@
+from unittest import assert_raises
+
+import json
+import math
+import operator
+
+# Ported from JsonModuleTests.cs (#843).
+# Untyped json.loads() returns object?; scalar results are compared with
+# operator.eq (object '==' is rejected by Axiom 3), and structural results are
+# navigated via match type-patterns (see #912 for the indexing workaround).
+
+# --- Dumps - Primitives ---
+
+@test
+def test_dumps_null_returns_null_string():
+    assert json.dumps(None) == "null"
+
+@test
+def test_dumps_true_returns_true_string():
+    assert json.dumps(True) == "true"
+
+@test
+def test_dumps_false_returns_false_string():
+    assert json.dumps(False) == "false"
+
+@test
+def test_dumps_int_returns_number_string():
+    assert json.dumps(42) == "42"
+
+@test
+def test_dumps_negative_int_returns_number_string():
+    assert json.dumps(-1) == "-1"
+
+@test
+def test_dumps_long_returns_number_string():
+    value: long = 9999999999
+    assert json.dumps(value) == "9999999999"
+
+@test
+def test_dumps_double_returns_number_string():
+    assert json.dumps(3.14) == "3.14"
+
+@test
+def test_dumps_double_zero_returns_number_with_decimal():
+    assert json.dumps(0.0) == "0.0"
+
+@test
+def test_dumps_string_returns_quoted_string():
+    assert json.dumps("hello") == "\"hello\""
+
+@test
+def test_dumps_empty_string_returns_empty_quotes():
+    assert json.dumps("") == "\"\""
+
+# --- Dumps - String Escaping ---
+
+@test
+def test_dumps_string_with_quotes_escapes_quotes():
+    assert json.dumps("say \"hi\"") == "\"say \\\"hi\\\"\""
+
+@test
+def test_dumps_string_with_backslash_escapes_backslash():
+    assert json.dumps("a\\b") == "\"a\\\\b\""
+
+@test
+def test_dumps_string_with_newline_escapes_newline():
+    assert json.dumps("line1\nline2") == "\"line1\\nline2\""
+
+@test
+def test_dumps_string_with_tab_escapes_tab():
+    assert json.dumps("a\tb") == "\"a\\tb\""
+
+@test
+def test_dumps_string_with_unicode_escapes_non_ascii():
+    # ensure_ascii=true by default
+    assert json.dumps("café") == "\"caf\\u00e9\""
+
+@test
+def test_dumps_string_with_unicode_ensure_ascii_false_preserves_unicode():
+    assert json.dumps("café", ensureAscii=False) == "\"café\""
+
+# --- Dumps - Collections ---
+
+@test
+def test_dumps_empty_dict_returns_empty_object():
+    d: dict[str, object] = {}
+    assert json.dumps(d) == "{}"
+
+@test
+def test_dumps_dict_returns_object():
+    d: dict[str, object] = {}
+    d["a"] = 1
+    assert json.dumps(d) == "{\"a\": 1}"
+
+@test
+def test_dumps_dict_string_int_uses_interface_dispatch():
+    d: dict[str, int] = {"a": 1, "b": 2}
+    assert json.dumps(d, sortKeys=True) == "{\"a\": 1, \"b\": 2}"
+
+@test
+def test_dumps_empty_list_returns_empty_array():
+    l: list[object] = []
+    assert json.dumps(l) == "[]"
+
+@test
+def test_dumps_list_returns_array():
+    l: list[object] = []
+    l.append(1)
+    l.append("two")
+    l.append(True)
+    assert json.dumps(l) == "[1, \"two\", true]"
+
+@test
+def test_dumps_nested_structure_serializes():
+    inner: dict[str, object] = {}
+    inner["x"] = 1
+    items: list[object] = []
+    items.append(inner)
+    outer: dict[str, object] = {}
+    outer["items"] = items
+    assert json.dumps(outer) == "{\"items\": [{\"x\": 1}]}"
+
+# --- Dumps - Formatting ---
+
+@test
+def test_dumps_with_indent_pretty_prints():
+    d: dict[str, object] = {}
+    d["a"] = 1
+    d["b"] = 2
+    assert json.dumps(d, indent=2) == "{\n  \"a\": 1,\n  \"b\": 2\n}"
+
+@test
+def test_dumps_with_sort_keys_sorts_keys():
+    d: dict[str, object] = {}
+    d["c"] = 3
+    d["a"] = 1
+    d["b"] = 2
+    assert json.dumps(d, sortKeys=True) == "{\"a\": 1, \"b\": 2, \"c\": 3}"
+
+@test
+def test_dumps_indent_and_sort_keys_combined():
+    d: dict[str, object] = {}
+    d["z"] = 26
+    d["a"] = 1
+    assert json.dumps(d, indent=4, sortKeys=True) == "{\n    \"a\": 1,\n    \"z\": 26\n}"
+
+@test
+def test_dumps_nested_indent_indents_correctly():
+    inner: dict[str, object] = {}
+    inner["x"] = 1
+    outer: dict[str, object] = {}
+    outer["inner"] = inner
+    assert json.dumps(outer, indent=2) == "{\n  \"inner\": {\n    \"x\": 1\n  }\n}"
+
+# --- Dumps - Error Cases ---
+
+@test
+def test_dumps_infinity_throws_value_error():
+    with assert_raises(ValueError):
+        json.dumps(math.Inf)
+
+@test
+def test_dumps_nan_throws_value_error():
+    with assert_raises(ValueError):
+        json.dumps(math.Nan)
+
+@test
+def test_dumps_non_serializable_type_throws_type_error():
+    with assert_raises(TypeError):
+        json.dumps(Unserializable())
+
+# --- Loads - Primitives ---
+
+@test
+def test_loads_null_returns_null():
+    r: object = json.loads("null")
+    assert r is None
+
+@test
+def test_loads_true_returns_true():
+    r: object = json.loads("true")
+    assert operator.eq(r, True)
+
+@test
+def test_loads_false_returns_false():
+    r: object = json.loads("false")
+    assert operator.eq(r, False)
+
+@test
+def test_loads_int_returns_int():
+    r: object = json.loads("42")
+    assert isinstance(r, int)
+    assert operator.eq(r, 42)
+
+@test
+def test_loads_negative_int_returns_int():
+    r: object = json.loads("-7")
+    assert isinstance(r, int)
+    assert operator.eq(r, -7)
+
+@test
+def test_loads_large_int_returns_long():
+    r: object = json.loads("9999999999")
+    assert isinstance(r, long)
+    value: long = 9999999999
+    assert operator.eq(r, value)
+
+@test
+def test_loads_float_returns_double():
+    r: object = json.loads("3.14")
+    assert isinstance(r, float)
+    assert operator.eq(r, 3.14)
+
+@test
+def test_loads_scientific_returns_double():
+    r: object = json.loads("1.5e10")
+    assert isinstance(r, float)
+    assert operator.eq(r, 1.5e10)
+
+@test
+def test_loads_zero_returns_int():
+    r: object = json.loads("0")
+    assert isinstance(r, int)
+    assert operator.eq(r, 0)
+
+@test
+def test_loads_string_returns_string():
+    r: object = json.loads("\"hello\"")
+    assert operator.eq(r, "hello")
+
+@test
+def test_loads_empty_string_returns_empty_string():
+    r: object = json.loads("\"\"")
+    assert operator.eq(r, "")
+
+# --- Loads - String Escapes ---
+
+@test
+def test_loads_escaped_quote_parses_correctly():
+    r: object = json.loads("\"say \\\"hi\\\"\"")
+    assert operator.eq(r, "say \"hi\"")
+
+@test
+def test_loads_escaped_backslash_parses_correctly():
+    r: object = json.loads("\"a\\\\b\"")
+    assert operator.eq(r, "a\\b")
+
+@test
+def test_loads_escaped_newline_parses_correctly():
+    r: object = json.loads("\"a\\nb\"")
+    assert operator.eq(r, "a\nb")
+
+@test
+def test_loads_unicode_escape_parses_correctly():
+    r: object = json.loads("\"caf\\u00e9\"")
+    assert operator.eq(r, "café")
+
+@test
+def test_loads_all_escapes_parses_correctly():
+    assert operator.eq(json.loads("\"\\/\""), "/")
+    assert operator.eq(json.loads("\"\\b\""), "\b")
+    assert operator.eq(json.loads("\"\\f\""), "\f")
+    assert operator.eq(json.loads("\"\\r\""), "\r")
+    assert operator.eq(json.loads("\"\\t\""), "\t")
+
+# --- Loads - Objects ---
+
+@test
+def test_loads_empty_object_returns_empty_dict():
+    r: object = json.loads("{}")
+    match r:
+        case dict() as d:
+            assert len(d) == 0
+        case _:
+            assert False
+
+@test
+def test_loads_simple_object_returns_dict():
+    r: object = json.loads("{\"a\": 1, \"b\": \"two\"}")
+    match r:
+        case dict() as d:
+            assert operator.eq(d["a"], 1)
+            assert operator.eq(d["b"], "two")
+        case _:
+            assert False
+
+@test
+def test_loads_nested_object_returns_nested_dict():
+    r: object = json.loads("{\"outer\": {\"inner\": 42}}")
+    match r:
+        case dict() as d:
+            match d["outer"]:
+                case dict() as inner:
+                    assert operator.eq(inner["inner"], 42)
+                case _:
+                    assert False
+        case _:
+            assert False
+
+# --- Loads - Arrays ---
+
+@test
+def test_loads_empty_array_returns_empty_list():
+    r: object = json.loads("[]")
+    match r:
+        case list() as l:
+            assert len(l) == 0
+        case _:
+            assert False
+
+@test
+def test_loads_simple_array_returns_list():
+    r: object = json.loads("[1, 2, 3]")
+    match r:
+        case list() as l:
+            assert len(l) == 3
+            assert operator.eq(l[0], 1)
+            assert operator.eq(l[1], 2)
+            assert operator.eq(l[2], 3)
+        case _:
+            assert False
+
+@test
+def test_loads_mixed_array_returns_list():
+    r: object = json.loads("[1, \"two\", true, null]")
+    match r:
+        case list() as l:
+            assert operator.eq(l[0], 1)
+            assert operator.eq(l[1], "two")
+            assert operator.eq(l[2], True)
+            assert l[3] is None
+        case _:
+            assert False
+
+@test
+def test_loads_nested_array_returns_list():
+    r: object = json.loads("[[1, 2], [3, 4]]")
+    match r:
+        case list() as l:
+            match l[0]:
+                case list() as inner1:
+                    assert operator.eq(inner1[0], 1)
+                    assert operator.eq(inner1[1], 2)
+                case _:
+                    assert False
+        case _:
+            assert False
+
+# --- Loads - Whitespace ---
+
+@test
+def test_loads_with_leading_whitespace_parses():
+    r: object = json.loads("  42")
+    assert operator.eq(r, 42)
+
+@test
+def test_loads_with_trailing_whitespace_parses():
+    r: object = json.loads("42  ")
+    assert operator.eq(r, 42)
+
+@test
+def test_loads_pretty_printed_json_parses():
+    r: object = json.loads("{\n  \"a\": 1,\n  \"b\": [\n    2,\n    3\n  ]\n}")
+    match r:
+        case dict() as d:
+            assert operator.eq(d["a"], 1)
+        case _:
+            assert False
+
+# --- Loads - Error Cases ---
+
+@test
+def test_loads_empty_string_throws_json_decode_error():
+    with assert_raises(json.JSONDecodeError):
+        json.loads("")
+
+@test
+def test_loads_invalid_json_throws_json_decode_error():
+    with assert_raises(json.JSONDecodeError):
+        json.loads("invalid")
+
+@test
+def test_loads_trailing_comma_in_object_throws_json_decode_error():
+    with assert_raises(json.JSONDecodeError):
+        json.loads("{\"a\": 1,}")
+
+@test
+def test_loads_trailing_comma_in_array_throws_json_decode_error():
+    with assert_raises(json.JSONDecodeError):
+        json.loads("[1, 2,]")
+
+@test
+def test_loads_extra_data_throws_json_decode_error():
+    with assert_raises(json.JSONDecodeError):
+        json.loads("1 2")
+
+@test
+def test_loads_unclosed_string_throws_json_decode_error():
+    with assert_raises(json.JSONDecodeError):
+        json.loads("\"unclosed")
+
+@test
+def test_loads_unclosed_object_throws_json_decode_error():
+    with assert_raises(json.JSONDecodeError):
+        json.loads("{\"a\": 1")
+
+@test
+def test_loads_unclosed_array_throws_json_decode_error():
+    with assert_raises(json.JSONDecodeError):
+        json.loads("[1, 2")
+
+@test
+def test_json_decode_error_is_value_error():
+    with assert_raises(json.JSONDecodeError) as ex:
+        json.loads("invalid")
+    assert isinstance(ex, ValueError)
+
+@test
+def test_json_decode_error_has_position_info():
+    with assert_raises(json.JSONDecodeError) as ex:
+        json.loads("invalid")
+    assert ex.Doc == "invalid"
+    assert ex.Pos == 0
+    assert "line 1" in str(ex)
+    assert "column 1" in str(ex)
+
+# --- Round-Trip Tests ---
+
+@test
+def test_round_trip_dict_preserves_data():
+    d: dict[str, object] = {}
+    d["name"] = "test"
+    d["value"] = 42
+    d["active"] = True
+    d["nothing"] = None
+    parsed: object = json.loads(json.dumps(d))
+    match parsed:
+        case dict() as result:
+            assert operator.eq(result["name"], "test")
+            assert operator.eq(result["value"], 42)
+            assert operator.eq(result["active"], True)
+            assert result["nothing"] is None
+        case _:
+            assert False
+
+@test
+def test_round_trip_list_preserves_data():
+    l: list[object] = []
+    l.append(1)
+    l.append("two")
+    l.append(3.0)
+    l.append(False)
+    l.append(None)
+    parsed: object = json.loads(json.dumps(l))
+    match parsed:
+        case list() as result:
+            assert operator.eq(result[0], 1)
+            assert operator.eq(result[1], "two")
+            assert operator.eq(result[2], 3.0)
+            assert operator.eq(result[3], False)
+            assert result[4] is None
+        case _:
+            assert False
+
+@test
+def test_round_trip_nested_complex_preserves_data():
+    item1: dict[str, object] = {}
+    item1["id"] = 1
+    item1["name"] = "alpha"
+    item2: dict[str, object] = {}
+    item2["id"] = 2
+    item2["name"] = "beta"
+    items: list[object] = []
+    items.append(item1)
+    items.append(item2)
+    root: dict[str, object] = {}
+    root["items"] = items
+    root["count"] = 2
+    parsed: object = json.loads(json.dumps(root))
+    match parsed:
+        case dict() as result:
+            assert operator.eq(result["count"], 2)
+            match result["items"]:
+                case list() as result_items:
+                    match result_items[0]:
+                        case dict() as first:
+                            assert operator.eq(first["id"], 1)
+                            assert operator.eq(first["name"], "alpha")
+                        case _:
+                            assert False
+                case _:
+                    assert False
+        case _:
+            assert False
+
+@test
+def test_round_trip_string_with_escapes_preserves_data():
+    original = "line1\nline2\ttab \"quoted\" back\\slash"
+    r: object = json.loads(json.dumps(original))
+    assert operator.eq(r, original)
+
+@test
+def test_round_trip_unicode_string_preserves_data():
+    original = "café üñîçöðé"
+    r: object = json.loads(json.dumps(original))
+    assert operator.eq(r, original)
+
+# --- Edge Cases ---
+
+@test
+def test_loads_deeply_nested_handles_recursion():
+    # 20 levels of nesting
+    s = "[" * 20 + "1" + "]" * 20
+    current: object = json.loads(s)
+    i = 0
+    while i < 20:
+        match current:
+            case list() as l:
+                current = l[0]
+            case _:
+                assert False
+        i = i + 1
+    assert operator.eq(current, 1)
+
+@test
+def test_loads_object_with_duplicate_keys_last_wins():
+    r: object = json.loads("{\"a\": 1, \"a\": 2}")
+    match r:
+        case dict() as d:
+            assert operator.eq(d["a"], 2)
+        case _:
+            assert False
+
+@test
+def test_loads_empty_object_and_array_in_array():
+    r: object = json.loads("[{}, []]")
+    match r:
+        case list() as l:
+            match l[0]:
+                case dict():
+                    pass
+                case _:
+                    assert False
+            match l[1]:
+                case list():
+                    pass
+                case _:
+                    assert False
+        case _:
+            assert False
+
+@test
+def test_dumps_null_value_in_dict_serializes_as_null():
+    d: dict[str, object] = {}
+    d["key"] = None
+    assert json.dumps(d) == "{\"key\": null}"
+
+@test
+def test_dumps_null_in_list_serializes_as_null():
+    l: list[object] = []
+    l.append(None)
+    assert json.dumps(l) == "[null]"
+
+# --- Dumps - Dict with String Keys (additional patterns) ---
+
+@test
+def test_dumps_dict_string_key_returns_json_object():
+    d: dict[str, object] = {}
+    d["a"] = 1
+    d["b"] = 2
+    assert json.dumps(d) == "{\"a\": 1, \"b\": 2}"
+
+@test
+def test_dumps_dict_string_key_int_returns_json_object():
+    d: dict[str, int] = {"x": 10, "y": 20}
+    assert json.dumps(d) == "{\"x\": 10, \"y\": 20}"
+
+@test
+def test_dumps_nested_dict_string_key_returns_nested_object():
+    inner: dict[str, int] = {"x": 1}
+    outer: dict[str, object] = {}
+    outer["inner"] = inner
+    assert json.dumps(outer) == "{\"inner\": {\"x\": 1}}"
+
+@test
+def test_dumps_dict_string_key_with_sort_keys_sorts_keys():
+    d: dict[str, object] = {}
+    d["c"] = 3
+    d["a"] = 1
+    d["b"] = 2
+    assert json.dumps(d, sortKeys=True) == "{\"a\": 1, \"b\": 2, \"c\": 3}"
+
+@test
+def test_dumps_dict_string_key_with_indent_pretty_prints():
+    d: dict[str, object] = {}
+    d["a"] = 1
+    d["b"] = 2
+    assert json.dumps(d, indent=2) == "{\n  \"a\": 1,\n  \"b\": 2\n}"
+
+@test
+def test_dumps_dict_string_key_nested_dict_string_key_dict_returns_nested_objects():
+    leaf: dict[str, int] = {"val": 42}
+    inner: dict[str, dict[str, int]] = {}
+    inner["mid"] = leaf
+    assert json.dumps(inner) == "{\"mid\": {\"val\": 42}}"
+
+# --- Dumps - Generic Collections with Value Types ---
+
+@test
+def test_dumps_list_of_int_returns_array():
+    l: list[int] = [1, 2, 3]
+    assert json.dumps(l) == "[1, 2, 3]"
+
+@test
+def test_dumps_empty_list_of_int_returns_empty_array():
+    l: list[int] = []
+    assert json.dumps(l) == "[]"
+
+@test
+def test_dumps_set_of_string_returns_array():
+    s: set[str] = {"hello"}
+    assert json.dumps(s) == "[\"hello\"]"
+
+@test
+def test_dumps_list_of_double_returns_array():
+    l: list[float] = [1.5, 2.5]
+    assert json.dumps(l) == "[1.5, 2.5]"
+
+@test
+def test_dumps_list_of_bool_returns_array():
+    l: list[bool] = [True, False]
+    assert json.dumps(l) == "[true, false]"
+
+@test
+def test_dumps_nested_list_of_int_in_dict_serializes():
+    inner: list[int] = [10, 20]
+    d: dict[str, object] = {}
+    d["nums"] = inner
+    assert json.dumps(d) == "{\"nums\": [10, 20]}"
+
+@test
+def test_dumps_list_of_int_with_indent_pretty_prints():
+    l: list[int] = [1, 2]
+    assert json.dumps(l, indent=2) == "[\n  1,\n  2\n]"
+
+# --- Dumps - Separators ---
+
+@test
+def test_dumps_dict_with_compact_separators_omits_whitespace():
+    d: dict[str, object] = {}
+    d["a"] = 1
+    d["b"] = 2
+    assert json.dumps(d, separators=(",", ":")) == "{\"a\":1,\"b\":2}"
+
+@test
+def test_dumps_dict_with_custom_separators_uses_given_strings():
+    d: dict[str, object] = {}
+    d["a"] = 1
+    d["b"] = 2
+    assert json.dumps(d, separators=(" ; ", " = ")) == "{\"a\" = 1 ; \"b\" = 2}"
+
+@test
+def test_dumps_list_with_compact_separators_omits_whitespace():
+    l: list[int] = [1, 2, 3]
+    assert json.dumps(l, separators=(",", ":")) == "[1,2,3]"
+
+@test
+def test_dumps_null_separators_produces_default_output():
+    d: dict[str, object] = {}
+    d["a"] = 1
+    d["b"] = 2
+    explicit_null = json.dumps(d, separators=None)
+    default_call = json.dumps(d)
+    assert explicit_null == default_call
+    assert explicit_null == "{\"a\": 1, \"b\": 2}"
+
+@test
+def test_dumps_separators_with_indent_uses_newline_for_structure_and_key_separator():
+    d: dict[str, object] = {}
+    d["a"] = 1
+    d["b"] = 2
+    assert json.dumps(d, indent=2, separators=(",", ": ")) == "{\n  \"a\": 1,\n  \"b\": 2\n}"
+
+@test
+def test_dumps_nested_dict_with_compact_separators_applies_recursively():
+    inner: dict[str, object] = {}
+    inner["x"] = 1
+    inner["y"] = 2
+    outer: dict[str, object] = {}
+    outer["point"] = inner
+    outer["count"] = 3
+    assert json.dumps(outer, separators=(",", ":")) == "{\"point\":{\"x\":1,\"y\":2},\"count\":3}"
+
+@test
+def test_dumps_nested_list_with_compact_separators_applies_recursively():
+    inner1: list[int] = [1, 2]
+    inner2: list[int] = [3, 4]
+    outer: list[object] = []
+    outer.append(inner1)
+    outer.append(inner2)
+    assert json.dumps(outer, separators=(",", ":")) == "[[1,2],[3,4]]"
+
+@test
+def test_dumps_str_key_dict_with_compact_separators_omits_whitespace():
+    d: dict[str, int] = {"a": 1, "b": 2}
+    assert json.dumps(d, separators=(",", ":")) == "{\"a\":1,\"b\":2}"
+
+# --- Dumps - Default Callback ---
+# DateTime in the C# tests is replaced with a Sharpy Stamp type; the callback
+# semantics (custom-type conversion / not-invoked / identity-raises) are preserved.
+
+@test
+def test_dumps_default_callback_converts_custom_type_to_string():
+    stamp = Stamp()
+    assert json.dumps(stamp, default=stamp_to_string) == "\"2026-01-15\""
+
+@test
+def test_dumps_default_callback_converts_custom_type_to_dict():
+    stamp = Stamp()
+    assert json.dumps(stamp, default=stamp_to_dict) == "{\"year\": 2026, \"month\": 1, \"day\": 15}"
+
+@test
+def test_dumps_default_callback_not_invoked_for_null():
+    # If the callback ran, output would be "fallback"; null is handled natively.
+    assert json.dumps(None, default=fallback_callback) == "null"
+
+@test
+def test_dumps_default_callback_not_invoked_for_natively_serializable_types():
+    assert json.dumps(42, default=fallback_callback) == "42"
+
+@test
+def test_dumps_default_callback_returning_same_object_raises_type_error():
+    stamp = Stamp()
+    with assert_raises(TypeError):
+        json.dumps(stamp, default=identity_callback)
+
+@test
+def test_dumps_no_default_callback_non_serializable_type_raises_type_error():
+    stamp = Stamp()
+    with assert_raises(TypeError):
+        json.dumps(stamp)
+
+@test
+def test_dumps_default_callback_nested_in_dict_is_invoked_for_value():
+    stamp = Stamp()
+    d: dict[str, object] = {}
+    d["when"] = stamp
+    d["count"] = 5
+    assert json.dumps(d, default=stamp_to_string) == "{\"when\": \"2026-01-15\", \"count\": 5}"
+
+@test
+def test_dumps_default_callback_nested_in_list_is_invoked_for_element():
+    stamp = Stamp()
+    l: list[object] = []
+    l.append(stamp)
+    l.append(1)
+    assert json.dumps(l, default=stamp_to_string) == "[\"2026-01-15\", 1]"
+
+@test
+def test_dumps_default_and_separators_combined_correctly():
+    stamp = Stamp()
+    d: dict[str, object] = {}
+    d["when"] = stamp
+    d["count"] = 5
+    assert json.dumps(d, separators=(",", ":"), default=stamp_to_string) == "{\"when\":\"2026-01-15\",\"count\":5}"
+
+
+# --- Dump/Load File I/O ---
+
+@test
+def test_dump_writes_json_to_file(tmp_path: str):
+    path = tmp_path + "/data.json"
+    data: dict[str, object] = {}
+    data["key"] = "value"
+    with open(path, "w") as fp:
+        json.dump(data, fp)
+    content: str = ""
+    with open(path, "r") as fp2:
+        content = fp2.read()
+    assert content == "{\"key\": \"value\"}"
+
+@test
+def test_load_reads_json_from_file(tmp_path: str):
+    path = tmp_path + "/data.json"
+    with open(path, "w") as fp:
+        fp.write("{\"key\": \"value\"}")
+    with open(path, "r") as fp2:
+        result: object = json.load(fp2)
+        match result:
+            case dict() as d:
+                assert operator.eq(d["key"], "value")
+            case _:
+                assert False
+
+@test
+def test_dump_load_round_trip_through_file(tmp_path: str):
+    path = tmp_path + "/data.json"
+    data: dict[str, object] = {}
+    data["name"] = "test"
+    values: list[object] = []
+    values.append(1)
+    values.append(2)
+    values.append(3)
+    data["values"] = values
+    with open(path, "w") as fp:
+        json.dump(data, fp, indent=2)
+    with open(path, "r") as fp2:
+        result: object = json.load(fp2)
+        match result:
+            case dict() as d:
+                assert operator.eq(d["name"], "test")
+                match d["values"]:
+                    case list() as vals:
+                        assert len(vals) == 3
+                    case _:
+                        assert False
+            case _:
+                assert False
+
+
+# --- Helpers ---
+
+class Unserializable:
+    marker: int = 0
+
+
+class Stamp:
+    year: int = 2026
+    month: int = 1
+    day: int = 15
+
+
+def stamp_to_string(obj: object) -> object:
+    if isinstance(obj, Stamp):
+        return "2026-01-15"
+    return obj
+
+
+def stamp_to_dict(obj: object) -> object:
+    if isinstance(obj, Stamp):
+        d: dict[str, object] = {}
+        d["year"] = obj.year
+        d["month"] = obj.month
+        d["day"] = obj.day
+        return d
+    return obj
+
+
+def fallback_callback(obj: object) -> object:
+    return "fallback"
+
+
+def identity_callback(obj: object) -> object:
+    return obj

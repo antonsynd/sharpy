@@ -1,0 +1,87 @@
+import csv
+import io
+
+# --- Reader ---
+
+@test
+def test_reader_simple_line():
+    reader = csv.reader(["a,b,c"])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 1
+    assert rows[0][0] == "a"
+    assert rows[0][1] == "b"
+    assert rows[0][2] == "c"
+
+@test
+def test_reader_quoted_field_with_comma():
+    reader = csv.reader(["a,\"hello, world\",c"])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert rows[0][0] == "a"
+    assert rows[0][1] == "hello, world"
+    assert rows[0][2] == "c"
+
+@test
+def test_reader_escaped_quote():
+    # CSV: a,"say ""hello""",c => fields: a | say "hello" | c
+    reader = csv.reader(["a,\"say \"\"hello\"\"\",c"])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert rows[0][1] == "say \"hello\""
+
+@test
+def test_reader_multiple_rows():
+    reader = csv.reader(["a,b", "c,d", "e,f"])
+    count: int = 0
+    for row in reader:
+        count += 1
+    assert count == 3
+
+# --- Writer ---
+
+@test
+def test_writer_simple_row():
+    sw = io.StringIO()
+    writer = csv.writer(sw)
+    writer.writerow(["a", "b", "c"])
+    assert sw.getvalue() == "a,b,c\n"
+
+@test
+def test_writer_quotes_field_with_comma():
+    sw = io.StringIO()
+    writer = csv.writer(sw)
+    writer.writerow(["hello, world", "test"])
+    assert "\"hello, world\"" in sw.getvalue()
+
+@test
+def test_writer_writerows_multiple_rows():
+    sw = io.StringIO()
+    writer = csv.writer(sw)
+    rows: list[list[str]] = [["a", "b"], ["c", "d"]]
+    writer.writerows(rows)
+    assert sw.getvalue() == "a,b\nc,d\n"
+
+# --- Constants ---
+
+@test
+def test_constants_have_correct_values():
+    assert csv.QUOTE_ALL == 1
+    assert csv.QUOTE_MINIMAL == 0
+    assert csv.QUOTE_NONE == 3
+    assert csv.QUOTE_NONNUMERIC == 2
+
+# --- LineNum ---
+
+@test
+def test_reader_line_num_tracks_lines_read():
+    reader = csv.reader(["a,b", "c,d", "e,f"])
+    assert reader.line_num == 0
+    count: int = 0
+    for row in reader:
+        count += 1
+        assert reader.line_num == count
+    assert reader.line_num == 3

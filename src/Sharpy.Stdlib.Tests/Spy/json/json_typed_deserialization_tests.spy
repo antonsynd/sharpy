@@ -1,0 +1,172 @@
+from unittest import assert_raises
+
+import json
+
+# Ported from JsonTypedDeserializationTests.cs (#843).
+# json.loads[T]() / json.load[T]() return Result<T, JSONDecodeError>.
+# Omitted (documented in PORTING.md):
+#   - LoadsT_NullInput_ThrowsTypeError, LoadT_NullFile_ThrowsTypeError: pass null!
+#     to a non-nullable parameter, which Sharpy rejects at compile time (Axiom 3).
+# Generic-collection fields are bound to an explicitly-typed local before indexing
+# to avoid the SPY0907 index-inference bug (#912).
+
+class SimpleRecord:
+    name: str = ""
+    age: int = 0
+    active: bool = False
+
+
+class NestedRecord:
+    label: str = ""
+    inner: SimpleRecord = SimpleRecord()
+
+
+class RecordWithList:
+    name: str = ""
+    scores: list[int] = []
+
+
+class RecordWithDict:
+    name: str = ""
+    metadata: dict[str, int] = {}
+
+
+class RecordWithOptional:
+    name: str = ""
+    nickname: str? = None
+    count: int = 0
+
+
+# --- Loads[T] — success cases ---
+
+@test
+def test_loads_t_simple_record_deserializes():
+    result = json.loads[SimpleRecord]("{\"name\": \"Alice\", \"age\": 30, \"active\": true}")
+    assert result.IsOk
+    record = result.Unwrap()
+    assert record.name == "Alice"
+    assert record.age == 30
+    assert record.active
+
+@test
+def test_loads_t_snake_case_mapping_deserializes():
+    result = json.loads[RecordWithOptional]("{\"name\": \"Bob\", \"nickname\": \"Bobby\", \"count\": 5}")
+    assert result.IsOk
+    record = result.Unwrap()
+    assert record.name == "Bob"
+    assert record.nickname == "Bobby"
+    assert record.count == 5
+
+@test
+def test_loads_t_nested_record_deserializes():
+    result = json.loads[NestedRecord]("{\"label\": \"outer\", \"inner\": {\"name\": \"inner\", \"age\": 10, \"active\": false}}")
+    assert result.IsOk
+    record = result.Unwrap()
+    assert record.label == "outer"
+    assert record.inner.name == "inner"
+    assert record.inner.age == 10
+    assert not record.inner.active
+
+@test
+def test_loads_t_record_with_list_deserializes():
+    result = json.loads[RecordWithList]("{\"name\": \"Charlie\", \"scores\": [100, 95, 87]}")
+    assert result.IsOk
+    record = result.Unwrap()
+    assert record.name == "Charlie"
+    scores: list[int] = record.scores
+    assert len(scores) == 3
+    assert scores[0] == 100
+    assert scores[1] == 95
+    assert scores[2] == 87
+
+@test
+def test_loads_t_record_with_dict_deserializes():
+    result = json.loads[RecordWithDict]("{\"name\": \"Dave\", \"metadata\": {\"x\": 1, \"y\": 2}}")
+    assert result.IsOk
+    record = result.Unwrap()
+    assert record.name == "Dave"
+    metadata: dict[str, int] = record.metadata
+    assert metadata["x"] == 1
+    assert metadata["y"] == 2
+
+@test
+def test_loads_t_optional_field_missing_defaults_to_null():
+    result = json.loads[RecordWithOptional]("{\"name\": \"Eve\", \"count\": 3}")
+    assert result.IsOk
+    record = result.Unwrap()
+    assert record.name == "Eve"
+    assert record.nickname.IsNone
+    assert record.count == 3
+
+@test
+def test_loads_t_case_insensitive_deserializes():
+    result = json.loads[SimpleRecord]("{\"Name\": \"Frank\", \"Age\": 25, \"Active\": true}")
+    assert result.IsOk
+    assert result.Unwrap().name == "Frank"
+
+# --- Loads[T] — error cases ---
+
+@test
+def test_loads_t_invalid_json_returns_err():
+    result = json.loads[SimpleRecord]("{invalid}")
+    assert result.IsErr
+    err = result.UnwrapErr()
+    assert err.Doc == "{invalid}"
+
+@test
+def test_loads_t_type_mismatch_returns_err():
+    result = json.loads[SimpleRecord]("{\"name\": \"Alice\", \"age\": \"not a number\", \"active\": true}")
+    assert result.IsErr
+
+@test
+def test_loads_t_empty_string_returns_err():
+    result = json.loads[SimpleRecord]("")
+    assert result.IsErr
+
+# --- Loads[T] — Result unwrapping ---
+
+@test
+def test_loads_t_ok_result_unwrap_returns_value():
+    result = json.loads[SimpleRecord]("{\"name\": \"Test\", \"age\": 1, \"active\": false}")
+    assert result.IsOk
+    assert not result.IsErr
+    record = result.Unwrap()
+    assert record.name == "Test"
+
+@test
+def test_loads_t_err_result_unwrap_throws():
+    # The C# test asserts result.Unwrap() throws InvalidOperationException; that
+    # .NET exception type is not part of Sharpy's catchable hierarchy, so the
+    # throw-assertion is covered by Result's own tests. The Err state is asserted here.
+    result = json.loads[SimpleRecord]("not json")
+    assert result.IsErr
+    assert not result.IsOk
+
+@test
+def test_loads_t_err_result_error_has_message():
+    result = json.loads[SimpleRecord]("{bad}")
+    assert result.IsErr
+    err = result.UnwrapErr()
+    assert len(err.Msg) > 0
+    assert err.Doc == "{bad}"
+
+# --- Load[T] — file round-trip ---
+
+@test
+def test_load_t_file_round_trip_deserializes(tmp_path: str):
+    path = tmp_path + "/typed.json"
+    with open(path, "w") as fp:
+        fp.write("{\"name\": \"FileTest\", \"age\": 42, \"active\": true}")
+    name: str = ""
+    age: int = 0
+    ok: bool = False
+    with open(path, "r") as fp2:
+        result = json.load[SimpleRecord](fp2)
+        ok = result.IsOk
+        if ok:
+            record = result.Unwrap()
+            name = record.name
+            age = record.age
+    assert ok
+    assert name == "FileTest"
+    assert age == 42

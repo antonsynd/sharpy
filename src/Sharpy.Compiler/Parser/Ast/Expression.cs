@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
+using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Parser.Ast;
 
@@ -519,6 +520,9 @@ public record KeywordArgument
     public int ColumnStart { get; init; }
     public int LineEnd { get; init; }
     public int ColumnEnd { get; init; }
+
+    // Span covering the keyword name through the value (set by the parser).
+    public TextSpan? Span { get; init; }
 }
 
 #endregion

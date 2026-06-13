@@ -32,6 +32,43 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // Reject void-returning call operands in equality comparisons (#911). A `None`-typed
+        // (VoidType) operand that is NOT the literal `None` is a void-returning call used as a
+        // comparand (e.g. `s == f()` where `f() -> None`). Python would evaluate the call and
+        // compare against None, but that is almost certainly a bug, and Sharpy already rejects
+        // void-call *assignment* (SPY0229). Gating here — before InferBinaryOpType — also
+        // guarantees the literal-shape invariant the equality lowering relies on: any VoidType
+        // operand that reaches inference/lowering is the `None` literal. Scope is ==/!= only;
+        // other operators already fail inference with SPY0222. (Axiom 3 > Axiom 2.)
+        if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual)
+        {
+            var voidOperandFound = false;
+            if (leftType is VoidType && binOp.Left is not NoneLiteral)
+            {
+                AddError(
+                    "Expression of type 'None' has no value and cannot be used as a comparison operand; call it as a statement and compare separately",
+                    binOp.Left.LineStart,
+                    binOp.Left.ColumnStart,
+                    code: DiagnosticCodes.Semantic.VoidComparisonOperand,
+                    span: binOp.Left.Span);
+                voidOperandFound = true;
+            }
+            if (rightType is VoidType && binOp.Right is not NoneLiteral)
+            {
+                AddError(
+                    "Expression of type 'None' has no value and cannot be used as a comparison operand; call it as a statement and compare separately",
+                    binOp.Right.LineStart,
+                    binOp.Right.ColumnStart,
+                    code: DiagnosticCodes.Semantic.VoidComparisonOperand,
+                    span: binOp.Right.Span);
+                voidOperandFound = true;
+            }
+            if (voidOperandFound)
+            {
+                return SemanticType.Unknown;
+            }
+        }
+
         // Use TypeInferenceService for type inference
         var resultType = _typeInference.InferBinaryOpType(binOp.Operator, leftType, rightType);
 
@@ -51,6 +88,13 @@ internal partial class TypeChecker
         // Record how equality (==/!=) should be lowered by codegen. Tuples and CLR types
         // that resolve via Equals (no op_Equality) must emit an Equals call rather than a
         // native C# operator. The emitter reads this annotation from SemanticInfo (#886).
+        //
+        // Invariant (#911): any VoidType operand reaching this point is guaranteed to be the
+        // `None` literal — void-returning call operands were rejected above with SPY0329. This
+        // is what makes the NoneCheck lowering's AST-shape operand selection well-defined. Three
+        // consumers rely on it: InferBinaryOpType/GetBinaryOpLowering (TypeInferenceService),
+        // the emitter's NoneCheck branches (RoslynEmitter.Expressions.Operators / .Statements.
+        // ControlFlow), and OperatorValidator (suppress-only, never selects operands).
         if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual)
         {
             var lowering = _typeInference.GetBinaryOpLowering(binOp.Operator, leftType, rightType);
@@ -514,7 +558,7 @@ internal partial class TypeChecker
                     {
                         AddError($"Unknown keyword argument '{kwarg.Name}'",
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                            span: kwarg.Value.Span);
+                            span: kwarg.Span ?? kwarg.Value.Span);
                     }
                     else
                     {
@@ -524,13 +568,13 @@ internal partial class TypeChecker
                         {
                             AddError($"Argument '{kwarg.Name}' was already provided positionally",
                                 kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
-                                span: kwarg.Value.Span);
+                                span: kwarg.Span ?? kwarg.Value.Span);
                         }
                         else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
                         {
                             AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
                                 kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                                span: kwarg.Value.Span);
+                                span: kwarg.Span ?? kwarg.Value.Span);
                         }
                     }
                 }

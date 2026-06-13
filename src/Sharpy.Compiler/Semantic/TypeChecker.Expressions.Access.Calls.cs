@@ -1654,14 +1654,14 @@ internal partial class TypeChecker
                 {
                     AddError($"Unknown keyword argument '{kwarg.Name}'",
                         kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                        span: kwarg.Value.Span);
+                        span: kwarg.Span ?? kwarg.Value.Span);
                 }
                 else if (param.IsPositionalOnly)
                 {
                     AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
                         kwarg.LineStart, kwarg.ColumnStart,
                         code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
-                        span: kwarg.Value.Span);
+                        span: kwarg.Span ?? kwarg.Value.Span);
                 }
                 else
                 {
@@ -1670,14 +1670,14 @@ internal partial class TypeChecker
                     {
                         AddError($"Argument '{kwarg.Name}' was already provided positionally",
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
-                            span: kwarg.Value.Span);
+                            span: kwarg.Span ?? kwarg.Value.Span);
                     }
                     else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type)
                         && !(IsSystemTypeParameter(param.Type) && _semanticInfo.IsTypeReference(kwarg.Value)))
                     {
                         AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: kwarg.Value.Span);
+                            span: kwarg.Span ?? kwarg.Value.Span);
                     }
                 }
             }
@@ -1753,14 +1753,14 @@ internal partial class TypeChecker
                 {
                     AddError($"Unknown keyword argument '{kwarg.Name}'",
                         kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                        span: kwarg.Value.Span);
+                        span: kwarg.Span ?? kwarg.Value.Span);
                 }
                 else if (param.IsPositionalOnly)
                 {
                     AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
                         kwarg.LineStart, kwarg.ColumnStart,
                         code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
-                        span: kwarg.Value.Span);
+                        span: kwarg.Span ?? kwarg.Value.Span);
                 }
                 else
                 {
@@ -1769,7 +1769,7 @@ internal partial class TypeChecker
                     {
                         AddError($"Argument '{kwarg.Name}' was already provided positionally",
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
-                            span: kwarg.Value.Span);
+                            span: kwarg.Span ?? kwarg.Value.Span);
                     }
                 }
             }
@@ -2400,7 +2400,7 @@ internal partial class TypeChecker
                 AddError($"Unknown keyword argument '{kwarg.Name}'",
                     kwarg.LineStart, kwarg.ColumnStart,
                     code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                    span: kwarg.Value.Span);
+                    span: kwarg.Span ?? kwarg.Value.Span);
             }
         }
     }

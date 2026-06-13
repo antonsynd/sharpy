@@ -1,0 +1,488 @@
+from unittest import assert_raises
+
+import configparser
+import io
+
+# --- ReadString ---
+
+@test
+def test_read_string_basic_key_value():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey = value")
+    assert config.get("section", "key") == "value"
+
+@test
+def test_read_string_colon_delimiter():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey : value")
+    assert config.get("section", "key") == "value"
+
+@test
+def test_read_string_no_spaces():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey=value")
+    assert config.get("section", "key") == "value"
+
+@test
+def test_read_string_multiline_value():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey = line1\n  line2\n  line3")
+    assert config.get("section", "key") == "line1\nline2\nline3"
+
+@test
+def test_read_string_hash_comments():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\n# comment\nkey = value")
+    assert config.get("section", "key") == "value"
+    assert len(config.options("section")) == 1
+
+@test
+def test_read_string_semicolon_comments():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\n; comment\nkey = value")
+    assert config.get("section", "key") == "value"
+
+@test
+def test_read_string_multiple_sections():
+    config = configparser.ConfigParser()
+    config.read_string("[section1]\nkey1 = val1\n\n[section2]\nkey2 = val2")
+    assert len(config.sections()) == 2
+    assert config.get("section1", "key1") == "val1"
+    assert config.get("section2", "key2") == "val2"
+
+@test
+def test_read_string_empty_value():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey =")
+    assert config.get("section", "key") == ""
+
+@test
+def test_read_string_whitespace_in_section_name():
+    config = configparser.ConfigParser()
+    config.read_string("[ section ]\nkey = value")
+    assert config.get(" section ", "key") == "value"
+
+# --- DEFAULT section ---
+
+@test
+def test_default_fallback():
+    config = configparser.ConfigParser()
+    config.read_string("[DEFAULT]\nfallback = yes\n\n[section]\nkey = value")
+    assert config.get("section", "fallback") == "yes"
+    assert config.get("section", "key") == "value"
+
+@test
+def test_default_overridden_by_section():
+    config = configparser.ConfigParser()
+    config.read_string("[DEFAULT]\nkey = default\n\n[section]\nkey = override")
+    assert config.get("section", "key") == "override"
+
+@test
+def test_defaults_returns_default_values():
+    config = configparser.ConfigParser()
+    config.read_string("[DEFAULT]\nkey1 = val1\nkey2 = val2")
+    defaults = config.defaults()
+    assert defaults.contains_key("key1")
+    assert defaults.contains_key("key2")
+
+# --- Case sensitivity ---
+
+@test
+def test_case_insensitive_keys():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nMyKey = myvalue")
+    assert config.get("section", "mykey") == "myvalue"
+    assert config.get("section", "MYKEY") == "myvalue"
+
+@test
+def test_case_sensitive_sections():
+    config = configparser.ConfigParser()
+    config.read_string("[Section]\nkey = val")
+    assert config.has_section("Section")
+    assert not config.has_section("section")
+
+@test
+def test_has_section_returns_false_for_default():
+    config = configparser.ConfigParser()
+    config.read_string("[DEFAULT]\nkey = val\n\n[section]\nkey2 = val2")
+    assert not config.has_section("DEFAULT")
+    assert config.has_section("section")
+
+@test
+def test_has_option_checks_section_and_default():
+    config = configparser.ConfigParser()
+    config.read_string("[DEFAULT]\ndefault_key = val\n\n[section]\nsection_key = val2")
+    assert config.has_option("section", "section_key")
+    assert config.has_option("section", "default_key")
+    assert not config.has_option("section", "nonexistent")
+
+# --- AddSection / Set ---
+
+@test
+def test_add_section_and_set():
+    config = configparser.ConfigParser()
+    config.add_section("new_section")
+    config.set("new_section", "key", "value")
+    assert config.get("new_section", "key") == "value"
+
+@test
+def test_add_section_duplicate_throws():
+    config = configparser.ConfigParser()
+    config.add_section("section")
+    with assert_raises(configparser.DuplicateSectionError):
+        config.add_section("section")
+
+@test
+def test_add_section_default_throws():
+    config = configparser.ConfigParser()
+    with assert_raises(ValueError):
+        config.add_section("DEFAULT")
+
+@test
+def test_get_no_section_throws():
+    config = configparser.ConfigParser()
+    with assert_raises(configparser.NoSectionError):
+        config.get("nonexistent", "key")
+
+@test
+def test_get_no_option_throws():
+    config = configparser.ConfigParser()
+    config.add_section("section")
+    with assert_raises(configparser.NoOptionError):
+        config.get("section", "missing")
+
+@test
+def test_get_fallback_returned():
+    config = configparser.ConfigParser()
+    config.add_section("section")
+    assert config.get("section", "missing", fallback="default") == "default"
+
+@test
+def test_set_no_section_throws():
+    config = configparser.ConfigParser()
+    with assert_raises(configparser.NoSectionError):
+        config.set("nonexistent", "key", "value")
+
+@test
+def test_remove_option():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey1 = value1\nkey2 = value2")
+    assert config.remove_option("section", "key1")
+    assert not config.has_option("section", "key1")
+    assert config.has_option("section", "key2")
+
+@test
+def test_remove_section():
+    config = configparser.ConfigParser()
+    config.read_string("[section1]\nkey = val\n\n[section2]\nkey = val")
+    assert config.remove_section("section1")
+    assert not config.has_section("section1")
+    assert config.has_section("section2")
+
+@test
+def test_options_includes_defaults():
+    config = configparser.ConfigParser()
+    config.read_string("[DEFAULT]\nd = 1\n\n[section]\ns = 2")
+    options = config.options("section")
+    assert "d" in options
+    assert "s" in options
+
+@test
+def test_items_includes_defaults():
+    config = configparser.ConfigParser()
+    config.read_string("[DEFAULT]\ncolor = red\n\n[section]\nsize = large")
+    items = config.items("section")
+    assert items.contains_key("color")
+    assert items.contains_key("size")
+    assert items["color"] == "red"
+    assert items["size"] == "large"
+
+@test
+def test_missing_section_header_error_before_any_section():
+    config = configparser.ConfigParser()
+    with assert_raises(configparser.MissingSectionHeaderError):
+        config.read_string("key = value")
+
+# --- Dict-like access ---
+
+@test
+def test_dict_like_access():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey = value")
+    assert config["section"]["key"] == "value"
+
+@test
+def test_dict_like_access_set():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey = value")
+    config["section"]["key"] = "new_value"
+    assert config.get("section", "key") == "new_value"
+
+@test
+def test_dict_like_access_no_section_throws():
+    config = configparser.ConfigParser()
+    with assert_raises(configparser.NoSectionError):
+        config["nonexistent"].keys()
+
+@test
+def test_section_proxy_keys():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey1 = val1\nkey2 = val2")
+    keys = config["section"].keys()
+    assert "key1" in keys
+    assert "key2" in keys
+
+@test
+def test_section_proxy_get_with_fallback():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey1 = val1")
+    assert config["section"].get("key1") == "val1"
+    assert config["section"].get("missing", "default_val") == "default_val"
+
+# --- Interpolation ---
+
+@test
+def test_basic_interpolation_percent_syntax():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\nbase_dir = /srv\npath = %(base_dir)s/data")
+    assert config.get("section", "path") == "/srv/data"
+
+@test
+def test_basic_interpolation_from_default():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[DEFAULT]\nroot = /\n\n[section]\npath = %(root)setc")
+    assert config.get("section", "path") == "/etc"
+
+@test
+def test_basic_interpolation_recursive():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\na = 1\nb = %(a)s2\nc = %(b)s3")
+    assert config.get("section", "c") == "123"
+
+@test
+def test_basic_interpolation_circular_throws():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\na = %(b)s\nb = %(a)s")
+    # assert_raises is exact-match (not assignable); the circular case raises the
+    # InterpolationDepthError subclass of InterpolationError.
+    with assert_raises(configparser.InterpolationDepthError):
+        config.get("section", "a")
+
+@test
+def test_extended_interpolation_cross_section():
+    config = configparser.ConfigParser(configparser.ExtendedInterpolation())
+    config.read_string("[paths]\nhome = /Users\n\n[section]\nmy_dir = ${paths:home}/myapp")
+    assert config.get("section", "my_dir") == "/Users/myapp"
+
+@test
+def test_extended_interpolation_same_section():
+    config = configparser.ConfigParser(configparser.ExtendedInterpolation())
+    config.read_string("[section]\nbase = /srv\npath = ${base}/data")
+    assert config.get("section", "path") == "/srv/data"
+
+@test
+def test_raw_get_skips_interpolation():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\nbase = /srv\npath = %(base)s/data")
+    assert config.get("section", "path", raw=True) == "%(base)s/data"
+
+# --- Typed getters ---
+
+@test
+def test_get_int_parses_integer():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nport = 8080")
+    assert config.get_int("section", "port") == 8080
+
+@test
+def test_get_int_invalid_throws():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nval = notint")
+    with assert_raises(ValueError):
+        config.get_int("section", "val")
+
+@test
+def test_get_float_parses_double():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nrate = 3.14")
+    assert abs(config.get_float("section", "rate") - 3.14) < 0.001
+
+@test
+def test_get_boolean_all_variants():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\na = yes\nb = no\nc = true\nd = false\ne = 1\nf = 0\ng = on\nh = off")
+    assert config.get_boolean("section", "a")
+    assert not config.get_boolean("section", "b")
+    assert config.get_boolean("section", "c")
+    assert not config.get_boolean("section", "d")
+    assert config.get_boolean("section", "e")
+    assert not config.get_boolean("section", "f")
+    assert config.get_boolean("section", "g")
+    assert not config.get_boolean("section", "h")
+
+@test
+def test_get_boolean_invalid_throws():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nval = maybe")
+    with assert_raises(ValueError):
+        config.get_boolean("section", "val")
+
+# --- Write ---
+
+@test
+def test_write_round_trip():
+    config = configparser.ConfigParser()
+    config.add_section("section")
+    config.set("section", "key1", "value1")
+    config.set("section", "key2", "value2")
+    writer = io.StringIO()
+    config.write(writer)
+    config2 = configparser.ConfigParser()
+    config2.read_string(writer.getvalue())
+    assert config2.get("section", "key1") == "value1"
+    assert config2.get("section", "key2") == "value2"
+
+@test
+def test_write_default_section():
+    config = configparser.ConfigParser()
+    config.read_string("[DEFAULT]\nbase = /srv\n\n[section]\nkey = val")
+    writer = io.StringIO()
+    config.write(writer)
+    output: str = writer.getvalue()
+    assert "[DEFAULT]" in output
+    assert "base = /srv" in output
+    assert "[section]" in output
+
+@test
+def test_write_no_space_around_delimiters():
+    config = configparser.ConfigParser()
+    config.add_section("section")
+    config.set("section", "key", "value")
+    writer = io.StringIO()
+    config.write(writer, space_around_delimiters=False)
+    assert "key=value" in writer.getvalue()
+
+@test
+def test_read_missing_file_silently_ignored():
+    config = configparser.ConfigParser()
+    config.read("/tmp/nonexistent_config_file_12345.ini")
+    assert len(config.sections()) == 0
+
+# --- Edge cases ---
+
+@test
+def test_empty_ini_file():
+    config = configparser.ConfigParser()
+    config.read_string("")
+    assert len(config.sections()) == 0
+
+@test
+def test_section_with_no_keys():
+    config = configparser.ConfigParser()
+    config.read_string("[section]")
+    assert config.has_section("section")
+    assert len(config.options("section")) == 0
+
+@test
+def test_value_contains_delimiter():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey = value = with = equals")
+    assert config.get("section", "key") == "value = with = equals"
+
+@test
+def test_inline_comments_disabled_by_default():
+    config = configparser.ConfigParser()
+    config.read_string("[section]\nkey = foo # bar")
+    assert config.get("section", "key") == "foo # bar"
+
+@test
+def test_allow_no_value_get_returns_null():
+    # allow_no_value keys are stored with a null value; get must return None
+    # rather than raising NoOptionError (Python returns None).
+    config = configparser.ConfigParser(allow_no_value=True)
+    config.read_string("[section]\nkey")
+    assert config.get("section", "key") is None
+
+@test
+def test_basic_interpolation_missing_key_throws_interpolation_error():
+    # Interpolation of a missing key must raise InterpolationError, not let the
+    # underlying NoOptionError escape.
+    config = configparser.ConfigParser()
+    config.read_string("[section]\npath = %(missing)s")
+    # assert_raises is exact-match (not assignable); a missing key raises the
+    # InterpolationMissingOptionError subclass of InterpolationError.
+    with assert_raises(configparser.InterpolationMissingOptionError):
+        config.get("section", "path")
+
+@test
+def test_get_int_missing_section_returns_fallback():
+    # Typed getters must honor the fallback even when the section is absent.
+    config = configparser.ConfigParser()
+    assert config.get_int("nosection", "key", fallback=42) == 42
+
+@test
+def test_get_boolean_missing_section_returns_fallback():
+    config = configparser.ConfigParser()
+    assert config.get_boolean("nosection", "key", fallback=True)
+
+# --- Interpolation error subclasses ---
+
+@test
+def test_basic_interpolation_circular_throws_depth_error():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\na = %(b)s\nb = %(a)s")
+    with assert_raises(configparser.InterpolationDepthError):
+        config.get("section", "a")
+
+@test
+def test_basic_interpolation_missing_key_throws_missing_option_error():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\npath = %(missing)s")
+    with assert_raises(configparser.InterpolationMissingOptionError):
+        config.get("section", "path")
+
+@test
+def test_basic_interpolation_unterminated_throws_syntax_error():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\na = %(b")
+    with assert_raises(configparser.InterpolationSyntaxError):
+        config.get("section", "a")
+
+@test
+def test_basic_interpolation_bad_percent_throws_syntax_error():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\na = %z")
+    with assert_raises(configparser.InterpolationSyntaxError):
+        config.get("section", "a")
+
+@test
+def test_extended_interpolation_unterminated_throws_syntax_error():
+    config = configparser.ConfigParser(configparser.ExtendedInterpolation())
+    config.read_string("[section]\na = ${b")
+    with assert_raises(configparser.InterpolationSyntaxError):
+        config.get("section", "a")
+
+@test
+def test_extended_interpolation_too_many_colons_throws_syntax_error():
+    config = configparser.ConfigParser(configparser.ExtendedInterpolation())
+    config.read_string("[section]\na = ${x:y:z}")
+    with assert_raises(configparser.InterpolationSyntaxError):
+        config.get("section", "a")
+
+@test
+def test_basic_interpolation_percent_escape_does_not_throw():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\na = 100%%")
+    assert config.get("section", "a") == "100%"
+
+@test
+def test_extended_interpolation_valid_cross_section_does_not_throw():
+    config = configparser.ConfigParser(configparser.ExtendedInterpolation())
+    config.read_string("[defaults]\nbase = /opt\n[section]\npath = ${defaults:base}/app")
+    assert config.get("section", "path") == "/opt/app"
+
+@test
+def test_basic_interpolation_percent_escape_before_key_produces_literal():
+    config = configparser.ConfigParser(configparser.BasicInterpolation())
+    config.read_string("[section]\nkey = world\na = 100%%(key)s")
+    assert config.get("section", "a") == "100%(key)s"

@@ -1,0 +1,166 @@
+import csv
+import io
+
+# NOTE: Reader_NullLines_ThrowsTypeError and Writer_NullOutput_ThrowsTypeError are omitted:
+# they pass `null!` to non-nullable parameters, which Sharpy rejects at compile time
+# (Axiom 3 > Axiom 2). Type-unsafe by design.
+
+# --- CsvReader: basic iteration ---
+
+@test
+def test_reader_empty_lines_returns_no_rows():
+    empty: list[str] = []
+    reader = csv.reader(empty)
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 0
+
+@test
+def test_reader_single_field_returns_single_element_row():
+    reader = csv.reader(["hello"])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 1
+    assert len(rows[0]) == 1
+    assert rows[0][0] == "hello"
+
+@test
+def test_reader_empty_fields_parses_middle_empty_field():
+    # a,,b => ["a", "", "b"]
+    reader = csv.reader(["a,,b"])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows[0]) == 3
+    assert rows[0][0] == "a"
+    assert rows[0][1] == ""
+    assert rows[0][2] == "b"
+
+@test
+def test_reader_trailing_comma_produces_empty_last_field():
+    # "a,b," => ["a", "b", ""]
+    reader = csv.reader(["a,b,"])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows[0]) == 3
+    assert rows[0][2] == ""
+
+@test
+def test_reader_leading_comma_produces_empty_first_field():
+    # ",a,b" => ["", "a", "b"]
+    reader = csv.reader([",a,b"])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows[0]) == 3
+    assert rows[0][0] == ""
+    assert rows[0][1] == "a"
+
+@test
+def test_reader_all_empty_single_row_with_one_empty_field():
+    # Empty line => [""]
+    reader = csv.reader([""])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 1
+    assert len(rows[0]) == 1
+    assert rows[0][0] == ""
+
+@test
+def test_reader_quoted_field_containing_comma_is_one_field():
+    reader = csv.reader(["\"a,b\",c"])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows[0]) == 2
+    assert rows[0][0] == "a,b"
+    assert rows[0][1] == "c"
+
+@test
+def test_reader_quoted_field_with_double_quote_unescapes_quote():
+    # "he said ""hi""" => he said "hi"
+    reader = csv.reader(["\"he said \"\"hi\"\"\""])
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert rows[0][0] == "he said \"hi\""
+
+@test
+def test_reader_line_num_starts_at_zero():
+    reader = csv.reader(["a,b", "c,d"])
+    assert reader.line_num == 0
+
+@test
+def test_reader_line_num_increments_during_iteration():
+    reader = csv.reader(["a,b", "c,d", "e,f"])
+    line_nums: list[int] = []
+    for row in reader:
+        line_nums.append(reader.line_num)
+    assert line_nums == [1, 2, 3]
+
+# --- CsvWriter: additional coverage ---
+
+@test
+def test_writer_empty_row_writes_newline_only():
+    sw = io.StringIO()
+    writer = csv.writer(sw)
+    empty: list[str] = []
+    writer.writerow(empty)
+    assert sw.getvalue() == "\n"
+
+@test
+def test_writer_field_with_quote_escapes_quote():
+    sw = io.StringIO()
+    writer = csv.writer(sw)
+    writer.writerow(["say \"hello\""])
+    # Field containing a quote should be quoted with internal quotes doubled
+    assert sw.getvalue() == "\"say \"\"hello\"\"\"\n"
+
+@test
+def test_writer_field_with_newline_quotes_field():
+    sw = io.StringIO()
+    writer = csv.writer(sw)
+    writer.writerow(["line1\nline2"])
+    output: str = sw.getvalue()
+    assert output[0] == "\""
+    assert "line1\nline2" in output
+
+@test
+def test_writer_plain_field_not_quoted():
+    sw = io.StringIO()
+    writer = csv.writer(sw)
+    writer.writerow(["simple"])
+    assert sw.getvalue() == "simple\n"
+
+@test
+def test_writer_writerows_empty_list_writes_nothing():
+    sw = io.StringIO()
+    writer = csv.writer(sw)
+    empty: list[list[str]] = []
+    writer.writerows(empty)
+    assert sw.getvalue() == ""
+
+@test
+def test_writer_round_trip_write_and_read_back():
+    # Write rows then re-read them with reader to verify round-trip
+    sw = io.StringIO()
+    writer = csv.writer(sw)
+    writer.writerow(["name", "city"])
+    writer.writerow(["Alice", "New York"])
+    writer.writerow(["Bob", "San Francisco, CA"])
+    lines: list[str] = [ln for ln in sw.getvalue().split("\n") if len(ln) > 0]
+    reader = csv.reader(lines)
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append(row)
+    assert len(rows) == 3
+    assert rows[0][0] == "name"
+    assert rows[0][1] == "city"
+    assert rows[1][0] == "Alice"
+    assert rows[1][1] == "New York"
+    assert rows[2][0] == "Bob"
+    assert rows[2][1] == "San Francisco, CA"

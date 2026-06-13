@@ -1,0 +1,402 @@
+from unittest import assert_raises
+
+import re
+
+# --- Search ---
+
+@test
+def test_search_simple_pattern_finds_match():
+    m = re.search("world", "hello world")
+    assert m is not None
+    assert m.group() == "world"
+
+@test
+def test_search_no_match_returns_none():
+    m = re.search("xyz", "hello world")
+    assert m is None
+
+@test
+def test_search_with_groups_captures_groups():
+    m = re.search(r"(\w+)\s(\w+)", "hello world")
+    assert m is not None
+    assert m.group() == "hello world"
+    assert m.group(1) == "hello"
+    assert m.group(2) == "world"
+
+@test
+def test_search_start_end_match_position():
+    m = re.search("world", "hello world")
+    assert m is not None
+    assert m.start() == 6
+    assert m.end() == 11
+
+@test
+def test_search_span_returns_tuple():
+    m = re.search("world", "hello world")
+    assert m is not None
+    span: tuple[int, int] = m.span()
+    assert span == (6, 11)
+
+# --- Match ---
+
+@test
+def test_match_at_start_matches():
+    m = re.match("hello", "hello world")
+    assert m is not None
+    assert m.group() == "hello"
+
+@test
+def test_match_not_at_start_returns_none():
+    m = re.match("world", "hello world")
+    assert m is None
+
+# --- Fullmatch ---
+
+@test
+def test_fullmatch_entire_string_matches():
+    m = re.fullmatch(r"\d+", "12345")
+    assert m is not None
+    assert m.group() == "12345"
+
+@test
+def test_fullmatch_partial_string_returns_none():
+    m = re.fullmatch(r"\d+", "123abc")
+    assert m is None
+
+# --- Findall ---
+
+@test
+def test_findall_multiple_matches_returns_all():
+    result = re.findall(r"\d+", "abc 123 def 456")
+    assert len(result) == 2
+    # findall returns list[object]; wrap with str() for comparison
+    assert str(result[0]) == "123"
+    assert str(result[1]) == "456"
+
+@test
+def test_findall_no_match_returns_empty_list():
+    result = re.findall(r"\d+", "abcdef")
+    assert len(result) == 0
+
+@test
+def test_findall_with_single_group_returns_group_values():
+    result = re.findall(r"(\w+)@(\w+)", "a@b c@d")
+    # Multiple groups -> returns list of lists
+    assert len(result) == 2
+
+# --- Finditer ---
+
+@test
+def test_finditer_multiple_matches_returns_match_objects():
+    result = re.finditer(r"\d+", "abc 123 def 456")
+    assert len(result) == 2
+    assert result[0].group() == "123"
+    assert result[1].group() == "456"
+
+# --- Sub ---
+
+@test
+def test_sub_replace_all_replaces_all_occurrences():
+    result: str = re.sub(r"\d+", "NUM", "abc 123 def 456")
+    assert result == "abc NUM def NUM"
+
+@test
+def test_sub_with_count_replaces_limited():
+    result: str = re.sub(r"\d+", "NUM", "abc 123 def 456", count=1)
+    assert result == "abc NUM def 456"
+
+@test
+def test_sub_back_reference_works():
+    result: str = re.sub(r"(\w+)\s(\w+)", "$2 $1", "hello world")
+    assert result == "world hello"
+
+# --- Split ---
+
+@test
+def test_split_simple_pattern_splits_string():
+    result = re.split(r"\s+", "one two  three")
+    assert len(result) == 3
+    assert result[0] == "one"
+    assert result[1] == "two"
+    assert result[2] == "three"
+
+@test
+def test_split_with_maxsplit_limits_results():
+    result = re.split(r"\s+", "one two three four", maxsplit=2)
+    assert len(result) == 3
+    assert result[0] == "one"
+    assert result[1] == "two"
+    assert result[2] == "three four"
+
+# --- Compile ---
+
+@test
+def test_compile_return_pattern_can_be_reused():
+    pattern = re.compile(r"\d+")
+    m1 = pattern.search("abc 123")
+    m2 = pattern.search("def 456")
+    assert m1 is not None
+    assert m2 is not None
+    assert m1.group() == "123"
+    assert m2.group() == "456"
+
+@test
+def test_compile_pattern_str_returns_original():
+    pattern = re.compile(r"\d+")
+    assert pattern.pattern_str == r"\d+"
+
+# --- Flags ---
+
+@test
+def test_search_ignore_case_matches_case_insensitive():
+    m = re.search("hello", "HELLO WORLD", flags=re.IGNORECASE)
+    assert m is not None
+    assert m.group() == "HELLO"
+
+@test
+def test_search_ignore_case_shorthand_works():
+    m = re.search("hello", "HELLO WORLD", flags=re.I)
+    assert m is not None
+
+@test
+def test_search_multiline_matches_at_line_start():
+    m = re.search("^world", "hello\nworld", flags=re.MULTILINE)
+    assert m is not None
+    assert m.group() == "world"
+
+@test
+def test_search_dotall_dot_matches_newline():
+    m = re.fullmatch("a.b", "a\nb", flags=re.DOTALL)
+    assert m is not None
+
+@test
+def test_search_combined_flags_work():
+    m = re.search("^hello", "HELLO\nWORLD", flags=re.IGNORECASE | re.MULTILINE)
+    assert m is not None
+    assert m.group() == "HELLO"
+
+# --- Named Groups ---
+
+@test
+def test_search_named_group_python_syntax_works():
+    # (?P<name>...) Python syntax -> translated to (?<name>...) .NET syntax
+    m = re.search(r"(?P<first>\w+)\s(?P<last>\w+)", "John Smith")
+    assert m is not None
+    assert m.group("first") == "John"
+    assert m.group("last") == "Smith"
+
+@test
+def test_search_named_group_groupdict_works():
+    m = re.search(r"(?P<first>\w+)\s(?P<last>\w+)", "John Smith")
+    assert m is not None
+    gd = m.groupdict()
+    assert gd["first"] == "John"
+    assert gd["last"] == "Smith"
+
+@test
+def test_search_named_backref_python_syntax_works():
+    # (?P=name) Python syntax -> translated to \k<name> .NET syntax
+    m = re.search(r"(?P<word>\w+)\s(?P=word)", "hello hello")
+    assert m is not None
+    assert m.group() == "hello hello"
+
+@test
+def test_search_dotnet_named_group_also_works():
+    # .NET native syntax should also work
+    m = re.search(r"(?<first>\w+)\s(?<last>\w+)", "John Smith")
+    assert m is not None
+    assert m.group("first") == "John"
+
+# --- Groups ---
+
+@test
+def test_groups_returns_all_subgroups():
+    m = re.search(r"(\w+)\s(\w+)", "hello world")
+    assert m is not None
+    groups = m.groups()
+    assert len(groups) == 2
+    assert groups[0] == "hello"
+    assert groups[1] == "world"
+
+@test
+def test_groups_non_participating_returns_none():
+    m = re.search(r"(\w+)|(\d+)", "hello")
+    assert m is not None
+    groups = m.groups()
+    assert groups[0] == "hello"
+    assert groups[1] is None
+
+# --- Escape ---
+
+@test
+def test_escape_special_chars_are_escaped():
+    result: str = re.escape("hello.world*")
+    # Should be able to use the escaped pattern literally
+    m = re.search(result, "hello.world*")
+    assert m is not None
+
+@test
+def test_escape_plain_text_unchanged():
+    result: str = re.escape("hello")
+    assert result == "hello"
+
+# --- Match Properties ---
+
+@test
+def test_match_string_returns_input():
+    m = re.search("world", "hello world")
+    assert m is not None
+    assert m.string == "hello world"
+
+@test
+def test_match_pattern_returns_pattern():
+    m = re.search("world", "hello world")
+    assert m is not None
+    assert m.pattern == "world"
+
+@test
+def test_match_to_string_returns_readable_format():
+    m = re.search("world", "hello world")
+    assert m is not None
+    s: str = str(m)
+    assert "span=(6, 11)" in s
+    assert "match='world'" in s
+
+# --- Pattern Translation (verified via public API) ---
+
+@test
+def test_python_named_group_translated_matches_correctly():
+    # (?P<name>...) syntax should work via translation
+    m = re.search(r"(?P<num>\d+)", "abc 123")
+    assert m is not None
+    assert m.group("num") == "123"
+
+@test
+def test_python_named_backref_translated_matches_correctly():
+    # (?P=name) syntax should work via translation
+    m = re.search(r"(?P<w>\w+)\s(?P=w)", "abc abc")
+    assert m is not None
+    assert m.group() == "abc abc"
+
+@test
+def test_no_special_syntax_works_unchanged():
+    m = re.search(r"\d+", "abc 123")
+    assert m is not None
+    assert m.group() == "123"
+
+# --- VERBOSE Flag ---
+
+@test
+def test_search_verbose_flag_ignores_whitespace_and_comments():
+    # Pattern with comments and whitespace -- VERBOSE mode
+    pattern: str = "\\d+   # one or more digits\n\\s*   # optional whitespace\n\\w+   # one or more word chars\n"
+    m = re.search(pattern, "123 hello", flags=re.VERBOSE)
+    assert m is not None
+    assert m.group() == "123 hello"
+
+@test
+def test_search_verbose_shorthand_works():
+    m = re.search(r"\d+  # digits", "abc 42", flags=re.X)
+    assert m is not None
+    assert m.group() == "42"
+
+# --- ASCII/UNICODE Flags (no-op on .NET) ---
+
+@test
+def test_search_ascii_flag_accepted_without_error():
+    m = re.search(r"\w+", "hello", flags=re.ASCII)
+    assert m is not None
+    assert m.group() == "hello"
+
+@test
+def test_search_unicode_flag_accepted_without_error():
+    m = re.search(r"\w+", "hello", flags=re.UNICODE)
+    assert m is not None
+    assert m.group() == "hello"
+
+@test
+def test_flag_constants_have_correct_values():
+    assert re.IGNORECASE == 2
+    assert re.I == 2
+    assert re.MULTILINE == 8
+    assert re.M == 8
+    assert re.DOTALL == 16
+    assert re.S == 16
+    assert re.UNICODE == 32
+    assert re.U == 32
+    assert re.VERBOSE == 64
+    assert re.X == 64
+    assert re.ASCII == 256
+    assert re.A == 256
+
+# --- Subn ---
+
+@test
+def test_subn_basic_returns_string_and_count():
+    result: tuple[str, int] = re.subn(r"\d+", "NUM", "abc 123 def 456")
+    assert result == ("abc NUM def NUM", 2)
+
+@test
+def test_subn_with_count_limits_replacements():
+    result: tuple[str, int] = re.subn(r"\d+", "NUM", "abc 123 def 456", count=1)
+    assert result == ("abc NUM def 456", 1)
+
+@test
+def test_subn_no_match_returns_original_and_zero():
+    result: tuple[str, int] = re.subn(r"\d+", "NUM", "no digits")
+    assert result == ("no digits", 0)
+
+# --- Purge ---
+
+@test
+def test_purge_does_not_throw():
+    # Purge is a no-op on .NET -- just verify it doesn't throw
+    re.purge()
+
+# --- Callable Sub ---
+
+@test
+def test_sub_callable_replaces_with_lambda_result():
+    # The callable's MatchResult parameter type is inferred from the re.sub
+    # overload (re's spy-sourced types cannot be named explicitly, #918).
+    result: str = re.sub(r"\d+", lambda m: m.group().upper() + "!", "abc 123 def 456")
+    assert result == "abc 123! def 456!"
+
+@test
+def test_sub_callable_with_count_limits_replacements():
+    result: str = re.sub(r"\d+", lambda m: "X", "a1b2c3", count=2)
+    assert result == "aXbXc3"
+
+@test
+def test_sub_callable_match_object_has_correct_group():
+    # Each replacement embeds the matched group, verifying the callable
+    # receives a MatchResult positioned at the correct match.
+    result: str = re.sub(r"(\w+)", lambda m: m.group() + "|", "hello world")
+    assert result == "hello| world|"
+
+@test
+def test_sub_string_repl_python_backreference_translated_correctly():
+    result: str = re.sub(r"(\w+)", r"\1_suffix", "hello world")
+    assert result == "hello_suffix world_suffix"
+
+@test
+def test_sub_string_repl_named_backreference_translated_correctly():
+    result: str = re.sub(r"(?P<w>\w+)", r"\g<w>!", "hello world")
+    assert result == "hello! world!"
+
+# --- Callable Subn ---
+
+@test
+def test_subn_callable_returns_string_and_count():
+    result: tuple[str, int] = re.subn(r"\d+", lambda m: "N", "a1b2c3")
+    assert result == ("aNbNcN", 3)
+
+@test
+def test_subn_callable_with_count_limits_replacements():
+    result: tuple[str, int] = re.subn(r"\d+", lambda m: "N", "a1b2c3", count=1)
+    assert result == ("aNb2c3", 1)
+
+@test
+def test_subn_string_repl_python_backreference_translated_correctly():
+    result: tuple[str, int] = re.subn(r"(\w+)", r"\1_x", "hello world")
+    assert result == ("hello_x world_x", 2)

@@ -1,0 +1,99 @@
+from unittest import assert_raises
+
+import json
+import operator
+
+# Ported from JsonEncoderDecoderTests.cs (#843).
+# Omitted (documented in PORTING.md):
+#   - Encoder_DefaultCalledForNonSerializable, Encoder_ClsParameterOnDumps_Dispatches:
+#     require subclassing json.JSONEncoder, which fails compilation (#914).
+#   - Decoder_WithObjectHook, Decoder_ClsParameterOnLoads, Loads_ObjectHookParameter,
+#     Loads_ObjectHookOnNestedDicts, Loads_ObjectHookOnArray: require an object_hook
+#     callable that cannot be expressed with a matching delegate signature (#915).
+
+# --- JSONEncoder ---
+
+@test
+def test_encoder_encode_basic_types_works():
+    encoder = json.JSONEncoder()
+    assert encoder.encode(42) == "42"
+    assert encoder.encode("hello") == "\"hello\""
+    assert encoder.encode(True) == "true"
+    assert encoder.encode(None) == "null"
+
+@test
+def test_encoder_encode_dict_works():
+    encoder = json.JSONEncoder()
+    d: dict[str, object] = {}
+    d["a"] = 1
+    assert encoder.encode(d) == "{\"a\": 1}"
+
+@test
+def test_encoder_with_indent_pretty_prints():
+    encoder = json.JSONEncoder(indent=2)
+    d: dict[str, object] = {}
+    d["a"] = 1
+    result: str = encoder.encode(d)
+    assert "\n" in result
+    assert "  " in result
+
+@test
+def test_encoder_with_sort_keys_sorts_keys():
+    encoder = json.JSONEncoder(sortKeys=True)
+    d: dict[str, object] = {}
+    d["b"] = 2
+    d["a"] = 1
+    assert encoder.encode(d) == "{\"a\": 1, \"b\": 2}"
+
+@test
+def test_encoder_with_separators_uses_custom_separators():
+    encoder = json.JSONEncoder(separators=(",", ":"))
+    d: dict[str, object] = {}
+    d["a"] = 1
+    d["b"] = 2
+    assert encoder.encode(d) == "{\"a\":1,\"b\":2}"
+
+@test
+def test_encoder_default_throws_type_error_for_unknown_types():
+    encoder = json.JSONEncoder()
+    with assert_raises(TypeError):
+        encoder.default(Unserializable())
+
+# --- JSONDecoder ---
+
+@test
+def test_decoder_decode_basic_types_works():
+    decoder = json.JSONDecoder()
+    assert operator.eq(decoder.decode("42"), 42)
+    assert operator.eq(decoder.decode("\"hello\""), "hello")
+    assert operator.eq(decoder.decode("true"), True)
+    assert decoder.decode("null") is None
+
+@test
+def test_decoder_decode_dict_works():
+    decoder = json.JSONDecoder()
+    result: object = decoder.decode("{\"a\": 1}")
+    match result:
+        case dict() as d:
+            assert operator.eq(d["a"], 1)
+        case _:
+            assert False
+
+# --- RawDecode ---
+
+@test
+def test_decoder_raw_decode_returns_value_and_end_index():
+    decoder = json.JSONDecoder()
+    value, end_idx = decoder.raw_decode("{\"a\": 1}")
+    match value:
+        case dict():
+            pass
+        case _:
+            assert False
+    assert end_idx == 8
+
+
+# --- Helpers ---
+
+class Unserializable:
+    marker: int = 0

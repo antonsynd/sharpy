@@ -886,6 +886,7 @@ public partial class Parser
                 else if ((Current.Type == TokenType.Identifier || IsKeywordUsableAsIdentifier(Current.Type)) && Peek().Type == TokenType.Assign)
                 {
                     seenKeywordArg = true;
+                    var nameToken = Current;
                     var kwargStartLine = Current.Line;
                     var kwargStartColumn = Current.Column;
                     var name = Current.Value;
@@ -902,7 +903,8 @@ public partial class Parser
                         LineStart = kwargStartLine,
                         ColumnStart = kwargStartColumn,
                         LineEnd = kwargEndLine,
-                        ColumnEnd = kwargEndColumn
+                        ColumnEnd = kwargEndColumn,
+                        Span = CombineSpans(GetSpanFromToken(nameToken), value.Span)
                     });
                 }
                 else

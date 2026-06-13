@@ -1,0 +1,108 @@
+# Literal arguments are bound to typed locals to avoid #917 (inline collection
+# literals passed to a generic call mis-infer their element type from the outer
+# result annotation, producing invalid C# with no Sharpy diagnostic).
+import itertools
+
+# --- Combinations ---
+
+@test
+def test_combinations_empty_pool_r_zero_returns_single_empty_tuple():
+    empty: list[int] = []
+    result: list[list[int]] = list(itertools.combinations(empty, 0))
+    assert len(result) == 1
+    assert len(result[0]) == 0
+
+@test
+def test_combinations_four_choose_two_returns_6_combinations():
+    items: list[int] = [1, 2, 3, 4]
+    result: list[list[int]] = list(itertools.combinations(items, 2))
+    assert len(result) == 6
+    assert result[0] == [1, 2]
+    assert result[1] == [1, 3]
+    assert result[2] == [1, 4]
+    assert result[3] == [2, 3]
+    assert result[4] == [2, 4]
+    assert result[5] == [3, 4]
+
+# --- CombinationsWithReplacement ---
+
+@test
+def test_combinations_with_replacement_single_element_r3_returns_triple():
+    items: list[int] = [1]
+    result: list[list[int]] = list(itertools.combinations_with_replacement(items, 3))
+    assert len(result) == 1
+    assert result[0] == [1, 1, 1]
+
+@test
+def test_combinations_with_replacement_two_choose_two_returns_3_combinations():
+    items: list[int] = [1, 2]
+    result: list[list[int]] = list(itertools.combinations_with_replacement(items, 2))
+    assert len(result) == 3
+    assert result[0] == [1, 1]
+    assert result[1] == [1, 2]
+    assert result[2] == [2, 2]
+
+@test
+def test_combinations_with_replacement_empty_pool_r_zero_returns_single_empty_tuple():
+    empty: list[int] = []
+    result: list[list[int]] = list(itertools.combinations_with_replacement(empty, 0))
+    assert len(result) == 1
+    assert len(result[0]) == 0
+
+# --- Permutations ---
+
+@test
+def test_permutations_r_zero_returns_single_empty_tuple():
+    items: list[int] = [1, 2, 3]
+    result: list[list[int]] = list(itertools.permutations(items, 0))
+    assert len(result) == 1
+    assert len(result[0]) == 0
+
+@test
+def test_permutations_four_choose_two_returns_12_permutations():
+    items: list[int] = [1, 2, 3, 4]
+    result: list[list[int]] = list(itertools.permutations(items, 2))
+    assert len(result) == 12
+
+@test
+def test_permutations_full_permutations_verify_first_and_last():
+    items: list[int] = [1, 2, 3]
+    result: list[list[int]] = list(itertools.permutations(items))
+    assert len(result) == 6
+    assert result[0] == [1, 2, 3]
+    assert result[5] == [3, 2, 1]
+
+# --- Product ---
+
+@test
+def test_product_two_iterables_returns_cartesian_product():
+    a: list[int] = [1, 2]
+    b: list[int] = [3, 4]
+    result: list[tuple[int, int]] = list(itertools.product(a, b))
+    assert len(result) == 4
+    assert result[0] == (1, 3)
+    assert result[1] == (1, 4)
+    assert result[2] == (2, 3)
+    assert result[3] == (2, 4)
+
+@test
+def test_product_three_iterables_returns_cartesian_product():
+    a: list[int] = [1, 2]
+    b: list[int] = [3, 4]
+    c: list[int] = [5, 6]
+    result: list[tuple[int, int, int]] = list(itertools.product(a, b, c))
+    assert len(result) == 8
+    assert result[0] == (1, 3, 5)
+    assert result[1] == (1, 3, 6)
+    assert result[7] == (2, 4, 6)
+
+@test
+def test_product_same_pool_with_self_yields_pairs_with_repetition():
+    a: list[int] = [1, 2]
+    b: list[int] = [1, 2]
+    result: list[tuple[int, int]] = list(itertools.product(a, b))
+    assert len(result) == 4
+    assert result[0] == (1, 1)
+    assert result[1] == (1, 2)
+    assert result[2] == (2, 1)
+    assert result[3] == (2, 2)

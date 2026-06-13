@@ -1,0 +1,20 @@
+# Regression test for #913: module-qualified CLR collection types must recognize
+# plain C# indexers as __getitem__/__setitem__ and IReadOnlyCollection<T> as __len__.
+# Counter exposes a plain `this[key]` indexer (returning int, not the key type), and
+# Deque implements only IReadOnlyCollection<T> for its length. Accessed via the
+# module-qualified form (collections.Counter), which previously raised a spurious SPY0320.
+import collections
+
+
+def main() -> None:
+    c: collections.Counter[str] = collections.Counter[str](["a", "b", "a"])
+    # __getitem__ via plain indexer; the value type is int (the count), not str.
+    count: int = c["a"]
+    print(count)
+    # __setitem__ via plain indexer setter.
+    c["a"] = 10
+    print(c["a"])
+
+    # IReadOnlyCollection<T> recognized for len().
+    d: collections.Deque[int] = collections.Deque[int]([1, 2, 3])
+    print(len(d))

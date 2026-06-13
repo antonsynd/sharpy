@@ -678,6 +678,13 @@ internal class TypeInferenceService
     /// codegen to a C# null pattern (<see cref="BinaryOpLowering.NoneCheck"/>). Exactly one operand
     /// must be the None literal. NullableType/OptionalType and non-nullable value types are excluded:
     /// the former have dedicated handling, the latter must keep emitting SPY0222 (#901).
+    /// <para>
+    /// Invariant (#911): a <see cref="VoidType"/> operand reaching equality inference/lowering is
+    /// guaranteed to be the <c>None</c> literal — void-returning call operands are rejected earlier
+    /// in <c>TypeChecker.CheckBinaryOp</c> with SPY0329 before this classifier or
+    /// <see cref="GetBinaryOpLowering"/> runs. (A third consumer, <c>OperatorValidator</c>, reads
+    /// the lowering type-wise only to suppress SPY0402; it never selects operands, so it is benign.)
+    /// </para>
     /// </summary>
     private static bool IsNoneReferenceEquality(BinaryOperator op, SemanticType left, SemanticType right)
     {
@@ -1140,6 +1147,26 @@ internal class TypeInferenceService
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Infers the element/value type produced by a CLR type's parameterized indexer
+    /// (<c>this[...]</c> getter) on a <em>closed</em> CLR type. Used for discovery-backed
+    /// types whose indexer return type differs from the standard list/dict shape — e.g.
+    /// <c>collections.Counter&lt;T&gt;</c> whose indexer returns <c>int</c> (a count) rather
+    /// than <c>T</c>, or <c>ChainMap&lt;K,V&gt;</c> whose indexer returns the closed <c>V</c>.
+    /// Because the supplied type is closed, the property type is already substituted.
+    /// Returns null when the type exposes no readable indexer.
+    /// </summary>
+    public SemanticType? InferClrIndexerReturnType(System.Type closedClrType)
+    {
+        var indexer = closedClrType.GetProperties()
+            .FirstOrDefault(p => p.GetIndexParameters().Length > 0 && p.GetGetMethod() != null);
+        if (indexer == null)
+            return null;
+
+        var mapped = MapClrTypeToSemanticType(indexer.PropertyType);
+        return mapped is UnknownType ? null : mapped;
     }
 
     /// <summary>

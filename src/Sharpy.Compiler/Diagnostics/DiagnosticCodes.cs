@@ -335,7 +335,8 @@ public static class DiagnosticCodes
         public const string OptionalRequiresNarrowing = "SPY0326";  // Active
         public const string TupleNonConstantIndex = "SPY0327";      // Active
         public const string IntegerPowerOverflow = "SPY0328";       // Active
-        // SPY0329-SPY0339: Reserved for future protocol/operator diagnostics
+        public const string VoidComparisonOperand = "SPY0329";      // Active
+        // SPY0330-SPY0339: Reserved for future protocol/operator diagnostics
 
         #endregion
 

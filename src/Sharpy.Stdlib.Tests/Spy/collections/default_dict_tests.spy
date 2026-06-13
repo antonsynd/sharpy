@@ -1,0 +1,110 @@
+import collections
+
+# --- Get Without Default ---
+
+@test
+def test_default_dict_get_no_default_returns_default_t():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 42)
+    # Get() without explicit default returns default(int) = 0, NOT factory value 42
+    assert dd.get("missing") == 0
+    assert not dd.contains_key("missing")
+
+@test
+def test_default_dict_get_existing_key_no_default_returns_value():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["x"] = 99
+    assert dd.get("x") == 99
+
+# --- Contains Alias ---
+
+@test
+def test_default_dict_contains_existing_key_returns_true():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    assert dd.contains("a")
+
+@test
+def test_default_dict_contains_missing_key_returns_false():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    assert not dd.contains("missing")
+
+@test
+def test_default_dict_contains_after_auto_create_returns_true():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    _val: int = dd["key"]
+    assert dd.contains("key")
+
+# --- Factory Behavior ---
+
+@test
+def test_default_dict_factory_not_called_for_existing_key():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 999)
+    dd["a"] = 42
+    # Accessing existing key should NOT call factory
+    assert dd["a"] == 42
+    assert dd["a"] == 42
+
+# --- Keys and Values Enumeration ---
+
+@test
+def test_default_dict_keys_enumeration_consistent_with_insertion():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["z"] = 1
+    dd["a"] = 2
+    dd["m"] = 3
+    keys: list[str] = list(dd.keys)
+    assert "z" in keys
+    assert "a" in keys
+    assert "m" in keys
+    assert len(keys) == 3
+
+@test
+def test_default_dict_values_enumeration_includes_all_values():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 10
+    dd["b"] = 20
+    dd["c"] = 30
+    vals: list[int] = list(dd.values)
+    assert 10 in vals
+    assert 20 in vals
+    assert 30 in vals
+    assert len(vals) == 3
+
+# --- PopItem Default Behavior ---
+
+@test
+def test_default_dict_pop_item_default_is_first_not_last():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd["a"] = 1
+    dd["b"] = 2
+    # Default last=false means FIFO (first inserted)
+    pair: tuple[str, int] = dd.pop_item()
+    assert pair == ("a", 1)
+
+# --- Update from DefaultDict ---
+
+@test
+def test_default_dict_update_from_default_dict_uses_dictionary():
+    dd1: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd1["a"] = 1
+    dd1["b"] = 2
+    dd2: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
+    dd2["b"] = 99
+    dd2["c"] = 3
+    # Update dd1 from the dictionary view of dd2
+    dd1.update(dd2.to_dictionary())
+    assert dd1["a"] == 1
+    assert dd1["b"] == 99
+    assert dd1["c"] == 3
+
+# --- SetDefault with Factory ---
+
+@test
+def test_default_dict_set_default_missing_key_uses_provided_value():
+    dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 99)
+    # SetDefault uses the provided default value, not the factory
+    dd.set_default("key", 5)
+    assert dd["key"] == 5
+
+# 2 omitted: DefaultDict_Factory_CalledForEachMissingKey — mutable closure variable capture not expressible in .spy
+# 1 omitted: DefaultDict_ListFactory_MultipleMissingKeys_EachGetOwnList — List factory not expressible in .spy
