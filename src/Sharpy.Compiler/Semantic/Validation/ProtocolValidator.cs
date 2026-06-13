@@ -65,6 +65,15 @@ internal class ProtocolValidator : ValidatingAstWalker
         base.VisitFunctionCall(node);
     }
 
+    public override void VisitAssignment(Assignment node)
+    {
+        if (node.Target is IndexAccess indexAccess)
+        {
+            ValidateIndexAssignment(indexAccess);
+        }
+        base.VisitAssignment(node);
+    }
+
     /// <summary>
     /// Reports the strict-Optional protocol error for a <c>T?</c> receiver: protocol operations
     /// (len/in/indexing/iteration) are not available on an Optional directly — it must be narrowed
@@ -139,6 +148,26 @@ internal class ProtocolValidator : ValidatingAstWalker
             AddError(
                 $"Type '{containerType.GetDisplayName()}' does not support indexing " +
                 "(missing '__getitem__' method).",
+                indexAccess.LineStart, indexAccess.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: indexAccess.Span);
+        }
+    }
+
+    private void ValidateIndexAssignment(IndexAccess indexAccess)
+    {
+        var containerType = Context.SemanticInfo.GetExpressionType(indexAccess.Object);
+        if (containerType == null || containerType is UnknownType)
+            return;
+
+        if (ReportOptionalProtocol(containerType, "item assignment",
+                indexAccess.LineStart, indexAccess.ColumnStart, indexAccess.Span))
+            return;
+
+        if (!HasProtocol(containerType, DunderNames.SetItem))
+        {
+            AddError(
+                $"Type '{containerType.GetDisplayName()}' does not support item assignment " +
+                "(missing '__setitem__' method).",
                 indexAccess.LineStart, indexAccess.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
                 span: indexAccess.Span);
         }
