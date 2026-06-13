@@ -1,0 +1,6 @@
+import itertools
+
+def main() -> None:
+    result: list[int] = list(itertools.compress([1, 2, 3], [True, True, True]))
+    for x in result:
+        print(x)

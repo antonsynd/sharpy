@@ -1003,7 +1003,17 @@ internal partial class RoslynEmitter
             }
             else
             {
+                // Clear the ambient target-type context when descending into a
+                // call argument. The context is meant for top-level assignments
+                // (e.g. `result: list[int] = [...]`) where the annotation narrows
+                // an ambiguous literal. For nested argument literals the semantic
+                // type recorded by the type checker is authoritative, so leaving
+                // the outer annotation in place would mis-infer element types
+                // (see #917).
+                var previousTargetType = _targetTypeContext;
+                _targetTypeContext = null;
                 var generated = GenerateExpression(arg);
+                _targetTypeContext = previousTargetType;
                 if (positionalParams != null && !sawSpread
                     && argIndex < positionalParams.Count
                     && !positionalParams[argIndex].IsVariadic

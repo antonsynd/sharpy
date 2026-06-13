@@ -1,0 +1,9 @@
+import itertools
+
+def main() -> None:
+    # Nested generic calls with inline literals: the bool selector literals
+    # must be typed from the compress parameter, not the outer list[int] annotation.
+    inner: list[int] = list(itertools.compress([3, 4], [True, False]))
+    result: list[int] = list(itertools.chain([1, 2], inner))
+    for x in result:
+        print(x)
