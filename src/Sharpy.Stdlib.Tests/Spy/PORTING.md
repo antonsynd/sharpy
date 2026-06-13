@@ -22,11 +22,11 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | BisectTests.cs | 19 | Spy/bisect/bisect_tests.spy | 19 | ported |
 | BisectAdditionalTests.cs | 15 | Spy/bisect/bisect_additional_tests.spy | 15 | ported |
 | CalendarTests.cs | 28 | Spy/calendar/calendar_tests.spy | 25 | ported (re-enabled #886-#892) |
-| CollectionsModuleTests.cs | 57 | | | pending |
-| CollectionsAdditionalTests.cs | 33 | | | pending |
+| CollectionsModuleTests.cs | 57 | Spy/collections/collections_module_tests.spy | 54 | ported (3 omitted: typeof() reflection, List factory lambda, ToDictionary raw indexing) |
+| CollectionsAdditionalTests.cs | 33 | Spy/collections/collections_additional_tests.spy | 33 | ported |
 | ColorsysTests.cs | 32 | Spy/colorsys/colorsys_tests.spy | 32 | ported |
 | ConfigparserTests.cs | 66 | Spy/configparser/configparser_tests.spy | 66 | ported |
-| CounterCompleteTests.cs | 20 | | | pending |
+| CounterCompleteTests.cs | 20 | Spy/collections/counter_complete_tests.spy | 20 | ported |
 | CsvModuleTests.cs | 9 | Spy/csv/csv_module_tests.spy | 9 | ported |
 | CsvDictTests.cs | 19 | Spy/csv/csv_dict_tests.spy | 16 | ported (3 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
 | CsvReaderWriterTests.cs | 18 | Spy/csv/csv_reader_writer_tests.spy | 16 | ported (2 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
@@ -34,8 +34,8 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | DatetimeDateTests.cs | 20 | | | pending |
 | DatetimeDateTimeTests.cs | 19 | | | pending |
 | DatetimeTimeTests.cs | 25 | | | pending |
-| DefaultDictTests.cs | 13 | | | pending |
-| DequeChainMapTests.cs | 16 | | | pending |
+| DefaultDictTests.cs | 13 | Spy/collections/default_dict_tests.spy | 11 | ported (2 omitted: mutable closure capture, List factory lambda) |
+| DequeChainMapTests.cs | 16 | Spy/collections/deque_chainmap_tests.spy | 15 | ported (1 omitted: reference identity assertion) |
 | DifflibModuleTests.cs | 34 | Spy/difflib/difflib_module_tests.spy | 34 | ported |
 | EmailTests.cs | 34 | Spy/email/email_tests.spy | 34 | ported (re-enabled #903) |
 | FnmatchTests.cs | 27 | Spy/fnmatch/fnmatch_tests.spy | 27 | ported |
@@ -81,7 +81,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | NumpyManipulationTests.cs | 22 | | | pending |
 | NumpyMathTests.cs | 37 | | | pending |
 | NumpyRandomTests.cs | 17 | | | pending |
-| OrderedDictTests.cs | 13 | | | pending |
+| OrderedDictTests.cs | 13 | Spy/collections/ordered_dict_tests.spy | 13 | ported |
 | OsModuleTests.cs | 33 | | | pending |
 | OsModuleAdditionalTests.cs | 16 | | | pending |
 | OsPathTests.cs | 25 | | | pending |
