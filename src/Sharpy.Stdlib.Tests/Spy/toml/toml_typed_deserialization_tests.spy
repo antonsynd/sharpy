@@ -1,0 +1,29 @@
+from unittest import assert_raises
+
+import toml
+
+# Ported from TomlTypedDeserializationTests.cs (#843).
+# toml.loads[T]() returns Result<T, TOMLDecodeError>.
+# Omitted (documented in PORTING.md):
+#   - LoadsT_SimpleConfig_Deserializes, LoadsT_NestedConfig_Deserializes,
+#     LoadsT_TypeMismatch_ReturnsErr: Tomlyn binds public PROPERTIES, but Sharpy
+#     classes lower attributes to public fields, so a Sharpy model deserializes to
+#     defaults (and type mismatches are not detected). Stdlib gap, #922.
+#   - LoadsT_NullInput_ThrowsTypeError, LoadT_NullFp_ThrowsTypeError: pass null!
+#     to a non-nullable parameter, rejected at compile time (Axiom 3).
+
+
+class ServerConfig:
+    host: str = ""
+    port: long = 0
+    debug: bool = False
+
+
+# --- Loads[T] — error cases ---
+
+@test
+def test_loads_t_malformed_toml_returns_err():
+    result = toml.loads[ServerConfig]("invalid = [")
+    assert result.IsErr
+    err = result.UnwrapErr()
+    assert err.Doc == "invalid = ["
