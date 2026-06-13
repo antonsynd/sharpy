@@ -1,0 +1,18 @@
+class Foo:
+    items: list[int] = [10, 20, 30]
+
+
+class Box[T]:
+    value: T
+
+    def unwrap(self) -> T:
+        return self.value
+
+
+def main() -> None:
+    b: Box[Foo] = Box[Foo]()
+    b.value = Foo()
+    f = b.unwrap()
+    print(f.items[0])
+    print(f.items[1])
+    print(f.items[2])

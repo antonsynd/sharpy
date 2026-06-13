@@ -1,0 +1,32 @@
+class Foo:
+    name: str = "foo"
+
+    def greet(self) -> str:
+        return "hello " + self.name
+
+
+class Box[T]:
+    value: T
+
+    def unwrap(self) -> T:
+        return self.value
+
+    property get held(self) -> T:
+        return self.value
+
+
+def main() -> None:
+    b: Box[Foo] = Box[Foo]()
+    b.value = Foo()
+
+    # method call returning T -> Foo
+    f = b.unwrap()
+    print(f.greet())
+
+    # field access typed as T -> Foo
+    g = b.value
+    print(g.name)
+
+    # property access typed as T -> Foo
+    h = b.held
+    print(h.greet())

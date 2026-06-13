@@ -428,6 +428,21 @@ internal partial class TypeChecker
                 return genericMember;
         }
 
+        // User-defined generic types (e.g. Box[Foo]) are represented as GenericType whose
+        // GenericDefinition is the user's TypeSymbol with no backing CLR type. The builtin and
+        // discovered-CLR paths above don't cover them, so resolve members directly on the
+        // definition's fields/properties/methods, substituting the receiver's type arguments for
+        // the definition's type parameters (e.g. unwrap() -> T resolves to Foo). Without this,
+        // member access on the result fell through to Unknown and emitted SPY0907 (#912).
+        if (memberLookupType is GenericType { GenericDefinition: { ClrType: null } userGenDef } userGenInstance
+            && userGenDef.TypeParameters.Count > 0)
+        {
+            var userGenericMember = ResolveUserDefinedGenericMember(
+                memberAccess, userGenDef, userGenInstance.TypeArguments);
+            if (userGenericMember != null)
+                return userGenericMember;
+        }
+
         // Intentional Unknown without error for non-UserDefinedType member access:
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
@@ -528,6 +543,53 @@ internal partial class TypeChecker
             .Select(p => p with { Type = Substitute(p.Type) })
             .ToList();
         return FunctionType.FromParameters(substitutedParams, returnType, skipLeading: selfOffset);
+    }
+
+    /// <summary>
+    /// Resolves a field/property/method access on a user-defined generic type (e.g.
+    /// <c>Box[Foo].unwrap()</c> or <c>box.value</c>), substituting the receiver's type arguments
+    /// (definition type parameters → <paramref name="typeArgs"/>) into the resolved member type.
+    /// Returns null when the member is not found, leaving the caller's existing fallback intact.
+    /// Unlike <see cref="ResolveGenericModuleClassMember"/>, this handles definitions with no
+    /// backing CLR type (genuinely user-authored generic classes), so it resolves fields and
+    /// properties in addition to methods.
+    /// </summary>
+    private SemanticType? ResolveUserDefinedGenericMember(
+        MemberAccess memberAccess, TypeSymbol genDef, List<SemanticType> typeArgs)
+    {
+        SemanticType Substitute(SemanticType t) =>
+            genDef.TypeParameters.Count > 0 && genDef.TypeParameters.Count == typeArgs.Count
+                ? SubstituteTypeParameters(t, genDef.TypeParameters, typeArgs)
+                : t;
+
+        var member = memberAccess.Member;
+
+        var (field, fieldOwner) = FindFieldInHierarchy(genDef, member);
+        if (field != null && fieldOwner != null)
+        {
+            if (field.IsStatic)
+                _semanticInfo.SetMemberAccessResolution(memberAccess, fieldOwner, field);
+            return Substitute(GetVariableType(field));
+        }
+
+        var (prop, propOwner) = FindPropertyInHierarchy(genDef, member);
+        if (prop != null && propOwner != null)
+            return Substitute(prop.Type);
+
+        var (method, methodOwner) = FindMethodInHierarchy(genDef, member);
+        if (method != null && methodOwner != null)
+        {
+            var selfOffset = method.Parameters.Count > 0
+                && method.Parameters[0].Name == PythonNames.Self
+                ? 1 : 0;
+            var substitutedParams = method.Parameters
+                .Select(p => p with { Type = Substitute(p.Type) })
+                .ToList();
+            return FunctionType.FromParameters(
+                substitutedParams, Substitute(method.ReturnType), skipLeading: selfOffset);
+        }
+
+        return null;
     }
 
     /// <summary>
