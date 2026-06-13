@@ -1,0 +1,13 @@
+# Issue #911: f() != s where f() returns None is also rejected (SPY0329).
+# This tests the != operator path, complementing the == tests in
+# void_call_comparison.spy and void_call_comparison_none_literal.spy.
+def f() -> None:
+    print("side effect")
+
+
+def main():
+    s: str = "hello"
+    if f() != s:
+        print("not equal")
+    else:
+        print("equal")
