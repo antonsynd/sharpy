@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -9,7 +10,7 @@ namespace Sharpy
     /// Like Python's collections.ChainMap.
     /// </summary>
     [SharpyModuleType("collections", "ChainMap")]
-    public class ChainMap<K, V> where K : notnull
+    public class ChainMap<K, V> : IReadOnlyCollection<KeyValuePair<K, V>> where K : notnull
     {
         private readonly System.Collections.Generic.List<Dict<K, V>> _maps;
 
@@ -177,5 +178,25 @@ namespace Sharpy
         {
             _maps[0].Clear();
         }
+
+        /// <summary>
+        /// Iterates unique keys with their first-found values (first map wins), matching Python's ChainMap iteration.
+        /// </summary>
+        public IEnumerator<KeyValuePair<K, V>> GetEnumerator()
+        {
+            var seen = new System.Collections.Generic.HashSet<K>();
+            foreach (var map in _maps)
+            {
+                foreach (var key in map)
+                {
+                    if (seen.Add(key))
+                    {
+                        yield return new KeyValuePair<K, V>(key, map[key]);
+                    }
+                }
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

@@ -9,7 +9,7 @@
     <IsTestProject>true</IsTestProject>
     <!-- Suppress nullable warnings in tests - test framework handles assertion failures -->
     <!-- CS1718: intentional self-comparison in equality tests -->
-    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718;CS8981</NoWarn>
+    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718;CS8981;xUnit2013</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
