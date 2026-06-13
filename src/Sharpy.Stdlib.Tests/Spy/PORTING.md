@@ -53,12 +53,12 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | IoModuleTests.cs | 15 | | | pending |
 | IoStringIOTests.cs | 27 | | | pending |
 | IpaddressTests.cs | 114 | Spy/ipaddress/ipaddress_tests.spy | 112 | ported (2 omitted: BigInteger, Bytes ctor) |
-| ItertoolsTests.cs | 20 | | | pending |
-| ItertoolsAdditionalTests.cs | 34 | | | pending |
-| ItertoolsCombinatoricsTests.cs | 11 | | | pending |
-| ItertoolsFilterTests.cs | 16 | | | pending |
-| ItertoolsGroupingTests.cs | 15 | | | pending |
-| ItertoolsInfiniteTests.cs | 10 | | | pending |
+| ItertoolsTests.cs | 20 | Spy/itertools/itertools_tests.spy | 20 | ported (inline collection literals bound to typed locals to work around codegen type-inference bug #917) |
+| ItertoolsAdditionalTests.cs | 34 | Spy/itertools/itertools_additional_tests.spy | 34 | ported |
+| ItertoolsCombinatoricsTests.cs | 11 | Spy/itertools/itertools_combinatorics_tests.spy | 11 | ported |
+| ItertoolsFilterTests.cs | 16 | Spy/itertools/itertools_filter_tests.spy | 16 | ported |
+| ItertoolsGroupingTests.cs | 15 | Spy/itertools/itertools_grouping_tests.spy | 15 | ported |
+| ItertoolsInfiniteTests.cs | 10 | Spy/itertools/itertools_infinite_tests.spy | 10 | ported |
 | JsonModuleTests.cs | 109 | Spy/json/json_module_tests.spy | 108 | ported (1 omitted: loads_null_throws_type_error passes null! to non-nullable — not expressible in type-safe Sharpy, Axiom 3) |
 | JsonModuleAdditionalTests.cs | 13 | Spy/json/json_additional_tests.spy | 13 | ported |
 | JsonEncoderDecoderTests.cs | 16 | Spy/json/json_encoder_decoder_tests.spy | 9 | ported (7 omitted: 2 need subclassing json.JSONEncoder, #914; 5 need an object_hook delegate, #915) |
