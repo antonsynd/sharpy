@@ -10,6 +10,7 @@ namespace Sharpy
     /// on the line(s) following it (<see cref="AfterComment"/>). Comment text is stored
     /// verbatim, without the leading <c>#</c> marker.
     /// </remarks>
+    [SharpyModuleType("yaml")]
     public class CommentInfo
     {
         /// <summary>Comment appearing on the line(s) before the associated node.</summary>
