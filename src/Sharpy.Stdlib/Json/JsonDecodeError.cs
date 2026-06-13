@@ -6,6 +6,7 @@ namespace Sharpy
     /// Subclass of ValueError raised when a JSON document cannot be decoded.
     /// Mirrors Python's json.JSONDecodeError.
     /// </summary>
+    [SharpyModuleType("json")]
     public class JSONDecodeError : ValueError
     {
         /// <summary>The unformatted error message.</summary>

@@ -179,7 +179,14 @@ namespace Sharpy
         private static readonly JsonSerializerOptions _typedOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            // Sharpy classes lower their instance attributes to public C# fields (not
+            // properties), so typed deserialization must opt into field binding for any
+            // user-defined Sharpy type to populate correctly (#843 dogfooding).
+            IncludeFields = true,
+            // Sharpy 'T?' fields lower to Optional<T>; without a converter STJ never
+            // populates a present value (struct default is None) (#843 dogfooding).
+            Converters = { new OptionalJsonConverterFactory() }
         };
 
         /// <summary>
