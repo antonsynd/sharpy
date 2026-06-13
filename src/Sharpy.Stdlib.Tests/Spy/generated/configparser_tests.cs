@@ -499,10 +499,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
 #line (265, 5) - (265, 58) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %(b)s\nb = %(a)s");
-#line (266, 5) - (269, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationError>((global::System.Action)(() =>
+#line (268, 5) - (271, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+                Xunit.Assert.Throws<global::Sharpy.InterpolationDepthError>((global::System.Action)(() =>
                 {
-#line (267, 9) - (267, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (269, 9) - (269, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
                 }));
             }
@@ -510,58 +510,58 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExtendedInterpolationCrossSection()
             {
-#line (271, 5) - (271, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (273, 5) - (273, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.ExtendedInterpolation());
-#line (272, 5) - (272, 92) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (274, 5) - (274, 92) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[paths]\nhome = /Users\n\n[section]\nmy_dir = ${paths:home}/myapp");
-#line (273, 5) - (273, 62) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (275, 5) - (275, 62) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("/Users/myapp", config.Get("section", "my_dir"));
             }
 
             [Xunit.FactAttribute]
             public void TestExtendedInterpolationSameSection()
             {
-#line (277, 5) - (277, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (279, 5) - (279, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.ExtendedInterpolation());
-#line (278, 5) - (278, 70) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (280, 5) - (280, 70) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nbase = /srv\npath = ${base}/data");
-#line (279, 5) - (279, 57) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (281, 5) - (281, 57) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("/srv/data", config.Get("section", "path"));
             }
 
             [Xunit.FactAttribute]
             public void TestRawGetSkipsInterpolation()
             {
-#line (283, 5) - (283, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (285, 5) - (285, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
-#line (284, 5) - (284, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (286, 5) - (286, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nbase = /srv\npath = %(base)s/data");
-#line (285, 5) - (285, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (287, 5) - (287, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("%(base)s/data", config.Get("section", "path", raw: true));
             }
 
             [Xunit.FactAttribute]
             public void TestGetIntParsesInteger()
             {
-#line (291, 5) - (291, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (293, 5) - (293, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (292, 5) - (292, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (294, 5) - (294, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nport = 8080");
-#line (293, 5) - (293, 54) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (295, 5) - (295, 54) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal(8080, config.GetInt("section", "port"));
             }
 
             [Xunit.FactAttribute]
             public void TestGetIntInvalidThrows()
             {
-#line (297, 5) - (297, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (299, 5) - (299, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (298, 5) - (298, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (300, 5) - (300, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nval = notint");
-#line (299, 5) - (302, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (301, 5) - (304, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
                 {
-#line (300, 9) - (300, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (302, 9) - (302, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.GetInt("section", "val");
                 }));
             }
@@ -569,50 +569,50 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestGetFloatParsesDouble()
             {
-#line (304, 5) - (304, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (306, 5) - (306, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (305, 5) - (305, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (307, 5) - (307, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nrate = 3.14");
-#line (306, 5) - (306, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (308, 5) - (308, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.True(global::Sharpy.Builtins.Abs(config.GetFloat("section", "rate") - 3.14d) < 0.001d);
             }
 
             [Xunit.FactAttribute]
             public void TestGetBooleanAllVariants()
             {
-#line (310, 5) - (310, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (312, 5) - (312, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (311, 5) - (311, 105) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (313, 5) - (313, 105) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = yes\nb = no\nc = true\nd = false\ne = 1\nf = 0\ng = on\nh = off");
-#line (312, 5) - (312, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.True(config.GetBoolean("section", "a"));
-#line (313, 5) - (313, 51) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.False(config.GetBoolean("section", "b"));
 #line (314, 5) - (314, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.True(config.GetBoolean("section", "c"));
+                Xunit.Assert.True(config.GetBoolean("section", "a"));
 #line (315, 5) - (315, 51) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.False(config.GetBoolean("section", "d"));
+                Xunit.Assert.False(config.GetBoolean("section", "b"));
 #line (316, 5) - (316, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.True(config.GetBoolean("section", "e"));
+                Xunit.Assert.True(config.GetBoolean("section", "c"));
 #line (317, 5) - (317, 51) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.False(config.GetBoolean("section", "f"));
+                Xunit.Assert.False(config.GetBoolean("section", "d"));
 #line (318, 5) - (318, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.True(config.GetBoolean("section", "g"));
+                Xunit.Assert.True(config.GetBoolean("section", "e"));
 #line (319, 5) - (319, 51) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+                Xunit.Assert.False(config.GetBoolean("section", "f"));
+#line (320, 5) - (320, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+                Xunit.Assert.True(config.GetBoolean("section", "g"));
+#line (321, 5) - (321, 51) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.False(config.GetBoolean("section", "h"));
             }
 
             [Xunit.FactAttribute]
             public void TestGetBooleanInvalidThrows()
             {
-#line (323, 5) - (323, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (325, 5) - (325, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (324, 5) - (324, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (326, 5) - (326, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nval = maybe");
-#line (325, 5) - (330, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (327, 5) - (332, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
                 {
-#line (326, 9) - (326, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (328, 9) - (328, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.GetBoolean("section", "val");
                 }));
             }
@@ -620,145 +620,145 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestWriteRoundTrip()
             {
-#line (332, 5) - (332, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (334, 5) - (334, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (333, 5) - (333, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (335, 5) - (335, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.AddSection("section");
-#line (334, 5) - (334, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (336, 5) - (336, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.Set("section", "key1", "value1");
-#line (335, 5) - (335, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (337, 5) - (337, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.Set("section", "key2", "value2");
-#line (336, 5) - (336, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (338, 5) - (338, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var writer = new global::Sharpy.StringIO();
-#line (337, 5) - (337, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (339, 5) - (339, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.Write(writer);
-#line (338, 5) - (338, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (340, 5) - (340, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config2 = new global::Sharpy.ConfigParser();
-#line (339, 5) - (339, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (341, 5) - (341, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config2.ReadString(writer.Getvalue());
-#line (340, 5) - (340, 55) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (342, 5) - (342, 55) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("value1", config2.Get("section", "key1"));
-#line (341, 5) - (341, 55) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (343, 5) - (343, 55) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("value2", config2.Get("section", "key2"));
             }
 
             [Xunit.FactAttribute]
             public void TestWriteDefaultSection()
             {
-#line (345, 5) - (345, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (347, 5) - (347, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (346, 5) - (346, 73) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (348, 5) - (348, 73) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[DEFAULT]\nbase = /srv\n\n[section]\nkey = val");
-#line (347, 5) - (347, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (349, 5) - (349, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var writer = new global::Sharpy.StringIO();
-#line (348, 5) - (348, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (350, 5) - (350, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.Write(writer);
-#line (349, 5) - (349, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (351, 5) - (351, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 string output = writer.Getvalue();
-#line (350, 5) - (350, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Contains("[DEFAULT]", output);
-#line (351, 5) - (351, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Contains("base = /srv", output);
 #line (352, 5) - (352, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+                Xunit.Assert.Contains("[DEFAULT]", output);
+#line (353, 5) - (353, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+                Xunit.Assert.Contains("base = /srv", output);
+#line (354, 5) - (354, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Contains("[section]", output);
             }
 
             [Xunit.FactAttribute]
             public void TestWriteNoSpaceAroundDelimiters()
             {
-#line (356, 5) - (356, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (358, 5) - (358, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (357, 5) - (357, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (359, 5) - (359, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.AddSection("section");
-#line (358, 5) - (358, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (360, 5) - (360, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.Set("section", "key", "value");
-#line (359, 5) - (359, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (361, 5) - (361, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var writer = new global::Sharpy.StringIO();
-#line (360, 5) - (360, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (362, 5) - (362, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.Write(writer, spaceAroundDelimiters: false);
-#line (361, 5) - (361, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (363, 5) - (363, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Contains("key=value", writer.Getvalue());
             }
 
             [Xunit.FactAttribute]
             public void TestReadMissingFileSilentlyIgnored()
             {
-#line (365, 5) - (365, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (367, 5) - (367, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (366, 5) - (366, 58) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (368, 5) - (368, 58) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.Read("/tmp/nonexistent_config_file_12345.ini");
-#line (367, 5) - (367, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (369, 5) - (369, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(config.Sections()));
             }
 
             [Xunit.FactAttribute]
             public void TestEmptyIniFile()
             {
-#line (373, 5) - (373, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (375, 5) - (375, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (374, 5) - (374, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (376, 5) - (376, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("");
-#line (375, 5) - (375, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (377, 5) - (377, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(config.Sections()));
             }
 
             [Xunit.FactAttribute]
             public void TestSectionWithNoKeys()
             {
-#line (379, 5) - (379, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (381, 5) - (381, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (380, 5) - (380, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (382, 5) - (382, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]");
-#line (381, 5) - (381, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (383, 5) - (383, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.True(config.HasSection("section"));
-#line (382, 5) - (382, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (384, 5) - (384, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(config.Options("section")));
             }
 
             [Xunit.FactAttribute]
             public void TestValueContainsDelimiter()
             {
-#line (386, 5) - (386, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (388, 5) - (388, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (387, 5) - (387, 65) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (389, 5) - (389, 65) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nkey = value = with = equals");
-#line (388, 5) - (388, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (390, 5) - (390, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("value = with = equals", config.Get("section", "key"));
             }
 
             [Xunit.FactAttribute]
             public void TestInlineCommentsDisabledByDefault()
             {
-#line (392, 5) - (392, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (394, 5) - (394, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (393, 5) - (393, 53) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (395, 5) - (395, 53) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nkey = foo # bar");
-#line (394, 5) - (394, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (396, 5) - (396, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("foo # bar", config.Get("section", "key"));
             }
 
             [Xunit.FactAttribute]
             public void TestAllowNoValueGetReturnsNull()
             {
-#line (400, 5) - (400, 60) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (402, 5) - (402, 60) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(allowNoValue: true);
-#line (401, 5) - (401, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (403, 5) - (403, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nkey");
-#line (402, 5) - (402, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (404, 5) - (404, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Null(config.Get("section", "key"));
             }
 
             [Xunit.FactAttribute]
             public void TestBasicInterpolationMissingKeyThrowsInterpolationError()
             {
-#line (408, 5) - (408, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (410, 5) - (410, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (409, 5) - (409, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (411, 5) - (411, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\npath = %(missing)s");
-#line (410, 5) - (413, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationError>((global::System.Action)(() =>
+#line (414, 5) - (417, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+                Xunit.Assert.Throws<global::Sharpy.InterpolationMissingOptionError>((global::System.Action)(() =>
                 {
-#line (411, 9) - (411, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (415, 9) - (415, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "path");
                 }));
             }
@@ -766,32 +766,32 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestGetIntMissingSectionReturnsFallback()
             {
-#line (416, 5) - (416, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (420, 5) - (420, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (417, 5) - (417, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (421, 5) - (421, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal(42, config.GetInt("nosection", "key", fallback: 42));
             }
 
             [Xunit.FactAttribute]
             public void TestGetBooleanMissingSectionReturnsFallback()
             {
-#line (421, 5) - (421, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (425, 5) - (425, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (422, 5) - (422, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (426, 5) - (426, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.True(config.GetBoolean("nosection", "key", fallback: true));
             }
 
             [Xunit.FactAttribute]
             public void TestBasicInterpolationCircularThrowsDepthError()
             {
-#line (428, 5) - (428, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (432, 5) - (432, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
-#line (429, 5) - (429, 58) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (433, 5) - (433, 58) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %(b)s\nb = %(a)s");
-#line (430, 5) - (433, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (434, 5) - (437, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.InterpolationDepthError>((global::System.Action)(() =>
                 {
-#line (431, 9) - (431, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (435, 9) - (435, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
                 }));
             }
@@ -799,14 +799,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestBasicInterpolationMissingKeyThrowsMissingOptionError()
             {
-#line (435, 5) - (435, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (439, 5) - (439, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
-#line (436, 5) - (436, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (440, 5) - (440, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\npath = %(missing)s");
-#line (437, 5) - (440, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (441, 5) - (444, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.InterpolationMissingOptionError>((global::System.Action)(() =>
                 {
-#line (438, 9) - (438, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (442, 9) - (442, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "path");
                 }));
             }
@@ -814,14 +814,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestBasicInterpolationUnterminatedThrowsSyntaxError()
             {
-#line (442, 5) - (442, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (446, 5) - (446, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
-#line (443, 5) - (443, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (447, 5) - (447, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %(b");
-#line (444, 5) - (447, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (448, 5) - (451, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.InterpolationSyntaxError>((global::System.Action)(() =>
                 {
-#line (445, 9) - (445, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (449, 9) - (449, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
                 }));
             }
@@ -829,14 +829,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestBasicInterpolationBadPercentThrowsSyntaxError()
             {
-#line (449, 5) - (449, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (453, 5) - (453, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
-#line (450, 5) - (450, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (454, 5) - (454, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %z");
-#line (451, 5) - (454, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (455, 5) - (458, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.InterpolationSyntaxError>((global::System.Action)(() =>
                 {
-#line (452, 9) - (452, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (456, 9) - (456, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
                 }));
             }
@@ -844,14 +844,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExtendedInterpolationUnterminatedThrowsSyntaxError()
             {
-#line (456, 5) - (456, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (460, 5) - (460, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.ExtendedInterpolation());
-#line (457, 5) - (457, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (461, 5) - (461, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = ${b");
-#line (458, 5) - (461, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (462, 5) - (465, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.InterpolationSyntaxError>((global::System.Action)(() =>
                 {
-#line (459, 9) - (459, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (463, 9) - (463, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
                 }));
             }
@@ -859,14 +859,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExtendedInterpolationTooManyColonsThrowsSyntaxError()
             {
-#line (463, 5) - (463, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (467, 5) - (467, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.ExtendedInterpolation());
-#line (464, 5) - (464, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (468, 5) - (468, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = ${x:y:z}");
-#line (465, 5) - (468, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (469, 5) - (472, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.InterpolationSyntaxError>((global::System.Action)(() =>
                 {
-#line (466, 9) - (466, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (470, 9) - (470, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
                 }));
             }
@@ -874,33 +874,33 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestBasicInterpolationPercentEscapeDoesNotThrow()
             {
-#line (470, 5) - (470, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (474, 5) - (474, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
-#line (471, 5) - (471, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (475, 5) - (475, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = 100%%");
-#line (472, 5) - (472, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (476, 5) - (476, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("100%", config.Get("section", "a"));
             }
 
             [Xunit.FactAttribute]
             public void TestExtendedInterpolationValidCrossSectionDoesNotThrow()
             {
-#line (476, 5) - (476, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (480, 5) - (480, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.ExtendedInterpolation());
-#line (477, 5) - (477, 90) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (481, 5) - (481, 90) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[defaults]\nbase = /opt\n[section]\npath = ${defaults:base}/app");
-#line (478, 5) - (478, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (482, 5) - (482, 56) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("/opt/app", config.Get("section", "path"));
             }
 
             [Xunit.FactAttribute]
             public void TestBasicInterpolationPercentEscapeBeforeKeyProducesLiteral()
             {
-#line (482, 5) - (482, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (486, 5) - (486, 74) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
-#line (483, 5) - (483, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (487, 5) - (487, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nkey = world\na = 100%%(key)s");
-#line (484, 5) - (484, 55) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (488, 5) - (488, 55) 1 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 Xunit.Assert.Equal("100%(key)s", config.Get("section", "a"));
             }
         }

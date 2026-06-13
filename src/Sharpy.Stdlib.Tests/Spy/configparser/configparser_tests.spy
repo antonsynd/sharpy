@@ -263,7 +263,9 @@ def test_basic_interpolation_recursive():
 def test_basic_interpolation_circular_throws():
     config = configparser.ConfigParser(configparser.BasicInterpolation())
     config.read_string("[section]\na = %(b)s\nb = %(a)s")
-    with assert_raises(configparser.InterpolationError):
+    # assert_raises is exact-match (not assignable); the circular case raises the
+    # InterpolationDepthError subclass of InterpolationError.
+    with assert_raises(configparser.InterpolationDepthError):
         config.get("section", "a")
 
 @test
@@ -407,7 +409,9 @@ def test_basic_interpolation_missing_key_throws_interpolation_error():
     # underlying NoOptionError escape.
     config = configparser.ConfigParser()
     config.read_string("[section]\npath = %(missing)s")
-    with assert_raises(configparser.InterpolationError):
+    # assert_raises is exact-match (not assignable); a missing key raises the
+    # InterpolationMissingOptionError subclass of InterpolationError.
+    with assert_raises(configparser.InterpolationMissingOptionError):
         config.get("section", "path")
 
 @test
