@@ -6,14 +6,6 @@ JSON encoder and decoder.
 import json
 ```
 
-## Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `msg` | `str` | The unformatted error message. |
-| `doc` | `str` | The JSON document being parsed. |
-| `pos` | `int` | The index in doc where parsing failed. |
-
 ## Functions
 
 ### `json.dumps(obj: object | None) -> str`
@@ -133,6 +125,19 @@ Deserialize a JSON document read from a file to a strongly-typed object.
 
 **Returns:** A `Result{T,E}` containing the deserialized value on success,
 or a `JSONDecodeError` on failure.
+
+## JSONDecodeError
+
+Subclass of ValueError raised when a JSON document cannot be decoded.
+Mirrors Python's json.JSONDecodeError.
+
+### Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `msg` | `str` | The unformatted error message. |
+| `doc` | `str` | The JSON document being parsed. |
+| `pos` | `int` | The index in doc where parsing failed. |
 
 ## JSONDecoder
 
