@@ -553,39 +553,6 @@ internal partial class NameResolver
         if (_symbolTable.Lookup(parts[0]) is not ModuleSymbol moduleSymbol)
             return null;
 
-        for (int i = 1; i < parts.Length - 1; i++)
-        {
-            if (!TryGetModuleExport(moduleSymbol, parts[i], out var nestedSymbol)
-                || nestedSymbol is not ModuleSymbol nestedModule)
-            {
-                return null;
-            }
-
-            moduleSymbol = nestedModule;
-        }
-
-        if (TryGetModuleExport(moduleSymbol, parts[^1], out var exportedSymbol)
-            && exportedSymbol is TypeSymbol typeSymbol)
-        {
-            return typeSymbol;
-        }
-
-        return null;
-    }
-
-    private static bool TryGetModuleExport(ModuleSymbol moduleSymbol, string memberName, out Symbol exportedSymbol)
-    {
-        if (moduleSymbol.Exports.TryGetValue(memberName, out exportedSymbol!))
-            return true;
-
-        if (moduleSymbol.IsNetModule)
-        {
-            var pascalName = NameMangler.ToPascalCase(memberName);
-            if (moduleSymbol.Exports.TryGetValue(pascalName, out exportedSymbol!))
-                return true;
-        }
-
-        exportedSymbol = default!;
-        return false;
+        return ModuleSymbolExtensions.ResolveQualifiedType(moduleSymbol, parts, startIndex: 1);
     }
 }
