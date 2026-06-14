@@ -177,6 +177,49 @@ public class ClrTypeMapperTests
     }
 
     [Fact]
+    public void MapIReadOnlyListOfString_ToListType()
+    {
+        // Arrange & Act
+        var result = _mapper.MapClrTypeToSemanticType(typeof(IReadOnlyList<string>));
+
+        // Assert
+        Assert.IsType<GenericType>(result);
+        var genericType = (GenericType)result;
+        Assert.Equal("list", genericType.Name);
+        Assert.Single(genericType.TypeArguments);
+        Assert.Equal(SemanticType.Str, genericType.TypeArguments[0]);
+    }
+
+    [Fact]
+    public void MapIReadOnlyCollectionOfInt_ToListType()
+    {
+        // Arrange & Act
+        var result = _mapper.MapClrTypeToSemanticType(typeof(IReadOnlyCollection<int>));
+
+        // Assert
+        Assert.IsType<GenericType>(result);
+        var genericType = (GenericType)result;
+        Assert.Equal("list", genericType.Name);
+        Assert.Single(genericType.TypeArguments);
+        Assert.Equal(SemanticType.Int, genericType.TypeArguments[0]);
+    }
+
+    [Fact]
+    public void MapIReadOnlyDictionaryOfStringInt_ToDictType()
+    {
+        // Arrange & Act
+        var result = _mapper.MapClrTypeToSemanticType(typeof(IReadOnlyDictionary<string, int>));
+
+        // Assert
+        Assert.IsType<GenericType>(result);
+        var genericType = (GenericType)result;
+        Assert.Equal("dict", genericType.Name);
+        Assert.Equal(2, genericType.TypeArguments.Count);
+        Assert.Equal(SemanticType.Str, genericType.TypeArguments[0]);
+        Assert.Equal(SemanticType.Int, genericType.TypeArguments[1]);
+    }
+
+    [Fact]
     public void CachesResults()
     {
         // Arrange & Act

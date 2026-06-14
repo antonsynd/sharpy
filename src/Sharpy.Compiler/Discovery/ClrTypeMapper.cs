@@ -185,6 +185,34 @@ internal class ClrTypeMapper
             };
         }
 
+        // IReadOnlyList<T> or IReadOnlyCollection<T>
+        if (IsGenericTypeDefinition(genericDef, typeof(IReadOnlyList<>)) ||
+            IsGenericTypeDefinition(genericDef, typeof(IReadOnlyCollection<>)))
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.List,
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0])
+                }
+            };
+        }
+
+        // IReadOnlyDictionary<K, V>
+        if (IsGenericTypeDefinition(genericDef, typeof(IReadOnlyDictionary<,>)))
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.Dict,
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0]),
+                    MapClrTypeToSemanticType(typeArgs[1])
+                }
+            };
+        }
+
         // IEnumerable<T>
         if (IsGenericTypeDefinition(genericDef, typeof(IEnumerable<>)))
         {
