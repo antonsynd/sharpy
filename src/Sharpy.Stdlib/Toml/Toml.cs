@@ -167,7 +167,7 @@ namespace Sharpy
             {
                 return Result<T, TOMLDecodeError>.Err(new TOMLDecodeError(ex.Message, s, 0));
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 return Result<T, TOMLDecodeError>.Err(new TOMLDecodeError(ex.Message, s, 0));
             }
@@ -217,14 +217,17 @@ namespace Sharpy
 
             if (value is TomlTableArray tableArray)
             {
-                // Determine element type from generic List<T> or fall back to object
                 Type elementType = typeof(object);
                 if (targetType.IsGenericType)
                 {
                     elementType = targetType.GetGenericArguments()[0];
                 }
 
-                var listType = typeof(System.Collections.Generic.List<>).MakeGenericType(elementType);
+                var sharpyListType = typeof(List<>).MakeGenericType(elementType);
+                bool useSharpy = targetType.IsAssignableFrom(sharpyListType);
+                var listType = useSharpy
+                    ? sharpyListType
+                    : typeof(System.Collections.Generic.List<>).MakeGenericType(elementType);
                 var list = (System.Collections.IList)Activator.CreateInstance(listType)!;
                 foreach (TomlTable item in tableArray)
                 {

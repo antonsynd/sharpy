@@ -120,7 +120,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | ThreadingModuleTests.cs | 43 | | | pending |
 | TimeModuleTests.cs | 34 | | | pending |
 | TomlModuleTests.cs | 46 | Spy/toml/toml_module_tests.spy | 41 | ported (5 omitted: 5 null-arg/Axiom 3) |
-| TomlTypedDeserializationTests.cs | 6 | Spy/toml/toml_typed_deserialization_tests.spy | 4 | ported (2 omitted: null-arg/Axiom 3) |
+| TomlTypedDeserializationTests.cs | 6 | Spy/toml/toml_typed_deserialization_tests.spy | 5 | ported (2 omitted: null-arg/Axiom 3; +1 table array test) |
 | UuidModuleTests.cs | 13 | Spy/uuid/uuid_module_tests.spy | 13 | ported (re-enabled #886) |
 | XmlModuleTests.cs | 84 | | | pending |
 | YamlModuleTests.cs | 60 | Spy/yaml/yaml_module_tests.spy | 55 | ported (5 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |

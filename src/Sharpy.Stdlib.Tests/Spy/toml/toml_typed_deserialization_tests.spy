@@ -20,6 +20,11 @@ class AppConfig:
     server: ServerConfig = ServerConfig()
 
 
+class DeployConfig:
+    name: str = ""
+    servers: list[ServerConfig] = []
+
+
 # --- Loads[T] — success cases ---
 
 @test
@@ -48,6 +53,17 @@ def test_loads_t_malformed_toml_returns_err():
     assert result.IsErr
     err = result.UnwrapErr()
     assert err.Doc == "invalid = ["
+
+@test
+def test_loads_t_table_array_deserializes_to_list():
+    toml_str: str = "name = \"prod\"\n\n[[servers]]\nhost = \"a.com\"\nport = 80\n\n[[servers]]\nhost = \"b.com\"\nport = 443"
+    result = toml.loads[DeployConfig](toml_str)
+    assert result.IsOk
+    config = result.Unwrap()
+    assert config.name == "prod"
+    assert len(config.servers) == 2
+    assert config.servers[0].host == "a.com"
+    assert config.servers[1].host == "b.com"
 
 @test
 def test_loads_t_type_mismatch_returns_err():
