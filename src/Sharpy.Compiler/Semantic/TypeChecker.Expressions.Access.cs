@@ -557,9 +557,13 @@ internal partial class TypeChecker
     private SemanticType? ResolveUserDefinedGenericMember(
         MemberAccess memberAccess, TypeSymbol genDef, List<SemanticType> typeArgs)
     {
+        // substituteNamedUserTypes: imported generic definitions may materialize a type-parameter
+        // reference in a member signature (e.g. the return type T of an imported Box[T].get()) as a
+        // bare UserDefinedType named after the parameter rather than a TypeParameterType. Within the
+        // owning generic that name denotes the type parameter, so substitute it too (#912).
         SemanticType Substitute(SemanticType t) =>
             genDef.TypeParameters.Count > 0 && genDef.TypeParameters.Count == typeArgs.Count
-                ? SubstituteTypeParameters(t, genDef.TypeParameters, typeArgs)
+                ? SubstituteTypeParameters(t, genDef.TypeParameters, typeArgs, substituteNamedUserTypes: true)
                 : t;
 
         var member = memberAccess.Member;

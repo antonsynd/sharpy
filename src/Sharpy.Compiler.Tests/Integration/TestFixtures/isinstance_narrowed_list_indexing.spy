@@ -1,0 +1,10 @@
+def describe(value: object) -> None:
+    if isinstance(value, list):
+        # value narrowed to list[object]; indexing must resolve
+        print(value[0])
+        print(len(value))
+
+
+def main() -> None:
+    items: list[int] = [10, 20, 30]
+    describe(items)

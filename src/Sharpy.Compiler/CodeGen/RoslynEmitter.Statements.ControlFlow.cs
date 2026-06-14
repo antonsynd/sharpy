@@ -592,8 +592,18 @@ internal partial class RoslynEmitter
         {
             if (n.NarrowInThenBranch == narrowInThen)
             {
-                var csharpType = _typeMapper.MapSemanticType(n.NarrowedType)
-                    .NormalizeWhitespace().ToFullString();
+                // Builtin collections narrow to the non-generic Sharpy.IList/IDict/ISet protocol
+                // interface so the narrowing cast (e.g. ((Sharpy.IList)value)[0]) succeeds at
+                // runtime — casting an object holding List<int> to the closed generic
+                // Sharpy.List<object> would throw (invariant), and indexing it would require the
+                // exact element type (#912). The type-erased interface indexers return object.
+                var nonGenericInterface = n.NarrowedType is GenericType narrowedGeneric
+                    ? TryMapBuiltinCollectionToNonGenericInterface(narrowedGeneric.Name)
+                        ?.NormalizeWhitespace().ToFullString()
+                    : null;
+                var csharpType = nonGenericInterface
+                    ?? _typeMapper.MapSemanticType(n.NarrowedType)
+                        .NormalizeWhitespace().ToFullString();
                 narrowings.Add((n.VariableName, csharpType));
             }
         }

@@ -77,10 +77,14 @@ internal partial class RoslynEmitter
                 && call.Arguments[1] is Identifier typeId)
             {
                 var value = GenerateExpression(call.Arguments[0]);
-                // Use TypeSyntaxMapper to correctly resolve builtin types (str→string, int→int)
-                // and user-defined types (dog→Dog) via MapType.
-                var typeAnnotation = new TypeAnnotation { Name = typeId.Name };
-                var checkType = _typeMapper.MapType(typeAnnotation);
+                // Builtin collections (list/dict/set) cannot be type-tested against their
+                // closed generic form (e.g. `is Sharpy.List<object>`), which only matches that
+                // exact instantiation and, for the unparameterized name, fails to compile
+                // (CS0305). Test against the non-generic Sharpy.IList/IDict/ISet protocol
+                // interface instead — implemented by every instantiation via boxing adapters,
+                // mirroring `case list()`/`dict()` pattern lowering (#912).
+                var checkType = TryMapBuiltinCollectionToNonGenericInterface(typeId.Name)
+                    ?? _typeMapper.MapType(new TypeAnnotation { Name = typeId.Name });
                 return BinaryExpression(SyntaxKind.IsExpression, value, checkType);
             }
 
@@ -786,6 +790,25 @@ internal partial class RoslynEmitter
             ? MakeGlobalQualifiedName(dotted.Split('.'))
             : ParseName(dotted);
     }
+
+    /// <summary>
+    /// Maps a builtin collection name (<c>list</c>/<c>dict</c>/<c>set</c>) to its non-generic
+    /// Sharpy protocol interface (<c>Sharpy.IList</c>/<c>IDict</c>/<c>ISet</c>), returning null for
+    /// any other name. These type-erased interfaces are implemented by every closed generic
+    /// instantiation via boxing adapters, so they are the correct target for <c>isinstance</c>
+    /// type tests and the resulting narrowing cast against an <c>object</c> receiver — a closed
+    /// generic like <c>Sharpy.List&lt;object&gt;</c> would only match (and only cast from) that
+    /// exact instantiation. Mirrors the <c>case list()</c> pattern lowering in
+    /// <see cref="GeneratePattern"/>.
+    /// </summary>
+    internal static NameSyntax? TryMapBuiltinCollectionToNonGenericInterface(string sharpyTypeName) =>
+        sharpyTypeName switch
+        {
+            BuiltinNames.List => MakeGlobalQualifiedName("Sharpy", "IList"),
+            BuiltinNames.Dict => MakeGlobalQualifiedName("Sharpy", "IDict"),
+            BuiltinNames.Set => MakeGlobalQualifiedName("Sharpy", "ISet"),
+            _ => null
+        };
 
     /// <summary>
     /// Resolves a member access of the form <c>module.TypeName</c> (or nested

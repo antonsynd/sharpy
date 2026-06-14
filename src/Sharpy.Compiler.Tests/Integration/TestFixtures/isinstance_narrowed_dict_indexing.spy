@@ -1,0 +1,10 @@
+def describe(value: object) -> None:
+    if isinstance(value, dict):
+        # value narrowed to dict[object, object]; indexing must resolve
+        print(value["key"])
+        print(len(value))
+
+
+def main() -> None:
+    d: dict[str, int] = {"key": 42}
+    describe(d)

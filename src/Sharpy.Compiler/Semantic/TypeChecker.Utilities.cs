@@ -211,7 +211,7 @@ internal partial class TypeChecker
                             var typeSymbol = _symbolTable.Lookup(typeId.Name) as TypeSymbol;
                             if (typeSymbol != null)
                             {
-                                var narrowedType = new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                                var narrowedType = BuildIsInstanceNarrowedType(typeSymbol);
                                 narrowedTypes[narrowingKey] = narrowedType;
                                 isInstanceNarrowings.Add(new IsInstanceNarrowing(narrowingKey, narrowedType, NarrowInThenBranch: true));
                             }
@@ -231,6 +231,45 @@ internal partial class TypeChecker
         }
 
         return (narrowedTypes, new NarrowingDecision(optionalNarrowings, isInstanceNarrowings));
+    }
+
+    /// <summary>
+    /// Builds the narrowed type for an <c>isinstance(x, T)</c> check against a user/builtin
+    /// TypeSymbol. Generic builtin collections (list, set, dict) narrow to a parameterized
+    /// <see cref="GenericType"/> with default <c>object</c> type arguments, so downstream member
+    /// access on the narrowed value (indexing, <c>.items()</c>, etc.) resolves at the semantic
+    /// level (#912). Without this they would narrow to a bare <see cref="UserDefinedType"/> with
+    /// no type arguments, and e.g. <c>d[k]</c> on a narrowed <c>dict</c> would fail to lower.
+    /// Mirrors the unparameterized-collection handling in
+    /// <see cref="CheckTypePattern"/>.
+    /// </summary>
+    private SemanticType BuildIsInstanceNarrowedType(TypeSymbol typeSymbol)
+    {
+        var arity = typeSymbol.Name switch
+        {
+            BuiltinNames.List => 1,
+            BuiltinNames.Set => 1,
+            BuiltinNames.Dict => 2,
+            _ => 0
+        };
+
+        if (arity > 0 && typeSymbol.TypeParameters.Count == arity)
+        {
+            var defaultArgs = new List<SemanticType>(arity);
+            for (var i = 0; i < arity; i++)
+            {
+                defaultArgs.Add(SemanticType.Object);
+            }
+
+            return new GenericType
+            {
+                Name = typeSymbol.Name,
+                TypeArguments = defaultArgs,
+                GenericDefinition = typeSymbol
+            };
+        }
+
+        return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
     }
 
     /// <summary>
@@ -608,7 +647,8 @@ internal partial class TypeChecker
     private SemanticType SubstituteTypeParameters(
         SemanticType type,
         List<TypeParameterDef> typeParams,
-        List<SemanticType> typeArgs)
+        List<SemanticType> typeArgs,
+        bool substituteNamedUserTypes = false)
     {
         if (typeParams.Count != typeArgs.Count)
             return type;
@@ -619,7 +659,7 @@ internal partial class TypeChecker
             substitutions[typeParams[i].Name] = typeArgs[i];
         }
 
-        return TypeSubstitution.Apply(type, substitutions);
+        return TypeSubstitution.Apply(type, substitutions, substituteNamedUserTypes);
     }
 
     /// <summary>
