@@ -435,6 +435,44 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// When the target parameter is a delegate type (FunctionType) from a CLR-discovered
+    /// method and the source expression is a method group, the generated C# may produce
+    /// CS8622 warnings due to nullability annotation mismatches between the Sharpy-emitted
+    /// method signature and the CLR delegate type. Sharpy's type system does not track
+    /// .NET Nullable Reference Type annotations, so the emitted method lacks the nullable
+    /// annotations the CLR delegate expects.
+    ///
+    /// Appends the null-forgiving operator (!) to the method group expression to suppress
+    /// these warnings: <c>AddType</c> → <c>AddType!</c>.
+    /// Returns the expression unchanged when no adaptation is needed.
+    /// </summary>
+    private ExpressionSyntax ApplyNullabilityDelegateAdaptation(
+        Expression sourceExpr, ExpressionSyntax generated,
+        Semantic.SemanticType? targetType, FunctionSymbol? callee)
+    {
+        if (callee == null)
+            return generated;
+
+        // Unwrap Optional/Nullable to find the underlying FunctionType.
+        var underlying = targetType;
+        if (underlying is OptionalType opt)
+            underlying = opt.UnderlyingType;
+        if (underlying is NullableType nullable)
+            underlying = nullable.UnderlyingType;
+
+        if (underlying is not Semantic.FunctionType)
+            return generated;
+
+        // Only method groups need adaptation — lambdas already infer
+        // parameter types from the delegate context.
+        if (!IsMethodGroup(sourceExpr))
+            return generated;
+
+        return PostfixUnaryExpression(
+            SyntaxKind.SuppressNullableWarningExpression, generated);
+    }
+
+    /// <summary>
     /// Returns true if the expression is a method group (an identifier or member access
     /// resolving to a function symbol rather than a delegate-typed variable) or a lambda.
     /// These require an explicit delegate cast before user-defined implicit conversions
@@ -449,6 +487,27 @@ internal partial class RoslynEmitter
         {
             LambdaExpression => true,
             Identifier id => _context.LookupSymbol(id.Name) is FunctionSymbol,
+            MemberAccess ma =>
+                _context.SemanticInfo?.GetMemberAccessResolution(ma)?.Member is FunctionSymbol,
+            _ => false,
+        };
+    }
+
+    /// <summary>
+    /// Returns true if the expression is a method group (an identifier or member access
+    /// resolving to a function symbol). Unlike <see cref="IsMethodGroupOrLambda"/>,
+    /// excludes lambda expressions — used for nullability adaptation where lambdas
+    /// already infer parameter types from the delegate context.
+    /// </summary>
+    private bool IsMethodGroup(Expression expr)
+    {
+        while (expr is Parenthesized paren)
+            expr = paren.Expression;
+
+        return expr switch
+        {
+            Identifier id => _context.LookupSymbol(id.Name) is FunctionSymbol
+                || _localFunctionNames.ContainsKey(id.Name),
             MemberAccess ma =>
                 _context.SemanticInfo?.GetMemberAccessResolution(ma)?.Member is FunctionSymbol,
             _ => false,
@@ -669,6 +728,23 @@ internal partial class RoslynEmitter
     private FunctionSymbol? ResolveMethodForCall(Expression receiver, string methodName)
     {
         var receiverType = GetExpressionSemanticType(receiver);
+
+        // Module member calls: look up the function from the module's exports.
+        if (receiverType is Semantic.ModuleType moduleType)
+        {
+            if (moduleType.Symbol.TryGetExport(methodName, out var exportedSymbol)
+                && exportedSymbol is FunctionSymbol exportedFunc)
+            {
+                return exportedFunc;
+            }
+            if (moduleType.Symbol.FunctionOverloads.TryGetValue(methodName, out var moduleOverloads)
+                && moduleOverloads.Count > 0)
+            {
+                return moduleOverloads[0];
+            }
+            return null;
+        }
+
         TypeSymbol? typeSymbol = receiverType switch
         {
             UserDefinedType udt => udt.Symbol as TypeSymbol,
@@ -763,11 +839,23 @@ internal partial class RoslynEmitter
                 var kwargValue = GenerateExpression(kwarg.Value);
                 if (funcSymbol != null)
                 {
-                    var targetParam = funcSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                    var targetParam = funcSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name)
+                        ?? funcSymbol.Parameters.FirstOrDefault(p => p.Name == csharpName);
                     if (targetParam is { IsLateBound: true })
                         csharpName += LateBoundSuffix;
                     if (targetParam != null)
+                    {
                         kwargValue = ApplyOptionalDelegateConversion(kwarg.Value, kwargValue, targetParam.Type);
+                        kwargValue = ApplyNullabilityDelegateAdaptation(kwarg.Value, kwargValue, targetParam.Type, funcSymbol);
+                    }
+                }
+                else if (IsMethodGroup(kwarg.Value))
+                {
+                    // When the callee FunctionSymbol is unavailable (e.g., CLR constructors
+                    // without resolved parameter metadata), apply ! to method group keyword
+                    // args to suppress potential CS8622 NRT nullability mismatch warnings.
+                    kwargValue = PostfixUnaryExpression(
+                        SyntaxKind.SuppressNullableWarningExpression, kwargValue);
                 }
                 return Argument(kwargValue)
                     .WithNameColon(NameColon(IdentifierName(csharpName)));
@@ -814,9 +902,12 @@ internal partial class RoslynEmitter
 
             if (keywordArgsByName.TryGetValue(param.Name, out var kwarg))
             {
-                argByParam[param.Name] = Argument(
-                    ApplyOptionalDelegateConversion(
-                        kwarg.Value, GenerateExpression(kwarg.Value), param.Type))
+                var kwargGenerated = GenerateExpression(kwarg.Value);
+                kwargGenerated = ApplyOptionalDelegateConversion(
+                    kwarg.Value, kwargGenerated, param.Type);
+                kwargGenerated = ApplyNullabilityDelegateAdaptation(
+                    kwarg.Value, kwargGenerated, param.Type, funcSymbol);
+                argByParam[param.Name] = Argument(kwargGenerated)
                     .WithNameColon(NameColon(IdentifierName(csharpParamName)));
                 keywordArgsByName.Remove(param.Name);
             }
@@ -842,9 +933,12 @@ internal partial class RoslynEmitter
                     }
                     return result.ToArray();
                 }
-                argByParam[param.Name] = Argument(
-                    ApplyOptionalDelegateConversion(
-                        argExpr, GenerateExpression(argExpr), param.Type))
+                var posGenerated = GenerateExpression(argExpr);
+                posGenerated = ApplyOptionalDelegateConversion(
+                    argExpr, posGenerated, param.Type);
+                posGenerated = ApplyNullabilityDelegateAdaptation(
+                    argExpr, posGenerated, param.Type, funcSymbol);
+                argByParam[param.Name] = Argument(posGenerated)
                     .WithNameColon(NameColon(IdentifierName(csharpParamName)));
                 positionalIndex++;
             }
@@ -1021,6 +1115,8 @@ internal partial class RoslynEmitter
                 {
                     generated = ApplyOptionalDelegateConversion(
                         arg, generated, positionalParams[argIndex].Type);
+                    generated = ApplyNullabilityDelegateAdaptation(
+                        arg, generated, positionalParams[argIndex].Type, funcSymbol);
                 }
                 yield return Argument(generated);
             }

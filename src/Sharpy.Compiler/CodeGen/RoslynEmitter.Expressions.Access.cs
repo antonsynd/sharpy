@@ -114,10 +114,13 @@ internal partial class RoslynEmitter
 
             // Resolve the callee FunctionSymbol for argument reordering.
             // For type instantiations, look up the constructor from the TypeSymbol.
+            // Fall back to the semantic-info call target for CLR types whose constructors
+            // are not populated by CachedModuleDiscovery.
             FunctionSymbol? directCallTarget = symbol as FunctionSymbol;
             if (directCallTarget == null && symbol is TypeSymbol callTypeSymbol)
             {
-                directCallTarget = ResolveConstructorForCall(callTypeSymbol, call);
+                directCallTarget = ResolveConstructorForCall(callTypeSymbol, call)
+                    ?? _context.SemanticInfo?.GetCallTarget(call);
             }
             var allArgs = GenerateReorderedCallArguments(call, directCallTarget);
 
@@ -318,7 +321,8 @@ internal partial class RoslynEmitter
                     && (mt.Symbol.TypeKind == Semantic.TypeKind.Class
                         || mt.Symbol.TypeKind == Semantic.TypeKind.Struct))
                 {
-                    var ctorTarget = ResolveConstructorForCall(mt.Symbol, call);
+                    var ctorTarget = ResolveConstructorForCall(mt.Symbol, call)
+                        ?? _context.SemanticInfo?.GetCallTarget(call);
                     var ctorArgs = GenerateReorderedCallArguments(call, ctorTarget);
                     var baseName = GetFullyQualifiedTypeName(mt.Symbol, mt.OriginalName);
                     return GenerateTypeInstantiation(call, baseName, ctorArgs);
@@ -439,8 +443,12 @@ internal partial class RoslynEmitter
                     DiagnosticCodes.CodeGen.UnsupportedFeature, call.LineStart, call.ColumnStart);
             }
 
-            // Generate arguments (reorder for C# compliance if needed)
-            var methodCallTarget = ResolveMethodForCall(memberAccess.Object, memberAccess.Member);
+            // Generate arguments (reorder for C# compliance if needed).
+            // Prefer the semantic-info-resolved symbol (from overload resolution during
+            // type checking) — it is the correct overload for this call site. Fall back to
+            // ResolveMethodForCall when semantic info is not available.
+            var methodCallTarget = resolvedMethodSymbol as FunctionSymbol
+                ?? ResolveMethodForCall(memberAccess.Object, memberAccess.Member);
             var allArgs = GenerateReorderedCallArguments(call, methodCallTarget);
 
             // Handle null conditional method calls: obj?.Method(args)
