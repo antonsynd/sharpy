@@ -23,7 +23,7 @@ namespace Sharpy
             return dict;
         }
 
-        private static object? ConvertValue(object? value)
+        internal static object? ConvertValue(object? value)
         {
             if (value == null)
             {

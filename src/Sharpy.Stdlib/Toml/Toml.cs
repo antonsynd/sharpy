@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using Tomlyn;
 using Tomlyn.Model;
 
@@ -157,17 +158,140 @@ namespace Sharpy
 
             try
             {
-                var options = new TomlSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-                T model = TomlSerializer.Deserialize<T>(s, options)!;
-                return Result<T, TOMLDecodeError>.Ok(model);
+                var table = TomlSerializer.Deserialize<TomlTable>(s)!;
+                T instance = new T();
+                BindTable(instance, table);
+                return Result<T, TOMLDecodeError>.Ok(instance);
             }
             catch (TomlException ex)
             {
                 return Result<T, TOMLDecodeError>.Err(new TOMLDecodeError(ex.Message, s, 0));
             }
+            catch (Exception ex)
+            {
+                return Result<T, TOMLDecodeError>.Err(new TOMLDecodeError(ex.Message, s, 0));
+            }
+        }
+
+        private static void BindTable(object target, TomlTable table)
+        {
+            var type = target.GetType();
+            foreach (var kv in table)
+            {
+                string pascalName = SnakeToPascalCase(kv.Key);
+
+                var field = type.GetField(pascalName, BindingFlags.Public | BindingFlags.Instance)
+                    ?? type.GetField(pascalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                if (field != null)
+                {
+                    object? converted = ConvertToFieldType(kv.Value, field.FieldType);
+                    field.SetValue(target, converted);
+                    continue;
+                }
+
+                var prop = type.GetProperty(pascalName, BindingFlags.Public | BindingFlags.Instance)
+                    ?? type.GetProperty(pascalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                if (prop != null && prop.CanWrite)
+                {
+                    object? converted = ConvertToFieldType(kv.Value, prop.PropertyType);
+                    prop.SetValue(target, converted);
+                }
+
+                // Skip keys that don't match any field or property
+            }
+        }
+
+        private static object? ConvertToFieldType(object? value, Type targetType)
+        {
+            if (value == null)
+            {
+                return null;
+            }
+
+            if (value is TomlTable nestedTable)
+            {
+                object nested = Activator.CreateInstance(targetType)!;
+                BindTable(nested, nestedTable);
+                return nested;
+            }
+
+            if (value is TomlTableArray tableArray)
+            {
+                // Determine element type from generic List<T> or fall back to object
+                Type elementType = typeof(object);
+                if (targetType.IsGenericType)
+                {
+                    elementType = targetType.GetGenericArguments()[0];
+                }
+
+                var listType = typeof(System.Collections.Generic.List<>).MakeGenericType(elementType);
+                var list = (System.Collections.IList)Activator.CreateInstance(listType)!;
+                foreach (TomlTable item in tableArray)
+                {
+                    object element = Activator.CreateInstance(elementType)!;
+                    BindTable(element, item);
+                    list.Add(element);
+                }
+                return list;
+            }
+
+            if (value is TomlDateTime)
+            {
+                return TomlConverter.ConvertValue(value);
+            }
+
+            // Handle numeric conversions: TOML integers are long, but fields may be int
+            if (value is long longVal && targetType == typeof(int))
+            {
+                return (int)longVal;
+            }
+
+            if (targetType.IsAssignableFrom(value.GetType()))
+            {
+                return value;
+            }
+
+            // Fallback for other numeric conversions
+            try
+            {
+                return Convert.ChangeType(value, targetType);
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot convert TOML value of type '{value.GetType().Name}' to field type '{targetType.Name}'");
+            }
+        }
+
+        private static string SnakeToPascalCase(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return name;
+            }
+
+            var sb = new System.Text.StringBuilder(name.Length);
+            bool capitalizeNext = true;
+            for (int i = 0; i < name.Length; i++)
+            {
+                char c = name[i];
+                if (c == '_')
+                {
+                    capitalizeNext = true;
+                    continue;
+                }
+
+                if (capitalizeNext)
+                {
+                    sb.Append(char.ToUpperInvariant(c));
+                    capitalizeNext = false;
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+            return sb.ToString();
         }
 
         /// <summary>Parse TOML content from a text file into a typed model.</summary>
