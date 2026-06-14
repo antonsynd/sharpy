@@ -219,7 +219,9 @@ internal partial class RoslynEmitter
             && isinstCall.Arguments.Length == 2
             && isinstCall.Arguments[1] is Identifier)
         {
-            var typeSyntax = _typeMapper.MapTypeFromExpression(isinstCall.Arguments[1]);
+            var typeIdent = (Identifier)isinstCall.Arguments[1];
+            var typeSyntax = TryMapBuiltinCollectionToNonGenericInterface(typeIdent.Name)
+                ?? _typeMapper.MapTypeFromExpression(isinstCall.Arguments[1]);
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert,
                     GenericName(Identifier("IsAssignableFrom"))
@@ -234,8 +236,12 @@ internal partial class RoslynEmitter
         {
             var subject = GenerateExpression(isinstTupleCall.Arguments[0]);
             var isChecks = typeTuple.Elements.Select(typeExpr =>
-                (ExpressionSyntax)BinaryExpression(SyntaxKind.IsExpression,
-                    subject, _typeMapper.MapTypeFromExpression(typeExpr)));
+            {
+                var mappedType = (typeExpr is Identifier tid
+                    ? TryMapBuiltinCollectionToNonGenericInterface(tid.Name)
+                    : null) ?? _typeMapper.MapTypeFromExpression(typeExpr);
+                return (ExpressionSyntax)BinaryExpression(SyntaxKind.IsExpression, subject, mappedType);
+            });
             var combined = isChecks.Aggregate((left, right) =>
                 BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
             return ExpressionStatement(InvocationExpression(
@@ -252,15 +258,21 @@ internal partial class RoslynEmitter
             if (negIsinstCall.Arguments[1] is TupleLiteral negTypeTuple)
             {
                 var checks = negTypeTuple.Elements.Select(typeExpr =>
-                    (ExpressionSyntax)BinaryExpression(SyntaxKind.IsExpression,
-                        subject, _typeMapper.MapTypeFromExpression(typeExpr)));
+                {
+                    var mappedType = (typeExpr is Identifier tid
+                        ? TryMapBuiltinCollectionToNonGenericInterface(tid.Name)
+                        : null) ?? _typeMapper.MapTypeFromExpression(typeExpr);
+                    return (ExpressionSyntax)BinaryExpression(SyntaxKind.IsExpression, subject, mappedType);
+                });
                 isCheck = checks.Aggregate((left, right) =>
                     BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
             }
             else
             {
-                isCheck = BinaryExpression(SyntaxKind.IsExpression,
-                    subject, _typeMapper.MapTypeFromExpression(negIsinstCall.Arguments[1]));
+                var negMappedType = (negIsinstCall.Arguments[1] is Identifier negTid
+                    ? TryMapBuiltinCollectionToNonGenericInterface(negTid.Name)
+                    : null) ?? _typeMapper.MapTypeFromExpression(negIsinstCall.Arguments[1]);
+                isCheck = BinaryExpression(SyntaxKind.IsExpression, subject, negMappedType);
             }
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("False")))

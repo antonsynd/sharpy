@@ -1,0 +1,37 @@
+@test
+def test_isinstance_dict():
+    x: object = {"a": 1}
+    assert isinstance(x, dict)
+
+@test
+def test_isinstance_list():
+    x: object = [1, 2, 3]
+    assert isinstance(x, list)
+
+@test
+def test_isinstance_set():
+    x: object = {1, 2, 3}
+    assert isinstance(x, set)
+
+@test
+def test_isinstance_tuple_collections():
+    x: object = {"a": 1}
+    assert isinstance(x, (dict, list))
+
+@test
+def test_isinstance_negated_dict():
+    x: object = "hello"
+    assert not isinstance(x, dict)
+
+@test
+def test_isinstance_negated_tuple_collections():
+    x: object = "hello"
+    assert not isinstance(x, (list, set))
+
+@test
+def test_isinstance_mixed_collection_and_primitive():
+    x: object = [1, 2]
+    assert isinstance(x, (dict, int, list))
+
+def main():
+    print("ok")
