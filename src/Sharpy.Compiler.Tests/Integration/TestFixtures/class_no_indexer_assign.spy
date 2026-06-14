@@ -1,0 +1,6 @@
+class NoIndex:
+    pass
+
+def main():
+    obj: NoIndex = NoIndex()
+    obj[0] = "x"
