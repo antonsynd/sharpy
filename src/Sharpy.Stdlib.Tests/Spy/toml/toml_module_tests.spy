@@ -3,6 +3,7 @@ from unittest import assert_raises
 import toml
 import math
 import operator
+import datetime
 
 # Ported from TomlModuleTests.cs (#843).
 # toml.loads() returns dict[str, object?]; values are compared with operator.eq
@@ -11,8 +12,6 @@ import operator
 # parameter so the expected literal is boxed as long (a bare '42L' argument lowers
 # to a boxed int and would never equal the boxed long value).
 # Omitted (documented in PORTING.md):
-#   - Loads_OffsetDateTime/LocalDateTime/LocalDate/LocalTime: values surface as raw
-#     .NET DateTimeOffset/DateTime/TimeSpan, not checkable/navigable from .spy (#920).
 #   - Loads_NullInput, Load_NullFp, Dump_NullFp, LoadFile_NullPath, DumpFile_NullPath:
 #     pass null! to non-nullable parameters, rejected at compile time (Axiom 3).
 
@@ -199,6 +198,45 @@ def test_loads_empty_document_returns_empty_dict():
 def test_loads_comment_only_returns_empty_dict():
     result = toml.loads("# just a comment")
     assert len(result) == 0
+
+# --- Loads - Date/Time Types ---
+
+@test
+def test_loads_offset_datetime_returns_datetime():
+    result = toml.loads("dt = 2024-01-15T10:30:00Z")
+    value = result["dt"]
+    assert isinstance(value, datetime.datetime)
+    if isinstance(value, datetime.datetime):
+        assert value.year == 2024
+        assert value.month == 1
+        assert value.day == 15
+        assert value.hour == 10
+        assert value.minute == 30
+
+@test
+def test_loads_local_datetime_returns_datetime():
+    result = toml.loads("dt = 2024-01-15T10:30:00")
+    value = result["dt"]
+    assert isinstance(value, datetime.datetime)
+
+@test
+def test_loads_local_date_returns_date():
+    result = toml.loads("d = 2024-01-15")
+    value = result["d"]
+    assert isinstance(value, datetime.date)
+    if isinstance(value, datetime.date):
+        assert value.year == 2024
+        assert value.month == 1
+        assert value.day == 15
+
+@test
+def test_loads_local_time_returns_time():
+    result = toml.loads("t = 10:30:00")
+    value = result["t"]
+    assert isinstance(value, datetime.time)
+    if isinstance(value, datetime.time):
+        assert value.hour == 10
+        assert value.minute == 30
 
 # --- Dumps ---
 
