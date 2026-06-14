@@ -72,6 +72,24 @@ next_log_slot() {
     echo "$idx"
 }
 
+# Kill runaway csharp-ls processes (>80% CPU, >2 min) before acquiring the lock.
+# csharp-ls often spins after builds due to file-watcher re-indexing on this large solution.
+while IFS= read -r line; do
+    pid=$(echo "$line" | awk '{print $2}')
+    cpu=$(echo "$line" | awk '{print $3}')
+    time_str=$(echo "$line" | awk '{print $10}')
+    minutes=0
+    if [[ "$time_str" =~ ^([0-9]+):([0-9]+):([0-9]+) ]]; then
+        minutes=$(( ${BASH_REMATCH[1]} * 60 + ${BASH_REMATCH[2]} ))
+    elif [[ "$time_str" =~ ^([0-9]+):([0-9]+) ]]; then
+        minutes=${BASH_REMATCH[1]}
+    fi
+    cpu_int=${cpu%.*}
+    if (( cpu_int >= 80 && minutes >= 2 )); then
+        kill "$pid" 2>/dev/null && echo "Killed runaway csharp-ls PID $pid (CPU: ${cpu}%, time: ${time_str})" >&2
+    fi
+done < <(ps aux | grep '[c]sharp-ls' 2>/dev/null || true)
+
 mkdir -p "${HOME}/.claude/locks"
 acquire_lock
 

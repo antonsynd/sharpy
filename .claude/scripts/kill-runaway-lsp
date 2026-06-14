@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Kill csharp-ls processes consuming >80% CPU for >2 minutes.
+# Usage: .claude/scripts/kill-runaway-lsp [--dry-run]
+
+set -euo pipefail
+
+DRY_RUN=false
+[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
+
+killed=0
+
+while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    pid=$(echo "$line" | awk '{print $2}')
+    cpu=$(echo "$line" | awk '{print $3}')
+    time_str=$(echo "$line" | awk '{print $10}')
+
+    # Parse elapsed time — formats: M:SS, MM:SS, H:MM:SS, or D-HH:MM:SS
+    minutes=0
+    if [[ "$time_str" =~ ^([0-9]+)-([0-9]+): ]]; then
+        # Days format
+        minutes=$(( ${BASH_REMATCH[1]} * 1440 + ${BASH_REMATCH[2]} * 60 ))
+    elif [[ "$time_str" =~ ^([0-9]+):([0-9]+):([0-9]+) ]]; then
+        # H:MM:SS
+        minutes=$(( ${BASH_REMATCH[1]} * 60 + ${BASH_REMATCH[2]} ))
+    elif [[ "$time_str" =~ ^([0-9]+):([0-9]+) ]]; then
+        # M:SS or MM:SS
+        minutes=${BASH_REMATCH[1]}
+    fi
+
+    cpu_int=${cpu%.*}
+    if (( cpu_int >= 80 && minutes >= 2 )); then
+        if $DRY_RUN; then
+            echo "[dry-run] Would kill csharp-ls PID $pid (CPU: ${cpu}%, running: ${time_str})"
+        else
+            kill "$pid" 2>/dev/null && echo "Killed csharp-ls PID $pid (CPU: ${cpu}%, running: ${time_str})" || true
+            ((killed++))
+        fi
+    fi
+done < <(ps aux | grep '[c]sharp-ls' || true)
+
+if (( killed == 0 )) && ! $DRY_RUN; then
+    echo "No runaway csharp-ls processes found."
+fi
