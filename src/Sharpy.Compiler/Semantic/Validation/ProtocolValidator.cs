@@ -24,6 +24,7 @@ internal class ProtocolValidator : ValidatingAstWalker
     public override int Order => 500; // After access validation (450)
 
     private ICompilerLogger _logger = NullLogger.Instance;
+    private readonly HashSet<IndexAccess> _assignmentTargets = new(ReferenceEqualityComparer.Instance);
 
     public override void Validate(Module module, SemanticContext context)
     {
@@ -46,7 +47,13 @@ internal class ProtocolValidator : ValidatingAstWalker
 
     public override void VisitIndexAccess(IndexAccess node)
     {
-        ValidateIndexAccess(node);
+        // Skip __getitem__ validation for nodes that are assignment targets —
+        // VisitAssignment already validates __setitem__, and emitting a second
+        // "does not support indexing" error for the same node is misleading.
+        if (!_assignmentTargets.Contains(node))
+        {
+            ValidateIndexAccess(node);
+        }
         base.VisitIndexAccess(node);
     }
 
@@ -69,6 +76,7 @@ internal class ProtocolValidator : ValidatingAstWalker
     {
         if (node.Target is IndexAccess indexAccess)
         {
+            _assignmentTargets.Add(indexAccess);
             ValidateIndexAssignment(indexAccess);
         }
         base.VisitAssignment(node);
