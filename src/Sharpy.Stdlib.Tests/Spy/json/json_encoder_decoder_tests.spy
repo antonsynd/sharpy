@@ -7,9 +7,6 @@ import operator
 # Omitted (documented in PORTING.md):
 #   - Encoder_DefaultCalledForNonSerializable, Encoder_ClsParameterOnDumps_Dispatches:
 #     require subclassing json.JSONEncoder, which fails compilation (#914).
-#   - Decoder_WithObjectHook, Decoder_ClsParameterOnLoads, Loads_ObjectHookParameter,
-#     Loads_ObjectHookOnNestedDicts, Loads_ObjectHookOnArray: require an object_hook
-#     callable that cannot be expressed with a matching delegate signature (#915).
 
 # --- JSONEncoder ---
 
@@ -91,6 +88,63 @@ def test_decoder_raw_decode_returns_value_and_end_index():
         case _:
             assert False
     assert end_idx == 8
+
+
+# --- object_hook (re-enabled after #915 nullability fix) ---
+
+def _tag_hook(d: dict[str, object]) -> dict[str, object]:
+    d["_hooked"] = True
+    return d
+
+@test
+def test_decoder_with_object_hook_applies_hook_to_all_dicts():
+    decoder = json.JSONDecoder(object_hook=_tag_hook)
+    result: object = decoder.decode('{"a": {"b": 1}}')
+    match result:
+        case dict() as outer:
+            assert operator.eq(outer["_hooked"], True)
+        case _:
+            assert False
+
+@test
+def test_decoder_cls_parameter_on_loads_dispatches():
+    def inject_hook(d: dict[str, object]) -> dict[str, object]:
+        d["injected"] = "yes"
+        return d
+    decoder = json.JSONDecoder(object_hook=inject_hook)
+    result: object = json.loads('{"a": 1}', cls=decoder)
+    match result:
+        case dict() as d:
+            assert operator.eq(d["injected"], "yes")
+        case _:
+            assert False
+
+@test
+def test_loads_object_hook_parameter_applies_hook():
+    result: object = json.loads('{"x": 1}', object_hook=_tag_hook)
+    match result:
+        case dict() as d:
+            assert operator.eq(d["_hooked"], True)
+        case _:
+            assert False
+
+@test
+def test_loads_object_hook_on_nested_dicts_applies_recursively():
+    count: list[int] = [0]
+    def counting_hook(d: dict[str, object]) -> dict[str, object]:
+        count[0] = count[0] + 1
+        return d
+    json.loads('{"inner": {"deep": {}}}', object_hook=counting_hook)
+    assert count[0] == 3
+
+@test
+def test_loads_object_hook_on_array_applies_only_to_dicts():
+    count: list[int] = [0]
+    def counting_hook(d: dict[str, object]) -> dict[str, object]:
+        count[0] = count[0] + 1
+        return d
+    json.loads('[{"a": 1}, {"b": 2}]', object_hook=counting_hook)
+    assert count[0] == 2
 
 
 # --- Helpers ---

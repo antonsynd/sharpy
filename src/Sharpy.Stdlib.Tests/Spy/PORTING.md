@@ -61,7 +61,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | ItertoolsInfiniteTests.cs | 10 | Spy/itertools/itertools_infinite_tests.spy | 10 | ported |
 | JsonModuleTests.cs | 109 | Spy/json/json_module_tests.spy | 108 | ported (1 omitted: loads_null_throws_type_error passes null! to non-nullable — not expressible in type-safe Sharpy, Axiom 3) |
 | JsonModuleAdditionalTests.cs | 13 | Spy/json/json_additional_tests.spy | 13 | ported |
-| JsonEncoderDecoderTests.cs | 16 | Spy/json/json_encoder_decoder_tests.spy | 9 | ported (7 omitted: 2 need subclassing json.JSONEncoder, #914; 5 need an object_hook delegate, #915) |
+| JsonEncoderDecoderTests.cs | 16 | Spy/json/json_encoder_decoder_tests.spy | 14 | ported (2 omitted: need subclassing json.JSONEncoder, #914; re-enabled 5 object_hook tests after #915) |
 | JsonTypedDeserializationTests.cs | 16 | Spy/json/json_typed_deserialization_tests.spy | 14 | ported (2 omitted: type-unsafe null input, Axiom 3; required stdlib fix: IncludeFields + Optional converter for Sharpy field-lowered classes) |
 | LoggingModuleTests.cs | 14 | | | pending |
 | LoggingCompleteTests.cs | 22 | | | pending |

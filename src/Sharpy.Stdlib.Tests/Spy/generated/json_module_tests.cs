@@ -1546,7 +1546,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (714, 5) - (714, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
 #line (715, 5) - (715, 75) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Equal("\"2026-01-15\"", json.Dumps(stamp, @default: StampToString));
+                Xunit.Assert.Equal("\"2026-01-15\"", json.Dumps(stamp, @default: StampToString!));
             }
 
             [Xunit.FactAttribute]
@@ -1555,21 +1555,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (719, 5) - (719, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
 #line (720, 5) - (720, 102) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Equal("{\"year\": 2026, \"month\": 1, \"day\": 15}", json.Dumps(stamp, @default: StampToDict));
+                Xunit.Assert.Equal("{\"year\": 2026, \"month\": 1, \"day\": 15}", json.Dumps(stamp, @default: StampToDict!));
             }
 
             [Xunit.FactAttribute]
             public void TestDumpsDefaultCallbackNotInvokedForNull()
             {
 #line (725, 5) - (725, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Equal("null", json.Dumps(null, @default: FallbackCallback));
+                Xunit.Assert.Equal("null", json.Dumps(null, @default: FallbackCallback!));
             }
 
             [Xunit.FactAttribute]
             public void TestDumpsDefaultCallbackNotInvokedForNativelySerializableTypes()
             {
 #line (729, 5) - (729, 62) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Equal("42", json.Dumps(42, @default: FallbackCallback));
+                Xunit.Assert.Equal("42", json.Dumps(42, @default: FallbackCallback!));
             }
 
             [Xunit.FactAttribute]
@@ -1581,7 +1581,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
                 {
 #line (735, 9) - (735, 53) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                    json.Dumps(stamp, @default: IdentityCallback);
+                    json.Dumps(stamp, @default: IdentityCallback!);
                 }));
             }
 
@@ -1612,7 +1612,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (748, 5) - (748, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["count"] = 5;
 #line (749, 5) - (749, 97) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Equal("{\"when\": \"2026-01-15\", \"count\": 5}", json.Dumps(d, @default: StampToString));
+                Xunit.Assert.Equal("{\"when\": \"2026-01-15\", \"count\": 5}", json.Dumps(d, @default: StampToString!));
             }
 
             [Xunit.FactAttribute]
@@ -1629,7 +1629,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (756, 5) - (756, 16) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 l.Append(1);
 #line (757, 5) - (757, 76) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Equal("[\"2026-01-15\", 1]", json.Dumps(l, @default: StampToString));
+                Xunit.Assert.Equal("[\"2026-01-15\", 1]", json.Dumps(l, @default: StampToString!));
             }
 
             [Xunit.FactAttribute]
@@ -1646,7 +1646,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (764, 5) - (764, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["count"] = 5;
 #line (765, 5) - (765, 117) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Equal("{\"when\":\"2026-01-15\",\"count\":5}", json.Dumps(d, separators: (",", ":"), @default: StampToString));
+                Xunit.Assert.Equal("{\"when\":\"2026-01-15\",\"count\":5}", json.Dumps(d, separators: (",", ":"), @default: StampToString!));
             }
 
             [Xunit.FactAttribute]
