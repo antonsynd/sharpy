@@ -70,15 +70,25 @@ namespace Sharpy
             {
                 case TomlDateTimeKind.OffsetDateTimeByZ:
                 case TomlDateTimeKind.OffsetDateTimeByNumber:
-                    return tomlDt.DateTime;
+                    {
+                        var dto = tomlDt.DateTime;
+                        var offset = dto.Offset;
+                        var tz = new Timezone(new Timedelta(hours: offset.Hours, minutes: offset.Minutes));
+                        return new Sharpy.DateTime(dto.DateTime, tz);
+                    }
                 case TomlDateTimeKind.LocalDateTime:
-                    return tomlDt.DateTime.DateTime;
+                    return new Sharpy.DateTime(tomlDt.DateTime.DateTime);
                 case TomlDateTimeKind.LocalDate:
-                    return tomlDt.DateTime.DateTime.Date;
+                    return new Date(tomlDt.DateTime.DateTime);
                 case TomlDateTimeKind.LocalTime:
-                    return tomlDt.DateTime.DateTime.TimeOfDay;
+                    return new Time(tomlDt.DateTime.DateTime.TimeOfDay);
                 default:
-                    return tomlDt.DateTime;
+                    {
+                        var dto = tomlDt.DateTime;
+                        var offset = dto.Offset;
+                        var tz = new Timezone(new Timedelta(hours: offset.Hours, minutes: offset.Minutes));
+                        return new Sharpy.DateTime(dto.DateTime, tz);
+                    }
             }
         }
 
@@ -137,19 +147,29 @@ namespace Sharpy
                 return (double)floatVal;
             }
 
-            if (value is System.DateTimeOffset dto)
+            if (value is Sharpy.DateTime sharpyDt)
             {
-                return new TomlDateTime(dto, 0, dto.Offset == System.TimeSpan.Zero ? TomlDateTimeKind.OffsetDateTimeByZ : TomlDateTimeKind.OffsetDateTimeByNumber);
+                var sdt = sharpyDt.InternalDateTime;
+                var tzinfo = sharpyDt.Tzinfo;
+                if (tzinfo != null)
+                {
+                    var td = tzinfo.Utcoffset();
+                    var offset = td.InternalTimeSpan;
+                    var dto = new System.DateTimeOffset(sdt, offset);
+                    return new TomlDateTime(dto, 0, offset == System.TimeSpan.Zero ? TomlDateTimeKind.OffsetDateTimeByZ : TomlDateTimeKind.OffsetDateTimeByNumber);
+                }
+                return new TomlDateTime(new System.DateTimeOffset(sdt), 0, TomlDateTimeKind.LocalDateTime);
             }
 
-            if (value is System.DateTime dt)
+            if (value is Date sharpyDate)
             {
-                return new TomlDateTime(new System.DateTimeOffset(dt), 0, TomlDateTimeKind.LocalDateTime);
+                var sdt = sharpyDate.InternalDate;
+                return new TomlDateTime(new System.DateTimeOffset(sdt), 0, TomlDateTimeKind.LocalDate);
             }
 
-            if (value is System.TimeSpan ts)
+            if (value is Time sharpyTime)
             {
-                var dtForTime = new System.DateTimeOffset(new System.DateTime(1, 1, 1).Add(ts), System.TimeSpan.Zero);
+                var dtForTime = new System.DateTimeOffset(new System.DateTime(1, 1, 1, sharpyTime.Hour, sharpyTime.Minute, sharpyTime.Second).AddTicks(sharpyTime.Microsecond * 10L), System.TimeSpan.Zero);
                 return new TomlDateTime(dtForTime, 0, TomlDateTimeKind.LocalTime);
             }
 
