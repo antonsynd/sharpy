@@ -5,10 +5,6 @@ import toml
 # Ported from TomlTypedDeserializationTests.cs (#843).
 # toml.loads[T]() returns Result<T, TOMLDecodeError>.
 # Omitted (documented in PORTING.md):
-#   - LoadsT_SimpleConfig_Deserializes, LoadsT_NestedConfig_Deserializes,
-#     LoadsT_TypeMismatch_ReturnsErr: Tomlyn binds public PROPERTIES, but Sharpy
-#     classes lower attributes to public fields, so a Sharpy model deserializes to
-#     defaults (and type mismatches are not detected). Stdlib gap, #922.
 #   - LoadsT_NullInput_ThrowsTypeError, LoadT_NullFp_ThrowsTypeError: pass null!
 #     to a non-nullable parameter, rejected at compile time (Axiom 3).
 
@@ -19,6 +15,31 @@ class ServerConfig:
     debug: bool = False
 
 
+class AppConfig:
+    title: str = ""
+    server: ServerConfig = ServerConfig()
+
+
+# --- Loads[T] — success cases ---
+
+@test
+def test_loads_t_simple_config_deserializes():
+    result = toml.loads[ServerConfig]("host = \"localhost\"\nport = 8080\ndebug = true")
+    assert result.IsOk
+    config = result.Unwrap()
+    assert config.host == "localhost"
+    assert config.port == 8080
+    assert config.debug
+
+@test
+def test_loads_t_nested_config_deserializes():
+    result = toml.loads[AppConfig]("title = \"My App\"\n\n[server]\nhost = \"0.0.0.0\"\nport = 3000\ndebug = false")
+    assert result.IsOk
+    config = result.Unwrap()
+    assert config.title == "My App"
+    assert config.server.host == "0.0.0.0"
+    assert config.server.port == 3000
+
 # --- Loads[T] — error cases ---
 
 @test
@@ -27,3 +48,8 @@ def test_loads_t_malformed_toml_returns_err():
     assert result.IsErr
     err = result.UnwrapErr()
     assert err.Doc == "invalid = ["
+
+@test
+def test_loads_t_type_mismatch_returns_err():
+    result = toml.loads[ServerConfig]("host = 123\nport = \"not_a_number\"")
+    assert result.IsErr
