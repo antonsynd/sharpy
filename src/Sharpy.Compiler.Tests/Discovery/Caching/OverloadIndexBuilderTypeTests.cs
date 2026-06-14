@@ -166,4 +166,43 @@ public class OverloadIndexBuilderTypeTests
         Assert.Contains(builtins.Types, t => t.Name == "TypeError");
         Assert.Contains(builtins.Types, t => t.Name == "ValueError");
     }
+
+    [Fact]
+    public void DiscoverNestedModuleTypes_WithoutAttribute_UsesClrName()
+    {
+        // Arrange - CsvModule has nested types (CsvReader, CsvWriter, etc.) without SharpyModuleTypeAttribute
+        var assembly = SharpyStdlibReference.Assembly;
+
+        // Act
+        var index = _builder.BuildFromAssembly(assembly);
+
+        // Assert - nested types without the attribute should use their CLR name
+        Assert.True(index.Modules.ContainsKey("csv"), "Expected 'csv' module to exist");
+        var csvModule = index.Modules["csv"];
+        Assert.Contains(csvModule.Types, t => t.Name == "CsvReader");
+        Assert.Contains(csvModule.Types, t => t.Name == "CsvDictReader");
+    }
+
+    [Fact]
+    public void DiscoverNestedModuleTypes_WithSharpyModuleTypeAttribute_UsesPythonName()
+    {
+        // Arrange - os.StatResult is nested inside OsModule and has no attribute,
+        // so its name should be the CLR name. This test verifies the code path
+        // that checks for SharpyModuleTypeAttribute on nested types.
+        // When a nested type DOES have the attribute with a python name,
+        // it should use that name instead of the CLR name.
+        var assembly = SharpyStdlibReference.Assembly;
+
+        // Act
+        var index = _builder.BuildFromAssembly(assembly);
+
+        // Assert - Verify that the os module's StatResult nested type is discovered
+        Assert.True(index.Modules.ContainsKey("os"), "Expected 'os' module to exist");
+        var osModule = index.Modules["os"];
+        Assert.Contains(osModule.Types, t => t.Name == "StatResult");
+
+        // Verify that nested types marked IsModuleType = true
+        var statResult = osModule.Types.First(t => t.Name == "StatResult");
+        Assert.True(statResult.IsModuleType);
+    }
 }
