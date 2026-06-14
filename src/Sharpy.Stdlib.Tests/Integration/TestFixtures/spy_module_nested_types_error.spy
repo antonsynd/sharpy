@@ -1,0 +1,8 @@
+import re
+
+
+def main() -> None:
+    try:
+        re.compile(r"(invalid")
+    except re.Error as e:
+        print("caught re.Error")

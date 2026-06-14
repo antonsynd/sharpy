@@ -74,6 +74,10 @@ internal class OverloadIndexBuilder
         // Discover public types (classes, structs, enums) from the assembly
         DiscoverPublicTypes(assembly, index);
 
+        // Discover nested types inside module classes (spy-sourced modules define
+        // types as nested classes inside the static module class)
+        DiscoverNestedModuleTypes(assembly, index);
+
         return index;
     }
 
@@ -142,6 +146,75 @@ internal class OverloadIndexBuilder
             DiscoverTypeProperties(type, typeInfo);
 
             moduleOverloads.Types.Add(typeInfo);
+        }
+    }
+
+    private void DiscoverNestedModuleTypes(Assembly assembly, OverloadIndex index)
+    {
+        var moduleClasses = assembly.GetTypes()
+            .Where(t => t.IsClass && t.CustomAttributes.Any(
+                a => a.AttributeType.FullName == "Sharpy.SharpyModuleAttribute"))
+            .ToList();
+
+        foreach (var moduleClass in moduleClasses)
+        {
+            var moduleName = DeriveModuleName(moduleClass);
+            var nestedTypes = moduleClass.GetNestedTypes(BindingFlags.Public);
+
+            if (nestedTypes.Length == 0)
+                continue;
+
+            if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
+            {
+                moduleOverloads = new ModuleOverloads { ModuleName = moduleName };
+                index.Modules[moduleName] = moduleOverloads;
+            }
+
+            foreach (var nestedType in nestedTypes)
+            {
+                if (nestedType.Name.StartsWith("<"))
+                    continue;
+
+                var typeKind = "Class";
+                if (nestedType.IsEnum)
+                    typeKind = "Enum";
+                else if (nestedType.IsValueType)
+                    typeKind = "Struct";
+                else if (nestedType.IsInterface)
+                    typeKind = "Interface";
+
+                if (nestedType.IsAbstract && nestedType.IsSealed && !nestedType.IsInterface)
+                    continue;
+
+                var isException = typeof(Exception).IsAssignableFrom(nestedType);
+
+                string? typeDoc = null;
+                if (_xmlDocReader != null)
+                {
+                    var typeMemberId = "T:" + (nestedType.FullName ?? nestedType.Name).Replace('+', '.');
+                    var doc = _xmlDocReader.GetMemberDoc(typeMemberId);
+                    typeDoc = doc?.Summary;
+                }
+
+                var typeInfo = new DiscoveredTypeInfo
+                {
+                    Name = nestedType.Name,
+                    Namespace = moduleClass.Namespace ?? string.Empty,
+                    ClrTypeName = nestedType.AssemblyQualifiedName ?? nestedType.FullName ?? nestedType.Name,
+                    IsException = isException,
+                    IsModuleType = true,
+                    BaseTypeName = nestedType.BaseType?.Name,
+                    TypeKind = typeKind,
+                    Documentation = typeDoc
+                };
+
+                DiscoverTypeMethods(nestedType, typeInfo);
+                DiscoverTypeOperators(nestedType, typeInfo);
+                DiscoverTypeProtocols(nestedType, typeInfo);
+                DiscoverTypeProperties(nestedType, typeInfo);
+
+                moduleOverloads.Types.Add(typeInfo);
+            }
         }
     }
 

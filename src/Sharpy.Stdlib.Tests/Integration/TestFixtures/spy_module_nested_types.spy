@@ -1,0 +1,13 @@
+import re
+
+
+def main() -> None:
+    # Module-qualified type annotation on spy-sourced nested type
+    p: re.Pattern = re.compile(r"(\w+)")
+    print(type(p).__name__)
+
+    # Use match result from search
+    m: re.MatchResult? = re.search(r"(\d+)", "abc123def")
+    if m is not None:
+        print(m[0])
+        print(m[1])
