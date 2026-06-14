@@ -184,24 +184,25 @@ public class OverloadIndexBuilderTypeTests
     }
 
     [Fact]
-    public void DiscoverNestedModuleTypes_WithSharpyModuleTypeAttribute_UsesPythonName()
+    public void DiscoverNestedModuleTypes_NestedTypes_AreMarkedAsModuleType()
     {
-        // Arrange - os.StatResult is nested inside OsModule and has no attribute,
-        // so its name should be the CLR name. This test verifies the code path
-        // that checks for SharpyModuleTypeAttribute on nested types.
-        // When a nested type DOES have the attribute with a python name,
-        // it should use that name instead of the CLR name.
+        // Arrange — os.StatResult is a nested type inside OsModule without
+        // SharpyModuleTypeAttribute; it uses the CLR name and is marked
+        // IsModuleType = true (all nested types inside [SharpyModule] containers
+        // are unconditionally treated as module types).
+        // NOTE: No stdlib nested type currently carries [SharpyModuleType] with a
+        // python name alias, so the pythonName ?? nestedType.Name override path
+        // is only tested indirectly via DiscoverPublicTypes attribute tests.
         var assembly = SharpyStdlibReference.Assembly;
 
         // Act
         var index = _builder.BuildFromAssembly(assembly);
 
-        // Assert - Verify that the os module's StatResult nested type is discovered
+        // Assert
         Assert.True(index.Modules.ContainsKey("os"), "Expected 'os' module to exist");
         var osModule = index.Modules["os"];
         Assert.Contains(osModule.Types, t => t.Name == "StatResult");
 
-        // Verify that nested types marked IsModuleType = true
         var statResult = osModule.Types.First(t => t.Name == "StatResult");
         Assert.True(statResult.IsModuleType);
     }

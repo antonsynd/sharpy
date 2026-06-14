@@ -553,6 +553,6 @@ internal partial class NameResolver
         if (_symbolTable.Lookup(parts[0]) is not ModuleSymbol moduleSymbol)
             return null;
 
-        return ModuleSymbolExtensions.ResolveQualifiedType(moduleSymbol, parts, startIndex: 1);
+        return moduleSymbol.ResolveQualifiedType(parts, startIndex: 1);
     }
 }

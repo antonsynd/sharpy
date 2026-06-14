@@ -44,7 +44,7 @@ internal static class ModuleSymbolExtensions
     /// Index of the first segment to resolve (typically 1, since index 0 is the root module itself).
     /// </param>
     /// <returns>The resolved <see cref="TypeSymbol"/>, or <c>null</c> if resolution fails at any step.</returns>
-    public static TypeSymbol? ResolveQualifiedType(ModuleSymbol rootModule, string[] parts, int startIndex)
+    public static TypeSymbol? ResolveQualifiedType(this ModuleSymbol rootModule, string[] parts, int startIndex)
     {
         var moduleSymbol = rootModule;
 

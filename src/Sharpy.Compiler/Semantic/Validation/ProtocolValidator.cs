@@ -28,6 +28,7 @@ internal class ProtocolValidator : ValidatingAstWalker
 
     public override void Validate(Module module, SemanticContext context)
     {
+        _assignmentTargets.Clear();
         _logger = context.Logger;
         _logger.LogDebug("Starting protocol validation");
         base.Validate(module, context);
