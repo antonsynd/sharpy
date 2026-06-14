@@ -17,10 +17,6 @@ import operator
 #   - The 4 CommentInfo construction tests (HasComments_* / new CommentInfo()):
 #     CommentInfo lacks the [SharpyModuleType("yaml")] export attribute its
 #     siblings carry, so it cannot be imported/constructed from spy yet.
-#   - RoundtripLoad_PreservesKeyOrder, CommentedMap_PreservesInsertionOrder:
-#     CommentedMap.Keys returns IReadOnlyList<string>, which surfaces as an opaque
-#     `object` (not indexable/iterable) in spy.
-
 # --- RoundtripLoad - node types ---
 
 @test
@@ -64,6 +60,18 @@ def test_roundtrip_load_quoted_number_stays_string():
         case CommentedMap() as m:
             assert isinstance(m["version"], str)
             assert operator.eq(m["version"], "3")
+        case _:
+            assert False
+
+@test
+def test_roundtrip_load_preserves_key_order():
+    result: object = yaml.roundtrip_load("zebra: 1\napple: 2\nmango: 3\n")
+    match result:
+        case CommentedMap() as m:
+            keys = m.keys
+            assert keys[0] == "zebra"
+            assert keys[1] == "apple"
+            assert keys[2] == "mango"
         case _:
             assert False
 
@@ -205,6 +213,17 @@ def test_commented_map_overwrite_existing_key_does_not_duplicate_order():
     m["a"] = 99
     assert m.count == 1
     assert operator.eq(m["a"], 99)
+
+@test
+def test_commented_map_preserves_insertion_order():
+    m = CommentedMap()
+    m.add("z", 1)
+    m.add("a", 2)
+    m.add("m", 3)
+    keys = m.keys
+    assert keys[0] == "z"
+    assert keys[1] == "a"
+    assert keys[2] == "m"
 
 # --- CommentedSeq operations ---
 

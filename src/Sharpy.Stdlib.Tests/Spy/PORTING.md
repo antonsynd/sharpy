@@ -119,12 +119,12 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | TextwrapTests.cs | 27 | Spy/textwrap/textwrap_tests.spy | 27 | ported |
 | ThreadingModuleTests.cs | 43 | | | pending |
 | TimeModuleTests.cs | 34 | | | pending |
-| TomlModuleTests.cs | 46 | Spy/toml/toml_module_tests.spy | 37 | ported (9 omitted: 4 datetime types surface as raw .NET — not navigable from .spy, #920; 5 null-arg/Axiom 3) |
+| TomlModuleTests.cs | 46 | Spy/toml/toml_module_tests.spy | 41 | ported (5 omitted: 5 null-arg/Axiom 3) |
 | TomlTypedDeserializationTests.cs | 6 | Spy/toml/toml_typed_deserialization_tests.spy | 1 | ported (5 omitted: 3 Tomlyn property-vs-field binding gap, #922; 2 null-arg/Axiom 3) |
 | UuidModuleTests.cs | 13 | Spy/uuid/uuid_module_tests.spy | 13 | ported (re-enabled #886) |
 | XmlModuleTests.cs | 84 | | | pending |
 | YamlModuleTests.cs | 60 | Spy/yaml/yaml_module_tests.spy | 55 | ported (5 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
-| YamlRoundtripTests.cs | 29 | Spy/yaml/yaml_roundtrip_tests.spy | 21 | ported (8 omitted: 1 null-arg/Axiom 3, 1 TryGetValue/`out`-param interop, 4 CommentInfo construction + 2 Keys-order — yaml surface gaps #919) |
+| YamlRoundtripTests.cs | 29 | Spy/yaml/yaml_roundtrip_tests.spy | 23 | ported (6 omitted: 1 null-arg/Axiom 3, 1 TryGetValue/`out`-param interop, 4 CommentInfo construction — yaml surface gaps #919) |
 | YamlTypedDeserializationTests.cs | 6 | Spy/yaml/yaml_typed_deserialization_tests.spy | 5 | ported (1 omitted: null-arg TypeError, Axiom 3) |
 | ZoneinfoTests.cs | 28 | Spy/zoneinfo/zoneinfo_tests.spy | 29 | ported (re-enabled #901; +1 invalid-zone test) |
 
