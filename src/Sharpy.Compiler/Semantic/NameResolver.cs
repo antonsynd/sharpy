@@ -333,7 +333,8 @@ internal partial class NameResolver
         foreach (var baseAnnot in classDef.BaseClasses)
         {
             var rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
-            var baseSymbol = rawSymbol as TypeSymbol;
+            var baseSymbol = rawSymbol as TypeSymbol
+                ?? LookupModuleQualifiedType(baseAnnot.Name);
             if (baseSymbol == null)
             {
                 // Check if this is an error recovery symbol (from a failed import).
@@ -397,7 +398,8 @@ internal partial class NameResolver
         foreach (var baseAnnot in structDef.BaseClasses)
         {
             var rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
-            var interfaceSymbol = rawSymbol as TypeSymbol;
+            var interfaceSymbol = rawSymbol as TypeSymbol
+                ?? LookupModuleQualifiedType(baseAnnot.Name);
             if (interfaceSymbol == null)
             {
                 // Check if this is an error recovery symbol (from a failed import).
@@ -440,7 +442,8 @@ internal partial class NameResolver
         foreach (var baseAnnot in interfaceDef.BaseInterfaces)
         {
             var rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
-            var baseInterfaceSymbol = rawSymbol as TypeSymbol;
+            var baseInterfaceSymbol = rawSymbol as TypeSymbol
+                ?? LookupModuleQualifiedType(baseAnnot.Name);
             if (baseInterfaceSymbol == null)
             {
                 // Check if this is an error recovery symbol (from a failed import).
@@ -538,5 +541,51 @@ internal partial class NameResolver
             return typeof(SharpyRT::Sharpy.Generators.SourceGenerator).IsAssignableFrom(symbol.ClrType);
 
         return symbol.Name == "SourceGenerator" && symbol.IsSourceGenerator;
+    }
+
+    private TypeSymbol? LookupModuleQualifiedType(string dottedName)
+    {
+        if (!dottedName.Contains('.', StringComparison.Ordinal))
+            return null;
+
+        var parts = dottedName.Split('.');
+
+        if (_symbolTable.Lookup(parts[0]) is not ModuleSymbol moduleSymbol)
+            return null;
+
+        for (int i = 1; i < parts.Length - 1; i++)
+        {
+            if (!TryGetModuleExport(moduleSymbol, parts[i], out var nestedSymbol)
+                || nestedSymbol is not ModuleSymbol nestedModule)
+            {
+                return null;
+            }
+
+            moduleSymbol = nestedModule;
+        }
+
+        if (TryGetModuleExport(moduleSymbol, parts[^1], out var exportedSymbol)
+            && exportedSymbol is TypeSymbol typeSymbol)
+        {
+            return typeSymbol;
+        }
+
+        return null;
+    }
+
+    private static bool TryGetModuleExport(ModuleSymbol moduleSymbol, string memberName, out Symbol exportedSymbol)
+    {
+        if (moduleSymbol.Exports.TryGetValue(memberName, out exportedSymbol!))
+            return true;
+
+        if (moduleSymbol.IsNetModule)
+        {
+            var pascalName = NameMangler.ToPascalCase(memberName);
+            if (moduleSymbol.Exports.TryGetValue(pascalName, out exportedSymbol!))
+                return true;
+        }
+
+        exportedSymbol = default!;
+        return false;
     }
 }

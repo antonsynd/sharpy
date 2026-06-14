@@ -1,0 +1,14 @@
+import json
+
+
+class CustomEncoder(json.JSONEncoder):
+    @override
+    def default(self, obj: object) -> object:
+        return "custom"
+
+
+def main() -> None:
+    enc = CustomEncoder()
+    result: object = enc.default(42)
+    print(result)
+    print(type(enc).__name__)

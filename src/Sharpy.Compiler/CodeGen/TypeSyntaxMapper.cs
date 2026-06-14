@@ -453,7 +453,8 @@ internal class TypeSyntaxMapper
         }
 
         // Check if it's a user-defined type from another file/module (takes priority over builtins)
-        var typeSymbol = _context.SymbolTable.LookupType(sharpyTypeName);
+        var typeSymbol = _context.SymbolTable.LookupType(sharpyTypeName)
+            ?? LookupModuleQualifiedType(sharpyTypeName);
         if (typeSymbol != null)
         {
             // For aliased imports, resolve the original type name for code generation.
@@ -981,5 +982,39 @@ internal class TypeSyntaxMapper
         }
 
         return QualifiedName(result, GenericName(parts[^1]).WithTypeArgumentList(typeArgList));
+    }
+
+    private TypeSymbol? LookupModuleQualifiedType(string dottedName)
+    {
+        if (!dottedName.Contains('.', StringComparison.Ordinal))
+            return null;
+
+        var parts = dottedName.Split('.');
+
+        if (_context.SymbolTable.Lookup(parts[0]) is not ModuleSymbol moduleSymbol)
+            return null;
+
+        for (int i = 1; i < parts.Length - 1; i++)
+        {
+            if (!moduleSymbol.Exports.TryGetValue(parts[i], out var nested)
+                || nested is not ModuleSymbol nestedModule)
+            {
+                return null;
+            }
+            moduleSymbol = nestedModule;
+        }
+
+        var finalName = parts[^1];
+        if (moduleSymbol.Exports.TryGetValue(finalName, out var exported) && exported is TypeSymbol ts)
+            return ts;
+
+        if (moduleSymbol.IsNetModule)
+        {
+            var pascalName = NameMangler.ToPascalCase(finalName);
+            if (moduleSymbol.Exports.TryGetValue(pascalName, out exported) && exported is TypeSymbol pts)
+                return pts;
+        }
+
+        return null;
     }
 }

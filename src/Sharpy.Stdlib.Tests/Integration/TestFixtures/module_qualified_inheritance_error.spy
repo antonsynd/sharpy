@@ -1,0 +1,9 @@
+import json
+
+
+class BadEncoder(json.NonexistentType):
+    pass
+
+
+def main() -> None:
+    print("should not reach")
