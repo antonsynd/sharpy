@@ -996,27 +996,6 @@ internal class TypeSyntaxMapper
         if (_context.SymbolTable.Lookup(parts[0]) is not ModuleSymbol moduleSymbol)
             return null;
 
-        for (int i = 1; i < parts.Length - 1; i++)
-        {
-            if (!moduleSymbol.Exports.TryGetValue(parts[i], out var nested)
-                || nested is not ModuleSymbol nestedModule)
-            {
-                return null;
-            }
-            moduleSymbol = nestedModule;
-        }
-
-        var finalName = parts[^1];
-        if (moduleSymbol.Exports.TryGetValue(finalName, out var exported) && exported is TypeSymbol ts)
-            return ts;
-
-        if (moduleSymbol.IsNetModule)
-        {
-            var pascalName = NameMangler.ToPascalCase(finalName);
-            if (moduleSymbol.Exports.TryGetValue(pascalName, out exported) && exported is TypeSymbol pts)
-                return pts;
-        }
-
-        return null;
+        return ModuleSymbolExtensions.ResolveQualifiedType(moduleSymbol, parts, startIndex: 1);
     }
 }
