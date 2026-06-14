@@ -188,6 +188,10 @@ internal class OverloadIndexBuilder
 
                 var isException = typeof(Exception).IsAssignableFrom(nestedType);
 
+                var moduleTypeAttr = nestedType.CustomAttributes.FirstOrDefault(
+                    a => a.AttributeType.FullName == "Sharpy.SharpyModuleTypeAttribute");
+                var pythonName = GetPythonNameFromModuleTypeAttr(moduleTypeAttr);
+
                 string? typeDoc = null;
                 if (_xmlDocReader != null)
                 {
@@ -198,7 +202,7 @@ internal class OverloadIndexBuilder
 
                 var typeInfo = new DiscoveredTypeInfo
                 {
-                    Name = nestedType.Name,
+                    Name = pythonName ?? nestedType.Name,
                     Namespace = moduleClass.Namespace ?? string.Empty,
                     ClrTypeName = nestedType.AssemblyQualifiedName ?? nestedType.FullName ?? nestedType.Name,
                     IsException = isException,
