@@ -186,7 +186,10 @@ internal partial class ProjectCompiler
                                     FilePath = moduleInfo.Path,
                                     Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
                                     FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                                    IsNetModule = moduleInfo.IsNetModule,
                                     CanonicalModuleName = moduleInfo.CanonicalModuleName,
+                                    NetNamespaceName = moduleInfo.NetNamespaceName,
+                                    CSharpNamespace = moduleInfo.CSharpNamespace,
                                     Documentation = moduleInfo.Module?.DocString
                                         ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                                 };
@@ -206,7 +209,10 @@ internal partial class ProjectCompiler
                                 FilePath = moduleInfo.Path,
                                 Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
                                 FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                                IsNetModule = moduleInfo.IsNetModule,
                                 CanonicalModuleName = moduleInfo.CanonicalModuleName,
+                                NetNamespaceName = moduleInfo.NetNamespaceName,
+                                CSharpNamespace = moduleInfo.CSharpNamespace,
                                 Documentation = moduleInfo.Module?.DocString
                                     ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                             };
@@ -220,7 +226,8 @@ internal partial class ProjectCompiler
                                     Name = parts[j],
                                     Kind = SymbolKind.Module,
                                     FilePath = "", // Parent modules don't have their own file
-                                    Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } }
+                                    Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } },
+                                    IsNetModule = moduleInfo.IsNetModule
                                 };
                                 currentModule = parentModule;
                             }
