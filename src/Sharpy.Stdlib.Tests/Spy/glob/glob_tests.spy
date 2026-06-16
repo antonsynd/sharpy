@@ -1,0 +1,189 @@
+import os
+import glob
+
+# Ported from GlobModuleTests.cs (#843).
+# The C# fixture builds a fresh temp-dir tree per test (xUnit constructs one
+# instance per [Fact]); here each test that needs the tree takes the pytest-style
+# `tmp_path: str` fixture (#842) and calls build_tree(tmp_path) first.
+#
+# Paths are built with "/" string concatenation rather than os.path.join: glob
+# normalizes separators internally, and `import os` (needed for os.makedirs) and
+# `import os.path` cannot coexist (the `os` binding shadows the `os.path`
+# submodule). The C# used System.IO.Path.Combine, which is equivalent on the
+# POSIX runners.
+
+
+def build_tree(base: str):
+    """Create the known directory structure used by the glob tests."""
+    os.makedirs(base + "/sub/deep", existOk=True)
+    with open(base + "/a.txt", "w") as fa:
+        fa.write("a")
+    with open(base + "/b.txt", "w") as fb:
+        fb.write("b")
+    with open(base + "/c.py", "w") as fc:
+        fc.write("c")
+    with open(base + "/data.csv", "w") as fd:
+        fd.write("d")
+    with open(base + "/sub/d.txt", "w") as fsd:
+        fsd.write("d")
+    with open(base + "/sub/e.py", "w") as fse:
+        fse.write("e")
+    with open(base + "/sub/deep/f.txt", "w") as fsf:
+        fsf.write("f")
+
+
+def ends_with_any(items: list[str], suffix: str) -> bool:
+    """Return True if any element of items ends with suffix."""
+    for item in items:
+        if item.endswith(suffix):
+            return True
+    return False
+
+
+# --- Glob ---
+
+@test
+def test_glob_matches_txt_files(tmp_path: str):
+    build_tree(tmp_path)
+    results: list[str] = glob.glob(tmp_path + "/*.txt")
+    assert len(results) == 2
+    assert ends_with_any(results, "a.txt")
+    assert ends_with_any(results, "b.txt")
+
+
+@test
+def test_glob_matches_py_files(tmp_path: str):
+    build_tree(tmp_path)
+    results: list[str] = glob.glob(tmp_path + "/*.py")
+    assert len(results) == 1
+    assert ends_with_any(results, "c.py")
+
+
+@test
+def test_glob_recursive_double_star_txt(tmp_path: str):
+    build_tree(tmp_path)
+    # Should find a.txt, b.txt, sub/d.txt, sub/deep/f.txt
+    results: list[str] = glob.glob(tmp_path + "/**/*.txt")
+    assert len(results) == 4
+
+
+@test
+def test_glob_question_mark_wildcard(tmp_path: str):
+    build_tree(tmp_path)
+    # a.txt, b.txt
+    results: list[str] = glob.glob(tmp_path + "/?.txt")
+    assert len(results) == 2
+
+
+@test
+def test_glob_no_matches_returns_empty_list(tmp_path: str):
+    build_tree(tmp_path)
+    results: list[str] = glob.glob(tmp_path + "/*.xyz")
+    assert len(results) == 0
+
+
+@test
+def test_glob_results_are_sorted(tmp_path: str):
+    build_tree(tmp_path)
+    results: list[str] = glob.glob(tmp_path + "/*.*")
+    expected: list[str] = sorted(results)
+    assert len(results) == len(expected)
+    i: int = 0
+    while i < len(results):
+        assert results[i] == expected[i]
+        i = i + 1
+
+
+@test
+def test_glob_non_existent_directory_returns_empty(tmp_path: str):
+    build_tree(tmp_path)
+    results: list[str] = glob.glob(tmp_path + "/nonexistent/*.txt")
+    assert len(results) == 0
+
+
+@test
+def test_glob_recursive_double_star_matches_py_files(tmp_path: str):
+    build_tree(tmp_path)
+    # **/*.py should match c.py (top level) and sub/e.py
+    results: list[str] = glob.glob(tmp_path + "/**/*.py")
+    assert len(results) == 2
+    assert ends_with_any(results, "c.py")
+    assert ends_with_any(results, "e.py")
+
+
+@test
+def test_glob_character_class_matches_range(tmp_path: str):
+    build_tree(tmp_path)
+    # [ab].txt matches a.txt and b.txt but not c.py
+    results: list[str] = glob.glob(tmp_path + "/[ab].txt")
+    assert len(results) == 2
+    assert ends_with_any(results, "a.txt")
+    assert ends_with_any(results, "b.txt")
+
+
+@test
+def test_glob_literal_path_no_wildcard_returns_match(tmp_path: str):
+    build_tree(tmp_path)
+    # A pattern with no magic characters resolves to the literal file.
+    results: list[str] = glob.glob(tmp_path + "/a.txt")
+    assert len(results) == 1
+    assert results[0].endswith("a.txt")
+
+
+@test
+def test_glob_empty_pattern_returns_empty():
+    results: list[str] = glob.glob("")
+    assert len(results) == 0
+
+
+# --- Iglob ---
+
+@test
+def test_iglob_returns_lazy_enumerable(tmp_path: str):
+    build_tree(tmp_path)
+    # Just verify it's enumerable and yields results
+    count: int = 0
+    for path in glob.iglob(tmp_path + "/*.txt"):
+        count = count + 1
+    assert count == 2
+
+
+@test
+def test_iglob_is_lazily_evaluated(tmp_path: str):
+    build_tree(tmp_path)
+    # Iglob is a deferred iterator: the directory is not scanned until the
+    # sequence is enumerated, so a file created after the call is still seen.
+    lazy = glob.iglob(tmp_path + "/*.lazytest")
+    with open(tmp_path + "/created_after_call.lazytest", "w") as f:
+        f.write("x")
+    count: int = 0
+    for path in lazy:
+        count = count + 1
+    assert count == 1
+
+
+# --- Escape ---
+
+@test
+def test_escape_escapes_asterisk():
+    assert glob.escape("file*.txt") == "file[*].txt"
+
+
+@test
+def test_escape_escapes_question_mark():
+    assert glob.escape("file?.txt") == "file[?].txt"
+
+
+@test
+def test_escape_escapes_bracket():
+    assert glob.escape("file[1].txt") == "file[[]1].txt"
+
+
+@test
+def test_escape_leaves_normal_chars_unchanged():
+    assert glob.escape("normal.txt") == "normal.txt"
+
+
+@test
+def test_escape_empty_string_returns_empty():
+    assert glob.escape("") == ""

@@ -41,7 +41,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | FnmatchTests.cs | 27 | Spy/fnmatch/fnmatch_tests.spy | 27 | ported |
 | FractionsTests.cs | 66 | Spy/fractions/fractions_tests.spy | 66 | ported |
 | FunctoolsTests.cs | 21 | Spy/functools/functools_tests.spy | 21 | ported (re-enabled #904; cmp_to_key lambdas annotated) |
-| GlobModuleTests.cs | 18 | | | pending |
+| GlobModuleTests.cs | 18 | Spy/glob/glob_tests.spy | 18 | ported (paths built via "/" concat — `import os` for makedirs shadows the `os.path` submodule) |
 | GraphemeTests.cs | 27 | Spy/grapheme/grapheme_tests.spy | 27 | ported |
 | HashlibTests.cs | 12 | Spy/hashlib/hashlib_tests.spy | 12 | ported |
 | HashlibCompleteTests.cs | 22 | Spy/hashlib/hashlib_complete_tests.spy | 22 | ported |
