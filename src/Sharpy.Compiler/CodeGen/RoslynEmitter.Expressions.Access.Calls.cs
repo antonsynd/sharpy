@@ -521,7 +521,8 @@ internal partial class RoslynEmitter
     {
         if (targetType is not GenericType { Name: "array" } arrayType
             || arrayType.TypeArguments.Count != 1
-            || arrayType.TypeArguments[0] is not BuiltinType { Name: "byte" })
+            || arrayType.TypeArguments[0] is not BuiltinType bt
+            || (bt.Name != "uint8" && bt.Name != "byte"))
             return generated;
 
         var argType = GetExpressionSemanticType(sourceExpr);

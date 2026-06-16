@@ -25,7 +25,7 @@ public class ClrTypeMapperTests
     }
 
     [Fact]
-    public void MapArray_ToArrayType()
+    public void MapArray_ToListType()
     {
         // Arrange & Act
         var result = _mapper.MapClrTypeToSemanticType(typeof(int[]));
@@ -33,9 +33,20 @@ public class ClrTypeMapperTests
         // Assert
         Assert.IsType<GenericType>(result);
         var genericType = (GenericType)result;
-        Assert.Equal("array", genericType.Name);
+        Assert.Equal("list", genericType.Name);
         Assert.Single(genericType.TypeArguments);
         Assert.Equal(SemanticType.Int, genericType.TypeArguments[0]);
+    }
+
+    [Fact]
+    public void MapByteArray_ToArrayType()
+    {
+        var result = _mapper.MapClrTypeToSemanticType(typeof(byte[]));
+
+        Assert.IsType<GenericType>(result);
+        var genericType = (GenericType)result;
+        Assert.Equal("array", genericType.Name);
+        Assert.Single(genericType.TypeArguments);
     }
 
     [Fact]

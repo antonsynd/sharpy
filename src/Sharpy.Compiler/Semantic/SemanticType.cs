@@ -356,9 +356,11 @@ public sealed record UserDefinedType : SemanticType
         }
 
         // bytes is implicitly convertible to array[byte] for CLR interop (#941)
+        // Note: CLR byte maps to Sharpy uint8 (SemanticType.Byte.Name == "uint8")
         if (Name == "bytes" && other is GenericType { Name: "array" } arrayType
             && arrayType.TypeArguments.Count == 1
-            && arrayType.TypeArguments[0] is BuiltinType { Name: "byte" })
+            && arrayType.TypeArguments[0] is BuiltinType bt
+            && (bt.Name == "uint8" || bt.Name == "byte"))
         {
             return true;
         }

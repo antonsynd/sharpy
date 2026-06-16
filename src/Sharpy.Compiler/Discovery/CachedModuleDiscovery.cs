@@ -3,6 +3,7 @@ using System.Reflection;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Discovery;
@@ -709,6 +710,13 @@ internal class CachedModuleDiscovery
             return SemanticType.Void;
         if (signature.Name == BuiltinNames.Object)
             return SemanticType.Object;
+
+        // Handle other primitive types via PrimitiveCatalog (e.g., byte, uint8, short)
+        if (PrimitiveCatalog.IsPrimitive(signature.Name))
+        {
+            var info = PrimitiveCatalog.GetByName(signature.Name)!;
+            return new BuiltinType { Name = info.SharpyName, ClrType = info.ClrType };
+        }
 
         // Handle generic types
         if (signature.IsGeneric)

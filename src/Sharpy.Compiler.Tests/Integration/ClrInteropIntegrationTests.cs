@@ -279,6 +279,44 @@ def main():
     }
 
     [Fact]
+    public void BytesToArrayByte_PassedToClrByteArrayParam()
+    {
+        var source = @"
+import pathlib
+import os
+
+def main():
+    p = pathlib.Path(""/tmp/sharpy_bytes_test_941"")
+    p.write_bytes(b""\x48\x65\x6c\x6c\x6f"")
+    data = p.read_bytes()
+    print(len(data))
+    os.remove(""/tmp/sharpy_bytes_test_941"")
+";
+        var result = CompileAndExecute(source);
+        Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
+        Assert.Equal("5\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void BytesToArrayByte_EmptyBytes()
+    {
+        var source = @"
+import pathlib
+import os
+
+def main():
+    p = pathlib.Path(""/tmp/sharpy_bytes_empty_941"")
+    p.write_bytes(b"""")
+    data = p.read_bytes()
+    print(len(data))
+    os.remove(""/tmp/sharpy_bytes_empty_941"")
+";
+        var result = CompileAndExecute(source);
+        Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
+        Assert.Equal("0\n", result.StandardOutput);
+    }
+
+    [Fact]
     public void ClrKwargName_SnakeCasePreserved()
     {
         var source = @"
