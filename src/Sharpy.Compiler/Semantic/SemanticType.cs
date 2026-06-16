@@ -355,6 +355,14 @@ public sealed record UserDefinedType : SemanticType
                 return true;
         }
 
+        // bytes is implicitly convertible to array[byte] for CLR interop (#941)
+        if (Name == "bytes" && other is GenericType { Name: "array" } arrayType
+            && arrayType.TypeArguments.Count == 1
+            && arrayType.TypeArguments[0] is BuiltinType { Name: "byte" })
+        {
+            return true;
+        }
+
         return false;
     }
 
