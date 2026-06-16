@@ -21,9 +21,9 @@ namespace Sharpy
         public string Uname { get; set; }
         public string Gname { get; set; }
 
-        internal TarInfo()
+        public TarInfo(string name = "")
         {
-            Name = "";
+            Name = name;
             Linkname = "";
             Uname = "";
             Gname = "";
