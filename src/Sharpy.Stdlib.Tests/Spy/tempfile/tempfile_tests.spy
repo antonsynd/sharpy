@@ -1,0 +1,103 @@
+import os
+import tempfile
+from os.path import basename, isdir, isfile
+
+# Ported from TempfileTests.cs (#843).
+# The C# fixture tracks created paths and deletes them in Dispose(); here each
+# test removes the file/dir it created inline via os.remove / os.rmdir.
+#
+# Path inspection uses os.path.basename and existence is checked with
+# os.path.isdir / os.path.isfile (mirroring System.IO.Path.GetFileName,
+# Directory.Exists, File.Exists). The os.path functions are pulled in with a
+# `from os.path import ...` because attribute access through the `os` binding
+# (os.path.basename) is shadowed by the top-level `os` module (SPY0203); the
+# plain `import os` is still needed for os.rmdir / os.remove. Discarded file
+# descriptors from mkstemp are bound to `_`-prefixed names (exempt from the
+# unused-variable warning).
+
+
+# --- Gettempdir ---
+
+@test
+def test_gettempdir_returns_non_empty_path():
+    result: str = tempfile.gettempdir()
+    assert len(result) > 0
+
+
+@test
+def test_gettempdir_returns_valid_directory():
+    result: str = tempfile.gettempdir()
+    assert isdir(result)
+
+
+@test
+def test_gettempdir_does_not_end_with_separator():
+    result: str = tempfile.gettempdir()
+    assert not result.endswith("/")
+
+
+# --- Mkdtemp ---
+
+@test
+def test_mkdtemp_creates_directory():
+    d: str = tempfile.mkdtemp()
+    assert isdir(d)
+    os.rmdir(d)
+
+
+@test
+def test_mkdtemp_uses_default_prefix():
+    d: str = tempfile.mkdtemp()
+    assert basename(d).startswith("tmp")
+    os.rmdir(d)
+
+
+@test
+def test_mkdtemp_uses_custom_prefix():
+    d: str = tempfile.mkdtemp("myapp_")
+    assert basename(d).startswith("myapp_")
+    os.rmdir(d)
+
+
+@test
+def test_mkdtemp_creates_unique_directories():
+    dir1: str = tempfile.mkdtemp()
+    dir2: str = tempfile.mkdtemp()
+    assert dir1 != dir2
+    os.rmdir(dir1)
+    os.rmdir(dir2)
+
+
+# --- Mkstemp ---
+
+@test
+def test_mkstemp_creates_file():
+    fd, path = tempfile.mkstemp()
+    assert isfile(path)
+    assert fd == 0
+    os.remove(path)
+
+
+@test
+def test_mkstemp_uses_default_prefix():
+    _fd, path = tempfile.mkstemp()
+    assert basename(path).startswith("tmp")
+    os.remove(path)
+
+
+@test
+def test_mkstemp_uses_custom_prefix_and_suffix():
+    _fd, path = tempfile.mkstemp("data_", ".csv")
+    name: str = basename(path)
+    assert name.startswith("data_")
+    assert name.endswith(".csv")
+    os.remove(path)
+
+
+@test
+def test_mkstemp_creates_unique_files():
+    _fd1, path1 = tempfile.mkstemp()
+    _fd2, path2 = tempfile.mkstemp()
+    assert path1 != path2
+    os.remove(path1)
+    os.remove(path2)

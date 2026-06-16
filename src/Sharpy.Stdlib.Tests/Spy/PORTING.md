@@ -114,8 +114,8 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | SubprocessModuleTests.cs | 36 | | | pending |
 | SysModuleTests.cs | 21 | | | pending |
 | TarfileTests.cs | 24 | | | pending |
-| TempfileTests.cs | 11 | | | pending |
-| TempfileCompleteTests.cs | 11 | | | pending |
+| TempfileTests.cs | 11 | Spy/tempfile/tempfile_tests.spy | 11 | ported (os.path helpers via `from os.path import ...` — attribute access `os.path.basename` is shadowed by the top-level `os` binding, SPY0203; plain `import os` still needed for rmdir/remove) |
+| TempfileCompleteTests.cs | 11 | Spy/tempfile/tempfile_complete_tests.spy | 11 | ported (GetExtension mirrored with os.path.splitext) |
 | TextwrapTests.cs | 27 | Spy/textwrap/textwrap_tests.spy | 27 | ported |
 | ThreadingModuleTests.cs | 43 | | | pending |
 | TimeModuleTests.cs | 34 | | | pending |

@@ -1,0 +1,113 @@
+import os
+import tempfile
+from os.path import basename, isdir, isfile, splitext
+
+# Ported from TempfileCompleteTests.cs (#843).
+# Additional Tempfile coverage beyond tempfile_tests.spy. The C# fixture tracks
+# created paths and deletes them in Dispose(); here each test removes what it
+# created inline via os.remove / os.rmdir.
+#
+# os.path helpers are imported via `from os.path import ...` because attribute
+# access through the `os` binding (os.path.isdir) is shadowed by the top-level
+# `os` module (SPY0203); the plain `import os` is still needed for
+# os.rmdir / os.remove / os.listdir. System.IO.Path.GetExtension is mirrored with
+# os.path.splitext (the second tuple element is the extension, "" when none).
+# Discarded mkstemp file descriptors and the splitext root are bound to
+# `_`-prefixed names (exempt from the unused-variable warning).
+
+
+# --- Gettempdir ---
+
+@test
+def test_gettempdir_path_exists():
+    d: str = tempfile.gettempdir()
+    assert isdir(d)
+
+
+# --- Mkdtemp ---
+
+@test
+def test_mkdtemp_path_is_inside_temp_dir():
+    temp_dir: str = tempfile.gettempdir()
+    d: str = tempfile.mkdtemp()
+    assert d.startswith(temp_dir)
+    os.rmdir(d)
+
+
+@test
+def test_mkdtemp_with_suffix_prefix_appears_in_name():
+    # Mkdtemp only accepts prefix, but verify the prefix is in the name.
+    d: str = tempfile.mkdtemp("sharpy_test_")
+    assert basename(d).startswith("sharpy_test_")
+    os.rmdir(d)
+
+
+@test
+def test_mkdtemp_created_directory_is_deletable():
+    d: str = tempfile.mkdtemp()
+    assert isdir(d)
+    os.rmdir(d)
+    assert not isdir(d)
+
+
+@test
+def test_mkdtemp_created_directory_is_empty():
+    d: str = tempfile.mkdtemp()
+    # A freshly created temp dir should be empty.
+    assert len(os.listdir(d)) == 0
+    os.rmdir(d)
+
+
+# --- Mkstemp ---
+
+@test
+def test_mkstemp_path_is_inside_temp_dir():
+    temp_dir: str = tempfile.gettempdir()
+    _fd, path = tempfile.mkstemp()
+    assert path.startswith(temp_dir)
+    os.remove(path)
+
+
+@test
+def test_mkstemp_default_no_suffix():
+    _fd, path = tempfile.mkstemp()
+    # Default suffix is empty — file has no extension.
+    _root, ext = splitext(path)
+    assert ext == ""
+    os.remove(path)
+
+
+@test
+def test_mkstemp_with_suffix_suffix_appears_at_end():
+    _fd, path = tempfile.mkstemp(suffix=".txt")
+    assert basename(path).endswith(".txt")
+    os.remove(path)
+
+
+@test
+def test_mkstemp_created_file_is_writable():
+    _fd, path = tempfile.mkstemp()
+    # Should be able to write to the file and read it back.
+    with open(path, "w") as f:
+        f.write("test content")
+    content: str = ""
+    with open(path, "r") as g:
+        content = g.read()
+    assert content == "test content"
+    os.remove(path)
+
+
+@test
+def test_mkstemp_created_file_is_deletable():
+    _fd, path = tempfile.mkstemp()
+    assert isfile(path)
+    os.remove(path)
+    assert not isfile(path)
+
+
+@test
+def test_mkstemp_returns_zero_as_fd():
+    # .NET doesn't use POSIX file descriptors; fd is always 0.
+    fd, path = tempfile.mkstemp()
+    assert fd == 0
+    os.remove(path)
