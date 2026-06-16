@@ -624,8 +624,14 @@ public abstract class IntegrationTestBase
                 TargetFramework = "net10.0"
             };
 
+            // Set up module registry so stdlib modules are discoverable
+            var moduleRegistry = new ModuleRegistry(logger);
+            moduleRegistry.LoadReference(SharpyCoreReference.Location);
+            foreach (var additionalPath in GetAdditionalReferenceAssemblyPaths())
+                moduleRegistry.LoadReference(additionalPath);
+
             // Compile the project
-            var projectCompiler = new ProjectCompiler(logger);
+            var projectCompiler = new ProjectCompiler(logger, moduleRegistry: moduleRegistry);
             var result = projectCompiler.Compile(projectConfig);
 
             // Collect warnings and hints from the project compilation. Hints are

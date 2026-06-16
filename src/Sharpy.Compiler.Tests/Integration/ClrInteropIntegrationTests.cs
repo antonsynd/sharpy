@@ -235,4 +235,46 @@ def main():
         Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
         Assert.Equal("3\n6\n", result.StandardOutput);
     }
+
+    [Fact]
+    public void NetModuleField_OsSep_Resolves()
+    {
+        var source = @"
+import os
+
+def main():
+    sep: str = os.sep
+    print(len(sep) > 0)
+";
+        var result = CompileAndExecute(source);
+        Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
+        Assert.Equal("True\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void NetModuleField_OsSep_ResolvesInProjectMode()
+    {
+        var source = @"
+import os
+
+def main():
+    sep: str = os.sep
+    print(len(sep) > 0)
+";
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_net_field_test_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "main.spy"), source);
+            var result = CompileAndExecuteProject(tempDir, "main.spy");
+            Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
+            Assert.Equal("True\n", result.StandardOutput);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, recursive: true);
+        }
+    }
 }
