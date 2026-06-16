@@ -1,0 +1,183 @@
+from unittest import assert_raises
+
+import os
+from os.path import isabs, isdir
+
+# Ported from OsModuleAdditionalTests.cs (#843).
+# os.* via `import os`; os.path helpers via `from os.path import ...` (SPY0203 shadow).
+# Each filesystem test takes the pytest-style `tmp_path: str` fixture (#842). os.walk
+# 3-tuples are unpacked in the for-loop; list/dict membership goes through the
+# `contains` helper / a bool local to dodge the xUnit2009 analyzer (warnings are errors).
+# Module constants use their C# field names (os.Altsep, os.Pathsep, os.Environ) — in
+# project-compilation mode static fields/properties are not snake_case-mapped (SPY0203),
+# matching how the C# test referenced OsModule.Altsep, etc.
+
+
+def contains(items: list[str], value: str) -> bool:
+    for item in items:
+        if item == value:
+            return True
+    return False
+
+
+# ===== Constants =====
+
+@test
+def test_altsep_is_string_value():
+    s: str = os.Altsep
+    # Altsep is always a string (empty or a separator char).
+    assert len(s) >= 0
+
+
+@test
+def test_pathsep_is_not_empty():
+    assert len(os.Pathsep) > 0
+
+
+# ===== File operations =====
+
+@test
+def test_remove_on_directory_path_throws_file_not_found_error(tmp_path: str):
+    # File.Exists is false for directories, so Remove throws FileNotFoundError.
+    d = tmp_path + "/adirtoremove"
+    os.mkdir(d)
+    with assert_raises(FileNotFoundError):
+        os.remove(d)
+
+
+@test
+def test_rename_renames_directory(tmp_path: str):
+    src = tmp_path + "/rename_src_dir"
+    os.mkdir(src)
+    dst = tmp_path + "/rename_dst_dir"
+    os.rename(src, dst)
+    assert not isdir(src)
+    assert isdir(dst)
+
+
+# ===== Directory operations =====
+
+@test
+def test_mkdir_throws_when_parent_missing(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        os.mkdir(tmp_path + "/missing_parent/child")
+
+
+@test
+def test_listdir_empty_directory_returns_empty_list(tmp_path: str):
+    d = tmp_path + "/empty_listdir_dir"
+    os.mkdir(d)
+    entries = os.listdir(d)
+    assert len(entries) == 0
+
+
+@test
+def test_listdir_current_dir_returns_entries():
+    # Listdir with "." is valid (uses the current directory).
+    entries = os.listdir(".")
+    assert len(entries) >= 0
+
+
+# ===== Walk content verification =====
+
+@test
+def test_walk_yields_correct_filenames(tmp_path: str):
+    root = tmp_path + "/walk_files"
+    os.mkdir(root)
+    with open(root + "/alpha.txt", "w") as fa:
+        fa.write("")
+    with open(root + "/beta.txt", "w") as fb:
+        fb.write("")
+    found: bool = False
+    for dirpath, dirnames, filenames in os.walk(root):
+        if dirpath == root:
+            found = True
+            assert contains(filenames, "alpha.txt")
+            assert contains(filenames, "beta.txt")
+    assert found
+
+
+@test
+def test_walk_yields_correct_dirnames(tmp_path: str):
+    root = tmp_path + "/walk_dirs"
+    os.mkdir(root)
+    os.mkdir(root + "/subA")
+    os.mkdir(root + "/subB")
+    found: bool = False
+    for dirpath, dirnames, filenames in os.walk(root):
+        if dirpath == root:
+            found = True
+            assert contains(dirnames, "subA")
+            assert contains(dirnames, "subB")
+    assert found
+
+
+@test
+def test_walk_deep_tree_visits_all_levels(tmp_path: str):
+    root = tmp_path + "/walk_deep"
+    level1 = root + "/level1"
+    level2 = level1 + "/level2"
+    os.makedirs(level2, existOk=True)
+    with open(level2 + "/deep.txt", "w") as fa:
+        fa.write("")
+    visited: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        visited.append(dirpath)
+    assert contains(visited, root)
+    assert contains(visited, level1)
+    assert contains(visited, level2)
+
+
+# ===== Environment variables =====
+
+@test
+def test_environ_contains_path_variable():
+    env = os.Environ
+    has_path: bool = "PATH" in env or "Path" in env
+    assert has_path
+
+
+@test
+def test_getenv_returns_existing_variable():
+    # PATH always exists on the POSIX runners.
+    path_val = os.getenv("PATH")
+    assert path_val is not None
+    if path_val is not None:
+        assert len(path_val) > 0
+
+
+# ===== Stat additional coverage =====
+
+@test
+def test_stat_mode_field_is_non_negative(tmp_path: str):
+    path = tmp_path + "/stat_mode.txt"
+    with open(path, "w") as fa:
+        fa.write("mode test")
+    result = os.stat(path)
+    assert result.st_mode >= 0
+
+
+@test
+def test_stat_empty_file_has_zero_size(tmp_path: str):
+    path = tmp_path + "/empty_stat.txt"
+    with open(path, "w") as fa:
+        fa.write("")
+    result = os.stat(path)
+    assert result.st_size == 0
+
+
+# ===== Getcwd =====
+
+@test
+def test_getcwd_is_absolute_path():
+    cwd = os.getcwd()
+    assert isabs(cwd)
+
+
+# ===== Makedirs edge cases =====
+
+@test
+def test_makedirs_deep_nesting_creates_all(tmp_path: str):
+    deep = tmp_path + "/x/y/z/w"
+    os.makedirs(deep)
+    assert isdir(deep)

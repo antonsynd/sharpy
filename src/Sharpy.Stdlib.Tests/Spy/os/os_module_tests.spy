@@ -1,0 +1,298 @@
+from unittest import assert_raises
+
+import os
+from os.path import exists, isdir, basename
+
+# Ported from OsModuleTests.cs (#843).
+# os.* functions via `import os`; os.path helpers via `from os.path import ...`
+# (attribute `os.path.X` is shadowed, SPY0203 — `import os` + the from-import coexist
+# fine). The C# per-test temp dir (the `Sub(name)` helper) is replaced by the
+# pytest-style `tmp_path: str` fixture (#842). os.stat fields are read as snake_case
+# (st_size/st_mtime/st_ctime/st_atime/st_mode); os.walk yields (dirpath, dirnames,
+# filenames) 3-tuples (unpacked in the for-loop). List membership is checked with the
+# `contains` helper (a bare `x in list` would lower to Assert.True + .Contains and trip
+# the xUnit2009 analyzer, which is an error since warnings are errors).
+#
+# Module constants are accessed by their C# field names (os.Sep, os.Linesep, os.Name,
+# os.Environ) — exactly as the C# test did (OsModule.Sep, etc.). In project-compilation
+# mode the snake_case->PascalCase mapping applies to module methods but not to static
+# fields/properties, so lowercase os.sep does not resolve here (SPY0203).
+
+
+def contains(items: list[str], value: str) -> bool:
+    for item in items:
+        if item == value:
+            return True
+    return False
+
+
+# ===== Constants =====
+
+@test
+def test_sep_is_not_empty():
+    assert len(os.Sep) > 0
+
+
+@test
+def test_linesep_is_not_empty():
+    assert len(os.Linesep) > 0
+
+
+@test
+def test_name_is_posix_or_nt():
+    assert os.Name == "posix" or os.Name == "nt"
+
+
+# ===== File operations =====
+
+@test
+def test_remove_deletes_file(tmp_path: str):
+    path = tmp_path + "/removeme.txt"
+    with open(path, "w") as fa:
+        fa.write("data")
+    os.remove(path)
+    assert not exists(path)
+
+
+@test
+def test_remove_throws_on_nonexistent(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        os.remove(tmp_path + "/nope.txt")
+
+
+@test
+def test_rename_renames_file(tmp_path: str):
+    src = tmp_path + "/old.txt"
+    with open(src, "w") as fa:
+        fa.write("data")
+    dst = tmp_path + "/new.txt"
+    os.rename(src, dst)
+    assert not exists(src)
+    assert exists(dst)
+
+
+@test
+def test_rename_throws_on_nonexistent(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        os.rename(tmp_path + "/nope.txt", tmp_path + "/also_nope.txt")
+
+
+# ===== Directory operations =====
+
+@test
+def test_mkdir_creates_directory(tmp_path: str):
+    path = tmp_path + "/newdir"
+    os.mkdir(path)
+    assert isdir(path)
+
+
+@test
+def test_mkdir_throws_if_exists(tmp_path: str):
+    path = tmp_path + "/existdir"
+    os.mkdir(path)
+    with assert_raises(FileExistsError):
+        os.mkdir(path)
+
+
+@test
+def test_makedirs_creates_nested_directories(tmp_path: str):
+    path = tmp_path + "/a/b/c"
+    os.makedirs(path)
+    assert isdir(path)
+
+
+@test
+def test_makedirs_exist_ok_does_not_throw(tmp_path: str):
+    path = tmp_path + "/existing"
+    os.makedirs(path)
+    os.makedirs(path, existOk=True)
+    assert isdir(path)
+
+
+@test
+def test_makedirs_not_exist_ok_throws(tmp_path: str):
+    path = tmp_path + "/existing2"
+    os.makedirs(path)
+    with assert_raises(FileExistsError):
+        os.makedirs(path, existOk=False)
+
+
+@test
+def test_rmdir_removes_empty_directory(tmp_path: str):
+    path = tmp_path + "/emptydir"
+    os.mkdir(path)
+    os.rmdir(path)
+    assert not isdir(path)
+
+
+@test
+def test_rmdir_throws_on_non_empty(tmp_path: str):
+    path = tmp_path + "/notempty"
+    os.mkdir(path)
+    with open(path + "/file.txt", "w") as fa:
+        fa.write("data")
+    with assert_raises(IOError):
+        os.rmdir(path)
+
+
+@test
+def test_rmdir_throws_on_nonexistent(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        os.rmdir(tmp_path + "/nope")
+
+
+@test
+def test_listdir_returns_entries(tmp_path: str):
+    d = tmp_path + "/listdir"
+    os.mkdir(d)
+    with open(d + "/a.txt", "w") as fa:
+        fa.write("")
+    with open(d + "/b.txt", "w") as fb:
+        fb.write("")
+    os.mkdir(d + "/subdir")
+    entries = os.listdir(d)
+    assert contains(entries, "a.txt")
+    assert contains(entries, "b.txt")
+    assert contains(entries, "subdir")
+
+
+@test
+def test_listdir_throws_on_nonexistent(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        os.listdir(tmp_path + "/nope")
+
+
+@test
+def test_getcwd_returns_non_empty_string():
+    cwd = os.getcwd()
+    assert len(cwd) > 0
+
+
+@test
+def test_chdir_changes_directory(tmp_path: str):
+    original = os.getcwd()
+    os.chdir(tmp_path)
+    cwd = os.getcwd()
+    dir_name = basename(tmp_path)
+    found: bool = dir_name in cwd
+    # Restore before asserting so the process cwd is always reset.
+    os.chdir(original)
+    assert found
+
+
+@test
+def test_chdir_throws_on_nonexistent(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        os.chdir(tmp_path + "/nope")
+
+
+# ===== Environment variables =====
+
+@test
+def test_getenv_returns_null_for_missing():
+    assert os.getenv("SHARPY_TEST_NONEXISTENT_VAR_ABC123") is None
+
+
+@test
+def test_getenv_with_default_returns_default():
+    assert os.getenv("SHARPY_TEST_NONEXISTENT_VAR_ABC123", "fallback") == "fallback"
+
+
+@test
+def test_putenv_and_getenv_round_trip():
+    key = "SHARPY_TEST_ROUNDTRIP_KEY_ABC"
+    os.putenv(key, "testvalue")
+    assert os.getenv(key) == "testvalue"
+
+
+@test
+def test_environ_returns_dict_with_entries():
+    assert len(os.Environ) > 0
+
+
+# ===== PathExists =====
+
+@test
+def test_path_exists_true_for_file(tmp_path: str):
+    path = tmp_path + "/exists_file.txt"
+    with open(path, "w") as fa:
+        fa.write("data")
+    assert os.path_exists(path)
+
+
+@test
+def test_path_exists_true_for_directory(tmp_path: str):
+    path = tmp_path + "/exists_dir"
+    os.mkdir(path)
+    assert os.path_exists(path)
+
+
+@test
+def test_path_exists_false_for_nonexistent(tmp_path: str):
+    assert not os.path_exists(tmp_path + "/nonexistent_path")
+
+
+# ===== Stat =====
+
+@test
+def test_stat_returns_file_size(tmp_path: str):
+    path = tmp_path + "/stat_file.txt"
+    with open(path, "w") as fa:
+        fa.write("hello")
+    result = os.stat(path)
+    assert result.st_size > 0
+
+
+@test
+def test_stat_returns_timestamps(tmp_path: str):
+    path = tmp_path + "/stat_time.txt"
+    with open(path, "w") as fa:
+        fa.write("data")
+    result = os.stat(path)
+    # Timestamps should be after year 2020 (Unix seconds 1577836800).
+    assert result.st_mtime > 1577836800
+    assert result.st_ctime > 1577836800
+    assert result.st_atime > 1577836800
+
+
+@test
+def test_stat_works_for_directories(tmp_path: str):
+    path = tmp_path + "/stat_dir"
+    os.mkdir(path)
+    result = os.stat(path)
+    assert result.st_size == 0
+    assert result.st_mtime > 1577836800
+
+
+@test
+def test_stat_throws_on_nonexistent(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        os.stat(tmp_path + "/nonexistent_stat")
+
+
+# ===== Walk =====
+
+@test
+def test_walk_traverses_directory_tree(tmp_path: str):
+    root = tmp_path + "/walktest"
+    os.mkdir(root)
+    with open(root + "/file1.txt", "w") as fa:
+        fa.write("")
+    sub = root + "/sub"
+    os.mkdir(sub)
+    with open(sub + "/file2.txt", "w") as fb:
+        fb.write("")
+    results: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        results.append(dirpath)
+    assert len(results) == 2
+    assert results[0] == root
+    assert results[1] == sub
+
+
+@test
+def test_walk_nonexistent_path_yields_nothing(tmp_path: str):
+    count: int = 0
+    for dirpath, dirnames, filenames in os.walk(tmp_path + "/nonexistent"):
+        count = count + 1
+    assert count == 0

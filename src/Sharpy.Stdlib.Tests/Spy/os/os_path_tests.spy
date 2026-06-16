@@ -1,0 +1,159 @@
+from unittest import assert_raises
+from os.path import join, exists, isfile, isdir, isabs, basename, dirname, split, splitext, abspath, normpath, getsize, expanduser
+
+# Ported from OsPathTests.cs (#843).
+# Pure os.path functions, pulled in with `from os.path import ...` (attribute access
+# `os.path.join` is shadowed by the top-level `os` module, SPY0203). Expected values
+# that the C# built with System.IO.Path.Combine / DirectorySeparatorChar are written
+# as POSIX literals ("/"), matching the test runners (as in the glob/shutil ports).
+# File-based checks use the pytest-style `tmp_path: str` fixture (#842) instead of the
+# C# CreateTempFile helper.
+
+
+@test
+def test_join_two_parts():
+    assert join("/a", "b") == "/a/b"
+
+
+@test
+def test_join_multiple_parts():
+    assert join("a", "b", "c") == "a/b/c"
+
+
+@test
+def test_exists_true_for_file(tmp_path: str):
+    path = tmp_path + "/f.txt"
+    with open(path, "w") as fa:
+        fa.write("hello")
+    assert exists(path)
+
+
+@test
+def test_exists_true_for_directory(tmp_path: str):
+    assert exists(tmp_path)
+
+
+@test
+def test_exists_false_for_nonexistent(tmp_path: str):
+    assert not exists(tmp_path + "/nonexistent_path")
+
+
+@test
+def test_isfile_returns_true_for_file(tmp_path: str):
+    path = tmp_path + "/f.txt"
+    with open(path, "w") as fa:
+        fa.write("hello")
+    assert isfile(path)
+
+
+@test
+def test_isfile_returns_false_for_directory(tmp_path: str):
+    assert not isfile(tmp_path)
+
+
+@test
+def test_isdir_returns_true_for_directory(tmp_path: str):
+    assert isdir(tmp_path)
+
+
+@test
+def test_isdir_returns_false_for_file(tmp_path: str):
+    path = tmp_path + "/f.txt"
+    with open(path, "w") as fa:
+        fa.write("hello")
+    assert not isdir(path)
+
+
+@test
+def test_isabs_returns_true_for_absolute():
+    assert isabs("/usr/local")
+
+
+@test
+def test_isabs_returns_false_for_relative():
+    assert not isabs("a/b/c")
+
+
+@test
+def test_basename_returns_filename():
+    assert basename("/a/b/c.txt") == "c.txt"
+
+
+@test
+def test_dirname_returns_directory():
+    assert dirname("/a/b/c.txt") == "/a/b"
+
+
+@test
+def test_split_returns_head_and_tail():
+    head, tail = split("/a/b/c.txt")
+    assert head == "/a/b"
+    assert tail == "c.txt"
+
+
+@test
+def test_splitext_returns_root_and_ext():
+    root, ext = splitext("/a/b/c.tar.gz")
+    assert root == "/a/b/c.tar"
+    assert ext == ".gz"
+
+
+@test
+def test_splitext_no_extension():
+    root, ext = splitext("/a/b/c")
+    assert root == "/a/b/c"
+    assert ext == ""
+
+
+@test
+def test_abspath_returns_full_path():
+    result = abspath(".")
+    assert isabs(result)
+
+
+@test
+def test_normpath_collapses_dotdot():
+    assert normpath("a/b/../c") == "a/c"
+
+
+@test
+def test_normpath_removes_dots():
+    assert normpath("a/./b") == "a/b"
+
+
+@test
+def test_normpath_empty_returns_dot():
+    assert normpath("") == "."
+
+
+@test
+def test_getsize_returns_file_size(tmp_path: str):
+    path = tmp_path + "/f.txt"
+    with open(path, "w") as fa:
+        fa.write("hello")
+    assert getsize(path) == 5
+
+
+@test
+def test_getsize_nonexistent_throws(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        getsize(tmp_path + "/nonexistent")
+
+
+@test
+def test_expanduser_expands_tilde():
+    result = expanduser("~")
+    assert result != "~"
+    assert isabs(result)
+
+
+@test
+def test_expanduser_expands_tilde_slash():
+    result = expanduser("~/foo")
+    assert result.endswith("foo")
+    assert not result.startswith("~")
+
+
+@test
+def test_expanduser_no_tilde_unchanged():
+    assert expanduser("/a/b") == "/a/b"

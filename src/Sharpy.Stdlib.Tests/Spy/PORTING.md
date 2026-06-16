@@ -82,10 +82,10 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | NumpyMathTests.cs | 37 | | | pending |
 | NumpyRandomTests.cs | 17 | | | pending |
 | OrderedDictTests.cs | 13 | Spy/collections/ordered_dict_tests.spy | 13 | ported |
-| OsModuleTests.cs | 33 | | | pending |
-| OsModuleAdditionalTests.cs | 16 | | | pending |
-| OsPathTests.cs | 25 | | | pending |
-| OsPathAdditionalTests.cs | 24 | | | pending |
+| OsModuleTests.cs | 33 | Spy/os/os_module_tests.spy | 33 | ported (constants use C# field names os.Sep/os.Linesep/os.Name/os.Environ — static module fields aren't snake_case-mapped in project compilation, SPY0203; mirrors C# OsModule.Sep) |
+| OsModuleAdditionalTests.cs | 16 | Spy/os/os_module_additional_tests.spy | 16 | ported (os.Altsep/os.Pathsep/os.Environ as above; list/dict membership via `contains` helper / bool local to avoid xUnit2009) |
+| OsPathTests.cs | 25 | Spy/os/os_path_tests.spy | 25 | ported (os.path via `from os.path import ...`; POSIX separator literals) |
+| OsPathAdditionalTests.cs | 24 | Spy/os/os_path_additional_tests.spy | 24 | ported |
 | PathlibTests.cs | 61 | | | pending |
 | PathlibAdditionalTests.cs | 32 | | | pending |
 | PprintTests.cs | 32 | Spy/pprint/pprint_tests.spy | 32 | ported (re-enabled #888) |

@@ -1,0 +1,180 @@
+from os.path import join, split, splitext, abspath, realpath, normpath, getsize, expanduser, basename, dirname, isabs
+
+# Ported from OsPathAdditionalTests.cs (#843).
+# os.path edge cases via `from os.path import ...` (attribute access shadowed,
+# SPY0203); expected separators are POSIX "/" (test runners). A `Should().Contain(x)`
+# on a string is computed into a bool first to avoid the xUnit2009 analyzer (Assert
+# .True + .Contains) since warnings are errors.
+
+
+# ===== abspath =====
+
+@test
+def test_abspath_dot_returns_absolute():
+    result = abspath(".")
+    assert len(result) > 0
+    assert isabs(result)
+
+
+@test
+def test_abspath_relative_path_returns_absolute():
+    result = abspath("some/relative")
+    assert isabs(result)
+
+
+# ===== realpath =====
+
+@test
+def test_realpath_existing_dir_returns_absolute(tmp_path: str):
+    result = realpath(tmp_path)
+    assert isabs(result)
+    assert len(result) > 0
+
+
+@test
+def test_realpath_dot_returns_absolute():
+    result = realpath(".")
+    assert isabs(result)
+
+
+# ===== split edge cases =====
+
+@test
+def test_split_trailing_slash_tail_is_empty():
+    head, tail = split("/a/b/")
+    assert tail == ""
+    assert len(head) > 0
+
+
+@test
+def test_split_root_only_returns_root_and_empty():
+    _head, tail = split("/")
+    assert tail == ""
+
+
+@test
+def test_split_simple_filename_head_is_empty():
+    head, tail = split("file.txt")
+    assert tail == "file.txt"
+    assert head == ""
+
+
+# ===== splitext edge cases =====
+
+@test
+def test_splitext_simple_extension_returns_correct_parts():
+    root, ext = splitext("file.txt")
+    assert root == "file"
+    assert ext == ".txt"
+
+
+@test
+def test_splitext_hidden_file_dotnet_behavior():
+    # .NET round-trips ".hidden" so root + ext reconstructs the original.
+    root, ext = splitext(".hidden")
+    combined = root + ext
+    assert combined == ".hidden"
+
+
+@test
+def test_splitext_dot_at_end_ext_is_empty():
+    root, ext = splitext("file.")
+    combined = root + ext
+    assert combined == "file."
+
+
+# ===== join edge cases =====
+
+@test
+def test_join_four_args_joins_correctly():
+    result = join("a", "b", "c", "d")
+    has_a: bool = "a" in result
+    assert has_a
+    assert result.endswith("d")
+
+
+@test
+def test_join_two_absolute_paths_second_wins():
+    # Path.Combine("/a", "/b") == "/b" on POSIX.
+    assert join("/a", "/b") == "/b"
+
+
+@test
+def test_join_empty_first_arg_returns_second():
+    # Path.Combine("", "b") == "b".
+    assert join("", "b") == "b"
+
+
+# ===== normpath additional =====
+
+@test
+def test_normpath_absolute_with_dotdot_collapses():
+    assert normpath("/a/./b/../c") == "/a/c"
+
+
+@test
+def test_normpath_double_slash_collapses():
+    assert normpath("/a//b") == "/a/b"
+
+
+@test
+def test_normpath_relative_dotdot_at_start_preserved():
+    assert normpath("../a/b") == "../a/b"
+
+
+# ===== getsize edge cases =====
+
+@test
+def test_getsize_empty_file_returns_zero(tmp_path: str):
+    path = tmp_path + "/empty.txt"
+    with open(path, "w") as fa:
+        fa.write("")
+    assert getsize(path) == 0
+
+
+@test
+def test_getsize_non_empty_file_returns_correct_size(tmp_path: str):
+    path = tmp_path + "/sized.txt"
+    with open(path, "w") as fa:
+        fa.write("0123456789")
+    assert getsize(path) == 10
+
+
+# ===== expanduser additional =====
+
+@test
+def test_expanduser_tilde_with_subdir_builds_correct_path():
+    result = expanduser("~/mydir/file.txt")
+    assert not result.startswith("~")
+    assert result.endswith("mydir/file.txt")
+
+
+# ===== dirname / basename edge cases =====
+
+@test
+def test_dirname_trailing_slash_returns_parent():
+    result = dirname("/a/b/")
+    assert len(result) > 0
+
+
+@test
+def test_basename_trailing_slash_returns_empty():
+    result = basename("/a/b/")
+    assert result == ""
+
+
+@test
+def test_basename_root_path_returns_empty():
+    assert basename("/") == ""
+
+
+# ===== isabs edge cases =====
+
+@test
+def test_isabs_empty_string_returns_false():
+    assert not isabs("")
+
+
+@test
+def test_isabs_single_slash_returns_true():
+    assert isabs("/")
