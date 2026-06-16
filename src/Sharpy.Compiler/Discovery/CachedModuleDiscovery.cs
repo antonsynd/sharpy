@@ -640,9 +640,9 @@ internal class CachedModuleDiscovery
     private SemanticType GetVariadicElementType(
         TypeSignature typeSignature, TypeParameterType[]? sharedTypeParams = null)
     {
-        // Variadic parameters are stored as list[T] (mapped from T[])
+        // Variadic parameters are stored as array[T] (mapped from T[])
         // We need to extract T
-        if (typeSignature.IsGeneric && typeSignature.Name.StartsWith("list") && typeSignature.TypeArguments.Count == 1)
+        if (typeSignature.IsGeneric && (typeSignature.Name.StartsWith("array") || typeSignature.Name.StartsWith("list")) && typeSignature.TypeArguments.Count == 1)
         {
             return ConvertTypeSignature(typeSignature.TypeArguments[0], sharedTypeParams);
         }

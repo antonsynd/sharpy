@@ -65,7 +65,7 @@ internal class ClrTypeMapper
 
             return new GenericType
             {
-                Name = BuiltinNames.List,
+                Name = BuiltinNames.Array,
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(elementType)
