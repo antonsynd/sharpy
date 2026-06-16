@@ -82,11 +82,11 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | NumpyMathTests.cs | 37 | | | pending |
 | NumpyRandomTests.cs | 17 | | | pending |
 | OrderedDictTests.cs | 13 | Spy/collections/ordered_dict_tests.spy | 13 | ported |
-| OsModuleTests.cs | 33 | Spy/os/os_module_tests.spy | 33 | ported (constants use C# field names os.Sep/os.Linesep/os.Name/os.Environ — static module fields aren't snake_case-mapped in project compilation, SPY0203; mirrors C# OsModule.Sep) |
+| OsModuleTests.cs | 33 | Spy/os/os_module_tests.spy | 33 | ported (constants use C# field names os.Sep/os.Linesep/os.Name/os.Environ — static module fields aren't snake_case-mapped in project compilation, SPY0203 / #940; mirrors C# OsModule.Sep) |
 | OsModuleAdditionalTests.cs | 16 | Spy/os/os_module_additional_tests.spy | 16 | ported (os.Altsep/os.Pathsep/os.Environ as above; list/dict membership via `contains` helper / bool local to avoid xUnit2009) |
 | OsPathTests.cs | 25 | Spy/os/os_path_tests.spy | 25 | ported (os.path via `from os.path import ...`; POSIX separator literals) |
 | OsPathAdditionalTests.cs | 24 | Spy/os/os_path_additional_tests.spy | 24 | ported |
-| PathlibTests.cs | 61 | Spy/pathlib/pathlib_tests.spy | 60 | ported (1 omitted: ReadBytes/WriteBytes round-trip — CLR byte[] params/returns not bridgeable from .spy, #941. `/` operator works; kwargs passed positionally since codegen mangles snake_case kwarg names) |
+| PathlibTests.cs | 61 | Spy/pathlib/pathlib_tests.spy | 60 | ported (1 omitted: ReadBytes/WriteBytes round-trip — CLR byte[] params/returns not bridgeable from .spy, #941. `/` operator works; kwargs passed positionally since codegen mangles snake_case kwarg names, #942) |
 | PathlibAdditionalTests.cs | 32 | Spy/pathlib/pathlib_additional_tests.spy | 29 | ported (3 omitted: Constructor null→non-nullable Axiom 3; `Path? == None` rejected SPY0222 — Optional uses `is None`; WriteBytes empty byte[] #941) |
 | PprintTests.cs | 32 | Spy/pprint/pprint_tests.spy | 32 | ported (re-enabled #888) |
 | RandomTests.cs | 16 | | | pending |
@@ -127,6 +127,25 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | YamlRoundtripTests.cs | 29 | Spy/yaml/yaml_roundtrip_tests.spy | 23 | ported (6 omitted: 1 null-arg/Axiom 3, 1 TryGetValue/`out`-param interop, 4 CommentInfo construction — yaml surface gaps #919) |
 | YamlTypedDeserializationTests.cs | 6 | Spy/yaml/yaml_typed_deserialization_tests.spy | 5 | ported (1 omitted: null-arg TypeError, Axiom 3) |
 | ZoneinfoTests.cs | 28 | Spy/zoneinfo/zoneinfo_tests.spy | 29 | ported (re-enabled #901; +1 invalid-zone test) |
+
+## Phase 3 (I/O & System) — COMPLETE (2026-06-16)
+
+All 7 modules ported; 14 C# test files removed and replaced by `.spy`. **319/326 tests ported, 7 documented omissions, 0 silent drops.**
+
+| Module | C# files | Ported/Total | Omitted |
+|--------|----------|--------------|---------|
+| glob | 1 | 18/18 | 0 |
+| tempfile | 2 | 22/22 | 0 |
+| io | 2 | 42/42 | 0 |
+| shutil | 2 | 29/29 | 0 |
+| os | 4 | 98/98 | 0 |
+| pathlib | 2 | 89/93 | 4 |
+| tarfile | 1 | 21/24 | 3 |
+| **Total** | **14** | **319/326** | **7** |
+
+Omissions: pathlib ×4 — CLR `byte[]` not bridgeable (#941, ×2: read/write round-trip, empty write), null→non-nullable ctor (Axiom 3), `Path? == None` (SPY0222, Optional uses `is None`); tarfile ×3 — `tarfile.TarInfo()` ctor is `internal`/not constructible (#943). Each omitted behavior is otherwise covered (e.g. TarInfo via `getmembers()`).
+
+Compiler/stdlib gaps filed during Phase 3 (none block a module): **#940** (module static-field name mapping differs run vs project mode), **#941** (CLR `byte[]` params/returns not bridgeable from `.spy`), **#942** (snake_case keyword-arg names mangled to camelCase → CS1739), **#943** (`tarfile.TarInfo` internal ctor).
 
 ## Out of Scope (stay C#)
 
