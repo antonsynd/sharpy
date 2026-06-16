@@ -33,32 +33,32 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCreateAndReadUncompressedTar()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (27, 5) - (27, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (25, 5) - (25, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/test.tar";
-#line (28, 5) - (28, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (26, 5) - (26, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/hello.txt";
-#line (29, 5) - (31, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (27, 5) - (29, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (30, 9) - (30, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (28, 9) - (28, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("Hello, World!");
                 }
 
-#line (31, 5) - (33, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (29, 5) - (31, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (32, 9) - (32, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (30, 9) - (30, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "hello.txt");
                 }
 
-#line (33, 5) - (39, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (31, 5) - (37, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
                 {
-#line (34, 9) - (34, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (32, 9) - (32, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     var names = tr.Getnames();
-#line (35, 9) - (35, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (33, 9) - (33, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     bool hasHello = names.Contains("hello.txt");
-#line (36, 9) - (36, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (34, 9) - (34, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.True(hasHello);
                 }
             }
@@ -67,32 +67,32 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCreateAndReadGzipTar()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (41, 5) - (41, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (39, 5) - (39, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/test.tar.gz";
-#line (42, 5) - (42, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (40, 5) - (40, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/data.txt";
-#line (43, 5) - (45, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (41, 5) - (43, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (44, 9) - (44, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (42, 9) - (42, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("Compressed content");
                 }
 
-#line (45, 5) - (47, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (43, 5) - (45, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:gz"))
                 {
-#line (46, 9) - (46, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (44, 9) - (44, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "data.txt");
                 }
 
-#line (47, 5) - (53, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (45, 5) - (51, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:gz"))
                 {
-#line (48, 9) - (48, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (46, 9) - (46, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     var names = tr.Getnames();
-#line (49, 9) - (49, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (47, 9) - (47, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     bool hasData = names.Contains("data.txt");
-#line (50, 9) - (50, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (48, 9) - (48, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.True(hasData);
                 }
             }
@@ -101,32 +101,32 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAutoDetectGzipTar()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (55, 5) - (55, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (53, 5) - (53, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/auto.tar.gz";
-#line (56, 5) - (56, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (54, 5) - (54, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/auto.txt";
-#line (57, 5) - (59, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (55, 5) - (57, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (58, 9) - (58, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (56, 9) - (56, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("auto");
                 }
 
-#line (59, 5) - (61, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (57, 5) - (59, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:gz"))
                 {
-#line (60, 9) - (60, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (58, 9) - (58, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "auto.txt");
                 }
 
-#line (61, 5) - (69, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (59, 5) - (67, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r"))
                 {
-#line (62, 9) - (62, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (60, 9) - (60, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     var names = tr.Getnames();
-#line (63, 9) - (63, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (61, 9) - (61, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     bool hasAuto = names.Contains("auto.txt");
-#line (64, 9) - (64, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (62, 9) - (62, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.True(hasAuto);
                 }
             }
@@ -135,45 +135,45 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExtractallExtractsFiles()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (71, 5) - (71, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (69, 5) - (69, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/extract.tar";
-#line (72, 5) - (72, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (70, 5) - (70, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/source.txt";
-#line (73, 5) - (73, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (71, 5) - (71, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var outDir = tmpPath + "/output";
-#line (74, 5) - (76, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (72, 5) - (74, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (75, 9) - (75, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (73, 9) - (73, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("Extract me!");
                 }
 
-#line (76, 5) - (78, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (74, 5) - (76, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (77, 9) - (77, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (75, 9) - (75, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "source.txt");
                 }
 
-#line (78, 5) - (80, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (76, 5) - (78, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
                 {
-#line (79, 9) - (79, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (77, 9) - (77, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tr.Extractall(outDir);
                 }
 
-#line (80, 5) - (80, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (78, 5) - (78, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(Isfile(outDir + "/source.txt"));
-#line (81, 5) - (81, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (79, 5) - (79, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var content = "";
-#line (82, 5) - (84, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (80, 5) - (82, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fr = global::Sharpy.Builtins.Open(outDir + "/source.txt", "r"))
                 {
-#line (83, 9) - (83, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (81, 9) - (81, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     content = fr.Read();
                 }
 
-#line (84, 5) - (84, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (82, 5) - (82, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Equal("Extract me!", content);
             }
 
@@ -181,35 +181,35 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestExtractfileReturnsContent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (89, 5) - (89, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (87, 5) - (87, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/file.tar";
-#line (90, 5) - (90, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (88, 5) - (88, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/content.txt";
-#line (91, 5) - (93, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (89, 5) - (91, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (92, 9) - (92, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (90, 9) - (90, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("File content");
                 }
 
-#line (93, 5) - (95, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (91, 5) - (93, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (94, 9) - (94, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (92, 9) - (92, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "content.txt");
                 }
 
-#line (95, 5) - (104, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (93, 5) - (102, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
                 {
-#line (96, 9) - (96, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (94, 9) - (94, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     var data = tr.Extractfile("content.txt");
-#line (97, 9) - (97, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (95, 9) - (95, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.NotNull(data);
-#line (98, 9) - (104, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (96, 9) - (102, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     if (data != null)
                     {
-#line (99, 13) - (99, 59) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (97, 13) - (97, 59) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                         Xunit.Assert.Equal("File content", data.Value.Decode("utf-8"));
                     }
                 }
@@ -219,38 +219,38 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGetmembersReturnsTarInfoObjects()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (106, 5) - (106, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (104, 5) - (104, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/members.tar";
-#line (107, 5) - (107, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (105, 5) - (105, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/info.txt";
-#line (108, 5) - (110, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (106, 5) - (108, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (109, 9) - (109, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (107, 9) - (107, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("twelve chars");
                 }
 
-#line (110, 5) - (112, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (108, 5) - (110, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (111, 9) - (111, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (109, 9) - (109, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "info.txt");
                 }
 
-#line (112, 5) - (121, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (110, 5) - (119, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
                 {
-#line (113, 9) - (113, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (111, 9) - (111, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     var members = tr.Getmembers();
-#line (114, 9) - (114, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (112, 9) - (112, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(members));
-#line (115, 9) - (115, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (113, 9) - (113, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.Equal("info.txt", members[0].Name);
-#line (116, 9) - (116, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (114, 9) - (114, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.True(members[0].Isfile());
-#line (117, 9) - (117, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (115, 9) - (115, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.False(members[0].Isdir());
-#line (118, 9) - (118, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (116, 9) - (116, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.Equal(12, members[0].Size);
                 }
             }
@@ -259,30 +259,30 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGetmemberExistingMemberReturnsInfo()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (123, 5) - (123, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (121, 5) - (121, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/member.tar";
-#line (124, 5) - (124, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (122, 5) - (122, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/a.txt";
-#line (125, 5) - (127, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (123, 5) - (125, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (126, 9) - (126, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (124, 9) - (124, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("aaa");
                 }
 
-#line (127, 5) - (129, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (125, 5) - (127, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (128, 9) - (128, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (126, 9) - (126, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "a.txt");
                 }
 
-#line (129, 5) - (134, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (127, 5) - (132, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
                 {
-#line (130, 9) - (130, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (128, 9) - (128, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     var info = tr.Getmember("a.txt");
-#line (131, 9) - (131, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (129, 9) - (129, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.Equal("a.txt", info.Name);
                 }
             }
@@ -291,31 +291,31 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGetmemberNonExistentThrowsKeyError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (136, 5) - (136, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (134, 5) - (134, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/miss.tar";
-#line (137, 5) - (137, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (135, 5) - (135, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/a.txt";
-#line (138, 5) - (140, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (136, 5) - (138, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (139, 9) - (139, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (137, 9) - (137, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("aaa");
                 }
 
-#line (140, 5) - (142, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (138, 5) - (140, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (141, 9) - (141, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (139, 9) - (139, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "a.txt");
                 }
 
-#line (142, 5) - (147, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (140, 5) - (145, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
                 {
-#line (143, 9) - (147, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (141, 9) - (145, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
                     {
-#line (144, 13) - (144, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (142, 13) - (142, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                         tr.Getmember("nonexistent");
                     }));
                 }
@@ -325,32 +325,32 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAddWithArcnameUsesArchiveName()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (149, 5) - (149, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (147, 5) - (147, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/arcname.tar";
-#line (150, 5) - (150, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (148, 5) - (148, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/original.txt";
-#line (151, 5) - (153, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (149, 5) - (151, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (152, 9) - (152, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (150, 9) - (150, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("renamed");
                 }
 
-#line (153, 5) - (155, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (151, 5) - (153, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (154, 9) - (154, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (152, 9) - (152, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "renamed.txt");
                 }
 
-#line (155, 5) - (163, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (153, 5) - (161, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
                 {
-#line (156, 9) - (156, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (154, 9) - (154, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     var names = tr.Getnames();
-#line (157, 9) - (157, 52) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (155, 9) - (155, 52) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     bool hasRenamed = names.Contains("renamed.txt");
-#line (158, 9) - (158, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (156, 9) - (156, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.True(hasRenamed);
                 }
             }
@@ -359,25 +359,25 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsTarfileValidTarReturnsTrue()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (165, 5) - (165, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (163, 5) - (163, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/valid.tar";
-#line (166, 5) - (166, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (164, 5) - (164, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/x.txt";
-#line (167, 5) - (169, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (165, 5) - (167, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (168, 9) - (168, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (166, 9) - (166, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("x");
                 }
 
-#line (169, 5) - (171, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (167, 5) - (169, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (170, 9) - (170, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (168, 9) - (168, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "x.txt");
                 }
 
-#line (171, 5) - (171, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (169, 5) - (169, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(tarfile.IsTarfile(archive));
             }
 
@@ -385,16 +385,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsTarfileNonTarReturnsFalse()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (176, 5) - (176, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (174, 5) - (174, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/notatar.txt";
-#line (177, 5) - (179, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (175, 5) - (177, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (178, 9) - (178, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (176, 9) - (176, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("This is not a tar file");
                 }
 
-#line (179, 5) - (179, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (177, 5) - (177, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.False(tarfile.IsTarfile(fp));
             }
 
@@ -402,7 +402,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsTarfileNonExistentReturnsFalse()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (184, 5) - (184, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (182, 5) - (182, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.False(tarfile.IsTarfile(tmpPath + "/nonexistent.tar"));
             }
 
@@ -410,25 +410,25 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIsTarfileGzipTarReturnsTrue()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (189, 5) - (189, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (187, 5) - (187, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/valid.tar.gz";
-#line (190, 5) - (190, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (188, 5) - (188, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/y.txt";
-#line (191, 5) - (193, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (189, 5) - (191, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (192, 9) - (192, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (190, 9) - (190, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("y");
                 }
 
-#line (193, 5) - (195, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (191, 5) - (193, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:gz"))
                 {
-#line (194, 9) - (194, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (192, 9) - (192, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "y.txt");
                 }
 
-#line (195, 5) - (195, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (193, 5) - (193, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(tarfile.IsTarfile(archive));
             }
 
@@ -436,10 +436,10 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestOpenInvalidModeThrowsValueError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (202, 5) - (206, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (200, 5) - (204, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
                 {
-#line (203, 9) - (203, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (201, 9) - (201, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tarfile.Open(tmpPath + "/bad.tar", "x:");
                 }));
             }
@@ -448,10 +448,10 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestOpenBz2ModeThrowsCompressionError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (208, 5) - (212, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (206, 5) - (210, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.CompressionError>((global::System.Action)(() =>
                 {
-#line (209, 9) - (209, 57) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (207, 9) - (207, 57) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tarfile.Open(tmpPath + "/bad.tar.bz2", "r:bz2");
                 }));
             }
@@ -460,10 +460,10 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestOpenXzModeThrowsCompressionError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (214, 5) - (218, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (212, 5) - (216, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.CompressionError>((global::System.Action)(() =>
                 {
-#line (215, 9) - (215, 55) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (213, 9) - (213, 55) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tarfile.Open(tmpPath + "/bad.tar.xz", "w:xz");
                 }));
             }
@@ -472,10 +472,10 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestOpenNonExistentFileThrowsFileNotFoundError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (220, 5) - (226, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (218, 5) - (224, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Throws<FileNotFoundError>((global::System.Action)(() =>
                 {
-#line (221, 9) - (221, 58) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (219, 9) - (219, 58) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tarfile.Open(tmpPath + "/nonexistent.tar", "r:");
                 }));
             }
@@ -484,32 +484,32 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestClosePreventsFurtherOperations()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (228, 5) - (228, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (226, 5) - (226, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/closed.tar";
-#line (229, 5) - (229, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (227, 5) - (227, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/c.txt";
-#line (230, 5) - (232, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (228, 5) - (230, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
                 {
-#line (231, 9) - (231, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (229, 9) - (229, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("c");
                 }
 
-#line (232, 5) - (234, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (230, 5) - (232, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (233, 9) - (233, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (231, 9) - (231, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(fp, "c.txt");
                 }
 
-#line (234, 5) - (234, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (232, 5) - (232, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var readTar = tarfile.Open(archive, "r:");
-#line (235, 5) - (235, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (233, 5) - (233, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 readTar.Close();
-#line (236, 5) - (242, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (234, 5) - (240, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
                 {
-#line (237, 9) - (237, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (235, 9) - (235, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     readTar.Getnames();
                 }));
             }
@@ -517,26 +517,26 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestModuleConstants()
             {
-#line (244, 5) - (244, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (242, 5) - (242, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Equal(0, tarfile.REGTYPE);
-#line (245, 5) - (245, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (243, 5) - (243, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Equal(5, tarfile.DIRTYPE);
-#line (246, 5) - (246, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (244, 5) - (244, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Equal(2, tarfile.SYMTYPE);
-#line (247, 5) - (247, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (245, 5) - (245, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.Equal(1, tarfile.LNKTYPE);
             }
 
             [Xunit.FactAttribute]
             public void TestErrorHierarchy()
             {
-#line (252, 5) - (252, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (250, 5) - (250, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(new global::Sharpy.ReadError("test") is global::Sharpy.TarError);
-#line (253, 5) - (253, 75) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (251, 5) - (251, 75) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(new global::Sharpy.CompressionError("test") is global::Sharpy.TarError);
-#line (254, 5) - (254, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (252, 5) - (252, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.True(new global::Sharpy.ExtractError("test") is global::Sharpy.TarError);
-#line (255, 5) - (255, 60) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (253, 5) - (253, 60) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.IsAssignableFrom<Exception>(new global::Sharpy.TarError("test"));
             }
 
@@ -544,47 +544,100 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestMultipleFilesGetNames()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (262, 5) - (262, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (260, 5) - (260, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/multi.tar";
-#line (263, 5) - (265, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (261, 5) - (263, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(tmpPath + "/a.txt", "w"))
                 {
-#line (264, 9) - (264, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (262, 9) - (262, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fa.Write("aaa");
                 }
 
-#line (265, 5) - (267, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (263, 5) - (265, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(tmpPath + "/b.txt", "w"))
                 {
-#line (266, 9) - (266, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (264, 9) - (264, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     fb.Write("bbb");
                 }
 
-#line (267, 5) - (270, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (265, 5) - (268, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
                 {
-#line (268, 9) - (268, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (266, 9) - (266, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(tmpPath + "/a.txt", "a.txt");
-#line (269, 9) - (269, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (267, 9) - (267, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tw.Add(tmpPath + "/b.txt", "b.txt");
                 }
 
-#line (270, 5) - (277, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (268, 5) - (279, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
                 {
-#line (271, 9) - (271, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (269, 9) - (269, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     var names = tr.Getnames();
-#line (272, 9) - (272, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (270, 9) - (270, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(names));
-#line (273, 9) - (273, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (271, 9) - (271, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     bool hasA = names.Contains("a.txt");
-#line (274, 9) - (274, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (272, 9) - (272, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     bool hasB = names.Contains("b.txt");
-#line (275, 9) - (275, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (273, 9) - (273, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.True(hasA);
-#line (276, 9) - (276, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (274, 9) - (274, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.True(hasB);
                 }
+            }
+
+            [Xunit.FactAttribute]
+            public void TestTarinfoDefaultProperties()
+            {
+#line (281, 5) - (281, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                var info = new global::Sharpy.TarInfo();
+#line (282, 5) - (282, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.Equal("", info.Name);
+#line (283, 5) - (283, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.Equal(0, info.Size);
+#line (284, 5) - (284, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.Equal("", info.Linkname);
+#line (285, 5) - (285, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.Equal("", info.Uname);
+#line (286, 5) - (286, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.Equal("", info.Gname);
+            }
+
+            [Xunit.FactAttribute]
+            public void TestTarinfoTypeChecks()
+            {
+#line (290, 5) - (290, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                var info = new global::Sharpy.TarInfo();
+#line (291, 5) - (291, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                info.Type = tarfile.REGTYPE;
+#line (292, 5) - (292, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.True(info.Isfile());
+#line (293, 5) - (293, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.False(info.Isdir());
+#line (295, 5) - (295, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                info.Type = tarfile.DIRTYPE;
+#line (296, 5) - (296, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.True(info.Isdir());
+#line (297, 5) - (297, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.False(info.Isfile());
+#line (299, 5) - (299, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                info.Type = tarfile.SYMTYPE;
+#line (300, 5) - (300, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.True(info.Issym());
+#line (302, 5) - (302, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                info.Type = tarfile.LNKTYPE;
+#line (303, 5) - (303, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.True(info.Islnk());
+            }
+
+            [Xunit.FactAttribute]
+            public void TestTarinfoTostring()
+            {
+#line (307, 5) - (307, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                var info = new global::Sharpy.TarInfo("test.txt");
+#line (308, 5) - (308, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+                Xunit.Assert.Equal("<TarInfo 'test.txt'>", global::Sharpy.Builtins.Str(info));
             }
 
             public void Dispose()

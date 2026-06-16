@@ -14,10 +14,8 @@ from os.path import isfile
 # membership is computed into a bool first to avoid the xUnit2009 analyzer. The
 # `tmp_path: str` fixture (#842) replaces the C# per-test temp dir.
 #
-# Omitted (3): TarInfo_DefaultProperties, TarInfo_TypeChecks, TarInfo_ToString — all
-# need `tarfile.TarInfo()` directly, but that constructor is `internal` and not
-# accessible from the generated test assembly (CS1729); see #943. (TarInfo obtained via
-# getmembers() works and is covered by test_getmembers_returns_tar_info_objects.)
+# Previously omitted tests (TarInfo_DefaultProperties, TarInfo_TypeChecks,
+# TarInfo_ToString) are now included — TarInfo constructor was made public in #943.
 
 
 # ===== Create / read =====
@@ -274,3 +272,37 @@ def test_multiple_files_get_names(tmp_path: str):
         has_b: bool = "b.txt" in names
         assert has_a
         assert has_b
+
+
+# ===== TarInfo direct construction (#943) =====
+
+@test
+def test_tarinfo_default_properties():
+    info = tarfile.TarInfo()
+    assert info.name == ""
+    assert info.size == 0
+    assert info.linkname == ""
+    assert info.uname == ""
+    assert info.gname == ""
+
+@test
+def test_tarinfo_type_checks():
+    info = tarfile.TarInfo()
+    info.type = tarfile.REGTYPE
+    assert info.isfile()
+    assert not info.isdir()
+
+    info.type = tarfile.DIRTYPE
+    assert info.isdir()
+    assert not info.isfile()
+
+    info.type = tarfile.SYMTYPE
+    assert info.issym()
+
+    info.type = tarfile.LNKTYPE
+    assert info.islnk()
+
+@test
+def test_tarinfo_tostring():
+    info = tarfile.TarInfo("test.txt")
+    assert str(info) == "<TarInfo 'test.txt'>"
