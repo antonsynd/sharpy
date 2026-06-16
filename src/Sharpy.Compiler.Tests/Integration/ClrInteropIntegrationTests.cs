@@ -277,4 +277,21 @@ def main():
                 Directory.Delete(tempDir, recursive: true);
         }
     }
+
+    [Fact]
+    public void ClrKwargName_SnakeCasePreserved()
+    {
+        var source = @"
+import pathlib
+
+def main():
+    p = pathlib.Path(""/tmp/sharpy_kwarg_test_942"")
+    p.mkdir(exist_ok=True)
+    p.rmdir()
+    print(""ok"")
+";
+        var result = CompileAndExecute(source);
+        Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
+        Assert.Equal("ok\n", result.StandardOutput);
+    }
 }
