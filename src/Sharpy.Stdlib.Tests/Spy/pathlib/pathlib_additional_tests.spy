@@ -1,0 +1,266 @@
+from unittest import assert_raises
+
+import os
+import pathlib
+
+# Ported from PathlibAdditionalTests.cs (#843).
+# Same conventions as pathlib_tests.spy: `pathlib.Path(...)`, `str(p)` for ToString,
+# the `/` operator, snake_case instance properties, POSITIONAL kwargs (codegen mangles
+# snake_case kwarg names), `tmp_path: str` fixture, substring `in str` computed into a
+# bool to avoid xUnit2009.
+#
+# Omitted (3):
+#   - Constructor_Null_ThrowsTypeError: passes null! to the non-nullable Path(str) ctor —
+#     not expressible in type-safe Sharpy (Axiom 3).
+#   - EqualityOperator_NullComparison: `Path? == None` is rejected (SPY0222) — a Sharpy
+#     Optional uses `is None`, not `==`, so the C# nullable-reference operator test has
+#     no type-safe equivalent.
+#   - WriteBytes_EmptyData_CreatesEmptyFile: write_bytes takes a CLR byte[] that no .spy
+#     value binds to (see #941).
+
+
+# ===== Constructor edge cases =====
+
+@test
+def test_constructor_three_segments_joins_all():
+    p = pathlib.Path("a", "b", "c")
+    has_a: bool = "a" in str(p)
+    assert has_a
+    assert str(p).endswith("c")
+
+
+# ===== WithName / WithSuffix edge cases =====
+
+@test
+def test_with_name_on_root_level_returns_new_name():
+    p = pathlib.Path("/file.txt").with_name("other.txt")
+    assert p.name == "other.txt"
+
+
+@test
+def test_with_suffix_empty_suffix_removes_extension():
+    p = pathlib.Path("/some/file.txt").with_suffix("")
+    assert p.name == "file"
+
+
+@test
+def test_with_suffix_changes_only_last_suffix():
+    p = pathlib.Path("/some/archive.tar.gz").with_suffix(".bz2")
+    assert p.name == "archive.tar.bz2"
+
+
+# ===== Operator / =====
+
+@test
+def test_division_chained_operations():
+    p = pathlib.Path("/root") / "a" / "b" / "c"
+    has_a: bool = "a" in str(p)
+    assert has_a
+    assert str(p).endswith("c")
+
+
+@test
+def test_division_path_and_path_joins_correctly():
+    left = pathlib.Path("/base")
+    right = pathlib.Path("child")
+    result = left / right
+    has_base: bool = "base" in str(result)
+    has_child: bool = "child" in str(result)
+    assert has_base
+    assert has_child
+
+
+# ===== Equality operator =====
+
+@test
+def test_equality_operator_equal_paths_returns_true():
+    p1 = pathlib.Path("/a/b")
+    p2 = pathlib.Path("/a/b")
+    assert p1 == p2
+
+
+@test
+def test_equality_operator_different_paths_returns_false():
+    p1 = pathlib.Path("/a/b")
+    p2 = pathlib.Path("/a/c")
+    assert p1 != p2
+
+
+# ===== Suffixes =====
+
+@test
+def test_suffixes_single_extension_returns_one_item():
+    p = pathlib.Path("file.txt")
+    suffixes = p.suffixes
+    assert len(suffixes) == 1
+    assert suffixes[0] == ".txt"
+
+
+@test
+def test_suffixes_no_extension_returns_empty_list():
+    p = pathlib.Path("noextension")
+    suffixes = p.suffixes
+    assert len(suffixes) == 0
+
+
+# ===== Parent =====
+
+@test
+def test_parent_multi_level_returns_immediate_parent():
+    p = pathlib.Path("/a/b/c/d")
+    has_c: bool = "c" in str(p.parent)
+    assert has_c
+
+
+@test
+def test_parent_of_parent_grand_parent():
+    p = pathlib.Path("/a/b/c")
+    grand_parent = p.parent.parent
+    has_a: bool = "a" in str(grand_parent)
+    assert has_a
+
+
+# ===== IsSymlink =====
+
+@test
+def test_is_symlink_for_directory_returns_false(tmp_path: str):
+    assert not pathlib.Path(tmp_path).is_symlink()
+
+
+# ===== Mkdir exist_ok =====
+
+@test
+def test_mkdir_exist_ok_does_not_throw_when_exists(tmp_path: str):
+    p = pathlib.Path(tmp_path + "/existing_dir")
+    p.mkdir()
+    p.mkdir(False, True)
+    assert p.is_dir()
+
+
+@test
+def test_mkdir_exist_ok_false_throws_when_exists(tmp_path: str):
+    p = pathlib.Path(tmp_path + "/dup_dir")
+    p.mkdir()
+    with assert_raises(FileExistsError):
+        p.mkdir(False, False)
+
+
+@test
+def test_mkdir_missing_parent_throws_without_parents_flag(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        pathlib.Path(tmp_path + "/missing/child").mkdir()
+
+
+# ===== ReadText / WriteText with encoding =====
+
+@test
+def test_write_text_and_read_text_with_ascii_encoding(tmp_path: str):
+    p = pathlib.Path(tmp_path + "/ascii.txt")
+    p.write_text("hello ascii", "ascii")
+    assert p.read_text("ascii") == "hello ascii"
+
+
+@test
+def test_read_text_unknown_encoding_throws_lookup_error(tmp_path: str):
+    p = pathlib.Path(tmp_path + "/enc.txt")
+    p.write_text("data")
+    with assert_raises(LookupError):
+        p.read_text("nonexistent-encoding")
+
+
+# ===== Touch edge cases =====
+
+@test
+def test_touch_missing_parent_dir_throws_file_not_found_error(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        pathlib.Path(tmp_path + "/no_parent/file.txt").touch()
+
+
+# ===== Iterdir =====
+
+@test
+def test_iterdir_nonexistent_dir_throws_file_not_found_error(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        names: list[str] = []
+        for entry in pathlib.Path(tmp_path + "/no_such_dir").iterdir():
+            names.append(entry.name)
+
+
+@test
+def test_iterdir_empty_dir_yields_nothing(tmp_path: str):
+    d = tmp_path + "/empty_iterdir"
+    os.makedirs(d, existOk=True)
+    entries: list[str] = []
+    for entry in pathlib.Path(d).iterdir():
+        entries.append(entry.name)
+    assert len(entries) == 0
+
+
+# ===== Glob edge cases =====
+
+@test
+def test_glob_no_matches_yields_nothing(tmp_path: str):
+    d = tmp_path + "/glob_empty"
+    os.makedirs(d, existOk=True)
+    with open(d + "/file.txt", "w") as fa:
+        fa.write("")
+    matches: list[str] = []
+    for p in pathlib.Path(d).glob("*.py"):
+        matches.append(p.name)
+    assert len(matches) == 0
+
+
+@test
+def test_glob_nonexistent_dir_throws_file_not_found_error(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        names: list[str] = []
+        for p in pathlib.Path(tmp_path + "/no_such_glob_dir").glob("*"):
+            names.append(p.name)
+
+
+# ===== RelativeTo edge cases =====
+
+@test
+def test_relative_to_normalizes_before_comparing(tmp_path: str):
+    child = pathlib.Path(tmp_path + "/sub")
+    relative = child.relative_to(tmp_path)
+    assert str(relative) == "sub"
+
+
+# ===== Match additional =====
+
+@test
+def test_match_question_mark_wildcard_matches_single_char():
+    assert pathlib.Path("/a/b/fil?.txt").match("fil?.txt")
+
+
+@test
+def test_match_no_match_returns_false():
+    assert not pathlib.Path("/a/b/file.txt").match("*.py")
+
+
+# ===== Rglob empty dir =====
+
+@test
+def test_rglob_empty_dir_yields_nothing(tmp_path: str):
+    d = tmp_path + "/rglob_empty"
+    os.makedirs(d, existOk=True)
+    matches: list[str] = []
+    for p in pathlib.Path(d).rglob("*.txt"):
+        matches.append(p.name)
+    assert len(matches) == 0
+
+
+# ===== Cwd / Home additional =====
+
+@test
+def test_cwd_is_directory():
+    cwd = pathlib.Path.cwd()
+    assert cwd.is_dir()
+
+
+@test
+def test_home_is_absolute_dir():
+    home = pathlib.Path.home()
+    assert home.is_absolute
+    assert home.is_dir()

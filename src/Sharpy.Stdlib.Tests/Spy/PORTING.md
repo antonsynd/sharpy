@@ -86,8 +86,8 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | OsModuleAdditionalTests.cs | 16 | Spy/os/os_module_additional_tests.spy | 16 | ported (os.Altsep/os.Pathsep/os.Environ as above; list/dict membership via `contains` helper / bool local to avoid xUnit2009) |
 | OsPathTests.cs | 25 | Spy/os/os_path_tests.spy | 25 | ported (os.path via `from os.path import ...`; POSIX separator literals) |
 | OsPathAdditionalTests.cs | 24 | Spy/os/os_path_additional_tests.spy | 24 | ported |
-| PathlibTests.cs | 61 | | | pending |
-| PathlibAdditionalTests.cs | 32 | | | pending |
+| PathlibTests.cs | 61 | Spy/pathlib/pathlib_tests.spy | 60 | ported (1 omitted: ReadBytes/WriteBytes round-trip — CLR byte[] params/returns not bridgeable from .spy, #941. `/` operator works; kwargs passed positionally since codegen mangles snake_case kwarg names) |
+| PathlibAdditionalTests.cs | 32 | Spy/pathlib/pathlib_additional_tests.spy | 29 | ported (3 omitted: Constructor null→non-nullable Axiom 3; `Path? == None` rejected SPY0222 — Optional uses `is None`; WriteBytes empty byte[] #941) |
 | PprintTests.cs | 32 | Spy/pprint/pprint_tests.spy | 32 | ported (re-enabled #888) |
 | RandomTests.cs | 16 | | | pending |
 | RandomAdditionalTests.cs | 22 | | | pending |

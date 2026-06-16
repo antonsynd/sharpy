@@ -1,0 +1,521 @@
+from unittest import assert_raises
+
+import os
+import pathlib
+
+# Ported from PathlibTests.cs (#843).
+# `new Sharpy.Path(...)` -> `pathlib.Path(...)`; `.ToString()` -> `str(p)`; the `/`
+# join operator lowers to the Path `operator /` (works for str and Path operands and
+# chains). Instance properties map snake_case (.name/.stem/.suffix/.suffixes/.parent/
+# .root/.anchor/.is_absolute/.parts). The C# per-test temp dir (the `Sub` helper) is
+# replaced by the pytest-style `tmp_path: str` fixture (#842); paths use "/" concat
+# (POSIX runners). List membership goes through the `contains` helper to avoid the
+# xUnit2009 analyzer (Assert.True + .Contains), and substring `in str` is computed into
+# a bool first for the same reason.
+#
+# Keyword args are passed POSITIONALLY: the codegen mangles snake_case kwarg names
+# (e.g. exist_ok -> existOk) which then misses the C# parameter, so positional binding
+# is used for mkdir(parents, exist_ok), unlink(missing_ok), touch(existOk), and
+# read_text/write_text(encoding).
+#
+# Omitted (1): ReadBytes_And_WriteBytes_RoundTrip — write_bytes/read_bytes take/return
+# CLR byte[], which is not bridgeable from .spy (no spy value binds to byte[]); see #941.
+
+
+def contains(items: list[str], value: str) -> bool:
+    for item in items:
+        if item == value:
+            return True
+    return False
+
+
+# ===== Constructor =====
+
+@test
+def test_constructor_stores_path():
+    p = pathlib.Path("/some/path")
+    assert str(p) == "/some/path"
+
+
+@test
+def test_constructor_joins_segments():
+    p = pathlib.Path("a", "b")
+    has_b: bool = "b" in str(p)
+    assert has_b
+
+
+# ===== Operator / =====
+
+@test
+def test_division_operator_joins_string():
+    p = pathlib.Path("/root") / "child"
+    has_child: bool = "child" in str(p)
+    assert has_child
+
+
+@test
+def test_division_operator_joins_path():
+    p = pathlib.Path("/root") / pathlib.Path("child")
+    has_child: bool = "child" in str(p)
+    assert has_child
+
+
+# ===== Properties =====
+
+@test
+def test_name_returns_final_component():
+    p = pathlib.Path("/some/path/file.txt")
+    assert p.name == "file.txt"
+
+
+@test
+def test_stem_returns_name_without_extension():
+    p = pathlib.Path("/some/path/file.txt")
+    assert p.stem == "file"
+
+
+@test
+def test_suffix_returns_extension():
+    p = pathlib.Path("/some/path/file.txt")
+    assert p.suffix == ".txt"
+
+
+@test
+def test_suffix_empty_when_no_extension():
+    p = pathlib.Path("/some/path/file")
+    assert p.suffix == ""
+
+
+@test
+def test_suffixes_returns_all():
+    p = pathlib.Path("archive.tar.gz")
+    suffixes = p.suffixes
+    assert len(suffixes) == 2
+    assert suffixes[0] == ".tar"
+    assert suffixes[1] == ".gz"
+
+
+@test
+def test_parent_returns_parent_path():
+    p = pathlib.Path("/some/path/file.txt")
+    has_path: bool = "path" in str(p.parent)
+    assert has_path
+
+
+@test
+def test_root_returns_path_root():
+    p = pathlib.Path("/some/path")
+    assert p.root == "/"
+
+
+@test
+def test_is_absolute_true_for_absolute_paths():
+    assert pathlib.Path("/absolute").is_absolute
+
+
+@test
+def test_is_absolute_false_for_relative_paths():
+    assert not pathlib.Path("relative").is_absolute
+
+
+# ===== Query methods =====
+
+@test
+def test_exists_true_for_existing_file(tmp_path: str):
+    path = tmp_path + "/exists.txt"
+    with open(path, "w") as fa:
+        fa.write("data")
+    assert pathlib.Path(path).exists()
+
+
+@test
+def test_exists_false_for_nonexistent(tmp_path: str):
+    assert not pathlib.Path(tmp_path + "/nope.txt").exists()
+
+
+@test
+def test_is_file_true_for_file(tmp_path: str):
+    path = tmp_path + "/file.txt"
+    with open(path, "w") as fa:
+        fa.write("data")
+    assert pathlib.Path(path).is_file()
+
+
+@test
+def test_is_dir_true_for_directory(tmp_path: str):
+    assert pathlib.Path(tmp_path).is_dir()
+
+
+# ===== File I/O =====
+
+@test
+def test_read_text_and_write_text_round_trip(tmp_path: str):
+    p = pathlib.Path(tmp_path + "/roundtrip.txt")
+    p.write_text("hello world")
+    assert p.read_text() == "hello world"
+
+
+# ===== Directory operations =====
+
+@test
+def test_mkdir_creates_directory(tmp_path: str):
+    p = pathlib.Path(tmp_path + "/newdir")
+    p.mkdir()
+    assert p.is_dir()
+
+
+@test
+def test_mkdir_parents_creates_nested_directories(tmp_path: str):
+    p = pathlib.Path(tmp_path + "/a/b/c")
+    p.mkdir(True)
+    assert p.is_dir()
+
+
+@test
+def test_rmdir_removes_empty_directory(tmp_path: str):
+    p = pathlib.Path(tmp_path + "/tormdir")
+    p.mkdir()
+    p.rmdir()
+    assert not p.is_dir()
+
+
+@test
+def test_iterdir_lists_entries(tmp_path: str):
+    with open(tmp_path + "/a.txt", "w") as fa:
+        fa.write("")
+    with open(tmp_path + "/b.txt", "w") as fb:
+        fb.write("")
+    entries: list[str] = []
+    for entry in pathlib.Path(tmp_path).iterdir():
+        entries.append(entry.name)
+    assert contains(entries, "a.txt")
+    assert contains(entries, "b.txt")
+
+
+@test
+def test_glob_matches_pattern(tmp_path: str):
+    with open(tmp_path + "/test1.txt", "w") as fa:
+        fa.write("")
+    with open(tmp_path + "/test2.txt", "w") as fb:
+        fb.write("")
+    with open(tmp_path + "/other.md", "w") as fc:
+        fc.write("")
+    matches: list[str] = []
+    for entry in pathlib.Path(tmp_path).glob("*.txt"):
+        matches.append(entry.name)
+    assert len(matches) == 2
+
+
+# ===== Mutation =====
+
+@test
+def test_unlink_deletes_file(tmp_path: str):
+    path = tmp_path + "/todelete.txt"
+    with open(path, "w") as fa:
+        fa.write("data")
+    pathlib.Path(path).unlink()
+    assert not pathlib.Path(path).exists()
+
+
+@test
+def test_unlink_missing_ok_does_not_throw(tmp_path: str):
+    p = pathlib.Path(tmp_path + "/nonexistent.txt")
+    p.unlink(True)
+    assert not p.exists()
+
+
+@test
+def test_unlink_throws_on_nonexistent(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        pathlib.Path(tmp_path + "/nope.txt").unlink()
+
+
+# ===== Navigation =====
+
+@test
+def test_resolve_returns_absolute_path():
+    p = pathlib.Path("relative").resolve()
+    assert p.is_absolute
+
+
+@test
+def test_with_name_changes_name():
+    p = pathlib.Path("/some/path/file.txt").with_name("other.md")
+    assert p.name == "other.md"
+
+
+@test
+def test_with_stem_changes_stem():
+    p = pathlib.Path("/some/path/file.txt").with_stem("other")
+    assert p.name == "other.txt"
+
+
+@test
+def test_with_suffix_changes_suffix():
+    p = pathlib.Path("/some/path/file.txt").with_suffix(".md")
+    assert p.name == "file.md"
+
+
+# ===== Rename =====
+
+@test
+def test_rename_renames_file(tmp_path: str):
+    src = tmp_path + "/rename_src.txt"
+    with open(src, "w") as fa:
+        fa.write("content")
+    dst = tmp_path + "/rename_dst.txt"
+    result = pathlib.Path(src).rename(dst)
+    assert not pathlib.Path(src).exists()
+    assert pathlib.Path(dst).exists()
+    assert str(result) == dst
+    assert pathlib.Path(dst).read_text() == "content"
+
+
+@test
+def test_rename_throws_on_nonexistent(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        pathlib.Path(tmp_path + "/nonexistent.txt").rename(tmp_path + "/dst.txt")
+
+
+# ===== Replace =====
+
+@test
+def test_replace_replaces_existing_target(tmp_path: str):
+    src = tmp_path + "/replace_src.txt"
+    dst = tmp_path + "/replace_dst.txt"
+    with open(src, "w") as fa:
+        fa.write("new content")
+    with open(dst, "w") as fb:
+        fb.write("old content")
+    result = pathlib.Path(src).replace(dst)
+    assert not pathlib.Path(src).exists()
+    assert pathlib.Path(dst).exists()
+    assert str(result) == dst
+    assert pathlib.Path(dst).read_text() == "new content"
+
+
+@test
+def test_replace_works_when_target_does_not_exist(tmp_path: str):
+    src = tmp_path + "/replace_src2.txt"
+    dst = tmp_path + "/replace_dst2.txt"
+    with open(src, "w") as fa:
+        fa.write("data")
+    result = pathlib.Path(src).replace(dst)
+    assert not pathlib.Path(src).exists()
+    assert pathlib.Path(dst).exists()
+    assert str(result) == dst
+
+
+# ===== RelativeTo =====
+
+@test
+def test_relative_to_computes_relative_path(tmp_path: str):
+    child = pathlib.Path(tmp_path + "/a/b")
+    relative = child.relative_to(tmp_path)
+    assert str(relative) == "a/b"
+
+
+@test
+def test_relative_to_throws_when_not_relative():
+    with assert_raises(ValueError):
+        pathlib.Path("/completely/different").relative_to("/other/base")
+
+
+@test
+def test_relative_to_same_path_returns_dot(tmp_path: str):
+    p = pathlib.Path(tmp_path)
+    result = p.relative_to(tmp_path)
+    assert str(result) == "."
+
+
+# ===== Parts =====
+
+@test
+def test_parts_returns_components():
+    p = pathlib.Path("/usr/local/bin")
+    parts = p.parts
+    assert parts[0] == "/"
+    assert parts[1] == "usr"
+    assert parts[2] == "local"
+    assert parts[3] == "bin"
+
+
+@test
+def test_parts_relative_path():
+    p = pathlib.Path("a/b/c")
+    parts = p.parts
+    assert len(parts) == 3
+    assert parts[0] == "a"
+    assert parts[1] == "b"
+    assert parts[2] == "c"
+
+
+# ===== Anchor =====
+
+@test
+def test_anchor_absolute_path():
+    p = pathlib.Path("/usr/local")
+    assert p.anchor == "/"
+
+
+@test
+def test_anchor_relative_path_is_empty():
+    p = pathlib.Path("relative/path")
+    assert p.anchor == ""
+
+
+# ===== Equality =====
+
+@test
+def test_equals_same_paths():
+    assert pathlib.Path("/a/b") == pathlib.Path("/a/b")
+
+
+@test
+def test_equals_different_paths():
+    assert pathlib.Path("/a/b") != pathlib.Path("/a/c")
+
+
+@test
+def test_get_hash_code_same_for_equal_paths():
+    assert hash(pathlib.Path("/a/b")) == hash(pathlib.Path("/a/b"))
+
+
+# ===== Cwd / Home =====
+
+@test
+def test_cwd_returns_current_directory():
+    cwd = pathlib.Path.cwd()
+    assert cwd.is_absolute
+    assert cwd.is_dir()
+
+
+@test
+def test_home_returns_home_directory():
+    home = pathlib.Path.home()
+    assert home.is_absolute
+    assert home.is_dir()
+
+
+# ===== Touch =====
+
+@test
+def test_touch_creates_new_file(tmp_path: str):
+    path = tmp_path + "/touched.txt"
+    pathlib.Path(path).touch()
+    assert pathlib.Path(path).exists()
+
+
+@test
+def test_touch_existing_file_updates_timestamp(tmp_path: str):
+    path = tmp_path + "/touch_existing.txt"
+    with open(path, "w") as fa:
+        fa.write("data")
+    before: float = os.stat(path).st_mtime
+    pathlib.Path(path).touch()
+    after: float = os.stat(path).st_mtime
+    assert after >= before
+
+
+@test
+def test_touch_exist_ok_false_throws_on_existing(tmp_path: str):
+    path = tmp_path + "/touch_exists.txt"
+    with open(path, "w") as fa:
+        fa.write("data")
+    with assert_raises(FileExistsError):
+        pathlib.Path(path).touch(False)
+
+
+# ===== Stat =====
+
+@test
+def test_stat_returns_file_info(tmp_path: str):
+    path = tmp_path + "/stat_file.txt"
+    with open(path, "w") as fa:
+        fa.write("hello")
+    stat = pathlib.Path(path).stat()
+    assert stat.st_size == 5
+    assert stat.st_mtime > 0
+
+
+@test
+def test_stat_returns_directory_info(tmp_path: str):
+    stat = pathlib.Path(tmp_path).stat()
+    assert stat.st_size == 0
+    assert stat.st_mtime > 0
+
+
+@test
+def test_stat_throws_on_nonexistent(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        pathlib.Path(tmp_path + "/nonexistent").stat()
+
+
+# ===== IsSymlink =====
+
+@test
+def test_is_symlink_false_for_regular_file(tmp_path: str):
+    path = tmp_path + "/regular.txt"
+    with open(path, "w") as fa:
+        fa.write("data")
+    assert not pathlib.Path(path).is_symlink()
+
+
+@test
+def test_is_symlink_false_for_nonexistent(tmp_path: str):
+    assert not pathlib.Path(tmp_path + "/nope").is_symlink()
+
+
+# ===== Rglob =====
+
+@test
+def test_rglob_finds_files_recursively(tmp_path: str):
+    sub_dir = tmp_path + "/rglob_sub"
+    os.makedirs(sub_dir, existOk=True)
+    with open(tmp_path + "/top.txt", "w") as fa:
+        fa.write("")
+    with open(sub_dir + "/nested.txt", "w") as fb:
+        fb.write("")
+    matches: list[str] = []
+    for p in pathlib.Path(tmp_path).rglob("*.txt"):
+        matches.append(p.name)
+    assert contains(matches, "top.txt")
+    assert contains(matches, "nested.txt")
+
+
+# ===== Match =====
+
+@test
+def test_match_matches_name():
+    assert pathlib.Path("/some/path/file.txt").match("*.txt")
+    assert not pathlib.Path("/some/path/file.txt").match("*.md")
+
+
+@test
+def test_match_exact_name():
+    assert pathlib.Path("/some/path/file.txt").match("file.txt")
+    assert not pathlib.Path("/some/path/file.txt").match("other.txt")
+
+
+# ===== Expanduser =====
+
+@test
+def test_expanduser_expands_tilde():
+    expanded = pathlib.Path("~").expanduser()
+    assert expanded.is_absolute
+    assert str(expanded) == str(pathlib.Path.home())
+
+
+@test
+def test_expanduser_expands_tilde_slash():
+    expanded = pathlib.Path("~/docs").expanduser()
+    assert expanded.is_absolute
+    has_docs: bool = "docs" in str(expanded)
+    assert has_docs
+
+
+@test
+def test_expanduser_no_tilde_returns_original():
+    p = pathlib.Path("/absolute/path")
+    result = p.expanduser()
+    assert str(result) == "/absolute/path"
