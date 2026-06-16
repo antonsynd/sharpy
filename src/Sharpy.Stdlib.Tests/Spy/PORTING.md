@@ -113,7 +113,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | StringModuleTests.cs | 12 | Spy/string/string_module_tests.spy | 12 | ported |
 | SubprocessModuleTests.cs | 36 | | | pending |
 | SysModuleTests.cs | 21 | | | pending |
-| TarfileTests.cs | 24 | | | pending |
+| TarfileTests.cs | 24 | Spy/tarfile/tarfile_tests.spy | 21 | ported (3 omitted: TarInfo_DefaultProperties/TypeChecks/ToString — `tarfile.TarInfo()` ctor is internal, not constructible from the test assembly, #943. `with tarfile.open(...)`, extractfile().decode(), module-qualified exceptions/constants, isinstance hierarchy all work; `.add(path, arcname)` positional) |
 | TempfileTests.cs | 11 | Spy/tempfile/tempfile_tests.spy | 11 | ported (os.path helpers via `from os.path import ...` — attribute access `os.path.basename` is shadowed by the top-level `os` binding, SPY0203; plain `import os` still needed for rmdir/remove) |
 | TempfileCompleteTests.cs | 11 | Spy/tempfile/tempfile_complete_tests.spy | 11 | ported (GetExtension mirrored with os.path.splitext) |
 | TextwrapTests.cs | 27 | Spy/textwrap/textwrap_tests.spy | 27 | ported |

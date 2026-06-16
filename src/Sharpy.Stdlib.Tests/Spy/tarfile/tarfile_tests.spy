@@ -1,0 +1,276 @@
+from unittest import assert_raises
+
+import tarfile
+from os.path import isfile
+
+# Ported from TarfileTests.cs (#843).
+# `using (var tar = TarfileModule.Open(...))` -> `with tarfile.open(...) as tw/tr:`
+# (TarFile is IDisposable; the `with` var is block-scoped so create and read use
+# separate `with` blocks with distinct names, and read-side assertions live inside the
+# read block). `.add(path, arcname=...)` is passed POSITIONALLY (`add(path, name)`) to
+# avoid kwarg-name mangling. extractfile() returns Bytes? — narrowed with `is not None`
+# and decoded via `.decode("utf-8")`. Module-qualified exception types
+# (tarfile.CompressionError) and constants (tarfile.REGTYPE) resolve directly. List
+# membership is computed into a bool first to avoid the xUnit2009 analyzer. The
+# `tmp_path: str` fixture (#842) replaces the C# per-test temp dir.
+#
+# Omitted (3): TarInfo_DefaultProperties, TarInfo_TypeChecks, TarInfo_ToString — all
+# need `tarfile.TarInfo()` directly, but that constructor is `internal` and not
+# accessible from the generated test assembly (CS1729); see #943. (TarInfo obtained via
+# getmembers() works and is covered by test_getmembers_returns_tar_info_objects.)
+
+
+# ===== Create / read =====
+
+@test
+def test_create_and_read_uncompressed_tar(tmp_path: str):
+    archive = tmp_path + "/test.tar"
+    fp = tmp_path + "/hello.txt"
+    with open(fp, "w") as fa:
+        fa.write("Hello, World!")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(fp, "hello.txt")
+    with tarfile.open(archive, "r:") as tr:
+        names = tr.getnames()
+        has_hello: bool = "hello.txt" in names
+        assert has_hello
+
+
+@test
+def test_create_and_read_gzip_tar(tmp_path: str):
+    archive = tmp_path + "/test.tar.gz"
+    fp = tmp_path + "/data.txt"
+    with open(fp, "w") as fa:
+        fa.write("Compressed content")
+    with tarfile.open(archive, "w:gz") as tw:
+        tw.add(fp, "data.txt")
+    with tarfile.open(archive, "r:gz") as tr:
+        names = tr.getnames()
+        has_data: bool = "data.txt" in names
+        assert has_data
+
+
+@test
+def test_auto_detect_gzip_tar(tmp_path: str):
+    archive = tmp_path + "/auto.tar.gz"
+    fp = tmp_path + "/auto.txt"
+    with open(fp, "w") as fa:
+        fa.write("auto")
+    with tarfile.open(archive, "w:gz") as tw:
+        tw.add(fp, "auto.txt")
+    with tarfile.open(archive, "r") as tr:
+        names = tr.getnames()
+        has_auto: bool = "auto.txt" in names
+        assert has_auto
+
+
+# ===== Extract =====
+
+@test
+def test_extractall_extracts_files(tmp_path: str):
+    archive = tmp_path + "/extract.tar"
+    fp = tmp_path + "/source.txt"
+    out_dir = tmp_path + "/output"
+    with open(fp, "w") as fa:
+        fa.write("Extract me!")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(fp, "source.txt")
+    with tarfile.open(archive, "r:") as tr:
+        tr.extractall(out_dir)
+    assert isfile(out_dir + "/source.txt")
+    content = ""
+    with open(out_dir + "/source.txt", "r") as fr:
+        content = fr.read()
+    assert content == "Extract me!"
+
+
+@test
+def test_extractfile_returns_content(tmp_path: str):
+    archive = tmp_path + "/file.tar"
+    fp = tmp_path + "/content.txt"
+    with open(fp, "w") as fa:
+        fa.write("File content")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(fp, "content.txt")
+    with tarfile.open(archive, "r:") as tr:
+        data = tr.extractfile("content.txt")
+        assert data is not None
+        if data is not None:
+            assert data.decode("utf-8") == "File content"
+
+
+# ===== Members =====
+
+@test
+def test_getmembers_returns_tar_info_objects(tmp_path: str):
+    archive = tmp_path + "/members.tar"
+    fp = tmp_path + "/info.txt"
+    with open(fp, "w") as fa:
+        fa.write("twelve chars")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(fp, "info.txt")
+    with tarfile.open(archive, "r:") as tr:
+        members = tr.getmembers()
+        assert len(members) == 1
+        assert members[0].name == "info.txt"
+        assert members[0].isfile()
+        assert not members[0].isdir()
+        assert members[0].size == 12
+
+
+@test
+def test_getmember_existing_member_returns_info(tmp_path: str):
+    archive = tmp_path + "/member.tar"
+    fp = tmp_path + "/a.txt"
+    with open(fp, "w") as fa:
+        fa.write("aaa")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(fp, "a.txt")
+    with tarfile.open(archive, "r:") as tr:
+        info = tr.getmember("a.txt")
+        assert info.name == "a.txt"
+
+
+@test
+def test_getmember_non_existent_throws_key_error(tmp_path: str):
+    archive = tmp_path + "/miss.tar"
+    fp = tmp_path + "/a.txt"
+    with open(fp, "w") as fa:
+        fa.write("aaa")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(fp, "a.txt")
+    with tarfile.open(archive, "r:") as tr:
+        with assert_raises(KeyError):
+            tr.getmember("nonexistent")
+
+
+@test
+def test_add_with_arcname_uses_archive_name(tmp_path: str):
+    archive = tmp_path + "/arcname.tar"
+    fp = tmp_path + "/original.txt"
+    with open(fp, "w") as fa:
+        fa.write("renamed")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(fp, "renamed.txt")
+    with tarfile.open(archive, "r:") as tr:
+        names = tr.getnames()
+        has_renamed: bool = "renamed.txt" in names
+        assert has_renamed
+
+
+# ===== is_tarfile =====
+
+@test
+def test_is_tarfile_valid_tar_returns_true(tmp_path: str):
+    archive = tmp_path + "/valid.tar"
+    fp = tmp_path + "/x.txt"
+    with open(fp, "w") as fa:
+        fa.write("x")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(fp, "x.txt")
+    assert tarfile.is_tarfile(archive)
+
+
+@test
+def test_is_tarfile_non_tar_returns_false(tmp_path: str):
+    fp = tmp_path + "/notatar.txt"
+    with open(fp, "w") as fa:
+        fa.write("This is not a tar file")
+    assert not tarfile.is_tarfile(fp)
+
+
+@test
+def test_is_tarfile_non_existent_returns_false(tmp_path: str):
+    assert not tarfile.is_tarfile(tmp_path + "/nonexistent.tar")
+
+
+@test
+def test_is_tarfile_gzip_tar_returns_true(tmp_path: str):
+    archive = tmp_path + "/valid.tar.gz"
+    fp = tmp_path + "/y.txt"
+    with open(fp, "w") as fa:
+        fa.write("y")
+    with tarfile.open(archive, "w:gz") as tw:
+        tw.add(fp, "y.txt")
+    assert tarfile.is_tarfile(archive)
+
+
+# ===== Open errors =====
+
+@test
+def test_open_invalid_mode_throws_value_error(tmp_path: str):
+    with assert_raises(ValueError):
+        tarfile.open(tmp_path + "/bad.tar", "x:")
+
+
+@test
+def test_open_bz2_mode_throws_compression_error(tmp_path: str):
+    with assert_raises(tarfile.CompressionError):
+        tarfile.open(tmp_path + "/bad.tar.bz2", "r:bz2")
+
+
+@test
+def test_open_xz_mode_throws_compression_error(tmp_path: str):
+    with assert_raises(tarfile.CompressionError):
+        tarfile.open(tmp_path + "/bad.tar.xz", "w:xz")
+
+
+@test
+def test_open_non_existent_file_throws_file_not_found_error(tmp_path: str):
+    with assert_raises(FileNotFoundError):
+        tarfile.open(tmp_path + "/nonexistent.tar", "r:")
+
+
+# ===== Close =====
+
+@test
+def test_close_prevents_further_operations(tmp_path: str):
+    archive = tmp_path + "/closed.tar"
+    fp = tmp_path + "/c.txt"
+    with open(fp, "w") as fa:
+        fa.write("c")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(fp, "c.txt")
+    read_tar = tarfile.open(archive, "r:")
+    read_tar.close()
+    with assert_raises(ValueError):
+        read_tar.getnames()
+
+
+# ===== Module constants / error hierarchy =====
+
+@test
+def test_module_constants():
+    assert tarfile.REGTYPE == 0
+    assert tarfile.DIRTYPE == 5
+    assert tarfile.SYMTYPE == 2
+    assert tarfile.LNKTYPE == 1
+
+
+@test
+def test_error_hierarchy():
+    assert isinstance(tarfile.ReadError("test"), tarfile.TarError)
+    assert isinstance(tarfile.CompressionError("test"), tarfile.TarError)
+    assert isinstance(tarfile.ExtractError("test"), tarfile.TarError)
+    assert isinstance(tarfile.TarError("test"), Exception)
+
+
+# ===== Multiple files =====
+
+@test
+def test_multiple_files_get_names(tmp_path: str):
+    archive = tmp_path + "/multi.tar"
+    with open(tmp_path + "/a.txt", "w") as fa:
+        fa.write("aaa")
+    with open(tmp_path + "/b.txt", "w") as fb:
+        fb.write("bbb")
+    with tarfile.open(archive, "w:") as tw:
+        tw.add(tmp_path + "/a.txt", "a.txt")
+        tw.add(tmp_path + "/b.txt", "b.txt")
+    with tarfile.open(archive, "r:") as tr:
+        names = tr.getnames()
+        assert len(names) == 2
+        has_a: bool = "a.txt" in names
+        has_b: bool = "b.txt" in names
+        assert has_a
+        assert has_b
