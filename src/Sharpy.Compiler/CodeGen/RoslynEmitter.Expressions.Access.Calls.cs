@@ -818,6 +818,24 @@ internal partial class RoslynEmitter
         FunctionCall call, FunctionSymbol? funcSymbol, ArgumentSyntax prependedArgument)
         => GenerateReorderedCallArgumentsCore(call, funcSymbol, prependedArgument);
 
+    // Resolve the C# parameter name for a kwarg. For CLR-discovered methods
+    // (ClrMethodName != null), parameter names from reflection are the actual C# identifiers
+    // (e.g., "exist_ok"), so we look up the declared param and use its name verbatim.
+    // For Sharpy-defined functions, parameters are stored in snake_case and the C# name
+    // is obtained via camelCase mangling. Both paths escape C# keywords.
+    private static string GetCSharpParameterName(string sharpyName, FunctionSymbol? funcSymbol)
+    {
+        if (funcSymbol?.ClrMethodName != null)
+        {
+            var camelName = NameMangler.ToCamelCase(sharpyName);
+            var match = funcSymbol.Parameters.FirstOrDefault(p => p.Name == sharpyName)
+                ?? funcSymbol.Parameters.FirstOrDefault(p => p.Name == camelName);
+            if (match != null)
+                return CSharpKeywords.EscapeIfNeeded(match.Name);
+        }
+        return NameMangler.ToCamelCase(sharpyName);
+    }
+
     /// <summary>
     /// Core implementation for call-site argument reordering.
     /// When reordering is needed, all non-variadic arguments are emitted as named arguments
@@ -835,7 +853,7 @@ internal partial class RoslynEmitter
             var positionalArgs = GeneratePositionalArguments(call.Arguments, funcSymbol);
             var keywordArgs = call.KeywordArguments.Select(kwarg =>
             {
-                var csharpName = NameMangler.ToCamelCase(kwarg.Name);
+                var csharpName = GetCSharpParameterName(kwarg.Name, funcSymbol);
                 var kwargValue = GenerateExpression(kwarg.Value);
                 if (funcSymbol != null)
                 {
@@ -884,7 +902,7 @@ internal partial class RoslynEmitter
         if (prependedArgument != null && paramList.Count > 0)
         {
             var firstParam = paramList[0];
-            string csharpName = NameMangler.ToCamelCase(firstParam.Name);
+            string csharpName = GetCSharpParameterName(firstParam.Name, funcSymbol);
             argByParam[firstParam.Name] = prependedArgument
                 .WithNameColon(NameColon(IdentifierName(csharpName)));
             paramStartIndex = 1;
@@ -896,7 +914,7 @@ internal partial class RoslynEmitter
             if (param.IsVariadic)
                 continue;
 
-            string csharpParamName = NameMangler.ToCamelCase(param.Name);
+            string csharpParamName = GetCSharpParameterName(param.Name, funcSymbol);
             if (param.IsLateBound)
                 csharpParamName += LateBoundSuffix;
 
@@ -924,7 +942,7 @@ internal partial class RoslynEmitter
                         result.Add(spreadArg);
                     foreach (var remaining in keywordArgsByName.Values)
                     {
-                        var remainingCsharpName = NameMangler.ToCamelCase(remaining.Name);
+                        var remainingCsharpName = GetCSharpParameterName(remaining.Name, funcSymbol);
                         var remainingParam = funcSymbol!.Parameters.FirstOrDefault(p => p.Name == remaining.Name);
                         if (remainingParam is { IsLateBound: true })
                             remainingCsharpName += LateBoundSuffix;
@@ -962,7 +980,7 @@ internal partial class RoslynEmitter
         // Add any remaining keyword args not matched to declared params
         foreach (var remaining in keywordArgsByName.Values)
         {
-            var remainingCsharpName = NameMangler.ToCamelCase(remaining.Name);
+            var remainingCsharpName = GetCSharpParameterName(remaining.Name, funcSymbol);
             var remainingParam = funcSymbol!.Parameters.FirstOrDefault(p => p.Name == remaining.Name);
             if (remainingParam is { IsLateBound: true })
                 remainingCsharpName += LateBoundSuffix;
@@ -1371,7 +1389,7 @@ internal partial class RoslynEmitter
         }
         foreach (var (kwName, kwValue) in fixedKwargs)
         {
-            var csharpName = NameMangler.ToCamelCase(kwName);
+            var csharpName = GetCSharpParameterName(kwName, targetSymbol);
             bodyArgs.Add(Argument(kwValue)
                 .WithNameColon(NameColon(IdentifierName(csharpName))));
         }
