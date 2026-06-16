@@ -101,8 +101,8 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | RequestsAdvancedTests.cs | 34 | | | pending |
 | SecretsTests.cs | 21 | Spy/secrets/secrets_tests.spy | 21 | ported |
 | ShlexModuleTests.cs | 34 | Spy/shlex/shlex_module_tests.spy | 31 | ported (3 omitted: Split/Quote/Join_Null_ThrowsTypeError — null→non-nullable rejected at compile time, Axiom 3) |
-| ShutilTests.cs | 15 | | | pending |
-| ShutilAdditionalTests.cs | 14 | | | pending |
+| ShutilTests.cs | 15 | Spy/shutil/shutil_tests.spy | 15 | ported (Copy2_PreservesTimestamps verifies dst mtime == src mtime via os.stat().st_mtime — os.utime not exposed, so the custom-time setup is dropped; os.path helpers via `from os.path import ...`) |
+| ShutilAdditionalTests.cs | 14 | Spy/shutil/shutil_additional_tests.spy | 14 | ported (2 which tests' Windows skip dropped — POSIX runners, as in glob) |
 | SocketModuleTests.cs | 46 | | | pending |
 | Sqlite3ConnectionTests.cs | 23 | | | pending |
 | Sqlite3CursorTests.cs | 46 | | | pending |

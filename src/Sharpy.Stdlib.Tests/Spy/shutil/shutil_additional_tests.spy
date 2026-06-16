@@ -1,0 +1,186 @@
+from unittest import assert_raises
+
+import os
+import shutil
+from os.path import isdir, isfile, exists
+
+# Ported from ShutilAdditionalTests.cs (#843).
+# Each test takes the pytest-style `tmp_path: str` fixture (#842) as its workspace
+# (the C# fixture built a fresh temp dir per test). Paths use "/" concatenation and
+# distinct `with` variable names per block, mirroring shutil_tests.spy.
+#
+# The two `which` tests that the C# guarded with a Windows skip are ported without
+# the guard (the test runners are POSIX, matching the glob port); the C# "skip if ls
+# not found" early-returns become `if ... is not None:` guards.
+
+
+# ===== copy additional =====
+
+@test
+def test_copy_overwrites_existing_destination(tmp_path: str):
+    src = tmp_path + "/src.txt"
+    with open(src, "w") as fa:
+        fa.write("new content")
+    dst = tmp_path + "/dst.txt"
+    with open(dst, "w") as fb:
+        fb.write("old content")
+    shutil.copy(src, dst)
+    content = ""
+    with open(dst, "r") as fc:
+        content = fc.read()
+    assert content == "new content"
+
+
+@test
+def test_copy_content_matches_source(tmp_path: str):
+    text = "hello from source"
+    src = tmp_path + "/content_src.txt"
+    with open(src, "w") as fa:
+        fa.write(text)
+    dst = tmp_path + "/content_dst.txt"
+    shutil.copy(src, dst)
+    content = ""
+    with open(dst, "r") as fb:
+        content = fb.read()
+    assert content == text
+
+
+# ===== copy2 additional =====
+
+@test
+def test_copy2_to_directory_copies_into_dir(tmp_path: str):
+    src = tmp_path + "/src2.txt"
+    with open(src, "w") as fa:
+        fa.write("data")
+    destdir = tmp_path + "/copy2dir"
+    os.makedirs(destdir, existOk=True)
+    result = shutil.copy2(src, destdir)
+    assert isfile(result)
+    content = ""
+    with open(result, "r") as fb:
+        content = fb.read()
+    assert content == "data"
+
+
+@test
+def test_copy2_nonexistent_source_throws_os_error(tmp_path: str):
+    with assert_raises(OSError):
+        shutil.copy2(tmp_path + "/nope.txt", tmp_path + "/dst.txt")
+
+
+# ===== copytree additional =====
+
+@test
+def test_copytree_deeply_nested_copies_all_levels(tmp_path: str):
+    src = tmp_path + "/deep_src"
+    l1 = src + "/l1"
+    l2 = l1 + "/l2"
+    os.makedirs(l2, existOk=True)
+    with open(src + "/root.txt", "w") as fa:
+        fa.write("root")
+    with open(l1 + "/mid.txt", "w") as fb:
+        fb.write("mid")
+    with open(l2 + "/deep.txt", "w") as fc:
+        fc.write("deep")
+    dst = tmp_path + "/deep_dst"
+    shutil.copytree(src, dst)
+    assert isfile(dst + "/root.txt")
+    assert isfile(dst + "/l1/mid.txt")
+    assert isfile(dst + "/l1/l2/deep.txt")
+    content = ""
+    with open(dst + "/l1/l2/deep.txt", "r") as fd:
+        content = fd.read()
+    assert content == "deep"
+
+
+# ===== rmtree additional =====
+
+@test
+def test_rmtree_empty_directory_removes(tmp_path: str):
+    d = tmp_path + "/rmtree_empty"
+    os.makedirs(d, existOk=True)
+    shutil.rmtree(d)
+    assert not isdir(d)
+
+
+@test
+def test_rmtree_with_subdirectories_removes_all(tmp_path: str):
+    d = tmp_path + "/rmtree_subs"
+    sub = d + "/sub"
+    os.makedirs(sub, existOk=True)
+    with open(sub + "/f.txt", "w") as fa:
+        fa.write("data")
+    shutil.rmtree(d)
+    assert not isdir(d)
+
+
+# ===== move additional =====
+
+@test
+def test_move_file_content_preserved(tmp_path: str):
+    src = tmp_path + "/move_content_src.txt"
+    with open(src, "w") as fa:
+        fa.write("preserved")
+    dst = tmp_path + "/move_content_dst.txt"
+    shutil.move(src, dst)
+    content = ""
+    with open(dst, "r") as fb:
+        content = fb.read()
+    assert content == "preserved"
+
+
+@test
+def test_move_file_into_directory_places_in_dir(tmp_path: str):
+    src = tmp_path + "/move_into_src.txt"
+    with open(src, "w") as fa:
+        fa.write("data")
+    destdir = tmp_path + "/move_into_dir"
+    os.makedirs(destdir, existOk=True)
+    result = shutil.move(src, destdir)
+    # When the destination is a directory, the file is placed inside it.
+    assert not exists(src)
+    # result should be the destination (the file path inside the dir).
+    assert len(result) > 0
+
+
+# ===== which additional =====
+
+@test
+def test_which_finds_ls_on_unix():
+    result = shutil.which("ls")
+    assert result is not None
+    if result is not None:
+        assert isfile(result)
+
+
+@test
+def test_which_path_with_separator_checks_directly():
+    # When name contains a path separator, it is checked directly.
+    ls_path = shutil.which("ls")
+    if ls_path is not None:
+        result = shutil.which(ls_path)
+        assert result is not None
+
+
+@test
+def test_which_path_with_separator_nonexistent_returns_null():
+    assert shutil.which("/nonexistent_xyz_path/binary") is None
+
+
+# ===== disk_usage additional =====
+
+@test
+def test_disk_usage_for_file_returns_sensible_values(tmp_path: str):
+    f = tmp_path + "/diskusage.txt"
+    with open(f, "w") as fa:
+        fa.write("data")
+    total, used, free = shutil.disk_usage(f)
+    assert total > 0
+    assert used + free == total
+
+
+@test
+def test_disk_usage_total_greater_than_used_and_free(tmp_path: str):
+    total, used, free = shutil.disk_usage(tmp_path)
+    assert total >= used
+    assert total >= free
