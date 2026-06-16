@@ -1,0 +1,126 @@
+from unittest import assert_raises
+
+import io
+
+# Ported from IoModuleTests.cs (#843).
+# io.StringIO only — BytesIO does not exist in Sharpy. The C# `new Sharpy.StringIO()`
+# becomes `io.StringIO()`; methods map snake_case -> PascalCase (getvalue, readline,
+# etc.). The C# Dispose_ClosesStream test exercised IDisposable.Dispose(); that is a
+# .NET internal with no Python method, so it is ported through close() — the Pythonic
+# surface for releasing the stream (the assertion that a closed stream rejects writes
+# is preserved).
+
+
+@test
+def test_write_returns_length_written():
+    sio = io.StringIO()
+    assert sio.write("hello") == 5
+
+
+@test
+def test_write_read_cycle():
+    sio = io.StringIO()
+    sio.write("hello world")
+    sio.seek(0)
+    assert sio.read() == "hello world"
+
+
+@test
+def test_read_with_count():
+    sio = io.StringIO()
+    sio.write("hello world")
+    sio.seek(0)
+    assert sio.read(5) == "hello"
+    assert sio.read(1) == " "
+    assert sio.read() == "world"
+
+
+@test
+def test_readline_reads_until_newline():
+    sio = io.StringIO("line1\nline2\nline3")
+    assert sio.readline() == "line1\n"
+    assert sio.readline() == "line2\n"
+    assert sio.readline() == "line3"
+
+
+@test
+def test_readline_at_end_returns_empty():
+    sio = io.StringIO("hello")
+    sio.read()
+    assert sio.readline() == ""
+
+
+@test
+def test_seek_sets_position():
+    sio = io.StringIO("hello")
+    assert sio.seek(2) == 2
+    assert sio.read(1) == "l"
+
+
+@test
+def test_tell_returns_current_position():
+    sio = io.StringIO()
+    assert sio.tell() == 0
+    sio.write("hello")
+    assert sio.tell() == 5
+
+
+@test
+def test_getvalue_returns_entire_content():
+    sio = io.StringIO()
+    sio.write("hello")
+    sio.write(" world")
+    assert sio.getvalue() == "hello world"
+
+
+@test
+def test_truncate_at_current_position():
+    sio = io.StringIO("hello world")
+    sio.seek(5)
+    sio.truncate()
+    assert sio.getvalue() == "hello"
+
+
+@test
+def test_truncate_at_specific_size():
+    sio = io.StringIO("hello world")
+    sio.truncate(3)
+    assert sio.getvalue() == "hel"
+
+
+@test
+def test_close_prevents_operations():
+    sio = io.StringIO("hello")
+    sio.close()
+    with assert_raises(ValueError):
+        sio.read()
+
+
+@test
+def test_dispose_closes_stream():
+    # Dispose() is a .NET internal; close() is the Python surface for it.
+    sio = io.StringIO("hello")
+    sio.close()
+    with assert_raises(ValueError):
+        sio.write("x")
+
+
+@test
+def test_initial_content_is_readable():
+    sio = io.StringIO("initial")
+    assert sio.read() == "initial"
+
+
+@test
+def test_write_overwrites_at_position():
+    sio = io.StringIO("hello")
+    sio.seek(0)
+    sio.write("HE")
+    assert sio.getvalue() == "HEllo"
+
+
+@test
+def test_seek_negative_throws():
+    sio = io.StringIO()
+    with assert_raises(ValueError):
+        sio.seek(-1)

@@ -50,8 +50,8 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | HmacTests.cs | 13 | Spy/hmac/hmac_tests.spy | 13 | ported (re-enabled #890) |
 | HtmlModuleTests.cs | 44 | Spy/html/html_module_tests.spy | 44 | ported (re-enabled #902; 4 convert_charrefs=False tests restored #906) |
 | HttpTests.cs | 35 | Spy/http/http_tests.spy | 26 | ported (9 omitted: 7 HTTPResponse internal ctor, 1 reflection, 1 StringWriter) |
-| IoModuleTests.cs | 15 | | | pending |
-| IoStringIOTests.cs | 27 | | | pending |
+| IoModuleTests.cs | 15 | Spy/io/io_module_tests.spy | 15 | ported (io.StringIO only; Dispose_ClosesStream ported via close() — IDisposable.Dispose has no Python surface) |
+| IoStringIOTests.cs | 27 | Spy/io/io_stringio_tests.spy | 27 | ported |
 | IpaddressTests.cs | 114 | Spy/ipaddress/ipaddress_tests.spy | 112 | ported (2 omitted: BigInteger, Bytes ctor) |
 | ItertoolsTests.cs | 20 | Spy/itertools/itertools_tests.spy | 20 | ported (inline collection literals bound to typed locals to work around codegen type-inference bug #917) |
 | ItertoolsAdditionalTests.cs | 34 | Spy/itertools/itertools_additional_tests.spy | 34 | ported |

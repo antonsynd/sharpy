@@ -1,0 +1,226 @@
+from unittest import assert_raises
+
+import io
+
+# Ported from IoStringIOTests.cs (#843).
+# Additional io.StringIO coverage beyond io_module_tests.spy. The C# `new
+# Sharpy.StringIO()` becomes `io.StringIO()`; closed-stream operations raise
+# ValueError (verified with assert_raises).
+
+
+# --- Empty constructor ---
+
+@test
+def test_empty_constructor_getvalue_is_empty():
+    sio = io.StringIO()
+    assert sio.getvalue() == ""
+
+
+@test
+def test_empty_constructor_read_returns_empty():
+    sio = io.StringIO()
+    assert sio.read() == ""
+
+
+@test
+def test_empty_constructor_tell_is_zero():
+    sio = io.StringIO()
+    assert sio.tell() == 0
+
+
+@test
+def test_initial_content_tell_is_at_start():
+    sio = io.StringIO("hello")
+    # Position starts at 0 for initial content.
+    assert sio.tell() == 0
+
+
+# --- Write ---
+
+@test
+def test_write_sequential_writes_accumulate():
+    sio = io.StringIO()
+    sio.write("foo")
+    sio.write("bar")
+    assert sio.getvalue() == "foobar"
+
+
+@test
+def test_write_returns_character_count():
+    sio = io.StringIO()
+    assert sio.write("hello world") == 11
+
+
+@test
+def test_write_empty_string_returns_zero():
+    sio = io.StringIO()
+    assert sio.write("") == 0
+
+
+# --- Seek / Tell ---
+
+@test
+def test_seek_to_zero_allows_full_read():
+    sio = io.StringIO()
+    sio.write("hello")
+    sio.seek(0)
+    assert sio.read() == "hello"
+
+
+@test
+def test_seek_returns_new_position():
+    sio = io.StringIO("hello world")
+    assert sio.seek(6) == 6
+
+
+@test
+def test_tell_after_read_reflects_position():
+    sio = io.StringIO("hello")
+    sio.read(3)
+    assert sio.tell() == 3
+
+
+# --- Readline ---
+
+@test
+def test_readline_no_newline_reads_to_end():
+    sio = io.StringIO("no newline here")
+    assert sio.readline() == "no newline here"
+
+
+@test
+def test_readline_multiple_calls_advance_through_content():
+    sio = io.StringIO("line1\nline2\nline3")
+    assert sio.readline() == "line1\n"
+    assert sio.readline() == "line2\n"
+    assert sio.readline() == "line3"
+    assert sio.readline() == ""
+
+
+# --- Truncate ---
+
+@test
+def test_truncate_zero_clears_content():
+    sio = io.StringIO("hello world")
+    sio.truncate(0)
+    assert sio.getvalue() == ""
+
+
+@test
+def test_truncate_returns_new_size():
+    sio = io.StringIO("hello world")
+    assert sio.truncate(5) == 5
+
+
+@test
+def test_write_after_seek_to_middle_overwrites_chars():
+    sio = io.StringIO("hello world")
+    sio.seek(6)
+    sio.write("earth")
+    assert sio.getvalue() == "hello earth"
+
+
+# --- Getvalue / Read positioning ---
+
+@test
+def test_getvalue_regardless_of_position_returns_all():
+    sio = io.StringIO()
+    sio.write("full content")
+    # Do not seek back to 0.
+    assert sio.tell() == 12
+    # Getvalue should still return everything.
+    assert sio.getvalue() == "full content"
+
+
+@test
+def test_seek_to_end_read_returns_empty():
+    sio = io.StringIO("hello")
+    sio.seek(5)
+    assert sio.read() == ""
+
+
+@test
+def test_read_partial_read_advances_position():
+    sio = io.StringIO("abcdef")
+    sio.read(2)
+    assert sio.tell() == 2
+    assert sio.read(2) == "cd"
+    assert sio.tell() == 4
+
+
+# --- Closed stream raises ValueError ---
+
+@test
+def test_close_getvalue_throws_value_error():
+    sio = io.StringIO("hello")
+    sio.close()
+    with assert_raises(ValueError):
+        sio.getvalue()
+
+
+@test
+def test_close_seek_throws_value_error():
+    sio = io.StringIO("hello")
+    sio.close()
+    with assert_raises(ValueError):
+        sio.seek(0)
+
+
+@test
+def test_close_write_throws_value_error():
+    sio = io.StringIO()
+    sio.close()
+    with assert_raises(ValueError):
+        sio.write("data")
+
+
+@test
+def test_close_read_throws_value_error():
+    sio = io.StringIO("hello")
+    sio.close()
+    with assert_raises(ValueError):
+        sio.read()
+
+
+@test
+def test_close_tell_throws_value_error():
+    sio = io.StringIO("hello")
+    sio.close()
+    with assert_raises(ValueError):
+        sio.tell()
+
+
+@test
+def test_close_truncate_throws_value_error():
+    sio = io.StringIO("hello")
+    sio.close()
+    with assert_raises(ValueError):
+        sio.truncate()
+
+
+# --- Seek negative ---
+
+@test
+def test_seek_negative_position_throws_value_error():
+    sio = io.StringIO("hello")
+    with assert_raises(ValueError):
+        sio.seek(-1)
+
+
+# --- Truncate default arg ---
+
+@test
+def test_truncate_default_arg_uses_current_position():
+    sio = io.StringIO("hello world")
+    sio.seek(5)
+    assert sio.truncate() == 5
+    assert sio.getvalue() == "hello"
+
+
+# --- Tell after write ---
+
+@test
+def test_tell_after_write_reflects_buffer_length():
+    sio = io.StringIO()
+    sio.write("abc")
+    assert sio.tell() == 3
