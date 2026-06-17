@@ -95,10 +95,10 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | ReModuleTests.cs | 56 | Spy/re/re_module_tests.spy | 56 | ported |
 | ReOperationTests.cs | 24 | Spy/re/re_operation_tests.spy | 24 | ported |
 | RePatternTests.cs | 74 | Spy/re/re_pattern_tests.spy | 67 | ported (7 omitted: 4 re.error type-not-nameable + 3 MatchResult indexer __getitem__ — spy-sourced module member-type gap, #918) |
-| RequestsModuleTests.cs | 20 | Spy/requests/requests_module_tests.spy | 0 | ported (all 14 omitted: all tests drive internal Requests.Send with mocked HttpMessageHandler — not reachable from .spy; 1 null arg Axiom 3; 1 live DNS) |
-| RequestsResponseTests.cs | 38 | Spy/requests/requests_response_tests.spy | 0 | ported (all 26 omitted: all tests construct Response via internal ctor from HttpResponseMessage — not reachable from .spy; 1 null arg Axiom 3) |
-| RequestsSessionTests.cs | 37 | Spy/requests/requests_session_tests.spy | 20 | ported (11 omitted: 2 null arg Axiom 3; 1 IDisposable/Dispose; 1 ArgumentOutOfRangeException not catchable; 7 internal Requests.Send) |
-| RequestsAdvancedTests.cs | 34 | Spy/requests/requests_advanced_tests.spy | 0 | ported (all 32 omitted: file upload/streaming via internal Requests.Send+mock; session config tests already ported in session_tests.spy) |
+| RequestsModuleTests.cs | 20 | Spy/requests/requests_module_tests.spy | 0 | ported (all 20 omitted [14 methods, 6 Theory expansion]: all tests drive internal Requests.Send with mocked HttpMessageHandler — not reachable from .spy; 1 null arg Axiom 3; 1 live DNS) |
+| RequestsResponseTests.cs | 38 | Spy/requests/requests_response_tests.spy | 0 | ported (all 38 omitted [26 methods, 12 Theory expansion]: all tests construct Response via internal ctor from HttpResponseMessage — not reachable from .spy; 1 null arg Axiom 3) |
+| RequestsSessionTests.cs | 37 | Spy/requests/requests_session_tests.spy | 20 | ported (17 omitted [11 methods, 6 Theory expansion]: 2 null arg Axiom 3; 1 IDisposable/Dispose; 1 ArgumentOutOfRangeException not catchable; 7 methods internal Requests.Send incl. 3 Theories ×3 InlineData each) |
+| RequestsAdvancedTests.cs | 34 | Spy/requests/requests_advanced_tests.spy | 0 | ported (all 34 omitted [32 methods, 2 Theory expansion]: file upload/streaming via internal Requests.Send+mock; session config tests already ported in session_tests.spy) |
 | SecretsTests.cs | 21 | Spy/secrets/secrets_tests.spy | 21 | ported |
 | ShlexModuleTests.cs | 34 | Spy/shlex/shlex_module_tests.spy | 31 | ported (3 omitted: Split/Quote/Join_Null_ThrowsTypeError — null→non-nullable rejected at compile time, Axiom 3) |
 | ShutilTests.cs | 15 | Spy/shutil/shutil_tests.spy | 15 | ported (Copy2_PreservesTimestamps verifies dst mtime == src mtime via os.stat().st_mtime — os.utime not exposed, so the custom-time setup is dropped; os.path helpers via `from os.path import ...`) |
@@ -149,7 +149,7 @@ Compiler/stdlib gaps filed during Phase 3 (none block a module): **#940** (modul
 
 ## Phase 4 (System & Network) — COMPLETE (2026-06-17)
 
-All 7 modules ported; 14 C# test files removed and replaced by `.spy`. **246/411 tests ported, 165 documented omissions, 0 silent drops.**
+All 7 modules ported; 14 C# test files removed and replaced by `.spy`. **246/437 tests ported, 191 documented omissions, 0 silent drops.** (Counts use expanded test cases — each `[Theory]`/`[InlineData]` row = 1 case.)
 
 | Module | C# files | Ported/Total | Omitted |
 |--------|----------|--------------|---------|
@@ -159,11 +159,11 @@ All 7 modules ported; 14 C# test files removed and replaced by `.spy`. **246/411
 | threading | 1 | 43/43 | 0 |
 | socket | 1 | 40/46 | 6 |
 | sqlite3 | 4 | 88/126 | 38 |
-| requests | 4 | 20/103 | 83 |
-| **Total** | **14** | **246/411** | **165** |
+| requests | 4 | 20/129 | 109 |
+| **Total** | **14** | **246/437** | **191** |
 
 Omission breakdown by category:
-- **requests ×83**: internal `Requests.Send` + mocked `HttpMessageHandler` with no Sharpy surface (53); internal `Response(HttpResponseMessage)` constructor (26); null arg Axiom 3 (3); live DNS (1)
+- **requests ×109**: internal `Requests.Send` + mocked `HttpMessageHandler` with no Sharpy surface (79 expanded); internal `Response(HttpResponseMessage)` constructor (26); null arg Axiom 3 (3); live DNS (1). The 4 C# files have `[Theory]` methods that expand to 26 additional test cases beyond method count.
 - **sqlite3 error ×29**: exception construction + reflection (BeAssignableTo, MessagePropagation, InnerException, DefaultConstructor) — no Sharpy surface for direct exception construction/inspection
 - **logging ×31**: StringWriter/Console.SetError stderr capture (26); reference identity GetLogger BeSameAs/NotBeSameAs (5) — no Sharpy surface for stderr interception
 - **sys ×7**: reference identity BeSameAs/NotBeSameAs (4); StringWriter redirect (2); null arg Axiom 3 (1)

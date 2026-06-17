@@ -1,14 +1,17 @@
 import sys
 
-# Ported from SysModuleTests.cs (#843).
-# 10 omitted: Stdout_IsConsoleOut/Stderr_IsConsoleError (reference identity via
-# BeSameAs Console.Out/Error — no Sharpy surface); Print_WithStderrFile/
-# Stdout_WriteRoutesToConsoleOut (StringWriter + Console.SetError/SetOut redirect
-# — no Sharpy surface); Argv_ReturnsCopy/Path_ReturnsCopy (reference identity
-# via NotBeSameAs — no Sharpy surface); Argv_MutatingCopy_DoesNotAffectSource
-# (array[0] mutation + reference identity — CLR array semantics, no Sharpy
-# surface); Getsizeof_Null_ReturnsZero (null arg to non-nullable param, Axiom 3);
-# Executable_MatchesArgvZeroOrEmpty (string.IsNullOrEmpty + ternary, C#-specific).
+# Ported from SysModuleTests.cs (#843). 14/21 ported, 7 omitted.
+# Stdout_IsConsoleOut/Stderr_IsConsoleError BeSameAs(Console.Out/Error) identity
+# checks are replaced by weaker not-None assertions (reference identity has no
+# Sharpy surface; behavioral non-null is verifiable).
+#
+# 7 omitted: Print_WithStderrFile/Stdout_WriteRoutesToConsoleOut (StringWriter +
+# Console.SetError/SetOut redirect — no Sharpy surface); Argv_ReturnsCopy/
+# Path_ReturnsCopy (reference identity via NotBeSameAs — no Sharpy surface);
+# Argv_MutatingCopy_DoesNotAffectSource (array[0] mutation + reference identity
+# — CLR array semantics, no Sharpy surface); Getsizeof_Null_ReturnsZero (null
+# arg to non-nullable param, Axiom 3); Executable_MatchesArgvZeroOrEmpty
+# (string.IsNullOrEmpty + ternary, C#-specific).
 
 
 # --- Streams ---
