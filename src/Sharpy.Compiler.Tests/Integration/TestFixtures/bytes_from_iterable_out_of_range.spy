@@ -1,0 +1,17 @@
+# bytes() from an out-of-range int raises ValueError (#949)
+def main():
+    caught_high: bool = False
+    try:
+        bad: bytes = bytes([256])
+        print(bad)
+    except ValueError:
+        caught_high = True
+    print(caught_high)
+
+    caught_low: bool = False
+    try:
+        neg: bytes = bytes([-1])
+        print(neg)
+    except ValueError:
+        caught_low = True
+    print(caught_low)

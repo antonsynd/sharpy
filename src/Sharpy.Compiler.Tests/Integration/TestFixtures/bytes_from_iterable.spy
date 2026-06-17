@@ -1,0 +1,22 @@
+# Test bytes() constructor from an iterable of ints (#949)
+def main():
+    # From a list literal of ints
+    data: bytes = bytes([104, 105, 33])
+    print(data)
+    print(len(data))
+    print(data[0])
+
+    # Empty bytes()
+    empty: bytes = bytes()
+    print(empty)
+    print(len(empty))
+
+    # Zero-filled bytes(n)
+    zeros: bytes = bytes(4)
+    print(zeros)
+    print(len(zeros))
+
+    # From a list variable
+    nums: list[int] = [97, 98, 99]
+    from_var: bytes = bytes(nums)
+    print(from_var)
