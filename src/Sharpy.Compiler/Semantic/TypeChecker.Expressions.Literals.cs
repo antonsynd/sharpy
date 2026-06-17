@@ -35,6 +35,27 @@ internal partial class TypeChecker
         return null;
     }
 
+    /// <summary>
+    /// Guards against a <see cref="VoidType"/> collection element/value type, which arises when
+    /// every element is the <c>None</c> literal and no contextual element type was available
+    /// (e.g. bare <c>[None]</c>, <c>{None}</c>, <c>{"k": None}</c>). Emitting <c>List&lt;void&gt;</c>
+    /// produces invalid C#, so report <see cref="DiagnosticCodes.Semantic.CannotInferType"/> and fall
+    /// back to <see cref="SemanticType.Unknown"/>. Callers must apply any contextual-type resolution
+    /// before calling this, so a surviving <c>Void</c> is genuinely un-inferable (#950).
+    /// </summary>
+    private SemanticType ResolveVoidElementType(
+        SemanticType elementType, string collectionName, Expression node, string annotationHint)
+    {
+        if (elementType is not VoidType)
+            return elementType;
+
+        AddError(
+            $"Cannot infer element type from a {collectionName} of only 'None'; add a type annotation (e.g., {annotationHint})",
+            node.LineStart, node.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferType,
+            span: node.Span);
+        return SemanticType.Unknown;
+    }
+
     private SemanticType CheckListLiteral(ListLiteral list)
     {
         if (list.Elements.Length == 0)
@@ -67,10 +88,10 @@ internal partial class TypeChecker
         // This handles cases like [Bug(), Feature()] -> list[WorkItem]
         var commonType = FindLeastCommonAncestor(elementTypes);
 
-        // When LCA falls back to object but a contextual type is available,
-        // use the expected element type if all elements are assignable to it.
-        // This handles cases like: x: list[float] = [a, b] where a,b are float.
-        if (commonType is UserDefinedType { Name: "object" }
+        // When LCA falls back to object (or Void, for an all-`None` literal) but a contextual
+        // type is available, use the expected element type if all elements are assignable to it.
+        // This handles cases like: x: list[float] = [a, b]; x: list[object] = [None] (#950).
+        if (commonType is UserDefinedType { Name: "object" } or VoidType
             && _expectedType is GenericType expectedList
             && expectedList.Name == BuiltinNames.List
             && expectedList.TypeArguments.Count == 1
@@ -78,6 +99,13 @@ internal partial class TypeChecker
         {
             commonType = expectedList.TypeArguments[0];
         }
+
+        // A Void common element type means every element is `None` and no usable element type
+        // could be inferred (e.g. `[None]`); the contextual element type wins when present
+        // (`x: list[object] = [None]`), otherwise this is an un-inferable literal — error rather
+        // than emitting an invalid `List<void>` (#950).
+        commonType = ResolveVoidElementType(
+            commonType, BuiltinNames.List, list, "list[object]");
 
         return new GenericType
         {
@@ -129,10 +157,17 @@ internal partial class TypeChecker
             if (commonKeyType is UserDefinedType { Name: "object" }
                 && AllAssignableTo(keyTypes, expectedDict.TypeArguments[0]))
                 commonKeyType = expectedDict.TypeArguments[0];
-            if (commonValueType is UserDefinedType { Name: "object" }
+            if (commonValueType is UserDefinedType { Name: "object" } or VoidType
                 && AllAssignableTo(valueTypes, expectedDict.TypeArguments[1]))
                 commonValueType = expectedDict.TypeArguments[1];
         }
+
+        // `{"k": None}` with no usable value type errors rather than emitting a `void` value
+        // type argument (#950). Keys are likewise guarded for symmetry.
+        commonKeyType = ResolveVoidElementType(
+            commonKeyType, BuiltinNames.Dict, dict, "dict[str, object]");
+        commonValueType = ResolveVoidElementType(
+            commonValueType, BuiltinNames.Dict, dict, "dict[str, object]");
 
         return new GenericType
         {
@@ -171,9 +206,9 @@ internal partial class TypeChecker
         // Find least common ancestor of all element types
         var commonType = FindLeastCommonAncestor(elementTypes);
 
-        // When LCA falls back to object but a contextual type is available,
-        // use the expected element type if all elements are assignable to it.
-        if (commonType is UserDefinedType { Name: "object" }
+        // When LCA falls back to object (or Void, for an all-`None` literal) but a contextual
+        // type is available, use the expected element type if all elements are assignable to it.
+        if (commonType is UserDefinedType { Name: "object" } or VoidType
             && _expectedType is GenericType expectedSet
             && expectedSet.Name == BuiltinNames.Set
             && expectedSet.TypeArguments.Count == 1
@@ -181,6 +216,10 @@ internal partial class TypeChecker
         {
             commonType = expectedSet.TypeArguments[0];
         }
+
+        // `{None}` with no usable element type errors rather than emitting `Set<void>` (#950).
+        commonType = ResolveVoidElementType(
+            commonType, BuiltinNames.Set, set, "set[object]");
 
         return new GenericType
         {

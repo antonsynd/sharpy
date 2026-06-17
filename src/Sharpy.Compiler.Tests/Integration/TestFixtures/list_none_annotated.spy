@@ -1,0 +1,9 @@
+# An explicit element-type annotation lets a `None`-only literal type-check (#950):
+# the contextual type wins before the un-inferable-element diagnostic fires.
+def main() -> None:
+    x: list[object] = [None]
+    print(len(x))
+    s: set[object] = {None}
+    print(len(s))
+    d: dict[str, object] = {"k": None}
+    print(len(d))

@@ -1,0 +1,5 @@
+# A collection literal of only `None` with no contextual type cannot infer an
+# element type and must error (SPY0227) rather than emit an invalid List<void> (#950).
+def main() -> None:
+    x = [None]
+    print(len(x))
