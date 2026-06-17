@@ -1,0 +1,21 @@
+# Ported from RequestsResponseTests.cs — NO TESTS PORTED.
+#
+# Every test constructs a Response directly from a hand-built
+# System.Net.Http.HttpResponseMessage via the `internal Response(HttpResponseMessage)`
+# constructor. That constructor is not part of Sharpy's public surface: Response
+# objects can only be obtained as the Ok value of a Requests.Send(...) call, which in
+# turn requires a real HTTP exchange. So none of the Response property/behavior tests
+# (StatusCode, Ok, Text, Content, Url, Headers, Encoding, Json, ToString, Dispose,
+# RaiseForStatus) are reachable or hermetic from .spy.
+#
+# Omitted tests and why:
+#   - StatusCode_*, Ok_* (2 theories), Text_* (4), Content_* (3), Url_* (2),
+#     Headers_* (3), Encoding_* (3), Json_* (4), ToString_* (2), Dispose_DoesNotThrow:
+#       all need new Response(httpResponseMessage) — internal constructor, unreachable.
+#   - Constructor_NullHttpResponse_Throws: passes null! to the internal constructor —
+#     not expressible in type-safe Sharpy (Axiom 3).
+#
+# (RaiseForStatus tests live in RequestsSessionTests.cs and are likewise unportable —
+# they also build a Response from an HttpResponseMessage.)
+
+import requests

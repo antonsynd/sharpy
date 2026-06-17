@@ -1,0 +1,291 @@
+from unittest import assert_raises
+
+import operator
+import subprocess
+
+# Ported from SubprocessModuleTests.cs (#843).
+#
+# These tests spawn real child processes. Every command used is a portable POSIX
+# utility (echo, true, false, cat, sh -c, pwd, sleep) so the suite stays hermetic
+# on the Linux/macOS CI runners (the C# Popen_SendSignal_Unix test already gated
+# itself to Unix, and Sharpy CI is POSIX-only — see the glob/shutil ports).
+#
+# API mapping:
+#   SubprocessModule.Run/CheckOutput/CheckCall -> subprocess.run/check_output/check_call
+#   new CompletedProcess(...)                  -> subprocess.CompletedProcess(...)
+#   new Popen(...)                             -> subprocess.Popen(...) (IDisposable -> `with`)
+#   new CalledProcessError/TimeoutExpired(...) -> subprocess.CalledProcessError/TimeoutExpired(...)
+#   PIPE/STDOUT/DEVNULL constants              -> subprocess.PIPE/STDOUT/DEVNULL (static fields)
+#   cp.CheckReturncode()                       -> cp.check_returncode()
+#   proc.Communicate(input) -> (out, err)      -> proc.communicate(input) unpacked tuple
+#   proc.Wait/Poll/Kill/Terminate/SendSignal   -> proc.wait/poll/kill/terminate/send_signal
+# Keyword args use the C# parameter spelling (camelCase): captureOutput=True.
+# Single-word params (check, text, input, timeout, cwd, env, stdin/stdout/stderr)
+# pass as-is.
+#
+# Omissions (none silently dropped; 36 C# tests -> 36 ported, 0 omitted):
+#   All 36 tests port directly. CalledProcessError/TimeoutExpired property and
+#   message checks are kept; the `is SubprocessError`/`is Exception` runtime type
+#   checks become isinstance() assertions (Sharpy surface for the same intent).
+
+
+# ===== Constants =====
+
+@test
+def test_constants_match_python():
+    assert subprocess.PIPE == -1
+    assert subprocess.STDOUT == -2
+    assert subprocess.DEVNULL == -3
+
+
+# ===== CompletedProcess =====
+
+@test
+def test_completed_process_properties():
+    args: list[str] = ["echo", "hello"]
+    cp = subprocess.CompletedProcess(args, 0, "hello\n", "")
+    assert cp.Args == ["echo", "hello"]
+    assert cp.Returncode == 0
+    assert cp.Stdout == "hello\n"
+    assert cp.Stderr == ""
+
+
+@test
+def test_completed_process_check_returncode_zero_no_exception():
+    cp = subprocess.CompletedProcess(["true"], 0)
+    cp.check_returncode()
+
+
+@test
+def test_completed_process_check_returncode_non_zero_throws():
+    cp = subprocess.CompletedProcess(["false"], 1)
+    with assert_raises(subprocess.CalledProcessError) as ex:
+        cp.check_returncode()
+    assert ex.Returncode == 1
+
+
+@test
+def test_completed_process_to_string():
+    cp = subprocess.CompletedProcess(["echo", "hi"], 0)
+    text: str = str(cp)
+    assert "CompletedProcess" in text
+    assert "returncode=0" in text
+
+
+# ===== Exception hierarchy =====
+
+@test
+def test_called_process_error_is_subprocess_error():
+    ex = subprocess.CalledProcessError(1, ["false"])
+    assert isinstance(ex, subprocess.SubprocessError)
+    assert isinstance(ex, Exception)
+
+
+@test
+def test_called_process_error_message_format():
+    ex = subprocess.CalledProcessError(1, ["my", "cmd"])
+    msg: str = str(ex)
+    assert "my cmd" in msg
+    assert "non-zero exit status 1" in msg
+
+
+@test
+def test_called_process_error_properties():
+    cmd: list[str] = ["test"]
+    ex = subprocess.CalledProcessError(42, cmd, "out", "err")
+    assert ex.Returncode == 42
+    assert ex.Cmd == ["test"]
+    assert ex.Output == "out"
+    assert ex.Stderr == "err"
+
+
+@test
+def test_timeout_expired_is_subprocess_error():
+    ex = subprocess.TimeoutExpired(["sleep"], 5.0)
+    assert isinstance(ex, subprocess.SubprocessError)
+
+
+@test
+def test_timeout_expired_message_format():
+    ex = subprocess.TimeoutExpired(["sleep", "10"], 5.0)
+    msg: str = str(ex)
+    assert "sleep 10" in msg
+    assert "timed out after 5 seconds" in msg
+
+
+# ===== run (integration) =====
+
+@test
+def test_run_basic_command_capture_output():
+    result = subprocess.run(["echo", "hello"], captureOutput=True)
+    assert result.Returncode == 0
+    assert "hello" in result.Stdout
+
+
+@test
+def test_run_capture_stderr():
+    result = subprocess.run(["sh", "-c", "echo err >&2"], captureOutput=True)
+    assert "err" in result.Stderr
+
+
+@test
+def test_run_check_mode_success():
+    subprocess.run(["true"], check=True)
+
+
+@test
+def test_run_check_mode_failure():
+    with assert_raises(subprocess.CalledProcessError) as ex:
+        subprocess.run(["false"], check=True)
+    assert ex.Returncode != 0
+
+
+@test
+def test_run_input_piping():
+    result = subprocess.run(["cat"], input="hello", captureOutput=True)
+    assert result.Stdout == "hello"
+
+
+@test
+def test_run_timeout_throws():
+    with assert_raises(subprocess.TimeoutExpired):
+        subprocess.run(["sleep", "10"], timeout=0.5)
+
+
+@test
+def test_run_working_directory():
+    result = subprocess.run(["pwd"], captureOutput=True, cwd="/tmp")
+    assert "tmp" in result.Stdout.strip()
+
+
+@test
+def test_run_environment_variables():
+    env: dict[str, str] = {"MY_VAR": "test_val"}
+    result = subprocess.run(["sh", "-c", "echo $MY_VAR"], captureOutput=True, env=env)
+    assert "test_val" in result.Stdout
+
+
+@test
+def test_run_non_zero_without_check_no_exception():
+    result = subprocess.run(["false"])
+    assert result.Returncode != 0
+
+
+# ===== check_output =====
+
+@test
+def test_check_output_basic_command():
+    output: str = subprocess.check_output(["echo", "hello"])
+    assert "hello" in output
+
+
+@test
+def test_check_output_failure_throws():
+    with assert_raises(subprocess.CalledProcessError):
+        subprocess.check_output(["false"])
+
+
+# ===== check_call =====
+
+@test
+def test_check_call_success():
+    assert subprocess.check_call(["true"]) == 0
+
+
+@test
+def test_check_call_failure_throws():
+    with assert_raises(subprocess.CalledProcessError):
+        subprocess.check_call(["false"])
+
+
+# ===== Popen =====
+
+@test
+def test_popen_basic_wait():
+    with subprocess.Popen(["true"]) as proc:
+        exit_code: int = proc.wait()
+        assert exit_code == 0
+
+
+@test
+def test_popen_communicate():
+    with subprocess.Popen(["cat"], stdin=subprocess.PIPE, stdout=subprocess.PIPE) as proc:
+        stdout, stderr = proc.communicate("test input")
+        assert stdout == "test input"
+
+
+@test
+def test_popen_pid_is_positive():
+    with subprocess.Popen(["true"]) as proc:
+        assert proc.Pid > 0
+        proc.wait()
+
+
+@test
+def test_popen_kill():
+    with subprocess.Popen(["sleep", "60"]) as proc:
+        proc.kill()
+        assert proc.wait() != 0
+
+
+@test
+def test_popen_poll_running_process():
+    with subprocess.Popen(["sleep", "60"]) as proc:
+        assert proc.poll() is None
+        proc.kill()
+        proc.wait()
+
+
+@test
+def test_popen_dispose_cleans_up():
+    # C# constructed Popen then called Dispose() directly; the Python/Sharpy
+    # surface for IDisposable.Dispose is the `with` block exiting, which kills
+    # and disposes the still-running child.
+    with subprocess.Popen(["sleep", "60"]) as proc:
+        pass
+
+
+@test
+def test_popen_terminate():
+    with subprocess.Popen(["sleep", "60"]) as proc:
+        proc.terminate()
+        assert proc.wait() != 0
+
+
+@test
+def test_popen_send_signal_unix():
+    with subprocess.Popen(["sleep", "60"]) as proc:
+        proc.send_signal(9)
+        assert proc.wait() != 0
+
+
+@test
+def test_popen_poll_completed_process_returns_exit_code():
+    with subprocess.Popen(["true"]) as proc:
+        proc.wait()
+        assert operator.eq(proc.poll(), 0)
+
+
+@test
+def test_popen_devnull_stdout():
+    with subprocess.Popen(["echo", "discarded"], stdout=subprocess.DEVNULL) as proc:
+        exit_code: int = proc.wait()
+        assert exit_code == 0
+
+
+@test
+def test_popen_stderr_stdout_throws_not_implemented():
+    with assert_raises(NotImplementedError):
+        subprocess.Popen(["echo", "test"], stderr=subprocess.STDOUT)
+
+
+@test
+def test_run_text_false_throws_not_implemented():
+    with assert_raises(NotImplementedError):
+        subprocess.run(["echo", "test"], text=False)
+
+
+@test
+def test_check_output_text_false_throws_not_implemented():
+    with assert_raises(NotImplementedError):
+        subprocess.check_output(["echo", "test"], text=False)

@@ -187,7 +187,7 @@ internal partial class RoslynEmitter
         // differs from the module name (e.g., argparse -> Sharpy.ArgumentParser)
         if (typeSymbol.ClrType != null && typeSymbol.ClrType.Namespace == "Sharpy")
         {
-            var fullName = ClrNameHelper.StripArity(typeSymbol.ClrType.FullName!);
+            var fullName = ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
             return $"global::{fullName}";
         }
 
@@ -195,7 +195,7 @@ internal partial class RoslynEmitter
         // namespace prepending (e.g., Sharpy.System.Text.StringBuilder)
         if (typeSymbol.ClrType != null && !string.IsNullOrEmpty(_context.ProjectNamespace))
         {
-            var fullName = ClrNameHelper.StripArity(typeSymbol.ClrType.FullName!);
+            var fullName = ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
             return $"global::{fullName}";
         }
 

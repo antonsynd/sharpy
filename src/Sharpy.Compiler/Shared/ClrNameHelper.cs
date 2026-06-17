@@ -22,5 +22,48 @@ namespace Sharpy.Compiler.Shared
             var idx = name.IndexOf('`', StringComparison.Ordinal);
             return idx >= 0 ? name[..idx] : name;
         }
+
+        /// <summary>
+        /// Converts a CLR <see cref="System.Type.FullName"/> into a valid C# qualified name:
+        /// strips every generic arity suffix (<c>`N</c>) and converts the reflection
+        /// nested-type separator (<c>+</c>) into <c>.</c>. For example,
+        /// <c>"Sharpy.SocketModule+Socket"</c> → <c>"Sharpy.SocketModule.Socket"</c> and
+        /// <c>"Outer`1+Inner"</c> → <c>"Outer.Inner"</c>.
+        /// </summary>
+        internal static string ToCSharpQualifiedName(string fullName)
+        {
+            return StripAllArity(fullName).Replace('+', '.');
+        }
+
+        private static string StripAllArity(string name)
+        {
+            int backtick = name.IndexOf('`', StringComparison.Ordinal);
+            if (backtick < 0)
+            {
+                return name;
+            }
+
+            var builder = new System.Text.StringBuilder(name.Length);
+            int i = 0;
+            while (i < name.Length)
+            {
+                char c = name[i];
+                if (c == '`')
+                {
+                    i++;
+                    while (i < name.Length && char.IsDigit(name[i]))
+                    {
+                        i++;
+                    }
+                }
+                else
+                {
+                    builder.Append(c);
+                    i++;
+                }
+            }
+
+            return builder.ToString();
+        }
     }
 }

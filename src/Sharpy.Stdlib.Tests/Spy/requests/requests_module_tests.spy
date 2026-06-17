@@ -1,0 +1,26 @@
+# Ported from RequestsModuleTests.cs — NO TESTS PORTED.
+#
+# Every test in this C# file drives the module's request pipeline through the
+# `internal` Requests.Send(...) entry point with a mocked HttpMessageHandler /
+# HttpClient so it can inspect the outgoing HttpRequestMessage without touching the
+# network. That mock infrastructure (HttpMessageHandler subclassing, HttpClient
+# injection) has no surface in Sharpy, and Requests.Send is not callable from .spy,
+# so none of these tests are reachable.
+#
+# Omitted tests and why:
+#   - Get_ReturnsOkResultOnSuccess, Get_PublicEntryPointWorks,
+#     Post_WithJsonBody_SendsJsonContentType, Post_WithFormData_*,
+#     Post_JsonTakesPrecedenceOverData, CustomHeaders_AreForwardedOnRequest,
+#     QueryParams_* (3), Timeout_TriggersTimeoutError,
+#     ConnectionFailure_TriggersConnectionError, AllHttpMethods_DispatchCorrectly:
+#       require internal Requests.Send + a mock HttpMessageHandler to capture the
+#       request — not reachable / not hermetic.
+#   - NullUrl_ReturnsErrRequestException: passes null! url to Send — internal API and
+#     a null literal not expressible in type-safe Sharpy (Axiom 3).
+#   - Get_PublicMethodInvokes: the one public-API test makes a real DNS/connection
+#     attempt to an invalid host — requires network connectivity, not hermetic.
+#
+# Hermetic, reachable Session configuration tests live in
+# requests_session_tests.spy.
+
+import requests

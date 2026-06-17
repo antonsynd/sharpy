@@ -1,0 +1,23 @@
+import logging
+
+# Ported from LoggingModuleTests.cs (#843).
+# 13 omitted: GetLogger_ReturnsSameInstance/GetLogger_DifferentNames (reference
+# identity via BeSameAs/NotBeSameAs — no Sharpy surface); all 11 output-assertion
+# tests (Logger_Warning_OutputsToStderr, Logger_LevelFiltering_BelowLevel/AtLevel,
+# Logger_OutputFormat, Logger_DefaultLevel_IsWarning,
+# Logger_HigherSeverity_PassesLowerThreshold, Logger_AllLevelsAtOrAboveInfo_Emit,
+# Logger_EmptyMessage_EmitsPrefixOnly, Logger_MessageWithColons_PreservedVerbatim,
+# Logger_MultipleMessages_AppearInOrder, Logger_SetLevel_RaiseLevel) — all rely
+# on StringWriter + Console.SetError redirect to capture stderr output; no Sharpy
+# surface for stderr interception.
+
+
+# --- Constants ---
+
+@test
+def test_constants_have_correct_values():
+    assert logging.DEBUG == 10
+    assert logging.INFO == 20
+    assert logging.WARNING == 30
+    assert logging.ERROR == 40
+    assert logging.CRITICAL == 50

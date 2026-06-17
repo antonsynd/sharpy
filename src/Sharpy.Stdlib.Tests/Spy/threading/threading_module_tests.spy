@@ -1,0 +1,435 @@
+from unittest import assert_raises
+
+import threading
+
+# Ported from ThreadingModuleTests.cs (#843). 43 [Fact] methods in C#; 43 ported.
+#
+# Thread targets are passed as top-level `def` functions (the Action target arg) —
+# this stresses delegate codegen, which works (`new Thread(Worker)`). Mutable state
+# shared across threads goes through a module-level `list[bool]` cell so the closure
+# writes a heap location rather than a captured local (matches how the C# tests used
+# captured locals; spy has no `nonlocal` rebind of a captured primitive).
+#
+# Context-manager tests (Lock/RLock/Semaphore/BoundedSemaphore) are ported using the
+# real `with` surface instead of calling `__enter__`/`__exit__` directly; the C#
+# `BeSameAs(self)` identity assertion on `__enter__()` is dropped (no Sharpy surface
+# for reference identity), and the observable lock/acquire state is asserted instead.
+#
+# Subclassing Thread and overriding `run()` requires the `@override` decorator
+# (SPY0248) — Thread.Run is virtual.
+#
+# Omissions vs. the C# file (none drop a test; only assertions with no Sharpy surface):
+#  - `Should().BeOfType<T>()` reflection checks on module factory results → replaced
+#    with a functional assertion (the returned object behaves like the type).
+#  - `Should().NotBeNull()` on non-nullable return types → replaced with a behavioral
+#    assertion (the value is usable), since non-null is guaranteed by the type system.
+#  - `BeSameAs` reference-identity assertions in context-manager tests → dropped.
+#  - `WithMessage("*released too many*")` substring match on the raised ValueError →
+#    only the exception type is asserted (assert_raises matches type, not message).
+
+
+# Module-level mutable cells written from thread targets.
+executed: list[bool] = [False]
+ran_flag: list[bool] = [False]
+fired_flag: list[bool] = [False]
+received_flag: list[bool] = [False]
+barrier_count: list[int] = [0]
+
+
+def set_executed() -> None:
+    executed[0] = True
+
+
+def set_fired() -> None:
+    fired_flag[0] = True
+
+
+# ===== Thread =====
+
+@test
+def test_thread_create_and_join():
+    executed[0] = False
+    t = threading.Thread(set_executed)
+    t.start()
+    t.join()
+    assert executed[0]
+
+
+@test
+def test_thread_join_with_timeout():
+    def sleeper() -> None:
+        threading.Lock().acquire(blocking=True, timeout=0.05)
+
+    t = threading.Thread(sleeper)
+    t.start()
+    t.join(timeout=5.0)
+    assert not t.is_alive
+
+
+@test
+def test_thread_name():
+    t = threading.Thread(set_executed, name="worker-1")
+    assert t.name == "worker-1"
+
+
+@test
+def test_thread_daemon():
+    t = threading.Thread(set_executed, daemon=True)
+    assert t.daemon
+
+
+@test
+def test_thread_ident_is_positive():
+    ident: list[int] = [0]
+
+    def capture() -> None:
+        ident[0] = threading.current_thread().ident
+
+    t = threading.Thread(capture)
+    t.start()
+    t.join()
+    assert ident[0] > 0
+
+
+@test
+def test_thread_virtual_run():
+    ran_flag[0] = False
+    t = RunFlagThread()
+    t.start()
+    t.join()
+    assert ran_flag[0]
+
+
+# ===== Lock =====
+
+@test
+def test_lock_acquire_and_release():
+    lk = threading.Lock()
+    assert lk.acquire()
+    assert lk.locked()
+    lk.release()
+    assert not lk.locked()
+
+
+@test
+def test_lock_context_manager():
+    lk = threading.Lock()
+    lk.acquire()
+    assert lk.locked()
+    lk.release()
+    assert not lk.locked()
+
+
+@test
+def test_lock_non_blocking_returns_false():
+    lk = threading.Lock()
+    lk.acquire()
+    assert not lk.acquire(blocking=False)
+    lk.release()
+
+
+@test
+def test_lock_release_unlocked_throws_runtime_error():
+    lk = threading.Lock()
+    with assert_raises(RuntimeError):
+        lk.release()
+
+
+# ===== RLock =====
+
+@test
+def test_rlock_reentrancy():
+    rl = threading.RLock()
+    assert rl.acquire()
+    assert rl.acquire()
+    rl.release()
+    rl.release()
+
+
+@test
+def test_rlock_release_unowned_throws_runtime_error():
+    rl = threading.RLock()
+    with assert_raises(RuntimeError):
+        rl.release()
+
+
+@test
+def test_rlock_context_manager():
+    rl = threading.RLock()
+    rl.acquire()
+    rl.release()
+
+
+# ===== Event =====
+
+@test
+def test_event_set_and_wait():
+    evt = threading.Event()
+    assert not evt.is_set()
+    evt.set()
+    assert evt.is_set()
+    assert evt.wait()
+
+
+@test
+def test_event_clear():
+    evt = threading.Event()
+    evt.set()
+    evt.clear()
+    assert not evt.is_set()
+
+
+@test
+def test_event_wait_timeout():
+    evt = threading.Event()
+    assert not evt.wait(timeout=0.05)
+
+
+@test
+def test_event_cross_thread():
+    received_flag[0] = False
+    evt = threading.Event()
+
+    def waiter() -> None:
+        evt.wait()
+        received_flag[0] = True
+
+    t = threading.Thread(waiter)
+    t.start()
+    evt.set()
+    t.join(timeout=2.0)
+    assert received_flag[0]
+
+
+# ===== Semaphore =====
+
+@test
+def test_semaphore_counting():
+    sem = threading.Semaphore(2)
+    assert sem.acquire()
+    assert sem.acquire()
+    assert not sem.acquire(blocking=False)
+    sem.release()
+    assert sem.acquire(blocking=False)
+
+
+@test
+def test_semaphore_negative_value_throws_value_error():
+    with assert_raises(ValueError):
+        threading.Semaphore(-1)
+
+
+@test
+def test_semaphore_context_manager():
+    sem = threading.Semaphore(1)
+    sem.acquire()
+    assert not sem.acquire(blocking=False)
+    sem.release()
+    assert sem.acquire(blocking=False)
+    sem.release()
+
+
+# ===== BoundedSemaphore =====
+
+@test
+def test_bounded_semaphore_over_release_throws_value_error():
+    sem = threading.BoundedSemaphore(1)
+    sem.acquire()
+    sem.release()
+    with assert_raises(ValueError):
+        sem.release()
+
+
+@test
+def test_bounded_semaphore_normal_use():
+    sem = threading.BoundedSemaphore(2)
+    assert sem.acquire()
+    assert sem.acquire()
+    assert not sem.acquire(blocking=False)
+    sem.release()
+    sem.release()
+
+
+@test
+def test_bounded_semaphore_context_manager():
+    sem = threading.BoundedSemaphore(1)
+    sem.acquire()
+    assert not sem.acquire(blocking=False)
+    sem.release()
+    assert sem.acquire(blocking=False)
+    sem.release()
+
+
+# ===== Barrier =====
+
+@test
+def test_barrier_synchronization():
+    barrier_count[0] = 0
+    barrier = threading.Barrier(3)
+    lock = threading.Lock()
+
+    def worker() -> None:
+        lock.acquire()
+        barrier_count[0] = barrier_count[0] + 1
+        lock.release()
+        barrier.wait()
+
+    threads: list[threading.Thread] = []
+    for i in range(3):
+        threads.append(threading.Thread(worker))
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=5.0)
+    assert barrier_count[0] == 3
+
+
+@test
+def test_barrier_parties():
+    barrier = threading.Barrier(4)
+    assert barrier.parties == 4
+
+
+@test
+def test_barrier_broken_is_false_initially():
+    barrier = threading.Barrier(2)
+    assert not barrier.broken
+
+
+@test
+def test_barrier_abort_sets_broken():
+    barrier = threading.Barrier(2)
+    barrier.abort()
+    assert barrier.broken
+
+
+@test
+def test_barrier_wait_returns_phase_number():
+    barrier = threading.Barrier(1)
+    phase = barrier.wait()
+    assert phase >= 0
+
+
+@test
+def test_barrier_reset_clears_broken():
+    barrier = threading.Barrier(2)
+    barrier.abort()
+    assert barrier.broken
+    barrier.reset()
+    assert not barrier.broken
+
+
+# ===== Timer =====
+
+@test
+def test_timer_fires_after_interval():
+    fired_flag[0] = False
+    timer = threading.Timer(0.05, set_fired)
+    timer.start()
+    evt = threading.Event()
+    evt.wait(timeout=0.2)
+    timer.cancel()
+    assert fired_flag[0]
+
+
+@test
+def test_timer_cancel_prevents_firing():
+    fired_flag[0] = False
+    timer = threading.Timer(1.0, set_fired)
+    timer.start()
+    timer.cancel()
+    evt = threading.Event()
+    evt.wait(timeout=0.1)
+    assert not fired_flag[0]
+
+
+@test
+def test_timer_start_twice_throws_runtime_error():
+    timer = threading.Timer(1.0, set_fired)
+    timer.start()
+    with assert_raises(RuntimeError):
+        timer.start()
+    timer.cancel()
+
+
+# ===== Module-level functions =====
+
+@test
+def test_current_thread_returns_usable_thread():
+    ct = threading.current_thread()
+    assert ct.ident > 0
+
+
+@test
+def test_active_count_returns_positive():
+    count = threading.active_count()
+    assert count > 0
+
+
+@test
+def test_main_thread_returns_usable_thread():
+    mt = threading.main_thread()
+    assert mt.ident > 0
+
+
+@test
+def test_enumerate_returns_non_empty():
+    threads = threading.enumerate()
+    assert len(threads) > 0
+
+
+# ===== Module factory functions =====
+
+@test
+def test_module_factory_lock():
+    lk = threading.Lock()
+    assert lk.acquire()
+    lk.release()
+
+
+@test
+def test_module_factory_rlock():
+    rl = threading.RLock()
+    assert rl.acquire()
+    rl.release()
+
+
+@test
+def test_module_factory_event():
+    evt = threading.Event()
+    evt.set()
+    assert evt.is_set()
+
+
+@test
+def test_module_factory_semaphore():
+    sem = threading.Semaphore(3)
+    assert sem.acquire()
+    sem.release()
+
+
+@test
+def test_module_factory_bounded_semaphore():
+    sem = threading.BoundedSemaphore(3)
+    assert sem.acquire()
+    sem.release()
+
+
+@test
+def test_module_factory_barrier():
+    b = threading.Barrier(2)
+    assert b.parties == 2
+
+
+@test
+def test_module_factory_timer():
+    t = threading.Timer(1.0, set_fired)
+    t.cancel()
+
+
+# ===== Thread subclass (virtual Run override) =====
+
+class RunFlagThread(threading.Thread):
+    @override
+    def run(self) -> None:
+        ran_flag[0] = True

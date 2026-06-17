@@ -1,0 +1,100 @@
+import sys
+
+# Ported from SysModuleTests.cs (#843).
+# 10 omitted: Stdout_IsConsoleOut/Stderr_IsConsoleError (reference identity via
+# BeSameAs Console.Out/Error — no Sharpy surface); Print_WithStderrFile/
+# Stdout_WriteRoutesToConsoleOut (StringWriter + Console.SetError/SetOut redirect
+# — no Sharpy surface); Argv_ReturnsCopy/Path_ReturnsCopy (reference identity
+# via NotBeSameAs — no Sharpy surface); Argv_MutatingCopy_DoesNotAffectSource
+# (array[0] mutation + reference identity — CLR array semantics, no Sharpy
+# surface); Getsizeof_Null_ReturnsZero (null arg to non-nullable param, Axiom 3);
+# Executable_MatchesArgvZeroOrEmpty (string.IsNullOrEmpty + ternary, C#-specific).
+
+
+# --- Streams ---
+
+@test
+def test_stdout_is_not_none():
+    assert sys.Stdout is not None
+
+
+@test
+def test_stderr_is_not_none():
+    assert sys.Stderr is not None
+
+
+@test
+def test_stdin_is_not_none():
+    assert sys.Stdin is not None
+
+
+# --- Argv ---
+
+@test
+def test_argv_is_not_none():
+    assert sys.Argv is not None
+
+
+@test
+def test_argv_has_at_least_program_name():
+    assert len(sys.Argv) > 0
+
+
+# --- Version ---
+
+@test
+def test_version_contains_sharpy():
+    assert "Sharpy" in sys.Version
+
+
+@test
+def test_version_is_not_empty():
+    assert len(sys.Version) > 0
+
+
+# --- Platform ---
+
+@test
+def test_platform_is_recognized_value():
+    p: str = sys.Platform
+    assert len(p) > 0
+    valid: bool = p == "win32" or p == "linux" or p == "darwin" or p == "unknown"
+    assert valid
+
+
+# --- Executable ---
+
+@test
+def test_executable_is_not_none():
+    assert sys.Executable is not None
+
+
+# --- Path ---
+
+@test
+def test_path_is_not_none():
+    assert sys.Path is not None
+
+
+@test
+def test_path_is_not_empty():
+    assert len(sys.Path) > 0
+
+
+# --- Maxsize ---
+
+@test
+def test_maxsize_is_int_max_value():
+    assert sys.Maxsize == 2147483647
+
+
+# --- Getsizeof ---
+
+@test
+def test_getsizeof_value_type_returns_positive_size():
+    assert sys.getsizeof(42) > 0
+
+
+@test
+def test_getsizeof_reference_type_returns_minus_one():
+    assert sys.getsizeof("a reference type") == -1

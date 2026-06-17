@@ -1,0 +1,589 @@
+from unittest import assert_raises
+from sharpy import Sqlite3Connection, Sqlite3Row, Sqlite3ProgrammingError, Sqlite3OperationalError, Sqlite3IntegrityError, Bytes
+
+import operator
+import sqlite3
+
+# Ported from Sqlite3CursorTests.cs (#843).
+#
+# The C# fixture shares one in-memory connection across tests; here each @test
+# opens and closes its own connection. CreateAndPopulateTable() is inlined as the
+# module-level _populated_conn() def returning the connection.
+#
+# fetchone()/fetchall() are statically typed object/object?. The default tuple
+# array (object?[]) has no indexable Sharpy surface, so row_factory = sqlite3.Row
+# is set on every connection and rows are narrowed with
+# `match ... case Sqlite3Row() as r:` before indexing. Integer columns come back
+# as long; they are compared through the long-typed _eq_int() helper so int
+# literals widen (operator.eq is type-strict). str/float columns compare directly
+# via operator.eq. Object '==' is rejected by Axiom 3.
+#
+# Omitted (3):
+#   - Linq_WorksOnCursor: LINQ .Cast/.Select over the cursor has no Sharpy surface
+#     (Foreach_IteratesAllRows covers iteration).
+#   - Cursor_Dispose_ClosesAndThrowsOnUse: IDisposable.Dispose has no Sharpy
+#     surface; close()-then-use is covered by Cursor_Close_ThenExecute.
+#   - TypeMapping_Null_ReturnsNull collapses into Execute_NullParameter_InsertsNull
+#     (both assert a SQL NULL reads back as None); kept once.
+
+
+def _eq_int(value: object, expected: long) -> bool:
+    return operator.eq(value, expected)
+
+
+def _conn() -> Sqlite3Connection:
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _populated_conn() -> Sqlite3Connection:
+    conn = _conn()
+    conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT, score REAL)")
+    conn.execute("INSERT INTO t VALUES (1, 'Alice', 9.5)")
+    conn.execute("INSERT INTO t VALUES (2, 'Bob', 8.0)")
+    conn.execute("INSERT INTO t VALUES (3, 'Charlie', 7.5)")
+    conn.commit()
+    return conn
+
+
+# --- Fetchone ---
+
+@test
+def test_fetchone_returns_single_row():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id, name FROM t WHERE id = 1")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert _eq_int(r[0], 1)
+            assert operator.eq(r[1], "Alice")
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_fetchone_returns_none_when_no_more_rows():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t WHERE id = 1")
+    cursor.fetchone()
+    result = cursor.fetchone()
+    assert result is None
+    conn.close()
+
+
+@test
+def test_fetchone_no_results_returns_none():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t WHERE id = 999")
+    result = cursor.fetchone()
+    assert result is None
+    conn.close()
+
+
+# --- Fetchmany ---
+
+@test
+def test_fetchmany_returns_requested_number_of_rows():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t ORDER BY id")
+    rows = cursor.fetchmany(2)
+    assert len(rows) == 2
+    conn.close()
+
+
+@test
+def test_fetchmany_default_uses_arraysize():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t ORDER BY id")
+    cursor.arraysize = 2
+    rows = cursor.fetchmany()
+    assert len(rows) == 2
+    conn.close()
+
+
+@test
+def test_fetchmany_returns_fewer_when_not_enough_rows():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t ORDER BY id")
+    rows = cursor.fetchmany(10)
+    assert len(rows) == 3
+    conn.close()
+
+
+@test
+def test_fetchmany_no_reader_returns_empty_list():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (id INTEGER)")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO t VALUES (1)")
+    rows = cursor.fetchmany(5)
+    assert len(rows) == 0
+    conn.close()
+
+
+# --- Fetchall ---
+
+@test
+def test_fetchall_returns_all_rows():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t ORDER BY id")
+    rows = cursor.fetchall()
+    assert len(rows) == 3
+
+    match rows[0]:
+        case Sqlite3Row() as first:
+            assert _eq_int(first[0], 1)
+        case _:
+            assert False
+
+    match rows[2]:
+        case Sqlite3Row() as last:
+            assert _eq_int(last[0], 3)
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_fetchall_no_results_returns_empty_list():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t WHERE id = 999")
+    rows = cursor.fetchall()
+    assert len(rows) == 0
+    conn.close()
+
+
+@test
+def test_fetchall_after_partial_fetch_returns_remaining():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t ORDER BY id")
+    cursor.fetchone()
+    remaining = cursor.fetchall()
+    assert len(remaining) == 2
+    conn.close()
+
+
+# --- Rowcount ---
+
+@test
+def test_rowcount_after_insert_returns_affected_count():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val INTEGER)")
+    cursor = conn.execute("INSERT INTO t VALUES (1)")
+    assert cursor.rowcount == 1
+    conn.close()
+
+
+@test
+def test_rowcount_after_update_returns_affected_count():
+    conn = _populated_conn()
+    cursor = conn.execute("UPDATE t SET score = 10.0 WHERE score < 9.0")
+    assert cursor.rowcount == 2
+    conn.close()
+
+
+@test
+def test_rowcount_after_delete_returns_affected_count():
+    conn = _populated_conn()
+    cursor = conn.execute("DELETE FROM t WHERE id = 1")
+    assert cursor.rowcount == 1
+    conn.close()
+
+
+@test
+def test_rowcount_after_select_is_minus_one():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t")
+    assert cursor.rowcount == -1
+    conn.close()
+
+
+@test
+def test_rowcount_initial_value_is_minus_one():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    assert cursor.rowcount == -1
+    conn.close()
+
+
+# --- Parameterized queries ---
+
+@test
+def test_execute_parameterized_insert_binds_values():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (a TEXT, b INTEGER, c REAL)")
+    conn.execute("INSERT INTO t VALUES (?, ?, ?)", ["hello", 42, 3.14])
+    conn.commit()
+
+    cursor = conn.execute("SELECT a, b, c FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert operator.eq(r[0], "hello")
+            assert _eq_int(r[1], 42)
+            assert operator.eq(r[2], 3.14)
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_execute_parameterized_select_filters_correctly():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT name FROM t WHERE id = ?", [2])
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert operator.eq(r[0], "Bob")
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_execute_null_parameter_inserts_null():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val TEXT)")
+    null_params: list[object] = [None]
+    conn.execute("INSERT INTO t VALUES (?)", null_params)
+    conn.commit()
+
+    cursor = conn.execute("SELECT val FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert r[0] is None
+        case _:
+            assert False
+    conn.close()
+
+
+# --- Description ---
+
+@test
+def test_description_after_select_contains_column_info():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id, name, score FROM t")
+    assert cursor.description is not None
+    assert len(cursor.description) == 3
+    assert operator.eq(cursor.description[0][0], "id")
+    assert operator.eq(cursor.description[1][0], "name")
+    assert operator.eq(cursor.description[2][0], "score")
+    conn.close()
+
+
+@test
+def test_description_after_insert_is_none():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val INTEGER)")
+    cursor = conn.execute("INSERT INTO t VALUES (1)")
+    assert cursor.description is None
+    conn.close()
+
+
+@test
+def test_description_seven_element_tuples():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t")
+    assert cursor.description is not None
+    assert len(cursor.description[0]) == 7
+    conn.close()
+
+
+# --- Lastrowid ---
+
+@test
+def test_lastrowid_after_insert_returns_row_id():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, val TEXT)")
+    cursor = conn.execute("INSERT INTO t (val) VALUES ('test')")
+    assert cursor.lastrowid > 0
+    conn.close()
+
+
+@test
+def test_lastrowid_after_multiple_inserts_returns_last_id():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, val TEXT)")
+    conn.execute("INSERT INTO t (val) VALUES ('first')")
+    cursor = conn.execute("INSERT INTO t (val) VALUES ('second')")
+    assert cursor.lastrowid == 2
+    conn.close()
+
+
+@test
+def test_lastrowid_initial_value_is_minus_one():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    assert cursor.lastrowid == -1
+    conn.close()
+
+
+# --- Executemany ---
+
+@test
+def test_executemany_inserts_all_parameter_sets():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (name TEXT)")
+
+    param_sets = [
+        ["Alice"],
+        ["Bob"],
+        ["Charlie"],
+    ]
+    cursor = conn.cursor()
+    cursor.executemany("INSERT INTO t VALUES (?)", param_sets)
+    assert cursor.rowcount == 3
+    conn.commit()
+
+    select_cursor = conn.execute("SELECT COUNT(*) FROM t")
+    match select_cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert _eq_int(r[0], 3)
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_executemany_empty_sequence_rowcount_is_zero():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val INTEGER)")
+    cursor = conn.cursor()
+    empty: list[list[int]] = []
+    cursor.executemany("INSERT INTO t VALUES (?)", empty)
+    assert cursor.rowcount == 0
+    conn.close()
+
+
+# --- Iterator protocol ---
+
+@test
+def test_foreach_iterates_all_rows():
+    conn = _populated_conn()
+    cursor = conn.execute("SELECT id FROM t ORDER BY id")
+
+    ids: list[object] = []
+    for row in cursor:
+        match row:
+            case Sqlite3Row() as r:
+                ids.append(r[0])
+            case _:
+                assert False
+
+    assert len(ids) == 3
+    assert _eq_int(ids[0], 1)
+    assert _eq_int(ids[1], 2)
+    assert _eq_int(ids[2], 3)
+    conn.close()
+
+
+# --- Type mapping ---
+
+@test
+def test_type_mapping_integer_returns_long():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val INTEGER)")
+    conn.execute("INSERT INTO t VALUES (42)")
+    conn.commit()
+
+    cursor = conn.execute("SELECT val FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert _eq_int(r[0], 42)
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_type_mapping_text_returns_string():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val TEXT)")
+    conn.execute("INSERT INTO t VALUES ('hello')")
+    conn.commit()
+
+    cursor = conn.execute("SELECT val FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert operator.eq(r[0], "hello")
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_type_mapping_real_returns_double():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val REAL)")
+    conn.execute("INSERT INTO t VALUES (3.14)")
+    conn.commit()
+
+    cursor = conn.execute("SELECT val FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert operator.eq(r[0], 3.14)
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_type_mapping_blob_returns_bytes():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val BLOB)")
+    blob_data: Bytes = b"\x01\x02\x03"
+    conn.execute("INSERT INTO t VALUES (?)", [blob_data])
+    conn.commit()
+
+    cursor = conn.execute("SELECT val FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            match r[0]:
+                case Bytes() as result:
+                    assert result[0] == 1
+                    assert result[1] == 2
+                    assert result[2] == 3
+                case _:
+                    assert False
+        case _:
+            assert False
+    conn.close()
+
+
+# --- Error handling ---
+
+@test
+def test_execute_bad_sql_throws_operational_error():
+    conn = sqlite3.connect(":memory:")
+    with assert_raises(Sqlite3OperationalError):
+        conn.execute("INVALID SQL STATEMENT")
+    conn.close()
+
+
+@test
+def test_execute_constraint_violation_throws_integrity_error():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
+    conn.execute("INSERT INTO t VALUES (1)")
+    with assert_raises(Sqlite3IntegrityError):
+        conn.execute("INSERT INTO t VALUES (1)")
+    conn.close()
+
+
+@test
+def test_execute_unique_constraint_violation_throws_integrity_error():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE t (name TEXT UNIQUE)")
+    conn.execute("INSERT INTO t VALUES ('Alice')")
+    with assert_raises(Sqlite3IntegrityError):
+        conn.execute("INSERT INTO t VALUES ('Alice')")
+    conn.close()
+
+
+@test
+def test_execute_not_null_violation_throws_integrity_error():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE t (name TEXT NOT NULL)")
+    with assert_raises(Sqlite3IntegrityError):
+        conn.execute("INSERT INTO t VALUES (NULL)")
+    conn.close()
+
+
+# --- Close and use after close ---
+
+@test
+def test_cursor_close_then_execute_throws_programming_error():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    cursor.close()
+    with assert_raises(Sqlite3ProgrammingError):
+        cursor.execute("SELECT 1")
+    conn.close()
+
+
+@test
+def test_cursor_close_then_fetchone_throws_programming_error():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    cursor.close()
+    with assert_raises(Sqlite3ProgrammingError):
+        cursor.fetchone()
+    conn.close()
+
+
+@test
+def test_cursor_close_then_fetchall_throws_programming_error():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    cursor.close()
+    with assert_raises(Sqlite3ProgrammingError):
+        cursor.fetchall()
+    conn.close()
+
+
+@test
+def test_cursor_close_then_fetchmany_throws_programming_error():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    cursor.close()
+    with assert_raises(Sqlite3ProgrammingError):
+        cursor.fetchmany(5)
+    conn.close()
+
+
+# --- Arraysize ---
+
+@test
+def test_arraysize_default_is_one():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    assert cursor.arraysize == 1
+    conn.close()
+
+
+@test
+def test_arraysize_can_be_set():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    cursor.arraysize = 10
+    assert cursor.arraysize == 10
+    conn.close()
+
+
+# --- Executescript via cursor ---
+
+@test
+def test_executescript_bad_sql_throws_operational_error():
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    with assert_raises(Sqlite3OperationalError):
+        cursor.executescript("INVALID; SQL; HERE")
+    conn.close()
+
+
+# --- Multiple cursors ---
+
+@test
+def test_multiple_cursors_on_same_connection_work_independently():
+    conn = _populated_conn()
+
+    cur1 = conn.execute("SELECT id FROM t ORDER BY id")
+    cur2 = conn.execute("SELECT name FROM t ORDER BY name")
+
+    match cur1.fetchone():
+        case Sqlite3Row() as row1:
+            assert _eq_int(row1[0], 1)
+        case _:
+            assert False
+
+    match cur2.fetchone():
+        case Sqlite3Row() as row2:
+            assert operator.eq(row2[0], "Alice")
+        case _:
+            assert False
+
+    remaining1 = cur1.fetchall()
+    assert len(remaining1) == 2
+
+    remaining2 = cur2.fetchall()
+    assert len(remaining2) == 2
+    conn.close()

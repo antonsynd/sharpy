@@ -1,0 +1,32 @@
+# Ported from RequestsAdvancedTests.cs.
+#
+# Two kinds of tests live here:
+#   1. File upload (multipart) + response streaming (iter_content / iter_lines):
+#      all route through the internal Requests.Send(...) with a mocked
+#      HttpMessageHandler and inspect/consume the resulting Response/HttpRequestMessage.
+#      Unportable — internal API + mock infrastructure with no Sharpy surface.
+#   2. Session redirect / SSL-verify / proxy configuration: hermetic and reachable,
+#      but identical to the property tests already ported in
+#      requests_session_tests.spy. Not duplicated here.
+# Net result: NO TESTS PORTED in this file.
+#
+# Omitted tests and why:
+#   - Files_Upload_ProducesMultipartFormDataContent,
+#     Files_Upload_IncludesFileContentsAndFilename,
+#     Files_CombinedWithData_IncludesBothPartsInMultipart,
+#     Files_MultipleFiles_AllPartsPresent, Files_TakePrecedenceOverJson,
+#     Files_MissingFile_ReturnsErrWithPathInMessage:
+#       drive internal Requests.Send + inspect MultipartFormDataContent on the captured
+#       request — not reachable / not hermetic.
+#   - IterContent_* (6) and IterLines_* (4): require a streaming Response obtained from
+#     internal Requests.Send with a mock handler — not reachable.
+#   - ModuleLevel_AllowRedirects_False/Verify_False/Both (3): the public Requests.Get
+#     path with no mock makes a real connection attempt to an invalid host — requires
+#     network connectivity, not hermetic.
+#   - Session_AllowRedirects_*, Session_MaxRedirects_* (incl. RejectsZeroOrNegative),
+#     Session_Verify_*, Session_Proxies_*: hermetic + reachable, but already ported in
+#     requests_session_tests.spy (the RejectsZeroOrNegative variant is itself omitted
+#     there because the setter throws ArgumentOutOfRangeException, which Sharpy does not
+#     expose as a catchable ValueError).
+
+import requests

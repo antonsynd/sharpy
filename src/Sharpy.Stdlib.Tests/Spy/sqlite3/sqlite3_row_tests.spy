@@ -1,0 +1,275 @@
+from unittest import assert_raises
+from sharpy import Sqlite3Connection, Sqlite3Row
+
+import operator
+import sqlite3
+
+# Ported from Sqlite3RowTests.cs (#843).
+#
+# The C# CreateRow(...) helper sets conn.row_factory = sqlite3.Row, inserts one
+# row (id=1, name='Alice', score=9.5), and returns the Sqlite3Row. It is inlined
+# here as the module-level _make_row() def. fetchone() is statically typed
+# object?, so the result is narrowed with `match ... case Sqlite3Row() as r:`
+# before it is returned (and before indexing). Index errors raise IndexError
+# (Python IndexError); column-name access is case-insensitive. The Sqlite3Row
+# indexer returns object?, so integer columns are compared through the long-typed
+# _eq_int() helper (int literals widen; operator.eq is type-strict) while str/
+# float columns compare directly via operator.eq. Object '==' is rejected by
+# Axiom 3.
+#
+# Omitted (3):
+#   - Keys_ReturnsNewListEachCall: NotBeSameAs reference-identity check between two
+#     keys() results — no Sharpy surface for identity comparison.
+#   - ISized_Count_ReturnsNumberOfColumns: casts the row to the ISized interface
+#     and reads Count — interface-cast reflection has no distinct Sharpy surface;
+#     Count is already covered via len().
+#   - RowFactory_WithoutRowFactory_ReturnsTupleArrays: BeOfType<object?[]> reflection
+#     check — the default object?[] tuple array has no indexable Sharpy surface.
+
+
+def _eq_int(value: object, expected: long) -> bool:
+    return operator.eq(value, expected)
+
+
+def _make_row() -> Sqlite3Row:
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE test_row (id INTEGER, name TEXT, score REAL)")
+    conn.execute("INSERT INTO test_row VALUES (1, 'Alice', 9.5)")
+    conn.commit()
+    cursor = conn.execute("SELECT id, name, score FROM test_row")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            conn.close()
+            return r
+        case _:
+            conn.close()
+            raise ValueError("expected a Sqlite3Row")
+
+
+# --- Index access ---
+
+@test
+def test_index_access_first_element():
+    row = _make_row()
+    assert _eq_int(row[0], 1)
+
+
+@test
+def test_index_access_second_element():
+    row = _make_row()
+    assert operator.eq(row[1], "Alice")
+
+
+@test
+def test_index_access_third_element():
+    row = _make_row()
+    assert operator.eq(row[2], 9.5)
+
+
+# --- Negative index access ---
+
+@test
+def test_negative_index_last_element():
+    row = _make_row()
+    assert operator.eq(row[-1], 9.5)
+
+
+@test
+def test_negative_index_first_element():
+    row = _make_row()
+    assert _eq_int(row[-3], 1)
+
+
+@test
+def test_negative_index_second_from_end():
+    row = _make_row()
+    assert operator.eq(row[-2], "Alice")
+
+
+# --- Index out of range ---
+
+@test
+def test_index_too_large_throws_index_error():
+    row = _make_row()
+    with assert_raises(IndexError):
+        _ = row[10]
+
+
+@test
+def test_index_too_negative_throws_index_error():
+    row = _make_row()
+    with assert_raises(IndexError):
+        _ = row[-10]
+
+
+# --- Column name access ---
+
+@test
+def test_column_name_access_valid_name():
+    row = _make_row()
+    assert operator.eq(row["name"], "Alice")
+
+
+@test
+def test_column_name_access_case_insensitive():
+    row = _make_row()
+    assert operator.eq(row["NAME"], "Alice")
+    assert operator.eq(row["Name"], "Alice")
+    assert operator.eq(row["nAmE"], "Alice")
+
+
+@test
+def test_column_name_access_all_columns():
+    row = _make_row()
+    assert _eq_int(row["id"], 1)
+    assert operator.eq(row["name"], "Alice")
+    assert operator.eq(row["score"], 9.5)
+
+
+@test
+def test_column_name_access_invalid_name_throws_index_error():
+    row = _make_row()
+    with assert_raises(IndexError):
+        _ = row["nonexistent"]
+
+
+# --- Keys ---
+
+@test
+def test_keys_returns_column_names():
+    row = _make_row()
+    keys = row.keys()
+    assert len(keys) == 3
+    assert "id" in keys
+    assert "name" in keys
+    assert "score" in keys
+
+
+# --- Count (ISized) ---
+
+@test
+def test_count_returns_number_of_columns():
+    row = _make_row()
+    assert len(row) == 3
+
+
+# --- ToString ---
+
+@test
+def test_to_string_contains_column_names_and_values():
+    row = _make_row()
+    s: str = str(row)
+    assert s.startswith("<sqlite3.Row")
+    assert s.endswith(">")
+    assert "id=1" in s
+    assert "name='Alice'" in s
+    assert "score=" in s
+
+
+@test
+def test_to_string_null_value_shows_none():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE t_null (id INTEGER, val TEXT)")
+    conn.execute("INSERT INTO t_null VALUES (1, NULL)")
+    conn.commit()
+    cursor = conn.execute("SELECT id, val FROM t_null")
+    match cursor.fetchone():
+        case Sqlite3Row() as row:
+            s: str = str(row)
+            assert "val=None" in s
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_to_string_string_value_is_quoted():
+    row = _make_row()
+    s: str = str(row)
+    assert "name='Alice'" in s
+
+
+# --- Row factory integration ---
+
+@test
+def test_row_factory_connect_set_row_factory_returns_row_instances():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE t_rf (id INTEGER, name TEXT)")
+    conn.execute("INSERT INTO t_rf VALUES (1, 'test')")
+    conn.commit()
+    cursor = conn.execute("SELECT id, name FROM t_rf")
+    match cursor.fetchone():
+        case Sqlite3Row() as row:
+            assert _eq_int(row["id"], 1)
+            assert operator.eq(row["name"], "test")
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_row_factory_fetchall_returns_row_instances():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE t_rf2 (id INTEGER, name TEXT)")
+    conn.execute("INSERT INTO t_rf2 VALUES (1, 'Alice')")
+    conn.execute("INSERT INTO t_rf2 VALUES (2, 'Bob')")
+    conn.commit()
+    cursor = conn.execute("SELECT id, name FROM t_rf2 ORDER BY id")
+    rows = cursor.fetchall()
+    assert len(rows) == 2
+
+    match rows[0]:
+        case Sqlite3Row() as row1:
+            assert operator.eq(row1["name"], "Alice")
+        case _:
+            assert False
+
+    match rows[1]:
+        case Sqlite3Row() as row2:
+            assert operator.eq(row2["name"], "Bob")
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_row_factory_iterator_returns_row_instances():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE t_rf3 (id INTEGER, name TEXT)")
+    conn.execute("INSERT INTO t_rf3 VALUES (1, 'test')")
+    conn.commit()
+    cursor = conn.execute("SELECT id, name FROM t_rf3")
+    for row in cursor:
+        match row:
+            case Sqlite3Row() as r:
+                assert _eq_int(r["id"], 1)
+            case _:
+                assert False
+    conn.close()
+
+
+# --- Single column row ---
+
+@test
+def test_single_column_row_index_and_name_access():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE t_single (val INTEGER)")
+    conn.execute("INSERT INTO t_single VALUES (42)")
+    conn.commit()
+    cursor = conn.execute("SELECT val FROM t_single")
+    match cursor.fetchone():
+        case Sqlite3Row() as row:
+            assert _eq_int(row[0], 42)
+            assert _eq_int(row[-1], 42)
+            assert _eq_int(row["val"], 42)
+            assert len(row) == 1
+            assert len(row.keys()) == 1
+        case _:
+            assert False
+    conn.close()

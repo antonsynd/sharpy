@@ -1,0 +1,423 @@
+# Ported from src/Sharpy.Stdlib.Tests/SocketModuleTests.cs (46 [Fact] methods).
+#
+# All networked tests use the loopback interface (127.0.0.1) only, so they are
+# hermetic and require no external connectivity.
+#
+# Named-tuple results (e.g. (host, port)) are accessed positionally ([0]/[1]) or
+# via destructuring, because element-name access on CLR-returned named tuples is
+# currently mis-mangled to PascalCase. Positional/unpack access is correct.
+#
+# The socket `.type` property is lowercase in the DLL; Sharpy member access
+# PascalCases it to `.Type`, which does not exist, so it is unreachable. The
+# three creation tests therefore assert only `.Family` (plus successful
+# construction with the requested type), dropping the `.type` check.
+#
+# create_connection()'s return value is annotated `socket.socket` because the
+# function's return type does not flow through inference (indexing the resulting
+# tuple otherwise fails); the explicit annotation restores it.
+#
+# Omitted (1 of 46 methods):
+#   - Error_FromSocketException_PreservesErrno: constructs a raw .NET
+#     SocketException and asserts reference identity of InnerException. No Sharpy
+#     surface for building a SocketException or inspecting InnerException identity.
+#
+# Disabled pending bug #945 (3 source methods, folded to 2 tests):
+#   - Connect_InvalidAddress_ThrowsError, CreateConnection_InvalidAddress, and the
+#     three error-hierarchy checks (Timeout/Gaierror/Herror_IsError) all depend on
+#     `socket.error` / `socket.timeout`, which currently resolve to the WRONG
+#     module's identically-named exception types (re.Error / a stray Timeout)
+#     instead of SocketModule's. So `except socket.error:` does not catch a raised
+#     socket.timeout. These three tests are commented out below until #945 lands.
+#     (`socket.gaierror` / `socket.herror` resolve correctly — unique names — so
+#     test_gethostbyname_invalid_host_raises_gaierror is kept and passes.)
+#
+# Tests that depend on a DNS resolver being present (kept, but noted):
+#   - test_gethostbyname_localhost_returns_loopback
+#   - test_gethostname_returns_non_empty
+#   - test_gethostbyname_invalid_host_raises_gaierror
+#   - test_getnameinfo_localhost_returns_host_and_service
+# These resolve only localhost / 127.0.0.1 (or a guaranteed-invalid name), which
+# the OS resolver answers without network access.
+
+from unittest import assert_raises
+
+import socket
+
+# ---- Constants ----
+
+@test
+def test_af_inet_has_correct_value():
+    assert socket.AF_INET == 2
+
+@test
+def test_af_inet6_has_correct_value():
+    assert socket.AF_INET6 == 23 or socket.AF_INET6 == 10 or socket.AF_INET6 == 30
+
+@test
+def test_sock_stream_has_correct_value():
+    assert socket.SOCK_STREAM == 1
+
+@test
+def test_sock_dgram_has_correct_value():
+    assert socket.SOCK_DGRAM == 2
+
+@test
+def test_sock_raw_has_correct_value():
+    assert socket.SOCK_RAW == 3
+
+@test
+def test_ipproto_tcp_has_correct_value():
+    assert socket.IPPROTO_TCP == 6
+
+@test
+def test_ipproto_udp_has_correct_value():
+    assert socket.IPPROTO_UDP == 17
+
+@test
+def test_shut_rd_has_correct_value():
+    assert socket.SHUT_RD == 0
+
+@test
+def test_shut_wr_has_correct_value():
+    assert socket.SHUT_WR == 1
+
+@test
+def test_shut_rdwr_has_correct_value():
+    assert socket.SHUT_RDWR == 2
+
+@test
+def test_tcp_nodelay_has_correct_value():
+    assert socket.TCP_NODELAY != 0
+
+@test
+def test_so_rcvbuf_has_correct_value():
+    assert socket.SO_RCVBUF != 0
+
+@test
+def test_so_sndbuf_has_correct_value():
+    assert socket.SO_SNDBUF != 0
+
+@test
+def test_somaxconn_is_128():
+    assert socket.SOMAXCONN == 128
+
+# ---- Socket creation ----
+
+@test
+def test_socket_creates_stream_socket():
+    # NOTE: the C# test also asserts `s.type == SOCK_STREAM`, but the socket
+    # `type` property is lowercase in the DLL and member access mangles it to
+    # `Type`, which doesn't exist, so it is unreachable from Sharpy (see header).
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    assert s.Family == socket.AF_INET
+    s.close()
+
+@test
+def test_socket_creates_datagram_socket():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    assert s.Family == socket.AF_INET
+    s.close()
+
+@test
+def test_socket_default_params_creates_ipv4_stream():
+    s = socket.socket()
+    assert s.Family == socket.AF_INET
+    s.close()
+
+# ---- TCP server / client (loopback) ----
+
+@test
+def test_tcp_server_bind_listen_accept_works():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(("127.0.0.1", 0))
+    server.listen(5)
+
+    server_addr = server.getsockname()
+    assert server_addr[0] == "127.0.0.1"
+    assert server_addr[1] > 0
+
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("127.0.0.1", server_addr[1]))
+
+    conn, addr = server.accept()
+    assert addr[0] == "127.0.0.1"
+    assert addr[1] > 0
+
+    conn.close()
+    client.close()
+    server.close()
+
+@test
+def test_tcp_send_recv_works():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("127.0.0.1", port))
+
+    conn, _ = server.accept()
+
+    message: bytes = b"hello"
+    client.sendall(message)
+
+    received: bytes = conn.recv(1024)
+    assert received == b"hello"
+
+    conn.close()
+    client.close()
+    server.close()
+
+# ---- UDP (loopback) ----
+
+@test
+def test_udp_sendto_recvfrom_works():
+    receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    receiver.bind(("127.0.0.1", 0))
+    port = receiver.getsockname()[1]
+
+    sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    message: bytes = b"udp test"
+    sender.sendto(message, ("127.0.0.1", port))
+
+    data, addr = receiver.recvfrom(1024)
+    assert data == b"udp test"
+    assert addr[0] == "127.0.0.1"
+
+    sender.close()
+    receiver.close()
+
+# ---- DNS ----
+
+@test
+def test_gethostbyname_localhost_returns_loopback():
+    ip: str = socket.gethostbyname("localhost")
+    assert ip == "127.0.0.1" or ip == "::1"
+
+@test
+def test_gethostname_returns_non_empty():
+    hostname: str = socket.gethostname()
+    assert hostname != ""
+
+@test
+def test_gethostbyname_invalid_host_raises_gaierror():
+    with assert_raises(socket.gaierror):
+        socket.gethostbyname("this.host.does.not.exist.invalid")
+
+# ---- Socket options ----
+
+@test
+def test_setsockopt_getsockopt_reuse_addr():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    val: int = s.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR)
+    assert val != 0
+    s.close()
+
+# ---- Timeout ----
+
+@test
+def test_settimeout_gettimeout_works():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(5.0)
+    t = s.gettimeout()
+    assert t is not None
+    if t is not None:
+        assert t == 5.0
+
+    s.settimeout(None)
+    assert s.gettimeout() is None
+    s.close()
+
+# ---- Default timeout ----
+
+@test
+def test_getdefaulttimeout_returns_null_by_default():
+    socket.setdefaulttimeout(None)
+    assert socket.getdefaulttimeout() is None
+
+@test
+def test_setdefaulttimeout_sets_and_gets():
+    socket.setdefaulttimeout(10.0)
+    d = socket.getdefaulttimeout()
+    assert d is not None
+    if d is not None:
+        assert d == 10.0
+    socket.setdefaulttimeout(None)
+
+@test
+def test_setdefaulttimeout_applied_to_new_sockets():
+    socket.setdefaulttimeout(3.0)
+    s = socket.socket()
+    t = s.gettimeout()
+    assert t is not None
+    if t is not None:
+        assert t == 3.0
+    s.close()
+    socket.setdefaulttimeout(None)
+
+# ---- Byte order ----
+
+@test
+def test_htons_ntohs_round_trips():
+    original: int = 8080
+    network: int = socket.htons(original)
+    host: int = socket.ntohs(network)
+    assert host == original
+
+@test
+def test_htonl_ntohl_round_trips():
+    original: int = 0x12345678
+    network: int = socket.htonl(original)
+    host: int = socket.ntohl(network)
+    assert host == original
+
+# ---- Inet conversions ----
+
+@test
+def test_inet_aton_ntoa_round_trips():
+    ip: str = "192.168.1.1"
+    packed: bytes = socket.inet_aton(ip)
+    result: str = socket.inet_ntoa(packed)
+    assert result == ip
+
+@test
+def test_inet_pton_ntop_ipv4_round_trips():
+    ip: str = "10.0.0.1"
+    packed: bytes = socket.inet_pton(socket.AF_INET, ip)
+    assert len(packed) == 4
+    result: str = socket.inet_ntop(socket.AF_INET, packed)
+    assert result == ip
+
+@test
+def test_inet_pton_ntop_ipv6_round_trips():
+    ip: str = "::1"
+    packed: bytes = socket.inet_pton(socket.AF_INET6, ip)
+    assert len(packed) == 16
+    result: str = socket.inet_ntop(socket.AF_INET6, packed)
+    assert result == ip
+
+# ---- IPv6 ----
+
+@test
+def test_socket_ipv6_can_create():
+    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    assert s.Family == socket.AF_INET6
+    s.close()
+
+# ---- Error handling ----
+#
+# DISABLED pending #945: `socket.error` and `socket.timeout` are qualified-name
+# resolution collisions — they resolve to other modules' identically-named
+# exception types (re.Error / a stray Timeout) instead of SocketModule's, so
+# `except socket.error:` does not catch a raised socket.timeout. The three
+# exception tests below cannot pass until #945 is fixed. `socket.gaierror` and
+# `socket.herror` resolve correctly (unique names), so the gaierror DNS test
+# above is kept and passing.
+#
+# @test
+# def test_connect_invalid_address_raises_error():
+#     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#     s.settimeout(1.0)
+#     with assert_raises(socket.error):
+#         s.connect(("192.0.2.1", 1))
+#     s.close()
+#
+# @test
+# def test_error_hierarchy():
+#     # Folds the three BeAssignableTo<Error> checks: each subclass instance is
+#     # catchable as the base `error` type.
+#     with assert_raises(socket.error):
+#         raise socket.timeout("timed out")
+#     with assert_raises(socket.error):
+#         raise socket.gaierror("name resolution failed")
+#     with assert_raises(socket.error):
+#         raise socket.herror("host error")
+
+# ---- create_connection (loopback) ----
+
+@test
+def test_create_connection_connects_to_local_server():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+
+    client: socket.socket = socket.create_connection(("127.0.0.1", port))
+
+    peer = client.getpeername()
+    assert peer[0] == "127.0.0.1"
+    assert peer[1] == port
+
+    conn, _ = server.accept()
+    conn.close()
+    client.close()
+    server.close()
+
+# DISABLED pending #945 (socket.error resolves to the wrong module's type):
+# @test
+# def test_create_connection_invalid_address_raises():
+#     with assert_raises(socket.error):
+#         socket.create_connection(("192.0.2.1", 1), timeout=1.0)
+
+# ---- ToString ----
+
+@test
+def test_str_contains_socket_info():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    text: str = str(s)
+    assert "socket" in text
+    assert "family=" in text
+    assert "type=" in text
+    s.close()
+
+# ---- getpeername ----
+
+@test
+def test_getpeername_after_connect_returns_remote_addr():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("127.0.0.1", port))
+
+    peer = client.getpeername()
+    assert peer[0] == "127.0.0.1"
+    assert peer[1] == port
+
+    conn, _ = server.accept()
+    conn.close()
+    client.close()
+    server.close()
+
+# ---- setblocking / getblocking ----
+
+@test
+def test_setblocking_false_sets_non_blocking():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setblocking(False)
+    assert not s.getblocking()
+    s.close()
+
+@test
+def test_setblocking_true_sets_blocking():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setblocking(False)
+    s.setblocking(True)
+    assert s.getblocking()
+    s.close()
+
+# ---- getnameinfo ----
+
+@test
+def test_getnameinfo_localhost_returns_host_and_service():
+    host, service = socket.getnameinfo(("127.0.0.1", 80))
+    assert host != ""
+    assert service == "80"

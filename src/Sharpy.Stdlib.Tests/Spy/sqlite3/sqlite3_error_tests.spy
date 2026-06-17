@@ -1,0 +1,76 @@
+from unittest import assert_raises
+from sharpy import Sqlite3Error, Sqlite3DatabaseError, Sqlite3OperationalError, Sqlite3IntegrityError
+
+import sqlite3
+
+# Ported from Sqlite3ErrorTests.cs (#843).
+#
+# The C# fixture constructs each exception directly (new Sqlite3OperationalError(...))
+# and asserts on reflection-only facts: BeAssignableTo<T>, default-constructor
+# Message non-emptiness, and InnerException identity. None of these have a Sharpy
+# surface — exceptions aren't constructed and inspected for CLR base types or
+# inner-exception identity from .spy. The inheritance hierarchy is instead
+# verified behaviorally: a real SQL error is raised and caught by a base class via
+# try/except (which IS subclass-based, unlike assert_raises which is exact-match).
+#
+# Omitted (29 of 33):
+#   - All *_Is* assignability checks (12): reflection BeAssignableTo / NotBeAssignableTo,
+#     no Sharpy surface. Replaced by the behavioral catch-hierarchy tests below.
+#   - All *_MessagePropagation (6): construct exception with message, read .Message —
+#     no Sharpy surface for direct construction + property read.
+#   - All *_InnerExceptionPropagation (6): construct with inner exception, read
+#     .InnerException by reference — no Sharpy surface.
+#   - All *_DefaultConstructor (5): parameterless construction + Message inspection —
+#     no Sharpy surface.
+#   - InterfaceError catch tests: Sqlite3InterfaceError is never raised by the SQL
+#     surface, so it can't be triggered behaviorally; its hierarchy isn't reachable
+#     from .spy.
+#
+# Ported (4): the catch-hierarchy tests, expressed against SQL-triggered exceptions
+# (two via try/except base-class catch, two via exact-type assert_raises).
+
+
+# --- Catch hierarchy ---
+
+@test
+def test_operational_error_caught_by_sqlite3_error():
+    conn = sqlite3.connect(":memory:")
+    caught: bool = False
+    try:
+        conn.execute("NOT VALID SQL")
+    except Sqlite3Error:
+        caught = True
+    assert caught
+    conn.close()
+
+
+@test
+def test_integrity_error_caught_by_sqlite3_database_error():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
+    conn.execute("INSERT INTO t VALUES (1)")
+    caught: bool = False
+    try:
+        conn.execute("INSERT INTO t VALUES (1)")
+    except Sqlite3DatabaseError:
+        caught = True
+    assert caught
+    conn.close()
+
+
+@test
+def test_operational_error_is_exactly_operational_via_assert_raises():
+    conn = sqlite3.connect(":memory:")
+    with assert_raises(Sqlite3OperationalError):
+        conn.execute("NOT VALID SQL")
+    conn.close()
+
+
+@test
+def test_integrity_error_is_exactly_integrity_via_assert_raises():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
+    conn.execute("INSERT INTO t VALUES (1)")
+    with assert_raises(Sqlite3IntegrityError):
+        conn.execute("INSERT INTO t VALUES (1)")
+    conn.close()

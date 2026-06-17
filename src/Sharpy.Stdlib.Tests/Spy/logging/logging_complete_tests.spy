@@ -1,0 +1,36 @@
+import logging
+
+# Ported from LoggingCompleteTests.cs (#843).
+# 18 omitted: GetLogger_NoArgument_ReturnsRootLogger/
+# GetLogger_UniqueNamesReturnDifferentInstances/
+# GetLogger_SameNameReturnsCachedInstance (reference identity via BeSameAs/
+# NotBeSameAs — no Sharpy surface); all 15 output-assertion tests
+# (Logger_Debug/Info/Error/Critical_AppearsWhenLevel*,
+# Logger_Debug/Info_SuppressedWhenLevel*, Logger_Warning_PassesWhenLevel*,
+# Logger_Error_SuppressedWhenLevelIsCritical, Logger_SetLevel_CanLowerLevel,
+# MultipleLoggers_EachRespectsOwnLevel/DifferentNames_DifferentPrefixes,
+# BasicConfig_SetsRootLoggerLevel, ModuleLevel_Warning/Error/Critical) — all
+# rely on StringWriter + Console.SetError redirect to capture stderr output;
+# no Sharpy surface for stderr interception.
+
+
+# --- Level constant ordering ---
+
+@test
+def test_debug_less_than_info():
+    assert logging.DEBUG < logging.INFO
+
+
+@test
+def test_info_less_than_warning():
+    assert logging.INFO < logging.WARNING
+
+
+@test
+def test_warning_less_than_error():
+    assert logging.WARNING < logging.ERROR
+
+
+@test
+def test_error_less_than_critical():
+    assert logging.ERROR < logging.CRITICAL

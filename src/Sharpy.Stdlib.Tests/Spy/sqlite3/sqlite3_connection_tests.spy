@@ -1,0 +1,285 @@
+from unittest import assert_raises
+from sharpy import Sqlite3Connection, Sqlite3Row, Sqlite3ProgrammingError, Sqlite3OperationalError
+
+import operator
+import sqlite3
+
+# Ported from Sqlite3ConnectionTests.cs (#843).
+#
+# The C# fixture is IDisposable and closes its connection in Dispose(); here each
+# @test opens its own in-memory connection and closes it explicitly, since spy
+# @test functions are independent and have no shared fixture/teardown.
+#
+# Row access: fetchone()/fetchall() are statically typed object/object?, and the
+# default (no row_factory) result is a CLR object?[] tuple array, which has no
+# indexable Sharpy surface (object?[] can't be matched or indexed from .spy).
+# Every test therefore sets row_factory = sqlite3.Row (via _conn()) and narrows
+# the result with `match ... case Sqlite3Row() as r:` so columns can be indexed.
+# Integer columns come back as long (Python int); they are compared through the
+# long-typed _eq_int() helper so int literals widen (operator.eq is type-strict,
+# so long.Equals(int) would be False) — object '==' is rejected by Axiom 3.
+#
+# Omitted (3):
+#   - Connect_ReturnsConnectionInstance: BeOfType<Sqlite3Connection> reflection has
+#     no Sharpy surface (the non-None / reachability behavior is kept elsewhere).
+#   - UsingStatement_ClosesConnection / Dispose_ClosesConnection: IDisposable /
+#     `using` has no Sharpy surface; mapped to explicit close() + use-after-close,
+#     covered by Close_ThenExecute_ThrowsProgrammingError.
+
+
+def _eq_int(value: object, expected: long) -> bool:
+    return operator.eq(value, expected)
+
+
+def _conn() -> Sqlite3Connection:
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+# --- Connect ---
+
+@test
+def test_connect_memory_database_succeeds():
+    conn = sqlite3.connect(":memory:")
+    assert conn is not None
+    conn.close()
+
+
+# --- Execute convenience ---
+
+@test
+def test_execute_create_table_succeeds():
+    conn = _conn()
+    cursor = conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)")
+    assert cursor is not None
+    conn.close()
+
+
+@test
+def test_execute_insert_and_select_returns_data():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)")
+    conn.execute("INSERT INTO t VALUES (1, 'Alice')")
+    conn.commit()
+
+    cursor = conn.execute("SELECT id, name FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert _eq_int(r[0], 1)
+            assert operator.eq(r[1], "Alice")
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_execute_with_parameters_binds_correctly():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (id INTEGER, name TEXT)")
+    conn.execute("INSERT INTO t VALUES (?, ?)", [1, "Bob"])
+    conn.commit()
+
+    cursor = conn.execute("SELECT name FROM t WHERE id = ?", [1])
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert operator.eq(r[0], "Bob")
+        case _:
+            assert False
+    conn.close()
+
+
+# --- Commit and rollback ---
+
+@test
+def test_commit_persists_data():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val INTEGER)")
+    conn.execute("INSERT INTO t VALUES (42)")
+    conn.commit()
+
+    cursor = conn.execute("SELECT val FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert _eq_int(r[0], 42)
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_rollback_discards_uncommitted_data():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val INTEGER)")
+    conn.commit()
+
+    conn.execute("INSERT INTO t VALUES (99)")
+    conn.rollback()
+
+    cursor = conn.execute("SELECT COUNT(*) FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert _eq_int(r[0], 0)
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_commit_with_no_transaction_does_not_throw():
+    conn = sqlite3.connect(":memory:")
+    conn.commit()
+    conn.close()
+
+
+@test
+def test_rollback_with_no_transaction_does_not_throw():
+    conn = sqlite3.connect(":memory:")
+    conn.rollback()
+    conn.close()
+
+
+# --- Close and operate ---
+
+@test
+def test_close_then_execute_throws_programming_error():
+    conn = sqlite3.connect(":memory:")
+    conn.close()
+    with assert_raises(Sqlite3ProgrammingError):
+        conn.execute("SELECT 1")
+
+
+@test
+def test_close_then_cursor_throws_programming_error():
+    conn = sqlite3.connect(":memory:")
+    conn.close()
+    with assert_raises(Sqlite3ProgrammingError):
+        conn.cursor()
+
+
+@test
+def test_close_then_commit_throws_programming_error():
+    conn = sqlite3.connect(":memory:")
+    conn.close()
+    with assert_raises(Sqlite3ProgrammingError):
+        conn.commit()
+
+
+@test
+def test_close_then_rollback_throws_programming_error():
+    conn = sqlite3.connect(":memory:")
+    conn.close()
+    with assert_raises(Sqlite3ProgrammingError):
+        conn.rollback()
+
+
+@test
+def test_close_called_twice_does_not_throw():
+    conn = sqlite3.connect(":memory:")
+    conn.close()
+    conn.close()
+
+
+# --- Executemany ---
+
+@test
+def test_executemany_inserts_multiple_rows():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (id INTEGER, name TEXT)")
+
+    param_sets = [
+        [1, "Alice"],
+        [2, "Bob"],
+        [3, "Charlie"],
+    ]
+    conn.executemany("INSERT INTO t VALUES (?, ?)", param_sets)
+    conn.commit()
+
+    cursor = conn.execute("SELECT COUNT(*) FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert _eq_int(r[0], 3)
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_executemany_returns_correct_rowcount():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE t (val INTEGER)")
+
+    param_sets = [
+        [1],
+        [2],
+    ]
+    cursor = conn.executemany("INSERT INTO t VALUES (?)", param_sets)
+    assert cursor.rowcount == 2
+    conn.close()
+
+
+# --- Executescript ---
+
+@test
+def test_executescript_executes_multiple_statements():
+    conn = _conn()
+
+    conn.executescript("CREATE TABLE t1 (id INTEGER); CREATE TABLE t2 (id INTEGER); INSERT INTO t1 VALUES (1); INSERT INTO t2 VALUES (2);")
+
+    cursor1 = conn.execute("SELECT id FROM t1")
+    match cursor1.fetchone():
+        case Sqlite3Row() as r1:
+            assert _eq_int(r1[0], 1)
+        case _:
+            assert False
+
+    cursor2 = conn.execute("SELECT id FROM t2")
+    match cursor2.fetchone():
+        case Sqlite3Row() as r2:
+            assert _eq_int(r2[0], 2)
+        case _:
+            assert False
+    conn.close()
+
+
+@test
+def test_executescript_commits_pending_transaction():
+    conn = _conn()
+    conn.execute("CREATE TABLE t (val INTEGER)")
+    conn.execute("INSERT INTO t VALUES (10)")
+    conn.executescript("CREATE TABLE t2 (val INTEGER)")
+
+    cursor = conn.execute("SELECT val FROM t")
+    match cursor.fetchone():
+        case Sqlite3Row() as r:
+            assert _eq_int(r[0], 10)
+        case _:
+            assert False
+    conn.close()
+
+
+# --- row_factory property ---
+
+@test
+def test_row_factory_default_is_none():
+    conn = sqlite3.connect(":memory:")
+    assert conn.row_factory is None
+    conn.close()
+
+
+@test
+def test_row_factory_can_be_set():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    assert conn.row_factory is not None
+    conn.close()
+
+
+# --- Error handling ---
+
+@test
+def test_execute_invalid_sql_throws_operational_error():
+    conn = sqlite3.connect(":memory:")
+    with assert_raises(Sqlite3OperationalError):
+        conn.execute("NOT VALID SQL")
+    conn.close()

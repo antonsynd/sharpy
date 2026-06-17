@@ -497,11 +497,11 @@ internal class TypeSyntaxMapper
                     // When inside a user-defined namespace, use global:: to avoid ambiguity
                     // (e.g., inside namespace MyApp, "System" could resolve to "MyApp.System").
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-                        return $"global::{ClrNameHelper.StripArity(builtinTypeSymbol.ClrType.FullName!)}";
+                        return $"global::{ClrNameHelper.ToCSharpQualifiedName(builtinTypeSymbol.ClrType.FullName!)}";
                     return builtinTypeSymbol.ClrType.Name;
                 }
                 // Sharpy types need global:: qualification
-                var fullName = ClrNameHelper.StripArity(builtinTypeSymbol.ClrType.FullName!);
+                var fullName = ClrNameHelper.ToCSharpQualifiedName(builtinTypeSymbol.ClrType.FullName!);
                 return $"global::{fullName}";
             }
             return sharpyTypeName;

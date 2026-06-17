@@ -1,0 +1,183 @@
+# Ported from RequestsSessionTests.cs and the Session-config sections of
+# RequestsAdvancedTests.cs.
+#
+# requests.Session() is the only public, hermetic surface of the requests module:
+# its property getters/setters (Headers, Cookies, Auth, AllowRedirects,
+# MaxRedirects, Verify, Proxies) configure state without issuing any HTTP request.
+# All request-dispatching tests are unportable because Requests.Send(...) is
+# `internal` and the C# suite drives it with a mocked HttpMessageHandler/HttpClient,
+# neither of which exists in Sharpy. See requests_module_tests.spy /
+# requests_response_tests.spy / requests_advanced_tests.spy for those omissions.
+#
+# Omitted from RequestsSessionTests.cs:
+#   - Session_Headers_SettingToNullCreatesEmptyDict,
+#     Session_Cookies_SettingToNullCreatesEmptyDict: assign null! to a non-nullable
+#     setter — not expressible in type-safe Sharpy (Axiom 3).
+#   - Session_RequestAfterDispose_ReturnsErr: Session exposes only IDisposable.Dispose
+#     (no Python close() surface), so disposal cannot be triggered from .spy.
+#   - Session_MaxRedirects_RejectsZeroAndNegative (and the RequestsAdvancedTests
+#     duplicate): the setter throws ArgumentOutOfRangeException, which is not part of
+#     Sharpy's catchable exception hierarchy (catches only as a bare Exception, not as
+#     ValueError), so assert_raises cannot match it.
+#   - All Module-level auth / Send-based tests: route through internal Requests.Send.
+
+import requests
+
+# --- Session.Headers ---
+
+@test
+def test_session_headers_defaults_to_empty_dict():
+    s: requests.Session = requests.Session()
+    assert s.Headers is not None
+    assert len(s.Headers) == 0
+
+@test
+def test_session_headers_can_be_set_and_persist():
+    s: requests.Session = requests.Session()
+    headers: dict[str, str] = {}
+    headers["User-Agent"] = "sharpy/1.0"
+    headers["X-Custom"] = "value"
+    s.Headers = headers
+    assert s.Headers["User-Agent"] == "sharpy/1.0"
+    assert s.Headers["X-Custom"] == "value"
+
+@test
+def test_session_headers_direct_mutation_via_indexer_persists():
+    s: requests.Session = requests.Session()
+    s.Headers["Accept"] = "application/json"
+    assert s.Headers["Accept"] == "application/json"
+
+# --- Session.Cookies ---
+
+@test
+def test_session_cookies_defaults_to_empty_dict():
+    s: requests.Session = requests.Session()
+    assert s.Cookies is not None
+    assert len(s.Cookies) == 0
+
+@test
+def test_session_cookies_can_be_set_and_persist():
+    s: requests.Session = requests.Session()
+    cookies: dict[str, str] = {}
+    cookies["session_id"] = "abc123"
+    cookies["theme"] = "dark"
+    s.Cookies = cookies
+    assert s.Cookies["session_id"] == "abc123"
+    assert s.Cookies["theme"] == "dark"
+
+# --- Session.Auth ---
+
+@test
+def test_session_auth_defaults_to_null():
+    s: requests.Session = requests.Session()
+    assert s.Auth is None
+
+@test
+def test_session_auth_can_be_set_and_persist():
+    s: requests.Session = requests.Session()
+    s.Auth = ("alice", "secret")
+    assert s.Auth is not None
+
+@test
+def test_session_auth_can_be_cleared_to_null():
+    s: requests.Session = requests.Session()
+    s.Auth = ("alice", "secret")
+    s.Auth = None
+    assert s.Auth is None
+
+# --- Session.AllowRedirects ---
+
+@test
+def test_session_allow_redirects_defaults_to_true():
+    s: requests.Session = requests.Session()
+    assert s.AllowRedirects
+
+@test
+def test_session_allow_redirects_can_be_set_to_false():
+    s: requests.Session = requests.Session()
+    s.AllowRedirects = False
+    assert not s.AllowRedirects
+    s.AllowRedirects = True
+    assert s.AllowRedirects
+
+# --- Session.MaxRedirects ---
+
+@test
+def test_session_max_redirects_defaults_to_30():
+    s: requests.Session = requests.Session()
+    assert s.MaxRedirects == 30
+
+@test
+def test_session_max_redirects_can_be_changed():
+    s: requests.Session = requests.Session()
+    s.MaxRedirects = 10
+    assert s.MaxRedirects == 10
+    s.MaxRedirects = 1
+    assert s.MaxRedirects == 1
+
+@test
+def test_session_max_redirects_can_be_overridden():
+    s: requests.Session = requests.Session()
+    s.MaxRedirects = 7
+    assert s.MaxRedirects == 7
+    s.MaxRedirects = 100
+    assert s.MaxRedirects == 100
+
+# --- Session.Verify ---
+
+@test
+def test_session_verify_defaults_to_true():
+    s: requests.Session = requests.Session()
+    assert s.Verify
+
+@test
+def test_session_verify_can_be_set_to_false():
+    s: requests.Session = requests.Session()
+    s.Verify = False
+    assert not s.Verify
+    s.Verify = True
+    assert s.Verify
+
+@test
+def test_session_verify_round_trips():
+    s: requests.Session = requests.Session()
+    s.Verify = False
+    assert not s.Verify
+    s.Verify = True
+    assert s.Verify
+
+# --- Session.Proxies ---
+
+@test
+def test_session_proxies_default_is_null():
+    s: requests.Session = requests.Session()
+    assert s.Proxies is None
+
+@test
+def test_session_proxies_can_be_set_to_dict():
+    s: requests.Session = requests.Session()
+    proxies: dict[str, str] = {}
+    proxies["http"] = "http://proxy.example.com:8080"
+    proxies["https"] = "http://secure-proxy.example.com:8443"
+    s.Proxies = proxies
+    assert s.Proxies is not None
+    assert s.Proxies["http"] == "http://proxy.example.com:8080"
+    assert s.Proxies["https"] == "http://secure-proxy.example.com:8443"
+
+@test
+def test_session_proxies_can_be_cleared_back_to_null():
+    s: requests.Session = requests.Session()
+    proxies: dict[str, str] = {}
+    proxies["http"] = "http://proxy.example.com:8080"
+    s.Proxies = proxies
+    assert s.Proxies is not None
+    s.Proxies = None
+    assert s.Proxies is None
+
+@test
+def test_session_proxies_empty_dict_is_allowed():
+    s: requests.Session = requests.Session()
+    empty: dict[str, str] = {}
+    s.Proxies = empty
+    assert s.Proxies is not None
+    assert len(s.Proxies) == 0
