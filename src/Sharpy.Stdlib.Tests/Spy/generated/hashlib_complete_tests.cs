@@ -126,7 +126,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (67, 5) - (67, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
                 var h = hashlib.Md5("hello");
 #line (68, 5) - (68, 52) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
-                Xunit.Assert.Equal(h.DigestSize * 2, global::Sharpy.Builtins.Len(h.Hexdigest()));
+                Xunit.Assert.Equal(h.DigestSize * 2, h.Hexdigest().Length);
             }
 
             [Xunit.FactAttribute]
@@ -135,7 +135,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (72, 5) - (72, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
                 var h = hashlib.Sha256("hello");
 #line (73, 5) - (73, 52) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
-                Xunit.Assert.Equal(h.DigestSize * 2, global::Sharpy.Builtins.Len(h.Hexdigest()));
+                Xunit.Assert.Equal(h.DigestSize * 2, h.Hexdigest().Length);
             }
 
             [Xunit.FactAttribute]
@@ -144,7 +144,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (77, 5) - (77, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
                 var h = hashlib.Sha512("hello");
 #line (78, 5) - (78, 52) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
-                Xunit.Assert.Equal(h.DigestSize * 2, global::Sharpy.Builtins.Len(h.Hexdigest()));
+                Xunit.Assert.Equal(h.DigestSize * 2, h.Hexdigest().Length);
             }
 
             [Xunit.FactAttribute]
