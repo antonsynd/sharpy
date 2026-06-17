@@ -22,6 +22,45 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Create a zero-filled Bytes instance of the given length (Python's bytes(n)).
+        /// </summary>
+        public Bytes(int length)
+        {
+            if (length < 0)
+            {
+                throw new ValueError("negative count");
+            }
+
+            _data = length > 0 ? new byte[length] : System.Array.Empty<byte>();
+        }
+
+        /// <summary>
+        /// Create a Bytes instance from an iterable of ints (Python's bytes([...])).
+        /// Each value must be in range(0, 256); otherwise a ValueError is thrown.
+        /// </summary>
+        public Bytes(IEnumerable<int> values)
+        {
+            if (values == null)
+            {
+                _data = System.Array.Empty<byte>();
+                return;
+            }
+
+            var buffer = new System.Collections.Generic.List<byte>();
+            foreach (int value in values)
+            {
+                if (value < 0 || value > 255)
+                {
+                    throw new ValueError("bytes must be in range(0, 256)");
+                }
+
+                buffer.Add((byte)value);
+            }
+
+            _data = buffer.Count > 0 ? buffer.ToArray() : System.Array.Empty<byte>();
+        }
+
+        /// <summary>
         /// Wrap an already-owned byte array without copying (internal use only).
         /// Callers must not retain or mutate <paramref name="ownedData"/> after calling this.
         /// </summary>
