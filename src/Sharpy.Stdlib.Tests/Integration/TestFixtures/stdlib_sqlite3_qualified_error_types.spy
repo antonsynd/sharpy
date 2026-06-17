@@ -1,0 +1,40 @@
+# Regression for #952: sqlite3 error types (CLR Sqlite3OperationalError, Python
+# name OperationalError) must be reachable both as sqlite3.OperationalError and via
+# `from sqlite3 import OperationalError`, and catch a real SQL error through the
+# hierarchy (OperationalError : DatabaseError : Error).
+import sqlite3
+from sqlite3 import OperationalError
+
+
+def main() -> None:
+    conn = sqlite3.connect(":memory:")
+
+    exact_caught = False
+    try:
+        conn.execute("INVALID SQL")
+    except OperationalError:
+        exact_caught = True
+    print(exact_caught)
+
+    qualified_caught = False
+    try:
+        conn.execute("INVALID SQL")
+    except sqlite3.OperationalError:
+        qualified_caught = True
+    print(qualified_caught)
+
+    base_caught = False
+    try:
+        conn.execute("INVALID SQL")
+    except sqlite3.DatabaseError:
+        base_caught = True
+    print(base_caught)
+
+    root_caught = False
+    try:
+        conn.execute("INVALID SQL")
+    except sqlite3.Error:
+        root_caught = True
+    print(root_caught)
+
+    conn.close()
