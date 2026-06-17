@@ -42,16 +42,23 @@ namespace Sharpy
             _semaphore.Release();
         }
 
-        public Semaphore __enter__()
+        // Context-manager protocol. The Sharpy emitter detects __enter__/__exit__ on the
+        // discovered type symbol and lowers `with sem:` to calls to Enter()/Exit(); the dunder
+        // names below are the discovery markers that route to the real Enter()/Exit() methods.
+        public Semaphore Enter()
         {
             Acquire();
             return this;
         }
 
-        public void __exit__(object? excType = null, object? excVal = null, object? excTb = null)
+        public void Exit()
         {
             Release();
         }
+
+        public Semaphore __enter__() => Enter();
+
+        public void __exit__(object? excType = null, object? excVal = null, object? excTb = null) => Exit();
 
         public void Dispose()
         {

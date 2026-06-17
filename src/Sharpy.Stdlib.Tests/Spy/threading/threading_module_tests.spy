@@ -10,10 +10,10 @@ import threading
 # writes a heap location rather than a captured local (matches how the C# tests used
 # captured locals; spy has no `nonlocal` rebind of a captured primitive).
 #
-# Context-manager tests (Lock/RLock/Semaphore/BoundedSemaphore) are ported using the
-# real `with` surface instead of calling `__enter__`/`__exit__` directly; the C#
-# `BeSameAs(self)` identity assertion on `__enter__()` is dropped (no Sharpy surface
-# for reference identity), and the observable lock/acquire state is asserted instead.
+# Context-manager tests (Lock/RLock/Semaphore/BoundedSemaphore) use the real `with`
+# surface; the C# `BeSameAs(self)` identity assertion on `__enter__()` is dropped (no
+# Sharpy surface for reference identity), and the observable lock/acquire state is
+# asserted instead.
 #
 # Subclassing Thread and overriding `run()` requires the `@override` decorator
 # (SPY0248) — Thread.Run is virtual.
@@ -114,9 +114,8 @@ def test_lock_acquire_and_release():
 @test
 def test_lock_context_manager():
     lk = threading.Lock()
-    lk.acquire()
-    assert lk.locked()
-    lk.release()
+    with lk:
+        assert lk.locked()
     assert not lk.locked()
 
 
@@ -156,8 +155,9 @@ def test_rlock_release_unowned_throws_runtime_error():
 @test
 def test_rlock_context_manager():
     rl = threading.RLock()
-    rl.acquire()
-    rl.release()
+    with rl:
+        assert rl.acquire()
+        rl.release()
 
 
 # ===== Event =====
@@ -222,9 +222,8 @@ def test_semaphore_negative_value_throws_value_error():
 @test
 def test_semaphore_context_manager():
     sem = threading.Semaphore(1)
-    sem.acquire()
-    assert not sem.acquire(blocking=False)
-    sem.release()
+    with sem:
+        assert not sem.acquire(blocking=False)
     assert sem.acquire(blocking=False)
     sem.release()
 
@@ -253,9 +252,8 @@ def test_bounded_semaphore_normal_use():
 @test
 def test_bounded_semaphore_context_manager():
     sem = threading.BoundedSemaphore(1)
-    sem.acquire()
-    assert not sem.acquire(blocking=False)
-    sem.release()
+    with sem:
+        assert not sem.acquire(blocking=False)
     assert sem.acquire(blocking=False)
     sem.release()
 

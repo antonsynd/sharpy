@@ -55,9 +55,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public class RunFlagThread : global::Sharpy.Thread
             {
                 public override void Run()
-#line 434 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line 432 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
-#line (435, 9) - (435, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (433, 9) - (433, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     RanFlag[0] = true;
                 }
             }
@@ -183,38 +183,47 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (116, 5) - (116, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var lk = new global::Sharpy.Lock();
-#line (117, 5) - (117, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                lk.Acquire();
-#line (118, 5) - (118, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.True(lk.Locked());
-#line (119, 5) - (119, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                lk.Release();
-#line (120, 5) - (120, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (117, 5) - (119, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                {
+                    var __ctx_0 = lk;
+                    __ctx_0.Enter();
+                    try
+                    {
+#line (118, 9) - (118, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                        Xunit.Assert.True(lk.Locked());
+                    }
+                    finally
+                    {
+                        __ctx_0.Exit();
+                    }
+                }
+
+#line (119, 5) - (119, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.False(lk.Locked());
             }
 
             [Xunit.FactAttribute]
             public void TestLockNonBlockingReturnsFalse()
             {
-#line (125, 5) - (125, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (124, 5) - (124, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var lk = new global::Sharpy.Lock();
-#line (126, 5) - (126, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (125, 5) - (125, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 lk.Acquire();
-#line (127, 5) - (127, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (126, 5) - (126, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.False(lk.Acquire(blocking: false));
-#line (128, 5) - (128, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (127, 5) - (127, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 lk.Release();
             }
 
             [Xunit.FactAttribute]
             public void TestLockReleaseUnlockedThrowsRuntimeError()
             {
-#line (133, 5) - (133, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (132, 5) - (132, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var lk = new global::Sharpy.Lock();
-#line (134, 5) - (140, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (133, 5) - (139, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.Throws<RuntimeError>((global::System.Action)(() =>
                 {
-#line (135, 9) - (135, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (134, 9) - (134, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     lk.Release();
                 }));
             }
@@ -222,27 +231,27 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRlockReentrancy()
             {
-#line (142, 5) - (142, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (141, 5) - (141, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var rl = new global::Sharpy.RLock();
+#line (142, 5) - (142, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                Xunit.Assert.True(rl.Acquire());
 #line (143, 5) - (143, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(rl.Acquire());
-#line (144, 5) - (144, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.True(rl.Acquire());
-#line (145, 5) - (145, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (144, 5) - (144, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 rl.Release();
-#line (146, 5) - (146, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (145, 5) - (145, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 rl.Release();
             }
 
             [Xunit.FactAttribute]
             public void TestRlockReleaseUnownedThrowsRuntimeError()
             {
-#line (151, 5) - (151, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (150, 5) - (150, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var rl = new global::Sharpy.RLock();
-#line (152, 5) - (156, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (151, 5) - (155, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.Throws<RuntimeError>((global::System.Action)(() =>
                 {
-#line (153, 9) - (153, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (152, 9) - (152, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     rl.Release();
                 }));
             }
@@ -250,12 +259,24 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRlockContextManager()
             {
-#line (158, 5) - (158, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (157, 5) - (157, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var rl = new global::Sharpy.RLock();
-#line (159, 5) - (159, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                rl.Acquire();
-#line (160, 5) - (160, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                rl.Release();
+#line (158, 5) - (165, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                {
+                    var __ctx_1 = rl;
+                    __ctx_1.Enter();
+                    try
+                    {
+#line (159, 9) - (159, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                        Xunit.Assert.True(rl.Acquire());
+#line (160, 9) - (160, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                        rl.Release();
+                    }
+                    finally
+                    {
+                        __ctx_1.Exit();
+                    }
+                }
             }
 
             [Xunit.FactAttribute]
@@ -357,31 +378,40 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (224, 5) - (224, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var sem = new global::Sharpy.Semaphore(1);
-#line (225, 5) - (225, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                sem.Acquire();
-#line (226, 5) - (226, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.False(sem.Acquire(blocking: false));
-#line (227, 5) - (227, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                sem.Release();
-#line (228, 5) - (228, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (225, 5) - (227, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                {
+                    var __ctx_2 = sem;
+                    __ctx_2.Enter();
+                    try
+                    {
+#line (226, 9) - (226, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                        Xunit.Assert.False(sem.Acquire(blocking: false));
+                    }
+                    finally
+                    {
+                        __ctx_2.Exit();
+                    }
+                }
+
+#line (227, 5) - (227, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(sem.Acquire(blocking: false));
-#line (229, 5) - (229, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (228, 5) - (228, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Release();
             }
 
             [Xunit.FactAttribute]
             public void TestBoundedSemaphoreOverReleaseThrowsValueError()
             {
-#line (236, 5) - (236, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (235, 5) - (235, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var sem = new global::Sharpy.BoundedSemaphore(1);
-#line (237, 5) - (237, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (236, 5) - (236, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Acquire();
-#line (238, 5) - (238, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (237, 5) - (237, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Release();
-#line (239, 5) - (243, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (238, 5) - (242, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
                 {
-#line (240, 9) - (240, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (239, 9) - (239, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     sem.Release();
                 }));
             }
@@ -389,308 +419,317 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestBoundedSemaphoreNormalUse()
             {
-#line (245, 5) - (245, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (244, 5) - (244, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var sem = new global::Sharpy.BoundedSemaphore(2);
+#line (245, 5) - (245, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                Xunit.Assert.True(sem.Acquire());
 #line (246, 5) - (246, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(sem.Acquire());
-#line (247, 5) - (247, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.True(sem.Acquire());
-#line (248, 5) - (248, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (247, 5) - (247, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.False(sem.Acquire(blocking: false));
-#line (249, 5) - (249, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (248, 5) - (248, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Release();
-#line (250, 5) - (250, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (249, 5) - (249, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Release();
             }
 
             [Xunit.FactAttribute]
             public void TestBoundedSemaphoreContextManager()
             {
-#line (255, 5) - (255, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (254, 5) - (254, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var sem = new global::Sharpy.BoundedSemaphore(1);
-#line (256, 5) - (256, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                sem.Acquire();
-#line (257, 5) - (257, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.False(sem.Acquire(blocking: false));
-#line (258, 5) - (258, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                sem.Release();
-#line (259, 5) - (259, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (255, 5) - (257, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                {
+                    var __ctx_3 = sem;
+                    __ctx_3.Enter();
+                    try
+                    {
+#line (256, 9) - (256, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                        Xunit.Assert.False(sem.Acquire(blocking: false));
+                    }
+                    finally
+                    {
+                        __ctx_3.Exit();
+                    }
+                }
+
+#line (257, 5) - (257, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(sem.Acquire(blocking: false));
-#line (260, 5) - (260, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (258, 5) - (258, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Release();
             }
 
             [Xunit.FactAttribute]
             public void TestBarrierSynchronization()
             {
-#line (267, 5) - (267, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (265, 5) - (265, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 BarrierCount[0] = 0;
-#line (268, 5) - (268, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (266, 5) - (266, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var barrier = new global::Sharpy.Barrier(3);
-#line (269, 5) - (269, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (267, 5) - (267, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var @lock = new global::Sharpy.Lock();
-#line (271, 5) - (277, 5) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (269, 5) - (275, 5) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 void Worker()
-#line 271 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line 269 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
-#line (272, 9) - (272, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (270, 9) - (270, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     @lock.Acquire();
-#line (273, 9) - (273, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (271, 9) - (271, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     BarrierCount[0] = BarrierCount[0] + 1;
-#line (274, 9) - (274, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (272, 9) - (272, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     @lock.Release();
-#line (275, 9) - (275, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (273, 9) - (273, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     barrier.Wait();
                 }
 
-#line (277, 5) - (277, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (275, 5) - (275, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Sharpy.List<global::Sharpy.Thread> threads = new Sharpy.List<global::Sharpy.Thread>()
                 {
                 };
-#line (278, 5) - (280, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                foreach (var __loopVar_0 in global::Sharpy.Builtins.Range(3))
+#line (276, 5) - (278, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                foreach (var __loopVar_4 in global::Sharpy.Builtins.Range(3))
                 {
-                    var i = __loopVar_0;
-#line (279, 9) - (279, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                    var i = __loopVar_4;
+#line (277, 9) - (277, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     threads.Append(new global::Sharpy.Thread(Worker));
                 }
 
-#line (280, 5) - (282, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                foreach (var __loopVar_1 in threads)
+#line (278, 5) - (280, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                foreach (var __loopVar_5 in threads)
                 {
-                    var t = __loopVar_1;
-#line (281, 9) - (281, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                    var t = __loopVar_5;
+#line (279, 9) - (279, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     t.Start();
                 }
 
-#line (282, 5) - (284, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                foreach (var __loopVar_2 in threads)
+#line (280, 5) - (282, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                foreach (var __loopVar_6 in threads)
                 {
-                    var t = __loopVar_2;
-#line (283, 9) - (283, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+                    var t = __loopVar_6;
+#line (281, 9) - (281, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     t.Join(timeout: 5.0d);
                 }
 
-#line (284, 5) - (284, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (282, 5) - (282, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.Equal(3, BarrierCount[0]);
             }
 
             [Xunit.FactAttribute]
             public void TestBarrierParties()
             {
-#line (289, 5) - (289, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (287, 5) - (287, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var barrier = new global::Sharpy.Barrier(4);
-#line (290, 5) - (290, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (288, 5) - (288, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.Equal(4, barrier.Parties);
             }
 
             [Xunit.FactAttribute]
             public void TestBarrierBrokenIsFalseInitially()
             {
-#line (295, 5) - (295, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (293, 5) - (293, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var barrier = new global::Sharpy.Barrier(2);
-#line (296, 5) - (296, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (294, 5) - (294, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.False(barrier.Broken);
             }
 
             [Xunit.FactAttribute]
             public void TestBarrierAbortSetsBroken()
             {
-#line (301, 5) - (301, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (299, 5) - (299, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var barrier = new global::Sharpy.Barrier(2);
-#line (302, 5) - (302, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (300, 5) - (300, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 barrier.Abort();
-#line (303, 5) - (303, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (301, 5) - (301, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(barrier.Broken);
             }
 
             [Xunit.FactAttribute]
             public void TestBarrierWaitReturnsPhaseNumber()
             {
-#line (308, 5) - (308, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (306, 5) - (306, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var barrier = new global::Sharpy.Barrier(1);
-#line (309, 5) - (309, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (307, 5) - (307, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var phase = barrier.Wait();
-#line (310, 5) - (310, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (308, 5) - (308, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(phase >= 0);
             }
 
             [Xunit.FactAttribute]
             public void TestBarrierResetClearsBroken()
             {
-#line (315, 5) - (315, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (313, 5) - (313, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var barrier = new global::Sharpy.Barrier(2);
-#line (316, 5) - (316, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (314, 5) - (314, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 barrier.Abort();
-#line (317, 5) - (317, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (315, 5) - (315, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(barrier.Broken);
-#line (318, 5) - (318, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (316, 5) - (316, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 barrier.Reset();
-#line (319, 5) - (319, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (317, 5) - (317, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.False(barrier.Broken);
             }
 
             [Xunit.FactAttribute]
             public void TestTimerFiresAfterInterval()
             {
-#line (326, 5) - (326, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (324, 5) - (324, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 FiredFlag[0] = false;
-#line (327, 5) - (327, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (325, 5) - (325, 45) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var timer = new global::Sharpy.Timer(0.05d, SetFired);
-#line (328, 5) - (328, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (326, 5) - (326, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 timer.Start();
-#line (329, 5) - (329, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (327, 5) - (327, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var evt = new global::Sharpy.Event();
-#line (330, 5) - (330, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (328, 5) - (328, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 evt.Wait(timeout: 0.2d);
-#line (331, 5) - (331, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (329, 5) - (329, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 timer.Cancel();
-#line (332, 5) - (332, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (330, 5) - (330, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(FiredFlag[0]);
             }
 
             [Xunit.FactAttribute]
             public void TestTimerCancelPreventsFiring()
             {
-#line (337, 5) - (337, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (335, 5) - (335, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 FiredFlag[0] = false;
-#line (338, 5) - (338, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (336, 5) - (336, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var timer = new global::Sharpy.Timer(1.0d, SetFired);
-#line (339, 5) - (339, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (337, 5) - (337, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 timer.Start();
-#line (340, 5) - (340, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (338, 5) - (338, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 timer.Cancel();
-#line (341, 5) - (341, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (339, 5) - (339, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var evt = new global::Sharpy.Event();
-#line (342, 5) - (342, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (340, 5) - (340, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 evt.Wait(timeout: 0.1d);
-#line (343, 5) - (343, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (341, 5) - (341, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.False(FiredFlag[0]);
             }
 
             [Xunit.FactAttribute]
             public void TestTimerStartTwiceThrowsRuntimeError()
             {
-#line (348, 5) - (348, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (346, 5) - (346, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var timer = new global::Sharpy.Timer(1.0d, SetFired);
-#line (349, 5) - (349, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (347, 5) - (347, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 timer.Start();
-#line (350, 5) - (352, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (348, 5) - (350, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.Throws<RuntimeError>((global::System.Action)(() =>
                 {
-#line (351, 9) - (351, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (349, 9) - (349, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     timer.Start();
                 }));
-#line (352, 5) - (352, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (350, 5) - (350, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 timer.Cancel();
             }
 
             [Xunit.FactAttribute]
             public void TestCurrentThreadReturnsUsableThread()
             {
-#line (359, 5) - (359, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (357, 5) - (357, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var ct = threading.CurrentThread();
-#line (360, 5) - (360, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (358, 5) - (358, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(ct.Ident > 0);
             }
 
             [Xunit.FactAttribute]
             public void TestActiveCountReturnsPositive()
             {
-#line (365, 5) - (365, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (363, 5) - (363, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var count = threading.ActiveCount();
-#line (366, 5) - (366, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (364, 5) - (364, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(count > 0);
             }
 
             [Xunit.FactAttribute]
             public void TestMainThreadReturnsUsableThread()
             {
-#line (371, 5) - (371, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (369, 5) - (369, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var mt = threading.MainThread();
-#line (372, 5) - (372, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (370, 5) - (370, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(mt.Ident > 0);
             }
 
             [Xunit.FactAttribute]
             public void TestEnumerateReturnsNonEmpty()
             {
-#line (377, 5) - (377, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (375, 5) - (375, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var threads = threading.Enumerate();
-#line (378, 5) - (378, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (376, 5) - (376, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(global::Sharpy.Builtins.Len(threads) > 0);
             }
 
             [Xunit.FactAttribute]
             public void TestModuleFactoryLock()
             {
-#line (385, 5) - (385, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (383, 5) - (383, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var lk = new global::Sharpy.Lock();
-#line (386, 5) - (386, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (384, 5) - (384, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(lk.Acquire());
-#line (387, 5) - (387, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (385, 5) - (385, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 lk.Release();
             }
 
             [Xunit.FactAttribute]
             public void TestModuleFactoryRlock()
             {
-#line (392, 5) - (392, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (390, 5) - (390, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var rl = new global::Sharpy.RLock();
-#line (393, 5) - (393, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (391, 5) - (391, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(rl.Acquire());
-#line (394, 5) - (394, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (392, 5) - (392, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 rl.Release();
             }
 
             [Xunit.FactAttribute]
             public void TestModuleFactoryEvent()
             {
-#line (399, 5) - (399, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (397, 5) - (397, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var evt = new global::Sharpy.Event();
-#line (400, 5) - (400, 14) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (398, 5) - (398, 14) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 evt.Set();
-#line (401, 5) - (401, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (399, 5) - (399, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(evt.IsSet());
             }
 
             [Xunit.FactAttribute]
             public void TestModuleFactorySemaphore()
             {
-#line (406, 5) - (406, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (404, 5) - (404, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var sem = new global::Sharpy.Semaphore(3);
-#line (407, 5) - (407, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (405, 5) - (405, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(sem.Acquire());
-#line (408, 5) - (408, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (406, 5) - (406, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Release();
             }
 
             [Xunit.FactAttribute]
             public void TestModuleFactoryBoundedSemaphore()
             {
-#line (413, 5) - (413, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (411, 5) - (411, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var sem = new global::Sharpy.BoundedSemaphore(3);
-#line (414, 5) - (414, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (412, 5) - (412, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.True(sem.Acquire());
-#line (415, 5) - (415, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (413, 5) - (413, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Release();
             }
 
             [Xunit.FactAttribute]
             public void TestModuleFactoryBarrier()
             {
-#line (420, 5) - (420, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (418, 5) - (418, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var b = new global::Sharpy.Barrier(2);
-#line (421, 5) - (421, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (419, 5) - (419, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 Xunit.Assert.Equal(2, b.Parties);
             }
 
             [Xunit.FactAttribute]
             public void TestModuleFactoryTimer()
             {
-#line (426, 5) - (426, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (424, 5) - (424, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var t = new global::Sharpy.Timer(1.0d, SetFired);
-#line (427, 5) - (427, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (425, 5) - (425, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 t.Cancel();
             }
         }
