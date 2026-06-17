@@ -172,6 +172,8 @@ Omission breakdown by category:
 
 Compiler fix applied during Phase 4: CLR nested-type names (`SocketModule+Socket` → `SocketModule.Socket`) via `ClrNameHelper.ToCSharpQualifiedName`.
 
+Compiler/stdlib gaps filed during Phase 4: **#946** (threading Lock/RLock/Semaphore `with` context manager emits Enter/Exit — types lack those methods), **#947** (`int?` == `int` rejected by SPY0222 — nullable comparison), **#948** (no Sharpy surface for stderr capture — blocks logging test porting), **#949** (`bytes([1,2,3])` emits invalid `Sharpy.List<int>` instead of `Bytes`), **#950** (`[None]` infers `Sharpy.List<void>` — should require annotation), **#951** (CLR `object?[]` not indexable/matchable from .spy — sqlite3 fetchone default), **#952** (sqlite3 error types not reachable as module members — #918 class).
+
 ## Out of Scope (stay C#)
 
 | C# File | Tests | Reason |
