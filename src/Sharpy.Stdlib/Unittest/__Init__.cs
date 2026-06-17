@@ -197,5 +197,23 @@ namespace Sharpy
         {
             return new CapturedOutput();
         }
+
+        /// <summary>
+        /// Create a <see cref="Sharpy.CapturedStderr"/> context manager that captures
+        /// everything written to the standard error stream while active. Exposed to
+        /// Sharpy as <c>captured_stderr()</c> and intended for use in a <c>with</c>
+        /// statement: <c>with captured_stderr() as err: ...</c>. Useful for asserting
+        /// on output from modules that write to stderr, such as <c>logging</c>.
+        /// </summary>
+        /// <remarks>
+        /// Unlike the assertion markers, this is a real runtime helper — it is not
+        /// rewritten by the compiler and may be called directly. Because
+        /// <see cref="System.Console.Error"/> is process-global, captures nest in LIFO
+        /// order and must not be shared across tests that run in parallel.
+        /// </remarks>
+        public static CapturedStderr CapturedStderr()
+        {
+            return new CapturedStderr();
+        }
     }
 }
