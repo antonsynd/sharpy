@@ -796,6 +796,13 @@ internal partial class TypeChecker
             return matchingOverload.ReturnType;
         }
 
+        // isinstance must always type to bool even when no overload matched,
+        // so that invalid-form diagnostics (SPY0475 tuple form, "requires 1 type
+        // arguments" parameterized form) surface from TransitionWarningValidator,
+        // Roslyn, and TypeResolver respectively — not a premature SPY0224.
+        if (id.Name == BuiltinNames.Isinstance)
+            return SemanticType.Bool;
+
         // No matching overload found
         var expectedCounts = string.Join(" or ", overloads!.Select(o =>
         {
