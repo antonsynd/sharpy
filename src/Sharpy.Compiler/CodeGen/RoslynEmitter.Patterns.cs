@@ -214,6 +214,25 @@ internal partial class RoslynEmitter
                         return DeclarationPattern(caseTypeSyntax, DiscardDesignation());
                     }
 
+                    // Bare `case list()` against an `array[T]` scrutinee (e.g. a CLR
+                    // object?[] from interop): the semantic layer resolved the pattern to
+                    // the scrutinee's array type, so lower to a C# array declaration pattern
+                    // (`T[] r`) — a raw CLR array matches it and indexing on the binding
+                    // lowers to ArrayHelpers.GetItem.
+                    if (typePattern.Type.TypeArguments.Length == 0
+                        && typePattern.Type.Name == BuiltinNames.List
+                        && _context.SemanticInfo?.GetPatternType(typePattern)
+                            is GenericType { Name: BuiltinNames.Array } arrayPatternType)
+                    {
+                        var arrayTypeSyntax = _typeMapper.MapSemanticType(arrayPatternType);
+                        if (typePattern.BindingName != null)
+                        {
+                            var arrayVarName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);
+                            return DeclarationPattern(arrayTypeSyntax, SingleVariableDesignation(Identifier(arrayVarName)));
+                        }
+                        return DeclarationPattern(arrayTypeSyntax, DiscardDesignation());
+                    }
+
                     // Non-generic collection fallback: `case list()` / `case dict()` /
                     // `case set()` (no type arguments) against an `object` scrutinee cannot
                     // use the generic Sharpy collection type (e.g. Sharpy.List<object>), which
