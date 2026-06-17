@@ -103,7 +103,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | ShlexModuleTests.cs | 34 | Spy/shlex/shlex_module_tests.spy | 31 | ported (3 omitted: Split/Quote/Join_Null_ThrowsTypeError — null→non-nullable rejected at compile time, Axiom 3) |
 | ShutilTests.cs | 15 | Spy/shutil/shutil_tests.spy | 15 | ported (Copy2_PreservesTimestamps verifies dst mtime == src mtime via os.stat().st_mtime — os.utime not exposed, so the custom-time setup is dropped; os.path helpers via `from os.path import ...`) |
 | ShutilAdditionalTests.cs | 14 | Spy/shutil/shutil_additional_tests.spy | 14 | ported (2 which tests' Windows skip dropped — POSIX runners, as in glob) |
-| SocketModuleTests.cs | 46 | Spy/socket/socket_module_tests.spy | 40 | ported (6 omitted: 3 reflection BeAssignableTo exception hierarchy — folded into behavioral isinstance checks; 1 InnerException identity; 2 other reflection/construction) |
+| SocketModuleTests.cs | 46 | Spy/socket/socket_module_tests.spy | 40 | ported (6 omitted: 3 disabled pending #945 — socket.error/socket.timeout resolve to wrong module's type; 1 InnerException identity; 2 other reflection/construction) |
 | Sqlite3ConnectionTests.cs | 23 | Spy/sqlite3/sqlite3_connection_tests.spy | 20 | ported (3 omitted: 2 BeOfType reflection; 1 IDisposable/using — covered by close()-then-use test) |
 | Sqlite3CursorTests.cs | 46 | Spy/sqlite3/sqlite3_cursor_tests.spy | 43 | ported (3 omitted: LINQ Cast/Select; IDisposable Dispose; TypeMapping_Null collapsed into Execute_NullParameter) |
 | Sqlite3ErrorTests.cs | 33 | Spy/sqlite3/sqlite3_error_tests.spy | 4 | ported (29 omitted: 12 BeAssignableTo reflection; 6 MessagePropagation exception ctor; 6 InnerException ctor; 6 DefaultConstructor — all exception construction/reflection with no Sharpy surface; replaced by 4 behavioral catch-hierarchy tests) |
@@ -172,7 +172,7 @@ Omission breakdown by category:
 
 Compiler fix applied during Phase 4: CLR nested-type names (`SocketModule+Socket` → `SocketModule.Socket`) via `ClrNameHelper.ToCSharpQualifiedName`.
 
-Compiler/stdlib gaps filed during Phase 4: **#946** (threading Lock/RLock/Semaphore `with` context manager emits Enter/Exit — types lack those methods), **#947** (`int?` == `int` rejected by SPY0222 — nullable comparison), **#948** (no Sharpy surface for stderr capture — blocks logging test porting), **#949** (`bytes([1,2,3])` emits invalid `Sharpy.List<int>` instead of `Bytes`), **#950** (`[None]` infers `Sharpy.List<void>` — should require annotation), **#951** (CLR `object?[]` not indexable/matchable from .spy — sqlite3 fetchone default), **#952** (sqlite3 error types not reachable as module members — #918 class).
+Compiler/stdlib gaps filed during Phase 4: **#945** (`socket.error`/`socket.timeout` resolve to wrong module's type — name collision with `re.Error`/stray `Timeout`; 3 socket tests disabled), **#946** (threading Lock/RLock/Semaphore `with` context manager emits Enter/Exit — types lack those methods), **#947** (`int?` == `int` rejected by SPY0222 — nullable comparison), **#948** (no Sharpy surface for stderr capture — blocks logging test porting), **#949** (`bytes([1,2,3])` emits invalid `Sharpy.List<int>` instead of `Bytes`), **#950** (`[None]` infers `Sharpy.List<void>` — should require annotation), **#951** (CLR `object?[]` not indexable/matchable from .spy — sqlite3 fetchone default), **#952** (sqlite3 error types not reachable as module members — #918 class).
 
 ## Out of Scope (stay C#)
 

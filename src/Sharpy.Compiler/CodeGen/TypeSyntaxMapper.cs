@@ -520,11 +520,9 @@ internal class TypeSyntaxMapper
     {
         if (typeSymbol.ClrType != null)
         {
-            // Strip CLR generic arity suffix (e.g., DefaultDict`2 → DefaultDict)
-            // because type arguments are added separately by the caller via QualifiedGenericName.
-            // Also convert CLR nested type notation (+) to C# dot notation.
-            var fullName = ClrNameHelper.StripArity(typeSymbol.ClrType.FullName!)
-                .Replace('+', '.');
+            // Strip CLR generic arity suffixes and convert nested type notation (+) to C# dot notation.
+            // Type arguments are added separately by the caller via QualifiedGenericName.
+            var fullName = ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
 
             // Always use global:: for Sharpy namespace CLR types to avoid
             // Sharpy.Sharpy.X when code is inside namespace Sharpy.
