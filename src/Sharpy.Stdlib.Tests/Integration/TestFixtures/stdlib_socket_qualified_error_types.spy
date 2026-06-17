@@ -1,0 +1,26 @@
+# Regression for #945: socket.error / socket.timeout (and gaierror/herror) must
+# resolve to SocketModule's nested exception types, not an identically-named type
+# from another module (e.g. re.error). type() exposes the resolved CLR type, and
+# `except socket.error:` must catch a raised socket.timeout (Timeout : Error).
+import socket
+
+
+def main() -> None:
+    print(type(socket.error("boom")))
+    print(type(socket.timeout("slow")))
+    print(type(socket.gaierror("dns")))
+    print(type(socket.herror("legacy")))
+
+    timeout_caught = False
+    try:
+        raise socket.timeout("timed out")
+    except socket.error:
+        timeout_caught = True
+    print(timeout_caught)
+
+    gai_caught = False
+    try:
+        raise socket.gaierror("name resolution failed")
+    except socket.error:
+        gai_caught = True
+    print(gai_caught)

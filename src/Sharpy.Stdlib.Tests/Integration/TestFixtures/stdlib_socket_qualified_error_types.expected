@@ -1,0 +1,6 @@
+Sharpy.SocketModule+Error
+Sharpy.SocketModule+Timeout
+Sharpy.SocketModule+Gaierror
+Sharpy.SocketModule+Herror
+True
+True

@@ -35,6 +35,41 @@ namespace Sharpy.Compiler.Shared
             return StripAllArity(fullName).Replace('+', '.');
         }
 
+        /// <summary>
+        /// Reduces a CLR type name to its assembly-independent full name (namespace +
+        /// nested-type path, using <c>+</c> for nesting and <c>`N</c> arity suffixes intact).
+        /// Accepts either an assembly-qualified name (e.g.
+        /// <c>"Sharpy.SocketModule+Error, Sharpy.Stdlib, Version=..."</c>) or a plain
+        /// <see cref="System.Type.FullName"/> (e.g. <c>"Sharpy.SocketModule+Error"</c>) and
+        /// returns the same string for both: the part before the first top-level comma.
+        /// This yields a stable, collision-free cache key that matches what
+        /// <see cref="System.Type.FullName"/> produces, so registration (which has the
+        /// assembly-qualified name) and lookup (which has <c>FullName</c>) agree.
+        /// Bracket-aware: commas inside generic argument lists (<c>[[...]]</c>) are ignored.
+        /// </summary>
+        internal static string ToFullClrName(string clrTypeName)
+        {
+            int depth = 0;
+            for (int i = 0; i < clrTypeName.Length; i++)
+            {
+                char c = clrTypeName[i];
+                if (c == '[')
+                {
+                    depth++;
+                }
+                else if (c == ']')
+                {
+                    depth--;
+                }
+                else if (c == ',' && depth == 0)
+                {
+                    return clrTypeName.Substring(0, i);
+                }
+            }
+
+            return clrTypeName;
+        }
+
         private static string StripAllArity(string name)
         {
             int backtick = name.IndexOf('`', StringComparison.Ordinal);

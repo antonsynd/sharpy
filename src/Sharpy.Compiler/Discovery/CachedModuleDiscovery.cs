@@ -97,7 +97,13 @@ internal class CachedModuleDiscovery
             {
                 if (typeInfo.IsModuleType)
                 {
-                    var fullName = typeInfo.Namespace + "." + typeInfo.Name;
+                    // Key by the full CLR type name (e.g. "Sharpy.SocketModule+Error"),
+                    // NOT by "Namespace.Name". Module member types share a containing
+                    // namespace ("Sharpy") and reuse simple Python names ("Error"), so
+                    // "Namespace.Name" collides across modules (socket.error vs re.error
+                    // both keyed "Sharpy.Error", #945). The full CLR name is unique and
+                    // matches what ConvertTypeSignature looks up via clrType.FullName.
+                    var fullName = ClrNameHelper.ToFullClrName(typeInfo.ClrTypeName);
                     _moduleTypeNames.TryAdd(fullName, 0);
                     pendingTypeInfos.Add((fullName, moduleName, typeInfo));
                 }
@@ -183,8 +189,10 @@ internal class CachedModuleDiscovery
 
             foreach (var typeInfo in moduleOverloads.Types)
             {
-                // Reuse pre-computed TypeSymbol if available (for reference identity)
-                var fullName = typeInfo.Namespace + "." + typeInfo.Name;
+                // Reuse pre-computed TypeSymbol if available (for reference identity).
+                // Must use the SAME full-CLR-name key as the registration loop in
+                // LoadAssembly so cross-module same-named types don't collide (#945).
+                var fullName = ClrNameHelper.ToFullClrName(typeInfo.ClrTypeName);
                 if (_moduleTypeSymbols.TryGetValue(fullName, out var cached))
                 {
                     types.Add(cached);
@@ -820,12 +828,16 @@ internal class CachedModuleDiscovery
                 // UserDefinedType in the symbol table, so operator return types must also be
                 // UserDefinedType for assignability to work.
                 // Uses pre-computed set from discovery phase instead of runtime reflection.
-                if (clrType.FullName != null && _moduleTypeNames.ContainsKey(clrType.FullName))
+                // Normalize through ToFullClrName so this key matches the registration key
+                // (derived from typeInfo.ClrTypeName) exactly; otherwise nested types like
+                // "Sharpy.SocketModule+Error" register and look up under different keys (#945).
+                var clrKey = clrType.FullName != null ? ClrNameHelper.ToFullClrName(clrType.FullName) : null;
+                if (clrKey != null && _moduleTypeNames.ContainsKey(clrKey))
                 {
                     // Reuse the pre-computed TypeSymbol (created during index loading)
                     // so the Symbol reference is identical to the one returned by
                     // GetModuleTypes, enabling type assignability checks.
-                    if (_moduleTypeSymbols.TryGetValue(clrType.FullName, out var cachedSymbol))
+                    if (_moduleTypeSymbols.TryGetValue(clrKey, out var cachedSymbol))
                     {
                         return new UserDefinedType { Name = signature.Name, Symbol = cachedSymbol };
                     }
