@@ -667,13 +667,11 @@ internal class OverloadIndexBuilder
                 : (clrType.AssemblyQualifiedName ?? clrType.FullName ?? clrType.Name)
         };
 
-        // byte[] is mapped to array[byte] for bytes interop (#941).
-        // Populate TypeArguments so ConvertTypeSignature reconstructs the GenericType.
-        if (clrType.IsArray && clrType.GetElementType() == typeof(byte))
+        if (clrType.IsArray && clrType.GetElementType() is { } elemType)
         {
             signature.Name = BuiltinNames.Array;
             signature.IsGeneric = true;
-            signature.TypeArguments = new List<TypeSignature> { CreateTypeSignature(clrType.GetElementType()!) };
+            signature.TypeArguments = new List<TypeSignature> { CreateTypeSignature(elemType) };
             return signature;
         }
 
