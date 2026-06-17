@@ -420,7 +420,8 @@ internal partial class TypeChecker
         Func<SemanticType, SemanticType>? TypeSubstitution = null,
         bool ReturnFirstMatch = false,
         bool SkipUnknownTypes = false,
-        IReadOnlyCollection<string>? KeywordArgNames = null);
+        IReadOnlyCollection<string>? KeywordArgNames = null,
+        FunctionCall? Call = null);
 
     /// <summary>
     /// Core overload resolution algorithm shared by all overload resolution methods.
@@ -528,6 +529,13 @@ internal partial class TypeChecker
 
                 if (!IsAssignable(context.ArgTypes[i], expectedType))
                 {
+                    if (IsSystemTypeParameter(expectedType)
+                        && context.Call != null
+                        && i < context.Call.Arguments.Length
+                        && _semanticInfo.IsTypeReference(context.Call.Arguments[i]))
+                    {
+                        continue;
+                    }
                     typesMatch = false;
                     break;
                 }
@@ -777,7 +785,7 @@ internal partial class TypeChecker
         var kwNames = ExtractKeywordArgNames(call);
         var (matchingOverload, _, _) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
-                ReturnFirstMatch: true, KeywordArgNames: kwNames));
+                ReturnFirstMatch: true, KeywordArgNames: kwNames, Call: call));
 
         if (matchingOverload != null)
         {
@@ -878,7 +886,7 @@ internal partial class TypeChecker
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads, totalArgCount, argTypes,
                 SkipSelfParam: true, TypeSubstitution: typeSubstitution,
-                SkipUnknownTypes: true, KeywordArgNames: kwNames));
+                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
 
         if (isAmbiguous || matchingOverload == null)
         {
@@ -1065,7 +1073,7 @@ internal partial class TypeChecker
         var kwNames = ExtractKeywordArgNames(call);
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads, totalArgCount, argTypes,
-                SkipUnknownTypes: true, KeywordArgNames: kwNames));
+                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
 
         if (isAmbiguous || matchingOverload == null)
         {
@@ -1109,7 +1117,7 @@ internal partial class TypeChecker
         var kwNames = ExtractKeywordArgNames(call);
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
-                SkipUnknownTypes: true, KeywordArgNames: kwNames));
+                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
 
         if (isAmbiguous || matchingOverload == null)
         {
@@ -1155,7 +1163,7 @@ internal partial class TypeChecker
         var kwNames = ExtractKeywordArgNames(call);
         var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
-                SkipUnknownTypes: true, KeywordArgNames: kwNames));
+                SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
 
         if (isAmbiguous || matchingOverload == null)
         {
