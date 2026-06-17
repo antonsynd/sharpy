@@ -1,0 +1,17 @@
+# A C# NullableType operand (T | None, the loose interop form) supports the
+# comparison/equality operators against a non-nullable operand via C#'s lifted
+# operators — `int? == int` is valid and yields bool (#947). The strict Optional
+# (T?) path is intentionally unaffected (still requires narrowing).
+def main() -> None:
+    x: int | None = 5
+    y: int = 5
+    print(x == y)
+    print(x != y)
+    print(x < y)
+    print(x <= y)
+    print(x > y)
+    print(x >= y)
+
+    z: int | None = 3
+    print(z == y)
+    print(z < y)
