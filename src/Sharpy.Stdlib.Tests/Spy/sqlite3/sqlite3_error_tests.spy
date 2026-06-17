@@ -1,5 +1,4 @@
 from unittest import assert_raises
-from sharpy import Sqlite3Error, Sqlite3DatabaseError, Sqlite3OperationalError, Sqlite3IntegrityError
 
 import sqlite3
 
@@ -38,7 +37,7 @@ def test_operational_error_caught_by_sqlite3_error():
     caught: bool = False
     try:
         conn.execute("NOT VALID SQL")
-    except Sqlite3Error:
+    except sqlite3.Error:
         caught = True
     assert caught
     conn.close()
@@ -52,7 +51,7 @@ def test_integrity_error_caught_by_sqlite3_database_error():
     caught: bool = False
     try:
         conn.execute("INSERT INTO t VALUES (1)")
-    except Sqlite3DatabaseError:
+    except sqlite3.DatabaseError:
         caught = True
     assert caught
     conn.close()
@@ -61,7 +60,7 @@ def test_integrity_error_caught_by_sqlite3_database_error():
 @test
 def test_operational_error_is_exactly_operational_via_assert_raises():
     conn = sqlite3.connect(":memory:")
-    with assert_raises(Sqlite3OperationalError):
+    with assert_raises(sqlite3.OperationalError):
         conn.execute("NOT VALID SQL")
     conn.close()
 
@@ -71,6 +70,6 @@ def test_integrity_error_is_exactly_integrity_via_assert_raises():
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
     conn.execute("INSERT INTO t VALUES (1)")
-    with assert_raises(Sqlite3IntegrityError):
+    with assert_raises(sqlite3.IntegrityError):
         conn.execute("INSERT INTO t VALUES (1)")
     conn.close()

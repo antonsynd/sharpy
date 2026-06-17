@@ -21,15 +21,10 @@
 #     SocketException and asserts reference identity of InnerException. No Sharpy
 #     surface for building a SocketException or inspecting InnerException identity.
 #
-# Disabled pending bug #945 (3 source methods, folded to 2 tests):
-#   - Connect_InvalidAddress_ThrowsError, CreateConnection_InvalidAddress, and the
-#     three error-hierarchy checks (Timeout/Gaierror/Herror_IsError) all depend on
-#     `socket.error` / `socket.timeout`, which currently resolve to the WRONG
-#     module's identically-named exception types (re.Error / a stray Timeout)
-#     instead of SocketModule's. So `except socket.error:` does not catch a raised
-#     socket.timeout. These three tests are commented out below until #945 lands.
-#     (`socket.gaierror` / `socket.herror` resolve correctly — unique names — so
-#     test_gethostbyname_invalid_host_raises_gaierror is kept and passes.)
+# Error-hierarchy tests (3 source methods, folded to 2 tests) were unblocked by
+# #945: socket.error / socket.timeout now resolve to SocketModule's nested
+# exception types (no longer collide with re.Error), so `except socket.error:`
+# catches a raised socket.timeout.
 #
 # Tests that depend on a DNS resolver being present (kept, but noted):
 #   - test_gethostbyname_localhost_returns_loopback
@@ -309,33 +304,50 @@ def test_socket_ipv6_can_create():
     s.close()
 
 # ---- Error handling ----
-#
-# DISABLED pending #945: `socket.error` and `socket.timeout` are qualified-name
-# resolution collisions — they resolve to other modules' identically-named
-# exception types (re.Error / a stray Timeout) instead of SocketModule's, so
-# `except socket.error:` does not catch a raised socket.timeout. The three
-# exception tests below cannot pass until #945 is fixed. `socket.gaierror` and
-# `socket.herror` resolve correctly (unique names), so the gaierror DNS test
-# above is kept and passing.
-#
-# @test
-# def test_connect_invalid_address_raises_error():
-#     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#     s.settimeout(1.0)
-#     with assert_raises(socket.error):
-#         s.connect(("192.0.2.1", 1))
-#     s.close()
-#
-# @test
-# def test_error_hierarchy():
-#     # Folds the three BeAssignableTo<Error> checks: each subclass instance is
-#     # catchable as the base `error` type.
-#     with assert_raises(socket.error):
-#         raise socket.timeout("timed out")
-#     with assert_raises(socket.error):
-#         raise socket.gaierror("name resolution failed")
-#     with assert_raises(socket.error):
-#         raise socket.herror("host error")
+
+
+@test
+def test_connect_invalid_address_raises_error():
+    # connect() to an unroutable address (with a short timeout) raises a
+    # socket.error subclass (socket.timeout). Caught via the base `error` type with
+    # try/except, which is subclass-based — assert_raises is exact-match and would
+    # reject the Timeout subclass.
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(1.0)
+    caught: bool = False
+    try:
+        s.connect(("192.0.2.1", 1))
+    except socket.error:
+        caught = True
+    assert caught
+    s.close()
+
+
+@test
+def test_error_hierarchy():
+    # Folds the three BeAssignableTo<Error> checks: each subclass instance is
+    # catchable as the base `error` type. Uses try/except (subclass-based) rather
+    # than assert_raises (exact-match), which would reject the subclasses.
+    timeout_caught: bool = False
+    try:
+        raise socket.timeout("timed out")
+    except socket.error:
+        timeout_caught = True
+    assert timeout_caught
+
+    gaierror_caught: bool = False
+    try:
+        raise socket.gaierror("name resolution failed")
+    except socket.error:
+        gaierror_caught = True
+    assert gaierror_caught
+
+    herror_caught: bool = False
+    try:
+        raise socket.herror("host error")
+    except socket.error:
+        herror_caught = True
+    assert herror_caught
 
 # ---- create_connection (loopback) ----
 
@@ -358,11 +370,17 @@ def test_create_connection_connects_to_local_server():
     client.close()
     server.close()
 
-# DISABLED pending #945 (socket.error resolves to the wrong module's type):
-# @test
-# def test_create_connection_invalid_address_raises():
-#     with assert_raises(socket.error):
-#         socket.create_connection(("192.0.2.1", 1), timeout=1.0)
+@test
+def test_create_connection_invalid_address_raises():
+    # create_connection re-raises the underlying connect() failure, a socket.error
+    # subclass (socket.timeout). Caught via try/except on the base `error` type
+    # (subclass-based), since assert_raises is exact-match.
+    caught: bool = False
+    try:
+        socket.create_connection(("192.0.2.1", 1), timeout=1.0)
+    except socket.error:
+        caught = True
+    assert caught
 
 # ---- ToString ----
 
