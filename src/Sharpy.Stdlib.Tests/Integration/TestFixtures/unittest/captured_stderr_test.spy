@@ -1,0 +1,16 @@
+from unittest import captured_stderr
+import logging
+
+# Verifies the @test lowering shape: with captured_stderr() as err -> using block,
+# and "assert ... in err.getvalue()" rewrites to Xunit.Assert.Contains. The logging
+# module writes to stderr, so captured_stderr is the way to assert on its output.
+@test
+def test_stderr():
+    log = logging.Logger("cap_test")
+    log.set_level(logging.WARNING)
+    with captured_stderr() as err:
+        log.warning("boom")
+        assert "WARNING:cap_test:boom" in err.getvalue()
+
+def main():
+    print("ok")

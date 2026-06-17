@@ -1,15 +1,11 @@
 import logging
+from unittest import captured_stderr
 
 # Ported from LoggingModuleTests.cs (#843).
-# 13 omitted: GetLogger_ReturnsSameInstance/GetLogger_DifferentNames (reference
-# identity via BeSameAs/NotBeSameAs — no Sharpy surface); all 11 output-assertion
-# tests (Logger_Warning_OutputsToStderr, Logger_LevelFiltering_BelowLevel/AtLevel,
-# Logger_OutputFormat, Logger_DefaultLevel_IsWarning,
-# Logger_HigherSeverity_PassesLowerThreshold, Logger_AllLevelsAtOrAboveInfo_Emit,
-# Logger_EmptyMessage_EmitsPrefixOnly, Logger_MessageWithColons_PreservedVerbatim,
-# Logger_MultipleMessages_AppearInOrder, Logger_SetLevel_RaiseLevel) — all rely
-# on StringWriter + Console.SetError redirect to capture stderr output; no Sharpy
-# surface for stderr interception.
+# 2 omitted: GetLogger_ReturnsSameInstance/GetLogger_DifferentNames (reference
+# identity via BeSameAs/NotBeSameAs — no Sharpy surface). The 11 output-assertion
+# tests are re-enabled below via captured_stderr (#948), which redirects
+# Console.Error so stderr output from the logging module can be asserted.
 
 
 # --- Constants ---
@@ -21,3 +17,143 @@ def test_constants_have_correct_values():
     assert logging.WARNING == 30
     assert logging.ERROR == 40
     assert logging.CRITICAL == 50
+
+
+# --- Output to stderr ---
+
+@test
+def test_warning_outputs_to_stderr():
+    logger = logging.Logger("test_output")
+    logger.set_level(logging.WARNING)
+    with captured_stderr() as err:
+        logger.warning("test message")
+        assert err.getvalue().rstrip() == "WARNING:test_output:test message"
+
+
+@test
+def test_level_filtering_below_level():
+    logger = logging.Logger("test_filter")
+    logger.set_level(logging.ERROR)
+    with captured_stderr() as err:
+        logger.warning("should not appear")
+        assert err.getvalue() == ""
+
+
+@test
+def test_level_filtering_at_level():
+    logger = logging.Logger("test_at")
+    logger.set_level(logging.WARNING)
+    with captured_stderr() as err:
+        logger.warning("at level")
+        assert err.getvalue().rstrip() == "WARNING:test_at:at level"
+
+
+@test
+def test_output_format():
+    logger = logging.Logger("myapp")
+    logger.set_level(logging.DEBUG)
+    with captured_stderr() as err:
+        logger.debug("debug msg")
+        logger.info("info msg")
+        logger.error("error msg")
+        logger.critical("critical msg")
+
+        output = err.getvalue()
+        assert "DEBUG:myapp:debug msg" in output
+        assert "INFO:myapp:info msg" in output
+        assert "ERROR:myapp:error msg" in output
+        assert "CRITICAL:myapp:critical msg" in output
+
+
+@test
+def test_default_level_is_warning():
+    logger = logging.Logger("test_default")
+    with captured_stderr() as err:
+        logger.info("should not appear")
+        logger.warning("should appear")
+
+        output = err.getvalue()
+        assert "INFO" not in output
+        assert "WARNING" in output
+
+
+@test
+def test_higher_severity_passes_lower_threshold():
+    # At threshold WARNING, the more severe ERROR and CRITICAL messages emit.
+    logger = logging.Logger("test_higher_sev")
+    logger.set_level(logging.WARNING)
+    with captured_stderr() as err:
+        logger.error("err msg")
+        logger.critical("crit msg")
+
+        output = err.getvalue()
+        assert "ERROR:test_higher_sev:err msg" in output
+        assert "CRITICAL:test_higher_sev:crit msg" in output
+
+
+@test
+def test_all_levels_at_or_above_info_emit():
+    logger = logging.Logger("test_all_above_info")
+    logger.set_level(logging.INFO)
+    with captured_stderr() as err:
+        logger.debug("dbg suppressed")
+        logger.info("info shown")
+        logger.warning("warn shown")
+        logger.error("error shown")
+        logger.critical("critical shown")
+
+        output = err.getvalue()
+        assert "DEBUG" not in output
+        assert "INFO:test_all_above_info:info shown" in output
+        assert "WARNING:test_all_above_info:warn shown" in output
+        assert "ERROR:test_all_above_info:error shown" in output
+        assert "CRITICAL:test_all_above_info:critical shown" in output
+
+
+@test
+def test_empty_message_emits_prefix_only():
+    logger = logging.Logger("test_empty_msg")
+    logger.set_level(logging.WARNING)
+    with captured_stderr() as err:
+        logger.warning("")
+        assert err.getvalue().rstrip() == "WARNING:test_empty_msg:"
+
+
+@test
+def test_message_with_colons_preserved_verbatim():
+    # Colons in the message must not be misinterpreted as field separators.
+    logger = logging.Logger("test_colons")
+    logger.set_level(logging.WARNING)
+    with captured_stderr() as err:
+        logger.warning("key:value:pair")
+        assert err.getvalue().rstrip() == "WARNING:test_colons:key:value:pair"
+
+
+@test
+def test_multiple_messages_appear_in_order():
+    logger = logging.Logger("test_order")
+    logger.set_level(logging.DEBUG)
+    with captured_stderr() as err:
+        logger.debug("first")
+        logger.info("second")
+        logger.warning("third")
+
+        # Each message is written on its own line, so the stripped output is the
+        # three records joined by newlines in emission order.
+        output = err.getvalue().rstrip()
+        assert output == "DEBUG:test_order:first\nINFO:test_order:second\nWARNING:test_order:third"
+
+
+@test
+def test_set_level_raise_level_suppresses_lower_severity():
+    # Start permissive (DEBUG), then raise to ERROR; WARNING must be suppressed.
+    logger = logging.Logger("test_raise_level")
+    logger.set_level(logging.DEBUG)
+    logger.set_level(logging.ERROR)
+    with captured_stderr() as err:
+        logger.warning("should be suppressed after raise")
+        logger.error("should still appear")
+
+        output = err.getvalue()
+        assert "should be suppressed after raise" not in output
+        assert "should still appear" in output
