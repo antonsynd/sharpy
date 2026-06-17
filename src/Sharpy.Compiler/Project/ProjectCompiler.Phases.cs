@@ -227,6 +227,7 @@ internal partial class ProjectCompiler
                                     Kind = SymbolKind.Module,
                                     FilePath = "", // Parent modules don't have their own file
                                     Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } },
+                                    // Only IsNetModule needed — parent is structural; NetNamespaceName/CSharpNamespace live on the leaf
                                     IsNetModule = moduleInfo.IsNetModule
                                 };
                                 currentModule = parentModule;

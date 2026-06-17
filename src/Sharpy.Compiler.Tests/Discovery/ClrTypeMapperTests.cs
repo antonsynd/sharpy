@@ -47,6 +47,8 @@ public class ClrTypeMapperTests
         var genericType = (GenericType)result;
         Assert.Equal("array", genericType.Name);
         Assert.Single(genericType.TypeArguments);
+        var elementType = Assert.IsType<BuiltinType>(genericType.TypeArguments[0]);
+        Assert.Equal(typeof(byte), elementType.ClrType);
     }
 
     [Fact]
