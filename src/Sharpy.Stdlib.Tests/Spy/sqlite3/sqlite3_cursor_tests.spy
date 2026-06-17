@@ -1,5 +1,5 @@
 from unittest import assert_raises
-from sharpy import Sqlite3Connection, Sqlite3Row, Sqlite3ProgrammingError, Sqlite3OperationalError, Sqlite3IntegrityError, Bytes
+from sharpy import Sqlite3Connection, Sqlite3ProgrammingError, Sqlite3OperationalError, Sqlite3IntegrityError, Bytes
 
 import operator
 import sqlite3
@@ -10,13 +10,12 @@ import sqlite3
 # opens and closes its own connection. CreateAndPopulateTable() is inlined as the
 # module-level _populated_conn() def returning the connection.
 #
-# fetchone()/fetchall() are statically typed object/object?. The default tuple
-# array (object?[]) has no indexable Sharpy surface, so row_factory = sqlite3.Row
-# is set on every connection and rows are narrowed with
-# `match ... case Sqlite3Row() as r:` before indexing. Integer columns come back
-# as long; they are compared through the long-typed _eq_int() helper so int
-# literals widen (operator.eq is type-strict). str/float columns compare directly
-# via operator.eq. Object '==' is rejected by Axiom 3.
+# fetchone()/fetchall() are statically typed object/object?. The default row is a
+# CLR object?[] tuple array; it is narrowed to an indexable array with
+# `match ... to array[object]: case list() as r:` before indexing (#951). Integer
+# columns come back as long; they are compared through the long-typed _eq_int()
+# helper so int literals widen (operator.eq is type-strict). str/float columns
+# compare directly via operator.eq. Object '==' is rejected by Axiom 3.
 #
 # Omitted (3):
 #   - Linq_WorksOnCursor: LINQ .Cast/.Select over the cursor has no Sharpy surface
@@ -32,9 +31,7 @@ def _eq_int(value: object, expected: long) -> bool:
 
 
 def _conn() -> Sqlite3Connection:
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    return conn
+    return sqlite3.connect(":memory:")
 
 
 def _populated_conn() -> Sqlite3Connection:
@@ -53,8 +50,8 @@ def _populated_conn() -> Sqlite3Connection:
 def test_fetchone_returns_single_row():
     conn = _populated_conn()
     cursor = conn.execute("SELECT id, name FROM t WHERE id = 1")
-    match cursor.fetchone():
-        case Sqlite3Row() as r:
+    match cursor.fetchone() to array[object]:
+        case list() as r:
             assert _eq_int(r[0], 1)
             assert operator.eq(r[1], "Alice")
         case _:
@@ -131,14 +128,14 @@ def test_fetchall_returns_all_rows():
     rows = cursor.fetchall()
     assert len(rows) == 3
 
-    match rows[0]:
-        case Sqlite3Row() as first:
+    match rows[0] to array[object]:
+        case list() as first:
             assert _eq_int(first[0], 1)
         case _:
             assert False
 
-    match rows[2]:
-        case Sqlite3Row() as last:
+    match rows[2] to array[object]:
+        case list() as last:
             assert _eq_int(last[0], 3)
         case _:
             assert False
@@ -217,8 +214,8 @@ def test_execute_parameterized_insert_binds_values():
     conn.commit()
 
     cursor = conn.execute("SELECT a, b, c FROM t")
-    match cursor.fetchone():
-        case Sqlite3Row() as r:
+    match cursor.fetchone() to array[object]:
+        case list() as r:
             assert operator.eq(r[0], "hello")
             assert _eq_int(r[1], 42)
             assert operator.eq(r[2], 3.14)
@@ -231,8 +228,8 @@ def test_execute_parameterized_insert_binds_values():
 def test_execute_parameterized_select_filters_correctly():
     conn = _populated_conn()
     cursor = conn.execute("SELECT name FROM t WHERE id = ?", [2])
-    match cursor.fetchone():
-        case Sqlite3Row() as r:
+    match cursor.fetchone() to array[object]:
+        case list() as r:
             assert operator.eq(r[0], "Bob")
         case _:
             assert False
@@ -248,8 +245,8 @@ def test_execute_null_parameter_inserts_null():
     conn.commit()
 
     cursor = conn.execute("SELECT val FROM t")
-    match cursor.fetchone():
-        case Sqlite3Row() as r:
+    match cursor.fetchone() to array[object]:
+        case list() as r:
             assert r[0] is None
         case _:
             assert False
@@ -335,8 +332,8 @@ def test_executemany_inserts_all_parameter_sets():
     conn.commit()
 
     select_cursor = conn.execute("SELECT COUNT(*) FROM t")
-    match select_cursor.fetchone():
-        case Sqlite3Row() as r:
+    match select_cursor.fetchone() to array[object]:
+        case list() as r:
             assert _eq_int(r[0], 3)
         case _:
             assert False
@@ -363,8 +360,8 @@ def test_foreach_iterates_all_rows():
 
     ids: list[object] = []
     for row in cursor:
-        match row:
-            case Sqlite3Row() as r:
+        match row to array[object]:
+            case list() as r:
                 ids.append(r[0])
             case _:
                 assert False
@@ -386,8 +383,8 @@ def test_type_mapping_integer_returns_long():
     conn.commit()
 
     cursor = conn.execute("SELECT val FROM t")
-    match cursor.fetchone():
-        case Sqlite3Row() as r:
+    match cursor.fetchone() to array[object]:
+        case list() as r:
             assert _eq_int(r[0], 42)
         case _:
             assert False
@@ -402,8 +399,8 @@ def test_type_mapping_text_returns_string():
     conn.commit()
 
     cursor = conn.execute("SELECT val FROM t")
-    match cursor.fetchone():
-        case Sqlite3Row() as r:
+    match cursor.fetchone() to array[object]:
+        case list() as r:
             assert operator.eq(r[0], "hello")
         case _:
             assert False
@@ -418,8 +415,8 @@ def test_type_mapping_real_returns_double():
     conn.commit()
 
     cursor = conn.execute("SELECT val FROM t")
-    match cursor.fetchone():
-        case Sqlite3Row() as r:
+    match cursor.fetchone() to array[object]:
+        case list() as r:
             assert operator.eq(r[0], 3.14)
         case _:
             assert False
@@ -435,8 +432,8 @@ def test_type_mapping_blob_returns_bytes():
     conn.commit()
 
     cursor = conn.execute("SELECT val FROM t")
-    match cursor.fetchone():
-        case Sqlite3Row() as r:
+    match cursor.fetchone() to array[object]:
+        case list() as r:
             match r[0]:
                 case Bytes() as result:
                     assert result[0] == 1
@@ -569,14 +566,14 @@ def test_multiple_cursors_on_same_connection_work_independently():
     cur1 = conn.execute("SELECT id FROM t ORDER BY id")
     cur2 = conn.execute("SELECT name FROM t ORDER BY name")
 
-    match cur1.fetchone():
-        case Sqlite3Row() as row1:
+    match cur1.fetchone() to array[object]:
+        case list() as row1:
             assert _eq_int(row1[0], 1)
         case _:
             assert False
 
-    match cur2.fetchone():
-        case Sqlite3Row() as row2:
+    match cur2.fetchone() to array[object]:
+        case list() as row2:
             assert operator.eq(row2[0], "Alice")
         case _:
             assert False

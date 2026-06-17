@@ -1,0 +1,31 @@
+# Test sqlite3 cursor default-row narrowing: `match fetchone() to array[object]`
+# matches the CLR object?[] row and indexes it (#951)
+import operator
+import sqlite3
+
+def _eq_int(value: object, expected: long) -> bool:
+    return operator.eq(value, expected)
+
+def main():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)")
+    conn.execute("INSERT INTO t VALUES (1, 'Alice')")
+    conn.commit()
+
+    cursor = conn.execute("SELECT id, name FROM t WHERE id = 1")
+    match cursor.fetchone() to array[object]:
+        case list() as r:
+            assert _eq_int(r[0], 1)
+            assert operator.eq(r[1], "Alice")
+            print("matched")
+        case _:
+            print("no match")
+
+    empty = conn.execute("SELECT id FROM t WHERE id = 999")
+    match empty.fetchone() to array[object]:
+        case list():
+            print("unexpected")
+        case _:
+            print("none")
+
+    conn.close()

@@ -24,7 +24,9 @@ import sqlite3
 #     and reads Count — interface-cast reflection has no distinct Sharpy surface;
 #     Count is already covered via len().
 #   - RowFactory_WithoutRowFactory_ReturnsTupleArrays: BeOfType<object?[]> reflection
-#     check — the default object?[] tuple array has no indexable Sharpy surface.
+#     check — no Sharpy surface for asserting the runtime type. The default object?[]
+#     row is itself indexable (narrow with `to array[object]`; see the cursor tests
+#     and stdlib_sqlite3_default_row_indexing fixture, #951).
 
 
 def _eq_int(value: object, expected: long) -> bool:
