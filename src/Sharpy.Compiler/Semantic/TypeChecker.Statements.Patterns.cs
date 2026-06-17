@@ -279,6 +279,38 @@ internal partial class TypeChecker
     {
         var resolvedType = _typeResolver.ResolveTypeAnnotation(typePattern.Type);
 
+        // A bare `case list()` against an `array[T]` scrutinee (e.g. a CLR `object?[]`
+        // surfaced from interop such as sqlite3's default row) binds the captured value
+        // as the array itself, so indexing lowers to ArrayHelpers.GetItem. Resolve the
+        // pattern to the scrutinee's array type rather than to `list[T]` (which would
+        // bind the non-generic Sharpy.IList interface that a raw CLR array does not
+        // implement).
+        if (typePattern.Type.TypeArguments.Length == 0
+            && typePattern.Type.Name == BuiltinNames.List
+            && scrutineeType is GenericType { Name: BuiltinNames.Array } arrayScrutinee)
+        {
+            _semanticInfo.SetPatternType(typePattern, arrayScrutinee);
+            if (typePattern.BindingName != null)
+            {
+                var arrayBinding = new VariableSymbol
+                {
+                    Name = typePattern.BindingName.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = arrayScrutinee,
+                    IsConstant = false,
+                    DeclarationLine = typePattern.BindingName.LineStart,
+                    DeclarationColumn = typePattern.BindingName.ColumnStart,
+                    NameDeclarationLine = typePattern.BindingName.LineStart,
+                    NameDeclarationColumn = typePattern.BindingName.ColumnStart,
+                    AccessLevel = AccessLevel.Public
+                };
+                _symbolTable.Define(arrayBinding);
+                SemanticBinding.SetVariableType(arrayBinding, arrayScrutinee);
+                _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, arrayBinding);
+            }
+            return;
+        }
+
         // Unparameterized collection patterns (e.g., `case list()`, `case dict()`)
         // against an `object` scrutinee. Fill in default `object` type arguments so
         // member access (indexing, .items(), etc.) resolves at the semantic level.

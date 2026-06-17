@@ -1,0 +1,31 @@
+# Test sqlite3 default rows (no row_factory): object?[] surfaces as array[object],
+# indexable via `to array[object]` and matchable with `case list()` (#951)
+import sqlite3
+
+def main():
+    conn = sqlite3.connect(":memory:")
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE t (id INTEGER, name TEXT)")
+    cur.execute("INSERT INTO t VALUES (1, 'Alice')")
+    conn.commit()
+
+    cur.execute("SELECT id, name FROM t")
+    row = cur.fetchone()
+    if row is None:
+        print("no row")
+        return
+
+    # Narrow the default object row to an indexable array via `to`.
+    r = row to array[object]
+    print(r[0])
+    print(r[1])
+
+    # `case list()` against an array[object] scrutinee binds the array directly.
+    match r:
+        case list() as matched:
+            print(matched[0])
+            print(matched[-1])
+        case _:
+            print("no match")
+
+    conn.close()
