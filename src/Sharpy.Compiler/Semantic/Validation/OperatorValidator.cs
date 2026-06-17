@@ -127,6 +127,17 @@ internal class OperatorValidator : ValidatingAstWalker
         // Check if operator is supported by the left type
         if (!SupportsOperator(leftType, dunderName))
         {
+            // C# NullableType (T?, the loose interop form) supports comparison/equality operators
+            // via C#'s lifted operators — `int? == int` is valid (#947). The inference service is
+            // the authority on whether the underlying types compare, so defer to it; this keeps
+            // genuinely incompatible nullable comparisons (e.g. unrelated underlying types) erroring.
+            // OptionalType (Sharpy T?) is deliberately excluded — it must be narrowed/unwrapped first.
+            if (IsComparisonOperator(binOp.Operator)
+                && (leftType is NullableType || rightType is NullableType)
+                && Context.TypeInference != null
+                && Context.TypeInference.InferBinaryOpType(binOp.Operator, leftType, rightType) != null)
+                return;
+
             // Enum types support comparison operators natively (backed by integers in C#)
             if (IsEnumType(leftType) && IsComparisonOperator(binOp.Operator))
                 return;

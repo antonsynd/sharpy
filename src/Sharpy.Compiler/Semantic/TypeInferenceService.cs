@@ -115,6 +115,18 @@ internal class TypeInferenceService
         if (IsNoneReferenceEquality(op, left, right))
             return SemanticType.Bool;
 
+        // C# NullableType (T?, the loose interop form) supports comparison/equality operators
+        // via C#'s lifted operators — `int? == int` is valid and yields bool (#947). Resolve
+        // the operator against the underlying types; only comparisons are relaxed (arithmetic on
+        // possibly-null operands is intentionally not enabled here). OptionalType (Sharpy T?, the
+        // strict tagged union) is deliberately excluded — it must be narrowed/unwrapped first.
+        if (IsComparisonOperator(op) && (left is NullableType || right is NullableType))
+        {
+            var nullableResult = InferBinaryOpType(op, UnwrapNullable(left), UnwrapNullable(right));
+            if (nullableResult != null)
+                return nullableResult;
+        }
+
         // Try builtin types first
         var builtinResult = TryInferBuiltinBinaryOp(op, left, right);
         if (builtinResult != null)
