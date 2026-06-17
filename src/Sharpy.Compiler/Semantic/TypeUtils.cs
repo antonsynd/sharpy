@@ -80,7 +80,7 @@ internal static class TypeUtils
     public static bool IsCollection(SemanticType type)
     {
         return type is GenericType generic &&
-            (generic.Name == BuiltinNames.List || generic.Name == BuiltinNames.Dict || generic.Name == BuiltinNames.Set);
+            (generic.Name == BuiltinNames.List || generic.Name == BuiltinNames.Dict || generic.Name == BuiltinNames.Set || generic.Name == BuiltinNames.Array);
     }
 
     /// <summary>
@@ -124,7 +124,7 @@ internal static class TypeUtils
     {
         if (type is GenericType generic)
         {
-            if (generic.Name == BuiltinNames.List || generic.Name == BuiltinNames.Set)
+            if (generic.Name == BuiltinNames.List || generic.Name == BuiltinNames.Set || generic.Name == BuiltinNames.Array)
                 return generic.TypeArguments.FirstOrDefault();
             if (generic.Name == BuiltinNames.Dict)
                 return generic.TypeArguments.Skip(1).FirstOrDefault(); // Value type

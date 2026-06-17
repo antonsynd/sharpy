@@ -518,6 +518,12 @@ internal partial class TypeChecker
                 return TryGetClrType(ot.UnderlyingType);
             case GenericType gt:
                 {
+                    if (gt.Name == BuiltinNames.Array && gt.TypeArguments.Count == 1)
+                    {
+                        var elemClr = TryGetClrType(gt.TypeArguments[0]);
+                        return elemClr?.MakeArrayType();
+                    }
+
                     Type? openType = gt.Name switch
                     {
                         "list" => typeof(SharpyRT::Sharpy.List<>),
