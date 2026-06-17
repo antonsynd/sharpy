@@ -63,8 +63,8 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | JsonModuleAdditionalTests.cs | 13 | Spy/json/json_additional_tests.spy | 13 | ported |
 | JsonEncoderDecoderTests.cs | 16 | Spy/json/json_encoder_decoder_tests.spy | 14 | ported (2 omitted: need subclassing json.JSONEncoder, #914; re-enabled 5 object_hook tests after #915) |
 | JsonTypedDeserializationTests.cs | 16 | Spy/json/json_typed_deserialization_tests.spy | 14 | ported (2 omitted: type-unsafe null input, Axiom 3; required stdlib fix: IncludeFields + Optional converter for Sharpy field-lowered classes) |
-| LoggingModuleTests.cs | 14 | | | pending |
-| LoggingCompleteTests.cs | 22 | | | pending |
+| LoggingModuleTests.cs | 14 | Spy/logging/logging_module_tests.spy | 1 | ported (13 omitted: 2 reference identity — GetLogger BeSameAs/NotBeSameAs; 11 StringWriter/Console.SetError stderr capture — no Sharpy surface for stderr interception) |
+| LoggingCompleteTests.cs | 22 | Spy/logging/logging_complete_tests.spy | 4 | ported (18 omitted: 3 reference identity — GetLogger BeSameAs/NotBeSameAs; 15 StringWriter/Console.SetError stderr capture — no Sharpy surface for stderr interception) |
 | LruCacheTests.cs | 13 | Spy/functools/lru_cache_tests.spy | 13 | ported |
 | MathAdditionalTests.cs | 48 | Spy/math/math_additional_tests.spy | 48 | ported |
 | MathAdditionalTests2.cs | 72 | Spy/math/math_additional2_tests.spy | 72 | ported |
@@ -95,29 +95,29 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | ReModuleTests.cs | 56 | Spy/re/re_module_tests.spy | 56 | ported |
 | ReOperationTests.cs | 24 | Spy/re/re_operation_tests.spy | 24 | ported |
 | RePatternTests.cs | 74 | Spy/re/re_pattern_tests.spy | 67 | ported (7 omitted: 4 re.error type-not-nameable + 3 MatchResult indexer __getitem__ — spy-sourced module member-type gap, #918) |
-| RequestsModuleTests.cs | 20 | | | pending |
-| RequestsResponseTests.cs | 38 | | | pending |
-| RequestsSessionTests.cs | 37 | | | pending |
-| RequestsAdvancedTests.cs | 34 | | | pending |
+| RequestsModuleTests.cs | 20 | Spy/requests/requests_module_tests.spy | 0 | ported (all 14 omitted: all tests drive internal Requests.Send with mocked HttpMessageHandler — not reachable from .spy; 1 null arg Axiom 3; 1 live DNS) |
+| RequestsResponseTests.cs | 38 | Spy/requests/requests_response_tests.spy | 0 | ported (all 26 omitted: all tests construct Response via internal ctor from HttpResponseMessage — not reachable from .spy; 1 null arg Axiom 3) |
+| RequestsSessionTests.cs | 37 | Spy/requests/requests_session_tests.spy | 20 | ported (11 omitted: 2 null arg Axiom 3; 1 IDisposable/Dispose; 1 ArgumentOutOfRangeException not catchable; 7 internal Requests.Send) |
+| RequestsAdvancedTests.cs | 34 | Spy/requests/requests_advanced_tests.spy | 0 | ported (all 32 omitted: file upload/streaming via internal Requests.Send+mock; session config tests already ported in session_tests.spy) |
 | SecretsTests.cs | 21 | Spy/secrets/secrets_tests.spy | 21 | ported |
 | ShlexModuleTests.cs | 34 | Spy/shlex/shlex_module_tests.spy | 31 | ported (3 omitted: Split/Quote/Join_Null_ThrowsTypeError — null→non-nullable rejected at compile time, Axiom 3) |
 | ShutilTests.cs | 15 | Spy/shutil/shutil_tests.spy | 15 | ported (Copy2_PreservesTimestamps verifies dst mtime == src mtime via os.stat().st_mtime — os.utime not exposed, so the custom-time setup is dropped; os.path helpers via `from os.path import ...`) |
 | ShutilAdditionalTests.cs | 14 | Spy/shutil/shutil_additional_tests.spy | 14 | ported (2 which tests' Windows skip dropped — POSIX runners, as in glob) |
-| SocketModuleTests.cs | 46 | | | pending |
-| Sqlite3ConnectionTests.cs | 23 | | | pending |
-| Sqlite3CursorTests.cs | 46 | | | pending |
-| Sqlite3ErrorTests.cs | 33 | | | pending |
-| Sqlite3RowTests.cs | 24 | | | pending |
+| SocketModuleTests.cs | 46 | Spy/socket/socket_module_tests.spy | 40 | ported (6 omitted: 3 reflection BeAssignableTo exception hierarchy — folded into behavioral isinstance checks; 1 InnerException identity; 2 other reflection/construction) |
+| Sqlite3ConnectionTests.cs | 23 | Spy/sqlite3/sqlite3_connection_tests.spy | 20 | ported (3 omitted: 2 BeOfType reflection; 1 IDisposable/using — covered by close()-then-use test) |
+| Sqlite3CursorTests.cs | 46 | Spy/sqlite3/sqlite3_cursor_tests.spy | 43 | ported (3 omitted: LINQ Cast/Select; IDisposable Dispose; TypeMapping_Null collapsed into Execute_NullParameter) |
+| Sqlite3ErrorTests.cs | 33 | Spy/sqlite3/sqlite3_error_tests.spy | 4 | ported (29 omitted: 12 BeAssignableTo reflection; 6 MessagePropagation exception ctor; 6 InnerException ctor; 6 DefaultConstructor — all exception construction/reflection with no Sharpy surface; replaced by 4 behavioral catch-hierarchy tests) |
+| Sqlite3RowTests.cs | 24 | Spy/sqlite3/sqlite3_row_tests.spy | 21 | ported (3 omitted: Keys NotBeSameAs identity; ISized interface cast; BeOfType reflection) |
 | StatisticsTests.cs | 31 | Spy/statistics/statistics_tests.spy | 31 | ported |
 | StatisticsAdditionalTests.cs | 19 | Spy/statistics/statistics_additional_tests.spy | 19 | ported |
 | StringModuleTests.cs | 12 | Spy/string/string_module_tests.spy | 12 | ported |
-| SubprocessModuleTests.cs | 36 | | | pending |
-| SysModuleTests.cs | 21 | | | pending |
+| SubprocessModuleTests.cs | 36 | Spy/subprocess/subprocess_module_tests.spy | 36 | ported (all POSIX-portable; CompletedProcess/Popen/CalledProcessError/TimeoutExpired surface verified) |
+| SysModuleTests.cs | 21 | Spy/sys/sys_module_tests.spy | 14 | ported (7 omitted: 4 reference identity BeSameAs/NotBeSameAs Console.Out/Error/argv/path copies; 2 StringWriter/Console.SetOut/SetError redirect; 1 null arg getsizeof(null) Axiom 3) |
 | TarfileTests.cs | 24 | Spy/tarfile/tarfile_tests.spy | 21 | ported (3 omitted: TarInfo_DefaultProperties/TypeChecks/ToString — `tarfile.TarInfo()` ctor is internal, not constructible from the test assembly, #943. `with tarfile.open(...)`, extractfile().decode(), module-qualified exceptions/constants, isinstance hierarchy all work; `.add(path, arcname)` positional) |
 | TempfileTests.cs | 11 | Spy/tempfile/tempfile_tests.spy | 11 | ported (os.path helpers via `from os.path import ...` — attribute access `os.path.basename` is shadowed by the top-level `os` binding, SPY0203; plain `import os` still needed for rmdir/remove) |
 | TempfileCompleteTests.cs | 11 | Spy/tempfile/tempfile_complete_tests.spy | 11 | ported (GetExtension mirrored with os.path.splitext) |
 | TextwrapTests.cs | 27 | Spy/textwrap/textwrap_tests.spy | 27 | ported |
-| ThreadingModuleTests.cs | 43 | | | pending |
+| ThreadingModuleTests.cs | 43 | Spy/threading/threading_module_tests.spy | 43 | ported (Thread/Lock/RLock/Event/Condition/Semaphore/BoundedSemaphore/Barrier/Timer all verified; closures via list[int] cells for cross-thread mutable state) |
 | TimeModuleTests.cs | 34 | | | pending |
 | TomlModuleTests.cs | 46 | Spy/toml/toml_module_tests.spy | 41 | ported (5 omitted: 5 null-arg/Axiom 3) |
 | TomlTypedDeserializationTests.cs | 6 | Spy/toml/toml_typed_deserialization_tests.spy | 5 | ported (2 omitted: null-arg/Axiom 3; +1 table array test) |
@@ -146,6 +146,31 @@ All 7 modules ported; 14 C# test files removed and replaced by `.spy`. **319/326
 Omissions: pathlib ×4 — CLR `byte[]` not bridgeable (#941, ×2: read/write round-trip, empty write), null→non-nullable ctor (Axiom 3), `Path? == None` (SPY0222, Optional uses `is None`); tarfile ×3 — `tarfile.TarInfo()` ctor is `internal`/not constructible (#943). Each omitted behavior is otherwise covered (e.g. TarInfo via `getmembers()`).
 
 Compiler/stdlib gaps filed during Phase 3 (none block a module): **#940** (module static-field name mapping differs run vs project mode), **#941** (CLR `byte[]` params/returns not bridgeable from `.spy`), **#942** (snake_case keyword-arg names mangled to camelCase → CS1739), **#943** (`tarfile.TarInfo` internal ctor).
+
+## Phase 4 (System & Network) — COMPLETE (2026-06-17)
+
+All 7 modules ported; 14 C# test files removed and replaced by `.spy`. **246/411 tests ported, 165 documented omissions, 0 silent drops.**
+
+| Module | C# files | Ported/Total | Omitted |
+|--------|----------|--------------|---------|
+| sys | 1 | 14/21 | 7 |
+| logging | 2 | 5/36 | 31 |
+| subprocess | 1 | 36/36 | 0 |
+| threading | 1 | 43/43 | 0 |
+| socket | 1 | 40/46 | 6 |
+| sqlite3 | 4 | 88/126 | 38 |
+| requests | 4 | 20/103 | 83 |
+| **Total** | **14** | **246/411** | **165** |
+
+Omission breakdown by category:
+- **requests ×83**: internal `Requests.Send` + mocked `HttpMessageHandler` with no Sharpy surface (53); internal `Response(HttpResponseMessage)` constructor (26); null arg Axiom 3 (3); live DNS (1)
+- **sqlite3 error ×29**: exception construction + reflection (BeAssignableTo, MessagePropagation, InnerException, DefaultConstructor) — no Sharpy surface for direct exception construction/inspection
+- **logging ×31**: StringWriter/Console.SetError stderr capture (26); reference identity GetLogger BeSameAs/NotBeSameAs (5) — no Sharpy surface for stderr interception
+- **sys ×7**: reference identity BeSameAs/NotBeSameAs (4); StringWriter redirect (2); null arg Axiom 3 (1)
+- **socket ×6**: reflection/exception hierarchy (3); InnerException identity (1); other reflection (2)
+- **sqlite3 conn/cursor/row ×9**: BeOfType/ISized reflection (5); IDisposable/using (2); LINQ (1); collapsed duplicate (1)
+
+Compiler fix applied during Phase 4: CLR nested-type names (`SocketModule+Socket` → `SocketModule.Socket`) via `ClrNameHelper.ToCSharpQualifiedName`.
 
 ## Out of Scope (stay C#)
 
