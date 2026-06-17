@@ -1739,6 +1739,73 @@ def main():
         (narrowedType as UserDefinedType)!.Name.Should().Be("Foo");
     }
 
+    [Theory]
+    [InlineData("int")]
+    [InlineData("str")]
+    [InlineData("float")]
+    [InlineData("bool")]
+    public void TypeReference_BareBuiltinTypeName_MarkedInCallArgument(string typeName)
+    {
+        var source = $@"
+def main():
+    x: object = 42
+    isinstance(x, {typeName})
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var exprStmt = mainFunc.Body.OfType<ExpressionStatement>().First();
+        var call = exprStmt.Expression as FunctionCall;
+        call.Should().NotBeNull();
+        var typeArg = call!.Arguments[1];
+        semanticInfo.IsTypeReference(typeArg).Should().BeTrue(
+            $"bare '{typeName}' in isinstance argument position should be marked as a type reference");
+    }
+
+    [Fact]
+    public void TypeReference_UserDefinedType_MarkedInCallArgument()
+    {
+        var source = @"
+class Animal:
+    ...
+
+def main():
+    x: object = Animal()
+    isinstance(x, Animal)
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        var mainFunc = module.Body.OfType<FunctionDef>().Last();
+        var exprStmt = mainFunc.Body.OfType<ExpressionStatement>().First();
+        var call = exprStmt.Expression as FunctionCall;
+        call.Should().NotBeNull();
+        var typeArg = call!.Arguments[1];
+        semanticInfo.IsTypeReference(typeArg).Should().BeTrue(
+            "bare 'Animal' in isinstance argument position should be marked as a type reference");
+    }
+
+    [Fact]
+    public void TypeReference_ParameterizedType_NotMarkedInCallArgument()
+    {
+        var source = @"
+def main():
+    x: object = [1, 2, 3]
+    isinstance(x, list[int])
+";
+        var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        var mainFunc = module.Body.OfType<FunctionDef>().First();
+        var exprStmt = mainFunc.Body.OfType<ExpressionStatement>().First();
+        var call = exprStmt.Expression as FunctionCall;
+        call.Should().NotBeNull();
+        var typeArg = call!.Arguments[1];
+        semanticInfo.IsTypeReference(typeArg).Should().BeFalse(
+            "parameterized 'list[int]' should NOT be marked as a type reference");
+    }
+
     [Fact]
     public void GetEffectiveType_ReturnsNull_WhenNoTypeRecorded()
     {

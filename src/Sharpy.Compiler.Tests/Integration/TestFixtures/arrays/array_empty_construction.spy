@@ -1,0 +1,11 @@
+# Empty array construction and operations
+def main():
+    # Zero-size array
+    empty: array[int] = array[int](0)
+    print(len(empty))
+
+    # Single-element array
+    single: array[str] = array[str](1)
+    single[0] = "hello"
+    print(single[0])
+    print(len(single))
