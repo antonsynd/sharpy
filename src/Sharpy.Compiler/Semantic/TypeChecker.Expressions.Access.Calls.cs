@@ -105,6 +105,8 @@ internal partial class TypeChecker
         var (argTypes, kwargTypes) = CheckCallArguments(call, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
+        MarkTypeReferenceArguments(call);
+
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
 
@@ -2679,6 +2681,32 @@ internal partial class TypeChecker
             ReturnType = targetSymbol.ReturnType,
             OptionalParameterCount = optionalCount,
         };
+    }
+
+    private void MarkTypeReferenceArguments(FunctionCall call)
+    {
+        foreach (var arg in call.Arguments)
+        {
+            if (IsTypeNameExpression(arg))
+                _semanticInfo.MarkTypeReference(arg);
+        }
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (IsTypeNameExpression(kwarg.Value))
+                _semanticInfo.MarkTypeReference(kwarg.Value);
+        }
+    }
+
+    private bool IsTypeNameExpression(Expression expr)
+    {
+        if (expr is Identifier id)
+        {
+            var symbol = _symbolTable.Lookup(id.Name);
+            return symbol is TypeSymbol;
+        }
+
+        return false;
     }
 
 }
