@@ -1,0 +1,20 @@
+from unittest import captured_stderr
+import logging
+
+# Exercises the captured_stderr runtime path under CompileAndExecute (which runs
+# main(), not xUnit): redirect of Console.Error, getvalue(), and restore must all
+# work for real. The logging module writes to stderr.
+def main():
+    log: logging.Logger = logging.Logger("rt")
+    log.set_level(logging.DEBUG)
+    captured: str = ""
+    with captured_stderr() as err:
+        log.warning("first")
+        log.error("second")
+        captured = err.getvalue()
+    # Console.Error is restored here; these prints reach real stdout.
+    if "WARNING:rt:first" in captured and "ERROR:rt:second" in captured:
+        print("capture-ok")
+    else:
+        print("capture-FAIL")
+    print("stderr-restored")

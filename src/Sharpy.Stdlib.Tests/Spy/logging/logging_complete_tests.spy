@@ -1,17 +1,16 @@
 import logging
+from unittest import captured_stderr
 
 # Ported from LoggingCompleteTests.cs (#843).
-# 18 omitted: GetLogger_NoArgument_ReturnsRootLogger/
+# 3 omitted: GetLogger_NoArgument_ReturnsRootLogger/
 # GetLogger_UniqueNamesReturnDifferentInstances/
 # GetLogger_SameNameReturnsCachedInstance (reference identity via BeSameAs/
-# NotBeSameAs — no Sharpy surface); all 15 output-assertion tests
-# (Logger_Debug/Info/Error/Critical_AppearsWhenLevel*,
-# Logger_Debug/Info_SuppressedWhenLevel*, Logger_Warning_PassesWhenLevel*,
-# Logger_Error_SuppressedWhenLevelIsCritical, Logger_SetLevel_CanLowerLevel,
-# MultipleLoggers_EachRespectsOwnLevel/DifferentNames_DifferentPrefixes,
-# BasicConfig_SetsRootLoggerLevel, ModuleLevel_Warning/Error/Critical) — all
-# rely on StringWriter + Console.SetError redirect to capture stderr output;
-# no Sharpy surface for stderr interception.
+# NotBeSameAs — no Sharpy surface). The 15 output-assertion tests are re-enabled
+# below via captured_stderr (#948), which redirects Console.Error so stderr output
+# from the logging module can be asserted.
+
+# Each test uses a unique logger name to avoid cross-test interference, mirroring
+# the original C# tests which constructed Logger instances directly.
 
 
 # --- Level constant ordering ---
@@ -34,3 +33,161 @@ def test_warning_less_than_error():
 @test
 def test_error_less_than_critical():
     assert logging.ERROR < logging.CRITICAL
+
+
+# --- All log-level methods (construct Logger directly to control level) ---
+
+@test
+def test_debug_appears_when_level_is_debug():
+    logger = logging.Logger("lc_debug_on")
+    logger.set_level(logging.DEBUG)
+    with captured_stderr() as err:
+        logger.debug("dbg")
+        assert err.getvalue().rstrip() == "DEBUG:lc_debug_on:dbg"
+
+
+@test
+def test_info_appears_when_level_is_info():
+    logger = logging.Logger("lc_info_on")
+    logger.set_level(logging.INFO)
+    with captured_stderr() as err:
+        logger.info("informational")
+        assert err.getvalue().rstrip() == "INFO:lc_info_on:informational"
+
+
+@test
+def test_error_appears_when_level_is_error():
+    logger = logging.Logger("lc_error_on")
+    logger.set_level(logging.ERROR)
+    with captured_stderr() as err:
+        logger.error("something failed")
+        assert err.getvalue().rstrip() == "ERROR:lc_error_on:something failed"
+
+
+@test
+def test_critical_appears_when_level_is_critical():
+    logger = logging.Logger("lc_critical_on")
+    logger.set_level(logging.CRITICAL)
+    with captured_stderr() as err:
+        logger.critical("fatal error")
+        assert err.getvalue().rstrip() == "CRITICAL:lc_critical_on:fatal error"
+
+
+# --- Level filtering ---
+
+@test
+def test_debug_suppressed_when_level_is_warning():
+    logger = logging.Logger("lc_suppress_debug")
+    logger.set_level(logging.WARNING)
+    with captured_stderr() as err:
+        logger.debug("should be suppressed")
+        assert err.getvalue() == ""
+
+
+@test
+def test_info_suppressed_when_level_is_warning():
+    logger = logging.Logger("lc_suppress_info")
+    logger.set_level(logging.WARNING)
+    with captured_stderr() as err:
+        logger.info("should be suppressed")
+        assert err.getvalue() == ""
+
+
+@test
+def test_warning_passes_when_level_is_warning():
+    logger = logging.Logger("lc_warn_pass")
+    logger.set_level(logging.WARNING)
+    with captured_stderr() as err:
+        logger.warning("warn passes")
+        assert "warn passes" in err.getvalue()
+
+
+@test
+def test_error_suppressed_when_level_is_critical():
+    logger = logging.Logger("lc_error_suppressed")
+    logger.set_level(logging.CRITICAL)
+    with captured_stderr() as err:
+        logger.error("should not appear")
+        assert err.getvalue() == ""
+
+
+@test
+def test_set_level_can_lower_level():
+    # Start at CRITICAL, lower to DEBUG, verify DEBUG messages appear.
+    logger = logging.Logger("lc_lower_level")
+    logger.set_level(logging.CRITICAL)
+    logger.set_level(logging.DEBUG)
+    with captured_stderr() as err:
+        logger.debug("should appear after lowering level")
+        assert "should appear after lowering level" in err.getvalue()
+
+
+# --- Multiple loggers — independent levels ---
+
+@test
+def test_multiple_loggers_each_respects_own_level():
+    warning_logger = logging.Logger("lc_multi_warn")
+    warning_logger.set_level(logging.WARNING)
+
+    debug_logger = logging.Logger("lc_multi_debug")
+    debug_logger.set_level(logging.DEBUG)
+
+    with captured_stderr() as err:
+        warning_logger.debug("warn_logger debug suppressed")
+        debug_logger.debug("debug_logger debug visible")
+
+        output = err.getvalue()
+        assert "warn_logger debug suppressed" not in output
+        assert "debug_logger debug visible" in output
+
+
+@test
+def test_multiple_loggers_different_names_different_prefixes():
+    logger_a = logging.Logger("lc_prefix_a")
+    logger_a.set_level(logging.DEBUG)
+
+    logger_b = logging.Logger("lc_prefix_b")
+    logger_b.set_level(logging.DEBUG)
+
+    with captured_stderr() as err:
+        logger_a.info("msg from a")
+        logger_b.info("msg from b")
+
+        output = err.getvalue()
+        assert "INFO:lc_prefix_a:msg from a" in output
+        assert "INFO:lc_prefix_b:msg from b" in output
+
+
+# --- Module-level convenience functions ---
+
+@test
+def test_basic_config_sets_root_logger_level():
+    # Set root logger to DEBUG so module-level debug() emits.
+    logging.basic_config(logging.DEBUG)
+    with captured_stderr() as err:
+        logging.debug("basicconfig debug test")
+        assert "basicconfig debug test" in err.getvalue()
+    # Restore root logger to WARNING so other tests are unaffected.
+    logging.basic_config(logging.WARNING)
+
+
+@test
+def test_module_level_warning_outputs_to_stderr():
+    # Root logger defaults to WARNING, so warning() should always emit.
+    with captured_stderr() as err:
+        logging.warning("module level warning")
+        assert "module level warning" in err.getvalue()
+
+
+@test
+def test_module_level_error_outputs_to_stderr():
+    with captured_stderr() as err:
+        logging.error("module level error")
+        assert "module level error" in err.getvalue()
+
+
+@test
+def test_module_level_critical_outputs_to_stderr():
+    with captured_stderr() as err:
+        logging.critical("module level critical")
+        assert "module level critical" in err.getvalue()
