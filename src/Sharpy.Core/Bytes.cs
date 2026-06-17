@@ -11,12 +11,19 @@ namespace Sharpy
     /// </summary>
     public readonly partial struct Bytes : IEquatable<Bytes>, IComparable<Bytes>, ISized, IBoolConvertible, IEnumerable<int>
     {
-        private readonly byte[] _data;
+        private readonly byte[] _storage;
+
+        /// <summary>
+        /// Null-safe view of the backing array. <c>default(Bytes)</c> (and the parameterless
+        /// struct ctor that <c>bytes()</c> lowers to) leaves <see cref="_storage"/> null, so all
+        /// reads go through this property to behave like an empty byte sequence.
+        /// </summary>
+        private byte[] _data => _storage ?? System.Array.Empty<byte>();
 
         /// <summary>Create a Bytes instance from a byte array (copies the array).</summary>
         public Bytes(byte[] data)
         {
-            _data = data != null && data.Length > 0
+            _storage = data != null && data.Length > 0
                 ? (byte[])data.Clone()
                 : System.Array.Empty<byte>();
         }
@@ -31,7 +38,7 @@ namespace Sharpy
                 throw new ValueError("negative count");
             }
 
-            _data = length > 0 ? new byte[length] : System.Array.Empty<byte>();
+            _storage = length > 0 ? new byte[length] : System.Array.Empty<byte>();
         }
 
         /// <summary>
@@ -42,7 +49,7 @@ namespace Sharpy
         {
             if (values == null)
             {
-                _data = System.Array.Empty<byte>();
+                _storage = System.Array.Empty<byte>();
                 return;
             }
 
@@ -57,7 +64,7 @@ namespace Sharpy
                 buffer.Add((byte)value);
             }
 
-            _data = buffer.Count > 0 ? buffer.ToArray() : System.Array.Empty<byte>();
+            _storage = buffer.Count > 0 ? buffer.ToArray() : System.Array.Empty<byte>();
         }
 
         /// <summary>
@@ -71,7 +78,7 @@ namespace Sharpy
 
         private Bytes(byte[] data, bool wrap)
         {
-            _data = data ?? System.Array.Empty<byte>();
+            _storage = data ?? System.Array.Empty<byte>();
         }
 
         /// <summary>Gets the number of bytes.</summary>

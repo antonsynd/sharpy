@@ -20,8 +20,65 @@ public class BytesTests
     [Fact]
     public void Constructor_WithNull_CreatesEmpty()
     {
-        var b = new Bytes(null);
+        var b = new Bytes((byte[]?)null);
         b.Length.Should().Be(0);
+    }
+
+    [Fact]
+    public void Constructor_WithIntLength_CreatesZeroFilled()
+    {
+        var b = new Bytes(5);
+        b.Length.Should().Be(5);
+        Enumerable.Range(0, 5).Select(i => b[i]).Should().AllBeEquivalentTo(0);
+    }
+
+    [Fact]
+    public void Constructor_WithZeroLength_CreatesEmpty()
+    {
+        var b = new Bytes(0);
+        b.Length.Should().Be(0);
+    }
+
+    [Fact]
+    public void Constructor_WithNegativeLength_ThrowsValueError()
+    {
+        var act = () => new Bytes(-1);
+        act.Should().Throw<ValueError>();
+    }
+
+    [Fact]
+    public void Constructor_WithIntEnumerable_MaterializesBytes()
+    {
+        var b = new Bytes(new[] { 1, 2, 3 });
+        b.Length.Should().Be(3);
+        b[0].Should().Be(1);
+        b[1].Should().Be(2);
+        b[2].Should().Be(3);
+    }
+
+    [Fact]
+    public void Constructor_WithEmptyIntEnumerable_CreatesEmpty()
+    {
+        var b = new Bytes(System.Linq.Enumerable.Empty<int>());
+        b.Length.Should().Be(0);
+    }
+
+    [Fact]
+    public void Constructor_WithIntEnumerableOutOfRange_ThrowsValueError()
+    {
+        var actHigh = () => new Bytes(new[] { 256 });
+        actHigh.Should().Throw<ValueError>().WithMessage("bytes must be in range(0, 256)");
+
+        var actLow = () => new Bytes(new[] { -1 });
+        actLow.Should().Throw<ValueError>().WithMessage("bytes must be in range(0, 256)");
+    }
+
+    [Fact]
+    public void DefaultStructValue_BehavesAsEmpty()
+    {
+        Bytes b = default;
+        b.Length.Should().Be(0);
+        b.ToString().Should().Be("b''");
     }
 
     [Fact]
