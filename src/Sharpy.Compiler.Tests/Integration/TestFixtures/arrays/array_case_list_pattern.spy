@@ -1,0 +1,15 @@
+# A bare `case list()` against an array[object] scrutinee binds the array itself
+# and indexes via Python-style array access (#951).
+def main():
+    arr: array[object] = array[object](3)
+    arr[0] = 10
+    arr[1] = 20
+    arr[2] = 30
+
+    match arr:
+        case list() as r:
+            print(r[0])
+            print(r[-1])
+            print(len(r))
+        case _:
+            print("no match")
