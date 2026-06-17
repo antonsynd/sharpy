@@ -63,10 +63,7 @@ internal class ClrTypeMapper
             if (elementType == null)
                 return SemanticType.Object; // Defensive fallback for safety
 
-            // TODO(#944): map all CLR arrays to array[T]; currently only byte[]
-            // is mapped to array[byte] for bytes interop (#941) — other arrays
-            // stay as list[T] until isinstance/overload resolution is fixed.
-            var arrayName = elementType == typeof(byte) ? BuiltinNames.Array : BuiltinNames.List;
+            var arrayName = BuiltinNames.Array;
             return new GenericType
             {
                 Name = arrayName,
