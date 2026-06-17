@@ -50,7 +50,7 @@ internal partial class TypeChecker
             {
                 var spreadType = CheckExpression(spread.Value);
                 // Extract element type from the spread iterable
-                if (spreadType is GenericType { Name: BuiltinNames.List or BuiltinNames.Set } gt && gt.TypeArguments.Count > 0)
+                if (spreadType is GenericType { Name: BuiltinNames.List or BuiltinNames.Set or BuiltinNames.Array } gt && gt.TypeArguments.Count > 0)
                     elementTypes.Add(gt.TypeArguments[0]);
                 else if (spreadType is TupleType tupleSpread)
                     elementTypes.AddRange(tupleSpread.ElementTypes);
@@ -155,7 +155,7 @@ internal partial class TypeChecker
             if (elem is SpreadElement spread)
             {
                 var spreadType = CheckExpression(spread.Value);
-                if (spreadType is GenericType { Name: BuiltinNames.List or BuiltinNames.Set } gt && gt.TypeArguments.Count > 0)
+                if (spreadType is GenericType { Name: BuiltinNames.List or BuiltinNames.Set or BuiltinNames.Array } gt && gt.TypeArguments.Count > 0)
                     elementTypes.Add(gt.TypeArguments[0]);
                 else if (spreadType is TupleType tupleSpread)
                     elementTypes.AddRange(tupleSpread.ElementTypes);

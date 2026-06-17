@@ -1,0 +1,9 @@
+# isinstance shadowed by a user-defined function must NOT take the
+# builtin isinstance carve-out path — it should resolve as a normal call
+def isinstance(obj: object, type_name: str) -> bool:
+    return type_name == "int"
+
+def main():
+    # Calls the user-defined isinstance, not the builtin
+    print(isinstance(42, "int"))
+    print(isinstance(42, "str"))

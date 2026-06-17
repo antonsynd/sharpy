@@ -1,0 +1,4 @@
+# Negative test: array[T] is NOT implicitly assignable to list[T] (Decision #2)
+def main():
+    arr: array[int] = array[int](3)
+    lst: list[int] = arr

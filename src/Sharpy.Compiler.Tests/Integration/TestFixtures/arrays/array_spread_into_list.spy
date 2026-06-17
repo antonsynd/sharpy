@@ -1,0 +1,11 @@
+# array[T] spread into a list literal
+def main():
+    arr: array[int] = array[int](3)
+    arr[0] = 10
+    arr[1] = 20
+    arr[2] = 30
+    expanded: list[int] = [*arr]
+    print(len(expanded))
+    print(expanded[0])
+    print(expanded[1])
+    print(expanded[2])

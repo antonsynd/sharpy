@@ -1,0 +1,35 @@
+# isinstance narrowing matrix: builtin, user class, module-qualified
+# Each in if-narrowing position to lock type-reference recognition + narrowing
+
+class Animal:
+    _name: str
+    def __init__(self, name: str):
+        self._name = name
+    property get name(self) -> str:
+        return self._name
+
+def check_builtins(x: object) -> str:
+    if isinstance(x, int):
+        return f"int:{x + 1}"
+    elif isinstance(x, str):
+        return f"str:{len(x)}"
+    elif isinstance(x, float):
+        return f"float:{x}"
+    elif isinstance(x, bool):
+        return f"bool:{x}"
+    return "other"
+
+def check_user_class(x: object) -> str:
+    if isinstance(x, Animal):
+        return f"animal:{x.name}"
+    return "not_animal"
+
+def main():
+    # Builtin types
+    print(check_builtins(42))
+    print(check_builtins("hello"))
+    print(check_builtins(3.14))
+
+    # User class
+    print(check_user_class(Animal("Rex")))
+    print(check_user_class(42))
