@@ -1,0 +1,133 @@
+# Ported from RandomTests.cs (#843).
+#
+# 16 expanded cases (Randint [Theory] has 3 [InlineData] rows). Ported: 11. Omitted: 5.
+#
+# The C# tests call Sharpy.RandomModule.* directly; from .spy they map to the
+# `random` module (random_module.spy). Choice/Shuffle/Sample take list[T].
+#
+# Omissions (7):
+#   - Choice_Array / Choice_IList / Choice_EmptyArray / Choice_EmptyList (4):
+#     `random.choice(list)` fails to compile with SPY0353 (ambiguous overload) —
+#     the spy Choice(List<T>) clashes with the handwritten Choice(IList<T>)/Choice(T[])
+#     overloads in Random.Overloads.cs (List<T> implements IList<T>). See #954.
+#   - Shuffle_NullList_ThrowsTypeError (1): passing None to the non-nullable
+#     list[T] param is rejected at compile time (Axiom 3 null-arg guard) — the
+#     runtime TypeError path is unreachable from .spy.
+#   - Sample_KLargerThanPopulation / Sample_NegativeK are ported (ValueError).
+#
+# Note: C# Choice/Sample empty/null guards that depend on the array or IList
+# overloads, or on null, are not portable; the list-based ValueError guards are.
+
+from unittest import assert_raises
+
+import random
+
+
+# --- Seed determinism ---
+
+@test
+def test_seed_produces_deterministic_results():
+    random.seed(42)
+    first: float = random.next_double()
+    random.seed(42)
+    second: float = random.next_double()
+    assert first == second
+
+# --- next_double range ---
+
+@test
+def test_next_double_returns_value_in_range():
+    random.seed(123)
+    i: int = 0
+    while i < 50:
+        value: float = random.next_double()
+        assert value >= 0.0
+        assert value < 1.0
+        i = i + 1
+
+# --- randint inclusive range ([Theory]: (1,10), (0,0), (-5,5)) ---
+
+@test
+def test_randint_returns_value_in_inclusive_range_1_10():
+    random.seed(99)
+    i: int = 0
+    while i < 50:
+        value: int = random.randint(1, 10)
+        assert value >= 1
+        assert value <= 10
+        i = i + 1
+
+@test
+def test_randint_returns_value_in_inclusive_range_0_0():
+    random.seed(99)
+    i: int = 0
+    while i < 50:
+        value: int = random.randint(0, 0)
+        assert value >= 0
+        assert value <= 0
+        i = i + 1
+
+@test
+def test_randint_returns_value_in_inclusive_range_neg5_5():
+    random.seed(99)
+    i: int = 0
+    while i < 50:
+        value: int = random.randint(-5, 5)
+        assert value >= -5
+        assert value <= 5
+        i = i + 1
+
+# --- uniform range ---
+
+@test
+def test_uniform_returns_value_in_range():
+    random.seed(77)
+    i: int = 0
+    while i < 50:
+        value: float = random.uniform(1.0, 5.0)
+        assert value >= 1.0
+        assert value <= 5.0
+        i = i + 1
+
+# --- shuffle ---
+
+@test
+def test_shuffle_rearranges_elements():
+    random.seed(42)
+    lst: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    original: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    random.shuffle(lst)
+    # Same elements (sorting both yields the original ordered set)
+    assert sorted(lst) == sorted(original)
+    # Very unlikely to be in the same order with 10 elements
+    assert lst != original
+
+# --- sample ---
+
+@test
+def test_sample_returns_k_unique_elements():
+    random.seed(42)
+    population: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    sample: list[int] = random.sample(population, 3)
+    assert len(sample) == 3
+    for item in sample:
+        assert item in population
+
+@test
+def test_sample_k_larger_than_population_throws_value_error():
+    population: list[int] = [1, 2]
+    with assert_raises(ValueError):
+        random.sample(population, 5)
+
+@test
+def test_sample_negative_k_throws_value_error():
+    population: list[int] = [1]
+    with assert_raises(ValueError):
+        random.sample(population, -1)
+
+@test
+def test_sample_zero_k_returns_empty_list():
+    random.seed(42)
+    population: list[int] = [1, 2, 3]
+    sample: list[int] = random.sample(population, 0)
+    assert len(sample) == 0

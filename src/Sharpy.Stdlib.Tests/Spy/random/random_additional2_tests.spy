@@ -1,0 +1,215 @@
+# Ported from RandomAdditionalTests2.cs (#843).
+#
+# 23 expanded cases. Ported: 20. Omitted: 3.
+#
+# Omissions (3):
+#   - Choice_SingleElementList / Choice_SingleElementArray (2):
+#     `random.choice(list)` fails to compile (SPY0353 ambiguous overload), #954.
+#   - Choices_WithCumulativeWeightsZeroTotal (1): the spy `choices` has no weights
+#     parameter (weighted overload is C#-only, not in random_module.spy).
+
+from unittest import assert_raises
+
+import random
+
+
+# --- Seed determinism (multi-call sequence) ---
+
+@test
+def test_seed_produces_identical_sequence_multiple_values():
+    random.seed(1234)
+    seq1: list[int] = []
+    i: int = 0
+    while i < 5:
+        seq1.append(random.randint(0, 1000))
+        i = i + 1
+    random.seed(1234)
+    seq2: list[int] = []
+    i = 0
+    while i < 5:
+        seq2.append(random.randint(0, 1000))
+        i = i + 1
+    assert seq1 == seq2
+
+@test
+def test_seed_different_seeds_produce_different_sequences():
+    random.seed(1)
+    a: float = random.next_double()
+    random.seed(2)
+    b: float = random.next_double()
+    # Extremely unlikely to be equal with different seeds
+    assert a != b
+
+# --- randrange with step ---
+
+@test
+def test_randrange_odd_step_only_odd_values():
+    random.seed(99)
+    i: int = 0
+    while i < 100:
+        val: int = random.randrange(1, 10, 2)
+        assert val % 2 == 1  # step=2 from 1 yields only odd numbers
+        assert val >= 1
+        assert val < 10
+        i = i + 1
+
+@test
+def test_randrange_step_larger_than_width_single_value():
+    # range(3, 4, 5) has exactly one value: 3
+    random.seed(42)
+    i: int = 0
+    while i < 10:
+        assert random.randrange(3, 4, 5) == 3
+        i = i + 1
+
+# --- sample edge cases ---
+
+@test
+def test_sample_k_equals_len_returns_permutation():
+    random.seed(42)
+    pop: list[int] = [1, 2, 3, 4, 5]
+    result: list[int] = random.sample(pop, 5)
+    assert len(result) == 5
+    assert sorted(result) == sorted(pop)
+
+@test
+def test_sample_single_element_returns_that_element():
+    random.seed(42)
+    pop: list[int] = [42]
+    result: list[int] = random.sample(pop, 1)
+    assert len(result) == 1
+    assert result[0] == 42
+
+@test
+def test_sample_unique_elements_no_duplicates():
+    random.seed(7)
+    pop: list[int] = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    result: list[int] = random.sample(pop, 7)
+    seen: set[int] = set()
+    for item in result:
+        assert item not in seen  # Sample should return unique elements
+        seen.add(item)
+
+# --- randint edge cases ---
+
+@test
+def test_randint_same_a_and_b_returns_that_value():
+    random.seed(42)
+    i: int = 0
+    while i < 10:
+        assert random.randint(7, 7) == 7
+        i = i + 1
+
+@test
+def test_randint_large_range_stays_in_bounds():
+    random.seed(42)
+    lo: int = -1073741823  # int.MinValue / 2
+    hi: int = 1073741823   # int.MaxValue / 2
+    i: int = 0
+    while i < 100:
+        val: int = random.randint(lo, hi)
+        assert val >= lo
+        assert val <= hi
+        i = i + 1
+
+# --- uniform edge cases ---
+
+@test
+def test_uniform_a_equals_b_returns_a():
+    random.seed(42)
+    val: float = random.uniform(5.5, 5.5)
+    assert abs(val - 5.5) < 1e-10
+
+@test
+def test_uniform_b_less_than_a_returns_in_reversed_range():
+    random.seed(42)
+    i: int = 0
+    while i < 50:
+        val: float = random.uniform(10.0, 1.0)
+        # When b < a, result is in [b, a]
+        assert val >= 1.0
+        assert val <= 10.0
+        i = i + 1
+
+# --- next_double additional ---
+
+@test
+def test_next_double_never_returns_1():
+    random.seed(42)
+    i: int = 0
+    while i < 1000:
+        assert random.next_double() < 1.0
+        i = i + 1
+
+@test
+def test_next_double_statistical_mean_approximates_half():
+    random.seed(42)
+    total: float = 0.0
+    n: int = 1000
+    i: int = 0
+    while i < n:
+        total = total + random.next_double()
+        i = i + 1
+    assert abs(total / n - 0.5) < 0.05
+
+# --- getrandbits additional ---
+
+@test
+def test_getrandbits_sixteen_in_range():
+    random.seed(42)
+    i: int = 0
+    while i < 100:
+        val: int = random.getrandbits(16)
+        assert val >= 0
+        assert val < 65536  # 2^16
+        i = i + 1
+
+# --- shuffle edge cases ---
+
+@test
+def test_shuffle_empty_list_does_not_throw():
+    lst: list[int] = []
+    random.shuffle(lst)  # reaching the next line means no throw
+    assert len(lst) == 0
+
+@test
+def test_shuffle_single_element_unchanged():
+    lst: list[int] = [42]
+    random.shuffle(lst)
+    assert lst[0] == 42
+
+@test
+def test_shuffle_preserves_all_elements():
+    random.seed(42)
+    lst: list[str] = ["a", "b", "c", "d", "e"]
+    original: list[str] = ["a", "b", "c", "d", "e"]
+    random.shuffle(lst)
+    assert sorted(lst) == sorted(original)
+    assert len(lst) == len(original)
+
+# --- gauss additional ---
+
+@test
+def test_gauss_negative_sigma_still_returns_value():
+    # Box-Muller with negative sigma: result differs, not NaN
+    random.seed(42)
+    val: float = random.gauss(0.0, -1.0)
+    assert val == val  # NaN != NaN, so this is False only for NaN
+
+# --- choices additional ---
+
+@test
+def test_choices_k_one_returns_single_element():
+    random.seed(42)
+    pop: list[int] = [1, 2, 3]
+    result: list[int] = random.choices(pop, k=1)
+    assert len(result) == 1
+    assert result[0] in pop
+
+@test
+def test_choices_all_same_element_all_results_are_that_element():
+    random.seed(42)
+    pop: list[int] = [7]
+    result: list[int] = random.choices(pop, k=10)
+    for item in result:
+        assert item == 7

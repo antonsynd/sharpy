@@ -89,9 +89,9 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | PathlibTests.cs | 61 | Spy/pathlib/pathlib_tests.spy | 60 | ported (1 omitted: ReadBytes/WriteBytes round-trip — CLR byte[] params/returns not bridgeable from .spy, #941. `/` operator works; kwargs passed positionally since codegen mangles snake_case kwarg names, #942) |
 | PathlibAdditionalTests.cs | 32 | Spy/pathlib/pathlib_additional_tests.spy | 29 | ported (3 omitted: Constructor null→non-nullable Axiom 3; `Path? == None` rejected SPY0222 — Optional uses `is None`; WriteBytes empty byte[] #941) |
 | PprintTests.cs | 32 | Spy/pprint/pprint_tests.spy | 32 | ported (re-enabled #888) |
-| RandomTests.cs | 16 | | | pending |
-| RandomAdditionalTests.cs | 22 | | | pending |
-| RandomAdditionalTests2.cs | 23 | | | pending |
+| RandomTests.cs | 16 | Spy/random/random_tests.spy | 11 | ported (5 omitted: 4 choice — `random.choice(list)` ambiguous overload SPY0353 #954; 1 Shuffle_NullList null-arg Axiom 3) |
+| RandomAdditionalTests.cs | 22 | Spy/random/random_additional_tests.spy | 15 | ported (7 omitted: 2 weighted Choices — `choices` has no weights param in random_module.spy; 4 Sys_* tests belong to sys module not random, covered by sys port) |
+| RandomAdditionalTests2.cs | 23 | Spy/random/random_additional2_tests.spy | 20 | ported (3 omitted: 2 choice ambiguous overload #954; 1 weighted Choices cumulative-zero — no weights param in spy) |
 | ReModuleTests.cs | 56 | Spy/re/re_module_tests.spy | 56 | ported |
 | ReOperationTests.cs | 24 | Spy/re/re_operation_tests.spy | 24 | ported |
 | RePatternTests.cs | 74 | Spy/re/re_pattern_tests.spy | 67 | ported (7 omitted: 4 re.error type-not-nameable + 3 MatchResult indexer __getitem__ — spy-sourced module member-type gap, #918) |

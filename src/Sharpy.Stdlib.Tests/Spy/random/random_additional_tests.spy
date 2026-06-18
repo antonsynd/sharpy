@@ -1,0 +1,164 @@
+# Ported from RandomAdditionalTests.cs (#843).
+#
+# 22 expanded cases. Ported: 15. Omitted: 7.
+#
+# Omissions (7):
+#   - Choices_WithWeights / Choices_MismatchedWeights (2): the spy `choices`
+#     signature is choices[T](population, k=1) with NO weights parameter (the
+#     weighted overload lives only in the handwritten Random.Overloads.cs C#
+#     surface, not in random_module.spy). Not expressible from .spy.
+#   - Sys_Maxsize / Sys_Getsizeof_Null / Sys_Getsizeof_ValueType /
+#     Sys_Getsizeof_ReferenceType (4): these test the `sys` module, not `random`
+#     (misplaced in the C# random file). Covered by the sys module port.
+#   - (Choices_EmptyPopulation / Choices_KZero / Choices_UniformSelection are
+#     ported below.)
+
+from unittest import assert_raises
+
+import random
+
+
+# --- randrange ---
+
+@test
+def test_randrange_single_arg_returns_in_range():
+    random.seed(42)
+    i: int = 0
+    while i < 100:
+        val: int = random.randrange(10)
+        assert val >= 0
+        assert val < 10
+        i = i + 1
+
+@test
+def test_randrange_two_args_returns_in_range():
+    random.seed(42)
+    i: int = 0
+    while i < 100:
+        val: int = random.randrange(5, 15)
+        assert val >= 5
+        assert val < 15
+        i = i + 1
+
+@test
+def test_randrange_with_step_returns_valid_values():
+    random.seed(42)
+    i: int = 0
+    while i < 100:
+        val: int = random.randrange(0, 10, 2)
+        assert val >= 0
+        assert val < 10
+        assert val % 2 == 0
+        i = i + 1
+
+@test
+def test_randrange_negative_step():
+    random.seed(42)
+    i: int = 0
+    while i < 100:
+        val: int = random.randrange(10, 0, -2)
+        assert val > 0
+        assert val <= 10
+        assert val % 2 == 0
+        i = i + 1
+
+@test
+def test_randrange_empty_range_throws_value_error():
+    with assert_raises(ValueError):
+        random.randrange(5, 5)
+
+@test
+def test_randrange_zero_step_throws_value_error():
+    with assert_raises(ValueError):
+        random.randrange(0, 10, 0)
+
+# --- gauss ---
+
+@test
+def test_gauss_mean_and_std_dev_within_tolerance():
+    random.seed(42)
+    mu: float = 5.0
+    sigma: float = 2.0
+    n: int = 10000
+    total: float = 0.0
+    sum_sq: float = 0.0
+    i: int = 0
+    while i < n:
+        val: float = random.gauss(mu, sigma)
+        total = total + val
+        sum_sq = sum_sq + val * val
+        i = i + 1
+    mean: float = total / n
+    variance: float = (sum_sq / n) - (mean * mean)
+    stddev: float = variance ** 0.5
+    assert abs(mean - mu) < 0.1
+    assert abs(stddev - sigma) < 0.1
+
+@test
+def test_gauss_zero_sigma_returns_mu():
+    # With sigma=0, result should always be mu
+    random.seed(42)
+    i: int = 0
+    while i < 10:
+        assert random.gauss(3.0, 0.0) == 3.0
+        i = i + 1
+
+# --- getrandbits ---
+
+@test
+def test_getrandbits_returns_value_in_bit_range():
+    random.seed(42)
+    i: int = 0
+    while i < 100:
+        val: int = random.getrandbits(8)
+        assert val >= 0
+        assert val < 256
+        i = i + 1
+
+@test
+def test_getrandbits_zero_bits_returns_zero():
+    assert random.getrandbits(0) == 0
+
+@test
+def test_getrandbits_one_bit_returns_zero_or_one():
+    random.seed(42)
+    i: int = 0
+    while i < 50:
+        val: int = random.getrandbits(1)
+        assert val >= 0
+        assert val <= 1
+        i = i + 1
+
+@test
+def test_getrandbits_negative_bits_throws_value_error():
+    with assert_raises(ValueError):
+        random.getrandbits(-1)
+
+@test
+def test_getrandbits_too_many_bits_throws_value_error():
+    with assert_raises(ValueError):
+        random.getrandbits(31)
+
+# --- choices ---
+
+@test
+def test_choices_uniform_selection_returns_from_population():
+    random.seed(42)
+    pop: list[str] = ["a", "b", "c"]
+    result: list[str] = random.choices(pop, k=10)
+    assert len(result) == 10
+    for item in result:
+        assert item in pop
+
+@test
+def test_choices_empty_population_throws_index_error():
+    pop: list[int] = []
+    with assert_raises(IndexError):
+        random.choices(pop, k=1)
+
+@test
+def test_choices_k_zero_returns_empty():
+    random.seed(42)
+    pop: list[int] = [1, 2, 3]
+    result: list[int] = random.choices(pop, k=0)
+    assert len(result) == 0
