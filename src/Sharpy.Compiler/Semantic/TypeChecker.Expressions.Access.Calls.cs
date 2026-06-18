@@ -524,8 +524,23 @@ internal partial class TypeChecker
 
                 // Type parameters act as wildcards during overload resolution —
                 // generic type inference happens later in C# compilation.
-                if (expectedType is TypeParameterType || ContainsTypeParameter(expectedType))
+                if (expectedType is TypeParameterType)
                     continue;
+
+                if (ContainsTypeParameter(expectedType))
+                {
+                    // For parameterized generics (e.g., list[T], array[T]), verify the
+                    // outer type name is compatible. Without this, any argument matches
+                    // any parameterized generic via wildcard T (e.g., list[int] would
+                    // incorrectly match array[T]).
+                    if (expectedType is GenericType eg && context.ArgTypes[i] is GenericType ag
+                        && !string.Equals(eg.Name, ag.Name, StringComparison.Ordinal))
+                    {
+                        typesMatch = false;
+                        break;
+                    }
+                    continue;
+                }
 
                 if (!IsAssignable(context.ArgTypes[i], expectedType))
                 {
@@ -683,8 +698,12 @@ internal partial class TypeChecker
                 var clrType = Type.GetType(clrTypeName);
                 if (clrType == null)
                 {
+                    // Assembly.GetType expects just the namespace-qualified name,
+                    // not the full AQN — strip the assembly qualifier.
+                    var commaIdx = clrTypeName!.IndexOf(',', StringComparison.Ordinal);
+                    var typeNameOnly = commaIdx >= 0 ? clrTypeName[..commaIdx] : clrTypeName;
                     clrType = AppDomain.CurrentDomain.GetAssemblies()
-                        .Select(a => a.GetType(clrTypeName!))
+                        .Select(a => a.GetType(typeNameOnly))
                         .FirstOrDefault(t => t != null);
                 }
                 if (clrType != null)
