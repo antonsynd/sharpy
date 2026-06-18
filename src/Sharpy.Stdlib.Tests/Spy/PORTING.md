@@ -30,10 +30,10 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | CsvModuleTests.cs | 9 | Spy/csv/csv_module_tests.spy | 9 | ported |
 | CsvDictTests.cs | 19 | Spy/csv/csv_dict_tests.spy | 16 | ported (3 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
 | CsvReaderWriterTests.cs | 18 | Spy/csv/csv_reader_writer_tests.spy | 16 | ported (2 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
-| DatetimeTests.cs | 69 | | | pending |
-| DatetimeDateTests.cs | 20 | | | pending |
-| DatetimeDateTimeTests.cs | 19 | | | pending |
-| DatetimeTimeTests.cs | 25 | | | pending |
+| DatetimeTests.cs | 69 | Spy/datetime/datetime_tests.spy | 68 | ported (1 omitted: DatetimeModule_ExposesExpectedTypes — typeof()/Type reflection, no Sharpy surface. tzinfo identity via `is`; ArgumentOutOfRangeException via `from system import`; total_seconds is a property; date_component/time_component) |
+| DatetimeDateTests.cs | 20 | Spy/datetime/datetime_date_tests.spy | 20 | ported |
+| DatetimeDateTimeTests.cs | 19 | Spy/datetime/datetime_datetime_tests.spy | 19 | ported (tzinfo identity via `is`/`is None`) |
+| DatetimeTimeTests.cs | 25 | Spy/datetime/datetime_time_tests.spy | 25 | ported |
 | DefaultDictTests.cs | 13 | Spy/collections/default_dict_tests.spy | 11 | ported (2 omitted: mutable closure capture, List factory lambda) |
 | DequeChainMapTests.cs | 16 | Spy/collections/deque_chainmap_tests.spy | 15 | ported (1 omitted: reference identity assertion) |
 | DifflibModuleTests.cs | 34 | Spy/difflib/difflib_module_tests.spy | 34 | ported |

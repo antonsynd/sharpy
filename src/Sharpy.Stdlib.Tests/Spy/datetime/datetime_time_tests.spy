@@ -1,0 +1,172 @@
+# Ported from DatetimeTimeTests.cs (#843).
+#
+# 25 expanded cases. Ported: 25. Omitted: 0.
+#
+# Sharpy.Time -> datetime.time, Sharpy.Timedelta -> datetime.timedelta.
+# Timedelta.TotalSeconds is a property -> total_seconds (no parens).
+
+import datetime
+
+
+# --- Time ---
+
+@test
+def test_time_hour_only_other_default_to_zero():
+    t = datetime.time(14)
+    assert t.hour == 14
+    assert t.minute == 0
+    assert t.second == 0
+    assert t.microsecond == 0
+
+@test
+def test_time_maximum_value_is_valid():
+    t = datetime.time(23, 59, 59, 999999)
+    assert t.hour == 23
+    assert t.minute == 59
+    assert t.second == 59
+    assert t.microsecond == 999999
+
+@test
+def test_time_minimum_value_is_zero():
+    t = datetime.time(0, 0, 0, 0)
+    assert t.hour == 0
+    assert t.minute == 0
+    assert t.second == 0
+    assert t.microsecond == 0
+
+@test
+def test_time_isoformat_without_microseconds_has_no_decimal():
+    t = datetime.time(10, 30, 0)
+    assert t.isoformat() == "10:30:00"
+    assert "." not in t.isoformat()
+
+@test
+def test_time_isoformat_with_microseconds_has_six_decimal_digits():
+    t = datetime.time(10, 30, 0, 5)
+    assert t.isoformat() == "10:30:00.000005"
+
+@test
+def test_time_strftime_hours_minutes_seconds():
+    t = datetime.time(14, 30, 45)
+    assert t.strftime("%H:%M:%S") == "14:30:45"
+
+@test
+def test_time_strftime_twelve_hour_clock():
+    t = datetime.time(14, 30, 0)
+    assert t.strftime("%I:%M %p") == "02:30 PM"
+
+@test
+def test_time_comparison_greater_than():
+    t1 = datetime.time(12, 0, 0)
+    t2 = datetime.time(11, 59, 59)
+    assert t1 > t2
+
+@test
+def test_time_comparison_equal():
+    t1 = datetime.time(10, 30, 0, 123456)
+    t2 = datetime.time(10, 30, 0, 123456)
+    assert t1 == t2
+
+@test
+def test_time_comparison_not_equal():
+    t1 = datetime.time(10, 0, 0)
+    t2 = datetime.time(10, 0, 1)
+    assert t1 != t2
+
+@test
+def test_time_comparison_less_or_equal():
+    t1 = datetime.time(10, 0, 0)
+    t2 = datetime.time(10, 0, 0)
+    assert t1 <= t2
+
+@test
+def test_time_comparison_greater_or_equal():
+    t1 = datetime.time(12, 0, 0)
+    t2 = datetime.time(12, 0, 0)
+    assert t1 >= t2
+
+# --- Timedelta ---
+
+@test
+def test_timedelta_one_day_in_seconds_is_86400():
+    td = datetime.timedelta(days=1)
+    assert td.total_seconds == 86400.0
+
+@test
+def test_timedelta_3600_seconds_is_one_hour():
+    td = datetime.timedelta(seconds=3600)
+    assert td.total_seconds == 3600.0
+    assert td.days == 0
+    assert td.seconds == 3600
+
+@test
+def test_timedelta_1000000_microseconds_is_one_second():
+    td = datetime.timedelta(microseconds=1000000)
+    assert td.total_seconds == 1.0
+    assert td.days == 0
+    assert td.seconds == 1
+    assert td.microseconds == 0
+
+@test
+def test_timedelta_90_seconds_normalizes_days_and_seconds():
+    td = datetime.timedelta(seconds=90)
+    assert td.days == 0
+    assert td.seconds == 90
+
+@test
+def test_timedelta_90000_seconds_overflows_into_days():
+    # 90000 seconds = 1 day + 3600 seconds
+    td = datetime.timedelta(seconds=90000)
+    assert td.days == 1
+    assert td.seconds == 3600
+    assert td.total_seconds == 90000.0
+
+@test
+def test_timedelta_negative_day_is_valid():
+    td = datetime.timedelta(days=-1)
+    assert td.days == -1
+    assert td.total_seconds == -86400.0
+
+@test
+def test_timedelta_subtract_produces_positive_result():
+    td = datetime.timedelta(days=2) - datetime.timedelta(days=1)
+    assert td.days == 1
+    assert td.total_seconds == 86400.0
+
+@test
+def test_timedelta_comparison_equal():
+    td1 = datetime.timedelta(days=1)
+    td2 = datetime.timedelta(hours=24)
+    assert td1 == td2
+
+@test
+def test_timedelta_comparison_not_equal():
+    td1 = datetime.timedelta(days=1)
+    td2 = datetime.timedelta(days=2)
+    assert td1 != td2
+
+@test
+def test_timedelta_comparison_less_or_equal():
+    td1 = datetime.timedelta(hours=12)
+    td2 = datetime.timedelta(days=1)
+    assert td1 <= td2
+
+@test
+def test_timedelta_comparison_greater_or_equal():
+    td1 = datetime.timedelta(days=1)
+    td2 = datetime.timedelta(hours=12)
+    assert td1 >= td2
+
+@test
+def test_timedelta_negative_total_seconds_is_negative():
+    td = datetime.timedelta(days=-2)
+    assert td.total_seconds < 0
+    assert td.total_seconds == -172800.0
+
+@test
+def test_timedelta_zero_delta_all_components_zero():
+    td = datetime.timedelta()
+    assert td.days == 0
+    assert td.seconds == 0
+    assert td.microseconds == 0
+    assert td.total_seconds == 0.0

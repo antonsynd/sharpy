@@ -1,0 +1,143 @@
+# Ported from DatetimeDateTests.cs (#843).
+#
+# 20 expanded cases. Ported: 20. Omitted: 0.
+#
+# Sharpy.Date -> datetime.date. Invalid-date construction throws
+# System.ArgumentOutOfRangeException (imported via `from system import ...`).
+
+from system import ArgumentOutOfRangeException
+from unittest import assert_raises
+
+import datetime
+
+
+@test
+def test_date_today_year_is_recent():
+    today = datetime.date.today()
+    assert today.year >= 2024
+
+@test
+def test_date_weekday_sunday_is_six():
+    # 2024-01-14 was a Sunday
+    d = datetime.date(2024, 1, 14)
+    assert d.weekday() == 6
+
+@test
+def test_date_weekday_known_monday_is_zero():
+    # 2024-01-01 was a Monday
+    d = datetime.date(2024, 1, 1)
+    assert d.weekday() == 0
+
+@test
+def test_date_isoweekday_monday_is_one():
+    # 2024-01-01 is Monday
+    d = datetime.date(2024, 1, 1)
+    assert d.isoweekday() == 1
+
+@test
+def test_date_isoweekday_sunday_is_seven():
+    # 2024-01-14 was a Sunday
+    d = datetime.date(2024, 1, 14)
+    assert d.isoweekday() == 7
+
+@test
+def test_date_isoformat_returns_yyyy_mm_dd():
+    d = datetime.date(2024, 3, 5)
+    assert d.isoformat() == "2024-03-05"
+
+@test
+def test_date_replace_only_year():
+    d = datetime.date(2024, 6, 20)
+    result = d.replace(year=2025)
+    assert result.year == 2025
+    assert result.month == 6
+    assert result.day == 20
+
+@test
+def test_date_replace_only_day():
+    d = datetime.date(2024, 6, 20)
+    result = d.replace(day=1)
+    assert result.year == 2024
+    assert result.month == 6
+    assert result.day == 1
+
+@test
+def test_date_toordinal_fromordinal_round_trip():
+    original = datetime.date(2024, 6, 15)
+    ordinal: int = original.toordinal()
+    restored = datetime.date.fromordinal(ordinal)
+    assert restored.year == original.year
+    assert restored.month == original.month
+    assert restored.day == original.day
+
+@test
+def test_date_fromisoformat_parses_correctly():
+    d = datetime.date.fromisoformat("2024-01-15")
+    assert d.year == 2024
+    assert d.month == 1
+    assert d.day == 15
+
+@test
+def test_date_strftime_year_month_day():
+    d = datetime.date(2024, 3, 5)
+    assert d.strftime("%Y/%m/%d") == "2024/03/05"
+
+@test
+def test_date_plus_timedelta_increment_day():
+    d = datetime.date(2024, 6, 30)
+    result = d + datetime.timedelta(days=1)
+    assert result.year == 2024
+    assert result.month == 7
+    assert result.day == 1
+
+@test
+def test_date_minus_timedelta_decrement_day():
+    d = datetime.date(2024, 3, 1)
+    result = d - datetime.timedelta(days=1)
+    assert result.year == 2024
+    assert result.month == 2
+    assert result.day == 29  # 2024 is a leap year
+
+@test
+def test_date_minus_date_returns_timedelta():
+    d1 = datetime.date(2024, 2, 10)
+    d2 = datetime.date(2024, 1, 1)
+    td = d1 - d2
+    assert td.days == 40
+
+@test
+def test_date_comparison_greater_than():
+    d1 = datetime.date(2024, 6, 15)
+    d2 = datetime.date(2024, 1, 1)
+    assert d1 > d2
+
+@test
+def test_date_comparison_less_or_equal():
+    d1 = datetime.date(2024, 1, 1)
+    d2 = datetime.date(2024, 1, 1)
+    assert d1 <= d2
+
+@test
+def test_date_comparison_greater_or_equal():
+    d1 = datetime.date(2024, 6, 1)
+    d2 = datetime.date(2024, 1, 1)
+    assert d1 >= d2
+
+@test
+def test_date_comparison_not_equal():
+    d1 = datetime.date(2024, 1, 1)
+    d2 = datetime.date(2024, 1, 2)
+    assert d1 != d2
+
+@test
+def test_date_leap_year_feb29_is_valid():
+    # 2024 is a leap year
+    d = datetime.date(2024, 2, 29)
+    assert d.month == 2
+    assert d.day == 29
+
+@test
+def test_date_non_leap_year_feb29_throws_argument_out_of_range():
+    # 2023 is not a leap year
+    with assert_raises(ArgumentOutOfRangeException):
+        datetime.date(2023, 2, 29)

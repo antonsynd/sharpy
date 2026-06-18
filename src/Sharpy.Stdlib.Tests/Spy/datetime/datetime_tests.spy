@@ -1,0 +1,505 @@
+# Ported from DatetimeTests.cs (#843).
+#
+# 69 expanded cases (Date_Constructor and Time_Constructor are [Theory] with 3
+# [InlineData] rows each). Ported: 68. Omitted: 1.
+#
+# Types map by [SharpyModuleType("datetime", "...")]: Sharpy.Date -> datetime.date,
+# Sharpy.Time -> datetime.time, Sharpy.DateTime -> datetime.datetime,
+# Sharpy.Timedelta -> datetime.timedelta, Sharpy.Timezone -> datetime.timezone.
+# C# property DateComponent/TimeComponent -> date_component/time_component.
+# Timedelta.TotalSeconds is a property -> total_seconds (no parens).
+# Timezone.Utc -> datetime.timezone.utc.
+#
+# Omission (1):
+#   - DatetimeModule_ExposesExpectedTypes: typeof()/Type reflection
+#     (Datetime.DateType == typeof(Date)) has no Sharpy surface. Non-portable.
+#
+# Note: invalid-date construction throws System.ArgumentOutOfRangeException (the
+# .NET DateTime ctor surfaces it directly), imported via `from system import ...`.
+# tzinfo (typed object/ITzinfo?) is compared with `is` (reference identity, what
+# the C# .Should().Be(tz) checks for reference types) — object '==' is Axiom-3
+# rejected.
+
+from system import ArgumentOutOfRangeException
+from unittest import assert_raises
+
+import datetime
+
+
+# --- Date ---
+
+@test
+def test_date_constructor_sets_year_month_day_2024_1_15():
+    date = datetime.date(2024, 1, 15)
+    assert date.year == 2024
+    assert date.month == 1
+    assert date.day == 15
+
+@test
+def test_date_constructor_sets_year_month_day_2000_12_31():
+    date = datetime.date(2000, 12, 31)
+    assert date.year == 2000
+    assert date.month == 12
+    assert date.day == 31
+
+@test
+def test_date_constructor_sets_year_month_day_1970_1_1():
+    date = datetime.date(1970, 1, 1)
+    assert date.year == 1970
+    assert date.month == 1
+    assert date.day == 1
+
+@test
+def test_date_to_string_returns_iso_format():
+    date = datetime.date(2024, 1, 15)
+    assert str(date) == "2024-01-15"
+
+@test
+def test_date_today_returns_current_date():
+    today = datetime.date.today()
+    assert today.year > 2020
+    assert 1 <= today.month <= 12
+    assert 1 <= today.day <= 31
+
+@test
+def test_date_invalid_date_throws_argument_out_of_range():
+    with assert_raises(ArgumentOutOfRangeException):
+        datetime.date(2024, 13, 1)
+
+# --- Time ---
+
+@test
+def test_time_constructor_sets_components_14_30_0_0():
+    time = datetime.time(14, 30, 0, 0)
+    assert time.hour == 14
+    assert time.minute == 30
+    assert time.second == 0
+    assert time.microsecond == 0
+
+@test
+def test_time_constructor_sets_components_0_0_0_0():
+    time = datetime.time(0, 0, 0, 0)
+    assert time.hour == 0
+    assert time.minute == 0
+    assert time.second == 0
+    assert time.microsecond == 0
+
+@test
+def test_time_constructor_sets_components_23_59_59_999999():
+    time = datetime.time(23, 59, 59, 999999)
+    assert time.hour == 23
+    assert time.minute == 59
+    assert time.second == 59
+    assert time.microsecond == 999999
+
+@test
+def test_time_default_parameters_are_zero():
+    time = datetime.time()
+    assert time.hour == 0
+    assert time.minute == 0
+    assert time.second == 0
+    assert time.microsecond == 0
+
+@test
+def test_time_to_string_returns_formatted_string():
+    time = datetime.time(14, 30, 0, 0)
+    assert str(time) == "14:30:00.000000"
+
+# --- DateTime ---
+
+@test
+def test_datetime_constructor_sets_all_components():
+    dt = datetime.datetime(2024, 6, 15, 10, 30, 45, 123456)
+    assert dt.year == 2024
+    assert dt.month == 6
+    assert dt.day == 15
+    assert dt.hour == 10
+    assert dt.minute == 30
+    assert dt.second == 45
+    assert dt.microsecond == 123456
+
+@test
+def test_datetime_default_time_parameters_are_zero():
+    dt = datetime.datetime(2024, 1, 1)
+    assert dt.hour == 0
+    assert dt.minute == 0
+    assert dt.second == 0
+    assert dt.microsecond == 0
+
+@test
+def test_datetime_now_returns_current_datetime():
+    now = datetime.datetime.now()
+    assert now.year > 2020
+
+@test
+def test_datetime_utcnow_returns_utc_datetime():
+    utc_now = datetime.datetime.utcnow()
+    assert utc_now.year > 2020
+
+@test
+def test_datetime_date_component_returns_date():
+    dt = datetime.datetime(2024, 3, 20, 14, 30, 0)
+    date = dt.date_component
+    assert date.year == 2024
+    assert date.month == 3
+    assert date.day == 20
+
+@test
+def test_datetime_time_component_returns_time():
+    dt = datetime.datetime(2024, 3, 20, 14, 30, 45)
+    time = dt.time_component
+    assert time.hour == 14
+    assert time.minute == 30
+    assert time.second == 45
+
+@test
+def test_datetime_combine_merges_date_and_time():
+    date = datetime.date(2024, 6, 15)
+    time = datetime.time(10, 30, 45)
+    dt = datetime.datetime.combine(date, time)
+    assert dt.year == 2024
+    assert dt.month == 6
+    assert dt.day == 15
+    assert dt.hour == 10
+    assert dt.minute == 30
+    assert dt.second == 45
+
+# --- Timedelta ---
+
+@test
+def test_timedelta_days_returns_correct_value():
+    td = datetime.timedelta(days=5)
+    assert td.days == 5
+
+@test
+def test_timedelta_seconds_returns_seconds_component():
+    td = datetime.timedelta(seconds=30)
+    assert td.seconds == 30
+
+@test
+def test_timedelta_microseconds_returns_correct_value():
+    td = datetime.timedelta(microseconds=500)
+    assert td.microseconds == 500
+
+@test
+def test_timedelta_weeks_converts_to_days():
+    td = datetime.timedelta(weeks=2)
+    assert td.days == 14
+
+@test
+def test_timedelta_total_seconds_returns_combined_seconds():
+    td = datetime.timedelta(days=1, hours=1, minutes=1, seconds=1)
+    # 86400 + 3600 + 60 + 1 = 90061
+    assert td.total_seconds == 90061.0
+
+@test
+def test_timedelta_default_parameters_are_zero():
+    td = datetime.timedelta()
+    assert td.days == 0
+    assert td.seconds == 0
+    assert td.microseconds == 0
+    assert td.total_seconds == 0.0
+
+@test
+def test_timedelta_seconds_returns_remaining_seconds_after_days():
+    # Python: timedelta(days=1, hours=2, minutes=3, seconds=4).seconds == 7384
+    td = datetime.timedelta(days=1, hours=2, minutes=3, seconds=4)
+    assert td.seconds == 7384
+
+# --- DateTime arithmetic ---
+
+@test
+def test_datetime_plus_timedelta_returns_new_datetime():
+    dt = datetime.datetime(2024, 1, 1)
+    td = datetime.timedelta(days=1)
+    result = dt + td
+    assert result.year == 2024
+    assert result.month == 1
+    assert result.day == 2
+
+@test
+def test_datetime_minus_timedelta_returns_new_datetime():
+    dt = datetime.datetime(2024, 1, 5)
+    td = datetime.timedelta(days=3)
+    result = dt - td
+    assert result.day == 2
+
+@test
+def test_datetime_minus_datetime_returns_timedelta():
+    dt1 = datetime.datetime(2024, 1, 5)
+    dt2 = datetime.datetime(2024, 1, 1)
+    result = dt1 - dt2
+    assert result.days == 4
+    assert result.seconds == 0
+
+# --- Date arithmetic ---
+
+@test
+def test_date_plus_timedelta_returns_new_date():
+    date = datetime.date(2024, 1, 1)
+    td = datetime.timedelta(days=10)
+    result = date + td
+    assert result.day == 11
+
+@test
+def test_date_minus_timedelta_returns_new_date():
+    date = datetime.date(2024, 1, 15)
+    td = datetime.timedelta(days=5)
+    result = date - td
+    assert result.day == 10
+
+@test
+def test_date_minus_date_returns_timedelta():
+    d1 = datetime.date(2024, 1, 15)
+    d2 = datetime.date(2024, 1, 1)
+    result = d1 - d2
+    assert result.days == 14
+
+# --- Timedelta arithmetic ---
+
+@test
+def test_timedelta_plus_timedelta():
+    td1 = datetime.timedelta(days=1)
+    td2 = datetime.timedelta(hours=12)
+    result = td1 + td2
+    assert result.days == 1
+    assert result.seconds == 43200
+
+@test
+def test_timedelta_minus_timedelta():
+    result = datetime.timedelta(days=5) - datetime.timedelta(days=2)
+    assert result.days == 3
+
+@test
+def test_timedelta_multiply_int():
+    result = datetime.timedelta(days=1) * 3
+    assert result.days == 3
+
+@test
+def test_int_multiply_timedelta():
+    result = 3 * datetime.timedelta(days=1)
+    assert result.days == 3
+
+@test
+def test_timedelta_negate():
+    td = datetime.timedelta(days=1)
+    result = -td
+    assert result.days == -1
+
+@test
+def test_timedelta_divide_int():
+    result = datetime.timedelta(days=10) / 3
+    assert result.days == 3
+    assert result.seconds == 28800  # 8 hours
+
+@test
+def test_timedelta_abs():
+    td = datetime.timedelta(days=-5)
+    result = td.abs()
+    assert result.days == 5
+
+# --- Comparison ---
+
+@test
+def test_datetime_comparison_operators():
+    dt1 = datetime.datetime(2024, 1, 1)
+    dt2 = datetime.datetime(2024, 1, 2)
+    dt3 = datetime.datetime(2024, 1, 1)
+    assert dt1 < dt2
+    assert dt2 > dt1
+    assert dt1 == dt3
+    assert dt1 != dt2
+    assert dt1 <= dt3
+    assert dt2 >= dt1
+
+@test
+def test_date_comparison_operators():
+    d1 = datetime.date(2024, 1, 1)
+    d2 = datetime.date(2024, 1, 2)
+    assert d1 < d2
+    assert d1 == datetime.date(2024, 1, 1)
+
+@test
+def test_time_comparison_operators():
+    t1 = datetime.time(10, 0)
+    t2 = datetime.time(12, 0)
+    assert t1 < t2
+    assert t2 > t1
+
+@test
+def test_timedelta_comparison_operators():
+    td1 = datetime.timedelta(days=1)
+    td2 = datetime.timedelta(hours=12)
+    assert td1 > td2
+
+# --- Strftime ---
+
+@test
+def test_datetime_strftime_basic_format():
+    dt = datetime.datetime(2024, 1, 15, 14, 30, 45)
+    assert dt.strftime("%Y-%m-%d") == "2024-01-15"
+
+@test
+def test_datetime_strftime_day_names():
+    dt = datetime.datetime(2024, 1, 15)  # Monday
+    assert dt.strftime("%A") == "Monday"
+
+@test
+def test_datetime_strftime_percent_literal():
+    dt = datetime.datetime(2024, 1, 15)
+    assert dt.strftime("100%%") == "100%"
+
+@test
+def test_date_strftime():
+    d = datetime.date(2024, 1, 15)
+    assert d.strftime("%Y-%m-%d") == "2024-01-15"
+
+# --- Strptime ---
+
+@test
+def test_datetime_strptime_parses_date():
+    dt = datetime.datetime.strptime("2024-01-15", "%Y-%m-%d")
+    assert dt.year == 2024
+    assert dt.month == 1
+    assert dt.day == 15
+
+# --- Utility methods ---
+
+@test
+def test_datetime_weekday_monday_is_zero():
+    # 2024-01-15 is Monday
+    dt = datetime.datetime(2024, 1, 15)
+    assert dt.weekday() == 0
+
+@test
+def test_datetime_isoweekday_monday_is_one():
+    dt = datetime.datetime(2024, 1, 15)
+    assert dt.isoweekday() == 1
+
+@test
+def test_datetime_isoformat_default():
+    dt = datetime.datetime(2024, 1, 15)
+    assert dt.isoformat() == "2024-01-15T00:00:00"
+
+@test
+def test_datetime_isoformat_custom_sep():
+    dt = datetime.datetime(2024, 1, 15)
+    assert dt.isoformat(" ") == "2024-01-15 00:00:00"
+
+@test
+def test_datetime_replace():
+    dt = datetime.datetime(2024, 1, 15, 10, 30)
+    result = dt.replace(year=2025)
+    assert result.year == 2025
+    assert result.month == 1
+    assert result.day == 15
+    assert result.hour == 10
+    assert result.minute == 30
+
+@test
+def test_datetime_fromisoformat():
+    dt = datetime.datetime.fromisoformat("2024-01-15T14:30:00")
+    assert dt.year == 2024
+    assert dt.hour == 14
+    assert dt.minute == 30
+
+@test
+def test_date_weekday_monday_is_zero():
+    d = datetime.date(2024, 1, 15)
+    assert d.weekday() == 0
+
+@test
+def test_date_isoformat():
+    d = datetime.date(2024, 1, 15)
+    assert d.isoformat() == "2024-01-15"
+
+@test
+def test_date_toordinal():
+    d = datetime.date(2024, 1, 15)
+    assert d.toordinal() == 738900
+
+@test
+def test_date_fromordinal():
+    d = datetime.date.fromordinal(738900)
+    assert d.year == 2024
+    assert d.month == 1
+    assert d.day == 15
+
+@test
+def test_date_fromisoformat():
+    d = datetime.date.fromisoformat("2024-01-15")
+    assert d.year == 2024
+    assert d.month == 1
+    assert d.day == 15
+
+@test
+def test_date_replace():
+    d = datetime.date(2024, 1, 15)
+    result = d.replace(month=6)
+    assert result.year == 2024
+    assert result.month == 6
+    assert result.day == 15
+
+# --- Timezone ---
+
+@test
+def test_timezone_utc_has_zero_offset():
+    utc = datetime.timezone.utc
+    assert utc.utcoffset().days == 0
+    assert utc.utcoffset().seconds == 0
+    assert utc.tzname() == "UTC"
+
+@test
+def test_timezone_custom_has_correct_offset():
+    est = datetime.timezone(datetime.timedelta(hours=-5), "EST")
+    assert est.utcoffset().total_seconds == -18000.0
+    assert est.tzname() == "EST"
+
+@test
+def test_datetime_astimezone_converts_correctly():
+    utc = datetime.timezone.utc
+    est = datetime.timezone(datetime.timedelta(hours=-5), "EST")
+    dt_utc = datetime.datetime(2024, 1, 15, 12, 0, 0, tzinfo=utc)
+    dt_est = dt_utc.astimezone(est)
+    assert dt_est.hour == 7
+    assert dt_est.tzinfo is est
+
+@test
+def test_datetime_with_timezone_to_string_includes_offset():
+    utc = datetime.timezone.utc
+    dt = datetime.datetime(2024, 1, 15, 12, 0, 0, tzinfo=utc)
+    assert "+00:00" in str(dt)
+
+# --- Edge cases ---
+
+@test
+def test_datetime_leap_year_feb29():
+    dt = datetime.datetime(2024, 2, 29)
+    result = dt + datetime.timedelta(days=1)
+    assert result.month == 3
+    assert result.day == 1
+
+@test
+def test_date_cross_month_boundary():
+    d = datetime.date(2024, 1, 31)
+    result = d + datetime.timedelta(days=1)
+    assert result.month == 2
+    assert result.day == 1
+
+@test
+def test_datetime_midnight_crossing():
+    dt = datetime.datetime(2024, 1, 15, 23, 30, 0)
+    result = dt + datetime.timedelta(hours=1)
+    assert result.day == 16
+    assert result.hour == 0
+    assert result.minute == 30
+
+@test
+def test_time_isoformat_without_microseconds():
+    t = datetime.time(14, 30, 0)
+    assert t.isoformat() == "14:30:00"
+
+@test
+def test_time_isoformat_with_microseconds():
+    t = datetime.time(14, 30, 0, 123456)
+    assert t.isoformat() == "14:30:00.123456"

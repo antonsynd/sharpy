@@ -1,0 +1,163 @@
+# Ported from DatetimeDateTimeTests.cs (#843).
+#
+# 19 expanded cases. Ported: 19. Omitted: 0.
+#
+# Sharpy.DateTime -> datetime.datetime, Sharpy.Timezone -> datetime.timezone.
+# DateComponent/TimeComponent -> date_component/time_component.
+# Timedelta.TotalSeconds is a property -> total_seconds (no parens).
+# tzinfo (typed object/ITzinfo?) is compared with `is` / `is None` (reference
+# identity, matching the C# .Should().Be(tz) / .Should().BeNull()).
+
+import datetime
+
+
+# --- DateTime constructor ---
+
+@test
+def test_datetime_date_only_constructor_times_are_zero():
+    dt = datetime.datetime(2024, 6, 15)
+    assert dt.year == 2024
+    assert dt.month == 6
+    assert dt.day == 15
+    assert dt.hour == 0
+    assert dt.minute == 0
+    assert dt.second == 0
+    assert dt.microsecond == 0
+
+@test
+def test_datetime_with_hour_and_minute_second_defaults_zero():
+    dt = datetime.datetime(2024, 1, 1, 12, 30)
+    assert dt.hour == 12
+    assert dt.minute == 30
+    assert dt.second == 0
+
+# --- Replace ---
+
+@test
+def test_datetime_replace_only_hour():
+    dt = datetime.datetime(2024, 6, 15, 10, 30, 45)
+    result = dt.replace(hour=12)
+    assert result.year == 2024
+    assert result.month == 6
+    assert result.day == 15
+    assert result.hour == 12
+    assert result.minute == 30
+    assert result.second == 45
+
+@test
+def test_datetime_replace_year_month_day():
+    dt = datetime.datetime(2024, 6, 15, 10, 30, 45)
+    result = dt.replace(year=2025, month=1, day=1)
+    assert result.year == 2025
+    assert result.month == 1
+    assert result.day == 1
+    assert result.hour == 10
+    assert result.minute == 30
+    assert result.second == 45
+
+# --- date_component and time_component ---
+
+@test
+def test_datetime_date_component_has_correct_fields():
+    dt = datetime.datetime(2024, 11, 22, 8, 15, 0)
+    date = dt.date_component
+    assert date.year == 2024
+    assert date.month == 11
+    assert date.day == 22
+
+@test
+def test_datetime_time_component_has_correct_fields():
+    dt = datetime.datetime(2024, 11, 22, 8, 15, 30, 123456)
+    time = dt.time_component
+    assert time.hour == 8
+    assert time.minute == 15
+    assert time.second == 30
+    assert time.microsecond == 123456
+
+# --- Timestamp ---
+
+@test
+def test_datetime_timestamp_epoch_is_zero():
+    # 1970-01-01 00:00:00 UTC -> timestamp = 0
+    utc = datetime.timezone.utc
+    epoch = datetime.datetime(1970, 1, 1, 0, 0, 0, tzinfo=utc)
+    assert epoch.timestamp() == 0.0
+
+@test
+def test_datetime_timestamp_is_positive_for_recent_dates():
+    utc = datetime.timezone.utc
+    dt = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=utc)
+    assert dt.timestamp() > 0.0
+
+# --- Isoformat ---
+
+@test
+def test_datetime_isoformat_with_microseconds():
+    dt = datetime.datetime(2024, 6, 15, 10, 30, 45, 123456)
+    assert dt.isoformat() == "2024-06-15T10:30:45.123456"
+
+@test
+def test_datetime_isoformat_with_timezone_includes_offset():
+    utc = datetime.timezone.utc
+    dt = datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=utc)
+    assert "+00:00" in dt.isoformat()
+
+@test
+def test_datetime_isoformat_custom_separator_space():
+    dt = datetime.datetime(2024, 6, 15, 10, 30, 0)
+    assert dt.isoformat(" ") == "2024-06-15 10:30:00"
+
+# --- Comparison ---
+
+@test
+def test_datetime_comparison_less_or_equal():
+    dt1 = datetime.datetime(2024, 1, 1)
+    dt2 = datetime.datetime(2024, 1, 1)
+    assert dt1 <= dt2
+
+@test
+def test_datetime_comparison_greater_or_equal():
+    dt1 = datetime.datetime(2024, 6, 1)
+    dt2 = datetime.datetime(2024, 1, 1)
+    assert dt1 >= dt2
+
+# --- Astimezone ---
+
+@test
+def test_datetime_astimezone_positive_offset():
+    utc = datetime.timezone.utc
+    ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30), "IST")
+    dt_utc = datetime.datetime(2024, 1, 15, 0, 0, 0, tzinfo=utc)
+    dt_ist = dt_utc.astimezone(ist)
+    assert dt_ist.hour == 5
+    assert dt_ist.minute == 30
+
+# --- Timezone ---
+
+@test
+def test_timezone_utc_static_property_is_utc():
+    utc = datetime.timezone.utc
+    assert utc.tzname() == "UTC"
+    assert utc.utcoffset().total_seconds == 0.0
+
+@test
+def test_timezone_positive_offset_no_name():
+    tz = datetime.timezone(datetime.timedelta(hours=5))
+    assert tz.utcoffset().total_seconds == 18000.0
+
+@test
+def test_timezone_negative_offset_with_name():
+    pst = datetime.timezone(datetime.timedelta(hours=-8), "PST")
+    assert pst.tzname() == "PST"
+    assert pst.utcoffset().total_seconds == -28800.0
+
+@test
+def test_datetime_with_timezone_has_correct_tzinfo():
+    utc = datetime.timezone.utc
+    dt = datetime.datetime(2024, 1, 15, 12, 0, 0, tzinfo=utc)
+    assert dt.tzinfo is utc
+
+@test
+def test_datetime_without_timezone_tzinfo_is_null():
+    dt = datetime.datetime(2024, 1, 15, 12, 0, 0)
+    assert dt.tzinfo is None
