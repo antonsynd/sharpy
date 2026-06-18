@@ -236,11 +236,38 @@ indexing/operator/multi-axis/nested-construction tests pending the fixes.
 | `np.array([1.0, 2.0, 3.0])` (1-D flat list) | ✅ constructs | — |
 | `np.zeros/ones/arange/linspace/eye/empty(...)` | ✅ construct | — |
 | `a.size`, `a.ndim` (member access) | ✅ works (via `var` in codegen) | — |
+| `a.shape` | ✅ works, but returns raw `int[]` (prints `System.Int32[]`; index it via `a.shape[0]`, no Python tuple repr / `== (2,3)`) | — |
+| `a.dtype` | ✅ works (e.g. `float64`) | — |
 | `a.reshape(2, 3)` / `.reshape(-1, 2)` | ✅ works (returns proper `NdArray`) | — |
 | `np.sum(a)`, `np.mean(a)`, reductions | ✅ work (array passed as arg) | — |
 | `np.allclose(a, b[, rtol=, atol=])` (approx-eq) | ✅ works | — |
+| approx assert: `assert x == approx(v, abs=...)` / `assert_almost_equal(x, v)` (from `unittest`) | ✅ work on numpy scalar results | — |
 | `a[i]` / `a + b` / `a * 2.0` on a **module-func** array var | ❌ var typed `object` → SPY0320 / SPY0222 | **#955** |
 | multi-axis index `a[1, 2]` (on proper NdArray) | ❌ tuple `(int,int)` ↛ `params int[]` → CS1503 | **#956** |
 | 2-D from nested list `np.array([[..],[..]])` | ❌ `T=List<double>` violates `struct` → CS0453 | **#957** |
 | comma slicing `a[1:3, :]` | ❌ parse error → SPY0104 | **#958** |
+
+### Likely impact on the 12 numpy C# test files (for Phase 5b triage)
+
+`#955` is decisive: any test that creates an array via `np.*` then indexes it or
+applies an operator is blocked until it lands. Rough triage:
+
+| File | Cases | Expected |
+|------|------:|----------|
+| NumpyCreationTests | 31 | mostly clean — creation + `.size`/`.ndim`/`.dtype`/reductions (a few may index) |
+| NumpyMathTests | 37 | mostly clean if expressed as `np.func(a)` + reductions/`allclose` |
+| NumpyLinalgTests | 37 | mostly clean — `np.dot`/`matmul`/linalg funcs take arrays as args |
+| NumpyFftTests | 16 | mostly clean — fft funcs take/return arrays passed onward |
+| NumpyRandomTests | 17 | mostly clean — random funcs + reductions/range checks |
+| NumpyManipulationTests | 22 | mixed — manipulation funcs OK, but result-indexing assertions blocked by #955 |
+| NdArrayReshapeTests | 20 | mixed — `.reshape` works, but verifying via `a[i,j]` hits #955/#956 |
+| NdArrayTests | 20 | mixed — depends how much it indexes/operates on module-func arrays |
+| NdArrayOperatorTests | 19 | heavily blocked — operators on module-func arrays (#955) |
+| NdArrayIndexingTests | 14 | heavily blocked — element/multi-axis indexing (#955/#956) |
+| NdArraySlicingTests | 22 | heavily blocked — slicing + comma-slice (#955/#958) |
+| NdArrayAdvancedTests | 32 | heavily blocked — fancy/boolean indexing, advanced ops (#955/#956/#958) |
+
+Recommendation for 5b: port the creation/math/linalg/fft/random subset now with
+documented omissions for the indexing/operator cases, OR defer the whole numpy
+port until #955 (and ideally #956/#958) land. Leader's call.
 | 1-D slicing `a[1:3]` | ✅ parses (receiver must be proper NdArray, cf #955) | — |
