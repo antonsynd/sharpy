@@ -213,3 +213,34 @@ layer of out-of-scope gaps discovered during re-enablement and stay excluded in
 | zoneinfo | #886 | ✅ re-enabled — `==`/`!= None` on a CLR reference type now lowers to a null check (**#901**) |
 | email | #891 | ✅ re-enabled — `isinstance(x, mod.Type)` now lowers to a type test (**#903**) |
 | functools (`functools_tests.spy`) | #889 | ✅ re-enabled — `cmp_to_key` comparator lambda parameters must be annotated (`lambda a: int, b: int: ...`) so the generic type argument is inferable; unannotated comparators now get SPY0237 instead of leaking CS0411 (**#904**) |
+
+## Numpy capability matrix (Phase 5a spike, 2026-06-18)
+
+Probe results for the numpy module (the `Numpy*`/`NdArray*` rows above remain
+`pending`). Established by `quick-check`/`emit diagnostics`/`run` probes; no tests
+ported yet. **4 gap issues filed: #955, #956, #957, #958.**
+
+Key insight for the Phase 5b port: a numpy value returned from a module function
+(`np.array(...)`, `np.zeros(...)`, etc.) is typed **`object`** by the type-checker
+(#955). It can still be **passed to** other numpy functions (`np.sum(a)`,
+`np.mean(a)`, `np.allclose(a, b)` all work — `object`→`NdArray<double>` coerces at
+the call site), and plain member access (`a.size`, `a.ndim`) works (codegen emits
+`var`). But you **cannot index it** (`a[i]`) or **apply operators** (`a + b`,
+`a * 2.0`) because those gate on the static type. So Phase 5b can port any test
+expressible purely as `np.func(array)` + reductions/`allclose`, and must omit
+indexing/operator/multi-axis/nested-construction tests pending the fixes.
+
+| Construct | Status | Issue |
+|-----------|--------|-------|
+| `import numpy as np` | ✅ works | — |
+| `np.array([1.0, 2.0, 3.0])` (1-D flat list) | ✅ constructs | — |
+| `np.zeros/ones/arange/linspace/eye/empty(...)` | ✅ construct | — |
+| `a.size`, `a.ndim` (member access) | ✅ works (via `var` in codegen) | — |
+| `a.reshape(2, 3)` / `.reshape(-1, 2)` | ✅ works (returns proper `NdArray`) | — |
+| `np.sum(a)`, `np.mean(a)`, reductions | ✅ work (array passed as arg) | — |
+| `np.allclose(a, b[, rtol=, atol=])` (approx-eq) | ✅ works | — |
+| `a[i]` / `a + b` / `a * 2.0` on a **module-func** array var | ❌ var typed `object` → SPY0320 / SPY0222 | **#955** |
+| multi-axis index `a[1, 2]` (on proper NdArray) | ❌ tuple `(int,int)` ↛ `params int[]` → CS1503 | **#956** |
+| 2-D from nested list `np.array([[..],[..]])` | ❌ `T=List<double>` violates `struct` → CS0453 | **#957** |
+| comma slicing `a[1:3, :]` | ❌ parse error → SPY0104 | **#958** |
+| 1-D slicing `a[1:3]` | ✅ parses (receiver must be proper NdArray, cf #955) | — |
