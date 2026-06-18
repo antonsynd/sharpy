@@ -717,7 +717,23 @@ internal class CachedModuleDiscovery
         if (signature.Name == BuiltinNames.None)
             return SemanticType.Void;
         if (signature.Name == BuiltinNames.Object)
+        {
+            // When the signature has a ClrTypeName pointing to a known module type
+            // (e.g., NdArray<double> collapsed to "object" by ClrTypeMapper), resolve
+            // it as a UserDefinedType instead so member/protocol resolution works (#955).
+            if (!string.IsNullOrEmpty(signature.ClrTypeName))
+            {
+                var objClrKey = ClrNameHelper.ToFullClrName(signature.ClrTypeName);
+                if (_moduleTypeSymbols.TryGetValue(objClrKey, out var objSymbol))
+                {
+                    // Keep Name as "object" so the type remains assignable to
+                    // everything, but attach the Symbol so HasProtocol and member
+                    // resolution work via the TypeSymbol (#955).
+                    return new UserDefinedType { Name = BuiltinNames.Object, Symbol = objSymbol };
+                }
+            }
             return SemanticType.Object;
+        }
 
         // Handle other primitive types via PrimitiveCatalog (e.g., byte, uint8, short)
         if (PrimitiveCatalog.IsPrimitive(signature.Name))

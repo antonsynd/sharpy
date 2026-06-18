@@ -306,6 +306,18 @@ public sealed record UserDefinedType : SemanticType
         if (base.IsAssignableTo(other))
             return true;
 
+        // CLR-backed "object" placeholder (from ClrTypeMapper collapsing unknown
+        // generics) is assignable to a GenericType whose definition matches the
+        // backing Symbol. This lets e.g. Counter.__add__ return type (stored as
+        // "object" with CounterSymbol) be assigned to Counter[str] (#955).
+        if (Name == "object" && Symbol != null
+            && other is GenericType gt
+            && (ReferenceEquals(gt.GenericDefinition, Symbol)
+                || string.Equals(gt.Name, Symbol.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
         // UserDefinedType is assignable to SelfType if it matches the declaring class
         if (other is SelfType selfType && selfType.DeclaringType != null && Symbol != null)
         {
