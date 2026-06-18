@@ -1,0 +1,201 @@
+# Ported from TimeModuleTests.cs (#843).
+#
+# Source had 34 expanded cases ([Fact] + each [Theory] InlineData row).
+# Ported: 19. Omitted: 15 (all ConvertFormat tests — see below).
+#
+# ConvertFormat is an `internal static` helper on the C# TimeModule class with no
+# Python-facing surface (it is not exported as a `time.*` member), so it cannot be
+# exercised from .spy. The 16 omitted cases all call it directly:
+#   - ConvertFormat_MapsKnownCodes (12 [Theory] rows: %Y %m %d %H %M %S %A %B %a %b %p %I)
+#   - ConvertFormat_DoublePercent_ProducesLiteralPercent
+#   - ConvertFormat_CompoundFormat
+#   - ConvertFormat_EscapesLiteralLetters
+# Its observable behavior is exercised indirectly via strftime() below
+# (test_strftime_returns_date_format), which routes through ConvertFormat.
+#
+# Mapping notes (C# TimeModule API -> Python time API):
+#   TimeModule.Time()        -> time.time()
+#   TimeModule.TimeNs()      -> time.time_ns()
+#   TimeModule.PerfCounter() -> time.perf_counter()
+#   TimeModule.PerfCounterNs() -> time.perf_counter_ns()
+#   TimeModule.Monotonic()   -> time.monotonic()
+#   TimeModule.MonotonicNs() -> time.monotonic_ns()
+#   TimeModule.Strftime(fmt) -> time.strftime(fmt)
+#   TimeModule.Sleep(secs)   -> time.sleep(secs)
+#   TimeModule.Gmtime()/(s)  -> time.gmtime()/time.gmtime(s)
+#   TimeModule.Localtime()/(s) -> time.localtime()/time.localtime(s)
+#   new StructTime(...)      -> time.struct_time(...)
+# The two StructTime.Wday tests construct via the internal StructTime.FromDateTime;
+# here they are expressed with time.gmtime(secs) for the same UTC instants
+# (2024-01-01 = Monday -> epoch 1704067200; 2024-01-07 = Sunday -> epoch 1704585600).
+
+from unittest import assert_raises
+
+import time
+
+
+# --- time / time_ns ---
+
+@test
+def test_time_returns_reasonable_epoch():
+    # Should be after 2023-11-14 (1700000000)
+    assert time.time() > 1700000000.0
+
+@test
+def test_time_ns_returns_reasonable_epoch():
+    # 1700000000 seconds * 1_000_000_000 ns/s, precomputed to avoid int overflow
+    # of the int*int product (the C# original used 1700000000L * 1_000_000_000L).
+    assert time.time_ns() > 1700000000000000000
+
+# --- perf_counter / monotonic (monotonicity) ---
+
+@test
+def test_perf_counter_is_monotonic():
+    first: float = time.perf_counter()
+    second: float = time.perf_counter()
+    assert second >= first
+
+@test
+def test_perf_counter_ns_is_monotonic():
+    first: long = time.perf_counter_ns()
+    second: long = time.perf_counter_ns()
+    assert second >= first
+
+@test
+def test_monotonic_is_monotonic():
+    first: float = time.monotonic()
+    second: float = time.monotonic()
+    assert second >= first
+
+@test
+def test_monotonic_ns_is_monotonic():
+    first: long = time.monotonic_ns()
+    second: long = time.monotonic_ns()
+    assert second >= first
+
+# --- strftime ---
+
+@test
+def test_strftime_returns_date_format():
+    # C# original asserted the result matches ^\d{4}-\d{2}-\d{2}$.
+    result: str = time.strftime("%Y-%m-%d")
+    assert len(result) == 10
+    assert result[4] == "-"
+    assert result[7] == "-"
+    assert result[0:4].isdigit()
+    assert result[5:7].isdigit()
+    assert result[8:10].isdigit()
+
+# --- sleep ---
+
+@test
+def test_sleep_does_not_throw():
+    # Sleep for a very short duration; reaching the next line means no throw.
+    time.sleep(0.001)
+
+@test
+def test_sleep_zero_does_not_throw():
+    time.sleep(0.0)
+
+@test
+def test_sleep_negative_value_throws_value_error():
+    with assert_raises(ValueError) as exc:
+        time.sleep(-1.0)
+    assert "sleep length must be non-negative" in str(exc)
+
+# --- gmtime / localtime (current time, range checks) ---
+
+@test
+def test_gmtime_returns_valid_struct_time():
+    t = time.gmtime()
+    assert t.tm_year >= 2024
+    assert 1 <= t.tm_mon <= 12
+    assert 1 <= t.tm_mday <= 31
+    assert 0 <= t.tm_hour <= 23
+    assert 0 <= t.tm_min <= 59
+    assert 0 <= t.tm_sec <= 61
+    assert 0 <= t.tm_wday <= 6
+    assert 1 <= t.tm_yday <= 366
+    assert t.tm_isdst == 0  # UTC never has DST
+
+@test
+def test_localtime_returns_valid_struct_time():
+    t = time.localtime()
+    assert t.tm_year >= 2024
+    assert 1 <= t.tm_mon <= 12
+    assert 1 <= t.tm_mday <= 31
+    assert 0 <= t.tm_hour <= 23
+    assert 0 <= t.tm_min <= 59
+    assert 0 <= t.tm_sec <= 61
+    assert 0 <= t.tm_wday <= 6
+    assert 1 <= t.tm_yday <= 366
+    assert -1 <= t.tm_isdst <= 1
+
+# --- struct_time str() ---
+
+@test
+def test_struct_time_str_matches_python_format():
+    t = time.struct_time(2024, 1, 15, 10, 30, 0, 0, 15, 0)
+    rep: str = str(t)
+    assert "tm_year=2024" in rep
+    assert "tm_mon=1" in rep
+    assert rep.startswith("time.struct_time(")
+
+# --- tm_wday convention (Monday=0, Sunday=6) ---
+
+@test
+def test_struct_time_wday_monday_is_zero():
+    # Monday, 2024-01-01 00:00:00 UTC = epoch 1704067200
+    t = time.gmtime(1704067200.0)
+    assert t.tm_wday == 0  # Monday = 0 in Python
+
+@test
+def test_struct_time_wday_sunday_is_six():
+    # Sunday, 2024-01-07 00:00:00 UTC = epoch 1704585600
+    t = time.gmtime(1704585600.0)
+    assert t.tm_wday == 6  # Sunday = 6 in Python
+
+# --- gmtime / localtime with explicit timestamps ---
+
+@test
+def test_gmtime_unix_epoch_returns_1970():
+    t = time.gmtime(0.0)
+    assert t.tm_year == 1970
+    assert t.tm_mon == 1
+    assert t.tm_mday == 1
+    assert t.tm_hour == 0
+    assert t.tm_min == 0
+    assert t.tm_sec == 0
+    assert t.tm_wday == 3  # Thursday
+    assert t.tm_yday == 1
+    assert t.tm_isdst == 0
+
+@test
+def test_gmtime_one_day_after_epoch():
+    t = time.gmtime(86400.0)
+    assert t.tm_year == 1970
+    assert t.tm_mon == 1
+    assert t.tm_mday == 2
+    assert t.tm_hour == 0
+    assert t.tm_min == 0
+    assert t.tm_sec == 0
+
+@test
+def test_localtime_unix_epoch_returns_valid_struct_time():
+    # In timezones west of UTC, epoch 0 maps to Dec 31, 1969.
+    t = time.localtime(0.0)
+    assert 1969 <= t.tm_year <= 1970
+    assert 1 <= t.tm_mon <= 12
+    assert 1 <= t.tm_mday <= 31
+    assert 0 <= t.tm_hour <= 23
+
+@test
+def test_gmtime_large_timestamp():
+    # Python: time.gmtime(1000000000) -> 2001-09-09 01:46:40
+    t = time.gmtime(1000000000.0)
+    assert t.tm_year == 2001
+    assert t.tm_mon == 9
+    assert t.tm_mday == 9
+    assert t.tm_hour == 1
+    assert t.tm_min == 46
+    assert t.tm_sec == 40

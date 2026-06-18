@@ -118,7 +118,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | TempfileCompleteTests.cs | 11 | Spy/tempfile/tempfile_complete_tests.spy | 11 | ported (GetExtension mirrored with os.path.splitext) |
 | TextwrapTests.cs | 27 | Spy/textwrap/textwrap_tests.spy | 27 | ported |
 | ThreadingModuleTests.cs | 43 | Spy/threading/threading_module_tests.spy | 43 | ported (Thread/Lock/RLock/Event/Condition/Semaphore/BoundedSemaphore/Barrier/Timer all verified; closures via list[int] cells for cross-thread mutable state) |
-| TimeModuleTests.cs | 34 | | | pending |
+| TimeModuleTests.cs | 34 | Spy/time/time_module_tests.spy | 19 | ported (15 omitted: all ConvertFormat tests — `ConvertFormat` is `internal`, no `time.*` Python surface; 12 [Theory] code-mapping rows + DoublePercent/CompoundFormat/EscapesLiteralLetters. Behavior exercised indirectly via strftime. StructTime.Wday tests re-expressed via time.gmtime(secs) for the same UTC instants; struct_time ctor + str() work) |
 | TomlModuleTests.cs | 46 | Spy/toml/toml_module_tests.spy | 41 | ported (5 omitted: 5 null-arg/Axiom 3) |
 | TomlTypedDeserializationTests.cs | 6 | Spy/toml/toml_typed_deserialization_tests.spy | 5 | ported (2 omitted: null-arg/Axiom 3; +1 table array test) |
 | UuidModuleTests.cs | 13 | Spy/uuid/uuid_module_tests.spy | 13 | ported (re-enabled #886) |
