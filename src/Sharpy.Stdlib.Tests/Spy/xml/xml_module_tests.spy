@@ -1,0 +1,656 @@
+# Ported from XmlModuleTests.cs (#843).
+#
+# 84 expanded cases (all [Fact], no [Theory]). Ported: 84 (1 with a dropped
+# assertion — see RegisterNamespace note). Fully omitted: 0.
+#
+# Type/function mapping (ElementTree API):
+#   Sharpy.Xml.* module functions -> xml.* (snake_case): fromstring, tostring,
+#     create_element, sub_element, parse, comment, processing_instruction,
+#     iselement, indent, indent_tree, register_namespace.
+#   Sharpy.Element/ElementTree/ParseError -> `from sharpy import ...`.
+#   Element methods snake_case: get/set/keys/items/find/find_all/find_text/
+#     iter/iter_text/append/extend/insert/remove/clear/len. Properties: tag,
+#     text, tail, attrib. Indexing el[i] (negative + IndexError). Iteration
+#     `for child in el` (IEnumerable<Element>). len(el) via ISized.
+#   ElementTree: getroot, find/find_all/iter, write; static parse/parse_string.
+#   ParseError(message, position=, line=, column=) — .position/.line/.column.
+#
+# Dropped assertion (1, no full omission):
+#   - RegisterNamespace_StoresMapping asserts on the internal static field
+#     Xml._registeredNamespaces (a raw Dictionary), which has no Python-facing
+#     surface to observe. Ported as test_register_namespace_does_not_throw
+#     (exercises the call); the private-dict inspection is dropped. No issue
+#     needed (internal implementation detail).
+
+from sharpy import Element, ElementTree, ParseError
+from unittest import assert_raises
+
+import os
+import tempfile
+import xml
+
+
+# --- FromString: basic parsing ---
+
+@test
+def test_fromstring_simple_element_returns_parsed_element():
+    el = xml.fromstring("<root/>")
+    assert el.tag == "root"
+
+@test
+def test_fromstring_element_with_text_returns_text_content():
+    el = xml.fromstring("<msg>hello</msg>")
+    assert el.tag == "msg"
+    assert el.text == "hello"
+
+@test
+def test_fromstring_element_with_attributes_returns_attributes():
+    el = xml.fromstring("<item id=\"1\" name=\"test\"/>")
+    assert el.tag == "item"
+    assert el.get("id") == "1"
+    assert el.get("name") == "test"
+
+@test
+def test_fromstring_element_with_namespace_formats_tag_correctly():
+    el = xml.fromstring("<ns:root xmlns:ns=\"http://example.com\"/>")
+    assert el.tag == "{http://example.com}root"
+
+@test
+def test_fromstring_invalid_xml_throws_parse_error():
+    with assert_raises(ParseError):
+        xml.fromstring("<unclosed>")
+
+@test
+def test_fromstring_element_with_children_iterates_children():
+    root = xml.fromstring("<root><a/><b/><c/></root>")
+    tags: list[str] = []
+    for child in root:
+        tags.append(child.tag)
+    assert len(tags) == 3
+    assert tags[0] == "a"
+    assert tags[1] == "b"
+    assert tags[2] == "c"
+
+# --- Element construction ---
+
+@test
+def test_element_constructor_creates_element_with_tag():
+    el = Element("div")
+    assert el.tag == "div"
+    assert el.text is None
+
+@test
+def test_element_constructor_with_attrib_sets_attributes():
+    attrib: dict[str, str] = {"class": "main", "id": "content"}
+    el = Element("div", attrib)
+    assert el.get("class") == "main"
+    assert el.get("id") == "content"
+
+@test
+def test_create_element_function_creates_element():
+    el = xml.create_element("span")
+    assert el.tag == "span"
+
+@test
+def test_sub_element_appends_child_to_parent():
+    parent = Element("root")
+    child = xml.sub_element(parent, "child")
+    assert child.tag == "child"
+    assert parent.len() == 1
+    assert parent[0].tag == "child"
+
+# --- Element indexing ---
+
+@test
+def test_element_indexing_positive_index_returns_child():
+    root = xml.fromstring("<root><a/><b/><c/></root>")
+    assert root[0].tag == "a"
+    assert root[1].tag == "b"
+    assert root[2].tag == "c"
+
+@test
+def test_element_indexing_negative_index_returns_from_end():
+    root = xml.fromstring("<root><a/><b/><c/></root>")
+    assert root[-1].tag == "c"
+    assert root[-2].tag == "b"
+    assert root[-3].tag == "a"
+
+@test
+def test_element_indexing_out_of_range_throws_index_error():
+    root = xml.fromstring("<root><a/></root>")
+    with assert_raises(IndexError):
+        root[5]
+
+@test
+def test_element_len_returns_child_count():
+    root = xml.fromstring("<root><a/><b/></root>")
+    assert root.len() == 2
+
+@test
+def test_element_len_empty_returns_zero():
+    root = Element("empty")
+    assert root.len() == 0
+
+@test
+def test_element_isized_count_matches_len():
+    root = xml.fromstring("<root><a/><b/><c/></root>")
+    assert len(root) == 3
+
+# --- Text and tail ---
+
+@test
+def test_element_text_read_returns_text_content():
+    el = xml.fromstring("<p>Hello world</p>")
+    assert el.text == "Hello world"
+
+@test
+def test_element_text_write_sets_text_content():
+    el = Element("p")
+    el.text = "New text"
+    assert el.text == "New text"
+
+@test
+def test_element_text_null_when_no_text():
+    el = Element("br")
+    assert el.text is None
+
+@test
+def test_element_tail_read_write():
+    root = xml.fromstring("<root><a/>tail text<b/></root>")
+    a = root[0]
+    assert a.tail == "tail text"
+
+# --- Attributes ---
+
+@test
+def test_element_get_existing_attribute_returns_value():
+    el = xml.fromstring("<div class=\"main\"/>")
+    assert el.get("class") == "main"
+
+@test
+def test_element_get_missing_attribute_returns_default():
+    el = xml.fromstring("<div/>")
+    assert el.get("missing") is None
+    assert el.get("missing", "fallback") == "fallback"
+
+@test
+def test_element_set_adds_or_updates_attribute():
+    el = Element("div")
+    el.set("id", "main")
+    assert el.get("id") == "main"
+    el.set("id", "updated")
+    assert el.get("id") == "updated"
+
+@test
+def test_element_keys_returns_attribute_names():
+    el = xml.fromstring("<div id=\"1\" class=\"main\"/>")
+    keys: list[str] = el.keys()
+    assert len(keys) == 2
+
+@test
+def test_element_items_returns_name_value_tuples():
+    el = xml.fromstring("<div id=\"1\"/>")
+    items: list[tuple[str, str]] = el.items()
+    assert len(items) == 1
+    assert items[0] == ("id", "1")
+
+@test
+def test_element_attrib_returns_dict_of_attributes():
+    el = xml.fromstring("<div id=\"1\" class=\"main\"/>")
+    attrib: dict[str, str] = el.attrib
+    assert attrib["id"] == "1"
+    assert attrib["class"] == "main"
+
+# --- Mutation ---
+
+@test
+def test_element_append_adds_child():
+    root = Element("root")
+    child = Element("child")
+    root.append(child)
+    assert root.len() == 1
+    assert root[0].tag == "child"
+
+@test
+def test_element_insert_at_position():
+    root = xml.fromstring("<root><a/><c/></root>")
+    b = Element("b")
+    root.insert(1, b)
+    assert root.len() == 3
+    assert root[1].tag == "b"
+
+@test
+def test_element_remove_removes_child():
+    root = Element("root")
+    child = Element("child")
+    root.append(child)
+    assert root.len() == 1
+    root.remove(child)
+    assert root.len() == 0
+
+@test
+def test_element_remove_not_child_throws_value_error():
+    root = Element("root")
+    other = Element("other")
+    with assert_raises(ValueError):
+        root.remove(other)
+
+@test
+def test_element_clear_removes_all_children():
+    root = xml.fromstring("<root><a/><b/><c/></root>")
+    assert root.len() == 3
+    root.clear()
+    assert root.len() == 0
+
+@test
+def test_element_extend_adds_multiple_children():
+    root = Element("root")
+    children: list[Element] = [Element("a"), Element("b")]
+    root.extend(children)
+    assert root.len() == 2
+
+# --- Find / FindAll / FindText ---
+
+@test
+def test_element_find_simple_tag_returns_first_match():
+    root = xml.fromstring("<root><a/><b/><a/></root>")
+    found = root.find("a")
+    assert found is not None
+    assert found.tag == "a"
+
+@test
+def test_element_find_no_match_returns_null():
+    root = xml.fromstring("<root><a/></root>")
+    found = root.find("nonexistent")
+    assert found is None
+
+@test
+def test_element_find_all_returns_all_matches():
+    root = xml.fromstring("<root><a/><b/><a/></root>")
+    found: list[Element] = root.find_all("a")
+    assert len(found) == 2
+
+@test
+def test_element_find_text_returns_text_of_first_match():
+    root = xml.fromstring("<root><name>Alice</name><name>Bob</name></root>")
+    text = root.find_text("name")
+    assert text == "Alice"
+
+@test
+def test_element_find_text_no_match_returns_default():
+    root = xml.fromstring("<root/>")
+    assert root.find_text("missing") is None
+    assert root.find_text("missing", "default") == "default"
+
+# --- Iter / IterText ---
+
+@test
+def test_element_iter_no_tag_returns_all_descendants():
+    root = xml.fromstring("<root><a><b/></a><c/></root>")
+    tags: list[str] = []
+    for el in root.iter():
+        tags.append(el.tag)
+    # root + a + b + c = 4
+    assert len(tags) == 4
+    assert "root" in tags
+    assert "a" in tags
+    assert "b" in tags
+    assert "c" in tags
+
+@test
+def test_element_iter_with_tag_filters_descendants():
+    root = xml.fromstring("<root><a><a/></a><b/></root>")
+    tags: list[str] = []
+    for el in root.iter("a"):
+        tags.append(el.tag)
+    assert len(tags) == 2
+
+@test
+def test_element_iter_text_returns_all_text_content():
+    root = xml.fromstring("<root>Hello <b>world</b>!</root>")
+    texts: list[str] = []
+    for text in root.iter_text():
+        texts.append(text)
+    assert "Hello " in texts
+    assert "world" in texts
+    assert "!" in texts
+
+# --- XPath patterns ---
+
+@test
+def test_find_dot_returns_self():
+    root = xml.fromstring("<root/>")
+    found = root.find(".")
+    assert found is not None
+    assert found.tag == "root"
+
+@test
+def test_find_all_wildcard_returns_all_direct_children():
+    root = xml.fromstring("<root><a/><b/><c/></root>")
+    found: list[Element] = root.find_all("*")
+    assert len(found) == 3
+
+@test
+def test_find_all_descendant_pattern_finds_deep():
+    root = xml.fromstring("<root><a><target/></a><target/></root>")
+    found: list[Element] = root.find_all(".//target")
+    assert len(found) == 2
+
+@test
+def test_find_all_attribute_predicate_filters_on_attribute():
+    root = xml.fromstring("<root><item id=\"1\"/><item/><item id=\"2\"/></root>")
+    found: list[Element] = root.find_all("item[@id]")
+    assert len(found) == 2
+
+@test
+def test_find_all_attribute_value_predicate_filters_on_value():
+    root = xml.fromstring("<root><item id=\"1\"/><item id=\"2\"/></root>")
+    found: list[Element] = root.find_all("item[@id='1']")
+    assert len(found) == 1
+    assert found[0].get("id") == "1"
+
+@test
+def test_find_all_child_tag_predicate_filters_on_child_presence():
+    root = xml.fromstring("<root><a><name/></a><a/><a><name/></a></root>")
+    found: list[Element] = root.find_all("a[name]")
+    assert len(found) == 2
+
+@test
+def test_find_all_position_predicate_returns_nth_element():
+    root = xml.fromstring("<root><a/><a/><a/></root>")
+    found: list[Element] = root.find_all("a[2]")
+    assert len(found) == 1
+
+# --- Serialization (tostring) ---
+
+@test
+def test_tostring_simple_element_returns_xml_string():
+    el = xml.fromstring("<root/>")
+    s: str = xml.tostring(el)
+    assert s == "<root />"
+
+@test
+def test_tostring_element_with_text_preserves_text():
+    el = xml.fromstring("<msg>hello</msg>")
+    s: str = xml.tostring(el)
+    assert "hello" in s
+
+@test
+def test_tostring_text_method_returns_text_only():
+    el = xml.fromstring("<root>Hello <b>world</b></root>")
+    text: str = xml.tostring(el, method="text")
+    assert text == "Hello world"
+
+@test
+def test_tostring_roundtrip_preserves_structure():
+    original: str = "<root><a id=\"1\">text</a><b/></root>"
+    el = xml.fromstring(original)
+    serialized: str = xml.tostring(el)
+    reparsed = xml.fromstring(serialized)
+    assert reparsed.tag == "root"
+    assert reparsed.len() == 2
+    assert reparsed[0].tag == "a"
+    assert reparsed[0].get("id") == "1"
+
+# --- Comment / ProcessingInstruction ---
+
+@test
+def test_comment_creates_comment_element():
+    comment = xml.comment("This is a comment")
+    assert comment.tag == "{sharpy:internal}comment"
+    assert comment.text == "This is a comment"
+
+@test
+def test_comment_serialization():
+    comment = xml.comment(" a comment ")
+    assert xml.tostring(comment) == "<!-- a comment -->"
+
+@test
+def test_processing_instruction_creates_pi_element():
+    pi = xml.processing_instruction("xml-stylesheet", "type=\"text/xsl\"")
+    assert pi.tag == "{sharpy:internal}pi-xml-stylesheet"
+    assert pi.text == "type=\"text/xsl\""
+
+@test
+def test_processing_instruction_serialization():
+    pi = xml.processing_instruction("xml-stylesheet", "type=\"text/xsl\"")
+    assert xml.tostring(pi) == "<?xml-stylesheet type=\"text/xsl\"?>"
+
+@test
+def test_processing_instruction_no_text_serialization():
+    pi = xml.processing_instruction("target")
+    assert xml.tostring(pi) == "<?target?>"
+
+# --- ElementTree ---
+
+@test
+def test_element_tree_constructor_with_root():
+    root = Element("root")
+    tree = ElementTree(root)
+    retrieved = tree.getroot()
+    assert retrieved is not None
+    assert retrieved.tag == "root"
+
+@test
+def test_element_tree_constructor_empty():
+    tree = ElementTree()
+    assert tree.getroot() is None
+
+@test
+def test_element_tree_find_delegates_to_root():
+    root = xml.fromstring("<root><child/></root>")
+    tree = ElementTree(root)
+    found = tree.find("child")
+    assert found is not None
+    assert found.tag == "child"
+
+@test
+def test_element_tree_find_all_delegates_to_root():
+    root = xml.fromstring("<root><a/><b/><a/></root>")
+    tree = ElementTree(root)
+    found: list[Element] = tree.find_all("a")
+    assert len(found) == 2
+
+@test
+def test_element_tree_parse_from_file_returns_tree():
+    temp_file: str = tempfile.mkstemp()[1]
+    f = open(temp_file, "w")
+    f.write("<?xml version=\"1.0\"?><root><child>text</child></root>")
+    f.close()
+    tree = xml.parse(temp_file)
+    root = tree.getroot()
+    assert root is not None
+    assert root.tag == "root"
+    assert root[0].tag == "child"
+    os.remove(temp_file)
+
+@test
+def test_element_tree_parse_invalid_file_throws_parse_error():
+    temp_file: str = tempfile.mkstemp()[1]
+    f = open(temp_file, "w")
+    f.write("<broken>")
+    f.close()
+    with assert_raises(ParseError):
+        xml.parse(temp_file)
+    os.remove(temp_file)
+
+@test
+def test_element_tree_write_creates_file():
+    temp_file: str = tempfile.mkstemp()[1]
+    root = Element("data")
+    root.text = "content"
+    tree = ElementTree(root)
+    tree.write(temp_file)
+    f = open(temp_file, "r")
+    content: str = f.read()
+    f.close()
+    assert "<data>content</data>" in content
+    os.remove(temp_file)
+
+@test
+def test_element_tree_iter_iterates_all_elements():
+    root = xml.fromstring("<root><a/><b/></root>")
+    tree = ElementTree(root)
+    tags: list[str] = []
+    for el in tree.iter():
+        tags.append(el.tag)
+    assert len(tags) == 3
+
+# --- Utilities ---
+
+@test
+def test_iselement_element_returns_true():
+    el = Element("root")
+    assert xml.iselement(el)
+
+@test
+def test_iselement_non_element_returns_false():
+    assert not xml.iselement("not an element")
+    assert not xml.iselement(None)
+    assert not xml.iselement(42)
+
+@test
+def test_indent_adds_whitespace():
+    root = xml.fromstring("<root><a><b/></a><c/></root>")
+    xml.indent(root)
+    s: str = xml.tostring(root)
+    # After indenting, the output should contain newlines
+    assert "\n" in s
+
+@test
+def test_indent_tree_delegates_to_indent():
+    root = xml.fromstring("<root><a/><b/></root>")
+    tree = ElementTree(root)
+    xml.indent_tree(tree)
+    tree_root = tree.getroot()
+    assert tree_root is not None
+    s: str = xml.tostring(tree_root)
+    assert "\n" in s
+
+# --- Namespaces ---
+
+@test
+def test_find_with_namespaces_resolves_prefix():
+    xml_str: str = "<root xmlns:ns=\"http://example.com\"><ns:child/></root>"
+    root = xml.fromstring(xml_str)
+    ns: dict[str, str] = {"ns": "http://example.com"}
+    found = root.find("ns:child", ns)
+    assert found is not None
+    assert found.tag == "{http://example.com}child"
+
+@test
+def test_find_all_with_namespaces_returns_matches():
+    xml_str: str = "<root xmlns:ns=\"http://example.com\"><ns:a/><ns:b/><ns:a/></root>"
+    root = xml.fromstring(xml_str)
+    ns: dict[str, str] = {"ns": "http://example.com"}
+    found: list[Element] = root.find_all("ns:a", ns)
+    assert len(found) == 2
+
+@test
+def test_element_tag_with_namespace_formatted_correctly():
+    el = Element("{http://example.com}item")
+    assert el.tag == "{http://example.com}item"
+
+@test
+def test_element_set_tag_changes_tag():
+    el = Element("old")
+    assert el.tag == "old"
+    el.tag = "new"
+    assert el.tag == "new"
+
+# --- ParseError ---
+
+@test
+def test_parse_error_has_position_info():
+    err = ParseError("test error", position=10, line=2, column=5)
+    assert err.position == 10
+    assert err.line == 2
+    assert err.column == 5
+    assert "test error" in str(err)
+    assert "line 2" in str(err)
+    assert "column 5" in str(err)
+
+@test
+def test_parse_error_default_position():
+    err = ParseError("simple error")
+    assert err.position == 0
+    assert err.line == 0
+    assert err.column == 0
+
+# --- ToString representation ---
+
+@test
+def test_element_to_string_shows_tag():
+    el = Element("data")
+    assert str(el) == "<Element 'data'>"
+
+@test
+def test_element_tree_to_string_shows_root():
+    root = Element("root")
+    tree = ElementTree(root)
+    assert "root" in str(tree)
+
+@test
+def test_element_tree_to_string_empty():
+    tree = ElementTree()
+    assert "empty" in str(tree)
+
+# --- Multi-step XPath paths ---
+
+@test
+def test_find_all_multi_step_path_finds_nested_elements():
+    root = xml.fromstring("<root><a><b>1</b></a><a><b>2</b></a></root>")
+    results: list[Element] = root.find_all("a/b")
+    assert len(results) == 2
+    assert results[0].text == "1"
+    assert results[1].text == "2"
+
+@test
+def test_find_multi_step_path_finds_first_match():
+    root = xml.fromstring("<root><a><b>found</b></a></root>")
+    result = root.find("a/b")
+    assert result is not None
+    assert result.text == "found"
+
+# --- ElementTree.parse and parse_string ---
+
+@test
+def test_element_tree_parse_static_from_file():
+    temp_file: str = tempfile.mkstemp()[1]
+    f = open(temp_file, "w")
+    f.write("<root><child>text</child></root>")
+    f.close()
+    tree = ElementTree.parse(temp_file)
+    root = tree.getroot()
+    assert root is not None
+    assert root.tag == "root"
+    os.remove(temp_file)
+
+@test
+def test_element_tree_parse_string_returns_tree():
+    tree = ElementTree.parse_string("<doc><item/></doc>")
+    root = tree.getroot()
+    assert root is not None
+    assert root.tag == "doc"
+    assert root.len() == 1
+
+@test
+def test_element_tree_parse_string_invalid_xml_throws_parse_error():
+    with assert_raises(ParseError):
+        ElementTree.parse_string("<invalid>")
+
+# --- RegisterNamespace ---
+
+@test
+def test_register_namespace_does_not_throw():
+    # The C# RegisterNamespace_StoresMapping asserts on the internal static field
+    # Xml._registeredNamespaces (no Python surface); here we exercise the call.
+    xml.register_namespace("test", "http://example.com/test")
+
+# --- Tostring method validation ---
+
+@test
+def test_tostring_unknown_method_throws_value_error():
+    el = Element("root")
+    with assert_raises(ValueError):
+        xml.tostring(el, method="html")

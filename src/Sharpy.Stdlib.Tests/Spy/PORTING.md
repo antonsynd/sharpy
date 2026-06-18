@@ -122,7 +122,7 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | TomlModuleTests.cs | 46 | Spy/toml/toml_module_tests.spy | 41 | ported (5 omitted: 5 null-arg/Axiom 3) |
 | TomlTypedDeserializationTests.cs | 6 | Spy/toml/toml_typed_deserialization_tests.spy | 5 | ported (2 omitted: null-arg/Axiom 3; +1 table array test) |
 | UuidModuleTests.cs | 13 | Spy/uuid/uuid_module_tests.spy | 13 | ported (re-enabled #886) |
-| XmlModuleTests.cs | 84 | | | pending |
+| XmlModuleTests.cs | 84 | Spy/xml/xml_module_tests.spy | 84 | ported (RegisterNamespace_StoresMapping ported as a smoke test — its internal-field assertion on Xml._registeredNamespaces has no Python surface, dropped. Element indexing el[i] (neg + IndexError), `for child in el` iteration, len() via ISized, find/find_all/find_text, XPath predicates, namespaces, comment/PI, ElementTree file parse/write via tempfile+os all work; file-based tests use tempfile.mkstemp()+open()) |
 | YamlModuleTests.cs | 60 | Spy/yaml/yaml_module_tests.spy | 55 | ported (5 omitted: null-arg TypeError guards — None→non-nullable param rejected at compile time, Axiom 3) |
 | YamlRoundtripTests.cs | 29 | Spy/yaml/yaml_roundtrip_tests.spy | 23 | ported (6 omitted: 1 null-arg/Axiom 3, 1 TryGetValue/`out`-param interop, 4 CommentInfo construction — yaml surface gaps #919) |
 | YamlTypedDeserializationTests.cs | 6 | Spy/yaml/yaml_typed_deserialization_tests.spy | 5 | ported (1 omitted: null-arg TypeError, Axiom 3) |
