@@ -1,0 +1,9 @@
+import numpy as np
+
+def main():
+    a = np.zeros(3)
+    b = np.ones(3)
+    c = a + b
+    print(c[0])
+    print(c[1])
+    print(c[2])

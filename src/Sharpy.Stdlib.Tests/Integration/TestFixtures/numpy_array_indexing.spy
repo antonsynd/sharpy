@@ -1,0 +1,6 @@
+import numpy as np
+
+def main():
+    a = np.array([10.0, 20.0, 30.0])
+    print(a[0])
+    print(a.size)
