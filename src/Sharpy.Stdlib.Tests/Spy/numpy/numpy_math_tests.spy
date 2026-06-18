@@ -1,0 +1,229 @@
+# Ported from src/Sharpy.Stdlib.Tests/NumpyMathTests.cs (#843, Phase 5b).
+#
+# Elementwise math (sqrt/exp/log/.../floor/ceil/round/power), full reductions
+# (sum/min/max/mean/var/std/median), and along-axis reductions.
+#
+# A value returned from a module func is typed `object` (#955), so it cannot be
+# element-indexed (r[i] / r[i,j]). Elementwise/array results are therefore
+# verified with np.allclose(result, expected_array) — preserving the C# 1e-12
+# tolerance via rtol=0.0, atol=1e-12 where the C# test used BeApproximately(x,
+# 1e-12). Scalar overloads and full reductions return doubles and are compared
+# directly. 2-D inputs for along-axis reductions are built via reshape (the only
+# spy-expressible path to a 2-D array).
+#
+# Omissions (8 of 37 C# cases):
+#   - Power_ArrayScalar / Power_ScalarArray (2): np.power has three overloads
+#     ((NdArray,NdArray), (NdArray,double), (double,NdArray)). When one argument is
+#     an object-typed module-func array (#955) and the other is a scalar double,
+#     overload resolution instantiates NdArray<object> (violating the T:struct
+#     constraint, SPY0900). The pure array+array form resolves cleanly and is kept.
+#   - Power_BroadcastsRowAndColumn: needs 2-D operands built from the internal
+#     NdArray ctor with shapes (1,3)/(2,1) (#957/#959); not constructible in .spy.
+#   - Equal / NotEqual / Less_LessEqual / Greater_GreaterEqual /
+#     Equal_BroadcastsScalar (5): the comparison helpers return an `NdArray<bool>`
+#     whose elements are read via r[i]; indexing an object-typed result is blocked
+#     by #955 and there is no allclose for bool arrays.
+
+import numpy as np
+import math
+from system import ArgumentException, InvalidOperationException, ArgumentOutOfRangeException
+from unittest import assert_raises
+
+# -- elementwise math vs known values --
+
+@test
+def test_sqrt_array():
+    a = np.array([0.0, 1.0, 4.0, 9.0, 16.0])
+    r = np.sqrt(a)
+    assert np.allclose(r, np.array([0.0, 1.0, 2.0, 3.0, 4.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_sqrt_scalar():
+    assert np.sqrt(25.0) == 5.0
+    assert np.sqrt(2.0) == math.sqrt(2.0)
+
+@test
+def test_exp_array():
+    a = np.array([0.0, 1.0, 2.0, -1.0])
+    r = np.exp(a)
+    expected = np.array([math.exp(0.0), math.exp(1.0), math.exp(2.0), math.exp(-1.0)])
+    assert np.allclose(r, expected, rtol=0.0, atol=1e-12)
+
+@test
+def test_log_array():
+    a = np.array([1.0, math.e, 10.0])
+    r = np.log(a)
+    assert np.allclose(r, np.array([0.0, 1.0, math.log(10.0)]), rtol=0.0, atol=1e-12)
+
+@test
+def test_log2_array():
+    a = np.array([1.0, 2.0, 4.0, 8.0])
+    r = np.log2(a)
+    assert np.allclose(r, np.array([0.0, 1.0, 2.0, 3.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_log10_array():
+    a = np.array([1.0, 10.0, 100.0, 1000.0])
+    r = np.log10(a)
+    assert np.allclose(r, np.array([0.0, 1.0, 2.0, 3.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_abs_array():
+    a = np.array([-1.0, 0.0, 2.0, -3.5])
+    r = np.abs(a)
+    assert np.allclose(r, np.array([1.0, 0.0, 2.0, 3.5]), rtol=0.0, atol=1e-12)
+
+@test
+def test_sin_cos_tan_match_math():
+    a = np.array([0.0, math.pi / 6, math.pi / 4, math.pi / 2])
+    s = np.sin(a)
+    c = np.cos(a)
+    t = np.tan(a)
+    assert np.allclose(s, np.array([math.sin(0.0), math.sin(math.pi / 6), math.sin(math.pi / 4), math.sin(math.pi / 2)]), rtol=0.0, atol=1e-12)
+    assert np.allclose(c, np.array([math.cos(0.0), math.cos(math.pi / 6), math.cos(math.pi / 4), math.cos(math.pi / 2)]), rtol=0.0, atol=1e-12)
+    assert np.allclose(np.array([0.0, 1.0]), np.array([np.tan(0.0), np.tan(math.pi / 4)]), rtol=0.0, atol=1e-12)
+
+@test
+def test_arcsin_arccos_arctan_round_trip():
+    x = np.array([0.0, 0.5, 0.75, -0.5])
+    asx = np.arcsin(x)
+    assert np.allclose(asx, np.array([math.asin(0.0), math.asin(0.5), math.asin(0.75), math.asin(-0.5)]), rtol=0.0, atol=1e-12)
+    acx = np.arccos(x)
+    assert np.allclose(acx, np.array([math.acos(0.0), math.acos(0.5), math.acos(0.75), math.acos(-0.5)]), rtol=0.0, atol=1e-12)
+    atx = np.arctan(x)
+    assert np.allclose(atx, np.array([math.atan(0.0), math.atan(0.5), math.atan(0.75), math.atan(-0.5)]), rtol=0.0, atol=1e-12)
+
+@test
+def test_floor_ceil_round_match_math():
+    a = np.array([1.2, 1.5, 1.7, -1.2, -1.5, -1.7])
+    fl = np.floor(a)
+    ce = np.ceil(a)
+    rd = np.round(a)
+    assert np.allclose(fl, np.array([1.0, 1.0, 1.0, -2.0, -2.0, -2.0]), rtol=0.0, atol=1e-12)
+    assert np.allclose(ce, np.array([2.0, 2.0, 2.0, -1.0, -1.0, -1.0]), rtol=0.0, atol=1e-12)
+    # Banker's rounding: 1.5 -> 2, -1.5 -> -2.
+    assert np.allclose(rd, np.array([1.0, 2.0, 2.0, -1.0, -2.0, -2.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_round_with_decimals_honors_parameter():
+    a = np.array([1.2345, 2.5555, -3.1415])
+    r = np.round(a, 2)
+    assert np.allclose(r, np.array([1.23, 2.56, -3.14]), rtol=0.0, atol=1e-12)
+
+# -- power --
+
+@test
+def test_power_array_array_broadcasts_and_computes():
+    a = np.array([2.0, 3.0, 4.0])
+    b = np.array([2.0, 2.0, 0.5])
+    r = np.power(a, b)
+    assert np.allclose(r, np.array([4.0, 9.0, 2.0]), rtol=0.0, atol=1e-12)
+
+# -- reductions (full) --
+
+@test
+def test_sum_full_reduction_adds_all_elements():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    assert np.sum(a) == 15.0
+
+@test
+def test_sum_empty_array_is_zero():
+    a = np.zeros(0)
+    assert np.sum(a) == 0.0
+
+@test
+def test_min_full_reduction_finds_minimum():
+    a = np.array([3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0])
+    assert np.min(a) == 1.0
+
+@test
+def test_max_full_reduction_finds_maximum():
+    a = np.array([3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0])
+    assert np.max(a) == 9.0
+
+@test
+def test_mean_full_reduction_averages_all_elements():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    assert np.mean(a) == 3.0
+
+@test
+def test_var_full_reduction_population_variance():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    assert np.var(a) == 2.0
+
+@test
+def test_std_full_reduction_sqrt_of_variance():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    assert np.std(a) == math.sqrt(2.0)
+
+@test
+def test_median_odd_count_returns_middle_element():
+    a = np.array([5.0, 1.0, 3.0, 2.0, 4.0])
+    assert np.median(a) == 3.0
+
+@test
+def test_median_even_count_averages_two_middle_elements():
+    a = np.array([1.0, 2.0, 3.0, 4.0])
+    assert np.median(a) == 2.5
+
+@test
+def test_min_empty_array_throws():
+    a = np.zeros(0)
+    with assert_raises(InvalidOperationException):
+        np.min(a)
+
+# -- reductions (along axis); 2-D built via reshape --
+
+@test
+def test_sum_along_axis0_collapses_rows():
+    # [[1,2,3],[4,5,6]] sum along axis 0 -> [5,7,9]
+    a = np.arange(1.0, 7.0).reshape(2, 3)
+    r = np.sum(a, 0)
+    assert r.shape[0] == 3
+    assert np.allclose(r, np.array([5.0, 7.0, 9.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_sum_along_axis1_collapses_columns():
+    # [[1,2,3],[4,5,6]] sum along axis 1 -> [6,15]
+    a = np.arange(1.0, 7.0).reshape(2, 3)
+    r = np.sum(a, 1)
+    assert r.shape[0] == 2
+    assert np.allclose(r, np.array([6.0, 15.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_mean_along_axis_computes_per_row_or_column():
+    a = np.arange(1.0, 7.0).reshape(2, 3)
+    r0 = np.mean(a, 0)
+    r1 = np.mean(a, 1)
+    assert r0.shape[0] == 3
+    assert np.allclose(r0, np.array([2.5, 3.5, 4.5]), rtol=0.0, atol=1e-12)
+    assert r1.shape[0] == 2
+    assert np.allclose(r1, np.array([2.0, 5.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_max_along_axis_finds_per_slice_maximum():
+    # [[1,9,3],[4,2,6]]
+    a = np.array([1.0, 9.0, 3.0, 4.0, 2.0, 6.0]).reshape(2, 3)
+    r = np.max(a, 1)
+    assert np.allclose(r, np.array([9.0, 6.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_median_along_axis_per_row():
+    # [[1,2,3],[5,4,6]]
+    a = np.array([1.0, 2.0, 3.0, 5.0, 4.0, 6.0]).reshape(2, 3)
+    r = np.median(a, 1)
+    assert np.allclose(r, np.array([2.0, 5.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_sum_along_axis_negative_axis_wraps_to_trailing():
+    # axis=-1 for a (2,3) array means axis 1.
+    a = np.arange(1.0, 7.0).reshape(2, 3)
+    r = np.sum(a, -1)
+    assert r.shape[0] == 2
+    assert np.allclose(r, np.array([6.0, 15.0]), rtol=0.0, atol=1e-12)
+
+@test
+def test_sum_along_axis_out_of_range_throws():
+    a = np.zeros(6).reshape(2, 3)
+    with assert_raises(ArgumentOutOfRangeException):
+        np.sum(a, 5)

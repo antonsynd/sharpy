@@ -69,18 +69,18 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | MathAdditionalTests.cs | 48 | Spy/math/math_additional_tests.spy | 48 | ported |
 | MathAdditionalTests2.cs | 72 | Spy/math/math_additional2_tests.spy | 72 | ported |
 | ModuleIntegrationTests.cs | 7 | | | pending |
-| NdArrayTests.cs | 20 | | | pending |
-| NdArrayIndexingTests.cs | 14 | | | pending |
-| NdArrayOperatorTests.cs | 19 | | | pending |
-| NdArrayReshapeTests.cs | 20 | | | pending |
-| NdArraySlicingTests.cs | 22 | | | pending |
-| NdArrayAdvancedTests.cs | 32 | | | pending |
-| NumpyCreationTests.cs | 31 | | | pending |
-| NumpyFftTests.cs | 16 | | | pending |
-| NumpyLinalgTests.cs | 37 | | | pending |
-| NumpyManipulationTests.cs | 22 | | | pending |
-| NumpyMathTests.cs | 37 | | | pending |
-| NumpyRandomTests.cs | 17 | | | pending |
+| NdArrayTests.cs | 20 | | | deferred (pending #955-#958; 20 tests kept as C# — wholly internal NdArray(data, shape) construction + multi-dtype) |
+| NdArrayIndexingTests.cs | 14 | | | deferred (pending #955-#958; 14 tests kept as C# — wholly element/multi-axis indexing #955/#956) |
+| NdArrayOperatorTests.cs | 19 | | | deferred (pending #955-#958; 19 tests kept as C# — operators on object-typed module-func arrays #955) |
+| NdArrayReshapeTests.cs | 20 | | | deferred (pending #955-#958; 20 tests kept as C# — reshape/transpose/flatten verified via [i,j] indexing #955/#956) |
+| NdArraySlicingTests.cs | 22 | | | deferred (pending #955-#958; 22 tests kept as C# — Slice/SliceSpec/GetRow/GetColumn verified via indexing #955/#958) |
+| NdArrayAdvancedTests.cs | 32 | | | deferred (pending #955-#958; 32 tests kept as C# — masked/fancy indexing, ToArray/Tolist, structural equality) |
+| NumpyCreationTests.cs | 31 | Spy/numpy/numpy_creation_tests.spy | 27 | ported (4 omitted: Array_Null Axiom 3; Full×3 — np.full takes CLR int[] shape, #959. Element values verified via np.allclose / 2-D content via reductions since results are object #955) |
+| NumpyFftTests.cs | 16 | | | deferred (pending #955-#958; 16 tests kept as C# — fft/ifft verify complex output via internal NdArray<Complex>._data field; fftfreq portable but secondary, file core is the transform) |
+| NumpyLinalgTests.cs | 37 | | | deferred (pending #955-#958; 37 tests kept as C# — 2-D matrices built via internal NdArray ctor, results verified via [i,j]; np.linalg submodule reachable but inputs/outputs blocked) |
+| NumpyManipulationTests.cs | 22 | | | deferred (pending #955-#958; 22 tests kept as C# — concatenate/stack/hstack/vstack/split take CLR NdArray[] arrays #959; where needs bool array; results verified via [i,j]) |
+| NumpyMathTests.cs | 37 | Spy/numpy/numpy_math_tests.spy | 29 | ported (8 omitted: Power_ArrayScalar/ScalarArray — object+scalar overload → NdArray<object> SPY0900 #955; Power_BroadcastsRowAndColumn #957/#959; 5 comparison tests — bool-array results indexed via r[i] #955. Elementwise verified via np.allclose at C# 1e-12 tol; 2-D via reshape) |
+| NumpyRandomTests.cs | 17 | | | deferred (pending #955-#958; 17 tests kept as C# — randint/normal/uniform take CLR int[] shape #959; choice/shuffle are generic NdArray<T> uninferable from object; value checks read internal _data) |
 | OrderedDictTests.cs | 13 | Spy/collections/ordered_dict_tests.spy | 13 | ported |
 | OsModuleTests.cs | 33 | Spy/os/os_module_tests.spy | 33 | ported (constants use C# field names os.Sep/os.Linesep/os.Name/os.Environ — static module fields aren't snake_case-mapped in project compilation, SPY0203 / #940; mirrors C# OsModule.Sep) |
 | OsModuleAdditionalTests.cs | 16 | Spy/os/os_module_additional_tests.spy | 16 | ported (os.Altsep/os.Pathsep/os.Environ as above; list/dict membership via `contains` helper / bool local to avoid xUnit2009) |
@@ -213,6 +213,43 @@ layer of out-of-scope gaps discovered during re-enablement and stay excluded in
 | zoneinfo | #886 | ✅ re-enabled — `==`/`!= None` on a CLR reference type now lowers to a null check (**#901**) |
 | email | #891 | ✅ re-enabled — `isinstance(x, mod.Type)` now lowers to a type test (**#903**) |
 | functools (`functools_tests.spy`) | #889 | ✅ re-enabled — `cmp_to_key` comparator lambda parameters must be annotated (`lambda a: int, b: int: ...`) so the generic type argument is inferable; unannotated comparators now get SPY0237 instead of leaking CS0411 (**#904**) |
+
+## Phase 5b (numpy) — PORTABLE SUBSET PORTED, REST DEFERRED (2026-06-18)
+
+Per the "port portable, defer blocked" decision (coverage-first). Deep probing
+confirmed and extended the 5a triage: the indexing/operator/slicing/2-D-construction
+files are blocked by #955–#958, and a **new** gap (#959, CLR array params not
+bindable from `.spy` list literals) blocks `np.full`, the random shape-array funcs,
+and the array-of-arrays manipulation funcs. Result-element verification was routed
+through `np.allclose(...)` (preserving the C# 1e-12 tolerance via `rtol=0.0, atol=`)
+and reductions, which let creation + math port despite #955.
+
+| File | C# cases | Verdict |
+|------|---------:|---------|
+| NumpyCreationTests | 31 | **PORTED** → `numpy_creation_tests.spy` (27 pass, 4 omitted) |
+| NumpyMathTests | 37 | **PORTED** → `numpy_math_tests.spy` (29 pass, 8 omitted) |
+| NdArrayTests | 20 | deferred (kept as C#) |
+| NdArrayIndexingTests | 14 | deferred (kept as C#) |
+| NdArrayOperatorTests | 19 | deferred (kept as C#) |
+| NdArrayReshapeTests | 20 | deferred (kept as C#) |
+| NdArraySlicingTests | 22 | deferred (kept as C#) |
+| NdArrayAdvancedTests | 32 | deferred (kept as C#) |
+| NumpyFftTests | 16 | deferred (kept as C#) |
+| NumpyLinalgTests | 37 | deferred (kept as C#) |
+| NumpyManipulationTests | 22 | deferred (kept as C#) |
+| NumpyRandomTests | 17 | deferred (kept as C#) |
+
+**Totals across 12 files (287 C# cases):** 56 ported, 12 omitted-with-note,
+219 deferred-as-C# (10 files stay in-tree, no coverage loss). The 10 deferred C#
+files remain and keep running — Phase 6 (FluentAssertions strip) should be aware
+they are still present: `NdArrayTests.cs`, `NdArrayIndexingTests.cs`,
+`NdArrayOperatorTests.cs`, `NdArrayReshapeTests.cs`, `NdArraySlicingTests.cs`,
+`NdArrayAdvancedTests.cs`, `NumpyFftTests.cs`, `NumpyLinalgTests.cs`,
+`NumpyManipulationTests.cs`, `NumpyRandomTests.cs`.
+
+New gap filed during 5b: **#959** (CLR array params `int[]`/`T[]` not bindable from
+`.spy` list literals — the general-element sibling of #941; blocks `np.full`,
+`randint`/`normal`/`uniform` shape args, and `concatenate`/`stack`/`hstack`/`vstack`/`split`).
 
 ## Numpy capability matrix (Phase 5a spike, 2026-06-18)
 
