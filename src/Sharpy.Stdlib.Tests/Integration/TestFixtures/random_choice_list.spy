@@ -1,0 +1,7 @@
+import random
+
+def main():
+    random.seed(42)
+    lst: list[int] = [10, 20, 30, 40, 50]
+    x: int = random.choice(lst)
+    print(x)
