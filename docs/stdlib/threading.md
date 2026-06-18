@@ -60,9 +60,13 @@ similar to Python's `threading.BoundedSemaphore`.
 
 ### `release()`
 
-### `__enter__() -> BoundedSemaphore`
+### `enter() -> BoundedSemaphore`
 
-### `__exit__(exc_type: object | None = None, exc_val: object | None = None, exc_tb: object | None = None)`
+### `exit()`
+
+### `__enter__()) -> BoundedSemaphore`
+
+### `__exit__(exc_type: object | None = None, exc_val: object | None = None, null): object? excTb = = > Exit()`
 
 ## Event
 
@@ -86,9 +90,13 @@ A non-reentrant mutual exclusion lock, similar to Python's `threading.Lock`.
 
 ### `locked() -> bool`
 
-### `__enter__() -> Lock`
+### `enter() -> Lock`
 
-### `__exit__(exc_type: object | None = None, exc_val: object | None = None, exc_tb: object | None = None)`
+### `exit()`
+
+### `__enter__()) -> Lock`
+
+### `__exit__(exc_type: object | None = None, exc_val: object | None = None, null): object? excTb = = > Exit()`
 
 ## RLock
 
@@ -99,9 +107,13 @@ The same thread may acquire it multiple times without deadlocking.
 
 ### `release()`
 
-### `__enter__() -> RLock`
+### `enter() -> RLock`
 
-### `__exit__(exc_type: object | None = None, exc_val: object | None = None, exc_tb: object | None = None)`
+### `exit()`
+
+### `__enter__()) -> RLock`
+
+### `__exit__(exc_type: object | None = None, exc_val: object | None = None, null): object? excTb = = > Exit()`
 
 ## Semaphore
 
@@ -111,9 +123,13 @@ A counting semaphore, similar to Python's `threading.Semaphore`.
 
 ### `release()`
 
-### `__enter__() -> Semaphore`
+### `enter() -> Semaphore`
 
-### `__exit__(exc_type: object | None = None, exc_val: object | None = None, exc_tb: object | None = None)`
+### `exit()`
+
+### `__enter__()) -> Semaphore`
+
+### `__exit__(exc_type: object | None = None, exc_val: object | None = None, null): object? excTb = = > Exit()`
 
 ## Thread
 

@@ -19,6 +19,10 @@ import unittest
 
 Return the text captured so far, mirroring `io.StringIO.getvalue()`.
 
+### `unittest.getvalue() -> str`
+
+Return the text captured so far, mirroring `io.StringIO.getvalue()`.
+
 ### `unittest.assert_raises(exception_type: Type, match: str | None = None) -> AssertRaisesMarker`
 
 Marker for assert_raises context manager. The compiler transforms
@@ -136,6 +140,20 @@ everything written to the console while active. Exposed to Sharpy as
 !!! note
     Unlike the assertion markers, this is a real runtime helper — it is not
     rewritten by the compiler and may be called directly.
+
+### `unittest.captured_stderr() -> CapturedStderr`
+
+Create a `Sharpy.CapturedStderr` context manager that captures
+everything written to the standard error stream while active. Exposed to
+Sharpy as `captured_stderr()` and intended for use in a `with`
+statement: `with captured_stderr() as err: ...`. Useful for asserting
+on output from modules that write to stderr, such as `logging`.
+
+!!! note
+    Unlike the assertion markers, this is a real runtime helper — it is not
+    rewritten by the compiler and may be called directly. Because
+    `System.Console.Error` is process-global, captures nest in LIFO
+    order and must not be shared across tests that run in parallel.
 
 ## AssertRaisesMarker
 
