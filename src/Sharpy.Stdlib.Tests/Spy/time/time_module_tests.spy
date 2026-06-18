@@ -5,7 +5,7 @@
 #
 # ConvertFormat is an `internal static` helper on the C# TimeModule class with no
 # Python-facing surface (it is not exported as a `time.*` member), so it cannot be
-# exercised from .spy. The 16 omitted cases all call it directly:
+# exercised from .spy. The 15 omitted cases all call it directly:
 #   - ConvertFormat_MapsKnownCodes (12 [Theory] rows: %Y %m %d %H %M %S %A %B %a %b %p %I)
 #   - ConvertFormat_DoublePercent_ProducesLiteralPercent
 #   - ConvertFormat_CompoundFormat
