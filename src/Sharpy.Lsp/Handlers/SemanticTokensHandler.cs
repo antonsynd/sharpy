@@ -501,6 +501,23 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                     CollectExpressionTokens(slice.Step, tokens, parameterNames);
                 break;
 
+            case MultiAxisAccess multiAxis:
+                CollectExpressionTokens(multiAxis.Object, tokens, parameterNames);
+                foreach (var dim in multiAxis.Dimensions)
+                {
+                    if (dim.IsSlice)
+                    {
+                        if (dim.Start != null) CollectExpressionTokens(dim.Start, tokens, parameterNames);
+                        if (dim.Stop != null) CollectExpressionTokens(dim.Stop, tokens, parameterNames);
+                        if (dim.Step != null) CollectExpressionTokens(dim.Step, tokens, parameterNames);
+                    }
+                    else if (dim.Index != null)
+                    {
+                        CollectExpressionTokens(dim.Index, tokens, parameterNames);
+                    }
+                }
+                break;
+
             case ListLiteral list:
                 foreach (var el in list.Elements)
                     CollectExpressionTokens(el, tokens, parameterNames);
