@@ -9,6 +9,20 @@
     <FileVersion>$(SharpyVersion).0</FileVersion>
   </PropertyGroup>
 
+  <!--
+    Temporary NuGet audit suppression. SQLitePCLRaw.lib.e_sqlite3 (transitive via
+    Microsoft.Data.Sqlite in the sqlite3 stdlib module) is flagged by GHSA-2m69-gcr7-jv3q
+    (HIGH). At time of suppression the advisory has NO patched version, so the package
+    cannot be bumped, and TreatWarningsAsErrors turns the NU1903 audit warning into a hard
+    restore error. Only this single advisory is suppressed; all others still gate CI.
+    Exit condition + automated removal reminder tracked in #963;
+    .github/workflows/sqlite-advisory-watch.yml polls for the fix weekly.
+    TODO(#963): remove this suppression once SQLitePCLRaw.lib.e_sqlite3 > 2.1.11 ships a fix.
+  -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
+  </ItemGroup>
+
   <!-- Embed git commit hash into InformationalVersion at build time -->
   <Target Name="_SetSharpyInformationalVersion" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo">
     <Exec Command="git -C &quot;$(MSBuildThisFileDirectory)&quot; rev-parse --short HEAD" ConsoleToMsBuild="true" StandardOutputImportance="low" ContinueOnError="true">

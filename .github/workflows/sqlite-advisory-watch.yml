@@ -1,0 +1,77 @@
+name: SQLite advisory watch
+
+# Watches GHSA-2m69-gcr7-jv3q (SQLitePCLRaw.lib.e_sqlite3 / SQLite). That advisory
+# is suppressed in Directory.Build.props (NuGetAuditSuppress) because it has no patched
+# version yet. This job polls the advisory weekly and comments on the tracking issue the
+# moment a patched version appears, so the suppression never silently rots.
+#
+# Exit condition / removal steps live in the tracking issue (#963).
+
+on:
+  schedule:
+    # Weekly, Monday 13:00 UTC (after Dependabot's 02:00 ET run).
+    - cron: '0 13 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check-advisory:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GHSA: GHSA-2m69-gcr7-jv3q
+      PACKAGE: SQLitePCLRaw.lib.e_sqlite3
+      TRACKING_ISSUE: '963'
+    steps:
+      - name: Check whether the advisory has a patched version
+        run: |
+          set -euo pipefail
+
+          patched=$(gh api graphql \
+            -f query='query($ghsa: String!) {
+              securityAdvisory(ghsaId: $ghsa) {
+                vulnerabilities(first: 20) {
+                  nodes {
+                    package { name }
+                    firstPatchedVersion { identifier }
+                  }
+                }
+              }
+            }' \
+            -f ghsa="$GHSA" \
+            --jq "[.data.securityAdvisory.vulnerabilities.nodes[]
+                   | select(.package.name == \"$PACKAGE\")
+                   | .firstPatchedVersion.identifier]
+                  | map(select(. != null)) | first // \"\"")
+
+          if [ -z "$patched" ]; then
+            echo "No patched version yet for $GHSA ($PACKAGE); suppression still required."
+            exit 0
+          fi
+
+          echo "Patched version available for $PACKAGE: $patched"
+
+          # Idempotency: only comment once. A hidden marker in a prior comment means
+          # we have already notified, so subsequent weekly runs stay silent.
+          marker="<!-- sqlite-advisory-watch:patched -->"
+          if gh issue view "$TRACKING_ISSUE" --repo "$GITHUB_REPOSITORY" \
+               --json comments --jq '.comments[].body' 2>/dev/null | grep -qF "$marker"; then
+            echo "Tracking issue #$TRACKING_ISSUE already notified; nothing to do."
+            exit 0
+          fi
+
+          gh issue comment "$TRACKING_ISSUE" --repo "$GITHUB_REPOSITORY" --body "$marker
+          🔔 **A patched version is now available for [\`$GHSA\`](https://github.com/advisories/$GHSA):** \`$PACKAGE\` **$patched**.
+
+          Action required:
+          1. Bump \`Microsoft.Data.Sqlite\` / \`SQLitePCLRaw\` to pull the patched native lib.
+          2. Remove the \`NuGetAuditSuppress\` entry for \`$GHSA\` in \`Directory.Build.props\`.
+          3. Delete \`.github/workflows/sqlite-advisory-watch.yml\` (this watcher).
+          4. Confirm CI restore is green without the suppression, then close this issue.
+
+          _Posted automatically by \`.github/workflows/sqlite-advisory-watch.yml\`._"
+
+          gh issue reopen "$TRACKING_ISSUE" --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
