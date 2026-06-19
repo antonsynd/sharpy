@@ -514,19 +514,37 @@ internal partial class RoslynEmitter
         };
     }
 
-    // When a bytes argument is passed to a byte[] (array[byte]) parameter,
-    // emit .ToArray() to bridge Sharpy.Bytes → byte[] (#941).
-    private ExpressionSyntax ApplyBytesToArrayBridge(
+    // When a bytes or list argument is passed to an array (T[]) parameter, emit
+    // .ToArray() to bridge Sharpy.Bytes → byte[] (#941) or Sharpy.List<T> → T[]
+    // (#959). Sharpy.List<T> implements IEnumerable<T>, so .ToArray() resolves to
+    // System.Linq.Enumerable.ToArray (System.Linq is always imported in generated
+    // code); Sharpy.Bytes has an instance ToArray() that takes precedence.
+    private ExpressionSyntax ApplyArrayBridge(
         Expression sourceExpr, ExpressionSyntax generated, Semantic.SemanticType? targetType)
     {
         if (targetType is not GenericType { Name: "array" } arrayType
-            || arrayType.TypeArguments.Count != 1
-            || arrayType.TypeArguments[0] is not BuiltinType bt
-            || (bt.Name != "uint8" && bt.Name != "byte"))
+            || arrayType.TypeArguments.Count != 1)
             return generated;
 
         var argType = GetExpressionSemanticType(sourceExpr);
-        if (argType is not UserDefinedType { Name: "bytes" })
+
+        // bytes → array[byte] (#941). CLR byte maps to Sharpy uint8.
+        var bytesToByteArray =
+            arrayType.TypeArguments[0] is BuiltinType bt
+            && (bt.Name == "uint8" || bt.Name == "byte")
+            && argType is UserDefinedType { Name: "bytes" };
+
+        // list[T] → array[T] (#959). Element type must match exactly (UnknownType is
+        // a wildcard for empty list literals), mirroring GenericType.IsAssignableTo so
+        // the emitted .ToArray() yields an array of the parameter's element type.
+        var listToArray =
+            argType is GenericType { Name: "list" } listType
+            && listType.TypeArguments.Count == 1
+            && (listType.TypeArguments[0] is UnknownType
+                || arrayType.TypeArguments[0] is UnknownType
+                || listType.TypeArguments[0].Equals(arrayType.TypeArguments[0]));
+
+        if (!bytesToByteArray && !listToArray)
             return generated;
 
         return InvocationExpression(
@@ -886,7 +904,7 @@ internal partial class RoslynEmitter
                     {
                         kwargValue = ApplyOptionalDelegateConversion(kwarg.Value, kwargValue, targetParam.Type);
                         kwargValue = ApplyNullabilityDelegateAdaptation(kwarg.Value, kwargValue, targetParam.Type, funcSymbol);
-                        kwargValue = ApplyBytesToArrayBridge(kwarg.Value, kwargValue, targetParam.Type);
+                        kwargValue = ApplyArrayBridge(kwarg.Value, kwargValue, targetParam.Type);
                     }
                 }
                 else if (IsMethodGroup(kwarg.Value))
@@ -947,7 +965,7 @@ internal partial class RoslynEmitter
                     kwarg.Value, kwargGenerated, param.Type);
                 kwargGenerated = ApplyNullabilityDelegateAdaptation(
                     kwarg.Value, kwargGenerated, param.Type, funcSymbol);
-                kwargGenerated = ApplyBytesToArrayBridge(
+                kwargGenerated = ApplyArrayBridge(
                     kwarg.Value, kwargGenerated, param.Type);
                 argByParam[param.Name] = Argument(kwargGenerated)
                     .WithNameColon(NameColon(IdentifierName(csharpParamName)));
@@ -980,7 +998,7 @@ internal partial class RoslynEmitter
                     argExpr, posGenerated, param.Type);
                 posGenerated = ApplyNullabilityDelegateAdaptation(
                     argExpr, posGenerated, param.Type, funcSymbol);
-                posGenerated = ApplyBytesToArrayBridge(
+                posGenerated = ApplyArrayBridge(
                     argExpr, posGenerated, param.Type);
                 argByParam[param.Name] = Argument(posGenerated)
                     .WithNameColon(NameColon(IdentifierName(csharpParamName)));
@@ -1161,7 +1179,7 @@ internal partial class RoslynEmitter
                         arg, generated, positionalParams[argIndex].Type);
                     generated = ApplyNullabilityDelegateAdaptation(
                         arg, generated, positionalParams[argIndex].Type, funcSymbol);
-                    generated = ApplyBytesToArrayBridge(
+                    generated = ApplyArrayBridge(
                         arg, generated, positionalParams[argIndex].Type);
                 }
                 yield return Argument(generated);
