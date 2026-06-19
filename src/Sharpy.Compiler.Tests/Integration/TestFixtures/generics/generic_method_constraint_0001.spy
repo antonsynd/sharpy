@@ -1,0 +1,26 @@
+from System import IComparable
+
+class Item(IComparable[Item]):
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def compare_to(self, other: Item) -> int:
+        return self.value - other.value
+
+class Picker:
+    def __init__(self):
+        pass
+
+    def largest[T: IComparable[T]](self, a: T, b: T) -> str:
+        if a.compare_to(b) > 0:
+            return str(a)
+        return str(b)
+
+def main():
+    p: Picker = Picker()
+    print(p.largest(Item(10), Item(20)))

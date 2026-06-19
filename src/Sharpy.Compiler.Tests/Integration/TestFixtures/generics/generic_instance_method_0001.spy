@@ -1,0 +1,10 @@
+class Box:
+    def __init__(self):
+        pass
+
+    def wrap[T](self, y: T) -> str:
+        return "wrapped"
+
+def main():
+    b: Box = Box()
+    print(b.wrap(5))
