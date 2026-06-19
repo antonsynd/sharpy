@@ -98,6 +98,12 @@ public abstract class AstVisitor
             case SliceAccess n:
                 VisitSliceAccess(n);
                 break;
+            case MultiAxisAccess n:
+                VisitMultiAxisAccess(n);
+                break;
+            case SubscriptDimension n:
+                VisitSubscriptDimension(n);
+                break;
             case FunctionCall n:
                 VisitFunctionCall(n);
                 break;
@@ -394,6 +400,8 @@ public abstract class AstVisitor
     public virtual void VisitMemberAccess(MemberAccess node) => VisitExpression(node);
     public virtual void VisitIndexAccess(IndexAccess node) => VisitExpression(node);
     public virtual void VisitSliceAccess(SliceAccess node) => VisitExpression(node);
+    public virtual void VisitMultiAxisAccess(MultiAxisAccess node) => VisitExpression(node);
+    public virtual void VisitSubscriptDimension(SubscriptDimension node) => DefaultVisit(node);
     public virtual void VisitFunctionCall(FunctionCall node) => VisitExpression(node);
 
     #endregion
@@ -556,6 +564,8 @@ public abstract class AstVisitor<T>
             MemberAccess n => VisitMemberAccess(n),
             IndexAccess n => VisitIndexAccess(n),
             SliceAccess n => VisitSliceAccess(n),
+            MultiAxisAccess n => VisitMultiAxisAccess(n),
+            SubscriptDimension n => VisitSubscriptDimension(n),
             FunctionCall n => VisitFunctionCall(n),
 
             // Expressions - Operators
@@ -727,6 +737,8 @@ public abstract class AstVisitor<T>
     public virtual T VisitMemberAccess(MemberAccess node) => VisitExpression(node);
     public virtual T VisitIndexAccess(IndexAccess node) => VisitExpression(node);
     public virtual T VisitSliceAccess(SliceAccess node) => VisitExpression(node);
+    public virtual T VisitMultiAxisAccess(MultiAxisAccess node) => VisitExpression(node);
+    public virtual T VisitSubscriptDimension(SubscriptDimension node) => DefaultVisit(node);
     public virtual T VisitFunctionCall(FunctionCall node) => VisitExpression(node);
 
     #endregion
