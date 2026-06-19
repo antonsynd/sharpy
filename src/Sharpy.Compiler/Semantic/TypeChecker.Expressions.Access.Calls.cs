@@ -859,10 +859,15 @@ internal partial class TypeChecker
         return TryGetClrType(semanticType);
     }
 
-    private static Type SubstituteGenericParameters(Type type)
+    internal static Type SubstituteGenericParameters(Type type)
     {
         if (type.IsGenericParameter)
+        {
+            if ((type.GenericParameterAttributes &
+                 System.Reflection.GenericParameterAttributes.NotNullableValueTypeConstraint) != 0)
+                return typeof(int);
             return typeof(object);
+        }
         if (type.IsGenericType)
         {
             var args = type.GetGenericArguments();
