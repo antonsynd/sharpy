@@ -821,7 +821,7 @@ internal partial class TypeChecker
     /// (preserving IEnumerable vs List distinction that <see cref="Discovery.ClrTypeMapper"/>
     /// erases), falling back to <see cref="TryGetClrType"/> for source-defined overloads.
     /// </summary>
-    private Type? ResolveClrParameterType(FunctionSymbol func, int paramIdx, SemanticType semanticType)
+    internal Type? ResolveClrParameterType(FunctionSymbol func, int paramIdx, SemanticType semanticType)
     {
         if (func.ClrMethod != null)
         {
