@@ -304,6 +304,18 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Generic methods: emit the <T...> type-parameter list and any constraint clauses.
+        // Mirrors GenerateFunctionDeclaration; helpers live in RoslynEmitter.TypeDeclarations.cs.
+        if (func.TypeParameters.Length > 0)
+        {
+            var typeParams = func.TypeParameters
+                .Select(GenerateTypeParameterSyntax)
+                .ToArray();
+            method = method
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(func.TypeParameters));
+        }
+
         // Add XML documentation from docstring if present
         if (!string.IsNullOrEmpty(func.DocString))
         {
