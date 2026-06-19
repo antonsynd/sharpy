@@ -288,7 +288,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (181, 5) - (181, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 var r = np.Sum(a, 0);
 #line (182, 5) - (182, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (183, 5) - (183, 76) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 Xunit.Assert.True(np.Allclose(r, np.Array(new Sharpy.List<double>() { 5.0d, 7.0d, 9.0d }), rtol: 0.0d, atol: 1e-12d));
             }
@@ -301,7 +301,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (189, 5) - (189, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 var r = np.Sum(a, 1);
 #line (190, 5) - (190, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (191, 5) - (191, 72) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 Xunit.Assert.True(np.Allclose(r, np.Array(new Sharpy.List<double>() { 6.0d, 15.0d }), rtol: 0.0d, atol: 1e-12d));
             }
@@ -316,11 +316,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (197, 5) - (197, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 var r1 = np.Mean(a, 1);
 #line (198, 5) - (198, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-                Xunit.Assert.Equal(3, r0.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r0.Shape, 0));
 #line (199, 5) - (199, 77) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 Xunit.Assert.True(np.Allclose(r0, np.Array(new Sharpy.List<double>() { 2.5d, 3.5d, 4.5d }), rtol: 0.0d, atol: 1e-12d));
 #line (200, 5) - (200, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-                Xunit.Assert.Equal(2, r1.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r1.Shape, 0));
 #line (201, 5) - (201, 72) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 Xunit.Assert.True(np.Allclose(r1, np.Array(new Sharpy.List<double>() { 2.0d, 5.0d }), rtol: 0.0d, atol: 1e-12d));
             }
@@ -355,7 +355,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (221, 5) - (221, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 var r = np.Sum(a, -1);
 #line (222, 5) - (222, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (223, 5) - (223, 72) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 Xunit.Assert.True(np.Allclose(r, np.Array(new Sharpy.List<double>() { 6.0d, 15.0d }), rtol: 0.0d, atol: 1e-12d));
             }
