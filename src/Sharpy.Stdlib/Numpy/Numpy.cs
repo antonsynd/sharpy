@@ -50,6 +50,64 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Construct a 2-D <see cref="NdArray{T}"/> from a nested sequence of rows
+        /// (e.g. <c>[[1, 2], [3, 4]]</c>). All rows must have the same length.
+        /// </summary>
+        /// <typeparam name="T">Element type.</typeparam>
+        /// <param name="data">Sequence of equal-length rows; the row count and the
+        /// common row length determine the 2-D shape.</param>
+        /// <returns>A new 2-D ndarray owning a copy of the flattened data.</returns>
+        /// <exception cref="ArgumentException">Rows have differing lengths.</exception>
+        public static NdArray<T> Array<T>(
+            System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<T>> data)
+            where T : struct, IEquatable<T>
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
+            var rows = new System.Collections.Generic.List<T[]>();
+            foreach (var row in data)
+            {
+                if (row == null)
+                {
+                    throw new ArgumentNullException(nameof(data), "Rows must not be null.");
+                }
+
+                var rowList = new System.Collections.Generic.List<T>();
+                foreach (var item in row)
+                {
+                    rowList.Add(item);
+                }
+
+                rows.Add(rowList.ToArray());
+            }
+
+            if (rows.Count == 0)
+            {
+                return new NdArray<T>(System.Array.Empty<T>(), new[] { 0, 0 });
+            }
+
+            int cols = rows[0].Length;
+            for (int i = 1; i < rows.Count; i++)
+            {
+                if (rows[i].Length != cols)
+                {
+                    throw new ArgumentException("All rows must have the same length.", nameof(data));
+                }
+            }
+
+            var flat = new T[rows.Count * cols];
+            for (int i = 0; i < rows.Count; i++)
+            {
+                System.Array.Copy(rows[i], 0, flat, i * cols, cols);
+            }
+
+            return new NdArray<T>(flat, new[] { rows.Count, cols });
+        }
+
+        /// <summary>
         /// Return a new ndarray of the given shape, filled with 0.0.
         /// </summary>
         /// <param name="shape">Shape of the result. Each dimension must be non-negative.</param>
