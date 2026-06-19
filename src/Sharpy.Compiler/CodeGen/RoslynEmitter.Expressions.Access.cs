@@ -1518,10 +1518,23 @@ internal partial class RoslynEmitter
                 IdentifierName(itemName));
         }
 
+        var objectType = GetExpressionSemanticType(indexAccess.Object);
+
+        // Spread TupleLiteral index into separate arguments for params indexers (#956).
+        // a[1, 2] parses as IndexAccess(TupleLiteral) — spread to a[1, 2] in C# for
+        // types with params int[] indexers (e.g., NdArray), instead of a[(1, 2)].
+        if (indexAccess.Index is TupleLiteral tuple && IsNdArrayType(objectType))
+        {
+            var objExprSpread = GenerateExpression(indexAccess.Object);
+            var args = new List<ArgumentSyntax>();
+            foreach (var elem in tuple.Elements)
+                args.Add(Argument(GenerateExpression(elem)));
+            return ElementAccessExpression(objExprSpread)
+                .AddArgumentListArguments(args.ToArray());
+        }
+
         var objExpr = GenerateExpression(indexAccess.Object);
         var index = GenerateExpression(indexAccess.Index);
-
-        var objectType = GetExpressionSemanticType(indexAccess.Object);
 
         // String indexing: s[i] -> StringHelpers.GetItem(s, i) to return string, not char,
         // and to support negative indexing
@@ -1561,6 +1574,14 @@ internal partial class RoslynEmitter
     private static bool TryGetConstantIntIndex(Expression expr, out int value)
         => AstHelper.TryGetConstantIntIndex(expr, out value);
 
+    // TODO(#972): Replace with CLR reflection for params indexers.
+    private static bool IsNdArrayType(SemanticType? type) =>
+        type is UserDefinedType udt
+            && (udt.Symbol?.Name == "ndarray"
+                || (udt.Name == "object" && udt.Symbol?.Name == "NdArray"))
+        || type is GenericType gt
+            && string.Equals(gt.Name, "NdArray", StringComparison.OrdinalIgnoreCase);
+
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {
         // arr[start:stop:step]
@@ -1586,6 +1607,97 @@ internal partial class RoslynEmitter
                 Argument(start),
                 Argument(stop),
                 Argument(step));
+    }
+
+    private ExpressionSyntax GenerateMultiAxisAccess(MultiAxisAccess multiAxis)
+    {
+        var obj = GenerateExpression(multiAxis.Object);
+
+        var hasSlice = false;
+        foreach (var dim in multiAxis.Dimensions)
+        {
+            if (dim.IsSlice)
+            {
+                hasSlice = true;
+                break;
+            }
+        }
+
+        if (!hasSlice)
+        {
+            // All indices: a[1, 2] → a[1, 2] (spread into params int[])
+            var args = new List<ArgumentSyntax>();
+            foreach (var dim in multiAxis.Dimensions)
+                args.Add(Argument(GenerateExpression(dim.Index!)));
+            return ElementAccessExpression(obj)
+                .AddArgumentListArguments(args.ToArray());
+        }
+
+        // Any slice: a[1:3, :] → a.Slice(new SliceSpec(1, 3), SliceSpec.All)
+        var sliceArgs = new List<ArgumentSyntax>();
+        foreach (var dim in multiAxis.Dimensions)
+        {
+            if (dim.IsSlice)
+            {
+                sliceArgs.Add(Argument(GenerateSliceSpec(dim)));
+            }
+            else
+            {
+                // Index dimension → SliceSpec.Range(i, i + 1)
+                // Generate the expression twice: Roslyn SyntaxNodes cannot be
+                // shared across two positions in the syntax tree.
+                var idxForStart = GenerateExpression(dim.Index!);
+                var idxForEnd = GenerateExpression(dim.Index!);
+                sliceArgs.Add(Argument(
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            MakeGlobalQualifiedName("Sharpy", "SliceSpec"),
+                            IdentifierName("Range")))
+                    .AddArgumentListArguments(
+                        Argument(idxForStart),
+                        Argument(BinaryExpression(SyntaxKind.AddExpression,
+                            idxForEnd, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))))));
+            }
+        }
+
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                obj,
+                IdentifierName("Slice")))
+            .AddArgumentListArguments(sliceArgs.ToArray());
+    }
+
+    private ExpressionSyntax GenerateSliceSpec(SubscriptDimension dim)
+    {
+        if (dim.Start == null && dim.Stop == null && dim.Step == null)
+        {
+            return MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", "SliceSpec"),
+                IdentifierName("All"));
+        }
+
+        var args = new List<ArgumentSyntax>();
+
+        args.Add(Argument(dim.Start != null
+            ? CastExpression(NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                GenerateExpression(dim.Start))
+            : LiteralExpression(SyntaxKind.NullLiteralExpression)));
+
+        args.Add(Argument(dim.Stop != null
+            ? CastExpression(NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                GenerateExpression(dim.Stop))
+            : LiteralExpression(SyntaxKind.NullLiteralExpression)));
+
+        if (dim.Step != null)
+        {
+            args.Add(Argument(CastExpression(
+                NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                GenerateExpression(dim.Step))));
+        }
+
+        return ObjectCreationExpression(
+                MakeGlobalQualifiedName("Sharpy", "SliceSpec"))
+            .WithArgumentList(ArgumentList(SeparatedList(args)));
     }
 
     private TypeSymbol? ResolveNestedTypeFromAccess(MemberAccess memberAccess)

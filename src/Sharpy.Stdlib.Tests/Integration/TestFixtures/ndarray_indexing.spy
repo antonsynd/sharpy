@@ -1,0 +1,33 @@
+import numpy as np
+
+def main():
+    # 1-D positive reads
+    a = np.array([10.0, 20.0, 30.0, 40.0])
+    print(a[0])
+    print(a[3])
+
+    # 1-D negative indexing
+    print(a[-1])
+    print(a[-4])
+
+    # 2-D reads: [[1,2,3],[4,5,6]]
+    b = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    print(b[0, 0])
+    print(b[0, 2])
+    print(b[1, 0])
+    print(b[1, 2])
+
+    # 2-D negative indexing
+    print(b[-1, -1])
+    print(b[-2, -3])
+
+    # 3-D reads: arange(12).reshape(2,2,3)
+    c = np.arange(0.0, 12.0, 1.0).reshape(2, 2, 3)
+    print(c[0, 0, 0])
+    print(c[0, 0, 2])
+    print(c[0, 1, 0])
+    print(c[1, 0, 0])
+    print(c[1, 1, 2])
+
+    # 3-D negative
+    print(c[-1, -1, -1])

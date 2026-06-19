@@ -313,7 +313,7 @@ public sealed record UserDefinedType : SemanticType
         if (Name == "object" && Symbol != null
             && other is GenericType gt
             && (ReferenceEquals(gt.GenericDefinition, Symbol)
-                || string.Equals(gt.Name, Symbol.Name, StringComparison.OrdinalIgnoreCase)))
+                || string.Equals(gt.Name, Symbol.Name, StringComparison.Ordinal)))
         {
             return true;
         }

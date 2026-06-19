@@ -1,0 +1,60 @@
+# Ported from src/Sharpy.Stdlib.Tests/NdArrayTests.cs.
+# Covers NdArray construction, ndim/size/shape, strides, and dtype.
+#
+# Omitted tests (cannot be expressed in .spy):
+#   - Constructor_*_Throws (DataLengthMismatch, NegativeDimension, NullData,
+#     NullShape): use the internal `new NdArray<T>(data, shape)` constructor and
+#     null args, which are unreachable from .spy (Axiom 3 forbids null; the raw
+#     constructor is internal). Arrays are built via np.array/np.arange/reshape.
+#   - Shape_ReturnsDefensiveCopy / Strides_ReturnsDefensiveCopy: mutate the
+#     returned int[] in place (shape[0] = 99). Element/array mutation through the
+#     indexer setter is not usable from .spy (setter value type is the generic T).
+#   - Dtype_Float32 / Int32 / Int64 / Bool: np.array in the numpy spy module only
+#     accepts list[float], so only float64 arrays are reachable from .spy.
+import numpy as np
+
+def main():
+    # Constructor_OneDimensional_SetsProperties
+    a = np.array([1.0, 2.0, 3.0, 4.0])
+    print(a.ndim)
+    print(a.size)
+    print(a.shape[0])
+    print(a.dtype)
+
+    # Constructor_TwoDimensional_SetsProperties
+    b = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    print(b.ndim)
+    print(b.size)
+    print(b.shape[0])
+    print(b.shape[1])
+
+    # Constructor_ThreeDimensional_SetsProperties
+    c = np.arange(0.0, 24.0, 1.0).reshape(2, 3, 4)
+    print(c.ndim)
+    print(c.size)
+    print(c.shape[0])
+    print(c.shape[1])
+    print(c.shape[2])
+
+    # Constructor_EmptyDimension_HasSizeZero
+    e = np.zeros(0)
+    print(e.ndim)
+    print(e.size)
+
+    # Strides_OneDimensional_IsOne
+    s1 = np.zeros(5)
+    print(s1.strides[0])
+
+    # Strides_TwoDimensional_RowMajor -> [3, 1]
+    s2 = np.arange(0.0, 6.0, 1.0).reshape(2, 3)
+    print(s2.strides[0])
+    print(s2.strides[1])
+
+    # Strides_ThreeDimensional_RowMajor -> [12, 4, 1]
+    s3 = np.arange(0.0, 24.0, 1.0).reshape(2, 3, 4)
+    print(s3.strides[0])
+    print(s3.strides[1])
+    print(s3.strides[2])
+
+    # Dtype_Float64
+    print(np.zeros(1).dtype)

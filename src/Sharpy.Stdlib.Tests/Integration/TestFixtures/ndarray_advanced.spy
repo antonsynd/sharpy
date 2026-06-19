@@ -1,0 +1,68 @@
+# Ported from NdArrayAdvancedTests.cs — Numpy utilities (sort/argsort/unique/
+# searchsorted/allclose/isnan/isinf/isfinite), reshape, and flatten.
+#
+# Omitted from the C# source (not expressible from .spy):
+#   - GetMasked / SetMasked: boolean-mask indexing is an internal NdArray API,
+#     not surfaced as a .spy operation.
+#   - Take / Put: integer-array (fancy) indexing is an internal NdArray API.
+#   - Tolist: returns `object` with rank-dependent nesting; not usable from .spy.
+#   - Equals / GetHashCode direct calls and ((ISized)arr).Count casts: rely on
+#     C# reflection / explicit interface casts unavailable from .spy.
+#   - Int-typed arrays (NdArray[int]): np.array() from .spy yields float arrays.
+import math
+import numpy as np
+
+def main():
+    # --- sort: ascending copy, original untouched ---
+    arr = np.array([3.0, 1.0, 4.0, 1.0, 5.0, 9.0])
+    print(np.sort(arr))
+    print(arr)
+
+    # --- argsort: indices that would sort, returns long array ---
+    arr2 = np.array([30.0, 10.0, 20.0])
+    print(np.argsort(arr2))
+
+    # --- unique: sorted distinct elements ---
+    dup = np.array([3.0, 1.0, 2.0, 1.0, 3.0, 2.0])
+    print(np.unique(dup))
+
+    # --- searchsorted: left insertion indices ---
+    sorted_arr = np.array([1.0, 2.0, 4.0, 5.0])
+    values = np.array([0.0, 1.0, 3.0, 6.0])
+    print(np.searchsorted(sorted_arr, values))
+
+    # --- allclose ---
+    a = np.array([1.0, 2.0, 3.0])
+    b = np.array([1.0, 2.0, 3.0])
+    print(np.allclose(a, b))
+
+    c = np.array([1.0, 2.5, 3.0])
+    print(np.allclose(a, c))
+
+    # Both-NaN arrays are allclose (matched NaN treated as equal).
+    nan_a = np.array([math.nan])
+    nan_b = np.array([math.nan])
+    print(np.allclose(nan_a, nan_b))
+
+    # (3,) vs (1,) broadcasts; only equal at index 0, so not allclose.
+    scalar = np.array([1.0])
+    print(np.allclose(a, scalar))
+
+    # --- isnan / isinf / isfinite ---
+    nan_arr = np.array([1.0, math.nan, 3.0, math.nan])
+    print(np.isnan(nan_arr))
+
+    inf_arr = np.array([1.0, math.inf, -math.inf, 4.0])
+    print(np.isinf(inf_arr))
+
+    fin_arr = np.array([1.0, math.nan, math.inf, 4.0])
+    print(np.isfinite(fin_arr))
+
+    # --- reshape: same data, new shape ---
+    flat = np.arange(0.0, 6.0, 1.0)
+    print(flat)
+    reshaped = flat.reshape(2, 3)
+    print(reshaped)
+    print(reshaped[1, 2])
+    # Flatten back to 1-D.
+    print(reshaped.flatten())

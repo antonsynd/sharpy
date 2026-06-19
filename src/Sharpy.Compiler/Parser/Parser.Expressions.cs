@@ -885,6 +885,16 @@ public partial class Parser
                             ColumnEnd = Previous.Column + Previous.Value.Length,
                             Span = CombineSpans(expr.Span, GetSpanFromToken(closeBracket))
                         };
+                    else if (index is MultiAxisAccess ma)
+                        expr = ma with
+                        {
+                            Object = expr,
+                            LineStart = expr.LineStart,
+                            ColumnStart = expr.ColumnStart,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = CombineSpans(expr.Span, GetSpanFromToken(closeBracket))
+                        };
                 }
                 else if (Current.Type == TokenType.LeftParen)
                 {
@@ -922,36 +932,70 @@ public partial class Parser
 
     private Expression ParseSliceOrIndex()
     {
-        Expression? start = null;
-        Expression? stop = null;
-        Expression? step = null;
+        var firstDim = ParseSubscriptElement();
 
-        var isSlice = false;
-
-        // [start:stop:step] or [index] or [type1, type2, ...] for multiple type arguments
-        if (Current.Type != TokenType.Colon)
-            start = ParseExpression();
-
-        // Handle multiple type arguments: [int, str, bool] for generics
-        // If we see a comma after the first expression, continue parsing as a tuple
         if (Current.Type == TokenType.Comma)
         {
-            var elements = new List<Expression> { start! };
-            while (Current.Type == TokenType.Comma)
+            if (firstDim.IsSlice)
             {
-                Advance(); // consume ','
-                // Allow trailing comma
-                if (Current.Type == TokenType.RightBracket)
-                    break;
-                elements.Add(ParseExpression());
+                // Any slice dimension → MultiAxisAccess
+                var dims = new List<SubscriptDimension> { firstDim };
+                while (Current.Type == TokenType.Comma)
+                {
+                    Advance();
+                    if (Current.Type == TokenType.RightBracket)
+                        break;
+                    dims.Add(ParseSubscriptElement());
+                }
+
+                return new MultiAxisAccess
+                {
+                    Object = null!,
+                    Dimensions = dims.ToImmutableArray(),
+                    LineStart = Current.Line,
+                    ColumnStart = Current.Column,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column
+                };
             }
 
-            // Create a TupleLiteral to hold multiple type arguments
+            // First element is a plain index — parse remaining elements
+            var elements = new List<Expression> { firstDim.Index! };
+            var hasSlice = false;
+            var allDims = new List<SubscriptDimension> { firstDim };
+
+            while (Current.Type == TokenType.Comma)
+            {
+                Advance();
+                if (Current.Type == TokenType.RightBracket)
+                    break;
+                var nextDim = ParseSubscriptElement();
+                allDims.Add(nextDim);
+                if (nextDim.IsSlice)
+                    hasSlice = true;
+                else
+                    elements.Add(nextDim.Index!);
+            }
+
+            if (hasSlice)
+            {
+                return new MultiAxisAccess
+                {
+                    Object = null!,
+                    Dimensions = allDims.ToImmutableArray(),
+                    LineStart = Current.Line,
+                    ColumnStart = Current.Column,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column
+                };
+            }
+
+            // All plain indices — keep TupleLiteral behavior (generic args, dict tuple keys)
             var tuple = new TupleLiteral
             {
                 Elements = elements.ToImmutableArray(),
-                LineStart = start!.LineStart,
-                ColumnStart = start!.ColumnStart,
+                LineStart = elements[0].LineStart,
+                ColumnStart = elements[0].ColumnStart,
                 LineEnd = Current.Line,
                 ColumnEnd = Current.Column,
                 Span = CombineSpans(elements[0].Span, elements[^1].Span)
@@ -959,7 +1003,7 @@ public partial class Parser
 
             return new IndexAccess
             {
-                Object = null!,  // Will be filled in by caller
+                Object = null!,
                 Index = tuple,
                 LineStart = Current.Line,
                 ColumnStart = Current.Column,
@@ -968,48 +1012,88 @@ public partial class Parser
             };
         }
 
-        if (Current.Type == TokenType.Colon)
-        {
-            isSlice = true;
-            Advance();
-
-            if (Current.Type != TokenType.Colon && Current.Type != TokenType.RightBracket)
-                stop = ParseExpression();
-
-            if (Current.Type == TokenType.Colon)
-            {
-                Advance();
-                if (Current.Type != TokenType.RightBracket)
-                    step = ParseExpression();
-            }
-        }
-
-        if (isSlice)
+        if (firstDim.IsSlice)
         {
             return new SliceAccess
             {
-                Object = null!,  // Will be filled in by caller
-                Start = start,
-                Stop = stop,
-                Step = step,
+                Object = null!,
+                Start = firstDim.Start,
+                Stop = firstDim.Stop,
+                Step = firstDim.Step,
                 LineStart = Current.Line,
                 ColumnStart = Current.Column,
                 LineEnd = Current.Line,
                 ColumnEnd = Current.Column
             };
         }
-        else
+
+        return new IndexAccess
         {
-            return new IndexAccess
-            {
-                Object = null!,  // Will be filled in by caller
-                Index = start!,
-                LineStart = Current.Line,
-                ColumnStart = Current.Column,
-                LineEnd = Current.Line,
-                ColumnEnd = Current.Column
-            };
+            Object = null!,
+            Index = firstDim.Index!,
+            LineStart = Current.Line,
+            ColumnStart = Current.Column,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+    private SubscriptDimension ParseSubscriptElement()
+    {
+        Expression? start = null;
+
+        // Bare colon: `:` or `:stop` or `::step`
+        if (Current.Type == TokenType.Colon)
+            return ParseSliceDimension(null);
+
+        start = ParseExpression();
+
+        // Expression followed by colon → slice with start
+        if (Current.Type == TokenType.Colon)
+            return ParseSliceDimension(start);
+
+        // Plain index
+        return new SubscriptDimension
+        {
+            IsSlice = false,
+            Index = start,
+            LineStart = start.LineStart,
+            ColumnStart = start.ColumnStart,
+            LineEnd = start.LineEnd,
+            ColumnEnd = start.ColumnEnd,
+            Span = start.Span
+        };
+    }
+
+    private SubscriptDimension ParseSliceDimension(Expression? start)
+    {
+        Advance(); // consume first ':'
+
+        Expression? stop = null;
+        Expression? step = null;
+
+        if (Current.Type != TokenType.Colon && Current.Type != TokenType.RightBracket
+            && Current.Type != TokenType.Comma)
+            stop = ParseExpression();
+
+        if (Current.Type == TokenType.Colon)
+        {
+            Advance();
+            if (Current.Type != TokenType.RightBracket && Current.Type != TokenType.Comma)
+                step = ParseExpression();
         }
+
+        return new SubscriptDimension
+        {
+            IsSlice = true,
+            Start = start,
+            Stop = stop,
+            Step = step,
+            LineStart = Current.Line,
+            ColumnStart = Current.Column,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
     }
 
     /// <summary>

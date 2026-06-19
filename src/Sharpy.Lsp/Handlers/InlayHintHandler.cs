@@ -185,6 +185,23 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
             return;
         }
 
+        if (expr is MultiAxisAccess multiAxisExpr)
+        {
+            CollectCallHintsFromExpression(multiAxisExpr.Object, analysis, range, hints);
+            foreach (var dim in multiAxisExpr.Dimensions)
+            {
+                if (dim.Index != null)
+                    CollectCallHintsFromExpression(dim.Index, analysis, range, hints);
+                if (dim.Start != null)
+                    CollectCallHintsFromExpression(dim.Start, analysis, range, hints);
+                if (dim.Stop != null)
+                    CollectCallHintsFromExpression(dim.Stop, analysis, range, hints);
+                if (dim.Step != null)
+                    CollectCallHintsFromExpression(dim.Step, analysis, range, hints);
+            }
+            return;
+        }
+
         if (expr is ConditionalExpression condExpr)
         {
             CollectCallHintsFromExpression(condExpr.Test, analysis, range, hints);

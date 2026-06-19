@@ -1,0 +1,87 @@
+# Ported from NdArrayOperatorTests.cs — NdArray arithmetic operators,
+# scalar broadcasting, and shape broadcasting.
+#
+# Omitted from the C# source (not expressible from .spy):
+#   - Add_NullArgs_Throws / Negate_NullArg_Throws: null NdArray args are
+#     disallowed by Axiom 3 (non-nullable by default).
+#   - Add_IntArrays_AddsElementwise: np.array() from .spy produces float arrays;
+#     constructing NdArray[int] requires the internal C# constructor.
+#   - Scalar-LEFT operators (10.0 + arr, 10.0 - arr, 8.0 / arr): the Sharpy type
+#     checker only resolves scalar-RIGHT forms (arr + 10.0); the reflected
+#     `float OP NdArray` overloads are not surfaced to .spy (float64 has no such
+#     operator), so Add_ScalarLeft / Subtract_ScalarLeft / Divide_ScalarLeft are
+#     covered only in their scalar-right equivalents.
+#   - Unary negation (-arr): the unary `-` on an NdArray is typed as `object` in
+#     .spy, so the result cannot be indexed; Negate tests are omitted.
+import numpy as np
+
+def main():
+    # --- Same-shape arithmetic ---
+    a = np.array([1.0, 2.0, 3.0])
+    b = np.array([4.0, 5.0, 6.0])
+    add = a + b
+    print(add[0])
+    print(add[1])
+    print(add[2])
+
+    # Subtract on a 2-D array.
+    m = np.array([[10.0, 20.0], [30.0, 40.0]])
+    n = np.array([[1.0, 2.0], [3.0, 4.0]])
+    sub = m - n
+    print(sub[0, 0])
+    print(sub[0, 1])
+    print(sub[1, 0])
+    print(sub[1, 1])
+
+    # Multiply elementwise.
+    mul = np.array([2.0, 3.0, 4.0]) * np.array([5.0, 6.0, 7.0])
+    print(mul[0])
+    print(mul[1])
+    print(mul[2])
+
+    # Divide elementwise.
+    div = np.array([10.0, 20.0, 30.0]) / np.array([2.0, 4.0, 5.0])
+    print(div[0])
+    print(div[1])
+    print(div[2])
+
+    # --- Scalar broadcast ---
+    sa = np.array([1.0, 2.0, 3.0])
+    sr = sa + 10.0
+    print(sr[0])
+    print(sr[1])
+    print(sr[2])
+
+    scaled = np.array([1.0, 2.0, 3.0, 4.0]) * 2.0
+    print(scaled[0])
+    print(scaled[1])
+    print(scaled[2])
+    print(scaled[3])
+
+    # --- Broadcasting ---
+    # (3,1) + (1,4) -> (3,4) where r[i,j] = col[i,0] + row[0,j].
+    col = np.array([[1.0], [2.0], [3.0]])
+    row = np.array([[10.0, 20.0, 30.0, 40.0]])
+    bc = col + row
+    print(bc[0, 0])
+    print(bc[0, 3])
+    print(bc[2, 0])
+    print(bc[2, 3])
+
+    # (5,) + (3,5) -> (3,5): the 1-D array is added to each row, aligning the
+    # trailing axis.
+    vec = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    mat = np.array([[10.0, 20.0, 30.0, 40.0, 50.0],
+                    [100.0, 200.0, 300.0, 400.0, 500.0],
+                    [1000.0, 2000.0, 3000.0, 4000.0, 5000.0]])
+    bc2 = vec + mat
+    print(bc2[0, 0])
+    print(bc2[1, 2])
+    print(bc2[2, 4])
+
+    # (1,) * (4,) -> (4,)
+    one = np.array([7.0])
+    four = np.array([1.0, 2.0, 3.0, 4.0])
+    bc3 = one * four
+    print(bc3[0])
+    print(bc3[3])

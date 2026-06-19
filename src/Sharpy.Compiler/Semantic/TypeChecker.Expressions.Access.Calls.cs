@@ -544,7 +544,7 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                if (!IsAssignable(context.ArgTypes[i], expectedType))
+                if (!IsArgumentAssignable(context.ArgTypes[i], expectedType))
                 {
                     if (IsSystemTypeParameter(expectedType)
                         && context.Call != null
@@ -733,9 +733,14 @@ internal partial class TypeChecker
             return IsAssignable(arg, SubstituteTypeParametersWithObject(expected));
         }
 
-        // Expected is a non-generic shape that still mentions type parameters (FunctionType,
-        // TupleType, optional/nullable of T, ...). Preserve the prior permissive wildcard
-        // behavior — these are not the nested-generic ambiguity that #957 targets.
+        // NullableType<T>, OptionalType<T>, TupleType<T,...>: substitute type parameters
+        // with object and check assignability — rejects structurally incompatible args
+        // (e.g., list[int] ↛ T?) while still accepting compatible ones (#966).
+        if (expected is NullableType or OptionalType or TupleType)
+            return IsAssignable(arg, SubstituteTypeParametersWithObject(expected));
+
+        // FunctionType, GenericFunctionType, and other opaque shapes: preserve permissive
+        // behavior — real checking happens during generic type inference.
         return true;
     }
 
@@ -756,6 +761,16 @@ internal partial class TypeChecker
                     Name = g.Name,
                     GenericDefinition = g.GenericDefinition,
                     TypeArguments = g.TypeArguments.Select(SubstituteTypeParametersWithObject).ToList()
+                };
+            case NullableType n:
+                return new NullableType { UnderlyingType = SubstituteTypeParametersWithObject(n.UnderlyingType) };
+            case OptionalType o:
+                return new OptionalType { UnderlyingType = SubstituteTypeParametersWithObject(o.UnderlyingType) };
+            case TupleType t:
+                return new TupleType
+                {
+                    ElementTypes = t.ElementTypes.Select(SubstituteTypeParametersWithObject).ToList(),
+                    ElementNames = t.ElementNames
                 };
             default:
                 return type;

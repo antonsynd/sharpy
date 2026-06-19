@@ -1,0 +1,100 @@
+# Ported from src/Sharpy.Stdlib.Tests/NdArraySlicingTests.cs.
+# Covers multi-axis slicing (a[start:stop, ...]), GetRow, GetColumn, and view
+# strides.
+#
+# Key constraint: a *single-axis* slice on an ndarray (e.g. a[1:4]) does NOT
+# reach NdArray.Slice — the compiler routes single-axis subscript slicing through
+# the generic Sharpy.Slice.GetSlice helper, which has no ndarray overload, so it
+# fails to compile. Only multi-axis slices (a[r0:r1, c0:c1]) emit NdArray.Slice
+# calls. The original 1-D Slice tests are therefore re-expressed as slices over
+# axis 1 of a 1xN array, which is semantically equivalent.
+#
+# Omitted tests (cannot be expressed in .spy):
+#   - SliceSpec_* (DefaultIsAll, ZeroStep_Throws, Equality): exercise the
+#     SliceSpec struct directly; .spy has no syntax to construct a SliceSpec
+#     (they are emitted implicitly from a[a:b] subscript syntax).
+#   - Slice_1D_ViewSharesBuffer / GetRow_ModifiesOriginal /
+#     GetColumn_ModifiesOriginal: verify view aliasing by mutating an element
+#     through the indexer setter, which is unreachable from .spy (setter value
+#     type is the generic T).
+#   - Slice_WrongSliceCount_Throws: passes one slice to a 2-D array. A single-axis
+#     slice never reaches NdArray.Slice (see note above), so the IndexError path
+#     cannot be triggered from .spy.
+#   - Slice_Null_Throws: passes null to Slice; null is unreachable (Axiom 3).
+#   - GetRow_OutOfRange / GetColumn_OutOfRange / GetRow_NotTwoDimensional /
+#     GetColumn_NotTwoDimensional are ported as separate .runtime-error fixtures.
+import numpy as np
+
+def main():
+    # Slice_1D_Basic (axis-1 slice of a 1x5) -> [1, 2, 3]
+    a = np.arange(0.0, 5.0, 1.0).reshape(1, 5)
+    basic = a[0:1, 1:4]
+    print(basic)
+    print(basic.shape[1])
+    print(basic[0, 0])
+    print(basic[0, 1])
+    print(basic[0, 2])
+
+    # Slice_1D_NullStartStop_FullRange (the ":" full-axis slice)
+    full = a[0:1, :]
+    print(full)
+    print(full.shape[1])
+    print(full[0, 0])
+    print(full[0, 4])
+
+    # Slice_1D_Step_TakesEveryNth -> [0, 2, 4]
+    b = np.arange(0.0, 6.0, 1.0).reshape(1, 6)
+    step = b[0:1, 0:6:2]
+    print(step)
+    print(step.shape[1])
+    print(step[0, 0])
+    print(step[0, 1])
+    print(step[0, 2])
+
+    # Slice_1D_NegativeStep_Reverses -> [4, 3, 2, 1, 0]
+    rev = a[0:1, ::-1]
+    print(rev)
+    print(rev[0, 0])
+    print(rev[0, 1])
+    print(rev[0, 4])
+
+    # Slice_View_HasUpdatedStrides (step doubles the axis-1 stride)
+    print(step.strides[1])
+
+    # Slice_2D_BothAxes_ReturnsSubMatrix
+    # 3x3:  0 1 2 / 3 4 5 / 6 7 8 ; slice rows 0:2, cols 1:3 -> [[1,2],[4,5]]
+    m = np.arange(0.0, 9.0, 1.0).reshape(3, 3)
+    sub = m[0:2, 1:3]
+    print(sub)
+    print(sub.shape[0])
+    print(sub.shape[1])
+    print(sub[0, 0])
+    print(sub[0, 1])
+    print(sub[1, 0])
+    print(sub[1, 1])
+
+    # GetRow_ReturnsView
+    g = np.arange(1.0, 7.0, 1.0).reshape(2, 3)
+    row = g.get_row(1)
+    print(row.ndim)
+    print(row.shape[0])
+    print(row[0])
+    print(row[1])
+    print(row[2])
+
+    # GetRow_Negative_CountsFromEnd
+    rowneg = g.get_row(-1)
+    print(rowneg[0])
+    print(rowneg[2])
+
+    # GetColumn_ReturnsView
+    col = g.get_column(1)
+    print(col.ndim)
+    print(col.shape[0])
+    print(col[0])
+    print(col[1])
+
+    # GetColumn_Negative_CountsFromEnd
+    colneg = g.get_column(-1)
+    print(colneg[0])
+    print(colneg[1])

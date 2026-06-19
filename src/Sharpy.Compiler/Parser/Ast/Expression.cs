@@ -482,6 +482,58 @@ public record SliceAccess : Expression
 }
 
 /// <summary>
+/// A single dimension in a multi-axis subscript — either an index expression
+/// or a slice (start:stop:step).
+/// </summary>
+public record SubscriptDimension : Node
+{
+    public bool IsSlice { get; init; }
+    public Expression? Index { get; init; }
+    public Expression? Start { get; init; }
+    public Expression? Stop { get; init; }
+    public Expression? Step { get; init; }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        if (Index != null)
+            yield return Index;
+        if (Start != null)
+            yield return Start;
+        if (Stop != null)
+            yield return Stop;
+        if (Step != null)
+            yield return Step;
+    }
+}
+
+/// <summary>
+/// Multi-axis subscript (obj[dim0, dim1, ...]) where dimensions can be
+/// indices or slices. Used for NdArray multi-axis indexing and slicing.
+/// </summary>
+public record MultiAxisAccess : Expression
+{
+    public Expression Object { get; init; } = null!;
+    public ImmutableArray<SubscriptDimension> Dimensions { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Object != null, "MultiAxisAccess.Object cannot be null");
+        Debug.Assert(Dimensions.Length >= 2, "MultiAxisAccess must have at least 2 dimensions");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Object;
+        foreach (var dim in Dimensions)
+            yield return dim;
+    }
+}
+
+/// <summary>
 /// Function call (func(arg1, arg2, key=value))
 /// </summary>
 public record FunctionCall : Expression

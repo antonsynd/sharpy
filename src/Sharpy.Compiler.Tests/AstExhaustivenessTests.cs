@@ -40,7 +40,7 @@ public class AstExhaustivenessTests
             // Comprehensions
             "ListComprehension", "SetComprehension", "DictComprehension", "DictSpreadComprehension",
             // Primary
-            "Identifier", "MemberAccess", "IndexAccess", "SliceAccess",
+            "Identifier", "MemberAccess", "IndexAccess", "SliceAccess", "MultiAxisAccess",
             "FunctionCall", "SuperExpression",
             // Operators
             "UnaryOp", "BinaryOp", "ComparisonChain",
