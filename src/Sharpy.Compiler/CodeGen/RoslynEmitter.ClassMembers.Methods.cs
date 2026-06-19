@@ -668,6 +668,17 @@ internal partial class RoslynEmitter
                 Block(bodyStatements), func.LineStart));
         }
 
+        // Generic interface methods: emit the <T...> type-parameter list and constraints.
+        if (func.TypeParameters.Length > 0)
+        {
+            var typeParams = func.TypeParameters
+                .Select(GenerateTypeParameterSyntax)
+                .ToArray();
+            method = method
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(func.TypeParameters));
+        }
+
         // Add XML documentation from docstring if present
         if (!string.IsNullOrEmpty(func.DocString))
         {
