@@ -1,0 +1,6 @@
+# Regression test: dict with tuple keys must not be broken by
+# multi-axis subscript TupleLiteral spreading (#956).
+def main():
+    d: dict[tuple[int, int], str] = {(1, 2): "hello", (3, 4): "world"}
+    print(d[(1, 2)])
+    print(d[(3, 4)])

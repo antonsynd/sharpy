@@ -540,10 +540,12 @@ internal partial class TypeChecker
     {
         var objType = CheckExpression(multiAxis.Object);
 
+        var hasSlice = false;
         foreach (var dim in multiAxis.Dimensions)
         {
             if (dim.IsSlice)
             {
+                hasSlice = true;
                 if (dim.Start != null)
                     CheckExpression(dim.Start);
                 if (dim.Stop != null)
@@ -554,16 +556,6 @@ internal partial class TypeChecker
             else
             {
                 CheckExpression(dim.Index!);
-            }
-        }
-
-        var hasSlice = false;
-        foreach (var dim in multiAxis.Dimensions)
-        {
-            if (dim.IsSlice)
-            {
-                hasSlice = true;
-                break;
             }
         }
 

@@ -1575,7 +1575,11 @@ internal partial class RoslynEmitter
         => AstHelper.TryGetConstantIntIndex(expr, out value);
 
     private static bool IsNdArrayType(SemanticType? type) =>
-        type is UserDefinedType udt && udt.Symbol?.Name == "ndarray";
+        type is UserDefinedType udt
+            && (udt.Symbol?.Name == "ndarray"
+                || (udt.Name == "object" && udt.Symbol?.Name == "NdArray"))
+        || type is GenericType gt
+            && string.Equals(gt.Name, "NdArray", StringComparison.OrdinalIgnoreCase);
 
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {
@@ -1639,16 +1643,19 @@ internal partial class RoslynEmitter
             else
             {
                 // Index dimension → SliceSpec.Range(i, i + 1)
-                var idx = GenerateExpression(dim.Index!);
+                // Generate the expression twice: Roslyn SyntaxNodes cannot be
+                // shared across two positions in the syntax tree.
+                var idxForStart = GenerateExpression(dim.Index!);
+                var idxForEnd = GenerateExpression(dim.Index!);
                 sliceArgs.Add(Argument(
                     InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             MakeGlobalQualifiedName("Sharpy", "SliceSpec"),
                             IdentifierName("Range")))
                     .AddArgumentListArguments(
-                        Argument(idx),
+                        Argument(idxForStart),
                         Argument(BinaryExpression(SyntaxKind.AddExpression,
-                            idx, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))))));
+                            idxForEnd, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))))));
             }
         }
 
