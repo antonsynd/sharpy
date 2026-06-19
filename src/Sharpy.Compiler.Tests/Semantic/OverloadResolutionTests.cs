@@ -355,11 +355,6 @@ def main():
         // constructed type). So calc(x: int, y: list[T]) is preferred over calc(x: int, y: T)
         // for a list argument — matching C# (verified) and Axiom 1 (#957). Previously this was
         // reported ambiguous because the resolver could not rank T against list[T].
-        //
-        // This asserts only the (improved) overload-resolution outcome — no ambiguity — because
-        // user-defined generic methods currently mis-codegen the <T> type parameter (#960), so
-        // the program cannot execute. End-to-end execution of the same tiebreak is covered by the
-        // numpy_array_2d fixture (np.array([[...]]) selects the 2-D discovered overload).
         var source = @"
 class Processor:
     def __init__(self):
@@ -373,9 +368,11 @@ class Processor:
 
 def main():
     p: Processor = Processor()
-    p.calc(5, [1, 2, 3])
+    print(p.calc(5, [1, 2, 3]))
 ";
         var result = CompileAndExecute(source);
         string.Join(" ", result.CompilationErrors).Should().NotContain("Ambiguous");
+        result.Success.Should().BeTrue();
+        result.StandardOutput.Should().Contain("generic-list-T");
     }
 }
