@@ -529,12 +529,14 @@ internal partial class TypeChecker
 
                 if (ContainsTypeParameter(expectedType))
                 {
-                    // For parameterized generics (e.g., list[T], array[T]), verify the
-                    // outer type name is compatible. Without this, any argument matches
-                    // any parameterized generic via wildcard T (e.g., list[int] would
-                    // incorrectly match array[T]).
-                    if (expectedType is GenericType eg && context.ArgTypes[i] is GenericType ag
-                        && !string.Equals(eg.Name, ag.Name, StringComparison.Ordinal))
+                    // For parameterized generics (e.g., list[T], list[list[T]]), the
+                    // argument must structurally match the expected shape (same outer
+                    // name/arity, recursively), with bare type parameters acting as
+                    // wildcards only at their own position. Without the recursion a flat
+                    // list[int] would wildcard-match a nested list[list[T]] (the inner
+                    // int absorbed into T), tying two generic overloads (#957); the outer
+                    // name check also keeps list[int] from matching array[T] (#954).
+                    if (!ArgMatchesGenericShape(context.ArgTypes[i], expectedType))
                     {
                         typesMatch = false;
                         break;
@@ -668,10 +670,133 @@ internal partial class TypeChecker
                 // A's parameter is strictly less specific at this position — A cannot win.
                 return false;
             }
-            // Both assignable or neither: no preference at this position.
+            else if (IsMoreSpecificType(paramTypeA, paramTypeB))
+            {
+                // Assignability is neutral (e.g. list[T] vs list[list[T]] under open type
+                // parameters), but A is structurally more specific (C# §12.6.4.4: a type
+                // parameter is less specific than a structured type). This lets
+                // Array(list[list[T]]) win over Array(list[T]) for a nested literal (#957).
+                hasStrictlyBetter = true;
+            }
+            else if (IsMoreSpecificType(paramTypeB, paramTypeA))
+            {
+                return false;
+            }
+            // Both assignable or neither, and structurally equal: no preference here.
         }
 
         return hasStrictlyBetter;
+    }
+
+    /// <summary>
+    /// Recursively checks whether <paramref name="arg"/> can satisfy an expected parameter
+    /// <paramref name="expected"/> that may contain open generic type parameters. A bare type
+    /// parameter is a wildcard at its own position; a same-name/same-arity generic is matched
+    /// recursively (so a flat <c>list[int]</c> does NOT satisfy a nested <c>list[list[T]]</c>);
+    /// any other case compares against the expected shape with every remaining type parameter
+    /// treated as <c>object</c> (rejecting structurally incompatible arguments such as
+    /// <c>float</c> vs <c>list[T]</c>, while still accepting non-generic arguments genuinely
+    /// assignable to the open shape). Mirrors the structural half of C#'s overload
+    /// applicability for open generic parameters (#954, #957).
+    /// </summary>
+    private bool ArgMatchesGenericShape(SemanticType arg, SemanticType expected)
+    {
+        if (expected is TypeParameterType)
+            return true;
+
+        if (!ContainsTypeParameter(expected))
+            return IsAssignable(arg, expected);
+
+        if (expected is GenericType eg)
+        {
+            // Same outer generic: recurse so a flat list[int] does NOT satisfy list[list[T]] (#957).
+            if (arg is GenericType ag && string.Equals(eg.Name, ag.Name, StringComparison.Ordinal))
+            {
+                if (ag.TypeArguments.Count != eg.TypeArguments.Count)
+                    return false;
+                for (int i = 0; i < eg.TypeArguments.Count; i++)
+                {
+                    if (!ArgMatchesGenericShape(ag.TypeArguments[i], eg.TypeArguments[i]))
+                        return false;
+                }
+
+                return true;
+            }
+
+            // Different outer generic name: reject (preserves list[int] ↛ array[T], #954).
+            if (arg is GenericType)
+                return false;
+
+            // Non-generic argument against an open generic shape: accept only if genuinely
+            // assignable with type parameters treated as object — rejects float vs list[T]
+            // while still allowing a subtype (e.g. MyList vs list[T]).
+            return IsAssignable(arg, SubstituteTypeParametersWithObject(expected));
+        }
+
+        // Expected is a non-generic shape that still mentions type parameters (FunctionType,
+        // TupleType, optional/nullable of T, ...). Preserve the prior permissive wildcard
+        // behavior — these are not the nested-generic ambiguity that #957 targets.
+        return true;
+    }
+
+    /// <summary>
+    /// Returns a copy of <paramref name="type"/> with every <see cref="TypeParameterType"/>
+    /// replaced by <see cref="SemanticType.Object"/> — the most permissive binding — so an
+    /// open generic shape can be compared via ordinary assignability.
+    /// </summary>
+    private static SemanticType SubstituteTypeParametersWithObject(SemanticType type)
+    {
+        switch (type)
+        {
+            case TypeParameterType:
+                return SemanticType.Object;
+            case GenericType g:
+                return new GenericType
+                {
+                    Name = g.Name,
+                    GenericDefinition = g.GenericDefinition,
+                    TypeArguments = g.TypeArguments.Select(SubstituteTypeParametersWithObject).ToList()
+                };
+            default:
+                return type;
+        }
+    }
+
+    /// <summary>
+    /// Structural "more specific" comparison per C# §12.6.4.4: a type parameter is less
+    /// specific than any concrete or structured type at the same position; same-name/same-arity
+    /// generics recurse position-wise (more specific if strictly better in some position and
+    /// not worse in any). Used only as a tiebreaker when assignability gives no preference.
+    /// </summary>
+    private bool IsMoreSpecificType(SemanticType a, SemanticType b)
+    {
+        if (a.Equals(b))
+            return false;
+
+        var aIsParam = a is TypeParameterType;
+        var bIsParam = b is TypeParameterType;
+        if (bIsParam && !aIsParam)
+            return true;
+        if (aIsParam && !bIsParam)
+            return false;
+
+        if (a is GenericType ga && b is GenericType gb
+            && string.Equals(ga.Name, gb.Name, StringComparison.Ordinal)
+            && ga.TypeArguments.Count == gb.TypeArguments.Count)
+        {
+            var anyStrictlyBetter = false;
+            for (int i = 0; i < ga.TypeArguments.Count; i++)
+            {
+                if (IsMoreSpecificType(gb.TypeArguments[i], ga.TypeArguments[i]))
+                    return false;
+                if (IsMoreSpecificType(ga.TypeArguments[i], gb.TypeArguments[i]))
+                    anyStrictlyBetter = true;
+            }
+
+            return anyStrictlyBetter;
+        }
+
+        return false;
     }
 
     /// <summary>

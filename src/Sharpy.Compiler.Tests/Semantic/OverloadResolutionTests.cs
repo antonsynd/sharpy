@@ -347,8 +347,19 @@ def main():
     }
 
     [Fact]
-    public void GenericOverloads_EqualConcretePositions_RemainsAmbiguous()
+    public void GenericOverloads_StructuredArgBeatsBareTypeParameter_NoLongerAmbiguous()
     {
+        // When concrete positions are equal and the remaining position is a bare type
+        // parameter in one overload and a structured generic in the other, the structured
+        // generic is more specific (C# §12.6.4.4: a type parameter is less specific than a
+        // constructed type). So calc(x: int, y: list[T]) is preferred over calc(x: int, y: T)
+        // for a list argument — matching C# (verified) and Axiom 1 (#957). Previously this was
+        // reported ambiguous because the resolver could not rank T against list[T].
+        //
+        // This asserts only the (improved) overload-resolution outcome — no ambiguity — because
+        // user-defined generic methods currently mis-codegen the <T> type parameter (#960), so
+        // the program cannot execute. End-to-end execution of the same tiebreak is covered by the
+        // numpy_array_2d fixture (np.array([[...]]) selects the 2-D discovered overload).
         var source = @"
 class Processor:
     def __init__(self):
@@ -365,7 +376,6 @@ def main():
     p.calc(5, [1, 2, 3])
 ";
         var result = CompileAndExecute(source);
-        result.Success.Should().BeFalse();
-        string.Join(" ", result.CompilationErrors).Should().Contain("Ambiguous");
+        string.Join(" ", result.CompilationErrors).Should().NotContain("Ambiguous");
     }
 }
