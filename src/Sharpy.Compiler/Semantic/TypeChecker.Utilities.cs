@@ -410,6 +410,39 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Argument-binding assignability: standard <see cref="IsAssignable"/> plus the
+    /// list[T] → array[T] coercion for CLR T[] parameters (#959). This is scoped to the
+    /// CLR-interop boundary (function/keyword argument binding) on purpose — general
+    /// assignment keeps list[T] ↛ array[T] (Decision #2, #944), so e.g.
+    /// <c>arr: array[int] = lst</c> stays an error. The matching codegen .ToArray()
+    /// bridge lives in <c>RoslynEmitter.ApplyArrayBridge</c>; the two must agree on which
+    /// arguments are coercible.
+    /// </summary>
+    private bool IsArgumentAssignable(SemanticType source, SemanticType target)
+    {
+        if (IsAssignable(source, target))
+            return true;
+
+        // list[T] → array[T]: element types must match exactly (UnknownType acts as a
+        // wildcard for empty list literals) so codegen's .ToArray() produces an array of
+        // the parameter's element type. Using IsAssignable on the element would wrongly
+        // permit list[int] → array[float] (numeric widening), whose int[] cannot bind to
+        // a C# double[].
+        if (source is GenericType { Name: "list" } listType
+            && target is GenericType { Name: "array" } arrayType
+            && listType.TypeArguments.Count == 1
+            && arrayType.TypeArguments.Count == 1
+            && (listType.TypeArguments[0] is UnknownType
+                || arrayType.TypeArguments[0] is UnknownType
+                || listType.TypeArguments[0].Equals(arrayType.TypeArguments[0])))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Checks generic-to-generic assignability using per-type-parameter variance (#827).
     /// Same-name generics compare each argument position under the definition's declared
     /// variance; different-name generics walk the source's instantiated supertypes

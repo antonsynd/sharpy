@@ -1551,7 +1551,7 @@ internal partial class TypeChecker
                         break;
                     }
 
-                    if (!IsAssignable(argTypes[i], expected))
+                    if (!IsArgumentAssignable(argTypes[i], expected))
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{expected.GetDisplayName()}'",
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -1658,7 +1658,7 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                if (!IsAssignable(argTypes[i], param.Type))
+                if (!IsArgumentAssignable(argTypes[i], param.Type))
                 {
                     // PEP 675: string literals (and concatenations thereof) satisfy LiteralString
                     if (param.Type is LiteralStringType && i < call.Arguments.Length
@@ -1708,7 +1708,7 @@ internal partial class TypeChecker
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
                             span: kwarg.Span ?? kwarg.Value.Span);
                     }
-                    else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type)
+                    else if (!IsArgumentAssignable(kwargTypes[kwarg.Name], param.Type)
                         && !(IsSystemTypeParameter(param.Type) && _semanticInfo.IsTypeReference(kwarg.Value)))
                     {
                         AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
