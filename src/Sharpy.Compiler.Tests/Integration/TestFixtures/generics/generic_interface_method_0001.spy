@@ -1,0 +1,13 @@
+interface Wrapper:
+    def wrap[T](self, y: T) -> str: ...
+
+class StringBox(Wrapper):
+    def __init__(self):
+        pass
+
+    def wrap[T](self, y: T) -> str:
+        return "wrapped"
+
+def main():
+    w: Wrapper = StringBox()
+    print(w.wrap(5))
