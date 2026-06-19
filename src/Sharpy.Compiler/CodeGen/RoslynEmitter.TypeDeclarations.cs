@@ -983,6 +983,9 @@ internal partial class RoslynEmitter
     /// Creates a TypeParameterSyntax from a TypeParameterDef, applying variance annotations.
     /// Covariant (out) → SyntaxKind.OutKeyword, Contravariant (in) → SyntaxKind.InKeyword.
     /// </summary>
+    // TODO(#962): Variance keywords (out/in) on method type parameters produce invalid C#
+    // (CS1960). This helper is shared by class/interface/method type parameters. A separate
+    // non-variance overload (or a context flag) is needed when generating method type params.
     private static TypeParameterSyntax GenerateTypeParameterSyntax(TypeParameterDef tp)
     {
         var typeParam = TypeParameter(tp.Name);
