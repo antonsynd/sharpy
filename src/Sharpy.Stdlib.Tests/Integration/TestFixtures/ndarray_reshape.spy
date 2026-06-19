@@ -1,0 +1,106 @@
+# Ported from src/Sharpy.Stdlib.Tests/NdArrayReshapeTests.cs.
+# Covers Reshape, Transpose, Flatten, Ravel, and Copy.
+#
+# Omitted tests (cannot be expressed in .spy):
+#   - Reshape_Contiguous_ReturnsView / Transpose_ReturnsView /
+#     Flatten_ReturnsCopy_NotView / Ravel_Contiguous_ReturnsView /
+#     Ravel_NonContiguous_ReturnsCopy / Copy_SameShape_IndependentBuffer /
+#     Copy_OfView_IsContiguousCopy: all verify view-vs-copy aliasing by mutating
+#     an element through the indexer setter (e.g. reshaped[0, 0] = 99). The
+#     indexer setter takes the generic element type T, which the type checker
+#     will not let us assign a float to, so element mutation is unreachable from
+#     .spy. We still exercise the read side (shapes/values) of these operations.
+#   - Reshape_Null_Throws: passes null to reshape; null is unreachable (Axiom 3).
+#   - The *_Throws cases (IncompatibleShape, MultipleInferredDims,
+#     InferredDimNotEvenlyDivisible) are ported as separate .runtime-error
+#     fixtures: ndarray_reshape_incompatible, ndarray_reshape_two_inferred,
+#     ndarray_reshape_not_divisible.
+import numpy as np
+
+def main():
+    # Reshape_1Dto2D_Works
+    a = np.arange(1.0, 7.0, 1.0)
+    r = a.reshape(2, 3)
+    print(r.shape[0])
+    print(r.shape[1])
+    print(r[0, 0])
+    print(r[0, 1])
+    print(r[0, 2])
+    print(r[1, 0])
+    print(r[1, 2])
+
+    # Reshape_2Dto1D_Works
+    a2 = np.arange(1.0, 5.0, 1.0).reshape(2, 2)
+    flat = a2.reshape(4)
+    print(flat.shape[0])
+    print(flat[0])
+    print(flat[3])
+
+    # Reshape_WithInferredDim_Works -> (2, 3)
+    inferred = np.arange(1.0, 7.0, 1.0).reshape(-1, 3)
+    print(inferred.shape[0])
+    print(inferred.shape[1])
+
+    # Reshape_WithInferredDim_OtherPosition -> (2, 3)
+    inferred2 = np.arange(1.0, 7.0, 1.0).reshape(2, -1)
+    print(inferred2.shape[0])
+    print(inferred2.shape[1])
+
+    # Transpose_2D_ReversesDimensions
+    m = np.arange(1.0, 7.0, 1.0).reshape(2, 3)
+    t = m.transpose()
+    print(t.shape[0])
+    print(t.shape[1])
+    print(t[0, 0])
+    print(t[0, 1])
+    print(t[1, 0])
+    print(t[1, 1])
+    print(t[2, 0])
+    print(t[2, 1])
+
+    # Transpose_3D_ReversesAllAxes -> shape (4, 3, 2)
+    t3 = np.arange(0.0, 24.0, 1.0).reshape(2, 3, 4).transpose()
+    print(t3.shape[0])
+    print(t3.shape[1])
+    print(t3.shape[2])
+
+    # Transpose_1D_NoChange
+    t1 = np.arange(1.0, 4.0, 1.0).transpose()
+    print(t1.shape[0])
+    print(t1[0])
+    print(t1[2])
+
+    # Flatten_2D_Returns1D
+    f = np.arange(1.0, 7.0, 1.0).reshape(2, 3).flatten()
+    print(f.ndim)
+    print(f.shape[0])
+    print(f)
+
+    # Flatten_OfTranspose_TraversesInRowMajor
+    ft = np.arange(1.0, 7.0, 1.0).reshape(2, 3).transpose().flatten()
+    print(ft)
+
+    # Ravel_Contiguous (1-D view of a contiguous 2-D array)
+    rav = np.arange(1.0, 5.0, 1.0).reshape(2, 2).ravel()
+    print(rav.ndim)
+    print(rav.shape[0])
+    print(rav)
+
+    # Ravel_NonContiguous (transpose then ravel -> row-major copy)
+    ravnc = np.arange(1.0, 7.0, 1.0).reshape(2, 3).transpose().ravel()
+    print(ravnc.shape[0])
+    print(ravnc)
+
+    # Copy_SameShape (read side)
+    c = np.arange(1.0, 5.0, 1.0).reshape(2, 2).copy()
+    print(c.shape[0])
+    print(c.shape[1])
+    print(c[0, 0])
+
+    # Copy_OfView (transpose then copy)
+    cv = np.arange(1.0, 7.0, 1.0).reshape(2, 3).transpose().copy()
+    print(cv.shape[0])
+    print(cv.shape[1])
+    print(cv[0, 0])
+    print(cv[0, 1])
+    print(cv[2, 1])

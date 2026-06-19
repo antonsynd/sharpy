@@ -1,0 +1,16 @@
+array([1, 1, 3, 4, 5, 9])
+array([3, 1, 4, 1, 5, 9])
+array([1, 2, 0])
+array([1, 2, 3])
+array([0, 0, 2, 4])
+True
+False
+True
+False
+array([False, True, False, True])
+array([False, True, True, False])
+array([True, False, False, True])
+array([0, 1, 2, 3, 4, 5])
+array([[0, 1, 2], [3, 4, 5]])
+5.0
+array([0, 1, 2, 3, 4, 5])
