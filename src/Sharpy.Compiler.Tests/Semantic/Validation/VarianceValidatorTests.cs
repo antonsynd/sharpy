@@ -83,6 +83,125 @@ interface IBox[out T]:
 
     #endregion
 
+    #region SPY0417 — Variance on method/function type parameters
+
+    [Fact]
+    public void ModuleFunctionWithVariance_ProducesError()
+    {
+        var code = @"
+def g[out T](x: T) -> T:
+    return x
+";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetAll(),
+            d => d.Code == "SPY0417" && d.Message.Contains("function") && d.Message.Contains("'g'"));
+    }
+
+    [Fact]
+    public void ClassMethodWithVariance_ProducesError()
+    {
+        var code = @"
+class Container:
+    def f[in T](self, x: T) -> None:
+        pass
+";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetAll(),
+            d => d.Code == "SPY0417" && d.Message.Contains("method") && d.Message.Contains("'f'"));
+    }
+
+    [Fact]
+    public void StructMethodWithVariance_ProducesError()
+    {
+        var code = @"
+struct Holder:
+    def take[in T](self, x: T) -> None:
+        pass
+";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetAll(),
+            d => d.Code == "SPY0417" && d.Message.Contains("method"));
+    }
+
+    [Fact]
+    public void InterfaceMethodWithOwnVariantTypeParam_ProducesError()
+    {
+        var code = @"
+interface IService:
+    def handle[out T](self) -> T: ...
+";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetAll(),
+            d => d.Code == "SPY0417" && d.Message.Contains("method"));
+    }
+
+    [Fact]
+    public void NestedFunctionWithVariance_ProducesError()
+    {
+        var code = @"
+def outer():
+    def inner[out T](x: T) -> T:
+        return x
+";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetAll(),
+            d => d.Code == "SPY0417" && d.Message.Contains("function") && d.Message.Contains("'inner'"));
+    }
+
+    [Fact]
+    public void VarianceWithConstraintOnFunction_ProducesError()
+    {
+        var code = @"
+def cmp[out T: IComparable](x: T) -> T:
+    return x
+";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetAll(),
+            d => d.Code == "SPY0417");
+    }
+
+    [Fact]
+    public void MethodWithOwnNonVariantTypeParam_OnVariantInterface_NoError()
+    {
+        // The interface's `out T` is used correctly (return position), and the
+        // method's own type parameter `K` carries no variance — must NOT error.
+        var code = @"
+interface IRepo[out T]:
+    def find[K](self, key: K) -> T: ...
+";
+        var (module, context) = Parse(code);
+        var validator = new VarianceValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    #endregion
+
     #region SPY0418 — Covariant in contravariant position
 
     [Fact]

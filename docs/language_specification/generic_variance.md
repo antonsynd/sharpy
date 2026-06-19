@@ -177,7 +177,9 @@ Variance annotations are only valid on:
 - Interface type parameters
 - Delegate type parameters
 
-Classes and structs cannot have variant type parameters:
+Classes, structs, methods, and functions cannot have variant type parameters. A
+method's or function's own type parameters appear in both input and output positions,
+so variance is meaningless there (and would produce invalid C# — CS1960):
 
 ```python
 # ✅ Valid: interface with variance
@@ -191,6 +193,15 @@ interface IReadable[out T]:
 # ❌ Invalid: struct cannot have variance
 # struct Wrapper[out T]:  # ERROR: variance not allowed on structs
 #     ...
+
+# ❌ Invalid: a method's own type parameter cannot have variance
+# class Container:
+#     def f[out T](self, x: T) -> T:  # ERROR: variance not allowed on methods
+#         return x
+
+# ❌ Invalid: a function's type parameter cannot have variance
+# def g[in U](x: U) -> None:  # ERROR: variance not allowed on functions
+#     pass
 ```
 
 ## Variance and Constraints

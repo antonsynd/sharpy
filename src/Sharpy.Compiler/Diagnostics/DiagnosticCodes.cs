@@ -455,7 +455,8 @@ public static class DiagnosticCodes
         public const string NonExhaustiveMatchExpression = "SPY0416"; // Active
 
         // Variance validation (SPY0417-SPY0419)
-        public const string VarianceOnClassOrStruct = "SPY0417";    // Active
+        // SPY0417: variance not allowed on class/struct/method/function type parameters
+        public const string VarianceNotAllowed = "SPY0417";    // Active
         public const string CovariantInContravariantPosition = "SPY0418"; // Active
         public const string ContravariantInCovariantPosition = "SPY0419"; // Active
 

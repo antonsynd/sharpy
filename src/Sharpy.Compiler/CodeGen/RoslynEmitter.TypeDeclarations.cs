@@ -140,7 +140,7 @@ internal partial class RoslynEmitter
         if (func.TypeParameters.Length > 0)
         {
             var typeParams = func.TypeParameters
-                .Select(GenerateTypeParameterSyntax)
+                .Select(GenerateMethodTypeParameterSyntax)
                 .ToArray();
             method = method
                 .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
@@ -982,10 +982,10 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Creates a TypeParameterSyntax from a TypeParameterDef, applying variance annotations.
     /// Covariant (out) → SyntaxKind.OutKeyword, Contravariant (in) → SyntaxKind.InKeyword.
+    /// Use only for interface/delegate type parameters (and class/struct, where variance is
+    /// rejected upstream by VarianceValidator). For method/function/local-function type
+    /// parameters use <see cref="GenerateMethodTypeParameterSyntax"/>, which never emits variance.
     /// </summary>
-    // TODO(#962): Variance keywords (out/in) on method type parameters produce invalid C#
-    // (CS1960). This helper is shared by class/interface/method type parameters. A separate
-    // non-variance overload (or a context flag) is needed when generating method type params.
     private static TypeParameterSyntax GenerateTypeParameterSyntax(TypeParameterDef tp)
     {
         var typeParam = TypeParameter(tp.Name);
@@ -996,6 +996,16 @@ internal partial class RoslynEmitter
             _ => typeParam
         };
     }
+
+    /// <summary>
+    /// Creates a TypeParameterSyntax for a method/function/local-function type parameter.
+    /// Variance keywords (out/in) are intentionally NOT emitted: C# only permits variance on
+    /// interface and delegate type parameters (CS1960 otherwise). Variance on method/function
+    /// type parameters is rejected upstream by VarianceValidator (SPY0417); this helper is the
+    /// defense-in-depth that keeps non-halting emit paths (LSP, playground) producing valid C#.
+    /// </summary>
+    private static TypeParameterSyntax GenerateMethodTypeParameterSyntax(TypeParameterDef tp)
+        => TypeParameter(tp.Name);
 
     private SyntaxList<TypeParameterConstraintClauseSyntax> GenerateConstraintClauses(
         IReadOnlyList<TypeParameterDef> typeParameters)

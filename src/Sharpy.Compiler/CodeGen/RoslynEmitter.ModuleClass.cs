@@ -925,7 +925,7 @@ internal partial class RoslynEmitter
             if (func.TypeParameters.Length > 0)
             {
                 var typeParams = func.TypeParameters
-                    .Select(GenerateTypeParameterSyntax)
+                    .Select(GenerateMethodTypeParameterSyntax)
                     .ToArray();
                 method = method
                     .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))

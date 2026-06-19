@@ -376,7 +376,7 @@ internal partial class RoslynEmitter
         // Add type parameters if generic (preserve original signature on the wrapper).
         if (func.TypeParameters.Length > 0)
         {
-            var typeParams = func.TypeParameters.Select(GenerateTypeParameterSyntax).ToArray();
+            var typeParams = func.TypeParameters.Select(GenerateMethodTypeParameterSyntax).ToArray();
             method = method
                 .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
                 .WithConstraintClauses(GenerateConstraintClauses(func.TypeParameters));

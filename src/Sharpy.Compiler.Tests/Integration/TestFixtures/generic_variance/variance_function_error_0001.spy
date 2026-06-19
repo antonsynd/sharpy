@@ -1,0 +1,6 @@
+# Variance annotations are not allowed on a function's own type parameters (would emit CS1960)
+def g[in U](x: U) -> None:
+    pass
+
+def main():
+    print("unreachable")

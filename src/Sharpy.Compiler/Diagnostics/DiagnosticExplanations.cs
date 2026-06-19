@@ -1328,9 +1328,10 @@ public static class DiagnosticExplanations
             "union Option:\n    case Some(value: int)\n    case None_\nx: int = match opt:\n    case Some(v): v  # missing None_ case",
             "Cover all cases or add a wildcard:\nx: int = match opt:\n    case Some(v): v\n    case _: 0");
 
-        Add(dict, DiagnosticCodes.Validation.VarianceOnClassOrStruct, "Variance annotation not allowed on class/struct", "Validation",
+        Add(dict, DiagnosticCodes.Validation.VarianceNotAllowed, "Variance annotation not allowed here", "Validation",
             "Type parameter variance annotations (in/out) are only allowed on delegate and interface declarations. " +
-            "Classes and structs cannot have variant type parameters because they have both input and output positions.",
+            "Classes, structs, methods, and functions cannot have variant type parameters because their type parameters " +
+            "may appear in both input and output positions.",
             "class Box[out T]:  # error: variance not allowed on class\n    value: T",
             "Remove the variance annotation:\nclass Box[T]:\n    value: T\n\nOr use a delegate or interface instead:\ndelegate Producer[out T]() -> T");
 
