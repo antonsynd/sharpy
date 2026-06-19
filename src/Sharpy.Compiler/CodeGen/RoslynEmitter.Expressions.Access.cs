@@ -1574,6 +1574,7 @@ internal partial class RoslynEmitter
     private static bool TryGetConstantIntIndex(Expression expr, out int value)
         => AstHelper.TryGetConstantIntIndex(expr, out value);
 
+    // TODO(#972): Replace with CLR reflection for params indexers.
     private static bool IsNdArrayType(SemanticType? type) =>
         type is UserDefinedType udt
             && (udt.Symbol?.Name == "ndarray"
