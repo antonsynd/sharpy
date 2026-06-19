@@ -6,9 +6,10 @@ namespace Sharpy.Compiler.Semantic.Validation;
 
 /// <summary>
 /// Validates type parameter variance annotations:
-/// - Class/struct type parameters must not have variance (SPY0417)
+/// - Class/struct/method/function type parameters must not have variance (SPY0417)
 /// - Covariant (out) type params must only appear in output positions (SPY0418)
 /// - Contravariant (in) type params must only appear in input positions (SPY0419)
+/// Variance is only valid on interface and delegate type parameters.
 /// </summary>
 internal class VarianceValidator : SemanticValidatorBase
 {
@@ -38,6 +39,74 @@ internal class VarianceValidator : SemanticValidatorBase
                     break;
             }
         }
+
+        // Variance is never valid on a method's or function's own type parameters
+        // (C# only permits variance on interface/delegate type parameters; otherwise CS1960).
+        // Walk every FunctionDef in the module — top-level functions, methods inside
+        // class/struct/interface bodies, and functions nested inside other bodies.
+        WalkFunctionsForVariance(module.Body, isInsideType: false, context);
+    }
+
+    /// <summary>
+    /// Recursively visits every <see cref="FunctionDef"/> reachable from the given
+    /// statements and rejects variance on its own type parameters. The
+    /// <paramref name="isInsideType"/> flag tracks whether the current statements are
+    /// the direct body of a class/struct/interface, so members are reported as
+    /// "method" and free/nested functions as "function".
+    /// </summary>
+    private void WalkFunctionsForVariance(
+        IEnumerable<Statement> statements,
+        bool isInsideType,
+        SemanticContext context)
+    {
+        foreach (var stmt in statements)
+        {
+            switch (stmt)
+            {
+                case FunctionDef fn:
+                    ValidateNoVarianceOnFunction(fn, isInsideType, context);
+                    // Functions/classes nested inside a function body are not type members.
+                    WalkFunctionsForVariance(fn.Body, isInsideType: false, context);
+                    break;
+
+                case ClassDef classDef:
+                    WalkFunctionsForVariance(classDef.Body, isInsideType: true, context);
+                    break;
+
+                case StructDef structDef:
+                    WalkFunctionsForVariance(structDef.Body, isInsideType: true, context);
+                    break;
+
+                case InterfaceDef interfaceDef:
+                    WalkFunctionsForVariance(interfaceDef.Body, isInsideType: true, context);
+                    break;
+
+                default:
+                    // Control-flow and other compound statements: recurse into any
+                    // nested statements, preserving the enclosing type context.
+                    WalkFunctionsForVariance(stmt.GetChildNodes().OfType<Statement>(), isInsideType, context);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Rejects variance annotations on a function/method's own type parameters (SPY0417).
+    /// </summary>
+    private void ValidateNoVarianceOnFunction(FunctionDef fn, bool isMethod, SemanticContext context)
+    {
+        foreach (var typeParam in fn.TypeParameters)
+        {
+            if (typeParam.Variance != TypeParameterVariance.None)
+            {
+                var kind = isMethod ? "method" : "function";
+                AddError(context,
+                    $"Type parameter '{typeParam.Name}' cannot have variance annotation on {kind} '{fn.Name}'",
+                    typeParam.LineStart, typeParam.ColumnStart,
+                    code: DiagnosticCodes.Validation.VarianceNotAllowed,
+                    span: typeParam.Span);
+            }
+        }
     }
 
     private void ValidateNoVarianceOnClassOrStruct(
@@ -53,7 +122,7 @@ internal class VarianceValidator : SemanticValidatorBase
                 AddError(context,
                     $"Type parameter '{typeParam.Name}' cannot have variance annotation on class/struct '{typeName}'",
                     typeParam.LineStart, typeParam.ColumnStart,
-                    code: DiagnosticCodes.Validation.VarianceOnClassOrStruct,
+                    code: DiagnosticCodes.Validation.VarianceNotAllowed,
                     span: typeParam.Span);
             }
         }
