@@ -1,0 +1,7 @@
+# Variance on an interface method's OWN type parameter is invalid (the enclosing
+# interface has no variant params; variance belongs on the interface, not the method).
+interface IService:
+    def handle[out T](self) -> T: ...
+
+def main():
+    print("unreachable")

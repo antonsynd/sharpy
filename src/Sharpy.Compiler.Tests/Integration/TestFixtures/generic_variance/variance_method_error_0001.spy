@@ -1,0 +1,7 @@
+# Variance annotations are not allowed on a method's own type parameters (would emit CS1960)
+class Container:
+    def f[out T](self, x: T) -> T:
+        return x
+
+def main():
+    print("unreachable")
