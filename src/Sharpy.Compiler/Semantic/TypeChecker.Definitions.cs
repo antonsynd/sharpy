@@ -1134,6 +1134,32 @@ internal partial class TypeChecker
                 {
                     var methodSymbol = interfaceSymbol.Methods[methodIndex];
 
+                    // Register method-level type parameters in a temporary scope so the
+                    // TypeResolver can resolve annotations like T -> TypeParameterType(T).
+                    // Without this, bare T references produce SPY0202 (undefined type) because
+                    // the interface scope only has the interface's own type parameters.
+                    bool hasMethodTypeParams = method.TypeParameters.Length > 0;
+                    if (hasMethodTypeParams)
+                    {
+                        _symbolTable.EnterScope($"interface-method:{interfaceDef.Name}.{method.Name}");
+                        foreach (var typeParam in method.TypeParameters)
+                        {
+                            var typeParamSymbol = new TypeParameterSymbol
+                            {
+                                Name = typeParam.Name,
+                                Kind = SymbolKind.TypeParameter,
+                                DeclaringType = interfaceSymbol,
+                                Constraints = typeParam.Constraints,
+                                Variance = typeParam.Variance,
+                                DeclarationLine = typeParam.LineStart,
+                                DeclarationColumn = typeParam.ColumnStart,
+                                NameDeclarationLine = typeParam.LineStart,
+                                NameDeclarationColumn = typeParam.ColumnStart
+                            };
+                            _symbolTable.Define(typeParamSymbol);
+                        }
+                    }
+
                     // Resolve return type
                     var returnType = _typeResolver.ResolveTypeAnnotation(method.ReturnType);
                     if (returnType == SemanticType.Unknown && method.ReturnType == null)
@@ -1179,6 +1205,11 @@ internal partial class TypeChecker
                         ReturnType = returnType,
                         Parameters = updatedParameters
                     };
+
+                    if (hasMethodTypeParams)
+                    {
+                        _symbolTable.ExitScope();
+                    }
                 }
             }
         }
