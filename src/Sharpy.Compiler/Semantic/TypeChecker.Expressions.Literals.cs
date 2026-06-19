@@ -535,4 +535,56 @@ internal partial class TypeChecker
         // For other types, return the same type (best effort)
         return objType;
     }
+
+    private SemanticType CheckMultiAxisAccess(MultiAxisAccess multiAxis)
+    {
+        var objType = CheckExpression(multiAxis.Object);
+
+        foreach (var dim in multiAxis.Dimensions)
+        {
+            if (dim.IsSlice)
+            {
+                if (dim.Start != null) CheckExpression(dim.Start);
+                if (dim.Stop != null) CheckExpression(dim.Stop);
+                if (dim.Step != null) CheckExpression(dim.Step);
+            }
+            else
+            {
+                CheckExpression(dim.Index!);
+            }
+        }
+
+        var hasSlice = false;
+        foreach (var dim in multiAxis.Dimensions)
+        {
+            if (dim.IsSlice)
+            {
+                hasSlice = true;
+                break;
+            }
+        }
+
+        // Any slice → same type as object (sub-array view)
+        if (hasSlice)
+            return objType;
+
+        // All indices → element type (scalar access).
+        // For CLR-backed types (NdArray), resolve via the closed CLR indexer.
+        if (objType is UserDefinedType { Symbol.ClrType: not null }
+            or GenericType { GenericDefinition.ClrType: not null })
+        {
+            var closedClrType = TryGetClrType(objType);
+            if (closedClrType != null)
+            {
+                var clrIndexerType = _typeInference.InferClrIndexerReturnType(closedClrType);
+                if (clrIndexerType != null)
+                    return clrIndexerType;
+            }
+        }
+
+        if (objType is GenericType gt && gt.TypeArguments.Count > 0)
+            return gt.TypeArguments[0];
+
+        return SemanticType.Unknown;
+    }
 }

@@ -66,6 +66,7 @@ internal partial class TypeChecker
             TStringLiteral tstr => CheckTStringLiteral(tstr),
             EllipsisLiteral => SemanticType.Void,
             SliceAccess sliceAccess => CheckSliceAccess(sliceAccess),
+            MultiAxisAccess multiAxis => CheckMultiAxisAccess(multiAxis),
             WalrusExpression walrus => CheckWalrusExpression(walrus),
             AwaitExpression awaitExpr => CheckAwaitExpression(awaitExpr),
             SpreadElement spread => CheckExpression(spread.Value),
