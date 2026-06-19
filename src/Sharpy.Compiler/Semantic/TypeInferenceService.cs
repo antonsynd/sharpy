@@ -445,16 +445,15 @@ internal class TypeInferenceService
                 var bestOverload = FindBestOverload(methods, right);
                 if (bestOverload != null)
                 {
-                    // Discovery-loaded generic types (e.g., Counter<T>) may have
-                    // operator return types that resolved to 'object' because the
-                    // CLR type mapper couldn't represent the self-referential generic
-                    // type (Counter<T> returns Counter<T>). In that case, use the
-                    // left operand type which is the correctly-instantiated generic.
-                    // Only apply for self-returning operators (arithmetic/bitwise),
-                    // not comparison operators which should return bool.
-                    if (bestOverload.ReturnType == SemanticType.Object && left is GenericType
-                        && !IsComparisonOperator(op))
-                        return left;
+                    if (left is GenericType leftGeneric && !IsComparisonOperator(op))
+                    {
+                        if (bestOverload.ReturnType == SemanticType.Object)
+                            return left;
+                        if (bestOverload.ReturnType is GenericType retGeneric
+                            && retGeneric.Name == leftGeneric.Name
+                            && retGeneric.TypeArguments.Any(a => a is TypeParameterType))
+                            return left;
+                    }
                     return bestOverload.ReturnType;
                 }
             }
@@ -534,6 +533,15 @@ internal class TypeInferenceService
             if (genericMatch != null)
                 return genericMatch;
         }
+
+        // Bare TypeParameterType matches any concrete argument (e.g., NdArray's operator+(NdArray<T>, T)
+        // where T is a generic parameter that accepts any scalar).
+        var typeParamMatch = candidates.FirstOrDefault(c =>
+            c.Parameters.Count == 2 &&
+            c.Parameters[1].Type is TypeParameterType);
+
+        if (typeParamMatch != null)
+            return typeParamMatch;
 
         return null;
     }

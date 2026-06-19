@@ -1,4 +1,5 @@
 extern alias SharpyRT;
+extern alias SharpyStdlib;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Semantic;
 using Xunit;
@@ -382,5 +383,67 @@ public class ClrTypeMapperTests
         Assert.Equal(typeof(SharpyRT::Sharpy.TextFile), udt.Symbol!.ClrType);
         Assert.NotNull(udt.Symbol.Interfaces);
         Assert.Contains(udt.Symbol.Interfaces!, i => i.Definition.Name == "IDisposable");
+    }
+
+    [Fact]
+    public void MapNdArrayDouble_ReturnsGenericType()
+    {
+        var result = _mapper.MapClrTypeToSemanticType(typeof(SharpyStdlib::Sharpy.NdArray<double>));
+
+        Assert.IsType<GenericType>(result);
+        var gt = (GenericType)result;
+        Assert.Equal("NdArray", gt.Name);
+        Assert.Single(gt.TypeArguments);
+        Assert.Equal(SemanticType.Double, gt.TypeArguments[0]);
+    }
+
+    [Fact]
+    public void MapNdArrayInt_ReturnsGenericType()
+    {
+        var result = _mapper.MapClrTypeToSemanticType(typeof(SharpyStdlib::Sharpy.NdArray<int>));
+
+        Assert.IsType<GenericType>(result);
+        var gt = (GenericType)result;
+        Assert.Equal("NdArray", gt.Name);
+        Assert.Single(gt.TypeArguments);
+        Assert.Equal(SemanticType.Int, gt.TypeArguments[0]);
+    }
+
+    [Fact]
+    public void MapNdArrayComplex_ReturnsGenericType()
+    {
+        var result = _mapper.MapClrTypeToSemanticType(typeof(SharpyStdlib::Sharpy.NdArray<System.Numerics.Complex>));
+
+        Assert.IsType<GenericType>(result);
+        var gt = (GenericType)result;
+        Assert.Equal("NdArray", gt.Name);
+        Assert.Single(gt.TypeArguments);
+        var inner = Assert.IsType<UserDefinedType>(gt.TypeArguments[0]);
+        Assert.Equal("Complex", inner.Name);
+        Assert.NotNull(inner.Symbol);
+        Assert.Equal(typeof(System.Numerics.Complex), inner.Symbol!.ClrType);
+    }
+
+    [Fact]
+    public void MapNdArray_HasGenericDefinitionWithClrType()
+    {
+        var result = _mapper.MapClrTypeToSemanticType(typeof(SharpyStdlib::Sharpy.NdArray<double>));
+
+        var gt = Assert.IsType<GenericType>(result);
+        Assert.NotNull(gt.GenericDefinition);
+        Assert.Equal(typeof(SharpyStdlib::Sharpy.NdArray<>), gt.GenericDefinition!.ClrType);
+    }
+
+    [Fact]
+    public void MapComplex_ReturnsUserDefinedType()
+    {
+        var result = _mapper.MapClrTypeToSemanticType(typeof(System.Numerics.Complex));
+
+        Assert.IsType<UserDefinedType>(result);
+        var udt = (UserDefinedType)result;
+        Assert.Equal("Complex", udt.Name);
+        Assert.NotNull(udt.Symbol);
+        Assert.Equal(typeof(System.Numerics.Complex), udt.Symbol!.ClrType);
+        Assert.Equal(TypeKind.Struct, udt.Symbol.TypeKind);
     }
 }

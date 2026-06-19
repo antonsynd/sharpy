@@ -97,10 +97,10 @@ internal partial class RoslynEmitter
                 }
 
             case BinaryOperator.Divide:
-                // User-defined types with __div__: emit plain left / right (C# operator overload)
+                // User-defined/generic types with operator/: emit plain left / right (C# operator overload)
                 var leftDivType = _context.SemanticInfo?.GetExpressionType(binOp.Left);
                 var rightDivType = _context.SemanticInfo?.GetExpressionType(binOp.Right);
-                if (leftDivType is UserDefinedType || rightDivType is UserDefinedType)
+                if (leftDivType is UserDefinedType or GenericType || rightDivType is UserDefinedType or GenericType)
                     return BinaryExpression(SyntaxKind.DivideExpression, left, right);
 
                 // x / y → true division with Python semantics (always returns float64)
