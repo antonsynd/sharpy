@@ -69,18 +69,18 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | MathAdditionalTests.cs | 48 | Spy/math/math_additional_tests.spy | 48 | ported |
 | MathAdditionalTests2.cs | 72 | Spy/math/math_additional2_tests.spy | 72 | ported |
 | ModuleIntegrationTests.cs | 7 | | | pending |
-| NdArrayTests.cs | 20 | | | deferred (pending #955-#958; 20 tests kept as C# — wholly internal NdArray(data, shape) construction + multi-dtype) |
-| NdArrayIndexingTests.cs | 14 | | | deferred (pending #955-#958; 14 tests kept as C# — wholly element/multi-axis indexing #955/#956) |
-| NdArrayOperatorTests.cs | 19 | | | deferred (pending #955-#958; 19 tests kept as C# — operators on object-typed module-func arrays #955) |
-| NdArrayReshapeTests.cs | 20 | | | deferred (pending #955-#958; 20 tests kept as C# — reshape/transpose/flatten verified via [i,j] indexing #955/#956) |
-| NdArraySlicingTests.cs | 22 | | | deferred (pending #955-#958; 22 tests kept as C# — Slice/SliceSpec/GetRow/GetColumn verified via indexing #955/#958) |
-| NdArrayAdvancedTests.cs | 32 | | | deferred (pending #955-#958; 32 tests kept as C# — masked/fancy indexing, ToArray/Tolist, structural equality) |
+| NdArrayTests.cs | 20 | | | deferred (C# kept: internal NdArray(data, shape) construction + multi-dtype; no .spy surface) |
+| NdArrayIndexingTests.cs | 14 | | | deferred (C# kept; .spy fixture: `ndarray_indexing.spy` — 1-D/2-D/3-D indexing) |
+| NdArrayOperatorTests.cs | 19 | | | deferred (C# kept; .spy fixture: `ndarray_operators.spy` — +/-/*/÷, scalar/shape broadcast) |
+| NdArrayReshapeTests.cs | 20 | | | deferred (C# kept; .spy fixture: `ndarray_reshape.spy` — reshape/transpose/flatten/ravel/copy) |
+| NdArraySlicingTests.cs | 22 | | | deferred (C# kept; .spy fixture: `ndarray_slicing.spy` — 1-D/multi-axis slicing, view mutation) |
+| NdArrayAdvancedTests.cs | 32 | | | deferred (C# kept; .spy fixture: `ndarray_advanced.spy` — sort/argsort/unique/searchsorted/allclose/isnan/isinf) |
 | NumpyCreationTests.cs | 31 | Spy/numpy/numpy_creation_tests.spy | 27 | ported (4 omitted: Array_Null Axiom 3; Full×3 — np.full takes CLR int[] shape, #959. Element values verified via np.allclose / 2-D content via reductions since results are object #955) |
-| NumpyFftTests.cs | 16 | | | deferred (pending #955-#958; 16 tests kept as C# — fft/ifft verify complex output via internal NdArray<Complex>._data field; fftfreq portable but secondary, file core is the transform) |
-| NumpyLinalgTests.cs | 37 | | | deferred (pending #955-#958; 37 tests kept as C# — 2-D matrices built via internal NdArray ctor, results verified via [i,j]; np.linalg submodule reachable but inputs/outputs blocked) |
-| NumpyManipulationTests.cs | 22 | | | deferred (pending #955-#958; 22 tests kept as C# — concatenate/stack/hstack/vstack/split take CLR NdArray[] arrays #959; where needs bool array; results verified via [i,j]) |
+| NumpyFftTests.cs | 16 | | | deferred (C# kept: NdArray\<Complex\> struct constraint violation #968) |
+| NumpyLinalgTests.cs | 37 | | | deferred (C# kept; .spy fixture: `numpy_linalg.spy` — dot/matmul/inv/det/eig/svd/solve/norm) |
+| NumpyManipulationTests.cs | 22 | | | deferred (C# kept: np.greater/np.where blocked by #969; scalar-LEFT operators blocked by #970) |
 | NumpyMathTests.cs | 37 | Spy/numpy/numpy_math_tests.spy | 29 | ported (8 omitted: Power_ArrayScalar/ScalarArray — object+scalar overload → NdArray<object> SPY0900 #955; Power_BroadcastsRowAndColumn #957/#959; 5 comparison tests — bool-array results indexed via r[i] #955. Elementwise verified via np.allclose at C# 1e-12 tol; 2-D via reshape) |
-| NumpyRandomTests.cs | 17 | | | deferred (pending #955-#958; 17 tests kept as C# — randint/normal/uniform take CLR int[] shape #959; choice/shuffle are generic NdArray<T> uninferable from object; value checks read internal _data) |
+| NumpyRandomTests.cs | 17 | | | deferred (C# kept: choice/shuffle generic T not inferable #969; randint/uniform shape args CLR int[] #959) |
 | OrderedDictTests.cs | 13 | Spy/collections/ordered_dict_tests.spy | 13 | ported |
 | OsModuleTests.cs | 33 | Spy/os/os_module_tests.spy | 33 | ported (constants use C# field names os.Sep/os.Linesep/os.Name/os.Environ — static module fields aren't snake_case-mapped in project compilation, SPY0203 / #940; mirrors C# OsModule.Sep) |
 | OsModuleAdditionalTests.cs | 16 | Spy/os/os_module_additional_tests.spy | 16 | ported (os.Altsep/os.Pathsep/os.Environ as above; list/dict membership via `contains` helper / bool local to avoid xUnit2009) |
@@ -308,3 +308,32 @@ Recommendation for 5b: port the creation/math/linalg/fft/random subset now with
 documented omissions for the indexing/operator cases, OR defer the whole numpy
 port until #955 (and ideally #956/#958) land. Leader's call.
 | 1-D slicing `a[1:3]` | ✅ parses (receiver must be proper NdArray, cf #955) | — |
+
+## Phase 6 (numpy) — INTEGRATION FIXTURES ADDED (2026-06-19)
+
+After #955/#956/#957/#958/#959 landed, ported 7 deferred numpy test areas to `.spy`
+integration test fixtures in `TestFixtures/`. These exercise the full compile+run
+pipeline from Sharpy source, complementing the existing C# unit tests (which remain
+in-tree and keep running).
+
+| Fixture | Covers | C# file |
+|---------|--------|---------|
+| `ndarray_basic.spy` | construction, size/ndim/shape, dtype | NdArrayTests |
+| `ndarray_indexing.spy` | 1-D/2-D/3-D positive/negative indexing | NdArrayIndexingTests |
+| `ndarray_reshape.spy` | reshape, transpose, flatten, ravel, copy | NdArrayReshapeTests |
+| `ndarray_slicing.spy` | 1-D slicing, multi-axis slicing, view mutation | NdArraySlicingTests |
+| `ndarray_operators.spy` | element-wise +/-/*/÷, scalar/shape broadcast | NdArrayOperatorTests |
+| `ndarray_advanced.spy` | sort, argsort, unique, searchsorted, allclose, isnan/isinf | NdArrayAdvancedTests |
+| `numpy_linalg.spy` | dot, matmul, inv, det, eig, svd, solve, norm | NumpyLinalgTests |
+
+Not ported (C# tests remain, blocked by open issues):
+- **NdArrayTests** — internal NdArray(data, shape) constructor, no .spy surface
+- **NumpyFftTests** — NdArray\<Complex\> struct constraint violation (**#968**)
+- **NumpyManipulationTests** — np.greater/np.where type inference (**#969**), scalar-LEFT operators (**#970**)
+- **NumpyRandomTests** — choice/shuffle generic T not inferable (**#969**)
+- Tests using internal fields (`_data`), reflection, null args (Axiom 3)
+
+New gaps filed during Phase 6: **#965** (candidate filter IsAssignable vs IsArgumentAssignable),
+**#966** (ArgMatchesGenericShape wildcard), **#967** (missing ResolveClrParameterType AQN-strip test),
+**#968** (NdArray\<Complex\> struct constraint), **#969** (generic T inference from object-typed NdArray),
+**#970** (scalar-LEFT operators rejected), **#971** (unary negation returns object).

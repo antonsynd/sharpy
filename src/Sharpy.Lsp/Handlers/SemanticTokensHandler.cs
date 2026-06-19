@@ -507,9 +507,12 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 {
                     if (dim.IsSlice)
                     {
-                        if (dim.Start != null) CollectExpressionTokens(dim.Start, tokens, parameterNames);
-                        if (dim.Stop != null) CollectExpressionTokens(dim.Stop, tokens, parameterNames);
-                        if (dim.Step != null) CollectExpressionTokens(dim.Step, tokens, parameterNames);
+                        if (dim.Start != null)
+                            CollectExpressionTokens(dim.Start, tokens, parameterNames);
+                        if (dim.Stop != null)
+                            CollectExpressionTokens(dim.Stop, tokens, parameterNames);
+                        if (dim.Step != null)
+                            CollectExpressionTokens(dim.Step, tokens, parameterNames);
                     }
                     else if (dim.Index != null)
                     {

@@ -544,9 +544,12 @@ internal partial class TypeChecker
         {
             if (dim.IsSlice)
             {
-                if (dim.Start != null) CheckExpression(dim.Start);
-                if (dim.Stop != null) CheckExpression(dim.Stop);
-                if (dim.Step != null) CheckExpression(dim.Step);
+                if (dim.Start != null)
+                    CheckExpression(dim.Start);
+                if (dim.Stop != null)
+                    CheckExpression(dim.Stop);
+                if (dim.Step != null)
+                    CheckExpression(dim.Step);
             }
             else
             {
