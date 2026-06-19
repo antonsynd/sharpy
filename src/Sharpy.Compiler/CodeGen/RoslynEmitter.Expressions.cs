@@ -52,6 +52,7 @@ internal partial class RoslynEmitter
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
+            MultiAxisAccess multiAxis => GenerateMultiAxisAccess(multiAxis),
             // Handle None() -> Optional<T>.None
             FunctionCall call when call.Function is NoneLiteral
                 && call.Arguments.Length == 0
