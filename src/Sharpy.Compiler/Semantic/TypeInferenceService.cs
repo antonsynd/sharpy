@@ -880,12 +880,26 @@ internal class TypeInferenceService
         if (dunderName == null)
             return null;
 
-        if (operand is UserDefinedType udt && udt.Symbol != null &&
-            udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
+        TypeSymbol? typeSymbol = operand switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            GenericType gt => gt.GenericDefinition,
+            _ => null
+        };
+
+        if (typeSymbol != null &&
+            typeSymbol.OperatorMethods.TryGetValue(dunderName, out var methods))
         {
             var method = methods.FirstOrDefault();
             if (method != null)
+            {
+                if (method.ReturnType is GenericType retGeneric
+                    && operand is GenericType operandGeneric
+                    && retGeneric.Name == operandGeneric.Name
+                    && retGeneric.TypeArguments.Any(a => a is TypeParameterType))
+                    return operand;
                 return method.ReturnType;
+            }
         }
 
         return null;
@@ -1245,9 +1259,34 @@ internal class TypeInferenceService
         {
             BuiltinType builtin => builtin.ClrType,
             UserDefinedType udt => udt.Symbol?.ClrType,
-            GenericType generic => generic.GenericDefinition?.ClrType,
+            GenericType generic => TryConstructClosedGeneric(generic),
             _ => null
         };
+    }
+
+    private Type? TryConstructClosedGeneric(GenericType generic)
+    {
+        var openDef = generic.GenericDefinition?.ClrType;
+        if (openDef == null || !openDef.IsGenericTypeDefinition)
+            return openDef;
+
+        var clrArgs = new Type[generic.TypeArguments.Count];
+        for (int i = 0; i < generic.TypeArguments.Count; i++)
+        {
+            var arg = GetClrType(generic.TypeArguments[i]);
+            if (arg == null)
+                return openDef;
+            clrArgs[i] = arg;
+        }
+
+        try
+        {
+            return openDef.MakeGenericType(clrArgs);
+        }
+        catch (ArgumentException)
+        {
+            return openDef;
+        }
     }
 
     /// <summary>

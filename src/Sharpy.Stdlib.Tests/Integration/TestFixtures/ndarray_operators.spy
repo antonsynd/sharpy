@@ -6,13 +6,6 @@
 #     disallowed by Axiom 3 (non-nullable by default).
 #   - Add_IntArrays_AddsElementwise: np.array() from .spy produces float arrays;
 #     constructing NdArray[int] requires the internal C# constructor.
-#   - Scalar-LEFT operators (10.0 + arr, 10.0 - arr, 8.0 / arr): the Sharpy type
-#     checker only resolves scalar-RIGHT forms (arr + 10.0); the reflected
-#     `float OP NdArray` overloads are not surfaced to .spy (float64 has no such
-#     operator), so Add_ScalarLeft / Subtract_ScalarLeft / Divide_ScalarLeft are
-#     covered only in their scalar-right equivalents.
-#   - Unary negation (-arr): the unary `-` on an NdArray is typed as `object` in
-#     .spy, so the result cannot be indexed; Negate tests are omitted.
 import numpy as np
 
 def main():
@@ -85,3 +78,31 @@ def main():
     bc3 = one * four
     print(bc3[0])
     print(bc3[3])
+
+    # --- Scalar-LEFT operators (#970) ---
+    sl = np.array([1.0, 2.0, 3.0])
+    sl_add = 10.0 + sl
+    print(sl_add[0])
+    print(sl_add[1])
+    print(sl_add[2])
+
+    sl_sub = 10.0 - sl
+    print(sl_sub[0])
+    print(sl_sub[1])
+    print(sl_sub[2])
+
+    sl_mul = 2.0 * sl
+    print(sl_mul[0])
+    print(sl_mul[1])
+    print(sl_mul[2])
+
+    sl_div = 6.0 / sl
+    print(sl_div[0])
+    print(sl_div[1])
+    print(sl_div[2])
+
+    # --- Unary negation (#971) ---
+    neg = -np.array([1.0, -2.0, 3.0])
+    print(neg[0])
+    print(neg[1])
+    print(neg[2])
