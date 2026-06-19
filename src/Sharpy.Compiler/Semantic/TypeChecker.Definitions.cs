@@ -1148,7 +1148,10 @@ internal partial class TypeChecker
                             {
                                 Name = typeParam.Name,
                                 Kind = SymbolKind.TypeParameter,
-                                DeclaringType = interfaceSymbol,
+                                // Method-level type parameters are declared by the method, not
+                                // the enclosing interface; mirror ResolveFunctionSignatureInto /
+                                // CheckFunction, which both use null here.
+                                DeclaringType = null,
                                 Constraints = typeParam.Constraints,
                                 Variance = typeParam.Variance,
                                 DeclarationLine = typeParam.LineStart,
