@@ -1,0 +1,273 @@
+# Ported from src/Sharpy.Stdlib.Tests/NumpyLinalgTests.cs (#843).
+#
+# Linear algebra: dot, matmul, inv, det, eig, svd, solve, norm. Sub-module
+# accessed via np.linalg.dot(...) etc. (Phase 0, #977). Matrices built via
+# np.array([...]).reshape(rows, cols). Top-level aliases np.dot / np.matmul also
+# tested. Scalar (0-D) results from vector dot products are extracted via
+# np.sum(result).
+#
+# Omissions (2 of 37 C# cases):
+#   - Dot_NullArg_ThrowsArgumentNullException: None -> non-nullable (Axiom 3).
+#   - Norm_Null_ThrowsArgumentNullException: same.
+
+import numpy as np
+import math
+from unittest import assert_raises
+
+def assert_almost_equal(actual: float, expected: float, tol: float = 1e-9) -> None:
+    assert abs(actual - expected) < tol
+
+# -- dot / matmul --
+
+@test
+def test_dot_vector_vector():
+    a = np.array([1.0, 2.0, 3.0])
+    b = np.array([4.0, 5.0, 6.0])
+    result = np.linalg.dot(a, b)
+    assert_almost_equal(np.sum(result), 32.0)
+
+@test
+def test_dot_matrix_matrix():
+    a = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    b = np.array([5.0, 6.0, 7.0, 8.0]).reshape(2, 2)
+    result = np.linalg.dot(a, b)
+    assert result.shape[0] == 2
+    assert result.shape[1] == 2
+    assert_almost_equal(result[0, 0], 19.0)
+    assert_almost_equal(result[0, 1], 22.0)
+    assert_almost_equal(result[1, 0], 43.0)
+    assert_almost_equal(result[1, 1], 50.0)
+
+@test
+def test_dot_matrix_vector():
+    m = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    v = np.array([5.0, 6.0])
+    result = np.linalg.dot(m, v)
+    assert result.shape[0] == 2
+    assert_almost_equal(result[0], 17.0)
+    assert_almost_equal(result[1], 39.0)
+
+@test
+def test_dot_vector_matrix():
+    v = np.array([1.0, 2.0])
+    m = np.array([3.0, 4.0, 5.0, 6.0]).reshape(2, 2)
+    result = np.linalg.dot(v, m)
+    assert result.shape[0] == 2
+    assert_almost_equal(result[0], 13.0)
+    assert_almost_equal(result[1], 16.0)
+
+@test
+def test_dot_shape_mismatch_throws():
+    a = np.array([1.0, 2.0])
+    b = np.array([1.0, 2.0, 3.0])
+    with assert_raises(ValueError):
+        np.linalg.dot(a, b)
+
+@test
+def test_dot_matrix_dim_mismatch_throws():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    b = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    with assert_raises(ValueError):
+        np.linalg.dot(a, b)
+
+@test
+def test_dot_higher_rank_throws():
+    a = np.zeros(8).reshape(2, 2, 2)
+    b = np.zeros(8).reshape(2, 2, 2)
+    with assert_raises(ValueError):
+        np.linalg.dot(a, b)
+
+@test
+def test_matmul_delegates_to_dot():
+    a = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    b = np.array([5.0, 6.0, 7.0, 8.0]).reshape(2, 2)
+    dot_result = np.linalg.dot(a, b)
+    matmul_result = np.linalg.matmul(a, b)
+    assert np.allclose(dot_result.flatten(), matmul_result.flatten())
+
+@test
+def test_dot_transposed_view():
+    a = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    at = a.transpose()
+    result = np.linalg.dot(at, a)
+    assert_almost_equal(result[0, 0], 10.0)
+    assert_almost_equal(result[0, 1], 14.0)
+    assert_almost_equal(result[1, 0], 14.0)
+    assert_almost_equal(result[1, 1], 20.0)
+
+@test
+def test_dot_top_level_alias():
+    a = np.array([1.0, 2.0, 3.0])
+    b = np.array([4.0, 5.0, 6.0])
+    result = np.dot(a, b)
+    assert_almost_equal(np.sum(result), 32.0)
+
+@test
+def test_matmul_top_level_alias():
+    a = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    b = np.array([5.0, 6.0, 7.0, 8.0]).reshape(2, 2)
+    result = np.matmul(a, b)
+    assert_almost_equal(result[0, 0], 19.0)
+
+# -- inv --
+
+@test
+def test_inv_two_by_two():
+    a = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    inv = np.linalg.inv(a)
+    assert inv.shape[0] == 2
+    assert inv.shape[1] == 2
+    assert_almost_equal(inv[0, 0], -2.0)
+    assert_almost_equal(inv[0, 1], 1.0)
+    assert_almost_equal(inv[1, 0], 1.5)
+    assert_almost_equal(inv[1, 1], -0.5)
+
+@test
+def test_inv_times_original_gives_identity():
+    a = np.array([4.0, 7.0, 2.0, 6.0]).reshape(2, 2)
+    inv = np.linalg.inv(a)
+    product = np.linalg.dot(a, inv)
+    assert_almost_equal(product[0, 0], 1.0)
+    assert_almost_equal(product[0, 1], 0.0)
+    assert_almost_equal(product[1, 0], 0.0)
+    assert_almost_equal(product[1, 1], 1.0)
+
+@test
+def test_inv_singular_throws():
+    a = np.array([1.0, 2.0, 2.0, 4.0]).reshape(2, 2)
+    with assert_raises(ValueError):
+        np.linalg.inv(a)
+
+@test
+def test_inv_non_square_throws():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    with assert_raises(ValueError):
+        np.linalg.inv(a)
+
+@test
+def test_inv_not_2d_throws():
+    a = np.array([1.0, 2.0, 3.0])
+    with assert_raises(ValueError):
+        np.linalg.inv(a)
+
+# -- det --
+
+@test
+def test_det_two_by_two():
+    a = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    assert_almost_equal(np.linalg.det(a), -2.0)
+
+@test
+def test_det_identity_is_one():
+    ident = np.eye(4)
+    assert_almost_equal(np.linalg.det(ident), 1.0)
+
+@test
+def test_det_singular_is_zero():
+    a = np.array([1.0, 2.0, 2.0, 4.0]).reshape(2, 2)
+    assert_almost_equal(np.linalg.det(a), 0.0)
+
+@test
+def test_det_non_square_throws():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    with assert_raises(ValueError):
+        np.linalg.det(a)
+
+# -- eig --
+
+@test
+def test_eig_diagonal_matrix():
+    a = np.array([3.0, 0.0, 0.0, 5.0]).reshape(2, 2)
+    values, vectors = np.linalg.eig(a)
+    assert values.shape[0] == 2
+    assert vectors.shape[0] == 2
+    assert vectors.shape[1] == 2
+    sorted_vals = np.sort(values)
+    assert abs(sorted_vals[0] - 3.0) < 1e-6
+    assert abs(sorted_vals[1] - 5.0) < 1e-6
+
+@test
+def test_eig_symmetric_matrix():
+    a = np.array([2.0, 1.0, 1.0, 2.0]).reshape(2, 2)
+    values, _ = np.linalg.eig(a)
+    sorted_vals = np.sort(values)
+    assert abs(sorted_vals[0] - 1.0) < 1e-6
+    assert abs(sorted_vals[1] - 3.0) < 1e-6
+
+@test
+def test_eig_non_square_throws():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    with assert_raises(ValueError):
+        np.linalg.eig(a)
+
+# -- svd --
+
+@test
+def test_svd_singular_values_non_negative():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(3, 2)
+    u, s, vh = np.linalg.svd(a)
+    assert u.shape[0] == 3
+    assert vh.shape[0] == 2
+    assert s[0] >= 0.0
+    assert s[1] >= 0.0
+    assert s[0] >= s[1]
+
+# -- solve --
+
+@test
+def test_solve_two_by_two():
+    a = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    b = np.array([5.0, 11.0])
+    x = np.linalg.solve(a, b)
+    assert x.shape[0] == 2
+    assert_almost_equal(x[0], 1.0)
+    assert_almost_equal(x[1], 2.0)
+
+@test
+def test_solve_singular_throws():
+    a = np.array([1.0, 2.0, 2.0, 4.0]).reshape(2, 2)
+    b = np.array([1.0, 2.0])
+    with assert_raises(ValueError):
+        np.linalg.solve(a, b)
+
+@test
+def test_solve_non_square_throws():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    b = np.array([1.0, 2.0])
+    with assert_raises(ValueError):
+        np.linalg.solve(a, b)
+
+@test
+def test_solve_dimension_mismatch_throws():
+    a = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    b = np.array([1.0, 2.0, 3.0])
+    with assert_raises(ValueError):
+        np.linalg.solve(a, b)
+
+# -- norm --
+
+@test
+def test_norm_vector_l2():
+    v = np.array([3.0, 4.0])
+    assert_almost_equal(np.linalg.norm(v), 5.0)
+
+@test
+def test_norm_vector_higher_dim():
+    v = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    assert_almost_equal(np.linalg.norm(v), math.sqrt(55.0))
+
+@test
+def test_norm_matrix_frobenius():
+    a = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    assert_almost_equal(np.linalg.norm(a), math.sqrt(30.0))
+
+@test
+def test_norm_zero_vector():
+    v = np.array([0.0, 0.0, 0.0])
+    assert_almost_equal(np.linalg.norm(v), 0.0)
+
+@test
+def test_norm_higher_rank_throws():
+    a = np.zeros(8).reshape(2, 2, 2)
+    with assert_raises(ValueError):
+        np.linalg.norm(a)

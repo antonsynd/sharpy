@@ -1,0 +1,63 @@
+# Ported from src/Sharpy.Stdlib.Tests/NumpyFftTests.cs (#843).
+#
+# FFT frequency generation (fftfreq) and non-1D-rejection error test. Sub-module
+# accessed via np.fft.fftfreq(...) (Phase 0, #977).
+#
+# Omissions (8 of 16 C# cases):
+#   - Fft_ConstantSignal, Fft_Ifft_Roundtrip, Fft_SingleElement, Fft_TwoElements,
+#     Fft_NonPowerOfTwo, Fft_Ifft_Roundtrip_OddNonPowerOfTwo (6): all verify
+#     result._data[i].Real / .Imaginary on NdArray<Complex> — Complex element
+#     access is not available from .spy.
+#   - Ifft_ThrowsForNon1D, Ifft_SingleElement (2): require NdArray<Complex>
+#     construction, not available from .spy.
+#   - Fft_ThrowsForNon1D (1): np.fft.fft expects NdArray<Complex> param in
+#     the discovered CLR signature; NdArray<double> rejected by SPY0220.
+
+import numpy as np
+from unittest import assert_raises
+
+# -- fftfreq --
+
+@test
+def test_fftfreq_even_length():
+    freqs = np.fft.fftfreq(8, 1.0)
+    expected = np.array([0.0, 0.125, 0.25, 0.375, -0.5, -0.375, -0.25, -0.125])
+    assert np.allclose(freqs, expected, rtol=0.0, atol=1e-12)
+
+@test
+def test_fftfreq_odd_length():
+    freqs = np.fft.fftfreq(7, 1.0)
+    assert freqs.size == 7
+    assert abs(freqs[0] - 0.0) < 1e-12
+
+@test
+def test_fftfreq_custom_spacing():
+    freqs = np.fft.fftfreq(4, 0.5)
+    expected = np.array([0.0, 0.5, -1.0, -0.5])
+    assert np.allclose(freqs, expected, rtol=0.0, atol=1e-12)
+
+@test
+def test_fftfreq_zero_length():
+    freqs = np.fft.fftfreq(0)
+    assert freqs.shape[0] == 0
+    assert freqs.size == 0
+
+@test
+def test_fftfreq_negative_n_throws():
+    with assert_raises(ValueError):
+        np.fft.fftfreq(-1)
+
+@test
+def test_fftfreq_length_one():
+    freqs = np.fft.fftfreq(1)
+    assert freqs.shape[0] == 1
+    assert abs(freqs[0]) < 1e-12
+
+@test
+def test_fftfreq_negative_spacing():
+    freqs = np.fft.fftfreq(4, -1.0)
+    expected = np.array([0.0, -0.25, 0.5, 0.25])
+    assert np.allclose(freqs, expected, rtol=0.0, atol=1e-12)
+
+# Fft_ThrowsForNon1D omitted: np.fft.fft expects NdArray<Complex>, not
+# NdArray<double>; the type mismatch (SPY0220) prevents compilation.

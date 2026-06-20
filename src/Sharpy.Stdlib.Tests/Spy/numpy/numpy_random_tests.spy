@@ -1,0 +1,112 @@
+# Ported from src/Sharpy.Stdlib.Tests/NumpyRandomTests.cs (#843).
+#
+# Random number generation: seed, rand, randn, randint, normal, uniform, shuffle.
+# Sub-module accessed via np.random.seed(...) etc. (Phase 0, #977). Statistical
+# assertions use large samples with generous tolerances.
+#
+# Omissions (6 of 17 C# cases):
+#   - Choice_WithReplacement, Choice_WithoutReplacement_HasUniqueElements,
+#     Choice_WithoutReplacement_ThrowsWhenSizeTooLarge (3): NumpyRandom.Choice
+#     takes NdArray<int>; only NdArray<double> constructible from .spy.
+#   - Choice_ThrowsForNon1D (1): NdArray<int>(data, shape) internal ctor.
+#   - Shuffle_TwoDimensional_PermutesRows (1): NdArray<int>(data, shape) + ._data.
+#   - Shuffle_OneDim_NoOpOnSingleton (1): NdArray<int> + ._data access.
+
+import numpy as np
+from unittest import assert_raises
+
+# -- seed + reproducibility --
+
+@test
+def test_seed_produces_reproducible_sequence():
+    np.random.seed(42)
+    a = np.random.rand(5)
+    np.random.seed(42)
+    b = np.random.rand(5)
+    assert np.allclose(a, b)
+
+# -- rand --
+
+@test
+def test_rand_produces_values_in_unit_interval():
+    np.random.seed(7)
+    arr = np.random.rand(100)
+    assert arr.shape[0] == 100
+    assert arr[0] >= 0.0
+    assert arr[0] < 1.0
+    assert arr[99] >= 0.0
+    assert arr[99] < 1.0
+
+@test
+def test_rand_multi_dimensional_shape():
+    np.random.seed(3)
+    arr = np.random.rand(2, 3, 4)
+    assert arr.shape[0] == 2
+    assert arr.shape[1] == 3
+    assert arr.shape[2] == 4
+    assert arr.size == 24
+
+# -- randn --
+
+@test
+def test_randn_has_approximately_zero_mean():
+    np.random.seed(123)
+    arr = np.random.randn(10000)
+    total = np.sum(arr)
+    mean = total / arr.size
+    assert abs(mean) < 0.05
+
+# -- randint --
+
+@test
+def test_randint_produces_values_in_range():
+    np.random.seed(11)
+    arr = np.random.randint(5, 10, [200])
+    assert arr.size == 200
+    assert arr[0] >= 5
+    assert arr[0] < 10
+
+@test
+def test_randint_throws_when_high_equals_low():
+    with assert_raises(ValueError):
+        np.random.randint(5, 5, [4])
+
+# -- normal --
+
+@test
+def test_normal_respects_mean_and_scale():
+    np.random.seed(99)
+    arr = np.random.normal(10.0, 2.0, [10000])
+    total = np.sum(arr)
+    mean = total / arr.size
+    assert abs(mean - 10.0) < 0.2
+
+@test
+def test_normal_throws_when_scale_negative():
+    with assert_raises(ValueError):
+        np.random.normal(0.0, -1.0, [5])
+
+# -- uniform --
+
+@test
+def test_uniform_produces_values_in_range():
+    np.random.seed(8)
+    arr = np.random.uniform(-3.0, 5.0, [500])
+    assert arr.size == 500
+    assert arr[0] >= -3.0
+    assert arr[0] < 5.0
+
+@test
+def test_uniform_throws_when_high_less_than_low():
+    with assert_raises(ValueError):
+        np.random.uniform(5.0, 0.0, [4])
+
+# -- shuffle --
+
+@test
+def test_shuffle_preserves_elements():
+    np.random.seed(21)
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+    original_sorted = np.sort(arr.copy())
+    np.random.shuffle(arr)
+    assert np.allclose(np.sort(arr), original_sorted)
