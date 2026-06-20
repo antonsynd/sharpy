@@ -380,7 +380,7 @@ internal class ClrTypeMapper
 
         // NdArray<T> — first-class stdlib generic backed by CLR; needs GenericDefinition
         // so GetClrType can construct closed generics for operator resolution (#968, #971).
-        if (genericDef.FullName == "Sharpy.NdArray`1")
+        if (genericDef.FullName == Shared.CSharpTypeNames.SharpyNdArray + "`1")
         {
             var defSymbol = new TypeSymbol
             {
