@@ -1,0 +1,20 @@
+# `if x is not None:` narrows T? to T inside the branch, so members are
+# accessible directly without `.unwrap()`.
+class User:
+    name: str
+    age: int
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+def greet(user: User?) -> None:
+    if user is not None:
+        print("Hello, " + user.name)
+        print("Age: " + str(user.age))
+    else:
+        print("No user")
+
+def main():
+    greet(Some(User("Alice", 30)))
+    greet(None())

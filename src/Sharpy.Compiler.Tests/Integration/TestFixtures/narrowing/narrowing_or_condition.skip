@@ -1,0 +1,1 @@
+Blocked on #978: else-branch of `if x is None or y is None:` does not narrow x/y to non-optional (De Morgan dual of and-narrowing). Remove this .skip when #978 is fixed.

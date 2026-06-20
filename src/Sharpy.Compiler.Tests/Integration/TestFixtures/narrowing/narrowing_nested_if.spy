@@ -1,0 +1,21 @@
+# Narrowing from the outer `if b is not None:` persists into a nested `if`,
+# so b.value is accessible in both the inner if and its else branch.
+class Box:
+    value: int
+
+    def __init__(self, v: int):
+        self.value = v
+
+def check(b: Box?) -> None:
+    if b is not None:
+        if b.value > 0:
+            print("positive: " + str(b.value))
+        else:
+            print("non-positive: " + str(b.value))
+    else:
+        print("empty")
+
+def main():
+    check(Some(Box(5)))
+    check(Some(Box(-3)))
+    check(None())

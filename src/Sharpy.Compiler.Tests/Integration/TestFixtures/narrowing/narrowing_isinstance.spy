@@ -1,0 +1,28 @@
+# `if isinstance(x, Car):` narrows the base type to the subclass, so
+# subclass-specific members (honk, doors) are accessible inside the branch.
+class Vehicle:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Car(Vehicle):
+    doors: int
+
+    def __init__(self, name: str, doors: int):
+        super().__init__(name)
+        self.doors = doors
+
+    def honk(self) -> str:
+        return self.name + " goes beep"
+
+def inspect(v: Vehicle) -> None:
+    if isinstance(v, Car):
+        print(v.honk())
+        print("doors: " + str(v.doors))
+    else:
+        print("generic vehicle: " + v.name)
+
+def main():
+    inspect(Car("Toyota", 4))
+    inspect(Vehicle("Generic"))

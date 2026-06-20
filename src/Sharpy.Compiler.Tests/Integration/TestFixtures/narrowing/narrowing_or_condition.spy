@@ -1,0 +1,11 @@
+# Reaching the else of `if x is None or y is None:` implies neither is None,
+# so both x and y should be narrowed to int in the else branch.
+def both(x: int?, y: int?) -> None:
+    if x is None or y is None:
+        print("at least one none")
+    else:
+        print(x + y)
+
+def main():
+    both(Some(2), Some(3))
+    both(None(), Some(3))

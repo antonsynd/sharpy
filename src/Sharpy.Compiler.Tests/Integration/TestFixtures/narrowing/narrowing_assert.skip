@@ -1,0 +1,1 @@
+Blocked on #979: `assert x is not None` does not narrow x to non-optional for the rest of the scope (CheckAssert applies no narrowing). Remove this .skip when #979 is fixed.

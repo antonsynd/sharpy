@@ -1,0 +1,12 @@
+# Narrowing established by `if x is not None:` is invalidated once x is
+# reassigned to None() within the block; uses before the reassignment still
+# see the narrowed type.
+def process(x: int?) -> None:
+    if x is not None:
+        print("narrowed: " + str(x + 1))
+        x = None()
+        print("reassigned to none")
+    print("done")
+
+def main():
+    process(Some(10))

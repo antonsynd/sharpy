@@ -1,0 +1,15 @@
+# match type patterns with `as` bindings narrow the scrutinee to the matched
+# type, so type-specific operations (arithmetic on int, upper() on str) work.
+def describe(x: object) -> str:
+    match x:
+        case int() as n:
+            return "int doubled: " + str(n * 2)
+        case str() as s:
+            return "str upper: " + s.upper()
+        case _:
+            return "other"
+
+def main():
+    print(describe(21))
+    print(describe("hi"))
+    print(describe(3.14))

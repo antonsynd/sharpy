@@ -1,0 +1,8 @@
+# `assert x is not None` should narrow x from int? to int for the rest of the
+# function body, mirroring early-return narrowing.
+def use(x: int?) -> None:
+    assert x is not None
+    print(x + 1)
+
+def main():
+    use(Some(41))

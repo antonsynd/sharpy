@@ -1,0 +1,35 @@
+# isinstance checks across an if/elif/else chain each narrow the base type
+# to a different subclass, unlocking that subclass's methods per branch.
+class Shape:
+    pass
+
+class Circle(Shape):
+    radius: int
+
+    def __init__(self, r: int):
+        self.radius = r
+
+    def area_approx(self) -> int:
+        return 3 * self.radius * self.radius
+
+class Square(Shape):
+    side: int
+
+    def __init__(self, s: int):
+        self.side = s
+
+    def area(self) -> int:
+        return self.side * self.side
+
+def describe(shape: Shape) -> None:
+    if isinstance(shape, Circle):
+        print("circle area ~ " + str(shape.area_approx()))
+    elif isinstance(shape, Square):
+        print("square area = " + str(shape.area()))
+    else:
+        print("unknown shape")
+
+def main():
+    describe(Circle(2))
+    describe(Square(3))
+    describe(Shape())

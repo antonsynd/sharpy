@@ -1,0 +1,19 @@
+# `while current is not None:` narrows current to the node type inside the
+# loop body, so current.value and current.next are accessible directly.
+class Node:
+    value: int
+    next: Node?
+
+    def __init__(self, val: int):
+        self.value = val
+        self.next = None()
+
+def main():
+    head: Node? = Some(Node(1))
+    head.unwrap().next = Some(Node(2))
+    head.unwrap().next.unwrap().next = Some(Node(3))
+
+    current: Node? = head
+    while current is not None:
+        print(current.value)
+        current = current.next

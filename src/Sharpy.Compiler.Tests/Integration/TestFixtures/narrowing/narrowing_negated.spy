@@ -1,0 +1,24 @@
+# `if not isinstance(a, Dog):` narrows the else branch: reaching else means a
+# IS a Dog, so Dog-specific methods (fetch) are accessible there.
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    def fetch(self) -> str:
+        return self.name + " is fetching"
+
+def handle(a: Animal) -> None:
+    if not isinstance(a, Dog):
+        print("not a dog: " + a.name)
+    else:
+        print(a.fetch())
+
+def main():
+    handle(Dog("Rex"))
+    handle(Animal("Whiskers"))
