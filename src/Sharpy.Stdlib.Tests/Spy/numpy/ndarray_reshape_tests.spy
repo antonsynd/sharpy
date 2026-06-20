@@ -1,0 +1,170 @@
+# Ported from src/Sharpy.Stdlib.Tests/NdArrayReshapeTests.cs (#843).
+#
+# Reshape / Transpose / Flatten / Ravel / Copy. Arrays are built with np.array(...)
+# (1-D and nested 2-D literals) and .reshape(...); only NdArray<double> is
+# constructible from .spy, so every value is a float. Element reads (a[i], a[i,j],
+# a[i,j,k]) and member access (.ndim/.size/.shape[i]) work post-#955/#956.
+#
+# Omissions (the view-vs-copy aliasing tests, 7 of 20 C# cases):
+#   The C# tests Reshape_Contiguous_ReturnsView, Transpose_ReturnsView,
+#   Flatten_ReturnsCopy_NotView, Ravel_Contiguous_ReturnsView,
+#   Ravel_NonContiguous_ReturnsCopy, Copy_SameShape_IndependentBuffer (mutation
+#   half), and Copy_OfView_IsContiguousCopy (mutation half) all verify aliasing by
+#   assigning through the indexer setter (e.g. reshaped[0, 0] = 99). The setter's
+#   value parameter is the generic element type T, and the type checker will not
+#   bind a float to it, so element mutation is unreachable from .spy. The read side
+#   of each operation (resulting shape and element values) is still exercised below;
+#   only the "does mutation propagate / stay isolated" assertion is dropped.
+#
+#   Reshape_Null_Throws is also omitted: it passes null to reshape, and None ->
+#   non-nullable int[] is rejected at compile time (Axiom 3).
+
+import numpy as np
+from system import ArgumentException
+from unittest import assert_raises
+
+# -- reshape --
+
+@test
+def test_reshape_1d_to_2d():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    reshaped = arr.reshape(2, 3)
+    assert reshaped.shape[0] == 2
+    assert reshaped.shape[1] == 3
+    assert reshaped[0, 0] == 1.0
+    assert reshaped[0, 1] == 2.0
+    assert reshaped[0, 2] == 3.0
+    assert reshaped[1, 0] == 4.0
+    assert reshaped[1, 2] == 6.0
+
+@test
+def test_reshape_2d_to_1d():
+    arr = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    reshaped = arr.reshape(4)
+    assert reshaped.shape[0] == 4
+    assert reshaped[0] == 1.0
+    assert reshaped[3] == 4.0
+
+@test
+def test_reshape_inferred_dim_first():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    reshaped = arr.reshape(-1, 3)
+    assert reshaped.shape[0] == 2
+    assert reshaped.shape[1] == 3
+
+@test
+def test_reshape_inferred_dim_last():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    reshaped = arr.reshape(2, -1)
+    assert reshaped.shape[0] == 2
+    assert reshaped.shape[1] == 3
+
+@test
+def test_reshape_incompatible_size_throws():
+    arr = np.array([1.0, 2.0, 3.0, 4.0])
+    with assert_raises(ArgumentException):
+        arr.reshape(3, 2)
+
+@test
+def test_reshape_multiple_inferred_dims_throws():
+    arr = np.array([1.0, 2.0, 3.0, 4.0])
+    with assert_raises(ArgumentException):
+        arr.reshape(-1, -1)
+
+@test
+def test_reshape_inferred_not_divisible_throws():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    with assert_raises(ArgumentException):
+        arr.reshape(-1, 2)
+
+# -- transpose --
+
+@test
+def test_transpose_2d_reverses_dimensions():
+    # 2x3:
+    #   1 2 3
+    #   4 5 6
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    t = arr.transpose()
+    assert t.shape[0] == 3
+    assert t.shape[1] == 2
+    assert t[0, 0] == 1.0
+    assert t[0, 1] == 4.0
+    assert t[1, 0] == 2.0
+    assert t[1, 1] == 5.0
+    assert t[2, 0] == 3.0
+    assert t[2, 1] == 6.0
+
+@test
+def test_transpose_3d_reverses_all_axes():
+    arr = np.arange(0.0, 24.0).reshape(2, 3, 4)
+    t = arr.transpose()
+    assert t.shape[0] == 4
+    assert t.shape[1] == 3
+    assert t.shape[2] == 2
+
+@test
+def test_transpose_1d_no_change():
+    arr = np.array([1.0, 2.0, 3.0])
+    t = arr.transpose()
+    assert t.shape[0] == 3
+    assert t[0] == 1.0
+    assert t[2] == 3.0
+
+# -- flatten --
+
+@test
+def test_flatten_2d_returns_1d():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    flat = arr.flatten()
+    assert flat.ndim == 1
+    assert flat.shape[0] == 6
+    assert np.allclose(flat, np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]))
+
+@test
+def test_flatten_of_transpose_traverses_row_major():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    flat = arr.transpose().flatten()
+    # Transposed shape (3,2) traversed row-major:
+    #   (0,0)=1 (0,1)=4 (1,0)=2 (1,1)=5 (2,0)=3 (2,1)=6
+    assert flat.shape[0] == 6
+    assert np.allclose(flat, np.array([1.0, 4.0, 2.0, 5.0, 3.0, 6.0]))
+
+# -- ravel --
+
+@test
+def test_ravel_contiguous_returns_1d():
+    arr = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    rav = arr.ravel()
+    assert rav.ndim == 1
+    assert rav.shape[0] == 4
+    assert np.allclose(rav, np.array([1.0, 2.0, 3.0, 4.0]))
+
+@test
+def test_ravel_non_contiguous_returns_1d():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    rav = arr.transpose().ravel()
+    assert rav.shape[0] == 6
+    # Non-contiguous ravel materializes a row-major copy of the transpose.
+    assert np.allclose(rav, np.array([1.0, 4.0, 2.0, 5.0, 3.0, 6.0]))
+
+# -- copy --
+
+@test
+def test_copy_same_shape_preserves_values():
+    arr = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    c = arr.copy()
+    assert c.shape[0] == 2
+    assert c.shape[1] == 2
+    assert c[0, 0] == 1.0
+    assert np.allclose(c.flatten(), arr.flatten())
+
+@test
+def test_copy_of_view_is_contiguous_copy():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    c = arr.transpose().copy()
+    assert c.shape[0] == 3
+    assert c.shape[1] == 2
+    assert c[0, 0] == 1.0
+    assert c[0, 1] == 4.0
+    assert c[2, 1] == 6.0

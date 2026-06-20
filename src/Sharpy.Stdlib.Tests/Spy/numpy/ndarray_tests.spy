@@ -1,0 +1,74 @@
+# Ported from src/Sharpy.Stdlib.Tests/NdArrayTests.cs (#843, Phase 1).
+#
+# NdArray properties (ndim/size/shape) and strides (row-major). A value returned
+# from a module func (np.array(...), np.zeros(...).reshape(...)) is typed `object`
+# by the type checker (#955), so it cannot be element-indexed (a[i] / a[i,j]).
+# Member access (.ndim/.size/.shape[i]/.strides[i]) works because codegen emits
+# `var`. 2-D/3-D arrays are built via reshape (the only spy-expressible path to a
+# multi-dimensional array). All values are float (double) since only NdArray<double>
+# is constructible from .spy.
+#
+# Omissions (14 of 20 C# cases):
+#   - Constructor_ZeroDimensional_HasNdimZero, Constructor_EmptyDimension_HasSizeZero,
+#     Constructor_EmptyShapeWithZeroDim_HasSizeZero (3): require the internal NdArray
+#     ctor with an empty/zero-dim int[] shape; not constructible from .spy.
+#   - Constructor_DataLengthMismatch_Throws, Constructor_NegativeDimension_Throws,
+#     Constructor_NullData_Throws, Constructor_NullShape_Throws (4): internal-ctor
+#     argument errors; the null cases are also rejected at compile time (Axiom 3)
+#     and not expressible in type-safe Sharpy.
+#   - Shape_ReturnsDefensiveCopy, Strides_ReturnsDefensiveCopy (2): mutate the int[]
+#     returned by .shape/.strides; element-assigning an object-typed array's
+#     defensive copy is blocked by #955.
+#   - Dtype_Float64, Dtype_Float32, Dtype_Int32, Dtype_Int64, Dtype_Bool (5):
+#     non-double NdArray dtypes are not constructible from .spy (only float64).
+
+import numpy as np
+
+# -- properties --
+
+@test
+def test_properties_1d():
+    arr = np.array([1.0, 2.0, 3.0])
+    assert arr.ndim == 1
+    assert arr.size == 3
+    assert arr.shape[0] == 3
+
+@test
+def test_properties_2d():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    assert arr.ndim == 2
+    assert arr.size == 6
+    assert arr.shape[0] == 2
+    assert arr.shape[1] == 3
+
+@test
+def test_properties_3d():
+    arr = np.zeros(24).reshape(2, 3, 4)
+    assert arr.ndim == 3
+    assert arr.size == 24
+    assert arr.shape[0] == 2
+    assert arr.shape[1] == 3
+    assert arr.shape[2] == 4
+
+# -- strides (row-major) --
+
+@test
+def test_strides_1d():
+    arr = np.array([1.0, 2.0, 3.0])
+    # Contiguous 1-D: stride is 1.
+    assert arr.strides[0] == 1
+
+@test
+def test_strides_2d():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    # Row-major: strides are [cols, 1] = [3, 1].
+    assert arr.strides[0] == 3
+    assert arr.strides[1] == 1
+
+@test
+def test_strides_3d():
+    arr = np.zeros(24).reshape(2, 3, 4)
+    # Row-major: [3*4, 4, 1] = [12, 4, 1].
+    assert arr.strides[0] == 12
+    assert arr.strides[1] == 4
+    assert arr.strides[2] == 1
