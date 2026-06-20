@@ -1438,20 +1438,36 @@ internal partial class RoslynEmitter
 
             // Build the import alias from the module path parts
             // Also escape C# keywords like "base" -> "@base"
-            // For .NET namespace modules (e.g., system -> System), use the actual namespace name
+            // For .NET namespace modules (e.g., system -> System), use the actual namespace name.
+            // For sub-modules with a known C# class (e.g., numpy.random -> NumpyRandom),
+            // use the fully qualified class name so np.random.seed(42) emits NumpyRandom.Seed(42).
             var moduleParts = modulePath.Take(modulePartCount);
-            var aliasName = currentModule.NetNamespaceName != null
-                ? currentModule.NetNamespaceName
-                : EscapeCSharpKeyword(string.Join("_", moduleParts));
-
-            // If the entire path is just the module (no member access), return the alias
-            if (modulePartCount == modulePath.Count)
+            ExpressionSyntax moduleExpr;
+            if (currentModule.CSharpClassName != null)
             {
-                return IdentifierName(aliasName);
+                var ns = currentModule.CSharpNamespace ?? "Sharpy";
+                moduleExpr = MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), IdentifierName(ns)),
+                    IdentifierName(currentModule.CSharpClassName));
+            }
+            else if (currentModule.NetNamespaceName != null)
+            {
+                moduleExpr = IdentifierName(currentModule.NetNamespaceName);
+            }
+            else
+            {
+                moduleExpr = IdentifierName(EscapeCSharpKeyword(string.Join("_", moduleParts)));
             }
 
-            // Build member access: alias.Member1.Member2...
-            ExpressionSyntax expr = IdentifierName(aliasName);
+            // If the entire path is just the module (no member access), return it
+            if (modulePartCount == modulePath.Count)
+            {
+                return moduleExpr;
+            }
+
+            // Build member access: module.Member1.Member2...
+            ExpressionSyntax expr = moduleExpr;
             for (int i = modulePartCount; i < modulePath.Count; i++)
             {
                 var memberPart = modulePath[i];

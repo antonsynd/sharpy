@@ -472,6 +472,12 @@ public record ModuleSymbol : Symbol
     /// </summary>
     public string? CSharpNamespace { get; init; }
 
+    /// <summary>
+    /// The simple C# class name for this module (e.g., "NumpyRandom" for "numpy.random").
+    /// Set during lazy sub-module resolution in the type checker.
+    /// </summary>
+    public string? CSharpClassName { get; init; }
+
     public virtual bool Equals(ModuleSymbol? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

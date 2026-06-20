@@ -789,6 +789,7 @@ internal partial class ImportResolver
             Module = null!,
             ExportedSymbols = new Dictionary<string, Symbol>(),
             IsNetModule = true,
+            CanonicalModuleName = moduleName,
             CSharpNamespace = _moduleRegistry.GetModuleCSharpNamespace(moduleName),
             CSharpClassName = _moduleRegistry.GetModuleCSharpClassName(moduleName)
         };
