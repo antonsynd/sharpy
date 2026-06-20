@@ -74,10 +74,10 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | NdArrayOperatorTests.cs | 19 | Spy/numpy/ndarray_operator_tests.spy | 14 | ported (5 omitted: NdArray<int> ops, null args Axiom 3, row+col broadcast needs internal ctor) |
 | NdArrayReshapeTests.cs | 20 | Spy/numpy/ndarray_reshape_tests.spy | 16 | ported (4 omitted: null arg Axiom 3, view/copy mutation tests need element set) |
 | NdArraySlicingTests.cs | 22 | Spy/numpy/ndarray_slicing_tests.spy | 10 | ported (12 omitted: SliceSpec/Slice() internal C# API, NdArray single-axis slice codegen gap) |
-| NdArrayAdvancedTests.cs | 32 | Spy/numpy/ndarray_advanced_tests.spy | 11 | ported (21 omitted: NdArray<int/bool> ctor, boolean/fancy indexing, ISized cast, LINQ, reflection) |
+| NdArrayAdvancedTests.cs | 32 | Spy/numpy/ndarray_advanced_tests.spy | 10 | ported (22 omitted: NdArray<int/bool> ctor, boolean/fancy indexing, ISized cast, LINQ, reflection) |
 | NumpyCreationTests.cs | 31 | Spy/numpy/numpy_creation_tests.spy | 27 | ported (4 omitted: Array_Null Axiom 3; Full×3 — np.full takes CLR int[] shape, #959. Element values verified via np.allclose / 2-D content via reductions since results are object #955) |
 | NumpyFftTests.cs | 16 | Spy/numpy/numpy_fft_tests.spy | 7 | ported (9 omitted: NdArray<Complex> element access, fft expects Complex param via CLR discovery) |
-| NumpyLinalgTests.cs | 37 | Spy/numpy/numpy_linalg_tests.spy | 35 | ported (2 omitted: null args Axiom 3) |
+| NumpyLinalgTests.cs | 37 | Spy/numpy/numpy_linalg_tests.spy | 33 | ported (4 omitted: null args Axiom 3, eig/svd tuple destructuring) |
 | NumpyManipulationTests.cs | 22 | Spy/numpy/numpy_manipulation_tests.spy | 18 | ported (4 omitted: empty array/indices not expressible, NdArray<bool> ctor for Where) |
 | NumpyMathTests.cs | 37 | Spy/numpy/numpy_math_tests.spy | 29 | ported (8 omitted: Power_ArrayScalar/ScalarArray — object+scalar overload → NdArray<object> SPY0900 #955; Power_BroadcastsRowAndColumn #957/#959; 5 comparison tests — bool-array results indexed via r[i] #955. Elementwise verified via np.allclose at C# 1e-12 tol; 2-D via reshape) |
 | NumpyRandomTests.cs | 17 | Spy/numpy/numpy_random_tests.spy | 11 | ported (6 omitted: NdArray<int> source for Choice, NdArray<int> + ._data access for Shuffle) |
@@ -216,6 +216,8 @@ layer of out-of-scope gaps discovered during re-enablement and stay excluded in
 
 ## Phase 5b (numpy) — PORTABLE SUBSET PORTED, REST DEFERRED (2026-06-18)
 
+> **Update (2026-06-20):** All 10 deferred files were subsequently ported in the final closeout after blockers #955–#976 were fixed. See "Final Closeout" section below.
+
 Per the "port portable, defer blocked" decision (coverage-first). Deep probing
 confirmed and extended the 5a triage: the indexing/operator/slicing/2-D-construction
 files are blocked by #955–#958, and a **new** gap (#959, CLR array params not
@@ -337,3 +339,39 @@ New gaps filed during Phase 6: **#965** (candidate filter IsAssignable vs IsArgu
 **#966** (ArgMatchesGenericShape wildcard), **#967** (missing ResolveClrParameterType AQN-strip test),
 **#968** (NdArray\<Complex\> struct constraint), **#969** (generic T inference from object-typed NdArray),
 **#970** (scalar-LEFT operators rejected), **#971** (unary negation returns object).
+
+## Final Closeout — COMPLETE (2026-06-20)
+
+All blockers (#955–#976) fixed. The 10 deferred numpy C# test files were ported to
+`.spy`, `ModuleIntegrationTests.cs` deleted as redundant, FluentAssertions stripped
+from `Sharpy.Stdlib.Tests.csproj`, and issue **#843** closed.
+
+Sub-module attribute access (`np.fft.fft()`, `np.linalg.det()`, `np.random.seed()`)
+fixed in **#977** (4 files: TypeChecker guard widening, ModuleSymbol.CSharpClassName,
+RoslynEmitter sub-module emission, ImportResolver marking).
+
+| File | C# | .spy | Omitted |
+|------|----|------|---------|
+| NdArrayTests | 20 | 6 | 14 |
+| NdArrayIndexingTests | 14 | 10 | 4 |
+| NdArrayReshapeTests | 20 | 16 | 4 |
+| NdArrayOperatorTests | 19 | 14 | 5 |
+| NdArraySlicingTests | 22 | 10 | 12 |
+| NdArrayAdvancedTests | 32 | 10 | 22 |
+| NumpyLinalgTests | 37 | 33 | 4 |
+| NumpyFftTests | 16 | 7 | 9 |
+| NumpyRandomTests | 17 | 11 | 6 |
+| NumpyManipulationTests | 22 | 18 | 4 |
+| ModuleIntegrationTests | 7 | 0 | 7 (deleted, redundant) |
+| **Subtotal** | **226** | **135** | **91** |
+
+## Grand Rollup
+
+| Metric | Count |
+|--------|-------|
+| C# test files ported/deleted | 111 |
+| C# tests (source) | 3,204 |
+| .spy tests (ported) | 2,815 |
+| Documented omissions | 389 |
+| Remaining C# test files | 3 (UnittestMarkerTests, UnittestCapturedOutputTests, UnittestTmpPathTests — C# runtime helpers, out of scope) |
+| Remaining C# tests | 18 |
