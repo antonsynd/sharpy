@@ -1,0 +1,11 @@
+# Verify from-imported generic functions preserve TypeParameters (#976).
+# numpy.random.choice[T] has constraint: where T : struct, IEquatable<T>
+from numpy.random import seed, choice
+import numpy as np
+
+def main():
+    seed(42)
+    arr = np.array([10.0, 20.0, 30.0, 40.0, 50.0])
+    picked = choice(arr, 3, True)
+    print(len(picked))
+    print(type(picked).__name__)

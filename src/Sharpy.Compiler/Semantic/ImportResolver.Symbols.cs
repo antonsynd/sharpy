@@ -106,20 +106,13 @@ internal partial class ImportResolver
 
         var result = originalSymbol switch
         {
-            FunctionSymbol func => new FunctionSymbol
+            FunctionSymbol func => func with
             {
                 Name = effectiveName,
-                Kind = func.Kind,
-                Parameters = func.Parameters,
-                ReturnType = func.ReturnType,
-                AccessLevel = func.AccessLevel,
                 DeclarationLine = fromImport.LineStart,
                 DeclarationColumn = fromImport.ColumnStart,
-                NameDeclarationLine = func.NameDeclarationLine,
-                NameDeclarationColumn = func.NameDeclarationColumn,
                 IsReExport = true,
-                OriginalModule = fromImport.Module,
-                ClrMethodName = func.ClrMethodName
+                OriginalModule = fromImport.Module
             },
             TypeSymbol type => CreateReExportedTypeSymbol(type, fromImport, effectiveName),
             VariableSymbol var => new VariableSymbol
