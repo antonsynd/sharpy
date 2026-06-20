@@ -1,0 +1,21 @@
+# Constructing an empty optional: None() (call form) and bare None both
+# produce a None optional when the target type is annotated.
+def main():
+    a: int? = None()
+    print(a.is_none)
+    print(a.is_some)
+
+    b: str? = None
+    print(b.is_none)
+
+    # A None optional narrows away in an `is not None` branch.
+    c: int? = None()
+    if c is not None:
+        print(c)
+    else:
+        print("empty")
+
+    # Reassigning to Some flips the flags.
+    a = Some(5)
+    print(a.is_none)
+    print(a.unwrap())

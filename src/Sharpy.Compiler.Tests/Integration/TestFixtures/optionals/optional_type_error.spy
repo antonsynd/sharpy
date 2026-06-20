@@ -1,0 +1,7 @@
+# An Optional[T] (T?) cannot be used as a bare T. Arithmetic on int?
+# without narrowing or unwrapping is a compile-time error; the value must
+# first be narrowed (if x is not None:) or unwrapped (.unwrap()/.unwrap_or()).
+def main():
+    x: int? = Some(5)
+    y: int = x + 1
+    print(y)

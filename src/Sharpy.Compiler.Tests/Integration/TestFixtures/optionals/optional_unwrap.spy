@@ -1,0 +1,12 @@
+# Optional[T].unwrap() returns the contained value for a Some optional.
+# Unwrapping a None() optional would throw at runtime, so only the happy
+# path (Some) is exercised here.
+def main():
+    x: int? = Some(42)
+    print(x.unwrap())
+
+    name: str? = Some("Alice")
+    print(name.unwrap())
+
+    flag: bool? = Some(True)
+    print(flag.unwrap())

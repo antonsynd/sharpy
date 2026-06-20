@@ -1,0 +1,16 @@
+# Optional[T].unwrap_or(default) and unwrap_or_else(f) supply fallbacks
+# only when the optional is None.
+def expensive_default() -> int:
+    return 7 * 6
+
+def main():
+    some: int? = Some(10)
+    none: int? = None()
+
+    # unwrap_or returns the value for Some, the default for None.
+    print(some.unwrap_or(0))
+    print(none.unwrap_or(0))
+
+    # unwrap_or_else only invokes the lambda when None.
+    print(some.unwrap_or_else(lambda: expensive_default()))
+    print(none.unwrap_or_else(lambda: expensive_default()))

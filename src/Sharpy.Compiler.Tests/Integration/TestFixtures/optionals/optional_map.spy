@@ -1,0 +1,17 @@
+# Optional[T].map(f) transforms a Some value and short-circuits on None.
+def main():
+    x: int? = Some(21)
+    doubled: int? = x.map(lambda v: v * 2)
+    print(doubled.unwrap())
+
+    # Chained maps compose left to right.
+    chained: int? = x.map(lambda v: v + 1).map(lambda v: v * 10)
+    print(chained.unwrap())
+
+    # map on None propagates None; unwrap_or supplies the fallback.
+    empty: int? = None()
+    print(empty.map(lambda v: v * 2).unwrap_or(-1))
+
+    # map can change the element type.
+    label: str? = x.map(lambda v: f"n={v}")
+    print(label.unwrap())
