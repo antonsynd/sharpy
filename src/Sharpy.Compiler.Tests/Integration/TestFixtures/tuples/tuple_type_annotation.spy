@@ -1,0 +1,5 @@
+def main() -> None:
+    t: tuple[int, str, bool] = (1, "x", True)
+    print(t[0])
+    print(t[1])
+    print(t[2])

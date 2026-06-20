@@ -1,0 +1,4 @@
+def main() -> None:
+    t: () = ()
+    print(t)
+    print(len(t))

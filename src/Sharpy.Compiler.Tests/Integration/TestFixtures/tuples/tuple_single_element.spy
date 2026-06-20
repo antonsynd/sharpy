@@ -1,0 +1,5 @@
+def main() -> None:
+    t: tuple[int] = (1,)
+    print(t)
+    print(len(t))
+    print(t[0])

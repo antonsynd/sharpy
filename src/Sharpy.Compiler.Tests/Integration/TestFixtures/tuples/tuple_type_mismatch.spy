@@ -1,0 +1,5 @@
+def main() -> None:
+    # The second element is annotated str but a literal int is supplied,
+    # so the inferred tuple type does not match the declared type.
+    t: tuple[int, str] = (1, 2)
+    print(t)

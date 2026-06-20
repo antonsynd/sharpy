@@ -1,0 +1,4 @@
+def main() -> None:
+    items: list[tuple[int, int]] = [(1, 2), (3, 4)]
+    for a, b in items:
+        print(a + b)
