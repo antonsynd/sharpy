@@ -1,0 +1,34 @@
+# Or-patterns combining literal alternatives with a guard on the same arm,
+# plus string-literal or-patterns. (Binding patterns inside `|` are not
+# allowed, so alternatives are constants only.)
+def route(code: int, secure: bool) -> str:
+    match code:
+        case 200 | 201 | 204 if secure:
+            return "ok-secure"
+        case 200 | 201 | 204:
+            return "ok"
+        case 400 | 401 | 403 | 404:
+            return "client-error"
+        case 500 | 502 | 503:
+            return "server-error"
+        case _:
+            return "unknown"
+
+def grade(letter: str) -> str:
+    match letter:
+        case "A" | "B":
+            return "pass-high"
+        case "C" | "D":
+            return "pass-low"
+        case _:
+            return "fail"
+
+def main():
+    print(route(200, True))
+    print(route(204, False))
+    print(route(404, True))
+    print(route(503, False))
+    print(route(302, False))
+    print(grade("A"))
+    print(grade("D"))
+    print(grade("F"))

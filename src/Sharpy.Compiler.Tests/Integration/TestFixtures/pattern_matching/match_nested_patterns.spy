@@ -1,0 +1,43 @@
+# Nested destructuring: class-inside-class positional patterns and
+# tuple-inside-tuple patterns, with bindings at the inner level.
+class Point:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+class Segment:
+    start: Point
+    end: Point
+
+    def __init__(self, start: Point, end: Point):
+        self.start = start
+        self.end = end
+
+def describe(seg: Segment) -> str:
+    match seg:
+        case Segment(Point(0, 0), Point(ex, ey)):
+            return f"from origin to ({ex}, {ey})"
+        case Segment(Point(sx, sy), Point(0, 0)):
+            return f"from ({sx}, {sy}) to origin"
+        case _:
+            return "general segment"
+
+def classify_pair(pair: tuple[int, tuple[int, int]]) -> str:
+    match pair:
+        case (1, (a, b)):
+            return f"one then ({a}, {b})"
+        case (n, (0, 0)):
+            return f"{n} then origin"
+        case _:
+            return "other pair"
+
+def main():
+    print(describe(Segment(Point(0, 0), Point(3, 4))))
+    print(describe(Segment(Point(5, 6), Point(0, 0))))
+    print(describe(Segment(Point(1, 1), Point(2, 2))))
+    print(classify_pair((1, (7, 8))))
+    print(classify_pair((9, (0, 0))))
+    print(classify_pair((2, (3, 4))))

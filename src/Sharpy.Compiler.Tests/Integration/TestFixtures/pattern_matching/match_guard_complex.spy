@@ -1,0 +1,19 @@
+# Guards with method calls and compound boolean expressions on a str subject.
+# Arms are tried top to bottom; the first guard that holds wins.
+def classify(s: str) -> str:
+    match s:
+        case _ if s.startswith("a") and len(s) > 3:
+            return "long-a"
+        case _ if s.startswith("a"):
+            return "short-a"
+        case _ if len(s) > 5 or s.endswith("z"):
+            return "big-or-z"
+        case _:
+            return "other"
+
+def main():
+    print(classify("apple"))
+    print(classify("at"))
+    print(classify("bananarama"))
+    print(classify("buzz"))
+    print(classify("hi"))

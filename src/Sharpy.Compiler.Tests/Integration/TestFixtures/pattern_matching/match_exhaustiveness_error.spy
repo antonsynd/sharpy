@@ -1,0 +1,16 @@
+# A match EXPRESSION over a finite enum must cover every member (or include a
+# wildcard); omitting one is a compile-time exhaustiveness error (SPY0416).
+enum Direction:
+    NORTH = 0
+    SOUTH = 1
+    EAST = 2
+    WEST = 3
+
+def label(d: Direction) -> str:
+    return match d:
+        case Direction.NORTH: "N"
+        case Direction.SOUTH: "S"
+        case Direction.EAST: "E"
+
+def main():
+    print(label(Direction.NORTH))

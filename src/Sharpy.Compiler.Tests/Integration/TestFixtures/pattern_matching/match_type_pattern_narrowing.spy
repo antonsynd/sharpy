@@ -1,0 +1,18 @@
+# A type pattern (`T() as name`) narrows the binding to T inside the arm, so
+# type-specific operations are valid: str.upper(), int arithmetic, len(list).
+def render(x: object) -> str:
+    match x:
+        case str() as s:
+            return "str:" + s.upper()
+        case int() as n:
+            return "int:" + str(n * n)
+        case list() as items:
+            return "list:" + str(len(items))
+        case _:
+            return "other"
+
+def main():
+    print(render("hello"))
+    print(render(7))
+    print(render([1, 2, 3, 4]))
+    print(render(3.14))
