@@ -1,0 +1,12 @@
+# Verify from-imported unconstrained generic functions work after
+# CreateReExportSymbol fix (#976). heapq functions are generic but
+# have no CLR constraints (unlike numpy.random.choice).
+from heapq import heappush, heappop
+
+def main():
+    heap: list[int] = []
+    heappush(heap, 3)
+    heappush(heap, 1)
+    heappush(heap, 2)
+    print(heappop(heap))
+    print(heappop(heap))

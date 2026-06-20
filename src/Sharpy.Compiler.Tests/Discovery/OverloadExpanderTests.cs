@@ -218,4 +218,44 @@ public class OverloadExpanderTests
             Assert.Equal("Sharpy.Core|Dict|get|2", overload.MethodToken);
         }
     }
+
+    [Fact]
+    public void Expand_PreservesConstrainedTypeParameterInfo()
+    {
+        var sig = new FunctionSignature
+        {
+            Name = "choice",
+            Parameters =
+            [
+                MakeParam("a", MakeType("NdArray", isGenericParam: false)),
+                MakeParam("size", MakeType("int")),
+                MakeParam("replace", MakeType("bool"), hasDefault: true),
+            ],
+            ReturnType = MakeType("NdArray", isGenericParam: false),
+            TypeParameters =
+            [
+                new TypeParameterInfo
+                {
+                    Name = "T",
+                    HasValueTypeConstraint = true,
+                    HasDefaultConstructorConstraint = true,
+                    InterfaceConstraints = ["IEquatable`1"],
+                },
+            ],
+        };
+
+        var result = OverloadExpander.Expand(sig, "NumpyRandom");
+
+        Assert.Equal(2, result.Count);
+        foreach (var overload in result)
+        {
+            Assert.Single(overload.TypeParameters);
+            var tp = overload.TypeParameters[0];
+            Assert.Equal("T", tp.Name);
+            Assert.True(tp.HasValueTypeConstraint);
+            Assert.True(tp.HasDefaultConstructorConstraint);
+            Assert.Single(tp.InterfaceConstraints);
+            Assert.Equal("IEquatable`1", tp.InterfaceConstraints[0]);
+        }
+    }
 }

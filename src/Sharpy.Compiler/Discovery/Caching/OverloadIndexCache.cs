@@ -16,7 +16,7 @@ internal class OverloadIndexCache
     private readonly ICompilerLogger _logger;
     // v15: [SharpyModule] class names recorded for module alias resolution (#891).
     // v16: value-type Nullable<T> parameters now serialize via the __nullable__ sentinel (#890).
-    // v17: previous format version.
+    // v17: closed-generic CLR type construction for NdArray operator resolution (#970, #971).
     // v18: TypeParameters changed from List<string> to List<TypeParameterInfo> with CLR constraints (#976).
     internal const int CurrentCacheFormatVersion = 18;
 

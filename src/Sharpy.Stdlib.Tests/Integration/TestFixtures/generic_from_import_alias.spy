@@ -1,0 +1,11 @@
+# Verify from-imported generic function with alias preserves
+# TypeParameters and compiles correctly (#976).
+from numpy.random import choice as pick, seed
+import numpy as np
+
+def main():
+    seed(42)
+    arr = np.array([10.0, 20.0, 30.0, 40.0, 50.0])
+    picked = pick(arr, 3, True)
+    print(len(picked))
+    print(type(picked).__name__)

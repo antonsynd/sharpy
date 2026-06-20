@@ -4,8 +4,8 @@ using Sharpy.Compiler.Semantic;
 namespace Sharpy.Compiler.Discovery;
 
 /// <summary>
-/// Shared CLR type inspection helpers used by both <see cref="CodeGen.TypeSyntaxMapper"/>
-/// and the protocol validator.
+/// Shared CLR type inspection helpers used by semantic analysis, code generation,
+/// and validators.
 /// </summary>
 internal static class ClrTypeHelper
 {
