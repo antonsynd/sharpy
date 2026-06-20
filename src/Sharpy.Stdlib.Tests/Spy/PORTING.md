@@ -68,19 +68,19 @@ bash build_tools/regenerate_spy_tests.sh --dry-run  # Preview
 | LruCacheTests.cs | 13 | Spy/functools/lru_cache_tests.spy | 13 | ported |
 | MathAdditionalTests.cs | 48 | Spy/math/math_additional_tests.spy | 48 | ported |
 | MathAdditionalTests2.cs | 72 | Spy/math/math_additional2_tests.spy | 72 | ported |
-| ModuleIntegrationTests.cs | 7 | | | pending |
-| NdArrayTests.cs | 20 | | | deferred (C# kept: internal NdArray(data, shape) construction + multi-dtype; no .spy surface) |
-| NdArrayIndexingTests.cs | 14 | | | deferred (C# kept; .spy fixture: `ndarray_indexing.spy` — 1-D/2-D/3-D indexing) |
-| NdArrayOperatorTests.cs | 19 | | | deferred (C# kept; .spy fixture: `ndarray_operators.spy` — +/-/*/÷, scalar/shape broadcast) |
-| NdArrayReshapeTests.cs | 20 | | | deferred (C# kept; .spy fixture: `ndarray_reshape.spy` — reshape/transpose/flatten/ravel/copy) |
-| NdArraySlicingTests.cs | 22 | | | deferred (C# kept; .spy fixture: `ndarray_slicing.spy` — 1-D/multi-axis slicing, view mutation) |
-| NdArrayAdvancedTests.cs | 32 | | | deferred (C# kept; .spy fixture: `ndarray_advanced.spy` — sort/argsort/unique/searchsorted/allclose/isnan/isinf) |
+| ModuleIntegrationTests.cs | 7 | | 0 | deleted (redundant with module-specific test suites: sys, math, random, datetime, collections) |
+| NdArrayTests.cs | 20 | Spy/numpy/ndarray_tests.spy | 6 | ported (14 omitted: internal ctor, non-double dtypes, defensive copy blocked by #955) |
+| NdArrayIndexingTests.cs | 14 | Spy/numpy/ndarray_indexing_tests.spy | 10 | ported (4 omitted: element set on object-typed NdArray not supported, null arg Axiom 3) |
+| NdArrayOperatorTests.cs | 19 | Spy/numpy/ndarray_operator_tests.spy | 14 | ported (5 omitted: NdArray<int> ops, null args Axiom 3, row+col broadcast needs internal ctor) |
+| NdArrayReshapeTests.cs | 20 | Spy/numpy/ndarray_reshape_tests.spy | 16 | ported (4 omitted: null arg Axiom 3, view/copy mutation tests need element set) |
+| NdArraySlicingTests.cs | 22 | Spy/numpy/ndarray_slicing_tests.spy | 10 | ported (12 omitted: SliceSpec/Slice() internal C# API, NdArray single-axis slice codegen gap) |
+| NdArrayAdvancedTests.cs | 32 | Spy/numpy/ndarray_advanced_tests.spy | 11 | ported (21 omitted: NdArray<int/bool> ctor, boolean/fancy indexing, ISized cast, LINQ, reflection) |
 | NumpyCreationTests.cs | 31 | Spy/numpy/numpy_creation_tests.spy | 27 | ported (4 omitted: Array_Null Axiom 3; Full×3 — np.full takes CLR int[] shape, #959. Element values verified via np.allclose / 2-D content via reductions since results are object #955) |
-| NumpyFftTests.cs | 16 | | | deferred (C# kept: NdArray\<Complex\> struct constraint violation #968) |
-| NumpyLinalgTests.cs | 37 | | | deferred (C# kept; .spy fixture: `numpy_linalg.spy` — dot/matmul/inv/det/eig/svd/solve/norm) |
-| NumpyManipulationTests.cs | 22 | | | deferred (C# kept: np.greater/np.where blocked by #969; scalar-LEFT operators blocked by #970) |
+| NumpyFftTests.cs | 16 | Spy/numpy/numpy_fft_tests.spy | 7 | ported (9 omitted: NdArray<Complex> element access, fft expects Complex param via CLR discovery) |
+| NumpyLinalgTests.cs | 37 | Spy/numpy/numpy_linalg_tests.spy | 35 | ported (2 omitted: null args Axiom 3) |
+| NumpyManipulationTests.cs | 22 | Spy/numpy/numpy_manipulation_tests.spy | 18 | ported (4 omitted: empty array/indices not expressible, NdArray<bool> ctor for Where) |
 | NumpyMathTests.cs | 37 | Spy/numpy/numpy_math_tests.spy | 29 | ported (8 omitted: Power_ArrayScalar/ScalarArray — object+scalar overload → NdArray<object> SPY0900 #955; Power_BroadcastsRowAndColumn #957/#959; 5 comparison tests — bool-array results indexed via r[i] #955. Elementwise verified via np.allclose at C# 1e-12 tol; 2-D via reshape) |
-| NumpyRandomTests.cs | 17 | | | deferred (C# kept: choice/shuffle generic T not inferable #969; randint/uniform shape args CLR int[] #959) |
+| NumpyRandomTests.cs | 17 | Spy/numpy/numpy_random_tests.spy | 11 | ported (6 omitted: NdArray<int> source for Choice, NdArray<int> + ._data access for Shuffle) |
 | OrderedDictTests.cs | 13 | Spy/collections/ordered_dict_tests.spy | 13 | ported |
 | OsModuleTests.cs | 33 | Spy/os/os_module_tests.spy | 33 | ported (constants use C# field names os.Sep/os.Linesep/os.Name/os.Environ — static module fields aren't snake_case-mapped in project compilation, SPY0203 / #940; mirrors C# OsModule.Sep) |
 | OsModuleAdditionalTests.cs | 16 | Spy/os/os_module_additional_tests.spy | 16 | ported (os.Altsep/os.Pathsep/os.Environ as above; list/dict membership via `contains` helper / bool local to avoid xUnit2009) |
