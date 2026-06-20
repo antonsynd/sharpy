@@ -1,4 +1,5 @@
 using System;
+using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Discovery;
 
@@ -8,6 +9,31 @@ namespace Sharpy.Compiler.Discovery;
 /// </summary>
 internal static class ClrTypeHelper
 {
+    internal static Type? TryConstructClosedGeneric(GenericType generic, Func<SemanticType, Type?> resolveClrType)
+    {
+        var openDef = generic.GenericDefinition?.ClrType;
+        if (openDef == null || !openDef.IsGenericTypeDefinition)
+            return openDef;
+
+        var clrArgs = new Type[generic.TypeArguments.Count];
+        for (int i = 0; i < generic.TypeArguments.Count; i++)
+        {
+            var arg = resolveClrType(generic.TypeArguments[i]);
+            if (arg == null)
+                return openDef;
+            clrArgs[i] = arg;
+        }
+
+        try
+        {
+            return openDef.MakeGenericType(clrArgs);
+        }
+        catch (ArgumentException)
+        {
+            return openDef;
+        }
+    }
+
     /// <summary>
     /// Gets the element type if the given type is <c>Sharpy.Iterator&lt;T&gt;</c>
     /// or extends <c>Sharpy.Iterator&lt;T&gt;</c>. Returns <c>null</c> otherwise.

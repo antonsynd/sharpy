@@ -1600,26 +1600,7 @@ internal partial class RoslynEmitter
     }
 
     private static Type? TryConstructClosedClrType(GenericType generic)
-    {
-        var openDef = generic.GenericDefinition?.ClrType;
-        if (openDef == null || !openDef.IsGenericTypeDefinition)
-            return openDef;
-
-        var clrArgs = new Type[generic.TypeArguments.Count];
-        for (int i = 0; i < generic.TypeArguments.Count; i++)
-        {
-            clrArgs[i] = generic.TypeArguments[i].ClrType ?? typeof(object);
-        }
-
-        try
-        {
-            return openDef.MakeGenericType(clrArgs);
-        }
-        catch (ArgumentException)
-        {
-            return openDef;
-        }
-    }
+        => Discovery.ClrTypeHelper.TryConstructClosedGeneric(generic, t => t.ClrType ?? typeof(object));
 
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {

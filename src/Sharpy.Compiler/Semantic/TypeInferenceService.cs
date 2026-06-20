@@ -1265,29 +1265,7 @@ internal class TypeInferenceService
     }
 
     private Type? TryConstructClosedGeneric(GenericType generic)
-    {
-        var openDef = generic.GenericDefinition?.ClrType;
-        if (openDef == null || !openDef.IsGenericTypeDefinition)
-            return openDef;
-
-        var clrArgs = new Type[generic.TypeArguments.Count];
-        for (int i = 0; i < generic.TypeArguments.Count; i++)
-        {
-            var arg = GetClrType(generic.TypeArguments[i]);
-            if (arg == null)
-                return openDef;
-            clrArgs[i] = arg;
-        }
-
-        try
-        {
-            return openDef.MakeGenericType(clrArgs);
-        }
-        catch (ArgumentException)
-        {
-            return openDef;
-        }
-    }
+        => Discovery.ClrTypeHelper.TryConstructClosedGeneric(generic, GetClrType);
 
     /// <summary>
     /// Recursively unwraps <see cref="NullableType"/> (C# nullable interop) wrappers for
