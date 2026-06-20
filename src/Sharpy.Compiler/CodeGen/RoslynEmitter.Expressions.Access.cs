@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
@@ -1523,7 +1524,7 @@ internal partial class RoslynEmitter
         // Spread TupleLiteral index into separate arguments for params indexers (#956).
         // a[1, 2] parses as IndexAccess(TupleLiteral) — spread to a[1, 2] in C# for
         // types with params int[] indexers (e.g., NdArray), instead of a[(1, 2)].
-        if (indexAccess.Index is TupleLiteral tuple && IsNdArrayType(objectType))
+        if (indexAccess.Index is TupleLiteral tuple && HasParamsIndexer(objectType))
         {
             var objExprSpread = GenerateExpression(indexAccess.Object);
             var args = new List<ArgumentSyntax>();
@@ -1574,13 +1575,51 @@ internal partial class RoslynEmitter
     private static bool TryGetConstantIntIndex(Expression expr, out int value)
         => AstHelper.TryGetConstantIntIndex(expr, out value);
 
-    // TODO(#972): Replace with CLR reflection for params indexers.
-    private static bool IsNdArrayType(SemanticType? type) =>
-        type is UserDefinedType udt
-            && (udt.Symbol?.Name == "ndarray"
-                || (udt.Name == "object" && udt.Symbol?.Name == "NdArray"))
-        || type is GenericType gt
-            && string.Equals(gt.Name, "NdArray", StringComparison.OrdinalIgnoreCase);
+    private static bool HasParamsIndexer(SemanticType? type)
+    {
+        var clrType = type switch
+        {
+            UserDefinedType udt => udt.Symbol?.ClrType,
+            BuiltinType bt => bt.ClrType,
+            GenericType gt => TryConstructClosedClrType(gt),
+            _ => null
+        };
+
+        if (clrType == null)
+            return false;
+
+        foreach (var prop in clrType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+        {
+            var indexParams = prop.GetIndexParameters();
+            if (indexParams.Length > 0 &&
+                indexParams[indexParams.Length - 1].GetCustomAttribute<ParamArrayAttribute>() != null)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static Type? TryConstructClosedClrType(GenericType generic)
+    {
+        var openDef = generic.GenericDefinition?.ClrType;
+        if (openDef == null || !openDef.IsGenericTypeDefinition)
+            return openDef;
+
+        var clrArgs = new Type[generic.TypeArguments.Count];
+        for (int i = 0; i < generic.TypeArguments.Count; i++)
+        {
+            clrArgs[i] = generic.TypeArguments[i].ClrType ?? typeof(object);
+        }
+
+        try
+        {
+            return openDef.MakeGenericType(clrArgs);
+        }
+        catch (ArgumentException)
+        {
+            return openDef;
+        }
+    }
 
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {

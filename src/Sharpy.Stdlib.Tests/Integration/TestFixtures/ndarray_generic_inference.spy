@@ -1,0 +1,28 @@
+# Verify generic type inference from NdArray arguments works after
+# ClrTypeMapper and CachedModuleDiscovery fixes (#969).
+import numpy as np
+
+def main():
+    a = np.array([1.0, 4.0, 2.0])
+    b = np.array([3.0, 2.0, 5.0])
+
+    # np.greater[T](NdArray[T], NdArray[T]) -> NdArray[bool]: T inferred from args.
+    g = np.greater(a, b)
+    print(g[0])
+    print(g[1])
+    print(g[2])
+
+    # np.where(NdArray[bool], NdArray[float64], NdArray[float64]) -> NdArray[float64].
+    cond = np.array([True, False, True])
+    x = np.array([10.0, 20.0, 30.0])
+    y = np.array([100.0, 200.0, 300.0])
+    w = np.where(cond, x, y)
+    print(w[0])
+    print(w[1])
+    print(w[2])
+
+    # np.less_equal[T](NdArray[T], NdArray[T]) -> NdArray[bool]: T inferred.
+    le = np.less_equal(a, b)
+    print(le[0])
+    print(le[1])
+    print(le[2])

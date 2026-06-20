@@ -810,15 +810,24 @@ internal class CachedModuleDiscovery
                 };
             }
 
+            var baseName = signature.Name.Contains('[', StringComparison.Ordinal)
+                ? signature.Name[..signature.Name.IndexOf('[', StringComparison.Ordinal)]
+                : signature.Name;
+
+            TypeSymbol? genDef = null;
+            if (!string.IsNullOrEmpty(signature.ClrTypeName))
+            {
+                var clrKey = ClrNameHelper.ToFullClrName(signature.ClrTypeName);
+                _moduleTypeSymbols.TryGetValue(clrKey, out genDef);
+            }
+
             return new GenericType
             {
-                // Extract base name before '[' if present; otherwise use the whole name.
-                Name = signature.Name.Contains('[', StringComparison.Ordinal)
-                    ? signature.Name[..signature.Name.IndexOf('[', StringComparison.Ordinal)]
-                    : signature.Name,
+                Name = baseName,
                 TypeArguments = signature.TypeArguments
                     .Select(ta => ConvertTypeSignature(ta, sharedTypeParams))
-                    .ToList()
+                    .ToList(),
+                GenericDefinition = genDef
             };
         }
 

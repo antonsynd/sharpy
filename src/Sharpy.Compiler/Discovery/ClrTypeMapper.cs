@@ -378,6 +378,28 @@ internal class ClrTypeMapper
             };
         }
 
+        // NdArray<T> — first-class stdlib generic backed by CLR; needs GenericDefinition
+        // so GetClrType can construct closed generics for operator resolution (#968, #971).
+        if (genericDef.FullName == Shared.CSharpTypeNames.SharpyNdArray + "`1")
+        {
+            var defSymbol = new TypeSymbol
+            {
+                Name = "NdArray",
+                Kind = SymbolKind.Type,
+                TypeKind = TypeKind.Class,
+                ClrType = genericDef
+            };
+            return new GenericType
+            {
+                Name = "NdArray",
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0])
+                },
+                GenericDefinition = defSymbol
+            };
+        }
+
         // Unknown generic type - fallback to object
         return SemanticType.Object;
     }

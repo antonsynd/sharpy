@@ -445,16 +445,15 @@ internal class TypeInferenceService
                 var bestOverload = FindBestOverload(methods, right);
                 if (bestOverload != null)
                 {
-                    // Discovery-loaded generic types (e.g., Counter<T>) may have
-                    // operator return types that resolved to 'object' because the
-                    // CLR type mapper couldn't represent the self-referential generic
-                    // type (Counter<T> returns Counter<T>). In that case, use the
-                    // left operand type which is the correctly-instantiated generic.
-                    // Only apply for self-returning operators (arithmetic/bitwise),
-                    // not comparison operators which should return bool.
-                    if (bestOverload.ReturnType == SemanticType.Object && left is GenericType
-                        && !IsComparisonOperator(op))
-                        return left;
+                    if (left is GenericType leftGeneric && !IsComparisonOperator(op))
+                    {
+                        if (bestOverload.ReturnType == SemanticType.Object)
+                            return left;
+                        if (bestOverload.ReturnType is GenericType retGeneric
+                            && retGeneric.Name == leftGeneric.Name
+                            && retGeneric.TypeArguments.Any(a => a is TypeParameterType))
+                            return left;
+                    }
                     return bestOverload.ReturnType;
                 }
             }
@@ -534,6 +533,15 @@ internal class TypeInferenceService
             if (genericMatch != null)
                 return genericMatch;
         }
+
+        // Bare TypeParameterType matches any concrete argument (e.g., NdArray's operator+(NdArray<T>, T)
+        // where T is a generic parameter that accepts any scalar).
+        var typeParamMatch = candidates.FirstOrDefault(c =>
+            c.Parameters.Count == 2 &&
+            c.Parameters[1].Type is TypeParameterType);
+
+        if (typeParamMatch != null)
+            return typeParamMatch;
 
         return null;
     }
@@ -872,12 +880,26 @@ internal class TypeInferenceService
         if (dunderName == null)
             return null;
 
-        if (operand is UserDefinedType udt && udt.Symbol != null &&
-            udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
+        TypeSymbol? typeSymbol = operand switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            GenericType gt => gt.GenericDefinition,
+            _ => null
+        };
+
+        if (typeSymbol != null &&
+            typeSymbol.OperatorMethods.TryGetValue(dunderName, out var methods))
         {
             var method = methods.FirstOrDefault();
             if (method != null)
+            {
+                if (method.ReturnType is GenericType retGeneric
+                    && operand is GenericType operandGeneric
+                    && retGeneric.Name == operandGeneric.Name
+                    && retGeneric.TypeArguments.Any(a => a is TypeParameterType))
+                    return operand;
                 return method.ReturnType;
+            }
         }
 
         return null;
@@ -1237,9 +1259,34 @@ internal class TypeInferenceService
         {
             BuiltinType builtin => builtin.ClrType,
             UserDefinedType udt => udt.Symbol?.ClrType,
-            GenericType generic => generic.GenericDefinition?.ClrType,
+            GenericType generic => TryConstructClosedGeneric(generic),
             _ => null
         };
+    }
+
+    private Type? TryConstructClosedGeneric(GenericType generic)
+    {
+        var openDef = generic.GenericDefinition?.ClrType;
+        if (openDef == null || !openDef.IsGenericTypeDefinition)
+            return openDef;
+
+        var clrArgs = new Type[generic.TypeArguments.Count];
+        for (int i = 0; i < generic.TypeArguments.Count; i++)
+        {
+            var arg = GetClrType(generic.TypeArguments[i]);
+            if (arg == null)
+                return openDef;
+            clrArgs[i] = arg;
+        }
+
+        try
+        {
+            return openDef.MakeGenericType(clrArgs);
+        }
+        catch (ArgumentException)
+        {
+            return openDef;
+        }
     }
 
     /// <summary>

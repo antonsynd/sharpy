@@ -821,7 +821,7 @@ internal partial class TypeChecker
     /// (preserving IEnumerable vs List distinction that <see cref="Discovery.ClrTypeMapper"/>
     /// erases), falling back to <see cref="TryGetClrType"/> for source-defined overloads.
     /// </summary>
-    private Type? ResolveClrParameterType(FunctionSymbol func, int paramIdx, SemanticType semanticType)
+    internal Type? ResolveClrParameterType(FunctionSymbol func, int paramIdx, SemanticType semanticType)
     {
         if (func.ClrMethod != null)
         {
@@ -859,10 +859,15 @@ internal partial class TypeChecker
         return TryGetClrType(semanticType);
     }
 
-    private static Type SubstituteGenericParameters(Type type)
+    internal static Type SubstituteGenericParameters(Type type)
     {
         if (type.IsGenericParameter)
+        {
+            if ((type.GenericParameterAttributes &
+                 System.Reflection.GenericParameterAttributes.NotNullableValueTypeConstraint) != 0)
+                return typeof(int);
             return typeof(object);
+        }
         if (type.IsGenericType)
         {
             var args = type.GetGenericArguments();

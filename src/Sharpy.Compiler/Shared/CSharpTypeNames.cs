@@ -16,6 +16,7 @@ internal static class CSharpTypeNames
     internal const string SharpyInterpolation = "Sharpy.Interpolation";
     internal const string SharpyOptional = "Sharpy.Optional";
     internal const string SharpyResult = "Sharpy.Result";
+    internal const string SharpyNdArray = "Sharpy.NdArray";
     internal const string IEnumerable = "IEnumerable";
     internal const string IAsyncEnumerable = "IAsyncEnumerable";
     internal const string XunitTraitCategory = "Category";

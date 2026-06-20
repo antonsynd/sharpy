@@ -249,6 +249,9 @@ internal class OverloadIndexBuilder
         ["op_BitwiseAnd"] = "__and__",
         ["op_BitwiseOr"] = "__or__",
         ["op_ExclusiveOr"] = "__xor__",
+        ["op_UnaryNegation"] = "__neg__",
+        ["op_UnaryPlus"] = "__pos__",
+        ["op_OnesComplement"] = "__invert__",
     };
 
     /// <summary>
