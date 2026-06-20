@@ -1,0 +1,91 @@
+# Ported from src/Sharpy.Stdlib.Tests/NdArraySlicingTests.cs (#843).
+#
+# GetRow / GetColumn methods on 2-D NdArray. These are the only slicing-surface
+# tests portable to .spy; the C# .Slice(SliceSpec) API and SliceSpec value type
+# have no .spy surface. Python-style a[1:4] on NdArray generates
+# Sharpy.Slice.GetSlice() which fails (CS1503) — a pre-existing codegen gap.
+#
+# Omissions (12 of 22 C# cases):
+#   - SliceSpec_DefaultIsAll, SliceSpec_ZeroStep_Throws, SliceSpec_Equality (3):
+#     SliceSpec is an internal C# value type with no .spy surface.
+#   - Slice_1D_Basic_ReturnsView, Slice_1D_ViewSharesBuffer,
+#     Slice_1D_NullStartStop, Slice_1D_Step, Slice_1D_NegativeStep,
+#     Slice_WrongSliceCount_Throws, Slice_2D_BothAxes_ReturnsSubMatrix (7):
+#     .Slice(SliceSpec) is the C# slicing API; Python-style a[1:4] on NdArray
+#     generates Sharpy.Slice.GetSlice() which fails CS1503.
+#   - Slice_Null_Throws (1): passes null to .Slice(); Axiom 3.
+#   - Slice_View_HasUpdatedStrides (1): uses .Slice() method.
+
+import numpy as np
+from system import InvalidOperationException
+from unittest import assert_raises
+
+# -- GetRow --
+
+@test
+def test_get_row_returns_view():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    row = arr.GetRow(1)
+    assert row.ndim == 1
+    assert row.shape[0] == 3
+    assert np.allclose(row, np.array([4.0, 5.0, 6.0]))
+
+@test
+def test_get_row_negative():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    row = arr.GetRow(-1)
+    assert np.allclose(row, np.array([4.0, 5.0, 6.0]))
+
+@test
+def test_get_row_modifies_original():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    row = arr.GetRow(0)
+    row[0] = 99.0
+    assert arr[0, 0] == 99.0
+
+@test
+def test_get_row_not_2d_throws():
+    arr = np.array([1.0, 2.0, 3.0])
+    with assert_raises(InvalidOperationException):
+        arr.GetRow(0)
+
+@test
+def test_get_row_out_of_range_throws():
+    arr = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    with assert_raises(IndexError):
+        arr.GetRow(5)
+
+# -- GetColumn --
+
+@test
+def test_get_column_returns_view():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    col = arr.GetColumn(1)
+    assert col.ndim == 1
+    assert col.shape[0] == 2
+    assert np.allclose(col, np.array([2.0, 5.0]))
+
+@test
+def test_get_column_negative():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    col = arr.GetColumn(-1)
+    assert np.allclose(col, np.array([3.0, 6.0]))
+
+@test
+def test_get_column_modifies_original():
+    arr = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    col = arr.GetColumn(2)
+    col[1] = 99.0
+    assert arr[1, 2] == 99.0
+
+@test
+def test_get_column_not_2d_throws():
+    arr = np.array([1.0, 2.0, 3.0])
+    with assert_raises(InvalidOperationException):
+        arr.GetColumn(0)
+
+@test
+def test_get_column_out_of_range_throws():
+    arr = np.array([1.0, 2.0, 3.0, 4.0]).reshape(2, 2)
+    with assert_raises(IndexError):
+        arr.GetColumn(5)
