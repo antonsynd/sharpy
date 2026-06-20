@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO;
 using System.Reflection;
 using Microsoft.CodeAnalysis.CSharp;
@@ -1575,6 +1576,8 @@ internal partial class RoslynEmitter
     private static bool TryGetConstantIntIndex(Expression expr, out int value)
         => AstHelper.TryGetConstantIntIndex(expr, out value);
 
+    private static readonly ConcurrentDictionary<Type, bool> _paramsIndexerCache = new();
+
     private static bool HasParamsIndexer(SemanticType? type)
     {
         var clrType = type switch
@@ -1588,15 +1591,23 @@ internal partial class RoslynEmitter
         if (clrType == null)
             return false;
 
+        if (_paramsIndexerCache.TryGetValue(clrType, out var cached))
+            return cached;
+
+        var result = false;
         foreach (var prop in clrType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
         {
             var indexParams = prop.GetIndexParameters();
             if (indexParams.Length > 0 &&
                 indexParams[indexParams.Length - 1].GetCustomAttribute<ParamArrayAttribute>() != null)
-                return true;
+            {
+                result = true;
+                break;
+            }
         }
 
-        return false;
+        _paramsIndexerCache.TryAdd(clrType, result);
+        return result;
     }
 
     private static Type? TryConstructClosedClrType(GenericType generic)

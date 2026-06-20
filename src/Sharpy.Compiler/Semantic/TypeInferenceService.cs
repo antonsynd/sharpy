@@ -536,12 +536,16 @@ internal class TypeInferenceService
 
         // Bare TypeParameterType matches any concrete argument (e.g., NdArray's operator+(NdArray<T>, T)
         // where T is a generic parameter that accepts any scalar).
-        var typeParamMatch = candidates.FirstOrDefault(c =>
-            c.Parameters.Count == 2 &&
-            c.Parameters[1].Type is TypeParameterType);
+        // Guard: skip if the argument itself is TypeParameterType (ambiguous match).
+        if (argumentType is not TypeParameterType)
+        {
+            var typeParamMatch = candidates.FirstOrDefault(c =>
+                c.Parameters.Count == 2 &&
+                c.Parameters[1].Type is TypeParameterType);
 
-        if (typeParamMatch != null)
-            return typeParamMatch;
+            if (typeParamMatch != null)
+                return typeParamMatch;
+        }
 
         return null;
     }
