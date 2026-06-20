@@ -1,0 +1,10 @@
+from System.IO import StringWriter
+
+def main():
+    with StringWriter() as outer:
+        outer.Write("outer")
+        with StringWriter() as inner:
+            inner.Write("inner")
+            print(inner.ToString())
+        print(outer.ToString())
+    print("Done")

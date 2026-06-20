@@ -1,0 +1,24 @@
+# __exit__ runs for cleanup even when the with body raises. The release
+# happens before control reaches the surrounding except handler.
+class Guard:
+    label: str
+
+    def __init__(self, label: str):
+        self.label = label
+
+    def __enter__(self) -> Guard:
+        print(f"acquire {self.label}")
+        return self
+
+    def __exit__(self):
+        print(f"release {self.label}")
+
+def main():
+    print("start")
+    try:
+        with Guard("lock"):
+            print("in block")
+            raise ValueError("boom")
+    except ValueError:
+        print("handled")
+    print("end")

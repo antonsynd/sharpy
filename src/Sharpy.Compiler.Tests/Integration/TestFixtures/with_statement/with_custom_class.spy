@@ -1,0 +1,29 @@
+# A custom context manager whose __enter__ returns a *different* object than
+# the manager itself; the `as` variable is bound to that returned type.
+class Session:
+    handle: str
+
+    def __init__(self, handle: str):
+        self.handle = handle
+
+    def log(self, msg: str):
+        print(f"[{self.handle}] {msg}")
+
+class SessionManager:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __enter__(self) -> Session:
+        print(f"open {self.name}")
+        return Session(self.name)
+
+    def __exit__(self):
+        print(f"close {self.name}")
+
+def main():
+    with SessionManager("db") as session:
+        session.log("query 1")
+        session.log("query 2")
+    print("done")

@@ -1,0 +1,8 @@
+from System.IO import StringWriter
+
+def main():
+    with StringWriter() as writer:
+        writer.Write("hello ")
+        writer.Write("world")
+        print(writer.ToString())
+    print("Done")

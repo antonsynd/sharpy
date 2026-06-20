@@ -1,0 +1,11 @@
+# A class without __enter__/__exit__ (and not IDisposable) cannot be used as
+# a context manager; using it in a `with` statement is a compile-time error.
+class Plain:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+def main():
+    with Plain(1) as p:
+        print(p.value)

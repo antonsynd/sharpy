@@ -1,0 +1,6 @@
+start
+acquire lock
+in block
+release lock
+handled
+end
