@@ -1,6 +1,7 @@
 using System.Threading;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Model;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Project;

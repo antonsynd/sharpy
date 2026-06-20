@@ -1,6 +1,7 @@
 using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Services;
 
 namespace Sharpy.Compiler.Tests.Diagnostics;
 

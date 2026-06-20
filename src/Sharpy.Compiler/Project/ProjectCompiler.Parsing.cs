@@ -4,6 +4,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Model;
+using Sharpy.Compiler.Services;
 
 namespace Sharpy.Compiler.Project;
 

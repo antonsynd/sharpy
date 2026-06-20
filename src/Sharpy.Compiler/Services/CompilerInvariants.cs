@@ -1,9 +1,10 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace Sharpy.Compiler.Diagnostics;
+namespace Sharpy.Compiler.Services;
 
 /// <summary>
 /// Consolidated compiler invariant assertions.
