@@ -204,7 +204,7 @@ public class OverloadExpanderTests
                 MakeParam("default", MakeType("TValue", isGenericParam: true), hasDefault: true),
             ],
             ReturnType = MakeType("TValue", isGenericParam: true),
-            TypeParameters = ["T"],
+            TypeParameters = [new TypeParameterInfo { Name = "T" }],
             MethodToken = "Sharpy.Core|Dict|get|2",
         };
 
@@ -213,7 +213,8 @@ public class OverloadExpanderTests
         foreach (var overload in result)
         {
             Assert.Equal("get", overload.Name);
-            Assert.Equal(["T"], overload.TypeParameters);
+            Assert.Single(overload.TypeParameters);
+            Assert.Equal("T", overload.TypeParameters[0].Name);
             Assert.Equal("Sharpy.Core|Dict|get|2", overload.MethodToken);
         }
     }

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Reflection;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
@@ -618,7 +619,11 @@ internal class CachedModuleDiscovery
             AccessLevel = AccessLevel.Public,
             TypeParameters = signature.TypeParameters.Count > 0
                 ? signature.TypeParameters
-                    .Select(name => new Parser.Ast.TypeParameterDef { Name = name })
+                    .Select(tp => new Parser.Ast.TypeParameterDef
+                    {
+                        Name = tp.Name,
+                        Constraints = BuildConstraintsFromClr(tp)
+                    })
                     .ToList()
                 : new List<Parser.Ast.TypeParameterDef>(),
             IsVirtual = signature.IsVirtual,
@@ -626,6 +631,25 @@ internal class CachedModuleDiscovery
             Documentation = signature.Documentation,
             ClrMethodName = signature.ClrName ?? ExtractClrNameFromMethodToken(signature.MethodToken)
         };
+    }
+
+    private static ImmutableArray<Parser.Ast.ConstraintClause> BuildConstraintsFromClr(TypeParameterInfo tp)
+    {
+        var builder = ImmutableArray.CreateBuilder<Parser.Ast.ConstraintClause>();
+        if (tp.HasValueTypeConstraint)
+            builder.Add(new Parser.Ast.StructConstraint());
+        if (tp.HasReferenceTypeConstraint)
+            builder.Add(new Parser.Ast.ClassConstraint());
+        if (tp.HasDefaultConstructorConstraint && !tp.HasValueTypeConstraint)
+            builder.Add(new Parser.Ast.NewConstraint());
+        foreach (var iface in tp.InterfaceConstraints)
+        {
+            builder.Add(new Parser.Ast.TypeConstraint
+            {
+                Type = new Parser.Ast.TypeAnnotation { Name = iface }
+            });
+        }
+        return builder.ToImmutable();
     }
 
     /// <summary>

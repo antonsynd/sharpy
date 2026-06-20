@@ -84,10 +84,10 @@ internal class FunctionSignature
     public TypeSignature ReturnType { get; set; } = new();
 
     /// <summary>
-    /// Generic type parameter names (e.g., ["T"] for Min&lt;T&gt;).
+    /// Generic type parameter info (e.g., [{ Name = "T", HasValueTypeConstraint = true }] for Min&lt;T&gt;).
     /// Empty for non-generic methods.
     /// </summary>
-    public List<string> TypeParameters { get; set; } = new();
+    public List<TypeParameterInfo> TypeParameters { get; set; } = new();
 
     /// <summary>
     /// Method reference for rehydration: AssemblyName|TypeName|MethodName|ParamCount
@@ -158,4 +158,16 @@ internal class TypeSignature
     /// CLR type name for mapping back.
     /// </summary>
     public string ClrTypeName { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Serializable metadata for a generic type parameter, including CLR constraints.
+/// </summary>
+internal class TypeParameterInfo
+{
+    public string Name { get; set; } = "";
+    public bool HasValueTypeConstraint { get; set; }
+    public bool HasReferenceTypeConstraint { get; set; }
+    public bool HasDefaultConstructorConstraint { get; set; }
+    public List<string> InterfaceConstraints { get; set; } = new();
 }

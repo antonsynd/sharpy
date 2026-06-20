@@ -600,11 +600,24 @@ internal class OverloadIndexBuilder
             IsAbstract = method.IsAbstract,
         };
 
-        // Extract generic type parameters (e.g., T from Min<T>)
+        // Extract generic type parameters with constraints (e.g., T where T : struct, IEquatable<T>)
         if (method.IsGenericMethodDefinition)
         {
             signature.TypeParameters = method.GetGenericArguments()
-                .Select(t => t.Name)
+                .Select(t => new TypeParameterInfo
+                {
+                    Name = t.Name,
+                    HasValueTypeConstraint = (t.GenericParameterAttributes &
+                        System.Reflection.GenericParameterAttributes.NotNullableValueTypeConstraint) != 0,
+                    HasReferenceTypeConstraint = (t.GenericParameterAttributes &
+                        System.Reflection.GenericParameterAttributes.ReferenceTypeConstraint) != 0,
+                    HasDefaultConstructorConstraint = (t.GenericParameterAttributes &
+                        System.Reflection.GenericParameterAttributes.DefaultConstructorConstraint) != 0,
+                    InterfaceConstraints = t.GetGenericParameterConstraints()
+                        .Where(c => c.IsInterface)
+                        .Select(c => c.Name)
+                        .ToList()
+                })
                 .ToList();
         }
 
