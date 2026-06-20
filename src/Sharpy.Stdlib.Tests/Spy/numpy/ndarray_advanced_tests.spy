@@ -1,0 +1,102 @@
+# Ported from src/Sharpy.Stdlib.Tests/NdArrayAdvancedTests.cs (#843).
+#
+# Numpy utilities: sort, argsort, unique, searchsorted, allclose, isnan, isinf,
+# isfinite. Arrays are built with np.array([...]); all values are float (double).
+# Boolean-result functions (isnan/isinf/isfinite) return NdArray<bool> whose
+# elements cannot be individually accessed from .spy — verified via .size only.
+#
+# Omissions (21 of 32 C# cases):
+#   - GetMasked × 3: NdArray<bool> constructor not available from .spy.
+#   - SetMasked × 2: NdArray<bool> + NdArray<int> ctor.
+#   - Take × 5: int[] CLR array indices + NdArray<int> ctor.
+#   - Put × 1: int[] + NdArray<int> ctor.
+#   - Enumerable × 3: NdArray<int> + foreach/LINQ.
+#   - ISized Count × 2: explicit ISized interface cast.
+#   - Structural equality × 3: NdArray<int> + Equals/GetHashCode.
+#   - Tolist × 2: BeOfType reflection assertions.
+
+import numpy as np
+import math
+
+# -- sort --
+
+@test
+def test_sort_returns_ascending_copy():
+    arr = np.array([3.0, 1.0, 4.0, 1.0, 5.0, 9.0])
+    result = np.sort(arr)
+    assert np.allclose(result, np.array([1.0, 1.0, 3.0, 4.0, 5.0, 9.0]))
+    # Original is untouched.
+    assert np.allclose(arr, np.array([3.0, 1.0, 4.0, 1.0, 5.0, 9.0]))
+
+# -- argsort --
+
+@test
+def test_argsort_returns_sorting_indices():
+    arr = np.array([30.0, 10.0, 20.0])
+    indices = np.argsort(arr)
+    assert indices.size == 3
+    assert indices[0] == 1
+    assert indices[1] == 2
+    assert indices[2] == 0
+
+# -- unique --
+
+@test
+def test_unique_returns_sorted_distinct():
+    arr = np.array([3.0, 1.0, 2.0, 1.0, 3.0, 2.0])
+    result = np.unique(arr)
+    assert result.size == 3
+    assert np.allclose(result, np.array([1.0, 2.0, 3.0]))
+
+# -- searchsorted --
+
+@test
+def test_searchsorted_returns_insertion_indices():
+    sorted_arr = np.array([1.0, 2.0, 4.0, 5.0])
+    values = np.array([0.0, 1.0, 3.0, 6.0])
+    result = np.searchsorted(sorted_arr, values)
+    assert result.size == 4
+    assert result[0] == 0
+    assert result[1] == 0
+    assert result[2] == 2
+    assert result[3] == 4
+
+# -- allclose --
+
+@test
+def test_allclose_nearby_values():
+    a = np.array([1.0, 2.0, 3.0])
+    b = np.array([1.0000000001, 1.9999999999, 3.0])
+    assert np.allclose(a, b)
+
+@test
+def test_allclose_divergent_values():
+    a = np.array([1.0, 2.0, 3.0])
+    b = np.array([1.0, 2.5, 3.0])
+    assert not np.allclose(a, b)
+
+@test
+def test_allclose_both_nan():
+    a = np.array([math.nan])
+    b = np.array([math.nan])
+    assert np.allclose(a, b)
+
+@test
+def test_allclose_with_broadcasting():
+    a = np.array([1.0, 2.0, 3.0])
+    scalar = np.array([1.0])
+    assert not np.allclose(a, scalar)
+
+# -- isnan / isinf / isfinite --
+
+@test
+def test_isnan_flags_nan_values():
+    arr = np.array([1.0, math.nan, 3.0, math.nan])
+    result = np.isnan(arr)
+    assert result.size == 4
+
+@test
+def test_isinf_flags_infinities():
+    arr = np.array([1.0, math.inf, -math.inf, 4.0])
+    result = np.isinf(arr)
+    assert result.size == 4
