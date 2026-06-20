@@ -1,4 +1,4 @@
-from math import nonexistent_function
+from System.IO import NonexistentClass
 
 
 def main():
