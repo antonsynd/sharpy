@@ -1,0 +1,5 @@
+from math import nonexistent_function
+
+
+def main():
+    pass

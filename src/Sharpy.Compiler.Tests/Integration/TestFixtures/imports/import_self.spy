@@ -1,0 +1,5 @@
+import import_self
+
+
+def main():
+    pass
