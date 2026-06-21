@@ -499,13 +499,22 @@ public class LexerTests
 
     [Theory]
     [InlineData("?.", TokenType.NullConditional)]
-    [InlineData("??", TokenType.NullCoalesce)]
     [InlineData("...", TokenType.Ellipsis)]
     [InlineData("|>", TokenType.PipeForward)]
     public void Tokenize_SpecialOperator_ReturnsCorrectToken(string op, TokenType expectedType)
     {
         var token = SingleToken(op);
         token.Type.Should().Be(expectedType);
+    }
+
+    [Fact]
+    public void Tokenize_DoubleQuestion_ReturnsTwoQuestionTokens()
+    {
+        var tokens = Tokenize("??");
+        tokens.Should().HaveCount(3); // Question, Question, EOF
+        tokens[0].Type.Should().Be(TokenType.Question);
+        tokens[1].Type.Should().Be(TokenType.Question);
+        tokens[2].Type.Should().Be(TokenType.Eof);
     }
 
     #endregion
@@ -779,7 +788,7 @@ def method(self) -> None:
         var tokens = Tokenize(source);
 
         tokens.Should().Contain(t => t.Type == TokenType.NullConditional);
-        tokens.Should().Contain(t => t.Type == TokenType.NullCoalesce);
+        tokens.Count(t => t.Type == TokenType.Question).Should().Be(2);
     }
 
     [Fact]
@@ -884,11 +893,14 @@ y = 2";
     }
 
     [Fact]
-    public void Tokenize_NullCoalesce_ProducesCorrectToken()
+    public void Tokenize_NullCoalesce_ProducesTwoQuestionTokens()
     {
-        var token = SingleToken("??");
-        token.Type.Should().Be(TokenType.NullCoalesce);
-        token.Value.Should().Be("??");
+        var tokens = Tokenize("??");
+        tokens.Should().HaveCount(3); // Question, Question, EOF
+        tokens[0].Type.Should().Be(TokenType.Question);
+        tokens[0].Value.Should().Be("?");
+        tokens[1].Type.Should().Be(TokenType.Question);
+        tokens[1].Value.Should().Be("?");
     }
 
     [Fact]
@@ -899,7 +911,8 @@ y = 2";
 
         tokens.Should().Contain(t => t.Type == TokenType.Question && t.Value == "?");
         tokens.Should().Contain(t => t.Type == TokenType.NullConditional && t.Value == "?.");
-        tokens.Should().Contain(t => t.Type == TokenType.NullCoalesce && t.Value == "??");
+        // ?? now produces two Question tokens
+        tokens.Count(t => t.Type == TokenType.Question).Should().BeGreaterThanOrEqualTo(3);
     }
 
     #endregion
@@ -1553,7 +1566,7 @@ y = 2";
         var tokens = Tokenize(source);
 
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
-        tokens.Should().Contain(t => t.Type == TokenType.NullCoalesce);
+        tokens.Count(t => t.Type == TokenType.Question).Should().Be(2);
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
     }
 

@@ -143,7 +143,9 @@ y = 2";
         var tokens = Tokenize(source);
 
         tokens.Should().Contain(t => t.Type == TokenType.NullConditional && t.Column == 3);
-        tokens.Should().Contain(t => t.Type == TokenType.NullCoalesce && t.Column == 8);
+        // ?? now produces two Question tokens at columns 8 and 9
+        tokens.Should().Contain(t => t.Type == TokenType.Question && t.Column == 8);
+        tokens.Should().Contain(t => t.Type == TokenType.Question && t.Column == 9);
         tokens.Should().Contain(t => t.Type == TokenType.Ellipsis && t.Column == 13);
     }
 

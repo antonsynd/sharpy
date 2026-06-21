@@ -254,11 +254,12 @@ public partial class Parser
     {
         var left = ParseLogicalOr();
 
-        while (Current.Type == TokenType.NullCoalesce)
+        while (Current.Type == TokenType.Question && Peek().Type == TokenType.Question)
         {
             var opLine = Current.Line;
             var opCol = Current.Column;
-            Advance();
+            Advance(); // first ?
+            Advance(); // second ?
             var right = ParseLogicalOr();
 
             left = new BinaryOp

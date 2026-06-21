@@ -54,7 +54,7 @@ public class ParserLoopSafetyAuditTests
         "while (Current.Type == TokenType.Or)",           // Logical OR
         "while (Current.Type == TokenType.Percent)",      // Modulo
         "while (Current.Type == TokenType.DoubleStar)",   // Power
-        "while (Current.Type == TokenType.NullCoalesce)",  // Null coalesce - advances operator
+        "while (Current.Type == TokenType.Question && Peek().Type == TokenType.Question)",  // Null coalesce - advances two tokens
         "while (Current.Type == TokenType.PipeForward)"    // Pipe forward - advances operator
     };
 

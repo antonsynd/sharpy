@@ -159,7 +159,6 @@ public class Phase010ExitCriteriaTests
             // Operators - Special
             { TokenType.Question, "?" },
             { TokenType.NullConditional, "?." },
-            { TokenType.NullCoalesce, "??" },
             { TokenType.Ellipsis, "..." },
             { TokenType.PipeForward, "|>" },
 
@@ -592,12 +591,21 @@ x = 1";
 
     [Theory]
     [InlineData("|>", TokenType.PipeForward)]
-    [InlineData("??", TokenType.NullCoalesce)]
     [InlineData("?.", TokenType.NullConditional)]
     public void ExitCriteria_SpecialOperatorsRecognized(string op, TokenType expectedType)
     {
         var token = SingleToken(op);
         token.Type.Should().Be(expectedType);
+    }
+
+    [Fact]
+    public void ExitCriteria_DoubleQuestionLexedAsTwoQuestionTokens()
+    {
+        var tokens = Tokenize("??");
+        tokens.Should().HaveCount(3); // Question, Question, EOF
+        tokens[0].Type.Should().Be(TokenType.Question);
+        tokens[1].Type.Should().Be(TokenType.Question);
+        tokens[2].Type.Should().Be(TokenType.Eof);
     }
 
     [Fact]
@@ -616,7 +624,7 @@ x = 1";
         var tokens = Tokenize(source);
 
         tokens.Should().Contain(t => t.Type == TokenType.NullConditional);
-        tokens.Should().Contain(t => t.Type == TokenType.NullCoalesce);
+        tokens.Count(t => t.Type == TokenType.Question).Should().Be(2);
     }
 
     [Fact]
@@ -944,7 +952,7 @@ def greet(name: str, age: int = 0) -> str:
         var tokens = Tokenize(source);
 
         tokens.Should().Contain(t => t.Type == TokenType.NullConditional);
-        tokens.Should().Contain(t => t.Type == TokenType.NullCoalesce);
+        tokens.Count(t => t.Type == TokenType.Question).Should().Be(2);
     }
 
     [Fact]

@@ -142,7 +142,6 @@ public enum TokenType
     // Operators - Special
     Question,          // ?
     NullConditional,   // ?.
-    NullCoalesce,      // ??
     Ellipsis,          // ...
     PipeForward,       // |>
 

@@ -833,10 +833,6 @@ public partial class Lexer
                     _position += 2;
                     _column += 2;
                     return CreateToken(TokenType.NullConditional, twoChar, startLine, startColumn, startPosition);
-                case "??":
-                    _position += 2;
-                    _column += 2;
-                    return CreateToken(TokenType.NullCoalesce, twoChar, startLine, startColumn, startPosition);
                 case "+=":
                     _position += 2;
                     _column += 2;
