@@ -99,6 +99,30 @@ internal partial class TypeChecker
             return (narrowedTypes, new NarrowingDecision(optionalNarrowings, isInstanceNarrowings));
         }
 
+        // Handle 'A or B' pattern in the else-branch - De Morgan dual of 'and' narrowing:
+        // else of (A or B) is equivalent to then of (not A and not B), so both sides narrow.
+        if (condition is BinaryOp { Operator: BinaryOperator.Or } orOp && !isPositiveBranch)
+        {
+            var (leftNarrowed, leftDecision) = ExtractNarrowedTypes(orOp.Left, false);
+            var (rightNarrowed, rightDecision) = ExtractNarrowedTypes(orOp.Right, false);
+
+            foreach (var kvp in leftNarrowed)
+            {
+                narrowedTypes[kvp.Key] = kvp.Value;
+            }
+            foreach (var kvp in rightNarrowed)
+            {
+                narrowedTypes[kvp.Key] = kvp.Value;
+            }
+
+            optionalNarrowings.AddRange(leftDecision.OptionalNarrowings);
+            optionalNarrowings.AddRange(rightDecision.OptionalNarrowings);
+            isInstanceNarrowings.AddRange(leftDecision.IsInstanceNarrowings);
+            isInstanceNarrowings.AddRange(rightDecision.IsInstanceNarrowings);
+
+            return (narrowedTypes, new NarrowingDecision(optionalNarrowings, isInstanceNarrowings));
+        }
+
         // Handle 'x is not None' pattern (x can be identifier or member access like self.field)
         if (condition is BinaryOp { Operator: BinaryOperator.IsNot } binOp)
         {
