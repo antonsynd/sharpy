@@ -1,0 +1,16 @@
+def parse_int(s: str) -> int !str:
+    if s == "42":
+        return Ok(42)
+    return Err("not a number")
+
+def process(s: str) -> int !str:
+    val: int = parse_int(s)?
+    return Ok(val + 1)
+
+def main():
+    result = process("42")
+    match result:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print(e)

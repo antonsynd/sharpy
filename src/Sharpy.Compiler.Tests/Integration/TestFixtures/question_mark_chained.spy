@@ -1,0 +1,22 @@
+def step1(x: int) -> int !str:
+    if x > 0:
+        return Ok(x * 2)
+    return Err("step1 failed")
+
+def step2(x: int) -> int !str:
+    if x < 100:
+        return Ok(x + 1)
+    return Err("step2 failed")
+
+def pipeline(x: int) -> int !str:
+    a: int = step1(x)?
+    b: int = step2(a)?
+    return Ok(b)
+
+def main():
+    result = pipeline(5)
+    match result:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print(e)

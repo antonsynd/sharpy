@@ -139,6 +139,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
             TypeCoercion => PrecCast,
             UnaryOp u => u.Operator == UnaryOperator.Not ? PrecNot : PrecUnaryPrefix,
             AwaitExpression => PrecAwait,
+            QuestionMarkExpression => PrecPostfix,
             StarExpression => PrecAtom,
             SpreadElement => PrecAtom,
             LambdaExpression => PrecConditional,

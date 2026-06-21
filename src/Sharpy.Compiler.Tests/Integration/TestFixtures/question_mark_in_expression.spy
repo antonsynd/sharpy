@@ -1,0 +1,14 @@
+def get_value() -> int !str:
+    return Ok(10)
+
+def compute() -> int !str:
+    val: int = get_value()? + 5
+    return Ok(val)
+
+def main():
+    result = compute()
+    match result:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print(e)

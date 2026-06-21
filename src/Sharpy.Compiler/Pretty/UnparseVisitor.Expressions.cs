@@ -322,6 +322,12 @@ internal sealed partial class UnparseVisitor
         VisitUnaryOperand(node.Operand, PrecAwait);
     }
 
+    public override void VisitQuestionMarkExpression(QuestionMarkExpression node)
+    {
+        VisitPostfixObject(node.Operand);
+        _w.Write("?");
+    }
+
     public override void VisitMatchExpression(MatchExpression node)
     {
         _w.Write("match ");

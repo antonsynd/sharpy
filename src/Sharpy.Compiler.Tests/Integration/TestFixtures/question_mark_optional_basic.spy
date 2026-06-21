@@ -1,0 +1,16 @@
+def find(x: int) -> int?:
+    if x > 0:
+        return Some(x * 2)
+    return None()
+
+def process(x: int) -> int?:
+    val: int = find(x)?
+    return Some(val + 10)
+
+def main():
+    result = process(5)
+    match result:
+        case Some(v):
+            print(v)
+        case None():
+            print("none")
