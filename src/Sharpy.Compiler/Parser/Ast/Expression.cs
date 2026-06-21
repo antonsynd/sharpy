@@ -612,6 +612,27 @@ public enum UnaryOperator
 }
 
 /// <summary>
+/// Postfix ? operator for early-return on Result/Optional (expr?)
+/// </summary>
+public record QuestionMarkExpression : Expression
+{
+    public Expression Operand { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Operand != null, "QuestionMarkExpression.Operand cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Operand;
+    }
+}
+
+/// <summary>
 /// Binary operation (a + b, a * b, a and b, etc.)
 /// </summary>
 public record BinaryOp : Expression

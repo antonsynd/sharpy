@@ -235,4 +235,105 @@ def find_user(id: int) -> User?:
 
     #endregion
 
+    #region QuestionMark (Early-Return Operator)
+
+    [Fact]
+    public void ParseQuestionMark_PostfixAfterCall()
+    {
+        // foo()? → QuestionMarkExpression { Operand: FunctionCall }
+        var module = Parse("foo()?");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var qm = exprStmt.Expression.Should().BeOfType<QuestionMarkExpression>().Subject;
+        var call = qm.Operand.Should().BeOfType<FunctionCall>().Subject;
+        call.Function.Should().BeOfType<Identifier>().Which.Name.Should().Be("foo");
+    }
+
+    [Fact]
+    public void ParseQuestionMark_CoalesceWithSpaces()
+    {
+        // x ?? y → BinaryOp { NullCoalesce }
+        var module = Parse("x ?? y");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var binOp = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        binOp.Operator.Should().Be(BinaryOperator.NullCoalesce);
+        binOp.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+        binOp.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("y");
+    }
+
+    [Fact]
+    public void ParseQuestionMark_CoalesceNoSpaces()
+    {
+        // x??y → BinaryOp { NullCoalesce } (not double early-return)
+        var module = Parse("x??y");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var binOp = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        binOp.Operator.Should().Be(BinaryOperator.NullCoalesce);
+        binOp.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+        binOp.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("y");
+    }
+
+    [Fact]
+    public void ParseQuestionMark_DoubleEarlyReturn()
+    {
+        // x?? (at end of expression, no RHS) → nested QuestionMarkExpression
+        var module = Parse("x??");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var outer = exprStmt.Expression.Should().BeOfType<QuestionMarkExpression>().Subject;
+        var inner = outer.Operand.Should().BeOfType<QuestionMarkExpression>().Subject;
+        inner.Operand.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+    }
+
+    [Fact]
+    public void ParseQuestionMark_TripleWithCoalesce()
+    {
+        // x???y → BinaryOp { NullCoalesce, Left: QuestionMarkExpression{Name{x}}, Right: Name{y} }
+        var module = Parse("x???y");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var binOp = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        binOp.Operator.Should().Be(BinaryOperator.NullCoalesce);
+        var qm = binOp.Left.Should().BeOfType<QuestionMarkExpression>().Subject;
+        qm.Operand.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+        binOp.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("y");
+    }
+
+    [Fact]
+    public void ParseQuestionMark_EarlyReturnFollowedByBinaryOp()
+    {
+        // x? + 1 → BinaryOp { Add, Left: QuestionMarkExpression{Name{x}}, Right: IntLiteral{1} }
+        var module = Parse("x? + 1");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var binOp = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        binOp.Operator.Should().Be(BinaryOperator.Add);
+        var qm = binOp.Left.Should().BeOfType<QuestionMarkExpression>().Subject;
+        qm.Operand.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+        binOp.Right.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("1");
+    }
+
+    [Fact]
+    public void ParseQuestionMark_AfterNullConditionalChain()
+    {
+        // x?.foo()? → QuestionMarkExpression { Operand: FunctionCall { Object: MemberAccess{NullConditional} } }
+        var module = Parse("x?.foo()?");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var qm = exprStmt.Expression.Should().BeOfType<QuestionMarkExpression>().Subject;
+        var call = qm.Operand.Should().BeOfType<FunctionCall>().Subject;
+        var member = call.Function.Should().BeOfType<MemberAccess>().Subject;
+        member.IsNullConditional.Should().BeTrue();
+        member.Member.Should().Be("foo");
+        member.Object.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+    }
+
+    [Fact]
+    public void ParseQuestionMark_TypeAnnotationStillWorks()
+    {
+        // int? in type annotation position → IsOptional = true (no regression)
+        var module = Parse("x: int? = None");
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Type.Should().NotBeNull();
+        varDecl.Type!.Name.Should().Be("int");
+        varDecl.Type.IsOptional.Should().BeTrue();
+    }
+
+    #endregion
+
 }

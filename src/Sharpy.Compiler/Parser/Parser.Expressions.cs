@@ -917,6 +917,43 @@ public partial class Parser
 
                     expr = LowerPartialApplicationCall(callNode);
                 }
+                else if (Current.Type == TokenType.Question)
+                {
+                    // N-count rule: count consecutive ? tokens
+                    int n = 0;
+                    int peekOffset = 0;
+                    while (Peek(peekOffset).Type == TokenType.Question)
+                    {
+                        n++;
+                        peekOffset++;
+                    }
+
+                    // Check if what follows is expression-start (coalesce needs RHS)
+                    var afterQuestions = Peek(peekOffset);
+                    bool followedByExpr = IsExpressionStart(afterQuestions.Type);
+
+                    // If followed by expression and N >= 2, reserve last 2 for coalesce
+                    int earlyReturnCount = (followedByExpr && n >= 2) ? n - 2 : n;
+
+                    // Consume earlyReturnCount ? tokens as postfix early-return
+                    for (int i = 0; i < earlyReturnCount; i++)
+                    {
+                        var questionToken = Current;
+                        Advance();
+                        expr = new QuestionMarkExpression
+                        {
+                            Operand = expr,
+                            LineStart = expr.LineStart,
+                            ColumnStart = expr.ColumnStart,
+                            LineEnd = questionToken.Line,
+                            ColumnEnd = questionToken.Column + 1,
+                            Span = CombineSpans(expr.Span, GetSpanFromToken(questionToken))
+                        };
+                    }
+                    // Remaining ? tokens (if any) left for ParseNullCoalesce
+                    if (earlyReturnCount == 0)
+                        break; // Don't consume any — exit postfix loop
+                }
                 else
                 {
                     break;
@@ -929,6 +966,34 @@ public partial class Parser
         }
 
         return expr;
+    }
+
+    private static bool IsExpressionStart(TokenType type)
+    {
+        return type switch
+        {
+            TokenType.Identifier => true,
+            TokenType.Integer => true,
+            TokenType.Float => true,
+            TokenType.String => true,
+            TokenType.RawString => true,
+            TokenType.ByteString => true,
+            TokenType.FStringStart => true,
+            TokenType.True => true,
+            TokenType.False => true,
+            TokenType.None => true,
+            TokenType.LeftParen => true,
+            TokenType.LeftBracket => true,
+            TokenType.LeftBrace => true,
+            TokenType.Not => true,
+            TokenType.Await => true,
+            TokenType.Lambda => true,
+            TokenType.Yield => true,
+            TokenType.Plus => true,
+            TokenType.Minus => true,
+            TokenType.Tilde => true,
+            _ => false,
+        };
     }
 
     private Expression ParseSliceOrIndex()

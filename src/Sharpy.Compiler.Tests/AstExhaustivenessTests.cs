@@ -43,7 +43,7 @@ public class AstExhaustivenessTests
             "Identifier", "MemberAccess", "IndexAccess", "SliceAccess", "MultiAxisAccess",
             "FunctionCall", "SuperExpression",
             // Operators
-            "UnaryOp", "BinaryOp", "ComparisonChain",
+            "UnaryOp", "BinaryOp", "ComparisonChain", "QuestionMarkExpression",
             // Advanced
             "ConditionalExpression", "LambdaExpression",
             "TypeCoercion", "TypeCheck", "Parenthesized", "WalrusExpression",

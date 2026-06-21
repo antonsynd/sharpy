@@ -118,6 +118,9 @@ public abstract class AstVisitor
             case ComparisonChain n:
                 VisitComparisonChain(n);
                 break;
+            case QuestionMarkExpression n:
+                VisitQuestionMarkExpression(n);
+                break;
 
             // Expressions - Advanced
             case ConditionalExpression n:
@@ -411,6 +414,7 @@ public abstract class AstVisitor
     public virtual void VisitUnaryOp(UnaryOp node) => VisitExpression(node);
     public virtual void VisitBinaryOp(BinaryOp node) => VisitExpression(node);
     public virtual void VisitComparisonChain(ComparisonChain node) => VisitExpression(node);
+    public virtual void VisitQuestionMarkExpression(QuestionMarkExpression node) => VisitExpression(node);
 
     #endregion
 
@@ -572,6 +576,7 @@ public abstract class AstVisitor<T>
             UnaryOp n => VisitUnaryOp(n),
             BinaryOp n => VisitBinaryOp(n),
             ComparisonChain n => VisitComparisonChain(n),
+            QuestionMarkExpression n => VisitQuestionMarkExpression(n),
 
             // Expressions - Advanced
             ConditionalExpression n => VisitConditionalExpression(n),
@@ -748,6 +753,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitUnaryOp(UnaryOp node) => VisitExpression(node);
     public virtual T VisitBinaryOp(BinaryOp node) => VisitExpression(node);
     public virtual T VisitComparisonChain(ComparisonChain node) => VisitExpression(node);
+    public virtual T VisitQuestionMarkExpression(QuestionMarkExpression node) => VisitExpression(node);
 
     #endregion
 
