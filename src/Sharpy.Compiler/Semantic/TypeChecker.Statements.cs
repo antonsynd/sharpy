@@ -1089,6 +1089,17 @@ internal partial class TypeChecker
         {
             CheckExpression(assertStmt.Message);
         }
+
+        // `assert x is not None` narrows x for the rest of the enclosing scope: if the
+        // assert fails execution halts, so the positive branch always holds afterward.
+        // Applied directly (no EnterScope) so narrowings persist, mirroring early-return
+        // narrowing at the post-if site above.
+        var (narrowedTypes, decision) = ExtractNarrowedTypes(assertStmt.Test, true);
+        if (decision.OptionalNarrowings.Count > 0 || decision.IsInstanceNarrowings.Count > 0)
+        {
+            _narrowingContext.ApplyNarrowings(narrowedTypes);
+            _semanticInfo.SetNarrowingDecision(assertStmt.Test, decision with { NarrowsFollowingStatements = true });
+        }
     }
 
     /// <summary>
