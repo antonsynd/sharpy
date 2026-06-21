@@ -240,6 +240,10 @@
           "match": "\\?\\."
         },
         {
+          "name": "keyword.operator.earlyreturn.sharpy",
+          "match": "\\?"
+        },
+        {
           "name": "keyword.operator.arrow.sharpy",
           "match": "->"
         },

@@ -657,6 +657,62 @@ def main():
 
     #endregion
 
+    #region QuestionMark (early-return) operator tokens
+
+    [Fact]
+    public void QuestionMarkOperator_EmitsKeywordToken()
+    {
+        // "?" postfix early-return operator should be highlighted as a keyword.
+        // Line 1: "def f() -> int !str:"
+        // Line 2: "    x: int = compute()?"
+        var tokens = CollectTokensFrom(
+            "def compute() -> int !str:\n    return 1\n" +
+            "def f() -> int !str:\n    x: int = compute()?\n    return x");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword && t.Length == 1).ToList();
+        keywords.Should().ContainSingle("the postfix '?' should produce a single one-character keyword token");
+    }
+
+    [Fact]
+    public void QuestionMarkOperator_HasCorrectPosition()
+    {
+        // Line 4 (0-based 3): "    x: int = compute()?"
+        //                      1234567890123456789012345
+        // The '?' is at column 23 (1-based) -> LSP (3, 22)
+        var tokens = CollectTokensFrom(
+            "def compute() -> int !str:\n    return 1\n" +
+            "def f() -> int !str:\n    x: int = compute()?\n    return x");
+        var question = tokens.Single(t => t.TokenType == TKeyword && t.Length == 1);
+        question.Line.Should().Be(3, "the '?' is on line 4 (0-based: 3)");
+        question.Col.Should().Be(22, "the '?' is at column 23 (1-based) -> 22 (0-based)");
+    }
+
+    [Fact]
+    public void QuestionMarkOperator_RecursesIntoOperand()
+    {
+        // The operand of "?" should still be traversed for parameter usage tokens.
+        // Line 1: "def f(x: int) -> int !str:"
+        // Line 2: "    y: int = compute(x)?"
+        var tokens = CollectTokensFrom(
+            "def compute(v: int) -> int !str:\n    return v\n" +
+            "def f(x: int) -> int !str:\n    y: int = compute(x)?\n    return y");
+        var paramUsageOnLine3 = tokens.Where(t => t.TokenType == TParameter && t.Line == 3).ToList();
+        paramUsageOnLine3.Should().Contain(t => t.Length == 1,
+            "the 'x' argument inside compute(x)? should still produce a parameter usage token");
+    }
+
+    [Fact]
+    public void DoubleQuestionMark_EmitsTwoKeywordTokens()
+    {
+        // "x??" at end of expression -> two early-return tokens (nested QuestionMarkExpression).
+        var tokens = CollectTokensFrom(
+            "def f() -> int !str:\n    x: int !str = compute()\n    y: int = x??\n    return y\n" +
+            "def compute() -> int !str !str:\n    pass");
+        var keywords = tokens.Where(t => t.TokenType == TKeyword && t.Length == 1 && t.Line == 2).ToList();
+        keywords.Should().HaveCount(2, "'x??' should produce two one-character keyword tokens");
+    }
+
+    #endregion
+
     #region LambdaExpression tokens
 
     [Fact]

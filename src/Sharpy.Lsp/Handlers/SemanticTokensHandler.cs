@@ -617,6 +617,13 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 CollectExpressionTokens(maybeExpr.Operand, tokens, parameterNames);
                 break;
 
+            case QuestionMarkExpression questionMark:
+                CollectExpressionTokens(questionMark.Operand, tokens, parameterNames);
+                // The postfix "?" sits just before ColumnEnd (which is questionToken.Column + 1).
+                // Highlight it as an operator-keyword, consistent with and/or/not/is/in.
+                PushNameToken(tokens, questionMark.LineEnd, questionMark.ColumnEnd - 1, 1, TKeyword, 0);
+                break;
+
             case StarExpression star:
                 CollectExpressionTokens(star.Operand, tokens, parameterNames);
                 break;

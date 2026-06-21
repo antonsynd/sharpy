@@ -293,7 +293,7 @@ def optional_to_nullable(opt: T?) -> T | None:
 See [Maybe Expressions](maybe_expressions.md) for details on the `maybe` keyword.
 
 *Implementation*
-- *✅ Implemented — `Optional[T]` is a struct-based tagged union in Sharpy.Core. Pattern matching with `Some`/`None`, the `?` operator, and `maybe` expressions are all supported.*
+- *✅ Implemented — `Optional[T]` is a struct-based tagged union in Sharpy.Core. Pattern matching with `Some`/`None`, the [`?` early-return operator](question_mark_operator.md), and `maybe` expressions are all supported.*
 
 ## Implementation Details
 
@@ -314,6 +314,7 @@ for convenient construction.
 
 - [Tagged Unions](tagged_unions.md) - General tagged union syntax and implementation
 - [Result Type](tagged_unions_result.md) - The Result type for error handling
+- [Question-Mark Operator](question_mark_operator.md) - The `?` early-return operator for propagating `None`
 - [Maybe Expressions](maybe_expressions.md) - Converting `T | None` to `T?`
 - [Nullable Types](nullable_types.md) - `T | None` syntax for .NET interop
 - [Null Coalescing Operator](null_coalescing_operator.md) - The `??` operator

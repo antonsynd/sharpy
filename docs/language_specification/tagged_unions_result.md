@@ -233,7 +233,7 @@ def process_user_input(input: str) -> int !str:
 ```
 
 *Implementation*
-- *✅ Implemented — `Result[T, E]` is a struct-based tagged union in Sharpy.Core. Pattern matching with `Ok`/`Err`, the `?` operator, and `try` expressions are all supported.*
+- *✅ Implemented — `Result[T, E]` is a struct-based tagged union in Sharpy.Core. Pattern matching with `Ok`/`Err`, the [`?` early-return operator](question_mark_operator.md), and `try` expressions are all supported.*
 
 ## Implementation Details
 
@@ -254,6 +254,7 @@ for convenient construction.
 
 - [Tagged Unions](tagged_unions.md) - General tagged union syntax and implementation
 - [Optional Type](tagged_unions_optional.md) - The `T?` / `Optional[T]` type for optional values
+- [Question-Mark Operator](question_mark_operator.md) - The `?` early-return operator for propagating `Err`
 - [Try Expressions](try_expressions.md) - Special syntax for wrapping exceptions in Result
 - [Exception Handling](exception_handling.md) - Traditional exception-based error handling
 - [Pattern Matching](match_statement.md) - Pattern matching syntax

@@ -17,6 +17,13 @@ result = first ?? second ?? default_value
 
 This contrasts with the `or` operator which tests for truthiness (via `__bool__()`) rather than absence.
 
+> **Lexer note:** As of the `?` early-return operator, `??` is no longer a single
+> token — it is **two `?` tokens** at the lexer level. The semantics of `??` are
+> unchanged; the parser distinguishes `??` (null-coalesce) from the postfix `?`
+> (early-return) using a token-counting rule. See the
+> [Question-Mark Operator](question_mark_operator.md#interaction-with--null-coalescing)
+> for the disambiguation details.
+
 > **Note:** Unlike Python, Sharpy's `or` operator always returns `bool`, not the operand value. `"" or "Anonymous"` returns `True` (bool), not `"Anonymous"` (str). This is because Sharpy's `or` maps to C#'s `||` operator, which produces a boolean result.
 
 ```python
