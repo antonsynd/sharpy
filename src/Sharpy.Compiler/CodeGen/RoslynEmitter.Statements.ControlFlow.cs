@@ -64,6 +64,26 @@ internal partial class RoslynEmitter
                 .AddArgumentListArguments(Argument(condition));
         }
 
+        // assert x is not None → narrow x for the rest of the scope. The assert narrows
+        // on the positive condition, so we process NarrowInThenBranch == true entries
+        // (the inverse of ApplyPostIfNarrowings). Not popped — persists until the method
+        // boundary's NarrowingState.Reset.
+        var decision = _context.SemanticInfo?.GetNarrowingDecision(assert.Test);
+        if (decision is { NarrowsFollowingStatements: true })
+        {
+            foreach (var n in decision.OptionalNarrowings)
+            {
+                if (!n.NarrowInThenBranch)
+                    continue;
+
+                _narrowing.PushNarrowing(n.VariableName);
+                if (n.IsValueTypeNullable)
+                    _narrowing.AddNullableNarrowing(n.VariableName);
+                else if (n.IsReferenceTypeNullable)
+                    _narrowing.AddReferenceNullableNarrowing(n.VariableName);
+            }
+        }
+
         return ExpressionStatement(invocation);
     }
 
