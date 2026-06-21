@@ -27,12 +27,16 @@ internal static class GenExpressions
         {
             UnaryOpExpr(ctx).Select(x => (Expression)x),
             BinaryOpExpr(ctx).Select(x => (Expression)x),
+            ComparisonChainExpr(ctx).Select(x => (Expression)x),
             ParenthesizedExpr(ctx).Select(x => (Expression)x),
             MemberAccessExpr(ctx).Select(x => (Expression)x),
             FunctionCallExpr(ctx).Select(x => (Expression)x),
             ConditionalExpr(ctx).Select(x => (Expression)x),
+            TypeCoercionExpr(ctx).Select(x => (Expression)x),
+            TypeCheckExpr(ctx).Select(x => (Expression)x),
             TryExpressionExpr(ctx).Select(x => (Expression)x),
             MaybeExpressionExpr(ctx).Select(x => (Expression)x),
+            QuestionMarkExpr(ctx).Select(x => (Expression)x),
             StarExpressionExpr(ctx).Select(x => (Expression)x),
             SpreadElementExpr(ctx).Select(x => (Expression)x),
             ModifiedArgumentExpr(ctx).Select(x => (Expression)x),
@@ -52,6 +56,7 @@ internal static class GenExpressions
             ListComprehensionExpr(ctx),
             IndexAccessExpr(ctx),
             SliceAccessExpr(ctx),
+            MultiAxisAccessExpr(ctx),
             WalrusExpr(ctx),
             FStringLiteralExpr(ctx),
             TStringLiteralExpr(ctx),
@@ -331,6 +336,37 @@ internal static class GenExpressions
 
     public static Gen<MaybeExpression> MaybeExpressionExpr(GenContext ctx) =>
         Expression(ctx).Select(operand => new MaybeExpression { Operand = operand });
+
+    public static Gen<QuestionMarkExpression> QuestionMarkExpr(GenContext ctx) =>
+        Expression(ctx).Select(operand => new QuestionMarkExpression { Operand = operand });
+
+    public static Gen<MultiAxisAccess> MultiAxisAccessExpr(GenContext ctx) =>
+        Gen.Select(
+            Expression(ctx),
+            SubscriptDimensionGen(ctx).Array[2, 4],
+            (obj, dims) => new MultiAxisAccess
+            {
+                Object = obj,
+                Dimensions = dims.ToImmutableArray()
+            });
+
+    private static Gen<SubscriptDimension> SubscriptDimensionGen(GenContext ctx) =>
+        Gen.Bool.SelectMany(isSlice =>
+            isSlice
+                ? Gen.Select(
+                    Gen.Null(Expression(ctx)),
+                    Gen.Null(Expression(ctx)),
+                    (start, stop) => new SubscriptDimension
+                    {
+                        IsSlice = true,
+                        Start = start,
+                        Stop = stop
+                    })
+                : Expression(ctx).Select(index => new SubscriptDimension
+                {
+                    IsSlice = false,
+                    Index = index
+                }));
 
     public static Gen<StarExpression> StarExpressionExpr(GenContext ctx) =>
         IdentifierExpr(ctx).Select(id => new StarExpression { Operand = id });

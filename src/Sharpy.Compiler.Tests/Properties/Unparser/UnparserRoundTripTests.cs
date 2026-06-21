@@ -63,6 +63,12 @@ public class UnparserRoundTripTests
     [Fact] public void IsOperator() => AssertRoundTrip("x is None\n");
     [Fact] public void IsNotOperator() => AssertRoundTrip("x is not None\n");
     [Fact] public void NullCoalesce() => AssertRoundTrip("x ?? 0\n");
+    [Fact] public void QuestionMarkPostfix() => AssertRoundTrip("x?\n");
+    [Fact] public void QuestionMarkAfterCall() => AssertRoundTrip("foo()?\n");
+    [Fact] public void QuestionMarkChained() => AssertRoundTrip("a?.b()?\n");
+    [Fact] public void QuestionMarkInExpr() => AssertRoundTrip("x? + 1\n");
+    [Fact] public void QuestionMarkDouble() => AssertRoundTrip("x??\n");
+    [Fact] public void QuestionMarkWithCoalesce() => AssertRoundTrip("x??? y\n");
     [Fact] public void PipeForward() => AssertRoundTrip("x |> f\n");
 
     [Fact] public void MemberAccess() => AssertRoundTrip("obj.method\n");
@@ -204,4 +210,11 @@ public class UnparserRoundTripTests
 
     [Fact]
     public void OptionalType() => AssertRoundTrip("x: int?\n");
+
+    [Fact] public void TypeCoercion() => AssertRoundTrip("x to int\n");
+    [Fact] public void TypeCheck() => AssertRoundTrip("x is int\n");
+    [Fact] public void TypeCheckNot() => AssertRoundTrip("x is not int\n");
+    [Fact] public void MultiAxisAccess() => AssertRoundTrip("arr[0, 1]\n");
+    [Fact] public void MultiAxisSlice() => AssertRoundTrip("arr[0:5, 1:3]\n");
+    [Fact] public void MultiAxisMixed() => AssertRoundTrip("arr[0, 1:3]\n");
 }

@@ -101,6 +101,36 @@ internal sealed partial class UnparseVisitor
         _w.Write("]");
     }
 
+    public override void VisitMultiAxisAccess(MultiAxisAccess node)
+    {
+        VisitPostfixObject(node.Object);
+        _w.Write("[");
+        for (int i = 0; i < node.Dimensions.Length; i++)
+        {
+            if (i > 0)
+                _w.Write(", ");
+            var dim = node.Dimensions[i];
+            if (dim.IsSlice)
+            {
+                if (dim.Start != null)
+                    Visit(dim.Start);
+                _w.Write(":");
+                if (dim.Stop != null)
+                    Visit(dim.Stop);
+                if (dim.Step != null)
+                {
+                    _w.Write(":");
+                    Visit(dim.Step);
+                }
+            }
+            else if (dim.Index != null)
+            {
+                Visit(dim.Index);
+            }
+        }
+        _w.Write("]");
+    }
+
     public override void VisitFunctionCall(FunctionCall node)
     {
         VisitPostfixObject(node.Function);
