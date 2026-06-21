@@ -270,6 +270,17 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(elements[0]))));
         }
 
+        // Empty tuple: () → System.ValueTuple.Create()
+        if (elements.Length == 0)
+        {
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("System.ValueTuple"),
+                    IdentifierName("Create")))
+                .WithArgumentList(ArgumentList());
+        }
+
         // Unnamed tuple: (elem1, elem2, ...)
         return TupleExpression(SeparatedList(
             elements.Select(e => Argument(e))));
