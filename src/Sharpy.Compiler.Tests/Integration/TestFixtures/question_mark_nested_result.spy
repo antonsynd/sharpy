@@ -1,0 +1,17 @@
+def inner() -> int !str:
+    return Ok(42)
+
+def get_nested() -> Result[int !str, str]:
+    return Ok(inner())
+
+def process() -> int !str:
+    val: int = get_nested()??
+    return Ok(val)
+
+def main():
+    result = process()
+    match result:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print(e)

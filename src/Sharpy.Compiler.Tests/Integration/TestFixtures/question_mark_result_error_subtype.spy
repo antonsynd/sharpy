@@ -1,0 +1,23 @@
+class BaseError:
+    msg: str
+    def __init__(self, msg: str):
+        self.msg = msg
+
+class FileError(BaseError):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+def read_file() -> str !FileError:
+    return Err(FileError("not found"))
+
+def process() -> str !BaseError:
+    val: str = read_file()?
+    return Ok(val)
+
+def main():
+    result = process()
+    match result:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print(e.msg)

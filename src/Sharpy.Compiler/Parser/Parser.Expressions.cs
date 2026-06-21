@@ -919,7 +919,7 @@ public partial class Parser
                 }
                 else if (Current.Type == TokenType.Question)
                 {
-                    // N-count rule: count consecutive ? tokens
+                    // N-count rule: count consecutive ? tokens starting at Current (Peek(0) == Current)
                     int n = 0;
                     int peekOffset = 0;
                     while (Peek(peekOffset).Type == TokenType.Question)

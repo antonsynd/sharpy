@@ -1,0 +1,34 @@
+def lookup(key: str) -> Result[int?, str]:
+    if key == "found":
+        val: int? = Some(42)
+        return Ok(val)
+    if key == "empty":
+        val: int? = None()
+        return Ok(val)
+    return Err("key error")
+
+def process(key: str) -> int !str:
+    val: int = lookup(key)??? 0
+    return Ok(val)
+
+def main():
+    r1 = process("found")
+    match r1:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print(e)
+
+    r2 = process("empty")
+    match r2:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print(e)
+
+    r3 = process("missing")
+    match r3:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print(e)

@@ -334,6 +334,36 @@ def find_user(id: int) -> User?:
         varDecl.Type.IsOptional.Should().BeTrue();
     }
 
+    [Fact]
+    public void ParseQuestionMark_CoalesceWithBinaryOpRHS()
+    {
+        // x?? + 1 → BinaryOp { NullCoalesce, Left: x, Right: UnaryOp{+, 1} }
+        // N=2, followed by +, which is expression-start → reserve 2 for coalesce
+        var module = Parse("x?? + 1");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var binOp = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        binOp.Operator.Should().Be(BinaryOperator.NullCoalesce);
+        binOp.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+        var unary = binOp.Right.Should().BeOfType<UnaryOp>().Subject;
+        unary.Operator.Should().Be(UnaryOperator.Plus);
+        unary.Operand.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("1");
+    }
+
+    [Fact]
+    public void ParseQuestionMark_QuadrupleWithCoalesce()
+    {
+        // x????y → BinaryOp { NullCoalesce, Left: QM{QM{x}}, Right: y }
+        // N=4, followed by expr → earlyReturnCount = 4-2 = 2, consume 2 as postfix
+        var module = Parse("x????y");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var binOp = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        binOp.Operator.Should().Be(BinaryOperator.NullCoalesce);
+        var outerQm = binOp.Left.Should().BeOfType<QuestionMarkExpression>().Subject;
+        var innerQm = outerQm.Operand.Should().BeOfType<QuestionMarkExpression>().Subject;
+        innerQm.Operand.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+        binOp.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("y");
+    }
+
     #endregion
 
 }
