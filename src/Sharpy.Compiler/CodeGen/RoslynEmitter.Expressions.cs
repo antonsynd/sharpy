@@ -88,6 +88,9 @@ internal partial class RoslynEmitter
             // Walrus operator
             WalrusExpression walrus => GenerateWalrusExpression(walrus),
 
+            // Early-return ? operator
+            QuestionMarkExpression qm => GenerateQuestionMarkExpression(qm),
+
             // Match expression
             MatchExpression matchExpr => GenerateMatchExpression(matchExpr),
 
@@ -371,6 +374,119 @@ internal partial class RoslynEmitter
     private SemanticType? GetExpressionSemanticType(Sharpy.Compiler.Parser.Ast.Expression expr)
     {
         return _context.SemanticInfo?.GetExpressionType(expr);
+    }
+
+    /// <summary>
+    /// Generates the desugaring for the postfix <c>?</c> early-return operator.
+    ///
+    /// <para><b>For <c>Result&lt;T, E&gt;</c>:</b></para>
+    /// <code>
+    /// var __qm_N = expr;
+    /// if (__qm_N.IsErr) return Result&lt;RetOk, RetErr&gt;.Err(__qm_N.UnwrapErr());
+    /// // expression value → __qm_N.Unwrap()
+    /// </code>
+    ///
+    /// <para><b>For <c>Optional&lt;T&gt;</c>:</b></para>
+    /// <code>
+    /// var __qm_N = expr;
+    /// if (__qm_N.IsNone) return Optional&lt;RetT&gt;.None;
+    /// // expression value → __qm_N.Unwrap()
+    /// </code>
+    ///
+    /// The temp declaration and if-check are hoisted via <see cref="_hoistedStatements"/>
+    /// so they appear before the containing statement (same mechanism as walrus operator).
+    /// </summary>
+    private ExpressionSyntax GenerateQuestionMarkExpression(QuestionMarkExpression qm)
+    {
+        // Generate the operand expression (may itself contain nested ? operators,
+        // which will hoist their own statements first — depth-first recursion)
+        var operandExpr = GenerateExpression(qm.Operand);
+
+        // Get the operand's semantic type
+        var operandType = GetExpressionSemanticType(qm.Operand);
+
+        // Generate unique temp variable name
+        var tempName = $"__qm_{_tempVarCounter++}";
+
+        // Hoist: var __qm_N = operandExpr;
+        _hoistedStatements.Add(
+            LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(tempName))
+                            .WithInitializer(EqualsValueClause(operandExpr))))));
+
+        if (operandType is ResultType resultType)
+        {
+            // Get the enclosing function's return type (must be ResultType — validated by semantic analysis)
+            var returnResultType = _currentReturnType as ResultType;
+
+            var retOkTypeSyntax = _typeMapper.MapSemanticType(returnResultType!.OkType);
+            var retErrTypeSyntax = _typeMapper.MapSemanticType(returnResultType.ErrorType);
+
+            // Result<RetOk, RetErr>
+            var resultGenericName = GenericName("Result")
+                .WithTypeArgumentList(TypeArgumentList(
+                    SeparatedList<TypeSyntax>(new[] { retOkTypeSyntax, retErrTypeSyntax })));
+
+            // __qm_N.UnwrapErr()
+            var unwrapErrCall = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(tempName),
+                    IdentifierName("UnwrapErr")));
+
+            // Result<RetOk, RetErr>.Err(__qm_N.UnwrapErr())
+            var errFactory = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    resultGenericName,
+                    IdentifierName("Err")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(unwrapErrCall))));
+
+            // Hoist: if (__qm_N.IsErr) return Result<RetOk, RetErr>.Err(__qm_N.UnwrapErr());
+            _hoistedStatements.Add(
+                IfStatement(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(tempName),
+                        IdentifierName("IsErr")),
+                    ReturnStatement(errFactory)));
+        }
+        else if (operandType is OptionalType)
+        {
+            // Get the enclosing function's return type (must be OptionalType — validated by semantic analysis)
+            var returnOptionalType = _currentReturnType as OptionalType;
+
+            var retUnderlyingTypeSyntax = _typeMapper.MapSemanticType(returnOptionalType!.UnderlyingType);
+
+            // Optional<RetT>
+            var optionalGenericName = GenericName("Optional")
+                .WithTypeArgumentList(TypeArgumentList(
+                    SingletonSeparatedList<TypeSyntax>(retUnderlyingTypeSyntax)));
+
+            // Optional<RetT>.None
+            var noneAccess = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                optionalGenericName,
+                IdentifierName("None"));
+
+            // Hoist: if (__qm_N.IsNone) return Optional<RetT>.None;
+            _hoistedStatements.Add(
+                IfStatement(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(tempName),
+                        IdentifierName("IsNone")),
+                    ReturnStatement(noneAccess)));
+        }
+
+        // Expression value: __qm_N.Unwrap()
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(tempName),
+                IdentifierName("Unwrap")));
     }
 
     /// <summary>
