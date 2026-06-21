@@ -82,6 +82,13 @@ internal partial class RoslynEmitter
                 else if (n.IsReferenceTypeNullable)
                     _narrowing.AddReferenceNullableNarrowing(n.VariableName);
             }
+
+            var isInstanceInfo = GetIsInstanceNarrowingsFromDecision(assert.Test, narrowInThen: true);
+            if (isInstanceInfo.HasValue)
+            {
+                foreach (var (varName, typeName) in isInstanceInfo.Value.Narrowings)
+                    _narrowing.PushIsInstanceNarrowing(varName, typeName);
+            }
         }
 
         return ExpressionStatement(invocation);

@@ -1,0 +1,7 @@
+# assert isinstance(x, T) should narrow x to T for the rest of the scope
+def check(x: object) -> None:
+    assert isinstance(x, int)
+    print(x + 10)
+
+def main():
+    check(32)
