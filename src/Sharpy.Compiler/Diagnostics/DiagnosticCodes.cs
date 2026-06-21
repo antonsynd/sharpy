@@ -217,7 +217,9 @@ public static class DiagnosticCodes
         // SPY0207: Reserved (removed — was DuplicateConstant, superseded by DuplicateDefinition)
         // SPY0208: Reserved (removed — was DuplicateTypeAlias, superseded by DuplicateDefinition)
         public const string InvalidTypeAlias = "SPY0209";           // Active
-        // SPY0210-SPY0219: Reserved for future name resolution diagnostics
+        // Question mark operator in finally (SPY0211)
+        public const string QuestionMarkInFinally = "SPY0211";           // Active
+        // SPY0212-SPY0219: Reserved for future name resolution diagnostics
 
         #endregion
 
@@ -523,7 +525,10 @@ public static class DiagnosticCodes
         public const string VirtualOnObjectOverride = "SPY0458";    // Active
         public const string StaticFieldViaInstance = "SPY0459";     // Active
 
-        // SPY0460-SPY0462: Reserved (formerly dunder invocation rules, moved to SPY0427-SPY0429)
+        // Question mark operator errors (SPY0460-SPY0462)
+        public const string QuestionMarkNotResultOrOptional = "SPY0460"; // Active
+        public const string QuestionMarkIncompatibleReturn = "SPY0461"; // Active
+        public const string QuestionMarkOutsideFunction = "SPY0462";    // Active
 
         // Exhaustiveness warnings (SPY0463)
         public const string NonExhaustiveMatch = "SPY0463";         // Active

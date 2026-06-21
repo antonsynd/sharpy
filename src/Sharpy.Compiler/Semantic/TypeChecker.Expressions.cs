@@ -61,6 +61,7 @@ internal partial class TypeChecker
             TypeCheck typeCheck => CheckTypeCheck(typeCheck),
             MaybeExpression maybeExpr => CheckMaybeExpression(maybeExpr),
             TryExpression tryExpr => CheckTryExpression(tryExpr),
+            QuestionMarkExpression qm => CheckQuestionMarkExpression(qm),
             Parenthesized paren => CheckExpression(paren.Expression),
             FStringLiteral fstr => CheckFStringLiteral(fstr),
             TStringLiteral tstr => CheckTStringLiteral(tstr),

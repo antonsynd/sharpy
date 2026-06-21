@@ -265,6 +265,33 @@ public static partial class DiagnosticExplanations
             "class Counter:\n    @static\n    count: int = 0\n    def get(self) -> int:\n        return self.count  # warning: static field via instance",
             "Access the field via the class name:\nclass Counter:\n    @static\n    count: int = 0\n    def get(self) -> int:\n        return Counter.count");
 
+        // ── Validation errors: Question mark operator (SPY0460-SPY0462) ──
+
+        Add(dict, DiagnosticCodes.Validation.QuestionMarkNotResultOrOptional,
+            "'?' operator requires Result or Optional type",
+            "Validation",
+            "The postfix '?' (early-return) operator can only be applied to expressions of type Result[T, E] or Optional[T]. " +
+            "It unwraps the success value and returns early with the error/None if the expression is an error or absent.",
+            "def process(x: int) -> int !str:\n    val: int = x?  # error: int is not Result or Optional",
+            "Apply '?' only to Result or Optional values:\ndef process() -> int !str:\n    val: int = get_value()?  # OK if get_value() returns Result");
+
+        Add(dict, DiagnosticCodes.Validation.QuestionMarkIncompatibleReturn,
+            "'?' operator incompatible with function return type",
+            "Validation",
+            "The postfix '?' operator requires the enclosing function's return type to be compatible. " +
+            "If '?' is used on a Result[T, E], the function must return Result[U, E] (or a supertype of E). " +
+            "If '?' is used on an Optional[T], the function must return Optional[U].",
+            "def process() -> int?:\n    val: int = get_result()?  # error: can't use ? on Result in Optional-returning function",
+            "Match the function return type:\ndef process() -> int !str:\n    val: int = get_result()?  # OK: both are Result types");
+
+        Add(dict, DiagnosticCodes.Validation.QuestionMarkOutsideFunction,
+            "'?' operator used outside a function",
+            "Validation",
+            "The postfix '?' (early-return) operator can only be used inside a function body. " +
+            "It causes an early return, which requires an enclosing function to return from.",
+            "x: int = get_value()?  # error: not inside a function",
+            "Use '?' inside a function:\ndef process() -> int !str:\n    val: int = get_value()?");
+
         // ── Validation warnings: Exhaustiveness (SPY0463) ─────────────
 
         Add(dict, DiagnosticCodes.Validation.NonExhaustiveMatch, "Non-exhaustive match statement", "Validation",

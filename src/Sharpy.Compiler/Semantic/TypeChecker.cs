@@ -44,6 +44,9 @@ internal partial class TypeChecker
     // Track whether we're inside an except block (for bare raise validation)
     private bool _inExceptBlock = false;
 
+    // Track whether we're inside a finally block (for ? operator validation)
+    private bool _inFinally = false;
+
     // Track whether we're inside an except* block (PEP 654 — restricts break/continue/return)
     private bool _inExceptStarBlock = false;
 

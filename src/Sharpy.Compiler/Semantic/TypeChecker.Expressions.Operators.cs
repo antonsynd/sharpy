@@ -1174,6 +1174,97 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Type-checks a postfix ? operator (expr?). Unwraps Result[T, E] to T (propagating E on error)
+    /// or Optional[T] to T (propagating None on absence). The enclosing function must return a
+    /// compatible Result or Optional type.
+    /// </summary>
+    private SemanticType CheckQuestionMarkExpression(QuestionMarkExpression qm)
+    {
+        // 1. Must be inside a function
+        if (_currentFunctionReturnType == null)
+        {
+            AddError(
+                "'?' operator can only be used inside a function",
+                qm.LineStart, qm.ColumnStart,
+                code: DiagnosticCodes.Validation.QuestionMarkOutsideFunction,
+                span: qm.Span);
+            return SemanticType.Unknown;
+        }
+
+        // 2. Disallow in finally blocks
+        if (_inFinally)
+        {
+            AddError(
+                "'?' operator cannot be used inside a 'finally' block",
+                qm.LineStart, qm.ColumnStart,
+                code: DiagnosticCodes.Semantic.QuestionMarkInFinally,
+                span: qm.Span);
+            return SemanticType.Unknown;
+        }
+
+        // 3. Type-check the operand
+        var operandType = CheckExpression(qm.Operand);
+
+        if (operandType is UnknownType)
+        {
+            return SemanticType.Unknown;
+        }
+
+        // 4. Handle Result<T, E>
+        if (operandType is ResultType result)
+        {
+            if (_currentFunctionReturnType is ResultType returnResult)
+            {
+                if (!IsAssignable(result.ErrorType, returnResult.ErrorType))
+                {
+                    AddError(
+                        $"'?' error type '{result.ErrorType.GetDisplayName()}' is not assignable to function return error type '{returnResult.ErrorType.GetDisplayName()}'",
+                        qm.LineStart, qm.ColumnStart,
+                        code: DiagnosticCodes.Validation.QuestionMarkIncompatibleReturn,
+                        span: qm.Span);
+                    return SemanticType.Unknown;
+                }
+                return result.OkType;
+            }
+            else
+            {
+                AddError(
+                    $"'?' on Result requires function to return Result, but return type is '{_currentFunctionReturnType.GetDisplayName()}'",
+                    qm.LineStart, qm.ColumnStart,
+                    code: DiagnosticCodes.Validation.QuestionMarkIncompatibleReturn,
+                    span: qm.Span);
+                return SemanticType.Unknown;
+            }
+        }
+
+        // 5. Handle Optional<T>
+        if (operandType is OptionalType optional)
+        {
+            if (_currentFunctionReturnType is OptionalType)
+            {
+                return optional.UnderlyingType;
+            }
+            else
+            {
+                AddError(
+                    $"'?' on Optional requires function to return Optional, but return type is '{_currentFunctionReturnType.GetDisplayName()}'",
+                    qm.LineStart, qm.ColumnStart,
+                    code: DiagnosticCodes.Validation.QuestionMarkIncompatibleReturn,
+                    span: qm.Span);
+                return SemanticType.Unknown;
+            }
+        }
+
+        // 6. Not Result or Optional
+        AddError(
+            $"'?' operator requires Result or Optional type, got '{operandType.GetDisplayName()}'",
+            qm.LineStart, qm.ColumnStart,
+            code: DiagnosticCodes.Validation.QuestionMarkNotResultOrOptional,
+            span: qm.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
     /// Extract narrowed types from a conditional expression
     /// </summary>
 

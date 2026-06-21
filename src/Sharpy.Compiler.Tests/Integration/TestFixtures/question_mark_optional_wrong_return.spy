@@ -1,0 +1,9 @@
+def get_value() -> int?:
+    return Some(42)
+
+def process() -> int !str:
+    val: int = get_value()?
+    return Ok(val)
+
+def main() -> None:
+    pass

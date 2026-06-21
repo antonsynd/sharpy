@@ -44,6 +44,11 @@ public static partial class DiagnosticExplanations
             "type Bad = 42",
             "Use a valid type expression:\n  type IntList = list[int]\n  type Callback = Callable[[int], str]");
 
+        Add(dict, DiagnosticCodes.Semantic.QuestionMarkInFinally, "'?' operator in finally block", "Semantic",
+            "The '?' operator (early return on Result/Optional) cannot be used inside a 'finally' block because finally blocks must always complete normally — they cannot return early.",
+            "def process() -> int !str:\n    try:\n        pass\n    finally:\n        val: int = get_value()?  # error",
+            "Move the '?' expression outside the finally block:\ndef process() -> int !str:\n    val: int = get_value()?\n    try:\n        pass\n    finally:\n        cleanup()");
+
         // ── Semantic errors: Type checking (SPY0220-SPY0259) ────────────
 
         Add(dict, DiagnosticCodes.Semantic.TypeMismatch, "Type mismatch", "Semantic",

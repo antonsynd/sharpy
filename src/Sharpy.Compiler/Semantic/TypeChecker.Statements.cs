@@ -880,12 +880,15 @@ internal partial class TypeChecker
         // Finally block has its own scope
         if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Length > 0)
         {
+            var previousInFinally = _inFinally;
+            _inFinally = true;
             _symbolTable.EnterScope("finally");
             _controlFlowDepth++;
             foreach (var stmt in tryStmt.FinallyBody)
                 CheckStatement(stmt);
             _controlFlowDepth--;
             _symbolTable.ExitScope();
+            _inFinally = previousInFinally;
         }
     }
 
