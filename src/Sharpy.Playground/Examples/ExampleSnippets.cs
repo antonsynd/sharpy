@@ -9,6 +9,7 @@ public static class ExampleSnippets
         ("Tagged Unions", TaggedUnions),
         ("Optional Types", OptionalTypes),
         ("Result Types", ResultTypes),
+        ("? Operator (Early Return)", QuestionMarkOperator),
         ("List Comprehensions", ListComprehensions),
         ("Properties & Access Modifiers", PropertiesAndAccess),
         ("Operator Overloading", OperatorOverloading),
@@ -171,6 +172,62 @@ public static class ExampleSnippets
 
             r2: int !Exception = try int("hello")
             print(f"Failed: {r2.unwrap_or(-1)}")
+        """;
+
+    private const string QuestionMarkOperator = """
+        # The ? operator propagates errors upward — like Rust's ?.
+        # It unwraps Result/Optional on success, or early-returns on failure.
+
+        def parse_int(s: str) -> int !str:
+            if s.isdigit():
+                return Ok(int(s))
+            return Err(f"'{s}' is not a number")
+
+        def parse_point(input: str) -> tuple[int, int] !str:
+            parts = input.split(",")
+            if len(parts) != 2:
+                return Err("expected 'x,y'")
+            # Each ? propagates the Err upward if parsing fails
+            x: int = parse_int(parts[0])?
+            y: int = parse_int(parts[1])?
+            return Ok((x, y))
+
+        # ? works with Optional too
+        def first_positive(items: list[int]) -> int?:
+            for item in items:
+                if item > 0:
+                    return Some(item)
+            return None()
+
+        def double_first(items: list[int]) -> int?:
+            # If first_positive returns None, we return None immediately
+            val: int = first_positive(items)?
+            return Some(val * 2)
+
+        def main():
+            # Result ? — success path
+            r1 = parse_point("10,20")
+            match r1:
+                case Ok(point):
+                    print(f"Point: {point}")
+                case Err(e):
+                    print(f"Error: {e}")
+
+            # Result ? — error propagates from second ?
+            r2 = parse_point("10,abc")
+            match r2:
+                case Ok(point):
+                    print(f"Point: {point}")
+                case Err(e):
+                    print(f"Error: {e}")
+
+            # Optional ? — success path
+            result = double_first([0, -1, 5, 3])
+            print(result.unwrap_or(0))
+
+            # Optional ? — None propagation
+            result2 = double_first([-1, -2, -3])
+            print(result2.unwrap_or(0))
         """;
 
     private const string ListComprehensions = """

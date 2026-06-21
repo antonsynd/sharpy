@@ -56,6 +56,7 @@ sharpyc emit csharp hello.spy
 | Feature | Description |
 |---------|-------------|
 | Null safety | `T?` opt-in, `??` coalescing, `?.` conditional access |
+| Error propagation | `?` operator for ergonomic Result/Optional early-return |
 | Pattern matching | `match` with destructuring, guards, and exhaustiveness checking |
 | Tagged unions | `Result[T, E]` and `Optional[T]` built in |
 | Generics | With variance (`in`/`out`) and type constraints |

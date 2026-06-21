@@ -4,7 +4,7 @@ Operators listed from highest to lowest precedence:
 
 | Precedence | Operators | Description | Associativity |
 |------------|-----------|-------------|---------------|
-| 1 | `()`, `[]`, `.`, `?.` | Grouping, indexing, member access | Left-to-right |
+| 1 | `()`, `[]`, `.`, `?.`, `?` | Grouping, indexing, member access, early-return | Left-to-right |
 | 2 | `**` | Exponentiation | **Right-to-left** |
 | 3 | `await x` | Await expression | Right-to-left (prefix) |
 | 4 | `+x`, `-x`, `~x` | Unary operators | Right-to-left (unary) |
@@ -57,6 +57,27 @@ a < expensive() < c    # temp = expensive(); (a < temp) and (temp < c)
 a is b is c           # (a is b) and (b is c)
 a in b in c           # (a in b) and (b in c)
 a < b in c            # (a < b) and (b in c)
+```
+
+## Early-Return Operator (`?`)
+
+The postfix `?` operator is parsed at the same precedence level as member access, indexing, and calls. It binds to the immediately preceding expression:
+
+```python
+# ? binds tighter than any binary operator
+compute()? + 1      # (compute()?) + 1 — unwrap, then add
+x?.method()?        # chain: null-conditional access, then early-return on result
+
+# Multiple ? unwrap nested types
+nested??            # ((nested)?)? — unwrap twice (e.g. Result[Result[T, E1], E2])
+```
+
+When multiple consecutive `?` tokens appear, the parser uses the [N-count rule](question_mark_operator.md#interaction-with--null-coalescing) to distinguish early-return `?` from null-coalesce `??`:
+
+```python
+x???default         # (x?) ?? default — one early-return, then coalesce
+x????default        # ((x?)?) ?? default — two early-returns, then coalesce
+x ?? default        # x ?? default — just coalesce (no early-return)
 ```
 
 ## Pipe Operator Precedence
