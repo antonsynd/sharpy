@@ -19,7 +19,7 @@ jobs:
     name: Build Sharpy.Core (netstandard2.1)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
 
@@ -46,7 +46,7 @@ jobs:
     name: Build Sharpy.Stdlib (netstandard2.1)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
 
@@ -91,7 +91,7 @@ jobs:
             os: ubuntu-latest
             archive: tar.gz
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
 
