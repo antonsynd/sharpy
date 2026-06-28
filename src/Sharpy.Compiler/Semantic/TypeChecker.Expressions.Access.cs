@@ -755,10 +755,16 @@ internal partial class TypeChecker
                 var typeArgs = TryResolveTypeArguments(indexAccess.Index);
                 if (typeArgs != null)
                 {
+                    // For multi-arity generic builtins (e.g. map[int, int, int]), Lookup returns an
+                    // arbitrary-first overload whose type-parameter count may not match the supplied
+                    // type args; pick the arity-matching overload so the substituted return type
+                    // closes instead of leaking an open TOut (#999).
+                    var resolvedFuncSymbol = SelectArityMatchingOverload(
+                        typeId.Name, typeArgs.Count, genericFuncSymbol);
                     // Store the type arguments in SemanticInfo for use in CheckFunctionCall
                     _semanticInfo.SetExpressionType(indexAccess, new GenericFunctionType
                     {
-                        FunctionSymbol = genericFuncSymbol,
+                        FunctionSymbol = resolvedFuncSymbol,
                         TypeArguments = typeArgs
                     });
                     return _semanticInfo.GetExpressionType(indexAccess)!;
@@ -905,6 +911,35 @@ internal partial class TypeChecker
 
         // TypeInferenceService covers all supported operations - return Unknown for unsupported
         return resultType ?? SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Selects the builtin overload whose type-parameter count matches <paramref name="typeArgCount"/>.
+    /// Multi-arity generic builtins (e.g. map's <c>MapIterator`2/`3/`4</c>) collide on their bare name
+    /// in the builtin registry, so <c>SymbolTable.Lookup</c> returns an arbitrary-first overload. When an
+    /// explicit-generics call such as <c>map[int, int, int](…)</c> supplies more type args than that
+    /// overload has type parameters, substitution would bail and leak an open <c>TOut</c> (#999). This
+    /// picks the registry overload with the matching arity so the return type closes. Falls back to
+    /// <paramref name="fallback"/> when arities already match or no better overload exists (e.g.
+    /// user-defined generics absent from the builtin registry), preserving prior behaviour.
+    /// </summary>
+    private FunctionSymbol SelectArityMatchingOverload(
+        string name, int typeArgCount, FunctionSymbol fallback)
+    {
+        if (fallback.TypeParameters.Count == typeArgCount)
+            return fallback;
+
+        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(name);
+        if (overloads != null)
+        {
+            foreach (var overload in overloads)
+            {
+                if (overload.TypeParameters.Count == typeArgCount)
+                    return overload;
+            }
+        }
+
+        return fallback;
     }
 
     /// <summary>
