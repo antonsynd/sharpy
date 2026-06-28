@@ -158,7 +158,7 @@
 | `ParamSpec` and `Concatenate` | 612 | ❌ | Higher-order function typing not implemented |
 | `TypeAlias` annotation | 613 | ✅ | `type` keyword: `type UserId = int` |
 | `TypeGuard` | 647 | 🔀 | Sharpy uses `is` type narrowing instead of user-defined guards |
-| `zip(strict=True)` | 618 | ❌ | No `strict` parameter on `zip()` |
+| `zip(strict=True)` | 618 | ✅ | `zip(a, b, strict=True)` raises `ValueError` on length mismatch (#988) |
 | Parenthesized context managers | — | ⚡ | Multiple `with` via comma, no parenthesized syntax |
 
 ### Python 3.11
@@ -314,13 +314,13 @@ print(f'{x + 1=}')    # → "x + 1=43"
 print(f'{name=!r}')   # → "name='Alice'"  (if conversion flags added)
 ```
 
-#### 2. `zip(strict=True)` (Python 3.10) — [#988](https://github.com/antonsynd/sharpy/issues/988)
+#### 2. `zip(strict=True)` (Python 3.10) — [#988](https://github.com/antonsynd/sharpy/issues/988) ✅ Implemented
 
 **What:** `zip(a, b, strict=True)` raises `ValueError` if iterables have different lengths.
 
-**Why:** Common source of silent bugs. Sharpy's type system catches many errors, but mismatched iteration lengths are a runtime concern. Easy to add to the `Builtins.Zip` implementation.
+**Why:** Common source of silent bugs. Sharpy's type system catches many errors, but mismatched iteration lengths are a runtime concern.
 
-**Complexity:** Low. Add optional parameter to `zip()` builtin.
+**Status:** Implemented in `Builtins.Zip` (2- and 3-iterable `strict` overloads, `Sharpy.Core/Zip.cs`); covered by `ZipStrictTests` and the `zip_strict`/`zip_strict_error` fixtures.
 
 #### 3. `map(strict=True)` (Python 3.14) — [#990](https://github.com/antonsynd/sharpy/issues/990)
 
