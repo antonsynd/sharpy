@@ -1,0 +1,9 @@
+# map() with strict=True over mismatched lengths should raise ValueError (#990)
+def add(a: int, b: int) -> int:
+    return a + b
+
+def main() -> None:
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [10, 20]
+    for x in map(add, a, b, strict=True):
+        print(x)

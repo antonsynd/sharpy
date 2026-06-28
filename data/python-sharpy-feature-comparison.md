@@ -212,7 +212,7 @@
 | Parentheses optional in multi-except (no `as`) | 758 | ✅ | Already supported: `except TimeoutError, ConnectionError:` |
 | `SyntaxWarning` for `return`/`break` in `finally` | 765 | ⚡ | ControlFlowValidator may catch some cases |
 | `sys.remote_exec()` for debugging | 768 | N/A | Runtime debugging feature |
-| `map(strict=...)` | — | ❌ | No `strict` parameter on `map()` |
+| `map(strict=...)` | — | ✅ | Multi-iterable `map(f, a, b[, c], strict=True)` raises `ValueError` on length mismatch (#990); element-type inference in unannotated nested calls tracked by #999 |
 | Keyword error message improvements | — | ⚡ | Sharpy has "did you mean?" suggestions |
 
 ### Python 3.15 (Beta)
@@ -322,11 +322,11 @@ print(f'{name=!r}')   # → "name='Alice'"  (if conversion flags added)
 
 **Status:** Implemented in `Builtins.Zip` (2- and 3-iterable `strict` overloads, `Sharpy.Core/Zip.cs`); covered by `ZipStrictTests` and the `zip_strict`/`zip_strict_error` fixtures.
 
-#### 3. `map(strict=True)` (Python 3.14) — [#990](https://github.com/antonsynd/sharpy/issues/990)
+#### 3. `map(strict=True)` (Python 3.14) — [#990](https://github.com/antonsynd/sharpy/issues/990) ✅ Implemented
 
 **What:** Same as zip strict, but for `map()` with multiple iterables.
 
-**Complexity:** Low. Same pattern as zip strict.
+**Status:** Implemented in `Builtins.Map` (2- and 3-iterable overloads with `strict`, `Sharpy.Core/Map.cs`); covered by `MapMultiTests` and the `map_multi`/`map_multi_strict_error` fixtures. Works in `for` loops and annotated assignments; element-type inference for unannotated nested calls (e.g. `print(list(map(f, a, b, strict=True)))`) is tracked by [#999](https://github.com/antonsynd/sharpy/issues/999).
 
 #### 4. `@` matrix multiplication operator (Python 3.5, PEP 465) — [#989](https://github.com/antonsynd/sharpy/issues/989)
 
