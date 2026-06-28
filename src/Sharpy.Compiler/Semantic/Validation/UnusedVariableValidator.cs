@@ -325,6 +325,25 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 foreach (var elem in positionalPattern.Elements)
                     CollectDefinitionsFromPattern(elem, defined, parameters);
                 break;
+
+            case ListPattern listPattern:
+                foreach (var elem in listPattern.Elements)
+                    CollectDefinitionsFromPattern(elem, defined, parameters);
+                break;
+
+            case StarPattern starPattern:
+                if (starPattern.Capture != null)
+                    CollectDefinitionsFromPattern(starPattern.Capture, defined, parameters);
+                break;
+
+            case AndPattern andPattern:
+                CollectDefinitionsFromPattern(andPattern.Left, defined, parameters);
+                CollectDefinitionsFromPattern(andPattern.Right, defined, parameters);
+                break;
+
+            case GuardPattern guardPattern:
+                CollectDefinitionsFromPattern(guardPattern.Inner, defined, parameters);
+                break;
         }
     }
 

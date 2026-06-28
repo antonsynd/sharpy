@@ -507,6 +507,16 @@ internal partial class RoslynEmitter
                     }
                 }
 
+            case StarPattern:
+                // A '*' capture is emitted inline by the ListPattern case as a C# slice
+                // pattern; it should never reach here standalone. Guard defensively.
+                _context.AddError(
+                    "A '*' capture may only appear inside a list pattern.",
+                    DiagnosticCodes.CodeGen.UnsupportedFeature,
+                    pattern.LineStart,
+                    pattern.ColumnStart);
+                return DiscardPattern();
+
             default:
                 _context.AddError(
                     $"Unsupported match pattern type '{pattern.GetType().Name}'. This pattern is not yet implemented in code generation.",

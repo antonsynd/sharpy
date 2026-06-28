@@ -270,6 +270,15 @@ internal partial class TypeChecker
                 CheckAndPattern(andPattern, scrutineeType);
                 break;
 
+            case StarPattern:
+                // A star capture is only meaningful inside a list pattern (handled by
+                // CheckListPattern). Reaching it standalone means a malformed pattern.
+                AddError(
+                    "A '*' capture may only appear inside a list pattern",
+                    pattern.LineStart, pattern.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UnsupportedFeature);
+                break;
+
             default:
                 AddError(
                     $"Unsupported pattern type '{pattern.GetType().Name}'. This pattern is not yet implemented.",
@@ -368,9 +377,25 @@ internal partial class TypeChecker
                 case BindingPattern b:
                     names.Add(b.Name.Name);
                     break;
+                case TypePattern tp:
+                    if (tp.BindingName != null)
+                        names.Add(tp.BindingName.Name);
+                    break;
                 case TuplePattern t:
                     foreach (var e in t.Elements)
                         Walk(e);
+                    break;
+                case PositionalPattern pp:
+                    foreach (var e in pp.Elements)
+                        Walk(e);
+                    break;
+                case PropertyPattern prop:
+                    foreach (var f in prop.Fields)
+                        Walk(f.Pattern);
+                    break;
+                case UnionCasePattern uc:
+                    foreach (var f in uc.FieldPatterns)
+                        Walk(f);
                     break;
                 case ListPattern l:
                     foreach (var e in l.Elements)

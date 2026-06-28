@@ -79,13 +79,6 @@ internal sealed partial class UnparseVisitor
                 _w.Write(", ");
             Visit(node.Elements[i]);
         }
-        if (node.RestPattern != null)
-        {
-            if (!node.Elements.IsEmpty)
-                _w.Write(", ");
-            _w.Write("*");
-            Visit(node.RestPattern);
-        }
         _w.Write("]");
     }
 

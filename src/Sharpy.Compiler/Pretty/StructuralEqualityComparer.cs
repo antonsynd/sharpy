@@ -429,7 +429,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         && NodesEqual(a.FieldPatterns, b.FieldPatterns);
 
     private bool ListPatternEquals(ListPattern a, ListPattern b) =>
-        NodesEqual(a.Elements, b.Elements) && NullableNodeEquals(a.RestPattern, b.RestPattern);
+        NodesEqual(a.Elements, b.Elements);
 
     private bool PropertyPatternEquals(PropertyPattern a, PropertyPattern b) =>
         NullableTypeEquals(a.Type, b.Type) && NodesEqual(a.Fields, b.Fields);

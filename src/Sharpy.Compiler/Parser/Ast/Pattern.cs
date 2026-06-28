@@ -257,14 +257,10 @@ public record RelationalPattern : Pattern
 public record ListPattern : Pattern
 {
     /// <summary>
-    /// Patterns for list elements.
+    /// Patterns for list elements. A <c>*rest</c> capture is held inline as a
+    /// <see cref="StarPattern"/> at its source position (at most one per list).
     /// </summary>
     public ImmutableArray<Pattern> Elements { get; init; } = ImmutableArray<Pattern>.Empty;
-
-    /// <summary>
-    /// Optional rest pattern (the "...tail" part).
-    /// </summary>
-    public Pattern? RestPattern { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
@@ -278,8 +274,6 @@ public record ListPattern : Pattern
     {
         foreach (var element in Elements)
             yield return element;
-        if (RestPattern != null)
-            yield return RestPattern;
     }
 }
 

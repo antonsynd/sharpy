@@ -481,7 +481,10 @@ public sealed class AstNormalizer : AstVisitor<Node>
         Zero(node) with { Elements = VisitPatterns(node.Elements) };
 
     public override Node VisitListPattern(ListPattern node) =>
-        Zero(node) with { Elements = VisitPatterns(node.Elements), RestPattern = node.RestPattern != null ? (Pattern)Visit(node.RestPattern) : null };
+        Zero(node) with { Elements = VisitPatterns(node.Elements) };
+
+    public override Node VisitStarPattern(StarPattern node) =>
+        Zero(node) with { Capture = node.Capture != null ? (Pattern)Visit(node.Capture) : null };
 
     public override Node VisitOrPattern(OrPattern node) =>
         Zero(node) with { Alternatives = VisitPatterns(node.Alternatives) };
