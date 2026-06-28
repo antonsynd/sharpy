@@ -1,0 +1,6 @@
+async def f(n: int) -> int:
+    return n * 2
+
+def main():
+    result = [await f(x) for x in [1, 2, 3]]
+    print(len(result))
