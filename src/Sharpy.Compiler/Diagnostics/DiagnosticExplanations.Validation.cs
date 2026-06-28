@@ -620,14 +620,9 @@ public static partial class DiagnosticExplanations
             "@classmethod\ndef from_string(cls, s: str) -> Self: ...   # not supported",
             "Use @staticmethod and reference the type by name, or use a factory function on the module.");
 
-        Add(dict, DiagnosticCodes.Validation.NoAsyncComprehensionHint,
-            "Async comprehensions are not supported",
-            "Validation",
-            "Sharpy does not support `async for` inside list/set/dict comprehensions or generator expressions. " +
-            ".NET's async streaming model (IAsyncEnumerable<T>) is exposed differently and is most cleanly used " +
-            "via explicit `async for` loops over async iterables.",
-            "results = [x async for x in stream()]  # not supported",
-            "Rewrite using an explicit `async for` loop and append/yield each element.");
+        // SPY0474 (NoAsyncComprehensionHint) retired in #998 — async comprehensions are now
+        // supported, so the transition hint and its explanation are gone. The code constant is
+        // kept reserved (see DiagnosticCodes.cs) so the number is never reused.
 
         Add(dict, DiagnosticCodes.Validation.SingleIsinstanceTypeHint,
             "isinstance() takes exactly one type argument",
