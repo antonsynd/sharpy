@@ -197,4 +197,116 @@ def main():
         Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
         Assert.Equal("A\nB\nC\nF\n", result.StandardOutput);
     }
+
+    [Fact]
+    public void MatchStatement_ListPatterns_FixedAndSpread()
+    {
+        var result = CompileAndExecute(@"
+def describe(items: list[int]) -> str:
+    match items:
+        case []:
+            return ""empty""
+        case [x]:
+            return ""single "" + str(x)
+        case [a, b]:
+            return ""pair "" + str(a) + "" "" + str(b)
+        case [first, *rest]:
+            return ""head "" + str(first) + "" tail "" + str(len(rest))
+        case _:
+            return ""other""
+
+def main():
+    print(describe([]))
+    print(describe([7]))
+    print(describe([3, 4]))
+    print(describe([1, 2, 3]))
+");
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("empty\nsingle 7\npair 3 4\nhead 1 tail 2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void MatchStatement_ListPattern_LeadingStar()
+    {
+        var result = CompileAndExecute(@"
+def main():
+    nums: list[int] = [10, 20, 30, 40]
+    match nums:
+        case [*init, last]:
+            print(len(init))
+            print(last)
+        case _:
+            print(""no"")
+");
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("3\n40\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void MatchStatement_NestedListPattern()
+    {
+        var result = CompileAndExecute(@"
+def main():
+    grid: list[list[int]] = [[1, 2], [3, 4], [5, 6]]
+    match grid:
+        case [[a, b], *rest]:
+            print(a)
+            print(b)
+            print(len(rest))
+        case _:
+            print(""no"")
+");
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n2\n2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void MatchStatement_AndPattern_CapturesWhole()
+    {
+        var result = CompileAndExecute(@"
+def main():
+    items: list[int] = [100, 200]
+    match items:
+        case [a, b] and whole:
+            print(a)
+            print(b)
+            print(len(whole))
+        case _:
+            print(""no"")
+");
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("100\n200\n2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void MatchStatement_ListPattern_TwoStars_IsError()
+    {
+        var result = CompileAndExecute(@"
+def main():
+    items: list[int] = [1, 2, 3]
+    match items:
+        case [*a, *b]:
+            print(""bad"")
+        case _:
+            print(""ok"")
+");
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors, e => e.Contains("at most one '*'"));
+    }
+
+    [Fact]
+    public void MatchStatement_ListPattern_NonSequence_IsError()
+    {
+        var result = CompileAndExecute(@"
+def main():
+    x: int = 5
+    match x:
+        case [a, b]:
+            print(""bad"")
+        case _:
+            print(""ok"")
+");
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors, e => e.Contains("non-sequence"));
+    }
 }

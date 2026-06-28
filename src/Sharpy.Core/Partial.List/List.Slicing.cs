@@ -11,6 +11,32 @@ namespace Sharpy
         #region Indexers
 
         /// <summary>
+        /// The number of elements. Mirrors the (explicitly-implemented) ICollection.Count and is
+        /// exposed publicly so that C# list patterns over Sharpy lists are "countable"
+        /// (e.g. <c>case [a, b, *rest]</c>). Sharpy code should prefer <c>len(x)</c>.
+        /// </summary>
+        public int Length => _list.Count;
+
+        /// <summary>
+        /// Element access by <see cref="System.Index"/>, enabling C# list-pattern element matching.
+        /// Uses from-start/from-end offsets (no Python negative-index wraparound).
+        /// </summary>
+        public T this[System.Index index] => _list[index.GetOffset(_list.Count)];
+
+        /// <summary>
+        /// Sub-range access by <see cref="System.Range"/>, enabling the slice (<c>..</c>) element of
+        /// a C# list pattern (e.g. the <c>*rest</c> capture). Returns a new list.
+        /// </summary>
+        public List<T> this[System.Range range]
+        {
+            get
+            {
+                var (offset, length) = range.GetOffsetAndLength(_list.Count);
+                return GetSlice(new Slice(offset, offset + length, 1));
+            }
+        }
+
+        /// <summary>
         /// Gets or sets the element at the specified index.
         /// </summary>
         /// <remarks>

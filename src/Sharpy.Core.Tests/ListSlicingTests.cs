@@ -291,4 +291,43 @@ public class ListSlicingTests
         list[0].Should().Be(1);
         list[1].Should().Be(3);
     }
+
+    // ===== C# list-pattern support members: Length, this[Index], this[Range] (#991) =====
+
+    [Fact]
+    public void Length_ReturnsElementCount()
+    {
+        var list = new List<int> { 1, 2, 3 };
+        list.Length.Should().Be(3);
+        new List<int>().Length.Should().Be(0);
+    }
+
+    [Fact]
+    public void IndexIndexer_FromStartAndFromEnd()
+    {
+        var list = new List<int> { 10, 20, 30, 40 };
+        list[(System.Index)0].Should().Be(10);
+        list[(System.Index)2].Should().Be(30);
+        list[^1].Should().Be(40);
+        list[^2].Should().Be(30);
+    }
+
+    [Fact]
+    public void RangeIndexer_ReturnsSublist()
+    {
+        var list = new List<int> { 10, 20, 30, 40, 50 };
+
+        var middle = list[1..4];
+        middle.Should().HaveCount(3);
+        middle[0].Should().Be(20);
+        middle[2].Should().Be(40);
+
+        var tail = list[2..];
+        tail.Should().HaveCount(3);
+        tail[0].Should().Be(30);
+
+        var head = list[..2];
+        head.Should().HaveCount(2);
+        head[1].Should().Be(20);
+    }
 }

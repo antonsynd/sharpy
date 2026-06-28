@@ -945,6 +945,13 @@ internal partial class RoslynEmitter : ICodeEmitter
                 }
                 break;
 
+            case StarPattern starPattern:
+                if (starPattern.Capture != null)
+                {
+                    CollectVariableNamesFromPattern(starPattern.Capture);
+                }
+                break;
+
             case TypePattern typePattern when typePattern.BindingName != null:
                 var typeBindingName = NameMangler.ToCamelCase(typePattern.BindingName.Name);
                 _sourceVariableNames.Add(typeBindingName);

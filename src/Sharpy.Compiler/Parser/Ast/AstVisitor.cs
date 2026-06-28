@@ -287,6 +287,9 @@ public abstract class AstVisitor
             case ListPattern n:
                 VisitListPattern(n);
                 break;
+            case StarPattern n:
+                VisitStarPattern(n);
+                break;
             case OrPattern n:
                 VisitOrPattern(n);
                 break;
@@ -505,6 +508,7 @@ public abstract class AstVisitor
     public virtual void VisitUnionCasePattern(UnionCasePattern node) => VisitPattern(node);
     public virtual void VisitTuplePattern(TuplePattern node) => VisitPattern(node);
     public virtual void VisitListPattern(ListPattern node) => VisitPattern(node);
+    public virtual void VisitStarPattern(StarPattern node) => VisitPattern(node);
     public virtual void VisitOrPattern(OrPattern node) => VisitPattern(node);
     public virtual void VisitAndPattern(AndPattern node) => VisitPattern(node);
     public virtual void VisitGuardPattern(GuardPattern node) => VisitPattern(node);
@@ -643,6 +647,7 @@ public abstract class AstVisitor<T>
             UnionCasePattern n => VisitUnionCasePattern(n),
             TuplePattern n => VisitTuplePattern(n),
             ListPattern n => VisitListPattern(n),
+            StarPattern n => VisitStarPattern(n),
             OrPattern n => VisitOrPattern(n),
             AndPattern n => VisitAndPattern(n),
             GuardPattern n => VisitGuardPattern(n),
@@ -844,6 +849,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitUnionCasePattern(UnionCasePattern node) => VisitPattern(node);
     public virtual T VisitTuplePattern(TuplePattern node) => VisitPattern(node);
     public virtual T VisitListPattern(ListPattern node) => VisitPattern(node);
+    public virtual T VisitStarPattern(StarPattern node) => VisitPattern(node);
     public virtual T VisitOrPattern(OrPattern node) => VisitPattern(node);
     public virtual T VisitAndPattern(AndPattern node) => VisitPattern(node);
     public virtual T VisitGuardPattern(GuardPattern node) => VisitPattern(node);

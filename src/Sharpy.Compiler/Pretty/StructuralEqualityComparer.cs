@@ -96,6 +96,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             UnionCasePattern a => UnionCasePatternEquals(a, (UnionCasePattern)y),
             TuplePattern a => NodesEqual(a.Elements, ((TuplePattern)y).Elements),
             ListPattern a => ListPatternEquals(a, (ListPattern)y),
+            StarPattern a => NullableNodeEquals(a.Capture, ((StarPattern)y).Capture),
             OrPattern a => NodesEqual(a.Alternatives, ((OrPattern)y).Alternatives),
             AndPattern a => Equals(a.Left, ((AndPattern)y).Left) && Equals(a.Right, ((AndPattern)y).Right),
             GuardPattern a => Equals(a.Inner, ((GuardPattern)y).Inner) && Equals(a.Guard, ((GuardPattern)y).Guard),

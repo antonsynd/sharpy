@@ -1,0 +1,8 @@
+# A list pattern requires a sequence scrutinee (#991)
+def main() -> None:
+    x: int = 5
+    match x:
+        case [a, b]:
+            print("bad")
+        case _:
+            print("ok")

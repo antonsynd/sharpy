@@ -1,0 +1,10 @@
+# And-pattern: a list pattern combined with a whole-value capture (#991)
+def main() -> None:
+    items: list[int] = [100, 200]
+    match items:
+        case [a, b] and whole:
+            print(a)
+            print(b)
+            print(len(whole))
+        case _:
+            print("no")

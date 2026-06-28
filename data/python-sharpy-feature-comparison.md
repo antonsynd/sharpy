@@ -153,7 +153,7 @@
 
 | Feature | PEP | Sharpy | Notes |
 |---------|-----|--------|-------|
-| **Structural pattern matching** (`match`/`case`) | 634/635/636 | ✅ | **More extensive than Python**: adds relational patterns (`> 0`), match expressions, typed bindings, exhaustiveness checking. List patterns (`[a, b]`) and `and` patterns are forward-declared but not yet parseable. |
+| **Structural pattern matching** (`match`/`case`) | 634/635/636 | ✅ | **More extensive than Python**: adds relational patterns (`> 0`), match expressions, typed bindings, exhaustiveness checking. List patterns (`[a, b]`, `[first, *rest]`, `[*init, last]`, nested) and `and` patterns are implemented end-to-end (#991). |
 | **Union type operator** (`X \| Y`) | 604 | ⚡ | Only `T \| None` allowed (nullable interop). Free unions like `int \| str` are explicitly rejected — use `union` declarations instead |
 | `ParamSpec` and `Concatenate` | 612 | ❌ | Higher-order function typing not implemented |
 | `TypeAlias` annotation | 613 | ✅ | `type` keyword: `type UserId = int` |
@@ -496,8 +496,8 @@ If Sharpy were mapped to a "Python equivalent version" based on feature coverage
 |----------------|------------|----------|
 | `X \| Y` union syntax: ✅ | → ⚡ Partial | `Parser.Types.cs:32` — "Free unions like 'int \| str' are not supported"; only `T \| None` allowed |
 | Unpacking in comprehensions: ❌ | → ✅ Implemented | `Parser.Primaries.cs:453,536,629` — PEP 798 comments; `ListSpreadElement`, `DictSpreadComprehension` AST nodes |
-| List patterns (`[a, b]`): ✅ | → ⚡ Forward-declared | `Pattern.cs:257` has AST, `RoslynEmitter.cs:937` has codegen, but `ParseSinglePattern()` has no `LeftBracket` case |
-| And patterns (`x and y`): ✅ | → ⚡ Forward-declared | `Pattern.cs:402` has AST, `RoslynEmitter.cs:960` has codegen, but `ParsePattern()` only handles `\|` (OR) |
+| List patterns (`[a, b]`): ✅ | → ✅ Implemented (#991) | Parser (`ParseSinglePattern` `LeftBracket` → `ParseListPattern`, `StarPattern` for `*rest`), semantic (`CheckListPattern`), codegen (C# list/slice patterns). Sharpy.List gained `Length` + `Index`/`Range` indexers to be list-pattern compatible. |
+| And patterns (`x and y`): ✅ | → ✅ Implemented (#991) | Parser (`ParseAndPattern`, `and` binds tighter than `\|`), semantic (`CheckAndPattern`, duplicate-capture check SPY0372), codegen (C# `and` pattern) |
 | Guard clause keyword: `when` | → `if` (in match) | `Parser.Statements.cs:1284,1318` — match arms/cases use `if`; `when` is used only in `except` filters |
 | Decorator grammar: "specific keywords" | → specific registered names | `DecoratorValidator.cs:287` rejects unknown names (SPY0444); `@[...]` bracket syntax allows arbitrary C# attributes |
 | `@classmethod`: unlisted | → ❌ Explicitly unsupported | `DecoratorValidator.cs` UnsupportedDecorators dict: "@classmethod is not supported in Sharpy" |

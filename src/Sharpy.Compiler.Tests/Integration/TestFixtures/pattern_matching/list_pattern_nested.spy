@@ -1,0 +1,10 @@
+# Nested list patterns: [[a, b], *rest] (#991)
+def main() -> None:
+    grid: list[list[int]] = [[1, 2], [3, 4], [5, 6]]
+    match grid:
+        case [[a, b], *rest]:
+            print(a)
+            print(b)
+            print(len(rest))
+        case _:
+            print("no")

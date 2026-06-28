@@ -89,6 +89,13 @@ internal sealed partial class UnparseVisitor
         _w.Write("]");
     }
 
+    public override void VisitStarPattern(StarPattern node)
+    {
+        _w.Write("*");
+        if (node.Capture != null)
+            Visit(node.Capture);
+    }
+
     public override void VisitOrPattern(OrPattern node)
     {
         for (int i = 0; i < node.Alternatives.Length; i++)
@@ -102,7 +109,7 @@ internal sealed partial class UnparseVisitor
     public override void VisitAndPattern(AndPattern node)
     {
         Visit(node.Left);
-        _w.Write(" & ");
+        _w.Write(" and ");
         Visit(node.Right);
     }
 
