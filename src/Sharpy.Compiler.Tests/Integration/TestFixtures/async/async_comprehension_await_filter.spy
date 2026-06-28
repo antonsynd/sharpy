@@ -1,0 +1,11 @@
+async def gen() -> int:
+    yield 1
+    yield 2
+    yield 3
+
+async def pred(n: int) -> bool:
+    return n > 0
+
+async def main():
+    result = [x async for x in gen() if await pred(x)]
+    print(result)

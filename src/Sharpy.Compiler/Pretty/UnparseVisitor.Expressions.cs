@@ -42,7 +42,7 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitForClause(ForClause node)
     {
-        _w.Write(" for ");
+        _w.Write(node.IsAsync ? " async for " : " for ");
         Visit(node.Target);
         _w.Write(" in ");
         Visit(node.Iterator);

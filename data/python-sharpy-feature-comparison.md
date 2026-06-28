@@ -110,7 +110,7 @@
 | **Variable annotations** (`x: int = 5`) | 526 | ✅ | First-class type annotations |
 | **Underscores in numeric literals** (`1_000_000`) | 515 | ✅ | With validation (no consecutive, no trailing) |
 | **Async generators** | 525 | ✅ | `async def gen(): yield x` → `IAsyncEnumerable<T>` |
-| **Async comprehensions** | 530 | ❌ | Explicitly rejected in Sharpy |
+| **Async comprehensions** | 530 | ✅ | list/set/dict with `async for`/`await` inside `async def` ([#998](https://github.com/antonsynd/sharpy/issues/998)); async generator expressions unsupported |
 | `__init_subclass__` hook | 487 | ❌ | No metaclass-like hooks |
 | `__set_name__` descriptor protocol | 487 | ❌ | No descriptor protocol |
 | `os.PathLike` protocol | 519 | 🔀 | Uses .NET `FileInfo`/`DirectoryInfo` interop |
@@ -174,7 +174,7 @@
 | `Required` / `NotRequired` for TypedDict | 655 | N/A | No TypedDict equivalent |
 | `@dataclass_transform()` | 681 | ❌ | |
 | Starred unpacking in `for` targets | — | ✅ | Star expressions in for loops |
-| Async comprehensions inside comprehensions | — | ❌ | Async comprehensions explicitly rejected |
+| Async comprehensions inside comprehensions | — | ✅ | Supported inside `async def` ([#998](https://github.com/antonsynd/sharpy/issues/998)); async generator expressions still unsupported |
 
 ### Python 3.12
 
@@ -411,7 +411,7 @@ def get(self, key, default=MISSING):
 
 **What:** `[x async for x in aiter]` and `{await f() for f in funcs}`.
 
-**Status:** Explicitly rejected in Sharpy. Consider revisiting if demand emerges — `await foreach` in C# makes the codegen straightforward, and the pattern is increasingly common in async-heavy Python code.
+**Status:** ✅ Implemented ([#998](https://github.com/antonsynd/sharpy/issues/998)). List/set/dict async comprehensions are supported inside `async def`, lowering to a temporary collection populated by `await foreach` with sequential semantics. Async generator expressions (`(x async for x in src)`) remain unsupported, since Sharpy has no generator-expression construct.
 
 #### 11. Implicit namespace packages (Python 3.3, PEP 420)
 
@@ -465,7 +465,7 @@ def get(self, key, default=MISSING):
 | User-defined type guards | [#995](https://github.com/antonsynd/sharpy/issues/995) | High | High | Complex | **P2** |
 | `ParamSpec` | [#996](https://github.com/antonsynd/sharpy/issues/996) | Medium | Very High | Complex | **P3** |
 | `TypeVarTuple` | [#997](https://github.com/antonsynd/sharpy/issues/997) | Medium | Very High | Complex | **P3** |
-| Async comprehensions | [#998](https://github.com/antonsynd/sharpy/issues/998) | Medium | Medium | Easy | **Revisit** |
+| Async comprehensions | [#998](https://github.com/antonsynd/sharpy/issues/998) | Medium | Medium | Easy | **Implemented** |
 
 *~~Unpacking in comprehensions~~ — already implemented (PEP 798 with parser support).*
 
@@ -478,7 +478,7 @@ If Sharpy were mapped to a "Python equivalent version" based on feature coverage
 | Python Era | Coverage | Notes |
 |------------|----------|-------|
 | 3.0–3.5 | ~95% | Missing: metaclasses (by design), `@` operator |
-| 3.6–3.8 | ~85% | Missing: async comprehensions (by design) |
+| 3.6–3.8 | ~85% | Has async comprehensions ([#998](https://github.com/antonsynd/sharpy/issues/998)); missing `__init_subclass__` / descriptor hooks (by design) |
 | 3.9–3.10 | ~75% | Missing: free `X \| Y` unions (only `T \| None`), `ParamSpec` |
 | 3.11–3.12 | ~70% | Missing: `TypeVarTuple`, `@dataclass_transform`, exception notes |
 | 3.13–3.14 | ~60% | Has TypeVar defaults + template strings; missing `TypeIs`, lazy annotations N/A |

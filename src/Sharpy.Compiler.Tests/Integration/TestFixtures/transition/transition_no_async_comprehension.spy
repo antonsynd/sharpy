@@ -1,8 +1,0 @@
-# SPY0474: Async comprehensions are not supported in Sharpy.
-# The `async for` keyword is consumed and the comprehension is parsed
-# as a regular comprehension, with a transition hint emitted.
-
-def main():
-    items = [1, 2, 3]
-    result = [x * 2 async for x in items]
-    print(len(result))

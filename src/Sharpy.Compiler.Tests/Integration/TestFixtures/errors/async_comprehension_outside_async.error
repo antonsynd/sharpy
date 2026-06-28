@@ -1,0 +1,1 @@
+'async for' can only be used inside 'async def' functions @7:17

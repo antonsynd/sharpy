@@ -564,7 +564,7 @@ public static class DiagnosticCodes
         public const string StructValueSemanticsHint = "SPY0471";     // Active
         public const string HomogeneousVariadicHint = "SPY0472";      // Active (emitted by TransitionWarningValidator)
         public const string NoClassmethodHint = "SPY0473";            // Active (emitted by TransitionWarningValidator)
-        public const string NoAsyncComprehensionHint = "SPY0474";     // Active (emitted by Parser.ParseComprehensionClauses)
+        public const string NoAsyncComprehensionHint = "SPY0474";     // Retired (#998 — async comprehensions implemented); reserved, never reused
         public const string SingleIsinstanceTypeHint = "SPY0475";     // Active
         public const string NegativeTupleIndexHint = "SPY0476";       // Active (emitted by TransitionWarningValidator)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active

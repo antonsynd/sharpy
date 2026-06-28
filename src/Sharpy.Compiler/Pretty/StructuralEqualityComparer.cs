@@ -36,7 +36,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             SetComprehension a => ComprehensionEquals(a.Element, a.Clauses, ((SetComprehension)y).Element, ((SetComprehension)y).Clauses),
             DictComprehension a => DictComprehensionEquals(a, (DictComprehension)y),
             DictSpreadComprehension a => Equals(a.Spread, ((DictSpreadComprehension)y).Spread) && ClausesEqual(a.Clauses, ((DictSpreadComprehension)y).Clauses),
-            ForClause a => Equals(a.Target, ((ForClause)y).Target) && Equals(a.Iterator, ((ForClause)y).Iterator),
+            ForClause a => a.IsAsync == ((ForClause)y).IsAsync && Equals(a.Target, ((ForClause)y).Target) && Equals(a.Iterator, ((ForClause)y).Iterator),
             IfClause a => Equals(a.Condition, ((IfClause)y).Condition),
             Identifier a => a.Name == ((Identifier)y).Name && a.IsNameBacktickEscaped == ((Identifier)y).IsNameBacktickEscaped,
             MemberAccess a => MemberAccessEquals(a, (MemberAccess)y),

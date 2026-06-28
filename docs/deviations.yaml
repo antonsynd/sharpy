@@ -391,23 +391,22 @@ deviations:
             def make() -> Foo:
                 return Foo()
 
-  - id: no-async-comprehensions
+  - id: no-async-generator-expressions
     code: null
     category: syntax
     audience: python
     severity: none
-    python_behavior: "`[x async for x in src]` and `[await f(x) for x in xs]` are valid async comprehensions."
-    sharpy_behavior: "Async comprehensions are a deliberate non-feature. Use an explicit `async for` loop and `append` instead."
+    python_behavior: "`(x async for x in src)` is an async generator expression producing a lazy async iterator."
+    sharpy_behavior: "Sharpy has no generator-expression construct (synchronous genexprs are likewise unavailable), so async generator expressions are unsupported. Async list/set/dict comprehensions ARE supported inside `async def` — use one of those, or an explicit `async for` loop and `append`."
     spec_ref: docs/language_specification/async_programming.md
     existing_diagnostic: null
-    planned_diagnostic: SPY0474
+    planned_diagnostic: null
     example:
       python: |
-        results = [x async for x in source()]
+        agen = (x async for x in source())
       sharpy: |
-        results: list[int] = []
-        async for x in source():
-            results.append(x)
+        # use an async list comprehension instead
+        results: list[int] = [x async for x in source()]
 
   - id: isinstance-single-type
     code: null

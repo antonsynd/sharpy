@@ -753,7 +753,6 @@ FORBIDDEN_FEATURES_SECTION = """\
 - **NO mixing generator `__iter__` with `__next__`**: A class cannot have both `yield`-based `__iter__` AND a `__next__` method
 - **NO direct dunder calls**: Use builtin functions instead — `reversed(obj)` not `obj.__reversed__()`, `len(obj)` not `obj.__len__()`, `str(obj)` not `obj.__str__()`
 - **NO `raise X from Y`**: Inner exception chaining not supported
-- **NO async comprehensions**: `[await x async for x in ...]` — not supported
 - **NO event raise from outside class**: Events can ONLY be raised inside the declaring class via `?.invoke()`. Outside code can only use `+=` (subscribe) and `-=` (unsubscribe).
 - **NO direct event assignment**: Do NOT write `obj.on_click = handler`. Use `obj.on_click += handler` to subscribe.
 - **NO non-constant decorator arguments**: Custom decorator arguments must be compile-time constants (string, int, float, bool, None, enum access, `type(X)`). Variable expressions are rejected (SPY0425).

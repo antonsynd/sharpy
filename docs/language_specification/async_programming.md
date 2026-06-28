@@ -9,7 +9,7 @@
 > - Async generators (`async def` with `yield`) emit `IAsyncEnumerable<T>` return type.
 > - `yield from` in async generators is **implemented** (Sharpy extension beyond Python).
 > - Async constructors (`async def __init__`) are rejected at compile time (SPY0358).
-> - Async comprehensions (`[x async for x in ...]`, `[await f(x) for x in ...]`) are a **deliberate non-feature** — see [Async Comprehensions](#async-comprehensions--deliberate-non-feature) below.
+> - Async comprehensions (`[x async for x in ...]`, `[await f(x) for x in ...]`) are **implemented** inside `async def` functions for list/set/dict comprehensions — see [Async Comprehensions](#async-comprehensions) below. Async *generator expressions* (`(x async for x in ...)`) remain unsupported.
 >
 > See [generators.md](generators.md) for synchronous and async generator documentation.
 
@@ -52,47 +52,47 @@ async def process():
 
 *Implementation: ✅ Implemented — `async def` with `yield` emits `IAsyncEnumerable<T>`. `async for` maps to `await foreach`. `yield from` in async generators auto-detects sync vs async iterables (Sharpy extension beyond Python).*
 
-### Async Comprehensions — Deliberate Non-Feature
+### Async Comprehensions
 
-Sharpy **intentionally does not support** async comprehensions (`async for` inside comprehensions) and **will not add them**. This is a deliberate design decision, not a missing feature or planned work item.
+Sharpy **supports** async comprehensions inside `async def` functions. List, set, and dict comprehensions may use:
 
-**What is excluded:**
-
-```python
-# ❌ NOT SUPPORTED — async for inside comprehension
-results = [x async for x in async_iterator()]
-
-# ❌ NOT SUPPORTED — async for with filter
-results = [x async for x in async_iterator() if await predicate(x)]
-
-# ❌ NOT SUPPORTED — await inside comprehension
-results = [await fetch(url) for url in urls]
-```
-
-**Why this is intentional:**
-
-1. **C# LINQ does not support `await` in query expressions.** Comprehensions lower to LINQ (`.Select()`, `.Where()`, `.SelectMany()`), and C# lambdas passed to LINQ methods cannot use `await` without significant transformation.
-2. **Lowering to explicit loops would be misleading.** Async comprehensions in Python execute sequentially, but look like they could be concurrent. Requiring explicit loops makes the sequential nature visible.
-3. **`asyncio.gather` is the right pattern for concurrency.** When concurrent execution is desired, `asyncio.gather` maps directly to `Task.WhenAll()` and expresses intent clearly.
-
-**Workarounds:**
+- An **`async for` clause** to iterate an async iterable (an async generator or any `IAsyncEnumerable<T>`).
+- **`await`** in the element expression, in a dict key or value, and in an `if` filter.
 
 ```python
-# ✅ Use explicit async loop for sequential async iteration
-results: list[T] = []
-async for x in async_iterator():
-    results.append(x)
+async def gen() -> int:        # async generator — annotate its element type
+    for i in range(3):
+        yield i
 
-# ✅ With condition
-results: list[T] = []
-async for x in async_iterator():
-    if await predicate(x):
-        results.append(x)
+async def scale(x: int) -> int:
+    return x * 10
 
-# ✅ Use asyncio.gather for concurrent async calls
-async def fetch_all(urls: list[str]) -> list[str]:
-    return await asyncio.gather(*[fetch(url) for url in urls])
+async def keep(x: int) -> bool:
+    return x > 0
+
+async def collect() -> list[int]:
+    # async for clause
+    items = [x async for x in gen()]                       # [0, 1, 2]
+
+    # await in the element, plus an awaited filter
+    scaled = [await scale(x) async for x in gen() if await keep(x)]  # [10, 20]
+
+    # set and dict comprehensions work the same way
+    seen = {x async for x in gen()}                        # {0, 1, 2}
+    table = {x: await scale(x) async for x in gen()}       # {0: 0, 1: 10, 2: 20}
+
+    return scaled
 ```
+
+**Rules and semantics:**
+
+1. **`async def`-only.** Async comprehensions (an `async for` clause or an `await` anywhere in a comprehension) are only valid inside an `async def` function — the same rule Python enforces.
+2. **Sequential execution.** Faithful to Python, elements are produced one at a time in order; there is no implicit concurrency. When you want concurrency, use `asyncio.gather` (see [Concurrent Execution](#concurrent-execution)), which maps to `Task.WhenAll()`.
+3. **Annotate async generators.** An async generator used in an `async for` clause should declare its element type (e.g. `async def gen() -> int:`) so the comprehension can infer the result type.
+
+*Implementation: ✅ Implemented — each async comprehension lowers to a temporary collection populated by an `await foreach` (for an `async for` clause) or a `foreach` (when only `await` appears in the body), appending each element/entry in order; the temporary is the comprehension's result. Using an `async for` clause or `await` in a comprehension outside `async def` is a compile error.*
+
+> Async **generator expressions** — `(x async for x in src)` — are **not** supported, because Sharpy has no generator-expression construct at all (synchronous generator expressions are likewise unavailable). Use a list/set/dict comprehension or an explicit `async for` loop instead.
 
 **Generator Return Types:**
 

@@ -42,7 +42,7 @@ internal class ProtocolValidator : ValidatingAstWalker
 
     public override void VisitForClause(ForClause node)
     {
-        ValidateIteratorExpression(node.Iterator);
+        ValidateIteratorExpression(node.Iterator, node.IsAsync);
         base.VisitForClause(node);
     }
 
@@ -122,7 +122,7 @@ internal class ProtocolValidator : ValidatingAstWalker
         }
     }
 
-    private void ValidateIteratorExpression(Expression iterator)
+    private void ValidateIteratorExpression(Expression iterator, bool isAsync = false)
     {
         var iterableType = Context.SemanticInfo.GetExpressionType(iterator);
         if (iterableType == null || iterableType is UnknownType)
@@ -132,7 +132,9 @@ internal class ProtocolValidator : ValidatingAstWalker
                 iterator.LineStart, iterator.ColumnStart, iterator.Span))
             return;
 
-        if (!HasProtocol(iterableType, DunderNames.Iter))
+        // Async comprehension clauses use IAsyncEnumerable<T> protocol, not __iter__.
+        // Skip the __iter__ check and trust the C# compiler to validate.
+        if (!isAsync && !HasProtocol(iterableType, DunderNames.Iter))
         {
             AddError(
                 $"Type '{iterableType.GetDisplayName()}' is not iterable " +

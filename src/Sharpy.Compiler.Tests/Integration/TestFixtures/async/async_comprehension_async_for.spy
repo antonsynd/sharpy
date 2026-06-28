@@ -1,0 +1,8 @@
+async def gen() -> int:
+    yield 1
+    yield 2
+    yield 3
+
+async def main():
+    result = [x * 2 async for x in gen() if x > 0]
+    print(result)

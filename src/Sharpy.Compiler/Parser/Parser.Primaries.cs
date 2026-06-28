@@ -1324,20 +1324,11 @@ public partial class Parser
         if (Current.Type == TokenType.For)
             return true;
 
+        // `async for` starts an asynchronous comprehension. Do NOT consume the `async`
+        // token here — ParseComprehensionClauses owns its consumption and records the
+        // async marker on the ForClause.
         if (Current.Type == TokenType.Async && Peek().Type == TokenType.For)
-        {
-            _diagnostics.AddHint(
-                "Async comprehensions (`async for` inside a list/set/dict comprehension) "
-                    + "are not supported in Sharpy — use a regular comprehension or an explicit "
-                    + "async loop. The `async` keyword has been ignored.",
-                span: CurrentSpan,
-                line: Current.Line,
-                column: Current.Column,
-                code: DiagnosticCodes.Validation.NoAsyncComprehensionHint,
-                phase: CompilerPhase.Parser);
-            Advance();
             return true;
-        }
 
         return false;
     }

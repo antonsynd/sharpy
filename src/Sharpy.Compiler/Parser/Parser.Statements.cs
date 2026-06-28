@@ -255,28 +255,28 @@ public partial class Parser
                 if (!CheckLoopProgress())
                     break;
 
-                // SPY0474 — `async for` inside comprehensions is not supported in Sharpy.
-                // Emit a transition hint and consume the `async` token so the following
-                // `for` clause can be parsed normally (best-effort recovery).
+                // Detect an `async for` clause. Record the async marker (including the
+                // `async` token position) so the resulting ForClause carries IsAsync = true
+                // and spans the `async` keyword. Consumption of the trailing `for` happens
+                // below in the shared ForClause branch.
+                bool clauseIsAsync = false;
+                int asyncStartLine = 0;
+                int asyncStartColumn = 0;
+                Token asyncStartToken = Current;
                 if (Current.Type == TokenType.Async && Peek().Type == TokenType.For)
                 {
-                    _diagnostics.AddHint(
-                        "Async comprehensions (`async for` inside a list/set/dict/generator comprehension) "
-                            + "are not supported in Sharpy — use a regular comprehension or an explicit "
-                            + "async loop. The `async` keyword has been ignored.",
-                        span: CurrentSpan,
-                        line: Current.Line,
-                        column: Current.Column,
-                        code: DiagnosticCodes.Validation.NoAsyncComprehensionHint,
-                        phase: CompilerPhase.Parser);
+                    clauseIsAsync = true;
+                    asyncStartLine = Current.Line;
+                    asyncStartColumn = Current.Column;
+                    asyncStartToken = Current;
                     Advance();
                 }
 
                 if (Current.Type == TokenType.For)
                 {
-                    var startLine = Current.Line;
-                    var startColumn = Current.Column;
-                    var startToken = Current;
+                    var startLine = clauseIsAsync ? asyncStartLine : Current.Line;
+                    var startColumn = clauseIsAsync ? asyncStartColumn : Current.Column;
+                    var startToken = clauseIsAsync ? asyncStartToken : Current;
                     Advance();
 
                     // Parse target (single identifier for now)
@@ -289,6 +289,7 @@ public partial class Parser
                     {
                         Target = target,
                         Iterator = iterator,
+                        IsAsync = clauseIsAsync,
                         LineStart = startLine,
                         ColumnStart = startColumn,
                         LineEnd = Current.Line,

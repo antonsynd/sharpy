@@ -15,12 +15,63 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
+    /// <summary>
+    /// Recursively determines whether an expression contains an <c>await</c>.
+    /// Over-detection is safe: it only changes the lowering strategy (LINQ vs imperative),
+    /// never correctness, so no special-casing of lambda/nested-comprehension boundaries.
+    /// </summary>
+    private static bool ContainsAwait(Expression expr)
+    {
+        if (expr is AwaitExpression)
+            return true;
+        foreach (var child in expr.GetChildNodes())
+            if (child is Expression childExpr && ContainsAwait(childExpr))
+                return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns true when a comprehension's clauses force async (imperative await-foreach) lowering:
+    /// any <c>async for</c> clause, or an <c>await</c> inside any if-clause condition.
+    /// Deliberately does NOT inspect for-clause Iterator/Target: <c>[x for x in await get()]</c>
+    /// stays on the LINQ path (await in iterator position works there).
+    /// </summary>
+    private static bool HasAsyncComprehensionClause(ImmutableArray<ComprehensionClause> clauses)
+    {
+        foreach (var clause in clauses)
+        {
+            switch (clause)
+            {
+                case ForClause { IsAsync: true }:
+                    return true;
+                case IfClause ifClause when ContainsAwait(ifClause.Condition):
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Async routing predicate for list/set comprehensions: async-lowered when any clause is
+    /// async (see <see cref="HasAsyncComprehensionClause"/>) or the produced element contains await.
+    /// </summary>
+    private static bool IsAsyncListSet(ImmutableArray<ComprehensionClause> clauses, Expression element)
+        => HasAsyncComprehensionClause(clauses) || ContainsAwait(element);
+
+    /// <summary>
+    /// Async routing predicate for dict comprehensions: async-lowered when any clause is async
+    /// or the produced key or value contains await.
+    /// </summary>
+    private static bool IsAsyncDict(ImmutableArray<ComprehensionClause> clauses, Expression key, Expression value)
+        => HasAsyncComprehensionClause(clauses) || ContainsAwait(key) || ContainsAwait(value);
+
     private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
     {
         bool elementIsSpread = listComp.Element is SpreadElement;
 
-        // Multi-for comprehensions use imperative codegen (nested foreach loops)
-        if (listComp.Clauses.Count(c => c is ForClause) > 1)
+        // Multi-for comprehensions, and async/await comprehensions, use imperative codegen
+        // (nested foreach loops; await foreach for async clauses).
+        if (listComp.Clauses.Count(c => c is ForClause) > 1 || IsAsyncListSet(listComp.Clauses, listComp.Element))
             return GenerateImperativeComprehension(listComp.Clauses, listComp.Element, null, null, BuiltinNames.List, elementIsSpread);
 
         // Single-for: LINQ method chain
@@ -69,8 +120,9 @@ internal partial class RoslynEmitter
     {
         bool elementIsSpread = setComp.Element is SpreadElement;
 
-        // Multi-for comprehensions use imperative codegen (nested foreach loops)
-        if (setComp.Clauses.Count(c => c is ForClause) > 1)
+        // Multi-for comprehensions, and async/await comprehensions, use imperative codegen
+        // (nested foreach loops; await foreach for async clauses).
+        if (setComp.Clauses.Count(c => c is ForClause) > 1 || IsAsyncListSet(setComp.Clauses, setComp.Element))
             return GenerateImperativeComprehension(setComp.Clauses, setComp.Element, null, null, BuiltinNames.Set, elementIsSpread);
 
         // Single-for: LINQ method chain
@@ -117,8 +169,9 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateDictComprehension(DictComprehension dictComp)
     {
-        // Multi-for comprehensions use imperative codegen (nested foreach loops)
-        if (dictComp.Clauses.Count(c => c is ForClause) > 1)
+        // Multi-for comprehensions, and async/await comprehensions, use imperative codegen
+        // (nested foreach loops; await foreach for async clauses).
+        if (dictComp.Clauses.Count(c => c is ForClause) > 1 || IsAsyncDict(dictComp.Clauses, dictComp.Key, dictComp.Value))
             return GenerateImperativeComprehension(dictComp.Clauses, null, dictComp.Key, dictComp.Value, BuiltinNames.Dict);
 
         // Single-for: LINQ method chain
@@ -233,14 +286,14 @@ internal partial class RoslynEmitter
                         var foreachBody = new List<StatementSyntax> { varInit };
                         foreachBody.AddRange(currentBody);
 
-                        currentBody = new List<StatementSyntax>
-                        {
-                            ForEachStatement(
-                                IdentifierName("var"),
-                                Identifier(tempLoopVar),
-                                iterExpr,
-                                Block(foreachBody))
-                        };
+                        var foreachStmt = ForEachStatement(
+                            IdentifierName("var"),
+                            Identifier(tempLoopVar),
+                            iterExpr,
+                            Block(foreachBody));
+                        if (forClause.IsAsync)
+                            foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
+                        currentBody = new List<StatementSyntax> { foreachStmt };
                     }
                     else if (forClause.Target is TupleLiteral tuple && tuple.Elements.All(e => e is Identifier))
                     {
@@ -268,14 +321,14 @@ internal partial class RoslynEmitter
                         var foreachBody = new List<StatementSyntax> { deconstructStmt };
                         foreachBody.AddRange(currentBody);
 
-                        currentBody = new List<StatementSyntax>
-                        {
-                            ForEachStatement(
-                                IdentifierName("var"),
-                                Identifier(tempLoopVar),
-                                iterExpr,
-                                Block(foreachBody))
-                        };
+                        var foreachStmt = ForEachStatement(
+                            IdentifierName("var"),
+                            Identifier(tempLoopVar),
+                            iterExpr,
+                            Block(foreachBody));
+                        if (forClause.IsAsync)
+                            foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
+                        currentBody = new List<StatementSyntax> { foreachStmt };
                     }
                     break;
             }
@@ -423,6 +476,8 @@ internal partial class RoslynEmitter
                             Identifier(tempLoopVar),
                             iterExpr,
                             Block(foreachBody));
+                        if (forClause.IsAsync)
+                            foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
                         currentBody = new List<StatementSyntax> { foreachStmt };
                     }
                     else if (forClause.Target is TupleLiteral tuple &&
@@ -458,6 +513,8 @@ internal partial class RoslynEmitter
                             Identifier(tempLoopVar),
                             iterExpr,
                             Block(foreachBody));
+                        if (forClause.IsAsync)
+                            foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
                         currentBody = new List<StatementSyntax> { foreachStmt };
                     }
                     break;

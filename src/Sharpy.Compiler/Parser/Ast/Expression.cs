@@ -348,6 +348,11 @@ public record ForClause : ComprehensionClause
     public Expression Target { get; init; } = null!;  // Loop variable (single identifier only for now)
     public Expression Iterator { get; init; } = null!;
 
+    /// <summary>
+    /// Whether this is an <c>async for</c> clause (asynchronous comprehension).
+    /// </summary>
+    public bool IsAsync { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {

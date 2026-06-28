@@ -620,14 +620,21 @@ public static partial class DiagnosticExplanations
             "@classmethod\ndef from_string(cls, s: str) -> Self: ...   # not supported",
             "Use @staticmethod and reference the type by name, or use a factory function on the module.");
 
+        // SPY0474 is RETIRED (#998). It was a transition hint emitted when async comprehensions
+        // were unsupported; they are now supported, so the diagnostic is no longer emitted. The
+        // code constant is kept reserved (see DiagnosticCodes.cs) so the number is never reused,
+        // and a retired-worded explanation is retained so `explain SPY0474` stays helpful and the
+        // "every code has an explanation" invariant holds.
         Add(dict, DiagnosticCodes.Validation.NoAsyncComprehensionHint,
-            "Async comprehensions are not supported",
+            "Async comprehensions are supported (SPY0474 retired)",
             "Validation",
-            "Sharpy does not support `async for` inside list/set/dict comprehensions or generator expressions. " +
-            ".NET's async streaming model (IAsyncEnumerable<T>) is exposed differently and is most cleanly used " +
-            "via explicit `async for` loops over async iterables.",
-            "results = [x async for x in stream()]  # not supported",
-            "Rewrite using an explicit `async for` loop and append/yield each element.");
+            "SPY0474 was a transition hint emitted while async comprehensions were unsupported. " +
+            "As of #998, Sharpy supports async comprehensions — `async for` clauses and `await` " +
+            "expressions inside list/set/dict comprehensions — when used inside `async def` " +
+            "functions, so this diagnostic is no longer emitted. The code is retained as a " +
+            "retired, reserved number and is never reused.",
+            "results = [x async for x in stream()]   # now supported inside 'async def'",
+            "No action needed — async comprehensions are supported inside 'async def' functions.");
 
         Add(dict, DiagnosticCodes.Validation.SingleIsinstanceTypeHint,
             "isinstance() takes exactly one type argument",

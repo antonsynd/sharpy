@@ -399,6 +399,13 @@ internal partial class TypeChecker
     /// </summary>
     private void CheckComprehensionForClause(ForClause forClause)
     {
+        if (forClause.IsAsync && !_currentFunctionIsAsync)
+        {
+            AddError("'async for' can only be used inside 'async def' functions",
+                forClause.LineStart, forClause.ColumnStart,
+                code: DiagnosticCodes.Semantic.AwaitOutsideAsync, span: forClause.Span);
+        }
+
         // Check iterator type and infer element type (errors reported by validator in pipeline)
         var iterType = CheckExpression(forClause.Iterator);
 
