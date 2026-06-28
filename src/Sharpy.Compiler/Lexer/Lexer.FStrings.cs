@@ -437,6 +437,15 @@ public partial class Lexer
                     return CreateToken(TokenType.FStringConversion, conversion.ToString(), startLine, startColumn, startPosition);
                 }
 
+                if (validFlag)
+                {
+                    // The flag itself is valid (!r/!s/!a); the replacement field is just missing its
+                    // closing '}' or ':' format spec. Report the real cause, not a bogus bad-flag.
+                    throw ReportError(
+                        "Unterminated f-string expression: expected '}' or ':' after the conversion flag",
+                        _line, _column, DiagnosticCodes.Lexer.UnterminatedFStringExpression);
+                }
+
                 var badChar = _position + 1 < _source.Length ? _source[_position + 1].ToString() : "";
                 throw ReportError(
                     $"Invalid f-string conversion '!{badChar}'. Expected '!r', '!s', or '!a' followed by '}}' or ':'.",
