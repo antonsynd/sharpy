@@ -622,4 +622,58 @@ line2""""""";
     }
 
     #endregion
+
+    #region Conversion Flag Tests (#987)
+
+    [Theory]
+    [InlineData("f\"{x!r}\"", "r")]
+    [InlineData("f\"{x!s}\"", "s")]
+    [InlineData("f\"{x!a}\"", "a")]
+    public void FString_ConversionFlag_EmitsFStringConversion(string source, string flag)
+    {
+        var tokens = Tokenize(source);
+
+        tokens[0].Type.Should().Be(TokenType.FStringStart);
+        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[2].Value.Should().Be("x");
+        tokens[3].Type.Should().Be(TokenType.FStringConversion);
+        tokens[3].Value.Should().Be(flag);
+        tokens[4].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[5].Type.Should().Be(TokenType.FStringEnd);
+    }
+
+    [Fact]
+    public void FString_ConversionFlagFollowedByFormatSpec_EmitsBothTokens()
+    {
+        var tokens = Tokenize("f\"{x!r:>10}\"");
+
+        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[3].Type.Should().Be(TokenType.FStringConversion);
+        tokens[3].Value.Should().Be("r");
+        tokens[4].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[4].Value.Should().Be(">10");
+        tokens[5].Type.Should().Be(TokenType.FStringExprEnd);
+    }
+
+    [Fact]
+    public void FString_NotEqualOperator_NotTreatedAsConversion()
+    {
+        // The '!=' inside a replacement field must tokenize as the NotEqual operator,
+        // never as a conversion flag.
+        var tokens = Tokenize("f\"{a != b}\"");
+
+        tokens.Should().Contain(t => t.Type == TokenType.NotEqual);
+        tokens.Should().NotContain(t => t.Type == TokenType.FStringConversion);
+    }
+
+    [Fact]
+    public void FString_InvalidConversionFlag_ReportsError()
+    {
+        var errors = TokenizeExpectingError("f\"{x!q}\"");
+        errors.Should().Contain("Invalid f-string conversion");
+    }
+
+    #endregion
 }

@@ -7,6 +7,7 @@ Supports negative indexing, slicing, and Python-style methods.
 
 | Name | Type | Description |
 |------|------|-------------|
+| `length` | `int` | The number of elements. Mirrors the (explicitly-implemented) ICollection.Count and is exposed publicly so that C# list patterns over Sharpy lists are "countable" (e.g. \`case [a, b, *rest]\`). Sharpy code should prefer \`len(x)\`. |
 | `is_read_only` | `bool` | Gets a value indicating whether the list is read-only. |
 
 ## Methods

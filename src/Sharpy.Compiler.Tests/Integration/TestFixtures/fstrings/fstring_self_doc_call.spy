@@ -1,0 +1,4 @@
+# f-string '=' self-documenting with a call expression (#986)
+def main() -> None:
+    items: list[int] = [1, 2, 3]
+    print(f'{len(items)=}')

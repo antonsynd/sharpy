@@ -1,0 +1,19 @@
+# List patterns in match: empty, single, fixed, and head/tail spread (#991)
+def describe(items: list[int]) -> str:
+    match items:
+        case []:
+            return "empty"
+        case [x]:
+            return "single " + str(x)
+        case [a, b]:
+            return "pair " + str(a) + " " + str(b)
+        case [first, *rest]:
+            return "head " + str(first) + " tail " + str(len(rest))
+        case _:
+            return "other"
+
+def main() -> None:
+    print(describe([]))
+    print(describe([7]))
+    print(describe([3, 4]))
+    print(describe([1, 2, 3]))

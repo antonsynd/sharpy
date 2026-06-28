@@ -1,0 +1,8 @@
+# A list pattern may contain at most one star capture (#991)
+def main() -> None:
+    items: list[int] = [1, 2, 3]
+    match items:
+        case [*a, *b]:
+            print("bad")
+        case _:
+            print("ok")

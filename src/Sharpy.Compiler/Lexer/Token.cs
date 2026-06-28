@@ -18,6 +18,8 @@ public enum TokenType
     FStringExprStart, // { - start of interpolated expression in f-string
     FStringExprEnd,   // } - end of interpolated expression in f-string
     FStringFormatSpec, // format specification after : in f-string expression (e.g., ".2f", ">10")
+    FStringConversion, // conversion flag after ! in f-string expression (r/s/a, e.g. {x!r})
+    FStringSelfDoc,    // '=' self-documenting specifier capturing verbatim source (e.g. {x=})
     FStringEnd,     // " or ' - end of f-string
     True,
     False,

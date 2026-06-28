@@ -262,6 +262,23 @@ internal partial class TypeChecker
                 CheckMemberAccessPattern(memberAccess, scrutineeType);
                 break;
 
+            case ListPattern listPattern:
+                CheckListPattern(listPattern, scrutineeType);
+                break;
+
+            case AndPattern andPattern:
+                CheckAndPattern(andPattern, scrutineeType);
+                break;
+
+            case StarPattern:
+                // A star capture is only meaningful inside a list pattern (handled by
+                // CheckListPattern). Reaching it standalone means a malformed pattern.
+                AddError(
+                    "A '*' capture may only appear inside a list pattern",
+                    pattern.LineStart, pattern.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UnsupportedFeature);
+                break;
+
             default:
                 AddError(
                     $"Unsupported pattern type '{pattern.GetType().Name}'. This pattern is not yet implemented.",
@@ -269,6 +286,139 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.UnsupportedFeature);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Type-checks a list (sequence) pattern: requires the scrutinee to be a sequence
+    /// (<c>list[T]</c> / <c>array[T]</c>), checks each element pattern against the element type,
+    /// and binds a <c>*rest</c> capture as <c>list[T]</c> (#991).
+    /// </summary>
+    private void CheckListPattern(ListPattern listPattern, SemanticType scrutineeType)
+    {
+        SemanticType? elementType = scrutineeType switch
+        {
+            GenericType { Name: BuiltinNames.List } g when g.TypeArguments.Count > 0 => g.TypeArguments[0],
+            GenericType { Name: BuiltinNames.Array } g when g.TypeArguments.Count > 0 => g.TypeArguments[0],
+            _ => null
+        };
+
+        if (elementType == null)
+        {
+            // Allow Unknown/Object scrutinees through (error recovery), but reject concrete non-sequences.
+            if (scrutineeType != SemanticType.Unknown && scrutineeType != BuiltinType.Object)
+            {
+                AddError(
+                    $"Cannot match non-sequence type '{scrutineeType.GetDisplayName()}' with a list pattern",
+                    listPattern.LineStart, listPattern.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: listPattern.Span);
+            }
+            elementType = SemanticType.Unknown;
+        }
+
+        var restListType = new GenericType
+        {
+            Name = BuiltinNames.List,
+            TypeArguments = new List<SemanticType> { elementType }
+        };
+
+        foreach (var element in listPattern.Elements)
+        {
+            if (element is StarPattern star)
+            {
+                // *rest captures the remaining elements as list[T]; *_ discards.
+                if (star.Capture != null)
+                    CheckPattern(star.Capture, restListType);
+            }
+            else
+            {
+                CheckPattern(element, elementType);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Type-checks an and-pattern: both sub-patterns must match the same scrutinee type, and a
+    /// capture name may not be bound on both sides (#991).
+    /// </summary>
+    private void CheckAndPattern(AndPattern andPattern, SemanticType scrutineeType)
+    {
+        var leftNames = CollectPatternBindingNames(andPattern.Left);
+        var rightNames = CollectPatternBindingNames(andPattern.Right);
+        foreach (var name in leftNames)
+        {
+            if (rightNames.Contains(name))
+            {
+                AddError(
+                    $"Capture name '{name}' is bound on both sides of an and-pattern",
+                    andPattern.LineStart, andPattern.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DuplicateCaptureInPattern,
+                    span: andPattern.Span);
+            }
+        }
+
+        CheckPattern(andPattern.Left, scrutineeType);
+        CheckPattern(andPattern.Right, scrutineeType);
+    }
+
+    /// <summary>
+    /// Collects the capture (binding) names introduced by a pattern, recursing into composite
+    /// patterns. Used to detect duplicate captures across the two sides of an and-pattern.
+    /// </summary>
+    private static HashSet<string> CollectPatternBindingNames(Pattern pattern)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        void Walk(Pattern? p)
+        {
+            switch (p)
+            {
+                case null:
+                    return;
+                case BindingPattern b:
+                    names.Add(b.Name.Name);
+                    break;
+                case TypePattern tp:
+                    if (tp.BindingName != null)
+                        names.Add(tp.BindingName.Name);
+                    break;
+                case TuplePattern t:
+                    foreach (var e in t.Elements)
+                        Walk(e);
+                    break;
+                case PositionalPattern pp:
+                    foreach (var e in pp.Elements)
+                        Walk(e);
+                    break;
+                case PropertyPattern prop:
+                    foreach (var f in prop.Fields)
+                        Walk(f.Pattern);
+                    break;
+                case UnionCasePattern uc:
+                    foreach (var f in uc.FieldPatterns)
+                        Walk(f);
+                    break;
+                case ListPattern l:
+                    foreach (var e in l.Elements)
+                        Walk(e);
+                    break;
+                case StarPattern s:
+                    Walk(s.Capture);
+                    break;
+                case AndPattern a:
+                    Walk(a.Left);
+                    Walk(a.Right);
+                    break;
+                case OrPattern o:
+                    foreach (var alt in o.Alternatives)
+                        Walk(alt);
+                    break;
+                case GuardPattern g:
+                    Walk(g.Inner);
+                    break;
+            }
+        }
+        Walk(pattern);
+        return names;
     }
 
     /// <summary>

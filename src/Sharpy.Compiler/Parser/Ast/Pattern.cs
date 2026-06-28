@@ -257,14 +257,10 @@ public record RelationalPattern : Pattern
 public record ListPattern : Pattern
 {
     /// <summary>
-    /// Patterns for list elements.
+    /// Patterns for list elements. A <c>*rest</c> capture is held inline as a
+    /// <see cref="StarPattern"/> at its source position (at most one per list).
     /// </summary>
     public ImmutableArray<Pattern> Elements { get; init; } = ImmutableArray<Pattern>.Empty;
-
-    /// <summary>
-    /// Optional rest pattern (the "...tail" part).
-    /// </summary>
-    public Pattern? RestPattern { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
@@ -278,8 +274,28 @@ public record ListPattern : Pattern
     {
         foreach (var element in Elements)
             yield return element;
-        if (RestPattern != null)
-            yield return RestPattern;
+    }
+}
+
+/// <summary>
+/// Star (rest) capture inside a sequence pattern, e.g. the <c>*rest</c> in
+/// <c>case [a, *rest]</c> or the <c>*init</c> in <c>case [*init, last]</c>.
+/// Held inline in <see cref="ListPattern.Elements"/> so its position is preserved
+/// (at most one per list pattern). Emits to a C# slice pattern (<c>..</c>).
+/// </summary>
+public record StarPattern : Pattern
+{
+    /// <summary>
+    /// The capture sub-pattern: a <see cref="BindingPattern"/> for <c>*rest</c> or a
+    /// <see cref="WildcardPattern"/> for <c>*_</c>. Null for a bare <c>*</c>.
+    /// </summary>
+    public Pattern? Capture { get; init; }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        if (Capture != null)
+            yield return Capture;
     }
 }
 

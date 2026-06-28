@@ -899,6 +899,23 @@ list(map(lambda x: x * 2, [1, 2, 3]))    # [2, 4, 6]
 list(map(str, [1, 2, 3]))                 # ["1", "2", "3"]
 ```
 
+### `map(function: (T1, T2) -> TOut, iterable1: Iterable[T1], iterable2: Iterable[T2], strict: bool = False) -> MapIterator[T1, T2, TOut]`
+
+Return an iterator that applies a two-argument function to corresponding items of two
+iterables. With *strict* True, raises ValueError if the iterables have
+different lengths (Python 3.14 behaviour); otherwise stops at the shortest.
+
+```python
+list(map(lambda a, b: a + b, [1, 2], [10, 20]))             # [11, 22]
+list(map(lambda a, b: a + b, [1, 2], [10], strict=True))    # ValueError
+```
+
+### `map(function: (T1, T2, T3) -> TOut, iterable1: Iterable[T1], iterable2: Iterable[T2], iterable3: Iterable[T3], strict: bool = False) -> MapIterator[T1, T2, T3, TOut]`
+
+Return an iterator that applies a three-argument function to corresponding items of three
+iterables. With *strict* True, raises ValueError if the iterables have
+different lengths; otherwise stops at the shortest.
+
 ### `max(iterable: Iterable[T]) -> T`
 
 Return the largest item in an iterable.

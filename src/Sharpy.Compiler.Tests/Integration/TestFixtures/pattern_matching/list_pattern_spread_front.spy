@@ -1,0 +1,9 @@
+# List pattern with a leading star capture: [*init, last] (#991)
+def main() -> None:
+    nums: list[int] = [10, 20, 30, 40]
+    match nums:
+        case [*init, last]:
+            print(len(init))
+            print(last)
+        case _:
+            print("no")

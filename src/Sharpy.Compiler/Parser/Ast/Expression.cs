@@ -76,6 +76,9 @@ public record FStringPart
     public string? Text { get; init; }
     public Expression? Expression { get; init; }
     public string? FormatSpec { get; init; }  // Format specification (e.g., ".2f", ">10")
+    public char? Conversion { get; init; }    // Conversion flag: 'r' (repr), 's' (str), 'a' (ascii)
+    public string? SourceText { get; init; }  // Verbatim '=' self-documenting prefix (e.g. "x + 1=" for {x + 1=})
+    public bool IsSelfDocumenting { get; init; }  // True when the replacement field used the '=' specifier
 }
 
 /// <summary>

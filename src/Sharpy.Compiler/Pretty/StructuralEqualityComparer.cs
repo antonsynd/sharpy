@@ -96,6 +96,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             UnionCasePattern a => UnionCasePatternEquals(a, (UnionCasePattern)y),
             TuplePattern a => NodesEqual(a.Elements, ((TuplePattern)y).Elements),
             ListPattern a => ListPatternEquals(a, (ListPattern)y),
+            StarPattern a => NullableNodeEquals(a.Capture, ((StarPattern)y).Capture),
             OrPattern a => NodesEqual(a.Alternatives, ((OrPattern)y).Alternatives),
             AndPattern a => Equals(a.Left, ((AndPattern)y).Left) && Equals(a.Right, ((AndPattern)y).Right),
             GuardPattern a => Equals(a.Inner, ((GuardPattern)y).Inner) && Equals(a.Guard, ((GuardPattern)y).Guard),
@@ -147,6 +148,12 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             if (a[i].Text != b[i].Text)
                 return false;
             if (a[i].FormatSpec != b[i].FormatSpec)
+                return false;
+            if (a[i].Conversion != b[i].Conversion)
+                return false;
+            if (a[i].SourceText != b[i].SourceText)
+                return false;
+            if (a[i].IsSelfDocumenting != b[i].IsSelfDocumenting)
                 return false;
             if (!NullableNodeEquals(a[i].Expression, b[i].Expression))
                 return false;
@@ -422,7 +429,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         && NodesEqual(a.FieldPatterns, b.FieldPatterns);
 
     private bool ListPatternEquals(ListPattern a, ListPattern b) =>
-        NodesEqual(a.Elements, b.Elements) && NullableNodeEquals(a.RestPattern, b.RestPattern);
+        NodesEqual(a.Elements, b.Elements);
 
     private bool PropertyPatternEquals(PropertyPattern a, PropertyPattern b) =>
         NullableTypeEquals(a.Type, b.Type) && NodesEqual(a.Fields, b.Fields);

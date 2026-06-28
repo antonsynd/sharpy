@@ -657,7 +657,23 @@ public partial class Parser
                     // Parse the expression (tokens are already emitted by lexer)
                     var expr = ParseExpression();
 
-                    // Check for optional format spec token
+                    // Optional specifiers, in Python field order: '=' self-doc, '!' conversion, ':' format spec.
+                    string? sourceText = null;
+                    bool isSelfDocumenting = false;
+                    if (Current.Type == TokenType.FStringSelfDoc)
+                    {
+                        sourceText = Current.Value;
+                        isSelfDocumenting = true;
+                        Advance();
+                    }
+
+                    char? conversion = null;
+                    if (Current.Type == TokenType.FStringConversion)
+                    {
+                        conversion = Current.Value.Length > 0 ? Current.Value[0] : null;
+                        Advance();
+                    }
+
                     string? formatSpec = null;
                     if (Current.Type == TokenType.FStringFormatSpec)
                     {
@@ -665,7 +681,15 @@ public partial class Parser
                         Advance();
                     }
 
-                    parts.Add(new FStringPart { Text = null, Expression = expr, FormatSpec = formatSpec });
+                    parts.Add(new FStringPart
+                    {
+                        Text = null,
+                        Expression = expr,
+                        FormatSpec = formatSpec,
+                        Conversion = conversion,
+                        SourceText = sourceText,
+                        IsSelfDocumenting = isSelfDocumenting,
+                    });
 
                     // Expect FStringExprEnd
                     Expect(TokenType.FStringExprEnd);

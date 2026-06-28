@@ -554,8 +554,9 @@ for x in items:
         // Arrange
         var pattern = new ListPattern
         {
-            Elements = ImmutableArray.Create<Pattern>(new BindingPattern { Name = new Identifier { Name = "head" } }),
-            RestPattern = new BindingPattern { Name = new Identifier { Name = "tail" } }
+            Elements = ImmutableArray.Create<Pattern>(
+                new BindingPattern { Name = new Identifier { Name = "head" } },
+                new StarPattern { Capture = new BindingPattern { Name = new Identifier { Name = "tail" } } })
         };
 
         // Act & Assert - should not throw
@@ -659,15 +660,15 @@ for x in items:
     }
 
     [Fact]
-    public void GetChildNodes_ListPattern_ReturnsElementsAndRestPattern()
+    public void GetChildNodes_ListPattern_ReturnsElementsIncludingStarCapture()
     {
-        // Arrange
+        // Arrange — the *rest capture is held inline in Elements as a StarPattern.
         var head = new BindingPattern { Name = new Identifier { Name = "head" } };
         var tail = new BindingPattern { Name = new Identifier { Name = "tail" } };
+        var star = new StarPattern { Capture = tail };
         var pattern = new ListPattern
         {
-            Elements = ImmutableArray.Create<Pattern>(head),
-            RestPattern = tail
+            Elements = ImmutableArray.Create<Pattern>(head, star)
         };
 
         // Act
@@ -676,7 +677,9 @@ for x in items:
         // Assert
         children.Should().HaveCount(2);
         children[0].Should().BeSameAs(head);
-        children[1].Should().BeSameAs(tail);
+        children[1].Should().BeSameAs(star);
+        // The star's own child is its capture pattern.
+        star.GetChildNodes().Should().ContainSingle().Which.Should().BeSameAs(tail);
     }
 
     [Fact]

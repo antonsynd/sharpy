@@ -1,0 +1,4 @@
+# Invalid f-string conversion flag !q should be a lexer error (#987)
+def main() -> None:
+    x: int = 1
+    print(f'{x!q}')
