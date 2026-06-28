@@ -478,8 +478,8 @@ If Sharpy were mapped to a "Python equivalent version" based on feature coverage
 | Python Era | Coverage | Notes |
 |------------|----------|-------|
 | 3.0–3.5 | ~95% | Missing: metaclasses (by design), `@` operator |
-| 3.6–3.8 | ~85% | Missing: async comprehensions (by design), `f'{x=}'` |
-| 3.9–3.10 | ~75% | Missing: free `X \| Y` unions (only `T \| None`), `ParamSpec`, `zip(strict=)` |
+| 3.6–3.8 | ~85% | Missing: async comprehensions (by design) |
+| 3.9–3.10 | ~75% | Missing: free `X \| Y` unions (only `T \| None`), `ParamSpec` |
 | 3.11–3.12 | ~70% | Missing: `TypeVarTuple`, `@dataclass_transform`, exception notes |
 | 3.13–3.14 | ~60% | Has TypeVar defaults + template strings; missing `TypeIs`, lazy annotations N/A |
 | 3.15 | ~40% | Has `frozendict` + comprehension unpacking; missing lazy imports, sentinels |
