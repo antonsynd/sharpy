@@ -153,12 +153,12 @@
 
 | Feature | PEP | Sharpy | Notes |
 |---------|-----|--------|-------|
-| **Structural pattern matching** (`match`/`case`) | 634/635/636 | ✅ | **More extensive than Python**: adds relational patterns (`> 0`), match expressions, typed bindings, exhaustiveness checking. List patterns (`[a, b]`) and `and` patterns are forward-declared but not yet parseable. |
+| **Structural pattern matching** (`match`/`case`) | 634/635/636 | ✅ | **More extensive than Python**: adds relational patterns (`> 0`), match expressions, typed bindings, exhaustiveness checking. List patterns (`[a, b]`, `[first, *rest]`, `[*init, last]`, nested) and `and` patterns are implemented end-to-end (#991). |
 | **Union type operator** (`X \| Y`) | 604 | ⚡ | Only `T \| None` allowed (nullable interop). Free unions like `int \| str` are explicitly rejected — use `union` declarations instead |
 | `ParamSpec` and `Concatenate` | 612 | ❌ | Higher-order function typing not implemented |
 | `TypeAlias` annotation | 613 | ✅ | `type` keyword: `type UserId = int` |
 | `TypeGuard` | 647 | 🔀 | Sharpy uses `is` type narrowing instead of user-defined guards |
-| `zip(strict=True)` | 618 | ❌ | No `strict` parameter on `zip()` |
+| `zip(strict=True)` | 618 | ✅ | `zip(a, b, strict=True)` raises `ValueError` on length mismatch (#988) |
 | Parenthesized context managers | — | ⚡ | Multiple `with` via comma, no parenthesized syntax |
 
 ### Python 3.11
@@ -212,7 +212,7 @@
 | Parentheses optional in multi-except (no `as`) | 758 | ✅ | Already supported: `except TimeoutError, ConnectionError:` |
 | `SyntaxWarning` for `return`/`break` in `finally` | 765 | ⚡ | ControlFlowValidator may catch some cases |
 | `sys.remote_exec()` for debugging | 768 | N/A | Runtime debugging feature |
-| `map(strict=...)` | — | ❌ | No `strict` parameter on `map()` |
+| `map(strict=...)` | — | ✅ | Multi-iterable `map(f, a, b[, c], strict=True)` raises `ValueError` on length mismatch (#990); element-type inference in unannotated nested calls tracked by #999 |
 | Keyword error message improvements | — | ⚡ | Sharpy has "did you mean?" suggestions |
 
 ### Python 3.15 (Beta)
@@ -314,19 +314,19 @@ print(f'{x + 1=}')    # → "x + 1=43"
 print(f'{name=!r}')   # → "name='Alice'"  (if conversion flags added)
 ```
 
-#### 2. `zip(strict=True)` (Python 3.10) — [#988](https://github.com/antonsynd/sharpy/issues/988)
+#### 2. `zip(strict=True)` (Python 3.10) — [#988](https://github.com/antonsynd/sharpy/issues/988) ✅ Implemented
 
 **What:** `zip(a, b, strict=True)` raises `ValueError` if iterables have different lengths.
 
-**Why:** Common source of silent bugs. Sharpy's type system catches many errors, but mismatched iteration lengths are a runtime concern. Easy to add to the `Builtins.Zip` implementation.
+**Why:** Common source of silent bugs. Sharpy's type system catches many errors, but mismatched iteration lengths are a runtime concern.
 
-**Complexity:** Low. Add optional parameter to `zip()` builtin.
+**Status:** Implemented in `Builtins.Zip` (2- and 3-iterable `strict` overloads, `Sharpy.Core/Zip.cs`); covered by `ZipStrictTests` and the `zip_strict`/`zip_strict_error` fixtures.
 
-#### 3. `map(strict=True)` (Python 3.14) — [#990](https://github.com/antonsynd/sharpy/issues/990)
+#### 3. `map(strict=True)` (Python 3.14) — [#990](https://github.com/antonsynd/sharpy/issues/990) ✅ Implemented
 
 **What:** Same as zip strict, but for `map()` with multiple iterables.
 
-**Complexity:** Low. Same pattern as zip strict.
+**Status:** Implemented in `Builtins.Map` (2- and 3-iterable overloads with `strict`, `Sharpy.Core/Map.cs`); covered by `MapMultiTests` and the `map_multi`/`map_multi_strict_error` fixtures. Works in `for` loops and annotated assignments; element-type inference for unannotated nested calls (e.g. `print(list(map(f, a, b, strict=True)))`) is tracked by [#999](https://github.com/antonsynd/sharpy/issues/999).
 
 #### 4. `@` matrix multiplication operator (Python 3.5, PEP 465) — [#989](https://github.com/antonsynd/sharpy/issues/989)
 
@@ -478,8 +478,8 @@ If Sharpy were mapped to a "Python equivalent version" based on feature coverage
 | Python Era | Coverage | Notes |
 |------------|----------|-------|
 | 3.0–3.5 | ~95% | Missing: metaclasses (by design), `@` operator |
-| 3.6–3.8 | ~85% | Missing: async comprehensions (by design), `f'{x=}'` |
-| 3.9–3.10 | ~75% | Missing: free `X \| Y` unions (only `T \| None`), `ParamSpec`, `zip(strict=)` |
+| 3.6–3.8 | ~85% | Missing: async comprehensions (by design) |
+| 3.9–3.10 | ~75% | Missing: free `X \| Y` unions (only `T \| None`), `ParamSpec` |
 | 3.11–3.12 | ~70% | Missing: `TypeVarTuple`, `@dataclass_transform`, exception notes |
 | 3.13–3.14 | ~60% | Has TypeVar defaults + template strings; missing `TypeIs`, lazy annotations N/A |
 | 3.15 | ~40% | Has `frozendict` + comprehension unpacking; missing lazy imports, sentinels |
@@ -496,8 +496,8 @@ If Sharpy were mapped to a "Python equivalent version" based on feature coverage
 |----------------|------------|----------|
 | `X \| Y` union syntax: ✅ | → ⚡ Partial | `Parser.Types.cs:32` — "Free unions like 'int \| str' are not supported"; only `T \| None` allowed |
 | Unpacking in comprehensions: ❌ | → ✅ Implemented | `Parser.Primaries.cs:453,536,629` — PEP 798 comments; `ListSpreadElement`, `DictSpreadComprehension` AST nodes |
-| List patterns (`[a, b]`): ✅ | → ⚡ Forward-declared | `Pattern.cs:257` has AST, `RoslynEmitter.cs:937` has codegen, but `ParseSinglePattern()` has no `LeftBracket` case |
-| And patterns (`x and y`): ✅ | → ⚡ Forward-declared | `Pattern.cs:402` has AST, `RoslynEmitter.cs:960` has codegen, but `ParsePattern()` only handles `\|` (OR) |
+| List patterns (`[a, b]`): ✅ | → ✅ Implemented (#991) | Parser (`ParseSinglePattern` `LeftBracket` → `ParseListPattern`, `StarPattern` for `*rest`), semantic (`CheckListPattern`), codegen (C# list/slice patterns). Sharpy.List gained `Length` + `Index`/`Range` indexers to be list-pattern compatible. |
+| And patterns (`x and y`): ✅ | → ✅ Implemented (#991) | Parser (`ParseAndPattern`, `and` binds tighter than `\|`), semantic (`CheckAndPattern`, duplicate-capture check SPY0372), codegen (C# `and` pattern) |
 | Guard clause keyword: `when` | → `if` (in match) | `Parser.Statements.cs:1284,1318` — match arms/cases use `if`; `when` is used only in `except` filters |
 | Decorator grammar: "specific keywords" | → specific registered names | `DecoratorValidator.cs:287` rejects unknown names (SPY0444); `@[...]` bracket syntax allows arbitrary C# attributes |
 | `@classmethod`: unlisted | → ❌ Explicitly unsupported | `DecoratorValidator.cs` UnsupportedDecorators dict: "@classmethod is not supported in Sharpy" |

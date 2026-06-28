@@ -939,9 +939,12 @@ internal partial class RoslynEmitter : ICodeEmitter
                 {
                     CollectVariableNamesFromPattern(elem);
                 }
-                if (listPattern.RestPattern != null)
+                break;
+
+            case StarPattern starPattern:
+                if (starPattern.Capture != null)
                 {
-                    CollectVariableNamesFromPattern(listPattern.RestPattern);
+                    CollectVariableNamesFromPattern(starPattern.Capture);
                 }
                 break;
 

@@ -76,11 +76,12 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region F-string expression errors (SPY0020-SPY0022)
+        #region F-string expression errors (SPY0020-SPY0022, SPY0030)
 
         public const string UnterminatedFStringExpression = "SPY0020"; // Active
         public const string UnmatchedBraceInFString = "SPY0021";    // Active
         public const string UnterminatedFormatSpec = "SPY0022";      // Active
+        public const string InvalidFStringConversion = "SPY0030";   // Active
 
         #endregion
 
@@ -104,7 +105,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0030-SPY0099: Reserved for future lexer diagnostics
+        // SPY0031-SPY0099: Reserved for future lexer diagnostics
     }
 
     /// <summary>
@@ -148,7 +149,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region Control flow and pattern parsing (SPY0119-SPY0125)
+        #region Control flow and pattern parsing (SPY0119-SPY0125, SPY0140)
 
         public const string MaxRecursionDepthExceeded = "SPY0119";  // Active
         public const string ExpectedPattern = "SPY0120";            // Active
@@ -157,6 +158,7 @@ public static class DiagnosticCodes
         public const string DictSpreadCallNotSupported = "SPY0123"; // Active
         public const string EmptyUnion = "SPY0124";                 // Active
         public const string GenericTypeInPattern = "SPY0125";       // Active
+        public const string MultipleStarsInPattern = "SPY0140";     // Active
 
         #endregion
 
@@ -194,7 +196,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0140-SPY0199: Reserved for future parser diagnostics
+        // SPY0141-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>
@@ -374,7 +376,7 @@ public static class DiagnosticCodes
         public const string PositionalPatternNoDeconstruct = "SPY0369"; // Active
         public const string PositionalOnlyPassedByKeyword = "SPY0370"; // Active
         public const string KeywordOnlyPassedPositionally = "SPY0371"; // Active
-        // SPY0372: Reserved (removed — was DelegateWithBody, never implemented)
+        public const string DuplicateCaptureInPattern = "SPY0372";  // Active — same name bound on both sides of an and-pattern
 
         // Event errors (SPY0373-SPY0378)
         public const string EventTypeNotDelegate = "SPY0373";       // Active

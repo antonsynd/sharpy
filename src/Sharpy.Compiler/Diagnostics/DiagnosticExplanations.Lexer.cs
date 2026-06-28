@@ -119,6 +119,11 @@ public static partial class DiagnosticExplanations
             "msg: str = f\"{value:.2f\"",
             "Close the expression brace:\n  msg: str = f\"{value:.2f}\"");
 
+        Add(dict, DiagnosticCodes.Lexer.InvalidFStringConversion, "Invalid f-string conversion flag", "Lexer",
+            "An f-string conversion flag (after '!') must be one of 'r' (repr), 's' (str), or 'a' (ascii), followed by '}' or a ':' format spec.",
+            "msg: str = f\"{value!q}\"",
+            "Use a valid conversion flag:\n  msg: str = f\"{value!r}\"");
+
         Add(dict, DiagnosticCodes.Lexer.InvalidNumericSuffix, "Invalid numeric suffix", "Lexer",
             "A numeric literal is followed by characters that form an invalid suffix. Numeric literals must not be immediately followed by identifier characters.",
             "x: int = 42abc",

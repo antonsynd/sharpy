@@ -35,7 +35,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitFStringLiteral(FStringLiteral node)
     {
         var parts = node.Parts.Select(p => p.Expression != null
-            ? new FStringPart { Expression = (Expression)Visit(p.Expression), FormatSpec = p.FormatSpec }
+            ? p with { Expression = (Expression)Visit(p.Expression) }
             : p).ToImmutableArray();
         return Zero(node) with { Parts = parts };
     }
@@ -43,7 +43,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitTStringLiteral(TStringLiteral node)
     {
         var parts = node.Parts.Select(p => p.Expression != null
-            ? new FStringPart { Expression = (Expression)Visit(p.Expression), FormatSpec = p.FormatSpec }
+            ? p with { Expression = (Expression)Visit(p.Expression) }
             : p).ToImmutableArray();
         return Zero(node) with { Parts = parts };
     }
@@ -481,7 +481,10 @@ public sealed class AstNormalizer : AstVisitor<Node>
         Zero(node) with { Elements = VisitPatterns(node.Elements) };
 
     public override Node VisitListPattern(ListPattern node) =>
-        Zero(node) with { Elements = VisitPatterns(node.Elements), RestPattern = node.RestPattern != null ? (Pattern)Visit(node.RestPattern) : null };
+        Zero(node) with { Elements = VisitPatterns(node.Elements) };
+
+    public override Node VisitStarPattern(StarPattern node) =>
+        Zero(node) with { Capture = node.Capture != null ? (Pattern)Visit(node.Capture) : null };
 
     public override Node VisitOrPattern(OrPattern node) =>
         Zero(node) with { Alternatives = VisitPatterns(node.Alternatives) };

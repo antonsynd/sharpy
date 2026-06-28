@@ -1343,7 +1343,8 @@ public partial class Parser
 
     private Pattern ParsePattern()
     {
-        var first = ParseSinglePattern();
+        // Precedence: '|' (OR) is lowest; 'and' binds tighter (mirrors boolean precedence).
+        var first = ParseAndPattern();
 
         if (Current.Type != TokenType.Pipe)
             return first;
@@ -1353,7 +1354,7 @@ public partial class Parser
         while (Current.Type == TokenType.Pipe)
         {
             Advance(); // consume '|'
-            alternatives.Add(ParseSinglePattern());
+            alternatives.Add(ParseAndPattern());
         }
 
         var lastAlt = alternatives[^1];
@@ -1373,12 +1374,47 @@ public partial class Parser
         };
     }
 
+    /// <summary>
+    /// Parses an and-pattern (<c>p1 and p2 and ...</c>), left-associative, binding tighter than
+    /// '|' and looser than a single pattern (#991). Returns the single pattern when no 'and' follows.
+    /// </summary>
+    private Pattern ParseAndPattern()
+    {
+        var left = ParseSinglePattern();
+
+        while (Current.Type == TokenType.And)
+        {
+            Advance(); // consume 'and'
+            var right = ParseSinglePattern();
+
+            Text.TextSpan? span = null;
+            if (left.Span.HasValue && right.Span.HasValue)
+                span = new Text.TextSpan(left.Span.Value.Start, right.Span.Value.End - left.Span.Value.Start);
+
+            left = new AndPattern
+            {
+                Left = left,
+                Right = right,
+                LineStart = left.LineStart,
+                ColumnStart = left.ColumnStart,
+                LineEnd = right.LineEnd,
+                ColumnEnd = right.ColumnEnd,
+                Span = span
+            };
+        }
+
+        return left;
+    }
+
     private Pattern ParseSinglePattern()
     {
         switch (Current.Type)
         {
             case TokenType.LeftParen:
                 return ParseTuplePattern();
+
+            case TokenType.LeftBracket:
+                return ParseListPattern();
 
             case TokenType.Integer:
             case TokenType.Float:
@@ -1804,6 +1840,118 @@ public partial class Parser
             ColumnEnd = tupleEndToken.Column + tupleEndToken.Value.Length,
             Span = GetSpanFromTokens(startToken, tupleEndToken)
         };
+    }
+
+    /// <summary>
+    /// Parses a list (sequence) pattern: <c>[]</c>, <c>[a]</c>, <c>[a, b]</c>, <c>[a, *rest]</c>,
+    /// <c>[*init, last]</c>, <c>[a, *mid, b]</c> (#991). At most one <c>*</c> capture is allowed;
+    /// the star's position is preserved by holding a <see cref="StarPattern"/> inline in Elements.
+    /// </summary>
+    private Pattern ParseListPattern()
+    {
+        var startToken = Current;
+        Expect(TokenType.LeftBracket);
+
+        var elements = new List<Pattern>();
+        bool sawStar = false;
+        if (Current.Type != TokenType.RightBracket)
+        {
+            elements.Add(ParseListElementPattern(ref sawStar));
+            while (Current.Type == TokenType.Comma)
+            {
+                Advance();
+                if (Current.Type == TokenType.RightBracket)
+                    break;
+                elements.Add(ParseListElementPattern(ref sawStar));
+            }
+        }
+
+        var endToken = Current;
+        Expect(TokenType.RightBracket);
+
+        return new ListPattern
+        {
+            Elements = elements.ToImmutableArray(),
+            LineStart = startToken.Line,
+            ColumnStart = startToken.Column,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            Span = GetSpanFromTokens(startToken, endToken)
+        };
+    }
+
+    /// <summary>
+    /// Parses a single element of a list pattern: either a <c>*capture</c> star (at most one per
+    /// list, enforced via <paramref name="sawStar"/>) or a nested pattern.
+    /// </summary>
+    private Pattern ParseListElementPattern(ref bool sawStar)
+    {
+        if (Current.Type == TokenType.Star)
+        {
+            if (sawStar)
+            {
+                throw ReportError("A list pattern can contain at most one '*' capture",
+                    Current.Line, Current.Column,
+                    DiagnosticCodes.Parser.MultipleStarsInPattern, span: CurrentSpan);
+            }
+            sawStar = true;
+
+            var starToken = Current;
+            Advance(); // consume '*'
+
+            Pattern? capture = null;
+            var endToken = starToken;
+            if (Current.Type == TokenType.Identifier)
+            {
+                var nameToken = Current;
+                Advance();
+                endToken = nameToken;
+                if (nameToken.Value == "_")
+                {
+                    capture = new WildcardPattern
+                    {
+                        LineStart = nameToken.Line,
+                        ColumnStart = nameToken.Column,
+                        LineEnd = nameToken.Line,
+                        ColumnEnd = nameToken.Column + nameToken.Value.Length,
+                        Span = GetSpanFromToken(nameToken)
+                    };
+                }
+                else
+                {
+                    capture = new BindingPattern
+                    {
+                        Name = new Identifier
+                        {
+                            Name = nameToken.Value,
+                            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
+                            LineStart = nameToken.Line,
+                            ColumnStart = nameToken.Column,
+                            LineEnd = nameToken.Line,
+                            ColumnEnd = nameToken.Column + nameToken.Value.Length,
+                            Span = GetSpanFromToken(nameToken)
+                        },
+                        LineStart = nameToken.Line,
+                        ColumnStart = nameToken.Column,
+                        LineEnd = nameToken.Line,
+                        ColumnEnd = nameToken.Column + nameToken.Value.Length,
+                        Span = GetSpanFromToken(nameToken)
+                    };
+                }
+            }
+
+            return new StarPattern
+            {
+                Capture = capture,
+                LineStart = starToken.Line,
+                ColumnStart = starToken.Column,
+                LineEnd = endToken.Line,
+                ColumnEnd = endToken.Column + endToken.Value.Length,
+                Span = GetSpanFromTokens(starToken, endToken)
+            };
+        }
+
+        return ParsePattern();
     }
 
     private LiteralPattern ParseLiteralPattern()

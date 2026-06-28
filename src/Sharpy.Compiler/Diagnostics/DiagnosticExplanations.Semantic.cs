@@ -671,6 +671,11 @@ public static partial class DiagnosticExplanations
             "def foo(*, key: int) -> int:\n    return key\nfoo(1)  # error: 'key' is keyword-only",
             "Pass the argument by name:\nfoo(key=1)");
 
+        Add(dict, DiagnosticCodes.Semantic.DuplicateCaptureInPattern, "Duplicate capture in and-pattern", "Semantic",
+            "The same capture name is bound on both sides of an 'and' pattern. A name may be captured only once across the combined pattern.",
+            "match items:\n    case [x, y] and [x, z]:\n        ...",
+            "Use distinct capture names on each side:\nmatch items:\n    case [a, b] and whole:\n        ...");
+
 
         // ── Semantic errors: Events (SPY0373-SPY0379) ──────────────────────
 

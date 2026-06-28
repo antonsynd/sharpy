@@ -199,6 +199,40 @@ internal partial class RoslynEmitter
                             PositionalPatternClause(SeparatedList(subPatterns)));
                 }
 
+            case ListPattern listPattern:
+                {
+                    var elementPatterns = new List<PatternSyntax>();
+                    foreach (var element in listPattern.Elements)
+                    {
+                        if (element is StarPattern star)
+                        {
+                            // *rest / *_ → C# slice pattern (.. [var rest]); bare * → ..
+                            var slice = SlicePattern();
+                            if (star.Capture != null)
+                            {
+                                slice = slice.WithPattern(GenerateMatchPattern(
+                                    star.Capture, memberGuards, ref matchVarCounter));
+                            }
+                            elementPatterns.Add(slice);
+                        }
+                        else
+                        {
+                            elementPatterns.Add(GenerateMatchPattern(
+                                element, memberGuards, ref matchVarCounter));
+                        }
+                    }
+                    return SyntaxFactory.ListPattern(SeparatedList(elementPatterns));
+                }
+
+            case AndPattern andPattern:
+                {
+                    var leftPattern = GenerateMatchPattern(
+                        andPattern.Left, memberGuards, ref matchVarCounter, scrutineeType);
+                    var rightPattern = GenerateMatchPattern(
+                        andPattern.Right, memberGuards, ref matchVarCounter, scrutineeType);
+                    return BinaryPattern(SyntaxKind.AndPattern, leftPattern, rightPattern);
+                }
+
             case TypePattern typePattern:
                 {
                     // Check if this is a union case pattern (e.g., case Point(): matching Shape)
@@ -472,6 +506,16 @@ internal partial class RoslynEmitter
                         return recursivePattern;
                     }
                 }
+
+            case StarPattern:
+                // A '*' capture is emitted inline by the ListPattern case as a C# slice
+                // pattern; it should never reach here standalone. Guard defensively.
+                _context.AddError(
+                    "A '*' capture may only appear inside a list pattern.",
+                    DiagnosticCodes.CodeGen.UnsupportedFeature,
+                    pattern.LineStart,
+                    pattern.ColumnStart);
+                return DiscardPattern();
 
             default:
                 _context.AddError(

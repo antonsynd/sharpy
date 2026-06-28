@@ -1,0 +1,6 @@
+# f-string conversion flag !s applies str() (#987)
+def main() -> None:
+    name: str = "Alice"
+    n: int = 42
+    print(f'{name!s}')
+    print(f'{n!s}')
