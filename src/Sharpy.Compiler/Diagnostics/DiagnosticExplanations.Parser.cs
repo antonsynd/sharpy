@@ -139,6 +139,11 @@ public static partial class DiagnosticExplanations
             "match value:\n    case Box[int]() as x:\n        ...",
             "Remove the type arguments from the pattern:\nmatch value:\n    case Box() as x:\n        ...");
 
+        Add(dict, DiagnosticCodes.Parser.MultipleStarsInPattern, "Multiple stars in list pattern", "Parser",
+            "A list (sequence) pattern may contain at most one '*' capture, which collects the remaining elements. Two or more stars are ambiguous.",
+            "match items:\n    case [*a, *b]:\n        ...",
+            "Use a single star capture:\nmatch items:\n    case [first, *rest]:\n        ...");
+
         Add(dict, DiagnosticCodes.Parser.SlashAfterStar, "'/' after '*' in parameter list", "Parser",
             "The positional-only marker '/' must appear before the keyword-only marker '*' or variadic '*args' in a parameter list. Having '/' after '*' is not valid.",
             "def foo(a: int, *, b: int, /): ...",
