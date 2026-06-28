@@ -10,6 +10,8 @@ public partial class Lexer
         public char QuoteChar { get; set; }
         public bool IsTriple { get; set; }
         public int BraceDepth { get; set; }
+        public int ParenDepth { get; set; }     // Depth of ()/[] within the current replacement field (for '='/'!' detection)
+        public int ExprStartPosition { get; set; }  // Source position of the first char after '{' (for verbatim '=' self-doc capture)
         public bool InFormatSpec { get; set; }  // Tracks if we're processing format specification after ':'
         public int DedentAmount { get; set; }   // PEP 822: number of whitespace chars to strip after each \n (0 = no dedent)
         public bool IsTString { get; set; }     // PEP 750: template string (t"...") — same scanning, different AST
@@ -394,10 +396,32 @@ public partial class Lexer
                 return CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition);
             }
 
+            // Check for the '=' self-documenting specifier at the top level of a replacement
+            // field (#986), e.g. f'{x=}' / f'{x = }'. Only at brace depth 1 and outside any
+            // ()/[] (so keyword args like dict(a=1) are not misread), and not part of '=='.
+            if (current == '=' && context.BraceDepth == 1 && context.ParenDepth == 0
+                && !context.InFormatSpec
+                && (_position + 1 >= _source.Length || _source[_position + 1] != '='))
+            {
+                // Consume '=' and any trailing whitespace; the captured SourceText is the
+                // verbatim inner text from just after '{' through '=' and trailing spaces,
+                // which the emitter prints literally before the value (matches CPython).
+                _position++;
+                _column++;
+                while (_position < _source.Length && (_source[_position] == ' ' || _source[_position] == '\t'))
+                {
+                    _position++;
+                    _column++;
+                }
+                var selfDocText = _source.Substring(context.ExprStartPosition, _position - context.ExprStartPosition);
+                return CreateToken(TokenType.FStringSelfDoc, selfDocText, startLine, startColumn, startPosition);
+            }
+
             // Check for conversion flag (!r / !s / !a) at the top level of a replacement
             // field, i.e. after the expression and before any ':' format spec or '}'.
             // Guard against the '!=' operator (next char '='), which is tokenized normally.
-            if (current == '!' && context.BraceDepth == 1 && !context.InFormatSpec
+            if (current == '!' && context.BraceDepth == 1 && context.ParenDepth == 0
+                && !context.InFormatSpec
                 && (_position + 1 >= _source.Length || _source[_position + 1] != '='))
             {
                 bool validFlag = _position + 1 < _source.Length &&
@@ -503,6 +527,13 @@ public partial class Lexer
             if (char.IsLetter(current) || current == '_')
                 return ReadIdentifierOrKeyword();
 
+            // Track ()/[] nesting so '='/'!' specifiers are only recognised at the top level
+            // of the replacement field (e.g. keyword args in dict(a=1) must not trigger '=').
+            if (current == '(' || current == '[')
+                context.ParenDepth++;
+            else if ((current == ')' || current == ']') && context.ParenDepth > 0)
+                context.ParenDepth--;
+
             // Operators and delimiters
             return ReadOperatorOrDelimiter();
         }
@@ -584,6 +615,8 @@ public partial class Lexer
                     _position++;
                     _column++;
                     context.BraceDepth = 1;
+                    context.ParenDepth = 0;
+                    context.ExprStartPosition = _position;
                     return CreateToken(TokenType.FStringExprStart, "{", startLine, startColumn, startPosition);
                 }
             }

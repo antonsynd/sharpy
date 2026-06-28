@@ -1,0 +1,8 @@
+# f-string '=' self-documenting specifier (#986)
+def main() -> None:
+    x: int = 42
+    name: str = "Alice"
+    print(f'{x=}')
+    print(f'{x + 1=}')
+    print(f'{x = }')
+    print(f'{name=}')

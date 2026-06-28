@@ -1,0 +1,4 @@
+# f-string '=' with a format spec: value side uses normal formatting, not repr (#986)
+def main() -> None:
+    x: float = 42.0
+    print(f'{x=:.2f}')

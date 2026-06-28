@@ -1,0 +1,4 @@
+# f-string '=' with an explicit conversion: the conversion wins over the repr default (#986)
+def main() -> None:
+    x: int = 42
+    print(f'{x=!s}')
