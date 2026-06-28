@@ -250,4 +250,6 @@ Later dicts overwrite earlier keys (same as `dict.update()` semantics).
 
 ## Async Comprehensions
 
-Async comprehensions (`async for` inside comprehensions and `await` inside comprehensions) are **intentionally not supported** in Sharpy. This is a deliberate design decision — see [async_programming.md](async_programming.md#async-comprehensions--deliberate-non-feature) for rationale and workarounds.
+Async comprehensions **are supported** inside `async def` functions: list, set, and dict comprehensions may use an `async for` clause and/or `await` in the element/key/value/filter, executing sequentially. See [async_programming.md](async_programming.md#async-comprehensions) for the rules, semantics, and examples.
+
+Async *generator expressions* (`(x async for x in src)`) are not supported, since Sharpy has no generator-expression construct.
