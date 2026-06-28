@@ -183,4 +183,50 @@ public class StructuralEqualityComparerTests
         };
         Assert.True(Comparer.Equals(a, b));
     }
+
+    private static FStringLiteral FString(FStringPart part) =>
+        new() { Parts = ImmutableArray.Create(part) };
+
+    [Fact]
+    public void FString_DiffersInConversion_ReturnsFalse()
+    {
+        // f'{x}' must not be structurally equal to f'{x!r}' (#987).
+        var plain = FString(new FStringPart { Expression = new Identifier { Name = "x" } });
+        var repr = FString(new FStringPart { Expression = new Identifier { Name = "x" }, Conversion = 'r' });
+        Assert.False(Comparer.Equals(plain, repr));
+    }
+
+    [Fact]
+    public void FString_DiffersInSelfDoc_ReturnsFalse()
+    {
+        // f'{x}' must not be structurally equal to f'{x=}' (#986).
+        var plain = FString(new FStringPart { Expression = new Identifier { Name = "x" } });
+        var selfDoc = FString(new FStringPart
+        {
+            Expression = new Identifier { Name = "x" },
+            IsSelfDocumenting = true,
+            SourceText = "x="
+        });
+        Assert.False(Comparer.Equals(plain, selfDoc));
+    }
+
+    [Fact]
+    public void FString_SameConversionAndSelfDoc_ReturnsTrue()
+    {
+        var a = FString(new FStringPart
+        {
+            Expression = new Identifier { Name = "x", LineStart = 1 },
+            Conversion = 's',
+            IsSelfDocumenting = true,
+            SourceText = "x="
+        });
+        var b = FString(new FStringPart
+        {
+            Expression = new Identifier { Name = "x", LineStart = 9 },
+            Conversion = 's',
+            IsSelfDocumenting = true,
+            SourceText = "x="
+        });
+        Assert.True(Comparer.Equals(a, b));
+    }
 }

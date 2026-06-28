@@ -70,14 +70,7 @@ internal sealed partial class UnparseVisitor
             }
             else if (part.Expression != null)
             {
-                _w.Write("{");
-                Visit(part.Expression);
-                if (part.FormatSpec != null)
-                {
-                    _w.Write(":");
-                    _w.Write(part.FormatSpec);
-                }
-                _w.Write("}");
+                WriteFStringReplacementField(part);
             }
         }
         _w.Write(delimStr);
@@ -96,17 +89,39 @@ internal sealed partial class UnparseVisitor
             }
             else if (part.Expression != null)
             {
-                _w.Write("{");
-                Visit(part.Expression);
-                if (part.FormatSpec != null)
-                {
-                    _w.Write(":");
-                    _w.Write(part.FormatSpec);
-                }
-                _w.Write("}");
+                WriteFStringReplacementField(part);
             }
         }
         _w.Write(delimStr);
+    }
+
+    /// <summary>
+    /// Writes a single replacement field: {expr[=][!conv][:spec]}. For the '=' self-documenting
+    /// form, the verbatim captured source (which already includes the expression text and '=')
+    /// is re-emitted for exact round-trip fidelity instead of re-visiting the parsed expression.
+    /// </summary>
+    private void WriteFStringReplacementField(FStringPart part)
+    {
+        _w.Write("{");
+        if (part.IsSelfDocumenting && part.SourceText != null)
+        {
+            _w.Write(part.SourceText);
+        }
+        else
+        {
+            Visit(part.Expression!);
+        }
+        if (part.Conversion != null)
+        {
+            _w.Write("!");
+            _w.Write(part.Conversion.Value.ToString());
+        }
+        if (part.FormatSpec != null)
+        {
+            _w.Write(":");
+            _w.Write(part.FormatSpec);
+        }
+        _w.Write("}");
     }
 
     public override void VisitBooleanLiteral(BooleanLiteral node)

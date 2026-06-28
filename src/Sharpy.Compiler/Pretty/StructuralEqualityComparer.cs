@@ -148,6 +148,12 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
                 return false;
             if (a[i].FormatSpec != b[i].FormatSpec)
                 return false;
+            if (a[i].Conversion != b[i].Conversion)
+                return false;
+            if (a[i].SourceText != b[i].SourceText)
+                return false;
+            if (a[i].IsSelfDocumenting != b[i].IsSelfDocumenting)
+                return false;
             if (!NullableNodeEquals(a[i].Expression, b[i].Expression))
                 return false;
         }

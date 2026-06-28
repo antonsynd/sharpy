@@ -76,11 +76,12 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region F-string expression errors (SPY0020-SPY0022)
+        #region F-string expression errors (SPY0020-SPY0022, SPY0030)
 
         public const string UnterminatedFStringExpression = "SPY0020"; // Active
         public const string UnmatchedBraceInFString = "SPY0021";    // Active
         public const string UnterminatedFormatSpec = "SPY0022";      // Active
+        public const string InvalidFStringConversion = "SPY0030";   // Active
 
         #endregion
 
@@ -104,7 +105,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0030-SPY0099: Reserved for future lexer diagnostics
+        // SPY0031-SPY0099: Reserved for future lexer diagnostics
     }
 
     /// <summary>

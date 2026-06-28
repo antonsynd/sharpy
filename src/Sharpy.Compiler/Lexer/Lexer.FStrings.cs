@@ -394,6 +394,31 @@ public partial class Lexer
                 return CreateToken(TokenType.LeftBrace, "{", startLine, startColumn, startPosition);
             }
 
+            // Check for conversion flag (!r / !s / !a) at the top level of a replacement
+            // field, i.e. after the expression and before any ':' format spec or '}'.
+            // Guard against the '!=' operator (next char '='), which is tokenized normally.
+            if (current == '!' && context.BraceDepth == 1 && !context.InFormatSpec
+                && (_position + 1 >= _source.Length || _source[_position + 1] != '='))
+            {
+                bool validFlag = _position + 1 < _source.Length &&
+                    (_source[_position + 1] == 'r' || _source[_position + 1] == 's' || _source[_position + 1] == 'a');
+                bool properlyTerminated = _position + 2 < _source.Length &&
+                    (_source[_position + 2] == '}' || _source[_position + 2] == ':');
+
+                if (validFlag && properlyTerminated)
+                {
+                    var conversion = _source[_position + 1];
+                    _position += 2;  // consume '!' and the flag char
+                    _column += 2;
+                    return CreateToken(TokenType.FStringConversion, conversion.ToString(), startLine, startColumn, startPosition);
+                }
+
+                var badChar = _position + 1 < _source.Length ? _source[_position + 1].ToString() : "";
+                throw ReportError(
+                    $"Invalid f-string conversion '!{badChar}'. Expected '!r', '!s', or '!a' followed by '}}' or ':'.",
+                    _line, _column, DiagnosticCodes.Lexer.InvalidFStringConversion);
+            }
+
             // Check for format specification start (: at BraceDepth == 1)
             if (current == ':' && context.BraceDepth == 1 && !context.InFormatSpec)
             {

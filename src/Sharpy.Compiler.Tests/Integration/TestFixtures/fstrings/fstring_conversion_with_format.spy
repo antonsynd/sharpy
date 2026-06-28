@@ -1,0 +1,6 @@
+# f-string conversion flag followed by format spec; conversion applies first (#987)
+def main() -> None:
+    name: str = "Alice"
+    print(f'{name!r:>10}')
+    print(f'{name!s:>10}')
+    print(f'{name!r:^11}')

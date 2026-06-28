@@ -1,0 +1,4 @@
+# f-string conversion flag !a applies ascii() (#987)
+def main() -> None:
+    code: int = 233
+    print(f'{chr(code)!a}')

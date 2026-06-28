@@ -35,7 +35,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitFStringLiteral(FStringLiteral node)
     {
         var parts = node.Parts.Select(p => p.Expression != null
-            ? new FStringPart { Expression = (Expression)Visit(p.Expression), FormatSpec = p.FormatSpec }
+            ? p with { Expression = (Expression)Visit(p.Expression) }
             : p).ToImmutableArray();
         return Zero(node) with { Parts = parts };
     }
@@ -43,7 +43,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitTStringLiteral(TStringLiteral node)
     {
         var parts = node.Parts.Select(p => p.Expression != null
-            ? new FStringPart { Expression = (Expression)Visit(p.Expression), FormatSpec = p.FormatSpec }
+            ? p with { Expression = (Expression)Visit(p.Expression) }
             : p).ToImmutableArray();
         return Zero(node) with { Parts = parts };
     }

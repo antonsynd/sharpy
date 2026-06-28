@@ -316,10 +316,38 @@ internal partial class RoslynEmitter
                 // like global::Sharpy.Builtins.Len(x) would be misparsed as
                 // expression 'global' with format '::Sharpy.Builtins.Len(x)'.
 
+                // Effective conversion: an explicit !r/!s/!a always wins; otherwise a '='
+                // self-documenting field defaults to repr() *unless* a format spec is present
+                // (then the value side uses normal formatting). Matches CPython semantics.
+                char? effectiveConversion = part.Conversion
+                    ?? (part.IsSelfDocumenting && string.IsNullOrEmpty(part.FormatSpec) ? 'r' : null);
+
+                // '=' self-documenting prefix: print the verbatim captured source (incl. '=')
+                // before the value, e.g. f'{x = }' → "x = 42".
+                if (part.IsSelfDocumenting && part.SourceText != null)
+                {
+                    var prefixSource = EscapeForInterpolatedStringSource(part.SourceText)
+                        .Replace("{", "{{", StringComparison.Ordinal)
+                        .Replace("}", "}}", StringComparison.Ordinal);
+                    parts.Add(InterpolatedStringText()
+                        .WithTextToken(Token(
+                            TriviaList(),
+                            SyntaxKind.InterpolatedStringTextToken,
+                            prefixSource,
+                            part.SourceText,
+                            TriviaList())));
+                }
+
+                if (effectiveConversion != null)
+                {
+                    // Conversion turns the value into a string via Builtins.Repr/Str/Ascii; any
+                    // format spec then applies to that string (alignment is the meaningful case).
+                    parts.Add(GenerateConvertedInterpolation(part.Expression, effectiveConversion.Value, part.FormatSpec));
+                }
                 // Special handling for percent format (.N%) - Python's % format doesn't add
                 // a space before %, but .NET's P format does (even with InvariantCulture).
                 // Generate: {value * 100:FN}% instead of {value:PN}
-                if (!string.IsNullOrEmpty(part.FormatSpec) && IsPercentFormat(part.FormatSpec, out var percentPrecision))
+                else if (!string.IsNullOrEmpty(part.FormatSpec) && IsPercentFormat(part.FormatSpec, out var percentPrecision))
                 {
                     // Generate: value * 100
                     var multipliedExpr = BinaryExpression(
@@ -552,6 +580,63 @@ internal partial class RoslynEmitter
                 Argument(interpolatedString))));
 
         return invariantCall;
+    }
+
+    /// <summary>
+    /// Wraps an interpolation expression in the runtime conversion implied by an f-string
+    /// conversion flag ('r' → repr, 's' → str, 'a' → ascii), producing a string value, then
+    /// applies an optional (alignment-oriented) format spec to that string.
+    /// </summary>
+    private InterpolatedStringContentSyntax GenerateConvertedInterpolation(
+        Expression expression, char conversion, string? formatSpec)
+    {
+        var method = conversion switch
+        {
+            'r' => "Repr",
+            's' => "Str",
+            'a' => "Ascii",
+            _ => "Str",
+        };
+
+        var converted = InvocationExpression(
+            MakeGlobalQualifiedName("Sharpy", "Builtins", method))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                Argument(GenerateExpression(expression)))));
+
+        var interpolation = Interpolation(ParenthesizedExpression(converted));
+
+        if (string.IsNullOrEmpty(formatSpec))
+            return interpolation;
+
+        // The value is already a string, so only alignment/width is meaningful. Center
+        // alignment ('^') and custom fills need FormatAlign; '>'/'<' map to C# alignment.
+        var result = TranslatePythonFormatSpec(formatSpec);
+
+        if (result.NeedsExpressionRewrite && result.AlignmentMode == '^')
+        {
+            var alignCall = InvocationExpression(
+                MakeGlobalQualifiedName("Sharpy", "Builtins", "FormatAlign"))
+                .WithArgumentList(ArgumentList(SeparatedList(new[]
+                {
+                    Argument(converted),
+                    Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(result.Width ?? 0))),
+                    Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression, Literal(result.FillChar ?? ' '))),
+                    Argument(LiteralExpression(SyntaxKind.CharacterLiteralExpression, Literal('^'))),
+                })));
+            return Interpolation(ParenthesizedExpression(alignCall));
+        }
+
+        if (result.Alignment.HasValue)
+        {
+            ExpressionSyntax alignmentExpr = result.Alignment.Value < 0
+                ? PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression,
+                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(Math.Abs(result.Alignment.Value))))
+                : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(result.Alignment.Value));
+            interpolation = interpolation.WithAlignmentClause(
+                InterpolationAlignmentClause(Token(SyntaxKind.CommaToken), alignmentExpr));
+        }
+
+        return interpolation;
     }
 
     private static string EscapeForInterpolatedStringSource(string text)

@@ -1,0 +1,6 @@
+# f-string conversion flag !r applies repr() (#987)
+def main() -> None:
+    name: str = "Alice"
+    n: int = 42
+    print(f'{name!r}')
+    print(f'{n!r}')
