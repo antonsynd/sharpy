@@ -1190,7 +1190,7 @@ internal class AstDumper : AstVisitor
         switch (clause)
         {
             case ForClause forClause:
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ForClause @ L{clause.LineStart}:C{clause.ColumnStart}");
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ForClause{(forClause.IsAsync ? " (async)" : "")} @ L{clause.LineStart}:C{clause.ColumnStart}");
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Target:");
                 VisitChild(forClause.Target, depth + 2, false);
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Iterator:");
