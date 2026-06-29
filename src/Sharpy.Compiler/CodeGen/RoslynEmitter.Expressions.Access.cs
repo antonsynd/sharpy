@@ -587,7 +587,12 @@ internal partial class RoslynEmitter
             var allArgs = GenerateReorderedCallArguments(call, genericFuncSymbol);
 
             // Builtin generic functions need qualification: global::Sharpy.Builtins.Map<T>(...)
-            if (_context.IsBuiltinFunction(genericName.Name))
+            // A user-defined generic that shadows a builtin name (def map[T]) is resolved by
+            // LookupSymbol to the user's FunctionSymbol, which has CodeGenInfo set by semantic
+            // analysis; registry builtins do not. Only qualify with Builtins. for a genuine
+            // builtin, mirroring the non-generic guard in GenerateCall (#1003).
+            if (_context.IsBuiltinFunction(genericName.Name)
+                && genericFuncSymbol.CodeGenInfo is null)
             {
                 var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
                 return InvocationExpression(
