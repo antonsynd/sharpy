@@ -16,6 +16,27 @@ namespace Sharpy.Compiler.CodeGen;
 internal partial class RoslynEmitter
 {
     /// <summary>
+    /// Runs <paramref name="generate"/> against a fresh <c>_hoistedStatements</c> scope and returns
+    /// whatever statements it hoisted (e.g. a nested or async comprehension's <c>await foreach</c> +
+    /// temp declaration), restoring the prior hoist accumulator before returning. Mirrors the
+    /// save/clear/restore discipline in <c>GenerateBodyStatements</c>. Imperative comprehension
+    /// lowering uses this to place a sub-expression's hoisting at the lexical scope where the
+    /// sub-expression is evaluated — element/key/value inside the innermost loop body (rebuilt per
+    /// outer iteration, with the loop variable in scope), iterator/condition before their loop —
+    /// instead of leaking it to the flat statement boundary above the outer loop (#1000).
+    /// </summary>
+    private List<StatementSyntax> CaptureHoisted(System.Action generate)
+    {
+        var saved = new List<StatementSyntax>(_hoistedStatements);
+        _hoistedStatements.Clear();
+        generate();
+        var captured = new List<StatementSyntax>(_hoistedStatements);
+        _hoistedStatements.Clear();
+        _hoistedStatements.AddRange(saved);
+        return captured;
+    }
+
+    /// <summary>
     /// Recursively determines whether an expression contains an <c>await</c>.
     /// Over-detection is safe: it only changes the lowering strategy (LINQ vs imperative),
     /// never correctness, so no special-casing of lambda/nested-comprehension boundaries.
@@ -245,16 +266,22 @@ internal partial class RoslynEmitter
                                 .WithArgumentList(ArgumentList()))))));
 
         // Inner statement: __comp_N.Update(spread)
-        var spreadExpr = GenerateExpression(dictSpreadComp.Spread);
-        StatementSyntax innerStmt = ExpressionStatement(
-            InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(tempName),
-                    IdentifierName("Update")))
-            .AddArgumentListArguments(Argument(spreadExpr)));
+        // #1000: capture any hoisting from the spread expression (e.g. a nested async comprehension)
+        // so it nests inside the innermost loop body, rebuilt per outer iteration.
+        StatementSyntax innerStmt = null!;
+        var spreadHoisted = CaptureHoisted(() =>
+        {
+            var spreadExpr = GenerateExpression(dictSpreadComp.Spread);
+            innerStmt = ExpressionStatement(
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(tempName),
+                        IdentifierName("Update")))
+                .AddArgumentListArguments(Argument(spreadExpr)));
+        });
 
-        var currentBody = new List<StatementSyntax> { innerStmt };
+        var currentBody = new List<StatementSyntax>(spreadHoisted) { innerStmt };
 
         // Build nested loop structure from clauses in reverse order
         for (int i = dictSpreadComp.Clauses.Length - 1; i >= 0; i--)
@@ -262,12 +289,16 @@ internal partial class RoslynEmitter
             switch (dictSpreadComp.Clauses[i])
             {
                 case IfClause ifClause:
-                    var condition = GenerateExpression(ifClause.Condition);
-                    currentBody = new List<StatementSyntax> { IfStatement(condition, Block(currentBody)) };
+                    // #1000: hoist condition sub-statements before the if, in the enclosing scope.
+                    ExpressionSyntax condition = null!;
+                    var condHoisted = CaptureHoisted(() => condition = GenerateExpression(ifClause.Condition));
+                    currentBody = new List<StatementSyntax>(condHoisted) { IfStatement(condition, Block(currentBody)) };
                     break;
 
                 case ForClause forClause:
-                    var iterExpr = GenerateExpression(forClause.Iterator);
+                    // #1000: hoist iterator sub-statements before the foreach, in the enclosing scope.
+                    ExpressionSyntax iterExpr = null!;
+                    var iterHoisted = CaptureHoisted(() => iterExpr = GenerateExpression(forClause.Iterator));
 
                     if (forClause.Target is Identifier id)
                     {
@@ -293,7 +324,7 @@ internal partial class RoslynEmitter
                             Block(foreachBody));
                         if (forClause.IsAsync)
                             foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
-                        currentBody = new List<StatementSyntax> { foreachStmt };
+                        currentBody = new List<StatementSyntax>(iterHoisted) { foreachStmt };
                     }
                     else if (forClause.Target is TupleLiteral tuple && tuple.Elements.All(e => e is Identifier))
                     {
@@ -328,7 +359,7 @@ internal partial class RoslynEmitter
                             Block(foreachBody));
                         if (forClause.IsAsync)
                             foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
-                        currentBody = new List<StatementSyntax> { foreachStmt };
+                        currentBody = new List<StatementSyntax>(iterHoisted) { foreachStmt };
                     }
                     break;
             }
@@ -396,46 +427,53 @@ internal partial class RoslynEmitter
                             ObjectCreationExpression(collectionType)
                                 .WithArgumentList(ArgumentList()))))));
 
-        // Build the innermost statement: __comp_N.Add(element), __comp_N.Extend(it), or __comp_N[key] = value
-        StatementSyntax innerStmt;
-        if (collectionKind == BuiltinNames.Dict)
+        // Build the innermost statement: __comp_N.Add(element), __comp_N.Extend(it), or __comp_N[key] = value.
+        // #1000: capture any statements hoisted while generating the element/key/value (e.g. an inner
+        // async or nested comprehension's await-foreach + temp decl) so they nest INSIDE the innermost
+        // loop body — rebuilt per outer iteration, with the outer loop variable in scope — instead of
+        // leaking to the flat statement-level hoist above the outer loop.
+        StatementSyntax innerStmt = null!;
+        var elementHoisted = CaptureHoisted(() =>
         {
-            // __comp_N[key] = value;
-            innerStmt = ExpressionStatement(
-                AssignmentExpression(
-                    SyntaxKind.SimpleAssignmentExpression,
-                    ElementAccessExpression(IdentifierName(tempName))
-                        .WithArgumentList(BracketedArgumentList(
-                            SingletonSeparatedList(Argument(GenerateExpression(keyExpr!))))),
-                    GenerateExpression(valueExpr!)));
-        }
-        else if (elementIsSpread && element is SpreadElement spreadElem)
-        {
-            // PEP 798: __comp_N.Extend(it) / __comp_N.UnionWith(it) for spread elements
-            innerStmt = ExpressionStatement(
-                InvocationExpression(
-                    MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(tempName),
-                        IdentifierName(collInfo!.SpreadMethodName)))
-                    .AddArgumentListArguments(Argument(GenerateExpression(spreadElem.Value))));
-        }
-        else
-        {
-            // __comp_N.Add(element);
-            innerStmt = ExpressionStatement(
-                InvocationExpression(
-                    MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(tempName),
-                        IdentifierName(collInfo!.AddMethodName)))
-                    .AddArgumentListArguments(Argument(GenerateExpression(element!))));
-        }
+            if (collectionKind == BuiltinNames.Dict)
+            {
+                // __comp_N[key] = value;
+                innerStmt = ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        ElementAccessExpression(IdentifierName(tempName))
+                            .WithArgumentList(BracketedArgumentList(
+                                SingletonSeparatedList(Argument(GenerateExpression(keyExpr!))))),
+                        GenerateExpression(valueExpr!)));
+            }
+            else if (elementIsSpread && element is SpreadElement spreadElem)
+            {
+                // PEP 798: __comp_N.Extend(it) / __comp_N.UnionWith(it) for spread elements
+                innerStmt = ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(tempName),
+                            IdentifierName(collInfo!.SpreadMethodName)))
+                        .AddArgumentListArguments(Argument(GenerateExpression(spreadElem.Value))));
+            }
+            else
+            {
+                // __comp_N.Add(element);
+                innerStmt = ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(tempName),
+                            IdentifierName(collInfo!.AddMethodName)))
+                        .AddArgumentListArguments(Argument(GenerateExpression(element!))));
+            }
+        });
 
         // Build nested loops from the inside out by processing clauses in reverse
         // Clauses are: [for x in iter1, if cond1, for y in iter2, if cond2, ...]
         // We need to wrap innerStmt from the last clause backward
-        var currentBody = new List<StatementSyntax> { innerStmt };
+        var currentBody = new List<StatementSyntax>(elementHoisted) { innerStmt };
 
         for (int i = clauses.Length - 1; i >= 0; i--)
         {
@@ -443,13 +481,19 @@ internal partial class RoslynEmitter
             {
                 case IfClause ifClause:
                     // Wrap current body in if (condition) { ... }
-                    var condition = GenerateExpression(ifClause.Condition);
+                    // #1000: hoist any condition sub-statements (e.g. a nested async comprehension in
+                    // the filter) BEFORE the if, in the enclosing scope where the condition is evaluated.
+                    ExpressionSyntax condition = null!;
+                    var condHoisted = CaptureHoisted(() => condition = GenerateExpression(ifClause.Condition));
                     var ifStmt = IfStatement(condition, Block(currentBody));
-                    currentBody = new List<StatementSyntax> { ifStmt };
+                    currentBody = new List<StatementSyntax>(condHoisted) { ifStmt };
                     break;
 
                 case ForClause forClause:
-                    var iterExpr = GenerateExpression(forClause.Iterator);
+                    // #1000: hoist any iterator sub-statements (e.g. an async comprehension used as the
+                    // iterable) BEFORE the foreach, in the enclosing scope where the iterator is evaluated.
+                    ExpressionSyntax iterExpr = null!;
+                    var iterHoisted = CaptureHoisted(() => iterExpr = GenerateExpression(forClause.Iterator));
 
                     if (forClause.Target is Identifier id)
                     {
@@ -478,7 +522,7 @@ internal partial class RoslynEmitter
                             Block(foreachBody));
                         if (forClause.IsAsync)
                             foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
-                        currentBody = new List<StatementSyntax> { foreachStmt };
+                        currentBody = new List<StatementSyntax>(iterHoisted) { foreachStmt };
                     }
                     else if (forClause.Target is TupleLiteral tuple &&
                              tuple.Elements.All(e => e is Identifier))
@@ -515,7 +559,7 @@ internal partial class RoslynEmitter
                             Block(foreachBody));
                         if (forClause.IsAsync)
                             foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
-                        currentBody = new List<StatementSyntax> { foreachStmt };
+                        currentBody = new List<StatementSyntax>(iterHoisted) { foreachStmt };
                     }
                     break;
             }
