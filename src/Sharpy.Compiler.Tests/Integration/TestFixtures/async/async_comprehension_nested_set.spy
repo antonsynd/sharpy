@@ -1,0 +1,14 @@
+async def outer() -> int:
+    yield 1
+    yield 2
+    yield 3
+
+async def inner(x: int) -> int:
+    i = 0
+    while i < x:
+        yield i
+        i += 1
+
+async def main():
+    result = {len([y async for y in inner(x)]) async for x in outer()}
+    print(sorted(list(result)))
