@@ -217,4 +217,7 @@ public class UnparserRoundTripTests
     [Fact] public void MultiAxisAccess() => AssertRoundTrip("arr[0, 1]\n");
     [Fact] public void MultiAxisSlice() => AssertRoundTrip("arr[0:5, 1:3]\n");
     [Fact] public void MultiAxisMixed() => AssertRoundTrip("arr[0, 1:3]\n");
+    // #1001: all-plain tuple subscripts (IndexAccess(TupleLiteral)) must round-trip.
+    [Fact] public void TupleSubscript() => AssertRoundTrip("arr[a, b]\n");
+    [Fact] public void TupleSubscriptOneElement() => AssertRoundTrip("arr[a,]\n");
 }

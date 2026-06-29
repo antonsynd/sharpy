@@ -115,4 +115,60 @@ public class UnparserTests
 
         result.Should().Be(source);
     }
+
+    // #1001: tuple subscripts must unparse without the tuple's wrapping parens so
+    // the round-trip is string-stable (parser maps x[a, b], x[a,], x[(a, b)] to the
+    // same IndexAccess(TupleLiteral)).
+    [Fact]
+    public void Roundtrip_TupleSubscript_TwoElements()
+    {
+        Unparser.Unparse(Parse("x[y, s]\n")).Should().Be("x[y, s]\n");
+    }
+
+    [Fact]
+    public void Roundtrip_TupleSubscript_OneElement_PreservesTrailingComma()
+    {
+        // x[y,] is a 1-tuple subscript, distinct from x[y]; the comma must survive.
+        Unparser.Unparse(Parse("x[y,]\n")).Should().Be("x[y,]\n");
+    }
+
+    [Fact]
+    public void Roundtrip_ParenthesizedTupleSubscript_NormalizesToBareTuple()
+    {
+        Unparser.Unparse(Parse("x[(y, s)]\n")).Should().Be("x[y, s]\n");
+    }
+
+    [Fact]
+    public void Roundtrip_GenericTupleSubscript()
+    {
+        Unparser.Unparse(Parse("dict[str, int]\n")).Should().Be("dict[str, int]\n");
+    }
+
+    [Fact]
+    public void Roundtrip_PlainSubscript_Unchanged()
+    {
+        Unparser.Unparse(Parse("x[0]\n")).Should().Be("x[0]\n");
+    }
+
+    [Fact]
+    public void Roundtrip_EmptyTupleSubscript_KeepsParens()
+    {
+        // x[()] is a valid 0-element-tuple subscript; it must NOT collapse to the
+        // unparseable x[]. The empty tuple falls through to the parenthesized form.
+        Unparser.Unparse(Parse("x[()]\n")).Should().Be("x[()]\n");
+    }
+
+    [Fact]
+    public void Roundtrip_TupleSubscript_StableInsideComplexExpression()
+    {
+        // Minimized counterexample from the seed-flaky UnparseIdempotence property
+        // test: x[y, s] previously re-emitted as x[(y, s)] after reparse. Assert the
+        // string-level unparse is idempotent.
+        var source = "assert {} <= (idx := \"world\") >= x[y, s] > (super() is int)\n";
+        var once = Unparser.Unparse(Parse(source));
+        var twice = Unparser.Unparse(Parse(once));
+        twice.Should().Be(once);
+        once.Should().Contain("x[y, s]");
+        once.Should().NotContain("x[(y, s)]");
+    }
 }

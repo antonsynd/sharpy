@@ -922,6 +922,15 @@ internal partial class TypeChecker
     /// picks the registry overload with the matching arity so the return type closes. Falls back to
     /// <paramref name="fallback"/> when arities already match or no better overload exists (e.g.
     /// user-defined generics absent from the builtin registry), preserving prior behaviour.
+    /// <para>
+    /// Substitution is gated on builtin identity: it runs only when <paramref name="fallback"/> is
+    /// reference-equal to one of the registry overloads. Builtins reach the global scope from the very
+    /// <see cref="FunctionSymbol"/> instances the registry yields (<c>SymbolTable.PopulateBuiltins</c> →
+    /// <c>BuiltinRegistry.GetAllFunctions</c>, the same instances <c>GetFunctionOverloads</c> returns),
+    /// so a genuine builtin's resolved symbol is reference-equal to a list element. A user-defined
+    /// generic that shadows a builtin in a narrower scope is not in that list, so it keeps its own
+    /// symbol and is never silently replaced by a same-name builtin of a different arity (#1002).
+    /// </para>
     /// </summary>
     private FunctionSymbol SelectArityMatchingOverload(
         string name, int typeArgCount, FunctionSymbol fallback)
@@ -930,13 +939,28 @@ internal partial class TypeChecker
             return fallback;
 
         var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(name);
-        if (overloads != null)
+        if (overloads == null)
+            return fallback;
+
+        // Only swap among genuine builtin overloads. If the resolved symbol is not one of the
+        // registry's own instances, it is a user-defined generic shadowing the builtin name —
+        // keep it rather than type-checking the call against the wrong (builtin) function (#1002).
+        bool fallbackIsBuiltin = false;
+        foreach (var overload in overloads)
         {
-            foreach (var overload in overloads)
+            if (ReferenceEquals(overload, fallback))
             {
-                if (overload.TypeParameters.Count == typeArgCount)
-                    return overload;
+                fallbackIsBuiltin = true;
+                break;
             }
+        }
+        if (!fallbackIsBuiltin)
+            return fallback;
+
+        foreach (var overload in overloads)
+        {
+            if (overload.TypeParameters.Count == typeArgCount)
+                return overload;
         }
 
         return fallback;
