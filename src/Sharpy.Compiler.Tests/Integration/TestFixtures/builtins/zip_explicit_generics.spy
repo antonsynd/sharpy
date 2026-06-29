@@ -1,0 +1,12 @@
+# Explicit-generic zip() inference in unannotated nested contexts (#999)
+# Locks in Design Decision 2: the arity-matching overload selection added for
+# map[...] also generalizes to zip[T1, T2] / zip[T1, T2, T3], so the outer
+# list(...) wrapper closes to a concrete tuple element type (not an open TOut).
+def main() -> None:
+    a: list[int] = [1, 2, 3]
+    b: list[str] = ["x", "y", "z"]
+    c: list[bool] = [True, False, True]
+    # two type args -> outer List<(int, str)>
+    print(list(zip[int, str](a, b)))
+    # three type args -> outer List<(int, str, bool)>
+    print(list(zip[int, str, bool](a, b, c)))
