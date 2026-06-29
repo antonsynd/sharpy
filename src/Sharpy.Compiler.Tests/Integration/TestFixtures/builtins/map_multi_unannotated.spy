@@ -1,0 +1,27 @@
+# Unannotated nested-context multi-iterable map() inference (#999)
+# Gap A: bare-identifier forms must infer a closed Iterator[TOut] so list(...)
+# wrappers emit Sharpy.List<TOut> with TOut substituted (not a literal `TOut`).
+def add(a: int, b: int) -> int:
+    return a + b
+
+def add3(a: int, b: int, c: int) -> int:
+    return a + b + c
+
+def join(a: int, b: int) -> str:
+    return str(a) + "-" + str(b)
+
+def main() -> None:
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [10, 20, 30]
+    c: list[int] = [100, 200, 300]
+    # two iterables, no annotation on the wrapper
+    print(list(map(add, a, b)))
+    # strict= keyword
+    print(list(map(add, a, b, strict=True)))
+    # three iterables
+    print(list(map(add3, a, b, c)))
+    # non-int TOut (mapper returns str) — guards against extracting T1 instead of TOut
+    print(list(map(join, a, b)))
+    # bare unannotated assignment (no target type to guide inference)
+    r = list(map(add, a, b))
+    print(r)

@@ -1,0 +1,16 @@
+# Explicit-generic multi-arity map() inference in unannotated nested contexts (#999)
+# Gap B: map[T1, T2, TOut](...) must select the overload whose type-parameter count
+# matches the supplied type args, so the outer list(...) wrapper closes TOut.
+def add(a: int, b: int) -> int:
+    return a + b
+
+def join(a: int, b: int) -> str:
+    return str(a) + "-" + str(b)
+
+def main() -> None:
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [10, 20, 30]
+    # explicit generics, two iterables, unannotated wrapper -> outer List<int>
+    print(list(map[int, int, int](add, a, b)))
+    # TOut (the last type arg) differs from the input element type -> outer List<string>
+    print(list(map[int, int, str](join, a, b)))

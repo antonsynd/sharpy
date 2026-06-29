@@ -35,7 +35,7 @@ internal static class BuiltinReturnTypeInference
                 => InferEnumerate(argTypes, typeInference),
             BuiltinNames.Zip when argTypes.Count >= 2
                 => InferZip(argTypes, typeInference),
-            BuiltinNames.Map when argTypes.Count == 2
+            BuiltinNames.Map when argTypes.Count >= 2
                 => InferMap(argTypes),
             _ => null
         };
@@ -107,7 +107,14 @@ internal static class BuiltinReturnTypeInference
 
     private static SemanticType? InferMap(List<SemanticType> argTypes)
     {
-        // map(fn, iterable) -> Iterator[TOut] where TOut is the return type of fn
+        // Handles both the single- and multi-iterable forms:
+        //   map(fn, iterable)            -> Iterator[TOut]
+        //   map(fn, a, b[, strict=...])  -> Iterator[TOut]
+        //   map(fn, a, b, c[, strict=…]) -> Iterator[TOut]
+        // The mapper is always argTypes[0]; the element type is its return type
+        // irrespective of how many iterables follow (extra positional iterables and
+        // a trailing positional `strict` bool are ignored, and a keyword `strict`
+        // never appears in argTypes). Mirrors the >= 2 dispatch precedent used by zip.
         if (argTypes[0] is FunctionType funcType)
         {
             return new GenericType
