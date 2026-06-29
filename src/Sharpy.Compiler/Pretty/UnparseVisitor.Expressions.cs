@@ -84,9 +84,10 @@ internal sealed partial class UnparseVisitor
         // comma-separated WITHOUT the tuple's wrapping parens so the round-trip is
         // string-stable (the parser maps x[a, b], x[a,], and x[(a, b)] to the same
         // IndexAccess(TupleLiteral)) and so it matches Python/MultiAxisAccess form.
-        // Star/PEP-646 and named-element tuples fall through to the parenthesized
-        // default. (#1001)
+        // Star/PEP-646, named-element, and empty tuples fall through to the
+        // parenthesized default (an empty subscript x[()] must stay x[()], not x[]). (#1001)
         if (node.Index is TupleLiteral t
+            && t.Elements.Length > 0
             && !t.Elements.Any(e => e is StarExpression)
             && (t.ElementNames.IsEmpty || t.ElementNames.All(n => n == null)))
         {

@@ -151,6 +151,14 @@ public class UnparserTests
     }
 
     [Fact]
+    public void Roundtrip_EmptyTupleSubscript_KeepsParens()
+    {
+        // x[()] is a valid 0-element-tuple subscript; it must NOT collapse to the
+        // unparseable x[]. The empty tuple falls through to the parenthesized form.
+        Unparser.Unparse(Parse("x[()]\n")).Should().Be("x[()]\n");
+    }
+
+    [Fact]
     public void Roundtrip_TupleSubscript_StableInsideComplexExpression()
     {
         // Minimized counterexample from the seed-flaky UnparseIdempotence property
