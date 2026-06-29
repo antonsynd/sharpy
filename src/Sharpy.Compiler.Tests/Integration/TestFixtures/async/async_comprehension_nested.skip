@@ -1,1 +1,0 @@
-TODO(#1000): nested async comprehensions hoist the inner comprehension's await-foreach above the outer loop, so the outer loop variable is out of scope (CS0103) and the inner list is built only once. Single-level async comprehensions work; this nested case is blocked on #1000.

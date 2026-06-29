@@ -80,7 +80,30 @@ internal sealed partial class UnparseVisitor
     {
         VisitPostfixObject(node.Object);
         _w.Write("[");
-        Visit(node.Index);
+        // A tuple subscript x[a, b] parses to IndexAccess(TupleLiteral). Emit it
+        // comma-separated WITHOUT the tuple's wrapping parens so the round-trip is
+        // string-stable (the parser maps x[a, b], x[a,], and x[(a, b)] to the same
+        // IndexAccess(TupleLiteral)) and so it matches Python/MultiAxisAccess form.
+        // Star/PEP-646 and named-element tuples fall through to the parenthesized
+        // default. (#1001)
+        if (node.Index is TupleLiteral t
+            && !t.Elements.Any(e => e is StarExpression)
+            && (t.ElementNames.IsEmpty || t.ElementNames.All(n => n == null)))
+        {
+            for (int i = 0; i < t.Elements.Length; i++)
+            {
+                if (i > 0)
+                    _w.Write(", ");
+                Visit(t.Elements[i]);
+            }
+            // Preserve the 1-tuple subscript x[a,] — distinct from x[a].
+            if (t.Elements.Length == 1)
+                _w.Write(",");
+        }
+        else
+        {
+            Visit(node.Index);
+        }
         _w.Write("]");
     }
 
