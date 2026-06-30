@@ -1,0 +1,8 @@
+# #1012: the variadic value form of min()/max() accepts only key=. A second keyword argument
+# (e.g. default=, which Python permits only for the iterable form) must be rejected with a
+# Sharpy diagnostic (SPY0234) instead of leaking a raw C# error (CS1744) from the params overload.
+def negate(x: int) -> int:
+    return -x
+
+def main() -> None:
+    print(min(2, 3, key=negate, default=0))

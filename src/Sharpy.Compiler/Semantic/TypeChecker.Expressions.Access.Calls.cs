@@ -642,12 +642,17 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Validates the <c>key=</c> keyword argument of the variadic value form of
-    /// <c>min()</c>/<c>max()</c> (<c>min(a, b, …, key=f)</c> with ≥2 positional args).
+    /// Validates the keyword arguments of the variadic value form of <c>min()</c>/<c>max()</c>
+    /// (<c>min(a, b, …)</c> with ≥2 positional args).
     /// <see cref="BuiltinReturnTypeInference"/> returns the value type before overload
-    /// resolution runs, so this kwarg is otherwise never type-checked. Codegen lowers it to
-    /// <c>Min(new[]{…}, key)</c> (#1012); a non-callable key would silently bind to the
-    /// <c>(IEnumerable&lt;T&gt;, T default)</c> overload instead, so reject it here with SPY0230.
+    /// resolution runs, so these kwargs are otherwise never type-checked. Codegen lowers the
+    /// <c>key=</c> form to <c>Min(new[]{…}, key)</c> (#1012). Two things are checked so an
+    /// invalid call yields a Sharpy diagnostic instead of a leaked C# error: the value form
+    /// accepts only <c>key=</c> (any other kwarg — e.g. <c>default=</c>, which Python permits
+    /// only for the iterable form — would otherwise emit CS1744), and the <c>key</c> must be
+    /// callable (a non-callable key would silently bind to the
+    /// <c>(IEnumerable&lt;T&gt;, T default)</c> overload). The extra-kwarg case is rejected with
+    /// SPY0234 and the non-callable key with SPY0230.
     /// </summary>
     private void ValidateMinMaxValueFormKey(
         Identifier id, FunctionCall call,
@@ -655,10 +660,26 @@ internal partial class TypeChecker
     {
         if (id.Name is not (BuiltinNames.Min or BuiltinNames.Max))
             return;
-        // Only the value form (>= 2 positional args) is lowered with a key; the single-positional
-        // iterable form is handled by ordinary overload resolution against the key overload.
+        // Only the value form (>= 2 positional args) is handled here; the single-positional
+        // iterable form (incl. its default=/key= kwargs) is handled by ordinary overload
+        // resolution against the iterable overloads.
         if (argTypes.Count < 2)
             return;
+
+        // The value form accepts only key=. Any other kwarg bypasses overload resolution
+        // (InferReturnType returned early) and would leak a raw C# error from codegen
+        // (e.g. default= -> CS1744). Reject it with a Sharpy diagnostic — matching Python,
+        // which raises TypeError for default= alongside multiple positional args. (#1012)
+        foreach (var kw in call.KeywordArguments)
+        {
+            if (kw.Name != "key")
+                AddError(
+                    $"'{id.Name}' value form does not accept keyword argument '{kw.Name}'",
+                    kw.LineStart, kw.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                    span: kw.Span);
+        }
+
         if (!kwargTypes.TryGetValue("key", out var keyType))
             return;
 
