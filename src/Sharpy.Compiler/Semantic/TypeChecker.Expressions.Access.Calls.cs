@@ -1789,45 +1789,51 @@ internal partial class TypeChecker
         FunctionCall call, FunctionSymbol? earlyFuncSymbol, int earlyParamOffset, FunctionType? calleeFunctionType)
     {
         var argTypes = new List<SemanticType>();
-        for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
+        // #1009: map(lambda, iter1, iter2, ...) needs the lambda's parameter types inferred
+        // from the iterables' element types so an unannotated multi-iterable map closes its
+        // return type. Handle the whole positional list specially in that one case.
+        if (!TryCheckMapLambdaArguments(call, argTypes))
         {
-            var previousExpectedType = _expectedType;
-
-            // Handle spread arguments: *expr
-            if (call.Arguments[argIdx] is SpreadElement spreadArg)
+            for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
             {
-                var spreadValueType = CheckExpression(spreadArg.Value);
+                var previousExpectedType = _expectedType;
 
-                if (spreadValueType is TupleType tupleSpread)
+                // Handle spread arguments: *expr
+                if (call.Arguments[argIdx] is SpreadElement spreadArg)
                 {
-                    // Tuple spread: expand element types as individual arguments
-                    argTypes.AddRange(tupleSpread.ElementTypes);
-                }
-                else
-                {
-                    // Iterable spread: extract element type for variadic param matching
-                    var elemType = _typeInference.InferIterableElementType(spreadValueType);
-                    if (elemType != null)
-                        argTypes.Add(elemType);
+                    var spreadValueType = CheckExpression(spreadArg.Value);
+
+                    if (spreadValueType is TupleType tupleSpread)
+                    {
+                        // Tuple spread: expand element types as individual arguments
+                        argTypes.AddRange(tupleSpread.ElementTypes);
+                    }
                     else
-                        argTypes.Add(SemanticType.Unknown);
+                    {
+                        // Iterable spread: extract element type for variadic param matching
+                        var elemType = _typeInference.InferIterableElementType(spreadValueType);
+                        if (elemType != null)
+                            argTypes.Add(elemType);
+                        else
+                            argTypes.Add(SemanticType.Unknown);
+                    }
+                    _expectedType = previousExpectedType;
+                    continue;
                 }
-                _expectedType = previousExpectedType;
-                continue;
-            }
 
-            if (earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
-            {
-                var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
-                _expectedType = paramType is UnknownType ? null : paramType;
+                if (earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
+                {
+                    var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
+                    _expectedType = paramType is UnknownType ? null : paramType;
+                }
+                else if (calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
+                {
+                    var paramType = calleeFunctionType.ParameterTypes[argIdx];
+                    _expectedType = paramType is UnknownType ? null : paramType;
+                }
+                argTypes.Add(CheckExpression(call.Arguments[argIdx]));
+                _expectedType = previousExpectedType;
             }
-            else if (calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
-            {
-                var paramType = calleeFunctionType.ParameterTypes[argIdx];
-                _expectedType = paramType is UnknownType ? null : paramType;
-            }
-            argTypes.Add(CheckExpression(call.Arguments[argIdx]));
-            _expectedType = previousExpectedType;
         }
 
         // Check keyword arguments and collect their types
@@ -1848,6 +1854,78 @@ internal partial class TypeChecker
         }
 
         return (argTypes, kwargTypes);
+    }
+
+    /// <summary>
+    /// #1009: For the builtin <c>map(lambda, iter1, iter2, ...)</c>, infer the lambda's parameter
+    /// types from the iterables' element types (proper bidirectional inference) so an unannotated
+    /// multi-iterable map closes its return type and the wrapping <c>list(...)</c> emits a typed
+    /// <c>Sharpy.List&lt;T&gt;</c>. The single-iterable case already works via the body heuristic
+    /// (<see cref="TryInferLambdaParamTypesFromBody"/>); this also strengthens it and is the only
+    /// path that handles lambdas the heuristic cannot (e.g. both binary operands placeholders, or a
+    /// bare-identifier body). Gated narrowly on the builtin <c>map</c> with a lambda first argument,
+    /// mirroring how <see cref="ResolveEarlyMethodSymbol"/> gates on <see cref="CallHasLambdaArgument"/>.
+    /// </summary>
+    /// <returns>
+    /// True if this call was handled here (positional <paramref name="argTypes"/> populated in
+    /// source order); false to let the caller's normal argument loop run.
+    /// </returns>
+    private bool TryCheckMapLambdaArguments(FunctionCall call, List<SemanticType> argTypes)
+    {
+        // Bare `map(...)` call (an Identifier callee) with a lambda first argument and at least
+        // one iterable. Method-form or aliased map() falls through to the normal loop.
+        if (call.Function is not Identifier mapId || mapId.Name != BuiltinNames.Map)
+            return false;
+        if (call.Arguments.Length < 2 || call.Arguments[0] is not LambdaExpression)
+            return false;
+
+        // Don't special-case a user-defined `map` that shadows the builtin.
+        var sym = _symbolTable.Lookup(mapId.Name) as FunctionSymbol;
+        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(mapId.Name);
+        bool isBuiltinMap = overloads != null && (sym == null || overloads.Contains(sym));
+        if (!isBuiltinMap)
+            return false;
+
+        // Spreads change positional arity; keep the fast path simple and defer to the normal loop.
+        foreach (var arg in call.Arguments)
+        {
+            if (arg is SpreadElement)
+                return false;
+        }
+
+        // Check the iterable arguments first (args[1..]) to learn their element types. A trailing
+        // positional `strict` bool is not iterable, so InferIterableElementType returns null for it
+        // and it contributes no lambda parameter (a keyword `strict=` is handled separately and
+        // never reaches the positional list). Element types are collected only for genuine
+        // iterables, in source order, so they align with the lambda's parameters.
+        var elementTypes = new List<SemanticType>();
+        var iterableTypes = new List<SemanticType>();
+        var previousExpectedType = _expectedType;
+        _expectedType = null;
+        for (int i = 1; i < call.Arguments.Length; i++)
+        {
+            var argType = CheckExpression(call.Arguments[i]);
+            iterableTypes.Add(argType);
+            var elem = _typeInference.InferIterableElementType(argType);
+            if (elem != null)
+                elementTypes.Add(elem);
+        }
+
+        // Feed the synthesized expected function type into the lambda so CheckLambda types its
+        // parameters from the element types (lambdas/CheckLambda already consume a FunctionType
+        // _expectedType). The return type is left Unknown; the body determines it.
+        _expectedType = new FunctionType
+        {
+            ParameterTypes = elementTypes,
+            ReturnType = SemanticType.Unknown
+        };
+        var lambdaType = CheckExpression(call.Arguments[0]);
+        _expectedType = previousExpectedType;
+
+        // Reassemble positional argTypes in source order: [lambda, iter1, iter2, ...].
+        argTypes.Add(lambdaType);
+        argTypes.AddRange(iterableTypes);
+        return true;
     }
 
     /// <summary>

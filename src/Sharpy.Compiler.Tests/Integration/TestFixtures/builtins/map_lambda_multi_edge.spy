@@ -1,0 +1,11 @@
+# #1009: edge cases for iterable-driven lambda parameter inference.
+# (A bare-identifier body, `lambda x, y: x`, would also be inferred from the iterables,
+# but the parser cannot yet parse that form in an argument list — see #1011.)
+def main() -> None:
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [4, 5, 6]
+    # call body (also exercises the #1010 scalar max() form).
+    print(list(map(lambda x, y: max(x, y), a, b)))
+    # differing element types -> list[str].
+    s: list[str] = ["a", "b", "c"]
+    print(list(map(lambda x, y: str(x) + y, a, s)))
