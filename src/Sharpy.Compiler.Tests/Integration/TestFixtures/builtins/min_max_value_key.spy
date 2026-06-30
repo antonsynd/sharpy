@@ -1,0 +1,14 @@
+# #1012: the variadic value form of min()/max() supports a key= function. The compiler
+# lowers min(a, b, ..., key=f) to the iterable+key overload (Min(new[]{a, b, ...}, f)),
+# since a C# params parameter cannot coexist with a by-keyword key argument.
+def negate(x: int) -> int:
+    return -x
+
+def main() -> None:
+    # key= over >= 2 positional values (the value form).
+    print(min(3, 1, 2, key=negate))
+    print(max(3, 1, 2, key=negate))
+    # A builtin used as the key (string length).
+    print(max("a", "bbb", "cc", key=len))
+    # An inline lambda key.
+    print(min(3, 1, 2, key=lambda x: -x))
