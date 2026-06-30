@@ -1,0 +1,5 @@
+# #1009: unannotated multi-iterable lambda map with strict= keyword.
+def main() -> None:
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [10, 20, 30]
+    print(list(map(lambda x, y: x + y, a, b, strict=True)))

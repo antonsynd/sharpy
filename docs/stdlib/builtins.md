@@ -959,6 +959,28 @@ Return the largest item in an iterable, or default if the iterable is empty.
 Return the largest item in an iterable using a key function,
 or default if the iterable is empty.
 
+### `max(first: T, second: T, rest: list[T]) -> T`
+
+Return the largest of two or more values (the variadic value form).
+
+**Parameters:**
+
+- `first` (T) -- The first value
+- `second` (T) -- The second value
+- `rest` (list[T]) -- Any additional values
+
+**Returns:** The largest value (the first encountered on ties, matching Python)
+
+```python
+max(2, 3, 1)     # 3
+max(5, 2, 8, 1)  # 8
+```
+
+!!! note
+    The `key=` form of the variadic value call (e.g. `max(a, b, key=f)`) is not
+    supported yet: in C# a `params` parameter must come last, so a key function cannot
+    be passed by keyword alongside positional values. Tracked by #1012.
+
 ### `min(iterable: Iterable[T]) -> T`
 
 Return the smallest item in an iterable.
@@ -1001,6 +1023,28 @@ Return the smallest item in an iterable, or default if the iterable is empty.
 
 Return the smallest item in an iterable using a key function,
 or default if the iterable is empty.
+
+### `min(first: T, second: T, rest: list[T]) -> T`
+
+Return the smallest of two or more values (the variadic value form).
+
+**Parameters:**
+
+- `first` (T) -- The first value
+- `second` (T) -- The second value
+- `rest` (list[T]) -- Any additional values
+
+**Returns:** The smallest value (the first encountered on ties, matching Python)
+
+```python
+min(2, 3)        # 2
+min(5, 2, 8, 1)  # 1
+```
+
+!!! note
+    The `key=` form of the variadic value call (e.g. `min(a, b, key=f)`) is not
+    supported yet: in C# a `params` parameter must come last, so a key function cannot
+    be passed by keyword alongside positional values. Tracked by #1012.
 
 ### `next(iterator: Iterator[T]) -> T`
 

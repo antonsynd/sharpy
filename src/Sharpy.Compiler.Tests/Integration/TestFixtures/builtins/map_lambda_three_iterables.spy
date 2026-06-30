@@ -1,0 +1,6 @@
+# #1009: unannotated lambda map over three iterables.
+def main() -> None:
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [10, 20, 30]
+    c: list[int] = [100, 200, 300]
+    print(list(map(lambda x, y, z: x + y + z, a, b, c)))

@@ -1,0 +1,6 @@
+# #1010 (secondary): a builtin call whose argument COUNT is valid but whose argument TYPES
+# match no overload must report a type/overload mismatch, not a self-contradictory arity
+# message. zip accepts 2 iterables, so the count (2) is in range; ints are not iterable, so
+# no overload's types match (Python raises "argument ... is not iterable" here too).
+def main() -> None:
+    print(zip(1, 2))

@@ -1,0 +1,6 @@
+# #1004: a correct explicit type-argument count compiles and runs (no diagnostic).
+def identity[T](x: T) -> T:
+    return x
+
+def main() -> None:
+    print(identity[int](42))

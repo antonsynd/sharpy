@@ -130,5 +130,50 @@ namespace Sharpy
 
             return biggest;
         }
+
+        /// <summary>
+        /// Return the largest of two or more values (the variadic value form).
+        /// </summary>
+        /// <typeparam name="T">The type of the values</typeparam>
+        /// <param name="first">The first value</param>
+        /// <param name="second">The second value</param>
+        /// <param name="rest">Any additional values</param>
+        /// <returns>The largest value (the first encountered on ties, matching Python)</returns>
+        /// <remarks>
+        /// The <c>key=</c> form of the variadic value call (e.g. <c>max(a, b, key=f)</c>) is not
+        /// supported yet: in C# a <c>params</c> parameter must come last, so a key function cannot
+        /// be passed by keyword alongside positional values. Tracked by #1012.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// max(2, 3, 1)     # 3
+        /// max(5, 2, 8, 1)  # 8
+        /// </code>
+        /// </example>
+        public static T Max<T>(T first, T second, params T[] rest)
+        {
+            if (first is null || second is null)
+            {
+                throw TypeError.OpNotSupported("<", "NoneType");
+            }
+
+            // Tie-break to the first occurrence (matching Python): only replace on strictly-greater.
+            T biggest = Operator.Lt(first, second) ? second : first;
+
+            foreach (var elem in rest)
+            {
+                if (elem is null)
+                {
+                    throw TypeError.OpNotSupported("<", "NoneType");
+                }
+
+                if (Operator.Lt(biggest, elem))
+                {
+                    biggest = elem;
+                }
+            }
+
+            return biggest;
+        }
     }
 }

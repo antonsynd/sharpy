@@ -761,6 +761,26 @@ internal partial class TypeChecker
                     // closes instead of leaking an open TOut (#999).
                     var resolvedFuncSymbol = SelectArityMatchingOverload(
                         typeId.Name, typeArgs.Count, genericFuncSymbol);
+                    // Diagnose a type-argument count that matches no overload (#1004). After
+                    // SelectArityMatchingOverload has had its chance to pick an arity-matching
+                    // (builtin) overload, a remaining mismatch means the supplied count is wrong:
+                    //   - user generic (def map[T] referenced as map[int, int, int]): selection
+                    //     keeps the 1-param fallback (it never swaps for user symbols, #1002),
+                    //     so 1 != 3 -> error.
+                    //   - builtin with no matching arity (e.g. map[int, int, int, int, int]):
+                    //     selection returns the fallback -> mismatch -> error.
+                    // A genuine builtin map[int, int, int] selects the 3-param overload, so
+                    // 3 == 3 and no error is reported (no #999 regression).
+                    if (resolvedFuncSymbol.TypeParameters.Count != typeArgs.Count)
+                    {
+                        AddError(
+                            $"Generic function '{typeId.Name}' expects {resolvedFuncSymbol.TypeParameters.Count} type argument(s) but got {typeArgs.Count}",
+                            indexAccess.LineStart,
+                            indexAccess.ColumnStart,
+                            code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                            span: indexAccess.Span);
+                        return SemanticType.Unknown;
+                    }
                     // Store the type arguments in SemanticInfo for use in CheckFunctionCall
                     _semanticInfo.SetExpressionType(indexAccess, new GenericFunctionType
                     {
@@ -794,6 +814,20 @@ internal partial class TypeChecker
                         var typeArgs = TryResolveTypeArguments(indexAccess.Index);
                         if (typeArgs != null)
                         {
+                            // Diagnose a wrong type-argument count (#1004). Module-member
+                            // references are not multi-arity-overloaded the way builtins are, so a
+                            // direct comparison against the declared type-parameter count suffices
+                            // (no SelectArityMatchingOverload).
+                            if (modFuncSymbol.TypeParameters.Count != typeArgs.Count)
+                            {
+                                AddError(
+                                    $"Generic function '{memberAccessObj.Member}' expects {modFuncSymbol.TypeParameters.Count} type argument(s) but got {typeArgs.Count}",
+                                    indexAccess.LineStart,
+                                    indexAccess.ColumnStart,
+                                    code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                                    span: indexAccess.Span);
+                                return SemanticType.Unknown;
+                            }
                             _semanticInfo.SetExpressionType(indexAccess, new GenericFunctionType
                             {
                                 FunctionSymbol = modFuncSymbol,

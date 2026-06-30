@@ -1,0 +1,8 @@
+# #1010: variadic value form for min()/max() (2+ scalar arguments), matching Python.
+def main() -> None:
+    print(min(2, 3))
+    print(max(2, 3, 1))
+    print(min(5, 2, 8, 1))
+    print(max(5, 2, 8, 1))
+    print(min("foo", "bar"))
+    print(max("a", "b", "c"))

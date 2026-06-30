@@ -5,6 +5,7 @@ using FluentAssertions;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Tests.Semantic;
@@ -17,7 +18,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class ArityOverloadShadowingTests
 {
-    private static (Module module, SymbolTable symbols, SemanticInfo info) Analyze(string source)
+    private static (Module module, SymbolTable symbols, SemanticInfo info, DiagnosticBag diagnostics) Analyze(string source)
     {
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
@@ -35,7 +36,7 @@ public class ArityOverloadShadowingTests
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        return (module, symbolTable, semanticInfo);
+        return (module, symbolTable, semanticInfo, typeChecker.Diagnostics);
     }
 
     private static IEnumerable<Node> Descendants(Node node)
@@ -65,18 +66,19 @@ def map[T](x: T) -> T:
 def use() -> None:
     f = map[int, int, int]
 ";
-        var (module, symbols, info) = Analyze(source);
+        var (_, symbols, _, diagnostics) = Analyze(source);
 
         var userMap = symbols.Lookup("map");
         userMap.Should().BeOfType<FunctionSymbol>();
 
-        var genericRef = FindGenericRef(module, "map");
-        genericRef.Should().NotBeNull();
-
-        var refType = info.GetExpressionType(genericRef!);
-        refType.Should().BeOfType<GenericFunctionType>();
-        ((GenericFunctionType)refType!).FunctionSymbol.Should().BeSameAs(userMap,
-            "a user-defined generic that shadows a builtin must keep its own symbol (#1002)");
+        // #1004: the wrong type-arg count (3 against the user map's 1 type parameter) is now
+        // diagnosed at the reference site. The message "expects 1 ..." also proves #1002's
+        // invariant: the arity search kept the USER symbol (1 type parameter) rather than
+        // swapping for a 3-parameter builtin overload (which would have said "expects 3").
+        diagnostics.GetErrors().Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.WrongArgumentCount
+                 && d.Message.Contains("expects 1 type argument(s) but got 3"),
+            "a user-shadowed generic keeps its own arity (#1002) and a wrong type-arg count is diagnosed (#1004)");
     }
 
     [Fact]
@@ -88,7 +90,7 @@ def use() -> None:
 def use() -> None:
     f = map[int, int, int]
 ";
-        var (module, _, info) = Analyze(source);
+        var (module, _, info, diagnostics) = Analyze(source);
 
         var genericRef = FindGenericRef(module, "map");
         genericRef.Should().NotBeNull();
@@ -97,5 +99,67 @@ def use() -> None:
         refType.Should().BeOfType<GenericFunctionType>();
         ((GenericFunctionType)refType!).FunctionSymbol.TypeParameters.Count.Should().Be(3,
             "explicit-generic builtin map must select the arity-matching (3 type-parameter) overload (#999)");
+        diagnostics.GetErrors().Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.WrongArgumentCount,
+            "a genuine arity-matching builtin reference must not be diagnosed (#1004 must not regress #999)");
+    }
+
+    // ── #1004: wrong explicit type-argument count on a generic function reference ──
+
+    [Fact]
+    public void BuiltinGeneric_ExcessTypeArgs_NoMatchingOverload_Diagnosed()
+    {
+        // map has overloads up to 4 type parameters; 5 type args match no overload. After the
+        // arity search returns the fallback, the count mismatch must be diagnosed (#1004).
+        var source = @"
+def use() -> None:
+    f = map[int, int, int, int, int]
+";
+        var (_, _, _, diagnostics) = Analyze(source);
+
+        diagnostics.GetErrors().Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.WrongArgumentCount
+                 && d.Message.Contains("got 5"),
+            "a builtin generic reference with a type-arg count matching no overload is diagnosed (#1004)");
+    }
+
+    [Fact]
+    public void UserGeneric_TooFewTypeArgs_Diagnosed()
+    {
+        // The reference contract is exact: a user generic of arity 2 referenced with 1 type arg
+        // is diagnosed (no partial-explicit-type-arg feature exists in the language).
+        var source = @"
+def pair[T, U](a: T, b: U) -> T:
+    return a
+
+def use() -> None:
+    f = pair[int]
+";
+        var (_, _, _, diagnostics) = Analyze(source);
+
+        diagnostics.GetErrors().Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.WrongArgumentCount
+                 && d.Message.Contains("expects 2 type argument(s) but got 1"),
+            "too-few explicit type args on a generic reference is diagnosed (#1004)");
+    }
+
+    [Fact]
+    public void UserGeneric_CorrectTypeArgs_NotDiagnosed()
+    {
+        // Exact arity binds cleanly with no diagnostic.
+        var source = @"
+def identity[T](x: T) -> T:
+    return x
+
+def use() -> None:
+    f = identity[int]
+";
+        var (module, _, info, diagnostics) = Analyze(source);
+
+        diagnostics.GetErrors().Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.WrongArgumentCount,
+            "a correct type-arg count must not be diagnosed (#1004)");
+
+        var genericRef = FindGenericRef(module, "identity");
+        info.GetExpressionType(genericRef!).Should().BeOfType<GenericFunctionType>(
+            "a correct generic reference still records its GenericFunctionType");
     }
 }

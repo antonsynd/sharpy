@@ -1,0 +1,7 @@
+# #1009: unannotated list(map(lambda x, y: ..., a, b)) over two iterables.
+# The lambda's parameter types must be inferred from the iterables' element types so the
+# wrapping list(...) closes to Sharpy.List<int> (previously failed with CS0305).
+def main() -> None:
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [4, 5, 6]
+    print(list(map(lambda x, y: x + y, a, b)))
