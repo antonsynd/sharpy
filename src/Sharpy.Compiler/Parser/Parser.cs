@@ -195,11 +195,12 @@ public partial class Parser
     /// structural. EOF/Newline or a depth-0 ')'/']'/'}' is a terminator (no body ':' ahead
     /// → not an annotation).
     ///
-    /// Known limitation: the scan does not descend into a nested lambda used as a parameter
-    /// default (<c>f(lambda v: v, key=lambda x: x)</c> — the inner <c>lambda x: x</c>'s colon
-    /// sits at depth 0 and is mistaken for a body separator). This is an extreme edge (a
-    /// bare-identifier body followed by a kwarg whose value is itself a lambda); all real
-    /// cases resolve correctly.
+    /// Known limitation: the scan does not descend into a nested lambda used as any kwarg
+    /// value or parameter default (<c>f(lambda v: v, key=lambda x: x)</c>,
+    /// <c>f(lambda v: v, cb=lambda x: x + 1)</c> — the inner lambda's colon sits at depth 0
+    /// and is mistaken for a body separator, producing a (recoverable) parse error for the
+    /// outer lambda). This is an extreme edge (a bare-identifier body followed by a kwarg
+    /// whose value is itself a lambda); all real cases resolve correctly.
     /// </remarks>
     private bool LambdaColonStartsTypeAnnotation()
     {
