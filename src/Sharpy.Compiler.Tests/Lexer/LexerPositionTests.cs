@@ -827,4 +827,60 @@ print(f""Result: {result}"")";
     }
 
     #endregion
+
+    #region F-String Self-Documenting (#1016)
+
+    [Fact]
+    public void Position_FStringSelfDoc_SpanCoversOnlyEquals_NoTrailingSpace()
+    {
+        // t"{s=}" — the FStringSelfDoc token owns only '=', so its source span must not
+        // overrun the following '}'. Before #1016, Length was Value.Length (2 for "s="),
+        // pushing the span past '}' and breaking monotonic token positions.
+        var tokens = Tokenize("t\"{s=}\"");
+
+        var selfDoc = tokens.First(t => t.Type == TokenType.FStringSelfDoc);
+        var exprEnd = tokens.First(t => t.Type == TokenType.FStringExprEnd);
+
+        selfDoc.Value.Should().Be("s=");                                  // emitter still prints 's='
+        selfDoc.Length.Should().Be(1);                                    // but the source span is just '='
+        exprEnd.Position.Should().Be(selfDoc.Position + selfDoc.Length);  // '}' starts exactly at span end
+    }
+
+    [Fact]
+    public void Position_FStringSelfDoc_SpanIncludesTrailingWhitespace()
+    {
+        // t"{s = }" — the span covers '= ' (the '=' plus the single trailing space before '}').
+        var tokens = Tokenize("t\"{s = }\"");
+
+        var selfDoc = tokens.First(t => t.Type == TokenType.FStringSelfDoc);
+        var exprEnd = tokens.First(t => t.Type == TokenType.FStringExprEnd);
+
+        selfDoc.Length.Should().Be(2);
+        exprEnd.Position.Should().Be(selfDoc.Position + selfDoc.Length);
+    }
+
+    [Fact]
+    public void Position_FStringSelfDoc_TokenStreamIsMonotonic()
+    {
+        // Mirrors the LexerCsCheckPropertyTests monotonicity rule for a self-doc field:
+        // every non-trivia token's Position must be >= the previous token's Position + Length.
+        var tokens = Tokenize("x = t\"{s=}\"");
+
+        int lastEnd = 0;
+        foreach (var token in tokens)
+        {
+            if (token.Type == TokenType.Eof)
+                break;
+            if (token.Type is TokenType.Newline or TokenType.Indent or TokenType.Dedent)
+                continue;
+            if (token.Position < 0)
+                continue;
+
+            token.Position.Should().BeGreaterThanOrEqualTo(lastEnd,
+                $"token {token.Type} at {token.Position} must not precede previous token end {lastEnd}");
+            lastEnd = token.Position + token.Length;
+        }
+    }
+
+    #endregion
 }
