@@ -143,8 +143,20 @@ internal static class GenExpressions
     public static Gen<IndexAccess> IndexAccessExpr(GenContext ctx) =>
         Gen.Select(
             Expression(ctx),
-            Expression(ctx),
+            IndexValue(ctx),
             (obj, index) => new IndexAccess { Object = obj, Index = index });
+
+    // Subscript index: usually an arbitrary expression, occasionally the empty tuple
+    // so 'x[()]' is exercised. The unparser must keep the parens here (#1001) to avoid
+    // collapsing to 'x[]'; this regression-guards that via the round-trip harness.
+    private static Gen<Expression> IndexValue(GenContext ctx) =>
+        Gen.Frequency(
+            (6, Expression(ctx)),
+            (1, Gen.Const<Expression>(new TupleLiteral
+            {
+                Elements = ImmutableArray<Expression>.Empty,
+                ElementNames = ImmutableArray<string?>.Empty
+            })));
 
     public static Gen<SliceAccess> SliceAccessExpr(GenContext ctx) =>
         Gen.Select(
@@ -186,20 +198,33 @@ internal static class GenExpressions
                 Body = body
             });
 
-    public static Gen<ListComprehension> ListComprehensionExpr(GenContext ctx) =>
+    // For-clause of a comprehension, occasionally async (#998): '[x async for x in xs]'.
+    // The parser accepts async-for clauses anywhere a comprehension is parsed, so this
+    // round-trips at module level even though semantic analysis would require an async
+    // context. Mostly non-async to keep ordinary comprehensions well-represented.
+    private static readonly Gen<bool> ComprehensionIsAsync =
+        Gen.Frequency((4, Gen.Const(false)), (1, Gen.Const(true)));
+
+    private static Gen<ForClause> ComprehensionForClause(GenContext ctx) =>
         Gen.Select(
             GenIdentifier.Name,
             Expression(ctx),
+            ComprehensionIsAsync,
+            (varName, iter, isAsync) => new ForClause
+            {
+                Target = new Identifier { Name = varName },
+                Iterator = iter,
+                IsAsync = isAsync
+            });
+
+    public static Gen<ListComprehension> ListComprehensionExpr(GenContext ctx) =>
+        Gen.Select(
             Expression(ctx),
-            (varName, elem, iter) => new ListComprehension
+            ComprehensionForClause(ctx),
+            (elem, clause) => new ListComprehension
             {
                 Element = elem,
-                Clauses = ImmutableArray.Create<ComprehensionClause>(
-                    new ForClause
-                    {
-                        Target = new Identifier { Name = varName },
-                        Iterator = iter
-                    })
+                Clauses = ImmutableArray.Create<ComprehensionClause>(clause)
             });
 
     public static Gen<TypeCoercion> TypeCoercionExpr(GenContext ctx) =>
@@ -233,14 +258,48 @@ internal static class GenExpressions
         "hello ", "world", " is ", "value: ", "result = ", " - ", ", ", "! ", " "
     };
 
+    // Conversion flags (#987) and format specs that round-trip verbatim through
+    // lexer -> unparser. Kept free of '{', '}', ':' and '!' so they never re-lex
+    // as a different specifier.
+    private static readonly char[] FStringConversionFlags = { 'r', 's', 'a' };
+
+    private static readonly string[] FStringFormatSpecs =
+    {
+        ".2f", ">10", "<8", "^6", "05d", "+.3e", "x", "b"
+    };
+
+    // One f-string replacement field or text run. Covers plain text, a bare
+    // expression, the '!r'/'!s'/'!a' conversion flags (#987), a conversion paired
+    // with a format spec (the #987 ordering: '{x!r:>10}'), and the '=' self-
+    // documenting specifier (#986). Self-documenting parts use an identifier whose
+    // SourceText is exactly what the lexer recaptures ("<name>="), so they round-trip.
+    private static Gen<FStringPart> FStringPartGen(GenContext ctx) =>
+        Gen.Frequency(
+            (3, Gen.OneOfConst(FStringTextParts).Select(t =>
+                new FStringPart { Text = t })),
+            (3, Expression(ctx.Burn()).Select(e =>
+                new FStringPart { Expression = e })),
+            (1, Gen.Select(IdentifierExpr(ctx), Gen.OneOfConst(FStringConversionFlags),
+                (e, conv) => new FStringPart { Expression = e, Conversion = conv })),
+            (1, Gen.Select(IdentifierExpr(ctx), Gen.OneOfConst(FStringConversionFlags),
+                Gen.OneOfConst(FStringFormatSpecs),
+                (e, conv, spec) => new FStringPart
+                {
+                    Expression = e,
+                    Conversion = conv,
+                    FormatSpec = spec
+                })),
+            (1, GenIdentifier.Name.Select(name => new FStringPart
+            {
+                Expression = new Identifier { Name = name },
+                IsSelfDocumenting = true,
+                SourceText = name + "=",
+            })));
+
     public static Gen<FStringLiteral> FStringLiteralExpr(GenContext ctx) =>
         Gen.Int[1, 3].SelectMany(count =>
             Enumerable.Range(0, count)
-                .Select(_ => Gen.Frequency(
-                    (1, Gen.OneOfConst(FStringTextParts).Select(t =>
-                        new FStringPart { Text = t })),
-                    (1, Expression(ctx.Burn()).Select(e =>
-                        new FStringPart { Expression = e }))))
+                .Select(_ => FStringPartGen(ctx))
                 .Aggregate(Gen.Const(ImmutableArray<FStringPart>.Empty),
                     (acc, partGen) => Gen.Select(acc, partGen, (parts, part) => parts.Add(part)))
                 .Select(parts => new FStringLiteral { Parts = parts }));
@@ -248,11 +307,7 @@ internal static class GenExpressions
     public static Gen<TStringLiteral> TStringLiteralExpr(GenContext ctx) =>
         Gen.Int[1, 3].SelectMany(count =>
             Enumerable.Range(0, count)
-                .Select(_ => Gen.Frequency(
-                    (1, Gen.OneOfConst(FStringTextParts).Select(t =>
-                        new FStringPart { Text = t })),
-                    (1, Expression(ctx.Burn()).Select(e =>
-                        new FStringPart { Expression = e }))))
+                .Select(_ => FStringPartGen(ctx))
                 .Aggregate(Gen.Const(ImmutableArray<FStringPart>.Empty),
                     (acc, partGen) => Gen.Select(acc, partGen, (parts, part) => parts.Add(part)))
                 .Select(parts => new TStringLiteral { Parts = parts }));
@@ -263,36 +318,24 @@ internal static class GenExpressions
 
     public static Gen<SetComprehension> SetComprehensionExpr(GenContext ctx) =>
         Gen.Select(
-            GenIdentifier.Name,
             Expression(ctx),
-            Expression(ctx),
-            (varName, elem, iter) => new SetComprehension
+            ComprehensionForClause(ctx),
+            (elem, clause) => new SetComprehension
             {
                 Element = elem,
-                Clauses = ImmutableArray.Create<ComprehensionClause>(
-                    new ForClause
-                    {
-                        Target = new Identifier { Name = varName },
-                        Iterator = iter
-                    })
+                Clauses = ImmutableArray.Create<ComprehensionClause>(clause)
             });
 
     public static Gen<DictComprehension> DictComprehensionExpr(GenContext ctx) =>
         Gen.Select(
-            GenIdentifier.Name,
             Expression(ctx),
             Expression(ctx),
-            Expression(ctx),
-            (varName, key, value, iter) => new DictComprehension
+            ComprehensionForClause(ctx),
+            (key, value, clause) => new DictComprehension
             {
                 Key = key,
                 Value = value,
-                Clauses = ImmutableArray.Create<ComprehensionClause>(
-                    new ForClause
-                    {
-                        Target = new Identifier { Name = varName },
-                        Iterator = iter
-                    })
+                Clauses = ImmutableArray.Create<ComprehensionClause>(clause)
             });
 
     public static Gen<MatchExpression> MatchExpressionExpr(GenContext ctx) =>
