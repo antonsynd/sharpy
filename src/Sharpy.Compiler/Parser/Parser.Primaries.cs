@@ -743,10 +743,20 @@ public partial class Parser
                                         // annotation (treat as body so we get a clean error downstream).
                                         isTypeAnnotation = IsBracketedTypeAnnotation();
                                     }
+                                    else if (afterType == TokenType.Comma)
+                                    {
+                                        // ': IDENT ,' is ambiguous: a type annotation of a
+                                        // multi-param lambda (lambda x: int, y: int: body) vs a
+                                        // bare-identifier body terminated by the comma inside a
+                                        // call/tuple (apply(lambda v: v, 5)). Single-token
+                                        // lookahead cannot resolve it; scan ahead for a
+                                        // body-separator ':'. (#1011)
+                                        isTypeAnnotation = LambdaColonStartsTypeAnnotation();
+                                    }
                                     else
                                     {
-                                        isTypeAnnotation = afterType is TokenType.Comma
-                                            or TokenType.Assign or TokenType.Colon
+                                        isTypeAnnotation = afterType is TokenType.Assign
+                                            or TokenType.Colon
                                             or TokenType.Question
                                             or TokenType.Bang;
                                     }

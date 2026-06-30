@@ -175,6 +175,109 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Lambda-parameter annotation disambiguation (#1011): resolves the ambiguous
+    /// <c>: IDENT ,</c> pattern after a lambda parameter name. The ':' may introduce a
+    /// type annotation of a multi-parameter lambda
+    /// (<c>lambda x: int, y: int: x + y</c>), or it may be the body separator of a lambda
+    /// whose body is a bare identifier terminated by the comma inside an enclosing
+    /// call/tuple (<c>apply(lambda v: v, 5)</c>).
+    /// </summary>
+    /// <remarks>
+    /// Assumes <see cref="Current"/> is the candidate parameter ':', <c>Peek(1)</c> is the
+    /// type-start token (<c>Identifier</c>/<c>Auto</c>/<c>None</c>), and <c>Peek(2)</c> is
+    /// ',' (the only case this helper is invoked for). Returns <see langword="true"/> iff
+    /// the ':' is a type annotation, determined by scanning ahead and simulating the
+    /// parameter-list grammar <c>TYPE (',' PARAM)* ':'</c> (where
+    /// <c>PARAM = name [':' TYPE] ['=' default]</c>) to find a lambda body-separator ':'
+    /// before a lambda terminator. A bare <c>name: expr</c> is not a valid standalone call
+    /// argument or tuple element, so the only valid parse that reaches a body ':' is the
+    /// typed-lambda interpretation. Tracks '()[]{}' bracket depth; only depth-0 tokens are
+    /// structural. EOF/Newline or a depth-0 ')'/']'/'}' is a terminator (no body ':' ahead
+    /// → not an annotation).
+    ///
+    /// Known limitation: the scan does not descend into a nested lambda used as a parameter
+    /// default (<c>f(lambda v: v, key=lambda x: x)</c> — the inner <c>lambda x: x</c>'s colon
+    /// sits at depth 0 and is mistaken for a body separator). This is an extreme edge (a
+    /// bare-identifier body followed by a kwarg whose value is itself a lambda); all real
+    /// cases resolve correctly.
+    /// </remarks>
+    private bool LambdaColonStartsTypeAnnotation()
+    {
+        // Scan a balanced expression starting at `pos` (offset from Current) until the next
+        // depth-0 delimiter, advancing `pos`. Returns: 'b' if a body-separator ':' is reached,
+        // ',' for a depth-0 comma, '=' for a depth-0 '=' (type mode only), 't' for a terminator
+        // or an empty expression.
+        char ScanExpr(ref int pos, bool typeMode)
+        {
+            int depth = 0;
+            bool consumed = false;
+            while (true)
+            {
+                var type = Peek(pos).Type;
+                // Eof terminates at any depth — Peek() saturates at the final Eof token, so an
+                // unbalanced open bracket would otherwise spin here forever at depth > 0.
+                if (type == TokenType.Eof)
+                    return 't';
+                if (depth == 0)
+                {
+                    if (type is TokenType.Newline
+                        or TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace)
+                        return 't';
+                    if (type == TokenType.Colon)
+                        return 'b';
+                    if (type == TokenType.Comma)
+                        return consumed ? ',' : 't';
+                    if (typeMode && type == TokenType.Assign)
+                        return consumed ? '=' : 't';
+                }
+                if (type is TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace)
+                    depth++;
+                else if (type is TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace)
+                    depth--;
+                consumed = true;
+                pos++;
+            }
+        }
+
+        int i = 1; // offset from Current (the candidate ':'); start at the candidate TYPE.
+        var d = ScanExpr(ref i, typeMode: true);
+        while (true)
+        {
+            switch (d)
+            {
+                case 'b':
+                    return true;  // body separator ahead → the ':' is a type annotation
+                case '=':
+                    i++;          // consume '='; scan the default value
+                    d = ScanExpr(ref i, typeMode: false);
+                    continue;
+                case ',':
+                    i++;          // consume ','; the next parameter must be an identifier
+                    if (Peek(i).Type != TokenType.Identifier)
+                        return false;
+                    i++;          // consume the parameter name
+                    var afterName = Peek(i).Type;
+                    if (afterName == TokenType.Colon)
+                        return true;  // a body separator (or this param's type ':') exists ahead
+                    if (afterName == TokenType.Assign)
+                    {
+                        i++;      // consume '='; scan the default value
+                        d = ScanExpr(ref i, typeMode: false);
+                        continue;
+                    }
+                    if (afterName == TokenType.Comma)
+                    {
+                        d = ','; // bare parameter; handle the next ',' on the following iteration
+                        continue;
+                    }
+                    return false; // name followed by a token that cannot continue a parameter list
+                default:          // 't' terminator / empty expression
+                    return false;
+            }
+        }
+    }
+
+    /// <summary>
     /// Checks whether a keyword token type can be used as an identifier in
     /// certain contexts (e.g., keyword arguments in function calls).
     /// These correspond to Python's soft keywords: <c>match</c>, <c>case</c>, and <c>type</c>.
