@@ -77,6 +77,64 @@ public class PatternMatchPropertyTests
     }
 
     [Fact]
+    public void MatchWithListPatterns_CompilesClean()
+    {
+        int total = 0;
+        int passed = 0;
+
+        GenMatchPatterns.MatchWithListPatterns()
+            .Sample(source =>
+            {
+                Interlocked.Increment(ref total);
+
+                try
+                {
+                    var compiler = new Sharpy.Compiler.Compiler();
+                    var result = compiler.Analyze(source, "pattern_test.spy");
+                    if (result.Success)
+                        Interlocked.Increment(ref passed);
+                }
+                catch
+                {
+                    // Swallow
+                }
+            }, iter: 50);
+
+        _output.WriteLine($"Match with list patterns: {passed}/{total} passed");
+        Assert.True(passed > total / 3,
+            $"Match with list patterns pass rate too low: {passed}/{total}");
+    }
+
+    [Fact]
+    public void MatchWithAndPatterns_CompilesClean()
+    {
+        int total = 0;
+        int passed = 0;
+
+        GenMatchPatterns.MatchWithAndPatterns()
+            .Sample(source =>
+            {
+                Interlocked.Increment(ref total);
+
+                try
+                {
+                    var compiler = new Sharpy.Compiler.Compiler();
+                    var result = compiler.Analyze(source, "pattern_test.spy");
+                    if (result.Success)
+                        Interlocked.Increment(ref passed);
+                }
+                catch
+                {
+                    // Swallow
+                }
+            }, iter: 50);
+
+        _output.WriteLine($"Match with and-patterns: {passed}/{total} passed");
+        Assert.True(passed > total / 3,
+            $"Match with and-patterns pass rate too low: {passed}/{total}");
+    }
+
+    [Fact]
     public void MatchWithTypePatterns_CompilesClean()
     {
         int total = 0;

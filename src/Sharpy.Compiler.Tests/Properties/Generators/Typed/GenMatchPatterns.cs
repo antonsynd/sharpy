@@ -61,6 +61,101 @@ internal static class GenMatchPatterns
             return string.Join("\n", lines) + "\n";
         });
 
+    public static Gen<string> MatchWithListPatterns() =>
+        Gen.Int[0, 3].Select(variant =>
+        {
+            var lines = variant switch
+            {
+                0 => new List<string>
+                {
+                    "def describe(items: list[int]) -> str:",
+                    "    match items:",
+                    "        case []:",
+                    "            return \"empty\"",
+                    "        case [x]:",
+                    "            return \"one \" + str(x)",
+                    "        case [a, b]:",
+                    "            return \"pair \" + str(a + b)",
+                    "        case _:",
+                    "            return \"many\"",
+                },
+                1 => new List<string>
+                {
+                    "def head_tail(items: list[int]) -> int:",
+                    "    match items:",
+                    "        case [first, *rest]:",
+                    "            return first + len(rest)",
+                    "        case _:",
+                    "            return -1",
+                },
+                2 => new List<string>
+                {
+                    "def last_of(items: list[int]) -> int:",
+                    "    match items:",
+                    "        case [*init, last]:",
+                    "            return last - len(init)",
+                    "        case _:",
+                    "            return -1",
+                },
+                _ => new List<string>
+                {
+                    "def corner(rows: list[list[int]]) -> int:",
+                    "    match rows:",
+                    "        case [[a, b], *rest]:",
+                    "            return a + b + len(rest)",
+                    "        case _:",
+                    "            return -1",
+                },
+            };
+
+            lines.Add("");
+            lines.Add("def main() -> None:");
+            lines.Add("    pass");
+
+            return string.Join("\n", lines) + "\n";
+        });
+
+    public static Gen<string> MatchWithAndPatterns() =>
+        Gen.Int[0, 2].Select(variant =>
+        {
+            var lines = variant switch
+            {
+                0 => new List<string>
+                {
+                    "def check(items: list[int]) -> int:",
+                    "    match items:",
+                    "        case [a, b] and whole:",
+                    "            return a + b + len(whole)",
+                    "        case _:",
+                    "            return -1",
+                },
+                1 => new List<string>
+                {
+                    "def check(items: list[int]) -> int:",
+                    "    match items:",
+                    "        case [first, *rest] and whole:",
+                    "            return first + len(rest) + len(whole)",
+                    "        case _:",
+                    "            return -1",
+                },
+                _ => new List<string>
+                {
+                    "def check(items: list[int]) -> int:",
+                    "    match items:",
+                    "        case [x] and single:",
+                    "            return x + len(single)",
+                    "        case _:",
+                    "            return -1",
+                },
+            };
+
+            lines.Add("");
+            lines.Add("def main() -> None:");
+            lines.Add("    pass");
+
+            return string.Join("\n", lines) + "\n";
+        });
+
     public static Gen<string> MatchWithTypePatterns() =>
         Gen.Int[0, 2].Select(variant =>
         {
