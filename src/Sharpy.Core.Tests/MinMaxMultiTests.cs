@@ -7,7 +7,7 @@ namespace Sharpy.Core.Tests;
 /// Tests for the variadic value form of min()/max() (#1010): two or more scalar arguments,
 /// e.g. min(2, 3) / max(2, 3, 1), matching Python.
 /// </summary>
-public class MinMaxMulti_Tests
+public class MinMaxMultiTests
 {
     // ── Min, value form ──
 

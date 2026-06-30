@@ -11,10 +11,10 @@ namespace Sharpy.Compiler.Tests.Properties.Algebraic;
 /// raises exactly when the input lengths differ.
 /// </summary>
 /// <remarks>
-/// Mappers are named functions rather than lambdas: an unannotated
-/// <c>list(map(lambda ..., a, b))</c> over two or more iterables currently fails the
-/// lambda's return-type inference (#1009; the named-function path was fixed by #999).
-/// Named functions exercise the same builtin behaviour on the working path.
+/// Mappers are named functions rather than lambdas. The unannotated multi-iterable lambda
+/// path (<c>list(map(lambda ..., a, b))</c>) is now inferred correctly (#1009; the
+/// named-function path was fixed earlier by #999), so either form works here; named functions
+/// are retained because they exercise the same builtin behaviour with the simplest generator.
 /// </remarks>
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]
