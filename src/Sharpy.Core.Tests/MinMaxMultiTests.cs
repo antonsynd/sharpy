@@ -65,6 +65,25 @@ public class MinMaxMultiTests
         Max(-1, -5, -3).Should().Be(-1);
     }
 
+    // ── Mixed-numeric value form promotes to a common type (#1014) ──
+
+    [Fact]
+    public void Min_MixedNumeric_PromotesToDouble()
+    {
+        // The compiler promotes mixed-numeric value-form args to a common type
+        // (int + double -> double) before calling the generic Core method, so the
+        // runtime operates on double. min(2, 3.0) -> 2.0 (diverges from Python's 2).
+        Min<double>(2, 3.0).Should().Be(2.0);
+        Min<double>(3.0, 2).Should().Be(2.0);
+    }
+
+    [Fact]
+    public void Max_MixedNumeric_PromotesToDouble()
+    {
+        Max<double>(1.0, 2.5).Should().Be(2.5);
+        Max<double>(2.5, 1.0).Should().Be(2.5);
+    }
+
     // ── Null elements raise (matching the iterable form's contract) ──
 
     [Fact]

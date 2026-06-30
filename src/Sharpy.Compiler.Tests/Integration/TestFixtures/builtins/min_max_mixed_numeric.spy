@@ -1,0 +1,15 @@
+# #1014: the variadic value form of min()/max() with mixed-numeric scalar args promotes
+# to a common numeric type (int + double -> float64) so the result composes (arithmetic,
+# annotations) instead of leaking the open generic T.
+#
+# DELIBERATE PYTHON DIVERGENCE — do NOT "correct" the expected output to 2:
+#   Python returns the unpromoted element: min(2, 3.0) == 2 (an int).
+#   Sharpy promotes to float64: min(2, 3.0) == 2.0.
+# Returning the unpromoted element would require an object/union return, breaking type
+# safety. Promotion is the type-safe choice and matches Sharpy's binary numeric operators
+# (2 + 0.0 == 2.0). Axiom precedence: .NET (1) > types (3) > Python (2).
+def main() -> None:
+    print(min(2, 3.0))
+    print(max(1, 2.5))
+    v: float = min(2, 3.0) + 0.5
+    print(v)
