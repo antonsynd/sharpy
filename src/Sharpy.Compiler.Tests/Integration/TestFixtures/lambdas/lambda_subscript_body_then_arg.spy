@@ -1,0 +1,36 @@
+# #1015: a lambda whose body is a SUBSCRIPT (t[0]) must parse when the lambda is NOT the
+# last argument — the ']' is followed by a ',' that terminates the lambda, not a generic
+# type annotation. Single-token lookahead after the ']' cannot tell `lambda t: t[0], xs`
+# (subscript body + comma) from `lambda x: list[int], y: int: ...` (generic typed multi-param);
+# resolved by delegating the comma case to the #1011 body-separator scan.
+def first(f: (list[int]) -> int, xs: list[int]) -> int:
+    return f(xs)
+
+def pick(f: (list[int]) -> int, xs: list[int], fallback: int = -1) -> int:
+    result: int = f(xs)
+    if result < 0:
+        return fallback
+    return result
+
+def apply2(f: (list[int], int) -> int, xs: list[int], i: int) -> int:
+    return f(xs, i)
+
+def main() -> None:
+    # Subscript-body lambda in non-final call-argument position.
+    print(first(lambda t: t[0], [9, 8, 7]))
+
+    # Subscript-body lambda immediately before a keyword argument.
+    print(pick(lambda t: t[0], [5, 6, 7], fallback=0))
+
+    # Multi-parameter lambda with a subscript body, non-final position.
+    print(apply2(lambda xs, i: xs[i], [10, 20, 30], 2))
+
+    # Subscript body terminated by a comma in a tuple literal (outside a call).
+    pair: tuple[(list[int]) -> int, int] = (lambda t: t[0], 5)
+    print(pair[0]([42, 43]))
+    print(pair[1])
+
+    # Genuine generic-typed multi-param lambda must still parse as a type annotation
+    # (regression guard for the disambiguation fix).
+    combine = lambda x: list[int], y: int: x[0] + y
+    print(combine([100, 200], 7))

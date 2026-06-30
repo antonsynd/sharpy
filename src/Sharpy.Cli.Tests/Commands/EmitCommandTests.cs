@@ -72,7 +72,8 @@ public class EmitCommandTests
 
         var invocation = CliTestHarness.Invoke($"emit tokens \"{spy}\"");
 
-        invocation.ExitCode.Should().Be(0);
+        invocation.ExitCode.Should().Be(0,
+            "the command should succeed; stderr=<{0}> stdout=<{1}>", invocation.StdErr, invocation.StdOut);
         invocation.StdOut.Should().Contain("Tokens for");
         invocation.StdOut.Should().Contain("Total tokens:");
     }
@@ -85,7 +86,8 @@ public class EmitCommandTests
 
         var invocation = CliTestHarness.Invoke($"emit ast \"{spy}\"");
 
-        invocation.ExitCode.Should().Be(0);
+        invocation.ExitCode.Should().Be(0,
+            "the command should succeed; stderr=<{0}> stdout=<{1}>", invocation.StdErr, invocation.StdOut);
         invocation.StdOut.Should().Contain("AST for");
     }
 
@@ -97,7 +99,8 @@ public class EmitCommandTests
 
         var invocation = CliTestHarness.Invoke($"emit parse \"{spy}\"");
 
-        invocation.ExitCode.Should().Be(0);
+        invocation.ExitCode.Should().Be(0,
+            "the command should succeed; stderr=<{0}> stdout=<{1}>", invocation.StdErr, invocation.StdOut);
         invocation.StdOut.Should().Contain("PARSE_OK");
     }
 
@@ -109,7 +112,8 @@ public class EmitCommandTests
 
         var invocation = CliTestHarness.Invoke($"emit diagnostics \"{spy}\"");
 
-        invocation.ExitCode.Should().Be(0);
+        invocation.ExitCode.Should().Be(0,
+            "the command should succeed; stderr=<{0}> stdout=<{1}>", invocation.StdErr, invocation.StdOut);
         invocation.StdOut.Should().Contain("No diagnostics.");
     }
 
@@ -121,7 +125,8 @@ public class EmitCommandTests
 
         var invocation = CliTestHarness.Invoke($"emit diagnostics \"{spy}\" --format json");
 
-        invocation.ExitCode.Should().Be(0);
+        invocation.ExitCode.Should().Be(0,
+            "the command should succeed; stderr=<{0}> stdout=<{1}>", invocation.StdErr, invocation.StdOut);
         invocation.StdOut.TrimStart().Should().StartWith("[");
     }
 
@@ -135,7 +140,8 @@ public class EmitCommandTests
         // Use library output to avoid the exe entry-point (main()) requirement.
         var invocation = CliTestHarness.Invoke($"emit csharp \"{spy}\" --output \"{outPath}\" --type library");
 
-        invocation.ExitCode.Should().Be(0);
+        invocation.ExitCode.Should().Be(0,
+            "the command should succeed; stderr=<{0}> stdout=<{1}>", invocation.StdErr, invocation.StdOut);
         File.Exists(outPath).Should().BeTrue();
         File.ReadAllText(outPath).Should().Contain("class");
     }
@@ -148,7 +154,8 @@ public class EmitCommandTests
 
         var invocation = CliTestHarness.Invoke($"emit hover \"{spy}\" --line 1 --col 5");
 
-        invocation.ExitCode.Should().Be(0);
+        invocation.ExitCode.Should().Be(0,
+            "the command should succeed; stderr=<{0}> stdout=<{1}>", invocation.StdErr, invocation.StdOut);
     }
 
     // ---- Invocation-level error tests (nonexistent file → exit code 1) ----

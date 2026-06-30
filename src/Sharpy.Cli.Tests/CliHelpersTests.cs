@@ -221,17 +221,10 @@ public class CliHelpersTests
         var outPath = ws.PathFor("metrics.txt");
         var metrics = new CompilationMetrics(fileName: "test.spy");
 
-        var originalOut = Console.Out;
-        using var safeWriter = new StringWriter();
-        try
-        {
-            Console.SetOut(safeWriter);
-            CliHelpers.OutputMetrics(metrics, metricsFormat: "text", metricsOutput: new FileInfo(outPath));
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
+        // Redirect through the shared harness lock so this test can never corrupt a
+        // concurrent CliTestHarness.Invoke's Console.Out (the #1017 cross-test race).
+        CliTestHarness.CaptureConsole(() =>
+            CliHelpers.OutputMetrics(metrics, metricsFormat: "text", metricsOutput: new FileInfo(outPath)));
 
         File.Exists(outPath).Should().BeTrue();
         File.ReadAllText(outPath).Should().NotBeNullOrWhiteSpace();

@@ -414,7 +414,13 @@ public partial class Lexer
                     _column++;
                 }
                 var selfDocText = _source.Substring(context.ExprStartPosition, _position - context.ExprStartPosition);
-                return CreateToken(TokenType.FStringSelfDoc, selfDocText, startLine, startColumn, startPosition);
+                // Value is the verbatim 'expr=' text the emitter prints literally, but the token's
+                // SOURCE span is only the '=' (+trailing whitespace) it owns — the expression chars
+                // are already covered by their own tokens. Without an explicit SourceLength, Length
+                // would be Value.Length and the span would overrun the following '}' (#1016,
+                // non-monotonic token positions).
+                return CreateToken(TokenType.FStringSelfDoc, selfDocText, startLine, startColumn, startPosition,
+                    sourceLength: _position - startPosition);
             }
 
             // Check for conversion flag (!r / !s / !a) at the top level of a replacement
