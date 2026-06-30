@@ -658,7 +658,7 @@ internal partial class TypeChecker
             return null;
 
         var kwNames = ExtractKeywordArgNames(call);
-        var (matchingOverload, _, _) = ResolveOverloadCore(
+        var (matchingOverload, arityCandidates, _) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
                 ReturnFirstMatch: true, KeywordArgNames: kwNames, Call: call));
 
@@ -678,7 +678,21 @@ internal partial class TypeChecker
         if (id.Name == BuiltinNames.Isinstance)
             return SemanticType.Bool;
 
-        // No matching overload found
+        // No matching overload found. Distinguish the two failure modes (#1010):
+        //   - the argument COUNT matches some overload but its parameter TYPES don't
+        //     (arityCandidates non-empty) -> report a type/overload mismatch. Reporting the
+        //     arity here would be self-contradictory (e.g. "expects 1 or 2 or 3 arguments but
+        //     got 2" when 2 IS in range), which is the misleading message #1010 called out.
+        //   - the argument count matches no overload at all -> report the arity mismatch with
+        //     the helpful expected-count list.
+        if (arityCandidates.Count > 0)
+        {
+            AddError($"No overload of '{id.Name}' matches the given argument types",
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+
         var expectedCounts = string.Join(" or ", overloads!.Select(o =>
         {
             var required = o.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
@@ -1893,11 +1907,14 @@ internal partial class TypeChecker
                 return false;
         }
 
-        // Check the iterable arguments first (args[1..]) to learn their element types. A trailing
-        // positional `strict` bool is not iterable, so InferIterableElementType returns null for it
-        // and it contributes no lambda parameter (a keyword `strict=` is handled separately and
-        // never reaches the positional list). Element types are collected only for genuine
-        // iterables, in source order, so they align with the lambda's parameters.
+        // Check the iterable arguments first (args[1..]) to learn their element types. One entry
+        // is recorded per positional argument so the list stays POSITIONALLY ALIGNED with the
+        // lambda's parameters: when an argument's element type can't be inferred (an opaque or
+        // non-iterable arg, e.g. a trailing positional `strict` bool), Unknown is recorded in its
+        // place rather than dropped. Dropping would shift a later iterable's element type onto an
+        // earlier lambda parameter (mis-inference). A keyword `strict=` is handled separately and
+        // never reaches the positional list; a trailing positional `strict` adds a surplus Unknown
+        // that CheckLambda ignores (it maps only up to the lambda's own arity).
         var elementTypes = new List<SemanticType>();
         var iterableTypes = new List<SemanticType>();
         var previousExpectedType = _expectedType;
@@ -1907,8 +1924,7 @@ internal partial class TypeChecker
             var argType = CheckExpression(call.Arguments[i]);
             iterableTypes.Add(argType);
             var elem = _typeInference.InferIterableElementType(argType);
-            if (elem != null)
-                elementTypes.Add(elem);
+            elementTypes.Add(elem ?? SemanticType.Unknown);
         }
 
         // Feed the synthesized expected function type into the lambda so CheckLambda types its
