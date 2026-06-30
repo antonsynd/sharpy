@@ -1,0 +1,8 @@
+# #1004: excess explicit type arguments on a generic function reference -> SPY0224.
+# `def map[T]` has one type parameter; referencing it as map[int, int, int] must be
+# diagnosed at the reference site instead of being silently accepted.
+def map[T](x: T) -> T:
+    return x
+
+def main() -> None:
+    print(map[int, int, int](5))

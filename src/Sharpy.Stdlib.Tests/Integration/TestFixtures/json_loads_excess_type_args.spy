@@ -1,0 +1,7 @@
+# #1004: excess explicit type arguments on a module-member generic function reference.
+# json.loads[T] has one type parameter; json.loads[int, int] must be diagnosed.
+import json
+
+def main() -> None:
+    x = json.loads[int, int]("5")
+    print(x)

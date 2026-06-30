@@ -1,1 +1,4 @@
-requires 1 type arguments
+# #1004: the wrong-type-argument-count diagnostic for generic function references is now
+# emitted at the reference site (replacing the deeper "requires N type arguments" message
+# previously produced during type-parameter substitution). Same contract: all-or-none.
+Generic function 'foo' expects 1 type argument(s) but got 2 @7:11
