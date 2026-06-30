@@ -89,6 +89,35 @@ internal static class CliTestHarness
             }
         }
     }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> with <see cref="Console.Out"/>/<see cref="Console.Error"/>
+    /// redirected to in-memory buffers, serialized against <see cref="Invoke"/> through the same
+    /// <see cref="ConsoleLock"/> so no test can corrupt another's console redirection. The original
+    /// writers are always restored, even if <paramref name="action"/> throws. (#1017)
+    /// </summary>
+    internal static (string Out, string Err) CaptureConsole(Action action)
+    {
+        lock (ConsoleLock)
+        {
+            var originalOut = Console.Out;
+            var originalErr = Console.Error;
+            using var outWriter = new StringWriter();
+            using var errWriter = new StringWriter();
+            try
+            {
+                Console.SetOut(outWriter);
+                Console.SetError(errWriter);
+                action();
+                return (outWriter.ToString(), errWriter.ToString());
+            }
+            finally
+            {
+                Console.SetOut(originalOut);
+                Console.SetError(originalErr);
+            }
+        }
+    }
 }
 
 internal sealed record CliInvocation(int ExitCode, string StdOut, string StdErr, ParseResult ParseResult);
