@@ -1,0 +1,9 @@
+# #1012 regression: the single-positional iterable form min(it, key=f) / max(it, key=f) was
+# already supported and must stay on the iterable+key overload path (Min(it, key: f)) — the
+# value-form-with-key lowering (#1012) only applies to >= 2 positional args.
+def negate(x: int) -> int:
+    return -x
+
+def main() -> None:
+    print(min([3, 1, 2], key=negate))
+    print(max([3, 1, 2], key=negate))
