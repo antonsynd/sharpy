@@ -1,0 +1,9 @@
+# #1011 / #1009: map() with a multi-parameter lambda whose body is a bare identifier in
+# non-final argument position. The parser disambiguation fix (#1011) lets this parse, and
+# #1009 iterable-driven inference types the lambda parameters from the map() iterables
+# end-to-end.
+def main() -> None:
+    a: list[int] = [1, 2]
+    b: list[int] = [3, 4]
+    print(list(map(lambda x, y: x, a, b)))
+    print(list(map(lambda x, y: y, a, b)))

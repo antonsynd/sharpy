@@ -857,6 +857,52 @@ internal partial class RoslynEmitter
         FunctionCall call, FunctionSymbol? funcSymbol, ArgumentSyntax prependedArgument)
         => GenerateReorderedCallArgumentsCore(call, funcSymbol, prependedArgument);
 
+    /// <summary>
+    /// Lowers the variadic value form of <c>min()</c>/<c>max()</c> with a <c>key=</c> keyword
+    /// argument (<c>min(a, b, …, key=f)</c> with ≥2 positional args) to the iterable+key overload
+    /// <c>Min&lt;T,TKey&gt;(IEnumerable&lt;T&gt;, Func&lt;T,TKey&gt;)</c>, emitting
+    /// <c>Min(new[]{ a, b, … }, f)</c>. The C# value-form overload
+    /// <c>Min&lt;T&gt;(T, T, params T[])</c> has no key slot, so a named <c>key:</c> argument
+    /// collides with a positional and produces CS1744 (#1012). Routing through an implicit array
+    /// (which is <c>IEnumerable&lt;T&gt;</c>) avoids that and lets C# infer the element type —
+    /// including #1014's mixed-numeric promotion (<c>double[]</c>).
+    /// </summary>
+    /// <remarks>
+    /// Detects min/max by builtin name; the caller only invokes this when the call is an
+    /// unshadowed builtin (<c>isBuiltinFunc</c>). Returns <see langword="null"/> for anything but
+    /// the value-form-with-key shape, leaving the single-positional iterable form
+    /// (<c>min(it, key=f)</c>, which already binds to the key overload) and the no-key value form
+    /// (<c>min(a, b, c)</c>) on the normal emission path.
+    /// </remarks>
+    private ExpressionSyntax? TryGenerateMinMaxValueFormWithKey(FunctionCall call, Identifier funcName)
+    {
+        if (funcName.Name is not (BuiltinNames.Min or BuiltinNames.Max))
+            return null;
+        // Value-form-with-key shape: a single key= kwarg AND >= 2 positional args.
+        if (call.Arguments.Length < 2 || call.KeywordArguments.Length != 1)
+            return null;
+        var keyArg = call.KeywordArguments[0];
+        if (keyArg.Name != "key")
+            return null;
+
+        // new[] { a, b, … } — implicit array so C# infers the (possibly promoted) element type.
+        var elements = call.Arguments.Select(GenerateExpression).ToArray();
+        var arrayExpr = ImplicitArrayCreationExpression(
+            InitializerExpression(SyntaxKind.ArrayInitializerExpression,
+                SeparatedList<ExpressionSyntax>(elements)));
+
+        var keyValue = GenerateExpression(keyArg.Value);
+
+        var target = MakeGlobalQualifiedName("Sharpy", "Builtins",
+            NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped));
+        return InvocationExpression(target)
+            .WithArgumentList(ArgumentList(SeparatedList(new[]
+            {
+                Argument(arrayExpr),
+                Argument(keyValue)
+            })));
+    }
+
     // Resolve the C# parameter name for a kwarg. For CLR-discovered methods
     // (ClrMethodName != null), parameter names from reflection are the actual C# identifiers
     // (e.g., "exist_ok"), so we look up the declared param and use its name verbatim.

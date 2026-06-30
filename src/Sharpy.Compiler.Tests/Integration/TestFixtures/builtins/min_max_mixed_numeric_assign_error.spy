@@ -1,0 +1,6 @@
+# #1014: the mixed-numeric value form promotes to float64, so assigning the result to an int
+# variable is a type error (it must NOT silently leak the open generic T or compile). This
+# locks the negative side of the promotion: min(2, 3.0) is float64, not assignable to int.
+def main() -> None:
+    z: int = min(2, 3.0)
+    print(z)

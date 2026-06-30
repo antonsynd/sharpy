@@ -67,7 +67,11 @@ public class ParserLoopSafetyAuditTests
         "SkipNewlines",
         "SkipIndentedBlock",
         "Synchronize",
-        "ParseDecoratedStatement"
+        "ParseDecoratedStatement",
+        // Pure lookahead scan (#1011): does not mutate _position, so CheckLoopProgress()/Advance()
+        // are inapplicable. Each iteration advances a local offset and the unconditional Eof guard
+        // forces a return, so both the method loop and its ScanExpr local-function loop terminate.
+        "LambdaColonStartsTypeAnnotation"
     };
 
     [Fact]
@@ -278,6 +282,6 @@ public class ParserLoopSafetyAuditTests
 
         // Allow some variance but flag significant changes
         totalLoops.Should().BeGreaterThan(30, "Parser should have a reasonable number of loops");
-        totalLoops.Should().BeLessThan(95, "Unexpectedly high loop count - verify new loops are protected");
+        totalLoops.Should().BeLessThan(100, "Unexpectedly high loop count - verify new loops are protected");
     }
 }

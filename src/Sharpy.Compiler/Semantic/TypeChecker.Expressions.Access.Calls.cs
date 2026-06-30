@@ -121,7 +121,10 @@ internal partial class TypeChecker
             var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
                 id.Name, argTypes, _typeInference);
             if (builtinReturn != null)
+            {
+                ValidateMinMaxValueFormKey(id, call, argTypes, kwargTypes);
                 return builtinReturn;
+            }
 
             var symbol = _symbolTable.Lookup(id.Name);
 
@@ -639,6 +642,68 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Validates the keyword arguments of the variadic value form of <c>min()</c>/<c>max()</c>
+    /// (<c>min(a, b, …)</c> with ≥2 positional args).
+    /// <see cref="BuiltinReturnTypeInference"/> returns the value type before overload
+    /// resolution runs, so these kwargs are otherwise never type-checked. Codegen lowers the
+    /// <c>key=</c> form to <c>Min(new[]{…}, key)</c> (#1012). Two things are checked so an
+    /// invalid call yields a Sharpy diagnostic instead of a leaked C# error: the value form
+    /// accepts only <c>key=</c> (any other kwarg — e.g. <c>default=</c>, which Python permits
+    /// only for the iterable form — would otherwise emit CS1744), and the <c>key</c> must be
+    /// callable (a non-callable key would silently bind to the
+    /// <c>(IEnumerable&lt;T&gt;, T default)</c> overload). The extra-kwarg case is rejected with
+    /// SPY0234 and the non-callable key with SPY0230.
+    /// </summary>
+    private void ValidateMinMaxValueFormKey(
+        Identifier id, FunctionCall call,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes)
+    {
+        if (id.Name is not (BuiltinNames.Min or BuiltinNames.Max))
+            return;
+        // Only the value form (>= 2 positional args) is handled here; the single-positional
+        // iterable form (incl. its default=/key= kwargs) is handled by ordinary overload
+        // resolution against the iterable overloads.
+        if (argTypes.Count < 2)
+            return;
+
+        // The value form accepts only key=. Any other kwarg bypasses overload resolution
+        // (InferReturnType returned early) and would leak a raw C# error from codegen
+        // (e.g. default= -> CS1744). Reject it with a Sharpy diagnostic — matching Python,
+        // which raises TypeError for default= alongside multiple positional args. (#1012)
+        foreach (var kw in call.KeywordArguments)
+        {
+            if (kw.Name != "key")
+                AddError(
+                    $"'{id.Name}' value form does not accept keyword argument '{kw.Name}'",
+                    kw.LineStart, kw.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                    span: kw.Span);
+        }
+
+        if (!kwargTypes.TryGetValue("key", out var keyType))
+            return;
+
+        // Callable: a function/delegate type, or (UnknownType) an already-reported error.
+        if (keyType is FunctionType or UnknownType
+            || TryGetDelegateInvokeMethod(keyType) != null)
+            return;
+
+        var keyArg = call.KeywordArguments.FirstOrDefault(k => k.Name == "key");
+        // A bare function reference (user function or builtin) is callable even when its
+        // value-position expression type is not surfaced as a FunctionType.
+        if (keyArg?.Value is Identifier keyId
+            && (_symbolTable.Lookup(keyId.Name) is FunctionSymbol
+                || _symbolTable.BuiltinRegistry.GetFunctionOverloads(keyId.Name) != null))
+            return;
+
+        AddError(
+            $"'{id.Name}' key must be callable; got '{keyType.GetDisplayName()}'",
+            keyArg?.LineStart, keyArg?.ColumnStart,
+            code: DiagnosticCodes.Semantic.NotCallable,
+            span: keyArg?.Span);
+    }
+
+    /// <summary>
     /// Resolves builtin function overloads for a call. Returns the resolved return type,
     /// or null if no overload resolution is needed.
     /// </summary>
@@ -687,7 +752,8 @@ internal partial class TypeChecker
         //     the helpful expected-count list.
         if (arityCandidates.Count > 0)
         {
-            AddError($"No overload of '{id.Name}' matches the given argument types",
+            var typeList = string.Join(", ", argTypes.Select(t => t.GetDisplayName()));
+            AddError($"No overload of '{id.Name}' matches the argument types ({typeList})",
                 call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
                 span: call.Span);
             return SemanticType.Unknown;

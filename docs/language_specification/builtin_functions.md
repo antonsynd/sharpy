@@ -207,12 +207,21 @@ next(it)                  # Raises StopIteration
 
 The `min()` and `max()` functions accept an optional `default` parameter for empty iterables:
 
+`min()` and `max()` accept an iterable (with an optional `default` for empty iterables and an
+optional `key` function), or two-or-more scalar values directly (the **variadic value form**):
+
 | Form | Description |
 |------|-------------|
 | `min(iterable)` | Minimum value; raises `ValueError` if empty |
 | `min(iterable, default=value)` | Minimum value; returns `default` if empty |
+| `min(iterable, key=f)` | Minimum by comparison key `f` |
+| `min(a, b, ...)` | Minimum of two or more scalar values (value form) |
+| `min(a, b, ..., key=f)` | Minimum of two or more values by comparison key `f` |
 | `max(iterable)` | Maximum value; raises `ValueError` if empty |
 | `max(iterable, default=value)` | Maximum value; returns `default` if empty |
+| `max(iterable, key=f)` | Maximum by comparison key `f` |
+| `max(a, b, ...)` | Maximum of two or more scalar values (value form) |
+| `max(a, b, ..., key=f)` | Maximum of two or more values by comparison key `f` |
 
 ```python
 numbers = [3, 1, 4, 1, 5]
@@ -223,7 +232,18 @@ empty: list[int] = []
 print(min(empty, default=0))           # 0 (empty iterable, returns default)
 print(max(empty, default=-1))          # -1
 min(empty)                             # Raises ValueError
+
+# Variadic value form: two or more scalar values.
+print(min(3, 1, 2))                    # 1
+print(max("a", "bbb", "cc", key=len))  # "bbb"
 ```
+
+> **Mixed-numeric value form — Python divergence.** When the value form mixes numeric types,
+> Sharpy promotes to a common type (using the same rules as the binary numeric operators), so
+> `min(2, 3.0)` is `float64` and prints `2.0`. Python returns the unpromoted element (`2`).
+> Returning the unpromoted element would require an `object`/union return, breaking type safety,
+> so promotion is the type-safe choice (Axiom 1 `.NET` > Axiom 3 `types` > Axiom 2 `Python`).
+> A non-callable `key` in the value form is a compile-time error (`SPY0230`).
 
 **`enumerate()` Signature:**
 

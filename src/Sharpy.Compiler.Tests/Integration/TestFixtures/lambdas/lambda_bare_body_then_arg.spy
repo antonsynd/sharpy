@@ -1,0 +1,24 @@
+# #1011: a lambda whose body is a bare identifier must parse when the lambda is NOT the
+# last argument — the comma terminates the lambda, it does not start another typed param.
+# Single-token lookahead cannot tell `lambda v: v, 5` (bare body + comma) from
+# `lambda x: int, y: int: ...` (typed multi-param); resolved by a body-separator scan.
+def apply(f: (int) -> int, v: int) -> int:
+    return f(v)
+
+def apply2(f: (int, int) -> int, a: int, b: int) -> int:
+    return f(a, b)
+
+def call_with_default(h: (int) -> int, k: int = 0) -> int:
+    return h(k)
+
+def main() -> None:
+    # Bare-identifier body in non-final call-argument position.
+    print(apply(lambda v: v, 5))
+    # Multi-parameter lambda with a bare-identifier body, non-final position.
+    print(apply2(lambda a, b: a, 3, 4))
+    # Bare body immediately before a following keyword argument.
+    print(call_with_default(lambda v: v, k=1))
+    # Bare body terminated by a comma in a tuple literal (outside a call).
+    pair: tuple[(int) -> int, int] = (lambda v: v, 5)
+    print(pair[0](9))
+    print(pair[1])
