@@ -91,6 +91,25 @@ internal static class BuiltinReturnTypeInference
                 return first;
         }
 
+        // Mixed-numeric value form (#1014): min(2, 3.0) -> float64. The all-same-type branch
+        // above misses mixed numerics, which would otherwise fall through to the iterable
+        // element type (null for a scalar) and leak the open generic parameter T into
+        // composition. Fold the positional arg types through the same numeric promotion the
+        // binary operators use. GetPromotedType returns null for any non-numeric arg (a real
+        // iterable, str, etc.) or an unsafe mix (long + ulong), so the iterable and
+        // iterable+default forms still fall through to InferIterableElementType below.
+        //
+        // Axiom precedence (.NET > types > Python): the result is the promoted type, so
+        // min(2, 3.0) is float64 (prints 2.0), diverging from Python's unpromoted 2.
+        if (argTypes.Count >= 2)
+        {
+            SemanticType? promoted = argTypes[0];
+            for (int i = 1; i < argTypes.Count && promoted is not null and not UnknownType; i++)
+                promoted = PrimitiveCatalog.GetPromotedType(promoted, argTypes[i]);
+            if (promoted is not null and not UnknownType)
+                return promoted;
+        }
+
         // Iterable form: min(iterable) / max(iterable) -> element type.
         return typeInference.InferIterableElementType(argTypes[0]);
     }
