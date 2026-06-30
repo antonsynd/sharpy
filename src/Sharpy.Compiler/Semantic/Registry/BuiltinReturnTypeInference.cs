@@ -28,9 +28,9 @@ internal static class BuiltinReturnTypeInference
             BuiltinNames.Sorted when argTypes.Count >= 1
                 => InferSorted(argTypes, typeInference),
             BuiltinNames.Min when argTypes.Count >= 1
-                => InferElementTypeUnary(argTypes, typeInference),
+                => InferMinMaxReturnType(argTypes, typeInference),
             BuiltinNames.Max when argTypes.Count >= 1
-                => InferElementTypeUnary(argTypes, typeInference),
+                => InferMinMaxReturnType(argTypes, typeInference),
             BuiltinNames.Enumerate when argTypes.Count is 1 or 2
                 => InferEnumerate(argTypes, typeInference),
             BuiltinNames.Zip when argTypes.Count >= 2
@@ -65,8 +65,33 @@ internal static class BuiltinReturnTypeInference
         return null;
     }
 
-    private static SemanticType? InferElementTypeUnary(List<SemanticType> argTypes, TypeInferenceService typeInference)
+    private static SemanticType? InferMinMaxReturnType(List<SemanticType> argTypes, TypeInferenceService typeInference)
     {
+        // Variadic value form (#1010): min(a, b, ...) / max(a, b, ...) over 2+ positional
+        // arguments of the SAME type returns that value type (e.g. min(2, 3) -> int,
+        // min("foo", "bar") -> str, min([1, 2], [3, 4]) -> list[int]). Requiring all positional
+        // args to share a type distinguishes this from the iterable + positional-default form
+        // (min(iterable, default), where the two args differ in type), whose result is still the
+        // iterable's element type. Without this, the value form falls through to overload
+        // resolution and leaks the open generic parameter T into composition (arithmetic,
+        // annotations, lambda return types feeding map()/list()).
+        if (argTypes.Count >= 2 && argTypes[0] is not UnknownType)
+        {
+            var first = argTypes[0];
+            bool allSame = true;
+            for (int i = 1; i < argTypes.Count; i++)
+            {
+                if (!Equals(argTypes[i], first))
+                {
+                    allSame = false;
+                    break;
+                }
+            }
+            if (allSame)
+                return first;
+        }
+
+        // Iterable form: min(iterable) / max(iterable) -> element type.
         return typeInference.InferIterableElementType(argTypes[0]);
     }
 
