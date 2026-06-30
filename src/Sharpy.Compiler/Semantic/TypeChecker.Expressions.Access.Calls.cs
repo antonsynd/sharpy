@@ -731,7 +731,8 @@ internal partial class TypeChecker
         //     the helpful expected-count list.
         if (arityCandidates.Count > 0)
         {
-            AddError($"No overload of '{id.Name}' matches the given argument types",
+            var typeList = string.Join(", ", argTypes.Select(t => t.GetDisplayName()));
+            AddError($"No overload of '{id.Name}' matches the argument types ({typeList})",
                 call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
                 span: call.Span);
             return SemanticType.Unknown;
