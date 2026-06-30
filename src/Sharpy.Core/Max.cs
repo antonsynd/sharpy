@@ -140,9 +140,11 @@ namespace Sharpy
         /// <param name="rest">Any additional values</param>
         /// <returns>The largest value (the first encountered on ties, matching Python)</returns>
         /// <remarks>
-        /// The <c>key=</c> form of the variadic value call (e.g. <c>max(a, b, key=f)</c>) is not
-        /// supported yet: in C# a <c>params</c> parameter must come last, so a key function cannot
-        /// be passed by keyword alongside positional values. Tracked by #1012.
+        /// The <c>key=</c> form of this variadic value call (e.g. <c>max(a, b, key=f)</c>) is
+        /// supported: the compiler lowers it to the iterable+key overload
+        /// <c>Max&lt;T, TKey&gt;(IEnumerable&lt;T&gt;, Func&lt;T, TKey&gt;)</c> by wrapping the
+        /// positional values in an array, because a C# <c>params</c> parameter must come last and
+        /// cannot coexist with a by-keyword <c>key</c> (#1012).
         /// </remarks>
         /// <example>
         /// <code>

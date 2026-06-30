@@ -977,9 +977,11 @@ max(5, 2, 8, 1)  # 8
 ```
 
 !!! note
-    The `key=` form of the variadic value call (e.g. `max(a, b, key=f)`) is not
-    supported yet: in C# a `params` parameter must come last, so a key function cannot
-    be passed by keyword alongside positional values. Tracked by #1012.
+    The `key=` form of this variadic value call (e.g. `max(a, b, key=f)`) is
+    supported: the compiler lowers it to the iterable+key overload
+    `Max&lt;T, TKey&gt;(IEnumerable&lt;T&gt;, Func&lt;T, TKey&gt;)` by wrapping the
+    positional values in an array, because a C# `params` parameter must come last and
+    cannot coexist with a by-keyword `key` (#1012).
 
 ### `min(iterable: Iterable[T]) -> T`
 
@@ -1042,9 +1044,11 @@ min(5, 2, 8, 1)  # 1
 ```
 
 !!! note
-    The `key=` form of the variadic value call (e.g. `min(a, b, key=f)`) is not
-    supported yet: in C# a `params` parameter must come last, so a key function cannot
-    be passed by keyword alongside positional values. Tracked by #1012.
+    The `key=` form of this variadic value call (e.g. `min(a, b, key=f)`) is
+    supported: the compiler lowers it to the iterable+key overload
+    `Min&lt;T, TKey&gt;(IEnumerable&lt;T&gt;, Func&lt;T, TKey&gt;)` by wrapping the
+    positional values in an array, because a C# `params` parameter must come last and
+    cannot coexist with a by-keyword `key` (#1012).
 
 ### `next(iterator: Iterator[T]) -> T`
 

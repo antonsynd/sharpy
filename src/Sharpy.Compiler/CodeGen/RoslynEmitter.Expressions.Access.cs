@@ -128,6 +128,12 @@ internal partial class RoslynEmitter
 
             if (isBuiltinFunc)
             {
+                // Variadic value form of min()/max() with key= → route to the iterable+key
+                // overload to avoid CS1744 from the params-overload's missing key slot (#1012).
+                var minMaxValueFormWithKey = TryGenerateMinMaxValueFormWithKey(call, funcName);
+                if (minMaxValueFormWithKey != null)
+                    return minMaxValueFormWithKey;
+
                 // Generic builtins need explicit type arguments
                 if (funcName.Name is BuiltinNames.Reversed or BuiltinNames.Sorted)
                 {

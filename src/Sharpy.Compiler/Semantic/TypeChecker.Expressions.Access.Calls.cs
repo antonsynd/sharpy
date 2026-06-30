@@ -121,7 +121,10 @@ internal partial class TypeChecker
             var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
                 id.Name, argTypes, _typeInference);
             if (builtinReturn != null)
+            {
+                ValidateMinMaxValueFormKey(id, call, argTypes, kwargTypes);
                 return builtinReturn;
+            }
 
             var symbol = _symbolTable.Lookup(id.Name);
 
@@ -636,6 +639,47 @@ internal partial class TypeChecker
         if (call.KeywordArguments.Length == 0)
             return null;
         return call.KeywordArguments.Select(kw => kw.Name).ToList();
+    }
+
+    /// <summary>
+    /// Validates the <c>key=</c> keyword argument of the variadic value form of
+    /// <c>min()</c>/<c>max()</c> (<c>min(a, b, …, key=f)</c> with ≥2 positional args).
+    /// <see cref="BuiltinReturnTypeInference"/> returns the value type before overload
+    /// resolution runs, so this kwarg is otherwise never type-checked. Codegen lowers it to
+    /// <c>Min(new[]{…}, key)</c> (#1012); a non-callable key would silently bind to the
+    /// <c>(IEnumerable&lt;T&gt;, T default)</c> overload instead, so reject it here with SPY0230.
+    /// </summary>
+    private void ValidateMinMaxValueFormKey(
+        Identifier id, FunctionCall call,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes)
+    {
+        if (id.Name is not (BuiltinNames.Min or BuiltinNames.Max))
+            return;
+        // Only the value form (>= 2 positional args) is lowered with a key; the single-positional
+        // iterable form is handled by ordinary overload resolution against the key overload.
+        if (argTypes.Count < 2)
+            return;
+        if (!kwargTypes.TryGetValue("key", out var keyType))
+            return;
+
+        // Callable: a function/delegate type, or (UnknownType) an already-reported error.
+        if (keyType is FunctionType or UnknownType
+            || TryGetDelegateInvokeMethod(keyType) != null)
+            return;
+
+        var keyArg = call.KeywordArguments.FirstOrDefault(k => k.Name == "key");
+        // A bare function reference (user function or builtin) is callable even when its
+        // value-position expression type is not surfaced as a FunctionType.
+        if (keyArg?.Value is Identifier keyId
+            && (_symbolTable.Lookup(keyId.Name) is FunctionSymbol
+                || _symbolTable.BuiltinRegistry.GetFunctionOverloads(keyId.Name) != null))
+            return;
+
+        AddError(
+            $"'{id.Name}' key must be callable; got '{keyType.GetDisplayName()}'",
+            keyArg?.LineStart, keyArg?.ColumnStart,
+            code: DiagnosticCodes.Semantic.NotCallable,
+            span: keyArg?.Span);
     }
 
     /// <summary>
