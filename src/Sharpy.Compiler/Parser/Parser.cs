@@ -140,8 +140,12 @@ public partial class Parser
     /// <remarks>
     /// Assumes the type name is at <c>Peek(1)</c> and the opening '[' is at
     /// <c>Peek(2)</c>. Scans forward counting '['/']' depth to the matching ']', then
-    /// classifies as a type annotation only if the following token is one that can
-    /// continue a parameter list / annotation (',', '=', ':', '?', '!'). If EOF or a
+    /// classifies the token after it. For '=', ':', '?', '!' the decision is unambiguous
+    /// (single-token): the bracketed section is a generic type annotation. A ',' is
+    /// ambiguous — a generic type of a multi-param lambda (<c>lambda x: list[int], y: int: …</c>)
+    /// vs. an enclosing call/tuple separator after a subscript body
+    /// (<c>first(lambda t: t[0], xs)</c>) — so it delegates to
+    /// <see cref="LambdaColonStartsTypeAnnotation"/> (#1015). If EOF or a
     /// newline is reached before the brackets balance, returns false (not an
     /// annotation) so the construct is parsed as a body expression. Only bracket
     /// depth is tracked — parentheses inside the brackets (no current type syntax
@@ -166,8 +170,17 @@ public partial class Parser
                 depth--;
                 if (depth == 0)
                 {
-                    return Peek(i + 1).Type is TokenType.Comma
-                        or TokenType.Assign or TokenType.Colon
+                    var after = Peek(i + 1).Type;
+                    // A ',' after the matching ']' is ambiguous: it can end a generic type
+                    // annotation of a multi-param lambda (lambda x: list[int], y: int: body) OR
+                    // be the enclosing call/tuple separator after a subscript body
+                    // (first(lambda t: t[0], xs)). Defer to the #1011 forward scan, which tracks
+                    // bracket depth and accepts only when a lambda body-separator ':' is reachable
+                    // before a terminator. The other terminators ('=', ':', '?', '!') are
+                    // unambiguous after a generic type. (#1015)
+                    if (after == TokenType.Comma)
+                        return LambdaColonStartsTypeAnnotation();
+                    return after is TokenType.Assign or TokenType.Colon
                         or TokenType.Question or TokenType.Bang;
                 }
             }
@@ -183,9 +196,10 @@ public partial class Parser
     /// call/tuple (<c>apply(lambda v: v, 5)</c>).
     /// </summary>
     /// <remarks>
-    /// Assumes <see cref="Current"/> is the candidate parameter ':', <c>Peek(1)</c> is the
-    /// type-start token (<c>Identifier</c>/<c>Auto</c>/<c>None</c>), and <c>Peek(2)</c> is
-    /// ',' (the only case this helper is invoked for). Returns <see langword="true"/> iff
+    /// Assumes <see cref="Current"/> is the candidate parameter ':' and <c>Peek(1)</c> is the
+    /// type-start token (<c>Identifier</c>/<c>Auto</c>/<c>None</c>). Invoked for the
+    /// <c>: IDENT ,</c> case and, via <see cref="IsBracketedTypeAnnotation"/> (#1015), the
+    /// <c>: IDENT [ … ] ,</c> case. Returns <see langword="true"/> iff
     /// the ':' is a type annotation, determined by scanning ahead and simulating the
     /// parameter-list grammar <c>TYPE (',' PARAM)* ':'</c> (where
     /// <c>PARAM = name [':' TYPE] ['=' default]</c>) to find a lambda body-separator ':'
