@@ -95,6 +95,8 @@ def main() -> None:
         install(args=args, rest=rest)
     elif command == "test":
         test(args=args, rest=rest, release=False)
+    elif command == "property-test":
+        property_test(args=args, rest=rest)
     elif command == "playground":
         playground(args=args, rest=rest)
     elif command == "docs":
@@ -194,6 +196,25 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enable strict mode (fail on warnings)",
     )
+
+    property_test_parser = subparsers.add_parser(
+        "property-test", help="Runs property-based tests (Category=RandomProperty)."
+    )
+    property_test_parser.add_argument(
+        "--rounds",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Number of rounds to run (each uses fresh random seeds, default: 1)",
+    )
+    property_test_parser.add_argument(
+        "--filter",
+        type=str,
+        default=None,
+        metavar="FILTER",
+        help="Additional test name filter (e.g. 'Parser', 'Metamorphic')",
+    )
+    property_test_parser.add_argument("--release", action="store_true")
 
     _ = subparsers.add_parser("help", help="Prints this help message.")
 
@@ -625,6 +646,62 @@ def test_python(args: argparse.Namespace, rest: Sequence[str]) -> None:
         sys.exit(1)
     except subprocess.CalledProcessError as e:
         get_logger().error(f"Python tests failed: {e}")
+        sys.exit(1)
+
+
+def property_test(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    build_type: str = "Release" if args.release else "Debug"
+    rounds: int = max(1, args.rounds)
+
+    test_filter: str = "Category=RandomProperty"
+    if args.filter:
+        test_filter = f"{test_filter}&FullyQualifiedName~{args.filter}"
+
+    get_logger().info(f"Building before property tests...")
+    try:
+        subprocess.run(
+            ["dotnet", "build", "-c", build_type, str(COMPILER_TEST_DIR), "--nologo"],
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        get_logger().error(f"Build failed: {e}")
+        sys.exit(1)
+
+    passes: int = 0
+    failures: int = 0
+
+    for i in range(1, rounds + 1):
+        if rounds > 1:
+            get_logger().info(f"=== Round {i}/{rounds} ===")
+
+        cmd: MutableSequence[str] = [
+            "dotnet",
+            "test",
+            str(COMPILER_TEST_DIR),
+            "-c",
+            build_type,
+            "--filter",
+            test_filter,
+            "--no-build",
+            *rest,
+        ]
+
+        result = subprocess.run(cmd)
+
+        if result.returncode == 0:
+            passes += 1
+            if rounds > 1:
+                get_logger().info(f"Round {i}: PASS")
+        else:
+            failures += 1
+            if rounds > 1:
+                get_logger().info(f"Round {i}: FAIL")
+
+    if rounds > 1:
+        get_logger().info(f"=== Property Test Summary ===")
+        get_logger().info(f"Rounds: {rounds}  Passed: {passes}  Failed: {failures}")
+
+    if failures > 0:
         sys.exit(1)
 
 
