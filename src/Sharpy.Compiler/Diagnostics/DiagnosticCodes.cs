@@ -340,7 +340,8 @@ public static class DiagnosticCodes
         public const string TupleNonConstantIndex = "SPY0327";      // Active
         public const string IntegerPowerOverflow = "SPY0328";       // Active
         public const string VoidComparisonOperand = "SPY0329";      // Active
-        // SPY0330-SPY0339: Reserved for future protocol/operator diagnostics
+        public const string UnknownFutureFeature = "SPY0330";       // Active — from __future__ import of an unknown or mis-scoped feature
+        // SPY0331-SPY0339: Reserved for future protocol/operator diagnostics
 
         #endregion
 

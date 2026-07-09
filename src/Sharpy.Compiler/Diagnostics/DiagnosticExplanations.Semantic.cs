@@ -548,6 +548,19 @@ public static partial class DiagnosticExplanations
             "def f() -> None:\n    print(\"side effect\")\n\ndef main() -> None:\n    s: str = \"hello\"\n    if s == f():  # f() has no value\n        pass",
             "Call the function as a statement, then compare separately:\n    f()\n    if s == None:\n        pass");
 
+        Add(dict, DiagnosticCodes.Semantic.UnknownFutureFeature,
+            "Unknown or mis-scoped '__future__' feature",
+            "Semantic",
+            "A 'from __future__ import <feature>' statement named a feature that is not a known " +
+            "experimental feature, or named a parser-scoped feature. Import resolution runs after " +
+            "parsing, so parser-scoped features (those that change syntax) cannot be enabled this " +
+            "way — enable them with --enable-feature or a <Features> entry in the .spyproj instead. " +
+            "Unknown names are rejected rather than silently ignored so a typo cannot quietly " +
+            "disable a feature.",
+            "from __future__ import nonsense  # not a known feature",
+            "Import a known semantic/codegen feature, or enable parser-scoped features via " +
+            "--enable-feature / <Features>.");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",

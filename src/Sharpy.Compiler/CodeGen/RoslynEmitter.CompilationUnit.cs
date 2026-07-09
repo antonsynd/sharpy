@@ -39,7 +39,7 @@ internal partial class RoslynEmitter
         {
             fromImports = module.Body
                 .OfType<FromImportStatement>()
-                .Where(f => HasReExportedSymbols(f))
+                .Where(f => f.Module != "__future__" && HasReExportedSymbols(f))
                 .ToList();
         }
 
@@ -425,6 +425,11 @@ internal partial class RoslynEmitter
 
     private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
     {
+        // `from __future__ import <feature>` is a compiler directive (feature enablement),
+        // not a real import — it produces no C# and must not emit a using directive.
+        if (fromImport.Module == "__future__")
+            yield break;
+
         // Synthetic modules (asyncio) have no C# namespace — skip using directives
         if (IsSyntheticModule(fromImport.Module))
             yield break;

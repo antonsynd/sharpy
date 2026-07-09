@@ -66,6 +66,14 @@ public sealed record FeatureInfo(string Name, string Description, FeatureScope S
 /// at every boundary, never silent no-ops, so a typo cannot silently disable a feature.
 /// See <see cref="FeatureScope"/> for the parser-vs-semantic scope asymmetry that governs
 /// which mechanisms may enable a given feature.
+/// <para>
+/// <b>Storage:</b> This instance on <see cref="CompilerOptions.Features"/> is
+/// <i>compilation-wide</i>. Per-file <c>from __future__ import</c> features cannot live
+/// here (they must not leak across files), so they are stored separately on the
+/// <see cref="ImportResolver"/>, keyed by module path, and unioned with the
+/// compilation-wide set into the feature flags passed to the semantic phase for that
+/// file. See <c>ImportResolver.GetFileFutureFeatures</c>.
+/// </para>
 /// </remarks>
 public sealed class FeatureFlags
 {

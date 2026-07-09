@@ -1,0 +1,5 @@
+from __future__ import nonsense
+
+
+def main() -> None:
+    print("unreachable")

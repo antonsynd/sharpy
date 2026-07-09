@@ -383,6 +383,73 @@ internal partial class ImportResolver
             }
         }
 
+        // Intercept 'from __future__ import <feature>' — per-file feature enablement.
+        // Import resolution is Pass 1.5 (post-parse), so only semantic/codegen-scoped
+        // features can be enabled here; parser-scoped names are rejected. Enabled
+        // features are recorded per-file (keyed by the current module path) and unioned
+        // into the semantic phase's FeatureFlags for that file only.
+        if (fromImport.Module == "__future__")
+        {
+            var fileKey = _currentModulePath ?? string.Empty;
+            var errorRecoveryModule = CreateErrorRecoveryModule(
+                fromImport.Module, fromImport.LineStart, fromImport.ColumnStart);
+
+            if (fromImport.ImportAll)
+            {
+                AddError(
+                    "'from __future__ import *' is not supported; import specific features by name.",
+                    fromImport.LineStart, fromImport.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UnknownFutureFeature,
+                    span: fromImport.Span);
+            }
+            else
+            {
+                foreach (var alias in fromImport.Names)
+                {
+                    var targetName = alias.AsName ?? alias.Name;
+                    errorRecoveryModule.Exports[targetName] = CreateErrorRecoverySymbol(
+                        targetName, fromImport.Module, alias.LineStart, alias.ColumnStart);
+                    _diagnostics.MarkAsRootCause(targetName);
+
+                    if (!Shared.FeatureFlags.KnownFeatures.TryGetValue(alias.Name, out var info))
+                    {
+                        AddError(
+                            $"Unknown feature '{alias.Name}' in 'from __future__ import'. {Shared.FeatureFlags.KnownFeatureListMessage()}",
+                            alias.LineStart, alias.ColumnStart,
+                            code: DiagnosticCodes.Semantic.UnknownFutureFeature,
+                            span: alias.Span ?? fromImport.Span);
+                        continue;
+                    }
+
+                    if (info.Scope == Shared.FeatureScope.Parser)
+                    {
+                        AddError(
+                            $"feature '{alias.Name}' affects syntax and must be enabled via --enable-feature or <Features>",
+                            alias.LineStart, alias.ColumnStart,
+                            code: DiagnosticCodes.Semantic.UnknownFutureFeature,
+                            span: alias.Span ?? fromImport.Span);
+                        continue;
+                    }
+
+                    // Semantic/codegen-scoped: enable for this file only.
+                    if (!_fileFutureFeatures.TryGetValue(fileKey, out var set))
+                    {
+                        set = new HashSet<string>(StringComparer.Ordinal);
+                        _fileFutureFeatures[fileKey] = set;
+                    }
+                    set.Add(alias.Name);
+                }
+            }
+
+            return new ModuleInfo
+            {
+                Path = $"<error-recovery:{fromImport.Module}>",
+                Module = null!,
+                ExportedSymbols = errorRecoveryModule.Exports,
+                IsNetModule = false
+            };
+        }
+
         // Intercept 'from typing import X' — redirect to native Sharpy syntax
         if (fromImport.Module == "typing")
         {

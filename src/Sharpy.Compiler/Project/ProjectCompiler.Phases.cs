@@ -659,6 +659,10 @@ internal partial class ProjectCompiler
                 var deferredFiles = _deferredCycleFiles is { Count: > 0 }
                     ? (IReadOnlySet<string>)_deferredCycleFiles
                     : null;
+                // Union compilation-wide features with this file's `from __future__ import`
+                // features (per-file, keyed by path on the shared ImportResolver).
+                var fileFeatures = _features.Enable(
+                    ImportResolver.GetFileFutureFeatures(unit.FilePath).EnabledFeatures);
                 var typeCheckResult = compilationPipeline.TypeCheck(
                     unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
                     computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
@@ -668,7 +672,7 @@ internal partial class ProjectCompiler
                     deferredCycleSymbols: deferredSymbols,
                     deferredCycleFiles: deferredFiles,
                     moduleRegistry: _moduleRegistry,
-                    features: _features);
+                    features: fileFeatures);
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)

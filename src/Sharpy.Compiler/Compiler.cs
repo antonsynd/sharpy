@@ -285,10 +285,14 @@ public class Compiler
             metrics.StartPhase(CompilerPhaseNames.TypeChecking);
             LogPhaseStart(CompilerPhaseNames.TypeChecking, filePath);
             var isEntryPoint = _options.OutputType.Equals("exe", StringComparison.OrdinalIgnoreCase);
+            // Union compilation-wide features with any per-file `from __future__ import`
+            // features discovered during import resolution for this file.
+            var fileFeatures = _options.Features.Enable(
+                importResolver.GetFileFutureFeatures(filePath).EnabledFeatures);
             var typeCheckResult = pipeline.TypeCheck(
                 module, filePath, isEntryPoint, _options.MaxErrors, diagnostics,
                 computeCodeGenInfo: true, cancellationToken: cancellationToken,
-                moduleRegistry: _moduleRegistry, features: _options.Features);
+                moduleRegistry: _moduleRegistry, features: fileFeatures);
             var typeChecker = typeCheckResult.TypeChecker;
 
             if (typeCheckResult.Aborted)

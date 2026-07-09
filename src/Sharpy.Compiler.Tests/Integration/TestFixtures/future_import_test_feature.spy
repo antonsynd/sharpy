@@ -1,0 +1,5 @@
+from __future__ import __test_feature
+
+
+def main() -> None:
+    print("future ok")

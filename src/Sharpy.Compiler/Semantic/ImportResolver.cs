@@ -67,6 +67,27 @@ internal partial class ImportResolver
     /// </summary>
     public ModuleLoader ModuleLoader => _moduleLoader;
 
+    /// <summary>
+    /// Semantic/codegen-scoped features enabled per-file via <c>from __future__ import</c>,
+    /// keyed by the file's module path. This is the documented per-file storage location
+    /// for future-import feature flags (compilation-wide flags live on
+    /// <c>CompilerOptions.Features</c>); the semantic phase unions the two for each file.
+    /// </summary>
+    private readonly Dictionary<string, HashSet<string>> _fileFutureFeatures =
+        new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Returns the <c>from __future__ import</c> features enabled for the given file
+    /// (or <see cref="Shared.FeatureFlags.None"/> if none). Callers union this with the
+    /// compilation-wide flags before running the semantic phase for that file.
+    /// </summary>
+    public Shared.FeatureFlags GetFileFutureFeatures(string? filePath)
+    {
+        if (filePath != null && _fileFutureFeatures.TryGetValue(filePath, out var set))
+            return Shared.FeatureFlags.None.Enable(set);
+        return Shared.FeatureFlags.None;
+    }
+
     private IDependencyRecorder? _dependencyRecorder;
     private SemanticBinding _semanticBinding = new();
 
