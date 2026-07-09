@@ -107,6 +107,12 @@ internal partial class ProjectCompiler
         _logger.LogInfo($"Starting project compilation: {config.RootNamespace}");
         _cancellationToken = cancellationToken;
 
+        // Defense in depth for #1032: even if a caller supplied SourceFiles in a
+        // filesystem-dependent order (e.g. a hand-built ProjectConfig that bypassed
+        // ProjectFileParser.Load), stabilize the compile order with an ordinal sort so
+        // every phase that iterates ProjectModel.Units sees a deterministic order.
+        config.SourceFiles.Sort(StringComparer.Ordinal);
+
         _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings);
         _projectMetricsBacking = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
         _projectModel = new ProjectModel(config);

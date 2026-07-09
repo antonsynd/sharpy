@@ -245,8 +245,13 @@ internal class ProjectFileParser
             }
         }
 
-        // Remove duplicates from source files
-        sourceFiles = sourceFiles.Distinct().ToList();
+        // Remove duplicates from source files, then sort deterministically (#1032).
+        // Glob enumeration order is filesystem-dependent; an ordinal sort on the
+        // normalized full path gives a culture-invariant, stable compile order.
+        sourceFiles = sourceFiles
+            .Distinct()
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .ToList();
 
         if (sourceFiles.Count == 0)
         {

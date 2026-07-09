@@ -591,8 +591,11 @@ public abstract class IntegrationTestBase
         {
             var logger = new OutputTestLogger(Output);
 
-            // Discover all .spy files in the directory (including subdirectories for packages)
+            // Discover all .spy files in the directory (including subdirectories for packages).
+            // Directory.GetFiles order is filesystem-dependent; sort ordinally so the test
+            // harness compiles in the same deterministic order as ProjectFileParser.Load (#1032).
             var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
+                .OrderBy(f => f, StringComparer.Ordinal)
                 .ToList();
 
             if (sourceFiles.Count == 0)
