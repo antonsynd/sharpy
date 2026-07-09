@@ -104,6 +104,21 @@ internal static class GenIdentifier
                 .Select(parts => string.Join("_", parts)))
         .Where(n => !KeywordSet.Contains(n));
 
+    /// <summary>
+    /// Generate snake_case identifiers on the round-trip-safe domain: 1-4 segments, each
+    /// 2-6 <em>pure lowercase letters</em> (no digits), joined by underscores. Every segment
+    /// PascalCases to "Capital + lowercase", so <c>ToSnakeCase(ToPascalCase(x)) == x</c> is
+    /// guaranteed — no single-capital runs (which fuse, e.g. x_y_z → XYZ → xyz) and no
+    /// capital+digit-only segments (which don't re-split, e.g. a1_b2 → A1B2 → a1b2).
+    /// </summary>
+    public static Gen<string> WellFormedSnakeCaseIdentifier { get; } =
+        Gen.Int[1, 4].SelectMany(count =>
+            Gen.Int[2, 6].SelectMany(len =>
+                    Gen.Char['a', 'z'].Array[len, len].Select(cs => new string(cs)))
+                .Array[count, count]
+                .Select(parts => string.Join("_", parts)))
+        .Where(n => !KeywordSet.Contains(n));
+
     private static Gen<string> UppercaseSegment { get; } =
         Gen.Int[1, 6].SelectMany(len =>
             Gen.Char['A', 'Z'].Array[len, len].Select(cs => new string(cs)));
