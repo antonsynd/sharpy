@@ -53,6 +53,12 @@ public class ProjectCompilationHelper : IDisposable
     /// </summary>
     public bool Incremental { get; set; }
 
+    /// <summary>
+    /// Feature flags to supply on the CLI side (via <see cref="CompilerOptions.Features"/>),
+    /// to be merged with the project's &lt;Features&gt;. Mirrors <c>--enable-feature</c>.
+    /// </summary>
+    public List<string> CliFeatures { get; } = new();
+
     public ProjectCompilationHelper(ITestOutputHelper? output = null)
     {
         _tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
@@ -266,6 +272,11 @@ public class ProjectCompilationHelper : IDisposable
             projectContent.AppendLine($"    <EntryPoint>{Options.EntryPoint}</EntryPoint>");
         }
 
+        if (Options.Features.Count > 0)
+        {
+            projectContent.AppendLine($"    <Features>{string.Join(";", Options.Features)}</Features>");
+        }
+
         projectContent.AppendLine("  </PropertyGroup>");
         projectContent.AppendLine("  <ItemGroup>");
         projectContent.AppendLine($"    <SourceFile Include=\"{sourceFilePattern}\" />");
@@ -317,7 +328,11 @@ public class ProjectCompilationHelper : IDisposable
             config.SourceFiles.AddRange(reordered);
         }
 
-        var compilerOptions = new CompilerOptions { Incremental = Incremental };
+        var compilerOptions = new CompilerOptions
+        {
+            Incremental = Incremental,
+            Features = Sharpy.Compiler.Shared.FeatureFlags.None.Enable(CliFeatures)
+        };
         var compiler = new Compiler(compilerOptions, _logger);
 
         _output?.WriteLine($"Compiling project: {config.RootNamespace} (incremental={Incremental})");
@@ -537,6 +552,12 @@ public class ProjectOptions
     public string? AssemblyName { get; set; }
     public string? EntryPoint { get; set; }
     public string? SourceFilePattern { get; set; }
+
+    /// <summary>
+    /// Experimental feature flags to emit as a semicolon-separated &lt;Features&gt;
+    /// PropertyGroup value in the generated .spyproj.
+    /// </summary>
+    public List<string> Features { get; set; } = new();
 }
 
 /// <summary>

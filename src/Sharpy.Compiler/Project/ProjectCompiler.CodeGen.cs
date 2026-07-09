@@ -142,7 +142,8 @@ internal partial class ProjectCompiler
                 GeneratedCSharpFiles = generatedCSharp,
                 Metrics = ProjectMetrics,
                 DependencyGraph = _dependencyGraph,
-                ProjectModel = _projectModel
+                ProjectModel = _projectModel,
+                EffectiveFeatures = _features
             };
         }
 
@@ -160,7 +161,8 @@ internal partial class ProjectCompiler
             GeneratedCSharpFiles = generatedCSharp,
             Metrics = ProjectMetrics,
             DependencyGraph = _dependencyGraph,
-            ProjectModel = _projectModel
+            ProjectModel = _projectModel,
+            EffectiveFeatures = _features
         };
     }
 }

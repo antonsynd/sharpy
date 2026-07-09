@@ -71,6 +71,11 @@ public class SpyProject
     public string Configuration { get; init; } = "Debug";
 
     /// <summary>
+    /// Experimental feature flags to enable, from &lt;Features&gt; in the .spyproj.
+    /// </summary>
+    public List<string> Features { get; init; } = new();
+
+    /// <summary>
     /// Output directory for compiled assemblies (relative to project directory)
     /// </summary>
     public string OutputPath =>
@@ -134,7 +139,8 @@ public class SpyProject
             References = References,
             ModulePaths = ModulePaths,
             PackageReferences = PackageReferences,
-            Configuration = Configuration
+            Configuration = Configuration,
+            Features = Features
         };
     }
 }
@@ -180,6 +186,24 @@ public static class SpyProjectLoader
         var targetFramework = propertyGroup.Element("TargetFramework")?.Value ?? "net8.0";
         var assemblyName = propertyGroup.Element("AssemblyName")?.Value;
         var entryPoint = propertyGroup.Element("EntryPoint")?.Value;
+
+        // Parse experimental feature flags. Unknown names fail fast at project load
+        // so a typo cannot silently disable a feature.
+        var featuresValue = propertyGroup.Element("Features")?.Value;
+        var features = new List<string>();
+        if (!string.IsNullOrWhiteSpace(featuresValue))
+        {
+            foreach (var raw in featuresValue.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var name = raw.Trim();
+                if (name.Length == 0)
+                    continue;
+                if (!Shared.FeatureFlags.TryValidate(name, out var error))
+                    throw new InvalidDataException($"Invalid <Features> value in {Path.GetFileName(projectFilePath)}: {error}");
+                if (!features.Contains(name))
+                    features.Add(name);
+            }
+        }
 
         // Parse ItemGroup for source files with support for Exclude patterns
         var sourceFiles = new List<string>();
@@ -281,7 +305,8 @@ public static class SpyProjectLoader
             References = references,
             ModulePaths = modulePaths,
             PackageReferences = packageReferences,
-            Configuration = configuration ?? "Debug"
+            Configuration = configuration ?? "Debug",
+            Features = features
         };
     }
 

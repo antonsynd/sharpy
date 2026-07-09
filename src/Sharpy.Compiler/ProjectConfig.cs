@@ -179,6 +179,24 @@ internal class ProjectFileParser
                 suppressedWarnings.Add(code.Trim());
         }
 
+        // Parse experimental feature flags. Unknown names fail fast at project load
+        // so a typo cannot silently disable a feature.
+        var featuresValue = propertyGroup.Element("Features")?.Value;
+        var features = new List<string>();
+        if (!string.IsNullOrWhiteSpace(featuresValue))
+        {
+            foreach (var raw in featuresValue.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var name = raw.Trim();
+                if (name.Length == 0)
+                    continue;
+                if (!Shared.FeatureFlags.TryValidate(name, out var error))
+                    throw new InvalidDataException($"Invalid <Features> value in {Path.GetFileName(projectFilePath)}: {error}");
+                if (!features.Contains(name))
+                    features.Add(name);
+            }
+        }
+
         // Parse ItemGroup for source files
         var sourceFiles = new List<string>();
         var references = new List<string>();
@@ -281,7 +299,8 @@ internal class ProjectFileParser
             PackageReferences = packageReferences,
             Configuration = configuration ?? "Debug",
             WarningsAsErrors = warningsAsErrors,
-            SuppressedWarnings = suppressedWarnings
+            SuppressedWarnings = suppressedWarnings,
+            Features = features
         };
     }
 

@@ -118,6 +118,11 @@ public class Compiler
         mergedSuppressed.UnionWith(projectConfig.SuppressedWarnings);
         var warnAsErrors = _options.WarningsAsErrors || projectConfig.WarningsAsErrors;
 
+        // Union CLI-supplied features with the project's <Features>, mirroring the
+        // SuppressedWarnings merge above. Names are already validated at each boundary
+        // (CLI arg parsing and project load), so this is a pure union.
+        var mergedFeatures = _options.Features.Enable(projectConfig.Features);
+
         // Resolve NuGet package references so their types are available during semantic analysis
         if (_moduleRegistry != null && projectConfig.PackageReferences.Count > 0)
         {
@@ -134,7 +139,7 @@ public class Compiler
 
         var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
             warnAsErrors, mergedSuppressed, _options.MaxErrors, _options.Incremental,
-            _emitterFactory);
+            _emitterFactory, mergedFeatures);
         var projectResult = projectCompiler.Compile(projectConfig, cancellationToken);
 
         // Record module discovery (reference + NuGet loading) as a project-level phase,
@@ -545,6 +550,13 @@ public class ProjectCompilationResult
     public string? OutputAssemblyPath { get; init; }
     public Dictionary<string, string> GeneratedCSharpFiles { get; init; } = new();
     public ProjectCompilationMetrics? Metrics { get; init; }
+
+    /// <summary>
+    /// The effective experimental feature flags for this compilation: the CLI
+    /// <c>--enable-feature</c> set unioned with the project's <c>&lt;Features&gt;</c>.
+    /// Exposed for tooling and tests that need to observe the merged set.
+    /// </summary>
+    internal Shared.FeatureFlags EffectiveFeatures { get; init; } = Shared.FeatureFlags.None;
 
     /// <summary>
     /// The dependency graph built during compilation.

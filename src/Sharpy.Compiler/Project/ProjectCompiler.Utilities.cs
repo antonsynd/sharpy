@@ -37,7 +37,8 @@ internal partial class ProjectCompiler
             Diagnostics = _diagnostics,
             Metrics = ProjectMetrics,
             DependencyGraph = _dependencyGraph,
-            ProjectModel = _projectModel
+            ProjectModel = _projectModel,
+            EffectiveFeatures = _features
         };
     }
 

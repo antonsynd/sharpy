@@ -22,6 +22,7 @@ internal partial class ProjectCompiler
     private readonly HashSet<string> _suppressedWarnings;
     private readonly int _maxErrors;
     private readonly bool _incremental;
+    private readonly Shared.FeatureFlags _features;
     private CancellationToken _cancellationToken;
 
     // Per-file state isolation (#610): SymbolTable, SemanticInfo, and SemanticBinding
@@ -82,7 +83,8 @@ internal partial class ProjectCompiler
 
     public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null,
         bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null, int maxErrors = 0,
-        bool incremental = false, ICodeEmitterFactory? emitterFactory = null)
+        bool incremental = false, ICodeEmitterFactory? emitterFactory = null,
+        Shared.FeatureFlags? features = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
@@ -91,7 +93,15 @@ internal partial class ProjectCompiler
         _suppressedWarnings = suppressedWarnings ?? new HashSet<string>();
         _maxErrors = maxErrors;
         _incremental = incremental;
+        _features = features ?? Shared.FeatureFlags.None;
     }
+
+    /// <summary>
+    /// The effective feature flags for this compilation (CLI flags unioned with the
+    /// project's <c>&lt;Features&gt;</c>). Exposed so results and threading can reflect
+    /// the merged set.
+    /// </summary>
+    internal Shared.FeatureFlags Features => _features;
 
     /// <summary>
     /// Compile a Sharpy project through the multi-file compilation pipeline
@@ -239,7 +249,8 @@ internal partial class ProjectCompiler
                 Diagnostics = _diagnostics,
                 Metrics = _projectMetricsBacking,
                 DependencyGraph = _dependencyGraph,
-                ProjectModel = _projectModel
+                ProjectModel = _projectModel,
+                EffectiveFeatures = _features
             };
         }
         catch (Exception ex)
@@ -259,7 +270,8 @@ internal partial class ProjectCompiler
                 Diagnostics = _diagnostics,
                 Metrics = _projectMetricsBacking,
                 DependencyGraph = _dependencyGraph,
-                ProjectModel = _projectModel
+                ProjectModel = _projectModel,
+                EffectiveFeatures = _features
             };
         }
     }
