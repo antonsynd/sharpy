@@ -14,7 +14,7 @@ internal static class ReplCommand
         var command = new Command("repl", "Start an interactive Sharpy REPL");
         command.SetAction(async (parseResult, cancellationToken) =>
         {
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
             return await RunReplAsync(logger, cancellationToken).ConfigureAwait(false);

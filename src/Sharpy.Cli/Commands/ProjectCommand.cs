@@ -30,7 +30,7 @@ internal static class ProjectCommand
             var clean = parseResult.GetValue(cleanOpt);
             var emitCsTo = parseResult.GetValue(emitCsOpt);
             var incremental = parseResult.GetValue(incrementalOpt);
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var metricsFormat = parseResult.GetValue(globals.MetricsFormat);
             var metricsOutput = parseResult.GetValue(globals.MetricsOutput);

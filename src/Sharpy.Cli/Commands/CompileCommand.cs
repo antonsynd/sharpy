@@ -63,7 +63,7 @@ internal static class CompileCommand
             var incremental = parseResult.GetValue(incrementalOpt);
             var clean = parseResult.GetValue(cleanOpt);
             var emitCSharp = parseResult.GetValue(emitCSharpOpt);
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var metricsFormat = parseResult.GetValue(globals.MetricsFormat);
             var metricsOutput = parseResult.GetValue(globals.MetricsOutput);

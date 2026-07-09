@@ -39,7 +39,7 @@ internal static class BuildCommand
             var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
             var projectReference = parseResult.GetValue(projRefOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var metricsFormat = parseResult.GetValue(globals.MetricsFormat);
             var metricsOutput = parseResult.GetValue(globals.MetricsOutput);

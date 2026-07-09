@@ -40,7 +40,7 @@ internal static class EmitCommand
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
@@ -57,7 +57,7 @@ internal static class EmitCommand
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
@@ -99,7 +99,7 @@ internal static class EmitCommand
             var showLineDirectives = parseResult.GetValue(lineDirectivesOpt);
             var emitType = parseResult.GetValue(typeOpt) ?? "exe";
             var namespaceName = parseResult.GetValue(namespaceOpt);
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var warnAsError = parseResult.GetValue(globals.WarnAsError);
             var nowarn = parseResult.GetValue(globals.Nowarn);
@@ -118,7 +118,7 @@ internal static class EmitCommand
         command.SetAction((parseResult) =>
         {
             var input = parseResult.GetValue(inputArg)!;
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
@@ -149,7 +149,7 @@ internal static class EmitCommand
                 return 1;
             }
             var includeCodegen = parseResult.GetValue(includeCodegenOpt);
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var warnAsError = parseResult.GetValue(globals.WarnAsError);
             var nowarn = parseResult.GetValue(globals.Nowarn);
@@ -176,7 +176,7 @@ internal static class EmitCommand
             var input = parseResult.GetValue(inputArg)!;
             var line = parseResult.GetValue(lineOpt);
             var col = parseResult.GetValue(colOpt);
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);

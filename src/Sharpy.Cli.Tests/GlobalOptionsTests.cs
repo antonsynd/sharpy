@@ -132,4 +132,55 @@ public class GlobalOptionsTests
         result.GetValue(globals.MaxErrors).Should().Be(5);
         result.GetValue(globals.Nowarn).Should().Be("SPY0451");
     }
+
+    [Fact]
+    public void Verbose_DefaultsToFalse()
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals("build a.spy");
+
+        result.GetValue(globals.Verbose).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("--verbose")]
+    [InlineData("-v")]
+    public void Verbose_SetByFlagAndAlias(string flag)
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals($"build a.spy {flag}");
+
+        result.Errors.Should().BeEmpty();
+        result.GetValue(globals.Verbose).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ResolveLogLevel_DefaultsToNone_WhenNeitherSet()
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals("build a.spy");
+
+        globals.ResolveLogLevel(result).Should().Be(CompilerLogLevel.None);
+    }
+
+    [Fact]
+    public void ResolveLogLevel_RaisesToInfo_WhenVerboseAndNoExplicitLogLevel()
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals("build a.spy --verbose");
+
+        globals.ResolveLogLevel(result).Should().Be(CompilerLogLevel.Info);
+    }
+
+    [Fact]
+    public void ResolveLogLevel_ExplicitLogLevelWins_OverVerbose()
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals("build a.spy --verbose --log-level None");
+
+        globals.ResolveLogLevel(result).Should().Be(CompilerLogLevel.None);
+    }
+
+    [Fact]
+    public void ResolveLogLevel_ExplicitDebug_IsUnaffectedByVerbose()
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals("build a.spy -v --log-level Debug");
+
+        globals.ResolveLogLevel(result).Should().Be(CompilerLogLevel.Debug);
+    }
 }

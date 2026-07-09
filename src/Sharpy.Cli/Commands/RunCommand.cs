@@ -39,7 +39,7 @@ internal static class RunCommand
             var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
             var progArgs = parseResult.GetValue(argsOpt) ?? Array.Empty<string>();
             var selfContained = parseResult.GetValue(selfContainedOpt);
-            var logLevel = parseResult.GetValue(globals.LogLevel) ?? CompilerLogLevel.None;
+            var logLevel = globals.ResolveLogLevel(parseResult);
             var logFile = parseResult.GetValue(globals.LogFile);
             var metricsFormat = parseResult.GetValue(globals.MetricsFormat);
             var metricsOutput = parseResult.GetValue(globals.MetricsOutput);
