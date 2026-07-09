@@ -183,4 +183,48 @@ public class GlobalOptionsTests
 
         globals.ResolveLogLevel(result).Should().Be(CompilerLogLevel.Debug);
     }
+
+    [Fact]
+    public void EnableFeature_DefaultsToEmpty()
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals("build a.spy");
+
+        (result.GetValue(globals.EnableFeature) ?? System.Array.Empty<string>()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void EnableFeature_AcceptsKnownFeature()
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals("build a.spy --enable-feature __test_feature");
+
+        result.Errors.Should().BeEmpty();
+        result.GetValue(globals.EnableFeature).Should().Contain("__test_feature");
+    }
+
+    [Fact]
+    public void EnableFeature_IsRepeatable()
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals(
+            "build a.spy --enable-feature __test_feature --enable-feature __test_feature");
+
+        result.Errors.Should().BeEmpty();
+        result.GetValue(globals.EnableFeature).Should().Contain("__test_feature");
+    }
+
+    [Fact]
+    public void EnableFeature_RejectsUnknownFeature()
+    {
+        var result = CliTestHarness.Parse("build a.spy --enable-feature nope");
+
+        result.Errors.Should().NotBeEmpty();
+        result.Errors.Should().Contain(e => e.Message.Contains("nope"));
+    }
+
+    [Fact]
+    public void EnableFeature_UnknownFeature_ExitsNonzero()
+    {
+        var invocation = CliTestHarness.Invoke("build a.spy --enable-feature nope");
+
+        invocation.ExitCode.Should().NotBe(0);
+    }
 }

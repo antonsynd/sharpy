@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Cli;
 
@@ -13,6 +14,7 @@ internal class GlobalOptions
     public Option<string?> Nowarn { get; }
     public Option<int?> MaxErrors { get; }
     public Option<bool> Verbose { get; }
+    public Option<string[]> EnableFeature { get; }
 
     public GlobalOptions()
     {
@@ -25,6 +27,16 @@ internal class GlobalOptions
         MaxErrors = new Option<int?>("--max-errors") { Description = "Maximum number of errors before stopping (default: 25 for parser, 100 for semantic)", Recursive = true };
         Verbose = new Option<bool>("--verbose") { Description = "Enable verbose output (raises --log-level to Info, printing per-phase timing). An explicit --log-level takes precedence.", Recursive = true };
         Verbose.Aliases.Add("-v");
+        EnableFeature = new Option<string[]>("--enable-feature") { Description = "Enable an experimental feature flag (repeatable)", Recursive = true, AllowMultipleArgumentsPerToken = true };
+        EnableFeature.Validators.Add(result =>
+        {
+            var values = result.GetValueOrDefault<string[]>() ?? System.Array.Empty<string>();
+            foreach (var name in values)
+            {
+                if (!FeatureFlags.TryValidate(name, out var error))
+                    result.AddError(error!);
+            }
+        });
     }
 
     public void AddToCommand(Command command)
@@ -37,6 +49,7 @@ internal class GlobalOptions
         command.Options.Add(Nowarn);
         command.Options.Add(MaxErrors);
         command.Options.Add(Verbose);
+        command.Options.Add(EnableFeature);
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Cli.Commands;
 
@@ -37,9 +38,10 @@ internal static class ProjectCommand
             var warnAsError = parseResult.GetValue(globals.WarnAsError);
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
+            var features = parseResult.GetValue(globals.EnableFeature);
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            return HandleProjectCommand(project, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
         });
 
         root.Subcommands.Add(command);
@@ -57,7 +59,8 @@ internal static class ProjectCommand
         FileInfo? metricsOutput,
         bool warnAsError = false,
         string? nowarn = null,
-        int? maxErrors = null)
+        int? maxErrors = null,
+        string[]? features = null)
     {
         FileInfo? resolvedProjectFile = projectFile;
 
@@ -77,10 +80,10 @@ internal static class ProjectCommand
             Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
         }
 
-        return CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+        return CompileProject(resolvedProjectFile, configuration, clean, incremental, emitCsTo, logger, logLevel, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features);
     }
 
-    static int CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null)
+    static int CompileProject(FileInfo projectFile, string configuration, bool clean, bool incremental, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null, bool warnAsError = false, string? nowarn = null, int? maxErrors = null, string[]? features = null)
     {
         try
         {
@@ -124,7 +127,8 @@ internal static class ProjectCommand
                 WarningsAsErrors = warnAsError || projectConfig.WarningsAsErrors,
                 SuppressedWarnings = mergedSuppressed,
                 MaxErrors = maxErrors ?? 0,
-                Incremental = incremental
+                Incremental = incremental,
+                Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>())
             };
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);

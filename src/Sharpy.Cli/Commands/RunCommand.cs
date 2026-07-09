@@ -46,9 +46,10 @@ internal static class RunCommand
             var warnAsError = parseResult.GetValue(globals.WarnAsError);
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
+            var features = parseResult.GetValue(globals.EnableFeature);
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained);
+            return HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained, features);
         });
 
         root.Subcommands.Add(command);
@@ -67,7 +68,8 @@ internal static class RunCommand
         bool warnAsError = false,
         string? nowarn = null,
         int? maxErrors = null,
-        bool selfContained = false)
+        bool selfContained = false,
+        string[]? features = null)
     {
         if (!CliHelpers.ValidateInputFile(inputFile))
         {
@@ -91,7 +93,7 @@ internal static class RunCommand
 
         try
         {
-            var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors);
+            var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features: features);
             if (compileResult == null)
             {
                 return 1;

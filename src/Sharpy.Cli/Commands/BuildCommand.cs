@@ -2,6 +2,7 @@ extern alias SharpyRT;
 using System.CommandLine;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Cli.Commands;
@@ -46,13 +47,14 @@ internal static class BuildCommand
             var warnAsError = parseResult.GetValue(globals.WarnAsError);
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
+            var features = parseResult.GetValue(globals.EnableFeature);
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
             if (!CliHelpers.ValidateInputFile(input))
             {
                 return 1;
             }
-            var compileResult = CompileToBinary(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration: "Debug");
+            var compileResult = CompileToBinary(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration: "Debug", features: features);
             return compileResult == null ? 1 : 0;
         });
 
@@ -77,7 +79,8 @@ internal static class BuildCommand
         bool warnAsError = false,
         string? nowarn = null,
         int? maxErrors = null,
-        string configuration = "Debug")
+        string configuration = "Debug",
+        string[]? features = null)
     {
         try
         {
@@ -91,7 +94,8 @@ internal static class BuildCommand
                 ModulePaths = modulePaths,
                 WarningsAsErrors = warnAsError,
                 SuppressedWarnings = CliHelpers.ParseNowarnCodes(nowarn),
-                MaxErrors = maxErrors ?? 0
+                MaxErrors = maxErrors ?? 0,
+                Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>())
             };
 
             var api = CliHelpers.CreateCompilerApi(logger);
