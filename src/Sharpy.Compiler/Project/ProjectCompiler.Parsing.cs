@@ -59,7 +59,7 @@ internal partial class ProjectCompiler
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                fileMetrics.StartPhase("Lexical Analysis");
+                fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
                 var sourceText = new Text.SourceText(source, sourceFile);
                 var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: cancellationToken);
                 if (_maxErrors > 0)
@@ -87,7 +87,7 @@ internal partial class ProjectCompiler
                 compilationUnit.Tokens = tokens;
                 compilationUnit.Phase = CompilationPhase.Lexed;
 
-                fileMetrics.StartPhase("Syntax Analysis");
+                fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
                 var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
                 var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, cancellationToken);
                 var module = parser.ParseModule();
@@ -200,7 +200,7 @@ internal partial class ProjectCompiler
                     var source = unit.SourceText;
                     unit.GeneratedCSharp = null; // Clear cached C#
 
-                    fileMetrics.StartPhase("Lexical Analysis");
+                    fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
                     var sourceText = new Text.SourceText(source, sourceFile);
                     var lexer = new Lexer.Lexer(sourceText, _logger);
                     if (_maxErrors > 0)
@@ -226,7 +226,7 @@ internal partial class ProjectCompiler
                     unit.Tokens = tokens;
                     unit.Phase = CompilationPhase.Lexed;
 
-                    fileMetrics.StartPhase("Syntax Analysis");
+                    fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
                     var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
                     var parser = new Parser.Parser(tokens, _logger, parserMaxErrors);
                     var module = parser.ParseModule();

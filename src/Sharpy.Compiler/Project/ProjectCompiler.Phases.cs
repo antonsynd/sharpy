@@ -651,7 +651,7 @@ internal partial class ProjectCompiler
                 var localBinding = new SemanticBinding();
 
                 // Type checking via shared pipeline with per-file state
-                fileMetrics.StartPhase("Type Checking");
+                fileMetrics.StartPhase(CompilerPhaseNames.TypeChecking);
                 var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
                 var deferredSymbols = ImportResolver.DeferredCycleSymbols.Count > 0
                     ? ImportResolver.DeferredCycleSymbols

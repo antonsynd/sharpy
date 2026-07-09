@@ -52,7 +52,7 @@ internal partial class ProjectCompiler
                 // Get the file metrics we created during parsing
                 var fileMetrics = unit.Metrics;
 
-                fileMetrics?.StartPhase("Code Generation");
+                fileMetrics?.StartPhase(CompilerPhaseNames.CodeGeneration);
 
                 // Determine if this file is the entry point
                 var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);

@@ -161,8 +161,8 @@ public class Compiler
         try
         {
             // Phase 1: Lexical Analysis
-            metrics.StartPhase("Lexical Analysis");
-            LogPhaseStart("Lexical Analysis", filePath);
+            metrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+            LogPhaseStart(CompilerPhaseNames.LexicalAnalysis, filePath);
             var sourceText = new SourceText(sourceCode, filePath);
             result.SourceText = sourceText;
             var lexResult = FileCompilationPipeline.Lex(sourceText, _logger, _options.MaxErrors, cancellationToken, preserveTrivia);
@@ -178,8 +178,8 @@ public class Compiler
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 2: Syntax Analysis
-            metrics.StartPhase("Syntax Analysis");
-            LogPhaseStart("Syntax Analysis", filePath, lexResult.Tokens.Count);
+            metrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
+            LogPhaseStart(CompilerPhaseNames.SyntaxAnalysis, filePath, lexResult.Tokens.Count);
             var parserMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 25;
             var parseResult = FileCompilationPipeline.Parse(lexResult.Tokens, _logger, parserMaxErrors, cancellationToken);
             var module = parseResult.Module;
@@ -215,8 +215,8 @@ public class Compiler
             var pipeline = new FileCompilationPipeline(symbolTable, semanticInfo, semanticBinding, _logger, _emitterFactory);
 
             // Pass 1: Name resolution
-            metrics.StartPhase("Name Resolution");
-            LogPhaseStart("Name Resolution", filePath, module.Body.Length);
+            metrics.StartPhase(CompilerPhaseNames.NameResolution);
+            LogPhaseStart(CompilerPhaseNames.NameResolution, filePath, module.Body.Length);
             var nameResult = pipeline.ResolveNames(module, cancellationToken);
             LogPhaseEnd(filePath, nameResult.Diagnostics.ErrorCount);
             metrics.EndPhase();
@@ -225,8 +225,8 @@ public class Compiler
             cancellationToken.ThrowIfCancellationRequested();
 
             // Pass 1.5 + 1b: Import resolution + inheritance
-            metrics.StartPhase("Import Resolution");
-            LogPhaseStart("Import Resolution", filePath);
+            metrics.StartPhase(CompilerPhaseNames.ImportResolution);
+            LogPhaseStart(CompilerPhaseNames.ImportResolution, filePath);
             var importResult = pipeline.ResolveImports(
                 module, nameResult.NameResolver, filePath, _moduleRegistry, cancellationToken);
             var importResolver = importResult.ImportResolver;
@@ -249,8 +249,8 @@ public class Compiler
             cancellationToken.ThrowIfCancellationRequested();
 
             // Pass 2: Type checking
-            metrics.StartPhase("Type Checking");
-            LogPhaseStart("Type Checking", filePath);
+            metrics.StartPhase(CompilerPhaseNames.TypeChecking);
+            LogPhaseStart(CompilerPhaseNames.TypeChecking, filePath);
             var isEntryPoint = _options.OutputType.Equals("exe", StringComparison.OrdinalIgnoreCase);
             var typeCheckResult = pipeline.TypeCheck(
                 module, filePath, isEntryPoint, _options.MaxErrors, diagnostics,
@@ -299,8 +299,8 @@ public class Compiler
             }
 
             // Phase 4: Code Generation
-            metrics.StartPhase("Code Generation");
-            LogPhaseStart("Code Generation", filePath);
+            metrics.StartPhase(CompilerPhaseNames.CodeGeneration);
+            LogPhaseStart(CompilerPhaseNames.CodeGeneration, filePath);
 
             var codeGenResult = pipeline.GenerateCode(
                 module, filePath, importResolver, builtinRegistry,

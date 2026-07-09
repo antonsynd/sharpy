@@ -35,7 +35,7 @@ internal class AssemblyCompiler
         try
         {
             // Parse all C# source files into syntax trees
-            metrics.StartPhase("C# Parsing");
+            metrics.StartPhase(CompilerPhaseNames.CSharpParsing);
             var syntaxTrees = new List<SyntaxTree>();
             foreach (var (filePath, sourceCode) in csharpSources)
             {
@@ -47,7 +47,7 @@ internal class AssemblyCompiler
             metrics.EndPhase();
 
             // Gather metadata references
-            metrics.StartPhase("Reference Resolution");
+            metrics.StartPhase(CompilerPhaseNames.ReferenceResolution);
             var references = GetMetadataReferences(projectConfig);
             metrics.EndPhase();
 
@@ -57,7 +57,7 @@ internal class AssemblyCompiler
                 : OutputKind.DynamicallyLinkedLibrary;
 
             // Create compilation
-            metrics.StartPhase("Roslyn Compilation");
+            metrics.StartPhase(CompilerPhaseNames.RoslynCompilation);
             var assemblyName = projectConfig.AssemblyName ?? projectConfig.RootNamespace;
             var compilation = CSharpCompilation.Create(
                 assemblyName,
@@ -79,7 +79,7 @@ internal class AssemblyCompiler
             }
 
             // Emit assembly to file
-            metrics.StartPhase("IL Emission");
+            metrics.StartPhase(CompilerPhaseNames.IlEmission);
             using var assemblyStream = new FileStream(outputPath, FileMode.Create);
 
             EmitResult emitResult;

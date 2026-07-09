@@ -50,25 +50,25 @@ public class CompilationMetrics
     /// Gets the duration of the lexical analysis phase (tokenization).
     /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
     /// </summary>
-    public TimeSpan LexerTime => GetPhaseDuration("Lexical Analysis");
+    public TimeSpan LexerTime => GetPhaseDuration(CompilerPhaseNames.LexicalAnalysis);
 
     /// <summary>
     /// Gets the duration of the syntax analysis phase (parsing).
     /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
     /// </summary>
-    public TimeSpan ParserTime => GetPhaseDuration("Syntax Analysis");
+    public TimeSpan ParserTime => GetPhaseDuration(CompilerPhaseNames.SyntaxAnalysis);
 
     /// <summary>
     /// Gets the duration of the name resolution phase.
     /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
     /// </summary>
-    public TimeSpan NameResolutionTime => GetPhaseDuration("Name Resolution");
+    public TimeSpan NameResolutionTime => GetPhaseDuration(CompilerPhaseNames.NameResolution);
 
     /// <summary>
     /// Gets the duration of the import resolution phase.
     /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
     /// </summary>
-    public TimeSpan ImportResolutionTime => GetPhaseDuration("Import Resolution");
+    public TimeSpan ImportResolutionTime => GetPhaseDuration(CompilerPhaseNames.ImportResolution);
 
     /// <summary>
     /// Gets the duration of the type resolution phase.
@@ -76,19 +76,19 @@ public class CompilationMetrics
     /// Note: In single-file compilation, type resolution is folded into the
     /// "Type Checking" phase and this property returns <see cref="TimeSpan.Zero"/>.
     /// </summary>
-    public TimeSpan TypeResolutionTime => GetPhaseDuration("Type Resolution");
+    public TimeSpan TypeResolutionTime => GetPhaseDuration(CompilerPhaseNames.TypeResolution);
 
     /// <summary>
     /// Gets the duration of the type checking phase (includes validation).
     /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
     /// </summary>
-    public TimeSpan TypeCheckingTime => GetPhaseDuration("Type Checking");
+    public TimeSpan TypeCheckingTime => GetPhaseDuration(CompilerPhaseNames.TypeChecking);
 
     /// <summary>
     /// Gets the duration of the code generation phase.
     /// Returns <see cref="TimeSpan.Zero"/> if the phase was not recorded.
     /// </summary>
-    public TimeSpan CodeGenTime => GetPhaseDuration("Code Generation");
+    public TimeSpan CodeGenTime => GetPhaseDuration(CompilerPhaseNames.CodeGeneration);
 
     /// <summary>
     /// Gets the aggregate duration of all validation during the type checking phase.
