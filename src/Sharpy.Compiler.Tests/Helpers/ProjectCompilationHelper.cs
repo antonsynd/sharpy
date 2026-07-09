@@ -280,7 +280,19 @@ public class ProjectCompilationHelper : IDisposable
     /// <summary>
     /// Compiles the project and returns the result.
     /// </summary>
-    public ProjectCompilationResult Compile()
+    public ProjectCompilationResult Compile() => Compile(reorderSourceFiles: null);
+
+    /// <summary>
+    /// Compiles the project, optionally reordering the loaded source files first.
+    /// </summary>
+    /// <param name="reorderSourceFiles">
+    /// Optional hook applied AFTER <see cref="ProjectFileParser.Load"/> re-globs. It
+    /// receives the loaded source-file list (already ordinal-sorted by the loader, #1032)
+    /// and must return a permutation of exactly those paths. This is the only way to drive
+    /// compilation with a non-sorted order now that the loader sorts, so determinism tests
+    /// can prove the compile-entry defensive sort neutralizes any input order (#1036).
+    /// </param>
+    public ProjectCompilationResult Compile(Func<IReadOnlyList<string>, IReadOnlyList<string>>? reorderSourceFiles)
     {
         if (_projectFilePath == null)
         {
@@ -288,6 +300,23 @@ public class ProjectCompilationHelper : IDisposable
         }
 
         var config = ProjectFileParser.Load(_projectFilePath!);
+
+        if (reorderSourceFiles != null)
+        {
+            var reordered = reorderSourceFiles(config.SourceFiles.ToList());
+            var original = new HashSet<string>(config.SourceFiles, StringComparer.Ordinal);
+            if (reordered.Count != config.SourceFiles.Count || !reordered.All(original.Contains))
+            {
+                throw new ArgumentException(
+                    "reorderSourceFiles must return a permutation of the loaded source files.");
+            }
+
+            // SourceFiles is init-only but its backing list is mutable; replace contents
+            // in place so the reordered set flows into ProjectModel.Units insertion order.
+            config.SourceFiles.Clear();
+            config.SourceFiles.AddRange(reordered);
+        }
+
         var compilerOptions = new CompilerOptions { Incremental = Incremental };
         var compiler = new Compiler(compilerOptions, _logger);
 
