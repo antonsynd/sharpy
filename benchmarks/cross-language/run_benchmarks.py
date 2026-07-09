@@ -453,7 +453,7 @@ def merge_results(
 def results_to_json(all_results: dict[str, dict[str, BenchResult]]) -> list[dict]:
     output = []
     for name in sorted(all_results):
-        for lang, r in all_results[name].items():
+        for r in all_results[name].values():
             entry = {
                 "name": r.name,
                 "language": r.language,

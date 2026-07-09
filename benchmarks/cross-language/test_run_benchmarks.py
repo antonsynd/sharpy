@@ -8,6 +8,7 @@ from pathlib import Path
 
 _MODULE_PATH = Path(__file__).parent / "run_benchmarks.py"
 _spec = importlib.util.spec_from_file_location("run_benchmarks", _MODULE_PATH)
+assert _spec is not None and _spec.loader is not None
 run_benchmarks = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(run_benchmarks)
 
