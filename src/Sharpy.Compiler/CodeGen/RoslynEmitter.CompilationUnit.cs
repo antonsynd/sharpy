@@ -632,15 +632,8 @@ internal partial class RoslynEmitter
         // (e.g., Json, Os) — not the NameMangler.ToNamespacePart acronym logic used for
         // user module names (which would produce JSON).
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        var className = string.Concat(parts.Select(StdlibToPascalCase));
+        var className = string.Concat(parts.Select(p => NameMangler.ToModuleIdentifier(p, AcronymPolicy.FirstCharOnly)));
         return $"global::{ns}.{className}";
-    }
-
-    private static string StdlibToPascalCase(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return name;
-        return char.ToUpperInvariant(name[0]) + name[1..];
     }
 
 

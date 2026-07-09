@@ -908,6 +908,10 @@ internal partial class RoslynEmitter
     // (e.g., "exist_ok"), so we look up the declared param and use its name verbatim.
     // For Sharpy-defined functions, parameters are stored in snake_case and the C# name
     // is obtained via camelCase mangling. Both paths escape C# keywords.
+    //
+    // Regression guard (#942): CLR parameter names are stored UNMANGLED (unlike methods and
+    // properties, which are reverse-mangled during discovery). The verbatim match below must
+    // stay verbatim — routing it through NameMangler would re-break #942.
     private static string GetCSharpParameterName(string sharpyName, FunctionSymbol? funcSymbol)
     {
         if (funcSymbol?.ClrMethodName != null)

@@ -282,6 +282,33 @@ internal static class NameMangler
     };
 
     /// <summary>
+    /// Convert a module-name identifier (or a single dot-delimited segment of one) to
+    /// PascalCase using the given <paramref name="policy"/> to control acronym handling.
+    /// This is the single mechanics implementation behind the three intentionally
+    /// divergent module-name casings (see <see cref="AcronymPolicy"/> for why they differ).
+    /// </summary>
+    public static string ToModuleIdentifier(string name, AcronymPolicy policy)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+
+        return policy switch
+        {
+            // Only the first character is upper-cased; the rest is preserved verbatim.
+            // Deliberately no acronym logic (stdlib module class: json → Json, not JSON).
+            AcronymPolicy.FirstCharOnly => CapitalizePreserving(name),
+            // "io" → "IO" only; every other segment splits on '_' and capitalizes each
+            // part's first char (system.io namespace mapping).
+            AcronymPolicy.IoOnly =>
+                name == "io" ? "IO" : string.Concat(name.Split('_').Select(CapitalizePreserving)),
+            // Full .NET acronym set upper-cased wholesale; otherwise sanitize invalid
+            // identifier characters and PascalCase (user-module namespace parts).
+            AcronymPolicy.NamespaceAcronyms => ToNamespaceIdentifier(name),
+            _ => name,
+        };
+    }
+
+    /// <summary>
     /// Convert a name to a valid C# namespace part using simple PascalCase.
     /// Unlike <see cref="ToPascalCase"/>, this does not use form detection or
     /// uniqueness tracking. It handles acronyms, sanitizes invalid characters,
@@ -289,9 +316,15 @@ internal static class NameMangler
     /// </summary>
     public static string ToNamespacePart(string name)
     {
-        if (string.IsNullOrEmpty(name))
-            return name;
+        return ToModuleIdentifier(name, AcronymPolicy.NamespaceAcronyms);
+    }
 
+    /// <summary>
+    /// Full-acronym-set namespace-part mechanics (the <see cref="AcronymPolicy.NamespaceAcronyms"/>
+    /// implementation). Precondition: <paramref name="name"/> is non-empty.
+    /// </summary>
+    private static string ToNamespaceIdentifier(string name)
+    {
         // Check if this is a known acronym that should be all uppercase
         if (_upperCaseAcronyms.Contains(name))
         {
@@ -451,6 +484,28 @@ internal static class NameMangler
             _ => ToSnakeCase(name)
         };
     }
+}
+
+/// <summary>
+/// Acronym-handling policy for <see cref="NameMangler.ToModuleIdentifier"/>. The three
+/// module-name→identifier algorithms differ intentionally and must keep producing
+/// different output for the same input (e.g. "json" → Json vs "io" → IO vs the full
+/// acronym set) — reconciling them is an emitted-API change out of scope for #1040.
+/// </summary>
+public enum AcronymPolicy
+{
+    /// <summary>Upper-case only the first character; preserve the rest verbatim, with no
+    /// acronym logic (stdlib module class names: json → Json).</summary>
+    FirstCharOnly,
+
+    /// <summary>Special-case "io" → "IO"; otherwise split on '_' and capitalize each
+    /// segment's first character (system.* namespace mapping).</summary>
+    IoOnly,
+
+    /// <summary>Upper-case the full .NET acronym set wholesale (io, ui, xml, ...);
+    /// otherwise sanitize invalid identifier characters and PascalCase (user-module
+    /// namespace parts, which may produce JSON).</summary>
+    NamespaceAcronyms,
 }
 
 /// <summary>

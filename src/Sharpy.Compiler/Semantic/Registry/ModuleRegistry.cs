@@ -515,7 +515,7 @@ internal class ModuleRegistry
             var result = new string[segments.Length];
             for (int i = 0; i < segments.Length; i++)
             {
-                result[i] = PascalCaseSegment(segments[i]);
+                result[i] = NameMangler.ToModuleIdentifier(segments[i], AcronymPolicy.IoOnly);
             }
             return string.Join(".", result);
         }
@@ -528,7 +528,7 @@ internal class ModuleRegistry
             var candidate = new string[segments.Length];
             for (int i = 0; i < segments.Length; i++)
             {
-                candidate[i] = PascalCaseSegment(segments[i]);
+                candidate[i] = NameMangler.ToModuleIdentifier(segments[i], AcronymPolicy.IoOnly);
             }
             var candidateNs = string.Join(".", candidate);
 
@@ -547,29 +547,6 @@ internal class ModuleRegistry
 
             return null;
         });
-    }
-
-    private static string PascalCaseSegment(string segment)
-    {
-        if (segment.Length == 0)
-            return segment;
-
-        // Handle abbreviations: "io" → "IO", "http" → "Http"
-        if (segment == "io")
-            return "IO";
-
-        var parts = segment.Split('_');
-        var sb = new System.Text.StringBuilder();
-        foreach (var part in parts)
-        {
-            if (part.Length > 0)
-            {
-                sb.Append(char.ToUpperInvariant(part[0]));
-                if (part.Length > 1)
-                    sb.Append(part.Substring(1));
-            }
-        }
-        return sb.ToString();
     }
 
     /// <summary>
