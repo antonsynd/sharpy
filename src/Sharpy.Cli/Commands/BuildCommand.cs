@@ -178,7 +178,7 @@ internal static class BuildCommand
             Console.WriteLine($"Successfully compiled to: {assemblyResult.OutputAssemblyPath}");
 
             CliHelpers.OutputVerboseTimingSummary(result.Metrics, logger);
-            CliHelpers.OutputMetrics(assemblyResult.Metrics, metricsFormat, metricsOutput);
+            CliHelpers.OutputCombinedMetrics(result.Metrics, assemblyResult.Metrics, metricsFormat, metricsOutput);
 
             return result;
         }

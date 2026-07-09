@@ -1,4 +1,6 @@
 extern alias SharpyRT;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
@@ -176,7 +178,65 @@ internal static class CliHelpers
         }
 
         var output = format == "json" ? metrics.FormatAsJson() : metrics.FormatAsText();
+        WriteMetricsOutput(output, metricsOutput);
+    }
 
+    /// <summary>
+    /// Emit combined front-end and assembly metrics for a single-file compile as one
+    /// document. In JSON mode the result is <c>{ "frontend": {...}, "assembly": {...} }</c>,
+    /// so that the front-end phases (module discovery, lexing, parsing, type checking,
+    /// code generation) and the assembly phases (C# parsing, Roslyn compilation, IL
+    /// emission) are reported together rather than the front-end metrics being discarded.
+    /// In text mode the two <see cref="CompilationMetrics.FormatAsText"/> blocks are
+    /// emitted under labeled sections.
+    /// </summary>
+    internal static void OutputCombinedMetrics(
+        CompilationMetrics? frontend,
+        CompilationMetrics? assembly,
+        string? metricsFormat,
+        FileInfo? metricsOutput)
+    {
+        if (metricsFormat == null || (frontend == null && assembly == null))
+            return;
+
+        var format = metricsFormat.ToLowerInvariant();
+        if (format != "text" && format != "json")
+        {
+            Console.Error.WriteLine($"Invalid metrics format: {metricsFormat}. Use 'text' or 'json'.");
+            return;
+        }
+
+        string output;
+        if (format == "json")
+        {
+            var combined = new JsonObject
+            {
+                ["frontend"] = frontend != null ? JsonNode.Parse(frontend.FormatAsJson()) : null,
+                ["assembly"] = assembly != null ? JsonNode.Parse(assembly.FormatAsJson()) : null
+            };
+            output = combined.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        }
+        else
+        {
+            var sections = new List<string>();
+            if (frontend != null)
+            {
+                sections.Add("=== Front-End Compilation ===");
+                sections.Add(frontend.FormatAsText());
+            }
+            if (assembly != null)
+            {
+                sections.Add("=== Assembly Compilation ===");
+                sections.Add(assembly.FormatAsText());
+            }
+            output = string.Join(Environment.NewLine, sections);
+        }
+
+        WriteMetricsOutput(output, metricsOutput);
+    }
+
+    private static void WriteMetricsOutput(string output, FileInfo? metricsOutput)
+    {
         if (metricsOutput != null)
         {
             try
@@ -210,25 +270,7 @@ internal static class CliHelpers
         }
 
         var output = format == "json" ? metrics.FormatAsJson() : metrics.FormatAsText();
-
-        if (metricsOutput != null)
-        {
-            try
-            {
-                File.WriteAllText(metricsOutput.FullName, output);
-                Console.WriteLine($"Metrics written to: {metricsOutput.FullName}");
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"Failed to write metrics to file: {ex.Message}");
-                Console.WriteLine(output);
-            }
-        }
-        else
-        {
-            Console.WriteLine();
-            Console.WriteLine(output);
-        }
+        WriteMetricsOutput(output, metricsOutput);
     }
 
     /// <summary>

@@ -236,4 +236,64 @@ public class CliHelpersTests
         CliHelpers.PhaseOrder.Should().NotBeEmpty();
         CliHelpers.PhaseOrder[^1].Should().Be(CompilerPhase.Unknown);
     }
+
+    [Fact]
+    public void OutputCombinedMetrics_NullMetrics_DoesNotThrow()
+    {
+        var act = () => CliHelpers.OutputCombinedMetrics(frontend: null, assembly: null, metricsFormat: "json", metricsOutput: null);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void OutputCombinedMetrics_Json_IncludesBothFrontEndAndAssemblyPhases()
+    {
+        using var ws = new TempWorkspace();
+        var outPath = ws.PathFor("combined.json");
+
+        var frontend = new CompilationMetrics(fileName: "test.spy");
+        frontend.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, TimeSpan.FromMilliseconds(3));
+        frontend.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+        frontend.EndPhase();
+
+        var assembly = new CompilationMetrics(projectName: "test");
+        assembly.StartPhase(CompilerPhaseNames.IlEmission);
+        assembly.EndPhase();
+
+        CliTestHarness.CaptureConsole(() =>
+            CliHelpers.OutputCombinedMetrics(frontend, assembly, metricsFormat: "json", metricsOutput: new FileInfo(outPath)));
+
+        File.Exists(outPath).Should().BeTrue();
+        var json = File.ReadAllText(outPath);
+        json.Should().Contain("\"frontend\"");
+        json.Should().Contain("\"assembly\"");
+        // The whole phase breakdown must be present, from module discovery through IL emission.
+        json.Should().Contain(CompilerPhaseNames.ModuleDiscovery);
+        json.Should().Contain(CompilerPhaseNames.LexicalAnalysis);
+        json.Should().Contain(CompilerPhaseNames.IlEmission);
+    }
+
+    [Fact]
+    public void OutputCombinedMetrics_Text_IncludesLabeledSections()
+    {
+        using var ws = new TempWorkspace();
+        var outPath = ws.PathFor("combined.txt");
+
+        var frontend = new CompilationMetrics(fileName: "test.spy");
+        frontend.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+        frontend.EndPhase();
+
+        var assembly = new CompilationMetrics(projectName: "test");
+        assembly.StartPhase(CompilerPhaseNames.IlEmission);
+        assembly.EndPhase();
+
+        CliTestHarness.CaptureConsole(() =>
+            CliHelpers.OutputCombinedMetrics(frontend, assembly, metricsFormat: "text", metricsOutput: new FileInfo(outPath)));
+
+        var text = File.ReadAllText(outPath);
+        text.Should().Contain("Front-End Compilation");
+        text.Should().Contain("Assembly Compilation");
+        text.Should().Contain(CompilerPhaseNames.LexicalAnalysis);
+        text.Should().Contain(CompilerPhaseNames.IlEmission);
+    }
 }
