@@ -35,6 +35,14 @@ public abstract class IntegrationTestBase
             SharedReferences.Value.References,
             new CSharpCompilationOptions(OutputKind.ConsoleApplication)));
 
+    /// <summary>
+    /// Exposes the shared metadata-reference set used to compile generated C# to IL.
+    /// Property/regression tests that emit generated C# through Roslyn outside this
+    /// base class must reuse this exact set — otherwise a missing reference surfaces as
+    /// a spurious CS error and masquerades as a code-generation leak.
+    /// </summary>
+    public static IReadOnlyList<MetadataReference> GetSharedReferences() => SharedReferences.Value.References;
+
     private static (IReadOnlyList<MetadataReference> References, string? RuntimePath) BuildSharedReferences()
     {
         var references = new List<MetadataReference>

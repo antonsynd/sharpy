@@ -1,5 +1,8 @@
 using CsCheck;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Tests.Properties.Generators;
+using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -18,11 +21,19 @@ public class ILCompilesPropertyTests
         _output = output;
     }
 
+    /// <summary>
+    /// For every generated program that compiles through the front end, emit the
+    /// generated C# all the way to IL (<c>compilation.Emit</c>) and assert Roslyn
+    /// reports no errors. This test previously only checked front-end
+    /// <c>Compile().Success</c> and never invoked Roslyn Emit, so its name did not
+    /// match its behaviour; it now actually validates IL emission.
+    /// </summary>
     [Fact]
     public void GeneratedCSharp_CompilesToValidIL()
     {
+        var references = IntegrationTestBase.GetSharedReferences();
         int total = 0;
-        int compiled = 0;
+        int emitted = 0;
 
         Gen.Int[1, 3].SelectMany(fuel =>
         {
@@ -30,22 +41,43 @@ public class ILCompilesPropertyTests
             return GenSharpy.Module(ctx);
         }).Sample(module =>
         {
-            Interlocked.Increment(ref total);
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
 
-            try
-            {
-                var compiler = new Sharpy.Compiler.Compiler();
-                var result = compiler.Compile(source, "il_test.spy");
+            var compiler = new Sharpy.Compiler.Compiler();
+            var result = compiler.Compile(source, "il_test.spy");
 
-                if (result.Success)
-                    Interlocked.Increment(ref compiled);
-            }
-            catch
+            if (!result.Success || string.IsNullOrEmpty(result.GeneratedCSharpCode))
+                return;
+
+            Interlocked.Increment(ref total);
+
+            var syntaxTree = CSharpSyntaxTree.ParseText(result.GeneratedCSharpCode);
+            var compilation = CSharpCompilation.Create(
+                "ILCompilesProperty",
+                new[] { syntaxTree },
+                references,
+                new CSharpCompilationOptions(OutputKind.ConsoleApplication));
+
+            using var ms = new MemoryStream();
+            var emitResult = compilation.Emit(ms);
+
+            var errors = emitResult.Diagnostics
+                .Where(d => d.Severity == DiagnosticSeverity.Error)
+                .ToList();
+
+            if (errors.Count > 0)
             {
+                var detail = string.Join("\n  ", errors.Take(5).Select(d => d.ToString()));
+                throw new Xunit.Sdk.XunitException(
+                    "Generated C# failed to emit to IL (#1035):\n" +
+                    $"=== Sharpy source ===\n{source}\n" +
+                    $"=== Generated C# ===\n{result.GeneratedCSharpCode}\n" +
+                    $"=== CS diagnostics ===\n  {detail}");
             }
+
+            Interlocked.Increment(ref emitted);
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"IL compilation: {compiled}/{total} compiled");
+        _output.WriteLine($"IL emission: {emitted}/{total} emitted to valid IL");
     }
 }
