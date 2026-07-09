@@ -668,6 +668,115 @@ public class CompilationMetricsTests
             because: "name resolution errors should be counted");
     }
 
+    // ===== RecordExternalPhase (module discovery) =====
+
+    [Fact]
+    public void RecordExternalPhase_AppendsCompletedPhaseWithGivenDuration()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, TimeSpan.FromMilliseconds(42));
+
+        metrics.GetPhaseDuration(CompilerPhaseNames.ModuleDiscovery)
+            .Should().Be(TimeSpan.FromMilliseconds(42));
+        metrics.Phases.Should().ContainSingle(p => p.Name == CompilerPhaseNames.ModuleDiscovery);
+    }
+
+    [Fact]
+    public void RecordExternalPhase_RecordsMemoryDelta_WhenProvided()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, TimeSpan.FromMilliseconds(5), memoryDelta: 2048);
+
+        var phase = metrics.Phases.Single(p => p.Name == CompilerPhaseNames.ModuleDiscovery);
+        phase.MemoryDelta.Should().Be(2048);
+    }
+
+    [Fact]
+    public void RecordExternalPhase_DefaultsMemoryDeltaToZero()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, TimeSpan.FromMilliseconds(5));
+
+        var phase = metrics.Phases.Single(p => p.Name == CompilerPhaseNames.ModuleDiscovery);
+        phase.MemoryDelta.Should().Be(0);
+    }
+
+    [Fact]
+    public void RecordExternalPhase_ContributesToTotalDuration()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, TimeSpan.FromMilliseconds(30));
+
+        metrics.TotalDuration.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(30));
+    }
+
+    [Fact]
+    public void RecordExternalPhase_ThrowsInvalidOperationException_WhenPhaseRunning()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+
+        var action = () => metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, TimeSpan.FromMilliseconds(1));
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Cannot record external phase*Module Discovery*while phase*Lexical Analysis*");
+    }
+
+    [Fact]
+    public void RecordExternalPhase_SurfacesInJson()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, TimeSpan.FromMilliseconds(12));
+
+        var json = metrics.FormatAsJson();
+
+        json.Should().Contain("Module Discovery");
+    }
+
+    [Fact]
+    public void ProjectCompilationMetrics_SetDiscoveryTime_SurfacesInTextAndJson()
+    {
+        var projectMetrics = new ProjectCompilationMetrics("DiscoveryProject", "Debug");
+        var fileMetrics = new CompilationMetrics(fileName: "main.spy");
+        fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+        fileMetrics.EndPhase();
+        projectMetrics.AddFileMetrics(fileMetrics);
+
+        projectMetrics.SetDiscoveryTime(TimeSpan.FromMilliseconds(25));
+
+        projectMetrics.DiscoveryTime.Should().Be(TimeSpan.FromMilliseconds(25));
+        // SetDiscoveryTime must not inflate the compiled-file count.
+        projectMetrics.TotalFiles.Should().Be(1);
+
+        var text = projectMetrics.FormatAsText();
+        text.Should().Contain(CompilerPhaseNames.ModuleDiscovery);
+
+        var json = projectMetrics.FormatAsJson();
+        json.Should().Contain("module_discovery_time_ms");
+    }
+
+    [Fact]
+    public void Compilation_RecordsModuleDiscovery_WhenReferencesLoaded()
+    {
+        // Loading a real assembly reference exercises the discovery timing path in the ctor.
+        var options = new CompilerOptions
+        {
+            References = new[] { typeof(object).Assembly.Location }
+        };
+        var compiler = new Compiler(options);
+        var result = compiler.Compile("print(1)", "test.spy");
+
+        var metrics = result.Metrics;
+        metrics.Should().NotBeNull();
+        // The reference-loading loop ran, so a Module Discovery phase must be recorded.
+        metrics!.Phases.Should().Contain(p => p.Name == CompilerPhaseNames.ModuleDiscovery,
+            because: "loading assembly references should be timed as module discovery");
+    }
+
     [Fact]
     public void Compilation_PopulatesSymbolCount_OnNameResolutionError()
     {

@@ -45,6 +45,11 @@ public class Compiler
     private readonly Stopwatch _phaseStopwatch = new();
     private string? _currentPhaseName;
 
+    // Accumulated time spent loading module references (module discovery). This runs
+    // before any CompilationMetrics object exists (in the ctor and in CompileProject),
+    // so it is stashed here and recorded as a first-class phase once metrics are created.
+    private TimeSpan _discoveryTime;
+
     public Compiler(ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
@@ -79,6 +84,7 @@ public class Compiler
         // Load referenced assemblies
         if (_options.References != null)
         {
+            var discoveryStopwatch = Stopwatch.StartNew();
             foreach (var reference in _options.References)
             {
                 var success = _moduleRegistry.LoadReference(reference);
@@ -91,6 +97,8 @@ public class Compiler
                     _logger.LogWarning($"Failed to load module reference: {reference}", 0, 0);
                 }
             }
+            discoveryStopwatch.Stop();
+            _discoveryTime += discoveryStopwatch.Elapsed;
         }
     }
 
@@ -113,18 +121,30 @@ public class Compiler
         // Resolve NuGet package references so their types are available during semantic analysis
         if (_moduleRegistry != null && projectConfig.PackageReferences.Count > 0)
         {
+            var discoveryStopwatch = Stopwatch.StartNew();
             foreach (var packageRef in projectConfig.PackageReferences)
             {
                 var packageAssemblies = Project.NuGetResolver.ResolvePackage(packageRef, projectConfig.TargetFramework, _logger);
                 foreach (var assemblyPath in packageAssemblies)
                     _moduleRegistry.LoadReference(assemblyPath);
             }
+            discoveryStopwatch.Stop();
+            _discoveryTime += discoveryStopwatch.Elapsed;
         }
 
         var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
             warnAsErrors, mergedSuppressed, _options.MaxErrors, _options.Incremental,
             _emitterFactory);
-        return projectCompiler.Compile(projectConfig, cancellationToken);
+        var projectResult = projectCompiler.Compile(projectConfig, cancellationToken);
+
+        // Record module discovery (reference + NuGet loading) as a project-level phase,
+        // distinct from AssemblyCompiler's Reference Resolution (Roslyn metadata refs).
+        if (_discoveryTime > TimeSpan.Zero)
+        {
+            projectResult.Metrics?.SetDiscoveryTime(_discoveryTime);
+        }
+
+        return projectResult;
     }
 
     /// <summary>
@@ -154,6 +174,14 @@ public class Compiler
     {
         _logger.LogInfo($"Starting {(analyzeOnly ? "analysis" : "compilation")} of {filePath}");
         var metrics = new CompilationMetrics(fileName: filePath);
+
+        // Module discovery ran in the constructor (loading referenced assemblies/stdlib),
+        // before this metrics object existed — surface it as a first-class phase.
+        if (_discoveryTime > TimeSpan.Zero)
+        {
+            metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, _discoveryTime);
+        }
+
         var diagnostics = new DiagnosticBag(_options.WarningsAsErrors, _options.SuppressedWarnings);
         var result = new CompilationResultBuilder(diagnostics, metrics);
         var assertionTimer = new Stopwatch();

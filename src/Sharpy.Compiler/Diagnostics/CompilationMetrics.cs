@@ -192,6 +192,35 @@ public class CompilationMetrics
     }
 
     /// <summary>
+    /// Record a phase that ran to completion before this metrics object existed.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="StartPhase(string)"/>/<see cref="EndPhase"/>, which time a phase
+    /// live, this appends an already-completed <see cref="PhaseMetric"/> from a caller-supplied
+    /// duration. Used for phases such as module discovery that run in the compiler constructor —
+    /// before any metrics object is created — where only the elapsed time is known.
+    /// </remarks>
+    /// <param name="name">The phase name (see <see cref="CompilerPhaseNames"/>).</param>
+    /// <param name="duration">The measured duration of the phase.</param>
+    /// <param name="memoryDelta">Optional memory delta in bytes; defaults to 0 (unmeasured).</param>
+    public void RecordExternalPhase(string name, TimeSpan duration, long memoryDelta = 0)
+    {
+        if (_currentPhase != null)
+        {
+            throw new InvalidOperationException($"Cannot record external phase '{name}' while phase '{_currentPhase.Name}' is still running");
+        }
+
+        _phases.Add(new PhaseMetric
+        {
+            Name = name,
+            StartTime = DateTime.UtcNow,
+            EndTime = DateTime.UtcNow + duration,
+            MemoryBefore = 0,
+            MemoryAfter = memoryDelta
+        });
+    }
+
+    /// <summary>
     /// Get all recorded phase metrics
     /// </summary>
     public IReadOnlyList<PhaseMetric> Phases => _phases.AsReadOnly();
@@ -387,6 +416,7 @@ public class ProjectCompilationMetrics
     private readonly string _configuration;
     private readonly DateTime _startTime;
     private CompilationMetrics? _assemblyMetrics;
+    private TimeSpan _discoveryTime;
 
     public ProjectCompilationMetrics(string projectName, string configuration)
     {
@@ -421,6 +451,21 @@ public class ProjectCompilationMetrics
     {
         _assemblyMetrics = metrics;
     }
+
+    /// <summary>
+    /// Record the time spent in module discovery (loading referenced assemblies and
+    /// NuGet packages) for the whole project. This runs before per-file compilation and
+    /// is distinct from the assembly compiler's Reference Resolution phase.
+    /// </summary>
+    public void SetDiscoveryTime(TimeSpan duration)
+    {
+        _discoveryTime = duration;
+    }
+
+    /// <summary>
+    /// Get the time spent in module discovery for the project.
+    /// </summary>
+    public TimeSpan DiscoveryTime => _discoveryTime;
 
     /// <summary>
     /// Get metrics for all files
@@ -486,7 +531,7 @@ public class ProjectCompilationMetrics
         {
             var fileTotal = _fileMetrics.Sum(m => m.TotalDuration.TotalMilliseconds);
             var assemblyTotal = _assemblyMetrics?.TotalDuration.TotalMilliseconds ?? 0;
-            return TimeSpan.FromMilliseconds(fileTotal + assemblyTotal);
+            return TimeSpan.FromMilliseconds(fileTotal + assemblyTotal + _discoveryTime.TotalMilliseconds);
         }
     }
 
@@ -516,6 +561,12 @@ public class ProjectCompilationMetrics
         sb.AppendLine(FormattableString.Invariant($"Timestamp: {_startTime:yyyy-MM-dd HH:mm:ss} UTC"));
         sb.AppendLine(FormattableString.Invariant($"Files Compiled: {TotalFiles}"));
         sb.AppendLine();
+
+        if (_discoveryTime > TimeSpan.Zero)
+        {
+            sb.AppendLine(FormattableString.Invariant($"{CompilerPhaseNames.ModuleDiscovery}: {_discoveryTime.TotalMilliseconds:F2} ms"));
+            sb.AppendLine();
+        }
 
         sb.AppendLine("Aggregate Phase Breakdown:");
         sb.AppendLine(CultureInfo.InvariantCulture, $"{"Phase",-30} {"Total Duration",-15} {"Total Memory Delta",-20}");
@@ -564,6 +615,7 @@ public class ProjectCompilationMetrics
             total_files = TotalFiles,
             total_duration_ms = TotalDuration.TotalMilliseconds,
             total_memory_delta_bytes = TotalMemoryDelta,
+            module_discovery_time_ms = _discoveryTime.TotalMilliseconds,
             aggregate_phases = aggregates.Select(kvp => new
             {
                 phase = kvp.Key,
