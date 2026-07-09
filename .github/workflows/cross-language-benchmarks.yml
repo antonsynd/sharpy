@@ -160,6 +160,31 @@ jobs:
 
             lines.append(f"| {name} | {fmt(py_t)} | {fmt(spy_t)} | {fmt(cs_t)} | {ratio(spy_t, cs_t)} |")
 
+        # Sharpy per-phase compile breakdown (from --metrics-format json).
+        PHASE_ORDER = [
+            "Module Discovery", "Lexical Analysis", "Syntax Analysis",
+            "Name Resolution", "Import Resolution", "Type Checking",
+            "Code Generation", "C# Parsing", "Reference Resolution",
+            "Roslyn Compilation", "IL Emission",
+        ]
+        phase_rows = []
+        for name in sorted(benchmarks):
+            phases = benchmarks[name].get("Sharpy", {}).get("compile_phases")
+            if phases:
+                phase_rows.append((name, phases))
+
+        if phase_rows:
+            lines += [
+                "",
+                "## Sharpy Compile Phase Breakdown",
+                "",
+                "| Benchmark | " + " | ".join(PHASE_ORDER) + " |",
+                "|-----------|" + "|".join(["--------"] * len(PHASE_ORDER)) + "|",
+            ]
+            for name, phases in phase_rows:
+                cells = " | ".join(fmt(phases.get(p, 0)) for p in PHASE_ORDER)
+                lines.append(f"| {name} | {cells} |")
+
         lines += [
             "",
             "> **Spy/Py < 1.0** = Sharpy execution faster than Python. "

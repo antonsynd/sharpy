@@ -51,6 +51,9 @@ class BenchResult:
     total_seconds: float
     success: bool
     error: str = ""
+    # Per-phase Sharpy compile breakdown {phase_name: seconds}. Only populated for
+    # Sharpy results; other languages leave it None and omit it from JSON output.
+    compile_phases: dict[str, float] | None = None
 
 
 def find_benchmarks(names: list[str] | None = None) -> list[Path]:
@@ -133,16 +136,57 @@ def execute_python(bench_dir: Path) -> tuple[float, bool, str]:
 
 # --- Sharpy ---
 
+def sharpy_metrics_path(tmp_dir: Path) -> Path:
+    """Location of the per-compile metrics JSON written by compile_sharpy."""
+    return tmp_dir / "metrics.json"
+
+
+def parse_sharpy_compile_phases(metrics_file: Path) -> dict[str, float]:
+    """Parse a Sharpy --metrics-format json document into {phase_name: seconds}.
+
+    The single-file 'compile' command emits a combined document of the shape
+    {"frontend": {"phases": [...]}, "assembly": {"phases": [...]}} where each
+    phase entry has "phase" and "duration_ms". Durations are converted to
+    seconds and the front-end and assembly phases are merged into one dict
+    (their phase names are disjoint). Returns an empty dict if the file is
+    missing or malformed, so metrics collection never breaks a benchmark run.
+    """
+    try:
+        with open(metrics_file) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    phases: dict[str, float] = {}
+    for section in ("frontend", "assembly"):
+        section_data = data.get(section) if isinstance(data, dict) else None
+        if not isinstance(section_data, dict):
+            continue
+        for entry in section_data.get("phases", []):
+            name = entry.get("phase")
+            duration_ms = entry.get("duration_ms")
+            if name is not None and duration_ms is not None:
+                phases[name] = duration_ms / 1000.0
+    return phases
+
+
 def compile_sharpy(cli_dll: Path, spy_file: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
     """Compile .spy to .dll via the Sharpy CLI 'compile' command.
 
     This measures the full Sharpy-to-.NET-assembly pipeline (front-end +
     codegen + Roslyn assembly generation), matching how the C# benchmark
     times 'dotnet build'. Returns (time, success, error, output_dll).
+
+    A per-phase metrics JSON is written to ``sharpy_metrics_path(tmp_dir)`` via
+    ``--metrics-format json``; callers parse it with ``parse_sharpy_compile_phases``.
+    The wall-clock ``elapsed`` remains the authoritative compile time — the
+    phase breakdown is a diagnostic detail, not a replacement.
     """
     output_dll = tmp_dir / "bench_output.dll"
+    metrics_file = sharpy_metrics_path(tmp_dir)
     cmd = [
-        "dotnet", str(cli_dll), "compile", str(spy_file), "-o", str(output_dll)
+        "dotnet", str(cli_dll), "compile", str(spy_file), "-o", str(output_dll),
+        "--metrics-format", "json", "--metrics-output", str(metrics_file),
     ]
     start = time.perf_counter()
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -283,8 +327,10 @@ def run_benchmark(
                         exec_err = err
                         break
                 exec_t = median(exec_times) if exec_ok else exec_times[0]
+                compile_phases = parse_sharpy_compile_phases(sharpy_metrics_path(tmp_path))
                 results["Sharpy"] = BenchResult(
-                    bench_dir.name, "Sharpy", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err
+                    bench_dir.name, "Sharpy", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err,
+                    compile_phases=compile_phases or None,
                 )
 
     if "C#" in langs:
@@ -399,6 +445,7 @@ def merge_results(
                 total_seconds=entry["total_seconds"],
                 success=entry["success"],
                 error=entry.get("error", ""),
+                compile_phases=entry.get("compile_phases"),
             )
     return all_results
 
@@ -407,7 +454,7 @@ def results_to_json(all_results: dict[str, dict[str, BenchResult]]) -> list[dict
     output = []
     for name in sorted(all_results):
         for lang, r in all_results[name].items():
-            output.append({
+            entry = {
                 "name": r.name,
                 "language": r.language,
                 "compile_seconds": r.compile_seconds,
@@ -415,7 +462,11 @@ def results_to_json(all_results: dict[str, dict[str, BenchResult]]) -> list[dict
                 "total_seconds": r.total_seconds,
                 "success": r.success,
                 "error": r.error,
-            })
+            }
+            # Per-phase Sharpy breakdown is optional; other languages omit the key.
+            if r.compile_phases:
+                entry["compile_phases"] = r.compile_phases
+            output.append(entry)
     return output
 
 
