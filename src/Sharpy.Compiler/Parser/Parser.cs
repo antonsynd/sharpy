@@ -84,13 +84,25 @@ public partial class Parser
     private IReadOnlyList<Trivia>? _headerTrailingTrivia;
     private bool _headerTriviaCaptured;
 
-    public Parser(List<Token> tokens, ICompilerLogger? logger = null, int maxErrors = 25, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Enabled experimental feature flags. Carried for parser-scoped feature gates
+    /// (roadmap C2); no parser feature is gated yet, but the flags are threaded here so
+    /// future gated syntax can consult them without another plumbing change.
+    /// </summary>
+    private readonly Shared.FeatureFlags _features;
+
+    /// <summary>The feature flags in effect for this parse.</summary>
+    internal Shared.FeatureFlags Features => _features;
+
+    public Parser(List<Token> tokens, ICompilerLogger? logger = null, int maxErrors = 25, CancellationToken cancellationToken = default,
+        Shared.FeatureFlags? features = null)
     {
         _tokens = tokens;
         _position = 0;
         _logger = logger ?? NullLogger.Instance;
         _maxErrors = maxErrors > 0 ? maxErrors : 25;
         _cancellationToken = cancellationToken;
+        _features = features ?? Shared.FeatureFlags.None;
         _logger.LogInfo($"Parser initialized, token count: {tokens.Count}");
     }
 

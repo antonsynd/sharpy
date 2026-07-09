@@ -667,7 +667,8 @@ internal partial class ProjectCompiler
                     fileSemanticBinding: localBinding,
                     deferredCycleSymbols: deferredSymbols,
                     deferredCycleFiles: deferredFiles,
-                    moduleRegistry: _moduleRegistry);
+                    moduleRegistry: _moduleRegistry,
+                    features: _features);
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)

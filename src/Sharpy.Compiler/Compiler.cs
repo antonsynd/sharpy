@@ -198,7 +198,7 @@ public class Compiler
             LogPhaseStart(CompilerPhaseNames.LexicalAnalysis, filePath);
             var sourceText = new SourceText(sourceCode, filePath);
             result.SourceText = sourceText;
-            var lexResult = FileCompilationPipeline.Lex(sourceText, _logger, _options.MaxErrors, cancellationToken, preserveTrivia);
+            var lexResult = FileCompilationPipeline.Lex(sourceText, _logger, _options.MaxErrors, cancellationToken, preserveTrivia, _options.Features);
             result.Tokens = lexResult.Tokens;
             metrics.TokenCount = lexResult.Tokens.Count;
             if (preserveTrivia)
@@ -214,7 +214,7 @@ public class Compiler
             metrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
             LogPhaseStart(CompilerPhaseNames.SyntaxAnalysis, filePath, lexResult.Tokens.Count);
             var parserMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 25;
-            var parseResult = FileCompilationPipeline.Parse(lexResult.Tokens, _logger, parserMaxErrors, cancellationToken);
+            var parseResult = FileCompilationPipeline.Parse(lexResult.Tokens, _logger, parserMaxErrors, cancellationToken, _options.Features);
             var module = parseResult.Module;
             result.Module = module;
             if (module != null)
@@ -288,7 +288,7 @@ public class Compiler
             var typeCheckResult = pipeline.TypeCheck(
                 module, filePath, isEntryPoint, _options.MaxErrors, diagnostics,
                 computeCodeGenInfo: true, cancellationToken: cancellationToken,
-                moduleRegistry: _moduleRegistry);
+                moduleRegistry: _moduleRegistry, features: _options.Features);
             var typeChecker = typeCheckResult.TypeChecker;
 
             if (typeCheckResult.Aborted)

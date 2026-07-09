@@ -206,6 +206,12 @@ public partial class Lexer
     public int MaxErrors { get; set; } = 25;
 
     /// <summary>
+    /// Enabled experimental feature flags. Carried for future lexer/parser-scoped
+    /// feature gates (roadmap C2); no lexer feature is gated yet.
+    /// </summary>
+    public Shared.FeatureFlags Features { get; set; } = Shared.FeatureFlags.None;
+
+    /// <summary>
     /// Tokenize the entire source into a list of tokens.
     /// Lexer errors are collected into Diagnostics instead of propagating.
     /// On error, the lexer attempts to recover by skipping to the next newline

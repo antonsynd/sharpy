@@ -76,6 +76,14 @@ internal partial class TypeChecker
     public int MaxErrors { get; set; } = 100;
     private bool _maxErrorsReported = false;
 
+    /// <summary>
+    /// Enabled experimental feature flags for this compilation. Semantic/codegen-scoped
+    /// features consult this via <see cref="Shared.FeatureFlags.IsEnabled"/> to alter
+    /// analysis. Compilation-wide flags flow in here from <see cref="CompilerOptions.Features"/>;
+    /// per-file <c>from __future__ import</c> flags are unioned in during import resolution.
+    /// </summary>
+    public Shared.FeatureFlags Features { get; set; } = Shared.FeatureFlags.None;
+
     // Whether the current module is an entry point file
     private bool _isEntryPoint = false;
 

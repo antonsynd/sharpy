@@ -86,7 +86,8 @@ internal class FileCompilationPipeline
         SemanticBinding? fileSemanticBinding = null,
         IReadOnlySet<string>? deferredCycleSymbols = null,
         IReadOnlySet<string>? deferredCycleFiles = null,
-        ModuleRegistry? moduleRegistry = null)
+        ModuleRegistry? moduleRegistry = null,
+        Shared.FeatureFlags? features = null)
     {
         var effectiveSemanticInfo = fileSemanticInfo ?? _semanticInfo;
         var effectiveBinding = fileSemanticBinding ?? _semanticBinding;
@@ -100,7 +101,8 @@ internal class FileCompilationPipeline
             MaxErrors = semanticMaxErrors,
             DeferredCycleSymbols = deferredCycleSymbols,
             DeferredCycleFiles = deferredCycleFiles,
-            ModuleRegistry = moduleRegistry
+            ModuleRegistry = moduleRegistry,
+            Features = features ?? Shared.FeatureFlags.None
         };
 
         // Import root causes so TypeChecker can suppress cascading errors
@@ -141,13 +143,15 @@ internal class FileCompilationPipeline
     /// </summary>
     public static LexResult Lex(
         SourceText sourceText, ICompilerLogger logger, int maxErrors = 0,
-        CancellationToken cancellationToken = default, bool preserveTrivia = false)
+        CancellationToken cancellationToken = default, bool preserveTrivia = false,
+        Shared.FeatureFlags? features = null)
     {
         var lexer = new Lexer.Lexer(sourceText, logger, cancellationToken: cancellationToken, preserveTrivia: preserveTrivia);
         if (maxErrors > 0)
         {
             lexer.MaxErrors = maxErrors;
         }
+        lexer.Features = features ?? Shared.FeatureFlags.None;
         var tokens = lexer.TokenizeAll();
 
         Debug.Assert(tokens.Count > 0, "Lexer should produce at least one token (EOF)");
@@ -160,10 +164,10 @@ internal class FileCompilationPipeline
     /// </summary>
     public static PipelineParseResult Parse(
         IReadOnlyList<Token> tokens, ICompilerLogger logger, int maxErrors = 25,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, Shared.FeatureFlags? features = null)
     {
         var tokenList = tokens as List<Token> ?? new List<Token>(tokens);
-        var parser = new Parser.Parser(tokenList, logger, maxErrors, cancellationToken);
+        var parser = new Parser.Parser(tokenList, logger, maxErrors, cancellationToken, features);
         var module = parser.ParseModule();
 
         if (module != null)

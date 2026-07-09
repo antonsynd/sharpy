@@ -89,7 +89,7 @@ internal partial class ProjectCompiler
 
                 fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
                 var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
-                var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, cancellationToken);
+                var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, cancellationToken, _features);
                 var module = parser.ParseModule();
                 fileMetrics.EndPhase();
 
@@ -228,7 +228,7 @@ internal partial class ProjectCompiler
 
                     fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
                     var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
-                    var parser = new Parser.Parser(tokens, _logger, parserMaxErrors);
+                    var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, features: _features);
                     var module = parser.ParseModule();
                     fileMetrics.EndPhase();
 

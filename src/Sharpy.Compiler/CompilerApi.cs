@@ -193,8 +193,20 @@ public sealed class CompilerApi
     /// <param name="cancellationToken">Cancellation token for cooperative cancellation.</param>
     /// <returns>A <see cref="SemanticResult"/> with the analysis outcome.</returns>
     public SemanticResult Analyze(string source, CancellationToken cancellationToken = default)
+        => Analyze(source, new CompilerOptions { OutputType = "library" }, cancellationToken);
+
+    /// <summary>
+    /// Analyzes Sharpy source code with explicit compiler options (e.g. to supply
+    /// <see cref="CompilerOptions.Features"/>). This is the seam through which the LSP
+    /// passes workspace-level options into analysis.
+    /// </summary>
+    /// <param name="source">The Sharpy source code to analyze.</param>
+    /// <param name="options">Compiler options for this analysis.</param>
+    /// <param name="cancellationToken">Cancellation token for cooperative cancellation.</param>
+    /// <returns>A <see cref="SemanticResult"/> with the analysis outcome.</returns>
+    public SemanticResult Analyze(string source, CompilerOptions options, CancellationToken cancellationToken = default)
     {
-        var opts = new CompilerOptions { OutputType = "library" };
+        var opts = options ?? new CompilerOptions { OutputType = "library" };
         MergeDefaultReferences(opts);
         var compiler = new Compiler(opts, _logger, _emitterFactory);
         var result = compiler.Analyze(source, "<source>", cancellationToken, preserveTrivia: true);

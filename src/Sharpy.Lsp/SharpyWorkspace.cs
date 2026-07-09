@@ -110,7 +110,7 @@ internal sealed class DocumentState : IDisposable
         }
     }
 
-    public async Task<SemanticResult> GetOrRunAnalysisAsync(CompilerApi api, CancellationToken ct)
+    public async Task<SemanticResult> GetOrRunAnalysisAsync(CompilerApi api, CompilerOptions options, CancellationToken ct)
     {
         lock (_stateLock)
         {
@@ -187,7 +187,7 @@ internal sealed class DocumentState : IDisposable
             }
 
             var result = await Task.Run(
-                () => api.Analyze(text, scope.Token),
+                () => api.Analyze(text, options, scope.Token),
                 scope.Token
             ).ConfigureAwait(false);
 
@@ -286,6 +286,11 @@ internal sealed class SharpyWorkspace : IDisposable
     private readonly CompilerApi _api;
     private readonly ILogger<SharpyWorkspace> _logger;
 
+    // Workspace-level compiler options passed to analysis. This is the seam through
+    // which experimental FeatureFlags reach LSP analysis; sourcing them from a
+    // workspace .spyproj is follow-up work (roadmap C1).
+    private readonly CompilerOptions _workspaceOptions = new() { OutputType = "library" };
+
     // Debounce timers per document
     private readonly ConcurrentDictionary<string, Timer> _debounceTimers = new();
     private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(300);
@@ -347,7 +352,7 @@ internal sealed class SharpyWorkspace : IDisposable
     {
         if (_documents.TryGetValue(uri, out var state))
         {
-            return await state.GetOrRunAnalysisAsync(_api, ct).ConfigureAwait(false);
+            return await state.GetOrRunAnalysisAsync(_api, _workspaceOptions, ct).ConfigureAwait(false);
         }
         return null;
     }
