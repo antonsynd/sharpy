@@ -98,10 +98,20 @@ internal class AssemblyCompiler
             metrics.EndPhase();
 
             var diagnostics = new DiagnosticBag();
-            foreach (var d in emitResult.Diagnostics.Where(d =>
-                         d.Severity == DiagnosticSeverity.Error || d.Severity == DiagnosticSeverity.Warning))
+            foreach (var d in emitResult.Diagnostics)
             {
-                diagnostics.Add(ToCompilerDiagnostic(d));
+                if (d.Severity == DiagnosticSeverity.Error)
+                {
+                    diagnostics.Add(ToCompilerDiagnostic(d));
+                }
+                else if (d.Severity == DiagnosticSeverity.Warning
+                         && !d.Id.StartsWith("CS", StringComparison.Ordinal))
+                {
+                    // Keep non-CS warnings (e.g. analyzer warnings) untouched. Warnings
+                    // with a CS id come from the compiler's own generated C# and are
+                    // internal noise the user cannot act on, so they are dropped below.
+                    diagnostics.Add(ToCompilerDiagnostic(d));
+                }
             }
 
             if (!emitResult.Success)
@@ -338,13 +348,32 @@ internal class AssemblyCompiler
             column = lineSpan.StartLinePosition.Character + 1;
         }
 
+        var rawMessage = diagnostic.GetMessage(CultureInfo.InvariantCulture);
+        var code = diagnostic.Id;
+        var message = rawMessage;
+
+        // Last-chance guard: a raw Roslyn CS error means the compiler emitted invalid C#
+        // that escaped every earlier check. Users must never see a bare CSxxxx code, so
+        // remap it to the SPY0908 internal-error diagnostic. The mapped .spy location
+        // (computed above) is preserved, and the original CS id + text stay in the
+        // message so the bug report loses no information.
+        if (diagnostic.Severity == DiagnosticSeverity.Error
+            && diagnostic.Id.StartsWith("CS", StringComparison.Ordinal))
+        {
+            code = DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError;
+            message =
+                $"internal error: generated C# failed to compile ({diagnostic.Id}: {rawMessage}). "
+                + "This is a Sharpy compiler bug — please report it at "
+                + "https://github.com/antonsynd/sharpy/issues";
+        }
+
         return new CompilerDiagnostic(
-            diagnostic.GetMessage(CultureInfo.InvariantCulture),
+            message,
             severity,
             line,
             column,
             filePath,
-            diagnostic.Id,
+            code,
             CompilerPhase.Assembly);
     }
 

@@ -644,8 +644,8 @@ public static class DiagnosticCodes
     /// <summary>
     /// Infrastructure diagnostic codes (SPY0900-SPY0999).
     /// These cover compiler-level errors not tied to a specific language phase.
-    /// Active: SPY0900-SPY0907 (8 codes)
-    /// Reserved: SPY0908-SPY0999 (92 codes)
+    /// Active: SPY0900-SPY0908 (9 codes)
+    /// Reserved: SPY0909-SPY0999 (91 codes)
     /// </summary>
     public static class Infrastructure
     {
@@ -657,6 +657,7 @@ public static class DiagnosticCodes
         public const string TooManyErrors = "SPY0905";              // Active
         public const string ParserLoopStall = "SPY0906";            // Active
         public const string UnexpectedUnknownType = "SPY0907";      // Active
-        // SPY0908-SPY0999: Reserved for future infrastructure diagnostics
+        public const string GeneratedCodeCompilationError = "SPY0908"; // Active
+        // SPY0909-SPY0999: Reserved for future infrastructure diagnostics
     }
 }

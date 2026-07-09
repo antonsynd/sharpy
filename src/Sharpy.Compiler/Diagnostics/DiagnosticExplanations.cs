@@ -41,6 +41,7 @@ public static partial class DiagnosticExplanations
         var dict = new Dictionary<string, DiagnosticExplanation>(StringComparer.OrdinalIgnoreCase);
 
         AddLexerEntries(dict);
+        AddInfrastructureEntries(dict);
         AddParserEntries(dict);
         AddSemanticEntries(dict);
         AddValidationEntries(dict);
@@ -174,59 +175,6 @@ public static partial class DiagnosticExplanations
             "the generator was invoked but produced no code.",
             null,
             "Check the generator's Generate() method to ensure it returns non-empty source code.");
-
-        // ── Infrastructure errors (SPY0900-SPY0999) ────────────────────
-
-        Add(dict, DiagnosticCodes.Infrastructure.CompilationFailed, "Compilation failed", "Infrastructure",
-            "The overall compilation process failed. This is a summary error that accompanies more specific errors from earlier phases.",
-            null,
-            "Fix the errors reported in earlier phases (lexer, parser, semantic, or code generation).");
-
-        Add(dict, DiagnosticCodes.Infrastructure.CompilationCancelled, "Compilation cancelled", "Infrastructure",
-            "The compilation was cancelled, either by user request or by a timeout. No output was produced.",
-            null,
-            "Re-run the compilation. If it keeps timing out, check for very large files or circular dependencies.");
-
-        Add(dict, DiagnosticCodes.Infrastructure.AssemblyCompilationFailed, "Assembly compilation failed", "Infrastructure",
-            "The Roslyn C# compilation of the generated code failed. This means the compiler produced C# code that the .NET compiler could not compile.",
-            null,
-            "This is likely an internal compiler error. Report it at https://github.com/antonsynd/sharpy/issues with the source file.");
-
-        Add(dict, DiagnosticCodes.Infrastructure.FileReadError, "File read error", "Infrastructure",
-            "A source file could not be read from disk. This may be due to missing files, permission issues, or invalid file paths.",
-            null,
-            "Verify the file exists, the path is correct, and you have read permissions.");
-
-        Add(dict, DiagnosticCodes.Infrastructure.InvariantViolation, "Internal invariant violation", "Infrastructure",
-            "An internal compiler invariant was violated. This is a compiler bug — " +
-            "the semantic pipeline produced data that fails a post-phase consistency check. " +
-            "The compilation may still succeed, but the generated code could be incorrect.",
-            null,
-            "Report this error at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
-
-        Add(dict, DiagnosticCodes.Infrastructure.TooManyErrors, "Too many errors", "Infrastructure",
-            "The compiler stopped reporting errors because the maximum error limit was reached. " +
-            "Additional errors may exist but were suppressed. The reported errors should be fixed first, " +
-            "as later errors are often caused by earlier ones.",
-            null,
-            "Fix the reported errors and re-compile. Use '--max-errors N' to increase the limit if needed.");
-
-        Add(dict, DiagnosticCodes.Infrastructure.ParserLoopStall, "Parser loop stall detected", "Infrastructure",
-            "The parser detected that it made no progress in a parsing loop. This is a safety mechanism " +
-            "that prevents the parser from hanging on malformed input. The parser forcibly advanced past " +
-            "the problematic token to continue parsing. This warning indicates the input may be malformed " +
-            "or there is an edge case in the parser that should be reported.",
-            null,
-            "Check the source code at the indicated location for syntax errors. If the input looks correct, " +
-            "report this at https://github.com/antonsynd/sharpy/issues with the source file.");
-
-        Add(dict, DiagnosticCodes.Infrastructure.UnexpectedUnknownType, "Unexpected unknown type", "Infrastructure",
-            "Type inference produced an UnknownType for an expression without a corresponding error diagnostic. " +
-            "This indicates a gap in the type checker where a type could not be resolved but no user-facing error " +
-            "was emitted. This is distinct from error-recovery Unknown types, which are expected when the user " +
-            "writes invalid code.",
-            null,
-            "Report this at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it.");
 
         // ── Informational diagnostics (SPY1000-SPY1099) ────────────────────
 
