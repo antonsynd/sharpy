@@ -1,6 +1,5 @@
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Diagnostics;
-using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Text;
 
@@ -332,23 +331,23 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
     private static ConventionRule GetConventionRule(IdentifierCategory category) => category switch
     {
         IdentifierCategory.Method =>
-            new ConventionRule(_snakeForms, "snake_case", "methods and functions", ReverseNameMangler.ToSnakeCase),
+            new ConventionRule(_snakeForms, "snake_case", "methods and functions", NameMangler.ToSnakeCase),
         IdentifierCategory.Parameter =>
-            new ConventionRule(_snakeForms, "snake_case", "parameters", ReverseNameMangler.ToSnakeCase),
+            new ConventionRule(_snakeForms, "snake_case", "parameters", NameMangler.ToSnakeCase),
         IdentifierCategory.Variable =>
-            new ConventionRule(_snakeForms, "snake_case", "variables", ReverseNameMangler.ToSnakeCase),
+            new ConventionRule(_snakeForms, "snake_case", "variables", NameMangler.ToSnakeCase),
         IdentifierCategory.Property =>
-            new ConventionRule(_snakeForms, "snake_case", "properties", ReverseNameMangler.ToSnakeCase),
+            new ConventionRule(_snakeForms, "snake_case", "properties", NameMangler.ToSnakeCase),
         IdentifierCategory.Event =>
-            new ConventionRule(_snakeForms, "snake_case", "events", ReverseNameMangler.ToSnakeCase),
+            new ConventionRule(_snakeForms, "snake_case", "events", NameMangler.ToSnakeCase),
         IdentifierCategory.Constant =>
-            new ConventionRule(_screamingForms, "SCREAMING_SNAKE_CASE", "constants", ReverseNameMangler.ToScreamingSnakeCase),
+            new ConventionRule(_screamingForms, "SCREAMING_SNAKE_CASE", "constants", NameMangler.ToScreamingSnakeCase),
         IdentifierCategory.EnumValue =>
-            new ConventionRule(_screamingForms, "SCREAMING_SNAKE_CASE", "enum values", ReverseNameMangler.ToScreamingSnakeCase),
+            new ConventionRule(_screamingForms, "SCREAMING_SNAKE_CASE", "enum values", NameMangler.ToScreamingSnakeCase),
         IdentifierCategory.Type =>
             new ConventionRule(_pascalForms, "PascalCase", "types", NameMangler.ToPascalCase),
         IdentifierCategory.UnionCase =>
             new ConventionRule(_pascalForms, "PascalCase", "tagged union cases", NameMangler.ToPascalCase),
-        _ => new ConventionRule(_snakeForms, "snake_case", "identifiers", ReverseNameMangler.ToSnakeCase),
+        _ => new ConventionRule(_snakeForms, "snake_case", "identifiers", NameMangler.ToSnakeCase),
     };
 }

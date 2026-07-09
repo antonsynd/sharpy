@@ -1,8 +1,7 @@
-using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Shared;
 using Xunit;
 
-namespace Sharpy.Compiler.Tests.Discovery;
+namespace Sharpy.Compiler.Tests.CodeGen;
 
 public class ReverseNameManglerTests
 {
@@ -33,7 +32,7 @@ public class ReverseNameManglerTests
     [InlineData("ReadAllText", "read_all_text")]
     public void ToSnakeCase_ConvertsCorrectly(string input, string expected)
     {
-        var result = ReverseNameMangler.ToSnakeCase(input);
+        var result = NameMangler.ToSnakeCase(input);
         Assert.Equal(expected, result);
     }
 
@@ -43,38 +42,38 @@ public class ReverseNameManglerTests
     [InlineData("SHA256Managed", "SHA256_MANAGED")]
     public void ToScreamingSnakeCase_ConvertsCorrectly(string input, string expected)
     {
-        var result = ReverseNameMangler.ToScreamingSnakeCase(input);
+        var result = NameMangler.ToScreamingSnakeCase(input);
         Assert.Equal(expected, result);
     }
 
     [Fact]
     public void ToSharpyName_EnumMember_ReturnsScreamingSnakeCase()
     {
-        Assert.Equal("DARK_BLUE", ReverseNameMangler.ToSharpyName("DarkBlue", ReverseNameContext.EnumMember));
+        Assert.Equal("DARK_BLUE", NameMangler.ToSharpyName("DarkBlue", ReverseNameContext.EnumMember));
     }
 
     [Fact]
     public void ToSharpyName_Constant_ReturnsScreamingSnakeCase()
     {
-        Assert.Equal("MAX_RETRY_COUNT", ReverseNameMangler.ToSharpyName("MaxRetryCount", ReverseNameContext.Constant));
+        Assert.Equal("MAX_RETRY_COUNT", NameMangler.ToSharpyName("MaxRetryCount", ReverseNameContext.Constant));
     }
 
     [Fact]
     public void ToSharpyName_Method_ReturnsSnakeCase()
     {
-        Assert.Equal("get_user_name", ReverseNameMangler.ToSharpyName("GetUserName", ReverseNameContext.Method));
+        Assert.Equal("get_user_name", NameMangler.ToSharpyName("GetUserName", ReverseNameContext.Method));
     }
 
     [Fact]
     public void ToSharpyName_Type_PreservesName()
     {
-        Assert.Equal("StringBuilder", ReverseNameMangler.ToSharpyName("StringBuilder", ReverseNameContext.Type));
+        Assert.Equal("StringBuilder", NameMangler.ToSharpyName("StringBuilder", ReverseNameContext.Type));
     }
 
     [Fact]
     public void ToSharpyName_Interface_PreservesName()
     {
-        Assert.Equal("IComparable", ReverseNameMangler.ToSharpyName("IComparable", ReverseNameContext.Interface));
+        Assert.Equal("IComparable", NameMangler.ToSharpyName("IComparable", ReverseNameContext.Interface));
     }
 
     [Theory]
@@ -90,7 +89,7 @@ public class ReverseNameManglerTests
     public void RoundTrip_SnakeCase_IsIdentity(string input)
     {
         var forward = NameMangler.ToPascalCase(input);
-        var reverse = ReverseNameMangler.ToSnakeCase(forward);
+        var reverse = NameMangler.ToSnakeCase(forward);
         Assert.Equal(input, reverse);
     }
 
@@ -108,7 +107,7 @@ public class ReverseNameManglerTests
     public void RoundTrip_NonSnakeCase_MayNotBeIdentity(string input, string expectedOutput)
     {
         var forward = NameMangler.ToPascalCase(input);
-        var reverse = ReverseNameMangler.ToSnakeCase(forward);
+        var reverse = NameMangler.ToSnakeCase(forward);
         Assert.Equal(expectedOutput, reverse);
     }
 }

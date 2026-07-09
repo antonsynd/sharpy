@@ -346,7 +346,7 @@ internal class CachedModuleDiscovery
         {
             typeSymbol.Properties.Add(new PropertySymbol
             {
-                Name = ReverseNameMangler.ToSharpyName(p.Name, ReverseNameContext.Property),
+                Name = NameMangler.ToSharpyName(p.Name, ReverseNameContext.Property),
                 Type = ConvertTypeSignature(p.PropertyType, sharedTypeParams),
                 HasGetter = p.HasGetter,
                 HasSetter = p.HasSetter,

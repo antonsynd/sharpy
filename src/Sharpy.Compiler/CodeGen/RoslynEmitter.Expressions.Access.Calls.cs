@@ -1356,7 +1356,7 @@ internal partial class RoslynEmitter
         {
             // A CLR name already written verbatim (PascalCase) should be left untouched;
             // only match when the Sharpy (reverse-mangled) form equals the written name.
-            if (Discovery.ReverseNameMangler.ToSharpyName(method.Name, Discovery.ReverseNameContext.Method) == memberName)
+            if (NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method) == memberName)
             {
                 if (resolved != null && resolved != method.Name)
                 {

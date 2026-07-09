@@ -577,7 +577,7 @@ internal class BuiltinRegistry
 
         var signature = new FunctionSignature
         {
-            Name = ReverseNameMangler.ToSharpyName(method.Name, ReverseNameContext.Method),
+            Name = NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method),
             ReturnType = CreateTypeSignatureFromClr(method.ReturnType, typeMapper),
         };
 

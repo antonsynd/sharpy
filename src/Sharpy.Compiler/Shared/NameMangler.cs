@@ -1,7 +1,12 @@
+using System.Text.RegularExpressions;
+
 namespace Sharpy.Compiler.Shared;
 
 /// <summary>
-/// Converts Sharpy naming conventions to C# naming conventions
+/// Bidirectional authority for Sharpy&lt;-&gt;C# name transformations.
+/// The forward direction (Sharpy -> C#) mangles snake_case/SCREAMING_SNAKE_CASE to
+/// PascalCase/camelCase; the reverse direction (C#/.NET -> Sharpy) demangles PascalCase
+/// back to snake_case/SCREAMING_SNAKE_CASE for discovered .NET APIs.
 /// </summary>
 internal static class NameMangler
 {
@@ -385,6 +390,81 @@ internal static class NameMangler
     {
         return CSharpKeywords.EscapeIfNeeded(name);
     }
+
+    // ------------------------------------------------------------------
+    // Reverse direction: C#/.NET PascalCase -> Sharpy snake_case forms.
+    // Used when discovering .NET APIs (see Discovery.Caching.OverloadIndexBuilder).
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Splits a PascalCase/camelCase name into underscore-delimited words using a
+    /// 3-pass regex algorithm, without changing letter case:
+    /// <list type="number">
+    /// <item>Pass 1: Acronym boundaries (XMLParser → XML_Parser)</item>
+    /// <item>Pass 2: Digit→word boundaries (Base64Encoder → Base64_Encoder)</item>
+    /// <item>Pass 3: camelCase boundaries (getUserName → get_User_Name)</item>
+    /// </list>
+    /// Shared by <see cref="ToSnakeCase"/> and <see cref="ToScreamingSnakeCase"/>.
+    /// </summary>
+    private static string SplitWordBoundaries(string name)
+    {
+        // Pass 1: Acronym boundaries (XMLParser → XML_Parser)
+        name = Regex.Replace(name, "([A-Z]+)([A-Z][a-z])", "$1_$2");
+        // Pass 2: Digit→word boundaries (Base64Encoder → Base64_Encoder)
+        name = Regex.Replace(name, "([0-9])([A-Z][a-z])", "$1_$2");
+        // Pass 3: camelCase boundaries (getUserName → get_User_Name)
+        name = Regex.Replace(name, "([a-z])([A-Z])", "$1_$2");
+        return name;
+    }
+
+    /// <summary>
+    /// Converts a PascalCase name to snake_case.
+    /// </summary>
+    public static string ToSnakeCase(string name)
+    {
+        return SplitWordBoundaries(name).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Converts a PascalCase name to SCREAMING_SNAKE_CASE using the same word splitting
+    /// as <see cref="ToSnakeCase"/>, but joins with uppercase.
+    /// </summary>
+    public static string ToScreamingSnakeCase(string name)
+    {
+        return SplitWordBoundaries(name).ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Converts a C#/.NET name to the appropriate Sharpy convention based on context:
+    /// <list type="bullet">
+    /// <item>Method/Property/Parameter → snake_case</item>
+    /// <item>EnumMember/Constant → SCREAMING_SNAKE_CASE</item>
+    /// <item>Type/Interface → preserved as-is</item>
+    /// </list>
+    /// </summary>
+    public static string ToSharpyName(string name, ReverseNameContext context)
+    {
+        return context switch
+        {
+            ReverseNameContext.Type or ReverseNameContext.Interface => name,
+            ReverseNameContext.EnumMember or ReverseNameContext.Constant => ToScreamingSnakeCase(name),
+            _ => ToSnakeCase(name)
+        };
+    }
+}
+
+/// <summary>
+/// Context for reverse name mangling, determining the target casing convention.
+/// </summary>
+public enum ReverseNameContext
+{
+    Method,       // → snake_case
+    Property,     // → snake_case
+    Parameter,    // → snake_case
+    EnumMember,   // → SCREAMING_SNAKE_CASE
+    Constant,     // → SCREAMING_SNAKE_CASE
+    Type,         // → preserved as-is
+    Interface     // → preserved as-is
 }
 
 /// <summary>

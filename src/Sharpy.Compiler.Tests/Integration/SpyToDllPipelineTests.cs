@@ -127,7 +127,7 @@ def another_func() -> int:
 
         var functions = registry.GetModuleFunctions("name_test");
 
-        // Function names round-trip via ReverseNameMangler: snake_case → PascalCase → snake_case
+        // Function names round-trip via NameMangler: snake_case → PascalCase → snake_case
         Assert.Contains(functions, f => f.Name == "my_function");
         Assert.Contains(functions, f => f.Name == "another_func");
     }
