@@ -88,6 +88,13 @@ public class ProjectConfig
     public HashSet<string> SuppressedWarnings { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Experimental feature flags to enable for this project.
+    /// Set via &lt;Features&gt;feature_a;feature_b&lt;/Features&gt; in .spyproj.
+    /// Merged (unioned) with CLI <c>--enable-feature</c> flags at compile entry.
+    /// </summary>
+    public List<string> Features { get; init; } = new();
+
+    /// <summary>
     /// Output directory for compiled assemblies (relative to project directory)
     /// </summary>
     public string OutputPath

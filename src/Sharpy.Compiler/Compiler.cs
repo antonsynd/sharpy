@@ -618,4 +618,12 @@ public class CompilerOptions
     /// When null, single-file compilation uses the global namespace.
     /// </summary>
     public string? Namespace { get; set; }
+
+    /// <summary>
+    /// The set of enabled experimental feature flags. Sourced from
+    /// <c>--enable-feature</c> and <c>&lt;Features&gt;</c> in <c>.spyproj</c>, then
+    /// threaded through the compilation phases. Defaults to
+    /// <see cref="Shared.FeatureFlags.None"/>.
+    /// </summary>
+    public Shared.FeatureFlags Features { get; set; } = Shared.FeatureFlags.None;
 }
