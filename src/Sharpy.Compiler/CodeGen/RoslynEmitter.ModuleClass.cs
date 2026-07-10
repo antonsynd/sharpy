@@ -907,7 +907,7 @@ internal partial class RoslynEmitter
             var fixturePrelude = GenerateFixturePrelude(consumedForFunc);
             var body = Block(preamble
                 .Concat(fixturePrelude)
-                .Concat(func.Body.SelectMany(GenerateBodyStatements)));
+                .Concat(GenerateSuite(func.Body)));
 
             // Build modifiers: always public, never static (xUnit requires instance methods).
             var modifierTokens = new List<SyntaxToken> { Token(SyntaxKind.PublicKeyword) };

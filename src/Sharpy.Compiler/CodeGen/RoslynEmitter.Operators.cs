@@ -270,7 +270,7 @@ internal partial class RoslynEmitter
             var prev = SetupInlinedOperatorScope(funcDef, "left", overrides);
             try
             {
-                var bodyStatements = funcDef.Body.SelectMany(GenerateBodyStatements);
+                var bodyStatements = GenerateSuite(funcDef.Body);
                 operatorBody = Block(bodyStatements);
             }
             finally
@@ -331,7 +331,7 @@ internal partial class RoslynEmitter
             var prev = SetupInlinedOperatorScope(funcDef, "left", overrides);
             try
             {
-                var bodyStatements = funcDef.Body.SelectMany(GenerateBodyStatements);
+                var bodyStatements = GenerateSuite(funcDef.Body);
                 operatorBody = Block(bodyStatements);
             }
             finally
@@ -385,7 +385,7 @@ internal partial class RoslynEmitter
             var prev = SetupInlinedOperatorScope(funcDef, "value", overrides);
             try
             {
-                var bodyStatements = funcDef.Body.SelectMany(GenerateBodyStatements);
+                var bodyStatements = GenerateSuite(funcDef.Body);
                 operatorBody = Block(bodyStatements);
             }
             finally
@@ -647,7 +647,7 @@ internal partial class RoslynEmitter
         var paramName = NameMangler.ToCamelCase(sourceParam.Name);
         var param = Parameter(Identifier(paramName)).WithType(paramType);
 
-        var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
+        var body = Block(GenerateSuite(funcDef.Body));
 
         return ConversionOperatorDeclaration(keyword, returnType)
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
@@ -675,7 +675,7 @@ internal partial class RoslynEmitter
         var param = Parameter(Identifier(paramName)).WithType(paramType);
 
         _variableVersions[paramName] = 0;
-        var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
+        var body = Block(GenerateSuite(funcDef.Body));
         _variableVersions.Remove(paramName);
 
         var conversionOp = ConversionOperatorDeclaration(keyword, returnType)

@@ -55,7 +55,7 @@ internal partial class RoslynEmitter
                 _variableVersions[baseName] = 0;
             }
 
-            var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
+            var body = Block(GenerateSuite(funcDef.Body));
 
             var nextImpl = MethodDeclaration(elementType, "NextImpl")
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)))
@@ -157,7 +157,7 @@ internal partial class RoslynEmitter
         }
 
         // Generate body from user's __reversed__ implementation
-        var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
+        var body = Block(GenerateSuite(funcDef.Body));
 
         // Build parameter list — skip self
         var parameters = funcDef.Parameters
@@ -213,7 +213,7 @@ internal partial class RoslynEmitter
         using var _gen = SetGeneratorScope(true);
         using var _asyncIter = SetAsyncScope(funcDef.IsAsync);
 
-        var body = Block(funcDef.Body.SelectMany(GenerateBodyStatements));
+        var body = Block(GenerateSuite(funcDef.Body));
 
         var parameters = funcDef.Parameters
             .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))

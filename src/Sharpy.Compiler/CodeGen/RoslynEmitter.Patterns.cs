@@ -36,7 +36,7 @@ internal partial class RoslynEmitter
             // Generate body AFTER pattern — pattern registration in _variableVersions
             // must precede body generation so f-strings and other references see the
             // correct mangled variable names.
-            var bodyStatements = matchCase.Body.SelectMany(GenerateBodyStatements).ToList();
+            var bodyStatements = GenerateSuite(matchCase.Body).ToList();
 
             // Only add break if the last statement isn't an unconditional jump
             var lastStatement = bodyStatements.LastOrDefault();

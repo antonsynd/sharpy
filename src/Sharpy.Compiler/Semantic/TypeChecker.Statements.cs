@@ -997,6 +997,129 @@ internal partial class TypeChecker
         _symbolTable.ExitScope();
     }
 
+    private void CheckDefer(DeferStatement deferStmt)
+    {
+        // A defer's cleanup runs on the exit paths of its enclosing block, so it is only
+        // meaningful inside a function or method body. At module or class-body level there
+        // is no scope to attach the cleanup to.
+        if (_currentFunctionReturnType == null)
+        {
+            AddError(
+                "'defer' can only appear inside a function or method body",
+                deferStmt.LineStart, deferStmt.ColumnStart,
+                code: DiagnosticCodes.Semantic.DeferOutsideFunction,
+                span: deferStmt.Span);
+        }
+
+        // The deferred body lowers to a `finally` block, and C# forbids control-flow that
+        // leaves a finally (CS0157). Reject return/yield/break/continue that would escape,
+        // matching issue #1023's rule that "deferred blocks must not return a value".
+        foreach (var stmt in deferStmt.Body)
+            CheckDeferBodyControlFlow(stmt, insideLoop: false);
+
+        _symbolTable.EnterScope("defer");
+        _controlFlowDepth++;
+
+        foreach (var stmt in deferStmt.Body)
+            CheckStatement(stmt);
+
+        _controlFlowDepth--;
+        _symbolTable.ExitScope();
+    }
+
+    /// <summary>
+    /// Reports control-flow statements that would escape a deferred block once it is lowered
+    /// to a <c>finally</c>. <c>return</c> and <c>yield</c> always escape; <c>break</c> and
+    /// <c>continue</c> escape only when they are not enclosed by a loop declared inside the
+    /// deferred body. Nested function/lambda bodies open a new scope and are not traversed.
+    /// </summary>
+    private void CheckDeferBodyControlFlow(Statement stmt, bool insideLoop)
+    {
+        switch (stmt)
+        {
+            case ReturnStatement ret:
+                AddError(
+                    "a deferred statement must not 'return' — control cannot leave a defer block",
+                    ret.LineStart, ret.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DeferControlFlowEscape, span: ret.Span);
+                return;
+
+            case YieldStatement y:
+                AddError(
+                    "a deferred statement must not 'yield' — control cannot leave a defer block",
+                    y.LineStart, y.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DeferControlFlowEscape, span: y.Span);
+                return;
+
+            case BreakStatement brk when !insideLoop:
+                AddError(
+                    "a deferred statement must not 'break' out of its enclosing loop",
+                    brk.LineStart, brk.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DeferControlFlowEscape, span: brk.Span);
+                return;
+
+            case ContinueStatement cont when !insideLoop:
+                AddError(
+                    "a deferred statement must not 'continue' its enclosing loop",
+                    cont.LineStart, cont.ColumnStart,
+                    code: DiagnosticCodes.Semantic.DeferControlFlowEscape, span: cont.Span);
+                return;
+
+            // Loops introduce a new break/continue target, so break/continue inside them
+            // stay within the deferred body. return/yield still escape, so keep descending.
+            case WhileStatement w:
+                foreach (var s in w.Body)
+                    CheckDeferBodyControlFlow(s, insideLoop: true);
+                foreach (var s in w.ElseBody)
+                    CheckDeferBodyControlFlow(s, insideLoop: true);
+                return;
+
+            case ForStatement f:
+                foreach (var s in f.Body)
+                    CheckDeferBodyControlFlow(s, insideLoop: true);
+                foreach (var s in f.ElseBody)
+                    CheckDeferBodyControlFlow(s, insideLoop: true);
+                return;
+
+            case IfStatement ifs:
+                foreach (var s in ifs.ThenBody)
+                    CheckDeferBodyControlFlow(s, insideLoop);
+                foreach (var elif in ifs.ElifClauses)
+                    foreach (var s in elif.Body)
+                        CheckDeferBodyControlFlow(s, insideLoop);
+                foreach (var s in ifs.ElseBody)
+                    CheckDeferBodyControlFlow(s, insideLoop);
+                return;
+
+            case WithStatement with:
+                foreach (var s in with.Body)
+                    CheckDeferBodyControlFlow(s, insideLoop);
+                return;
+
+            case TryStatement t:
+                foreach (var s in t.Body)
+                    CheckDeferBodyControlFlow(s, insideLoop);
+                foreach (var h in t.Handlers)
+                    foreach (var s in h.Body)
+                        CheckDeferBodyControlFlow(s, insideLoop);
+                foreach (var s in t.ElseBody)
+                    CheckDeferBodyControlFlow(s, insideLoop);
+                foreach (var s in t.FinallyBody)
+                    CheckDeferBodyControlFlow(s, insideLoop);
+                return;
+
+            case DeferStatement nested:
+                foreach (var s in nested.Body)
+                    CheckDeferBodyControlFlow(s, insideLoop);
+                return;
+
+            // FunctionDef / ClassDef / lambdas open their own scope: a return inside them
+            // belongs to that scope, not the deferred block, so we stop here.
+            default:
+                return;
+        }
+    }
+
     private static bool IsAssertRaisesExpression(Expression expr)
     {
         return expr is FunctionCall call && call.Function switch

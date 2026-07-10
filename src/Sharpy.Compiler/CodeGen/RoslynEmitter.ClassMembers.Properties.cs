@@ -200,7 +200,7 @@ internal partial class RoslynEmitter
             }
             else
             {
-                var bodyStatements = getItemFunc.Body.SelectMany(GenerateBodyStatements);
+                var bodyStatements = GenerateSuite(getItemFunc.Body);
                 accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                     .WithBody(Block(bodyStatements)));
             }
@@ -230,7 +230,7 @@ internal partial class RoslynEmitter
             }
             else
             {
-                var bodyStatements = setItemFunc.Body.SelectMany(GenerateBodyStatements);
+                var bodyStatements = GenerateSuite(setItemFunc.Body);
                 accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                     .WithBody(Block(bodyStatements)));
             }
@@ -388,7 +388,7 @@ internal partial class RoslynEmitter
                 _variableVersions[baseName] = 0;
             }
 
-            var bodyStatements = customGetter.Body.SelectMany(GenerateBodyStatements);
+            var bodyStatements = GenerateSuite(customGetter.Body);
             accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                 .WithBody(Block(bodyStatements)));
         }
@@ -419,7 +419,7 @@ internal partial class RoslynEmitter
             _declaredVariables.Add("value");
             _variableVersions["value"] = 0;
 
-            var bodyStatements = customSetter.Body.SelectMany(GenerateBodyStatements);
+            var bodyStatements = GenerateSuite(customSetter.Body);
             accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                 .WithBody(Block(bodyStatements)));
         }
@@ -549,7 +549,7 @@ internal partial class RoslynEmitter
             }
             else
             {
-                var bodyStatements = prop.Body.SelectMany(GenerateBodyStatements);
+                var bodyStatements = GenerateSuite(prop.Body);
                 accessor = accessor.WithBody(Block(bodyStatements));
             }
 
@@ -830,7 +830,7 @@ internal partial class RoslynEmitter
                 }
             }
 
-            var bodyStatements = propDef.Body.SelectMany(GenerateBodyStatements);
+            var bodyStatements = GenerateSuite(propDef.Body);
             accessor = accessor.WithBody(Block(bodyStatements));
         }
 
@@ -926,7 +926,7 @@ internal partial class RoslynEmitter
                     _variableVersions[baseName] = 0;
                 }
 
-                var bodyStatements = propDef.Body.SelectMany(GenerateBodyStatements);
+                var bodyStatements = GenerateSuite(propDef.Body);
                 accessors.Add(AccessorDeclaration(accessorKind)
                     .WithBody(Block(bodyStatements)));
             }

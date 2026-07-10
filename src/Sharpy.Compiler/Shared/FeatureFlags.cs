@@ -104,6 +104,14 @@ public sealed class FeatureFlags
                 // Parser-scoped: `@` is always parsed but its use is a syntactic construct, so it
                 // cannot be unlocked per-file via `from __future__ import` — only compilation-wide.
                 FeatureScope.Parser),
+            ["defer"] = new FeatureInfo(
+                "defer",
+                "Experimental `defer` statement for scope-exit cleanup. The deferred statement or " +
+                "block runs on every exit path of its enclosing block (fall-through, return, break, " +
+                "continue, exception) in reverse declaration order; lowers to nested try/finally.",
+                // Parser-scoped: `defer` is a new statement syntax. It is always parsed but its use
+                // is gated; a `from __future__ import` cannot unlock parser-scoped syntax.
+                FeatureScope.Parser),
         };
 
     /// <summary>The names of all enabled features, in ordinal order.</summary>

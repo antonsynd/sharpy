@@ -264,7 +264,7 @@ internal partial class RoslynEmitter
         {
             // Generate method body for concrete methods
             var preamble = GenerateLateBoundPreamble(func.Parameters);
-            var userStatements = func.Body.SelectMany(GenerateBodyStatements);
+            var userStatements = GenerateSuite(func.Body);
 
             // For __eq__ implementing IEquatable<T> on classes, prepend null guard:
             //   if (other is null) return false;
@@ -389,8 +389,7 @@ internal partial class RoslynEmitter
         }
         else
         {
-            var bodyStatements = func.Body
-                .SelectMany(GenerateBodyStatements);
+            var bodyStatements = GenerateSuite(func.Body);
             getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                 .WithBody(Block(bodyStatements));
         }
@@ -449,8 +448,7 @@ internal partial class RoslynEmitter
         else
         {
             // Generate getter body from __len__ body
-            var bodyStatements = func.Body
-                .SelectMany(GenerateBodyStatements);
+            var bodyStatements = GenerateSuite(func.Body);
             getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                 .WithBody(Block(bodyStatements));
         }
@@ -663,7 +661,7 @@ internal partial class RoslynEmitter
                 _variableVersions[baseName] = 0;
             }
 
-            var bodyStatements = func.Body.SelectMany(GenerateBodyStatements);
+            var bodyStatements = GenerateSuite(func.Body);
             method = method.WithBody(AttachLineDirectiveToBlock(
                 Block(bodyStatements), func.LineStart));
         }

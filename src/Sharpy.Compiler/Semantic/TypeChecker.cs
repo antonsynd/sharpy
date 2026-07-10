@@ -412,6 +412,10 @@ internal partial class TypeChecker
                 CheckWith(withStmt);
                 break;
 
+            case DeferStatement deferStmt:
+                CheckDefer(deferStmt);
+                break;
+
             case AssertStatement assertStmt:
                 CheckAssert(assertStmt);
                 break;

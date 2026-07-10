@@ -427,6 +427,40 @@ public record WithStatement : Statement
     }
 }
 
+/// <summary>
+/// Defer statement (<c>defer &lt;simple-statement&gt;</c> or a <c>defer:</c> block).
+/// Registers <see cref="Body"/> to run on every exit path of the nearest lexically
+/// enclosing block (fall-through, <c>return</c>, <c>break</c>, <c>continue</c>, and
+/// exception unwinding), in reverse declaration order (LIFO) relative to other defers
+/// in the same block. Lowers to nested <c>try/finally</c> in code generation.
+/// Gated behind the experimental <c>defer</c> feature (#1023).
+/// </summary>
+public record DeferStatement : Statement
+{
+    /// <summary>
+    /// The deferred statements. For the inline form (<c>defer f.close()</c>) this holds a
+    /// single statement; for the block form (<c>defer:</c>) it holds the indented suite.
+    /// </summary>
+    public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
+
+    /// <summary>True when written as a <c>defer:</c> block; false for the inline form.</summary>
+    public bool IsBlock { get; init; }
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Body != null && Body.Length > 0, "DeferStatement.Body must have at least one statement");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+}
+
 public record WithItem
 {
     public Expression ContextExpression { get; init; } = null!;

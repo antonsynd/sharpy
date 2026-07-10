@@ -117,7 +117,7 @@ internal partial class RoslynEmitter
 
         // Generate method body, prepending late-bound default locals
         var preamble = GenerateLateBoundPreamble(func.Parameters);
-        var body = Block(preamble.Concat(func.Body.SelectMany(GenerateBodyStatements)));
+        var body = Block(preamble.Concat(GenerateSuite(func.Body)));
 
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)

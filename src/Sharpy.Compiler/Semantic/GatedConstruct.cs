@@ -56,5 +56,12 @@ public static class GatedConstructRegistry
             "matmul",
             "the '@=' matrix-multiplication assignment",
             static n => n is Assignment a && a.Operator == AssignmentOperator.MatMulAssign),
+
+        // defer (#1023): the `defer` scope-exit statement. Always parsed; its use is gated
+        // behind the 'defer' feature until the statement graduates.
+        new GatedConstruct(
+            "defer",
+            "the 'defer' statement",
+            static n => n is DeferStatement),
     };
 }

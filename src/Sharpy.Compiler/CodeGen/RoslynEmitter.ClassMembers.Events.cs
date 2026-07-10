@@ -159,7 +159,7 @@ internal partial class RoslynEmitter
                 // Generate body, rewriting handler parameter references to 'value'
                 var previousHandlerRewrite = _eventHandlerParamName;
                 _eventHandlerParamName = handlerParamName;
-                var bodyStatements = eventDef.Body.SelectMany(GenerateBodyStatements);
+                var bodyStatements = GenerateSuite(eventDef.Body);
                 accessor = accessor.WithBody(Block(bodyStatements));
                 _eventHandlerParamName = previousHandlerRewrite;
             }

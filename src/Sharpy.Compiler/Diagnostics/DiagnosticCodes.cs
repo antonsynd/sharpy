@@ -342,7 +342,9 @@ public static class DiagnosticCodes
         public const string VoidComparisonOperand = "SPY0329";      // Active
         public const string UnknownFutureFeature = "SPY0330";       // Active — from __future__ import of an unknown or mis-scoped feature
         public const string FeatureNotEnabled = "SPY0331";          // Active — use of a construct gated behind an experimental feature that is not enabled
-        // SPY0332-SPY0339: Reserved for future protocol/operator diagnostics
+        public const string DeferOutsideFunction = "SPY0332";       // Active — defer statement used outside a function body
+        public const string DeferControlFlowEscape = "SPY0333";     // Active — return/break/continue/yield escapes a deferred statement (would leave a finally block)
+        // SPY0334-SPY0339: Reserved for future protocol/operator/defer diagnostics
 
         #endregion
 

@@ -16,6 +16,61 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
+    /// <summary>
+    /// Generates the C# statements for a suite (an ordered list of Sharpy statements that
+    /// share a lexical block). This is the block-emission entry point used everywhere a
+    /// Sharpy block is lowered, and it is responsible for lowering <see cref="DeferStatement"/>:
+    /// a defer wraps the <em>remainder</em> of its suite in a <c>try/finally</c> so the deferred
+    /// body runs on every exit path (fall-through, <c>return</c>, exception). Multiple defers in
+    /// the same suite nest (later defers become inner try/finally blocks), which makes their
+    /// finally blocks run in reverse declaration order (LIFO).
+    /// </summary>
+    private List<StatementSyntax> GenerateSuite(IEnumerable<Statement> body)
+    {
+        var statements = body as IReadOnlyList<Statement> ?? body.ToList();
+        return GenerateSuiteFrom(statements, 0);
+    }
+
+    /// <summary>
+    /// Emits the statements of <paramref name="statements"/> starting at <paramref name="start"/>,
+    /// splitting at the first <see cref="DeferStatement"/> into a <c>try/finally</c> whose try
+    /// block is the recursively-generated remainder and whose finally block is the deferred body.
+    /// </summary>
+    private List<StatementSyntax> GenerateSuiteFrom(IReadOnlyList<Statement> statements, int start)
+    {
+        var result = new List<StatementSyntax>();
+        for (int i = start; i < statements.Count; i++)
+        {
+            if (statements[i] is DeferStatement defer)
+            {
+                result.Add(GenerateDefer(defer, statements, i));
+                // The remainder of the suite was consumed into the try block above.
+                return result;
+            }
+
+            result.AddRange(GenerateBodyStatements(statements[i]));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Lowers a <see cref="DeferStatement"/> at index <paramref name="deferIndex"/> of
+    /// <paramref name="statements"/> into <c>try { remainder } finally { deferred-body }</c>.
+    /// The remainder (statements after the defer) is generated recursively so that any further
+    /// defers nest inside, preserving LIFO cleanup order.
+    /// </summary>
+    private StatementSyntax GenerateDefer(DeferStatement defer, IReadOnlyList<Statement> statements, int deferIndex)
+    {
+        var tryBlock = Block(GenerateSuiteFrom(statements, deferIndex + 1));
+        var finallyBlock = Block(GenerateSuite(defer.Body));
+        var tryStmt = TryStatement(
+            tryBlock,
+            List<CatchClauseSyntax>(),
+            FinallyClause(finallyBlock));
+        return AttachLineDirective(tryStmt, defer);
+    }
+
     private StatementSyntax? GenerateBodyStatement(Statement stmt)
     {
         var statements = GenerateBodyStatements(stmt);
@@ -90,6 +145,12 @@ internal partial class RoslynEmitter
             ForStatement forStmt => GenerateFor(forStmt),
             TryStatement tryStmt => GenerateTry(tryStmt),
             WithStatement withStmt => GenerateWith(withStmt),
+            // A defer normally wraps the remainder of its suite (handled in GenerateSuite). If one
+            // reaches here it is being emitted from a per-statement loop that does not thread the
+            // suite (e.g. constructor bodies): emit try {} finally { body } so the deferred body
+            // still runs, though without wrapping later statements. TODO(#1065): thread defer
+            // through constructor/test-fixture body emission for full remainder-wrapping semantics.
+            DeferStatement deferStmt => GenerateDefer(deferStmt, new[] { (Statement)deferStmt }, 0),
             MatchStatement matchStmt => GenerateMatch(matchStmt),
             FunctionDef funcDef => GenerateLocalFunction(funcDef),
             _ => null
@@ -215,7 +276,7 @@ internal partial class RoslynEmitter
 
         // Generate body (recursive — supports nested-nested functions)
         var body = AttachLineDirectiveToBlock(
-            Block(func.Body.SelectMany(GenerateBodyStatements)), func.LineStart);
+            Block(GenerateSuite(func.Body)), func.LineStart);
 
         var localFunc = LocalFunctionStatement(returnType, Identifier(mangledName))
             .WithParameterList(ParameterList(SeparatedList(parameters)))

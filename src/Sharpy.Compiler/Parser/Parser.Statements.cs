@@ -403,6 +403,52 @@ public partial class Parser
         };
     }
 
+    /// <summary>
+    /// Parses a defer statement in either the inline form (<c>defer f.close()</c>) or the
+    /// block form (<c>defer:</c> followed by an indented suite). The statement is always
+    /// parsed; whether it is permitted is decided by the feature gate (the experimental
+    /// <c>defer</c> feature) during semantic analysis.
+    /// </summary>
+    private DeferStatement ParseDeferStatement()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var startToken = Current;
+
+        Expect(TokenType.Defer);
+
+        List<Statement> body;
+        bool isBlock;
+        if (Current.Type == TokenType.Colon)
+        {
+            // Block form: `defer:` <newline> <indent> suite <dedent>
+            isBlock = true;
+            Advance();
+            ExpectNewline();
+            Expect(TokenType.Indent);
+            body = ParseBlock();
+            Expect(TokenType.Dedent);
+        }
+        else
+        {
+            // Inline form: `defer <simple-statement>`. ParseSimpleStatement consumes the
+            // trailing statement terminator.
+            isBlock = false;
+            body = new List<Statement> { ParseSimpleStatement() };
+        }
+
+        return new DeferStatement
+        {
+            Body = body.ToImmutableArray(),
+            IsBlock = isBlock,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Value.Length,
+            Span = GetSpanFromTokens(startToken, Previous)
+        };
+    }
+
     private TryStatement ParseTryStatement()
     {
         var startLine = Current.Line;
