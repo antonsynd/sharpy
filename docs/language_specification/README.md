@@ -194,6 +194,8 @@ See [function_parameters.md](function_parameters.md) for parameter types overvie
 
 See [method_overloading.md](method_overloading.md) for class method overloading, constructor overloading, and operator overloading.
 
+See [overload_resolution.md](overload_resolution.md) for the authoritative applicability and betterness rules, the conversion-cost ranking, and how calls, operator dunders, constructors, and builtins are resolved.
+
 See [function_default_parameters.md](function_default_parameters.md) for default parameter values and compile-time constant requirements.
 
 See [function_variadic_arguments.md](function_variadic_arguments.md) for variadic arguments (*args), unpacking, and C# interop.

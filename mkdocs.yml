@@ -127,6 +127,7 @@ nav:
       - Function Definition: language_specification/function_definition.md
       - Function Parameters: language_specification/function_parameters.md
       - Method Overloading: language_specification/method_overloading.md
+      - Overload Resolution: language_specification/overload_resolution.md
       - Default Parameters: language_specification/function_default_parameters.md
       - Variadic Arguments: language_specification/function_variadic_arguments.md
       - Flexible Arguments: language_specification/flexible_arguments.md

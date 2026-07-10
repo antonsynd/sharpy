@@ -2,7 +2,7 @@
 
 Sharpy supports defining multiple functions or methods with the same name, provided their parameter signatures differ. This follows C# overloading semantics.
 
-For general overload resolution rules (applicable to both functions and methods), see [Function Parameters — Overload Resolution Rules](function_parameters.md#overload-resolution-rules).
+For the authoritative overload resolution rules (applicability and betterness, applicable to both functions and methods), see [Overload Resolution](overload_resolution.md).
 
 ## Module-Level Function Overloading
 

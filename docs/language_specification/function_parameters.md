@@ -121,72 +121,59 @@ def process(value: int, multiplier: int) -> str:
 
 ## Overload Resolution Rules
 
-Sharpy follows **C# overload resolution rules exactly**. When multiple overloads could match a call, the compiler selects the "best" overload using C#'s algorithm.
+> **Authoritative reference:** [Overload Resolution](overload_resolution.md) is the full specification of
+> applicability, the betterness tie-break chain, the conversion-cost ranking, and how each resolution
+> engine (calls, operator dunders, constructors, builtins) behaves. This section is a summary; where it
+> and that page differ, that page governs.
 
-### Resolution Algorithm Summary
+When multiple overloads could match a call, the compiler picks the best one in two phases, modeled on
+C#'s better-function-member algorithm (Axiom 1: where Sharpy and C# betterness could disagree, Sharpy
+matches C#):
 
-1. **Identify candidate overloads**: All overloads where argument count matches parameter count (accounting for defaults and `*args`)
+1. **Applicability** — keep the overloads whose arity fits (accounting for defaults and `*args`), whose
+   parameter names cover every keyword argument, and to whose parameter types every argument is
+   assignable (including the documented primitive widenings such as `int → long → double`).
 
-2. **Filter applicable overloads**: Remove overloads where any argument cannot be converted to the corresponding parameter type
+2. **Betterness** — among applicable overloads, pick the single best using the ordered tie-break chain:
+   exact match over conversion → better (lower-cost) implicit conversion → more specific type → fewer
+   type parameters → non-variadic over variadic → CLR-level specificity. If no overload is strictly
+   better than all others, the call is **ambiguous** (`SPY0353`).
 
-3. **Find best overload**: Among applicable overloads, select the one that is "better" than all others
+```python
+def f(x: int): ...
+def f(x: float): ...
 
-### "Better" Overload Rules
-
-An overload A is better than overload B if:
-
-1. **More specific types**: Arguments match A's parameter types more specifically
-   ```python
-   def f(x: int): ...       # More specific
-   def f(x: object): ...    # Less specific
-
-   f(42)  # Calls f(int) - int is more specific than object
-   ```
-
-2. **Fewer conversions needed**: A requires fewer implicit conversions
-   ```python
-   def f(x: int): ...
-   def f(x: float): ...
-
-   f(42)    # Calls f(int) - no conversion needed
-   f(3.14)  # Calls f(float) - exact match
-   ```
-
-3. **Non-variadic preferred**: Non-`*args` overloads are preferred over `*args` overloads
-   ```python
-   def f(x: int): ...
-   def f(*args: int): ...
-
-   f(42)  # Calls f(int) - non-variadic preferred
-   ```
+f(42)    # Calls f(int) - exact match beats the int→float widening
+f(3.14)  # Calls f(float) - exact match
+```
 
 ### Ambiguous Overloads
 
-If no single overload is "better" than all others, the call is ambiguous:
+If no single overload is better than all others, the call is ambiguous:
 
 ```python
 def f(x: int, y: float): ...
 def f(x: float, y: int): ...
 
-f(1, 2)  # ERROR: Ambiguous - both equally good after implicit conversions
+f(1, 2)  # ERROR (SPY0353): Ambiguous - neither candidate is better at both positions
 ```
 
 **Resolution:** Use explicit type conversions to disambiguate:
 ```python
-f(1, 2.0)       # Calls f(int, float)
-f(1.0, 2)       # Calls f(float, int)
+f(1, 2.0)         # Calls f(int, float)
+f(1.0, 2)         # Calls f(float, int)
 f(1 to float, 2)  # Explicitly calls f(float, int)
 ```
 
 ### Default Parameters and Overloads
 
-Default parameters expand the applicable overloads:
+Default parameters widen the applicable set, which can create ambiguity:
 
 ```python
 def greet(name: str): ...
 def greet(name: str, greeting: str = "Hello"): ...
 
-greet("Alice")  # ERROR: Ambiguous - both overloads applicable
+greet("Alice")  # Ambiguous - both overloads are applicable to a single string argument
 ```
 
 **Recommendation:** Avoid overloads that differ only in having additional defaulted parameters.
@@ -235,10 +222,12 @@ m.eat(food_type="grub")           # ERROR - Monkey doesn't have 'food_type'
 
 ### Reference
 
-For complete details, see the [C# Language Specification: Overload Resolution](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#overload-resolution).
+For the complete resolution algorithm, see [Overload Resolution](overload_resolution.md). For the C#
+rules it mirrors, see the [C# Language Specification §12.6.4: Overload Resolution](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#1264-overload-resolution).
 
 ## See Also
 
+- [Overload Resolution](overload_resolution.md) - Authoritative applicability and betterness rules
 - [Flexible Arguments](flexible_arguments.md) - Positional-only, keyword-only, and kwargs support
 - [Function Default Parameters](function_default_parameters.md) - Detailed guide to default parameter values and compile-time constant requirements
 - [Function Variadic Arguments](function_variadic_arguments.md) - Comprehensive coverage of `*args` and unpacking
