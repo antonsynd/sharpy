@@ -1280,6 +1280,7 @@ internal partial class TypeChecker
         BinaryOperator.FloorDivide => "//",
         BinaryOperator.Modulo => "%",
         BinaryOperator.Power => "**",
+        BinaryOperator.MatMul => "@",
         BinaryOperator.BitwiseAnd => "&",
         BinaryOperator.BitwiseOr => "|",
         BinaryOperator.BitwiseXor => "^",

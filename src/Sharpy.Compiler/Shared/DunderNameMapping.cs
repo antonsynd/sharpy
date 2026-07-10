@@ -25,6 +25,10 @@ internal static class DunderNameMapping
         { DunderNames.Len, "Count" },              // For Count property
         { DunderNames.Contains, "Contains" },     // For Contains method
         { DunderNames.Ne, "NotEquals" },          // For operator !=
+        // __matmul__ is the one operator dunder mapped to a plain method name: C# has no `@`
+        // operator, so `a @ b` (PEP 465) and a user-defined `def __matmul__` both lower to a
+        // regular `MatMul` instance method rather than a C# operator overload.
+        { DunderNames.MatMul, "MatMul" },
         { DunderNames.Iter, "GetEnumerator" },    // For IEnumerable
         { DunderNames.Reversed, "GetReverseEnumerator" }, // For reverse iteration
         // __bool__ is handled as special codegen (operator true/false), not a simple name mapping

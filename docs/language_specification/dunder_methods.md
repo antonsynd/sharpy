@@ -223,7 +223,7 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | `__format__(self, spec: str)` | Not supported | Not yet designed, but possibly synthesizes `IFormattable.ToString(format, provider)` |
 | `__index__(self) -> int` | Not supported | Not yet designed, but should be used for integer conversion in slice contexts | |
 | `__int__(self) -> int` | Not supported | Not yet designed |
-| `__matmul__(self, other: T) -> U` | Not supported | `@` operator not available in C# |
+| `__matmul__(self, other: T) -> U` | Experimental (behind `matmul` feature) | `@` matrix multiplication (PEP 465). C# has no `@` operator, so it lowers to a `MatMul(other)` instance method rather than a C# operator overload. Enable with `--enable-feature=matmul` or `<Features>matmul</Features>`; ungated use is rejected with SPY0331. `@=` augmented assignment is also supported. |
 | `__round__(self, ndigits: int?) -> T` | Not supported | `Math.Round()` doesn't dispatch to this |
 | `__trunc__(self) -> T` | Not supported | `Math.Truncate()` doesn't dispatch to this |
 | `__pow__(self, exponent: int) -> float` | Not supported | `Math.Pow()` doesn't dispatch to this |

@@ -22,7 +22,8 @@ public static class OperatorRegistry
 {
     private static readonly ImmutableHashSet<string> BinaryArithmeticOps = new[]
     {
-        DunderNames.Add, DunderNames.Sub, DunderNames.Mul, DunderNames.Div, DunderNames.Mod
+        DunderNames.Add, DunderNames.Sub, DunderNames.Mul, DunderNames.Div, DunderNames.Mod,
+        DunderNames.MatMul
     }.ToImmutableHashSet();
 
     private static readonly ImmutableHashSet<string> BinaryBitwiseOps = new[]

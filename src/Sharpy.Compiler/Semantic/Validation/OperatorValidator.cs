@@ -127,6 +127,15 @@ internal class OperatorValidator : ValidatingAstWalker
         // Check if operator is supported by the left type
         if (!SupportsOperator(leftType, dunderName))
         {
+            // Operators with no native C# operator (currently `@` matmul) can be provided by a
+            // named CLR instance method (e.g. NdArray.MatMul) that SupportsOperator cannot see —
+            // it only inspects dunder tables. The inference service resolves that path, so treat
+            // a successful inference as support.
+            if (binOp.Operator == BinaryOperator.MatMul
+                && Context.TypeInference != null
+                && Context.TypeInference.InferBinaryOpType(binOp.Operator, leftType, rightType) != null)
+                return;
+
             // C# NullableType (T?, the loose interop form) supports comparison/equality operators
             // via C#'s lifted operators — `int? == int` is valid (#947). The inference service is
             // the authority on whether the underlying types compare, so defer to it; this keeps
@@ -247,6 +256,14 @@ internal class OperatorValidator : ValidatingAstWalker
 
         if (!SupportsOperator(targetType, dunderName))
         {
+            // `@=` (matmul) has no native C# operator; support may come from a named CLR
+            // instance method the dunder tables don't list. Defer to the inference service,
+            // which resolves that path (mirrors ValidateArithmeticOrComparisonOp).
+            if (binaryOp.Value == BinaryOperator.MatMul
+                && Context.TypeInference != null
+                && Context.TypeInference.InferBinaryOpType(binaryOp.Value, targetType, valueType) != null)
+                return;
+
             if (!HasErrorAtPosition(assignment.LineStart, assignment.ColumnStart))
             {
                 AddError(
@@ -438,6 +455,7 @@ internal class OperatorValidator : ValidatingAstWalker
             BinaryOperator.Multiply => DunderNames.Mul,
             BinaryOperator.Divide => DunderNames.Div,
             BinaryOperator.Modulo => DunderNames.Mod,
+            BinaryOperator.MatMul => DunderNames.MatMul,
             BinaryOperator.BitwiseAnd => DunderNames.And,
             BinaryOperator.BitwiseOr => DunderNames.Or,
             BinaryOperator.BitwiseXor => DunderNames.Xor,
@@ -471,6 +489,7 @@ internal class OperatorValidator : ValidatingAstWalker
             AssignmentOperator.PlusAssign => BinaryOperator.Add,
             AssignmentOperator.MinusAssign => BinaryOperator.Subtract,
             AssignmentOperator.StarAssign => BinaryOperator.Multiply,
+            AssignmentOperator.MatMulAssign => BinaryOperator.MatMul,
             AssignmentOperator.SlashAssign => BinaryOperator.Divide,
             AssignmentOperator.DoubleSlashAssign => BinaryOperator.FloorDivide,
             AssignmentOperator.PercentAssign => BinaryOperator.Modulo,
@@ -500,6 +519,7 @@ internal class OperatorValidator : ValidatingAstWalker
             BinaryOperator.BitwiseXor => "^",
             BinaryOperator.LeftShift => "<<",
             BinaryOperator.RightShift => ">>",
+            BinaryOperator.MatMul => "@",
             BinaryOperator.Equal => "==",
             BinaryOperator.NotEqual => "!=",
             BinaryOperator.LessThan => "<",
@@ -538,6 +558,7 @@ internal class OperatorValidator : ValidatingAstWalker
             AssignmentOperator.XorAssign => "^=",
             AssignmentOperator.LeftShiftAssign => "<<=",
             AssignmentOperator.RightShiftAssign => ">>=",
+            AssignmentOperator.MatMulAssign => "@=",
             _ => op.ToString()
         };
     }

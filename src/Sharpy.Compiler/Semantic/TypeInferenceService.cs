@@ -162,6 +162,60 @@ internal class TypeInferenceService
         if (clrResult != null)
             return clrResult;
 
+        // Operators with no native C# operator (currently only `@`, PEP 465 matrix
+        // multiplication) dispatch to a named CLR instance method resolved from the dunder
+        // (__matmul__ -> MatMul). Serves stdlib CLR types such as numpy's NdArray; user
+        // types are already handled above by TryInferUserDefinedBinaryOp.
+        var namedMethodResult = TryInferNamedInstanceMethodBinaryOp(op, left, right);
+        if (namedMethodResult != null)
+            return namedMethodResult;
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves a binary operator that has no native C# operator by dispatching to a named
+    /// instance method derived from the operator's dunder (e.g. <c>__matmul__</c> →
+    /// <c>MatMul(other)</c>). Only operators that lack a C# operator mapping reach this path;
+    /// operators with a native operator (<c>+</c>, <c>==</c>, …) are served by
+    /// <see cref="TryInferClrBinaryOp"/> and are excluded here so equality/arithmetic are
+    /// never redirected to an unrelated method.
+    /// </summary>
+    private SemanticType? TryInferNamedInstanceMethodBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        // Native-operator operators keep their C# operator path; only operator-less ones (@) apply.
+        if (BinaryOperatorToClrMethod(op) != null)
+            return null;
+
+        var dunder = BinaryOperatorToDunder(op);
+        if (dunder == null)
+            return null;
+
+        var methodName = DunderNameMapping.GetCSharpName(dunder);
+        if (methodName == null)
+            return null;
+
+        var leftClrType = GetClrType(left);
+        if (leftClrType == null)
+            return null;
+
+        var rightClrType = GetClrType(right);
+        foreach (var method in leftClrType.GetMethods(
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+        {
+            if (method.Name != methodName)
+                continue;
+
+            var parameters = method.GetParameters();
+            if (parameters.Length != 1)
+                continue;
+
+            if (rightClrType != null && !parameters[0].ParameterType.IsAssignableFrom(rightClrType))
+                continue;
+
+            return MapClrTypeToSemanticType(method.ReturnType);
+        }
+
         return null;
     }
 
@@ -982,6 +1036,7 @@ internal class TypeInferenceService
             AssignmentOperator.PlusAssign => BinaryOperator.Add,
             AssignmentOperator.MinusAssign => BinaryOperator.Subtract,
             AssignmentOperator.StarAssign => BinaryOperator.Multiply,
+            AssignmentOperator.MatMulAssign => BinaryOperator.MatMul,
             AssignmentOperator.SlashAssign => BinaryOperator.Divide,
             AssignmentOperator.DoubleSlashAssign => BinaryOperator.FloorDivide,
             AssignmentOperator.PercentAssign => BinaryOperator.Modulo,
@@ -1349,6 +1404,7 @@ internal class TypeInferenceService
             BinaryOperator.Multiply => DunderNames.Mul,
             BinaryOperator.Divide => DunderNames.Div,
             BinaryOperator.Modulo => DunderNames.Mod,
+            BinaryOperator.MatMul => DunderNames.MatMul,
             BinaryOperator.BitwiseAnd => DunderNames.And,
             BinaryOperator.BitwiseOr => DunderNames.Or,
             BinaryOperator.BitwiseXor => DunderNames.Xor,

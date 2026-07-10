@@ -42,6 +42,19 @@ public sealed record GatedConstruct(string Feature, string Description, Func<Nod
 /// </remarks>
 public static class GatedConstructRegistry
 {
-    /// <summary>All registered gated constructs. Empty until the first pilot feature lands.</summary>
-    public static IReadOnlyList<GatedConstruct> All { get; } = new List<GatedConstruct>();
+    /// <summary>All registered gated constructs. Each pilot feature adds its entries here.</summary>
+    public static IReadOnlyList<GatedConstruct> All { get; } = new List<GatedConstruct>
+    {
+        // matmul (#989): the `@` matrix-multiplication operator (PEP 465). Always parsed; its
+        // use is gated behind the 'matmul' feature until the operator graduates. Both the infix
+        // operator and its `@=` augmented-assignment form are gated.
+        new GatedConstruct(
+            "matmul",
+            "the '@' matrix-multiplication operator",
+            static n => n is BinaryOp b && b.Operator == BinaryOperator.MatMul),
+        new GatedConstruct(
+            "matmul",
+            "the '@=' matrix-multiplication assignment",
+            static n => n is Assignment a && a.Operator == AssignmentOperator.MatMulAssign),
+    };
 }

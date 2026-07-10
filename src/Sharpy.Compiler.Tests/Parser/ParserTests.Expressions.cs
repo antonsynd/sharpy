@@ -366,4 +366,68 @@ def find_user(id: int) -> User?:
 
     #endregion
 
+    #region Matrix Multiplication (@)
+
+    [Fact]
+    public void ParseMatMul_ProducesBinaryOpMatMul()
+    {
+        // Infix `@` is always parsed (gating is a later, semantic concern).
+        var module = Parse("a @ b");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var binOp = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        binOp.Operator.Should().Be(BinaryOperator.MatMul);
+        binOp.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("a");
+        binOp.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("b");
+    }
+
+    [Fact]
+    public void ParseMatMul_HasMultiplicativePrecedence()
+    {
+        // Per PEP 465 / CPython: `a + b @ c * d` parses as `a + ((b @ c) * d)`.
+        var module = Parse("a + b @ c * d");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+
+        var add = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        add.Operator.Should().Be(BinaryOperator.Add);
+        add.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("a");
+
+        // Right side: (b @ c) * d
+        var mul = add.Right.Should().BeOfType<BinaryOp>().Subject;
+        mul.Operator.Should().Be(BinaryOperator.Multiply);
+        mul.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("d");
+
+        var matmul = mul.Left.Should().BeOfType<BinaryOp>().Subject;
+        matmul.Operator.Should().Be(BinaryOperator.MatMul);
+        matmul.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("b");
+        matmul.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("c");
+    }
+
+    [Fact]
+    public void ParseMatMul_IsLeftAssociative()
+    {
+        // `a @ b @ c` parses as `(a @ b) @ c`.
+        var module = Parse("a @ b @ c");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var outer = exprStmt.Expression.Should().BeOfType<BinaryOp>().Subject;
+        outer.Operator.Should().Be(BinaryOperator.MatMul);
+        outer.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("c");
+        var inner = outer.Left.Should().BeOfType<BinaryOp>().Subject;
+        inner.Operator.Should().Be(BinaryOperator.MatMul);
+        inner.Left.Should().BeOfType<Identifier>().Which.Name.Should().Be("a");
+        inner.Right.Should().BeOfType<Identifier>().Which.Name.Should().Be("b");
+    }
+
+    [Fact]
+    public void ParseMatMulAssign_ProducesAssignmentWithMatMulAssign()
+    {
+        // `x @= y` is the in-place matrix-multiplication augmented assignment.
+        var module = Parse("x @= y");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assign.Operator.Should().Be(AssignmentOperator.MatMulAssign);
+        assign.Target.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
+        assign.Value.Should().BeOfType<Identifier>().Which.Name.Should().Be("y");
+    }
+
+    #endregion
+
 }

@@ -97,6 +97,13 @@ public sealed class FeatureFlags
                 "Internal test-only feature used to validate the feature-flag plumbing. Not a real language feature.",
                 FeatureScope.Semantic,
                 Hidden: true),
+            ["matmul"] = new FeatureInfo(
+                "matmul",
+                "Experimental `@` matrix-multiplication operator (PEP 465), including the `@=` " +
+                "augmented assignment. Dispatches to __matmul__ / stdlib NdArray.",
+                // Parser-scoped: `@` is always parsed but its use is a syntactic construct, so it
+                // cannot be unlocked per-file via `from __future__ import` — only compilation-wide.
+                FeatureScope.Parser),
         };
 
     /// <summary>The names of all enabled features, in ordinal order.</summary>

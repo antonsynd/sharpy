@@ -875,6 +875,10 @@ public partial class Lexer
                     _position += 2;
                     _column += 2;
                     return CreateToken(TokenType.CaretAssign, twoChar, startLine, startColumn, startPosition);
+                case "@=":
+                    _position += 2;
+                    _column += 2;
+                    return CreateToken(TokenType.AtAssign, twoChar, startLine, startColumn, startPosition);
                 case ":=":
                     _position += 2;
                     _column += 2;

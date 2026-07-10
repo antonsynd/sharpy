@@ -140,6 +140,7 @@ public enum TokenType
     LeftShiftAssign,   // <<=
     RightShiftAssign,  // >>=
     NullCoalesceAssign, // ??=
+    AtAssign,          // @= (in-place matrix multiplication)
 
     // Operators - Special
     Question,          // ?

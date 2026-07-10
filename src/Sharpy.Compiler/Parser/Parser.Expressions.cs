@@ -707,7 +707,8 @@ public partial class Parser
         var left = ParseUnary();
 
         while (Current.Type == TokenType.Star || Current.Type == TokenType.Slash ||
-               Current.Type == TokenType.DoubleSlash || Current.Type == TokenType.Percent)
+               Current.Type == TokenType.DoubleSlash || Current.Type == TokenType.Percent ||
+               Current.Type == TokenType.At)
         {
             var opLine = Current.Line;
             var opCol = Current.Column;
@@ -717,6 +718,11 @@ public partial class Parser
                 TokenType.Slash => BinaryOperator.Divide,
                 TokenType.DoubleSlash => BinaryOperator.FloorDivide,
                 TokenType.Percent => BinaryOperator.Modulo,
+                // Infix `@` (matrix multiplication, PEP 465) shares multiplicative precedence.
+                // Decorators use `@` only in line-initial statement position, so there is no
+                // ambiguity here in expression context. Always parsed; gated at semantic
+                // analysis behind the experimental 'matmul' feature (SPY0331).
+                TokenType.At => BinaryOperator.MatMul,
                 _ => throw ReportError("Unexpected token", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
             };
             Advance();

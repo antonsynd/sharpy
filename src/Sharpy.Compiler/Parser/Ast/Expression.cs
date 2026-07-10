@@ -685,6 +685,7 @@ public enum BinaryOperator
     FloorDivide,
     Modulo,
     Power,
+    MatMul,
 
     // Comparison
     Equal,

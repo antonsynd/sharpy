@@ -79,7 +79,7 @@ public partial class Parser
             }
 
             // Now check if we have an assignment operator
-            if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.NullCoalesceAssign)
+            if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.AtAssign)
             {
                 // This is a tuple unpacking assignment
                 var tuple = new TupleLiteral
@@ -115,7 +115,7 @@ public partial class Parser
         }
 
         // Check for assignment operators
-        if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.NullCoalesceAssign)
+        if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.AtAssign)
         {
             var op = TokenTypeToAssignmentOperator(Current.Type);
             Advance();
@@ -201,6 +201,7 @@ public partial class Parser
         TokenType.LeftShiftAssign => AssignmentOperator.LeftShiftAssign,
         TokenType.RightShiftAssign => AssignmentOperator.RightShiftAssign,
         TokenType.NullCoalesceAssign => AssignmentOperator.NullCoalesceAssign,
+        TokenType.AtAssign => AssignmentOperator.MatMulAssign,
         _ => throw ReportError($"Not an assignment operator: {type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
     };
 

@@ -71,7 +71,8 @@ public enum AssignmentOperator
     XorAssign,     // ^=
     LeftShiftAssign,  // <<=
     RightShiftAssign,  // >>=
-    NullCoalesceAssign // ??=
+    NullCoalesceAssign, // ??=
+    MatMulAssign       // @= (in-place matrix multiplication)
 }
 
 /// <summary>

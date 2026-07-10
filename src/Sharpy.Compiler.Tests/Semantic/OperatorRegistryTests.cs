@@ -17,6 +17,7 @@ public class OperatorRegistryTests
         OperatorRegistry.IsOperatorDunder("__mul__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__div__").Should().BeTrue();
         OperatorRegistry.IsOperatorDunder("__mod__").Should().BeTrue();
+        OperatorRegistry.IsOperatorDunder("__matmul__").Should().BeTrue();
     }
 
     [Fact]
@@ -168,8 +169,8 @@ public class OperatorRegistryTests
     [Fact]
     public void Count_ReturnsExpectedNumberOfOperators()
     {
-        // 5 arithmetic + 5 bitwise + 6 comparison + 3 unary + 2 conversion = 21
-        OperatorRegistry.Count.Should().Be(21);
+        // 6 arithmetic (incl. __matmul__) + 5 bitwise + 6 comparison + 3 unary + 2 conversion = 22
+        OperatorRegistry.Count.Should().Be(22);
     }
 
     [Fact]

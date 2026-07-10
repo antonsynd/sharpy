@@ -541,6 +541,10 @@ internal partial class RoslynEmitter
             AssignmentOperator.NullCoalesceAssign =>
                 GenerateNullCoalesceValue(left, right, targetAst),
 
+            // x @= y → x = x.MatMul(y) (matrix multiplication, PEP 465; no native C# operator)
+            AssignmentOperator.MatMulAssign =>
+                GenerateMatMulCall(left, right),
+
             // All other operators use simple binary expressions
             _ => GenerateAugmentedBinaryExpression(op, left, right, targetAst)
         };

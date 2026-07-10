@@ -47,6 +47,7 @@ internal static class DunderNames
     public const string Mul = "__mul__";
     public const string Div = "__div__";
     public const string Mod = "__mod__";
+    public const string MatMul = "__matmul__"; // `@` matrix multiplication (PEP 465)
 
     // ---- Binary bitwise operators ----
     public const string And = "__and__";

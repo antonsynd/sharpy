@@ -128,6 +128,12 @@ internal partial class RoslynEmitter
                 var hasFloatOperand = IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right);
                 return GenerateFloorDivision(left, right, hasFloatOperand);
 
+            case BinaryOperator.MatMul:
+                // x @ y → x.MatMul(y). C# has no `@` operator, so matrix multiplication
+                // (PEP 465) dispatches to the MatMul instance method that both user-defined
+                // __matmul__ methods and stdlib NdArray expose. See DunderNameMapping.
+                return GenerateMatMulCall(left, right);
+
             case BinaryOperator.In:
                 // x in y → y.Contains(x)
                 return InvocationExpression(
@@ -496,6 +502,22 @@ internal partial class RoslynEmitter
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Generate a matrix-multiplication call: <c>left @ right → left.MatMul(right)</c>.
+    /// Shared by the binary <c>@</c> operator and the <c>@=</c> augmented assignment. C# has
+    /// no matmul operator, so both lower to the <c>MatMul</c> instance method that user-defined
+    /// <c>__matmul__</c> methods and stdlib NdArray expose (see <see cref="DunderNameMapping"/>).
+    /// </summary>
+    private ExpressionSyntax GenerateMatMulCall(ExpressionSyntax left, ExpressionSyntax right)
+    {
+        var methodName = DunderMapping.ResolveCSharpName(DunderNames.MatMul) ?? "MatMul";
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                left,
+                IdentifierName(methodName)))
+            .AddArgumentListArguments(Argument(right));
     }
 
     /// <summary>

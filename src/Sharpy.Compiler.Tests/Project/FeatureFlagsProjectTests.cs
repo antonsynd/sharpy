@@ -105,4 +105,61 @@ public class FeatureFlagsProjectTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    // ---- matmul pilot feature (#989): end-to-end gating through the project pipeline ----
+
+    private const string MatMulProgram = @"
+class Mat:
+    value: int
+
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def __matmul__(self, other: Mat) -> Mat:
+        return Mat(self.value * other.value)
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+def main() -> None:
+    a = Mat(3)
+    b = Mat(4)
+    c = a @ b
+    print(c)
+    a @= b
+    print(a)
+";
+
+    [Fact]
+    public void MatMul_WithoutFeature_ProjectCompile_ReportsSpy0331()
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("MatMulGated").WithEntryPoint("main.spy");
+        helper.AddSourceFile("main.spy", MatMulProgram, isEntryPoint: true);
+
+        var result = helper.Compile();
+
+        result.Success.Should().BeFalse();
+        result.Diagnostics.GetErrors()
+            .Should().Contain(d => d.Message.Contains("requires experimental feature 'matmul'"));
+    }
+
+    [Fact]
+    public void MatMul_WithFeature_CompilesAndExecutes()
+    {
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("MatMulEnabled").WithEntryPoint("main.spy").WithOutputType("exe");
+        // Enable the pilot feature via <Features>matmul</Features> in the generated .spyproj.
+        helper.Options.Features.Add("matmul");
+        helper.AddSourceFile("main.spy", MatMulProgram, isEntryPoint: true);
+
+        var result = helper.CompileAndExecute();
+
+        result.Success.Should().BeTrue(
+            "matmul is enabled, so `@` and `@=` should compile and run. Errors: "
+            + string.Join("\n", result.CompilationErrors));
+        // `a @ b` and `a @= b` both dispatch to Mat.__matmul__ (3 * 4 = 12).
+        result.StandardOutput.Should().Be("12\n12\n");
+    }
 }

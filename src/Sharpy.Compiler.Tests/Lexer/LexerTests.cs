@@ -491,10 +491,31 @@ public class LexerTests
     [InlineData("^=", TokenType.CaretAssign)]
     [InlineData("<<=", TokenType.LeftShiftAssign)]
     [InlineData(">>=", TokenType.RightShiftAssign)]
+    [InlineData("@=", TokenType.AtAssign)]
     public void Tokenize_AssignmentOperator_ReturnsCorrectToken(string op, TokenType expectedType)
     {
         var token = SingleToken(op);
         token.Type.Should().Be(expectedType);
+    }
+
+    [Fact]
+    public void Tokenize_InfixAt_LexesAsAtBetweenOperands()
+    {
+        // Infix `@` (matrix multiplication) reuses the decorator token TokenType.At; it is the
+        // parser that distinguishes decorator (line-initial) from infix (expression) position.
+        var tokens = Tokenize("a @ b");
+
+        tokens[0].Type.Should().Be(TokenType.Identifier);
+        tokens[1].Type.Should().Be(TokenType.At);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+    }
+
+    [Fact]
+    public void Tokenize_AtAssign_IsDistinctFromAt()
+    {
+        // `@=` must lex as the two-char AtAssign token, not `@` followed by `=`.
+        SingleToken("@=").Type.Should().Be(TokenType.AtAssign);
+        SingleToken("@").Type.Should().Be(TokenType.At);
     }
 
     [Theory]
