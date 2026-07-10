@@ -445,6 +445,19 @@ internal static class GenExpressions
     // arithmetic. See docs/design/test-harness/ and the historical
     // bug comments on IndexAccessExpr (#1001), LambdaExpr, etc.
     // Consumed by AmbiguityHotspotPropertyTests.
+    //
+    // Historical parser/unparser ambiguity bugs these generators can
+    // reproduce (anchored deterministically in AmbiguityHotspotPropertyTests
+    // .HistoricalParserBugs_ParseAndRoundTrip):
+    //   #899/#1015 — subscript lambda body (AmbiguousLambda / CallArg lambdas)
+    //   #1011      — bare-identifier lambda body in a call arg (CallArg)
+    //   #888       — single-element tuple literal (TupleLiteralExpr)
+    //   #1001      — parenthesis-free tuple subscript (AmbiguousSubscript)
+    //   #872       — soft-keyword ('match=') keyword arg (TupleBearingCall)
+    //   #870       — quote-bearing f-string (FStringWithQuotesExpr)
+    // #847 (nullable function-type annotation) is a type-level shape the
+    // expression-first generators don't model; it is covered by the anchored
+    // regression only.
     // ============================================================
 
     private static readonly TupleLiteral EmptyTuple = new()
@@ -464,8 +477,24 @@ internal static class GenExpressions
                 AmbiguousLambda(ctx.Burn()).Select(x => (Expression)x),
                 AmbiguousSubscript(ctx.Burn()),
                 TupleBearingCall(ctx.Burn()).Select(x => (Expression)x),
+                FStringWithQuotesExpr(ctx.Burn()).Select(x => (Expression)x),
                 NestedHotspot(ctx.Burn()))
             : IdentifierExpr(ctx).Select(x => (Expression)x);
+
+    // F-string whose literal text contains double-quote characters around a
+    // replacement field. Regression cover for #870, where the unparser re-emitted a
+    // quote-containing f-string with a colliding delimiter that would not re-parse.
+    public static Gen<FStringLiteral> FStringWithQuotesExpr(GenContext ctx) =>
+        Gen.Select(
+            Gen.OneOfConst("\"", "\"x\"", "say \"", "[\"]"),
+            IdentifierExpr(ctx),
+            (quoted, e) => new FStringLiteral
+            {
+                Parts = ImmutableArray.Create(
+                    new FStringPart { Text = quoted },
+                    new FStringPart { Expression = e },
+                    new FStringPart { Text = quoted })
+            });
 
     // --- Hotspot 1: lambdas whose bodies are tuples/conditionals/lambdas ---
 
@@ -548,20 +577,37 @@ internal static class GenExpressions
 
     // --- Hotspot 3: tuple literals (parenthesized and bare) in call args ---
 
+    // Keyword-argument names. Includes the soft keyword 'match', which must be
+    // usable as a kwarg name (#872) — a hard-keyword lexer classification used to
+    // reject 'match=' in call-argument position.
+    private static readonly string[] KeywordArgNames =
+    {
+        "match", "key", "value", "sep", "default",
+    };
+
+    private static Gen<KeywordArgument> KeywordArgGen(GenContext ctx) =>
+        Gen.Select(
+            Gen.OneOfConst(KeywordArgNames),
+            CallArg(ctx),
+            (name, val) => new KeywordArgument { Name = name, Value = val });
+
     /// <summary>
     /// Call whose arguments stress the comma ambiguity: parenthesized
     /// tuple arguments f((a, b)) that must not collapse into separate
     /// arguments f(a, b), mixed with plain args, lambdas, conditionals
-    /// and nested tuple-bearing calls.
+    /// and nested tuple-bearing calls. Also emits keyword arguments,
+    /// including the soft-keyword name 'match=' (#872).
     /// </summary>
     public static Gen<FunctionCall> TupleBearingCall(GenContext ctx) =>
         Gen.Select(
             IdentifierExpr(ctx).Select(x => (Expression)x),
             CallArg(ctx).Array[1, Math.Max(1, Sizing.MaxParameters(ctx.Fuel))],
-            (func, args) => new FunctionCall
+            KeywordArgGen(ctx.Burn()).Array[0, 2],
+            (func, args, kwargs) => new FunctionCall
             {
                 Function = func,
-                Arguments = args.ToImmutableArray()
+                Arguments = args.ToImmutableArray(),
+                KeywordArguments = kwargs.ToImmutableArray()
             });
 
     private static Gen<Expression> CallArg(GenContext ctx) =>

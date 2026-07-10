@@ -162,6 +162,54 @@ public class AmbiguityHotspotPropertyTests
         Assert.Equal(firstText, secondText);
     }
 
+    /// <summary>
+    /// Seeded regressions for every historical parser/unparser ambiguity bug this fuzzer is
+    /// meant to guard. Each case is the minimized source from the referenced issue; all are
+    /// fixed, so each must (a) parse without diagnostics and (b) be a text round-trip fixpoint
+    /// (parse -> unparse -> reparse -> unparse reproduces the first unparse). The
+    /// AmbiguousHotspot generators can produce each of these shapes randomly; these anchored
+    /// cases pin the exact reported inputs so a regression fails loudly rather than as a rare
+    /// fuzzer seed. If any of these ever starts failing, the corresponding parser fix regressed.
+    /// </summary>
+    [Theory]
+    // #899: subscript at the tail of a lambda body.
+    [InlineData("f = lambda t: t[0]")]
+    // #1011: bare-identifier lambda body in non-final argument position.
+    [InlineData("apply(lambda v: v, 5)")]
+    [InlineData("map(lambda x, y: x, a, b)")]
+    // #1015: subscript lambda body in non-final argument position.
+    [InlineData("first(lambda t: t[0], xs)")]
+    // #888: single-element tuple literal keeps its 1-tuple identity.
+    [InlineData("x = (1,)")]
+    // #872: a soft keyword ('match') used as a keyword-argument name.
+    [InlineData("assert_raises(ValueError, match=\"bad\")")]
+    // #847: a parenthesized function type made nullable stays a function type, not a tuple.
+    [InlineData("def h(cb: ((str) -> None)?) -> None:\n    pass")]
+    // #870: single-quoted f-string containing literal double quotes.
+    [InlineData("y = f'\"{x}\"'")]
+    // #1001: parenthesis-free tuple subscript is idempotent under unparse.
+    [InlineData("z = x[y, s]")]
+    public void HistoricalParserBugs_ParseAndRoundTrip(string source)
+    {
+        var firstTokens = new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll();
+        var firstParser = new Sharpy.Compiler.Parser.Parser(firstTokens);
+        var firstAst = firstParser.ParseModule();
+        Assert.False(firstParser.Diagnostics.HasErrors,
+            $"Source failed to parse: {source}\n"
+            + string.Join("\n", firstParser.Diagnostics.GetAll().Select(d => d.ToString())));
+
+        var firstText = Sharpy.Compiler.Pretty.Unparser.Unparse(firstAst);
+
+        var secondTokens = new Sharpy.Compiler.Lexer.Lexer(firstText).TokenizeAll();
+        var secondParser = new Sharpy.Compiler.Parser.Parser(secondTokens);
+        var secondAst = secondParser.ParseModule();
+        Assert.False(secondParser.Diagnostics.HasErrors,
+            $"Unparsed output failed to re-parse: {firstText}");
+
+        var secondText = Sharpy.Compiler.Pretty.Unparser.Unparse(secondAst);
+        Assert.Equal(firstText, secondText);
+    }
+
     private static List<string> ParseAndGetDiagnostics(string source)
     {
         var lexer = new Sharpy.Compiler.Lexer.Lexer(source);
