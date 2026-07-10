@@ -68,7 +68,8 @@ internal partial class ProjectCompiler
                     IsPackageInit = isPackageInit,
                     Logger = _logger,
                     SemanticBinding = _projectModel.SemanticBinding,
-                    SemanticInfo = SemanticInfo
+                    SemanticInfo = SemanticInfo,
+                    Features = ImportResolver.GetEffectiveFeatures(_features, unit.FilePath)
                 };
 
                 var emitter = _emitterFactory.Create(codeGenContext, _cancellationToken);

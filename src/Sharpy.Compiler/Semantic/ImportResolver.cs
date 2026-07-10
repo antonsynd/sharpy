@@ -88,6 +88,20 @@ internal partial class ImportResolver
         return Shared.FeatureFlags.None;
     }
 
+    /// <summary>
+    /// Returns the effective feature set for the given file: the compilation-wide
+    /// <paramref name="compilationWide"/> flags unioned with the file's per-file
+    /// <c>from __future__ import</c> features. This is the single helper both the semantic
+    /// and codegen phases use to compute the per-file feature set, so the union rule lives
+    /// in exactly one place.
+    /// </summary>
+    public Shared.FeatureFlags GetEffectiveFeatures(Shared.FeatureFlags compilationWide, string? filePath)
+    {
+        if (compilationWide is null)
+            throw new System.ArgumentNullException(nameof(compilationWide));
+        return compilationWide.Enable(GetFileFutureFeatures(filePath).EnabledFeatures);
+    }
+
     private IDependencyRecorder? _dependencyRecorder;
     private SemanticBinding _semanticBinding = new();
 

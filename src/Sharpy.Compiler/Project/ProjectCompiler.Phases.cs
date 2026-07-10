@@ -661,8 +661,7 @@ internal partial class ProjectCompiler
                     : null;
                 // Union compilation-wide features with this file's `from __future__ import`
                 // features (per-file, keyed by path on the shared ImportResolver).
-                var fileFeatures = _features.Enable(
-                    ImportResolver.GetFileFutureFeatures(unit.FilePath).EnabledFeatures);
+                var fileFeatures = ImportResolver.GetEffectiveFeatures(_features, unit.FilePath);
                 // Reject uses of constructs gated behind experimental features that are not
                 // enabled, before type resolution runs. No-op until a gated construct exists.
                 var gateDiagnostics = new DiagnosticBag();

@@ -26,11 +26,13 @@ public class CodeEmitterFactoryTests
     private class MockCodeEmitterFactory : ICodeEmitterFactory
     {
         public MockCodeEmitter? LastCreatedEmitter { get; private set; }
+        public CodeGenContext? LastContext { get; private set; }
         public int CreateCallCount { get; private set; }
 
         public ICodeEmitter Create(CodeGenContext context, CancellationToken cancellationToken = default)
         {
             CreateCallCount++;
+            LastContext = context;
             LastCreatedEmitter = new MockCodeEmitter();
             return LastCreatedEmitter;
         }
@@ -70,7 +72,7 @@ public class CodeEmitterFactoryTests
         var result = pipeline.GenerateCode(
             module, "<test>", importResolver, builtins,
             isEntryPoint: true, projectNamespace: "Test",
-            logger, CancellationToken.None);
+            logger, Sharpy.Compiler.Shared.FeatureFlags.None, CancellationToken.None);
 
         Assert.Equal(1, mockFactory.CreateCallCount);
         Assert.NotNull(mockFactory.LastCreatedEmitter);
@@ -110,9 +112,52 @@ public class CodeEmitterFactoryTests
         var result = pipeline.GenerateCode(
             module, "<test>", importResolver, builtins,
             isEntryPoint: true, projectNamespace: "Test",
-            logger, CancellationToken.None);
+            logger, Sharpy.Compiler.Shared.FeatureFlags.None, CancellationToken.None);
 
         Assert.NotNull(result.CSharpCode);
         Assert.NotEmpty(result.CSharpCode);
+    }
+
+    [Fact]
+    public void GenerateCode_ThreadsUnionOfCompilationWideAndFutureFeaturesIntoContext()
+    {
+        var mockFactory = new MockCodeEmitterFactory();
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
+        var logger = NullLogger.Instance;
+
+        var pipeline = new FileCompilationPipeline(
+            symbolTable, semanticInfo, semanticBinding, logger, mockFactory);
+
+        // A semantic-scoped feature enabled per-file via `from __future__ import`.
+        const string filePath = "test.spy";
+        var source = new Sharpy.Compiler.Text.SourceText(
+            "from __future__ import __test_feature\n", filePath);
+        var lexResult = FileCompilationPipeline.Lex(source, logger);
+        var parseResult = FileCompilationPipeline.Parse(lexResult.Tokens, logger);
+        Assert.NotNull(parseResult.Module);
+        var module = parseResult.Module!;
+
+        var nameResult = pipeline.ResolveNames(module);
+        var importResult = pipeline.ResolveImports(
+            module, nameResult.NameResolver, filePath, moduleRegistry: null);
+
+        // A distinct compilation-wide feature; Enable does not validate names.
+        var compilationFeatures = Sharpy.Compiler.Shared.FeatureFlags.None.Enable("compilation_wide");
+
+        pipeline.GenerateCode(
+            module, filePath, importResult.ImportResolver, builtins,
+            isEntryPoint: true, projectNamespace: "Test",
+            logger, compilationFeatures, CancellationToken.None);
+
+        Assert.NotNull(mockFactory.LastContext);
+        var features = mockFactory.LastContext!.Features;
+        // The context receives the union of both sources.
+        Assert.True(features.IsEnabled("__test_feature"),
+            "per-file `from __future__ import` feature should reach the codegen context");
+        Assert.True(features.IsEnabled("compilation_wide"),
+            "compilation-wide feature should reach the codegen context");
     }
 }

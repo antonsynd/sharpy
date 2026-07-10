@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -96,6 +97,16 @@ internal class CodeGenContext
     /// Used for tagged union constructor detection (Some/None()/Ok/Err).
     /// </summary>
     public SemanticInfo? SemanticInfo { get; set; }
+
+    /// <summary>
+    /// The effective experimental features enabled for this file during code generation:
+    /// compilation-wide <see cref="CompilerOptions.Features"/> unioned with this file's
+    /// per-file <c>from __future__ import</c> features. Consumers gate
+    /// <see cref="FeatureScope.CodeGen"/>-scoped emission behavior on this set. Defaults to
+    /// <see cref="FeatureFlags.None"/>. Nothing in CodeGen reads it yet; the first gated
+    /// pilot feature will.
+    /// </summary>
+    public FeatureFlags Features { get; set; } = FeatureFlags.None;
 
     public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
     {

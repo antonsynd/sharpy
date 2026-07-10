@@ -319,6 +319,7 @@ internal class FileCompilationPipeline
         bool isEntryPoint,
         string projectNamespace,
         ICompilerLogger logger,
+        Shared.FeatureFlags compilationFeatures,
         CancellationToken cancellationToken = default)
     {
         var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
@@ -328,7 +329,8 @@ internal class FileCompilationPipeline
             IsEntryPoint = isEntryPoint,
             Logger = logger,
             SemanticInfo = _semanticInfo,
-            SemanticBinding = _semanticBinding
+            SemanticBinding = _semanticBinding,
+            Features = importResolver.GetEffectiveFeatures(compilationFeatures, filePath)
         };
         var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
         var compilationUnit = emitter.GenerateCompilationUnit(module);
@@ -361,7 +363,8 @@ internal class FileCompilationPipeline
 
             var moduleCs = GenerateCSharpForModule(
                 moduleInfo, builtinRegistry, projectNamespace,
-                logger, cancellationToken);
+                logger, importResolver.GetEffectiveFeatures(compilationFeatures, modulePath),
+                cancellationToken);
 
             if (moduleCs != null)
             {
@@ -382,6 +385,7 @@ internal class FileCompilationPipeline
         BuiltinRegistry builtinRegistry,
         string? projectNamespace,
         ICompilerLogger logger,
+        Shared.FeatureFlags features,
         CancellationToken cancellationToken = default)
     {
         if (moduleInfo.Module == null || moduleInfo.IsNetModule)
@@ -406,7 +410,8 @@ internal class FileCompilationPipeline
             IsEntryPoint = false,
             Logger = logger,
             SemanticInfo = _semanticInfo,
-            SemanticBinding = _semanticBinding
+            SemanticBinding = _semanticBinding,
+            Features = features
         };
 
         var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);

@@ -287,8 +287,7 @@ public class Compiler
             var isEntryPoint = _options.OutputType.Equals("exe", StringComparison.OrdinalIgnoreCase);
             // Union compilation-wide features with any per-file `from __future__ import`
             // features discovered during import resolution for this file.
-            var fileFeatures = _options.Features.Enable(
-                importResolver.GetFileFutureFeatures(filePath).EnabledFeatures);
+            var fileFeatures = importResolver.GetEffectiveFeatures(_options.Features, filePath);
             // Reject uses of constructs gated behind experimental features that are not enabled,
             // before type resolution runs. No-op until a real gated construct is registered.
             pipeline.CheckFeatureGates(module, filePath, fileFeatures, diagnostics);
@@ -344,7 +343,7 @@ public class Compiler
 
             var codeGenResult = pipeline.GenerateCode(
                 module, filePath, importResolver, builtinRegistry,
-                isEntryPoint, _options.Namespace ?? "", _logger, cancellationToken);
+                isEntryPoint, _options.Namespace ?? "", _logger, _options.Features, cancellationToken);
 
             if (codeGenResult.HasErrors)
             {
