@@ -14,6 +14,7 @@ on:
       - 'src/Sharpy.Stdlib/**'
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
       - 'docs/stdlib/**'
+      - 'docs/deviations.yaml'
       - 'mkdocs.yml'
   pull_request:
     branches: [ "mainline" ]
@@ -25,6 +26,7 @@ on:
       - 'src/Sharpy.Stdlib/**'
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
       - 'docs/stdlib/**'
+      - 'docs/deviations.yaml'
       - 'mkdocs.yml'
 
 jobs:
@@ -85,9 +87,19 @@ jobs:
       with:
         python-version: "3.12"
 
-    - name: Dual-execute ported CPython tests under python3
+    - name: Install PyYAML for the divergence ledger
+      run: python -m pip install --upgrade pip pyyaml
+
+    - name: Verify the divergence ledger is up to date
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        python -m build_tools.cpython_oracle ledger --check
+
+    - name: Dual-execute ported CPython tests under python3 (ledger-enforced)
       env:
         PYTHONPATH: ${{ github.workspace }}
       run: |
         python -m build_tools.cpython_oracle.dual_run \
+          --ledger build_tools/cpython_oracle/ledger.yaml \
           src/Sharpy.Stdlib.Tests/Spy/cpython/

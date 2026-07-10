@@ -106,6 +106,93 @@ Shim + runner tests live in `build_tools/tests/test_cpython_oracle_shim.py`. CI
 runs the dual-execution as the `dual-execute-oracle` job in
 `.github/workflows/python-build-tools.yml` (Python 3.12, no dotnet).
 
+## Divergence ledger
+
+Phase 8 task 4 of #1030. `ledger.yaml` is a **machine-readable, generated** record
+of every place a ported test is expected to behave differently across the two sides
+of the oracle — Sharpy and stock CPython. Its purpose is that a divergence is
+either *documented* (with a reason tying it to an axiom decision + spec section) or
+*a bug* — never a silent surprise that CI quietly tolerates.
+
+### Sources of truth (it is generated, not hand-edited)
+
+`ledger.yaml` is regenerated from two inputs; never edit it by hand:
+
+1. **`docs/deviations.yaml`** — the ~55 designed Python-vs-Sharpy divergences. Their
+   machine-relevant projection (id, category, audience, severity, diagnostic code,
+   spec ref) is copied into the ledger's `deviations:` section so a method entry can
+   cite one by id without restating the axiom rationale.
+2. **`# oracle-ledger:` annotations** embedded in the ported `.spy` files under
+   `src/Sharpy.Stdlib.Tests/Spy/cpython/`. These carry the per-method entries and
+   live next to the code they describe. A block is the marker line followed by
+   contiguous comment lines forming a YAML mapping:
+
+   ```python
+   # oracle-ledger:
+   #   kind: not-ported
+   #   test: ColorsysTest.test_hls_nearwhite
+   #   side: sharpy
+   #   bug: 1063
+   #   spec_ref: docs/language_specification/primitive_types.md
+   #   reason: >
+   #     Sharpy's colorsys.rgb_to_hls returns s == inf for near-white inputs ...
+   ```
+
+### Entry kinds
+
+| Kind | Passes on | Expected to fail on | Cites | dual-run expects |
+|---|---|---|---|---|
+| `expected-fail-cpython` | Sharpy | CPython | `deviation` (required) | test **fails** under CPython |
+| `expected-fail-sharpy` | CPython | Sharpy (.NET) | `bug` issue | test **passes** under CPython |
+| `not-ported` | — (omitted from the port) | — | `deviation` or `bug` | never run (method absent) |
+
+Every entry must cite either a `deviation` id (a designed divergence, which anchors
+it to an axiom + spec section) or a `bug` issue number (a tracked Sharpy defect).
+`expected-fail-cpython` additionally *requires* a `deviation` — a CPython failure is
+by definition a designed divergence, not a bug. The generator validates all of this
+plus method presence (`expected-fail-*` must reference a real `@test` function;
+`not-ported` must reference one that is absent).
+
+Today the three pilots have **zero** method-level divergences (all 31 tests pass
+both sides), so the only entry is the `not-ported` colorsys near-white case (#1063).
+The mechanism is proven by the pytest suite, not by a backlog of entries.
+
+### Lifecycle
+
+```bash
+# Regenerate after editing docs/deviations.yaml or a .spy annotation:
+python -m build_tools.cpython_oracle ledger --write
+
+# Print to stdout without writing:
+python -m build_tools.cpython_oracle ledger
+
+# CI staleness gate (fails if the committed file drifts from a fresh regen):
+python -m build_tools.cpython_oracle ledger --check
+```
+
+### CI enforcement
+
+The `dual-execute-oracle` job runs the ported tree under CPython with the ledger
+attached:
+
+```bash
+python -m build_tools.cpython_oracle.dual_run \
+    --ledger build_tools/cpython_oracle/ledger.yaml \
+    src/Sharpy.Stdlib.Tests/Spy/cpython/
+```
+
+With `--ledger`, a CPython failure is excused **only** by a covering
+`expected-fail-cpython` entry. The run fails (exit 1) on either:
+
+* an **unexplained** divergence — a test fails under CPython with no covering entry
+  (either add an `expected-fail-cpython` annotation, or fix the port); or
+* a **stale** entry — an `expected-fail-cpython` entry whose test unexpectedly
+  *passes* (the divergence was fixed, or the test renamed), so the ledger lies.
+
+Generator + enforcement tests live in
+`build_tools/tests/test_cpython_oracle_ledger.py` (synthetic fixtures for both
+failure modes; never the committed pilots).
+
 ## Committed yield reports
 
 `reports/` holds committed yield reports for the first candidate tranche. See
@@ -129,4 +216,6 @@ PYTHONPATH=. python -m pytest build_tools/tests/test_cpython_oracle.py -v
 | `report.py` | Markdown / YAML yield-report renderers. |
 | `skeleton.py` | `.spy` skeleton emission for PORTABLE methods. |
 | `oracle_sources.py` | CPython 3.12 source resolution + version pin. |
-| `cli.py` / `__main__.py` | `python -m build_tools.cpython_oracle classify …`. |
+| `ledger.py` | Divergence-ledger generator + `dual_run` enforcement logic. |
+| `shim/` + `dual_run.py` | Dual-execution harness (run ports under `python3`). |
+| `cli.py` / `__main__.py` | `python -m build_tools.cpython_oracle classify \| ledger …`. |

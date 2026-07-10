@@ -26,8 +26,9 @@ import sys
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
+from . import ledger as ledger_mod
 from . import shim
 
 
@@ -159,6 +160,50 @@ def _indent(text: str, prefix: str = "        ") -> str:
     return "\n".join(prefix + line for line in text.rstrip().splitlines())
 
 
+def _collect_results(outcomes: List[FileOutcome]) -> Dict[Tuple[str, str], str]:
+    """Flatten per-file outcomes into a ``(module, test) -> status`` map, where
+    status is ``pass`` / ``fail`` / ``skip``. Load errors are surfaced separately
+    (they have no per-test names) so they always fail the run."""
+    results: Dict[Tuple[str, str], str] = {}
+    for outcome in outcomes:
+        module = outcome.path.stem
+        for o in outcome.outcomes:
+            status = "skip" if o.skipped else ("pass" if o.passed else "fail")
+            results[(module, o.name)] = status
+    return results
+
+
+def _print_ledger_report(
+    enforcement: "ledger_mod.EnforcementResult", load_error_files: List[Path]
+) -> None:
+    print()
+    print("ledger enforcement:")
+    if enforcement.satisfied:
+        print(f"  {len(enforcement.satisfied)} documented divergence(s) confirmed:")
+        for module, test in enforcement.satisfied:
+            print(f"        expected-fail-cpython {module}::{test} (failed as documented)")
+    if enforcement.unexplained_failures:
+        print(f"  {len(enforcement.unexplained_failures)} UNEXPLAINED divergence(s):")
+        for module, test in enforcement.unexplained_failures:
+            print(
+                f"        {module}::{test} failed under CPython with no ledger entry — "
+                f"add an expected-fail-cpython annotation or fix the port"
+            )
+    if enforcement.stale_entries:
+        print(f"  {len(enforcement.stale_entries)} STALE ledger entry(ies):")
+        for module, test in enforcement.stale_entries:
+            print(
+                f"        expected-fail-cpython {module}::{test} unexpectedly passed — "
+                f"the divergence is gone; remove the entry"
+            )
+    if load_error_files:
+        print(f"  {len(load_error_files)} file(s) failed to load:")
+        for path in load_error_files:
+            print(f"        {path}")
+    if enforcement.ok and not load_error_files:
+        print("  ok — every CPython divergence is documented and current.")
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m build_tools.cpython_oracle.dual_run",
@@ -175,11 +220,27 @@ def main(argv: Optional[List[str]] = None) -> int:
         action="store_true",
         help="Also list passing tests.",
     )
+    parser.add_argument(
+        "--ledger",
+        help=(
+            "Path to the divergence ledger (ledger.yaml). When given, a CPython "
+            "failure is excused only by a covering expected-fail-cpython entry, and "
+            "an entry whose test unexpectedly passes fails the run as stale."
+        ),
+    )
     args = parser.parse_args(argv)
 
     files = _collect_spy_files(args.targets)
     if files is None:
         return 2
+
+    ledger_data = None
+    if args.ledger:
+        try:
+            ledger_data = ledger_mod.load_ledger(Path(args.ledger))
+        except ledger_mod.LedgerError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
 
     shim.install()
 
@@ -201,6 +262,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"dual-run: {len(files)} file(s), "
         f"{total_pass} passed, {total_fail} failed, {total_skip} skipped"
     )
+
+    if ledger_data is not None:
+        results = _collect_results(outcomes)
+        load_error_files = [o.path for o in outcomes if o.load_error]
+        enforcement = ledger_mod.evaluate_ledger(results, ledger_data)
+        _print_ledger_report(enforcement, load_error_files)
+        if load_error_files or not enforcement.ok:
+            return 1
+        if total_pass == 0 and not results:
+            print("error: no @test functions were discovered", file=sys.stderr)
+            return 2
+        return 0
 
     if file_failures or total_fail:
         return 1

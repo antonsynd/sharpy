@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from . import ledger as ledger_mod
 from . import report as report_mod
 from . import skeleton as skeleton_mod
 from .classifier import classify_file
@@ -60,6 +61,34 @@ def _build_parser() -> argparse.ArgumentParser:
         "--summary-only",
         action="store_true",
         help="Print only the one-line yield summary per module.",
+    )
+
+    led = sub.add_parser(
+        "ledger",
+        help="Generate/verify the machine-readable divergence ledger (ledger.yaml).",
+    )
+    led.add_argument(
+        "--deviations",
+        help="Path to docs/deviations.yaml (default: repo copy).",
+    )
+    led.add_argument(
+        "--ported-root",
+        help="Root of the ported .spy tree to scan (default: Spy/cpython/).",
+    )
+    led.add_argument(
+        "--ledger-path",
+        help="Ledger file to write/verify (default: build_tools/cpython_oracle/ledger.yaml).",
+    )
+    mode = led.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--write",
+        action="store_true",
+        help="Write the regenerated ledger to --ledger-path.",
+    )
+    mode.add_argument(
+        "--check",
+        action="store_true",
+        help="Fail (exit 1) if the committed ledger differs from a fresh regeneration.",
     )
     return parser
 
@@ -106,11 +135,62 @@ def _run_classify(args: argparse.Namespace) -> int:
     return exit_code
 
 
+def _run_ledger(args: argparse.Namespace) -> int:
+    deviations_path = (
+        Path(args.deviations) if args.deviations else ledger_mod.DEFAULT_DEVIATIONS_PATH
+    )
+    ported_root = (
+        Path(args.ported_root) if args.ported_root else ledger_mod.DEFAULT_PORTED_ROOT
+    )
+    ledger_path = (
+        Path(args.ledger_path) if args.ledger_path else ledger_mod.DEFAULT_LEDGER_PATH
+    )
+
+    try:
+        data = ledger_mod.build_ledger(
+            deviations_path=deviations_path,
+            ported_root=ported_root,
+            cpython_version=PINNED_MAJOR_MINOR,
+        )
+    except ledger_mod.LedgerError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    rendered = ledger_mod.render_ledger(data)
+    n_dev = len(data["deviations"])
+    n_entries = len(data["entries"])
+
+    if args.check:
+        if not ledger_path.exists():
+            print(f"error: {ledger_path} does not exist; run --write.", file=sys.stderr)
+            return 1
+        current = ledger_path.read_text(encoding="utf-8")
+        if current != rendered:
+            print(
+                f"error: {ledger_path} is stale. Regenerate with "
+                f"`python -m build_tools.cpython_oracle ledger --write`.",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"ledger up to date: {n_dev} deviations, {n_entries} method entries.")
+        return 0
+
+    if args.write:
+        ledger_path.write_text(rendered, encoding="utf-8")
+        print(f"wrote {ledger_path}: {n_dev} deviations, {n_entries} method entries.")
+        return 0
+
+    sys.stdout.write(rendered)
+    return 0
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     if args.command == "classify":
         return _run_classify(args)
+    if args.command == "ledger":
+        return _run_ledger(args)
     parser.error(f"unknown command {args.command}")
     return 2
 
