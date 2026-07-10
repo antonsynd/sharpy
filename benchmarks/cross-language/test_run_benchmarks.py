@@ -81,3 +81,59 @@ def test_results_to_json_includes_compile_phases_only_for_sharpy():
     by_lang = {e["language"]: e for e in out}
     assert by_lang["Sharpy"]["compile_phases"] == {"Lexical Analysis": 0.005}
     assert "compile_phases" not in by_lang["Python"]
+
+
+def test_generate_spyproj_writes_entry_point_and_project(tmp_path):
+    spy = tmp_path / "bench.spy"
+    spy.write_text("def main():\n    print(1)\n")
+    project_dir = tmp_path / "proj"
+
+    project_file = run_benchmarks.generate_spyproj(spy, project_dir)
+
+    # The .spy is copied in as main.spy (the default Exe entry point).
+    assert (project_dir / "main.spy").read_text() == "def main():\n    print(1)\n"
+    contents = project_file.read_text()
+    assert project_file.name == "bench.spyproj"
+    assert "<OutputType>exe</OutputType>" in contents
+    assert '<SourceFile Include="main.spy" />' in contents
+    # No features requested -> no <Features> element.
+    assert "<Features>" not in contents
+
+
+def test_generate_spyproj_emits_features_when_requested(tmp_path):
+    spy = tmp_path / "bench.spy"
+    spy.write_text("def main():\n    pass\n")
+    project_file = run_benchmarks.generate_spyproj(
+        spy, tmp_path / "proj", features=["matmul", "defer"]
+    )
+    assert "<Features>matmul;defer</Features>" in project_file.read_text()
+
+
+def test_results_to_json_includes_cold_warm_only_for_sharpy():
+    sharpy = run_benchmarks.BenchResult(
+        "fib", "Sharpy", 0.5, 0.1, 0.6, True, "",
+        cold_compile_seconds=0.8, warm_compile_seconds=0.3,
+    )
+    python = run_benchmarks.BenchResult("fib", "Python", 0.1, 0.2, 0.3, True, "")
+    out = run_benchmarks.results_to_json({"fib": {"Sharpy": sharpy, "Python": python}})
+
+    by_lang = {e["language"]: e for e in out}
+    assert by_lang["Sharpy"]["cold_compile_seconds"] == 0.8
+    assert by_lang["Sharpy"]["warm_compile_seconds"] == 0.3
+    assert "cold_compile_seconds" not in by_lang["Python"]
+    assert "warm_compile_seconds" not in by_lang["Python"]
+
+
+def test_merge_results_round_trips_cold_warm(tmp_path):
+    sharpy = run_benchmarks.BenchResult(
+        "fib", "Sharpy", 0.5, 0.1, 0.6, True, "",
+        cold_compile_seconds=0.8, warm_compile_seconds=0.3,
+    )
+    serialized = run_benchmarks.results_to_json({"fib": {"Sharpy": sharpy}})
+    merge_file = tmp_path / "partial.json"
+    merge_file.write_text(json.dumps(serialized))
+
+    merged = run_benchmarks.merge_results({}, merge_file)
+    r = merged["fib"]["Sharpy"]
+    assert r.cold_compile_seconds == 0.8
+    assert r.warm_compile_seconds == 0.3

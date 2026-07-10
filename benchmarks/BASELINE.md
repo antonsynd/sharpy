@@ -84,7 +84,7 @@ Located in `src/Sharpy.Compiler.Benchmarks/Corpus/`:
    - Semantic analysis: ~25% of total time
    - Code generation: ~60% of total time (dominated by Roslyn)
 
-4. **Incremental compilation**: Not yet wired up (see hardening item 5.1). When enabled, expect 2-10x speedup for unchanged files.
+4. **Incremental compilation**: Wired up for `.spyproj` projects since #756 and benchmarked as of #1053. The cross-language harness (`benchmarks/cross-language/run_benchmarks.py`) measures a cold compile (empty cache) and a warm `--incremental` compile (cache present) per benchmark via a synthetic one-file project; both are published in `results/latest.md`. Single-file compiles have no incremental cache and stay cold. The persistent compiler-server compile path is pending #1049 (D2).
 
 ## CI Integration
 

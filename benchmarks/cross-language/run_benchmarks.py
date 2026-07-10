@@ -32,6 +32,8 @@ BENCH_DIR = Path(__file__).resolve().parent
 CLI_PROJECT = REPO_ROOT / "src" / "Sharpy.Cli"
 WARMUP_RUNS = 1
 TIMED_RUNS = 3
+# Number of warm (--incremental, cache-present) project compiles to median over.
+WARM_COMPILE_RUNS = 5
 
 
 @dataclass
@@ -54,6 +56,11 @@ class BenchResult:
     # Per-phase Sharpy compile breakdown {phase_name: seconds}. Only populated for
     # Sharpy results; other languages leave it None and omit it from JSON output.
     compile_phases: dict[str, float] | None = None
+    # Cold (no incremental cache) and warm (--incremental, cache present) project
+    # compile times, measured through a synthetic one-file .spyproj. Only populated
+    # for Sharpy results; other languages leave them None and omit them from JSON.
+    cold_compile_seconds: float | None = None
+    warm_compile_seconds: float | None = None
 
 
 def find_benchmarks(names: list[str] | None = None) -> list[Path]:
@@ -203,6 +210,81 @@ def execute_sharpy(output_dll: Path) -> tuple[float, bool, str]:
     return elapsed, success, err
 
 
+def generate_spyproj(spy_file: Path, project_dir: Path, features: list[str] | None = None) -> Path:
+    """Write a one-file .spyproj into project_dir for warm-compile measurement.
+
+    The benchmark's .spy is copied in as ``main.spy`` (the default Exe entry point),
+    so the generated project needs no explicit ``<EntryPoint>``. ``features`` (if any)
+    populates ``<Features>`` for benchmarks that exercise gated syntax (e.g. the
+    numpy ``@`` matmul variant). Returns the path to the written .spyproj file.
+    """
+    project_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(spy_file, project_dir / "main.spy")
+
+    features_element = ""
+    if features:
+        features_element = f"\n    <Features>{';'.join(features)}</Features>"
+
+    project_content = f"""<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <RootNamespace>Bench</RootNamespace>
+    <OutputType>exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>{features_element}
+  </PropertyGroup>
+  <ItemGroup>
+    <SourceFile Include="main.spy" />
+  </ItemGroup>
+</Project>"""
+    project_file = project_dir / "bench.spyproj"
+    project_file.write_text(project_content)
+    return project_file
+
+
+def compile_sharpy_project(cli_dll: Path, project_file: Path, incremental: bool) -> tuple[float, bool, str]:
+    """Compile a .spyproj via the Sharpy CLI, timing wall-clock. Returns (time, ok, error).
+
+    Passing ``incremental=True`` enables the on-disk symbol cache: the first compile
+    (cache absent) is cold, subsequent ones (cache present) are warm.
+    """
+    cmd = ["dotnet", str(cli_dll), "compile", str(project_file), "-c", "Release", "--no-deps"]
+    if incremental:
+        cmd.append("--incremental")
+    start = time.perf_counter()
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    elapsed = time.perf_counter() - start
+    if result.returncode != 0:
+        return elapsed, False, result.stderr[:500] or result.stdout[:500]
+    return elapsed, True, ""
+
+
+def measure_project_compile(cli_dll: Path, spy_file: Path) -> tuple[float | None, float | None, bool, str]:
+    """Measure cold + warm project-compile times for one benchmark.
+
+    Builds a synthetic one-file .spyproj in a persistent temp dir, compiles it once
+    with an empty incremental cache (cold), then WARM_COMPILE_RUNS more times with the
+    cache present (warm, median). Returns (cold_seconds, warm_seconds, ok, error).
+    """
+    project_dir = Path(tempfile.mkdtemp(prefix="spyproj_bench_"))
+    try:
+        project_file = generate_spyproj(spy_file, project_dir)
+
+        cold_t, ok, err = compile_sharpy_project(cli_dll, project_file, incremental=True)
+        if not ok:
+            return None, None, False, err
+
+        warm_times = []
+        for _ in range(WARM_COMPILE_RUNS):
+            wt, ok, err = compile_sharpy_project(cli_dll, project_file, incremental=True)
+            if not ok:
+                return cold_t, None, False, err
+            warm_times.append(wt)
+
+        return cold_t, median(warm_times), True, ""
+    finally:
+        shutil.rmtree(project_dir, ignore_errors=True)
+
+
 # --- C# ---
 
 def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
@@ -328,9 +410,14 @@ def run_benchmark(
                         break
                 exec_t = median(exec_times) if exec_ok else exec_times[0]
                 compile_phases = parse_sharpy_compile_phases(sharpy_metrics_path(tmp_path))
+                # Cold + warm (--incremental) project-compile times. Additive to the
+                # single-file compile above (kept intact for history comparability).
+                cold_t, warm_t, _proj_ok, _proj_err = measure_project_compile(cli_dll, spy_file)
                 results["Sharpy"] = BenchResult(
                     bench_dir.name, "Sharpy", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err,
                     compile_phases=compile_phases or None,
+                    cold_compile_seconds=cold_t,
+                    warm_compile_seconds=warm_t,
                 )
 
     if "C#" in langs:
@@ -396,12 +483,13 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
 
         print(f"{name:<22} {py_str:<12} {spy_str:<12} {cs_str:<12} {ratio_py:<8} {ratio_cs:<8}")
 
-    # Compilation time table
+    # Compilation time table. "Sharpy" is a cold single-file compile (unchanged, for
+    # history comparability); "Warm" is a warm --incremental project compile.
     print()
     print("=== Compilation Time ===")
     print()
-    print(f"{'Benchmark':<22} {'Python':<12} {'Sharpy':<12} {'C#':<12} {'Spy/C#':<8}")
-    print("-" * 62)
+    print(f"{'Benchmark':<22} {'Python':<12} {'Sharpy':<12} {'Warm':<12} {'C#':<12} {'Spy/C#':<8}")
+    print("-" * 74)
 
     for name in sorted(all_results):
         langs = all_results[name]
@@ -411,17 +499,20 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
 
         py_str = format_time(py.compile_seconds) if py else "—"
         spy_str = format_time(spy.compile_seconds) if spy else "—"
+        warm_str = format_time(spy.warm_compile_seconds) if spy and spy.warm_compile_seconds else "—"
         cs_str = format_time(cs.compile_seconds) if cs else "—"
 
         spy_t = spy.compile_seconds if spy else 0
         cs_t = cs.compile_seconds if cs else 0
         ratio_cs = f"{spy_t / cs_t:.2f}x" if cs_t > 0 and spy_t > 0 else "—"
 
-        print(f"{name:<22} {py_str:<12} {spy_str:<12} {cs_str:<12} {ratio_cs:<8}")
+        print(f"{name:<22} {py_str:<12} {spy_str:<12} {warm_str:<12} {cs_str:<12} {ratio_cs:<8}")
 
     print()
     print("Spy/Py < 1.0 = Sharpy faster than Python")
     print("Spy/C# ~ 1.0 = Sharpy matches raw C# (minimal overhead)")
+    print("Sharpy = cold single-file compile; Warm = warm --incremental project compile")
+    print("Compiler-server (persistent-process) compile column pending #1049")
     print()
 
 
@@ -446,6 +537,8 @@ def merge_results(
                 success=entry["success"],
                 error=entry.get("error", ""),
                 compile_phases=entry.get("compile_phases"),
+                cold_compile_seconds=entry.get("cold_compile_seconds"),
+                warm_compile_seconds=entry.get("warm_compile_seconds"),
             )
     return all_results
 
@@ -466,6 +559,11 @@ def results_to_json(all_results: dict[str, dict[str, BenchResult]]) -> list[dict
             # Per-phase Sharpy breakdown is optional; other languages omit the key.
             if r.compile_phases:
                 entry["compile_phases"] = r.compile_phases
+            # Cold/warm project-compile times are Sharpy-only; omit when absent.
+            if r.cold_compile_seconds is not None:
+                entry["cold_compile_seconds"] = r.cold_compile_seconds
+            if r.warm_compile_seconds is not None:
+                entry["warm_compile_seconds"] = r.warm_compile_seconds
             output.append(entry)
     return output
 
