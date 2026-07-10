@@ -210,11 +210,12 @@ public class CompilationMetrics
             throw new InvalidOperationException($"Cannot record external phase '{name}' while phase '{_currentPhase.Name}' is still running");
         }
 
+        var now = DateTime.UtcNow;
         _phases.Add(new PhaseMetric
         {
             Name = name,
-            StartTime = DateTime.UtcNow,
-            EndTime = DateTime.UtcNow + duration,
+            StartTime = now,
+            EndTime = now + duration,
             MemoryBefore = 0,
             MemoryAfter = memoryDelta
         });
