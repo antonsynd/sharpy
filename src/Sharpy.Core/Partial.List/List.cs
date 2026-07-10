@@ -16,7 +16,8 @@ namespace Sharpy
           IDeepCopyable,
           IShallowCopyable
     {
-        private System.Collections.Generic.List<T> _list;
+        // Internal for direct backing access by the list enumerators.
+        internal System.Collections.Generic.List<T> _list;
 
         /// <summary>
         /// Constructs an empty list.
@@ -101,7 +102,12 @@ namespace Sharpy
         /// </summary>
         /// <param name="reverse">If <c>true</c>, sort in descending order.</param>
         /// <remarks>
-        /// This is not a stable sort.
+        /// Matches Python's stable sort for reference/nullable element types
+        /// (the relative order of comparer-equal elements is preserved, and
+        /// <paramref name="reverse"/> preserves the original order among equal
+        /// elements rather than reversing it). For value-type elements, where
+        /// two comparer-equal elements are indistinguishable, the faster
+        /// in-place sort is used.
         /// </remarks>
         /// <example>
         /// <code>
@@ -112,7 +118,103 @@ namespace Sharpy
         /// </example>
         public void Sort(bool reverse = false)
         {
-            Sort(value => value, reverse);
+            if (_list.Count < 2)
+            {
+                return;
+            }
+
+            if (default(T) is null)
+            {
+                // Reference or nullable element type: the relative order of
+                // distinct-but-equal-comparing elements is observable, so keep
+                // Python's stable ordering. ComparerAdapter reproduces the
+                // keyless comparison semantics (throwing when comparing against
+                // None) without allocating an identity key selector per compare.
+                StableSort(ComparerAdapter<T>.Instance, reverse);
+            }
+            else
+            {
+                // Value-type element: comparer-equal elements are
+                // indistinguishable, so stability is unobservable and None
+                // cannot occur. Use the in-place sort with the runtime's
+                // specialized default comparer (no boxing, no delegate hop).
+                _list.Sort();
+
+                if (reverse)
+                {
+                    _list.Reverse();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stable bottom-up merge sort over the backing list. When
+        /// <paramref name="reverse"/> is set, sorts in descending order while
+        /// preserving the original order among comparer-equal elements
+        /// (matching Python's <c>reverse=True</c> — not a sort-then-reverse).
+        /// </summary>
+        private void StableSort(IComparer<T> comparer, bool reverse)
+        {
+            int n = _list.Count;
+            var src = new T[n];
+            _list.CopyTo(src);
+            var dst = new T[n];
+
+            for (int width = 1; width < n; width <<= 1)
+            {
+                for (int i = 0; i < n; i += width << 1)
+                {
+                    int left = i;
+                    int mid = System.Math.Min(i + width, n);
+                    int right = System.Math.Min(i + (width << 1), n);
+                    MergeRuns(src, dst, left, mid, right, comparer, reverse);
+                }
+
+                var swap = src;
+                src = dst;
+                dst = swap;
+            }
+
+            for (int i = 0; i < n; i++)
+            {
+                _list[i] = src[i];
+            }
+        }
+
+        private static void MergeRuns(
+            T[] src, T[] dst, int left, int mid, int right, IComparer<T> comparer, bool reverse)
+        {
+            int i = left;
+            int j = mid;
+            int k = left;
+
+            while (i < mid && j < right)
+            {
+                int c = comparer.Compare(src[i], src[j]);
+                // On ties (c == 0) always take the left run first so equal
+                // elements keep their original relative order in both
+                // directions (stable ascending and stable descending).
+                bool takeLeft = reverse ? c >= 0 : c <= 0;
+
+                if (takeLeft)
+                {
+                    dst[k++] = src[i++];
+                }
+                else
+                {
+                    dst[k++] = src[j++];
+                }
+            }
+
+            while (i < mid)
+            {
+                dst[k++] = src[i++];
+            }
+
+            while (j < right)
+            {
+                dst[k++] = src[j++];
+            }
         }
 
         /// <summary>
