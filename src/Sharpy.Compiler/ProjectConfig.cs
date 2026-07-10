@@ -107,6 +107,15 @@ public class ProjectConfig
     }
 
     /// <summary>
+    /// When set, overrides the computed <see cref="OutputAssemblyPath"/> with an explicit
+    /// path. Used by single-file compilation (the synthetic project-of-one-file, #1038) so
+    /// the CLI can direct the emitted assembly to a chosen location (a temp file for
+    /// <c>run</c>, or the <c>-o</c> path for <c>build</c>/<c>compile</c>) instead of the
+    /// project's <c>bin/{Config}/{TFM}</c> convention.
+    /// </summary>
+    public string? OutputAssemblyPathOverride { get; set; }
+
+    /// <summary>
     /// Compute CodeGenInfo during semantic analysis. This is required for code generation.
     /// Symbols will have their CodeGenInfo property populated after type checking,
     /// containing pre-computed C# names, version numbers, and other code generation metadata.
@@ -122,6 +131,9 @@ public class ProjectConfig
     {
         get
         {
+            if (!string.IsNullOrEmpty(OutputAssemblyPathOverride))
+                return OutputAssemblyPathOverride!;
+
             var assemblyName = AssemblyName ?? RootNamespace;
             var extension = OutputType.ToLowerInvariant() == "exe" ? ".exe" : ".dll";
             return Path.Combine(OutputPath, assemblyName + extension);

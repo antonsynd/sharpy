@@ -558,6 +558,13 @@ public class ProjectCompilationResult
     public ProjectCompilationMetrics? Metrics { get; init; }
 
     /// <summary>
+    /// File paths of stdlib/reference assemblies actually used during compilation, as
+    /// tracked by the <see cref="Semantic.Registry.ModuleRegistry"/>. Enables selective
+    /// runtime-dependency copying for the synthetic project-of-one-file path (#1038).
+    /// </summary>
+    public IReadOnlySet<string> UsedAssemblyPaths { get; init; } = new HashSet<string>();
+
+    /// <summary>
     /// The effective experimental feature flags for this compilation: the CLI
     /// <c>--enable-feature</c> set unioned with the project's <c>&lt;Features&gt;</c>.
     /// Exposed for tooling and tests that need to observe the merged set.
@@ -644,4 +651,26 @@ public class CompilerOptions
     /// <see cref="Shared.FeatureFlags.None"/>.
     /// </summary>
     public Shared.FeatureFlags Features { get; set; } = Shared.FeatureFlags.None;
+
+    /// <summary>
+    /// Build configuration ("Debug" or "Release"). Threaded onto the synthetic
+    /// project-of-one-file (#1038) so single-file compiles honor the same optimization
+    /// level and PDB behavior as project builds. Default: "Debug".
+    /// </summary>
+    public string Configuration { get; set; } = "Debug";
+
+    /// <summary>
+    /// Explicit output assembly name for single-file compilation. When null the entry
+    /// file's stem is used. Only consulted when the synthetic project emits an assembly.
+    /// </summary>
+    public string? AssemblyName { get; set; }
+
+    /// <summary>
+    /// Explicit output assembly path for single-file compilation. When set, the synthetic
+    /// project-of-one-file directs its emitted assembly here (see
+    /// <see cref="ProjectConfig.OutputAssemblyPathOverride"/>). When null, no assembly path
+    /// is forced and callers that only need generated C# (e.g. <c>emit csharp</c>) skip
+    /// assembly emission entirely.
+    /// </summary>
+    public string? OutputAssemblyPath { get; set; }
 }

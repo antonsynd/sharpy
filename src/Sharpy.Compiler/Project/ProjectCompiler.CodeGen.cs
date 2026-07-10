@@ -144,7 +144,9 @@ internal partial class ProjectCompiler
                 Metrics = ProjectMetrics,
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel,
-                EffectiveFeatures = _features
+                EffectiveFeatures = _features,
+                UsedAssemblyPaths = _moduleRegistry?.GetUsedAssemblyPaths()
+                    ?? (IReadOnlySet<string>)new HashSet<string>()
             };
         }
 
@@ -163,7 +165,9 @@ internal partial class ProjectCompiler
             Metrics = ProjectMetrics,
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel,
-            EffectiveFeatures = _features
+            EffectiveFeatures = _features,
+            UsedAssemblyPaths = _moduleRegistry?.GetUsedAssemblyPaths()
+                ?? (IReadOnlySet<string>)new HashSet<string>()
         };
     }
 }

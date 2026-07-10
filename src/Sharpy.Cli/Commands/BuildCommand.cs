@@ -87,34 +87,6 @@ internal static class BuildCommand
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
 
-            var compilerOptions = new CompilerOptions
-            {
-                OutputType = outputType,
-                References = references,
-                ModulePaths = modulePaths,
-                WarningsAsErrors = warnAsError,
-                SuppressedWarnings = CliHelpers.ParseNowarnCodes(nowarn),
-                MaxErrors = maxErrors ?? 0,
-                Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>())
-            };
-
-            var api = CliHelpers.CreateCompilerApi(logger);
-            var result = api.Compile(source, compilerOptions, inputFile.FullName);
-
-            if (!result.Success)
-            {
-                Console.Error.WriteLine("Compilation failed:");
-                Console.Error.WriteLine();
-                CliHelpers.RenderDiagnostics(result.Diagnostics.Where(d => d.IsError), sourceText, Console.Error);
-                return null;
-            }
-
-            var compilationWarnings = result.Diagnostics.Where(d => d.IsWarning).ToList();
-            if (compilationWarnings.Count > 0)
-            {
-                CliHelpers.RenderDiagnostics(compilationWarnings, sourceText, Console.Out);
-            }
-
             var inputFileName = Path.GetFileNameWithoutExtension(inputFile.Name);
             var outputDir = output != null
                 ? Path.GetDirectoryName(output.FullName) ?? Directory.GetCurrentDirectory()
@@ -135,54 +107,46 @@ internal static class BuildCommand
                 Directory.CreateDirectory(outputDirectory);
             }
 
-            var allReferences = CliHelpers.GetDefaultReferences().Concat(references).Distinct().ToList();
-            var projectConfig = new SingleFileProjectConfig(
-                projectFilePath: inputFile.FullName,
-                projectDirectory: Path.GetDirectoryName(inputFile.FullName) ?? Directory.GetCurrentDirectory(),
-                rootNamespace: inputFileName,
-                assemblyName: assemblyName,
-                outputType: outputType,
-                targetFramework: "net10.0",
-                configuration: configuration,
-                sourceFiles: new List<string> { inputFile.FullName },
-                references: allReferences,
-                modulePaths: modulePaths.ToList(),
-                outputAssemblyPath: finalOutputPath
-            );
-
-            var csharpSources = new Dictionary<string, string>();
-            foreach (var (sourcePath, csCode) in result.GeneratedCSharpFiles)
+            // #1038: single-file compilation is a synthetic project-of-one-file driven through
+            // ProjectCompiler. Handing the output location, assembly name, and configuration to
+            // CompilerApi lets the project pipeline emit the assembly itself using the very same
+            // ProjectConfig it used for code generation — there is no longer a separate
+            // AssemblyCompiler hand-off or SingleFileProjectConfig wrapper.
+            var compilerOptions = new CompilerOptions
             {
-                var csFileName = Path.ChangeExtension(sourcePath, ".cs");
-                csharpSources[csFileName] = csCode;
-            }
+                OutputType = outputType,
+                References = references,
+                ModulePaths = modulePaths,
+                WarningsAsErrors = warnAsError,
+                SuppressedWarnings = CliHelpers.ParseNowarnCodes(nowarn),
+                MaxErrors = maxErrors ?? 0,
+                Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>()),
+                Configuration = configuration,
+                AssemblyName = assemblyName,
+                OutputAssemblyPath = finalOutputPath
+            };
 
-            if (csharpSources.Count == 0 && result.GeneratedCSharp != null)
+            var api = CliHelpers.CreateCompilerApi(logger);
+            var result = api.Compile(source, compilerOptions, inputFile.FullName);
+
+            if (!result.Success)
             {
-                csharpSources[Path.ChangeExtension(inputFile.FullName, ".cs")] = result.GeneratedCSharp;
-            }
-
-            var assemblyCompiler = new AssemblyCompiler(logger);
-            var assemblyResult = assemblyCompiler.CompileToAssembly(csharpSources, projectConfig);
-
-            if (!assemblyResult.Success)
-            {
-                Console.Error.WriteLine("Assembly compilation failed:");
+                Console.Error.WriteLine("Compilation failed:");
                 Console.Error.WriteLine();
-                CliHelpers.RenderDiagnostics(assemblyResult.Diagnostics.GetErrors(), sourceText, Console.Error);
+                CliHelpers.RenderDiagnostics(result.Diagnostics.Where(d => d.IsError), sourceText, Console.Error);
                 return null;
             }
 
-            var assemblyWarnings = assemblyResult.Diagnostics.GetWarnings();
-            if (assemblyWarnings.Count > 0)
+            var compilationWarnings = result.Diagnostics.Where(d => d.IsWarning).ToList();
+            if (compilationWarnings.Count > 0)
             {
-                CliHelpers.RenderDiagnostics(assemblyWarnings, sourceText, Console.Out);
+                CliHelpers.RenderDiagnostics(compilationWarnings, sourceText, Console.Out);
             }
 
-            Console.WriteLine($"Successfully compiled to: {assemblyResult.OutputAssemblyPath}");
+            Console.WriteLine($"Successfully compiled to: {result.OutputAssemblyPath ?? finalOutputPath}");
 
-            CliHelpers.OutputVerboseTimingSummary(result.Metrics, logger);
-            CliHelpers.OutputCombinedMetrics(result.Metrics, assemblyResult.Metrics, metricsFormat, metricsOutput);
+            CliHelpers.OutputVerboseTimingSummary(result.ProjectMetrics, logger);
+            CliHelpers.OutputProjectMetrics(result.ProjectMetrics, metricsFormat, metricsOutput);
 
             return result;
         }
@@ -191,39 +155,5 @@ internal static class BuildCommand
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
             return null;
         }
-    }
-
-    internal class SingleFileProjectConfig : ProjectConfig
-    {
-        private readonly string _outputAssemblyPath;
-
-        public SingleFileProjectConfig(
-            string projectFilePath,
-            string projectDirectory,
-            string rootNamespace,
-            string assemblyName,
-            string outputType,
-            string targetFramework,
-            string configuration,
-            List<string> sourceFiles,
-            List<string> references,
-            List<string> modulePaths,
-            string outputAssemblyPath)
-        {
-            _outputAssemblyPath = outputAssemblyPath;
-
-            ProjectFilePath = projectFilePath;
-            ProjectDirectory = projectDirectory;
-            RootNamespace = rootNamespace;
-            AssemblyName = assemblyName;
-            OutputType = outputType;
-            TargetFramework = targetFramework;
-            Configuration = configuration;
-            SourceFiles = sourceFiles;
-            References = references;
-            ModulePaths = modulePaths;
-        }
-
-        public override string OutputAssemblyPath => _outputAssemblyPath;
     }
 }

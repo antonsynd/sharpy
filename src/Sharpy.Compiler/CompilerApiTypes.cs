@@ -45,6 +45,27 @@ public sealed record CompileResult
     /// included in the output directory at runtime.
     /// </summary>
     public IReadOnlySet<string> UsedAssemblyPaths { get; init; } = new HashSet<string>();
+
+    /// <summary>
+    /// The synthetic project-of-one-file configuration the compiler used for this
+    /// single-file compile (#1038), or null when compilation went through the legacy
+    /// in-memory path. The CLI hands this same <see cref="ProjectConfig"/> to
+    /// <c>AssemblyCompiler</c> so assembly emission and code generation agree on
+    /// namespace, references, and output location.
+    /// </summary>
+    public ProjectConfig? ProjectConfig { get; init; }
+
+    /// <summary>
+    /// Path of the emitted assembly when the synthetic project wrote one, otherwise null.
+    /// </summary>
+    public string? OutputAssemblyPath { get; init; }
+
+    /// <summary>
+    /// Project-level metrics (aggregated per-file plus assembly metrics) when compilation
+    /// went through the synthetic project-of-one-file path (#1038), otherwise null. The CLI
+    /// renders these for single-file <c>run</c>/<c>build</c>/<c>compile</c>.
+    /// </summary>
+    public ProjectCompilationMetrics? ProjectMetrics { get; init; }
 }
 
 /// <summary>

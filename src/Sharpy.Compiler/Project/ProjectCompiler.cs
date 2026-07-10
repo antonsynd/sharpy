@@ -110,9 +110,20 @@ internal partial class ProjectCompiler
         Compile(config, CancellationToken.None);
 
     /// <summary>
-    /// Compile a Sharpy project through the multi-file compilation pipeline with cancellation support
+    /// Compile a Sharpy project through the multi-file compilation pipeline with cancellation support.
     /// </summary>
-    public ProjectCompilationResult Compile(ProjectConfig config, CancellationToken cancellationToken)
+    /// <param name="config">The project configuration.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="emitAssembly">
+    /// When true (the default), the pipeline runs through assembly emission (phase 7).
+    /// When false, it stops after code generation (phase 6) and returns the generated C#
+    /// without writing an assembly. The synthetic project-of-one-file path (#1038) uses
+    /// <c>false</c> so callers that only need generated C# (e.g. <c>emit csharp</c>) — and
+    /// the CLI, which emits the assembly itself with the same config — avoid a redundant
+    /// or unwanted assembly write.
+    /// </param>
+    public ProjectCompilationResult Compile(ProjectConfig config, CancellationToken cancellationToken,
+        bool emitAssembly = true)
     {
         _logger.LogInfo($"Starting project compilation: {config.RootNamespace}");
         _cancellationToken = cancellationToken;
@@ -235,6 +246,25 @@ internal partial class ProjectCompiler
             // Phase 6: Generate C# code for all files
             var generatedCSharp = GenerateCode(config);
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Codegen-only mode (synthetic project-of-one-file, #1038): stop here and hand
+            // back the generated C#. The caller either only needs the C# (emit) or emits the
+            // assembly itself using the very same ProjectConfig.
+            if (!emitAssembly)
+            {
+                return new ProjectCompilationResult
+                {
+                    Success = !_diagnostics.HasErrors,
+                    Diagnostics = _diagnostics,
+                    GeneratedCSharpFiles = generatedCSharp,
+                    Metrics = ProjectMetrics,
+                    DependencyGraph = _dependencyGraph,
+                    ProjectModel = _projectModel,
+                    EffectiveFeatures = _features,
+                    UsedAssemblyPaths = _moduleRegistry?.GetUsedAssemblyPaths()
+                        ?? (IReadOnlySet<string>)new HashSet<string>()
+                };
+            }
 
             // Phase 7: Compile to assembly
             return CompileAssembly(config, generatedCSharp);
