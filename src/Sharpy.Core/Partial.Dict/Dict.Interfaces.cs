@@ -6,9 +6,10 @@ namespace Sharpy
     public sealed partial class Dict<K, V>
     {
         /// <summary>
-        /// Returns an enumerator that iterates through the keys.
+        /// Returns an allocation-free struct enumerator over the keys. Used by
+        /// <c>foreach</c> on the concrete dictionary (Python iterates keys).
         /// </summary>
-        public IEnumerator<K> GetEnumerator()
+        public Dictionary<K, V>.KeyCollection.Enumerator GetEnumerator()
         {
             return _dict.Keys.GetEnumerator();
         }

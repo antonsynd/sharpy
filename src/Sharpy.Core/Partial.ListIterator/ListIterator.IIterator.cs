@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 namespace Sharpy
 {
     public sealed partial class ListIterator<T>
@@ -6,9 +5,13 @@ namespace Sharpy
         /// <inheritdoc/>
         public override bool MoveNext()
         {
-            if (_index < ((IReadOnlyCollection<T>)_list).Count)
+            // Read the backing store directly rather than going through the
+            // Sharpy indexer, which normalizes (Index.Normalize) every element.
+            var backing = _list._list;
+
+            if (_index < backing.Count)
             {
-                _current = _list[(int)_index];
+                _current = backing[(int)_index];
                 ++_index;
                 return true;
             }

@@ -337,6 +337,16 @@ public class Dict_Tests
     }
 
     [Fact]
+    public void Iteration_ConcreteEnumerator_IsValueType()
+    {
+        // foreach over a concrete Dict yields keys via the struct KeyCollection
+        // enumerator, so it allocates no iterator on the heap.
+        var dict = new Dict<string, int>();
+
+        dict.GetEnumerator().GetType().IsValueType.Should().BeTrue();
+    }
+
+    [Fact]
     public void PopItem_RemovesAndReturnsFirstItem()
     {
         // Arrange

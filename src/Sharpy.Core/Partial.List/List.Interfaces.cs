@@ -98,14 +98,20 @@ namespace Sharpy
         #region IEnumerable<T>
 
         /// <summary>
-        /// Returns an enumerator that iterates through the list.
+        /// Returns an allocation-free struct enumerator over the concrete list.
+        /// Used by <c>foreach</c> on <see cref="List{T}"/>.
         /// </summary>
-        public IEnumerator<T> GetEnumerator() => new ListIterator<T>(this);
+        public Enumerator GetEnumerator() => new Enumerator(this);
+
+        /// <summary>
+        /// Returns the Python-protocol class iterator for interface-based iteration.
+        /// </summary>
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => new ListIterator<T>(this);
 
         /// <summary>
         /// Returns a non-generic enumerator for the IEnumerable interface.
         /// </summary>
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => new ListIterator<T>(this);
 
         #endregion
 
