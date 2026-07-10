@@ -1,0 +1,128 @@
+# ported from CPython 3.12 Lib/test/test_colorsys.py::ColorsysTest
+#
+# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# NOTICE file in this directory. assertTripleEqual/assertAlmostEqual (7 decimal
+# places) are rendered as approx(..., abs=1e-7). The frange() roundtrip loops are
+# unrolled over an explicit list of sample values.
+#
+# Omitted: test_hls_nearwhite (gh-106498) — Sharpy's colorsys.rgb_to_hls returns
+# s == inf for near-white inputs like (0.9999999999999999, 1.0, 1.0) where CPython
+# returns 1.0. Tracked as a Sharpy stdlib divergence in #1063.
+
+from unittest import approx
+
+import colorsys
+
+# --- roundtrips (frange loops unrolled over sample values) ---
+
+@test
+def test_hsv_roundtrip():
+    vals: list[float] = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    for r in vals:
+        for g in vals:
+            for b in vals:
+                h, s, v = colorsys.rgb_to_hsv(r, g, b)
+                r2, g2, b2 = colorsys.hsv_to_rgb(h, s, v)
+                assert r2 == approx(r, abs=1e-7)
+                assert g2 == approx(g, abs=1e-7)
+                assert b2 == approx(b, abs=1e-7)
+
+@test
+def test_hls_roundtrip():
+    vals: list[float] = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    for r in vals:
+        for g in vals:
+            for b in vals:
+                h, l, s = colorsys.rgb_to_hls(r, g, b)
+                r2, g2, b2 = colorsys.hls_to_rgb(h, l, s)
+                assert r2 == approx(r, abs=1e-7)
+                assert g2 == approx(g, abs=1e-7)
+                assert b2 == approx(b, abs=1e-7)
+
+@test
+def test_yiq_roundtrip():
+    vals: list[float] = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    for r in vals:
+        for g in vals:
+            for b in vals:
+                y, i, q = colorsys.rgb_to_yiq(r, g, b)
+                r2, g2, b2 = colorsys.yiq_to_rgb(y, i, q)
+                assert r2 == approx(r, abs=1e-7)
+                assert g2 == approx(g, abs=1e-7)
+                assert b2 == approx(b, abs=1e-7)
+
+# --- known values (both directions) ---
+
+def _assert_triple(a0: float, a1: float, a2: float, b0: float, b1: float, b2: float) -> None:
+    assert a0 == approx(b0, abs=1e-7)
+    assert a1 == approx(b1, abs=1e-7)
+    assert a2 == approx(b2, abs=1e-7)
+
+@test
+def test_hsv_values():
+    # rgb -> hsv known pairs (black, blue, green, cyan, red, purple, yellow, white, grey)
+    h, s, v = colorsys.rgb_to_hsv(0.0, 0.0, 0.0)
+    _assert_triple(h, s, v, 0.0, 0.0, 0.0)
+    h, s, v = colorsys.rgb_to_hsv(0.0, 0.0, 1.0)
+    _assert_triple(h, s, v, 4.0 / 6.0, 1.0, 1.0)
+    h, s, v = colorsys.rgb_to_hsv(0.0, 1.0, 0.0)
+    _assert_triple(h, s, v, 2.0 / 6.0, 1.0, 1.0)
+    h, s, v = colorsys.rgb_to_hsv(0.0, 1.0, 1.0)
+    _assert_triple(h, s, v, 3.0 / 6.0, 1.0, 1.0)
+    h, s, v = colorsys.rgb_to_hsv(1.0, 0.0, 0.0)
+    _assert_triple(h, s, v, 0.0, 1.0, 1.0)
+    h, s, v = colorsys.rgb_to_hsv(1.0, 0.0, 1.0)
+    _assert_triple(h, s, v, 5.0 / 6.0, 1.0, 1.0)
+    h, s, v = colorsys.rgb_to_hsv(1.0, 1.0, 0.0)
+    _assert_triple(h, s, v, 1.0 / 6.0, 1.0, 1.0)
+    h, s, v = colorsys.rgb_to_hsv(1.0, 1.0, 1.0)
+    _assert_triple(h, s, v, 0.0, 0.0, 1.0)
+    h, s, v = colorsys.rgb_to_hsv(0.5, 0.5, 0.5)
+    _assert_triple(h, s, v, 0.0, 0.0, 0.5)
+    # hsv -> rgb (reverse direction on the same pairs)
+    r, g, b = colorsys.hsv_to_rgb(4.0 / 6.0, 1.0, 1.0)
+    _assert_triple(r, g, b, 0.0, 0.0, 1.0)
+    r, g, b = colorsys.hsv_to_rgb(2.0 / 6.0, 1.0, 1.0)
+    _assert_triple(r, g, b, 0.0, 1.0, 0.0)
+    r, g, b = colorsys.hsv_to_rgb(0.0, 0.0, 0.5)
+    _assert_triple(r, g, b, 0.5, 0.5, 0.5)
+
+@test
+def test_hls_values():
+    h, l, s = colorsys.rgb_to_hls(0.0, 0.0, 0.0)
+    _assert_triple(h, l, s, 0.0, 0.0, 0.0)
+    h, l, s = colorsys.rgb_to_hls(0.0, 0.0, 1.0)
+    _assert_triple(h, l, s, 4.0 / 6.0, 0.5, 1.0)
+    h, l, s = colorsys.rgb_to_hls(0.0, 1.0, 0.0)
+    _assert_triple(h, l, s, 2.0 / 6.0, 0.5, 1.0)
+    h, l, s = colorsys.rgb_to_hls(1.0, 0.0, 0.0)
+    _assert_triple(h, l, s, 0.0, 0.5, 1.0)
+    h, l, s = colorsys.rgb_to_hls(1.0, 1.0, 1.0)
+    _assert_triple(h, l, s, 0.0, 1.0, 0.0)
+    h, l, s = colorsys.rgb_to_hls(0.5, 0.5, 0.5)
+    _assert_triple(h, l, s, 0.0, 0.5, 0.0)
+    # reverse direction
+    r, g, b = colorsys.hls_to_rgb(4.0 / 6.0, 0.5, 1.0)
+    _assert_triple(r, g, b, 0.0, 0.0, 1.0)
+    r, g, b = colorsys.hls_to_rgb(2.0 / 6.0, 0.5, 1.0)
+    _assert_triple(r, g, b, 0.0, 1.0, 0.0)
+
+@test
+def test_yiq_values():
+    y, i, q = colorsys.rgb_to_yiq(0.0, 0.0, 0.0)
+    _assert_triple(y, i, q, 0.0, 0.0, 0.0)
+    y, i, q = colorsys.rgb_to_yiq(0.0, 0.0, 1.0)
+    _assert_triple(y, i, q, 0.11, -0.3217, 0.3121)
+    y, i, q = colorsys.rgb_to_yiq(0.0, 1.0, 0.0)
+    _assert_triple(y, i, q, 0.59, -0.2773, -0.5251)
+    y, i, q = colorsys.rgb_to_yiq(1.0, 0.0, 0.0)
+    _assert_triple(y, i, q, 0.3, 0.599, 0.213)
+    y, i, q = colorsys.rgb_to_yiq(1.0, 1.0, 1.0)
+    _assert_triple(y, i, q, 1.0, 0.0, 0.0)
+    y, i, q = colorsys.rgb_to_yiq(0.5, 0.5, 0.5)
+    _assert_triple(y, i, q, 0.5, 0.0, 0.0)
+    # reverse direction
+    r, g, b = colorsys.yiq_to_rgb(1.0, 0.0, 0.0)
+    _assert_triple(r, g, b, 1.0, 1.0, 1.0)
+    r, g, b = colorsys.yiq_to_rgb(0.0, 0.0, 0.0)
+    _assert_triple(r, g, b, 0.0, 0.0, 0.0)

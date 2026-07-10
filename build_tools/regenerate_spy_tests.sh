@@ -45,6 +45,28 @@ if [[ "$spy_count" -eq 0 ]]; then
     exit 0
 fi
 
+# --- Duplicate-stem guard ---
+# Generated C# is written to generated/<stem>.cs keyed only by the .spy file's
+# basename, so two .spy sources sharing a stem (even in different subdirectories)
+# would silently clobber each other's output. Fail loudly on any collision.
+dup_stems="$(
+    find "$SPY_DIR" -name '*.spy' -not -path '*/generated/*' \
+        | while read -r f; do basename "$f" .spy; done \
+        | sort | uniq -d
+)"
+if [[ -n "$dup_stems" ]]; then
+    echo "ERROR: duplicate .spy file stems detected across $SPY_DIR." >&2
+    echo "Generated/<stem>.cs is keyed by basename, so these would collide:" >&2
+    while IFS= read -r stem; do
+        [[ -z "$stem" ]] && continue
+        echo "  stem '$stem':" >&2
+        find "$SPY_DIR" -name "${stem}.spy" -not -path '*/generated/*' \
+            | sed 's/^/    /' >&2
+    done <<< "$dup_stems"
+    echo "Rename the colliding .spy file(s) so every stem is unique." >&2
+    exit 1
+fi
+
 if [[ "$mode" == "dry-run" ]]; then
     echo "Would emit $spy_count .spy files via: sharpyc project tests.spyproj --emit-cs-to <tmpdir>"
     find "$SPY_DIR" -name '*.spy' -not -path '*/generated/*' | sort | while read -r f; do

@@ -1,0 +1,22 @@
+CPython-derived test ports
+==========================
+
+The `.spy` test files in this directory (`src/Sharpy.Stdlib.Tests/Spy/cpython/`)
+are ports of test methods from the CPython 3.12 standard-library test suite
+(`Lib/test/test_*.py`). Each file carries a per-file provenance header naming the
+CPython source module and the originating test class/method(s).
+
+The original CPython test code is Copyright (c) 2001-2024 Python Software
+Foundation; All Rights Reserved, and is distributed under the terms of the
+PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2 (PSF-2.0). See:
+
+    https://docs.python.org/3/license.html
+
+These ports are derivative works of that PSF-2.0 material. They translate
+value-level assertions into Sharpy `.spy` `@test` functions; bodies are adapted
+(loops unrolled, statically typed, Sharpy-API-shaped) rather than copied verbatim.
+Methods that cannot survive Sharpy's static typing / API surface are omitted or
+adapted, with the divergence noted at the port site.
+
+Oracle source pin: CPython 3.12.x (see build_tools/cpython_oracle/oracle_sources.py).
+Tracking issue: https://github.com/antonsynd/sharpy/issues/1030

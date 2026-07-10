@@ -1,0 +1,181 @@
+# ported from CPython 3.12 Lib/test/test_bisect.py::TestBisect, TestInsort, TestDocExample
+#
+# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# NOTICE file in this directory. The C-vs-Python module split (py_bisect/c_bisect)
+# collapses to Sharpy's single `bisect` module. Table-driven cases are unrolled.
+#
+# Omitted (Sharpy API/axiom divergences the AST classifier cannot see):
+#   - test_negative_lo: Sharpy's bisect does not validate lo/hi bounds and raises no
+#     ValueError on negative lo (its hi=-1 sentinel means "len(a)"). Behavioral divergence.
+#   - test_large_range / test_large_pyrange: rely on sys.maxsize-sized lazy range()
+#     objects passed as the sequence; Sharpy ints are int64 and bisect takes list[T].
+#   - test_lookups_with_key_function, test_insort (keyed), test_insort_keynotNone:
+#     Sharpy's bisect has no `key=` parameter.
+#   - test_optionalSlicing, TestBisect/TestInsort.test_backcompatibility (function-object
+#     equality): store/compare function references in heterogeneous tuples — not expressible.
+#     Backcompat is ported behaviorally below instead.
+#   - test_lt_returns_non_bool / _notimplemented, test_listDerived, TestErrorHandling.*:
+#     dunder-fixture / builtin-subclass / null-arg TypeError cases (Axiom 3 — rejected at
+#     compile time in a statically typed language).
+
+import bisect
+import random
+
+# --- test_precomputed (unrolled; integer-element rows of the CPython table) ---
+
+@test
+def test_precomputed_bisect_right():
+    empty: list[int] = []
+    assert bisect.bisect_right(empty, 1) == 0
+    assert bisect.bisect_right([1], 0) == 0
+    assert bisect.bisect_right([1], 1) == 1
+    assert bisect.bisect_right([1], 2) == 1
+    assert bisect.bisect_right([1, 1], 0) == 0
+    assert bisect.bisect_right([1, 1], 1) == 2
+    assert bisect.bisect_right([1, 1], 2) == 2
+    assert bisect.bisect_right([1, 1, 1], 1) == 3
+    assert bisect.bisect_right([1, 1, 1, 1], 1) == 4
+    assert bisect.bisect_right([1, 2], 0) == 0
+    assert bisect.bisect_right([1, 2], 1) == 1
+    assert bisect.bisect_right([1, 2], 2) == 2
+    assert bisect.bisect_right([1, 2], 3) == 2
+    assert bisect.bisect_right([1, 2, 3], 0) == 0
+    assert bisect.bisect_right([1, 2, 3], 1) == 1
+    assert bisect.bisect_right([1, 2, 3], 2) == 2
+    assert bisect.bisect_right([1, 2, 3], 3) == 3
+    assert bisect.bisect_right([1, 2, 3], 4) == 3
+    assert bisect.bisect_right([1, 2, 2, 3, 3, 3, 4, 4, 4, 4], 2) == 3
+    assert bisect.bisect_right([1, 2, 2, 3, 3, 3, 4, 4, 4, 4], 3) == 6
+    assert bisect.bisect_right([1, 2, 2, 3, 3, 3, 4, 4, 4, 4], 4) == 10
+    assert bisect.bisect_right([1, 2, 2, 3, 3, 3, 4, 4, 4, 4], 5) == 10
+
+@test
+def test_precomputed_bisect_left():
+    empty: list[int] = []
+    assert bisect.bisect_left(empty, 1) == 0
+    assert bisect.bisect_left([1], 0) == 0
+    assert bisect.bisect_left([1], 1) == 0
+    assert bisect.bisect_left([1], 2) == 1
+    assert bisect.bisect_left([1, 1], 0) == 0
+    assert bisect.bisect_left([1, 1], 1) == 0
+    assert bisect.bisect_left([1, 1], 2) == 2
+    assert bisect.bisect_left([1, 1, 1], 1) == 0
+    assert bisect.bisect_left([1, 1, 1, 1], 2) == 4
+    assert bisect.bisect_left([1, 2], 0) == 0
+    assert bisect.bisect_left([1, 2], 1) == 0
+    assert bisect.bisect_left([1, 2], 2) == 1
+    assert bisect.bisect_left([1, 2], 3) == 2
+    assert bisect.bisect_left([1, 2, 3], 1) == 0
+    assert bisect.bisect_left([1, 2, 3], 2) == 1
+    assert bisect.bisect_left([1, 2, 3], 3) == 2
+    assert bisect.bisect_left([1, 2, 3], 4) == 3
+    assert bisect.bisect_left([1, 2, 2, 3, 3, 3, 4, 4, 4, 4], 2) == 1
+    assert bisect.bisect_left([1, 2, 2, 3, 3, 3, 4, 4, 4, 4], 3) == 3
+    assert bisect.bisect_left([1, 2, 2, 3, 3, 3, 4, 4, 4, 4], 4) == 6
+    assert bisect.bisect_left([1, 2, 2, 3, 3, 3, 4, 4, 4, 4], 5) == 10
+
+@test
+def test_precomputed_float_elements():
+    # rows of the CPython table whose lookup element is fractional (list[float])
+    assert bisect.bisect_right([1.0, 2.0], 1.5) == 1
+    assert bisect.bisect_left([1.0, 2.0], 1.5) == 1
+    assert bisect.bisect_right([1.0, 2.0, 3.0], 1.5) == 1
+    assert bisect.bisect_left([1.0, 2.0, 3.0], 2.5) == 2
+
+# --- test_random: bisect invariants on random sorted data ---
+
+@test
+def test_random():
+    random.seed(17)
+    n: int = 25
+    i: int = 0
+    while i < n:
+        data: list[int] = []
+        j: int = 0
+        while j < i:
+            data.append(random.randrange(0, n, 2))
+            j += 1
+        data.sort()
+        elem: int = random.randrange(-1, n + 1)
+        ip: int = bisect.bisect_left(data, elem)
+        if ip < len(data):
+            assert elem <= data[ip]
+        if ip > 0:
+            assert data[ip - 1] < elem
+        ip = bisect.bisect_right(data, elem)
+        if ip < len(data):
+            assert elem < data[ip]
+        if ip > 0:
+            assert data[ip - 1] <= elem
+        i += 1
+
+# --- test_keyword_args ---
+
+@test
+def test_keyword_args():
+    data: list[int] = [10, 20, 30, 40, 50]
+    assert bisect.bisect_left(a=data, x=25, lo=1, hi=3) == 2
+    assert bisect.bisect_right(a=data, x=25, lo=1, hi=3) == 2
+    assert bisect.bisect(a=data, x=25, lo=1, hi=3) == 2
+    bisect.insort_left(a=data, x=25, lo=1, hi=3)
+    bisect.insort_right(a=data, x=25, lo=1, hi=3)
+    bisect.insort(a=data, x=25, lo=1, hi=3)
+    assert data == [10, 20, 25, 25, 25, 30, 40, 50]
+
+# --- backcompatibility (bisect == bisect_right, insort == insort_right), behavioral ---
+
+@test
+def test_bisect_backcompatibility():
+    a: list[int] = [1, 2, 2, 3, 3, 3, 4]
+    i: int = 0
+    while i < 6:
+        assert bisect.bisect(a, i) == bisect.bisect_right(a, i)
+        i += 1
+
+@test
+def test_insort_backcompatibility():
+    a1: list[int] = [1, 3, 5]
+    a2: list[int] = [1, 3, 5]
+    bisect.insort(a1, 4)
+    bisect.insort_right(a2, 4)
+    assert a1 == a2
+
+# --- TestInsort.test_vsBuiltinSort: repeated insort keeps the list sorted ---
+
+@test
+def test_vs_builtin_sort():
+    random.seed(23)
+    digits: list[str] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    insorted: list[str] = []
+    i: int = 0
+    while i < 200:
+        d: int = random.randint(0, 9)
+        if d % 2 == 0:
+            bisect.insort_left(insorted, digits[d])
+        else:
+            bisect.insort_right(insorted, digits[d])
+        i += 1
+    assert sorted(insorted) == insorted
+
+# --- TestDocExample ---
+
+@test
+def test_doc_example_grades():
+    breakpoints: list[int] = [60, 70, 80, 90]
+    grades: str = "FDCBA"
+    scores: list[int] = [33, 99, 77, 70, 89, 90, 100]
+    result: list[str] = []
+    for score in scores:
+        idx: int = bisect.bisect(breakpoints, score)
+        result.append(grades[idx])
+    assert result == ["F", "A", "C", "C", "B", "A", "A"]
+
+@test
+def test_doc_example_colors():
+    data: list[tuple[str, int]] = [("red", 5), ("blue", 1), ("yellow", 8), ("black", 0)]
+    data.sort(key=lambda r: r[1])
+    keys: list[int] = [r[1] for r in data]
+    assert data[bisect.bisect_left(keys, 0)] == ("black", 0)
+    assert data[bisect.bisect_left(keys, 1)] == ("blue", 1)
+    assert data[bisect.bisect_left(keys, 5)] == ("red", 5)
+    assert data[bisect.bisect_left(keys, 8)] == ("yellow", 8)
