@@ -663,6 +663,16 @@ internal partial class ProjectCompiler
                 // features (per-file, keyed by path on the shared ImportResolver).
                 var fileFeatures = _features.Enable(
                     ImportResolver.GetFileFutureFeatures(unit.FilePath).EnabledFeatures);
+                // Reject uses of constructs gated behind experimental features that are not
+                // enabled, before type resolution runs. No-op until a gated construct exists.
+                var gateDiagnostics = new DiagnosticBag();
+                compilationPipeline.CheckFeatureGates(
+                    unit.Ast, unit.FilePath, fileFeatures, gateDiagnostics);
+                if (gateDiagnostics.GetAll().Count > 0)
+                {
+                    unit.Diagnostics.Merge(gateDiagnostics);
+                    _diagnostics.Merge(gateDiagnostics);
+                }
                 var typeCheckResult = compilationPipeline.TypeCheck(
                     unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
                     computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,

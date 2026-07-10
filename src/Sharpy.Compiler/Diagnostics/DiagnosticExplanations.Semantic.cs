@@ -561,6 +561,20 @@ public static partial class DiagnosticExplanations
             "Import a known semantic/codegen feature, or enable parser-scoped features via " +
             "--enable-feature / <Features>.");
 
+        Add(dict, DiagnosticCodes.Semantic.FeatureNotEnabled,
+            "Use of a construct behind a disabled experimental feature",
+            "Semantic",
+            "A syntactic construct was used that is gated behind an experimental feature which " +
+            "is not enabled. Experimental features ship disabled by default and must be turned on " +
+            "explicitly. Enable the feature compilation-wide with --enable-feature=<name> or a " +
+            "<Features> entry in the .spyproj. Semantic- and codegen-scoped features may also be " +
+            "enabled per-file with 'from __future__ import <name>'; parser-scoped features (those " +
+            "that change syntax) can only be enabled compilation-wide, because import resolution " +
+            "runs after parsing.",
+            "x = a @ b  # '@' is gated behind the 'matmul' experimental feature",
+            "Enable the feature: pass --enable-feature=matmul, add <Features>matmul</Features> to " +
+            "the .spyproj, or (for semantic/codegen features) add 'from __future__ import <name>'.");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",

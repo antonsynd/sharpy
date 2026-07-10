@@ -67,6 +67,28 @@ internal class FileCompilationPipeline
     }
 
     /// <summary>
+    /// Reports SPY0331 for every use of a syntactic construct gated behind an experimental
+    /// feature that is not enabled. Call this after import resolution (so per-file
+    /// <c>from __future__ import</c> features are known) and before type checking.
+    /// </summary>
+    /// <param name="module">The parsed module to scan.</param>
+    /// <param name="filePath">Source path for diagnostic locations.</param>
+    /// <param name="features">
+    /// The effective feature set for this file: compilation-wide features unioned with
+    /// this file's per-file future features.
+    /// </param>
+    /// <param name="diagnostics">Bag to receive any SPY0331 diagnostics.</param>
+    public void CheckFeatureGates(
+        Module module,
+        string filePath,
+        Shared.FeatureFlags features,
+        DiagnosticBag diagnostics)
+    {
+        var checker = new FeatureGateChecker(diagnostics, features, filePath);
+        checker.Check(module);
+    }
+
+    /// <summary>
     /// Creates a configured <see cref="TypeChecker"/> for a single file, runs type checking,
     /// and handles <see cref="SemanticAnalysisException"/> for early abort on too many errors.
     /// </summary>

@@ -289,6 +289,9 @@ public class Compiler
             // features discovered during import resolution for this file.
             var fileFeatures = _options.Features.Enable(
                 importResolver.GetFileFutureFeatures(filePath).EnabledFeatures);
+            // Reject uses of constructs gated behind experimental features that are not enabled,
+            // before type resolution runs. No-op until a real gated construct is registered.
+            pipeline.CheckFeatureGates(module, filePath, fileFeatures, diagnostics);
             var typeCheckResult = pipeline.TypeCheck(
                 module, filePath, isEntryPoint, _options.MaxErrors, diagnostics,
                 computeCodeGenInfo: true, cancellationToken: cancellationToken,
