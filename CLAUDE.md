@@ -232,6 +232,8 @@ When the three axioms conflict, precedence is: **Axiom 1 (.NET) > Axiom 3 (Types
 
 ## Feature Implementation Order
 
+> **Experimental features** (default-off, behind a flag) follow the lifecycle in [docs/design/feature-lifecycle.md](docs/design/feature-lifecycle.md): register in `FeatureFlags.KnownFeatures`, gate via the `FeatureGateChecker` registry (ungated use → SPY0331), graduate or delete per that policy.
+
 For new language features, touch components **in this order** (dependencies flow left→right):
 
 ```

@@ -1,0 +1,175 @@
+# Experimental Feature Lifecycle
+
+> **Status:** Policy — 2026-07-10
+> **Issue:** [#1047](https://github.com/antonsynd/sharpy/issues/1047) (C4).
+> **Implements:** the `FeatureFlags` infrastructure (#1044, C1) + gated-syntax diagnostics (#1045, C2).
+> **Source of truth for the mechanism:** [`src/Sharpy.Compiler/Shared/FeatureFlags.cs`](../../src/Sharpy.Compiler/Shared/FeatureFlags.cs).
+> This page is the *policy*; that file is the *code*. Where they disagree, the code wins and this page is stale — fix it.
+
+An **experimental feature** is a language or codegen change that ships in a release **disabled by
+default**, behind a named flag, so that it can be exercised, revised, and either promoted or removed
+without a compatibility promise while it is being evaluated. This document defines how such a feature
+is proposed, gated, tested, and eventually retired.
+
+The goal is asymmetric by design: **adding** an experimental feature is deliberately structured, but
+**deleting** one is cheap by construction — the gate is the only thing standing between the syntax and
+users, so removing the gate and the syntax together leaves nothing behind.
+
+## States
+
+A feature moves through exactly one of these lifecycles. There is no "on by default but still called
+experimental" state — once a flag is a no-op, the feature is graduated.
+
+```
+                          ┌── graduated ── (flag becomes a no-op, then the flag is removed)
+proposed ── experimental ─┤
+                          └── deleted ──── (syntax + gate removed; nothing to clean up)
+```
+
+| State | Default | Gate | Stability promise | Registry presence |
+|-------|---------|------|-------------------|-------------------|
+| **experimental** | off | required | none — may change or vanish without notice | in `KnownFeatures` |
+| **graduated** | on | none (flag is a no-op, then removed) | normal back-compat | removed after a deprecation window |
+| **deleted** | n/a | n/a | n/a | removed |
+
+### experimental
+
+The feature is registered in `FeatureFlags.KnownFeatures` and its gated constructs are rejected unless
+the flag is enabled. Because it is off by default, **its syntax and semantics carry no stability
+promise**: they may change, or the feature may be removed entirely, in any release. Users who opt in
+accept that. This is what makes the evaluation cheap — no code depending on the default behaviour can
+break, because the default behaviour is "not available."
+
+### graduated
+
+When a feature has earned its place (see [exit criteria](#exit-criteria)), it graduates in two steps so
+that no user's build breaks at the transition:
+
+1. **Flag becomes a no-op.** The gate is removed; the construct is always accepted. The feature name
+   stays in `KnownFeatures` so that existing `--enable-feature`, `<Features>`, and
+   `from __future__ import` sites keep compiling instead of erroring on an now-unknown name. The
+   `FeatureInfo` is marked so tooling can note it is a no-op.
+2. **Flag is removed.** After at least one release as a no-op, the name is dropped from
+   `KnownFeatures`. Enabling it is once again an error — but now it is a *stale* reference to a feature
+   that is simply the language, and the error text tells the user to delete the flag.
+
+At graduation the feature is documented as normal language surface, not as experimental, and its
+`.spy`/`.expected` fixtures drop their `.features` sidecars (the feature is now unconditional).
+
+### deleted
+
+If evaluation concludes against the feature, both the gated syntax **and** the gate are removed in one
+change, and the name is dropped from `KnownFeatures`. Enabling a deleted feature is an error listing the
+currently-known features. Because everything lived behind the gate, deletion touches only the feature's
+own code — there is no default-path behaviour to unwind. Record the disposition on the feature's issue.
+
+## Entry criteria (proposed → experimental)
+
+A feature may land as experimental when all of the following hold:
+
+- It has a GitHub issue describing the syntax, semantics, and motivation.
+- It is registered in `FeatureFlags.KnownFeatures` with a `FeatureInfo(Name, Description, Scope, Hidden)`
+  whose `Scope` is chosen per [Scope asymmetry](#scope-asymmetry) below.
+- Its gated constructs are registered in the feature-gate registry (see
+  [How a feature is gated](#how-a-feature-is-gated)) so that ungated use produces `SPY0331`, not a
+  generic parse or type error.
+- It has at least one ungated `.error` fixture asserting the `SPY0331` diagnostic and at least one gated
+  fixture (via a `.features` sidecar, C3/#1046) exercising the enabled behaviour.
+
+## Exit criteria (experimental → graduated)
+
+A feature may graduate only when all of the following hold:
+
+- **Full fixture coverage** of the enabled behaviour via `.features` sidecars (C3, #1046) — the gated
+  path is tested to the same standard as unconditional language surface, so that flipping the flag to a
+  no-op is not a leap of faith.
+- **A specification page is drafted** under `docs/language_specification/` *before* graduation, so the
+  feature becomes authoritative spec (Critical Rule 7) the moment it becomes default.
+- **At least one release spent in experimental**, giving real usage a chance to surface problems while
+  changes are still free.
+
+A feature that cannot meet these does not graduate; it either stays experimental or is deleted.
+
+## Scope asymmetry
+
+How a feature *can be enabled* is determined by **when it takes effect**, encoded as its
+`FeatureScope`. This asymmetry is not a preference — it falls out of the pass order (import resolution
+is Pass 1.5, *after* parsing), and it is enforced in `FeatureFlags.cs` and `ImportResolver`.
+
+| Scope | Takes effect during | Enable via `--enable-feature` / `.spyproj <Features>` | Enable via `from __future__ import` |
+|-------|---------------------|:---:|:---:|
+| `Parser` | lexing / parsing | ✅ | ❌ |
+| `Semantic` | semantic analysis | ✅ | ✅ |
+| `CodeGen` | code generation | ✅ | ✅ |
+
+A **parser-scoped** feature changes how source text is tokenized or parsed. A `from __future__ import`
+statement can never enable it: by the time Pass 1.5 sees the import, the syntax it would have unlocked
+has already been rejected by the parser. Parser-scoped features are therefore enabled only
+**compilation-wide** — the CLI `--enable-feature=<name>` flag or a `<Features>` entry in the `.spyproj`.
+
+**Semantic-** and **codegen-scoped** features affect only later phases, so they may additionally be
+enabled **per file** with `from __future__ import <name>`, in addition to the two compilation-wide
+mechanisms. Per-file future flags are stored separately from the compilation-wide set (they must not
+leak across files) and unioned in for that file only — see `ImportResolver.GetFileFutureFeatures`.
+
+Both pilots below are `Parser`-scoped, so both are enabled compilation-wide only.
+
+## Unknown names are errors, never silent no-ops
+
+At every boundary — CLI, `.spyproj`, and `from __future__ import` — an unknown feature name is a hard
+error, never a silently-ignored no-op. This is a deliberate safety property: a typo in a flag name must
+not quietly disable the feature the author thought they had turned on.
+
+- `--enable-feature` / `.spyproj <Features>` validate against `KnownFeatures` at the boundary
+  (`FeatureFlags.TryValidate`) and reject unknown names with the list of known features.
+- `from __future__ import <name>` of an unknown **or mis-scoped** (parser-scoped) name is
+  **`SPY0330`** (`UnknownFutureFeature`), which points parser-scoped names at the compilation-wide flags.
+
+## How a feature is gated
+
+Gating is a single post-import-resolution concern, not per-parser or per-checker special cases. The
+parser **always** builds the AST for gated syntax — it never guards syntax behind a flag itself — so a
+disabled feature yields a helpful "requires experimental feature" diagnostic instead of a generic parse
+error.
+
+1. **Register the name.** Add a `FeatureInfo` to `FeatureFlags.KnownFeatures` with the right `Scope`.
+2. **Register the gated constructs.** Map the feature's AST constructs (a node kind, an operator, a
+   keyword) to the feature name in the central feature-gate registry consumed by the `FeatureGateChecker`.
+   *(This registry and checker are being introduced under C2/#1045 concurrently with this policy; this
+   page describes the intended shape, not specific call sites.)*
+3. **Enforcement is one AST walk.** After Pass 1.5 (so per-file `from __future__` flags are known) and
+   before type resolution, the `FeatureGateChecker` walks each module, unions the compilation-wide flags
+   with that file's future flags, and emits **`SPY0331`** (`FeatureNotEnabled`) for every ungated use of
+   a gated construct. Downstream passes therefore never see an ungated construct without the error
+   already reported. Parser-scoped features are validated here too — by design they cannot arrive via a
+   future import.
+
+The `SPY0331` message names the feature and how to enable it, e.g. *"requires experimental feature 'X' —
+enable with `--enable-feature=X` or `<Features>X</Features>` in .spyproj"*, appending *"or
+`from __future__ import X`"* for semantic/codegen-scoped features.
+
+## Pilot features
+
+Two features pilot this lifecycle. Both are `Parser`-scoped and both ship experimental.
+
+| Feature | Flag | Issue | Scope | Lowering |
+|---------|------|-------|-------|----------|
+| `@` matrix-multiplication operator | `matmul` | [#989](https://github.com/antonsynd/sharpy/issues/989) | `Parser` | dispatches to `__matmul__` / `__imatmul__` |
+| `defer` statement | `defer` | [#1023](https://github.com/antonsynd/sharpy/issues/1023) | `Parser` | scope-exit registration lowered to try/finally |
+
+Each pilot registers its name in `KnownFeatures`, registers its gated construct (`@`/`@=` and the
+`defer` statement respectively) in the feature-gate registry, and ships with the dual-fixture pattern:
+an ungated `.error` fixture asserting `SPY0331` and a gated `.expected` fixture (via `.features`)
+exercising the enabled behaviour.
+
+## Proposing a new feature — checklist
+
+1. Open an issue with syntax, semantics, and motivation.
+2. Pick a `FeatureScope` (`Parser` if it changes tokenizing/parsing; otherwise `Semantic`/`CodeGen`).
+3. Register the `FeatureInfo` in `FeatureFlags.KnownFeatures`.
+4. Build the AST unconditionally in the parser; register the gated constructs in the gate registry.
+5. Add the ungated `.error` (SPY0331) fixture and a gated `.features` fixture.
+6. Land it disabled-by-default. Iterate freely — experimental carries no stability promise.
+7. To **graduate**: meet the [exit criteria](#exit-criteria), draft the spec page, make the flag a
+   no-op, then remove the flag after one release. To **delete**: remove the syntax, the gate, and the
+   name together, and record the disposition on the issue.

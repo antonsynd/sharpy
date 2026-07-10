@@ -106,6 +106,8 @@ Assert.Equal("3\n", result.StandardOutput);
 Lexer → Parser → Semantic → Validation → CodeGen → Tests
 ```
 
+**Experimental features** (default-off, behind a flag) follow [docs/design/feature-lifecycle.md](../docs/design/feature-lifecycle.md): register in `FeatureFlags.KnownFeatures`, gate through the `FeatureGateChecker` registry (ungated use → SPY0331), then graduate or delete per that policy.
+
 ## Project Layout
 
 | Path | Purpose |
