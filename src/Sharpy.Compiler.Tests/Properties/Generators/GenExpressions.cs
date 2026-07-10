@@ -432,4 +432,196 @@ internal static class GenExpressions
 
     public static Gen<SuperExpression> SuperExpressionExpr() =>
         Gen.Const(new SuperExpression());
+
+    // ============================================================
+    // Ambiguity-hotspot bias generators (#1037)
+    //
+    // The three shapes where the Sharpy parser is most likely to
+    // mis-place a ':' , ',' or precedence boundary are lambda
+    // bodies, subscripts, and tuple literals. These generators
+    // deliberately STACK those hotspots (and nest them inside one
+    // another) so the round-trip / never-crash harness spends its
+    // budget on the pathological cases rather than on ordinary
+    // arithmetic. See docs/design/test-harness/ and the historical
+    // bug comments on IndexAccessExpr (#1001), LambdaExpr, etc.
+    // Consumed by AmbiguityHotspotPropertyTests.
+    // ============================================================
+
+    private static readonly TupleLiteral EmptyTuple = new()
+    {
+        Elements = ImmutableArray<Expression>.Empty,
+        ElementNames = ImmutableArray<string?>.Empty,
+    };
+
+    /// <summary>
+    /// One ambiguity hotspot at this depth: an ambiguous lambda, an
+    /// ambiguous subscript, a tuple-bearing call, or a nested stack
+    /// of all three. Falls back to a leaf when out of fuel.
+    /// </summary>
+    public static Gen<Expression> AmbiguousHotspot(GenContext ctx) =>
+        ctx.HasFuel
+            ? Gen.OneOf(
+                AmbiguousLambda(ctx.Burn()).Select(x => (Expression)x),
+                AmbiguousSubscript(ctx.Burn()),
+                TupleBearingCall(ctx.Burn()).Select(x => (Expression)x),
+                NestedHotspot(ctx.Burn()))
+            : IdentifierExpr(ctx).Select(x => (Expression)x);
+
+    // --- Hotspot 1: lambdas whose bodies are tuples/conditionals/lambdas ---
+
+    /// <summary>
+    /// Lambda whose body is itself an ambiguity hotspot. The parser
+    /// has to decide how far the body extends past the ':' — a bare
+    /// tuple body (lambda: a, b) vs a grouped one (lambda: (a, b)),
+    /// a trailing conditional, or another lambda all stress that.
+    /// </summary>
+    public static Gen<LambdaExpression> AmbiguousLambda(GenContext ctx) =>
+        Gen.Select(
+            GenIdentifier.Name.Array[0, 2],
+            AmbiguousLambdaBody(ctx),
+            (paramNames, body) => new LambdaExpression
+            {
+                Parameters = paramNames.Select(n => new Parameter { Name = n }).ToImmutableArray(),
+                Body = body
+            });
+
+    private static Gen<Expression> AmbiguousLambdaBody(GenContext ctx) =>
+        ctx.HasFuel
+            ? Gen.OneOf(
+                TupleLiteralExpr(ctx.Burn()).Select(x => (Expression)x),
+                ConditionalExpr(ctx.Burn()).Select(x => (Expression)x),
+                LambdaExpr(ctx.Burn()).Select(x => (Expression)x),
+                AmbiguousLambda(ctx.Burn()).Select(x => (Expression)x))
+            : IdentifierExpr(ctx).Select(x => (Expression)x);
+
+    // --- Hotspot 2: subscripts containing slices/tuples/lambdas/walrus ---
+
+    /// <summary>
+    /// Subscript whose index is a slice, a tuple, a lambda, a walrus
+    /// (:=), a multi-axis mix, or the empty tuple x[()] (#1001). The
+    /// base object is occasionally another subscript so chained
+    /// x[..][..] forms are exercised.
+    /// </summary>
+    public static Gen<Expression> AmbiguousSubscript(GenContext ctx)
+    {
+        var baseObj = SubscriptBase(ctx);
+        return Gen.Frequency(
+            // x[lambda: y]
+            (2, Gen.Select(baseObj, LambdaExpr(ctx.Burn()),
+                (o, l) => (Expression)new IndexAccess { Object = o, Index = l })),
+            // x[n := y]
+            (2, Gen.Select(baseObj, WalrusExpr(ctx.Burn()),
+                (o, w) => (Expression)new IndexAccess { Object = o, Index = w })),
+            // x[a, b] tuple subscript
+            (2, Gen.Select(baseObj, TupleLiteralExpr(ctx.Burn()),
+                (o, t) => (Expression)new IndexAccess { Object = o, Index = t })),
+            // x[a:b] slice
+            (2, Gen.Select(
+                    baseObj,
+                    Gen.Null(Expression(ctx.Burn())),
+                    Gen.Null(Expression(ctx.Burn())),
+                    (o, start, stop) => (Expression)new SliceAccess
+                    {
+                        Object = o,
+                        Start = start,
+                        Stop = stop
+                    })),
+            // x[a, b:c] multi-axis with slices
+            (2, Gen.Select(
+                    baseObj,
+                    SubscriptDimensionGen(ctx.Burn()).Array[2, 3],
+                    (o, dims) => (Expression)new MultiAxisAccess
+                    {
+                        Object = o,
+                        Dimensions = dims.ToImmutableArray()
+                    })),
+            // x[()] empty-tuple subscript (#1001)
+            (1, baseObj.Select(o => (Expression)new IndexAccess { Object = o, Index = EmptyTuple })));
+    }
+
+    private static Gen<Expression> SubscriptBase(GenContext ctx) =>
+        ctx.HasFuel
+            ? Gen.Frequency(
+                (4, IdentifierExpr(ctx).Select(x => (Expression)x)),
+                (1, AmbiguousSubscript(ctx.Burn())))
+            : IdentifierExpr(ctx).Select(x => (Expression)x);
+
+    // --- Hotspot 3: tuple literals (parenthesized and bare) in call args ---
+
+    /// <summary>
+    /// Call whose arguments stress the comma ambiguity: parenthesized
+    /// tuple arguments f((a, b)) that must not collapse into separate
+    /// arguments f(a, b), mixed with plain args, lambdas, conditionals
+    /// and nested tuple-bearing calls.
+    /// </summary>
+    public static Gen<FunctionCall> TupleBearingCall(GenContext ctx) =>
+        Gen.Select(
+            IdentifierExpr(ctx).Select(x => (Expression)x),
+            CallArg(ctx).Array[1, Math.Max(1, Sizing.MaxParameters(ctx.Fuel))],
+            (func, args) => new FunctionCall
+            {
+                Function = func,
+                Arguments = args.ToImmutableArray()
+            });
+
+    private static Gen<Expression> CallArg(GenContext ctx) =>
+        ctx.HasFuel
+            ? Gen.Frequency(
+                // f((a, b)) — a parenthesized tuple as a SINGLE argument
+                (3, TupleLiteralExpr(ctx.Burn()).Select(x => (Expression)x)),
+                // f(lambda: x) — a lambda argument (unparenthesized body runs to ')')
+                (2, LambdaExpr(ctx.Burn()).Select(x => (Expression)x)),
+                // f(a if b else c)
+                (1, ConditionalExpr(ctx.Burn()).Select(x => (Expression)x)),
+                // f(g((a, b))) — nested tuple-bearing call
+                (1, TupleBearingCall(ctx.Burn()).Select(x => (Expression)x)),
+                // f(a) — plain arg, so bare vs grouped commas actually collide
+                (2, Expression(ctx.Burn())))
+            : Expression(ctx);
+
+    // --- Nested combinations of all three hotspots ---
+
+    /// <summary>
+    /// A hotspot whose sub-expressions are themselves hotspots: a
+    /// lambda returning a subscript of a tuple-call, a subscript
+    /// indexed by a lambda over a tuple, a call passing a subscript,
+    /// etc. This is where the three ambiguities compound.
+    /// </summary>
+    public static Gen<Expression> NestedHotspot(GenContext ctx)
+    {
+        if (!ctx.HasFuel)
+            return IdentifierExpr(ctx).Select(x => (Expression)x);
+
+        var inner = ctx.Burn();
+        return Gen.OneOf(
+            // lambda: <subscript>
+            Gen.Select(
+                GenIdentifier.Name.Array[0, 1],
+                AmbiguousSubscript(inner),
+                (ps, body) => (Expression)new LambdaExpression
+                {
+                    Parameters = ps.Select(n => new Parameter { Name = n }).ToImmutableArray(),
+                    Body = body
+                }),
+            // (<call>)[<lambda>]
+            Gen.Select(
+                TupleBearingCall(inner).Select(x => (Expression)x),
+                LambdaExpr(inner),
+                (o, l) => (Expression)new IndexAccess { Object = o, Index = l }),
+            // f(<subscript>, (a, b))
+            Gen.Select(
+                IdentifierExpr(ctx).Select(x => (Expression)x),
+                AmbiguousSubscript(inner),
+                TupleLiteralExpr(inner),
+                (func, sub, tup) => (Expression)new FunctionCall
+                {
+                    Function = func,
+                    Arguments = ImmutableArray.Create<Expression>(sub, tup)
+                }),
+            // lambda: (a, b)[i]  — tuple subscripted, wrapped in a lambda body
+            Gen.Select(
+                AmbiguousLambda(inner).Select(x => (Expression)x),
+                IdentifierExpr(inner).Select(x => (Expression)x),
+                (l, idx) => (Expression)new IndexAccess { Object = l, Index = idx }));
+    }
 }
