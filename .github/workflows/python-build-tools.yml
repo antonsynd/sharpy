@@ -12,6 +12,7 @@ on:
       - '!build_tools/**/*.md'
       - 'src/Sharpy.Core/**'
       - 'src/Sharpy.Stdlib/**'
+      - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
       - 'docs/stdlib/**'
       - 'mkdocs.yml'
   pull_request:
@@ -22,6 +23,7 @@ on:
       - '!build_tools/**/*.md'
       - 'src/Sharpy.Core/**'
       - 'src/Sharpy.Stdlib/**'
+      - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
       - 'docs/stdlib/**'
       - 'mkdocs.yml'
 
@@ -64,3 +66,28 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}
       run: |
         python -m build_tools stdlib generate --check
+
+  # Dual-execution oracle (#1030): the ported CPython tests under
+  # src/Sharpy.Stdlib.Tests/Spy/cpython/ must also pass under stock python3,
+  # proving they are a faithful oracle. Pure stdlib — no pip install, no dotnet.
+  # The Python 3.12 setup here is shared with Phase 9 (grammar-fuzz differential).
+  dual-execute-oracle:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Dual-execute ported CPython tests under python3
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        python -m build_tools.cpython_oracle.dual_run \
+          src/Sharpy.Stdlib.Tests/Spy/cpython/

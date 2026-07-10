@@ -68,6 +68,44 @@ stub. **Bodies are not ported** — that is manual/agent work in #1030 phase 1. 
 skeleton carries the PSF-2.0 attribution required for CPython-derived material, and
 function names are de-collided so the same-stem `Spy/` regen constraint holds.
 
+## Dual-execution harness (`shim/` + `dual_run.py`)
+
+Phase 3 of #1030. A CPython port only counts as a *golden oracle* if it also
+passes under stock `python3` — that proves the ported assertions faithfully record
+Python's behavior, not just Sharpy's. The runner executes each ported `.spy` file
+under the current interpreter with the shim installed and reports pass/fail per
+`@test` function:
+
+```bash
+# Run the whole ported subtree (recursive *.spy scan):
+python -m build_tools.cpython_oracle.dual_run src/Sharpy.Stdlib.Tests/Spy/cpython/
+
+# Or specific files, listing passes too:
+python -m build_tools.cpython_oracle.dual_run -v \
+    src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy
+```
+
+Exit status: `0` all pass, `1` any test fails/errors, `2` usage/discovery error.
+
+The `.spy` test dialect is a subset of Python (typed locals/annotations plus real
+stdlib imports), so only two constructs need bridging, both in `shim/__init__.py`:
+
+* `@test` (and the `@test.<sub>` family) — the Sharpy test-entry decorator,
+  injected into each file's namespace by the runner.
+* `from unittest import approx` — Sharpy exposes `approx`; CPython does not, so
+  `shim.install()` monkeypatches the real `unittest` module. `approx` mirrors
+  `Sharpy.Unittest.Approx` (abs precedence over places; places = round-to-N).
+
+Everything else the pilots touch (`bisect`, `random`, `colorsys`, `textwrap`) is a
+real CPython stdlib API with an identical name — no aliases needed. When a later
+port hits a Sharpy-renamed symbol or kwarg, register it in `MODULE_ALIASES` /
+`MODULE_KWARG_ALIASES` (applied by `apply_module_adapters()`); the runner needs no
+change. A port that is *not* valid Python is a porting defect, not a shim gap.
+
+Shim + runner tests live in `build_tools/tests/test_cpython_oracle_shim.py`. CI
+runs the dual-execution as the `dual-execute-oracle` job in
+`.github/workflows/python-build-tools.yml` (Python 3.12, no dotnet).
+
 ## Committed yield reports
 
 `reports/` holds committed yield reports for the first candidate tranche. See
