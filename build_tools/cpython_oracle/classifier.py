@@ -185,13 +185,15 @@ def _literal_sig(node: ast.AST) -> Optional[str]:
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
         return _literal_sig(node.operand)
     if isinstance(node, ast.Tuple):
-        parts = [_literal_sig(e) for e in node.elts]
-        if any(p is None for p in parts):
+        maybe_parts = [_literal_sig(e) for e in node.elts]
+        parts = [p for p in maybe_parts if p is not None]
+        if len(parts) != len(maybe_parts):
             return None
         return "(" + ",".join(parts) + ")"
     if isinstance(node, (ast.List, ast.Set)):
-        parts = [_literal_sig(e) for e in node.elts]
-        if any(p is None for p in parts):
+        maybe_parts = [_literal_sig(e) for e in node.elts]
+        parts = [p for p in maybe_parts if p is not None]
+        if len(parts) != len(maybe_parts):
             return None
         uniq = set(parts)
         inner = next(iter(uniq)) if len(uniq) == 1 else "?"
@@ -305,18 +307,18 @@ def _detect_dynamic_test_generation(tree: ast.Module) -> list[str]:
     notes: list[str] = []
 
     class Visitor(ast.NodeVisitor):
-        def visit_Call(self, call: ast.Call) -> None:
-            func = call.func
+        def visit_Call(self, node: ast.Call) -> None:
+            func = node.func
             name = func.id if isinstance(func, ast.Name) else (
                 func.attr if isinstance(func, ast.Attribute) else None
             )
-            if name == "setattr" and len(call.args) >= 2:
-                if _mentions_test_name(call.args[1]):
+            if name == "setattr" and len(node.args) >= 2:
+                if _mentions_test_name(node.args[1]):
                     notes.append(
                         f"dynamic test-method generation via setattr "
-                        f"(line {call.lineno})"
+                        f"(line {node.lineno})"
                     )
-            self.generic_visit(call)
+            self.generic_visit(node)
 
     Visitor().visit(tree)
     return notes
@@ -458,7 +460,7 @@ class _MethodVisitor(ast.NodeVisitor):
         self._check_heterogeneous(node)
         self.generic_visit(node)
 
-    def _check_heterogeneous(self, node: ast.AST) -> None:
+    def _check_heterogeneous(self, node: "ast.List | ast.Set") -> None:
         if _is_heterogeneous(node):
             kind = "list" if isinstance(node, ast.List) else "set"
             self._add(
@@ -635,6 +637,15 @@ def _method_decorator_reasons(method: ast.FunctionDef, support_names: set[str]) 
                     detail="@classmethod (no classmethod in Sharpy)",
                     line=dec.lineno,
                     deviation_id=DEVIATION_CLASSMETHOD,
+                )
+            )
+        elif name in support_names and name not in SUPPORT_WHITELIST:
+            reasons.append(
+                Reason(
+                    code="test-support",
+                    category=Category.NEEDS_REWRITE,
+                    detail=f"@{name} decorator from test.support",
+                    line=dec.lineno,
                 )
             )
     return reasons
