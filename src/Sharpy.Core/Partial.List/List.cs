@@ -38,6 +38,13 @@ namespace Sharpy
                 throw TypeError.IsNotInterface("NoneType", "iterable");
             }
 
+            // Presize when the element count is known up front so the copy
+            // does not reallocate as it grows.
+            if (enumerable is ICollection<T> collection)
+            {
+                _list.Capacity = collection.Count;
+            }
+
             _list.AddRange(enumerable);
         }
 

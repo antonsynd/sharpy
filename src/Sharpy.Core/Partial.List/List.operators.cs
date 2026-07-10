@@ -180,8 +180,11 @@ namespace Sharpy
                 throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
             }
 
-            var res = left.Copy();
-            res.Extend(right);
+            // Presize to the combined length so neither AddRange reallocates.
+            var res = new List<T>();
+            res._list.Capacity = left._list.Count + right._list.Count;
+            res._list.AddRange(left._list);
+            res._list.AddRange(right._list);
 
             return res;
         }
