@@ -66,6 +66,7 @@ internal partial class ProjectCompiler
                 {
                     lexer.MaxErrors = _maxErrors;
                 }
+                lexer.Features = _features;
                 var tokens = lexer.TokenizeAll();
                 fileMetrics.EndPhase();
 
@@ -207,6 +208,7 @@ internal partial class ProjectCompiler
                     {
                         lexer.MaxErrors = _maxErrors;
                     }
+                    lexer.Features = _features;
                     var tokens = lexer.TokenizeAll();
                     fileMetrics.EndPhase();
 
