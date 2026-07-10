@@ -97,9 +97,8 @@ public class FeatureFlagsProjectTests
                 "  <ItemGroup>\n    <SourceFile Include=\"main.spy\" />\n  </ItemGroup>\n</Project>\n");
             File.WriteAllText(Path.Combine(dir, "main.spy"), "def main() -> None:\n    pass\n");
 
-            var project = SpyProjectLoader.Load(projPath);
+            var project = ProjectFileParser.Load(projPath);
             project.Features.Should().Contain("__test_feature");
-            project.ToProjectConfig().Features.Should().Contain("__test_feature");
         }
         finally
         {

@@ -46,7 +46,6 @@ Sharpy.Compiler/
 │   └── CodeValidator.cs # Validates generated code compiles
 ├── Project/            # Multi-file project compilation
 │   ├── ProjectCompiler.cs # Orchestrates compilation (7 partial files)
-│   ├── SpyProject.cs     # Project file parsing
 │   ├── DependencyGraph.cs # Build ordering
 │   └── IncrementalCompilationCache.cs # Incremental compilation
 ├── Services/           # Centralized compiler services layer

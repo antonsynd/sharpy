@@ -35,9 +35,9 @@ public class ProjectConfig
     public string OutputType { get; init; } = "library";
 
     /// <summary>
-    /// Target framework (e.g., "net8.0")
+    /// Target framework (e.g., "net10.0")
     /// </summary>
-    public string TargetFramework { get; init; } = "net8.0";
+    public string TargetFramework { get; init; } = "net10.0";
 
     /// <summary>
     /// Output assembly name (defaults to root namespace if not specified)
@@ -130,9 +130,10 @@ public class ProjectConfig
 }
 
 /// <summary>
-/// Parser for .spyproj project files
+/// Parser and discovery helper for .spyproj project files. This is the single
+/// .spyproj parser used by both the compiler and the LSP (see #1038).
 /// </summary>
-internal class ProjectFileParser
+public static class ProjectFileParser
 {
     /// <summary>
     /// Load and parse a .spyproj file
@@ -167,7 +168,7 @@ internal class ProjectFileParser
         }
 
         var outputType = propertyGroup.Element("OutputType")?.Value ?? "library";
-        var targetFramework = propertyGroup.Element("TargetFramework")?.Value ?? "net8.0";
+        var targetFramework = propertyGroup.Element("TargetFramework")?.Value ?? "net10.0";
         var assemblyName = propertyGroup.Element("AssemblyName")?.Value;
         var entryPoint = propertyGroup.Element("EntryPoint")?.Value;
         var warningsAsErrors = bool.TryParse(propertyGroup.Element("WarningsAsErrors")?.Value, out var wae) && wae;

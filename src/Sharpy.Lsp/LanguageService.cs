@@ -90,7 +90,7 @@ internal sealed class LanguageService : IDisposable
     /// <returns>True if a project was found and analyzed successfully.</returns>
     public async Task<bool> InitializeProjectAsync(string workspaceRoot, CancellationToken ct = default)
     {
-        var projectFilePath = SpyProjectLoader.FindProjectFile(workspaceRoot);
+        var projectFilePath = ProjectFileParser.FindProjectFile(workspaceRoot);
         if (projectFilePath == null)
         {
             _logger.LogInformation("No .spyproj file found in {Root}", workspaceRoot);
@@ -100,13 +100,12 @@ internal sealed class LanguageService : IDisposable
 
         try
         {
-            var project = SpyProjectLoader.Load(projectFilePath);
+            var config = ProjectFileParser.Load(projectFilePath);
 
             _logger.LogInformation(
                 "Loaded project {Namespace} with {Count} source file(s)",
-                project.RootNamespace, project.SourceFiles.Count);
+                config.RootNamespace, config.SourceFiles.Count);
 
-            var config = project.ToProjectConfig();
             Volatile.Write(ref _workspaceRoot, workspaceRoot);
             Volatile.Write(ref _projectConfig, config);
             Interlocked.Exchange(ref _state, StateIndexing);

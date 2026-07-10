@@ -250,7 +250,7 @@ Lexer → Parser → Semantic → Validation → CodeGen → LSP → Tests
 
 ## Multi-File Compilation
 
-`ProjectCompiler` and `SpyProject`/`SpyProjectLoader` (in `Project/`) handle multi-file projects using `.spyproj` files:
+`ProjectCompiler` (in `Project/`) and `ProjectFileParser` (the single `.spyproj` parser + discovery helper, in `ProjectConfig.cs`) handle multi-file projects using `.spyproj` files:
 ```bash
 dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj
 ```
@@ -441,7 +441,7 @@ Key subdirectories within `src/Sharpy.Compiler/` not covered above:
 | `Discovery/Caching/` | `OverloadIndex`, `OverloadIndexCache`, `AssemblyIdentity` |
 | `Model/` | `CompilationUnit`, `CompilationUnitFactory`, `ProjectModel` |
 | `Logging/` | `ICompilerLogger`, `StructuredLogger`, `ConsoleCompilerLogger`, `NullLogger` |
-| `Project/` | `ProjectCompiler` (9 partial files), `SpyProject`, `DependencyGraph` |
+| `Project/` | `ProjectCompiler` (9 partial files), `DependencyGraph` (`.spyproj` parsing lives in `ProjectConfig.cs`'s `ProjectFileParser`) |
 | `Services/` | `CompilerServices`, `CompilerServicesBuilder` (adapter pattern) |
 | `Text/` | `ILocatable`, `SourceText`, `TextSpan` |
 | `Utilities/` | `EditDistance`, `PathNormalizer` |

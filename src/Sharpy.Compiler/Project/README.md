@@ -6,7 +6,7 @@ This directory contains components for multi-file project compilation.
 
 - `ProjectCompiler.cs` - Orchestrates multi-file compilation pipeline (7 partial files):
   - `.cs` (main), `.Initialization.cs`, `.Parsing.cs`, `.Phases.cs`, `.CodeGen.cs`, `.IncrementalCache.cs`, `.Utilities.cs`
-- `SpyProject.cs` - Project configuration and file discovery
+- `../ProjectConfig.cs` - `ProjectConfig` model plus `ProjectFileParser`, the single `.spyproj` parser and discovery helper
 - `DependencyGraph.cs` - Immutable dependency graph for build ordering
 - `DependencyGraphBuilder.cs` - Thread-safe builder for dependency graph (moved to `Semantic/`)
 - `IncrementalCompilationCache.cs` - File hash and symbol caching for incremental builds
@@ -61,14 +61,16 @@ builder.SetFileHash("main.spy", hash);
 var graph = builder.Build();
 ```
 
-## SpyProject
+## ProjectFileParser
 
-Handles project file parsing and source file discovery:
+The single `.spyproj` parser (in `../ProjectConfig.cs`), used by both the compiler
+and the LSP. Handles project file parsing and source file discovery:
 
-- Reads `.spyproj` configuration files
-- Discovers `.spy` source files
+- Reads `.spyproj` configuration files into a `ProjectConfig`
+- Discovers `.spy` source files (glob include/exclude)
 - Resolves package dependencies
 - Configures compilation options
+- `FindProjectFile(directory)` locates the single `.spyproj` in a directory
 
 ## Incremental Compilation
 

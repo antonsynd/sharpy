@@ -470,7 +470,7 @@ def main():
     }
 
     [Fact]
-    public void SpyProjectLoader_Load_ParsesFullProject()
+    public void ProjectFileParser_Load_ParsesFullProject()
     {
         // Arrange
         var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
@@ -497,7 +497,7 @@ def main():
             File.WriteAllText(Path.Combine(tempDir, "src", "startup.spy"), "def main(): pass");
 
             // Act
-            var project = SpyProjectLoader.Load(projectPath);
+            var project = ProjectFileParser.Load(projectPath);
 
             // Assert
             Assert.Equal("MyApp", project.RootNamespace);
@@ -505,8 +505,7 @@ def main():
             Assert.Equal("net8.0", project.TargetFramework);
             Assert.Equal("MyApplication", project.AssemblyName);
             Assert.Equal("startup.spy", project.EntryPoint);
-            Assert.True(project.IsExecutable);
-            Assert.NotNull(project.GetEntryPointPath());
+            Assert.Contains(project.SourceFiles, f => Path.GetFileName(f) == "startup.spy");
         }
         finally
         {
@@ -515,15 +514,14 @@ def main():
     }
 
     [Fact]
-    public void SpyProject_ToProjectConfig_ConvertsCorrectly()
+    public void ProjectFileParser_Load_DefaultsTargetFrameworkToNet10()
     {
-        // Arrange
+        // Arrange: a project that does not specify <TargetFramework> should
+        // default to net10.0 (the unified default after #1038).
         var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <Project>
     <PropertyGroup>
         <RootNamespace>TestApp</RootNamespace>
-        <OutputType>exe</OutputType>
-        <EntryPoint>main.spy</EntryPoint>
     </PropertyGroup>
     <ItemGroup>
         <SpyFile Include=""src/**/*.spy"" />
@@ -540,15 +538,10 @@ def main():
             File.WriteAllText(Path.Combine(tempDir, "src", "main.spy"), "def main(): pass");
 
             // Act
-            var spyProject = SpyProjectLoader.Load(projectPath);
-            var projectConfig = spyProject.ToProjectConfig();
+            var config = ProjectFileParser.Load(projectPath);
 
             // Assert
-            Assert.Equal(spyProject.RootNamespace, projectConfig.RootNamespace);
-            Assert.Equal(spyProject.OutputType, projectConfig.OutputType);
-            Assert.Equal(spyProject.TargetFramework, projectConfig.TargetFramework);
-            Assert.Equal(spyProject.EntryPoint, projectConfig.EntryPoint);
-            Assert.Equal(spyProject.SourceFiles, projectConfig.SourceFiles);
+            Assert.Equal("net10.0", config.TargetFramework);
         }
         finally
         {
