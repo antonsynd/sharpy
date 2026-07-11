@@ -371,6 +371,79 @@ public class DiagnosticRendererTests
     }
 
     [Fact]
+    public void Render_VerboseOff_OmitsProvenanceSuffix()
+    {
+        // Even with a known phase stamped, the default (non-verbose) rendering must be
+        // byte-identical to the historic format — no provenance suffix appended.
+        var diagnostic = new CompilerDiagnostic(
+            "Type 'str' is not assignable to 'int'",
+            CompilerDiagnosticSeverity.Error,
+            Line: 1, Column: 1,
+            FilePath: "file.spy",
+            Code: "SPY0201",
+            Phase: CompilerPhase.TypeChecking);
+
+        var result = _renderer.Render(diagnostic);
+
+        result.Should().Contain("error[SPY0201]: Type 'str' is not assignable to 'int'");
+        result.Should().NotContain("[type-check]");
+    }
+
+    [Fact]
+    public void Render_VerbosePhase_AppendsPhaseSuffix()
+    {
+        var diagnostic = new CompilerDiagnostic(
+            "Type 'str' is not assignable to 'int'",
+            CompilerDiagnosticSeverity.Error,
+            Line: 1, Column: 1,
+            FilePath: "file.spy",
+            Code: "SPY0201",
+            Phase: CompilerPhase.TypeChecking);
+
+        var result = _renderer.Render(diagnostic, sourceText: null, verbose: true);
+
+        result.Should().Contain("error[SPY0201]: Type 'str' is not assignable to 'int' [type-check]");
+    }
+
+    [Fact]
+    public void Render_VerboseProducer_AppendsValidationProducerSuffix()
+    {
+        var data = new Dictionary<string, string>
+        {
+            [DiagnosticBag.ProducerDataKey] = "ProtocolValidator",
+        };
+        var diagnostic = new CompilerDiagnostic(
+            "Protocol 'Iterable' is not satisfied",
+            CompilerDiagnosticSeverity.Error,
+            Line: 2, Column: 3,
+            FilePath: "file.spy",
+            Code: "SPY0500",
+            Phase: CompilerPhase.Validation,
+            Data: data);
+
+        var result = _renderer.Render(diagnostic, sourceText: null, verbose: true);
+
+        result.Should().Contain("[validation:ProtocolValidator]");
+    }
+
+    [Fact]
+    public void Render_VerboseUnknownPhaseNoProducer_OmitsSuffix()
+    {
+        // No code and no provenance: there should be no square brackets whatsoever.
+        var diagnostic = new CompilerDiagnostic(
+            "Something went wrong",
+            CompilerDiagnosticSeverity.Error,
+            Line: 1, Column: 1,
+            FilePath: "file.spy",
+            Phase: CompilerPhase.Unknown);
+
+        var result = _renderer.Render(diagnostic, sourceText: null, verbose: true);
+
+        result.Should().Contain("error: Something went wrong");
+        result.Should().NotContain("[");
+    }
+
+    [Fact]
     public void Render_MultipleDiagnostics_EachRenderedIndependently()
     {
         var source = "x = 1\ny = 'bad'\nz = true";

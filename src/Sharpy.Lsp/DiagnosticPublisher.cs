@@ -105,18 +105,69 @@ internal sealed class DiagnosticPublisher
             Range = range,
             Severity = ConvertSeverity(diag.Severity),
             Message = diag.Message,
-            Source = "sharpy",
+            Source = BuildSource(diag),
             Code = !string.IsNullOrEmpty(diag.Code)
                 ? new DiagnosticCode(diag.Code)
                 : default,
             Tags = GetDiagnosticTags(diag),
-            Data = diag.Data is { Count: > 0 }
-                ? JObject.FromObject(diag.Data)
-                : null,
+            Data = BuildData(diag),
             RelatedInformation = relatedInfo,
         };
 
         return lspDiag;
+    }
+
+    /// <summary>
+    /// The default <c>source</c> label applied to Sharpy diagnostics.
+    /// </summary>
+    internal const string DefaultSource = "sharpy";
+
+    /// <summary>
+    /// Data key under which the originating <see cref="CompilerPhase"/> is published to editors.
+    /// </summary>
+    internal const string PhaseDataKey = "phase";
+
+    /// <summary>
+    /// Builds the LSP <c>source</c> label. The producing validator (when a diagnostic carries
+    /// one via <see cref="DiagnosticBag.ProducerDataKey"/>) is folded into the source as
+    /// <c>sharpy:&lt;producer&gt;</c> so editors surface provenance in the diagnostic's origin
+    /// column. Diagnostics without a producer keep the plain <see cref="DefaultSource"/> label.
+    /// </summary>
+    internal static string BuildSource(CompilerDiagnostic diag)
+    {
+        if (diag.Data != null
+            && diag.Data.TryGetValue(DiagnosticBag.ProducerDataKey, out var producer)
+            && !string.IsNullOrEmpty(producer))
+        {
+            return $"{DefaultSource}:{producer}";
+        }
+
+        return DefaultSource;
+    }
+
+    /// <summary>
+    /// Builds the published <c>data</c> payload. The compiler's <see cref="CompilerDiagnostic.Data"/>
+    /// (which includes the producer, when present) is forwarded as-is, and the originating
+    /// <see cref="CompilerPhase"/> is added under <see cref="PhaseDataKey"/> unless it is
+    /// <see cref="CompilerPhase.Unknown"/>. Returns <c>null</c> when there is nothing to publish,
+    /// preserving the historic behavior for diagnostics that carry no provenance.
+    /// </summary>
+    internal static JObject? BuildData(CompilerDiagnostic diag)
+    {
+        var hasData = diag.Data is { Count: > 0 };
+        var hasPhase = diag.Phase != CompilerPhase.Unknown;
+        if (!hasData && !hasPhase)
+        {
+            return null;
+        }
+
+        var payload = hasData ? JObject.FromObject(diag.Data!) : new JObject();
+        if (hasPhase)
+        {
+            payload[PhaseDataKey] = diag.Phase.ToString();
+        }
+
+        return payload;
     }
 
     /// <summary>

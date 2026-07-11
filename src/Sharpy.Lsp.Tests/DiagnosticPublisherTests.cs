@@ -37,6 +37,87 @@ public class DiagnosticPublisherTests
     }
 
     [Fact]
+    public void ConvertDiagnostic_NoProvenance_KeepsPlainSourceAndNullData()
+    {
+        // A diagnostic with no producer and an Unknown phase must render identically to
+        // before this feature: plain "sharpy" source and no data payload.
+        var diag = new CompilerDiagnostic(
+            Message: "unexpected token",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Line: 1,
+            Column: 1,
+            Code: "SPY0100");
+
+        var result = DiagnosticPublisher.ConvertDiagnostic(diag, null);
+
+        result.Source.Should().Be("sharpy");
+        result.Data.Should().BeNull();
+    }
+
+    [Fact]
+    public void ConvertDiagnostic_FoldsProducerIntoSource()
+    {
+        var data = new Dictionary<string, string>
+        {
+            [DiagnosticBag.ProducerDataKey] = "ProtocolValidator",
+        };
+        var diag = new CompilerDiagnostic(
+            Message: "Protocol not satisfied",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Line: 1,
+            Column: 1,
+            Code: "SPY0500",
+            Phase: CompilerPhase.Validation,
+            Data: data);
+
+        var result = DiagnosticPublisher.ConvertDiagnostic(diag, null);
+
+        result.Source.Should().Be("sharpy:ProtocolValidator");
+    }
+
+    [Fact]
+    public void ConvertDiagnostic_PublishesPhaseInData()
+    {
+        var diag = new CompilerDiagnostic(
+            Message: "Type mismatch",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Line: 1,
+            Column: 1,
+            Code: "SPY0201",
+            Phase: CompilerPhase.TypeChecking);
+
+        var result = DiagnosticPublisher.ConvertDiagnostic(diag, null);
+
+        result.Source.Should().Be("sharpy");
+        result.Data.Should().NotBeNull();
+        var payload = (JObject)result.Data!;
+        payload[DiagnosticPublisher.PhaseDataKey]!.Value<string>().Should().Be("TypeChecking");
+    }
+
+    [Fact]
+    public void ConvertDiagnostic_PublishesProducerAndPhaseTogether()
+    {
+        var data = new Dictionary<string, string>
+        {
+            [DiagnosticBag.ProducerDataKey] = "ProtocolValidator",
+        };
+        var diag = new CompilerDiagnostic(
+            Message: "Protocol not satisfied",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Line: 1,
+            Column: 1,
+            Code: "SPY0500",
+            Phase: CompilerPhase.Validation,
+            Data: data);
+
+        var result = DiagnosticPublisher.ConvertDiagnostic(diag, null);
+
+        var payload = (JObject)result.Data!;
+        payload[DiagnosticBag.ProducerDataKey]!.Value<string>().Should().Be("ProtocolValidator");
+        payload[DiagnosticPublisher.PhaseDataKey]!.Value<string>().Should().Be("Validation");
+    }
+
+    [Fact]
     public void ConvertDiagnostic_ConvertsPositionTo0Based()
     {
         var diag = new CompilerDiagnostic(

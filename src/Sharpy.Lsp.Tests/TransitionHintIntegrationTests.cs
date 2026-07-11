@@ -173,6 +173,9 @@ public class TransitionHintIntegrationTests
             && d.Code.Value.IsString
             && d.Code.Value.String == DiagnosticCodes.Validation.UnnecessaryStaticDecoratorHint);
 
-        lspHint.Source.Should().Be("sharpy");
+        // Validator-produced diagnostics now fold their producer into the LSP source so the
+        // origin is visible in the editor's diagnostic origin column (#1054). The source still
+        // starts with "sharpy"; the ":TransitionWarning" suffix identifies the producing validator.
+        lspHint.Source.Should().Be("sharpy:TransitionWarning");
     }
 }

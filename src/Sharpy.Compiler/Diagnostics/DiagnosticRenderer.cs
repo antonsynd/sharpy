@@ -70,13 +70,18 @@ internal class DiagnosticRenderer
     /// </summary>
     /// <param name="diagnostic">The diagnostic to render.</param>
     /// <param name="sourceText">The source text for context rendering. Can be null.</param>
+    /// <param name="verbose">
+    /// When true, the header line is suffixed with the diagnostic's provenance
+    /// (e.g. <c>[type-check]</c> or <c>[validation:ProtocolValidator]</c>). Off by
+    /// default so non-verbose output stays byte-identical to the historic format.
+    /// </param>
     /// <returns>The formatted diagnostic string.</returns>
-    public string Render(CompilerDiagnostic diagnostic, SourceText? sourceText = null)
+    public string Render(CompilerDiagnostic diagnostic, SourceText? sourceText = null, bool verbose = false)
     {
         var lines = new List<string>();
 
         // Line 1: severity[code]: message
-        lines.Add(RenderHeader(diagnostic));
+        lines.Add(RenderHeader(diagnostic, verbose));
 
         // Determine location info
         int? line = diagnostic.Line;
@@ -152,9 +157,10 @@ internal class DiagnosticRenderer
     }
 
     /// <summary>
-    /// Renders the header line: severity[code]: message
+    /// Renders the header line: severity[code]: message. When <paramref name="verbose"/>
+    /// is set, a provenance suffix (see <see cref="FormatProvenance"/>) is appended.
     /// </summary>
-    private string RenderHeader(CompilerDiagnostic diagnostic)
+    private string RenderHeader(CompilerDiagnostic diagnostic, bool verbose = false)
     {
         var (severityText, severityColor) = diagnostic.Severity switch
         {
@@ -175,8 +181,58 @@ internal class DiagnosticRenderer
             header = $"{Colorize(severityText, severityColor, bold: true)}: {Colorize(diagnostic.Message, AnsiColor.White, bold: true)}";
         }
 
+        if (verbose)
+        {
+            var provenance = FormatProvenance(diagnostic);
+            if (provenance != null)
+            {
+                header += $" {Colorize(provenance, AnsiColor.Cyan)}";
+            }
+        }
+
         return header;
     }
+
+    /// <summary>
+    /// Builds the provenance suffix stamped onto a diagnostic by the phase/producer
+    /// scopes in <see cref="DiagnosticBag"/>. Returns <c>[validation:&lt;producer&gt;]</c>
+    /// when a producer is recorded, <c>[&lt;phase&gt;]</c> for a plain known phase, and
+    /// <c>null</c> when there is nothing to surface (an <see cref="CompilerPhase.Unknown"/>
+    /// phase with no producer).
+    /// </summary>
+    private static string? FormatProvenance(CompilerDiagnostic diagnostic)
+    {
+        var phaseToken = PhaseToken(diagnostic.Phase);
+
+        if (diagnostic.Data != null
+            && diagnostic.Data.TryGetValue(DiagnosticBag.ProducerDataKey, out var producer)
+            && !string.IsNullOrEmpty(producer))
+        {
+            // Producer-scoped diagnostics are always stamped with the Validation phase,
+            // but derive the token defensively rather than hard-coding "validation".
+            var scope = phaseToken ?? PhaseToken(CompilerPhase.Validation);
+            return $"[{scope}:{producer}]";
+        }
+
+        return phaseToken != null ? $"[{phaseToken}]" : null;
+    }
+
+    /// <summary>
+    /// Maps a compiler phase to its short provenance token. Returns <c>null</c> for
+    /// <see cref="CompilerPhase.Unknown"/> (nothing meaningful to surface).
+    /// </summary>
+    private static string? PhaseToken(CompilerPhase phase) => phase switch
+    {
+        CompilerPhase.Lexer => "lexer",
+        CompilerPhase.Parser => "parser",
+        CompilerPhase.NameResolution => "name-resolution",
+        CompilerPhase.ImportResolution => "import-resolution",
+        CompilerPhase.TypeChecking => "type-check",
+        CompilerPhase.Validation => "validation",
+        CompilerPhase.CodeGeneration => "codegen",
+        CompilerPhase.Assembly => "assembly",
+        _ => null,
+    };
 
     /// <summary>
     /// Renders the underline or caret for the error location.
