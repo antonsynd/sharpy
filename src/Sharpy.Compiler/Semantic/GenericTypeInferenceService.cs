@@ -509,7 +509,7 @@ internal class GenericTypeInferenceService
                 if (position >= actual.TypeArguments.Count)
                     continue;
 
-                var variance = ClrTypeMapper.GetClrVariance(definitionArguments[i]);
+                var variance = ClrTypeBridge.GetClrVariance(definitionArguments[i]);
                 var unifyResult = Unify(
                     formal.TypeArguments[i], actual.TypeArguments[position], substitutions, variance);
                 if (!unifyResult.Success)

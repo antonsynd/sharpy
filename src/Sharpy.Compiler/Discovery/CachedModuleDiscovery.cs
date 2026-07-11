@@ -19,7 +19,7 @@ internal class CachedModuleDiscovery
 {
     private readonly OverloadIndexCache _cache;
     private readonly OverloadIndexBuilder _builder;
-    private readonly ClrTypeMapper _typeMapper;
+    private readonly ClrTypeBridge _typeMapper;
     private readonly ConcurrentDictionary<string, Lazy<OverloadIndex>> _loadedIndices = new();
     private readonly ConcurrentDictionary<string, byte> _moduleTypeNames = new();
     // Cache of TypeSymbol instances keyed by CLR full type name, so ConvertTypeSignature
@@ -46,7 +46,7 @@ internal class CachedModuleDiscovery
     {
         _cache = cache ?? new OverloadIndexCache(null, logger);
         _builder = new OverloadIndexBuilder(logger);
-        _typeMapper = new ClrTypeMapper();
+        _typeMapper = new ClrTypeBridge();
     }
 
     /// <summary>
@@ -282,7 +282,7 @@ internal class CachedModuleDiscovery
                 typeParams.Add(new Parser.Ast.TypeParameterDef
                 {
                     Name = $"T{i}",
-                    Variance = ClrTypeMapper.GetClrVariance(clrArgs[i])
+                    Variance = ClrTypeBridge.GetClrVariance(clrArgs[i])
                 });
             }
         }
@@ -743,7 +743,7 @@ internal class CachedModuleDiscovery
         if (signature.Name == BuiltinNames.Object)
         {
             // When the signature has a ClrTypeName pointing to a known module type
-            // (e.g., NdArray<double> collapsed to "object" by ClrTypeMapper), resolve
+            // (e.g., NdArray<double> collapsed to "object" by ClrTypeBridge), resolve
             // it as a UserDefinedType instead so member/protocol resolution works (#955).
             if (!string.IsNullOrEmpty(signature.ClrTypeName))
             {

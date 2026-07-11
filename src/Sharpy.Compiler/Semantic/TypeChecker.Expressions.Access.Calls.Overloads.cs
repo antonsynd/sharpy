@@ -250,7 +250,7 @@ internal partial class TypeChecker
             }
 
             // Equal types contribute nothing to the comparison — unless the
-            // underlying CLR types differ (e.g., ClrTypeMapper maps IEnumerable<T>
+            // underlying CLR types differ (e.g., ClrTypeBridge maps IEnumerable<T>
             // and Sharpy.List<T> both to list[T]).
             if (paramTypeA.Equals(paramTypeB))
             {

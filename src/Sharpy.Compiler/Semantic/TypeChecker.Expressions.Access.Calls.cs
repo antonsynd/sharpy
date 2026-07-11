@@ -532,7 +532,7 @@ internal partial class TypeChecker
     /// Returns the effective CLR type for a parameter, with generic type parameters
     /// replaced by <c>typeof(object)</c> so <see cref="Type.IsAssignableFrom"/> works.
     /// Prefers the original CLR metadata from <see cref="FunctionSymbol.ClrMethod"/>
-    /// (preserving IEnumerable vs List distinction that <see cref="Discovery.ClrTypeMapper"/>
+    /// (preserving IEnumerable vs List distinction that <see cref="Discovery.ClrTypeBridge"/>
     /// erases), falling back to <see cref="TryGetClrType"/> for source-defined overloads.
     /// </summary>
     internal Type? ResolveClrParameterType(FunctionSymbol func, int paramIdx, SemanticType semanticType)
@@ -1510,7 +1510,7 @@ internal partial class TypeChecker
     /// <summary>
     /// Returns true when the parameter type is backed by CLR <see cref="System.Type"/> — i.e., it
     /// expects a type reference (e.g. assert_raises's exceptionType parameter). Discovery rehydrates
-    /// System.Type as a <see cref="BuiltinType"/>; ClrTypeMapper produces a <see cref="UserDefinedType"/>.
+    /// System.Type as a <see cref="BuiltinType"/>; ClrTypeBridge produces a <see cref="UserDefinedType"/>.
     /// </summary>
     private static bool IsSystemTypeParameter(SemanticType paramType)
     {

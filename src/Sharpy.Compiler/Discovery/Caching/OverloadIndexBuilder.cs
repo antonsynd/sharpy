@@ -11,7 +11,7 @@ namespace Sharpy.Compiler.Discovery.Caching;
 /// </summary>
 internal class OverloadIndexBuilder
 {
-    private readonly ClrTypeMapper _typeMapper = new();
+    private readonly ClrTypeBridge _typeMapper = new();
     private readonly ICompilerLogger _logger;
     private XmlDocReader? _xmlDocReader;
 
@@ -451,7 +451,7 @@ internal class OverloadIndexBuilder
     {
         if (ns == null)
             return "builtins";
-        if (ns == "Sharpy" || ns.StartsWith("Sharpy."))
+        if (ClrTypeBridge.SpecialCases.IsSharpyNamespace(ns))
             return "builtins";
         return ns.ToLowerInvariant().Replace(".", "_", StringComparison.Ordinal);
     }

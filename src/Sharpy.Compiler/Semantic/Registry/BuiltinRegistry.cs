@@ -20,7 +20,7 @@ internal class BuiltinRegistry
     private readonly Dictionary<string, TypeSymbol> _types = new();
     private readonly Dictionary<string, List<FunctionSymbol>> _functions = new();
     private readonly CachedModuleDiscovery _discovery;
-    private readonly ClrTypeMapper _clrTypeMapper = new();
+    private readonly ClrTypeBridge _clrTypeMapper = new();
 
     /// <summary>
     /// Deferred interface population work recorded by <see cref="RegisterType"/> and processed
@@ -265,7 +265,7 @@ internal class BuiltinRegistry
         var result = new List<TypeParameterDef>(typeParams.Count);
         for (int i = 0; i < typeParams.Count; i++)
         {
-            result.Add(typeParams[i] with { Variance = ClrTypeMapper.GetClrVariance(clrArgs[i]) });
+            result.Add(typeParams[i] with { Variance = ClrTypeBridge.GetClrVariance(clrArgs[i]) });
         }
         return result;
     }
@@ -299,7 +299,7 @@ internal class BuiltinRegistry
             return;
 
         var allInterfaces = clrType.GetInterfaces()
-            .Where(ClrTypeMapper.IsPublicInterface)
+            .Where(ClrTypeBridge.IsPublicInterface)
             .ToList();
 
         // When both generic and non-generic forms share a stripped name (IEnumerable vs
@@ -378,7 +378,7 @@ internal class BuiltinRegistry
 
             var def = arg.GetGenericTypeDefinition();
 
-            // KeyValuePair<K, V> -> tuple[K, V] (matches ClrTypeMapper's mapping)
+            // KeyValuePair<K, V> -> tuple[K, V] (matches ClrTypeBridge's mapping)
             if (def == typeof(KeyValuePair<,>))
                 return new TupleType { ElementTypes = mappedArgs };
 
@@ -416,7 +416,7 @@ internal class BuiltinRegistry
             ? interfaceDef.GetGenericArguments()
             : Type.EmptyTypes;
         var typeParams = clrArgs
-            .Select((arg, i) => new TypeParameterDef { Name = $"T{i}", Variance = ClrTypeMapper.GetClrVariance(arg) })
+            .Select((arg, i) => new TypeParameterDef { Name = $"T{i}", Variance = ClrTypeBridge.GetClrVariance(arg) })
             .ToList();
 
         var symbol = new TypeSymbol
@@ -572,7 +572,7 @@ internal class BuiltinRegistry
     /// </summary>
     private static FunctionSignature BuildExtensionMethodSignature(MethodInfo method)
     {
-        var typeMapper = new ClrTypeMapper();
+        var typeMapper = new ClrTypeBridge();
         var parameters = method.GetParameters();
 
         var signature = new FunctionSignature
@@ -602,7 +602,7 @@ internal class BuiltinRegistry
     /// Creates a <see cref="TypeSignature"/> from a CLR type for extension method discovery.
     /// Handles primitives, generic types, and generic parameters.
     /// </summary>
-    private static TypeSignature CreateTypeSignatureFromClr(Type clrType, ClrTypeMapper typeMapper)
+    private static TypeSignature CreateTypeSignatureFromClr(Type clrType, ClrTypeBridge typeMapper)
     {
         if (clrType.IsGenericParameter)
         {

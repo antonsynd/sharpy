@@ -8,9 +8,9 @@ namespace Sharpy.Compiler.Tests.Discovery;
 
 enum TestEnum { A, B, C }
 
-public class ClrTypeMapperTests
+public class ClrTypeBridgeTests
 {
-    private readonly ClrTypeMapper _mapper = new();
+    private readonly ClrTypeBridge _mapper = new();
 
     [Fact]
     public void MapPrimitiveTypes()
@@ -445,5 +445,69 @@ public class ClrTypeMapperTests
         Assert.NotNull(udt.Symbol);
         Assert.Equal(typeof(System.Numerics.Complex), udt.Symbol!.ClrType);
         Assert.Equal(TypeKind.Struct, udt.Symbol.TypeKind);
+    }
+
+    [Fact]
+    public void MapKeyValuePair_ToTupleType()
+    {
+        // KeyValuePair<K, V> is a special case that maps to a 2-element tuple[K, V].
+        var result = _mapper.MapClrTypeToSemanticType(typeof(KeyValuePair<string, int>));
+
+        var tuple = Assert.IsType<TupleType>(result);
+        Assert.Equal(2, tuple.ElementTypes.Count);
+        Assert.Equal(SemanticType.Str, tuple.ElementTypes[0]);
+        Assert.Equal(SemanticType.Int, tuple.ElementTypes[1]);
+    }
+
+    // ==================== Reverse direction: SemanticType name -> C# type name ====================
+
+    [Theory]
+    [InlineData("int", "int")]
+    [InlineData("long", "long")]
+    [InlineData("float", "double")]     // float -> C# double (per spec)
+    [InlineData("float32", "float")]    // float32 -> C# float
+    [InlineData("bool", "bool")]
+    [InlineData("str", "string")]
+    [InlineData("None", "void")]
+    [InlineData("object", "object")]
+    public void TryGetCSharpTypeName_Primitives_DelegateToPrimitiveCatalog(string sharpyName, string expectedCSharpName)
+    {
+        Assert.Equal(expectedCSharpName, ClrTypeBridge.TryGetCSharpTypeName(sharpyName));
+    }
+
+    [Theory]
+    [InlineData("list", "Sharpy.List")]
+    [InlineData("dict", "Sharpy.Dict")]
+    [InlineData("set", "Sharpy.Set")]
+    [InlineData("defaultdict", "Sharpy.DefaultDict")]
+    [InlineData("frozendict", "Sharpy.FrozenDict")]
+    [InlineData("bytes", "Sharpy.Bytes")]
+    [InlineData("tuple", "System.ValueTuple")]
+    public void TryGetCSharpTypeName_Collections_ResolveFromRegistry(string sharpyName, string expectedCSharpName)
+    {
+        Assert.Equal(expectedCSharpName, ClrTypeBridge.TryGetCSharpTypeName(sharpyName));
+    }
+
+    [Fact]
+    public void TryGetCSharpTypeName_UnknownName_ReturnsNull()
+    {
+        // User-defined types have no builtin C# correspondence — CodeGen resolves those
+        // through the symbol table, so the bridge returns null.
+        Assert.Null(ClrTypeBridge.TryGetCSharpTypeName("MyUserType"));
+    }
+
+    // ==================== "Sharpy" namespace rule ====================
+
+    [Theory]
+    [InlineData("Sharpy", true)]
+    [InlineData("Sharpy.Numpy", true)]
+    [InlineData("Sharpy.Stdlib.Json", true)]
+    [InlineData(null, false)]
+    [InlineData("System", false)]
+    [InlineData("SharpyExtras", false)]   // must not match a namespace that merely starts with "Sharpy"
+    [InlineData("MySharpy", false)]
+    public void IsSharpyNamespace_RecognizesRuntimeNamespaceOnly(string? ns, bool expected)
+    {
+        Assert.Equal(expected, ClrTypeBridge.SpecialCases.IsSharpyNamespace(ns));
     }
 }

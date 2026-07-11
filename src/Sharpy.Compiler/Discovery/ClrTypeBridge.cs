@@ -11,13 +11,124 @@ using TypeParameterVariance = Sharpy.Compiler.Parser.Ast.TypeParameterVariance;
 namespace Sharpy.Compiler.Discovery;
 
 /// <summary>
-/// Maps CLR types to Sharpy SemanticType instances.
+/// The single owned component for the CLR&lt;-&gt;Sharpy type boundary.
+///
+/// <para>
+/// This facade owns both directions of the boundary:
+/// </para>
+/// <list type="bullet">
+///   <item><description>
+///     <b>CLR <see cref="Type"/> -&gt; <see cref="SemanticType"/></b> via
+///     <see cref="MapClrTypeToSemanticType"/> — how discovery/semantic analysis reads reflected
+///     .NET types back into the Sharpy type system.
+///   </description></item>
+///   <item><description>
+///     <b><see cref="SemanticType"/> name -&gt; C# fully-qualified type name (string)</b> via
+///     <see cref="TryGetCSharpTypeName"/> — the seam code generation consumes to emit type names.
+///     The bridge deals only in <em>names</em>; Roslyn <c>SyntaxFactory</c> construction stays in CodeGen.
+///   </description></item>
+/// </list>
+///
+/// <para>
+/// All type special-casing lives in the nested <see cref="SpecialCases"/> registry: the
+/// <see cref="PrimitiveCatalog"/> primitives (delegated to, never duplicated), the
+/// Sharpy-collection correspondence (Sharpy name &lt;-&gt; C# name &lt;-&gt; CLR generic definition),
+/// the <c>"Sharpy"</c>-namespace rule, the <c>NdArray</c> special case, and the
+/// <c>KeyValuePair</c>-&gt;tuple mapping. Anything that special-cases a type by identity belongs
+/// there, so drift across the compiler is impossible by construction.
+/// </para>
+///
 /// Thread-safe for concurrent use.
 /// </summary>
 [ThreadSafe]
-internal class ClrTypeMapper
+internal class ClrTypeBridge
 {
     private readonly ConcurrentDictionary<Type, SemanticType> _typeCache = new();
+
+    /// <summary>
+    /// The single registry of type special cases owned by <see cref="ClrTypeBridge"/>.
+    /// Every identity-based special case (primitives, Sharpy collections, the <c>"Sharpy"</c>
+    /// namespace rule, NdArray, KeyValuePair) is defined here exactly once.
+    /// </summary>
+    internal static class SpecialCases
+    {
+        // ---- Sharpy generic CLR definitions (FullName of the open generic) --------------------
+        // Centralizes the FullName string literals the forward mapper matches against, so the
+        // CLR-side identity of each Sharpy collection lives in exactly one place.
+        internal const string SharpyListFullName = CSharpTypeNames.SharpyList + "`1";
+        internal const string SharpyDictFullName = CSharpTypeNames.SharpyDict + "`2";
+        internal const string SharpySetFullName = CSharpTypeNames.SharpySet + "`1";
+        internal const string SharpyOptionalFullName = CSharpTypeNames.SharpyOptional + "`1";
+        internal const string SharpyResultFullName = CSharpTypeNames.SharpyResult + "`2";
+        internal const string SharpyNdArrayFullName = CSharpTypeNames.SharpyNdArray + "`1";
+        internal const string DictItemsViewFullName = "Sharpy.DictItemsView`2";
+        internal const string DictKeyViewFullName = "Sharpy.DictKeyView`2";
+        internal const string DictValuesViewFullName = "Sharpy.DictValuesView`2";
+        internal const string KeyValuePairFullName = "System.Collections.Generic.KeyValuePair`2";
+
+        /// <summary>
+        /// The reserved runtime namespace for Sharpy.Core / stdlib CLR types. Types in this
+        /// namespace (or a sub-namespace of it) are Sharpy runtime types, not user code.
+        /// </summary>
+        internal const string SharpyNamespace = "Sharpy";
+
+        /// <summary>
+        /// Reverse direction: Sharpy builtin/collection type name -&gt; fully-qualified C# type name.
+        /// This is the single source for the collection correspondence that previously lived in
+        /// <c>CSharpTypeNames.FromSharpyName</c> and <c>TypeSyntaxMapper</c>'s static map.
+        /// Primitives are <em>not</em> listed here — they are delegated to <see cref="PrimitiveCatalog"/>.
+        /// </summary>
+        private static readonly ImmutableDictionary<string, string> _collectionCSharpNames =
+            new Dictionary<string, string>
+            {
+                [BuiltinNames.List] = CSharpTypeNames.SharpyList,
+                [BuiltinNames.Dict] = CSharpTypeNames.SharpyDict,
+                [BuiltinNames.Set] = CSharpTypeNames.SharpySet,
+                [BuiltinNames.DefaultDict] = CSharpTypeNames.SharpyDefaultDict,
+                ["DefaultDict"] = CSharpTypeNames.SharpyDefaultDict,
+                [BuiltinNames.FrozenDict] = CSharpTypeNames.SharpyFrozenDict,
+                ["FrozenDict"] = CSharpTypeNames.SharpyFrozenDict,
+                [BuiltinNames.Bytes] = CSharpTypeNames.SharpyBytes,
+                [BuiltinNames.Template] = CSharpTypeNames.SharpyTemplate,
+                [BuiltinNames.Tuple] = "System.ValueTuple",
+            }.ToImmutableDictionary();
+
+        /// <summary>
+        /// Returns the fully-qualified C# type name for a Sharpy collection type name, or
+        /// <c>null</c> when the name is not a known collection.
+        /// </summary>
+        internal static string? TryGetCSharpCollectionName(string sharpyName)
+            => _collectionCSharpNames.GetValueOrDefault(sharpyName);
+
+        /// <summary>
+        /// Returns true when the CLR namespace is the reserved Sharpy runtime namespace
+        /// (<c>"Sharpy"</c>) or a sub-namespace of it. This is the single home of the
+        /// <c>"Sharpy"</c>-namespace rule.
+        /// </summary>
+        internal static bool IsSharpyNamespace(string? ns)
+            => ns == SharpyNamespace || (ns != null && ns.StartsWith(SharpyNamespace + ".", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Reverse direction: maps a Sharpy builtin/collection type name to its fully-qualified C#
+    /// type name (e.g. <c>"int" -&gt; "int"</c>, <c>"list" -&gt; "Sharpy.List"</c>). Primitives are
+    /// delegated to <see cref="PrimitiveCatalog"/>; collections come from
+    /// <see cref="SpecialCases"/>. Returns <c>null</c> for names with no builtin C# correspondence
+    /// (i.e. user-defined types, which CodeGen resolves through the symbol table).
+    /// </summary>
+    /// <remarks>
+    /// This is the seam Phase 3.2 wires code generation onto so that <c>TypeSyntaxMapper</c> and
+    /// <c>CSharpTypeNames.FromSharpyName</c> source their name mapping from the bridge instead of
+    /// re-declaring it.
+    /// </remarks>
+    public static string? TryGetCSharpTypeName(string sharpyName)
+    {
+        var primitive = PrimitiveCatalog.GetByName(sharpyName);
+        if (primitive != null)
+            return primitive.CSharpName;
+
+        return SpecialCases.TryGetCSharpCollectionName(sharpyName);
+    }
 
     /// <summary>
     /// Map a CLR type to a Sharpy SemanticType.
@@ -141,7 +252,7 @@ internal class ClrTypeMapper
         var typeArgs = clrType.GetGenericArguments();
 
         // Sharpy.List<T>, List<T>, or IList<T>
-        if (genericDef.FullName == "Sharpy.List`1" ||
+        if (genericDef.FullName == SpecialCases.SharpyListFullName ||
             IsGenericTypeDefinition(genericDef, typeof(List<>)) ||
             IsGenericTypeDefinition(genericDef, typeof(IList<>)))
         {
@@ -156,7 +267,7 @@ internal class ClrTypeMapper
         }
 
         // Sharpy.Dict<K, V>, Dictionary<K, V>, or IDictionary<K, V>
-        if (genericDef.FullName == "Sharpy.Dict`2" ||
+        if (genericDef.FullName == SpecialCases.SharpyDictFullName ||
             IsGenericTypeDefinition(genericDef, typeof(Dictionary<,>)) ||
             IsGenericTypeDefinition(genericDef, typeof(IDictionary<,>)))
         {
@@ -172,7 +283,7 @@ internal class ClrTypeMapper
         }
 
         // Sharpy.Set<T>, HashSet<T>, or ISet<T>
-        if (genericDef.FullName == "Sharpy.Set`1" ||
+        if (genericDef.FullName == SpecialCases.SharpySetFullName ||
             IsGenericTypeDefinition(genericDef, typeof(HashSet<>)) ||
             IsGenericTypeDefinition(genericDef, typeof(ISet<>)))
         {
@@ -239,7 +350,7 @@ internal class ClrTypeMapper
         }
 
         // Sharpy.Optional<T>
-        if (genericDef.FullName == "Sharpy.Optional`1")
+        if (genericDef.FullName == SpecialCases.SharpyOptionalFullName)
         {
             return new OptionalType
             {
@@ -248,7 +359,7 @@ internal class ClrTypeMapper
         }
 
         // Sharpy.Result<T, E>
-        if (genericDef.FullName == "Sharpy.Result`2")
+        if (genericDef.FullName == SpecialCases.SharpyResultFullName)
         {
             return new ResultType
             {
@@ -258,7 +369,7 @@ internal class ClrTypeMapper
         }
 
         // Sharpy.DictItemsView<K, V>
-        if (genericDef.FullName == "Sharpy.DictItemsView`2")
+        if (genericDef.FullName == SpecialCases.DictItemsViewFullName)
         {
             return new GenericType
             {
@@ -272,7 +383,7 @@ internal class ClrTypeMapper
         }
 
         // Sharpy.DictKeyView<K, V>
-        if (genericDef.FullName == "Sharpy.DictKeyView`2")
+        if (genericDef.FullName == SpecialCases.DictKeyViewFullName)
         {
             return new GenericType
             {
@@ -286,7 +397,7 @@ internal class ClrTypeMapper
         }
 
         // Sharpy.DictValuesView<K, V>
-        if (genericDef.FullName == "Sharpy.DictValuesView`2")
+        if (genericDef.FullName == SpecialCases.DictValuesViewFullName)
         {
             return new GenericType
             {
@@ -300,7 +411,7 @@ internal class ClrTypeMapper
         }
 
         // KeyValuePair<K, V> -> tuple[K, V]
-        if (genericDef.FullName == "System.Collections.Generic.KeyValuePair`2")
+        if (genericDef.FullName == SpecialCases.KeyValuePairFullName)
         {
             return new TupleType
             {
@@ -380,7 +491,7 @@ internal class ClrTypeMapper
 
         // NdArray<T> — first-class stdlib generic backed by CLR; needs GenericDefinition
         // so GetClrType can construct closed generics for operator resolution (#968, #971).
-        if (genericDef.FullName == Shared.CSharpTypeNames.SharpyNdArray + "`1")
+        if (genericDef.FullName == SpecialCases.SharpyNdArrayFullName)
         {
             var defSymbol = new TypeSymbol
             {

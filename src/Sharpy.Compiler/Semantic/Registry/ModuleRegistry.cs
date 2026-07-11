@@ -379,7 +379,7 @@ internal class ModuleRegistry
                 typeParameters.Add(new TypeParameterDef
                 {
                     Name = arg.Name,
-                    Variance = ClrTypeMapper.GetClrVariance(arg)
+                    Variance = ClrTypeBridge.GetClrVariance(arg)
                 });
             }
         }
@@ -462,7 +462,7 @@ internal class ModuleRegistry
     /// </summary>
     private FunctionSymbol? CreateConstructorSymbol(System.Reflection.ConstructorInfo ctor, Type declaringType)
     {
-        var typeMapper = new Discovery.ClrTypeMapper();
+        var typeMapper = new Discovery.ClrTypeBridge();
         var parameters = new List<ParameterSymbol>();
 
         // Add 'self' parameter first (Sharpy convention - will be skipped by type checker)

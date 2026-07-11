@@ -57,7 +57,7 @@ public class StaticStateConformanceTests
                 "Process-global set of runtime namespaces already registered. Monotonic and " +
                 "idempotent (Add-if-absent guard); affects one-time registration side effects, " +
                 "not per-compile output.",
-            [("Sharpy.Compiler.Discovery.ClrTypeMapper", "_interfaceListInProgress")] =
+            [("Sharpy.Compiler.Discovery.ClrTypeBridge", "_interfaceListInProgress")] =
                 "[ThreadStatic] re-entrancy guard for recursive interface expansion; lazily " +
                 "created and cleared per traversal, thread-local so it cannot leak across compiles.",
 

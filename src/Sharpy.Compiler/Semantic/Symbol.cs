@@ -437,7 +437,7 @@ public record ParameterSymbol
     public Parser.Ast.ParameterModifier Modifier { get; init; } = Parser.Ast.ParameterModifier.None;
     /// <summary>
     /// The original CLR type name (assembly-qualified for non-generic, generic definition AQN
-    /// for generic types). Preserves the CLR identity lost by <see cref="Discovery.ClrTypeMapper"/>
+    /// for generic types). Preserves the CLR identity lost by <see cref="Discovery.ClrTypeBridge"/>
     /// (e.g., IEnumerable&lt;T&gt; mapped to list[T]). Used for overload specificity comparison.
     /// </summary>
     public string? ClrTypeName { get; init; }

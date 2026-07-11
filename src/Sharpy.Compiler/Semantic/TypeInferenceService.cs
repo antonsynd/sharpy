@@ -35,7 +35,7 @@ internal class TypeInferenceService
 {
     private readonly SymbolTable _symbolTable;
     private readonly ClrMemberCache _clrMemberCache;
-    private readonly Lazy<ClrTypeMapper> _clrTypeMapper = new(() => new ClrTypeMapper());
+    private readonly Lazy<ClrTypeBridge> _clrTypeMapper = new(() => new ClrTypeBridge());
 
     // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
@@ -1389,7 +1389,7 @@ internal class TypeInferenceService
             return SemanticType.Str;
         if (clrType == typeof(void))
             return SemanticType.Void;
-        // Delegate to ClrTypeMapper for Sharpy-namespace and other CLR types
+        // Delegate to ClrTypeBridge for Sharpy-namespace and other CLR types
         // so that operator return types like Sharpy.DateTime map back to `datetime`
         // instead of collapsing to `object`.
         return _clrTypeMapper.Value.MapClrTypeToSemanticType(clrType);
