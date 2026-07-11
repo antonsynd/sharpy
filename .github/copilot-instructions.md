@@ -54,7 +54,7 @@ Prefer Serena (`find_symbol`, `find_referencing_symbols`, `replace_symbol_body`)
 ## Critical Rules
 
 1. **Never modify `.expected`/`.error` to pass tests**—fix the implementation
-2. **RoslynEmitter**: `SyntaxFactory` only, no `$"return {x};"` strings
+2. **RoslynEmitter is a pure translator**: `SyntaxFactory` only (no `$"return {x};"` strings); makes **no type/lowering decisions and no reflection**—those happen in semantic and are materialized onto `SemanticInfo`/`CodeGenInfo` for the emitter to read (enforced by `EmitterPurityConformanceTests`; CLR inspection lives in `Discovery/ClrTypeBridge`/`ClrTypeHelper`). A new `SemanticInfo` dictionary must be added to `SemanticInfo.MergeFrom` or it vanishes in the per-file→project merge.
 3. **Immutable AST**: annotations go in `SemanticInfo`, not AST nodes
 4. **C# targets**: `Sharpy.Core` → C# 9.0 (`netstandard2.0;2.1`); others → `net10.0`
 5. **Warnings are errors**: `TreatWarningsAsErrors` is enabled solution-wide via `Directory.Build.props`

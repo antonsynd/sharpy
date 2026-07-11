@@ -35,6 +35,8 @@ All agents follow this priority order when axioms conflict:
 | `stdlib-expert` | Stdlib modules (json, os, re, ...) | `Sharpy.Stdlib/`, `spy/`, `modules/` |
 | `lsp-expert` | LSP server, handlers, refactoring | `Sharpy.Lsp/`, `Handlers/`, `Refactoring/` |
 
+> **Type-boundary owner (B4):** `Discovery/ClrTypeBridge` is the single owned component for the CLR↔Sharpy↔C# type boundary — CLR `Type` → `SemanticType` (forward) and `SemanticType` name → C# type name (reverse), plus the type special-case registry; `Discovery/ClrTypeHelper` holds shared CLR reflection. Owner: **`semantic-expert`** (it produces `SemanticType` and hosts the registry). `codegen-expert` *consumes* the reverse name mapping and makes no type decisions or reflection of its own (`EmitterPurityConformanceTests`).
+
 ### Axiom Guardians (Advisory, Read-Only)
 
 | Agent | Guards | Catches |
