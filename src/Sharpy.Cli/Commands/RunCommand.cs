@@ -40,6 +40,7 @@ internal static class RunCommand
             var progArgs = parseResult.GetValue(argsOpt) ?? Array.Empty<string>();
             var selfContained = parseResult.GetValue(selfContainedOpt);
             var logLevel = globals.ResolveLogLevel(parseResult);
+            CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
             var metricsFormat = parseResult.GetValue(globals.MetricsFormat);
             var metricsOutput = parseResult.GetValue(globals.MetricsOutput);
@@ -96,7 +97,7 @@ internal static class RunCommand
             var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features: features);
             if (compileResult == null)
             {
-                return 1;
+                return CliHelpers.LastFailureExitCode;
             }
 
             var outputDir = Path.GetDirectoryName(outputPath)!;

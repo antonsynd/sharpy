@@ -303,12 +303,7 @@ internal partial class ProjectCompiler
             // Log full exception including stack trace for debugging
             _logger.LogError($"Project compilation failed with {ex.GetType().Name}: {ex}", 0, 0);
 
-            // Create a user-facing error message that includes exception type for identification
-            var errorMessage = ex is InternalCompilerErrorException ice
-                ? $"Internal compiler error in {ice.Component} ({ex.GetType().Name}): {ex.Message}"
-                : $"Project compilation failed ({ex.GetType().Name}): {ex.Message}";
-
-            _diagnostics.AddError(errorMessage, code: DiagnosticCodes.Infrastructure.CompilationFailed);
+            ReportInternalCompilerError(ex, config);
             return new ProjectCompilationResult
             {
                 Success = false,
@@ -320,6 +315,100 @@ internal partial class ProjectCompiler
                 ImportResolver = _importResolverBacking
             };
         }
+    }
+
+    /// <summary>
+    /// Last-chance internal-compiler-error handler (SPY0909). An exception that reaches here escaped
+    /// every earlier check, so by definition it is a compiler bug rather than a user error. Writes a
+    /// minimal-repro crash bundle (source, compiler version/commit, failing phase + producer, exception
+    /// + stack, nearest AST span) and adds a SPY0909 diagnostic that points at the bundle. The phase and
+    /// producer are read from the diagnostic bag's crash-context high-water mark, since the phase scope
+    /// that threw has already unwound by the time this outer catch runs.
+    /// </summary>
+    private void ReportInternalCompilerError(Exception ex, ProjectConfig config)
+    {
+        var ice = ex as InternalCompilerErrorException;
+
+        var request = new CrashBundleRequest
+        {
+            Exception = ex,
+            Phase = _diagnostics.LastEnteredPhase,
+            Producer = _diagnostics.LastEnteredProducer,
+            Component = ice?.Component,
+            SourceFiles = CollectSourceFiles(config),
+            Node = ice?.Node,
+            Span = ice?.Span,
+            Line = ice?.Node is { LineStart: > 0 } n ? n.LineStart : null,
+            Column = ice?.Node is { ColumnStart: > 0 } c ? c.ColumnStart : null,
+            Kind = "internal-compiler-error"
+        };
+
+        var bundlePath = CrashBundleWriter.TryWrite(ResolveCrashOutputDirectory(config), request);
+
+        var component = ice != null ? $" in {ice.Component}" : string.Empty;
+        var bundleNote = bundlePath != null
+            ? $" A minimal-repro crash bundle was written to: {bundlePath}"
+            : string.Empty;
+        var errorMessage =
+            $"internal compiler error{component} ({ex.GetType().Name}): {ex.Message}. "
+            + "This is a Sharpy compiler bug — please report it at https://github.com/antonsynd/sharpy/issues."
+            + bundleNote;
+
+        _diagnostics.AddError(errorMessage, code: DiagnosticCodes.Infrastructure.InternalCompilerError);
+    }
+
+    /// <summary>
+    /// Gathers source files for the crash bundle: prefers in-memory source text from the project model
+    /// (already parsed), falling back to the configured source-file paths (read from disk by the writer).
+    /// </summary>
+    private IReadOnlyDictionary<string, string> CollectSourceFiles(ProjectConfig config)
+    {
+        var sources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var model = _projectModel;
+        if (model != null)
+        {
+            foreach (var unit in model.Units.Values)
+            {
+                if (!sources.ContainsKey(unit.FilePath))
+                    sources[unit.FilePath] = unit.SourceText;
+            }
+        }
+
+        foreach (var path in config.SourceFiles)
+        {
+            if (!sources.ContainsKey(path))
+                sources[path] = string.Empty; // writer reads from disk on demand
+        }
+
+        return sources;
+    }
+
+    /// <summary>
+    /// Chooses where to root the <c>.sharpy-crash</c> directory: the output assembly's directory when
+    /// available, else the directory of the first source file, else the current directory.
+    /// </summary>
+    private static string? ResolveCrashOutputDirectory(ProjectConfig config)
+    {
+        try
+        {
+            var outputPath = config.OutputAssemblyPath;
+            var outputDir = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrEmpty(outputDir))
+                return outputDir;
+        }
+        catch
+        {
+            // Fall through to source-file-based resolution.
+        }
+
+        if (config.SourceFiles.Count > 0)
+        {
+            var dir = Path.GetDirectoryName(config.SourceFiles[0]);
+            if (!string.IsNullOrEmpty(dir))
+                return dir;
+        }
+
+        return null;
     }
 
     private static InvalidOperationException CompilationNotStarted(string fieldName)

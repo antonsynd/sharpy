@@ -339,14 +339,25 @@ public static class CompilerInvariants
                 };
 
                 // Unexpected Unknown types indicate a compiler bug where type inference
-                // silently failed without emitting a user-facing diagnostic.
-                diagnostics.AddError(
+                // silently failed without emitting a user-facing diagnostic. Route the span into
+                // the same descriptor format the crash-bundle writer uses, so this internal
+                // diagnostic carries location info identical to an SPY0909 bundle's "nearest span".
+                var spanDescriptor = CrashBundleWriter.DescribeSpan(
+                    expr.Span, expr.LineStart, expr.ColumnStart, filePath: null);
+                var data = spanDescriptor != null
+                    ? new Dictionary<string, string> { [CrashBundleWriter.SpanDataKey] = spanDescriptor }
+                    : null;
+
+                diagnostics.Add(new CompilerDiagnostic(
                     $"Internal: type inference produced UnknownType for '{nodeName}' without a corresponding error diagnostic. This is a compiler bug.",
-                    expr.Span,
+                    CompilerDiagnosticSeverity.Error,
                     expr.LineStart,
                     expr.ColumnStart,
-                    code: DiagnosticCodes.Infrastructure.UnexpectedUnknownType,
-                    phase: CompilerPhase.TypeChecking);
+                    FilePath: null,
+                    Code: DiagnosticCodes.Infrastructure.UnexpectedUnknownType,
+                    Phase: CompilerPhase.TypeChecking,
+                    Span: expr.Span,
+                    Data: data));
             }
         }
     }

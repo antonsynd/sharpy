@@ -65,6 +65,7 @@ internal static class CompileCommand
             var clean = parseResult.GetValue(cleanOpt);
             var emitCSharp = parseResult.GetValue(emitCSharpOpt);
             var logLevel = globals.ResolveLogLevel(parseResult);
+            CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
             var metricsFormat = parseResult.GetValue(globals.MetricsFormat);
             var metricsOutput = parseResult.GetValue(globals.MetricsOutput);
@@ -137,7 +138,7 @@ internal static class CompileCommand
 
         if (compileResult == null)
         {
-            return 1;
+            return CliHelpers.LastFailureExitCode;
         }
 
         if (emitCSharp)
@@ -241,8 +242,9 @@ internal static class CompileCommand
             {
                 Console.Error.WriteLine("Compilation FAILED.");
                 Console.Error.WriteLine();
-                CliHelpers.RenderDiagnosticsFromFiles(result.Diagnostics.GetErrors(), Console.Error);
-                return 1;
+                var errors = result.Diagnostics.GetErrors();
+                CliHelpers.RenderDiagnosticsFromFiles(errors, Console.Error);
+                return CliHelpers.MapFailureExitCode(errors);
             }
 
             var outputPath = result.OutputAssemblyPath;

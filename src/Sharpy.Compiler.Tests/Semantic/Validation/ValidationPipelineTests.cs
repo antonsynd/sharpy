@@ -311,7 +311,9 @@ public class ValidationPipelineTests
 
         var errors = result.GetErrors().ToList();
         Assert.Single(errors);
-        Assert.Equal(DiagnosticCodes.Infrastructure.CompilationFailed, errors[0].Code);
+        // A validator crash is an internal compiler error (SPY0909), reported but not propagated
+        // so sibling validators still run.
+        Assert.Equal(DiagnosticCodes.Infrastructure.InternalCompilerError, errors[0].Code);
     }
 
     // Test helper classes

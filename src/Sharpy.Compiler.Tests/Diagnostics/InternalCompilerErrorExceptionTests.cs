@@ -1,10 +1,45 @@
 using Xunit;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Tests.Diagnostics;
 
 public class InternalCompilerErrorExceptionTests
 {
+    [Fact]
+    public void Constructor_WithNode_CapturesNodeAndDerivesSpan()
+    {
+        var span = new TextSpan(3, 4);
+        var node = new Identifier { Name = "x", Span = span };
+        var exception = new InternalCompilerErrorException("RoslynEmitter", "boom", node: node);
+
+        Assert.Same(node, exception.Node);
+        Assert.Equal(span, exception.Span);
+    }
+
+    [Fact]
+    public void Constructor_WithNodeAndInner_CapturesBoth()
+    {
+        var inner = new InvalidOperationException("root");
+        var span = new TextSpan(10, 2);
+        var node = new Identifier { Name = "y", Span = span };
+        var exception = new InternalCompilerErrorException("TypeChecker", "boom", inner, node: node);
+
+        Assert.Same(inner, exception.InnerException);
+        Assert.Same(node, exception.Node);
+        Assert.Equal(span, exception.Span);
+    }
+
+    [Fact]
+    public void Constructor_WithoutNode_LeavesNodeAndSpanNull()
+    {
+        var exception = new InternalCompilerErrorException("Parser", "boom");
+
+        Assert.Null(exception.Node);
+        Assert.Null(exception.Span);
+    }
+
     [Fact]
     public void Constructor_WithInnerException_FormatsMessageCorrectly()
     {

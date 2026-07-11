@@ -70,5 +70,14 @@ public static partial class DiagnosticExplanations
             null,
             "Report this at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it, including " +
             "the embedded CS code and message.");
+
+        Add(dict, DiagnosticCodes.Infrastructure.InternalCompilerError, "Internal compiler error", "Infrastructure",
+            "An unexpected exception escaped a compilation phase and was caught by the compiler's last-chance handler. " +
+            "This is always a Sharpy compiler bug — user code should surface as a normal diagnostic, never as an internal crash. " +
+            "The handler writes a minimal-repro crash bundle (source excerpt, compiler version, failing phase and producer, " +
+            "exception and stack trace, nearest AST span) to a '.sharpy-crash/<timestamp>/' directory, and the diagnostic " +
+            "message points at that bundle.",
+            null,
+            "Report this at https://github.com/antonsynd/sharpy/issues and attach the crash bundle named in the diagnostic message.");
     }
 }

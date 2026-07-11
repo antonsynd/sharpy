@@ -446,10 +446,36 @@ public class Compiler
         catch (Exception ex)
         {
             _logger.LogError($"Compilation failed with {ex.GetType().Name}: {ex}", 0, 0);
-            var errorMessage = ex is InternalCompilerErrorException ice
-                ? $"Internal compiler error in {ice.Component} ({ex.GetType().Name}): {ex.Message}"
-                : $"Compilation failed ({ex.GetType().Name}): {ex.Message}";
-            diagnostics.AddError(errorMessage, filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationFailed);
+
+            // Last-chance ICE handler (SPY0909): an exception that reaches here is a compiler bug,
+            // not a user error. Write a minimal-repro crash bundle and point the diagnostic at it.
+            var ice = ex as InternalCompilerErrorException;
+            var request = new CrashBundleRequest
+            {
+                Exception = ex,
+                Phase = diagnostics.LastEnteredPhase,
+                Producer = diagnostics.LastEnteredProducer,
+                Component = ice?.Component,
+                SourceFiles = new Dictionary<string, string> { [filePath] = sourceCode },
+                Node = ice?.Node,
+                Span = ice?.Span,
+                SpanFilePath = filePath,
+                Line = ice?.Node is { LineStart: > 0 } n ? n.LineStart : null,
+                Column = ice?.Node is { ColumnStart: > 0 } c ? c.ColumnStart : null
+            };
+            var crashDir = File.Exists(filePath) ? Path.GetDirectoryName(filePath) : null;
+            var bundlePath = CrashBundleWriter.TryWrite(crashDir, request);
+
+            var component = ice != null ? $" in {ice.Component}" : string.Empty;
+            var bundleNote = bundlePath != null
+                ? $" A minimal-repro crash bundle was written to: {bundlePath}"
+                : string.Empty;
+            var errorMessage =
+                $"internal compiler error{component} ({ex.GetType().Name}): {ex.Message}. "
+                + "This is a Sharpy compiler bug — please report it at https://github.com/antonsynd/sharpy/issues."
+                + bundleNote;
+
+            diagnostics.AddError(errorMessage, filePath: filePath, code: DiagnosticCodes.Infrastructure.InternalCompilerError);
             return result.BuildFailure();
         }
     }

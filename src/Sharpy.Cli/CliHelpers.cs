@@ -13,6 +13,66 @@ internal static class CliHelpers
     internal static readonly DiagnosticRenderer Renderer = new(DiagnosticRenderer.IsColorSupported());
     internal static readonly bool UseColor = DiagnosticRenderer.IsColorSupported();
 
+    /// <summary>Process exit code for a successful compile.</summary>
+    internal const int ExitSuccess = 0;
+
+    /// <summary>Process exit code for a normal (user-caused) compilation failure.</summary>
+    internal const int ExitCompileError = 1;
+
+    /// <summary>
+    /// Process exit code when the compiler emitted C# that Roslyn rejected (SPY0908). Distinct
+    /// from a normal error so CI/tooling can single out "generated C# failed to compile" cases.
+    /// </summary>
+    internal const int ExitGeneratedCSharpError = 2;
+
+    /// <summary>
+    /// Process exit code when an internal compiler error escaped a phase (SPY0909). Distinct so a
+    /// crash (compiler bug) is never confused with a user error.
+    /// </summary>
+    internal const int ExitInternalError = 3;
+
+    /// <summary>
+    /// Maps a failed compilation's diagnostics to a process exit code, promoting internal-error
+    /// codes (SPY0909, then SPY0908) above a plain compile error. ICE outranks escaped-C# because a
+    /// true crash is the most severe outcome. Returns <see cref="ExitCompileError"/> for ordinary errors.
+    /// </summary>
+    internal static int MapFailureExitCode(IEnumerable<CompilerDiagnostic> diagnostics)
+    {
+        var hasIce = false;
+        var hasGeneratedCSharp = false;
+        foreach (var d in diagnostics)
+        {
+            if (!d.IsError)
+                continue;
+            if (d.Code == DiagnosticCodes.Infrastructure.InternalCompilerError)
+                hasIce = true;
+            else if (d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError)
+                hasGeneratedCSharp = true;
+        }
+
+        if (hasIce)
+            return ExitInternalError;
+        if (hasGeneratedCSharp)
+            return ExitGeneratedCSharpError;
+        return ExitCompileError;
+    }
+
+    /// <summary>
+    /// When set (from <c>--verbose</c>/<c>-v</c>), rendered diagnostics carry a provenance
+    /// suffix identifying the producing phase/validator (e.g. <c>[type-check]</c>,
+    /// <c>[validation:ProtocolValidator]</c>). Command handlers set this once from the parse
+    /// result before any rendering; it defaults off so normal output is unchanged.
+    /// </summary>
+    internal static bool ShowDiagnosticProvenance;
+
+    /// <summary>
+    /// Exit code produced by the most recent failed <see cref="Commands.BuildCommand.CompileToBinary"/>
+    /// call, mapped from its diagnostics (see <see cref="MapFailureExitCode"/>). Callers that treat a
+    /// null <c>CompileResult</c> as failure read this to propagate the ICE (3) / escaped-C# (2) /
+    /// ordinary-error (1) distinction. Defaults to <see cref="ExitCompileError"/>.
+    /// </summary>
+    internal static int LastFailureExitCode = ExitCompileError;
+
     internal static CompilerApi CreateCompilerApi(ICompilerLogger logger)
     {
         return new CompilerApi(logger, GetDefaultReferences());
@@ -296,7 +356,7 @@ internal static class CliHelpers
 
     internal static void RenderDiagnostic(CompilerDiagnostic diagnostic, SourceText? sourceText, TextWriter writer)
     {
-        writer.WriteLine(Renderer.Render(diagnostic, sourceText));
+        writer.WriteLine(Renderer.Render(diagnostic, sourceText, ShowDiagnosticProvenance));
     }
 
     internal static void RenderDiagnostics(IEnumerable<CompilerDiagnostic> diagnostics, SourceText? sourceText, TextWriter writer)

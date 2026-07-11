@@ -124,10 +124,14 @@ internal class ValidationPipeline
                 // Log full exception including stack trace for debugging
                 _logger.LogError($"Validator {validator.Name} threw {ex.GetType().Name}: {ex}", 0, 0);
 
-                // Include exception type in diagnostic for identification
+                // A validator crash is an internal compiler error (SPY0909), but validator failures
+                // are intentionally isolated here so one broken validator doesn't abort the others —
+                // so we record the ICE diagnostic and continue rather than propagating to the
+                // top-level last-chance handler that writes a crash bundle.
                 context.Diagnostics.AddError(
-                    $"Internal compiler error ({ex.GetType().Name}) in {validator.Name}: {ex.Message}",
-                    code: DiagnosticCodes.Infrastructure.CompilationFailed,
+                    $"internal compiler error ({ex.GetType().Name}) in {validator.Name}: {ex.Message}. "
+                    + "This is a Sharpy compiler bug — please report it at https://github.com/antonsynd/sharpy/issues.",
+                    code: DiagnosticCodes.Infrastructure.InternalCompilerError,
                     phase: CompilerPhase.Validation);
             }
             stopwatch.Stop();

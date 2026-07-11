@@ -79,11 +79,7 @@ internal partial class ProjectCompiler
         {
             _logger.LogError($"Project analysis failed with {ex.GetType().Name}: {ex}", 0, 0);
 
-            var errorMessage = ex is InternalCompilerErrorException ice
-                ? $"Internal compiler error in {ice.Component} ({ex.GetType().Name}): {ex.Message}"
-                : $"Project analysis failed ({ex.GetType().Name}): {ex.Message}";
-
-            _diagnostics.AddError(errorMessage, code: DiagnosticCodes.Infrastructure.CompilationFailed);
+            ReportInternalCompilerError(ex, config);
             return CreateAnalysisResult(success: false);
         }
     }

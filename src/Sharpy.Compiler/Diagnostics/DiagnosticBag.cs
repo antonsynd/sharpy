@@ -119,6 +119,28 @@ public class DiagnosticBag
     private CompilerPhase? _activePhase;
     private string? _activeProducer;
 
+    // Crash-context snapshot: the most recently *entered* phase/producer scope, retained
+    // across scope disposal (unlike _activePhase/_activeProducer, which are restored on
+    // Dispose as the stack unwinds). A last-chance ICE handler runs *outside* the phase
+    // scope that threw, so it cannot read the ambient values — it reads these instead to
+    // report which phase/producer the compiler had reached when it crashed.
+    private CompilerPhase? _lastEnteredPhase;
+    private string? _lastEnteredProducer;
+
+    /// <summary>
+    /// The most recently entered phase scope, retained across scope disposal for crash
+    /// reporting. Approximates "which phase was the compiler in?" at the moment an
+    /// exception escaped a phase. Null if no phase scope has been opened.
+    /// </summary>
+    public CompilerPhase? LastEnteredPhase => _lastEnteredPhase;
+
+    /// <summary>
+    /// The most recently entered producer (validator) scope, retained across scope disposal
+    /// for crash reporting. Cleared when a bare phase scope is entered, so it is only
+    /// non-null while the compiler was inside a validator. Null if none was active.
+    /// </summary>
+    public string? LastEnteredProducer => _lastEnteredProducer;
+
     public DiagnosticBag() : this(warningsAsErrors: false, suppressedWarnings: null) { }
 
     public DiagnosticBag(bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null)
@@ -141,6 +163,10 @@ public class DiagnosticBag
     {
         var previous = _activePhase;
         _activePhase = phase;
+        // Advance the crash-context high-water mark. Entering a new (bare) phase clears the
+        // last producer, so a crash in this phase isn't misattributed to a prior validator.
+        _lastEnteredPhase = phase;
+        _lastEnteredProducer = null;
         return new ScopeRestorer(this, restorePhase: true, previous, restoreProducer: false, null);
     }
 
@@ -157,6 +183,9 @@ public class DiagnosticBag
         var previousProducer = _activeProducer;
         _activeProducer = producerName;
         _activePhase = CompilerPhase.Validation;
+        // Advance the crash-context high-water mark to this validator/phase.
+        _lastEnteredPhase = CompilerPhase.Validation;
+        _lastEnteredProducer = producerName;
         return new ScopeRestorer(this, restorePhase: true, previousPhase, restoreProducer: true, previousProducer);
     }
 

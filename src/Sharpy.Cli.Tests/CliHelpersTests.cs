@@ -296,4 +296,47 @@ public class CliHelpersTests
         text.Should().Contain(CompilerPhaseNames.LexicalAnalysis);
         text.Should().Contain(CompilerPhaseNames.IlEmission);
     }
+
+    private static CompilerDiagnostic Error(string code) =>
+        new("boom", CompilerDiagnosticSeverity.Error, Code: code);
+
+    [Fact]
+    public void MapFailureExitCode_OrdinaryError_ReturnsCompileError()
+    {
+        var code = CliHelpers.MapFailureExitCode(new[] { Error(DiagnosticCodes.Semantic.UndefinedVariable) });
+        code.Should().Be(CliHelpers.ExitCompileError);
+    }
+
+    [Fact]
+    public void MapFailureExitCode_GeneratedCSharpError_ReturnsDistinctCode()
+    {
+        var code = CliHelpers.MapFailureExitCode(new[]
+        {
+            Error(DiagnosticCodes.Semantic.UndefinedVariable),
+            Error(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError)
+        });
+        code.Should().Be(CliHelpers.ExitGeneratedCSharpError);
+    }
+
+    [Fact]
+    public void MapFailureExitCode_InternalCompilerError_ReturnsInternalCode()
+    {
+        var code = CliHelpers.MapFailureExitCode(new[]
+        {
+            Error(DiagnosticCodes.Infrastructure.InternalCompilerError)
+        });
+        code.Should().Be(CliHelpers.ExitInternalError);
+    }
+
+    [Fact]
+    public void MapFailureExitCode_IcePrecedesGeneratedCSharp()
+    {
+        // A crash (SPY0909) outranks an escaped-C# failure (SPY0908) when both are present.
+        var code = CliHelpers.MapFailureExitCode(new[]
+        {
+            Error(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError),
+            Error(DiagnosticCodes.Infrastructure.InternalCompilerError)
+        });
+        code.Should().Be(CliHelpers.ExitInternalError);
+    }
 }

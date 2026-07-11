@@ -41,6 +41,7 @@ internal static class BuildCommand
             var projectReference = parseResult.GetValue(projRefOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
             var logLevel = globals.ResolveLogLevel(parseResult);
+            CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
             var metricsFormat = parseResult.GetValue(globals.MetricsFormat);
             var metricsOutput = parseResult.GetValue(globals.MetricsOutput);
@@ -55,7 +56,7 @@ internal static class BuildCommand
                 return 1;
             }
             var compileResult = CompileToBinary(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration: "Debug", features: features);
-            return compileResult == null ? 1 : 0;
+            return compileResult == null ? CliHelpers.LastFailureExitCode : 0;
         });
 
         root.Subcommands.Add(command);
@@ -134,6 +135,7 @@ internal static class BuildCommand
                 Console.Error.WriteLine("Compilation failed:");
                 Console.Error.WriteLine();
                 CliHelpers.RenderDiagnostics(result.Diagnostics.Where(d => d.IsError), sourceText, Console.Error);
+                CliHelpers.LastFailureExitCode = CliHelpers.MapFailureExitCode(result.Diagnostics);
                 return null;
             }
 
@@ -152,7 +154,9 @@ internal static class BuildCommand
         }
         catch (Exception ex)
         {
+            // An exception here (not surfaced as a diagnostic) is itself an internal error.
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+            CliHelpers.LastFailureExitCode = CliHelpers.ExitInternalError;
             return null;
         }
     }
