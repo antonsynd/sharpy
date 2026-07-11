@@ -364,7 +364,7 @@ internal class PropertyValidator : SemanticValidatorBase
         var propNames = initPropsWithoutDefaults.Select(p => p.Name).ToList();
         foreach (var initMethod in initMethods)
         {
-            var assignedNames = CollectGuaranteedSelfAssignments(initMethod.Body, propNames);
+            var assignedNames = CollectGuaranteedSelfAssignments(initMethod, propNames, _context.ControlFlowGraphs);
             foreach (var prop in initPropsWithoutDefaults)
             {
                 if (!assignedNames.Contains(prop.Name))
@@ -383,10 +383,13 @@ internal class PropertyValidator : SemanticValidatorBase
     /// Collects names of members that are guaranteed to be assigned via self.{name} = ...
     /// on all paths through the method body, using CFG-based forward "must-assign" analysis.
     /// </summary>
-    private static HashSet<string> CollectGuaranteedSelfAssignments(IReadOnlyList<Statement> body, IReadOnlyCollection<string> allProperties)
+    private static HashSet<string> CollectGuaranteedSelfAssignments(
+        FunctionDef initMethod,
+        IReadOnlyCollection<string> allProperties,
+        ControlFlowGraphCache cfgCache)
     {
-        var builder = new ControlFlowGraphBuilder();
-        var cfg = builder.Build(body);
+        // Key on the FunctionDef so this graph is shared with ControlFlowValidator/StructRulesValidator.
+        var cfg = cfgCache.GetOrBuild(initMethod);
 
         var rpo = cfg.GetReversePostOrder();
 

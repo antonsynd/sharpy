@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -27,6 +28,11 @@ internal partial class TypeChecker
 
     // Generic type argument inference service - for inferring type arguments from function call arguments
     private readonly GenericTypeInferenceService _genericInference;
+
+    // Shared, per-compilation control flow graph cache. Owned here so the same instance is
+    // reachable from the TypeChecker side (for future narrowing dataflow) and threaded onto the
+    // SemanticContext so the CFG-consuming validators reuse graphs instead of rebuilding them.
+    private readonly ControlFlowGraphCache _controlFlowGraphs = new();
 
     // Track current function return type for return statement checking
     private SemanticType? _currentFunctionReturnType = null;
@@ -184,6 +190,8 @@ internal partial class TypeChecker
         context.SemanticBinding = SemanticBinding;
         // Share the inference service so validators resolve operators with identical rules
         context.TypeInference = _typeInference;
+        // Share the CFG cache so validators reuse graphs (and P5.2 can reach the same instance)
+        context.ControlFlowGraphs = _controlFlowGraphs;
         context.DeferredCycleSymbols = DeferredCycleSymbols;
         context.DeferredCycleFiles = DeferredCycleFiles;
         return context;

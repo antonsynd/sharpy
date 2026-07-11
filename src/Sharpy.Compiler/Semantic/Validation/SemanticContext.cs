@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic.Registry;
@@ -26,6 +27,16 @@ internal class SemanticContext
 
     // Shared caches (avoid duplicate work across validators)
     public ClrMemberCache ClrCache { get; }
+
+    /// <summary>
+    /// Shared, per-compilation cache of control flow graphs keyed by AST node identity.
+    /// The three CFG-consuming validators (ControlFlowValidator, StructRulesValidator,
+    /// PropertyValidator) draw from this instead of each rebuilding graphs. Threaded in by
+    /// the TypeChecker (via <see cref="TypeChecker.CreateSemanticContext"/>) so the same
+    /// instance is reachable from the TypeChecker side too; defaults to a fresh cache so a
+    /// context created without a TypeChecker still works.
+    /// </summary>
+    public ControlFlowGraphCache ControlFlowGraphs { get; set; } = new();
 
     // Diagnostics collection
     public DiagnosticBag Diagnostics { get; }
@@ -154,6 +165,7 @@ internal class SemanticContext
             SemanticBinding = SemanticBinding,
             DeferredCycleSymbols = DeferredCycleSymbols,
             DeferredCycleFiles = DeferredCycleFiles,
+            ControlFlowGraphs = ControlFlowGraphs,
             // Share the ClrCache across files for efficiency
         };
     }

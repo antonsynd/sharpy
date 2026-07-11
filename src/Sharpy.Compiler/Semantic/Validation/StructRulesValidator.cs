@@ -94,8 +94,7 @@ internal class StructRulesValidator : ValidatingAstWalker
         if (constructorDef == null)
             return;
 
-        var cfgBuilder = new ControlFlowGraphBuilder();
-        var cfg = cfgBuilder.Build(constructorDef);
+        var cfg = Context.ControlFlowGraphs.GetOrBuild(constructorDef);
         var definitelyAssigned = DefiniteFieldAssignmentAnalysis.FindDefinitelyAssignedFields(cfg);
 
         // Collect the names of fields that have default values in their declaration

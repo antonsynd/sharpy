@@ -22,14 +22,13 @@ internal class ControlFlowValidator : ValidatingAstWalker
     public override string Name => "ControlFlowValidator";
     public override int Order => 400; // After type checking (300)
 
-    private ControlFlowGraphBuilder _cfgBuilder = new();
     private ICompilerLogger _logger = NullLogger.Instance;
+    private HashSet<MatchStatement>? _exhaustiveMatches;
 
     public override void Validate(Module module, SemanticContext context)
     {
         _logger = context.Logger;
-        var exhaustiveMatches = PreComputeExhaustiveMatches(module, context.SemanticInfo);
-        _cfgBuilder = new ControlFlowGraphBuilder(exhaustiveMatches);
+        _exhaustiveMatches = PreComputeExhaustiveMatches(module, context.SemanticInfo);
         _logger.LogDebug("Starting CFG-based control flow validation");
         base.Validate(module, context);
     }
@@ -96,8 +95,8 @@ internal class ControlFlowValidator : ValidatingAstWalker
         if (func.Body.Length == 1 && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral })
             return;
 
-        // Build CFG
-        var cfg = _cfgBuilder.Build(func);
+        // Build CFG (shared cache; pruning by exhaustive matches is this validator's concern only)
+        var cfg = Context.ControlFlowGraphs.GetOrBuildPruned(func, _exhaustiveMatches);
 
         // 1. Check for unreachable code (warning, not error)
         var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
