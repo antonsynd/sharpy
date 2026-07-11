@@ -15,6 +15,7 @@ internal static class ReplCommand
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var logLevel = globals.ResolveLogLevel(parseResult);
+            CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
             return await RunReplAsync(logger, cancellationToken).ConfigureAwait(false);
