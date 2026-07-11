@@ -94,7 +94,8 @@ internal static class SyntheticProject
             }
             else
             {
-                try { moduleSource = File.ReadAllText(file); }
+                try
+                { moduleSource = File.ReadAllText(file); }
                 catch { continue; }
             }
 
