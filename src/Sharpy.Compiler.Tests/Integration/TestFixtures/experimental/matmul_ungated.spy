@@ -1,0 +1,14 @@
+class Vec:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def __matmul__(self, other: Vec) -> int:
+        return self.x * other.x
+
+
+def main() -> None:
+    a = Vec(3)
+    b = Vec(4)
+    print(a @ b)

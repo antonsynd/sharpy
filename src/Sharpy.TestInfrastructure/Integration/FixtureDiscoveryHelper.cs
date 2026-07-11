@@ -1,3 +1,5 @@
+using Sharpy.Compiler.Shared;
+
 namespace Sharpy.TestInfrastructure.Integration;
 
 /// <summary>
@@ -14,6 +16,13 @@ public record TestFixtureInfo
     public string? ExpectedCsFile { get; init; }
     public bool IsMultiFile { get; init; }
     public string Category { get; init; } = "";
+
+    /// <summary>
+    /// Experimental feature names declared in this fixture's <c>.features</c> sidecar
+    /// (empty when there is no sidecar). These are enabled compilation-wide when the
+    /// fixture is compiled, gating features such as <c>matmul</c> and <c>defer</c>.
+    /// </summary>
+    public IReadOnlyList<string> Features { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>
@@ -87,6 +96,7 @@ public static class FixtureDiscoveryHelper
                 var runtimeErrorFile = Path.Combine(multiFileRoot, "main.runtime-error");
                 var warningFile = Path.Combine(multiFileRoot, "main.warning");
                 var expectedCsFile = Path.Combine(multiFileRoot, "main.expected.cs");
+                var featuresFile = Path.Combine(multiFileRoot, "main.features");
 
                 yield return new TestFixtureInfo
                 {
@@ -100,6 +110,7 @@ public static class FixtureDiscoveryHelper
                     ExpectedCsFile = File.Exists(expectedCsFile) ? expectedCsFile : null,
                     IsMultiFile = true,
                     Category = category,
+                    Features = ReadFeaturesFile(featuresFile),
                 };
             }
             else
@@ -120,6 +131,7 @@ public static class FixtureDiscoveryHelper
                 var runtimeErrorFile = spyFile.Replace(".spy", ".runtime-error", StringComparison.Ordinal);
                 var warningFile = Path.ChangeExtension(spyFile, ".warning");
                 var expectedCsFile = spyFile.Replace(".spy", ".expected.cs", StringComparison.Ordinal);
+                var featuresFile = Path.ChangeExtension(spyFile, ".features");
 
                 yield return new TestFixtureInfo
                 {
@@ -133,6 +145,7 @@ public static class FixtureDiscoveryHelper
                     ExpectedCsFile = File.Exists(expectedCsFile) ? expectedCsFile : null,
                     IsMultiFile = false,
                     Category = category,
+                    Features = ReadFeaturesFile(featuresFile),
                 };
             }
         }
@@ -154,6 +167,43 @@ public static class FixtureDiscoveryHelper
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Reads a fixture's <c>.features</c> sidecar, if present. Each non-blank, non-comment
+    /// line names one experimental feature to enable compilation-wide for the fixture
+    /// (<c># ...</c> comments and blank lines are tolerated). Every name is validated against
+    /// <see cref="FeatureFlags.KnownFeatures"/>; an unknown name throws loudly (naming both the
+    /// sidecar file and the bad name) rather than being silently ignored, so a typo can never
+    /// quietly leave a gated feature disabled.
+    /// </summary>
+    /// <returns>The declared feature names, or an empty list when the sidecar is absent.</returns>
+    public static IReadOnlyList<string> ReadFeaturesFile(string featuresFilePath)
+    {
+        if (!File.Exists(featuresFilePath))
+        {
+            return Array.Empty<string>();
+        }
+
+        var features = new List<string>();
+        foreach (var rawLine in File.ReadAllLines(featuresFilePath))
+        {
+            var line = rawLine.Trim();
+            if (line.Length == 0 || line.StartsWith('#'))
+            {
+                continue;
+            }
+
+            if (!FeatureFlags.TryValidate(line, out var error))
+            {
+                throw new InvalidOperationException(
+                    $"Invalid '.features' sidecar '{featuresFilePath}': {error}");
+            }
+
+            features.Add(line);
+        }
+
+        return features;
     }
 
     private static string ExtractCategory(string relativePath)

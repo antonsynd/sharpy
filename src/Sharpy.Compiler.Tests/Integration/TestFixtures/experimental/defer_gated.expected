@@ -1,0 +1,9 @@
+body start
+returning early
+second deferred (runs first)
+first deferred (runs last)
+---
+body start
+body end
+second deferred (runs first)
+first deferred (runs last)

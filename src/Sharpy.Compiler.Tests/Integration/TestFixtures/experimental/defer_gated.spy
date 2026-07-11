@@ -1,0 +1,14 @@
+def run(early: bool) -> None:
+    defer print("first deferred (runs last)")
+    defer print("second deferred (runs first)")
+    print("body start")
+    if early:
+        print("returning early")
+        return
+    print("body end")
+
+
+def main() -> None:
+    run(True)
+    print("---")
+    run(False)

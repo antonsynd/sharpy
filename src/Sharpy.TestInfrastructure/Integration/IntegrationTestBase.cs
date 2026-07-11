@@ -504,11 +504,13 @@ public abstract class IntegrationTestBase
     /// <param name="projectDir">Directory containing the Sharpy source files.</param>
     /// <param name="entryPointFile">The main entry point file (e.g., "main.spy").</param>
     /// <param name="executionTimeoutMs">Optional timeout in milliseconds for execution.</param>
-    protected ExecutionResult CompileAndExecuteProject(string projectDir, string entryPointFile, int executionTimeoutMs = 0)
+    /// <param name="features">Optional experimental feature flags enabled compilation-wide for the
+    /// whole project (e.g. from a fixture's <c>.features</c> sidecar). Defaults to none.</param>
+    protected ExecutionResult CompileAndExecuteProject(string projectDir, string entryPointFile, int executionTimeoutMs = 0, FeatureFlags? features = null)
     {
         try
         {
-            return CompileAndExecuteProjectCore(projectDir, entryPointFile, executionTimeoutMs);
+            return CompileAndExecuteProjectCore(projectDir, entryPointFile, executionTimeoutMs, features ?? FeatureFlags.None);
         }
         finally
         {
@@ -517,7 +519,7 @@ public abstract class IntegrationTestBase
         }
     }
 
-    private ExecutionResult CompileAndExecuteProjectCore(string projectDir, string entryPointFile, int executionTimeoutMs)
+    private ExecutionResult CompileAndExecuteProjectCore(string projectDir, string entryPointFile, int executionTimeoutMs, FeatureFlags features)
     {
         string? runtimePath = null;
 
@@ -567,8 +569,10 @@ public abstract class IntegrationTestBase
             foreach (var additionalPath in GetAdditionalReferenceAssemblyPaths())
                 moduleRegistry.LoadReference(additionalPath);
 
-            // Compile the project
-            var projectCompiler = new ProjectCompiler(logger, moduleRegistry: moduleRegistry);
+            // Compile the project. Experimental features (from a fixture's `.features`
+            // sidecar) are enabled compilation-wide via the ProjectCompiler, matching how
+            // `<Features>` in a .spyproj gates the whole project.
+            var projectCompiler = new ProjectCompiler(logger, moduleRegistry: moduleRegistry, features: features);
             var result = projectCompiler.Compile(projectConfig);
 
             // Collect warnings and hints from the project compilation. Hints are

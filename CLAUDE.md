@@ -417,6 +417,8 @@ Location: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
 
 **C# snapshot tests**: `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Used selectively for ~100 representative fixtures to detect codegen changes that don't affect runtime output. To regenerate: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
 
+**Experimental features**: `.features` file — one experimental feature name per line (`#` comments and blank lines tolerated) enables those features compilation-wide when the fixture compiles (e.g. `matmul`, `defer`). For single-file fixtures the sidecar is `<stem>.features`; for multi-file fixtures it is `main.features` next to the entry point and applies to the whole project. Unknown feature names fail fixture discovery loudly (naming the file and the bad name) rather than being silently ignored. Pair a gated `.spy` (with `.features` + `.expected`) against an ungated twin (same `.spy`, no `.features`, `.error` matching SPY0331) to cover both paths — see `TestFixtures/experimental/`.
+
 **Skip**: Add a `.skip` file next to the `.spy` file.
 
 ### Integration Test Base

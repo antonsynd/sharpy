@@ -99,6 +99,8 @@ TestFixtures/
 
 **C# snapshot tests:** `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Regenerate with: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`
 
+**Experimental-feature tests:** `.features` file — one experimental feature name per line (`#` comments and blank lines tolerated) enables those features compilation-wide for the fixture (e.g. `matmul`, `defer`). Single-file: `<stem>.features`; multi-file: `main.features` next to the entry point (applies to the whole project). Unknown names fail discovery loudly. Pair a gated `.spy` (`.features` + `.expected`) with an ungated twin (same `.spy`, no `.features`, `.error` matching SPY0331) — see `TestFixtures/experimental/`.
+
 **Error location assertions:** `.error` lines can end with `@line:col` to assert error position.
 
 **Multi-file tests:** A subdirectory with multiple `.spy` files and a `main.spy` entry point, plus `main.expected` or `main.error`.

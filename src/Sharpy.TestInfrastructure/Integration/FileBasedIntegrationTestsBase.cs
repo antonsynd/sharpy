@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Formatting;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 using Xunit;
 using Xunit.Abstractions;
@@ -55,7 +56,12 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
             errorFilePath = Path.Combine(projectDir, $"{entryPointBaseName}.error");
             expectedFilePath = Path.Combine(projectDir, $"{entryPointBaseName}.expected");
             sourceTextContent = File.ReadAllText(Path.Combine(projectDir, entryPointFile));
-            result = CompileAndExecuteProject(projectDir, entryPointFile);
+
+            // A `.features` sidecar next to the entry point enables experimental features
+            // (e.g. matmul, defer) compilation-wide for the whole fixture project. Unknown
+            // names throw loudly here rather than silently disabling the feature.
+            var projectFeatures = ReadFixtureFeatures(Path.Combine(projectDir, $"{entryPointBaseName}.features"));
+            result = CompileAndExecuteProject(projectDir, entryPointFile, features: projectFeatures);
         }
         else
         {
@@ -68,7 +74,11 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
             errorFilePath = Path.ChangeExtension(spyFilePath, ".error");
             expectedFilePath = Path.ChangeExtension(spyFilePath, ".expected");
             sourceTextContent = source;
-            result = CompileAndExecute(source, Path.GetFileName(spyFilePath));
+
+            // A `<stem>.features` sidecar enables experimental features (e.g. matmul, defer)
+            // for this single-file fixture. Unknown names throw loudly here.
+            var fileFeatures = ReadFixtureFeatures(Path.ChangeExtension(spyFilePath, ".features"));
+            result = CompileAndExecute(source, Path.GetFileName(spyFilePath), features: fileFeatures);
         }
 
         var isErrorTest = File.Exists(errorFilePath);
@@ -246,6 +256,18 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Reads a fixture's <c>.features</c> sidecar (via <see cref="FixtureDiscoveryHelper.ReadFeaturesFile"/>)
+    /// and folds the declared names into a <see cref="FeatureFlags"/> set. Returns
+    /// <see cref="FeatureFlags.None"/> when the sidecar is absent. Unknown feature names throw
+    /// loudly from the discovery helper, naming the file and the bad name.
+    /// </summary>
+    protected static FeatureFlags ReadFixtureFeatures(string featuresFilePath)
+    {
+        var names = FixtureDiscoveryHelper.ReadFeaturesFile(featuresFilePath);
+        return names.Count == 0 ? FeatureFlags.None : FeatureFlags.None.Enable(names);
     }
 
     protected static string FindEntryPoint(string projectDir)
