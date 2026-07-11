@@ -276,55 +276,109 @@ public static class PrimitiveCatalog
 
     // ==================== 1.5 Conversion Checking ====================
 
+    /// <summary>Sentinel returned by <see cref="ImplicitConversionCost"/> when no implicit conversion exists.</summary>
+    public const int NoImplicitConversion = -1;
+
     /// <summary>
-    /// Returns true if 'from' can be implicitly converted to 'to' without data loss.
+    /// Compact widening-lattice level for a numeric primitive: higher = wider. Same-size
+    /// signed/unsigned integers share a level (they are mutually inconvertible, so a valid implicit
+    /// conversion always moves strictly up a level). Distinct from <see cref="GetPromotionPriority"/>
+    /// (which selects the arithmetic result type) though consistently ordered; this one is the
+    /// conversion-cost lattice per docs/language_specification/overload_resolution.md. Returns -1 for
+    /// non-numeric types (which have no widening).
     /// </summary>
-    public static bool CanImplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to)
+    private static int WideningRank(PrimitiveInfo info) => info.Kind switch
     {
-        // Handle void type (no conversion possible)
-        if (from.ClrType == typeof(void) || to.ClrType == typeof(void))
-            return false;
-
-        if (from.ClrType == to.ClrType)
-            return true;
-
-        // Non-numeric types only convert to themselves
-        if (from.Kind == NumericKind.None || to.Kind == NumericKind.None)
-            return false;
-
-        // Decimal only accepts integers, not floats
-        if (to.Kind == NumericKind.Decimal)
-            return from.Kind == NumericKind.SignedInteger || from.Kind == NumericKind.UnsignedInteger;
-
-        // From decimal: no implicit conversions
-        if (from.Kind == NumericKind.Decimal)
-            return false;
-
-        // Integer to float/double: allowed by C# spec (precision may be lost for large values)
-        if ((from.Kind == NumericKind.SignedInteger || from.Kind == NumericKind.UnsignedInteger) &&
-            to.Kind == NumericKind.FloatingPoint)
-            return true;
-
-        // Float to double: allowed
-        if (from.ClrType == typeof(float) && to.ClrType == typeof(double))
-            return true;
-
-        // Integer widening: allowed if target is larger and signedness is compatible
-        if ((from.Kind == NumericKind.SignedInteger || from.Kind == NumericKind.UnsignedInteger) &&
-            (to.Kind == NumericKind.SignedInteger || to.Kind == NumericKind.UnsignedInteger))
+        NumericKind.Decimal => 6,
+        NumericKind.FloatingPoint => info.SizeInBits >= 64 ? 5 : 4,   // double=5, float=4
+        NumericKind.SignedInteger or NumericKind.UnsignedInteger => info.SizeInBits switch
         {
-            // Unsigned to signed requires extra bit
+            8 => 0,
+            16 => 1,
+            32 => 2,
+            64 => 3,
+            _ => 2
+        },
+        _ => -1
+    };
+
+    /// <summary>Widening cost between two numeric primitives: <c>1 + Δlevel</c>, so one lattice step
+    /// costs 2 and each additional step adds 1 (per the spec's conversion-cost ranking). Only called
+    /// for a genuine widening (target strictly wider), so the result is always ≥ 2.</summary>
+    private static int WideningCost(PrimitiveInfo from, PrimitiveInfo to)
+        => 1 + (WideningRank(to) - WideningRank(from));
+
+    /// <summary>
+    /// Cost of implicitly converting <paramref name="from"/> to <paramref name="to"/> without data
+    /// loss, as a declarative rank: <c>0</c> for an exact (same-CLR-type) match, a positive widening
+    /// cost otherwise (see <see cref="WideningCost"/>), or <see cref="NoImplicitConversion"/> when no
+    /// implicit conversion exists. Realizes C#'s "better conversion target" order for the common
+    /// numeric conversions (int→long costs 2, int→double costs 4, so int→long is preferred — long
+    /// implicitly converts to double). This is the single numeric-conversion ranking that
+    /// <see cref="CanImplicitlyConvert"/> and the CLR operator resolver both consume.
+    /// </summary>
+    public static int ImplicitConversionCost(PrimitiveInfo from, PrimitiveInfo to)
+    {
+        // Void participates in no conversion.
+        if (from.ClrType == typeof(void) || to.ClrType == typeof(void))
+            return NoImplicitConversion;
+
+        // Exact match — best possible conversion.
+        if (from.ClrType == to.ClrType)
+            return 0;
+
+        // Non-numeric types only convert to themselves (handled above). Notably `bool` is NOT
+        // implicitly convertible to a numeric type — Sharpy follows C# (Axiom 1), diverging from
+        // Python where `bool` is an `int` subclass (`True + 1 == 2`).
+        if (from.Kind == NumericKind.None || to.Kind == NumericKind.None)
+            return NoImplicitConversion;
+
+        // To decimal: only from an integer (C# allows int→decimal implicitly, but not float/double→
+        // decimal — those require an explicit cast).
+        if (to.Kind == NumericKind.Decimal)
+            return from.Kind is NumericKind.SignedInteger or NumericKind.UnsignedInteger
+                ? WideningCost(from, to)
+                : NoImplicitConversion;
+
+        // From decimal: no implicit conversions out (decimal→double/float/int all require a cast).
+        if (from.Kind == NumericKind.Decimal)
+            return NoImplicitConversion;
+
+        // Integer to float/double: allowed by C# (precision may be lost for large values — the same
+        // is true in Python, e.g. float(2**53 + 1) != 2**53 + 1, so this matches both).
+        if ((from.Kind is NumericKind.SignedInteger or NumericKind.UnsignedInteger) &&
+            to.Kind == NumericKind.FloatingPoint)
+            return WideningCost(from, to);
+
+        // Float to double: allowed.
+        if (from.ClrType == typeof(float) && to.ClrType == typeof(double))
+            return WideningCost(from, to);
+
+        // Integer widening: allowed if the target is larger and signedness is compatible.
+        if ((from.Kind is NumericKind.SignedInteger or NumericKind.UnsignedInteger) &&
+            (to.Kind is NumericKind.SignedInteger or NumericKind.UnsignedInteger))
+        {
+            // Unsigned → signed requires an extra bit (byte→short, ushort→int, uint→long).
             if (!from.IsSigned && to.IsSigned)
-                return to.SizeInBits > from.SizeInBits;
-            // Signed to unsigned: not implicit
+                return to.SizeInBits > from.SizeInBits ? WideningCost(from, to) : NoImplicitConversion;
+            // Signed → unsigned: never implicit.
             if (from.IsSigned && !to.IsSigned)
-                return false;
-            // Same signedness: size must be >=
-            return to.SizeInBits >= from.SizeInBits;
+                return NoImplicitConversion;
+            // Same signedness: the target must be at least as wide (equal width + same signedness is
+            // the same CLR type, already handled as exact above, so this is a strict widening).
+            return to.SizeInBits >= from.SizeInBits ? WideningCost(from, to) : NoImplicitConversion;
         }
 
-        return false;
+        return NoImplicitConversion;
     }
+
+    /// <summary>
+    /// Returns true if 'from' can be implicitly converted to 'to' without data loss. Thin boolean
+    /// view of <see cref="ImplicitConversionCost"/> (the single ranking source); resolution engines
+    /// consume the cost directly.
+    /// </summary>
+    public static bool CanImplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to)
+        => ImplicitConversionCost(from, to) != NoImplicitConversion;
 
     /// <summary>
     /// Returns true if 'from' can be explicitly cast to 'to' (may lose data).

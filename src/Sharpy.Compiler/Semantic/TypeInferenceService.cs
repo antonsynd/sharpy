@@ -710,6 +710,14 @@ internal class TypeInferenceService
     /// Conversion rank from an argument CLR type to a parameter CLR type: 0 = exact,
     /// 1 = reference assignability or builtin numeric widening, 2 = user-defined implicit
     /// conversion (op_Implicit). Returns -1 when no implicit conversion exists. Lower is preferred.
+    /// <para>
+    /// The numeric-widening tier sources its decision from the single ranking in
+    /// <see cref="PrimitiveCatalog.ImplicitConversionCost"/> (no separate numeric scheme lives here).
+    /// It currently collapses reference and numeric widening to a flat 1; the spec's finer
+    /// linearization (reference = 1, numeric widening = 2 + per step, op_Implicit strictly worse —
+    /// docs/language_specification/overload_resolution.md) is folded into the shared betterness core
+    /// in P4.3/P4.4 (#1043). Kept flat here to preserve current operator-resolution behavior.
+    /// </para>
     /// </summary>
     private int ClrConversionRank(Type argClrType, Type paramClrType)
     {
@@ -720,7 +728,8 @@ internal class TypeInferenceService
         if (paramClrType.IsAssignableFrom(argClrType))
             return 1;
 
-        // Builtin numeric widening (int → long, int → double, float → double, …).
+        // Builtin numeric widening (int → long, int → double, float → double, …) — decided by the
+        // single PrimitiveCatalog conversion ranking.
         var fromInfo = PrimitiveCatalog.GetByClrType(argClrType);
         var toInfo = PrimitiveCatalog.GetByClrType(paramClrType);
         if (fromInfo != null && toInfo != null && PrimitiveCatalog.CanImplicitlyConvert(fromInfo, toInfo))

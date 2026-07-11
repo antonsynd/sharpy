@@ -257,6 +257,98 @@ public class PrimitiveCatalogTests
         PrimitiveCatalog.CanImplicitlyConvert(fromInfo, toInfo).Should().Be(expected);
     }
 
+    // Note: Sharpy `float`/`float64`/`double` are all C# `double` (typeof(double)); the 32-bit
+    // IEEE float is `float32` (typeof(float)). The widening lattice levels are: {8-bit int}=0,
+    // {16-bit}=1, {32-bit int}=2, {64-bit int}=3, float32=4, double=5, decimal=6.
+    [Theory]
+    // Exact match — cost 0.
+    [InlineData("int", "int", 0)]
+    [InlineData("int32", "int", 0)]           // alias of the same CLR type
+    [InlineData("float", "double", 0)]        // Sharpy float IS C# double — same CLR type
+    // Numeric widening — 2 for one lattice step, +1 per additional step (spec cost ranking).
+    [InlineData("int", "long", 2)]            // 32→64-bit int: one step
+    [InlineData("byte", "short", 2)]          // 8→16-bit: one step
+    [InlineData("ushort", "int", 2)]          // unsigned 16 → signed 32: one step
+    [InlineData("float32", "double", 2)]      // float32(4) → double(5): one step
+    [InlineData("byte", "int", 3)]            // 8→32-bit int: two steps
+    [InlineData("int", "float32", 3)]         // int(2) → float32(4): two steps
+    [InlineData("long", "double", 3)]         // long(3) → double(5): two steps
+    [InlineData("int", "double", 4)]          // int(2) → double(5): three steps
+    [InlineData("int", "decimal", 5)]         // int(2) → decimal(6)
+    // No implicit conversion — sentinel.
+    [InlineData("long", "int", PrimitiveCatalog.NoImplicitConversion)]      // narrowing
+    [InlineData("float32", "int", PrimitiveCatalog.NoImplicitConversion)]   // float → int
+    [InlineData("int", "uint", PrimitiveCatalog.NoImplicitConversion)]      // signed → unsigned
+    [InlineData("double", "float32", PrimitiveCatalog.NoImplicitConversion)]// double → float narrowing
+    [InlineData("float32", "decimal", PrimitiveCatalog.NoImplicitConversion)]
+    [InlineData("decimal", "double", PrimitiveCatalog.NoImplicitConversion)]
+    [InlineData("bool", "int", PrimitiveCatalog.NoImplicitConversion)]      // Axiom 1: not Python's bool≤int
+    [InlineData("str", "int", PrimitiveCatalog.NoImplicitConversion)]
+    public void ImplicitConversionCost_ReturnsExpectedRank(string from, string to, int expected)
+    {
+        var fromInfo = PrimitiveCatalog.GetByName(from)!;
+        var toInfo = PrimitiveCatalog.GetByName(to)!;
+
+        PrimitiveCatalog.ImplicitConversionCost(fromInfo, toInfo).Should().Be(expected);
+    }
+
+    [Fact]
+    public void ImplicitConversionCost_PrefersCloserWideningTarget()
+    {
+        // C#'s "better conversion target": int→long beats int→float32 beats int→double, because
+        // long→float32→double each implicitly convert onward.
+        var i = PrimitiveCatalog.GetByName("int")!;
+        var l = PrimitiveCatalog.GetByName("long")!;
+        var f32 = PrimitiveCatalog.GetByName("float32")!;
+        var d = PrimitiveCatalog.GetByName("double")!;
+
+        PrimitiveCatalog.ImplicitConversionCost(i, l)
+            .Should().BeLessThan(PrimitiveCatalog.ImplicitConversionCost(i, f32));
+        PrimitiveCatalog.ImplicitConversionCost(i, f32)
+            .Should().BeLessThan(PrimitiveCatalog.ImplicitConversionCost(i, d));
+    }
+
+    [Fact]
+    public void ImplicitConversionCost_IsTotalAndConsistentWithCanImplicitlyConvert()
+    {
+        // Guard the ranking's invariants across every primitive pair: exact is the unique best (0),
+        // every other implicit conversion is a strictly positive widening cost, non-conversions use
+        // the sentinel, and the boolean view agrees exactly with rank != NoImplicitConversion.
+        var infos = PrimitiveCatalog.GetAllPrimitives().Select(p => p.Info).ToList();
+
+        foreach (var from in infos)
+        {
+            foreach (var to in infos)
+            {
+                var cost = PrimitiveCatalog.ImplicitConversionCost(from, to);
+
+                // void participates in no conversion, not even void→void (matches prior behavior).
+                if (from.ClrType == typeof(void) || to.ClrType == typeof(void))
+                {
+                    cost.Should().Be(PrimitiveCatalog.NoImplicitConversion, "void has no conversions");
+                }
+                else if (from.ClrType == to.ClrType)
+                {
+                    cost.Should().Be(0, "an exact match is the best conversion");
+                }
+                else if (cost != PrimitiveCatalog.NoImplicitConversion)
+                {
+                    cost.Should().BeGreaterThan(0,
+                        $"a widening conversion {from.SharpyName}->{to.SharpyName} must cost more than an exact match");
+                }
+                else
+                {
+                    cost.Should().Be(PrimitiveCatalog.NoImplicitConversion);
+                }
+
+                // Boolean view must agree with the rank exactly (zero-behavior-change contract).
+                PrimitiveCatalog.CanImplicitlyConvert(from, to)
+                    .Should().Be(cost != PrimitiveCatalog.NoImplicitConversion,
+                        $"CanImplicitlyConvert must mirror the rank for {from.SharpyName}->{to.SharpyName}");
+            }
+        }
+    }
+
     [Theory]
     [InlineData("float", "int", true)]
     [InlineData("double", "float", true)]
