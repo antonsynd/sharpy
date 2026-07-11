@@ -54,9 +54,16 @@ def test_yiq_roundtrip():
 # --- known values (both directions) ---
 
 def _assert_triple(a0: float, a1: float, a2: float, b0: float, b1: float, b2: float) -> None:
-    assert a0 == approx(b0, abs=1e-7)
-    assert a1 == approx(b1, abs=1e-7)
-    assert a2 == approx(b2, abs=1e-7)
+    # TODO(#1074): revert to `assert a0 == approx(b0, abs=1e-7)` (etc.) once the approx
+    # transform reaches helper functions — today it only fires inside @test bodies, so
+    # approx() called here hits the runtime stub and throws. Use an explicit 1e-7
+    # tolerance (identical strictness to approx(abs=1e-7)) that raises on divergence.
+    if abs(a0 - b0) >= 1e-7:
+        raise ValueError("colorsys triple mismatch at position 0")
+    if abs(a1 - b1) >= 1e-7:
+        raise ValueError("colorsys triple mismatch at position 1")
+    if abs(a2 - b2) >= 1e-7:
+        raise ValueError("colorsys triple mismatch at position 2")
 
 @test
 def test_hsv_values():

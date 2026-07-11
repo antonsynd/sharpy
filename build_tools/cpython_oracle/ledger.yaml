@@ -464,7 +464,7 @@ entries:
   reason: 'Sharpy''s colorsys.rgb_to_hls returns s == inf for near-white inputs such as (0.9999999999999999,
     1.0, 1.0), where CPython returns 1.0 (gh-106498). The method is omitted from the port until #1063
     is fixed rather than encoding the buggy Sharpy result as an oracle assertion.'
-  source: src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy:134
+  source: src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy:141
 - kind: not-ported
   module: cpython_dict_tests
   test: DictTest.test_setdefault
