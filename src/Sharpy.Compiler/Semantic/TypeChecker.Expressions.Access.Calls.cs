@@ -723,9 +723,32 @@ internal partial class TypeChecker
             return null;
 
         var kwNames = ExtractKeywordArgNames(call);
-        var (matchingOverload, arityCandidates, _) = ResolveOverloadCore(
+        // Builtin overloads resolve through the deterministic betterness chain (exact arity → fewer
+        // type parameters → most specific), not registration-order first-match, so resolution is
+        // order-independent (#1043). BuiltinRegistry registration order is no longer load-bearing.
+        var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
             new OverloadResolutionContext(overloads!, totalArgCount, argTypes,
-                ReturnFirstMatch: true, KeywordArgNames: kwNames, Call: call));
+                KeywordArgNames: kwNames, Call: call));
+
+        // Order-independence recovery (#1043): the deterministic chain reports ambiguity where the
+        // old first-match silently picked one. When the arity-matching overloads all yield the SAME
+        // return type (e.g. int's 13 overloads all return int), the *observable* result — the return
+        // type — is unambiguous even if no single overload is "best"; pick a representative so
+        // resolution stays order-independent instead of failing. This also recovers gracefully when
+        // an argument is still UnknownType (a cascade from an un-inferred lambda parameter), where
+        // the old path returned the first overload's (common) return type.
+        if (matchingOverload == null && arityCandidates.Count > 0
+            && (isAmbiguous || argTypes.Any(a => a is UnknownType)))
+        {
+            var typeMatches = arityCandidates
+                .Where(o => o.ReturnType is not null)
+                .ToList();
+            if (typeMatches.Count > 0
+                && typeMatches.All(o => o.ReturnType.Equals(typeMatches[0].ReturnType)))
+            {
+                matchingOverload = typeMatches[0];
+            }
+        }
 
         if (matchingOverload != null)
         {

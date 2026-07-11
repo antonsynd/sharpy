@@ -16,8 +16,6 @@ internal partial class TypeChecker
     /// <param name="ArgTypes">Resolved argument types.</param>
     /// <param name="SkipSelfParam">If true, computes per-overload self offset (for instance methods).</param>
     /// <param name="TypeSubstitution">Optional function to substitute type parameters before comparison.</param>
-    /// <param name="ReturnFirstMatch">If true, returns the first matching overload (builtin behavior).
-    /// If false, collects all matches and disambiguates by exact arity.</param>
     /// <param name="SkipUnknownTypes">If true, skip type comparison when either side is UnknownType.</param>
     /// <param name="KeywordArgNames">Names of keyword arguments at the call site, used to filter out
     /// overloads that lack matching parameter names (e.g., a params overload with no 'reverse' param).</param>
@@ -27,7 +25,6 @@ internal partial class TypeChecker
         List<SemanticType> ArgTypes,
         bool SkipSelfParam = false,
         Func<SemanticType, SemanticType>? TypeSubstitution = null,
-        bool ReturnFirstMatch = false,
         bool SkipUnknownTypes = false,
         IReadOnlyCollection<string>? KeywordArgNames = null,
         FunctionCall? Call = null);
@@ -189,14 +186,9 @@ internal partial class TypeChecker
             }
             if (typesMatch)
             {
-                if (context.ReturnFirstMatch)
-                    return (overload, arityCandidates, false);
                 matchingOverloads.Add(overload);
             }
         }
-
-        if (context.ReturnFirstMatch)
-            return (null, arityCandidates, false);
 
         // Disambiguate: prefer exact arity match
         if (matchingOverloads.Count > 1)
