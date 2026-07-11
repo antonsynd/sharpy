@@ -135,6 +135,9 @@ internal partial class TypeChecker
 
         // Initialize type inference service for inferring result types during type checking
         _typeInference = new TypeInferenceService(_symbolTable, sharedClrCache);
+        // Route Engine B (operator dunders, __getitem__) through the shared deterministic
+        // betterness core so overload resolution is order-independent (#975).
+        _typeInference.DeterministicBinaryOverloadResolver = ResolveDunderOverload;
 
         // Initialize generic type argument inference service
         _genericInference = new GenericTypeInferenceService(_symbolTable, typeResolver);

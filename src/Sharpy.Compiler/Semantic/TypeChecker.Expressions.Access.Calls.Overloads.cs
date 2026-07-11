@@ -33,6 +33,27 @@ internal partial class TypeChecker
         FunctionCall? Call = null);
 
     /// <summary>
+    /// Resolves a binary operator-dunder / <c>__getitem__</c> overload (self + a single argument)
+    /// through the shared <see cref="ResolveOverloadCore"/>, so Engine B (operator dunders,
+    /// <c>__getitem__</c>) uses the same order-independent, specificity-based betterness as call
+    /// resolution (#975). Injected into
+    /// <see cref="TypeInferenceService.DeterministicBinaryOverloadResolver"/> by the constructor.
+    /// The candidates carry <c>self</c> as their first parameter, so
+    /// <see cref="OverloadResolutionContext.SkipSelfParam"/> is set and the argument is matched
+    /// against the parameter after <c>self</c>. Returns <c>null</c> when nothing matches or the best
+    /// is ambiguous (the caller then falls back or reports "unsupported operator").
+    /// </summary>
+    private FunctionSymbol? ResolveDunderOverload(IReadOnlyList<FunctionSymbol> candidates, SemanticType argType)
+    {
+        var (match, _, _) = ResolveOverloadCore(new OverloadResolutionContext(
+            Candidates: candidates.ToList(),
+            TotalArgCount: 1,
+            ArgTypes: new List<SemanticType> { argType },
+            SkipSelfParam: true));
+        return match;
+    }
+
+    /// <summary>
     /// Core overload resolution algorithm shared by all overload resolution methods.
     /// Performs two-pass matching: first filters by argument count, then checks type compatibility.
     /// </summary>

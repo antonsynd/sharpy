@@ -37,6 +37,15 @@ internal class TypeInferenceService
     private readonly ClrMemberCache _clrMemberCache;
     private readonly Lazy<ClrTypeBridge> _clrTypeMapper = new(() => new ClrTypeBridge());
 
+    /// <summary>
+    /// Deterministic overload resolver for binary operator dunders and <c>__getitem__</c> (self + one
+    /// argument), injected by the <see cref="TypeChecker"/> host so Engine B routes through the shared
+    /// <c>TypeChecker.ResolveOverloadCore</c> betterness core — order-independent, specificity-based —
+    /// instead of an ad-hoc first-match scan (#975). Null only for a standalone service with no host
+    /// (unit tests that never reach the multi-overload path).
+    /// </summary>
+    internal Func<IReadOnlyList<FunctionSymbol>, SemanticType, FunctionSymbol?>? DeterministicBinaryOverloadResolver { get; set; }
+
     // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
     private readonly Dictionary<(UnaryOperator, SemanticType), SemanticType?> _unaryOpCache = new();
@@ -558,6 +567,15 @@ internal class TypeInferenceService
         return null;
     }
 
+    /// <summary>
+    /// Selects the best operator-dunder / <c>__getitem__</c> overload for a single (non-self)
+    /// argument. A lone candidate is returned as-is (no ambiguity is possible; any type error is
+    /// reported by the operator validator). Multiple candidates route through the shared
+    /// deterministic betterness core via <see cref="DeterministicBinaryOverloadResolver"/>, so
+    /// resolution is order-independent and uses the same specificity tiebreak as call resolution
+    /// (#975) — replacing the former first-match-wins tiers (including the unconstrained bare
+    /// <c>TypeParameterType</c> wildcard, which the core now ranks by specificity like any other).
+    /// </summary>
     private FunctionSymbol? FindBestOverload(List<FunctionSymbol> candidates, SemanticType argumentType)
     {
         if (candidates.Count == 0)
@@ -566,51 +584,14 @@ internal class TypeInferenceService
         if (candidates.Count == 1)
             return candidates[0];
 
-        // Find exact match first
-        var exactMatch = candidates.FirstOrDefault(c =>
-            c.Parameters.Count == 2 &&
-            c.Parameters[1].Type.Equals(argumentType));
+        if (DeterministicBinaryOverloadResolver != null)
+            return DeterministicBinaryOverloadResolver(candidates, argumentType);
 
-        if (exactMatch != null)
-            return exactMatch;
-
-        // Find first assignable match (simplified - full resolution is in validator)
-        var assignableMatch = candidates.FirstOrDefault(c =>
-            c.Parameters.Count == 2 &&
-            argumentType.IsAssignableTo(c.Parameters[1].Type));
-
-        if (assignableMatch != null)
-            return assignableMatch;
-
-        // Find generic parameter match: candidate has TypeParameterType args (e.g., Box[T])
-        // and argument is a concrete instantiation (e.g., Box[int])
-        if (argumentType is GenericType argGeneric)
-        {
-            var genericMatch = candidates.FirstOrDefault(c =>
-                c.Parameters.Count == 2 &&
-                c.Parameters[1].Type is GenericType paramGeneric &&
-                paramGeneric.Name == argGeneric.Name &&
-                paramGeneric.TypeArguments.Count == argGeneric.TypeArguments.Count &&
-                paramGeneric.TypeArguments.Any(a => a is TypeParameterType));
-
-            if (genericMatch != null)
-                return genericMatch;
-        }
-
-        // Bare TypeParameterType matches any concrete argument (e.g., NdArray's operator+(NdArray<T>, T)
-        // where T is a generic parameter that accepts any scalar).
-        // Guard: skip if the argument itself is TypeParameterType (ambiguous match).
-        if (argumentType is not TypeParameterType)
-        {
-            var typeParamMatch = candidates.FirstOrDefault(c =>
-                c.Parameters.Count == 2 &&
-                c.Parameters[1].Type is TypeParameterType);
-
-            if (typeParamMatch != null)
-                return typeParamMatch;
-        }
-
-        return null;
+        // Standalone service with no TypeChecker host: deterministic exact-match fallback. In the
+        // full pipeline the resolver is always injected; this path exists only so unit tests that
+        // construct the service directly do not NRE if they ever reach it.
+        return candidates.FirstOrDefault(c =>
+            c.Parameters.Count >= 2 && c.Parameters[^1].Type.Equals(argumentType));
     }
 
     private SemanticType? TryInferClrBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)

@@ -1,0 +1,29 @@
+# Operator-dunder overload resolution goes through the deterministic betterness core (#975):
+# for a Puppy argument (Puppy <: Dog <: Animal) there is no exact __add__ overload, and both the
+# Animal and Dog overloads are applicable. The core picks the MORE SPECIFIC (Dog) overload by
+# specificity, regardless of declaration order — the Animal overload is declared first, so a
+# first-match-wins scan would have wrongly chosen "animal".
+
+class Animal:
+    def __init__(self) -> None:
+        pass
+
+class Dog(Animal):
+    def __init__(self) -> None:
+        super().__init__()
+
+class Puppy(Dog):
+    def __init__(self) -> None:
+        super().__init__()
+
+class Handler:
+    def __add__(self, a: Animal) -> str:
+        return "animal"
+
+    def __add__(self, d: Dog) -> str:
+        return "dog"
+
+def main() -> None:
+    h: Handler = Handler()
+    p: Puppy = Puppy()
+    print(h + p)
