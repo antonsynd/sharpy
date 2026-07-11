@@ -503,7 +503,7 @@ internal class TypeSyntaxMapper
 
             // Always use global:: for Sharpy namespace CLR types to avoid
             // Sharpy.Sharpy.X when code is inside namespace Sharpy.
-            if (typeSymbol.ClrType.Namespace == "Sharpy")
+            if (typeSymbol.ClrType.Namespace == ClrTypeBridge.SpecialCases.SharpyNamespace)
                 return $"global::{fullName}";
 
             // When inside a user-defined namespace, use global:: for all CLR types

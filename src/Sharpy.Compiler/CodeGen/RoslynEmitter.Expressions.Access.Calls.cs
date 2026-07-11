@@ -2,6 +2,7 @@ using System.IO;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -185,7 +186,7 @@ internal partial class RoslynEmitter
         // For Sharpy.Core CLR types (with [SharpyModuleType] attribute), use the actual CLR
         // type name rather than deriving from DefiningModule, since the CLR namespace (Sharpy)
         // differs from the module name (e.g., argparse -> Sharpy.ArgumentParser)
-        if (typeSymbol.ClrType != null && typeSymbol.ClrType.Namespace == "Sharpy")
+        if (typeSymbol.ClrType != null && typeSymbol.ClrType.Namespace == ClrTypeBridge.SpecialCases.SharpyNamespace)
         {
             var fullName = ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
             return $"global::{fullName}";

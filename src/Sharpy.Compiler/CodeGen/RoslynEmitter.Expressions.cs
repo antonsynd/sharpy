@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -205,7 +206,10 @@ internal partial class RoslynEmitter
                 var ts = (resolvedSymbol as TypeSymbol) ?? (symbol as TypeSymbol);
                 if (ts?.ClrType != null)
                 {
-                    if (ts.ClrType.Namespace == "Sharpy")
+                    // Exact-match (not the IsSharpyNamespace prefix rule): the branch emits the
+                    // literal "Sharpy" namespace, so it is only correct for types whose namespace
+                    // is exactly "Sharpy" (a Sharpy.Sub.X type would be mis-qualified).
+                    if (ts.ClrType.Namespace == ClrTypeBridge.SpecialCases.SharpyNamespace)
                     {
                         var clrName = ClrNameHelper.StripArity(ts.ClrType.Name);
                         return MakeGlobalQualifiedName("Sharpy", clrName);
