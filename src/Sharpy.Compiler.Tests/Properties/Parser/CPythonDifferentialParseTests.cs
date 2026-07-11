@@ -607,7 +607,9 @@ public class CPythonDifferentialParseTests
                 string outText = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd();
                 if (!proc.WaitForExit(10_000))
                 {
-                    try { proc.Kill(entireProcessTree: true); } catch { }
+                    try
+                    { proc.Kill(entireProcessTree: true); }
+                    catch { }
                     return false;
                 }
                 // Expect "Python 3.MINOR.patch"; require >= 3.12.
@@ -661,7 +663,9 @@ public class CPythonDifferentialParseTests
             }
             finally
             {
-                try { File.Delete(batchPath); } catch { }
+                try
+                { File.Delete(batchPath); }
+                catch { }
             }
         }
 
@@ -693,7 +697,9 @@ public class CPythonDifferentialParseTests
 
             if (!proc.WaitForExit(120_000))
             {
-                try { proc.Kill(entireProcessTree: true); } catch { }
+                try
+                { proc.Kill(entireProcessTree: true); }
+                catch { }
                 throw new InvalidOperationException("compare_ast.py timed out.");
             }
             proc.WaitForExit();

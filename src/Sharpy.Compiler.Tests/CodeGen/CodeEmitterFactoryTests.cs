@@ -102,7 +102,8 @@ public class CodeEmitterFactoryTests
         }
         finally
         {
-            try { Directory.Delete(tempDir, recursive: true); }
+            try
+            { Directory.Delete(tempDir, recursive: true); }
             catch { /* best-effort cleanup */ }
         }
     }
