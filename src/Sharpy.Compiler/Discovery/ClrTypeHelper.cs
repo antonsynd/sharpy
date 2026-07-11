@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Reflection;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Discovery;
 
@@ -12,6 +13,44 @@ namespace Sharpy.Compiler.Discovery;
 internal static class ClrTypeHelper
 {
     private static readonly ConcurrentDictionary<Type, bool> _paramsIndexerCache = new();
+
+    // Caches (CLR type, Sharpy member name) -> original CLR method name.
+    private static readonly ConcurrentDictionary<(Type, string), string?> _clrMethodNameCache = new();
+
+    /// <summary>
+    /// Resolves the original CLR method name on <paramref name="clrType"/> whose reverse-mangled
+    /// Sharpy form equals <paramref name="memberName"/> (e.g. <c>is_os_platform</c> ->
+    /// <c>IsOSPlatform</c>), preserving acronym casing for directly-imported .NET types whose
+    /// methods are not eagerly discovered (#705). Returns <c>null</c> when there is no unambiguous
+    /// match. Lives here (not in the emitter) so code generation performs no reflection (#974); the
+    /// TypeChecker materializes the result into <c>SemanticInfo</c> for the emitter to read.
+    /// </summary>
+    internal static string? ResolveClrMethodName(Type clrType, string memberName)
+    {
+        if (_clrMethodNameCache.TryGetValue((clrType, memberName), out var cached))
+            return cached;
+
+        string? resolved = null;
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance;
+        foreach (var method in clrType.GetMethods(flags))
+        {
+            // A CLR name already written verbatim (PascalCase) should be left untouched;
+            // only match when the Sharpy (reverse-mangled) form equals the written name.
+            if (NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method) == memberName)
+            {
+                if (resolved != null && resolved != method.Name)
+                {
+                    // Ambiguous (multiple distinct CLR names map to this Sharpy name) — bail out.
+                    resolved = null;
+                    break;
+                }
+                resolved = method.Name;
+            }
+        }
+
+        _clrMethodNameCache[(clrType, memberName)] = resolved;
+        return resolved;
+    }
 
     /// <summary>
     /// Returns true when the CLR type backing <paramref name="type"/> exposes an indexer whose last

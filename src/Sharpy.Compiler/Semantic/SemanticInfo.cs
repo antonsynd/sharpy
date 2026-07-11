@@ -121,6 +121,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, IndexAccessLowering> _indexAccessLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map member-access expressions on CLR-backed receivers to the original CLR method name
+    // (e.g. is_os_platform -> IsOSPlatform), resolved by reflection during type checking so codegen
+    // never reflects (#974). Only present when a directly-imported CLR method's acronym casing
+    // must be preserved. Keyed by node identity.
+    private readonly ConcurrentDictionary<Expression, string> _resolvedClrMemberNames =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map binary-op expressions whose value was constant-folded at semantic time to that
     // value, so codegen can emit the literal directly instead of a runtime computation.
     // Currently used for constant integer exponentiation (`2 ** 10` → 1024); the inferred
@@ -549,6 +556,25 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records the original CLR method name resolved for a member access on a CLR-backed receiver,
+    /// so codegen can preserve acronym casing without reflecting. Only set when a non-trivial CLR
+    /// name was resolved.
+    /// </summary>
+    public void SetResolvedClrMemberName(Expression memberAccess, string clrName)
+    {
+        _resolvedClrMemberNames[memberAccess] = clrName;
+    }
+
+    /// <summary>
+    /// Gets the original CLR method name resolved for a member access, or <c>null</c> when none was
+    /// recorded (codegen then applies normal name mangling).
+    /// </summary>
+    public string? GetResolvedClrMemberName(Expression memberAccess)
+    {
+        return _resolvedClrMemberNames.TryGetValue(memberAccess, out var name) ? name : null;
+    }
+
+    /// <summary>
     /// Records the constant value a binary operation folded to at semantic time (e.g. integer
     /// exponentiation <c>2 ** 10</c> → <c>1024</c>). Codegen emits this literal directly instead
     /// of a runtime computation; the inferred result type (Int/Long) comes from the type map. (#905)
@@ -629,6 +655,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._indexAccessLowerings)
             _indexAccessLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._resolvedClrMemberNames)
+            _resolvedClrMemberNames.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._foldedIntegerConstants)
             _foldedIntegerConstants.TryAdd(kvp.Key, kvp.Value);

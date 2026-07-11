@@ -20,6 +20,10 @@ internal partial class TypeChecker
 
         var objectType = CheckExpression(memberAccess.Object);
 
+        // Materialize the original CLR method name for CLR-backed receivers so codegen preserves
+        // acronym casing (is_os_platform -> IsOSPlatform) without reflecting (#974).
+        RecordResolvedClrMemberName(memberAccess, objectType);
+
         // Check if this member access path has been narrowed by isinstance()
         // e.g., isinstance(self.animal, Dog) narrows "self.animal" to Dog
         var narrowingKey = ExtractNarrowingKey(memberAccess);
@@ -965,6 +969,33 @@ internal partial class TypeChecker
 
         // TypeInferenceService covers all supported operations - return Unknown for unsupported
         return resultType ?? SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Resolves and records the original CLR method name for a member access on a CLR-backed
+    /// receiver (static type-name or instance), mirroring the emitter's former reflection fallback.
+    /// The reflection lives in <see cref="Discovery.ClrTypeHelper"/> so codegen performs none (#974).
+    /// </summary>
+    private void RecordResolvedClrMemberName(MemberAccess memberAccess, SemanticType objectType)
+    {
+        // Static receiver: a bare type-name identifier (e.g. RuntimeInformation.is_os_platform()).
+        var clrType = memberAccess.Object is Identifier staticId
+            && _semanticInfo.GetIdentifierSymbol(staticId) is TypeSymbol staticTs
+                ? staticTs.ClrType
+                // Instance receiver: resolve via the receiver's semantic type.
+                : objectType switch
+                {
+                    UserDefinedType udt when (udt.Symbol as TypeSymbol)?.ClrType is { } ct => ct,
+                    BuiltinType bt => bt.ClrType,
+                    _ => null
+                };
+
+        if (clrType == null)
+            return;
+
+        var clrName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
+        if (clrName != null)
+            _semanticInfo.SetResolvedClrMemberName(memberAccess, clrName);
     }
 
     /// <summary>

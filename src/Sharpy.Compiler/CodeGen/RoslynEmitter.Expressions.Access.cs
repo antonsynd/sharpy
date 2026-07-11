@@ -425,7 +425,7 @@ internal partial class RoslynEmitter
                 ?? _context.SemanticInfo?.GetMemberAccessResolution(memberAccess)?.Member
                 ?? ResolveMethodForCall(memberAccess.Object, memberAccess.Member);
             var resolvedClrMethodName = GetClrMethodName(resolvedMethodSymbol)
-                ?? ResolveClrMethodNameByReflection(memberAccess.Object, memberAccess.Member);
+                ?? _context.SemanticInfo?.GetResolvedClrMemberName(memberAccess);
             var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
                 ?? NameMangler.GetListMethodMapping(memberAccess.Member)
                 ?? NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, resolvedClrMethodName);
