@@ -318,7 +318,11 @@ def main():
         // The generated C# should have CustomError inheriting from Exception
         // (may be fully qualified as System.Exception or just Exception with a using statement)
         Assert.Contains("class CustomError", result.GeneratedCSharp ?? "");
-        Assert.Contains(": Exception", result.GeneratedCSharp ?? "");
+        // The unified project pipeline (#1038) emits the base type fully qualified as
+        // System.Exception (with a `using Exception = global::System.Exception;` alias);
+        // the legacy single-file path emitted the bare alias `: Exception`. Both compile
+        // and inherit System.Exception identically, so accept either spelling.
+        Assert.Matches(@"class CustomError\s*:\s*(global::)?(System\.)?Exception", result.GeneratedCSharp ?? "");
     }
 
     [Fact]

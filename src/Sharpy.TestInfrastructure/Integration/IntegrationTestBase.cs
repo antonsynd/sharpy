@@ -13,6 +13,7 @@ using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 using Xunit.Abstractions;
 using static Sharpy.TestInfrastructure.TestHelpers;
 
@@ -141,9 +142,9 @@ public abstract class IntegrationTestBase
     /// Compiles and executes, then forces a gen-2 GC to release Roslyn compilation state.
     /// Use in tight loops (property tests) to prevent memory buildup.
     /// </summary>
-    protected ExecutionResult CompileAndExecuteWithGC(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0)
+    protected ExecutionResult CompileAndExecuteWithGC(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0, FeatureFlags? features = null)
     {
-        var result = CompileAndExecute(sharpySource, fileName, executionTimeoutMs);
+        var result = CompileAndExecute(sharpySource, fileName, executionTimeoutMs, features);
         GC.Collect(2, GCCollectionMode.Forced, blocking: true);
         GC.WaitForPendingFinalizers();
         return result;
@@ -156,11 +157,12 @@ public abstract class IntegrationTestBase
     /// <param name="sharpySource">The Sharpy source code to compile and execute.</param>
     /// <param name="fileName">The file name to use for the source (for error messages).</param>
     /// <param name="executionTimeoutMs">Optional timeout in milliseconds for execution. Default is no timeout (0). Use for tests that may have infinite loops.</param>
-    protected ExecutionResult CompileAndExecute(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0)
+    /// <param name="features">Optional experimental feature flags to enable for this compile (e.g. from a fixture's <c>.features</c> sidecar). Defaults to none.</param>
+    protected ExecutionResult CompileAndExecute(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0, FeatureFlags? features = null)
     {
         try
         {
-            return CompileAndExecuteCore(sharpySource, fileName, executionTimeoutMs);
+            return CompileAndExecuteCore(sharpySource, fileName, executionTimeoutMs, features ?? FeatureFlags.None);
         }
         finally
         {
@@ -169,179 +171,103 @@ public abstract class IntegrationTestBase
         }
     }
 
-    private ExecutionResult CompileAndExecuteCore(string sharpySource, string fileName, int executionTimeoutMs)
+    private ExecutionResult CompileAndExecuteCore(string sharpySource, string fileName, int executionTimeoutMs, FeatureFlags features)
     {
         // Track path to Sharpy.Core for copying to temp execution directory
         string? runtimePath = null;
 
         try
         {
-            // Phase 1: Lex Sharpy code
+            // Phases 1-4 (Lexer -> Parser -> Semantic -> Validation -> CodeGen) run
+            // through the production pipeline (#1038). The source is written to a per-test
+            // temp file so CompilerApi.Compile detects an on-disk entry and compiles it as
+            // a synthetic project-of-one-file through ProjectCompiler — the exact path that
+            // `sharpyc run/build <file>` uses. The harness no longer hand-wires the phases,
+            // hardcodes IsEntryPoint, or threads no FeatureFlags.
             var logger = new OutputTestLogger(Output);
-            var lexer = new Sharpy.Compiler.Lexer.Lexer(sharpySource, logger);
-            var tokens = lexer.TokenizeAll();
 
-            // Check for lexer errors collected via DiagnosticBag
-            if (lexer.Diagnostics.HasErrors)
-            {
-                return new ExecutionResult
-                {
-                    Success = false,
-                    CompilationErrors = lexer.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
-                    RawDiagnostics = lexer.Diagnostics.GetAll().ToList()
-                };
-            }
+            // Preserve the fixture's file name (inside a unique temp dir) so single-file
+            // module naming and any #line directives match a real single-file compile of
+            // this fixture rather than a random temp stem.
+            var safeName = Path.GetFileName(fileName);
+            if (string.IsNullOrEmpty(safeName))
+                safeName = "test.spy";
+            if (!safeName.EndsWith(".spy", StringComparison.Ordinal))
+                safeName += ".spy";
 
-            // Phase 2: Parse Sharpy code
-            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
-            var module = parser.ParseModule();
+            var tempSourceDir = Path.Combine(Path.GetTempPath(), $"sharpy_src_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempSourceDir);
+            var sourceFilePath = Path.Combine(tempSourceDir, safeName);
 
-            // Check for parser errors collected via DiagnosticBag
-            if (parser.Diagnostics.HasErrors)
-            {
-                return new ExecutionResult
-                {
-                    Success = false,
-                    CompilationErrors = parser.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
-                    RawDiagnostics = parser.Diagnostics.GetAll().ToList()
-                };
-            }
-
-            // Phase 3: Semantic analysis
-            var builtinRegistry = new BuiltinRegistry();
-            var symbolTable = new SymbolTable(builtinRegistry);
-            var semanticInfo = new SemanticInfo();
-            var semanticBinding = new SemanticBinding();
-            var moduleRegistry = new ModuleRegistry(logger);
-
-            moduleRegistry.LoadReference(SharpyCoreReference.Location);
-            foreach (var additionalPath in GetAdditionalReferenceAssemblyPaths())
-                moduleRegistry.LoadReference(additionalPath);
-
-            var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
-            nameResolver.ResolveDeclarations(module);
-
-            // Phase 3a: Resolve imports to register .NET types before inheritance resolution
-            var importResolver = new ImportResolver(logger, moduleRegistry,
-                semanticBinding: semanticBinding);
-            importResolver.ResolveAllImports(module, symbolTable, null);
-
-            nameResolver.ResolveInheritance(); // Second pass: resolve inheritance relationships
-
-            // Materialize inheritance onto Symbol properties and freeze
-            semanticBinding.MaterializeInheritance();
-            semanticBinding.FreezeInheritance();
-
-            if (nameResolver.Diagnostics.HasErrors)
-            {
-                return new ExecutionResult
-                {
-                    Success = false,
-                    CompilationErrors = nameResolver.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
-                    RawDiagnostics = nameResolver.Diagnostics.GetAll().ToList()
-                };
-            }
-
-            // Collect import errors but continue to type checking so users see all errors
-            var allErrors = new List<string>();
-            if (importResolver.Diagnostics.HasErrors)
-            {
-                allErrors.AddRange(importResolver.Diagnostics.GetErrors().Select(d => d.Message));
-            }
-
-            var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
-            {
-                SemanticBinding = semanticBinding,
-                CurrentFilePath = fileName,
-                ModuleRegistry = moduleRegistry
-            };
-            // Integration tests are executable programs, so they're entry points
+            CompileResult compileResult;
             try
             {
-                typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+                File.WriteAllText(sourceFilePath, sharpySource);
+
+                var defaultReferences = new List<string> { SharpyCoreReference.Location };
+                defaultReferences.AddRange(GetAdditionalReferenceAssemblyPaths());
+
+                var api = new CompilerApi(logger, defaultReferences.ToArray());
+                var options = new CompilerOptions
+                {
+                    // Integration tests are executable programs, so the synthetic project's
+                    // single source file is its entry point.
+                    OutputType = "exe",
+                    Features = features
+                };
+
+                compileResult = api.Compile(sharpySource, options, sourceFilePath);
             }
-            catch (SemanticAnalysisException)
+            finally
             {
-                // MaxErrors exceeded — collect whatever diagnostics exist
+                // The compiler has read everything it needs off disk by now; drop the
+                // temp source so it does not accumulate across ~9,600 tests.
+                try
+                {
+                    if (Directory.Exists(tempSourceDir))
+                        Directory.Delete(tempSourceDir, recursive: true);
+                }
+                catch
+                {
+                    // Best-effort cleanup.
+                }
             }
 
-            // Materialize CodeGenInfo and VariableType onto Symbol properties and freeze
-            semanticBinding.MaterializeCodeGenInfo();
-            semanticBinding.MaterializeVariableTypes();
-            semanticBinding.FreezeVariableTypes();
-            semanticBinding.FreezeCodeGenInfo();
+            var rawDiagnostics = compileResult.Diagnostics.ToList();
+            var compilationErrors = rawDiagnostics
+                .Where(d => d.Severity == CompilerDiagnosticSeverity.Error)
+                .Select(d => d.Message)
+                .ToList();
 
             // Collect warnings, hints, and info notes from all phases.
-            // Hints are advisory diagnostics (e.g., transition hints SPY0470+) and Info diagnostics
-            // (e.g., SPY1010 functools.partial placeholder hint) share suppression with warnings;
-            // we surface them via the same channel so .warning fixtures can verify behavioral notes.
-            var compilationWarnings = typeChecker.Diagnostics.GetAll()
+            // Hints are advisory diagnostics (e.g., transition hints SPY0470+) and Info
+            // diagnostics (e.g., SPY1001 implicit interface synthesis, SPY1010 functools
+            // placeholder hint) share suppression with warnings; we surface them via the
+            // same channel so .warning fixtures can verify behavioral notes.
+            var compilationWarnings = rawDiagnostics
                 .Where(d => d.Severity == CompilerDiagnosticSeverity.Warning
                          || d.Severity == CompilerDiagnosticSeverity.Hint
                          || d.Severity == CompilerDiagnosticSeverity.Info)
                 .Select(d => d.Message)
                 .ToList();
-            compilationWarnings.AddRange(
-                parser.Diagnostics.GetAll()
-                    .Where(d => d.Severity == CompilerDiagnosticSeverity.Warning
-                             || d.Severity == CompilerDiagnosticSeverity.Hint
-                             || d.Severity == CompilerDiagnosticSeverity.Info)
-                    .Select(d => d.Message));
 
-            if (typeChecker.Diagnostics.HasErrors)
-            {
-                allErrors.AddRange(typeChecker.Diagnostics.GetErrors().Select(e => e.Message));
-            }
-
-            if (allErrors.Count > 0)
-            {
-                var rawDiags = new List<CompilerDiagnostic>();
-                rawDiags.AddRange(importResolver.Diagnostics.GetAll());
-                rawDiags.AddRange(typeChecker.Diagnostics.GetAll());
-                return new ExecutionResult
-                {
-                    Success = false,
-                    CompilationErrors = allErrors,
-                    CompilationWarnings = compilationWarnings,
-                    RawDiagnostics = rawDiags
-                };
-            }
-
-            // Phase 4: Generate C# code
-            var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
-            {
-                SourceFilePath = fileName,
-                IsEntryPoint = true,  // Integration tests are executable programs
-                Logger = logger,
-                SemanticInfo = semanticInfo,
-                SemanticBinding = semanticBinding
-            };
-            var emitter = new RoslynEmitter(codeGenContext);
-            var compilationUnit = emitter.GenerateCompilationUnit(module);
-            var generatedCSharp = compilationUnit.ToFullString();
+            var generatedCSharp = compileResult.GeneratedCSharp;
 
             Output.WriteLine("=== Generated C# ===");
-            Output.WriteLine(generatedCSharp);
+            Output.WriteLine(generatedCSharp ?? "(no C# generated)");
             Output.WriteLine("====================");
 
-            // Check for code generation errors
-            if (codeGenContext.HasErrors)
+            if (!compileResult.Success || generatedCSharp == null)
             {
                 return new ExecutionResult
                 {
                     Success = false,
-                    CompilationErrors = codeGenContext.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
+                    CompilationErrors = compilationErrors,
+                    CompilationWarnings = compilationWarnings,
                     GeneratedCSharp = generatedCSharp,
-                    RawDiagnostics = codeGenContext.Diagnostics.GetAll().ToList()
+                    RawDiagnostics = rawDiagnostics
                 };
             }
-
-            // Collect codegen warnings and info diagnostics (e.g., SPY1001 implicit interface synthesis)
-            compilationWarnings.AddRange(
-                codeGenContext.Diagnostics.GetAll()
-                    .Where(d => d.Severity == CompilerDiagnosticSeverity.Warning || d.Severity == CompilerDiagnosticSeverity.Info)
-                    .Select(d => d.Message));
 
             // Phase 5: Compile C# to assembly
             var syntaxTree = CSharpSyntaxTree.ParseText(generatedCSharp);

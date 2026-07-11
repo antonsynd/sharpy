@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Shared;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -10,9 +11,10 @@ namespace Sharpy.Stdlib.Tests.Integration;
 /// generation, and execution.
 /// </summary>
 /// <remarks>
-/// This programmatic harness compiles and runs directly, bypassing the semantic feature gate
-/// (which only runs in the file/project pipelines). The gate itself is covered separately by
-/// <c>MatMulGatingTests</c> and <c>FeatureFlagsProjectTests</c>.
+/// Since #1038 the programmatic harness drives the production project pipeline, so the
+/// semantic feature gate runs here too — these tests enable the <c>matmul</c> feature
+/// explicitly, exactly as a real consumer would. The gate's rejection path is covered
+/// separately by <c>MatMulGatingTests</c> and <c>FeatureFlagsProjectTests</c>.
 /// </remarks>
 public class NumpyMatMulTests : StdlibIntegrationTestBase
 {
@@ -35,7 +37,7 @@ def main() -> None:
     print(c[0, 1])
     print(c[1, 0])
     print(c[1, 1])
-");
+", features: FeatureFlags.None.Enable("matmul"));
 
         Assert.True(result.Success,
             "matrix multiplication should compile and run. Errors: "
@@ -56,7 +58,7 @@ def main() -> None:
     a @= b
     print(a[0, 0])
     print(a[1, 1])
-");
+", features: FeatureFlags.None.Enable("matmul"));
 
         Assert.True(result.Success,
             "in-place matrix multiplication should compile and run. Errors: "

@@ -78,11 +78,16 @@ internal partial class ProjectCompiler
 
                 fileMetrics?.EndPhase();
 
+                // Surface all code generation diagnostics — not just errors. Warnings and
+                // info notes (e.g. SPY1001 implicit-interface synthesis) must reach the
+                // result bag so the CLI, LSP, and fixture .warning assertions can observe
+                // them; previously they were silently dropped unless codegen also errored.
+                unit.Diagnostics.Merge(codeGenContext.Diagnostics);
+                _diagnostics.Merge(codeGenContext.Diagnostics);
+
                 // Check for code generation errors
                 if (codeGenContext.HasErrors)
                 {
-                    unit.Diagnostics.Merge(codeGenContext.Diagnostics);
-                    _diagnostics.Merge(codeGenContext.Diagnostics);
                     unit.Phase = CompilationPhase.Failed;
                     continue;
                 }

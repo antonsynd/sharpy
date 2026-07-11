@@ -134,6 +134,19 @@ internal partial class TypeChecker
                     return subResult;
             }
 
+            // Suppress cascading "has no member" errors on modules that failed to load: the
+            // import failure (SPY0300) was already reported, so flagging every member access
+            // on the stub is noise. Mirrors the identifier-level recovery in CheckIdentifier
+            // so both compilation pipelines agree — the unified project pipeline (#1038)
+            // registers the missing module as a (non-recovery) ModuleSymbol and reaches this
+            // branch, where the legacy path short-circuited at the identifier. The import
+            // root-cause set (threaded in via ImportRootCauses) covers that case.
+            if (moduleSymbol.IsErrorRecovery || _diagnostics.IsRootCause(moduleSymbol.Name))
+            {
+                MarkExpressionAsErrorRecovery(memberAccess);
+                return SemanticType.Unknown;
+            }
+
             var moduleMemberMessage = $"Module '{moduleSymbol.Name}' has no member '{memberAccess.Member}'";
             var moduleMemberSuggestion = FindModuleMemberSuggestion(memberAccess.Member, moduleSymbol);
             if (moduleMemberSuggestion != null)
