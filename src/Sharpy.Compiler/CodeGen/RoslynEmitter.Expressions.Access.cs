@@ -4,6 +4,7 @@ using System.Reflection;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -165,7 +166,7 @@ internal partial class RoslynEmitter
 
                 // Generic instantiation resolves the name through CSharpTypeNames (builtin
                 // collections: set → Sharpy.Set) with a PascalCase fallback for user types.
-                var genericBaseName = CSharpTypeNames.FromSharpyName(funcName.Name)
+                var genericBaseName = ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(funcName.Name)
                     ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
 
                 var exprType = _context.SemanticInfo?.GetExpressionType(call);
@@ -191,7 +192,7 @@ internal partial class RoslynEmitter
                     // If we reached here, neither the expression type nor inference supplied
                     // generic args. Try to infer element type from the constructor argument:
                     // list(d.keys()) → new Sharpy.List<string>(d.Keys) when d.keys() is IEnumerable<string>
-                    var collectionName = CSharpTypeNames.FromSharpyName(funcName.Name);
+                    var collectionName = ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(funcName.Name);
                     if (collectionName != null)
                     {
                         var needsGlobalQualification = !string.IsNullOrEmpty(_context.ProjectNamespace)
@@ -561,7 +562,7 @@ internal partial class RoslynEmitter
         if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
         {
             // Generate: new GenericType<TypeArgs>(args)
-            var csharpGenericTypeName = CSharpTypeNames.FromSharpyName(genericName.Name)
+            var csharpGenericTypeName = ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(genericName.Name)
                 ?? NameCasing.ResolveType(genericName.Name, genericName.IsNameBacktickEscaped);
             var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
 
@@ -913,7 +914,7 @@ internal partial class RoslynEmitter
         var resolvedSymbol = _context.SemanticInfo?.GetIdentifierSymbol(argId);
         var isTypeFactory = argSymbol is TypeSymbol
             || resolvedSymbol is TypeSymbol
-            || CSharpTypeNames.FromSharpyName(argId.Name) != null
+            || ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(argId.Name) != null
             || _context.IsBuiltinFunction(argId.Name);
 
         if (!isTypeFactory)

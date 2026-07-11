@@ -213,7 +213,7 @@ internal class TypeInferenceService
             if (rightClrType != null && !parameters[0].ParameterType.IsAssignableFrom(rightClrType))
                 continue;
 
-            return MapClrTypeToSemanticType(method.ReturnType);
+            return _clrTypeMapper.Value.MapClrTypeToSemanticType(method.ReturnType);
         }
 
         return null;
@@ -627,7 +627,7 @@ internal class TypeInferenceService
         // numeric widening (int → long, …), then user-defined op_Implicit (int → Fraction, …).
         var resolved = ResolveClrBinaryOperator(candidates, leftClrType, rightClrType);
         if (resolved != null)
-            return MapClrTypeToSemanticType(resolved.ReturnType);
+            return _clrTypeMapper.Value.MapClrTypeToSemanticType(resolved.ReturnType);
 
         // Equality fallback: CLR types that implement IEquatable<self>, override Equals(object),
         // or are value types/enums but define no op_Equality still support ==/!=. The result is
@@ -981,7 +981,7 @@ internal class TypeInferenceService
                 var parameters = method.GetParameters();
                 if (parameters.Length == 1 && parameters[0].ParameterType == clrType)
                 {
-                    return MapClrTypeToSemanticType(method.ReturnType);
+                    return _clrTypeMapper.Value.MapClrTypeToSemanticType(method.ReturnType);
                 }
             }
         }
@@ -1137,7 +1137,7 @@ internal class TypeInferenceService
         {
             var elementType = GetIteratorElementType(builtin.ClrType);
             if (elementType != null)
-                return MapClrTypeToSemanticType(elementType);
+                return _clrTypeMapper.Value.MapClrTypeToSemanticType(elementType);
         }
 
         return null;
@@ -1258,7 +1258,7 @@ internal class TypeInferenceService
         if (indexer == null)
             return null;
 
-        var mapped = MapClrTypeToSemanticType(indexer.PropertyType);
+        var mapped = _clrTypeMapper.Value.MapClrTypeToSemanticType(indexer.PropertyType);
         return mapped is UnknownType ? null : mapped;
     }
 
@@ -1371,29 +1371,6 @@ internal class TypeInferenceService
         return null;
     }
 
-    private SemanticType MapClrTypeToSemanticType(Type clrType)
-    {
-        if (clrType == typeof(int))
-            return SemanticType.Int;
-        if (clrType == typeof(long))
-            return SemanticType.Long;
-        if (clrType == typeof(float))
-            return SemanticType.Float32;
-        if (clrType == typeof(double))
-            return SemanticType.Double;
-        if (clrType == typeof(decimal))
-            return SemanticType.Decimal;
-        if (clrType == typeof(bool))
-            return SemanticType.Bool;
-        if (clrType == typeof(string))
-            return SemanticType.Str;
-        if (clrType == typeof(void))
-            return SemanticType.Void;
-        // Delegate to ClrTypeBridge for Sharpy-namespace and other CLR types
-        // so that operator return types like Sharpy.DateTime map back to `datetime`
-        // instead of collapsing to `object`.
-        return _clrTypeMapper.Value.MapClrTypeToSemanticType(clrType);
-    }
 
     private static string? BinaryOperatorToDunder(BinaryOperator op)
     {

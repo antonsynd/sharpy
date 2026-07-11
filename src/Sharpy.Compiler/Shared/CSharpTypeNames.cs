@@ -21,16 +21,7 @@ internal static class CSharpTypeNames
     internal const string IAsyncEnumerable = "IAsyncEnumerable";
     internal const string XunitTraitCategory = "Category";
 
-    /// <summary>
-    /// Maps a Sharpy builtin collection type name to its fully-qualified C# type name.
-    /// </summary>
-    internal static string? FromSharpyName(string sharpyName) => sharpyName switch
-    {
-        BuiltinNames.List => SharpyList,
-        BuiltinNames.Dict => SharpyDict,
-        BuiltinNames.Set => SharpySet,
-        BuiltinNames.DefaultDict or "DefaultDict" => SharpyDefaultDict,
-        BuiltinNames.FrozenDict or "FrozenDict" => SharpyFrozenDict,
-        _ => null
-    };
+    // Sharpy-name -> C# type-name resolution lives on ClrTypeBridge (the single owner of the
+    // CLR<->Sharpy<->C# name mapping). The former FromSharpyName collection map was collapsed into
+    // ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName.
 }

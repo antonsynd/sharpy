@@ -5,34 +5,9 @@ namespace Sharpy.Compiler.Tests.Shared;
 
 public class CSharpTypeNamesTests
 {
-    [Theory]
-    [InlineData("list", "Sharpy.List")]
-    [InlineData("dict", "Sharpy.Dict")]
-    [InlineData("set", "Sharpy.Set")]
-    public void FromSharpyName_MapsCollectionTypes(string sharpyName, string expected)
-    {
-        Assert.Equal(expected, CSharpTypeNames.FromSharpyName(sharpyName));
-    }
-
-    [Theory]
-    [InlineData("int")]
-    [InlineData("str")]
-    [InlineData("bool")]
-    [InlineData("float")]
-    [InlineData("unknown")]
-    [InlineData("")]
-    public void FromSharpyName_ReturnsNull_ForNonCollectionTypes(string sharpyName)
-    {
-        Assert.Null(CSharpTypeNames.FromSharpyName(sharpyName));
-    }
-
-    [Fact]
-    public void FromSharpyName_IsCaseSensitive()
-    {
-        Assert.Null(CSharpTypeNames.FromSharpyName("List"));
-        Assert.Null(CSharpTypeNames.FromSharpyName("Dict"));
-        Assert.Null(CSharpTypeNames.FromSharpyName("Set"));
-    }
+    // Sharpy-name -> C# type-name resolution moved to ClrTypeBridge (single owner of the
+    // CLR<->Sharpy<->C# name mapping); the former FromSharpyName coverage now lives in
+    // ClrTypeBridgeTests (wrapper-collection + reverse-name-mapping theories).
 
     [Fact]
     public void Constants_HaveExpectedValues()

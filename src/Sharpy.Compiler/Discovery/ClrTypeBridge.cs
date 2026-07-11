@@ -73,12 +73,12 @@ internal class ClrTypeBridge
         internal const string SharpyNamespace = "Sharpy";
 
         /// <summary>
-        /// Reverse direction: Sharpy builtin/collection type name -&gt; fully-qualified C# type name.
-        /// This is the single source for the collection correspondence that previously lived in
-        /// <c>CSharpTypeNames.FromSharpyName</c> and <c>TypeSyntaxMapper</c>'s static map.
-        /// Primitives are <em>not</em> listed here — they are delegated to <see cref="PrimitiveCatalog"/>.
+        /// The Sharpy collection <em>wrapper</em> types constructed as <c>new Sharpy.X&lt;T&gt;(...)</c>
+        /// — the exact set the emitter's collection-constructor lowering recognizes (this absorbed the
+        /// former <c>CSharpTypeNames.FromSharpyName</c>). Deliberately excludes <c>bytes</c>,
+        /// <c>tuple</c>, and template, which have bespoke construction paths.
         /// </summary>
-        private static readonly ImmutableDictionary<string, string> _collectionCSharpNames =
+        private static readonly ImmutableDictionary<string, string> _wrapperCollectionCSharpNames =
             new Dictionary<string, string>
             {
                 [BuiltinNames.List] = CSharpTypeNames.SharpyList,
@@ -88,17 +88,38 @@ internal class ClrTypeBridge
                 ["DefaultDict"] = CSharpTypeNames.SharpyDefaultDict,
                 [BuiltinNames.FrozenDict] = CSharpTypeNames.SharpyFrozenDict,
                 ["FrozenDict"] = CSharpTypeNames.SharpyFrozenDict,
-                [BuiltinNames.Bytes] = CSharpTypeNames.SharpyBytes,
-                [BuiltinNames.Template] = CSharpTypeNames.SharpyTemplate,
-                [BuiltinNames.Tuple] = "System.ValueTuple",
             }.ToImmutableDictionary();
 
         /// <summary>
-        /// Returns the fully-qualified C# type name for a Sharpy collection type name, or
-        /// <c>null</c> when the name is not a known collection.
+        /// Reverse direction: Sharpy builtin/collection type name -&gt; fully-qualified C# type name.
+        /// The single source for the collection correspondence that previously lived in
+        /// <c>CSharpTypeNames.FromSharpyName</c> and <c>TypeSyntaxMapper</c>'s static map. This is the
+        /// superset of <see cref="_wrapperCollectionCSharpNames"/> plus the collection-shaped builtins
+        /// that appear in type annotations (<c>bytes</c>, template, <c>tuple</c>); it is derived from
+        /// the wrapper set so no name literal is written twice.
+        /// Primitives are <em>not</em> listed here — they are delegated to <see cref="PrimitiveCatalog"/>.
+        /// </summary>
+        private static readonly ImmutableDictionary<string, string> _collectionCSharpNames =
+            _wrapperCollectionCSharpNames
+                .Add(BuiltinNames.Bytes, CSharpTypeNames.SharpyBytes)
+                .Add(BuiltinNames.Template, CSharpTypeNames.SharpyTemplate)
+                .Add(BuiltinNames.Tuple, "System.ValueTuple");
+
+        /// <summary>
+        /// Returns the fully-qualified C# type name for a Sharpy collection type name (as used in a
+        /// type annotation), or <c>null</c> when the name is not a known collection.
         /// </summary>
         internal static string? TryGetCSharpCollectionName(string sharpyName)
             => _collectionCSharpNames.GetValueOrDefault(sharpyName);
+
+        /// <summary>
+        /// Returns the fully-qualified C# type name for a Sharpy collection <em>wrapper</em>
+        /// constructed via <c>new Sharpy.X&lt;T&gt;(...)</c> (list/dict/set/defaultdict/frozendict),
+        /// or <c>null</c> otherwise. This is the set the emitter's collection-constructor lowering
+        /// keys off (formerly <c>CSharpTypeNames.FromSharpyName</c>).
+        /// </summary>
+        internal static string? TryGetWrapperCollectionName(string sharpyName)
+            => _wrapperCollectionCSharpNames.GetValueOrDefault(sharpyName);
 
         /// <summary>
         /// Returns true when the CLR namespace is the reserved Sharpy runtime namespace

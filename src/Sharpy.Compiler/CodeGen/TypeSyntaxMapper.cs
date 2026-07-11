@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.IO;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -16,32 +17,6 @@ namespace Sharpy.Compiler.CodeGen;
 internal class TypeSyntaxMapper
 {
     private readonly CodeGenContext _context;
-
-    // Built-in type mappings, populated from PrimitiveCatalog at startup
-    private static readonly Dictionary<string, string> _builtinTypeMap;
-
-    static TypeSyntaxMapper()
-    {
-        _builtinTypeMap = new Dictionary<string, string>();
-
-        // Add all primitives from PrimitiveCatalog
-        foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
-        {
-            _builtinTypeMap.TryAdd(name, info.CSharpName);
-        }
-
-        // Add non-primitive type mappings (collections, etc.)
-        _builtinTypeMap[BuiltinNames.List] = CSharpTypeNames.SharpyList;
-        _builtinTypeMap[BuiltinNames.Dict] = CSharpTypeNames.SharpyDict;
-        _builtinTypeMap[BuiltinNames.Set] = CSharpTypeNames.SharpySet;
-        _builtinTypeMap[BuiltinNames.DefaultDict] = CSharpTypeNames.SharpyDefaultDict;
-        _builtinTypeMap["DefaultDict"] = CSharpTypeNames.SharpyDefaultDict;
-        _builtinTypeMap[BuiltinNames.FrozenDict] = CSharpTypeNames.SharpyFrozenDict;
-        _builtinTypeMap["FrozenDict"] = CSharpTypeNames.SharpyFrozenDict;
-        _builtinTypeMap[BuiltinNames.Bytes] = CSharpTypeNames.SharpyBytes;
-        _builtinTypeMap[BuiltinNames.Template] = CSharpTypeNames.SharpyTemplate;
-        _builtinTypeMap[BuiltinNames.Tuple] = "System.ValueTuple";
-    }
 
     public TypeSyntaxMapper(CodeGenContext context)
     {
@@ -446,8 +421,10 @@ internal class TypeSyntaxMapper
     /// </summary>
     private string GetMappedTypeName(string sharpyTypeName)
     {
-        // Check if it's a built-in type
-        if (_builtinTypeMap.TryGetValue(sharpyTypeName, out var csharpType))
+        // Check if it's a built-in type. Name resolution (primitives + collections) is owned
+        // by ClrTypeBridge — the single source for the Sharpy-name -> C# type-name mapping.
+        var csharpType = ClrTypeBridge.TryGetCSharpTypeName(sharpyTypeName);
+        if (csharpType != null)
         {
             return csharpType;
         }

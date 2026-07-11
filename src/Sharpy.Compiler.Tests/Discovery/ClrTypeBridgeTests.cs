@@ -496,6 +496,41 @@ public class ClrTypeBridgeTests
         Assert.Null(ClrTypeBridge.TryGetCSharpTypeName("MyUserType"));
     }
 
+    // ---- Wrapper-collection subset (absorbed from CSharpTypeNames.FromSharpyName) ----
+
+    [Theory]
+    [InlineData("list", "Sharpy.List")]
+    [InlineData("dict", "Sharpy.Dict")]
+    [InlineData("set", "Sharpy.Set")]
+    [InlineData("defaultdict", "Sharpy.DefaultDict")]
+    [InlineData("frozendict", "Sharpy.FrozenDict")]
+    public void TryGetWrapperCollectionName_MapsConstructibleCollections(string sharpyName, string expected)
+    {
+        Assert.Equal(expected, ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(sharpyName));
+    }
+
+    [Theory]
+    [InlineData("bytes")]     // has bespoke construction — excluded from the wrapper set
+    [InlineData("template")]
+    [InlineData("tuple")]
+    [InlineData("int")]
+    [InlineData("str")]
+    [InlineData("float")]
+    [InlineData("unknown")]
+    [InlineData("")]
+    public void TryGetWrapperCollectionName_ReturnsNull_ForNonWrapperNames(string sharpyName)
+    {
+        Assert.Null(ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(sharpyName));
+    }
+
+    [Fact]
+    public void TryGetWrapperCollectionName_IsCaseSensitive()
+    {
+        Assert.Null(ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName("List"));
+        Assert.Null(ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName("Dict"));
+        Assert.Null(ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName("Set"));
+    }
+
     // ==================== "Sharpy" namespace rule ====================
 
     [Theory]
