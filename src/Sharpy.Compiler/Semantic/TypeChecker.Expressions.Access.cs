@@ -715,8 +715,11 @@ internal partial class TypeChecker
                 // e.g. a narrowed tuple element t[1] must still lower to .Item2, which requires
                 // the object's TupleType to be recorded in SemanticInfo. CheckExpression is
                 // cached, so this is cheap and idempotent.
-                CheckExpression(indexAccess.Object);
+                var narrowedObjectType = CheckExpression(indexAccess.Object);
                 CheckExpression(indexAccess.Index);
+                // Record the lowering even for narrowed accesses: a narrowed tuple element t[1]
+                // must still lower to .Item2, which the emitter now reads from this tag.
+                RecordIndexAccessLowering(indexAccess, narrowedObjectType);
                 return narrowedType;
             }
         }
@@ -876,6 +879,10 @@ internal partial class TypeChecker
         var objectType = CheckExpression(indexAccess.Object);
         var indexType = CheckExpression(indexAccess.Index);
 
+        // Materialize the codegen lowering strategy for this access so the emitter switches on the
+        // tag alone (and never reflects over CLR indexers or re-inspects operand types).
+        RecordIndexAccessLowering(indexAccess, objectType);
+
         // Tuple positional indexing: the index must be a compile-time constant because tuples
         // are heterogeneous (each position can have a different type, and a C# ValueTuple has no
         // runtime indexer — codegen lowers t[k] to .ItemN). Validate constant indices here and
@@ -958,6 +965,40 @@ internal partial class TypeChecker
 
         // TypeInferenceService covers all supported operations - return Unknown for unsupported
         return resultType ?? SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Records the codegen lowering strategy for an index access in SemanticInfo (only when it is not
+    /// the default native element access), so the emitter switches on the tag alone.
+    /// </summary>
+    private void RecordIndexAccessLowering(IndexAccess indexAccess, SemanticType objectType)
+    {
+        var lowering = ComputeIndexAccessLowering(objectType, indexAccess.Index);
+        if (lowering != IndexAccessLowering.Native)
+            _semanticInfo.SetIndexAccessLowering(indexAccess, lowering);
+    }
+
+    /// <summary>
+    /// Computes how <c>obj[index]</c> must be lowered by codegen from the object's type and the index
+    /// expression. The precedence mirrors the emitter's former inline logic exactly: tuple positional
+    /// access (constant int index) &gt; params-indexer spread (tuple-literal index) &gt; string helper
+    /// &gt; array helper &gt; native element access.
+    /// </summary>
+    private IndexAccessLowering ComputeIndexAccessLowering(SemanticType objectType, Expression index)
+    {
+        if (objectType is TupleType && TryGetConstantIntIndex(index, out _))
+            return IndexAccessLowering.TupleItem;
+
+        if (index is TupleLiteral && Discovery.ClrTypeHelper.HasParamsIndexer(objectType))
+            return IndexAccessLowering.ParamsSpread;
+
+        if (objectType == SemanticType.Str)
+            return IndexAccessLowering.String;
+
+        if (objectType is GenericType { Name: BuiltinNames.Array })
+            return IndexAccessLowering.Array;
+
+        return IndexAccessLowering.Native;
     }
 
     /// <summary>

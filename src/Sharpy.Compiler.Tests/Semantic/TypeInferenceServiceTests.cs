@@ -408,14 +408,15 @@ public class TypeInferenceServiceTests
     }
 
     [Fact]
-    public void GetBinaryOpLowering_TupleEquality_ReturnsEqualsCall()
+    public void GetBinaryOpLowering_TupleEquality_ReturnsEqualsCallInstance()
     {
+        // Tuples are value types, so equality lowers to the instance left.Equals(right) call.
         var left = new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Int } };
         var right = new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Int } };
         _service.GetBinaryOpLowering(BinaryOperator.Equal, left, right)
-            .Should().Be(BinaryOpLowering.EqualsCall);
+            .Should().Be(BinaryOpLowering.EqualsCallInstance);
         _service.GetBinaryOpLowering(BinaryOperator.NotEqual, left, right)
-            .Should().Be(BinaryOpLowering.EqualsCall);
+            .Should().Be(BinaryOpLowering.EqualsCallInstance);
     }
 
     [Fact]
@@ -447,8 +448,10 @@ public class TypeInferenceServiceTests
     }
 
     [Fact]
-    public void GetBinaryOpLowering_ClrEqualsFallback_ReturnsEqualsCall()
+    public void GetBinaryOpLowering_ClrEqualsFallback_ReturnsEqualsCallStatic()
     {
+        // System.Tuple<,> is a reference type, so equality lowers to the null-safe static
+        // object.Equals(left, right) call rather than the instance path.
         var clrType = new UserDefinedType
         {
             Name = "CtorRef",
@@ -462,7 +465,7 @@ public class TypeInferenceServiceTests
         };
 
         _service.GetBinaryOpLowering(BinaryOperator.Equal, clrType, clrType)
-            .Should().Be(BinaryOpLowering.EqualsCall);
+            .Should().Be(BinaryOpLowering.EqualsCallStatic);
     }
 
     #endregion

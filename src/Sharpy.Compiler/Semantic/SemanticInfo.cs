@@ -115,6 +115,12 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, BinaryOpLowering> _binaryOpLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map index-access expressions to the strategy codegen must use to emit them. Only present when
+    // the strategy differs from the default native element access (e.g. string/array helper calls,
+    // params-indexer spreads, tuple .ItemN access). Keyed by node identity.
+    private readonly ConcurrentDictionary<Expression, IndexAccessLowering> _indexAccessLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map binary-op expressions whose value was constant-folded at semantic time to that
     // value, so codegen can emit the literal directly instead of a runtime computation.
     // Currently used for constant integer exponentiation (`2 ** 10` → 1024); the inferred
@@ -522,6 +528,27 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records how an index access (<c>obj[index]</c>) should be lowered by codegen.
+    /// Only set when the strategy is not the default <see cref="IndexAccessLowering.Native"/>;
+    /// the absence of an entry means codegen should emit a native C# element access.
+    /// </summary>
+    public void SetIndexAccessLowering(Expression indexAccess, IndexAccessLowering lowering)
+    {
+        _indexAccessLowerings[indexAccess] = lowering;
+    }
+
+    /// <summary>
+    /// Gets the lowering strategy for an index access.
+    /// Returns <see cref="IndexAccessLowering.Native"/> when no override was recorded.
+    /// </summary>
+    public IndexAccessLowering GetIndexAccessLowering(Expression indexAccess)
+    {
+        return _indexAccessLowerings.TryGetValue(indexAccess, out var lowering)
+            ? lowering
+            : IndexAccessLowering.Native;
+    }
+
+    /// <summary>
     /// Records the constant value a binary operation folded to at semantic time (e.g. integer
     /// exponentiation <c>2 ** 10</c> → <c>1024</c>). Codegen emits this literal directly instead
     /// of a runtime computation; the inferred result type (Int/Long) comes from the type map. (#905)
@@ -599,6 +626,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._binaryOpLowerings)
             _binaryOpLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._indexAccessLowerings)
+            _indexAccessLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._foldedIntegerConstants)
             _foldedIntegerConstants.TryAdd(kvp.Key, kvp.Value);
@@ -773,12 +803,19 @@ public enum BinaryOpLowering
     NativeOperator,
 
     /// <summary>
-    /// Lower to an <c>Equals</c> call: <c>object.Equals(left, right)</c> for reference types or
-    /// <c>left.Equals(right)</c> for tuples/value types; <c>!=</c> wraps the result in <c>!(...)</c>.
-    /// Used for tuples and CLR types that implement <c>Equals</c>/<c>IEquatable</c> but define no
-    /// <c>op_Equality</c>, where a native C# <c>==</c> would be wrong (reference equality) or fail to compile.
+    /// Lower to an instance <c>Equals</c> call: <c>left.Equals(right)</c> (<c>!=</c> wraps in <c>!(...)</c>).
+    /// Used for tuples and CLR value types, where the instance call avoids boxing. The
+    /// instance-vs-static choice is decided here during inference so the emitter never re-derives it.
     /// </summary>
-    EqualsCall,
+    EqualsCallInstance,
+
+    /// <summary>
+    /// Lower to a static null-safe <c>object.Equals(left, right)</c> call (<c>!=</c> wraps in <c>!(...)</c>).
+    /// Used for reference types that implement <c>Equals</c>/<c>IEquatable</c> but define no
+    /// <c>op_Equality</c>, where a native C# <c>==</c> would be reference equality (wrong); the static
+    /// form preserves null-safety.
+    /// </summary>
+    EqualsCallStatic,
 
     /// <summary>
     /// Lower to a C# null pattern check: <c>operand is null</c> (<c>==</c>) / <c>operand is not null</c>
@@ -787,4 +824,40 @@ public enum BinaryOpLowering
     /// identity fallback (a live object <c>== None</c> is <c>False</c>). Operand order is irrelevant (#901).
     /// </summary>
     NoneCheck
+}
+
+/// <summary>
+/// How codegen should emit an index access (<c>obj[index]</c>). The TypeChecker records this during
+/// inference so the emitter switches on the tag alone and never re-inspects operand types (or reflects
+/// over CLR indexers) to pick a strategy.
+/// </summary>
+public enum IndexAccessLowering
+{
+    /// <summary>Emit a native C# element access (<c>obj[index]</c>). Default.</summary>
+    Native,
+
+    /// <summary>
+    /// String indexing: <c>global::Sharpy.StringHelpers.GetItem(obj, index)</c> — returns a
+    /// single-character string (not a C# <c>char</c>) and supports Python negative indexing.
+    /// </summary>
+    String,
+
+    /// <summary>
+    /// Array indexing: <c>global::Sharpy.ArrayHelpers.GetItem(obj, index)</c> — supports Python
+    /// negative indexing over a C# array.
+    /// </summary>
+    Array,
+
+    /// <summary>
+    /// Multi-axis indexing into a CLR <c>params</c> indexer (e.g. numpy's <c>NdArray</c>): a
+    /// <c>TupleLiteral</c> index <c>a[1, 2]</c> is spread into separate element-access arguments
+    /// <c>a[1, 2]</c> rather than passed as a single tuple (#956).
+    /// </summary>
+    ParamsSpread,
+
+    /// <summary>
+    /// Tuple positional access: <c>t[k]</c> lowers to <c>t.Item(k+1)</c> because C# ValueTuples have
+    /// no runtime indexer. The constant index is re-read from the (validated) literal by the emitter.
+    /// </summary>
+    TupleItem
 }

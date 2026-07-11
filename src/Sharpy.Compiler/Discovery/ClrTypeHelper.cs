@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Reflection;
 using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Discovery;
@@ -9,6 +11,46 @@ namespace Sharpy.Compiler.Discovery;
 /// </summary>
 internal static class ClrTypeHelper
 {
+    private static readonly ConcurrentDictionary<Type, bool> _paramsIndexerCache = new();
+
+    /// <summary>
+    /// Returns true when the CLR type backing <paramref name="type"/> exposes an indexer whose last
+    /// parameter is a C# <c>params</c> array (e.g. numpy's <c>NdArray</c>), so a tuple index
+    /// <c>a[1, 2]</c> can be spread into separate element-access arguments (#956). Used by the
+    /// TypeChecker to materialize <c>IndexAccessLowering.ParamsSpread</c>; the emitter never reflects.
+    /// </summary>
+    internal static bool HasParamsIndexer(SemanticType? type)
+    {
+        var clrType = type switch
+        {
+            UserDefinedType udt => udt.Symbol?.ClrType,
+            BuiltinType bt => bt.ClrType,
+            GenericType gt => TryConstructClosedGeneric(gt, t => t.ClrType ?? typeof(object)),
+            _ => null
+        };
+
+        if (clrType == null)
+            return false;
+
+        if (_paramsIndexerCache.TryGetValue(clrType, out var cached))
+            return cached;
+
+        var result = false;
+        foreach (var prop in clrType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var indexParams = prop.GetIndexParameters();
+            if (indexParams.Length > 0 &&
+                indexParams[indexParams.Length - 1].GetCustomAttribute<ParamArrayAttribute>() != null)
+            {
+                result = true;
+                break;
+            }
+        }
+
+        _paramsIndexerCache.TryAdd(clrType, result);
+        return result;
+    }
+
     internal static Type? TryConstructClosedGeneric(GenericType generic, Func<SemanticType, Type?> resolveClrType)
     {
         var openDef = generic.GenericDefinition?.ClrType;

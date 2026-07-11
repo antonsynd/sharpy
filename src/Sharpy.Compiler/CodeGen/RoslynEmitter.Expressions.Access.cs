@@ -1,6 +1,4 @@
-using System.Collections.Concurrent;
 using System.IO;
-using System.Reflection;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
@@ -1535,25 +1533,26 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateIndexAccess(IndexAccess indexAccess)
     {
+        // The lowering strategy was materialized by the TypeChecker; switch on the tag alone.
+        var lowering = _context.SemanticInfo?.GetIndexAccessLowering(indexAccess)
+            ?? IndexAccessLowering.Native;
+
         // Tuple positional indexing: t[0] -> t.Item1, t[1] -> t.Item2, etc.
         // C# ValueTuples don't support [] indexing, so we emit .ItemN member access.
-        if (GetExpressionSemanticType(indexAccess.Object) is Semantic.TupleType
+        if (lowering == IndexAccessLowering.TupleItem
             && TryGetConstantIntIndex(indexAccess.Index, out var tupleIndex))
         {
             var obj = GenerateExpression(indexAccess.Object);
-            var itemName = $"Item{tupleIndex + 1}";
             return MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 obj,
-                IdentifierName(itemName));
+                IdentifierName($"Item{tupleIndex + 1}"));
         }
-
-        var objectType = GetExpressionSemanticType(indexAccess.Object);
 
         // Spread TupleLiteral index into separate arguments for params indexers (#956).
         // a[1, 2] parses as IndexAccess(TupleLiteral) — spread to a[1, 2] in C# for
         // types with params int[] indexers (e.g., NdArray), instead of a[(1, 2)].
-        if (indexAccess.Index is TupleLiteral tuple && HasParamsIndexer(objectType))
+        if (lowering == IndexAccessLowering.ParamsSpread && indexAccess.Index is TupleLiteral tuple)
         {
             var objExprSpread = GenerateExpression(indexAccess.Object);
             var args = new List<ArgumentSyntax>();
@@ -1566,35 +1565,26 @@ internal partial class RoslynEmitter
         var objExpr = GenerateExpression(indexAccess.Object);
         var index = GenerateExpression(indexAccess.Index);
 
-        // String indexing: s[i] -> StringHelpers.GetItem(s, i) to return string, not char,
-        // and to support negative indexing
-        if (objectType == SemanticType.Str)
+        return lowering switch
         {
-            return InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
-                    IdentifierName("GetItem")))
-                .AddArgumentListArguments(
-                    Argument(objExpr),
-                    Argument(index));
-        }
+            // String indexing: s[i] -> StringHelpers.GetItem(s, i) to return string, not char,
+            // and to support negative indexing.
+            IndexAccessLowering.String => InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                        IdentifierName("GetItem")))
+                .AddArgumentListArguments(Argument(objExpr), Argument(index)),
 
-        // Array indexing: arr[i] -> ArrayHelpers.GetItem(arr, i) to support negative indexing
-        if (objectType is Semantic.GenericType { Name: BuiltinNames.Array })
-        {
-            return InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    MakeGlobalQualifiedName("Sharpy", "ArrayHelpers"),
-                    IdentifierName("GetItem")))
-                .AddArgumentListArguments(
-                    Argument(objExpr),
-                    Argument(index));
-        }
+            // Array indexing: arr[i] -> ArrayHelpers.GetItem(arr, i) to support negative indexing.
+            IndexAccessLowering.Array => InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        MakeGlobalQualifiedName("Sharpy", "ArrayHelpers"),
+                        IdentifierName("GetItem")))
+                .AddArgumentListArguments(Argument(objExpr), Argument(index)),
 
-        var elementAccess = ElementAccessExpression(objExpr)
-            .AddArgumentListArguments(Argument(index));
-
-        return elementAccess;
+            _ => ElementAccessExpression(objExpr)
+                .AddArgumentListArguments(Argument(index))
+        };
     }
 
     /// <summary>
@@ -1603,43 +1593,6 @@ internal partial class RoslynEmitter
     /// </summary>
     private static bool TryGetConstantIntIndex(Expression expr, out int value)
         => AstHelper.TryGetConstantIntIndex(expr, out value);
-
-    private static readonly ConcurrentDictionary<Type, bool> _paramsIndexerCache = new();
-
-    private static bool HasParamsIndexer(SemanticType? type)
-    {
-        var clrType = type switch
-        {
-            UserDefinedType udt => udt.Symbol?.ClrType,
-            BuiltinType bt => bt.ClrType,
-            GenericType gt => TryConstructClosedClrType(gt),
-            _ => null
-        };
-
-        if (clrType == null)
-            return false;
-
-        if (_paramsIndexerCache.TryGetValue(clrType, out var cached))
-            return cached;
-
-        var result = false;
-        foreach (var prop in clrType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
-        {
-            var indexParams = prop.GetIndexParameters();
-            if (indexParams.Length > 0 &&
-                indexParams[indexParams.Length - 1].GetCustomAttribute<ParamArrayAttribute>() != null)
-            {
-                result = true;
-                break;
-            }
-        }
-
-        _paramsIndexerCache.TryAdd(clrType, result);
-        return result;
-    }
-
-    private static Type? TryConstructClosedClrType(GenericType generic)
-        => Discovery.ClrTypeHelper.TryConstructClosedGeneric(generic, t => t.ClrType ?? typeof(object));
 
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {

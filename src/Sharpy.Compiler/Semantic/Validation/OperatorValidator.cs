@@ -160,7 +160,8 @@ internal class OperatorValidator : ValidatingAstWalker
             if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
                 && Context.TypeInference != null
                 && Context.TypeInference.GetBinaryOpLowering(binOp.Operator, leftType, rightType)
-                    is BinaryOpLowering.EqualsCall or BinaryOpLowering.NoneCheck)
+                    is BinaryOpLowering.EqualsCallInstance or BinaryOpLowering.EqualsCallStatic
+                        or BinaryOpLowering.NoneCheck)
             {
                 return;
             }

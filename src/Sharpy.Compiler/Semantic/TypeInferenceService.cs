@@ -69,10 +69,11 @@ internal class TypeInferenceService
 
     /// <summary>
     /// Determines how codegen should emit an equality operation (<c>==</c>/<c>!=</c>) on the
-    /// given operand types. Returns <see cref="BinaryOpLowering.EqualsCall"/> for tuples and for
-    /// CLR types resolved via the Equals fallback (see <see cref="IsClrEqualsFallback"/>);
-    /// otherwise <see cref="BinaryOpLowering.NativeOperator"/>. The decision is a pure function of
-    /// the operand types, mirroring the inference rules so the emitter never has to re-derive it.
+    /// given operand types. Returns an <c>EqualsCall*</c> lowering for tuples and for CLR types
+    /// resolved via the Equals fallback (see <see cref="IsClrEqualsFallback"/>); otherwise
+    /// <see cref="BinaryOpLowering.NativeOperator"/>. The instance-vs-static Equals choice is
+    /// decided here (value types use the instance call to avoid boxing; reference types use the
+    /// null-safe static call) so the emitter never has to re-derive it from the operand types.
     /// </summary>
     internal BinaryOpLowering GetBinaryOpLowering(BinaryOperator op, SemanticType left, SemanticType right)
     {
@@ -82,7 +83,15 @@ internal class TypeInferenceService
             return BinaryOpLowering.NoneCheck;
 
         if (IsTupleEquality(op, left, right) || IsClrEqualsFallback(op, left, right))
-            return BinaryOpLowering.EqualsCall;
+        {
+            // Value types (tuples, structs) use left.Equals(right) to avoid boxing; reference types
+            // use the null-safe object.Equals(left, right). Misclassifying a reference type as a
+            // value type would lose null-safety, so only definitive value types take the instance path.
+            var useInstance = left is TupleType
+                || left.IsValueType
+                || (left.ClrType?.IsValueType ?? false);
+            return useInstance ? BinaryOpLowering.EqualsCallInstance : BinaryOpLowering.EqualsCallStatic;
+        }
 
         return BinaryOpLowering.NativeOperator;
     }
@@ -396,7 +405,7 @@ internal class TypeInferenceService
     /// <summary>
     /// Returns true when <paramref name="op"/> is an equality operator and both operands are
     /// tuples of equal arity whose element pairs each support equality. Used both for type
-    /// inference and to decide the <see cref="BinaryOpLowering.EqualsCall"/> codegen strategy.
+    /// inference and to decide the <c>EqualsCall*</c> codegen strategy.
     /// </summary>
     private bool IsTupleEquality(BinaryOperator op, SemanticType left, SemanticType right)
     {
@@ -631,7 +640,7 @@ internal class TypeInferenceService
 
         // Equality fallback: CLR types that implement IEquatable<self>, override Equals(object),
         // or are value types/enums but define no op_Equality still support ==/!=. The result is
-        // bool; codegen lowers it to an Equals call (BinaryOpLowering.EqualsCall) because a native
+        // bool; codegen lowers it to an Equals call (BinaryOpLowering.EqualsCallInstance/Static) because a native
         // C# == would be reference equality (wrong) or fail to compile for elementless types.
         if (IsClrEqualsFallback(op, left, right))
             return SemanticType.Bool;
@@ -814,7 +823,7 @@ internal class TypeInferenceService
     /// the same (or mutually assignable) CLR type, that type defines no <c>op_Equality</c>, and
     /// it nonetheless has meaningful value/structural equality (implements <c>IEquatable&lt;self&gt;</c>,
     /// overrides <c>Equals(object)</c>, or is a value type / enum). Used for both type inference
-    /// and the <see cref="BinaryOpLowering.EqualsCall"/> codegen decision.
+    /// and the <c>EqualsCall*</c> codegen decision.
     /// </summary>
     private bool IsClrEqualsFallback(BinaryOperator op, SemanticType left, SemanticType right)
     {

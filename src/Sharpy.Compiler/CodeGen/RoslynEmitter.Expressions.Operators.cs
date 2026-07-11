@@ -347,23 +347,16 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Honor the semantic-recorded EqualsCall lowering (#886): tuples and CLR types that
+        // Honor the semantic-recorded Equals-call lowering (#886): tuples and CLR types that
         // implement Equals/IEquatable but define no op_Equality. A native C# == would either be
-        // reference equality (wrong) or fail to compile (struct without op_Equality).
+        // reference equality (wrong) or fail to compile (struct without op_Equality). The
+        // instance-vs-static choice was materialized by the TypeChecker; the emitter switches on
+        // the tag alone (value types -> left.Equals(right); reference types -> object.Equals(...)).
+        var equalsLowering = _context.SemanticInfo?.GetBinaryOpLowering(binOp);
         if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
-            && _context.SemanticInfo?.GetBinaryOpLowering(binOp) == BinaryOpLowering.EqualsCall)
+            && equalsLowering is BinaryOpLowering.EqualsCallInstance or BinaryOpLowering.EqualsCallStatic)
         {
-            var leftType = GetExpressionSemanticType(binOp.Left);
-
-            // Value types (tuples, structs) use left.Equals(right) to avoid boxing; reference
-            // types use the null-safe object.Equals(left, right). Misclassifying a reference type
-            // as a value type would lose null-safety, so only definitive value types take the
-            // instance-call path.
-            var useInstanceEquals = leftType is Semantic.TupleType
-                || (leftType?.IsValueType ?? false)
-                || (leftType?.ClrType?.IsValueType ?? false);
-
-            ExpressionSyntax equalsInvocation = useInstanceEquals
+            ExpressionSyntax equalsInvocation = equalsLowering == BinaryOpLowering.EqualsCallInstance
                 ? InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             left,

@@ -45,7 +45,7 @@ public class StaticStateConformanceTests
     /// → justification. Keep this list minimal and justified; new entries mean a new static
     /// mutable field was introduced and must be reviewed for determinism safety.
     /// </summary>
-    // Note on ConcurrentDictionary caches: RoslynEmitter._paramsIndexerCache is a
+    // Note on ConcurrentDictionary caches: ClrTypeHelper._paramsIndexerCache is a
     // static readonly ConcurrentDictionary used as an idempotent cache keyed by CLR type.
     // It is intentionally NOT flagged (rule 2 excludes ConcurrentDictionary) and needs no
     // allowlist entry: its contents are a deterministic function of the key.
