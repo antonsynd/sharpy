@@ -687,18 +687,20 @@ internal class TypeInferenceService
         return ambiguous ? null : best;
     }
 
+    /// <summary>Rank assigned to a user-defined <c>op_Implicit</c> conversion — strictly worse than
+    /// any builtin widening (whose rank is 1 + a conversion cost ≤ <c>1 + int→decimal = 6</c>), per the
+    /// spec's conversion-cost ranking.</summary>
+    private const int UserDefinedConversionRank = 1000;
+
     /// <summary>
-    /// Conversion rank from an argument CLR type to a parameter CLR type: 0 = exact,
-    /// 1 = reference assignability or builtin numeric widening, 2 = user-defined implicit
-    /// conversion (op_Implicit). Returns -1 when no implicit conversion exists. Lower is preferred.
-    /// <para>
-    /// The numeric-widening tier sources its decision from the single ranking in
-    /// <see cref="PrimitiveCatalog.ImplicitConversionCost"/> (no separate numeric scheme lives here).
-    /// It currently collapses reference and numeric widening to a flat 1; the spec's finer
-    /// linearization (reference = 1, numeric widening = 2 + per step, op_Implicit strictly worse —
-    /// docs/language_specification/overload_resolution.md) is folded into the shared betterness core
-    /// in P4.3/P4.4 (#1043). Kept flat here to preserve current operator-resolution behavior.
-    /// </para>
+    /// Conversion rank from an argument CLR type to a parameter CLR type, following the spec's
+    /// conversion-cost ranking (docs/language_specification/overload_resolution.md): 0 = exact,
+    /// 1 = reference/inheritance assignability, then numeric widening ranked by
+    /// <see cref="PrimitiveCatalog.ImplicitConversionCost"/> (<c>1 + cost</c>, so ≥ 3 — strictly worse
+    /// than a reference conversion, and a closer target ranks lower), then user-defined
+    /// <c>op_Implicit</c> (<see cref="UserDefinedConversionRank"/>, strictly worse than any builtin
+    /// widening). Returns -1 when no implicit conversion exists. Lower is preferred. This is the single
+    /// PrimitiveCatalog ranking; no separate numeric scheme lives here.
     /// </summary>
     private int ClrConversionRank(Type argClrType, Type paramClrType)
     {
@@ -709,18 +711,23 @@ internal class TypeInferenceService
         if (paramClrType.IsAssignableFrom(argClrType))
             return 1;
 
-        // Builtin numeric widening (int → long, int → double, float → double, …) — decided by the
-        // single PrimitiveCatalog conversion ranking.
+        // Builtin numeric widening (int → long, int → double, float → double, …) — ranked by the
+        // single PrimitiveCatalog conversion cost so a closer target beats a farther one and every
+        // widening ranks strictly worse than a reference conversion.
         var fromInfo = PrimitiveCatalog.GetByClrType(argClrType);
         var toInfo = PrimitiveCatalog.GetByClrType(paramClrType);
-        if (fromInfo != null && toInfo != null && PrimitiveCatalog.CanImplicitlyConvert(fromInfo, toInfo))
-            return 1;
+        if (fromInfo != null && toInfo != null)
+        {
+            var cost = PrimitiveCatalog.ImplicitConversionCost(fromInfo, toInfo);
+            if (cost != PrimitiveCatalog.NoImplicitConversion)
+                return 1 + cost; // cost ≥ 2 for a widening → rank ≥ 3 (> reference's 1)
+        }
 
         // User-defined implicit conversions: op_Implicit may be declared on either the target
-        // (parameter) type or the source (argument) type.
+        // (parameter) type or the source (argument) type. Strictly worse than any builtin widening.
         if (HasImplicitConversion(paramClrType, argClrType, paramClrType)
             || HasImplicitConversion(argClrType, argClrType, paramClrType))
-            return 2;
+            return UserDefinedConversionRank;
 
         return -1;
     }

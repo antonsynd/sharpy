@@ -1,0 +1,15 @@
+# Operator-dunder overloads resolve by argument type through the deterministic betterness core
+# (#975), replacing the old exact-match FirstOrDefault tier: `b + 5` selects __add__(int) and
+# `b + "x"` selects __add__(str), independent of declaration order.
+
+class Box:
+    def __add__(self, n: int) -> str:
+        return "int"
+
+    def __add__(self, s: str) -> str:
+        return "str"
+
+def main() -> None:
+    b: Box = Box()
+    print(b + 5)
+    print(b + "x")
