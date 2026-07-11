@@ -275,24 +275,34 @@ public class RoslynEmitterStatementTests
     [Fact]
     public void GenerateStatement_ListVarWithoutType_InfersFromElements()
     {
-        // Test that when no type annotation is provided, inference works
+        // With no type annotation, the element type is authoritative from SemanticInfo
+        // (the TypeChecker), not the emitter's (removed) syntactic inference tier.
+        var listLiteral = new ListLiteral
+        {
+            Elements = new List<Expression>
+            {
+                new IntegerLiteral { Value = "1" },
+                new IntegerLiteral { Value = "2" }
+            }.ToImmutableArray()
+        };
         var stmt = new VariableDeclaration
         {
             Name = "numbers",
-            Type = null, // No type annotation - use inference
-            InitialValue = new ListLiteral
-            {
-                Elements = new List<Expression>
-                {
-                    new IntegerLiteral { Value = "1" },
-                    new IntegerLiteral { Value = "2" }
-                }.ToImmutableArray()
-            }
+            Type = null, // No type annotation - inference recorded in SemanticInfo
+            InitialValue = listLiteral
         };
+
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetExpressionType(listLiteral, new GenericType
+        {
+            Name = "list",
+            TypeArguments = new List<SemanticType> { BuiltinType.Int }
+        });
+        _context.SemanticInfo = semanticInfo;
 
         var result = GenerateStatementCode(stmt);
 
-        // Should infer Sharpy.List<int> from element types
+        // Should read Sharpy.List<int> from SemanticInfo
         Assert.Contains("new Sharpy.List<int>", result);
     }
 

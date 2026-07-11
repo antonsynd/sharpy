@@ -462,76 +462,10 @@ public class TypeSyntaxMapperTests
 
     #endregion
 
-    #region Type Inference Tests
-
-    [Fact]
-    public void InferElementType_AllIntegers_ReturnsInt()
-    {
-        // Arrange
-        var expressions = new List<Expression>
-        {
-            new IntegerLiteral { Value = "1" },
-            new IntegerLiteral { Value = "2" },
-            new IntegerLiteral { Value = "3" }
-        }.ToImmutableArray();
-
-        // Act
-        var result = _typeMapper.InferElementType(expressions);
-
-        // Assert
-        result.ToString().Should().Be("int");
-    }
-
-    [Fact]
-    public void InferElementType_AllFloats_ReturnsDouble()
-    {
-        // Arrange
-        var expressions = new List<Expression>
-        {
-            new FloatLiteral { Value = "1.0" },
-            new FloatLiteral { Value = "2.0" },
-            new FloatLiteral { Value = "3.0" }
-        }.ToImmutableArray();
-
-        // Act
-        var result = _typeMapper.InferElementType(expressions);
-
-        // Assert
-        result.ToString().Should().Be("double");
-    }
-
-    [Fact]
-    public void InferElementType_MixedTypes_ReturnsObject()
-    {
-        // Arrange
-        var expressions = new List<Expression>
-        {
-            new IntegerLiteral { Value = "1" },
-            new StringLiteral { Value = "hello" },
-            new BooleanLiteral { Value = true }
-        }.ToImmutableArray();
-
-        // Act
-        var result = _typeMapper.InferElementType(expressions);
-
-        // Assert
-        result.ToString().Should().Be("object");
-    }
-
-    [Fact]
-    public void InferElementType_EmptyList_ReturnsObject()
-    {
-        // Arrange
-        var expressions = ImmutableArray<Expression>.Empty;
-
-        // Act
-        var result = _typeMapper.InferElementType(expressions);
-
-        // Assert
-        result.ToString().Should().Be("object");
-    }
-
-    #endregion
+    // Note: the emitter's syntactic element-type inference tier (InferElementType /
+    // InferTypeFromExpression / InferExpressionType) was removed in #1039/#973. Element and
+    // declaration types are now authoritative from SemanticInfo (TypeChecker) and are covered by
+    // the file-based integration + snapshot suites rather than these unit tests.
 
     #region Helper Method Tests
 

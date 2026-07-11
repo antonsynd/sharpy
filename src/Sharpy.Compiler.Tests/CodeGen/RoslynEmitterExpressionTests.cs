@@ -159,6 +159,15 @@ public class RoslynEmitterExpressionTests
             }.ToImmutableArray()
         };
 
+        // Element type is authoritative from SemanticInfo (TypeChecker), not syntactic inference.
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetExpressionType(expr, new GenericType
+        {
+            Name = "list",
+            TypeArguments = new List<SemanticType> { BuiltinType.Int }
+        });
+        _context.SemanticInfo = semanticInfo;
+
         // Act
         var result = InvokeGenerateExpression(expr);
 
@@ -213,6 +222,15 @@ public class RoslynEmitterExpressionTests
                 new IntegerLiteral { Value = "2" }
             }.ToImmutableArray()
         };
+
+        // Element type is authoritative from SemanticInfo (TypeChecker), not syntactic inference.
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetExpressionType(expr, new GenericType
+        {
+            Name = "set",
+            TypeArguments = new List<SemanticType> { BuiltinType.Int }
+        });
+        _context.SemanticInfo = semanticInfo;
 
         // Act
         var result = InvokeGenerateExpression(expr);
@@ -1652,10 +1670,12 @@ public class RoslynEmitterExpressionTests
     }
 
     [Fact]
-    public void GenerateExpression_ListLiteralWithoutSemanticInfo_FallsBackToElementInference()
+    public void GenerateExpression_ListLiteralWithoutSemanticInfo_UsesNeutralObjectElementType()
     {
-        // Arrange: List with integer literals but NO SemanticInfo set
-        // This verifies the fallback path still works when SemanticInfo is absent
+        // Arrange: List with integer literals but NO SemanticInfo set.
+        // The emitter's syntactic element-type inference tier was removed (#1039/#973): the emitter
+        // is a pure translator, so with no authoritative element type it emits the neutral object.
+        // In production the TypeChecker always records the concrete element type in SemanticInfo.
         var listLiteral = new ListLiteral
         {
             Elements = new List<Expression>
@@ -1670,9 +1690,9 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(listLiteral);
 
-        // Assert: Falls back to element inference, which sees IntegerLiteral -> int
+        // Assert: no authoritative element type available -> neutral object element type
         var code = result.ToString();
-        code.Should().Contain("Sharpy.List<int>");
+        code.Should().Contain("Sharpy.List<object>");
     }
 
     #endregion

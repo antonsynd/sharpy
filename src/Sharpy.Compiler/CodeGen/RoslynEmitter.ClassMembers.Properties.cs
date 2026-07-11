@@ -31,7 +31,7 @@ internal partial class RoslynEmitter
         else if (varDecl.IsConst && varDecl.InitialValue != null)
         {
             // Infer type from initializer for const declarations without type annotation
-            fieldType = _typeMapper.InferTypeFromExpression(varDecl.InitialValue);
+            fieldType = ResolveInferredDeclarationType(varDecl.InitialValue);
         }
         else
         {

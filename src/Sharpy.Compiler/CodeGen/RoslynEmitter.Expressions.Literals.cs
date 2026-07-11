@@ -48,8 +48,9 @@ internal partial class RoslynEmitter
         }
         else
         {
-            // Fall back to inference from elements
-            elementType = _typeMapper.InferElementType(list.Elements);
+            // Empty or heterogeneous literal — the TypeChecker records a concrete element type
+            // whenever one is inferable, so reaching here means the neutral object element type.
+            elementType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
         var listType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementType);
@@ -95,8 +96,10 @@ internal partial class RoslynEmitter
         }
         else
         {
-            keyType = _typeMapper.InferElementType(dict.Entries.Where(e => e.Key != null).Select(e => e.Key!));
-            valueType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Value));
+            // Empty or heterogeneous literal — neutral object key/value when the TypeChecker
+            // inferred no concrete element type.
+            keyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+            valueType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
         var dictType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyDict, keyType, valueType);
@@ -144,7 +147,8 @@ internal partial class RoslynEmitter
         }
         else
         {
-            elementType = _typeMapper.InferElementType(set.Elements);
+            // Empty or heterogeneous literal — neutral object element type.
+            elementType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
         var setType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpySet, elementType);

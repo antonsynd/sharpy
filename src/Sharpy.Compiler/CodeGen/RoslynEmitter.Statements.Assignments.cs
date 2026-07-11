@@ -696,7 +696,7 @@ internal partial class RoslynEmitter
         else if (varDecl.Type == null && varDecl.IsConst && varDecl.InitialValue != null)
         {
             // Infer type from initializer for const declarations without type annotation
-            typeSyntax = _typeMapper.InferTypeFromExpression(varDecl.InitialValue);
+            typeSyntax = ResolveInferredDeclarationType(varDecl.InitialValue);
         }
         else
         {
@@ -731,6 +731,24 @@ internal partial class RoslynEmitter
 
         return LocalDeclarationStatement(declaration)
             .WithModifiers(modifiers);
+    }
+
+    /// <summary>
+    /// Resolves the C# declaration type for an auto/const variable or field whose type is inferred
+    /// from its initializer. The authoritative type is the initializer's inferred type recorded by
+    /// the TypeChecker in <c>SemanticInfo</c>; <c>object</c> is the neutral result only when no
+    /// concrete type was inferred (e.g. a bare <c>None</c> initializer).
+    /// </summary>
+    private TypeSyntax ResolveInferredDeclarationType(Expression? initialValue)
+    {
+        if (initialValue != null
+            && GetExpressionSemanticType(initialValue) is { } inferred
+            && inferred is not UnknownType)
+        {
+            return _typeMapper.MapSemanticType(inferred);
+        }
+
+        return PredefinedType(Token(SyntaxKind.ObjectKeyword));
     }
 
     private FieldDeclarationSyntax? GenerateModuleLevelField(VariableDeclaration varDecl)
@@ -788,7 +806,7 @@ internal partial class RoslynEmitter
             // Infer type from initializer
             if (varDecl.InitialValue != null)
             {
-                typeSyntax = _typeMapper.InferTypeFromExpression(varDecl.InitialValue);
+                typeSyntax = ResolveInferredDeclarationType(varDecl.InitialValue);
             }
             else
             {
@@ -799,7 +817,7 @@ internal partial class RoslynEmitter
         else if (varDecl.Type == null && varDecl.IsConst && varDecl.InitialValue != null)
         {
             // Infer type from initializer for const declarations without type annotation
-            typeSyntax = _typeMapper.InferTypeFromExpression(varDecl.InitialValue);
+            typeSyntax = ResolveInferredDeclarationType(varDecl.InitialValue);
         }
         else
         {
