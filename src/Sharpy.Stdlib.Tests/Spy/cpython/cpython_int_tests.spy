@@ -1,0 +1,155 @@
+# ported from CPython 3.12 Lib/test/test_int.py::IntTestCases
+#
+# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# NOTICE file in this directory. The bulk of test_int leans on int(str, base) with
+# bases 2..36, arbitrary-precision literals (2**32, '1'*600), bytes/memoryview inputs,
+# and unicode-digit parsing — none of which the Sharpy int() builtin surface supports.
+# The faithfully portable core is str<->int parsing, float truncation-toward-zero, the
+# ValueError contract on malformed input, and fixed-width integer arithmetic; those are
+# ported here as direct typed assertions with try/except ValueError probes.
+#
+# Omitted (Sharpy divergences the AST classifier cannot see):
+#   - int(str, base) / keyword base / test_int_base_* / test_keyword_args(base=2):
+#     Sharpy int() takes a single argument (no base parameter). See the not-ported
+#     ledger entry below.
+#   - test_unicode / test_int_base_limits / PyLongModuleTests / '1'*600: exercise
+#     arbitrary-precision integers; Sharpy int is fixed-width (see the int-overflow-checked
+#     deviation), so huge-int values are out of scope. See the not-ported ledger entry.
+#   - negative floor division `-7 // 2`: docs/deviations.yaml id integer-division-floor
+#     records `//` as truncating for negatives; to keep the oracle agreeing on both sides
+#     only non-negative // is asserted here.
+#   - test_error_message / test_small_ints: exact message text and CPython int-cache
+#     identity (`is`) — impl detail, not a value-level contract.
+
+# --- int(str): whitespace and sign parsing (IntTestCases.test_basic string cases) ---
+
+@test
+def test_from_string():
+    assert int("0") == 0
+    assert int("10") == 10
+    assert int("314") == 314
+    assert int(" 314") == 314
+    assert int("314 ") == 314
+    assert int("  \t\t  314  \t\t  ") == 314
+    assert int("-3") == -3
+    assert int(" -3 ") == -3
+    assert int("+10") == 10
+
+# --- int(float): truncation toward zero (IntTestCases.test_basic float cases) ---
+
+@test
+def test_from_float_truncates():
+    assert int(3.14) == 3
+    assert int(-3.14) == -3
+    assert int(3.9) == 3
+    assert int(-3.9) == -3
+    assert int(3.5) == 3
+    assert int(-3.5) == -3
+    assert int(0.0) == 0
+
+# --- int(bool) ---
+
+@test
+def test_from_bool():
+    assert int(True) == 1
+    assert int(False) == 0
+
+# --- test_invalid_signs (IntTestCases.test_invalid_signs — all raise ValueError) ---
+
+def _int_raises(s: str) -> bool:
+    try:
+        return int(s) == 0 and False
+    except ValueError:
+        return True
+
+@test
+def test_invalid_signs():
+    assert _int_raises("+")
+    assert _int_raises("-")
+    assert _int_raises("- 1")
+    assert _int_raises("+ 1")
+    assert _int_raises(" + 1 ")
+
+# --- malformed strings raise ValueError (IntTestCases.test_basic anomaly table) ---
+
+@test
+def test_invalid_strings():
+    assert _int_raises("")
+    assert _int_raises(" ")
+    assert _int_raises("  \t\t  ")
+    assert _int_raises("1x")
+    assert _int_raises("  1x")
+    assert _int_raises("abc")
+    assert _int_raises("12.3")
+
+# --- test_string_float (IntTestCases.test_string_float — float strings rejected) ---
+
+@test
+def test_string_float():
+    assert _int_raises("1.5")
+    assert _int_raises("1e3")
+    assert _int_raises(".5")
+
+# --- str(int) round-trip ---
+
+@test
+def test_int_to_string():
+    assert str(0) == "0"
+    assert str(7) == "7"
+    assert str(-5) == "-5"
+    assert str(12345) == "12345"
+    assert str(-12345) == "-12345"
+
+# --- fixed-width integer arithmetic (non-negative to stay oracle-consistent) ---
+
+@test
+def test_arithmetic():
+    assert 17 // 5 == 3
+    assert 17 % 5 == 2
+    assert 20 // 4 == 5
+    assert 20 % 4 == 0
+    assert 2 ** 10 == 1024
+    assert 3 ** 4 == 81
+    assert abs(-9) == 9
+    assert abs(9) == 9
+    assert divmod(17, 5) == (3, 2)
+    assert divmod(20, 4) == (5, 0)
+
+# --- comparisons ---
+
+@test
+def test_comparisons():
+    assert 1 < 2
+    assert 2 <= 2
+    assert 3 > 2
+    assert 3 >= 3
+    assert 5 == 5
+    assert 5 != 6
+    assert -1 < 0
+    assert min(3, 1, 2) == 1
+    assert max(3, 1, 2) == 3
+
+# --- divergence-ledger annotations (machine-read by build_tools.cpython_oracle) ---
+# oracle-ledger:
+#   kind: not-ported
+#   test: IntTestCases.test_int_base_limits
+#   side: sharpy
+#   deviation: int-overflow-checked
+#   spec_ref: docs/language_specification/primitive_types.md
+#   origin: Lib/test/test_int.py::IntTestCases.test_int_base_limits
+#   reason: >
+#     The int() base parameter (int(str, base) with bases 2..36) is not part of the
+#     Sharpy int() builtin surface, and the base-limits test additionally constructs
+#     arbitrary-precision bases (2**234). Sharpy int is fixed-width, so this is a
+#     designed divergence rather than a bug.
+# oracle-ledger:
+#   kind: not-ported
+#   test: PyLongModuleTests.test_pylong_int_to_decimal
+#   side: sharpy
+#   deviation: int-overflow-checked
+#   spec_ref: docs/language_specification/primitive_types.md
+#   origin: Lib/test/test_int.py::PyLongModuleTests.test_pylong_int_to_decimal
+#   reason: >
+#     Exercises arbitrary-precision integer<->decimal conversion (values far beyond
+#     64 bits). Sharpy integers are fixed-width (int-overflow-checked deviation), so
+#     the huge-int PyLong tests are out of scope for the oracle.

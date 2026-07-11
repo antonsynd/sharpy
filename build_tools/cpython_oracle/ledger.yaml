@@ -465,3 +465,72 @@ entries:
     1.0, 1.0), where CPython returns 1.0 (gh-106498). The method is omitted from the port until #1063
     is fixed rather than encoding the buggy Sharpy result as an oracle assertion.'
   source: src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy:134
+- kind: not-ported
+  module: cpython_dict_tests
+  test: DictTest.test_setdefault
+  side: sharpy
+  bug: 1069
+  spec_ref: docs/language_specification/collections.md
+  origin: Lib/test/test_dict.py::DictTest.test_setdefault
+  reason: 'dict.setdefault()/popitem() are implemented only as explicit IDict interface members (SetDefault/PopItem)
+    and are not reachable as instance methods from a .spy program, so the CPython setdefault/popitem tests
+    cannot be expressed until #1069 exposes them as public instance methods.'
+  source: src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy:263
+- kind: not-ported
+  module: cpython_int_tests
+  test: IntTestCases.test_int_base_limits
+  side: sharpy
+  deviation: int-overflow-checked
+  spec_ref: docs/language_specification/primitive_types.md
+  origin: Lib/test/test_int.py::IntTestCases.test_int_base_limits
+  reason: The int() base parameter (int(str, base) with bases 2..36) is not part of the Sharpy int() builtin
+    surface, and the base-limits test additionally constructs arbitrary-precision bases (2**234). Sharpy
+    int is fixed-width, so this is a designed divergence rather than a bug.
+  source: src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy:133
+- kind: not-ported
+  module: cpython_int_tests
+  test: PyLongModuleTests.test_pylong_int_to_decimal
+  side: sharpy
+  deviation: int-overflow-checked
+  spec_ref: docs/language_specification/primitive_types.md
+  origin: Lib/test/test_int.py::PyLongModuleTests.test_pylong_int_to_decimal
+  reason: Exercises arbitrary-precision integer<->decimal conversion (values far beyond 64 bits). Sharpy
+    integers are fixed-width (int-overflow-checked deviation), so the huge-int PyLong tests are out of
+    scope for the oracle.
+  source: src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy:145
+- kind: not-ported
+  module: cpython_list_tests
+  test: CommonTest.test_index
+  side: sharpy
+  bug: 1073
+  spec_ref: docs/language_specification/collection_types.md
+  origin: Lib/test/list_tests.py::CommonTest.test_index
+  reason: 'list.index(x) raises ValueError when x is present only at the final position: the default end
+    bound (-1) is normalized to Count-1, so the search range excludes the last element. The last-position
+    assertion (u.index(1) on [0, 1]) is dropped until #1073 is fixed; the remaining index rows (non-terminal
+    and explicit start/end forms) stay ported.'
+  source: src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy:346
+- kind: not-ported
+  module: cpython_str_tests
+  test: CommonTest.test_replace
+  side: sharpy
+  bug: 1072
+  spec_ref: docs/language_specification/string_type.md
+  origin: Lib/test/string_tests.py::CommonTest.test_replace
+  reason: 'str.replace diverges on two portable rows: count=0 replaces all occurrences instead of none,
+    and an empty old-string throws a raw .NET ArgumentException instead of inserting new between every
+    character. Those two assertions are dropped until #1072 is fixed; the count>=1, no-match, and multi-char
+    rows remain ported.'
+  source: src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy:487
+- kind: not-ported
+  module: cpython_str_tests
+  test: CommonTest.test_split
+  side: sharpy
+  bug: 1071
+  spec_ref: docs/language_specification/string_type.md
+  origin: Lib/test/string_tests.py::CommonTest.test_split
+  reason: 'str.split diverges from Python on two portable rows: split(sep, maxsplit) is off-by-one (maxsplit=N
+    yields N pieces instead of N+1), and no-arg split() does not collapse whitespace runs or strip leading/trailing
+    empties. The maxsplit and whitespace-collapse assertions are dropped until #1071 is fixed; the sep-split,
+    comma, and endcase rows remain ported.'
+  source: src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy:474

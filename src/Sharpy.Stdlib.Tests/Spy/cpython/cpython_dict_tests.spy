@@ -1,0 +1,274 @@
+# ported from CPython 3.12 Lib/test/test_dict.py::DictTest
+#
+# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# NOTICE file in this directory.
+#
+# The classifier scores test_dict at 40% portable, but most of that leans on set
+# literals / set() views ({'a','b'}, set(d.keys())), the `del` statement, reversed(),
+# dict comprehensions over range(1000), and local dunder-fixture key classes. The
+# faithfully portable core — bool/len/contains/keys/values/items/get/copy/update/clear
+# and the KeyError contract — is ported here with each set-based assertion rewritten as
+# a sorted list comparison (Sharpy dict iteration order is unspecified, so tests sort).
+#
+# Omitted (Sharpy divergences the AST classifier cannot see):
+#   - test_resize1, test_copy_noncompact, test_reversed: use the `del` statement, which
+#     is not implemented in Sharpy (SPY0100; docs/language_specification/del_statement.md).
+#   - test_keys/values/items repr and set-algebra views (test_dictview_set_operations_*,
+#     test_items_symmetric_difference): dict views are not first-class set-algebra objects
+#     in Sharpy; the membership/enumeration behavior is ported instead.
+#   - test_bad_key, test_missing, test_eq (dunder forms), test_repr, test_fromkeys,
+#     test_pop (dunder forms): local dunder-fixture key classes, exec(),
+#     RuntimeError-on-mutation-during-iteration — not expressible (Axiom 3 / DYNAMIC).
+#   - test_setdefault / test_popitem: dict.setdefault()/popitem() are unreachable from
+#     .spy (explicit-interface only, #1069); left unported — see the EOF ledger entry.
+
+# --- test_bool (DictTest.test_bool) ---
+
+@test
+def test_bool():
+    empty: dict[int, int] = {}
+    assert not bool(empty)
+    assert bool({1: 2})
+    assert len(empty) == 0
+
+# --- test_len (DictTest.test_len) ---
+
+@test
+def test_len():
+    empty: dict[str, int] = {}
+    assert len(empty) == 0
+    d: dict[str, int] = {"a": 1, "b": 2}
+    assert len(d) == 2
+
+# --- test_contains (DictTest.test_contains) ---
+
+@test
+def test_contains():
+    empty: dict[str, int] = {}
+    assert ("a" not in empty)
+    d: dict[str, int] = {"a": 1, "b": 2}
+    assert ("a" in d)
+    assert ("b" in d)
+    assert ("c" not in d)
+
+# --- test_keys (DictTest.test_keys — set assertions rewritten as sorted lists) ---
+
+@test
+def test_keys():
+    empty: dict[str, int] = {}
+    assert len(empty) == 0
+    d: dict[str, int] = {"a": 1, "b": 2}
+    assert sorted(d.keys()) == ["a", "b"]
+    assert ("a" in d)
+    assert ("b" in d)
+
+# --- test_values (DictTest.test_values) ---
+
+@test
+def test_values():
+    empty: dict[str, int] = {}
+    assert len(empty) == 0
+    d: dict[str, int] = {"a": 2}
+    collected: list[int] = []
+    for v in d.values():
+        collected.append(v)
+    assert collected == [2]
+
+# --- test_items (DictTest.test_items) ---
+
+@test
+def test_items():
+    empty: dict[str, int] = {}
+    count: int = 0
+    for _pair in empty.items():
+        count += 1
+    assert count == 0
+    d: dict[str, int] = {"a": 1, "b": 2}
+    keyacc: list[str] = []
+    valsum: int = 0
+    for pair in d.items():
+        keyacc.append(pair[0])
+        valsum += pair[1]
+    keyacc.sort()
+    assert keyacc == ["a", "b"]
+    assert valsum == 3
+
+# --- test_clear (DictTest.test_clear) ---
+
+@test
+def test_clear():
+    d: dict[int, int] = {1: 1, 2: 2, 3: 3}
+    d.clear()
+    assert len(d) == 0
+
+# --- test_get (DictTest.test_get) ---
+
+@test
+def test_get():
+    empty: dict[str, int] = {}
+    assert empty.get("c", -1) == -1
+    assert empty.get("c", 3) == 3
+    d: dict[str, int] = {"a": 1, "b": 2}
+    assert d.get("c", -1) == -1
+    assert d.get("c", 3) == 3
+    assert d.get("a", 3) == 1
+    assert d.get("a", -1) == 1
+
+# --- test_copy (DictTest.test_copy — value equality + independence) ---
+
+@test
+def test_copy():
+    d: dict[int, int] = {1: 1, 2: 2, 3: 3}
+    c: dict[int, int] = d.copy()
+    assert c == d
+    assert len(c) == 3
+    # copy is independent of the original
+    d[4] = 4
+    assert len(c) == 3
+    assert len(d) == 4
+
+    empty: dict[int, int] = {}
+    assert len(empty.copy()) == 0
+
+# --- test_update (DictTest.test_update — dict argument form) ---
+
+@test
+def test_update():
+    d: dict[str, int] = {"a": 1}
+    d.update({"b": 2, "c": 3})
+    assert sorted(d.keys()) == ["a", "b", "c"]
+    assert d["b"] == 2
+    assert d["c"] == 3
+    # update overwrites existing keys
+    d.update({"a": 10})
+    assert d["a"] == 10
+
+# --- test_tuple_keyerror (DictTest.test_tuple_keyerror — KeyError contract) ---
+
+def _getitem_raises(d: dict[str, int], k: str) -> bool:
+    try:
+        return d[k] < 0
+    except KeyError:
+        return True
+
+@test
+def test_keyerror_on_missing():
+    d: dict[str, int] = {"a": 1}
+    assert _getitem_raises(d, "z")
+    empty: dict[str, int] = {}
+    assert _getitem_raises(empty, "anything")
+
+# --- setitem / getitem round-trip (core mapping behavior) ---
+
+@test
+def test_setitem_getitem():
+    d: dict[str, int] = {}
+    d["a"] = 1
+    d["b"] = 2
+    assert d["a"] == 1
+    assert d["b"] == 2
+    d["a"] = 10
+    assert d["a"] == 10
+    assert len(d) == 2
+
+# --- test_pop (value form): pop removes and returns the mapped value ---
+
+def _pop_raises(d: dict[str, int], k: str) -> bool:
+    try:
+        return d.pop(k) < 0
+    except KeyError:
+        return True
+
+@test
+def test_pop():
+    d: dict[str, int] = {"a": 1, "b": 2}
+    assert d.pop("a") == 1
+    assert ("a" not in d)
+    assert len(d) == 1
+    assert d["b"] == 2
+    assert _pop_raises(d, "missing")
+
+# --- test_constructor (DictTest.test_constructor) ---
+
+@test
+def test_constructor():
+    empty: dict[str, int] = {}
+    assert len(empty) == 0
+    d: dict[str, int] = {"a": 1, "b": 2, "c": 3}
+    assert len(d) == 3
+    assert d["a"] == 1
+    assert d["c"] == 3
+
+# --- test_eq (value equality; order-independent) ---
+
+@test
+def test_equality():
+    assert {"a": 1, "b": 2} == {"b": 2, "a": 1}
+    assert {"a": 1} != {"a": 2}
+    assert {"a": 1} != {"a": 1, "b": 2}
+    empty1: dict[str, int] = {}
+    empty2: dict[str, int] = {}
+    assert empty1 == empty2
+
+# --- test_merge_operator (| and |=; PEP 584) ---
+
+@test
+def test_merge_operator():
+    a: dict[int, int] = {0: 0, 1: 1, 2: 1}
+    b: dict[int, int] = {1: 1, 2: 2, 3: 3}
+    # `|` binds looser than `==` in Sharpy (C# precedence, Axiom 1), unlike Python
+    # where `|` is tighter — parenthesize so both sides agree.
+    assert (a | b) == {0: 0, 1: 1, 2: 2, 3: 3}
+    assert (b | a) == {1: 1, 2: 1, 3: 3, 0: 0}
+    c: dict[int, int] = a.copy()
+    c |= b
+    assert c == {0: 0, 1: 1, 2: 2, 3: 3}
+
+# --- test_tuple_keyerror (tuple keys + KeyError contract) ---
+
+@test
+def test_tuple_keyerror():
+    d: dict[tuple[int, int], str] = {}
+    d[(1, 2)] = "x"
+    assert d[(1, 2)] == "x"
+    ke: bool = False
+    try:
+        _ = d[(3, 4)]
+    except KeyError:
+        ke = True
+    assert ke
+
+# --- test_mutating_iteration (in-place value update over a key snapshot) ---
+
+@test
+def test_mutating_iteration():
+    d: dict[int, int] = {1: 1, 2: 2, 3: 3}
+    for k in sorted(d.keys()):
+        d[k] = d[k] * 10
+    assert d == {1: 10, 2: 20, 3: 30}
+
+# --- test_string_keys_can_track_values (repeated set overwrites) ---
+
+@test
+def test_string_keys_can_track_values():
+    d: dict[str, int] = {}
+    d["a"] = 1
+    d["b"] = 2
+    d["a"] = 3
+    assert d["a"] == 3
+    assert d["b"] == 2
+    assert len(d) == 2
+
+# --- divergence-ledger annotations (machine-read by build_tools.cpython_oracle) ---
+# oracle-ledger:
+#   kind: not-ported
+#   test: DictTest.test_setdefault
+#   side: sharpy
+#   bug: 1069
+#   spec_ref: docs/language_specification/collections.md
+#   origin: Lib/test/test_dict.py::DictTest.test_setdefault
+#   reason: >
+#     dict.setdefault()/popitem() are implemented only as explicit IDict interface
+#     members (SetDefault/PopItem) and are not reachable as instance methods from a
+#     .spy program, so the CPython setdefault/popitem tests cannot be expressed until
+#     #1069 exposes them as public instance methods.

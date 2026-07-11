@@ -218,6 +218,10 @@ def _parse_annotation_blocks(source: str) -> List[Tuple[int, Dict[str, object]]]
         body: List[str] = []
         j = i + 1
         while j < len(lines):
+            # A subsequent marker begins a new block, even without a blank
+            # separator line between them.
+            if lines[j].strip() == ANNOTATION_MARKER:
+                break
             content = _strip_comment(lines[j])
             if content is None or content.strip() == "":
                 break

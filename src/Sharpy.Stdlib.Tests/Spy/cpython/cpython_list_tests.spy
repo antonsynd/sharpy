@@ -1,0 +1,358 @@
+# ported from CPython 3.12 Lib/test/test_list.py::ListTest and its mixin bases
+#                          Lib/test/list_tests.py::CommonTest
+#                          Lib/test/seq_tests.py::CommonTest
+#
+# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# NOTICE file in this directory.
+#
+# The CPython leaf file (test_list.py) is almost entirely subclass / impl-detail
+# (test_preallocation, iterator pickling, sys.maxsize step overflow, __new__/__init__
+# subclassing), so the classifier's "9 portable" score is thin. The genuinely
+# portable, value-level list behavior lives in the list_tests / seq_tests MIXINS that
+# ListTest inherits, so the tranche is drawn from there and each self.type2test([...])
+# collapses to a typed `list[int]` literal. checkequal/assertRaises helpers are
+# rewritten as direct assertions and typed try/except probes.
+#
+# Omitted (Sharpy divergences the AST classifier cannot see):
+#   - test_repeat / test_imul / the *N cases in test_addmul: `list * int` is rejected
+#     (SPY0222 InvalidBinaryOperation) — an unsupported operation in Sharpy, documented
+#     here as a designed language gap (like the str API gaps; not a filed bug). The `+`
+#     half is ported.
+#   - test_setslice / test_delslice / test_extendedslicing / test_slice_assign_iterator:
+#     slice-assignment `a[i:j] = ...` is rejected (SPY0225 InvalidAssignmentTarget) and
+#     `del` is not a Sharpy statement (SPY0100; docs/language_specification/del_statement.md).
+#     Both are designed language gaps documented here, not filed bugs.
+#   - heterogeneous element cases (insert "foo" into an int list, ['a','b',BadCmp(),'c']),
+#     ALWAYS_EQ / NEVER_EQ sentinels, dunder-fixture __eq__ side effects, id()/pickle,
+#     RecursionError repr: not expressible in a statically typed language (Axiom 3).
+
+# --- test_append (list_tests.CommonTest.test_append) ---
+
+@test
+def test_append():
+    a: list[int] = []
+    a.append(0)
+    a.append(1)
+    a.append(2)
+    assert a == [0, 1, 2]
+
+# --- test_extend (list_tests.CommonTest.test_extend, homogeneous cases) ---
+
+@test
+def test_extend():
+    a: list[int] = [0]
+    a.extend([0, 1])
+    assert a == [0, 0, 1]
+    a.extend([])
+    assert a == [0, 0, 1]
+    a.extend(a)
+    assert a == [0, 0, 1, 0, 0, 1]
+
+# --- test_insert (list_tests.CommonTest.test_insert, incl. index clamping) ---
+
+@test
+def test_insert():
+    a: list[int] = [0, 1, 2]
+    a.insert(0, -2)
+    a.insert(1, -1)
+    a.insert(2, 0)
+    assert a == [-2, -1, 0, 0, 1, 2]
+    # negative and out-of-range indices clamp (Python semantics)
+    b: list[int] = [1, 2, 3]
+    b.insert(-200, -1)
+    assert b == [-1, 1, 2, 3]
+    b.insert(200, 9)
+    assert b == [-1, 1, 2, 3, 9]
+
+# --- test_pop (list_tests.CommonTest.test_pop) ---
+
+def _pop_raises(a: list[int], i: int) -> bool:
+    try:
+        return a.pop(i) < 0
+    except IndexError:
+        return True
+
+def _pop_empty_raises(a: list[int]) -> bool:
+    try:
+        return a.pop() < 0
+    except IndexError:
+        return True
+
+@test
+def test_pop():
+    a: list[int] = [-1, 0, 1]
+    a.pop()
+    assert a == [-1, 0]
+    a.pop(0)
+    assert a == [0]
+    assert _pop_raises([0], 5)
+    a.pop(0)
+    assert len(a) == 0
+    assert _pop_empty_raises(a)
+
+# --- test_remove (list_tests.CommonTest.test_remove, homogeneous cases) ---
+
+def _remove_raises(a: list[int], v: int) -> bool:
+    try:
+        a.remove(v)
+        return False
+    except ValueError:
+        return True
+
+@test
+def test_remove():
+    a: list[int] = [0, 0, 1]
+    a.remove(1)
+    assert a == [0, 0]
+    a.remove(0)
+    assert a == [0]
+    a.remove(0)
+    assert len(a) == 0
+    # removing a value that is absent raises ValueError (here: from the now-empty list)
+    assert _remove_raises(a, 0)
+
+# --- test_index (seq_tests.CommonTest.test_index + list_tests, homogeneous cases) ---
+
+def _index_raises(a: list[int], v: int) -> bool:
+    try:
+        return a.index(v) < 0
+    except ValueError:
+        return True
+
+@test
+def test_index():
+    u: list[int] = [0, 1]
+    assert u.index(0) == 0
+    # Dropped (Sharpy divergence, #1073 — see the index ledger entry at EOF):
+    #   u.index(1) — a value present only at the last position — raises ValueError
+    #   because the default end bound normalizes -1 to Count-1, excluding the last
+    #   element.
+    assert _index_raises(u, 2)
+
+    a: list[int] = [-2, -1, 0, 0, 1, 2]
+    assert a.count(0) == 2
+    assert a.index(0) == 2
+    assert a.index(0, 2) == 2
+    assert a.index(0, 3) == 3
+    assert a.index(0, 3, 4) == 3
+
+# --- test_count (seq_tests.CommonTest.test_count, homogeneous cases) ---
+
+@test
+def test_count():
+    a: list[int] = [0, 1, 2, 0, 1, 2, 0, 1, 2]
+    assert a.count(0) == 3
+    assert a.count(1) == 3
+    assert a.count(3) == 0
+
+# --- test_reverse (list_tests.CommonTest.test_reverse) ---
+
+@test
+def test_reverse():
+    u: list[int] = [-2, -1, 0, 1, 2]
+    u.reverse()
+    assert u == [2, 1, 0, -1, -2]
+    u.reverse()
+    assert u == [-2, -1, 0, 1, 2]
+
+# --- test_clear (list_tests.CommonTest.test_clear) ---
+
+@test
+def test_clear():
+    u: list[int] = [2, 3, 4]
+    u.clear()
+    assert len(u) == 0
+
+    e: list[int] = []
+    e.clear()
+    assert len(e) == 0
+
+    v: list[int] = []
+    v.append(1)
+    v.clear()
+    v.append(2)
+    assert v == [2]
+
+# --- test_copy (list_tests.CommonTest.test_copy — value + independence) ---
+
+@test
+def test_copy():
+    u: list[int] = [1, 2, 3]
+    v: list[int] = u.copy()
+    assert v == [1, 2, 3]
+
+    e: list[int] = []
+    assert len(e.copy()) == 0
+
+    # a copy is independent of the original
+    w: list[int] = [1, 2]
+    x: list[int] = w.copy()
+    x.append(9)
+    assert w == [1, 2]
+    assert x == [1, 2, 9]
+
+# --- test_sort (list_tests.CommonTest.test_sort, default ordering) ---
+
+@test
+def test_sort():
+    u: list[int] = [1, 0]
+    u.sort()
+    assert u == [0, 1]
+
+    v: list[int] = [2, 1, 0, -1, -2]
+    v.sort()
+    assert v == [-2, -1, 0, 1, 2]
+
+# --- test_len (seq_tests.CommonTest.test_len + test_list.py leaf) ---
+
+@test
+def test_len():
+    empty: list[int] = []
+    assert len(empty) == 0
+    assert len([0]) == 1
+    assert len([0, 1, 2]) == 3
+
+# --- test_truth (seq_tests.CommonTest.test_truth via len, test_list leaf) ---
+
+@test
+def test_truth():
+    empty: list[int] = []
+    assert len(empty) == 0
+    assert len([42]) == 1
+
+# --- test_contains (seq_tests.CommonTest.test_contains, homogeneous cases) ---
+
+@test
+def test_contains():
+    u: list[int] = [0, 1, 2]
+    assert u.count(0) == 1
+    assert u.count(1) == 1
+    assert u.count(2) == 1
+    assert u.count(-1) == 0
+    assert u.count(3) == 0
+
+# --- test_getitem (seq_tests.CommonTest.test_getitem + test_subscript) ---
+
+def _getitem_raises(a: list[int], i: int) -> bool:
+    try:
+        return a[i] < 0
+    except IndexError:
+        return True
+
+@test
+def test_getitem():
+    u: list[int] = [0, 1, 2, 3, 4]
+    assert u[0] == 0
+    assert u[4] == 4
+    assert u[-1] == 4
+    assert u[-5] == 0
+    assert _getitem_raises(u, 5)
+    assert _getitem_raises(u, -6)
+
+    empty: list[int] = []
+    assert _getitem_raises(empty, 0)
+    assert _getitem_raises(empty, -1)
+
+    a: list[int] = [10, 11]
+    assert a[0] == 10
+    assert a[1] == 11
+    assert a[-2] == 10
+    assert a[-1] == 11
+    assert _getitem_raises(a, -3)
+    assert _getitem_raises(a, 3)
+
+# --- test_setitem (list_tests.CommonTest.test_setitem, index form) ---
+
+def _setitem_raises(a: list[int], i: int) -> bool:
+    try:
+        a[i] = 200
+        return False
+    except IndexError:
+        return True
+
+@test
+def test_setitem():
+    a: list[int] = [0, 1]
+    a[0] = 0
+    a[1] = 100
+    assert a == [0, 100]
+    a[-1] = 200
+    assert a == [0, 200]
+    a[-2] = 100
+    assert a == [100, 200]
+    assert _setitem_raises(a, -3)
+    assert _setitem_raises(a, 2)
+
+    empty: list[int] = []
+    assert _setitem_raises(empty, 0)
+    assert _setitem_raises(empty, -1)
+
+# --- test_getslice (seq_tests.CommonTest.test_getslice, incl. extended slices) ---
+
+@test
+def test_getslice():
+    u: list[int] = [0, 1, 2, 3, 4]
+    assert len(u[0:0]) == 0
+    assert u[1:2] == [1]
+    assert u[-2:-1] == [3]
+    assert u[-1000:1000] == u
+    assert len(u[1000:-1000]) == 0
+    assert u[:] == u
+    # extended slices
+    assert u[::] == u
+    assert u[::2] == [0, 2, 4]
+    assert u[1::2] == [1, 3]
+    assert u[::-1] == [4, 3, 2, 1, 0]
+    assert u[::-2] == [4, 2, 0]
+    assert u[3::-2] == [3, 1]
+
+# --- test_addmul (seq_tests.CommonTest.test_addmul — the `+` half only) ---
+
+@test
+def test_add():
+    u1: list[int] = [0]
+    u2: list[int] = [0, 1]
+    empty: list[int] = []
+    assert u1 + empty == u1
+    assert empty + u1 == u1
+    assert u1 + [1] == u2
+    assert [-1] + u1 == [-1, 0]
+    assert u2 + u2 == [0, 1, 0, 1]
+
+# --- test_iadd (seq_tests.CommonTest.test_iadd + list_tests, homogeneous cases) ---
+
+@test
+def test_iadd():
+    u: list[int] = [0, 1]
+    u += []
+    assert u == [0, 1]
+    u += [2, 3]
+    assert u == [0, 1, 2, 3]
+    u += [4, 5]
+    assert u == [0, 1, 2, 3, 4, 5]
+
+# --- test_minmax (seq_tests.CommonTest.test_minmax) ---
+
+@test
+def test_minmax():
+    u: list[int] = [0, 1, 2]
+    assert min(u) == 0
+    assert max(u) == 2
+
+# --- divergence-ledger annotations (machine-read by build_tools.cpython_oracle) ---
+# Kept at EOF so they never shift the generated #line map. See
+# build_tools/cpython_oracle/README.md#divergence-ledger.
+#
+# oracle-ledger:
+#   kind: not-ported
+#   test: CommonTest.test_index
+#   side: sharpy
+#   bug: 1073
+#   spec_ref: docs/language_specification/collection_types.md
+#   origin: Lib/test/list_tests.py::CommonTest.test_index
+#   reason: >
+#     list.index(x) raises ValueError when x is present only at the final position:
+#     the default end bound (-1) is normalized to Count-1, so the search range excludes
+#     the last element. The last-position assertion (u.index(1) on [0, 1]) is dropped
+#     until #1073 is fixed; the remaining index rows (non-terminal and explicit
+#     start/end forms) stay ported.

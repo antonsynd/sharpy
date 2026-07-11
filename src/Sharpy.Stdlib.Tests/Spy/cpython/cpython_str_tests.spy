@@ -1,0 +1,499 @@
+# ported from CPython 3.12 Lib/test/test_unicode.py::UnicodeTest
+# (and the Lib/test/string_tests.py mixins it inherits: CommonTest,
+#  MixinStrUnicodeUserStringTest)
+#
+# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# NOTICE file in this directory. CPython 3.12 has no top-level test_str.py — the `str`
+# *type* is tested by test_unicode.py, whose value-level assertions live almost entirely
+# in the string_tests.py mixin bases via a checkequal(expected, obj, method, *args)
+# reflection helper. Each checkequal is rewritten here as a direct typed method call on
+# Sharpy's str (a System.String with Python-compatible extension methods). Table-driven
+# loops are unrolled; every case was verified against Sharpy's actual output.
+#
+# Omitted (Sharpy API/axiom divergences the AST classifier cannot see):
+#   - .center/.ljust/.rjust with a custom fillchar: the fill parameter is a CLR `char`,
+#     not expressible from a .spy single-char str literal (SPY0354); default-fill only.
+#   - str.count(sub, start[, end]): Sharpy count() takes a single arg (SPY0224); the
+#     range-limited count rows are dropped (find/index DO take start[,end]).
+#   - codecs / encode-decode (utf7/utf8/idna), %-formatting (__mod__), huge width/precision,
+#     and str.maketrans/.translate: no matching Sharpy surface (see EOF ledger entry).
+#   - non-ASCII full-Unicode casing/titlecase edge cases beyond the ASCII + one vulgar
+#     fraction covered here (string-indexing-utf16 deviation).
+
+# --- test_lower / test_upper / test_casefold ---
+
+@test
+def test_lower():
+    assert "HeLLo cOmpUteRs".lower() == "hello computers"
+    assert "hello".lower() == "hello"
+    assert "".lower() == ""
+
+@test
+def test_upper():
+    assert "HeLLo cOmpUteRs".upper() == "HELLO COMPUTERS"
+    assert "hello".upper() == "HELLO"
+    assert "".upper() == ""
+
+@test
+def test_casefold():
+    assert "hello".casefold() == "hello"
+    assert "Hello".casefold() == "hello"
+    assert "ABC".casefold() == "abc"
+
+# --- test_capitalize / test_title / test_swapcase ---
+
+@test
+def test_capitalize():
+    assert " hello ".capitalize() == " hello "
+    assert "Hello ".capitalize() == "Hello "
+    assert "hello ".capitalize() == "Hello "
+    assert "aaaa".capitalize() == "Aaaa"
+    assert "AaAa".capitalize() == "Aaaa"
+
+@test
+def test_title():
+    assert " hello ".title() == " Hello "
+    assert "hello world".title() == "Hello World"
+    assert "fOrMaT thIs aS titLe String".title() == "Format This As Title String"
+    assert "getInt".title() == "Getint"
+    # apostrophes start new title words in CPython
+    assert "they're bill's friends".title() == "They'Re Bill'S Friends"
+
+@test
+def test_swapcase():
+    assert "HeLLo cOmpUteRs".swapcase() == "hEllO CoMPuTErS"
+    assert "Hello World".swapcase() == "hELLO wORLD"
+
+# --- test_center / test_ljust / test_rjust (space-fill only) / test_zfill ---
+
+@test
+def test_center():
+    assert "abc".center(10) == "   abc    "
+    assert "abc".center(6) == " abc  "
+    assert "abc".center(3) == "abc"
+    assert "abc".center(2) == "abc"
+
+@test
+def test_ljust():
+    assert "abc".ljust(10) == "abc       "
+    assert "abc".ljust(6) == "abc   "
+    assert "abc".ljust(3) == "abc"
+    assert "abc".ljust(2) == "abc"
+
+@test
+def test_rjust():
+    assert "abc".rjust(10) == "       abc"
+    assert "abc".rjust(6) == "   abc"
+    assert "abc".rjust(3) == "abc"
+    assert "abc".rjust(2) == "abc"
+
+@test
+def test_zfill():
+    assert "123".zfill(2) == "123"
+    assert "123".zfill(3) == "123"
+    assert "123".zfill(4) == "0123"
+    assert "+123".zfill(3) == "+123"
+    assert "+123".zfill(5) == "+0123"
+    assert "-123".zfill(5) == "-0123"
+    assert "".zfill(3) == "000"
+    assert "34".zfill(1) == "34"
+    assert "34".zfill(4) == "0034"
+
+# --- test_islower / test_isupper / test_istitle ---
+
+@test
+def test_islower():
+    assert not "".islower()
+    assert "a".islower()
+    assert not "A".islower()
+    assert not "\n".islower()
+    assert "abc".islower()
+    assert not "aBc".islower()
+    assert "abc\n".islower()
+
+@test
+def test_isupper():
+    assert not "".isupper()
+    assert not "a".isupper()
+    assert "A".isupper()
+    assert not "\n".isupper()
+    assert "ABC".isupper()
+    assert not "AbC".isupper()
+    assert "ABC\n".isupper()
+
+@test
+def test_istitle():
+    assert not "".istitle()
+    assert not "a".istitle()
+    assert "A".istitle()
+    assert "A Titlecased Line".istitle()
+    assert "A\nTitlecased Line".istitle()
+    assert "A Titlecased, Line".istitle()
+    assert not "Not a capitalized String".istitle()
+    assert not "NOT".istitle()
+
+# --- test_isspace / test_isalpha / test_isalnum / test_isdigit ---
+
+@test
+def test_isspace():
+    assert not "".isspace()
+    assert " ".isspace()
+    assert "\t".isspace()
+    assert "\r".isspace()
+    assert "\n".isspace()
+    assert " \t\r\n".isspace()
+    assert not "a".isspace()
+    assert not " \t\r\na".isspace()
+
+@test
+def test_isalpha():
+    assert not "".isalpha()
+    assert "a".isalpha()
+    assert "A".isalpha()
+    assert "abc".isalpha()
+    assert not "ab1c".isalpha()
+    assert not "abc\n".isalpha()
+
+@test
+def test_isalnum():
+    assert not "".isalnum()
+    assert "a".isalnum()
+    assert "1".isalnum()
+    assert "abc123".isalnum()
+    assert not "ab c".isalnum()
+    assert not "?".isalnum()
+
+@test
+def test_isdigit():
+    assert not "".isdigit()
+    assert "0".isdigit()
+    assert "0123456789".isdigit()
+    assert not "0123456789a".isdigit()
+    assert not "abc".isdigit()
+
+# --- test_isdecimal / test_isnumeric (unicode fraction diverges from isdigit) ---
+
+@test
+def test_isdecimal():
+    assert not "".isdecimal()
+    assert "0".isdecimal()
+    assert "0123456789".isdecimal()
+    assert not "0123456789a".isdecimal()
+
+@test
+def test_isnumeric():
+    assert not "".isnumeric()
+    assert "0".isnumeric()
+    assert not "abc".isnumeric()
+    # VULGAR FRACTION ONE HALF: numeric but not a digit and not decimal
+    assert "½".isnumeric()
+    assert not "½".isdigit()
+    assert not "½".isdecimal()
+
+# --- test_isidentifier / test_isprintable / test_isascii ---
+
+@test
+def test_isidentifier():
+    assert "a".isidentifier()
+    assert "Z".isidentifier()
+    assert "_".isidentifier()
+    assert "b0".isidentifier()
+    assert "b_".isidentifier()
+    assert not "0".isidentifier()
+    assert not "".isidentifier()
+    assert not " ".isidentifier()
+
+@test
+def test_isprintable():
+    assert "".isprintable()
+    assert " ".isprintable()
+    assert "abcdefg".isprintable()
+    assert not "abcdefg\n".isprintable()
+
+@test
+def test_isascii():
+    assert "".isascii()
+    assert "abc".isascii()
+    assert "\x00\x7f".isascii()
+    assert not "\x80".isascii()
+    assert not "é".isascii()
+
+# --- test_find / test_rfind / test_index / test_rindex ---
+
+@test
+def test_find():
+    assert "abcdefghiabc".find("abc") == 0
+    assert "abcdefghiabc".find("abc", 1) == 9
+    assert "abcdefghiabc".find("def", 4) == -1
+    assert "abc".find("", 0) == 0
+    assert "abc".find("", 3) == 3
+    assert "abc".find("", 4) == -1
+    assert "rrarrrrrrrrra".find("a") == 2
+    assert "rrarrrrrrrrra".find("a", 4) == 12
+    assert "rrarrrrrrrrra".find("a", 4, 6) == -1
+    assert "".find("") == 0
+    assert "".find("xx") == -1
+
+@test
+def test_rfind():
+    assert "abcdefghiabc".rfind("abc") == 9
+    assert "abcdefghiabc".rfind("") == 12
+    assert "abcdefghiabc".rfind("abcd") == 0
+    assert "abcdefghiabc".rfind("abcz") == -1
+    assert "abc".rfind("", 3) == 3
+    assert "rrarrrrrrrrra".rfind("a") == 12
+    assert "rrarrrrrrrrra".rfind("a", 0, 6) == 2
+
+def _index_raises(s: str, sub: str) -> bool:
+    try:
+        return s.index(sub) < 0
+    except ValueError:
+        return True
+
+@test
+def test_index():
+    assert "abcdefghiabc".index("") == 0
+    assert "abcdefghiabc".index("def") == 3
+    assert "abcdefghiabc".index("abc") == 0
+    assert "abcdefghiabc".index("abc", 1) == 9
+    assert _index_raises("abcdefghiabc", "hib")
+    assert _index_raises("abcdefghi", "ghix")
+
+def _rindex_raises(s: str, sub: str) -> bool:
+    try:
+        return s.rindex(sub) < 0
+    except ValueError:
+        return True
+
+@test
+def test_rindex():
+    assert "abcdefghiabc".rindex("") == 12
+    assert "abcdefghiabc".rindex("def") == 3
+    assert "abcdefghiabc".rindex("abc") == 9
+    assert "abcdefghiabc".rindex("abc", 0, -1) == 0
+    assert _rindex_raises("abcdefghiabc", "hib")
+
+# --- test_split / test_rsplit / test_splitlines ---
+
+@test
+def test_split():
+    assert "a b c d".split() == ["a", "b", "c", "d"]
+    assert "a,b,c".split(",") == ["a", "b", "c"]
+    assert "a,b,,c,".split(",") == ["a", "b", "", "c", ""]
+    assert "endcase test".split("test") == ["endcase ", ""]
+    # Dropped (Sharpy divergence, #1071 — see the split ledger entry at EOF):
+    #   split(sep, maxsplit) is off-by-one (maxsplit=N yields N pieces, not N+1),
+    #   and no-arg split() does not collapse whitespace runs or strip empties
+    #   ("   a b   c ".split() / "   ".split()).
+
+@test
+def test_rsplit():
+    assert "a b c d".rsplit() == ["a", "b", "c", "d"]
+    assert "a b c d".rsplit(" ", 1) == ["a b c", "d"]
+    assert "a b c d".rsplit(" ", 2) == ["a b", "c", "d"]
+    assert "a,b,c".rsplit(",") == ["a", "b", "c"]
+    assert "a,b,,c,".rsplit(",") == ["a", "b", "", "c", ""]
+
+@test
+def test_splitlines():
+    assert "abc\ndef\n\rghi".splitlines() == ["abc", "def", "", "ghi"]
+    assert "abc\ndef\n\r\nghi".splitlines() == ["abc", "def", "", "ghi"]
+    assert "abc\ndef\r\nghi".splitlines() == ["abc", "def", "ghi"]
+    assert "abc\ndef\r\nghi\n".splitlines() == ["abc", "def", "ghi"]
+    no_lines: list[str] = []
+    assert "".splitlines() == no_lines
+    assert "abc\ndef\n\rghi".splitlines(True) == ["abc\n", "def\n", "\r", "ghi"]
+
+# --- test_replace / test_count ---
+
+@test
+def test_replace():
+    assert "one!two!three!".replace("!", "@") == "one@two@three@"
+    assert "one!two!three!".replace("!", "@", 1) == "one@two!three!"
+    assert "one!two!three!".replace("!", "@", 2) == "one@two@three!"
+    assert "one!two!three!".replace("x", "@") == "one!two!three!"
+    assert "mississippi".replace("ss", "SS") == "miSSiSSippi"
+    # Dropped (Sharpy divergence, #1072 — see the replace ledger entry at EOF):
+    #   count=0 replaces all instead of none, and an empty old-string throws a
+    #   raw .NET ArgumentException instead of inserting new between every char.
+
+@test
+def test_count():
+    # Sharpy str.count takes no start/end slice args (whole-string counts only).
+    assert "aaa".count("a") == 3
+    assert "aaa".count("b") == 0
+    assert "aaaa".count("aa") == 2
+    assert "".count("") == 1
+    assert "mississippi".count("ss") == 2
+    assert "mississippi".count("i") == 4
+
+# --- test_strip / lstrip / rstrip ---
+
+@test
+def test_strip():
+    assert "   hello   ".strip() == "hello"
+    assert "   hello   ".lstrip() == "hello   "
+    assert "   hello   ".rstrip() == "   hello"
+    assert "hello".strip() == "hello"
+    assert "xyzzyhelloxyzzy".strip("xyz") == "hello"
+    assert "xyzzyhelloxyzzy".lstrip("xyz") == "helloxyzzy"
+    assert "xyzzyhelloxyzzy".rstrip("xyz") == "xyzzyhello"
+    assert "mississippi".strip("i") == "mississipp"
+
+# --- test_startswith / test_endswith ---
+
+@test
+def test_startswith():
+    assert "hello".startswith("he")
+    assert "hello".startswith("hello")
+    assert not "hello".startswith("hello world")
+    assert "hello".startswith("")
+    assert not "hello".startswith("ello")
+    assert "hello".startswith("ello", 1)
+    assert "hello".startswith("o", 4)
+    assert not "hello".startswith("o", 5)
+
+@test
+def test_endswith():
+    assert "hello".endswith("lo")
+    assert "hello".endswith("hello")
+    assert not "hello".endswith("world hello")
+    assert "hello".endswith("")
+    assert not "hello".endswith("hell")
+    assert "hello".endswith("ell", 0, 4)
+    assert "hello".endswith("o")
+
+# --- test_contains (in operator) ---
+
+@test
+def test_contains():
+    assert "abc".find("") >= 0
+    assert "abc".find("a") >= 0
+    assert "abc".find("c") >= 0
+    assert "abc".find("abc") >= 0
+    assert "abc".find("d") == -1
+    assert "abc".find("ab") >= 0
+    assert "abc".find("ac") == -1
+
+# --- test_concatenation / repetition / comparison ---
+
+@test
+def test_concatenation():
+    assert "abc" + "def" == "abcdef"
+    assert "" + "abc" == "abc"
+    assert "abc" + "" == "abc"
+    assert "abc" * 3 == "abcabcabc"
+    assert 3 * "abc" == "abcabcabc"
+    assert "abc" * 0 == ""
+    assert "abc" * 1 == "abc"
+
+@test
+def test_comparison():
+    assert "abc" == "abc"
+    assert "abc" != "abd"
+    assert "abc" < "abd"
+    assert "abc" < "abcd"
+    assert "abd" > "abc"
+    assert "abc" <= "abc"
+    assert "abc" >= "abc"
+    assert "Abc" < "abc"
+
+# --- test_indexing / test_slicing / test_iteration ---
+
+@test
+def test_indexing():
+    s: str = "python"
+    assert s[0] == "p"
+    assert s[1] == "y"
+    assert s[-1] == "n"
+    assert s[-6] == "p"
+    assert len(s) == 6
+
+@test
+def test_slicing():
+    s: str = "abcdef"
+    assert s[0:2] == "ab"
+    assert s[2:] == "cdef"
+    assert s[:3] == "abc"
+    assert s[:] == "abcdef"
+    assert s[-2:] == "ef"
+    assert s[::-1] == "fedcba"
+    assert s[1:5:2] == "bd"
+
+@test
+def test_iteration():
+    collected: list[str] = []
+    for ch in "abc":
+        collected.append(ch)
+    assert collected == ["a", "b", "c"]
+
+# --- test_expandtabs / removeprefix / removesuffix / join ---
+
+@test
+def test_expandtabs():
+    assert "abc\rab\tdef\ng\thi".expandtabs() == "abc\rab      def\ng       hi"
+    assert "abc\rab\tdef\ng\thi".expandtabs(4) == "abc\rab  def\ng   hi"
+    assert "abc\r\nab\tdef\ng\thi".expandtabs(4) == "abc\r\nab  def\ng   hi"
+    assert " \ta\n\tb".expandtabs(1) == "  a\n b"
+
+@test
+def test_removeprefix():
+    assert "spam".removeprefix("sp") == "am"
+    assert "spam".removeprefix("spam") == ""
+    assert "spam".removeprefix("x") == "spam"
+    assert "spam".removeprefix("") == "spam"
+
+@test
+def test_removesuffix():
+    assert "spam".removesuffix("am") == "sp"
+    assert "spam".removesuffix("spam") == ""
+    assert "spam".removesuffix("x") == "spam"
+    assert "spam".removesuffix("") == "spam"
+
+@test
+def test_join():
+    parts: list[str] = ["a", "b", "c"]
+    assert ",".join(parts) == "a,b,c"
+    assert "".join(parts) == "abc"
+    with_empties: list[str] = ["", "b", "", "d"]
+    assert "".join(with_empties) == "bd"
+    single: list[str] = ["x"]
+    assert ",".join(single) == "x"
+    empty: list[str] = []
+    assert ",".join(empty) == ""
+
+# The omitted CPython methods listed in the header (codecs, %-formatting,
+# maketrans/translate, custom-fillchar justify) are pure Sharpy-surface API gaps —
+# not portable methods dropped for a filed bug — so per the pilot precedent
+# (bisect/textwrap) they stay header notes, not ledger entries.
+#
+# The following ARE portable assertions dropped for filed Sharpy bugs, recorded as
+# machine-read ledger entries (see build_tools/cpython_oracle/README.md#divergence-ledger).
+# Kept at EOF so they never shift the generated #line map.
+#
+# oracle-ledger:
+#   kind: not-ported
+#   test: CommonTest.test_split
+#   side: sharpy
+#   bug: 1071
+#   spec_ref: docs/language_specification/string_type.md
+#   origin: Lib/test/string_tests.py::CommonTest.test_split
+#   reason: >
+#     str.split diverges from Python on two portable rows: split(sep, maxsplit) is
+#     off-by-one (maxsplit=N yields N pieces instead of N+1), and no-arg split() does
+#     not collapse whitespace runs or strip leading/trailing empties. The maxsplit and
+#     whitespace-collapse assertions are dropped until #1071 is fixed; the sep-split,
+#     comma, and endcase rows remain ported.
+# oracle-ledger:
+#   kind: not-ported
+#   test: CommonTest.test_replace
+#   side: sharpy
+#   bug: 1072
+#   spec_ref: docs/language_specification/string_type.md
+#   origin: Lib/test/string_tests.py::CommonTest.test_replace
+#   reason: >
+#     str.replace diverges on two portable rows: count=0 replaces all occurrences
+#     instead of none, and an empty old-string throws a raw .NET ArgumentException
+#     instead of inserting new between every character. Those two assertions are
+#     dropped until #1072 is fixed; the count>=1, no-match, and multi-char rows
+#     remain ported.

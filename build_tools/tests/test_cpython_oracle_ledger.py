@@ -123,6 +123,44 @@ def test_scans_not_ported_annotation(tmp_path: Path):
     assert entry["source"].endswith("cpython_demo_tests.spy:2")
 
 
+def test_scans_consecutive_annotations_without_blank_separator(tmp_path: Path):
+    """Two `# oracle-ledger:` blocks back-to-back (no blank line between the end of
+    the first and the start of the second) must parse as two separate entries.
+
+    Regression for the extractor folding both markers into one invalid YAML block —
+    hit by the int-tranche file, which carries two not-ported entries in a row."""
+    _write_spy(
+        tmp_path,
+        "cpython_multi_tests.spy",
+        """
+        # oracle-ledger:
+        #   kind: not-ported
+        #   test: MultiTest.test_first
+        #   side: sharpy
+        #   bug: 1071
+        #   reason: first divergence, dropped until fixed
+        # oracle-ledger:
+        #   kind: not-ported
+        #   test: MultiTest.test_second
+        #   side: sharpy
+        #   bug: 1072
+        #   reason: second divergence, dropped until fixed
+
+        @test
+        def test_kept():
+            assert 1 == 1
+        """,
+    )
+    data = _build(tmp_path)
+    entries = data["entries"]
+    assert len(entries) == 2
+    assert [e["test"] for e in entries] == [
+        "MultiTest.test_first",
+        "MultiTest.test_second",
+    ]
+    assert [e["bug"] for e in entries] == [1071, 1072]
+
+
 def test_scans_expected_fail_cpython_annotation(tmp_path: Path):
     _write_spy(
         tmp_path,
