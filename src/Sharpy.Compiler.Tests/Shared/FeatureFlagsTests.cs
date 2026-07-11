@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Sharpy.Compiler.Shared;
 using Xunit;
@@ -54,10 +55,13 @@ public class FeatureFlagsTests
     }
 
     [Fact]
-    public void KnownFeatures_ContainsOnlyTestFeature()
+    public void KnownFeatures_ContainsExactlyTheRegisteredFeatures()
     {
-        Assert.Single(FeatureFlags.KnownFeatures);
-        Assert.True(FeatureFlags.KnownFeatures.ContainsKey("__test_feature"));
+        // Exact-set guard: adding a feature must be a deliberate act that updates this list
+        // (and, per docs/design/feature-lifecycle.md, registers its gated constructs).
+        Assert.Equal(
+            new[] { "__test_feature", "defer", "matmul" },
+            FeatureFlags.KnownFeatures.Keys.OrderBy(k => k, StringComparer.Ordinal).ToArray());
     }
 
     [Fact]

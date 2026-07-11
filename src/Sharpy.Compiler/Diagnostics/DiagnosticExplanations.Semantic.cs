@@ -575,6 +575,25 @@ public static partial class DiagnosticExplanations
             "Enable the feature: pass --enable-feature=matmul, add <Features>matmul</Features> to " +
             "the .spyproj, or (for semantic/codegen features) add 'from __future__ import <name>'.");
 
+        Add(dict, DiagnosticCodes.Semantic.DeferOutsideFunction,
+            "defer statement outside a function body",
+            "Semantic",
+            "A defer statement was used outside a function or method body. Deferred statements " +
+            "run when the enclosing block exits, so defer only makes sense inside a function or " +
+            "method; there is no exit point to attach to at module or class level.",
+            "defer print(\"cleanup\")  # at module level",
+            "Move the defer statement into a function or method body:\ndef main():\n    defer print(\"cleanup\")");
+
+        Add(dict, DiagnosticCodes.Semantic.DeferControlFlowEscape,
+            "Control flow escapes a deferred statement",
+            "Semantic",
+            "A return, break, continue, or yield appears inside a deferred statement or block. " +
+            "Deferred code runs during block exit (it lowers to a finally block), so transferring " +
+            "control out of it is not allowed — the enclosing function or loop is already exiting.",
+            "def main():\n    defer:\n        return  # cannot return from cleanup code",
+            "Remove the control-flow statement from the deferred block; deferred code should only " +
+            "perform cleanup side effects.");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",
