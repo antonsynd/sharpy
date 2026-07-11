@@ -76,10 +76,10 @@ internal partial class ProjectCompiler
                 // Check if lexer collected any errors
                 if (lexer.Diagnostics.HasErrors)
                 {
-                    compilationUnit.Diagnostics.Merge(lexer.Diagnostics);
+                    MergeWithPhase(compilationUnit.Diagnostics, lexer.Diagnostics, CompilerPhase.Lexer);
                     compilationUnit.Phase = CompilationPhase.Failed;
                     fileMetrics.DiagnosticCount = lexer.Diagnostics.GetAll().Count;
-                    _diagnostics.Merge(lexer.Diagnostics);
+                    MergeWithPhase(_diagnostics, lexer.Diagnostics, CompilerPhase.Lexer);
                     ProjectMetrics.AddFileMetrics(fileMetrics);
                     continue;
                 }
@@ -103,10 +103,10 @@ internal partial class ProjectCompiler
                 // Check if parser collected any errors
                 if (parser.Diagnostics.HasErrors)
                 {
-                    compilationUnit.Diagnostics.Merge(parser.Diagnostics);
+                    MergeWithPhase(compilationUnit.Diagnostics, parser.Diagnostics, CompilerPhase.Parser);
                     compilationUnit.Phase = CompilationPhase.Failed;
                     fileMetrics.DiagnosticCount = parser.Diagnostics.GetAll().Count;
-                    _diagnostics.Merge(parser.Diagnostics);
+                    MergeWithPhase(_diagnostics, parser.Diagnostics, CompilerPhase.Parser);
                     ProjectMetrics.AddFileMetrics(fileMetrics);
                     continue;
                 }
@@ -217,10 +217,10 @@ internal partial class ProjectCompiler
 
                     if (lexer.Diagnostics.HasErrors)
                     {
-                        unit.Diagnostics.Merge(lexer.Diagnostics);
+                        MergeWithPhase(unit.Diagnostics, lexer.Diagnostics, CompilerPhase.Lexer);
                         unit.Phase = CompilationPhase.Failed;
                         fileMetrics.DiagnosticCount = lexer.Diagnostics.GetAll().Count;
-                        _diagnostics.Merge(lexer.Diagnostics);
+                        MergeWithPhase(_diagnostics, lexer.Diagnostics, CompilerPhase.Lexer);
                         ProjectMetrics.AddFileMetrics(fileMetrics);
                         continue;
                     }
@@ -242,10 +242,10 @@ internal partial class ProjectCompiler
 
                     if (parser.Diagnostics.HasErrors)
                     {
-                        unit.Diagnostics.Merge(parser.Diagnostics);
+                        MergeWithPhase(unit.Diagnostics, parser.Diagnostics, CompilerPhase.Parser);
                         unit.Phase = CompilationPhase.Failed;
                         fileMetrics.DiagnosticCount = parser.Diagnostics.GetAll().Count;
-                        _diagnostics.Merge(parser.Diagnostics);
+                        MergeWithPhase(_diagnostics, parser.Diagnostics, CompilerPhase.Parser);
                         ProjectMetrics.AddFileMetrics(fileMetrics);
                         continue;
                     }

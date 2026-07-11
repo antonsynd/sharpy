@@ -107,7 +107,13 @@ internal class ValidationPipeline
             stopwatch.Restart();
             try
             {
-                validator.Validate(module, context);
+                // Interpose a provenance scope so every diagnostic this validator adds to the
+                // shared bag is stamped with Data["producer"] = validator.Name and Phase =
+                // Validation — with zero edits at the validators' individual Add* call sites.
+                using (context.Diagnostics.BeginProducerScope(validator.Name))
+                {
+                    validator.Validate(module, context);
+                }
             }
             catch (OperationCanceledException)
             {

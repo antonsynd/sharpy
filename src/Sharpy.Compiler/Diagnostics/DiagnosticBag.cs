@@ -106,6 +106,19 @@ public class DiagnosticBag
     /// </summary>
     private readonly HashSet<string> _rootCauseIdentifiers = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// The <see cref="CompilerDiagnostic.Data"/> key under which a diagnostic's producing
+    /// component (the validator or subsystem that reported it) is recorded.
+    /// </summary>
+    public const string ProducerDataKey = "producer";
+
+    // Ambient provenance stamped onto every diagnostic added while a scope is active
+    // (see BeginPhaseScope / BeginProducerScope). These are set and cleared on the same
+    // thread that drives a compilation phase or validator, so they intentionally sit
+    // outside the diagnostic lock: they describe *who is currently adding*, not stored state.
+    private CompilerPhase? _activePhase;
+    private string? _activeProducer;
+
     public DiagnosticBag() : this(warningsAsErrors: false, suppressedWarnings: null) { }
 
     public DiagnosticBag(bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null)
@@ -118,8 +131,100 @@ public class DiagnosticBag
             : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Opens a phase-provenance scope. Every diagnostic added while the returned scope is
+    /// alive whose <see cref="CompilerDiagnostic.Phase"/> is still <see cref="CompilerPhase.Unknown"/>
+    /// is back-filled with <paramref name="phase"/>. Existing explicit phases are never overwritten.
+    /// Dispose the scope (via <c>using</c>) to restore the previous ambient phase.
+    /// </summary>
+    public IDisposable BeginPhaseScope(CompilerPhase phase)
+    {
+        var previous = _activePhase;
+        _activePhase = phase;
+        return new ScopeRestorer(this, restorePhase: true, previous, restoreProducer: false, null);
+    }
+
+    /// <summary>
+    /// Opens a validator-provenance scope. Every diagnostic added while the returned scope is
+    /// alive is stamped with <c>Data["producer"] = <paramref name="producerName"/></c> (unless it
+    /// already carries a producer) and, if its phase is still <see cref="CompilerPhase.Unknown"/>,
+    /// with <see cref="CompilerPhase.Validation"/>. Neither an existing producer nor an explicit
+    /// phase is overwritten. Dispose the scope to restore the previous ambient state.
+    /// </summary>
+    public IDisposable BeginProducerScope(string producerName)
+    {
+        var previousPhase = _activePhase;
+        var previousProducer = _activeProducer;
+        _activeProducer = producerName;
+        _activePhase = CompilerPhase.Validation;
+        return new ScopeRestorer(this, restorePhase: true, previousPhase, restoreProducer: true, previousProducer);
+    }
+
+    /// <summary>
+    /// Applies the ambient phase/producer provenance to a diagnostic, without clobbering any
+    /// value the diagnostic already carries. Called at the single Add funnel so every code path
+    /// (direct Add*, AddRange, Merge) is stamped uniformly with zero per-call-site edits.
+    /// </summary>
+    private CompilerDiagnostic ApplyProvenanceStamp(CompilerDiagnostic diagnostic)
+    {
+        var phase = _activePhase;
+        var producer = _activeProducer;
+
+        if (phase is CompilerPhase activePhase && diagnostic.Phase == CompilerPhase.Unknown)
+        {
+            diagnostic = diagnostic with { Phase = activePhase };
+        }
+
+        if (producer != null
+            && (diagnostic.Data == null || !diagnostic.Data.ContainsKey(ProducerDataKey)))
+        {
+            var data = diagnostic.Data == null
+                ? new Dictionary<string, string>()
+                : new Dictionary<string, string>(diagnostic.Data);
+            data[ProducerDataKey] = producer;
+            diagnostic = diagnostic with { Data = data };
+        }
+
+        return diagnostic;
+    }
+
+    private sealed class ScopeRestorer : IDisposable
+    {
+        private readonly DiagnosticBag _bag;
+        private readonly bool _restorePhase;
+        private readonly CompilerPhase? _previousPhase;
+        private readonly bool _restoreProducer;
+        private readonly string? _previousProducer;
+        private bool _disposed;
+
+        public ScopeRestorer(DiagnosticBag bag, bool restorePhase, CompilerPhase? previousPhase,
+            bool restoreProducer, string? previousProducer)
+        {
+            _bag = bag;
+            _restorePhase = restorePhase;
+            _previousPhase = previousPhase;
+            _restoreProducer = restoreProducer;
+            _previousProducer = previousProducer;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            if (_restorePhase)
+                _bag._activePhase = _previousPhase;
+            if (_restoreProducer)
+                _bag._activeProducer = _previousProducer;
+        }
+    }
+
     public void Add(CompilerDiagnostic diagnostic)
     {
+        // Stamp phase/producer provenance from the active scope (if any) before anything else,
+        // so the value ultimately stored — and used for dedup — reflects the producing context.
+        diagnostic = ApplyProvenanceStamp(diagnostic);
+
         // Apply suppression: skip warnings/hints whose code is in the suppressed set.
         // Hints share the same suppression mechanism as warnings.
         if ((diagnostic.IsWarning || diagnostic.IsHint)

@@ -698,7 +698,7 @@ internal partial class ProjectCompiler
                     fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
 
                     // Preserve all accumulated diagnostics from the type checker
-                    _diagnostics.Merge(typeChecker.Diagnostics);
+                    MergeWithPhase(_diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
                     unit.Phase = CompilationPhase.Failed;
                     continue;
                 }
@@ -711,8 +711,8 @@ internal partial class ProjectCompiler
                 }
 
                 // Merge all type checking diagnostics to both unit and project level
-                unit.Diagnostics.Merge(typeChecker.Diagnostics);
-                _diagnostics.Merge(typeChecker.Diagnostics);
+                MergeWithPhase(unit.Diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
+                MergeWithPhase(_diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
 
                 // Capture per-file artifact counts
                 fileMetrics.DiagnosticCount = unit.Diagnostics.GetAll().Count;

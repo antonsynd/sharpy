@@ -82,8 +82,8 @@ internal partial class ProjectCompiler
                 // info notes (e.g. SPY1001 implicit-interface synthesis) must reach the
                 // result bag so the CLI, LSP, and fixture .warning assertions can observe
                 // them; previously they were silently dropped unless codegen also errored.
-                unit.Diagnostics.Merge(codeGenContext.Diagnostics);
-                _diagnostics.Merge(codeGenContext.Diagnostics);
+                MergeWithPhase(unit.Diagnostics, codeGenContext.Diagnostics, CompilerPhase.CodeGeneration);
+                MergeWithPhase(_diagnostics, codeGenContext.Diagnostics, CompilerPhase.CodeGeneration);
 
                 // Check for code generation errors
                 if (codeGenContext.HasErrors)
@@ -130,7 +130,7 @@ internal partial class ProjectCompiler
         }
 
         // Merge assembly diagnostics into project diagnostics
-        _diagnostics.Merge(assemblyResult.Diagnostics);
+        MergeWithPhase(_diagnostics, assemblyResult.Diagnostics, CompilerPhase.Assembly);
 
         if (!assemblyResult.Success)
         {

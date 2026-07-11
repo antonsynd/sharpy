@@ -58,6 +58,19 @@ internal partial class ProjectCompiler
 
     // Track errors and warnings using structured diagnostics
     private DiagnosticBag _diagnostics = new();
+
+    /// <summary>
+    /// Merges <paramref name="source"/> into <paramref name="target"/>, back-filling any
+    /// still-<see cref="CompilerPhase.Unknown"/> diagnostic with <paramref name="phase"/> while
+    /// preserving explicit phases and validator producers already stamped at the source.
+    /// </summary>
+    private static void MergeWithPhase(DiagnosticBag target, DiagnosticBag source, CompilerPhase phase)
+    {
+        using (target.BeginPhaseScope(phase))
+        {
+            target.Merge(source);
+        }
+    }
     private DependencyGraph? _dependencyGraph;
 
     // Files involved in deferred circular import cycles (normalized paths)

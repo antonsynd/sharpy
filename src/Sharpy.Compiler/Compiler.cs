@@ -207,7 +207,7 @@ public class Compiler
             metrics.EndPhase();
 
             if (lexResult.HasErrors)
-                return MergeAndFail(diagnostics, lexResult.Diagnostics, metrics, result);
+                return MergeAndFail(diagnostics, lexResult.Diagnostics, metrics, result, CompilerPhase.Lexer);
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 2: Syntax Analysis
@@ -225,8 +225,8 @@ public class Compiler
             metrics.EndPhase();
 
             if (parseResult.HasErrors)
-                return MergeAndFail(diagnostics, parseResult.Diagnostics, metrics, result);
-            diagnostics.Merge(parseResult.Diagnostics);
+                return MergeAndFail(diagnostics, parseResult.Diagnostics, metrics, result, CompilerPhase.Parser);
+            MergeWithPhase(diagnostics, parseResult.Diagnostics, CompilerPhase.Parser);
 
             Debug.Assert(module != null, "Parser should produce a non-null Module");
             Debug.Assert(module.Body != null, "Module.Body should not be null");
@@ -253,7 +253,7 @@ public class Compiler
             var nameResult = pipeline.ResolveNames(module, cancellationToken);
             LogPhaseEnd(filePath, nameResult.Diagnostics.ErrorCount);
             metrics.EndPhase();
-            diagnostics.Merge(nameResult.Diagnostics);
+            MergeWithPhase(diagnostics, nameResult.Diagnostics, CompilerPhase.NameResolution);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -272,7 +272,7 @@ public class Compiler
             metrics.EndPhase();
 
             if (importResolver.Diagnostics.GetAll().Count > 0)
-                diagnostics.Merge(importResolver.Diagnostics);
+                MergeWithPhase(diagnostics, importResolver.Diagnostics, CompilerPhase.ImportResolution);
 
             if (nameResult.HasErrors)
             {
@@ -305,7 +305,7 @@ public class Compiler
                 if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> errorValidatorDict)
                     metrics.SetValidatorTimes(errorValidatorDict);
                 metrics.DiagnosticCount = diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
-                diagnostics.Merge(typeChecker.Diagnostics);
+                MergeWithPhase(diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
                 return result.WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo).BuildFailure();
             }
             LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
@@ -322,7 +322,7 @@ public class Compiler
             metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
             if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> validatorDict)
                 metrics.SetValidatorTimes(validatorDict);
-            diagnostics.Merge(typeChecker.Diagnostics);
+            MergeWithPhase(diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
 
             if (diagnostics.HasErrors)
                 return FailWithDiagnostics(diagnostics, metrics, result.WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo));
@@ -349,7 +349,7 @@ public class Compiler
             {
                 LogPhaseEnd(filePath, codeGenResult.Diagnostics.ErrorCount);
                 metrics.EndPhase();
-                return MergeAndFail(diagnostics, codeGenResult.Diagnostics, metrics, result);
+                return MergeAndFail(diagnostics, codeGenResult.Diagnostics, metrics, result, CompilerPhase.CodeGeneration);
             }
 
             // Emit CodeGenEvent with the size of generated code
@@ -421,11 +421,30 @@ public class Compiler
     }
 
     private static CompilationResult MergeAndFail(
-        DiagnosticBag target, DiagnosticBag source, CompilationMetrics metrics, CompilationResultBuilder result)
+        DiagnosticBag target, DiagnosticBag source, CompilationMetrics metrics, CompilationResultBuilder result,
+        CompilerPhase phase = CompilerPhase.Unknown)
     {
-        target.Merge(source);
+        MergeWithPhase(target, source, phase);
         metrics.DiagnosticCount = target.GetAll().Count;
         return result.BuildFailure();
+    }
+
+    /// <summary>
+    /// Merges <paramref name="source"/> into <paramref name="target"/>, back-filling any
+    /// still-<see cref="CompilerPhase.Unknown"/> diagnostics with <paramref name="phase"/>.
+    /// Diagnostics that already carry an explicit phase (or a validator producer) keep it.
+    /// </summary>
+    private static void MergeWithPhase(DiagnosticBag target, DiagnosticBag source, CompilerPhase phase)
+    {
+        if (phase == CompilerPhase.Unknown)
+        {
+            target.Merge(source);
+            return;
+        }
+        using (target.BeginPhaseScope(phase))
+        {
+            target.Merge(source);
+        }
     }
 
     private static CompilationResult FailWithDiagnostics(
