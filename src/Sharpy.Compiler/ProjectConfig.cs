@@ -56,6 +56,15 @@ public class ProjectConfig
     public List<string> SourceFiles { get; init; } = new();
 
     /// <summary>
+    /// Optional in-memory source overrides keyed by source-file path. When a file in
+    /// <see cref="SourceFiles"/> has an entry here, the compiler uses this text instead of
+    /// reading the file from disk. Used by the synthetic project-of-one-file (#1038) so a
+    /// single-file compile of inline source keeps the caller's path verbatim (for <c>#line</c>
+    /// directives and deterministic output) without materializing a temp file.
+    /// </summary>
+    internal Dictionary<string, string>? InMemorySources { get; init; }
+
+    /// <summary>
     /// List of .NET assembly references
     /// </summary>
     public List<string> References { get; init; } = new();

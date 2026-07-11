@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Services;
@@ -25,8 +24,10 @@ namespace Sharpy.Compiler;
 ///   <item>Type resolution and type checking (with <see cref="SemanticAnalysisException"/> handling)</item>
 ///   <item>Type checking of imported .spy modules</item>
 ///   <item>Post-type-checking materialization of CodeGenInfo and VariableTypes</item>
-///   <item>Code generation via RoslynEmitter</item>
 /// </list>
+///
+/// Code generation is <b>not</b> part of this backend: single-file and project compiles both
+/// generate C# through the one <see cref="Project.ProjectCompiler"/> path (#1038).
 /// </summary>
 internal class FileCompilationPipeline
 {
@@ -34,20 +35,17 @@ internal class FileCompilationPipeline
     private readonly SemanticInfo _semanticInfo;
     private readonly SemanticBinding _semanticBinding;
     private readonly ICompilerLogger _logger;
-    private readonly ICodeEmitterFactory _emitterFactory;
 
     public FileCompilationPipeline(
         SymbolTable symbolTable,
         SemanticInfo semanticInfo,
         SemanticBinding semanticBinding,
-        ICompilerLogger logger,
-        ICodeEmitterFactory? emitterFactory = null)
+        ICompilerLogger logger)
     {
         _symbolTable = symbolTable;
         _semanticInfo = semanticInfo;
         _semanticBinding = semanticBinding;
         _logger = logger;
-        _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
     }
 
     /// <summary>
@@ -342,137 +340,6 @@ internal class FileCompilationPipeline
         }
     }
 
-    /// <summary>
-    /// Phase 4: Code generation. Generates C# for the entry file and all imported modules.
-    /// </summary>
-    public CodeGenResult GenerateCode(
-        Module module,
-        string filePath,
-        ImportResolver importResolver,
-        BuiltinRegistry builtinRegistry,
-        bool isEntryPoint,
-        string projectNamespace,
-        ICompilerLogger logger,
-        Shared.FeatureFlags compilationFeatures,
-        CancellationToken cancellationToken = default)
-    {
-        var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
-        {
-            SourceFilePath = filePath,
-            ProjectNamespace = projectNamespace,
-            IsEntryPoint = isEntryPoint,
-            Logger = logger,
-            SemanticInfo = _semanticInfo,
-            SemanticBinding = _semanticBinding,
-            Features = importResolver.GetEffectiveFeatures(compilationFeatures, filePath)
-        };
-        var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
-        var compilationUnit = emitter.GenerateCompilationUnit(module);
-        var csharpCode = compilationUnit.ToFullString();
-
-        if (codeGenContext.EmitLineDirectives)
-        {
-            csharpCode = LineDirectivePostProcessor.Process(csharpCode);
-        }
-
-        var diagnostics = new DiagnosticBag();
-
-        // Coarse-stamp code-generation diagnostics with CompilerPhase.CodeGeneration at their
-        // source (both the post-codegen parse check and the emitter's own diagnostics), so the
-        // phase survives when this bag is merged into the driver's diagnostics.
-        using (diagnostics.BeginPhaseScope(CompilerPhase.CodeGeneration))
-        {
-            // Verify generated C# parses without syntax errors
-            CompilerInvariants.AssertPostCodeGen(csharpCode, diagnostics);
-
-            if (codeGenContext.HasErrors)
-            {
-                diagnostics.Merge(codeGenContext.Diagnostics);
-                return new CodeGenResult(csharpCode, new Dictionary<string, string>(), diagnostics);
-            }
-        }
-
-        // Generate C# for all imported .spy modules
-        var allGeneratedFiles = new Dictionary<string, string> { [filePath] = csharpCode };
-
-        foreach (var (modulePath, moduleInfo) in importResolver.LoadedSpyModules)
-        {
-            if (string.Equals(Path.GetFullPath(modulePath), Path.GetFullPath(filePath),
-                StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            var moduleCs = GenerateCSharpForModule(
-                moduleInfo, builtinRegistry, projectNamespace,
-                logger, importResolver.GetEffectiveFeatures(compilationFeatures, modulePath),
-                cancellationToken);
-
-            if (moduleCs != null)
-            {
-                allGeneratedFiles[modulePath] = moduleCs;
-            }
-            // If moduleCs is null for a .spy module, codegen failed for that module.
-            // Errors are silently skipped — matching ProjectCompiler behavior.
-        }
-
-        return new CodeGenResult(csharpCode, allGeneratedFiles, diagnostics);
-    }
-
-    /// <summary>
-    /// Generate C# code for a single imported module.
-    /// </summary>
-    private string? GenerateCSharpForModule(
-        ModuleInfo moduleInfo,
-        BuiltinRegistry builtinRegistry,
-        string? projectNamespace,
-        ICompilerLogger logger,
-        Shared.FeatureFlags features,
-        CancellationToken cancellationToken = default)
-    {
-        if (moduleInfo.Module == null || moduleInfo.IsNetModule)
-            return null;
-
-        // Register the module's own exported symbols into the SymbolTable so that
-        // same-module references can be resolved during code generation.
-        var addedSymbols = new List<string>();
-        foreach (var (name, sym) in moduleInfo.ExportedSymbols)
-        {
-            if (_symbolTable.Lookup(name, searchParents: false) == null)
-            {
-                _symbolTable.TryDefine(sym);
-                addedSymbols.Add(name);
-            }
-        }
-
-        var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
-        {
-            SourceFilePath = moduleInfo.Path,
-            ProjectNamespace = projectNamespace,
-            IsEntryPoint = false,
-            Logger = logger,
-            SemanticInfo = _semanticInfo,
-            SemanticBinding = _semanticBinding,
-            Features = features
-        };
-
-        var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
-        var compilationUnit = emitter.GenerateCompilationUnit(moduleInfo.Module);
-
-        // Clean up temporarily added symbols
-        foreach (var name in addedSymbols)
-        {
-            _symbolTable.Remove(name);
-        }
-
-        if (codeGenContext.HasErrors)
-            return null;
-
-        var csharpCode = compilationUnit.ToFullString();
-        if (codeGenContext.EmitLineDirectives)
-        {
-            csharpCode = LineDirectivePostProcessor.Process(csharpCode);
-        }
-        return csharpCode;
-    }
 }
 
 // ----- Result Structs -----
@@ -536,27 +403,6 @@ internal readonly struct ImportResolveResult
 
     public ImportResolver ImportResolver { get; }
     public DiagnosticBag Diagnostics => ImportResolver.Diagnostics;
-    public bool HasErrors => Diagnostics.HasErrors;
-}
-
-/// <summary>
-/// Result of code generation via <see cref="FileCompilationPipeline.GenerateCode"/>.
-/// </summary>
-internal readonly struct CodeGenResult
-{
-    public CodeGenResult(
-        string csharpCode,
-        Dictionary<string, string> allGeneratedFiles,
-        DiagnosticBag diagnostics)
-    {
-        CSharpCode = csharpCode;
-        AllGeneratedFiles = allGeneratedFiles;
-        Diagnostics = diagnostics;
-    }
-
-    public string CSharpCode { get; }
-    public Dictionary<string, string> AllGeneratedFiles { get; }
-    public DiagnosticBag Diagnostics { get; }
     public bool HasErrors => Diagnostics.HasErrors;
 }
 

@@ -38,7 +38,8 @@ internal partial class ProjectCompiler
             Metrics = ProjectMetrics,
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel,
-            EffectiveFeatures = _features
+            EffectiveFeatures = _features,
+            ImportResolver = _importResolverBacking
         };
     }
 

@@ -1,15 +1,19 @@
-using System.Collections.Immutable;
+using System.IO;
+using System.Linq;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Semantic;
-using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
+/// <summary>
+/// Verifies that the single-file compile facade drives code generation through the injected
+/// <see cref="ICodeEmitterFactory"/> on the one unified <c>ProjectCompiler</c> path (#1038),
+/// including the union of compilation-wide and per-file <c>from __future__ import</c> features.
+/// </summary>
 public class CodeEmitterFactoryTests
 {
     private class MockCodeEmitter : ICodeEmitter
@@ -38,126 +42,68 @@ public class CodeEmitterFactoryTests
         }
     }
 
+    private const string ValidSource = "def f() -> int:\n    return 42\n";
+
     [Fact]
-    public void FileCompilationPipeline_UsesInjectedFactory()
+    public void Compile_UsesInjectedEmitterFactory()
     {
         var mockFactory = new MockCodeEmitterFactory();
-        var builtins = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtins);
-        var semanticInfo = new SemanticInfo();
-        var semanticBinding = new SemanticBinding();
-        var logger = NullLogger.Instance;
+        var options = new CompilerOptions { OutputType = "library" };
+        var compiler = new Compiler(options, NullLogger.Instance, mockFactory);
 
-        var pipeline = new FileCompilationPipeline(
-            symbolTable, semanticInfo, semanticBinding, logger, mockFactory);
+        compiler.Compile(ValidSource, "test.spy");
 
-        var module = new Module
-        {
-            Body = ImmutableArray.Create<Statement>(
-                new ExpressionStatement
-                {
-                    Expression = new FunctionCall
-                    {
-                        Function = new Identifier { Name = "print" },
-                        Arguments = ImmutableArray.Create<Expression>(
-                            new IntegerLiteral { Value = "42" })
-                    }
-                })
-        };
-
-        pipeline.ResolveNames(module, CancellationToken.None);
-
-        var importResolver = new ImportResolver(logger);
-
-        var result = pipeline.GenerateCode(
-            module, "<test>", importResolver, builtins,
-            isEntryPoint: true, projectNamespace: "Test",
-            logger, Sharpy.Compiler.Shared.FeatureFlags.None, CancellationToken.None);
-
-        Assert.Equal(1, mockFactory.CreateCallCount);
+        Assert.True(mockFactory.CreateCallCount >= 1);
         Assert.NotNull(mockFactory.LastCreatedEmitter);
-        Assert.True(mockFactory.LastCreatedEmitter.WasCalled);
+        Assert.True(mockFactory.LastCreatedEmitter!.WasCalled);
     }
 
     [Fact]
-    public void FileCompilationPipeline_DefaultsToRoslynEmitterFactory()
+    public void Compile_DefaultsToRoslynEmitterFactory()
     {
-        var builtins = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtins);
-        var semanticInfo = new SemanticInfo();
-        var semanticBinding = new SemanticBinding();
-        var logger = NullLogger.Instance;
+        var options = new CompilerOptions { OutputType = "library" };
+        var compiler = new Compiler(options, NullLogger.Instance);
 
-        var pipeline = new FileCompilationPipeline(
-            symbolTable, semanticInfo, semanticBinding, logger);
+        var result = compiler.Compile(ValidSource, "test.spy");
 
-        var module = new Module
-        {
-            Body = ImmutableArray.Create<Statement>(
-                new ExpressionStatement
-                {
-                    Expression = new FunctionCall
-                    {
-                        Function = new Identifier { Name = "print" },
-                        Arguments = ImmutableArray.Create<Expression>(
-                            new IntegerLiteral { Value = "42" })
-                    }
-                })
-        };
-
-        pipeline.ResolveNames(module, CancellationToken.None);
-
-        var importResolver = new ImportResolver(logger);
-
-        var result = pipeline.GenerateCode(
-            module, "<test>", importResolver, builtins,
-            isEntryPoint: true, projectNamespace: "Test",
-            logger, Sharpy.Compiler.Shared.FeatureFlags.None, CancellationToken.None);
-
-        Assert.NotNull(result.CSharpCode);
-        Assert.NotEmpty(result.CSharpCode);
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(d => d.Message)));
+        Assert.NotNull(result.GeneratedCSharpCode);
+        Assert.NotEmpty(result.GeneratedCSharpCode!);
     }
 
     [Fact]
-    public void GenerateCode_ThreadsUnionOfCompilationWideAndFutureFeaturesIntoContext()
+    public void CodeGen_ThreadsUnionOfCompilationWideAndFutureFeaturesIntoContext()
     {
         var mockFactory = new MockCodeEmitterFactory();
-        var builtins = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtins);
-        var semanticInfo = new SemanticInfo();
-        var semanticBinding = new SemanticBinding();
-        var logger = NullLogger.Instance;
+        var tempDir = Directory.CreateTempSubdirectory("sharpy-features-").FullName;
+        try
+        {
+            // A semantic-scoped feature enabled per-file via `from __future__ import`.
+            var filePath = Path.Combine(tempDir, "features.spy");
+            File.WriteAllText(filePath, "from __future__ import __test_feature\n");
 
-        var pipeline = new FileCompilationPipeline(
-            symbolTable, semanticInfo, semanticBinding, logger, mockFactory);
+            // A distinct compilation-wide feature; Enable does not validate names.
+            var options = new CompilerOptions
+            {
+                OutputType = "library",
+                Features = Sharpy.Compiler.Shared.FeatureFlags.None.Enable("compilation_wide")
+            };
+            var compiler = new Compiler(options, NullLogger.Instance, mockFactory);
 
-        // A semantic-scoped feature enabled per-file via `from __future__ import`.
-        const string filePath = "test.spy";
-        var source = new Sharpy.Compiler.Text.SourceText(
-            "from __future__ import __test_feature\n", filePath);
-        var lexResult = FileCompilationPipeline.Lex(source, logger);
-        var parseResult = FileCompilationPipeline.Parse(lexResult.Tokens, logger);
-        Assert.NotNull(parseResult.Module);
-        var module = parseResult.Module!;
+            compiler.Compile(File.ReadAllText(filePath), filePath);
 
-        var nameResult = pipeline.ResolveNames(module);
-        var importResult = pipeline.ResolveImports(
-            module, nameResult.NameResolver, filePath, moduleRegistry: null);
-
-        // A distinct compilation-wide feature; Enable does not validate names.
-        var compilationFeatures = Sharpy.Compiler.Shared.FeatureFlags.None.Enable("compilation_wide");
-
-        pipeline.GenerateCode(
-            module, filePath, importResult.ImportResolver, builtins,
-            isEntryPoint: true, projectNamespace: "Test",
-            logger, compilationFeatures, CancellationToken.None);
-
-        Assert.NotNull(mockFactory.LastContext);
-        var features = mockFactory.LastContext!.Features;
-        // The context receives the union of both sources.
-        Assert.True(features.IsEnabled("__test_feature"),
-            "per-file `from __future__ import` feature should reach the codegen context");
-        Assert.True(features.IsEnabled("compilation_wide"),
-            "compilation-wide feature should reach the codegen context");
+            Assert.NotNull(mockFactory.LastContext);
+            var features = mockFactory.LastContext!.Features;
+            // The context receives the union of both sources.
+            Assert.True(features.IsEnabled("__test_feature"),
+                "per-file `from __future__ import` feature should reach the codegen context");
+            Assert.True(features.IsEnabled("compilation_wide"),
+                "compilation-wide feature should reach the codegen context");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); }
+            catch { /* best-effort cleanup */ }
+        }
     }
 }

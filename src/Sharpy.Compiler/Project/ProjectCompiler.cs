@@ -230,7 +230,7 @@ internal partial class ProjectCompiler
             // then resolve inheritance for imported types.
             // ResolveInheritanceRelationships() handles types declared within the project,
             // but imported types from external modules still have unresolved base names.
-            var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel.SemanticBinding, _logger, _emitterFactory);
+            var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel.SemanticBinding, _logger);
             compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -274,6 +274,7 @@ internal partial class ProjectCompiler
                     DependencyGraph = _dependencyGraph,
                     ProjectModel = _projectModel,
                     EffectiveFeatures = _features,
+                    ImportResolver = _importResolverBacking,
                     UsedAssemblyPaths = _moduleRegistry?.GetUsedAssemblyPaths()
                         ?? (IReadOnlySet<string>)new HashSet<string>()
                 };
@@ -293,7 +294,8 @@ internal partial class ProjectCompiler
                 Metrics = _projectMetricsBacking,
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel,
-                EffectiveFeatures = _features
+                EffectiveFeatures = _features,
+                ImportResolver = _importResolverBacking
             };
         }
         catch (Exception ex)
@@ -314,7 +316,8 @@ internal partial class ProjectCompiler
                 Metrics = _projectMetricsBacking,
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel,
-                EffectiveFeatures = _features
+                EffectiveFeatures = _features,
+                ImportResolver = _importResolverBacking
             };
         }
     }

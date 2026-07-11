@@ -165,19 +165,122 @@ public class Compiler
     /// </summary>
     public CompilationResult Analyze(string sourceCode, string filePath, CancellationToken cancellationToken,
         bool preserveTrivia = false) =>
-        CompileInternal(sourceCode, filePath, cancellationToken, analyzeOnly: true, preserveTrivia: preserveTrivia);
+        AnalyzeInternal(sourceCode, filePath, cancellationToken, preserveTrivia: preserveTrivia);
 
     public CompilationResult Compile(string sourceCode, string filePath) =>
         Compile(sourceCode, filePath, CancellationToken.None);
 
-    public CompilationResult Compile(string sourceCode, string filePath, CancellationToken cancellationToken) =>
-        CompileInternal(sourceCode, filePath, cancellationToken, analyzeOnly: false);
+    /// <summary>
+    /// Compiles a single Sharpy file through the unified pipeline: the entry file plus the
+    /// transitive closure of its local <c>.spy</c> imports is lowered to a synthetic
+    /// project-of-one-file and driven through <see cref="ProjectCompiler"/> (#1038). There is
+    /// no separate single-file codegen path — this is a thin facade over the one code path from
+    /// source to generated C#.
+    /// </summary>
+    public CompilationResult Compile(string sourceCode, string filePath, CancellationToken cancellationToken)
+    {
+        _logger.LogInfo($"Starting compilation of {filePath}");
 
-    private CompilationResult CompileInternal(
-        string sourceCode, string filePath, CancellationToken cancellationToken, bool analyzeOnly,
+        // The entry file's source is fed in-memory (see SyntheticProject.BuildConfig) keyed by
+        // the path below, so no temp file is created and the caller's path is preserved verbatim
+        // for #line directives and deterministic output. On-disk callers still get a canonical
+        // absolute path so their local imports resolve.
+        var entryFilePath = File.Exists(filePath) ? Path.GetFullPath(filePath) : filePath;
+
+        var config = SyntheticProject.BuildConfig(sourceCode, entryFilePath, _options, _logger);
+        var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
+            _options.WarningsAsErrors, _options.SuppressedWarnings, _options.MaxErrors,
+            incremental: false, _emitterFactory, _options.Features);
+
+        // Emit an assembly from inside the project pipeline only when a concrete output path was
+        // requested; otherwise stop after codegen (single-file callers historically only produced
+        // generated C#, leaving assembly emission to the CLI).
+        var emitAssembly = !string.IsNullOrEmpty(_options.OutputAssemblyPath);
+        var projectResult = projectCompiler.Compile(config, cancellationToken, emitAssembly);
+
+        // Module discovery ran in the constructor (loading referenced assemblies/stdlib); surface
+        // it on the reconstituted per-file metrics, matching the project path.
+        if (_discoveryTime > TimeSpan.Zero)
+            projectResult.Metrics?.SetDiscoveryTime(_discoveryTime);
+
+        // Reference-load failures are recorded on the shared module registry in the constructor,
+        // before the project pipeline runs; surface them here so single-file callers still see
+        // the "failed to load reference" error the legacy path reported.
+        var registryHasErrors = false;
+        if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
+        {
+            projectResult.Diagnostics.Merge(_moduleRegistry.Diagnostics);
+            registryHasErrors = true;
+        }
+
+        return MapProjectResult(projectResult, entryFilePath, filePath, sourceCode, registryHasErrors);
+    }
+
+    /// <summary>
+    /// Reconstitutes a single-file <see cref="CompilationResult"/> from the unified project
+    /// pipeline's per-unit artifacts, without re-running any analysis. <see cref="SourceText"/>
+    /// carries the caller-facing path so single-file consumers see the path they passed in.
+    /// </summary>
+    private CompilationResult MapProjectResult(
+        ProjectCompilationResult projectResult, string entryFilePath, string originalFilePath,
+        string sourceCode, bool registryHasErrors)
+    {
+        var model = projectResult.ProjectModel;
+        Model.CompilationUnit? entryUnit = null;
+        var generatedFiles = new Dictionary<string, string>();
+        if (model != null)
+        {
+            foreach (var unit in model.Units.Values)
+            {
+                if (unit.GeneratedCSharp != null)
+                    generatedFiles[unit.FilePath] = unit.GeneratedCSharp;
+                if (SyntheticProject.PathsEqual(unit.FilePath, entryFilePath))
+                    entryUnit = unit;
+            }
+        }
+
+        if (entryUnit?.Metrics != null)
+        {
+            // For a project-of-one-file, every diagnostic belongs to the single entry file, so
+            // surface the full count on its per-file metrics (error-path parity with the former
+            // single-file driver).
+            entryUnit.Metrics.DiagnosticCount = projectResult.Diagnostics.GetAll().Count;
+
+            // Reference/stdlib discovery ran in the constructor before any per-file metrics existed;
+            // record it as a first-class phase on the entry file's metrics.
+            if (_discoveryTime > TimeSpan.Zero
+                && !entryUnit.Metrics.Phases.Any(p => p.Name == CompilerPhaseNames.ModuleDiscovery))
+            {
+                entryUnit.Metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, _discoveryTime);
+            }
+        }
+
+        return new CompilationResult
+        {
+            Success = projectResult.Success && !registryHasErrors,
+            Diagnostics = projectResult.Diagnostics,
+            Module = entryUnit?.Ast,
+            SymbolTable = model?.GlobalSymbols,
+            SemanticInfo = model?.SemanticInfo,
+            SemanticBinding = model?.SemanticBinding,
+            ModuleRegistry = _moduleRegistry,
+            GeneratedCSharpCode = entryUnit?.GeneratedCSharp,
+            GeneratedCSharpFiles = generatedFiles,
+            Metrics = entryUnit?.Metrics,
+            SourceText = new SourceText(sourceCode, originalFilePath),
+            Tokens = entryUnit?.Tokens,
+            ImportResolver = projectResult.ImportResolver
+        };
+    }
+
+    /// <summary>
+    /// Analyze Sharpy source code through phases 1–3 (Lexer → Parser → Semantic) without codegen.
+    /// </summary>
+    private CompilationResult AnalyzeInternal(
+        string sourceCode, string filePath, CancellationToken cancellationToken,
         bool preserveTrivia = false)
     {
-        _logger.LogInfo($"Starting {(analyzeOnly ? "analysis" : "compilation")} of {filePath}");
+        _logger.LogInfo($"Starting analysis of {filePath}");
         var metrics = new CompilationMetrics(fileName: filePath);
 
         // Module discovery ran in the constructor (loading referenced assemblies/stdlib),
@@ -245,7 +348,7 @@ public class Compiler
             if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
                 return MergeAndFail(diagnostics, _moduleRegistry.Diagnostics, metrics, result);
 
-            var pipeline = new FileCompilationPipeline(symbolTable, semanticInfo, semanticBinding, _logger, _emitterFactory);
+            var pipeline = new FileCompilationPipeline(symbolTable, semanticInfo, semanticBinding, _logger);
 
             // Pass 1: Name resolution
             metrics.StartPhase(CompilerPhaseNames.NameResolution);
@@ -328,52 +431,15 @@ public class Compiler
                 return FailWithDiagnostics(diagnostics, metrics, result.WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo));
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (analyzeOnly)
-            {
-                metrics.DiagnosticCount = diagnostics.GetAll().Count;
-                return result
-                    .WithSuccess(!diagnostics.HasErrors)
-                    .WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo)
-                    .WithModuleRegistry(_moduleRegistry).Build();
-            }
-
-            // Phase 4: Code Generation
-            metrics.StartPhase(CompilerPhaseNames.CodeGeneration);
-            LogPhaseStart(CompilerPhaseNames.CodeGeneration, filePath);
-
-            var codeGenResult = pipeline.GenerateCode(
-                module, filePath, importResolver, builtinRegistry,
-                isEntryPoint, _options.Namespace ?? "", _logger, _options.Features, cancellationToken);
-
-            if (codeGenResult.HasErrors)
-            {
-                LogPhaseEnd(filePath, codeGenResult.Diagnostics.ErrorCount);
-                metrics.EndPhase();
-                return MergeAndFail(diagnostics, codeGenResult.Diagnostics, metrics, result, CompilerPhase.CodeGeneration);
-            }
-
-            // Emit CodeGenEvent with the size of generated code
-            if (_logger.SupportsStructuredLogging)
-            {
-                var totalBytes = codeGenResult.AllGeneratedFiles.Values.Sum(cs => System.Text.Encoding.UTF8.GetByteCount(cs));
-                _logger.LogEvent(new CodeGenEvent("CSharp", totalBytes) { FilePath = filePath });
-            }
-
-            LogPhaseEnd(filePath, codeGenResult.Diagnostics.ErrorCount);
-            metrics.EndPhase();
             metrics.DiagnosticCount = diagnostics.GetAll().Count;
-
             return result
                 .WithSuccess(!diagnostics.HasErrors)
                 .WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo)
-                .WithModuleRegistry(_moduleRegistry)
-                .WithGeneratedCSharpCode(codeGenResult.CSharpCode)
-                .WithGeneratedCSharpFiles(codeGenResult.AllGeneratedFiles)
-                .Build();
+                .WithModuleRegistry(_moduleRegistry).Build();
         }
         catch (OperationCanceledException)
         {
-            _logger.LogInfo("Compilation cancelled");
+            _logger.LogInfo("Analysis cancelled");
             diagnostics.AddError("Compilation cancelled", filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationCancelled);
             return result.BuildFailure();
         }
@@ -595,6 +661,14 @@ public class ProjectCompilationResult
     /// Available for tooling/analysis (e.g., incremental compilation, build order visualization).
     /// </summary>
     internal Project.DependencyGraph? DependencyGraph { get; init; }
+
+    /// <summary>
+    /// The import resolver with loaded module information, as of the point compilation
+    /// stopped. Null if compilation failed before import resolution (e.g. a lexer error).
+    /// Exposed so the synthetic project-of-one-file path (#1038) can reconstitute
+    /// <see cref="CompilationResult.ImportResolver"/> for single-file callers.
+    /// </summary>
+    internal ImportResolver? ImportResolver { get; init; }
 
     /// <summary>
     /// Read-only query interface for file dependency information.

@@ -124,7 +124,7 @@ public sealed class CompilerApi
     private CompileResult CompileAsSyntheticProject(
         string source, CompilerOptions options, string entryFilePath, CancellationToken cancellationToken)
     {
-        var config = BuildSyntheticProjectConfig(source, options, entryFilePath);
+        var config = SyntheticProject.BuildConfig(source, entryFilePath, options, _logger);
         var registry = BuildModuleRegistry(config);
         var projectCompiler = new Project.ProjectCompiler(
             logger: _logger,
@@ -154,7 +154,7 @@ public sealed class CompilerApi
             {
                 if (unit.GeneratedCSharp != null)
                     generatedBySource[unit.FilePath] = unit.GeneratedCSharp;
-                if (PathsEqual(unit.FilePath, entryFilePath))
+                if (SyntheticProject.PathsEqual(unit.FilePath, entryFilePath))
                 {
                     entryCSharp = unit.GeneratedCSharp;
                     entryAst = unit.Ast;
@@ -178,152 +178,6 @@ public sealed class CompilerApi
             ProjectMetrics = result.Metrics
         };
     }
-
-    /// <summary>
-    /// Builds the synthetic <see cref="ProjectConfig"/> for a single-file compile per
-    /// Design Decision 3 of the Wave 2 plan (#1038): <c>RootNamespace</c> defaults to empty
-    /// (preserving single-file global-namespace output), <c>ProjectRootPath</c> is the entry
-    /// file's directory (aligning single-file module naming with project mode — the #940 fix),
-    /// the entry file is the sole <c>EntryPoint</c>, incremental is off, and <c>SourceFiles</c>
-    /// is seeded by walking the local-import closure up front.
-    /// </summary>
-    private ProjectConfig BuildSyntheticProjectConfig(string source, CompilerOptions options, string entryFilePath)
-    {
-        var projectDirectory = Path.GetDirectoryName(entryFilePath) ?? Directory.GetCurrentDirectory();
-        var sourceFiles = DiscoverLocalImportClosure(source, entryFilePath, options);
-
-        return new ProjectConfig
-        {
-            ProjectFilePath = entryFilePath,
-            ProjectDirectory = projectDirectory,
-            // Empty root namespace keeps single-file output in the global namespace; the
-            // emit-csharp --namespace override flows through CompilerOptions.Namespace.
-            RootNamespace = options.Namespace ?? string.Empty,
-            OutputType = options.OutputType,
-            TargetFramework = "net10.0",
-            AssemblyName = options.AssemblyName,
-            EntryPoint = entryFilePath,
-            SourceFiles = sourceFiles,
-            References = (options.References ?? Array.Empty<string>()).ToList(),
-            ModulePaths = (options.ModulePaths ?? Array.Empty<string>()).ToList(),
-            Configuration = options.Configuration,
-            WarningsAsErrors = options.WarningsAsErrors,
-            SuppressedWarnings = new HashSet<string>(options.SuppressedWarnings, StringComparer.OrdinalIgnoreCase),
-            OutputAssemblyPathOverride = options.OutputAssemblyPath
-        };
-    }
-
-    /// <summary>
-    /// Walks the transitive closure of local <c>.spy</c> imports starting from the entry file.
-    /// Standard-library and CLR imports resolve to no <c>.spy</c> file and are excluded; only
-    /// on-disk <c>.spy</c> sources become project source files. The entry file's live
-    /// <paramref name="entrySource"/> is used for its own scan; imported files are read from disk.
-    /// </summary>
-    private List<string> DiscoverLocalImportClosure(string entrySource, string entryFilePath, CompilerOptions options)
-    {
-        var closure = new List<string>();
-        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var resolver = new Semantic.ModuleResolver(_logger, options.ModulePaths);
-
-        var entryFull = Path.GetFullPath(entryFilePath);
-        visited.Add(entryFull);
-        var queue = new Queue<(string Path, string? Source)>();
-        queue.Enqueue((entryFull, entrySource));
-
-        while (queue.Count > 0)
-        {
-            var (file, inlineSource) = queue.Dequeue();
-            closure.Add(file);
-
-            string moduleSource;
-            if (inlineSource != null)
-            {
-                moduleSource = inlineSource;
-            }
-            else
-            {
-                try { moduleSource = File.ReadAllText(file); }
-                catch { continue; }
-            }
-
-            var module = ParseModuleForImports(moduleSource, file, options.Features);
-            if (module == null)
-                continue;
-
-            resolver.SetCurrentModulePath(file);
-            foreach (var moduleName in CollectImportModuleNames(module))
-            {
-                var resolved = resolver.Resolve(moduleName);
-                if (resolved == null)
-                    continue; // stdlib / CLR / unresolved — not a local source file
-
-                var target = Path.GetFullPath(resolved.FullPath);
-                if (visited.Add(target))
-                    queue.Enqueue((target, null));
-            }
-        }
-
-        return closure;
-    }
-
-    /// <summary>
-    /// Lexes and parses <paramref name="source"/> just far enough to inspect its import
-    /// statements. Returns null if lexing/parsing fails; import discovery is best-effort and
-    /// real syntax errors surface later in the actual compile.
-    /// </summary>
-    private Parser.Ast.Module? ParseModuleForImports(string source, string filePath, Shared.FeatureFlags features)
-    {
-        try
-        {
-            var sourceText = new SourceText(source, filePath);
-            var lexer = new Lexer.Lexer(sourceText, _logger) { Features = features };
-            var tokens = lexer.TokenizeAll();
-            if (lexer.Diagnostics.HasErrors)
-                return null;
-            var parser = new Parser.Parser(tokens, _logger, maxErrors: 25, features: features);
-            return parser.ParseModule();
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Collects the dotted module names referenced by all <c>import</c> and
-    /// <c>from … import</c> statements anywhere in the module.
-    /// </summary>
-    private static IEnumerable<string> CollectImportModuleNames(Parser.Ast.Module module)
-    {
-        var collector = new ImportNameCollector();
-        collector.VisitModule(module);
-        return collector.ModuleNames;
-    }
-
-    private sealed class ImportNameCollector : Parser.Ast.AstVisitor
-    {
-        public List<string> ModuleNames { get; } = new();
-
-        public override void VisitImportStatement(Parser.Ast.ImportStatement node)
-        {
-            foreach (var alias in node.Names)
-            {
-                if (!string.IsNullOrWhiteSpace(alias.Name))
-                    ModuleNames.Add(alias.Name);
-            }
-            base.VisitImportStatement(node);
-        }
-
-        public override void VisitFromImportStatement(Parser.Ast.FromImportStatement node)
-        {
-            if (!string.IsNullOrWhiteSpace(node.Module))
-                ModuleNames.Add(node.Module);
-            base.VisitFromImportStatement(node);
-        }
-    }
-
-    private static bool PathsEqual(string a, string b)
-        => string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Compiles a Sharpy source file through the full pipeline.

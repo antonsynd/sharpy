@@ -24,8 +24,6 @@ internal class CompilationResultBuilder
     private SymbolTable? _symbolTable;
     private SemanticInfo? _semanticInfo;
     private ModuleRegistry? _moduleRegistry;
-    private string? _generatedCSharpCode;
-    private Dictionary<string, string>? _generatedCSharpFiles;
     private SemanticBinding? _semanticBinding;
     private ImportResolver? _importResolver;
     private IReadOnlyList<CommentSpan>? _commentSpans;
@@ -49,8 +47,6 @@ internal class CompilationResultBuilder
     public CompilationResultBuilder WithSymbolTable(SymbolTable? symbolTable) { _symbolTable = symbolTable; return this; }
     public CompilationResultBuilder WithSemanticInfo(SemanticInfo? semanticInfo) { _semanticInfo = semanticInfo; return this; }
     public CompilationResultBuilder WithModuleRegistry(ModuleRegistry? moduleRegistry) { _moduleRegistry = moduleRegistry; return this; }
-    public CompilationResultBuilder WithGeneratedCSharpCode(string? code) { _generatedCSharpCode = code; return this; }
-    public CompilationResultBuilder WithGeneratedCSharpFiles(Dictionary<string, string>? files) { _generatedCSharpFiles = files; return this; }
 
     /// <summary>
     /// Build a failure result using all artifacts accumulated so far.
@@ -77,8 +73,10 @@ internal class CompilationResultBuilder
             SymbolTable = _symbolTable,
             SemanticInfo = _semanticInfo,
             ModuleRegistry = _moduleRegistry,
-            GeneratedCSharpCode = _generatedCSharpCode,
-            GeneratedCSharpFiles = _generatedCSharpFiles ?? new(),
+            // The builder now serves only the analysis path (no code generation), so the
+            // generated-C# artifacts are always empty here; single-file codegen results are
+            // reconstituted from the ProjectCompiler pipeline (#1038).
+            GeneratedCSharpFiles = new(),
             SemanticBinding = _semanticBinding,
             ImportResolver = _importResolver,
             CommentSpans = _commentSpans

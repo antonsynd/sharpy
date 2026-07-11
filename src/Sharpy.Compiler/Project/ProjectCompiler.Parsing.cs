@@ -11,6 +11,22 @@ namespace Sharpy.Compiler.Project;
 internal partial class ProjectCompiler
 {
     /// <summary>
+    /// Reads the source text for <paramref name="sourceFile"/>, preferring an in-memory override
+    /// (<see cref="ProjectConfig.InMemorySources"/>) over the file on disk. The synthetic
+    /// project-of-one-file (#1038) uses this so inline single-file source keeps the caller's
+    /// path verbatim without a temp file.
+    /// </summary>
+    private static string ReadSource(string sourceFile, ProjectConfig config)
+    {
+        if (config.InMemorySources != null
+            && config.InMemorySources.TryGetValue(sourceFile, out var inMemory))
+        {
+            return inMemory;
+        }
+        return File.ReadAllText(sourceFile);
+    }
+
+    /// <summary>
     /// Phase 1: Parse all source files into AST modules
     /// </summary>
     private bool ParseAllFiles(ProjectConfig config, CancellationToken cancellationToken = default)
@@ -31,7 +47,7 @@ internal partial class ProjectCompiler
                 if (_filesToSkip.Contains(sourceFile))
                 {
                     var skippedModulePath = CompilationUnitFactory.ComputeModulePath(sourceFile, config.ProjectDirectory);
-                    var skippedSource = File.ReadAllText(sourceFile);
+                    var skippedSource = ReadSource(sourceFile, config);
                     var unit = _projectModel!.CreateUnit(sourceFile, skippedModulePath, skippedSource);
 
                     // Restore cached generated C# code
@@ -51,7 +67,7 @@ internal partial class ProjectCompiler
                     continue;
                 }
 
-                var source = File.ReadAllText(sourceFile);
+                var source = ReadSource(sourceFile, config);
 
                 // Create CompilationUnit for this file
                 var modulePath = CompilationUnitFactory.ComputeModulePath(sourceFile, config.ProjectDirectory);
@@ -76,6 +92,11 @@ internal partial class ProjectCompiler
                 // Check if lexer collected any errors
                 if (lexer.Diagnostics.HasErrors)
                 {
+                    // Preserve partial artifacts on the failed unit so per-file metrics and tokens
+                    // remain observable on early failure (parity with the former single-file driver;
+                    // also benefits project mode, where failed files previously carried neither).
+                    compilationUnit.Tokens = tokens;
+                    compilationUnit.Metrics = fileMetrics;
                     MergeWithPhase(compilationUnit.Diagnostics, lexer.Diagnostics, CompilerPhase.Lexer);
                     compilationUnit.Phase = CompilationPhase.Failed;
                     fileMetrics.DiagnosticCount = lexer.Diagnostics.GetAll().Count;
@@ -103,6 +124,9 @@ internal partial class ProjectCompiler
                 // Check if parser collected any errors
                 if (parser.Diagnostics.HasErrors)
                 {
+                    // Preserve partial metrics (token/AST-node counts already captured above) on the
+                    // failed unit for error-path observability, matching the former single-file driver.
+                    compilationUnit.Metrics = fileMetrics;
                     MergeWithPhase(compilationUnit.Diagnostics, parser.Diagnostics, CompilerPhase.Parser);
                     compilationUnit.Phase = CompilationPhase.Failed;
                     fileMetrics.DiagnosticCount = parser.Diagnostics.GetAll().Count;

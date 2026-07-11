@@ -76,6 +76,12 @@ internal partial class ProjectCompiler
                 var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
                 var csharpCode = roslynCompilationUnit.ToFullString();
 
+                // NOTE(#1077): enhanced #line directives keep the emitter's placeholder char
+                // offset here; LineDirectivePostProcessor (run by the deleted single-file path)
+                // is not yet wired into project-mode codegen. Wiring it requires regenerating all
+                // line-directive .expected.cs snapshots, so it is deferred out of the #1038
+                // pipeline-deletion change.
+
                 fileMetrics?.EndPhase();
 
                 // Surface all code generation diagnostics — not just errors. Warnings and
@@ -171,6 +177,7 @@ internal partial class ProjectCompiler
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel,
             EffectiveFeatures = _features,
+            ImportResolver = _importResolverBacking,
             UsedAssemblyPaths = _moduleRegistry?.GetUsedAssemblyPaths()
                 ?? (IReadOnlySet<string>)new HashSet<string>()
         };
