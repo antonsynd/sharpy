@@ -133,7 +133,15 @@ internal class FileCompilationPipeline
         bool aborted = false;
         try
         {
-            typeChecker.CheckModule(module, computeCodeGenInfo, isEntryPoint, cancellationToken);
+            // Coarse-stamp type-checking diagnostics with CompilerPhase.TypeChecking. The
+            // ValidationPipeline runs inside CheckModule against its own diagnostic bag under a
+            // nested producer scope (Phase = Validation); since this stamp only back-fills
+            // still-Unknown phases, those validator stamps are preserved when merged back.
+            // Shared by single-file (Compiler) and project (ProjectCompiler Phase 5) paths.
+            using (typeChecker.Diagnostics.BeginPhaseScope(CompilerPhase.TypeChecking))
+            {
+                typeChecker.CheckModule(module, computeCodeGenInfo, isEntryPoint, cancellationToken);
+            }
         }
         catch (SemanticAnalysisException)
         {
@@ -174,7 +182,13 @@ internal class FileCompilationPipeline
             lexer.MaxErrors = maxErrors;
         }
         lexer.Features = features ?? Shared.FeatureFlags.None;
-        var tokens = lexer.TokenizeAll();
+        // Coarse-stamp every diagnostic the lexer emits with CompilerPhase.Lexer at its
+        // source, so the phase survives all downstream bag merges (single-file and project).
+        IReadOnlyList<Token> tokens;
+        using (lexer.Diagnostics.BeginPhaseScope(CompilerPhase.Lexer))
+        {
+            tokens = lexer.TokenizeAll();
+        }
 
         Debug.Assert(tokens.Count > 0, "Lexer should produce at least one token (EOF)");
 
@@ -190,7 +204,12 @@ internal class FileCompilationPipeline
     {
         var tokenList = tokens as List<Token> ?? new List<Token>(tokens);
         var parser = new Parser.Parser(tokenList, logger, maxErrors, cancellationToken, features);
-        var module = parser.ParseModule();
+        // Coarse-stamp parser diagnostics with CompilerPhase.Parser at their source.
+        Module? module;
+        using (parser.Diagnostics.BeginPhaseScope(CompilerPhase.Parser))
+        {
+            module = parser.ParseModule();
+        }
 
         if (module != null)
         {
@@ -209,7 +228,11 @@ internal class FileCompilationPipeline
     public NameResolveResult ResolveNames(Module module, CancellationToken cancellationToken = default)
     {
         var nameResolver = new NameResolver(_symbolTable, _logger, _semanticBinding);
-        nameResolver.ResolveDeclarations(module, cancellationToken);
+        // Coarse-stamp declaration-resolution diagnostics with CompilerPhase.NameResolution.
+        using (nameResolver.Diagnostics.BeginPhaseScope(CompilerPhase.NameResolution))
+        {
+            nameResolver.ResolveDeclarations(module, cancellationToken);
+        }
         return new NameResolveResult(nameResolver);
     }
 
@@ -231,11 +254,19 @@ internal class FileCompilationPipeline
             semanticBinding: _semanticBinding);
 
         var currentDir = Path.GetDirectoryName(Path.GetFullPath(filePath));
-        importResolver.ResolveAllImports(module, _symbolTable, currentDir, cancellationToken,
-            currentModulePath: filePath);
+        // Coarse-stamp import-resolution diagnostics with CompilerPhase.ImportResolution.
+        using (importResolver.Diagnostics.BeginPhaseScope(CompilerPhase.ImportResolution))
+        {
+            importResolver.ResolveAllImports(module, _symbolTable, currentDir, cancellationToken,
+                currentModulePath: filePath);
+        }
 
-        // Resolve inheritance after imports so imported base types are available
-        nameResolver.ResolveInheritance(cancellationToken);
+        // Resolve inheritance after imports so imported base types are available. Inheritance
+        // errors belong to the name-resolution phase (they land on the NameResolver's bag).
+        using (nameResolver.Diagnostics.BeginPhaseScope(CompilerPhase.NameResolution))
+        {
+            nameResolver.ResolveInheritance(cancellationToken);
+        }
         ResolveImportedInheritanceAndMaterialize(importResolver);
 
         return new ImportResolveResult(importResolver);
@@ -284,11 +315,14 @@ internal class FileCompilationPipeline
                 ContinueAfterError = true,
                 ModuleRegistry = moduleRegistry
             };
-            moduleTypeChecker.CheckModule(
-                moduleInfo.Module,
-                computeCodeGenInfo: true,
-                isEntryPoint: false,
-                cancellationToken);
+            using (moduleTypeChecker.Diagnostics.BeginPhaseScope(CompilerPhase.TypeChecking))
+            {
+                moduleTypeChecker.CheckModule(
+                    moduleInfo.Module,
+                    computeCodeGenInfo: true,
+                    isEntryPoint: false,
+                    cancellationToken);
+            }
 
             // Clean up temporarily added symbols
             foreach (var name in addedSymbols)
@@ -343,13 +377,19 @@ internal class FileCompilationPipeline
 
         var diagnostics = new DiagnosticBag();
 
-        // Verify generated C# parses without syntax errors
-        CompilerInvariants.AssertPostCodeGen(csharpCode, diagnostics);
-
-        if (codeGenContext.HasErrors)
+        // Coarse-stamp code-generation diagnostics with CompilerPhase.CodeGeneration at their
+        // source (both the post-codegen parse check and the emitter's own diagnostics), so the
+        // phase survives when this bag is merged into the driver's diagnostics.
+        using (diagnostics.BeginPhaseScope(CompilerPhase.CodeGeneration))
         {
-            diagnostics.Merge(codeGenContext.Diagnostics);
-            return new CodeGenResult(csharpCode, new Dictionary<string, string>(), diagnostics);
+            // Verify generated C# parses without syntax errors
+            CompilerInvariants.AssertPostCodeGen(csharpCode, diagnostics);
+
+            if (codeGenContext.HasErrors)
+            {
+                diagnostics.Merge(codeGenContext.Diagnostics);
+                return new CodeGenResult(csharpCode, new Dictionary<string, string>(), diagnostics);
+            }
         }
 
         // Generate C# for all imported .spy modules
