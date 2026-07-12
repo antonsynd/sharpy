@@ -191,10 +191,12 @@ internal partial class NameResolver
             _logger.LogDebug($"Registered constructor overload: {owningType.Name}.__init__ (params: {method.Parameters.Length})");
 
             // Only register the first __init__ in the symbol table to avoid duplicate name errors
-            // All overloads are tracked in the Constructors list
-            if (owningType.Constructors.Count == 1)
+            // All overloads are tracked in the Constructors list. TryDefine: a field named
+            // __init__ may already occupy the slot — a user error surfaced by validation, and
+            // Define would throw on the collision.
+            if (owningType.Constructors.Count == 1 && !_symbolTable.TryDefine(funcSymbol))
             {
-                _symbolTable.Define(funcSymbol);
+                _logger.LogDebug($"Constructor not registered in symbol table (name collision): {owningType.Name}.__init__");
             }
         }
         else if (OperatorRegistry.IsOperatorDunder(method.Name) ||
@@ -302,6 +304,23 @@ internal partial class NameResolver
 
         bool isStatic = field.Decorators.Any(d => d.Name == DecoratorNames.Static);
         bool isFinal = field.Decorators.Any(d => d.Name == DecoratorNames.Final);
+
+        // A field colliding with an existing same-name member (method, nested type, const)
+        // is a duplicate definition — Scope.Define treats the collision as a compiler-bug
+        // invariant and throws, so report it here instead. Non-const field-over-field
+        // redefinition stays allowed (Scope.Define replaces it), as does shadowing builtins
+        // (which have no source location).
+        var existingMember = _symbolTable.Lookup(field.Name, searchParents: false);
+        bool collides = existingMember != null
+            && existingMember.DeclarationLine != null
+            && !(existingMember is VariableSymbol { IsConstant: false } && !field.IsConst);
+        if (collides)
+        {
+            AddError($"Field '{field.Name}' conflicts with a member of the same name in '{owningType.Name}'",
+                field.LineStart, field.ColumnStart,
+                code: DiagnosticCodes.Semantic.DuplicateDefinition, span: field.Span);
+            return;
+        }
 
         var varSymbol = new VariableSymbol
         {

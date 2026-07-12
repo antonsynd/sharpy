@@ -1,0 +1,9 @@
+class Widget:
+    def size(self) -> int:
+        return 1
+
+    size: int = 0
+
+def main():
+    w: Widget = Widget()
+    print(w.size())

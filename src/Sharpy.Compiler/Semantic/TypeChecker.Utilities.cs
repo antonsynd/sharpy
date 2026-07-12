@@ -1190,6 +1190,34 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Reports SPY0204 and returns true when <paramref name="name"/> is already bound to a
+    /// non-variable symbol (function, class, module, ...) in the current scope — e.g. an
+    /// assignment colliding with a hoisted module-level <c>def</c> of the same name.
+    /// <see cref="Scope.Define"/> treats that collision as a compiler-bug invariant and throws,
+    /// so every reachable path that defines a <see cref="VariableSymbol"/> must check first.
+    /// Variable-over-variable rebinding stays allowed (Python-like re-binding).
+    /// </summary>
+    private bool TryReportNonVariableRedefinition(string name, int line, int column, Text.TextSpan? span)
+    {
+        var existing = _symbolTable.Lookup(name, searchParents: false);
+        if (existing is null or VariableSymbol)
+            return false;
+
+        var kind = existing switch
+        {
+            FunctionSymbol => "function",
+            TypeSymbol => "type",
+            ModuleSymbol => "module",
+            TypeAliasSymbol => "type alias",
+            TypeParameterSymbol => "type parameter",
+            _ => "symbol",
+        };
+        AddError($"Cannot bind '{name}': it is already defined as a {kind} in this scope",
+            line, column, code: DiagnosticCodes.Semantic.DuplicateDefinition, span: span);
+        return true;
+    }
+
+    /// <summary>
     /// Records a type-checking error. When the error relates to a relationship between
     /// two nodes (e.g., "type X is not assignable to type Y"), use the *target* node's
     /// span — that's where the user needs to fix the code.

@@ -90,6 +90,11 @@ internal partial class TypeChecker
             // Check current scope first
             var existingSymbol = _symbolTable.Lookup(targetId.Name, searchParents: false);
 
+            // A hoisted def/class with this name makes the assignment a duplicate definition,
+            // not a rebinding — Scope.Define would throw on the collision.
+            if (TryReportNonVariableRedefinition(targetId.Name, assignment.LineStart, assignment.ColumnStart, assignment.Span))
+                return;
+
             // Check if trying to reassign a constant in current scope
             if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
             {
@@ -339,6 +344,11 @@ internal partial class TypeChecker
 
         // Check if symbol already exists in current scope
         var existingSymbol = _symbolTable.Lookup(varDecl.Name, searchParents: false);
+
+        // A hoisted def/class with this name makes the declaration a duplicate definition —
+        // Scope.Define would throw on the collision.
+        if (TryReportNonVariableRedefinition(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span))
+            return;
 
         // For constants:
         // - Module-level consts are already created by NameResolver, so we update their type
@@ -835,8 +845,11 @@ internal partial class TypeChecker
                     DeclaringFilePath = _currentFilePath
                 };
 
-                _symbolTable.Define(varSymbol);
-                SemanticBinding.SetVariableType(varSymbol, exceptionType);
+                if (!TryReportNonVariableRedefinition(handler.Name, handler.LineStart, handler.ColumnStart, handler.Span))
+                {
+                    _symbolTable.Define(varSymbol);
+                    SemanticBinding.SetVariableType(varSymbol, exceptionType);
+                }
             }
 
             if (handler.Filter != null)
@@ -918,9 +931,12 @@ internal partial class TypeChecker
                 DeclarationSpan = item.Span,
                 DeclaringFilePath = _currentFilePath
             };
-            _symbolTable.Define(varSymbol);
-            SemanticBinding.SetVariableType(varSymbol, exceptionType);
-            _semanticInfo.SetWithItemSymbol(item, varSymbol);
+            if (!TryReportNonVariableRedefinition(item.Name!, item.LineStart, item.ColumnStart, item.Span))
+            {
+                _symbolTable.Define(varSymbol);
+                SemanticBinding.SetVariableType(varSymbol, exceptionType);
+                _semanticInfo.SetWithItemSymbol(item, varSymbol);
+            }
         }
 
         _symbolTable.EnterScope("with");
@@ -977,9 +993,12 @@ internal partial class TypeChecker
                     DeclaringFilePath = _currentFilePath
                 };
 
-                _symbolTable.Define(varSymbol);
-                SemanticBinding.SetVariableType(varSymbol, asVarType);
-                _semanticInfo.SetWithItemSymbol(item, varSymbol);
+                if (!TryReportNonVariableRedefinition(item.Name, item.LineStart, item.ColumnStart, item.Span))
+                {
+                    _symbolTable.Define(varSymbol);
+                    SemanticBinding.SetVariableType(varSymbol, asVarType);
+                    _semanticInfo.SetWithItemSymbol(item, varSymbol);
+                }
             }
         }
 

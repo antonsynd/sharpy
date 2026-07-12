@@ -1,0 +1,7 @@
+y = 2
+
+def y() -> int:
+    return 1
+
+def main():
+    print(2)
