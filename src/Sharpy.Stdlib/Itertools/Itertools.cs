@@ -218,7 +218,7 @@ namespace Sharpy
                 yield break;
             }
 
-            int total = items[0];
+            int total = items.GetItemUnchecked(0);
             yield return total;
             int i = 1;
             while (i < global::Sharpy.Builtins.Len(items))
@@ -240,7 +240,7 @@ namespace Sharpy
                 yield break;
             }
 
-            T total = items[0];
+            T total = items.GetItemUnchecked(0);
             yield return total;
             int i = 1;
             while (i < global::Sharpy.Builtins.Len(items))
@@ -365,10 +365,10 @@ namespace Sharpy
                 yield break;
             }
 
-            K currentKey = key(items[0]);
+            K currentKey = key(items.GetItemUnchecked(0));
             Sharpy.List<T> group = new Sharpy.List<T>()
             {
-                items[0]
+                items.GetItemUnchecked(0)
             };
             int i = 1;
             while (i < global::Sharpy.Builtins.Len(items))

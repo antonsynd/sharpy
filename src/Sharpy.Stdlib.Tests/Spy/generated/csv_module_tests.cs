@@ -46,11 +46,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (12, 5) - (12, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(rows));
 #line (13, 5) - (13, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal("a", rows[0][0]);
+                Xunit.Assert.Equal("a", rows.GetItemUnchecked(0)[0]);
 #line (14, 5) - (14, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal("b", rows[0][1]);
+                Xunit.Assert.Equal("b", rows.GetItemUnchecked(0)[1]);
 #line (15, 5) - (15, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal("c", rows[0][2]);
+                Xunit.Assert.Equal("c", rows.GetItemUnchecked(0)[2]);
             }
 
             [Xunit.FactAttribute]
@@ -71,11 +71,11 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (23, 5) - (23, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal("a", rows[0][0]);
+                Xunit.Assert.Equal("a", rows.GetItemUnchecked(0)[0]);
 #line (24, 5) - (24, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal("hello, world", rows[0][1]);
+                Xunit.Assert.Equal("hello, world", rows.GetItemUnchecked(0)[1]);
 #line (25, 5) - (25, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal("c", rows[0][2]);
+                Xunit.Assert.Equal("c", rows.GetItemUnchecked(0)[2]);
             }
 
             [Xunit.FactAttribute]
@@ -96,7 +96,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (34, 5) - (34, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
-                Xunit.Assert.Equal("say \"hello\"", rows[0][1]);
+                Xunit.Assert.Equal("say \"hello\"", rows.GetItemUnchecked(0)[1]);
             }
 
             [Xunit.FactAttribute]

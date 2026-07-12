@@ -250,7 +250,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (129, 5) - (129, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(results));
 #line (130, 5) - (130, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                Xunit.Assert.EndsWith("a.txt", results[0]);
+                Xunit.Assert.EndsWith("a.txt", results.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]

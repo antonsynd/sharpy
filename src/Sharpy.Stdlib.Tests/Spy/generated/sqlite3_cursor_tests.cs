@@ -613,11 +613,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (369, 5) - (369, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(ids));
 #line (370, 5) - (370, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.True(_EqInt(ids[0], 1));
+                Xunit.Assert.True(_EqInt(ids.GetItemUnchecked(0), 1));
 #line (371, 5) - (371, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.True(_EqInt(ids[1], 2));
+                Xunit.Assert.True(_EqInt(ids.GetItemUnchecked(1), 2));
 #line (372, 5) - (372, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.True(_EqInt(ids[2], 3));
+                Xunit.Assert.True(_EqInt(ids.GetItemUnchecked(2), 3));
 #line (373, 5) - (373, 17) 1 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
             }

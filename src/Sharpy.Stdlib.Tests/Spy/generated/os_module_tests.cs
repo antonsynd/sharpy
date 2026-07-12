@@ -518,9 +518,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (288, 5) - (288, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(results));
 #line (289, 5) - (289, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-                Xunit.Assert.Equal(root, results[0]);
+                Xunit.Assert.Equal(root, results.GetItemUnchecked(0));
 #line (290, 5) - (290, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
-                Xunit.Assert.Equal(sub, results[1]);
+                Xunit.Assert.Equal(sub, results.GetItemUnchecked(1));
             }
 
             [Xunit.FactAttribute]

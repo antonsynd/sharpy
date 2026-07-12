@@ -197,8 +197,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestReduceLargeListWithoutInitial()
             {
+                var __src_1 = global::Sharpy.Builtins.Range(1, 1001);
+                var __comp_0 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_1).Count);
+                foreach (var __loopVar_2 in __src_1)
+                {
+                    var i = __loopVar_2;
+                    __comp_0.Add(i);
+                }
+
 #line (88, 5) - (88, 52) 1 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = new Sharpy.List<int>(global::Sharpy.Builtins.Range(1, 1001).Select(i => i));
+                Sharpy.List<int> items = __comp_0;
 #line (89, 5) - (89, 63) 1 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
                 int result = functools.Reduce((x, y) => x + y, items);
 #line (90, 5) - (90, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"

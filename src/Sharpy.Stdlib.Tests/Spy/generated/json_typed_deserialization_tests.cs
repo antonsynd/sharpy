@@ -132,11 +132,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (77, 5) - (77, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(scores));
 #line (78, 5) - (78, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                Xunit.Assert.Equal(100, scores[0]);
+                Xunit.Assert.Equal(100, scores.GetItemUnchecked(0));
 #line (79, 5) - (79, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                Xunit.Assert.Equal(95, scores[1]);
+                Xunit.Assert.Equal(95, scores.GetItemUnchecked(1));
 #line (80, 5) - (80, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
-                Xunit.Assert.Equal(87, scores[2]);
+                Xunit.Assert.Equal(87, scores.GetItemUnchecked(2));
             }
 
             [Xunit.FactAttribute]

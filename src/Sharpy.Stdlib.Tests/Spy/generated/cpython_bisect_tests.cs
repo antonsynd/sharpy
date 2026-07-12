@@ -396,8 +396,16 @@ namespace Sharpy.Stdlib.Tests.Spy
                 };
 #line (176, 5) - (176, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                 data.Sort(key: r => r.Item2);
+                Sharpy.List<global::System.ValueTuple<string, int>> __src_2 = data;
+                var __comp_1 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_2).Count);
+                foreach (var __loopVar_3 in __src_2)
+                {
+                    var r = __loopVar_3;
+                    __comp_1.Add(r.Item2);
+                }
+
 #line (177, 5) - (177, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
-                Sharpy.List<int> keys = new Sharpy.List<int>(data.Select((global::System.ValueTuple<string, int> r) => r.Item2));
+                Sharpy.List<int> keys = __comp_1;
 #line (178, 5) - (178, 62) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                 Xunit.Assert.Equal(("black", 0), data[bisect.BisectLeft(keys, 0)]);
 #line (179, 5) - (179, 61) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"

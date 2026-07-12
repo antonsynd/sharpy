@@ -117,11 +117,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (57, 5) - (57, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(result));
 #line (59, 5) - (59, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-                Xunit.Assert.Equal(1, result[0].Item2);
+                Xunit.Assert.Equal(1, result.GetItemUnchecked(0).Item2);
 #line (60, 5) - (60, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-                Xunit.Assert.Equal(1, result[1].Item2);
+                Xunit.Assert.Equal(1, result.GetItemUnchecked(1).Item2);
 #line (61, 5) - (61, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-                Xunit.Assert.Equal(1, result[2].Item2);
+                Xunit.Assert.Equal(1, result.GetItemUnchecked(2).Item2);
             }
 
             [Xunit.FactAttribute]

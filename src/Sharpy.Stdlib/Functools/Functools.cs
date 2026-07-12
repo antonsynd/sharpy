@@ -26,7 +26,7 @@ namespace Sharpy
                 throw new global::Sharpy.TypeError("reduce() of empty iterable with no initial value");
             }
 
-            T accumulator = items[0];
+            T accumulator = items.GetItemUnchecked(0);
             int i = 1;
             while (i < global::Sharpy.Builtins.Len(items))
             {

@@ -160,7 +160,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (80, 5) - (80, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (81, 5) - (81, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-                Xunit.Assert.Equal(42, result[0]);
+                Xunit.Assert.Equal(42, result.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]
@@ -357,7 +357,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (178, 5) - (178, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
                 random.Shuffle(lst);
 #line (179, 5) - (179, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-                Xunit.Assert.Equal(42, lst[0]);
+                Xunit.Assert.Equal(42, lst.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]
@@ -419,7 +419,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (206, 5) - (206, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (207, 5) - (207, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-                Xunit.Assert.Contains(result[0], pop);
+                Xunit.Assert.Contains(result.GetItemUnchecked(0), pop);
             }
 
             [Xunit.FactAttribute]

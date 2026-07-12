@@ -41,7 +41,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (10, 5) - (10, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 heapq.Heappush(h, 2);
 #line (11, 5) - (11, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                Xunit.Assert.Equal(1, h[0]);
+                Xunit.Assert.Equal(1, h.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]
@@ -95,7 +95,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (32, 5) - (32, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 heapq.Heapify(h);
 #line (34, 5) - (34, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                Xunit.Assert.Equal(1, h[0]);
+                Xunit.Assert.Equal(1, h.GetItemUnchecked(0));
 #line (36, 5) - (36, 16) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 int i = 0;
 #line (37, 5) - (46, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
@@ -157,7 +157,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (58, 5) - (58, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 Xunit.Assert.Equal(1, result);
 #line (59, 5) - (59, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                Xunit.Assert.Equal(0, h[0]);
+                Xunit.Assert.Equal(0, h.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]
@@ -338,7 +338,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (127, 5) - (127, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 heapq.Heapify(h);
 #line (128, 5) - (128, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                Xunit.Assert.Equal(1, h[0]);
+                Xunit.Assert.Equal(1, h.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]

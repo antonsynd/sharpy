@@ -107,7 +107,7 @@ namespace Sharpy
                 throw new global::Sharpy.StatisticsError("no data");
             }
 
-            T bestValue = order[0];
+            T bestValue = order.GetItemUnchecked(0);
             int bestCount = counts[bestValue];
             int i = 1;
             while (i < global::Sharpy.Builtins.Len(order))

@@ -109,17 +109,17 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (58, 5) - (58, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Sharpy.List<int> firstWeek = cal[0];
+                Sharpy.List<int> firstWeek = cal.GetItemUnchecked(0);
 #line (59, 5) - (59, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2, 3, 4, 5, 6, 7 }, firstWeek);
 #line (61, 5) - (61, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Sharpy.List<int> lastWeek = cal[global::Sharpy.Builtins.Len(cal) - 1];
 #line (62, 5) - (62, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(29, lastWeek[0]);
+                Xunit.Assert.Equal(29, lastWeek.GetItemUnchecked(0));
 #line (63, 5) - (63, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(30, lastWeek[1]);
+                Xunit.Assert.Equal(30, lastWeek.GetItemUnchecked(1));
 #line (64, 5) - (64, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(0, lastWeek[2]);
+                Xunit.Assert.Equal(0, lastWeek.GetItemUnchecked(2));
 #line (66, 5) - (66, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 calendar.Setfirstweekday(0);
             }
@@ -180,15 +180,26 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     var i = __loopVar_1;
 #line (102, 9) - (102, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                    Xunit.Assert.Equal(0, days[i]);
+                    Xunit.Assert.Equal(0, days.GetItemUnchecked(i));
                 }
 
 #line (103, 5) - (103, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(1, days[6]);
+                Xunit.Assert.Equal(1, days.GetItemUnchecked(6));
 #line (105, 5) - (105, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(days) % 7);
+                Sharpy.List<int> __src_3 = days;
+                var __comp_2 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_3).Count);
+                foreach (var __loopVar_4 in __src_3)
+                {
+                    var d = __loopVar_4;
+                    if (d != 0)
+                    {
+                        __comp_2.Add(d);
+                    }
+                }
+
 #line (107, 5) - (107, 55) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Sharpy.List<int> nonZero = new Sharpy.List<int>(days.Where((int d) => d != 0).Select((int d) => d));
+                Sharpy.List<int> nonZero = __comp_2;
 #line (108, 5) - (108, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal(new global::Sharpy.List<int>(global::Sharpy.Builtins.Range(1, 29)), nonZero);
             }
@@ -353,13 +364,13 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (208, 5) - (212, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                foreach (var __loopVar_2 in cal)
+                foreach (var __loopVar_5 in cal)
                 {
-                    var week = __loopVar_2;
+                    var week = __loopVar_5;
 #line (209, 9) - (212, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                    foreach (var __loopVar_3 in week)
+                    foreach (var __loopVar_6 in week)
                     {
-                        var d = __loopVar_3;
+                        var d = __loopVar_6;
 #line (210, 13) - (212, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                         if (d != 0)
                         {

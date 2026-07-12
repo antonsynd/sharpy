@@ -128,9 +128,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (74, 5) - (74, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(result));
 #line (75, 5) - (75, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal("foo.txt", result[0]);
+                Xunit.Assert.Equal("foo.txt", result.GetItemUnchecked(0));
 #line (76, 5) - (76, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/fnmatch/fnmatch_tests.spy"
-                Xunit.Assert.Equal("baz.txt", result[1]);
+                Xunit.Assert.Equal("baz.txt", result.GetItemUnchecked(1));
             }
 
             [Xunit.FactAttribute]

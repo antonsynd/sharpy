@@ -280,7 +280,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 134 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 {
 #line (135, 9) - (135, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                    count[0] = count[0] + 1;
+                    count[0] = count.GetItemUnchecked(0) + 1;
 #line (136, 9) - (136, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                     return d;
                 }
@@ -288,7 +288,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (137, 5) - (137, 69) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 json.Loads("{\"inner\": {\"deep\": {}}}", objectHook: CountingHook!);
 #line (138, 5) - (138, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                Xunit.Assert.Equal(3, count[0]);
+                Xunit.Assert.Equal(3, count.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]
@@ -304,7 +304,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 143 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 {
 #line (144, 9) - (144, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                    count[0] = count[0] + 1;
+                    count[0] = count.GetItemUnchecked(0) + 1;
 #line (145, 9) - (145, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                     return d;
                 }
@@ -312,7 +312,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (146, 5) - (146, 66) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 json.Loads("[{\"a\": 1}, {\"b\": 2}]", objectHook: CountingHook!);
 #line (147, 5) - (147, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                Xunit.Assert.Equal(2, count[0]);
+                Xunit.Assert.Equal(2, count.GetItemUnchecked(0));
             }
         }
     }

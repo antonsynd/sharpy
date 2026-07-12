@@ -102,11 +102,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (69, 5) - (69, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(tags));
 #line (70, 5) - (70, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("a", tags[0]);
+                Xunit.Assert.Equal("a", tags.GetItemUnchecked(0));
 #line (71, 5) - (71, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("b", tags[1]);
+                Xunit.Assert.Equal("b", tags.GetItemUnchecked(1));
 #line (72, 5) - (72, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("c", tags[2]);
+                Xunit.Assert.Equal("c", tags.GetItemUnchecked(2));
             }
 
             [Xunit.FactAttribute]
@@ -329,7 +329,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (194, 5) - (194, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(items));
 #line (195, 5) - (195, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal(("id", "1"), items[0]);
+                Xunit.Assert.Equal(("id", "1"), items.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]
@@ -625,7 +625,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (349, 5) - (349, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(found));
 #line (350, 5) - (350, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("1", found[0].Get("id"));
+                Xunit.Assert.Equal("1", found.GetItemUnchecked(0).Get("id"));
             }
 
             [Xunit.FactAttribute]
@@ -1088,9 +1088,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (604, 5) - (604, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(results));
 #line (605, 5) - (605, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("1", results[0].Text);
+                Xunit.Assert.Equal("1", results.GetItemUnchecked(0).Text);
 #line (606, 5) - (606, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("2", results[1].Text);
+                Xunit.Assert.Equal("2", results.GetItemUnchecked(1).Text);
             }
 
             [Xunit.FactAttribute]

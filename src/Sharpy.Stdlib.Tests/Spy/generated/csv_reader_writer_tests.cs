@@ -71,9 +71,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (25, 5) - (25, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(rows));
 #line (26, 5) - (26, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(rows[0]));
+                Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(rows.GetItemUnchecked(0)));
 #line (27, 5) - (27, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("hello", rows[0][0]);
+                Xunit.Assert.Equal("hello", rows.GetItemUnchecked(0)[0]);
             }
 
             [Xunit.FactAttribute]
@@ -94,13 +94,13 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (36, 5) - (36, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(rows[0]));
+                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(rows.GetItemUnchecked(0)));
 #line (37, 5) - (37, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("a", rows[0][0]);
+                Xunit.Assert.Equal("a", rows.GetItemUnchecked(0)[0]);
 #line (38, 5) - (38, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("", rows[0][1]);
+                Xunit.Assert.Equal("", rows.GetItemUnchecked(0)[1]);
 #line (39, 5) - (39, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("b", rows[0][2]);
+                Xunit.Assert.Equal("b", rows.GetItemUnchecked(0)[2]);
             }
 
             [Xunit.FactAttribute]
@@ -121,9 +121,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (48, 5) - (48, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(rows[0]));
+                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(rows.GetItemUnchecked(0)));
 #line (49, 5) - (49, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("", rows[0][2]);
+                Xunit.Assert.Equal("", rows.GetItemUnchecked(0)[2]);
             }
 
             [Xunit.FactAttribute]
@@ -144,11 +144,11 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (58, 5) - (58, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(rows[0]));
+                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(rows.GetItemUnchecked(0)));
 #line (59, 5) - (59, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("", rows[0][0]);
+                Xunit.Assert.Equal("", rows.GetItemUnchecked(0)[0]);
 #line (60, 5) - (60, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("a", rows[0][1]);
+                Xunit.Assert.Equal("a", rows.GetItemUnchecked(0)[1]);
             }
 
             [Xunit.FactAttribute]
@@ -171,9 +171,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (69, 5) - (69, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(rows));
 #line (70, 5) - (70, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(rows[0]));
+                Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(rows.GetItemUnchecked(0)));
 #line (71, 5) - (71, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("", rows[0][0]);
+                Xunit.Assert.Equal("", rows.GetItemUnchecked(0)[0]);
             }
 
             [Xunit.FactAttribute]
@@ -194,11 +194,11 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (79, 5) - (79, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(rows[0]));
+                Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(rows.GetItemUnchecked(0)));
 #line (80, 5) - (80, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("a,b", rows[0][0]);
+                Xunit.Assert.Equal("a,b", rows.GetItemUnchecked(0)[0]);
 #line (81, 5) - (81, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("c", rows[0][1]);
+                Xunit.Assert.Equal("c", rows.GetItemUnchecked(0)[1]);
             }
 
             [Xunit.FactAttribute]
@@ -219,7 +219,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (90, 5) - (90, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("he said \"hi\"", rows[0][0]);
+                Xunit.Assert.Equal("he said \"hi\"", rows.GetItemUnchecked(0)[0]);
             }
 
             [Xunit.FactAttribute]
@@ -342,8 +342,19 @@ namespace Sharpy.Stdlib.Tests.Spy
                 writer.Writerow(new Sharpy.List<string>() { "Alice", "New York" });
 #line (154, 5) - (154, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 writer.Writerow(new Sharpy.List<string>() { "Bob", "San Francisco, CA" });
+                Sharpy.List<string> __src_10 = sw.Getvalue().Split("\n");
+                var __comp_9 = new Sharpy.List<string>(((global::Sharpy.ISized)__src_10).Count);
+                foreach (var __loopVar_11 in __src_10)
+                {
+                    var ln = __loopVar_11;
+                    if (ln.Length > 0)
+                    {
+                        __comp_9.Add(ln);
+                    }
+                }
+
 #line (155, 5) - (155, 80) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Sharpy.List<string> lines = new Sharpy.List<string>(sw.Getvalue().Split("\n").Where((string ln) => ln.Length > 0).Select((string ln) => ln));
+                Sharpy.List<string> lines = __comp_9;
 #line (156, 5) - (156, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 var reader = csv.Reader(lines);
 #line (157, 5) - (157, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
@@ -351,9 +362,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (158, 5) - (160, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                foreach (var __loopVar_9 in reader)
+                foreach (var __loopVar_12 in reader)
                 {
-                    var row = __loopVar_9;
+                    var row = __loopVar_12;
 #line (159, 9) - (159, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                     rows.Append(row);
                 }
@@ -361,17 +372,17 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (160, 5) - (160, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(rows));
 #line (161, 5) - (161, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("name", rows[0][0]);
+                Xunit.Assert.Equal("name", rows.GetItemUnchecked(0)[0]);
 #line (162, 5) - (162, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("city", rows[0][1]);
+                Xunit.Assert.Equal("city", rows.GetItemUnchecked(0)[1]);
 #line (163, 5) - (163, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("Alice", rows[1][0]);
+                Xunit.Assert.Equal("Alice", rows.GetItemUnchecked(1)[0]);
 #line (164, 5) - (164, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("New York", rows[1][1]);
+                Xunit.Assert.Equal("New York", rows.GetItemUnchecked(1)[1]);
 #line (165, 5) - (165, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("Bob", rows[2][0]);
+                Xunit.Assert.Equal("Bob", rows.GetItemUnchecked(2)[0]);
 #line (166, 5) - (166, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
-                Xunit.Assert.Equal("San Francisco, CA", rows[2][1]);
+                Xunit.Assert.Equal("San Francisco, CA", rows.GetItemUnchecked(2)[1]);
             }
         }
     }

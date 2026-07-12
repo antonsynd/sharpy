@@ -35,9 +35,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (10, 5) - (10, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(result));
 #line (11, 5) - (11, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("Hello", result[0]);
+                Xunit.Assert.Equal("Hello", result.GetItemUnchecked(0));
 #line (12, 5) - (12, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("World", result[1]);
+                Xunit.Assert.Equal("World", result.GetItemUnchecked(1));
             }
 
             [Xunit.FactAttribute]
@@ -66,9 +66,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (27, 5) - (27, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(result));
 #line (28, 5) - (28, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("abcde", result[0]);
+                Xunit.Assert.Equal("abcde", result.GetItemUnchecked(0));
 #line (29, 5) - (29, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("fgh", result[1]);
+                Xunit.Assert.Equal("fgh", result.GetItemUnchecked(1));
             }
 
             [Xunit.FactAttribute]
@@ -79,13 +79,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (34, 5) - (34, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
                 Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(result));
 #line (35, 5) - (35, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("abcde", result[0]);
+                Xunit.Assert.Equal("abcde", result.GetItemUnchecked(0));
 #line (36, 5) - (36, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("fghij", result[1]);
+                Xunit.Assert.Equal("fghij", result.GetItemUnchecked(1));
 #line (37, 5) - (37, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("klmno", result[2]);
+                Xunit.Assert.Equal("klmno", result.GetItemUnchecked(2));
 #line (38, 5) - (38, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("p", result[3]);
+                Xunit.Assert.Equal("p", result.GetItemUnchecked(3));
             }
 
             [Xunit.FactAttribute]
@@ -98,9 +98,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (44, 5) - (44, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(result));
 #line (45, 5) - (45, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal(70, result[0].Length);
+                Xunit.Assert.Equal(70, result.GetItemUnchecked(0).Length);
 #line (46, 5) - (46, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal(30, result[1].Length);
+                Xunit.Assert.Equal(30, result.GetItemUnchecked(1).Length);
             }
 
             [Xunit.FactAttribute]
@@ -111,7 +111,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (51, 5) - (51, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (52, 5) - (52, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("hello world", result[0]);
+                Xunit.Assert.Equal("hello world", result.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]
@@ -122,7 +122,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (57, 5) - (57, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (58, 5) - (58, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Equal("hello world", result[0]);
+                Xunit.Assert.Equal("hello world", result.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]

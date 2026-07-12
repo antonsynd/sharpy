@@ -324,9 +324,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (180, 5) - (180, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.Equal(254, global::Sharpy.Builtins.Len(hosts));
 #line (181, 5) - (181, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.1", global::Sharpy.Builtins.Str(hosts[0]));
+                Xunit.Assert.Equal("192.168.1.1", global::Sharpy.Builtins.Str(hosts.GetItemUnchecked(0)));
 #line (182, 5) - (182, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.254", global::Sharpy.Builtins.Str(hosts[253]));
+                Xunit.Assert.Equal("192.168.1.254", global::Sharpy.Builtins.Str(hosts.GetItemUnchecked(253)));
             }
 
             [Xunit.FactAttribute]
@@ -350,7 +350,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (194, 5) - (194, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(hosts));
 #line (195, 5) - (195, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.1", global::Sharpy.Builtins.Str(hosts[0]));
+                Xunit.Assert.Equal("192.168.1.1", global::Sharpy.Builtins.Str(hosts.GetItemUnchecked(0)));
             }
 
             [Xunit.FactAttribute]
@@ -385,9 +385,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (213, 5) - (213, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(subnets));
 #line (214, 5) - (214, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.0/25", global::Sharpy.Builtins.Str(subnets[0]));
+                Xunit.Assert.Equal("192.168.1.0/25", global::Sharpy.Builtins.Str(subnets.GetItemUnchecked(0)));
 #line (215, 5) - (215, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.128/25", global::Sharpy.Builtins.Str(subnets[1]));
+                Xunit.Assert.Equal("192.168.1.128/25", global::Sharpy.Builtins.Str(subnets.GetItemUnchecked(1)));
             }
 
             [Xunit.FactAttribute]
@@ -464,9 +464,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (255, 5) - (255, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(allAddrs));
 #line (256, 5) - (256, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.0", global::Sharpy.Builtins.Str(allAddrs[0]));
+                Xunit.Assert.Equal("192.168.1.0", global::Sharpy.Builtins.Str(allAddrs.GetItemUnchecked(0)));
 #line (257, 5) - (257, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.3", global::Sharpy.Builtins.Str(allAddrs[3]));
+                Xunit.Assert.Equal("192.168.1.3", global::Sharpy.Builtins.Str(allAddrs.GetItemUnchecked(3)));
             }
 
             [Xunit.FactAttribute]
@@ -585,7 +585,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (332, 5) - (332, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (333, 5) - (333, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.0/24", global::Sharpy.Builtins.Str(result[0]));
+                Xunit.Assert.Equal("192.168.1.0/24", global::Sharpy.Builtins.Str(result.GetItemUnchecked(0)));
             }
 
             [Xunit.FactAttribute]
@@ -596,7 +596,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (340, 5) - (340, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (341, 5) - (341, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.0/24", global::Sharpy.Builtins.Str(result[0]));
+                Xunit.Assert.Equal("192.168.1.0/24", global::Sharpy.Builtins.Str(result.GetItemUnchecked(0)));
             }
 
             [Xunit.FactAttribute]
@@ -666,9 +666,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (382, 5) - (382, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(subnets));
 #line (383, 5) - (383, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("2001:db8::/127", global::Sharpy.Builtins.Str(subnets[0]));
+                Xunit.Assert.Equal("2001:db8::/127", global::Sharpy.Builtins.Str(subnets.GetItemUnchecked(0)));
 #line (384, 5) - (384, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("2001:db8::2/127", global::Sharpy.Builtins.Str(subnets[1]));
+                Xunit.Assert.Equal("2001:db8::2/127", global::Sharpy.Builtins.Str(subnets.GetItemUnchecked(1)));
             }
 
             [Xunit.FactAttribute]
@@ -717,7 +717,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (412, 5) - (412, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (413, 5) - (413, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("2001:db8::/120", global::Sharpy.Builtins.Str(result[0]));
+                Xunit.Assert.Equal("2001:db8::/120", global::Sharpy.Builtins.Str(result.GetItemUnchecked(0)));
             }
 
             [Xunit.TheoryAttribute]

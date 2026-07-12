@@ -38,7 +38,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (12, 5) - (12, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (13, 5) - (13, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result[0]));
+                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result.GetItemUnchecked(0)));
             }
 
             [Xunit.FactAttribute]
@@ -57,17 +57,17 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (19, 5) - (19, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(6, global::Sharpy.Builtins.Len(result));
 #line (20, 5) - (20, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2 }, result[0]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2 }, result.GetItemUnchecked(0));
 #line (21, 5) - (21, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 3 }, result[1]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 3 }, result.GetItemUnchecked(1));
 #line (22, 5) - (22, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 4 }, result[2]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 4 }, result.GetItemUnchecked(2));
 #line (23, 5) - (23, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 3 }, result[3]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 3 }, result.GetItemUnchecked(3));
 #line (24, 5) - (24, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 4 }, result[4]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 4 }, result.GetItemUnchecked(4));
 #line (25, 5) - (25, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 3, 4 }, result[5]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 3, 4 }, result.GetItemUnchecked(5));
             }
 
             [Xunit.FactAttribute]
@@ -83,7 +83,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (33, 5) - (33, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (34, 5) - (34, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 1, 1 }, result[0]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 1, 1 }, result.GetItemUnchecked(0));
             }
 
             [Xunit.FactAttribute]
@@ -100,11 +100,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (40, 5) - (40, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(result));
 #line (41, 5) - (41, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 1 }, result[0]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 1 }, result.GetItemUnchecked(0));
 #line (42, 5) - (42, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2 }, result[1]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2 }, result.GetItemUnchecked(1));
 #line (43, 5) - (43, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 2 }, result[2]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 2 }, result.GetItemUnchecked(2));
             }
 
             [Xunit.FactAttribute]
@@ -119,7 +119,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (49, 5) - (49, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (50, 5) - (50, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result[0]));
+                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result.GetItemUnchecked(0)));
             }
 
             [Xunit.FactAttribute]
@@ -137,7 +137,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (58, 5) - (58, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (59, 5) - (59, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result[0]));
+                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result.GetItemUnchecked(0)));
             }
 
             [Xunit.FactAttribute]
@@ -172,9 +172,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (71, 5) - (71, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(6, global::Sharpy.Builtins.Len(result));
 #line (72, 5) - (72, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2, 3 }, result[0]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2, 3 }, result.GetItemUnchecked(0));
 #line (73, 5) - (73, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 3, 2, 1 }, result[5]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 3, 2, 1 }, result.GetItemUnchecked(5));
             }
 
             [Xunit.FactAttribute]
@@ -197,13 +197,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (82, 5) - (82, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(result));
 #line (83, 5) - (83, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((1, 3), result[0]);
+                Xunit.Assert.Equal((1, 3), result.GetItemUnchecked(0));
 #line (84, 5) - (84, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((1, 4), result[1]);
+                Xunit.Assert.Equal((1, 4), result.GetItemUnchecked(1));
 #line (85, 5) - (85, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((2, 3), result[2]);
+                Xunit.Assert.Equal((2, 3), result.GetItemUnchecked(2));
 #line (86, 5) - (86, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((2, 4), result[3]);
+                Xunit.Assert.Equal((2, 4), result.GetItemUnchecked(3));
             }
 
             [Xunit.FactAttribute]
@@ -232,11 +232,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (94, 5) - (94, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(8, global::Sharpy.Builtins.Len(result));
 #line (95, 5) - (95, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((1, 3, 5), result[0]);
+                Xunit.Assert.Equal((1, 3, 5), result.GetItemUnchecked(0));
 #line (96, 5) - (96, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((1, 3, 6), result[1]);
+                Xunit.Assert.Equal((1, 3, 6), result.GetItemUnchecked(1));
 #line (97, 5) - (97, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((2, 4, 6), result[7]);
+                Xunit.Assert.Equal((2, 4, 6), result.GetItemUnchecked(7));
             }
 
             [Xunit.FactAttribute]
@@ -259,13 +259,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (104, 5) - (104, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
                 Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(result));
 #line (105, 5) - (105, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((1, 1), result[0]);
+                Xunit.Assert.Equal((1, 1), result.GetItemUnchecked(0));
 #line (106, 5) - (106, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((1, 2), result[1]);
+                Xunit.Assert.Equal((1, 2), result.GetItemUnchecked(1));
 #line (107, 5) - (107, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((2, 1), result[2]);
+                Xunit.Assert.Equal((2, 1), result.GetItemUnchecked(2));
 #line (108, 5) - (108, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_combinatorics_tests.spy"
-                Xunit.Assert.Equal((2, 2), result[3]);
+                Xunit.Assert.Equal((2, 2), result.GetItemUnchecked(3));
             }
         }
     }

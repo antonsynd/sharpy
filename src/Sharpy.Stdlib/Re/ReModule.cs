@@ -539,7 +539,7 @@ namespace Sharpy
                 };
                 string StrEvaluator(global::System.Text.RegularExpressions.Match m)
                 {
-                    replacementCount[0] = replacementCount[0] + 1;
+                    replacementCount[0] = replacementCount.GetItemUnchecked(0) + 1;
                     return m.Result(translated);
                 }
 
@@ -553,7 +553,7 @@ namespace Sharpy
                     result = this._Regex.Replace(s, StrEvaluator, count);
                 }
 
-                return (result, replacementCount[0]);
+                return (result, replacementCount.GetItemUnchecked(0));
             }
 
             /// <summary>
@@ -567,7 +567,7 @@ namespace Sharpy
                 };
                 string CallableEvaluator(global::System.Text.RegularExpressions.Match m)
                 {
-                    replacementCount[0] = replacementCount[0] + 1;
+                    replacementCount[0] = replacementCount.GetItemUnchecked(0) + 1;
                     MatchResult reMatch = new MatchResult(m, s, this._PatternStr, 0, s.Length, this);
                     return repl(reMatch);
                 }
@@ -582,7 +582,7 @@ namespace Sharpy
                     result = this._Regex.Replace(s, CallableEvaluator, count);
                 }
 
-                return (result, replacementCount[0]);
+                return (result, replacementCount.GetItemUnchecked(0));
             }
 
             /// <summary>

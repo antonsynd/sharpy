@@ -244,13 +244,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (119, 5) - (119, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(mostCommon));
 #line (120, 5) - (120, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Equal("a", mostCommon[0].Item1);
+                Xunit.Assert.Equal("a", mostCommon.GetItemUnchecked(0).Item1);
 #line (121, 5) - (121, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Equal(3, mostCommon[0].Item2);
+                Xunit.Assert.Equal(3, mostCommon.GetItemUnchecked(0).Item2);
 #line (122, 5) - (122, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Equal("b", mostCommon[1].Item1);
+                Xunit.Assert.Equal("b", mostCommon.GetItemUnchecked(1).Item1);
 #line (123, 5) - (123, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Equal(2, mostCommon[1].Item2);
+                Xunit.Assert.Equal(2, mostCommon.GetItemUnchecked(1).Item2);
             }
 
             [Xunit.FactAttribute]

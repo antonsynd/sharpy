@@ -916,7 +916,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (448, 5) - (448, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(docs));
 #line (449, 5) - (449, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                object firstElem = docs[0];
+                object firstElem = docs.GetItemUnchecked(0);
 #line (450, 5) - (455, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (firstElem)
                 {
@@ -931,7 +931,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (455, 5) - (455, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                object secondElem = docs[1];
+                object secondElem = docs.GetItemUnchecked(1);
 #line (456, 5) - (462, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (secondElem)
                 {
@@ -954,11 +954,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (465, 5) - (465, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(docs));
 #line (466, 5) - (466, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(docs[0], 1));
+                Xunit.Assert.True(@operator.Eq(docs.GetItemUnchecked(0), 1));
 #line (467, 5) - (467, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(docs[1], 2));
+                Xunit.Assert.True(@operator.Eq(docs.GetItemUnchecked(1), 2));
 #line (468, 5) - (468, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(docs[2], 3));
+                Xunit.Assert.True(@operator.Eq(docs.GetItemUnchecked(2), 3));
             }
 
             [Xunit.FactAttribute]
@@ -969,7 +969,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (473, 5) - (473, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(docs));
 #line (474, 5) - (474, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                object elem = docs[0];
+                object elem = docs.GetItemUnchecked(0);
 #line (475, 5) - (481, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (elem)
                 {
@@ -992,7 +992,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (484, 5) - (484, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(docs));
 #line (485, 5) - (485, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                object firstObj = docs[0];
+                object firstObj = docs.GetItemUnchecked(0);
 #line (486, 5) - (491, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (firstObj)
                 {
@@ -1007,9 +1007,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (491, 5) - (491, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Null(docs[1]);
+                Xunit.Assert.Null(docs.GetItemUnchecked(1));
 #line (492, 5) - (492, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                object thirdObj = docs[2];
+                object thirdObj = docs.GetItemUnchecked(2);
 #line (493, 5) - (499, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (thirdObj)
                 {

@@ -40,7 +40,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (9, 5) - (9, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                 Xunit.Assert.Equal(42, result);
 #line (10, 5) - (10, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
-                Xunit.Assert.Equal(7, h[0]);
+                Xunit.Assert.Equal(7, h.GetItemUnchecked(0));
 #line (11, 5) - (11, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(h));
             }
@@ -105,7 +105,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (36, 5) - (36, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                 heapq.Heapify(h);
 #line (37, 5) - (37, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
-                Xunit.Assert.Equal(1, h[0]);
+                Xunit.Assert.Equal(1, h.GetItemUnchecked(0));
 #line (39, 5) - (39, 16) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                 int i = 0;
 #line (40, 5) - (49, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"

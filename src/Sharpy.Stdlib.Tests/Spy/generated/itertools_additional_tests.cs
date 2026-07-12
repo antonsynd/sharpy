@@ -423,11 +423,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (161, 5) - (161, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(result));
 #line (162, 5) - (162, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((1, 4), result[0]);
+                Xunit.Assert.Equal((1, 4), result.GetItemUnchecked(0));
 #line (163, 5) - (163, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((2, 5), result[1]);
+                Xunit.Assert.Equal((2, 5), result.GetItemUnchecked(1));
 #line (164, 5) - (164, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((3, 6), result[2]);
+                Xunit.Assert.Equal((3, 6), result.GetItemUnchecked(2));
             }
 
             [Xunit.FactAttribute]
@@ -450,11 +450,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (171, 5) - (171, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(result));
 #line (172, 5) - (172, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((1, 4), result[0]);
+                Xunit.Assert.Equal((1, 4), result.GetItemUnchecked(0));
 #line (173, 5) - (173, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((2, -1), result[1]);
+                Xunit.Assert.Equal((2, -1), result.GetItemUnchecked(1));
 #line (174, 5) - (174, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((3, -1), result[2]);
+                Xunit.Assert.Equal((3, -1), result.GetItemUnchecked(2));
             }
 
             [Xunit.FactAttribute]
@@ -477,13 +477,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (183, 5) - (183, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(result));
 #line (184, 5) - (184, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((1, 3), result[0]);
+                Xunit.Assert.Equal((1, 3), result.GetItemUnchecked(0));
 #line (185, 5) - (185, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((1, 4), result[1]);
+                Xunit.Assert.Equal((1, 4), result.GetItemUnchecked(1));
 #line (186, 5) - (186, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((2, 3), result[2]);
+                Xunit.Assert.Equal((2, 3), result.GetItemUnchecked(2));
 #line (187, 5) - (187, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((2, 4), result[3]);
+                Xunit.Assert.Equal((2, 4), result.GetItemUnchecked(3));
             }
 
             [Xunit.FactAttribute]
@@ -506,13 +506,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (194, 5) - (194, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(result));
 #line (195, 5) - (195, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((0, 0), result[0]);
+                Xunit.Assert.Equal((0, 0), result.GetItemUnchecked(0));
 #line (196, 5) - (196, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((0, 1), result[1]);
+                Xunit.Assert.Equal((0, 1), result.GetItemUnchecked(1));
 #line (197, 5) - (197, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((1, 0), result[2]);
+                Xunit.Assert.Equal((1, 0), result.GetItemUnchecked(2));
 #line (198, 5) - (198, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((1, 1), result[3]);
+                Xunit.Assert.Equal((1, 1), result.GetItemUnchecked(3));
             }
 
             [Xunit.FactAttribute]
@@ -572,13 +572,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (218, 5) - (218, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(groups));
 #line (219, 5) - (219, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal("a", groups[0].Item1);
+                Xunit.Assert.Equal("a", groups.GetItemUnchecked(0).Item1);
 #line (220, 5) - (220, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<string>() { "aa", "ab" }, groups[0].Item2);
+                Xunit.Assert.Equal(new Sharpy.List<string>() { "aa", "ab" }, groups.GetItemUnchecked(0).Item2);
 #line (221, 5) - (221, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal("b", groups[1].Item1);
+                Xunit.Assert.Equal("b", groups.GetItemUnchecked(1).Item1);
 #line (222, 5) - (222, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<string>() { "ba", "bb", "bc" }, groups[1].Item2);
+                Xunit.Assert.Equal(new Sharpy.List<string>() { "ba", "bb", "bc" }, groups.GetItemUnchecked(1).Item2);
             }
 
             [Xunit.FactAttribute]
@@ -618,11 +618,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (233, 5) - (233, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(groups));
 #line (234, 5) - (234, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((1, 2), groups[0]);
+                Xunit.Assert.Equal((1, 2), groups.GetItemUnchecked(0));
 #line (235, 5) - (235, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((2, 3), groups[1]);
+                Xunit.Assert.Equal((2, 3), groups.GetItemUnchecked(1));
 #line (236, 5) - (236, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((3, 1), groups[2]);
+                Xunit.Assert.Equal((3, 1), groups.GetItemUnchecked(2));
             }
 
             [Xunit.FactAttribute]
@@ -640,17 +640,17 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (244, 5) - (244, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(6, global::Sharpy.Builtins.Len(result));
 #line (245, 5) - (245, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 1 }, result[0]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 1 }, result.GetItemUnchecked(0));
 #line (246, 5) - (246, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2 }, result[1]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2 }, result.GetItemUnchecked(1));
 #line (247, 5) - (247, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 3 }, result[2]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 3 }, result.GetItemUnchecked(2));
 #line (248, 5) - (248, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 2 }, result[3]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 2 }, result.GetItemUnchecked(3));
 #line (249, 5) - (249, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 3 }, result[4]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 3 }, result.GetItemUnchecked(4));
 #line (250, 5) - (250, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(new Sharpy.List<int>() { 3, 3 }, result[5]);
+                Xunit.Assert.Equal(new Sharpy.List<int>() { 3, 3 }, result.GetItemUnchecked(5));
             }
 
             [Xunit.FactAttribute]
@@ -667,7 +667,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (256, 5) - (256, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (257, 5) - (257, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result[0]));
+                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result.GetItemUnchecked(0)));
             }
 
             [Xunit.FactAttribute]
@@ -703,13 +703,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (271, 5) - (271, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(result));
 #line (272, 5) - (272, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((1, 2), result[0]);
+                Xunit.Assert.Equal((1, 2), result.GetItemUnchecked(0));
 #line (273, 5) - (273, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((2, 3), result[1]);
+                Xunit.Assert.Equal((2, 3), result.GetItemUnchecked(1));
 #line (274, 5) - (274, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((3, 4), result[2]);
+                Xunit.Assert.Equal((3, 4), result.GetItemUnchecked(2));
 #line (275, 5) - (275, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal((4, 5), result[3]);
+                Xunit.Assert.Equal((4, 5), result.GetItemUnchecked(3));
             }
 
             [Xunit.FactAttribute]
@@ -755,11 +755,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (293, 5) - (293, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(result));
 #line (294, 5) - (294, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(("A", "B"), result[0]);
+                Xunit.Assert.Equal(("A", "B"), result.GetItemUnchecked(0));
 #line (295, 5) - (295, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(("B", "C"), result[1]);
+                Xunit.Assert.Equal(("B", "C"), result.GetItemUnchecked(1));
 #line (296, 5) - (296, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Xunit.Assert.Equal(("C", "D"), result[2]);
+                Xunit.Assert.Equal(("C", "D"), result.GetItemUnchecked(2));
             }
         }
     }

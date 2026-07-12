@@ -490,9 +490,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                     4
                 };
 #line (245, 5) - (245, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-                Xunit.Assert.Equal(0, u[0]);
+                Xunit.Assert.Equal(0, u.GetItemUnchecked(0));
 #line (246, 5) - (246, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-                Xunit.Assert.Equal(4, u[4]);
+                Xunit.Assert.Equal(4, u.GetItemUnchecked(4));
 #line (247, 5) - (247, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 Xunit.Assert.Equal(4, u[-1]);
 #line (248, 5) - (248, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
@@ -516,9 +516,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                     11
                 };
 #line (257, 5) - (257, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-                Xunit.Assert.Equal(10, a[0]);
+                Xunit.Assert.Equal(10, a.GetItemUnchecked(0));
 #line (258, 5) - (258, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-                Xunit.Assert.Equal(11, a[1]);
+                Xunit.Assert.Equal(11, a.GetItemUnchecked(1));
 #line (259, 5) - (259, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 Xunit.Assert.Equal(10, a[-2]);
 #line (260, 5) - (260, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"

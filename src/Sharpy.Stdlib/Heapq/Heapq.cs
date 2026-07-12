@@ -37,7 +37,7 @@ namespace Sharpy
             }
 
             int lastIdx = global::Sharpy.Builtins.Len(heap) - 1;
-            T result = heap[0];
+            T result = heap.GetItemUnchecked(0);
             if (lastIdx > 0)
             {
                 heap[0] = heap[lastIdx];
@@ -78,7 +78,7 @@ namespace Sharpy
                 throw new global::Sharpy.IndexError("index out of range");
             }
 
-            T result = heap[0];
+            T result = heap.GetItemUnchecked(0);
             heap[0] = item;
             _SiftDown(heap, 0);
             return result;
@@ -90,9 +90,9 @@ namespace Sharpy
         public static T Heappushpop<T>(Sharpy.List<T> heap, T item)
             where T : global::System.IComparable<T>
         {
-            if (global::Sharpy.Builtins.Len(heap) > 0 && heap[0].CompareTo(item) < 0)
+            if (global::Sharpy.Builtins.Len(heap) > 0 && heap.GetItemUnchecked(0).CompareTo(item) < 0)
             {
-                T result = heap[0];
+                T result = heap.GetItemUnchecked(0);
                 heap[0] = item;
                 _SiftDown(heap, 0);
                 return result;
