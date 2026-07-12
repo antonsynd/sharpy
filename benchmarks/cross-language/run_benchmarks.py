@@ -482,7 +482,7 @@ def run_benchmark(
                 compile_phases = parse_sharpy_compile_phases(sharpy_metrics_path(tmp_path))
                 # Cold + warm (--incremental) project-compile times. Additive to the
                 # single-file compile above (kept intact for history comparability).
-                cold_t, warm_t, _proj_ok, _proj_err = measure_project_compile(cli_dll, spy_file, features)
+                cold_t, warm_t, _, _ = measure_project_compile(cli_dll, spy_file, features)
                 results["Sharpy"] = BenchResult(
                     bench_dir.name, "Sharpy", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err,
                     compile_phases=compile_phases or None,

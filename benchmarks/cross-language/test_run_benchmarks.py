@@ -162,7 +162,7 @@ def test_compile_sharpy_threads_enable_feature(monkeypatch, tmp_path):
         stderr = ""
         stdout = ""
 
-    def fake_run(cmd, *args, **kwargs):
+    def fake_run(cmd, *_args, **_kwargs):
         captured["cmd"] = cmd
         return _Result()
 
