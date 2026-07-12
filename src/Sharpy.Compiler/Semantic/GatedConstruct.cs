@@ -34,11 +34,11 @@ public sealed record GatedConstruct(string Feature, string Description, Func<Nod
 /// ungated usage.
 /// </summary>
 /// <remarks>
-/// Follow-up pilot features register their constructs here — one entry each — so gating
-/// stays data-driven and lives in exactly one place. Wave 2 ships no real gated construct
-/// yet; the list is empty and <see cref="FeatureGateChecker"/> short-circuits, so gating is
-/// a no-op until the first pilot (matmul <c>@</c> / <c>defer</c>) lands. Tests exercise the
-/// checker by passing a custom construct list to <see cref="FeatureGateChecker"/> directly.
+/// Each gated feature registers its constructs here — one entry per construct — so gating
+/// stays data-driven and lives in exactly one place. The Wave 2 pilots (matmul <c>@</c>/<c>@=</c>
+/// and <c>defer</c>) are registered below; follow-up experimental features add their own
+/// entries. Tests can also exercise the checker by passing a custom construct list to
+/// <see cref="FeatureGateChecker"/> directly.
 /// </remarks>
 public static class GatedConstructRegistry
 {

@@ -209,6 +209,8 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// <summary>
     /// Encapsulates all narrowing state for Optional/Nullable and isinstance narrowing.
     /// Extracted from RoslynEmitter's top-level fields to reduce its field count.
+    /// TODO(#1081): retire this re-derived flow tracking by consuming the semantic phase's
+    /// NarrowingFlowAnalysis facts directly (deferred P5.5 stretch of #1042).
     /// </summary>
     private sealed class NarrowingState
     {

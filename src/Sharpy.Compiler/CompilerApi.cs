@@ -86,10 +86,11 @@ public sealed class CompilerApi
         MergeDefaultReferences(opts);
 
         // #1038: a single-file compile is a synthetic project-of-one-file driven through
-        // ProjectCompiler. This requires the entry to be a real file on disk (the project
-        // pipeline reads all source files from disk and walks the local-import closure).
-        // Purely in-memory callers (no backing file — e.g. api.Compile(source)) keep the
-        // legacy single-file path until it is removed in a later task.
+        // ProjectCompiler. When the entry is a real file on disk, the project pipeline
+        // reads all source files from disk and walks the local-import closure here.
+        // Purely in-memory callers (no backing file — e.g. api.Compile(source)) go through
+        // Compiler.Compile, which reaches the same ProjectCompiler pipeline via
+        // SyntheticProject.BuildConfig + in-memory sources — both branches share one path.
         if (filePath != null && File.Exists(filePath))
         {
             return CompileAsSyntheticProject(source, opts, Path.GetFullPath(filePath), cancellationToken);

@@ -85,9 +85,10 @@ public sealed class FeatureFlags
     public static readonly FeatureFlags None = new(ImmutableHashSet<string>.Empty);
 
     /// <summary>
-    /// The single source of truth for all known feature names. Wave 1 registers no real
-    /// features; only <c>__test_feature</c> exists (hidden from <c>--help</c>) so the
-    /// enable-a-feature plumbing is testable end-to-end. Real features register here later.
+    /// The single source of truth for all known feature names. <c>__test_feature</c> (hidden
+    /// from <c>--help</c>) exists so the enable-a-feature plumbing is testable end-to-end;
+    /// real experimental features (currently <c>matmul</c> and <c>defer</c>, the Wave 2
+    /// pilots) register here per docs/design/feature-lifecycle.md.
     /// </summary>
     public static IReadOnlyDictionary<string, FeatureInfo> KnownFeatures { get; } =
         new Dictionary<string, FeatureInfo>(StringComparer.Ordinal)

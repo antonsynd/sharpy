@@ -134,9 +134,9 @@ error.
 
 1. **Register the name.** Add a `FeatureInfo` to `FeatureFlags.KnownFeatures` with the right `Scope`.
 2. **Register the gated constructs.** Map the feature's AST constructs (a node kind, an operator, a
-   keyword) to the feature name in the central feature-gate registry consumed by the `FeatureGateChecker`.
-   *(This registry and checker are being introduced under C2/#1045 concurrently with this policy; this
-   page describes the intended shape, not specific call sites.)*
+   keyword) to the feature name in `GatedConstructRegistry.All` (`Semantic/GatedConstruct.cs`), the
+   central registry consumed by the `FeatureGateChecker` (both landed under C2/#1045; the matmul and
+   defer pilot entries there are the reference examples).
 3. **Enforcement is one AST walk.** After Pass 1.5 (so per-file `from __future__` flags are known) and
    before type resolution, the `FeatureGateChecker` walks each module, unions the compilation-wide flags
    with that file's future flags, and emits **`SPY0331`** (`FeatureNotEnabled`) for every ungated use of
