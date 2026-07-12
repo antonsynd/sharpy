@@ -1,0 +1,12 @@
+# Narrowing from `if x is not None:` does NOT survive a reassignment of x inside
+# the block (assignment-kill, #1042). After `x = opt_val()`, x is `int?` again, so
+# using it as a non-optional int is a type error. This documents the behavior
+# change from the pre-CFG scope-stack narrowing, which incorrectly kept the
+# narrowing alive across the reassignment.
+def opt_val() -> int?:
+    return None()
+
+def process(x: int?) -> None:
+    if x is not None:
+        x = opt_val()
+        print(str(x + 1))

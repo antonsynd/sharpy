@@ -1,0 +1,7 @@
+# A variable narrowed by `if x is not None:` is rebound when used as a for-loop
+# target, so the narrowing does not survive into the loop body (#1042): inside the
+# loop x is the element type `int?`, not `int`.
+def process(x: int?, items: list[int?]) -> None:
+    if x is not None:
+        for x in items:
+            print(str(x + 1))

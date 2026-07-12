@@ -1,0 +1,14 @@
+# A variable narrowed by `if x is not None:` is rebound by a `with ... as x`
+# binding, so the narrowing does not survive into the with body (#1042): inside
+# the block x is the context manager's `__enter__` result (`int?`), not `int`.
+class Res:
+    def __enter__(self) -> int?:
+        return None()
+
+    def __exit__(self) -> None:
+        pass
+
+def process(x: int?) -> None:
+    if x is not None:
+        with Res() as x:
+            print(str(x + 1))
