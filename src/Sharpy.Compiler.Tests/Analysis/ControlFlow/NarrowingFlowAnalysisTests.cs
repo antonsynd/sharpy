@@ -32,6 +32,12 @@ public class NarrowingFlowAnalysisTests
     private static BinaryOp IsNone(string name) =>
         new BinaryOp { Operator = BinaryOperator.Is, Left = Id(name), Right = None() };
 
+    private static BinaryOp NotEqNone(string name) =>
+        new BinaryOp { Operator = BinaryOperator.NotEqual, Left = Id(name), Right = None() };
+
+    private static BinaryOp EqNone(string name) =>
+        new BinaryOp { Operator = BinaryOperator.Equal, Left = Id(name), Right = None() };
+
     private static MemberAccess Member(string objectName, string member) =>
         new MemberAccess { Object = Id(objectName), Member = member };
 
@@ -294,6 +300,94 @@ public class NarrowingFlowAnalysisTests
         // ...and analysing the inner CFG on its own sees no narrowing from the enclosing scope.
         Assert.False(HasRemoveNone(innerResult.FactsBefore(innerUse), "x"));
     }
+
+    [Fact]
+    public void NotEqualsNone_NarrowsThenBranchOnly()
+    {
+        var cfg = CreateDiamondCfg(NotEqNone("x"),
+            thenStatements: new Statement[] { Pass() },
+            elseStatements: new Statement[] { Pass() });
+
+        var result = NarrowingFlowAnalysis.Analyze(cfg);
+
+        Assert.True(HasRemoveNone(result.FactsAtEntry(cfg.Blocks.Single(b => b.Label == "then")), "x"));
+        Assert.False(HasRemoveNone(result.FactsAtEntry(cfg.Blocks.Single(b => b.Label == "else")), "x"));
+    }
+
+    [Fact]
+    public void EqualsNone_NarrowsElseBranchOnly()
+    {
+        var cfg = CreateDiamondCfg(EqNone("x"),
+            thenStatements: new Statement[] { Pass() },
+            elseStatements: new Statement[] { Pass() });
+
+        var result = NarrowingFlowAnalysis.Analyze(cfg);
+
+        Assert.False(HasRemoveNone(result.FactsAtEntry(cfg.Blocks.Single(b => b.Label == "then")), "x"));
+        Assert.True(HasRemoveNone(result.FactsAtEntry(cfg.Blocks.Single(b => b.Label == "else")), "x"));
+    }
+
+    [Fact]
+    public void ForLoopTarget_KillsNarrowingInBody()
+    {
+        // x narrowed before the loop, then rebound as the loop target — narrowing must not survive.
+        var useInBody = Assign(Id("z"));
+        var func = FunctionWithBody(
+            Assert_(IsNotNone("x")),
+            new ForStatement
+            {
+                Target = Id("x"),
+                Iterator = Id("items"),
+                Body = ImmutableArray.Create<Statement>(useInBody)
+            });
+
+        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(func));
+
+        Assert.False(HasRemoveNone(result.FactsBefore(useInBody), "x"));
+    }
+
+    [Fact]
+    public void ForLoopTarget_DifferentVariable_PreservesNarrowing()
+    {
+        // The loop rebinds y, not x — x's narrowing survives into the body.
+        var useInBody = Assign(Id("z"));
+        var func = FunctionWithBody(
+            Assert_(IsNotNone("x")),
+            new ForStatement
+            {
+                Target = Id("y"),
+                Iterator = Id("items"),
+                Body = ImmutableArray.Create<Statement>(useInBody)
+            });
+
+        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(func));
+
+        Assert.True(HasRemoveNone(result.FactsBefore(useInBody), "x"));
+    }
+
+    [Fact]
+    public void WithAsBinding_KillsNarrowingInBody()
+    {
+        var useInBody = Assign(Id("z"));
+        var func = FunctionWithBody(
+            Assert_(IsNotNone("x")),
+            new WithStatement
+            {
+                Items = ImmutableArray.Create(new WithItem { ContextExpression = Id("cm"), Name = "x" }),
+                Body = ImmutableArray.Create<Statement>(useInBody)
+            });
+
+        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(func));
+
+        Assert.False(HasRemoveNone(result.FactsBefore(useInBody), "x"));
+    }
+
+    private static FunctionDef FunctionWithBody(params Statement[] body) => new FunctionDef
+    {
+        Name = "f",
+        Parameters = ImmutableArray<Parameter>.Empty,
+        Body = ImmutableArray.Create(body)
+    };
 
     /// <summary>
     /// Builds a CFG shaped entry → preheader → header → {body → header, exit}, so a narrowing can be

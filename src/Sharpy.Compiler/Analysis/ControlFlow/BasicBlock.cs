@@ -67,6 +67,15 @@ internal sealed class BasicBlock
     public bool ContainsAwait { get; internal set; }
 
     /// <summary>
+    /// Narrowing keys rebound at this block's entry, before its statements execute — the targets of a
+    /// <c>for</c> loop (<c>for x in …</c>) or a <c>with … as x</c> binding. The narrowing dataflow
+    /// analysis kills facts about these keys on entry, since the variable now holds a fresh value
+    /// (#1042). Empty for ordinary blocks; consumed only by <c>NarrowingFlowAnalysis</c> (other CFG
+    /// consumers ignore it).
+    /// </summary>
+    public IReadOnlyList<string> EntryRebinds { get; internal set; } = System.Array.Empty<string>();
+
+    /// <summary>
     /// The source span of the first statement in this block (for diagnostics).
     /// </summary>
     public Text.TextSpan? Span => _statements.Count > 0 ? _statements[0].Span : null;

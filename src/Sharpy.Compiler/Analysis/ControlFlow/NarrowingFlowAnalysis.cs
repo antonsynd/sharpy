@@ -147,13 +147,21 @@ internal static class NarrowingConditionInterpreter
     {
         switch (condition)
         {
-            // then-branch of `x is not None` removes None from x.
+            // then-branch of `x is not None` / `x != None` removes None from x.
             case BinaryOp { Operator: BinaryOperator.IsNot, Right: NoneLiteral } isNot when onTrueBranch:
                 return RemoveNoneFact(isNot.Left);
+            // Unreachable from Sharpy source today: `== None`/`!= None` is rejected by the type checker
+            // (only `is`/`is not None` are supported). These cases keep the recognizer complete and are
+            // exercised by engine unit tests; they become live if the operator is ever supported — see #1079.
+            case BinaryOp { Operator: BinaryOperator.NotEqual, Right: NoneLiteral } notEq when onTrueBranch:
+                return RemoveNoneFact(notEq.Left);
 
-            // else-branch of `x is None` removes None from x.
+            // else-branch of `x is None` / `x == None` removes None from x.
             case BinaryOp { Operator: BinaryOperator.Is, Right: NoneLiteral } isOp when !onTrueBranch:
                 return RemoveNoneFact(isOp.Left);
+            // Unreachable from Sharpy source today — see #1079 (as above).
+            case BinaryOp { Operator: BinaryOperator.Equal, Right: NoneLiteral } eq when !onTrueBranch:
+                return RemoveNoneFact(eq.Left);
 
             // then-branch of `isinstance(x, T)` narrows x to T.
             case FunctionCall { Function: Identifier { Name: IsInstance } } call
@@ -442,6 +450,11 @@ internal static class NarrowingFlowAnalysis
         Dictionary<Statement, IReadOnlyCollection<NarrowingFact>>? recordStatementFacts)
     {
         var facts = new HashSet<NarrowingFact>(inSet);
+
+        // Variables rebound at block entry (for-loop targets, with-as bindings) lose their facts
+        // before the body runs — the name now holds a fresh value (#1042).
+        foreach (var rebindKey in block.EntryRebinds)
+            facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, rebindKey));
 
         foreach (var statement in block.Statements)
         {

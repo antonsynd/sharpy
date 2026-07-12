@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Analysis.ControlFlow;
 
@@ -530,6 +531,10 @@ internal class ControlFlowGraphBuilder
         var bodyBlock = CreateBlock("for_body");
         var exitBlock = CreateBlock("for_exit");
 
+        // The loop variable(s) are rebound on every entry to the body, so narrowing facts about them
+        // must not survive into the loop (#1042).
+        bodyBlock.EntryRebinds = CollectBindingKeys(stmt.Target);
+
         // Connect current block to header
         Connect(_currentBlock, headerBlock);
         _currentBlock.Terminator = new BranchTerminator(headerBlock);
@@ -744,9 +749,66 @@ internal class ControlFlowGraphBuilder
             return;
         }
 
-        // With statement is a straight-through block (like try without handlers).
-        // The body executes linearly; disposal happens at the end.
+        // With statement is a straight-through block (like try without handlers). The body executes
+        // linearly; disposal happens at the end. When there is an `as` binding, the body runs in a
+        // dedicated block so the narrowing analysis can kill facts about the rebound name on entry
+        // (#1042); without a binding no extra block is created, so ordinary `with` CFGs are unchanged.
+        var withBindings = CollectWithBindingKeys(stmt);
+        if (withBindings.Count > 0)
+        {
+            var withBodyBlock = CreateBlock("with_body");
+            withBodyBlock.EntryRebinds = withBindings;
+            Connect(_currentBlock, withBodyBlock);
+            _currentBlock.Terminator = new BranchTerminator(withBodyBlock);
+            _currentBlock = withBodyBlock;
+        }
+
         BuildStatements(stmt.Body);
+    }
+
+    /// <summary>
+    /// Collects the narrowing keys bound by a <c>for</c>-loop target — a single name, a subscript/
+    /// member path, or a tuple of these (unpacking) — so the narrowing analysis can kill facts about
+    /// them at the loop body's entry. Targets that cannot be keyed contribute nothing.
+    /// </summary>
+    private static IReadOnlyList<string> CollectBindingKeys(Expression target)
+    {
+        var keys = new List<string>();
+        CollectBindingKeysInto(target, keys);
+        return keys;
+    }
+
+    private static void CollectBindingKeysInto(Expression target, List<string> keys)
+    {
+        switch (target)
+        {
+            case Parenthesized paren:
+                CollectBindingKeysInto(paren.Expression, keys);
+                break;
+            case TupleLiteral tuple:
+                foreach (var element in tuple.Elements)
+                    CollectBindingKeysInto(element, keys);
+                break;
+            default:
+                var key = AstHelper.ExtractNarrowingKey(target);
+                if (key != null)
+                    keys.Add(key);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Collects the <c>as</c>-binding names of a <c>with</c> statement's items.
+    /// </summary>
+    private static IReadOnlyList<string> CollectWithBindingKeys(WithStatement stmt)
+    {
+        List<string>? keys = null;
+        foreach (var item in stmt.Items)
+        {
+            if (item.Name != null)
+                (keys ??= new List<string>()).Add(item.Name);
+        }
+        return (IReadOnlyList<string>?)keys ?? System.Array.Empty<string>();
     }
 
     /// <summary>
