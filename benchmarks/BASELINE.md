@@ -47,7 +47,7 @@ same work through native BLAS-class code:
 | Path | Python | Sharpy | C# | notes |
 |------|-------:|-------:|----|-------|
 | numpy `@` (256×256 ×200) | 169ms | (held out, #1084) | 375ms (MathNet) | native BLAS; Sharpy `np.Matmul` delegates to the same MathNet backend |
-| pure-list (100×100 ×10) | — | Spy/C# **2.50×** (post-D4) / *post-P6.7: pending #35* | — | bounds-checked nested `Sharpy.List` indexing |
+| pure-list (100×100 ×10) | — | Spy/C# 2.35× (pre-P6.7) → **2.27×** (post-P6.7) | — | bounds-checked nested `Sharpy.List` indexing |
 
 Sharpy's numpy column is held out of the harness until **#1084** (compiled numpy
 programs can't load MathNet at runtime — transitive NuGet deps copied but omitted
@@ -55,11 +55,21 @@ from `deps.json`); `bench.spy` still compiles under the `matmul` flag. The emitt
 C# is `np.Matmul(a, b)` → `Sharpy.Numpy.Matmul` → `NumpyLinalg.Dot` → MathNet, so
 Sharpy-numpy throughput tracks the C#/MathNet column modulo one marshal per call.
 
-**Decision (D5, #1052):** the pure-list matmul gap is structural (nested
-bounds-checked `Sharpy.List` indexing) and the numeric fast path already exists via
-numpy → MathNet, which is ~50–100× faster than a same-scale pure-list kernel. Raw-array
-lowering is therefore dispositioned to Workstream E3 rather than built now; see the
-escalation memo on #1052.
+**P6.7 tag-eligibility note:** the pure-list ratio is essentially flat across P6.7
+because the benchmark's O(n³) inner loop uses `while`-counters (`i = i + 1`, i.e.
+reassigned), which the non-negative-index fast path does not tag — it tags integer
+literals and unreassigned `range()` induction variables. Emitted C# confirms this:
+the inner `result[i][j] = ... a[i][k] * b[k][j]` stays a plain (Normalize-ed) indexer
+post-P6.7, while only the O(1) setup/print indices (`a[0]`, `result[0][0]`) lower to
+`GetItemUnchecked`. P6.7 works where eligible (a `for i in range(n): xs[i]` probe
+lowers to `xs.GetItemUnchecked(i)`); this kernel just isn't eligible on its hot path.
+
+**Decision (D5, #1052):** even with the fast path fully engaged the gap would remain
+≥ 1.5× — it is structural (nested bounds-checked `Sharpy.List` indexing / no flat 2D
+array), not index-normalization cost. The numeric fast path already exists via numpy →
+MathNet, ~50–100× faster than a same-scale pure-list kernel. Raw-array lowering is
+therefore dispositioned to Workstream E3 rather than built now; see the escalation
+memo on #1052.
 
 ## Benchmark Suite
 
