@@ -21,7 +21,7 @@ public static partial class SetComprehension
             3,
             3
         };
-        var __src_1 = items;
+        Sharpy.List<int> __src_1 = items;
         var __comp_0 = new Sharpy.Set<int>(((global::Sharpy.ISized)__src_1).Count);
         foreach (var __loopVar_2 in __src_1)
         {

@@ -1,0 +1,9 @@
+# A comprehension whose source is semantically list[str] but CLR-backed by string[]
+# (str.split binds to BCL String.Split). The sized-preallocation path must coerce the
+# hoisted source instead of casting the raw array to Sharpy.ISized (compile error).
+def main():
+    text: str = "a\nb\n\nc"
+    lines: list[str] = [ln for ln in text.split("\n") if len(ln) > 0]
+    print(lines)
+    lengths: list[int] = [len(w) for w in "alpha beta gamma".split(" ")]
+    print(lengths)

@@ -308,14 +308,25 @@ internal partial class RoslynEmitter
         List<StatementSyntax>? sourceHoisted = null;
         ArgumentListSyntax capacityArgs = ArgumentList();
 
-        if (soleForClause != null
-            && IsSizedComprehensionSource(GetExpressionSemanticType(soleForClause.Iterator)))
+        var sourceSemanticType = soleForClause != null
+            ? GetExpressionSemanticType(soleForClause.Iterator)
+            : null;
+        if (soleForClause != null && IsSizedComprehensionSource(sourceSemanticType))
         {
             sourceTempName = GenerateTempVarName("src");
             ExpressionSyntax sourceExpr = null!;
             sourceHoisted = CaptureHoisted(() => sourceExpr = GenerateComprehensionIterator(soleForClause.Iterator));
+            // Declare the hoisted source with its mapped Sharpy collection type rather than `var`:
+            // a semantic list[T] can be backed by a CLR array at the C# level (e.g. str.split
+            // returns string[]), which does not implement ISized — the typed declaration coerces
+            // such sources through the collection's implicit array conversion so the ISized
+            // capacity cast below always compiles. Sharpy-backed sources bind by identity.
+            // range(...) keeps `var` (RangeIterator is never interop-backed).
+            var sourceDeclType = sourceSemanticType is GenericType
+                ? _typeMapper.MapSemanticType(sourceSemanticType)
+                : IdentifierName("var");
             sourceDecl = LocalDeclarationStatement(
-                VariableDeclaration(IdentifierName("var"))
+                VariableDeclaration(sourceDeclType)
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(Identifier(sourceTempName))
                             .WithInitializer(EqualsValueClause(sourceExpr)))));
