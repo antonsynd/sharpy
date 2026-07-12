@@ -5,6 +5,36 @@
 > **Machine:** (Update with your machine specs when running)
 > **Runtime:** .NET 10.0
 
+## D4 Sharpy.Core Hot-Path Results (#1051)
+
+> **Recorded:** 2026-07-12
+> **Machine:** Apple M4 Max (14 cores), macOS 26.5.2
+> **Runtime:** .NET 10.0.301 · **Python:** 3.12.13
+> **Harness:** `benchmarks/cross-language/run_benchmarks.py` (median of 3 timed runs + warmup, ×3 outer repetitions per condition, median of medians)
+> **Before:** `bdb4c175b` (pre-D4 baseline) · **After:** `e8e2fc556` (D4 tasks P6.1–P6.4 landed)
+
+The D4 perf tasks — keyless `list.sort()` fast path (P6.1, `f5af6bde9`), struct
+enumerators + direct backing access (P6.2, `9ee20e90f`), presized concat/append
+(P6.3, `afa2a34cc`), and imperative preallocated comprehension lowering (P6.4,
+`ba0d68836`) — target the collection hot paths exercised by the `sorting` and
+`list_comprehensions` cross-language benchmarks. Execution-time Spy/Py ratios
+(runtime only; **< 1.0 means Sharpy beats CPython**):
+
+| Benchmark | Spy/Py before | Spy/Py after | Δ | Driver |
+|-----------|--------------:|-------------:|---|--------|
+| fibonacci | 0.32x | 0.33x | ≈flat | not a D4 target (recursion/loops) |
+| matrix_multiply | 0.29x | 0.30x | ≈flat | not a D4 target (index loops) |
+| sorting | 2.35x | **0.91x** | −61% | keyless sort (P6.1) 225ms→87ms |
+| list_comprehensions | 1.49x | **1.05x** | −30% | imperative comprehensions (P6.4) 61ms→43ms |
+| string_ops | 1.35x | 1.35x | flat | not a D4 target (string methods) |
+
+**Gate status:** `sorting` crossed from 2.35x to a solid 0.91x (0.91 on all three
+outer runs), and `list_comprehensions` improved from 1.49x to ~1.05x (one run hit
+1.00x). Three of five benchmarks (`fibonacci`, `matrix_multiply`, `sorting`) are
+below 1.0. `list_comprehensions` (~1.05x) and `string_ops` (~1.35x) remain above
+1.0; neither residual is closable by D4's collection-focused changes. See the
+residual analysis on issue #1051.
+
 ## Benchmark Suite
 
 The benchmark suite is located in `src/Sharpy.Compiler.Benchmarks/` and uses [BenchmarkDotNet](https://benchmarkdotnet.org/).
