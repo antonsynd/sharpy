@@ -55,8 +55,11 @@ internal partial class TypeChecker
         // Enter an isolated narrowing scope for this lambda.
         // Type narrowings from the enclosing scope should NOT be visible inside the lambda,
         // because lambdas can be stored and called later when the narrowing condition no longer holds.
-        // This is the same logic as for nested function definitions (task 1.7).
+        // This is the same logic as for nested function definitions (task 1.7). The statement-level CFG
+        // facts (#1042) are isolated the same way: cleared for the lambda body, restored afterward.
         using var _ = _narrowingContext.EnterIsolatedScope();
+        var savedFacts = _currentFacts;
+        _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
 
         // Lambdas cannot be async, so await inside a lambda is invalid
         // (matches Python: await in lambda produces SyntaxError).
@@ -113,6 +116,7 @@ internal partial class TypeChecker
         }
 
         _currentFunctionIsAsync = previousIsAsync;
+        _currentFacts = savedFacts;
         _symbolTable.ExitScope();
 
         var optionalParamCount = lambda.Parameters.Count(p => p.DefaultValue != null);

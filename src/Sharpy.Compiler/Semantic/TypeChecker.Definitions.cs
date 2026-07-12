@@ -267,11 +267,22 @@ internal partial class TypeChecker
                 span: functionDef.Span);
         }
 
+        // Compute statement-level narrowing facts for this function body (#1042). Each function is its
+        // own CFG, so control-flow narrowings never leak across function boundaries — this is the
+        // dataflow equivalent of the isolated narrowing scope entered above.
+        var previousFlow = _narrowingFlow;
+        var previousFacts = _currentFacts;
+        _narrowingFlow = ComputeNarrowingFlow(functionDef);
+        _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
+
         // Check function body
         foreach (var statement in functionDef.Body)
         {
             CheckStatement(statement);
         }
+
+        _narrowingFlow = previousFlow;
+        _currentFacts = previousFacts;
 
         // Mark generator/async metadata and wrap return types
         ProcessGeneratorMetadata(functionDef, functionSymbol, isGenerator);
@@ -1766,11 +1777,18 @@ internal partial class TypeChecker
         _currentFunctionIsGenerator = false;
         _currentFunctionIsAsync = false;
 
+        var previousFlow = _narrowingFlow;
+        var previousFacts = _currentFacts;
+        _narrowingFlow = ComputeNarrowingFlow(propDef.Body);
+        _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
+
         foreach (var stmt in propDef.Body)
         {
             CheckStatement(stmt);
         }
 
+        _narrowingFlow = previousFlow;
+        _currentFacts = previousFacts;
         _currentMethodName = previousMethodName;
         _controlFlowDepth = previousControlFlowDepth;
         _currentFunctionIsGenerator = previousIsGenerator;
@@ -1901,11 +1919,18 @@ internal partial class TypeChecker
         _currentMethodIsOverride = propDef.Decorators.Any(d => d.Name == DecoratorNames.Override);
         _currentMethodIsDunder = false;
 
+        var previousFlow = _narrowingFlow;
+        var previousFacts = _currentFacts;
+        _narrowingFlow = ComputeNarrowingFlow(propDef.Body);
+        _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
+
         foreach (var stmt in propDef.Body)
         {
             CheckStatement(stmt);
         }
 
+        _narrowingFlow = previousFlow;
+        _currentFacts = previousFacts;
         _currentMethodName = previousMethodName;
         _controlFlowDepth = previousControlFlowDepth;
         _currentFunctionIsGenerator = previousIsGenerator;

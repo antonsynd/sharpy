@@ -514,6 +514,10 @@ internal partial class TypeChecker
 
     private void CheckIf(IfStatement ifStmt)
     {
+        // Resolve reads in the condition against the facts in effect at the branch point (#1042),
+        // so a narrowed value from the enclosing flow is visible in a nested condition.
+        _currentFacts = _narrowingFlow?.FactsBeforeBranch(ifStmt.Test) ?? _currentFacts;
+
         var condType = CheckExpression(ifStmt.Test);
         if (!IsTruthTestable(condType))
         {
@@ -522,8 +526,10 @@ internal partial class TypeChecker
                 span: ifStmt.Test.Span);
         }
 
-        // Check for type narrowing patterns
-        var (narrowedTypesInThen, thenDecision) = ExtractNarrowedTypes(ifStmt.Test, true);
+        // Record narrowing decisions for codegen. The narrowed-type *application* to branch bodies is
+        // now handled by the CFG dataflow facts (#1042); ExtractNarrowedTypes is retained purely as the
+        // condition interpreter feeding SetNarrowingDecision (consumed by the emitter, unchanged).
+        var (_, thenDecision) = ExtractNarrowedTypes(ifStmt.Test, true);
         var (narrowedTypesInElse, elseDecision) = ExtractNarrowedTypes(ifStmt.Test, false);
 
         // Record narrowing decisions for codegen
@@ -558,22 +564,20 @@ internal partial class TypeChecker
             _semanticInfo.SetNarrowingDecision(ifStmt.Test,
                 new NarrowingDecision(allOptional, allIsInstance, narrowsFollowingStatements));
 
-        // Check then branch with its own narrowing scope
-        using (_narrowingContext.EnterScope())
-        {
-            _narrowingContext.ApplyNarrowings(narrowedTypesInThen);
+        // Check then branch. Narrowing inside the body is driven by the CFG facts each statement
+        // resolves (#1042); only symbol scoping and control-flow depth are managed here.
+        _symbolTable.EnterScope("if-then");
+        _controlFlowDepth++;
+        foreach (var stmt in ifStmt.ThenBody)
+            CheckStatement(stmt);
+        _controlFlowDepth--;
+        _symbolTable.ExitScope();
 
-            _symbolTable.EnterScope("if-then");
-            _controlFlowDepth++;
-            foreach (var stmt in ifStmt.ThenBody)
-                CheckStatement(stmt);
-            _controlFlowDepth--;
-            _symbolTable.ExitScope();
-        }
-
-        // Check elif clauses, each with its own narrowing scope
+        // Check elif clauses
         foreach (var elif in ifStmt.ElifClauses)
         {
+            _currentFacts = _narrowingFlow?.FactsBeforeBranch(elif.Test) ?? _currentFacts;
+
             var elifCondType = CheckExpression(elif.Test);
             if (!IsTruthTestable(elifCondType))
             {
@@ -582,47 +586,38 @@ internal partial class TypeChecker
                     span: elif.Test.Span);
             }
 
-            var (narrowedTypesInElif, elifDecision) = ExtractNarrowedTypes(elif.Test, true);
+            var (_, elifDecision) = ExtractNarrowedTypes(elif.Test, true);
             if (elifDecision.OptionalNarrowings.Count > 0 || elifDecision.IsInstanceNarrowings.Count > 0)
                 _semanticInfo.SetNarrowingDecision(elif.Test, elifDecision);
 
-            using (_narrowingContext.EnterScope())
-            {
-                _narrowingContext.ApplyNarrowings(narrowedTypesInElif);
-
-                _symbolTable.EnterScope("elif");
-                _controlFlowDepth++;
-                foreach (var stmt in elif.Body)
-                    CheckStatement(stmt);
-                _controlFlowDepth--;
-                _symbolTable.ExitScope();
-            }
+            _symbolTable.EnterScope("elif");
+            _controlFlowDepth++;
+            foreach (var stmt in elif.Body)
+                CheckStatement(stmt);
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
         }
 
-        // Check else branch with its own narrowing scope (only if there are statements)
+        // Check else branch (only if there are statements)
         if (ifStmt.ElseBody.Length > 0)
         {
-            using (_narrowingContext.EnterScope())
-            {
-                _narrowingContext.ApplyNarrowings(narrowedTypesInElse);
-
-                _symbolTable.EnterScope("if-else");
-                _controlFlowDepth++;
-                foreach (var stmt in ifStmt.ElseBody)
-                    CheckStatement(stmt);
-                _controlFlowDepth--;
-                _symbolTable.ExitScope();
-            }
+            _symbolTable.EnterScope("if-else");
+            _controlFlowDepth++;
+            foreach (var stmt in ifStmt.ElseBody)
+                CheckStatement(stmt);
+            _controlFlowDepth--;
+            _symbolTable.ExitScope();
         }
 
-        // #817: Apply inverse narrowings to the current (post-if) scope when the
-        // then-branch unconditionally exits. See narrowsFollowingStatements above.
-        if (narrowsFollowingStatements)
-            _narrowingContext.ApplyNarrowings(narrowedTypesInElse);
+        // #817 (early-exit narrowing of statements following the if) is now handled natively by the
+        // CFG dataflow: when the then-branch exits, the else-edge facts flow to the post-if statements.
+        // narrowsFollowingStatements is still recorded in the decision above for the emitter.
     }
 
     private void CheckWhile(WhileStatement whileStmt)
     {
+        _currentFacts = _narrowingFlow?.FactsBeforeBranch(whileStmt.Test) ?? _currentFacts;
+
         var condType = CheckExpression(whileStmt.Test);
         if (!IsTruthTestable(condType))
         {
@@ -631,23 +626,17 @@ internal partial class TypeChecker
                 span: whileStmt.Test.Span);
         }
 
-        // Check for type narrowing patterns (similar to if statement)
-        var (narrowedTypesInBody, whileDecision) = ExtractNarrowedTypes(whileStmt.Test, true);
+        // Record the narrowing decision for codegen; body narrowing is applied via CFG facts (#1042).
+        var (_, whileDecision) = ExtractNarrowedTypes(whileStmt.Test, true);
         if (whileDecision.OptionalNarrowings.Count > 0 || whileDecision.IsInstanceNarrowings.Count > 0)
             _semanticInfo.SetNarrowingDecision(whileStmt.Test, whileDecision);
 
-        // Enter narrowing scope for while body
-        using (_narrowingContext.EnterScope())
-        {
-            _narrowingContext.ApplyNarrowings(narrowedTypesInBody);
-
-            _symbolTable.EnterScope("while-body");
-            _controlFlowDepth++;
-            foreach (var stmt in whileStmt.Body)
-                CheckStatement(stmt);
-            _controlFlowDepth--;
-            _symbolTable.ExitScope();
-        }
+        _symbolTable.EnterScope("while-body");
+        _controlFlowDepth++;
+        foreach (var stmt in whileStmt.Body)
+            CheckStatement(stmt);
+        _controlFlowDepth--;
+        _symbolTable.ExitScope();
     }
 
     private void CheckFor(ForStatement forStmt)
@@ -658,6 +647,10 @@ internal partial class TypeChecker
                 forStmt.LineStart, forStmt.ColumnStart,
                 code: DiagnosticCodes.Semantic.AwaitOutsideAsync, span: forStmt.Span);
         }
+
+        // The iterator is the for-loop's branch condition in the CFG; resolve reads in it against the
+        // facts at that point so an enclosing narrowing is visible (#1042).
+        _currentFacts = _narrowingFlow?.FactsBeforeBranch(forStmt.Iterator) ?? _currentFacts;
 
         var iterType = CheckExpression(forStmt.Iterator);
 
@@ -1216,16 +1209,13 @@ internal partial class TypeChecker
             CheckExpression(assertStmt.Message);
         }
 
-        // `assert x is not None` narrows x for the rest of the enclosing scope: if the
-        // assert fails execution halts, so the positive branch always holds afterward.
-        // Applied directly (no EnterScope) so narrowings persist, mirroring early-return
-        // narrowing at the post-if site above.
-        var (narrowedTypes, decision) = ExtractNarrowedTypes(assertStmt.Test, true);
+        // `assert x is not None` narrows x for the rest of the enclosing scope: if the assert fails
+        // execution halts, so the positive branch always holds afterward. The narrowing is applied via
+        // the CFG dataflow (the assert generates facts that flow to following statements, #1042); the
+        // decision is still recorded for the emitter.
+        var (_, decision) = ExtractNarrowedTypes(assertStmt.Test, true);
         if (decision.OptionalNarrowings.Count > 0 || decision.IsInstanceNarrowings.Count > 0)
-        {
-            _narrowingContext.ApplyNarrowings(narrowedTypes);
             _semanticInfo.SetNarrowingDecision(assertStmt.Test, decision with { NarrowsFollowingStatements = true });
-        }
     }
 
     /// <summary>

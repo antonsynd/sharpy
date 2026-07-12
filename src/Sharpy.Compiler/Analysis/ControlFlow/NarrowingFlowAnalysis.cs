@@ -181,13 +181,16 @@ internal sealed class NarrowingFlowResult
 
     private readonly IReadOnlyDictionary<BasicBlock, IReadOnlyCollection<NarrowingFact>> _blockEntryFacts;
     private readonly IReadOnlyDictionary<Statement, IReadOnlyCollection<NarrowingFact>> _statementFacts;
+    private readonly IReadOnlyDictionary<Expression, IReadOnlyCollection<NarrowingFact>> _branchConditionFacts;
 
     internal NarrowingFlowResult(
         IReadOnlyDictionary<BasicBlock, IReadOnlyCollection<NarrowingFact>> blockEntryFacts,
-        IReadOnlyDictionary<Statement, IReadOnlyCollection<NarrowingFact>> statementFacts)
+        IReadOnlyDictionary<Statement, IReadOnlyCollection<NarrowingFact>> statementFacts,
+        IReadOnlyDictionary<Expression, IReadOnlyCollection<NarrowingFact>> branchConditionFacts)
     {
         _blockEntryFacts = blockEntryFacts;
         _statementFacts = statementFacts;
+        _branchConditionFacts = branchConditionFacts;
     }
 
     /// <summary>
@@ -204,6 +207,24 @@ internal sealed class NarrowingFlowResult
     /// </summary>
     public IReadOnlyCollection<NarrowingFact> FactsBefore(Statement statement) =>
         _statementFacts.TryGetValue(statement, out var facts) ? facts : Empty;
+
+    /// <summary>
+    /// True if <paramref name="statement"/> is a node the analysis tracked (i.e. it appears directly
+    /// in a basic block, so its fact set is meaningful). Compound statements whose bodies are
+    /// decomposed into other blocks are not tracked; callers inherit the enclosing facts for those.
+    /// </summary>
+    public bool IsTracked(Statement statement) => _statementFacts.ContainsKey(statement);
+
+    /// <summary>
+    /// The narrowing facts that hold when a conditional branch's <paramref name="condition"/> is
+    /// evaluated (after the statements preceding the branch in its block, before the branch's own
+    /// facts apply). Keyed by the condition expression of a <see cref="ConditionalBranchTerminator"/>
+    /// (e.g. an <c>if</c>/<c>while</c> test), so a compound statement's condition can see the
+    /// narrowings established by the enclosing flow. Empty for expressions that are not branch
+    /// conditions.
+    /// </summary>
+    public IReadOnlyCollection<NarrowingFact> FactsBeforeBranch(Expression condition) =>
+        _branchConditionFacts.TryGetValue(condition, out var facts) ? facts : Empty;
 }
 
 /// <summary>
@@ -245,7 +266,8 @@ internal static class NarrowingFlowAnalysis
             // No condition or assert narrows anything: every point holds the empty set.
             var emptyBlocks = new Dictionary<BasicBlock, IReadOnlyCollection<NarrowingFact>>(ReferenceEqualityComparer.Instance);
             var emptyStatements = new Dictionary<Statement, IReadOnlyCollection<NarrowingFact>>(ReferenceEqualityComparer.Instance);
-            return new NarrowingFlowResult(emptyBlocks, emptyStatements);
+            var emptyConditions = new Dictionary<Expression, IReadOnlyCollection<NarrowingFact>>(ReferenceEqualityComparer.Instance);
+            return new NarrowingFlowResult(emptyBlocks, emptyStatements, emptyConditions);
         }
 
         // out[entry] = empty; out[everything else] = universe (optimistic).
@@ -287,6 +309,7 @@ internal static class NarrowingFlowAnalysis
         // effect just before each one.
         var blockEntryFacts = new Dictionary<BasicBlock, IReadOnlyCollection<NarrowingFact>>(ReferenceEqualityComparer.Instance);
         var statementFacts = new Dictionary<Statement, IReadOnlyCollection<NarrowingFact>>(ReferenceEqualityComparer.Instance);
+        var branchConditionFacts = new Dictionary<Expression, IReadOnlyCollection<NarrowingFact>>(ReferenceEqualityComparer.Instance);
 
         foreach (var block in cfg.Blocks)
         {
@@ -297,10 +320,15 @@ internal static class NarrowingFlowAnalysis
                 continue;
 
             blockEntryFacts[block] = Freeze(inSet);
-            Transfer(block, inSet, recordStatementFacts: statementFacts);
+            var outSet = Transfer(block, inSet, recordStatementFacts: statementFacts);
+
+            // A conditional branch's condition is evaluated after the block's statements, before the
+            // branch facts apply — that is exactly the block out-set.
+            if (block.Terminator is ConditionalBranchTerminator branch)
+                branchConditionFacts[branch.Condition] = Freeze(outSet);
         }
 
-        return new NarrowingFlowResult(blockEntryFacts, statementFacts);
+        return new NarrowingFlowResult(blockEntryFacts, statementFacts, branchConditionFacts);
     }
 
     /// <summary>

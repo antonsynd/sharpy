@@ -301,8 +301,13 @@ internal partial class TypeChecker
 
         _semanticInfo.SetIdentifierSymbol(id, symbol);
 
-        // Check if this identifier has a narrowed type in the current context
+        // Check if this identifier has a narrowed type. Expression-level narrowings (the `and`
+        // right-hand side, match arms) live in _narrowingContext and take precedence; statement-level
+        // control-flow narrowings come from the CFG dataflow facts resolved against the variable's
+        // live type (#1042).
         var narrowedType = _narrowingContext.GetNarrowedType(id.Name);
+        if (narrowedType == null && symbol is VariableSymbol narrowableVar)
+            narrowedType = ResolveNarrowedTypeFromFacts(id.Name, GetVariableType(narrowableVar));
         if (narrowedType != null)
         {
             // Persist the narrowed type for code generation

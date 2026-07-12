@@ -229,6 +229,45 @@ public class NarrowingFlowAnalysisTests
     }
 
     [Fact]
+    public void FactsBeforeBranch_ReturnsFactsAtTheConditionOfANestedBranch()
+    {
+        // Outer if narrows x; the then-branch contains an inner if whose condition must see it.
+        var innerIf = new IfStatement
+        {
+            Test = IsNotNone("y"),
+            ThenBody = ImmutableArray.Create<Statement>(Pass())
+        };
+        var outer = new FunctionDef
+        {
+            Name = "f",
+            Parameters = ImmutableArray<Parameter>.Empty,
+            Body = ImmutableArray.Create<Statement>(new IfStatement
+            {
+                Test = IsNotNone("x"),
+                ThenBody = ImmutableArray.Create<Statement>(Assert_(IsNotNone("x")), innerIf)
+            })
+        };
+
+        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(outer));
+
+        // The inner branch's condition sees the narrowing established by the enclosing then-branch.
+        Assert.True(HasRemoveNone(result.FactsBeforeBranch(innerIf.Test), "x"));
+    }
+
+    [Fact]
+    public void IsTracked_TrueForBlockStatements_FalseForForeign()
+    {
+        var pass = Pass();
+        // An assert makes the fact universe non-empty, so the analysis tracks every block statement.
+        var cfg = CreateLinearCfg(Assert_(IsNotNone("x")), pass);
+
+        var result = NarrowingFlowAnalysis.Analyze(cfg);
+
+        Assert.True(result.IsTracked(pass));
+        Assert.False(result.IsTracked(Pass())); // a different node the analysis never saw
+    }
+
+    [Fact]
     public void NestedFunctionDef_FactsDoNotLeakAcrossCfgs()
     {
         // outer: assert x is not None; def inner(): x   (inner body is a separate CFG)

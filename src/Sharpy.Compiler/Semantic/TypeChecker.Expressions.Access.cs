@@ -12,6 +12,33 @@ internal partial class TypeChecker
 {
     private SemanticType CheckMemberAccess(MemberAccess memberAccess)
     {
+        var narrowingKey = ExtractNarrowingKey(memberAccess);
+
+        // Expression-level narrowing (the `and` right-hand side, match arms) is pre-resolved in
+        // _narrowingContext and short-circuits — preserving the prior behaviour of returning the
+        // narrowed type without re-resolving the member.
+        if (narrowingKey != null && _narrowingContext.GetNarrowedType(narrowingKey) is { } contextNarrowed)
+        {
+            _semanticInfo.SetNarrowedType(memberAccess, contextNarrowed);
+            return contextNarrowed;
+        }
+
+        var memberType = CheckMemberAccessCore(memberAccess);
+
+        // Statement-level control-flow narrowing (#1042): resolve the CFG facts against the member's
+        // computed (non-narrowed) type — e.g. isinstance(self.animal, Dog) narrows "self.animal" to
+        // Dog, `if self.value is not None:` strips the Optional from "self.value".
+        if (narrowingKey != null && ResolveNarrowedTypeFromFacts(narrowingKey, memberType) is { } factNarrowed)
+        {
+            _semanticInfo.SetNarrowedType(memberAccess, factNarrowed);
+            return factNarrowed;
+        }
+
+        return memberType;
+    }
+
+    private SemanticType CheckMemberAccessCore(MemberAccess memberAccess)
+    {
         // Check for super() usage - the parser directly produces SuperExpression for super()
         if (memberAccess.Object is SuperExpression superExpr)
         {
@@ -23,19 +50,6 @@ internal partial class TypeChecker
         // Materialize the original CLR method name for CLR-backed receivers so codegen preserves
         // acronym casing (is_os_platform -> IsOSPlatform) without reflecting (#974).
         RecordResolvedClrMemberName(memberAccess, objectType);
-
-        // Check if this member access path has been narrowed by isinstance()
-        // e.g., isinstance(self.animal, Dog) narrows "self.animal" to Dog
-        var narrowingKey = ExtractNarrowingKey(memberAccess);
-        if (narrowingKey != null)
-        {
-            var narrowedType = _narrowingContext.GetNarrowedType(narrowingKey);
-            if (narrowedType != null)
-            {
-                _semanticInfo.SetNarrowedType(memberAccess, narrowedType);
-                return narrowedType;
-            }
-        }
 
         // Resolve type-name member access (int.parse(), Color.RED, MyClass.FIELD, Shape.Circle)
         // regardless of what CheckIdentifier returned for the type name. This handles cases
@@ -707,27 +721,36 @@ internal partial class TypeChecker
 
     private SemanticType CheckIndexAccess(IndexAccess indexAccess)
     {
-        // Check if this subscript expression has a narrowed type
         var narrowingKey = ExtractNarrowingKey(indexAccess);
-        if (narrowingKey != null)
+
+        // Expression-level narrowing (and-RHS, match arms) is pre-resolved and short-circuits. Still
+        // type-check (and thereby record) the object and index expressions so codegen can resolve
+        // container-specific lowering for the narrowed access — e.g. a narrowed tuple element t[1]
+        // must still lower to .Item2, which requires the object's TupleType in SemanticInfo.
+        // CheckExpression is cached, so this is cheap and idempotent.
+        if (narrowingKey != null && _narrowingContext.GetNarrowedType(narrowingKey) is { } contextNarrowed)
         {
-            var narrowedType = _narrowingContext.GetNarrowedType(narrowingKey);
-            if (narrowedType != null)
-            {
-                // Still type-check (and thereby record) the object and index expressions so
-                // codegen can resolve container-specific lowering for the narrowed access —
-                // e.g. a narrowed tuple element t[1] must still lower to .Item2, which requires
-                // the object's TupleType to be recorded in SemanticInfo. CheckExpression is
-                // cached, so this is cheap and idempotent.
-                var narrowedObjectType = CheckExpression(indexAccess.Object);
-                CheckExpression(indexAccess.Index);
-                // Record the lowering even for narrowed accesses: a narrowed tuple element t[1]
-                // must still lower to .Item2, which the emitter now reads from this tag.
-                RecordIndexAccessLowering(indexAccess, narrowedObjectType);
-                return narrowedType;
-            }
+            var narrowedObjectType = CheckExpression(indexAccess.Object);
+            CheckExpression(indexAccess.Index);
+            RecordIndexAccessLowering(indexAccess, narrowedObjectType);
+            return contextNarrowed;
         }
 
+        var elementType = CheckIndexAccessCore(indexAccess);
+
+        // Statement-level control-flow narrowing (#1042): CheckIndexAccessCore already recorded the
+        // index-access lowering on the normal path, so only the element type needs swapping. Matches
+        // the prior index-access narrowing path, which did not record a narrowed type in SemanticInfo.
+        if (narrowingKey != null && ResolveNarrowedTypeFromFacts(narrowingKey, elementType) is { } factNarrowed)
+        {
+            return factNarrowed;
+        }
+
+        return elementType;
+    }
+
+    private SemanticType CheckIndexAccessCore(IndexAccess indexAccess)
+    {
         // Special handling for generic type reference: Box[int] or Pair[int, str]
         // This is parsed as IndexAccess(Object: Box, Index: int or TupleLiteral)
         // When the object is a generic type and the index can be resolved as type(s),

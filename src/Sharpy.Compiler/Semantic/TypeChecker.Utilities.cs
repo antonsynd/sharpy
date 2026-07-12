@@ -1,4 +1,5 @@
 extern alias SharpyRT;
+using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -301,6 +302,99 @@ internal partial class TypeChecker
     /// Delegates to <see cref="AstHelper.ExtractNarrowingKey"/>.
     /// </summary>
     private string? ExtractNarrowingKey(Expression expr) => AstHelper.ExtractNarrowingKey(expr);
+
+    /// <summary>
+    /// Runs the statement-level narrowing dataflow analysis (#1042) over a function body's CFG.
+    /// </summary>
+    private static NarrowingFlowResult ComputeNarrowingFlow(FunctionDef function) =>
+        NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(function));
+
+    /// <summary>
+    /// Runs the statement-level narrowing dataflow analysis (#1042) over a raw statement list
+    /// (module body or property accessor body).
+    /// </summary>
+    private static NarrowingFlowResult ComputeNarrowingFlow(IReadOnlyList<Statement> body) =>
+        NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(body));
+
+    /// <summary>
+    /// Resolves the narrowing facts currently in effect (<see cref="_currentFacts"/>) for a narrowing
+    /// key against the value's live type, returning the narrowed type or null if nothing narrows it.
+    /// This is the read-time counterpart to the resolution <see cref="ExtractNarrowedTypes"/> performs
+    /// at the condition: a <c>RemoveNone</c> fact strips <see cref="NullableType"/>/<see cref="OptionalType"/>,
+    /// an <c>IsType</c> fact resolves the recorded type expression. When a key carries both (e.g.
+    /// <c>x is not None and isinstance(x, T)</c>), the more specific <c>IsType</c> wins — matching the
+    /// dict-overwrite precedence in <see cref="ExtractNarrowedTypes"/>'s <c>and</c> handling.
+    /// </summary>
+    private SemanticType? ResolveNarrowedTypeFromFacts(string key, SemanticType liveType)
+    {
+        NarrowingFact? isTypeFact = null;
+        NarrowingFact? removeNoneFact = null;
+        foreach (var fact in _currentFacts)
+        {
+            if (fact.Key != key)
+                continue;
+            if (fact.Kind == NarrowingActionKind.IsType)
+                isTypeFact = fact;
+            else if (fact.Kind == NarrowingActionKind.RemoveNone)
+                removeNoneFact = fact;
+        }
+
+        if (isTypeFact?.TypeExpression is { } typeExpr && ResolveIsTypeFactType(typeExpr) is { } narrowed)
+            return narrowed;
+
+        if (removeNoneFact != null)
+        {
+            return liveType switch
+            {
+                NullableType nullable => nullable.UnderlyingType,
+                OptionalType optional => optional.UnderlyingType,
+                _ => null
+            };
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves the target type of an <c>IsType</c> narrowing fact (from <c>isinstance(x, T)</c>).
+    /// Mirrors the isinstance leaf of <see cref="ExtractNarrowedTypes"/>: builtin primitive names map
+    /// to their singletons, bare type names resolve via the symbol table through
+    /// <see cref="BuildIsInstanceNarrowedType"/>, and module-qualified names read the already
+    /// type-checked expression's <see cref="UserDefinedType"/>.
+    /// </summary>
+    private SemanticType? ResolveIsTypeFactType(Expression typeExpression)
+    {
+        if (typeExpression is Identifier typeId)
+        {
+            var builtinType = typeId.Name switch
+            {
+                BuiltinNames.Int => SemanticType.Int,
+                BuiltinNames.Long => SemanticType.Long,
+                BuiltinNames.Float => SemanticType.Float,
+                BuiltinNames.Float32 => SemanticType.Float32,
+                BuiltinNames.Decimal => SemanticType.Decimal,
+                BuiltinNames.Double => SemanticType.Double,
+                BuiltinNames.Bool => SemanticType.Bool,
+                BuiltinNames.Str => SemanticType.Str,
+                _ => (SemanticType?)null
+            };
+
+            if (builtinType != null)
+                return builtinType;
+
+            return _symbolTable.Lookup(typeId.Name) is TypeSymbol typeSymbol
+                ? BuildIsInstanceNarrowedType(typeSymbol)
+                : null;
+        }
+
+        if (typeExpression is MemberAccess memberAccess
+            && _semanticInfo.GetExpressionType(memberAccess) is UserDefinedType qualified)
+        {
+            return qualified;
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Returns true if a statement body unconditionally transfers control out of the

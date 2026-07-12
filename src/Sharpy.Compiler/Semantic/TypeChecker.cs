@@ -44,8 +44,23 @@ internal partial class TypeChecker
     // Track current class being checked (for self parameter typing)
     private TypeSymbol? _currentClass = null;
 
-    // Track type narrowing in conditional contexts with proper scope isolation
+    // Track type narrowing in conditional contexts with proper scope isolation.
+    // After #1042 (P5.3) this carries ONLY expression-level narrowings that the statement-level
+    // CFG dataflow cannot model — the `and` right-hand side and match-arm/pattern scopes. All
+    // control-flow (if/elif/else/while/assert/early-exit) narrowing now flows through
+    // <see cref="_narrowingFlow"/>.
     private readonly TypeNarrowingContext _narrowingContext = new();
+
+    // Statement-level type-narrowing facts for the current function/module body, computed once at
+    // body entry by NarrowingFlowAnalysis over the CFG (#1042). Null outside any analysed body.
+    private Analysis.ControlFlow.NarrowingFlowResult? _narrowingFlow;
+
+    // The narrowing facts in effect at the statement (or branch condition) currently being checked.
+    // Read sites resolve these against live types. Threaded by CheckStatement / the compound-statement
+    // condition checks; reset to empty when crossing into a nested body (function/lambda) that has its
+    // own CFG.
+    private IReadOnlyCollection<Analysis.ControlFlow.NarrowingFact> _currentFacts =
+        System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
 
     // Track whether we're inside an except block (for bare raise validation)
     private bool _inExceptBlock = false;
@@ -307,11 +322,21 @@ internal partial class TypeChecker
             }
         }
 
+        // Compute statement-level narrowing facts for the module body (#1042). Module-level code is
+        // its own narrowing scope; nested functions/lambdas get their own flow when checked.
+        var previousFlow = _narrowingFlow;
+        var previousFacts = _currentFacts;
+        _narrowingFlow = ComputeNarrowingFlow(module.Body);
+        _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
+
         foreach (var statement in module.Body)
         {
             _cancellationToken.ThrowIfCancellationRequested();
             CheckStatement(statement);
         }
+
+        _narrowingFlow = previousFlow;
+        _currentFacts = previousFacts;
 
         // Run pipeline validators (always enabled)
         var context = CreateSemanticContext();
@@ -352,6 +377,26 @@ internal partial class TypeChecker
     }
 
     private void CheckStatement(Statement statement)
+    {
+        // Thread the statement-level narrowing facts (#1042). Simple statements are tracked by the
+        // flow analysis; compound statements (if/while/for/…) are not, so they inherit the enclosing
+        // facts and their header expressions override via FactsBeforeBranch (see CheckIf/CheckWhile/
+        // CheckFor). Save/restore keeps nested statement checks from leaking facts back to the parent.
+        var savedFacts = _currentFacts;
+        if (_narrowingFlow != null && _narrowingFlow.IsTracked(statement))
+            _currentFacts = _narrowingFlow.FactsBefore(statement);
+
+        try
+        {
+            CheckStatementCore(statement);
+        }
+        finally
+        {
+            _currentFacts = savedFacts;
+        }
+    }
+
+    private void CheckStatementCore(Statement statement)
     {
         switch (statement)
         {
