@@ -451,11 +451,14 @@ internal static class NameMangler
     }
 
     /// <summary>
-    /// Converts a PascalCase name to snake_case.
+    /// Converts a PascalCase name to snake_case. Demangling drops C# keyword escaping:
+    /// <c>@do</c> (a camelCase-mangled keyword like Sharpy <c>do</c>) maps back to <c>do</c> —
+    /// the <c>@</c> exists only to make the C# identifier legal and is never part of the
+    /// Sharpy name.
     /// </summary>
     public static string ToSnakeCase(string name)
     {
-        return SplitWordBoundaries(name).ToLowerInvariant();
+        return SplitWordBoundaries(StripKeywordEscape(name)).ToLowerInvariant();
     }
 
     /// <summary>
@@ -464,8 +467,12 @@ internal static class NameMangler
     /// </summary>
     public static string ToScreamingSnakeCase(string name)
     {
-        return SplitWordBoundaries(name).ToUpperInvariant();
+        return SplitWordBoundaries(StripKeywordEscape(name)).ToUpperInvariant();
     }
+
+    /// <summary>Removes the C# verbatim-identifier prefix (<c>@do</c> → <c>do</c>), if present.</summary>
+    private static string StripKeywordEscape(string name) =>
+        name.StartsWith("@", StringComparison.Ordinal) ? name.Substring(1) : name;
 
     /// <summary>
     /// Converts a C#/.NET name to the appropriate Sharpy convention based on context:

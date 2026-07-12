@@ -610,4 +610,23 @@ public class NameManglerTests
     }
 
     #endregion
+
+    #region Keyword Escape Demangling
+
+    // A Sharpy name that is a C# keyword mangles to a verbatim identifier (`do` → `@do` in
+    // camelCase); demangling must drop the `@` — it exists only to make the C# name legal.
+    // Found by RoundTrip_WellFormedSnakeCase_IsIdentity under /property-stress
+    // (seed 8ZbrLhe53Yj5).
+    [Theory]
+    [InlineData("do")]
+    [InlineData("class")]
+    [InlineData("for")]
+    [InlineData("event")]
+    public void ToSnakeCase_KeywordEscapedIdentifier_RoundTripsToOriginal(string keyword)
+    {
+        NameMangler.ToSnakeCase(NameMangler.ToCamelCase(keyword)).Should().Be(keyword);
+        NameMangler.ToSnakeCase("@" + keyword).Should().Be(keyword);
+    }
+
+    #endregion
 }

@@ -195,6 +195,7 @@ public class CPythonDifferentialParseTests
     [InlineData("f(lambda t: t[0], k=lambda: x)")]
     [InlineData("f(lambda v: v, k=x, j=lambda: y)")]
     [InlineData("y(lambda acc: y, value=lambda x: True, key=items)")]
+    [InlineData("n((\"test\",), value=lambda value: items, default=lambda bar, a: b\"\")")]
     public void LambdaKwargValueAfterAmbiguousPositionalLambda_Parses(string source)
     {
         var tokens = new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll();
@@ -454,13 +455,17 @@ public class CPythonDifferentialParseTests
         public override void VisitFunctionCall(FunctionCall node)
         {
             // TODO(#1076): the #1011 lambda-param forward scan does not descend into a lambda
-            // used as a keyword-argument value. When a positional lambda with >= 1 parameter has
-            // a bare-identifier or subscript body (the ambiguous ': IDENT ,' / ': IDENT [...] ,'
-            // shapes) and a later keyword argument's value contains an unparenthesized lambda,
-            // the inner lambda's depth-0 ':' is mistaken for the outer body separator and the
-            // parse fails, e.g. `f(lambda v: v, k=lambda: x)`. CPython accepts these; quarantine
-            // the shape until the parser fix lands.
-            if (HasAmbiguousPositionalLambda(node) && node.KeywordArguments.Any(k => ContainsLambda(k.Value)))
+            // used as a keyword-argument value. When a lambda with >= 1 parameter has a
+            // bare-identifier or subscript body (the ambiguous ': IDENT ,' / ': IDENT [...] ,'
+            // shapes) — whether it appears as a positional argument OR as an earlier keyword
+            // argument's value — and a later keyword argument's value contains an
+            // unparenthesized lambda, the inner lambda's depth-0 ':' is mistaken for the outer
+            // body separator and the parse fails, e.g. `f(lambda v: v, k=lambda: x)` or
+            // `n(("t",), value=lambda v: items, default=lambda b, a: "")` (fresh-seed find,
+            // 2026-07-12). CPython accepts these; quarantine the shape until the parser fix
+            // lands. Deliberately over-rejects a lone ambiguous kwarg lambda — quarantine only
+            // shrinks the tested subset, never hides a Sharpy-only rejection outside it.
+            if (HasAmbiguousLambdaArgument(node) && node.KeywordArguments.Any(k => ContainsLambda(k.Value)))
             {
                 Reject();
                 return;
@@ -468,10 +473,13 @@ public class CPythonDifferentialParseTests
             DefaultVisit(node);
         }
 
-        private static bool HasAmbiguousPositionalLambda(FunctionCall call) =>
-            call.Arguments.Any(a =>
-                a is LambdaExpression { Parameters.Length: >= 1 } l
-                && l.Body is Identifier or IndexAccess or SliceAccess or MultiAxisAccess);
+        private static bool HasAmbiguousLambdaArgument(FunctionCall call) =>
+            call.Arguments.Any(a => IsAmbiguousLambda(a))
+            || call.KeywordArguments.Any(k => IsAmbiguousLambda(k.Value));
+
+        private static bool IsAmbiguousLambda(Expression expr) =>
+            expr is LambdaExpression { Parameters.Length: >= 1 } l
+            && l.Body is Identifier or IndexAccess or SliceAccess or MultiAxisAccess;
 
         private static bool ContainsLambda(Expression value)
         {
