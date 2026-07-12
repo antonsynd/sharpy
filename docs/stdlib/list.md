@@ -45,7 +45,12 @@ x.sort(reverse=True) # [3, 2, 1]
 ```
 
 !!! note
-    This is not a stable sort.
+    Matches Python's stable sort for reference/nullable element types
+    (the relative order of comparer-equal elements is preserved, and
+    *reverse* preserves the original order among equal
+    elements rather than reversing it). For value-type elements, where
+    two comparer-equal elements are indistinguishable, the faster
+    in-place sort is used.
 
 ### `sort(key: (T) -> TKey, reverse: bool = False)`
 
@@ -259,6 +264,14 @@ x.get(0, -1)     # 10
 x.get(5, -1)     # -1
 ```
 
+### `get_item_unchecked(index: int) -> T`
+
+Gets the element at a non-negative index, skipping the negative-index normalization the
+ordinary indexer performs. The compiler emits this only when the index is provably >= 0
+(a non-negative literal, or a range-loop induction variable that is not reassigned; #1052),
+so no negative wraparound can be observed. Bounds are still enforced: an out-of-range index
+raises `IndexError`, matching the ordinary indexer's contract.
+
 ### `get_slice(slice: Slice) -> list[T]`
 
 Returns a slice of the list.
@@ -291,6 +304,15 @@ Deletes a slice of the list.
 **Raises:**
 
 - `ValueError` -- Thrown if slice step is zero.
+
+### `reset()`
+
+Not supported: mirrors `ListIterator{T}`, which cannot
+be reset.
+
+**Raises:**
+
+- `NotSupportedException` -- Always thrown.
 
 ### `copy_to(array: list[T], array_index): int = > _list.CopyTo(array, arrayIndex)`
 
