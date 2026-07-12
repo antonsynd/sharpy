@@ -145,4 +145,96 @@ public class DeferExecutionTests
         result.Diagnostics.GetErrors()
             .Should().Contain(d => d.Code == "SPY0333");
     }
+
+    [Fact]
+    public void Defer_AtModuleLevel_ReportsSpy0332()
+    {
+        using var helper = NewHelper(_output, "DeferModuleLevel", enableDefer: true);
+        helper.AddSourceFile("main.spy",
+            "def main() -> None:\n"
+            + "    print(\"hi\")\n"
+            + "defer print(\"bye\")\n", isEntryPoint: true);
+
+        var result = helper.Compile();
+
+        result.Success.Should().BeFalse();
+        result.Diagnostics.GetErrors()
+            .Should().Contain(d => d.Code == "SPY0332");
+    }
+
+    [Fact]
+    public void Defer_BreakEscapingDeferBody_ReportsSpy0333()
+    {
+        using var helper = NewHelper(_output, "DeferBreakEscape", enableDefer: true);
+        helper.AddSourceFile("main.spy",
+            "def main() -> None:\n"
+            + "    for i in range(2):\n"
+            + "        defer:\n"
+            + "            break\n"
+            + "        print(i)\n", isEntryPoint: true);
+
+        var result = helper.Compile();
+
+        result.Success.Should().BeFalse();
+        result.Diagnostics.GetErrors()
+            .Should().Contain(d => d.Code == "SPY0333");
+    }
+
+    [Fact]
+    public void Defer_ContinueEscapingDeferBody_ReportsSpy0333()
+    {
+        using var helper = NewHelper(_output, "DeferContinueEscape", enableDefer: true);
+        helper.AddSourceFile("main.spy",
+            "def main() -> None:\n"
+            + "    for i in range(2):\n"
+            + "        defer:\n"
+            + "            continue\n"
+            + "        print(i)\n", isEntryPoint: true);
+
+        var result = helper.Compile();
+
+        result.Success.Should().BeFalse();
+        result.Diagnostics.GetErrors()
+            .Should().Contain(d => d.Code == "SPY0333");
+    }
+
+    [Fact]
+    public void Defer_YieldInsideDeferBody_ReportsSpy0333()
+    {
+        using var helper = NewHelper(_output, "DeferYieldEscape", enableDefer: true);
+        helper.AddSourceFile("main.spy",
+            "def gen() -> int:\n"
+            + "    defer:\n"
+            + "        yield 1\n"
+            + "    yield 2\n"
+            + "def main() -> None:\n"
+            + "    for v in gen():\n"
+            + "        print(v)\n", isEntryPoint: true);
+
+        var result = helper.Compile();
+
+        result.Success.Should().BeFalse();
+        result.Diagnostics.GetErrors()
+            .Should().Contain(d => d.Code == "SPY0333");
+    }
+
+    [Fact]
+    public void Defer_LoopDeclaredInsideDeferBody_IsNotAnEscape()
+    {
+        using var helper = NewHelper(_output, "DeferInnerLoop", enableDefer: true);
+        helper.AddSourceFile("main.spy",
+            "def main() -> None:\n"
+            + "    defer:\n"
+            + "        for i in range(2):\n"
+            + "            if i == 1:\n"
+            + "                break\n"
+            + "            print(\"cleanup\", i)\n"
+            + "    print(\"body\")\n", isEntryPoint: true);
+
+        var result = helper.CompileAndExecute();
+
+        // break targets the loop declared inside the deferred body — no SPY0333.
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Be("body\ncleanup 0\n");
+    }
 }
