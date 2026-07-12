@@ -1027,7 +1027,7 @@ internal partial class TypeChecker
     /// </summary>
     private void RecordIndexAccessLowering(IndexAccess indexAccess, SemanticType objectType)
     {
-        var lowering = ComputeIndexAccessLowering(objectType, indexAccess.Index);
+        var lowering = ComputeIndexAccessLowering(objectType, indexAccess.Object, indexAccess.Index);
         if (lowering != IndexAccessLowering.Native)
             _semanticInfo.SetIndexAccessLowering(indexAccess, lowering);
     }
@@ -1038,7 +1038,8 @@ internal partial class TypeChecker
     /// access (constant int index) &gt; params-indexer spread (tuple-literal index) &gt; string helper
     /// &gt; array helper &gt; native element access.
     /// </summary>
-    private IndexAccessLowering ComputeIndexAccessLowering(SemanticType objectType, Expression index)
+    private IndexAccessLowering ComputeIndexAccessLowering(
+        SemanticType objectType, Expression objectExpr, Expression index)
     {
         if (objectType is TupleType && TryGetConstantIntIndex(index, out _))
             return IndexAccessLowering.TupleItem;
@@ -1052,7 +1053,54 @@ internal partial class TypeChecker
         if (objectType is GenericType { Name: BuiltinNames.Array })
             return IndexAccessLowering.Array;
 
+        // Non-negative access into a genuine Sharpy.List<T> skips the ordinary indexer's negative-index
+        // Normalize (#1052). Both conditions are required: a list[T] backed by a CLR array or narrowed
+        // to Sharpy.IList has no GetItemUnchecked accessor, so tagging it would not compile.
+        if (objectType is GenericType { Name: BuiltinNames.List }
+            && IsProvablyNonNegativeIndex(index)
+            && IsGenuineSharpyListBacking(objectExpr))
+        {
+            return IndexAccessLowering.NativeUnchecked;
+        }
+
         return IndexAccessLowering.Native;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="index"/> is provably &gt;= 0 under the two sanctioned proofs (#1052):
+    /// (a) a non-negative integer literal, or (b) a <c>range(...)</c>-loop induction variable that was
+    /// proven non-negative and not reassigned in its loop body (tracked in
+    /// <c>_nonNegativeInductionVars</c>, keyed by the loop variable's symbol identity).
+    /// </summary>
+    private bool IsProvablyNonNegativeIndex(Expression index)
+    {
+        if (TryGetConstantIntIndex(index, out var literal))
+            return literal >= 0;
+
+        return index is Identifier id
+            && _semanticInfo.GetIdentifierSymbol(id) is { } symbol
+            && _nonNegativeInductionVars.Contains(symbol);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="objectExpr"/> is guaranteed to emit as a concrete
+    /// <c>Sharpy.List&lt;T&gt;</c> (which has the <c>GetItemUnchecked</c> accessor). Only a list
+    /// literal / comprehension, or an identifier bound to a symbol proven Sharpy.List-backed
+    /// (<c>_sharpyListBackedSymbols</c>: non-variadic list parameters and explicitly-annotated list
+    /// locals), qualifies. Everything else — CLR-array-backed list[T] values (<c>*args</c>, interop
+    /// returns), narrowed-to-<c>IList</c> values, member/index accesses — is conservatively rejected
+    /// so the fast path never targets a receiver without <c>GetItemUnchecked</c> (#1052).
+    /// </summary>
+    private bool IsGenuineSharpyListBacking(Expression objectExpr)
+    {
+        return objectExpr switch
+        {
+            ListLiteral => true,
+            ListComprehension => true,
+            Identifier id => _semanticInfo.GetIdentifierSymbol(id) is { } symbol
+                && _sharpyListBackedSymbols.Contains(symbol),
+            _ => false
+        };
     }
 
     /// <summary>

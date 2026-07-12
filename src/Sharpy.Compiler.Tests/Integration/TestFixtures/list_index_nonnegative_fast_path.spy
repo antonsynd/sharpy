@@ -1,0 +1,23 @@
+# Provably non-negative list indices skip the negative-index Normalize via
+# IndexAccessLowering.NativeUnchecked (#1052): non-negative int literals and
+# range(...)-loop induction variables that are not reassigned in the loop body.
+def main() -> None:
+    xs: list[int] = [5, 6, 7, 8]
+
+    # Non-negative integer literals -> fast path.
+    print(xs[0])
+    print(xs[3])
+
+    # range(stop) induction variable, never reassigned -> fast path.
+    acc: int = 0
+    for i in range(len(xs)):
+        acc = acc + xs[i]
+    print(acc)
+
+    # range(start, stop) with a non-negative literal start -> fast path.
+    for j in range(1, 3):
+        print(xs[j])
+
+    # range(start, stop, step) with a positive step -> fast path.
+    for k in range(0, 4, 2):
+        print(xs[k])

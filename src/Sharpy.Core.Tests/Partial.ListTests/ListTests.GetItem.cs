@@ -43,6 +43,28 @@ public partial class List_Tests
     }
 
     [Fact]
+    public void List_GetItemUnchecked_Returns_Element_By_Nonnegative_Index()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+
+        // When/then — no negative-index wraparound is performed.
+        l.GetItemUnchecked(0).Should().Be(1);
+        l.GetItemUnchecked(3).Should().Be(7);
+    }
+
+    [Fact]
+    public void List_GetItemUnchecked_Out_Of_Bounds_Raises_IndexError()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+
+        // When/then — still bounds-checked with the IndexError contract (not IndexOutOfRangeException).
+        FluentActions.Invoking(() => { var _ = l.GetItemUnchecked(4); }).Should().Throw<IndexError>();
+        FluentActions.Invoking(() => { var _ = l.GetItemUnchecked(-1); }).Should().Throw<IndexError>();
+    }
+
+    [Fact]
     public void List_Indexer_Slice()
     {
         // If

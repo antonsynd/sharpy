@@ -415,6 +415,12 @@ internal partial class TypeChecker
         };
         _symbolTable.Define(newSymbol);
         SemanticBinding.SetVariableType(newSymbol, declaredType);
+
+        // A local declared with an explicit list[T] annotation emits as a concrete Sharpy.List<T>
+        // (the annotation forces that C# type), so it is eligible for the non-negative index fast
+        // path (#1052). Inferred locals go through `var` and may bind a CLR array, so they are not.
+        if (varDecl.Type != null && declaredType is GenericType { Name: BuiltinNames.List })
+            _sharpyListBackedSymbols.Add(newSymbol);
     }
 
     private void CheckReturn(ReturnStatement returnStmt)
@@ -716,7 +722,8 @@ internal partial class TypeChecker
         }
         // Add loop variable to scope
         // The target is typically an Identifier or TupleExpression
-        else if (forStmt.Target is Identifier id)
+        Symbol? inductionVarToUnmark = null;
+        if (forStmt.Target is Identifier id)
         {
             // Infer the type of the loop variable from the iterator
             var loopVarSymbol = new VariableSymbol
@@ -739,6 +746,15 @@ internal partial class TypeChecker
                 _symbolTable.Define(loopVarSymbol);
                 SemanticBinding.SetVariableType(loopVarSymbol, elementType);
                 _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+
+                // Mark the induction variable as provably non-negative for the body's duration when
+                // it iterates a non-negative range(...) and is never reassigned in the body (#1052).
+                if (RangeYieldsNonNegativeInts(forStmt.Iterator)
+                    && !IsNameReassignedIn(id.Name, forStmt.Body))
+                {
+                    _nonNegativeInductionVars.Add(loopVarSymbol);
+                    inductionVarToUnmark = loopVarSymbol;
+                }
             }
 
             _semanticInfo.SetExpressionType(forStmt.Target, elementType);
@@ -752,8 +768,155 @@ internal partial class TypeChecker
             CheckStatement(stmt);
         _controlFlowDepth--;
 
+        if (inductionVarToUnmark != null)
+            _nonNegativeInductionVars.Remove(inductionVarToUnmark);
+
         // Exit for-body scope
         _symbolTable.ExitScope();
+    }
+
+    /// <summary>
+    /// True when <paramref name="iterator"/> is a call to the builtin <c>range(...)</c> whose every
+    /// yielded value is provably &gt;= 0 (#1052): <c>range(stop)</c> (values in <c>[0, stop)</c>);
+    /// <c>range(start, stop)</c> or <c>range(start, stop, step)</c> where <c>start</c> is a
+    /// non-negative int literal and (for the 3-arg form) <c>step</c> is a positive int literal, so the
+    /// sequence only increases from a non-negative start. A user-defined <c>range</c> shadowing the
+    /// builtin, keyword/spread arguments, or a possibly-negative start/step all disqualify.
+    /// </summary>
+    private bool RangeYieldsNonNegativeInts(Expression iterator)
+    {
+        if (iterator is not FunctionCall call
+            || call.Function is not Identifier { Name: BuiltinNames.Range }
+            || !call.KeywordArguments.IsEmpty
+            || !ResolvesToBuiltinRange())
+        {
+            return false;
+        }
+
+        var args = call.Arguments;
+        foreach (var arg in args)
+        {
+            if (arg is StarExpression or SpreadElement)
+                return false;
+        }
+
+        return args.Length switch
+        {
+            // range(stop): values lie in [0, stop), so every value is >= 0.
+            1 => true,
+            // range(start, stop): the implicit +1 step keeps values >= start.
+            2 => TryGetConstantIntIndex(args[0], out var start2) && start2 >= 0,
+            // range(start, stop, step): a positive step keeps values >= start >= 0.
+            3 => TryGetConstantIntIndex(args[0], out var start3) && start3 >= 0
+                && TryGetConstantIntIndex(args[2], out var step3) && step3 > 0,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// True when the name <c>range</c> resolves to the builtin (not a user-defined function that
+    /// shadows it), so <see cref="RangeYieldsNonNegativeInts"/> only trusts genuine range semantics.
+    /// </summary>
+    private bool ResolvesToBuiltinRange()
+    {
+        var resolved = _symbolTable.Lookup(BuiltinNames.Range, searchParents: true);
+        if (resolved == null)
+            return false;
+
+        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(BuiltinNames.Range);
+        return overloads != null && overloads.Contains(resolved);
+    }
+
+    /// <summary>
+    /// Conservatively reports whether the simple name <paramref name="name"/> is rebound anywhere in
+    /// <paramref name="body"/> — by assignment (including augmented, tuple/list unpacking, and star
+    /// targets), variable declaration, a nested <c>for</c>/<c>with</c>/<c>except</c> binding, or a
+    /// walrus expression. Container/member mutations (<c>xs[i] = v</c>, <c>o.f = v</c>) are not
+    /// rebindings and do not count. Descends into all nested statements and expressions; when in
+    /// doubt it errs toward "reassigned" so the non-negative induction-variable proof stays sound.
+    /// </summary>
+    private static bool IsNameReassignedIn(string name, IEnumerable<Statement> body)
+    {
+        var finder = new ReassignmentFinder(name);
+        foreach (var stmt in body)
+            finder.Visit(stmt);
+        return finder.Found;
+    }
+
+    /// <summary>
+    /// AST walker that sets <see cref="Found"/> when it encounters any rebinding of a target name.
+    /// Relies on <see cref="AstVisitor"/> for full recursive descent; only the binding forms are
+    /// overridden.
+    /// </summary>
+    private sealed class ReassignmentFinder : AstVisitor
+    {
+        private readonly string _name;
+
+        public ReassignmentFinder(string name) => _name = name;
+
+        public bool Found { get; private set; }
+
+        private static bool TargetBindsName(Expression target, string name)
+        {
+            switch (target)
+            {
+                case Identifier id:
+                    return id.Name == name;
+                case Parenthesized paren:
+                    return TargetBindsName(paren.Expression, name);
+                case StarExpression star:
+                    return TargetBindsName(star.Operand, name);
+                case TupleLiteral tuple:
+                    return tuple.Elements.Any(e => TargetBindsName(e, name));
+                case ListLiteral list:
+                    return list.Elements.Any(e => TargetBindsName(e, name));
+                // Index/member targets mutate a container; they do not rebind the simple name.
+                default:
+                    return false;
+            }
+        }
+
+        public override void VisitAssignment(Assignment node)
+        {
+            if (TargetBindsName(node.Target, _name))
+                Found = true;
+            base.VisitAssignment(node);
+        }
+
+        public override void VisitVariableDeclaration(VariableDeclaration node)
+        {
+            if (node.Name == _name)
+                Found = true;
+            base.VisitVariableDeclaration(node);
+        }
+
+        public override void VisitForStatement(ForStatement node)
+        {
+            if (TargetBindsName(node.Target, _name))
+                Found = true;
+            base.VisitForStatement(node);
+        }
+
+        public override void VisitWithStatement(WithStatement node)
+        {
+            if (node.Items.Any(item => item.Name == _name))
+                Found = true;
+            base.VisitWithStatement(node);
+        }
+
+        public override void VisitTryStatement(TryStatement node)
+        {
+            if (node.Handlers.Any(handler => handler.Name == _name))
+                Found = true;
+            base.VisitTryStatement(node);
+        }
+
+        public override void VisitWalrusExpression(WalrusExpression node)
+        {
+            if (node.Target == _name)
+                Found = true;
+            base.VisitWalrusExpression(node);
+        }
     }
 
     private void CheckRaise(RaiseStatement raiseStmt)

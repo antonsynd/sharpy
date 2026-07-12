@@ -80,6 +80,20 @@ internal partial class TypeChecker
     private int _controlFlowDepth = 0;
     private bool _superInitCalled = false;  // Track if super().__init__() was called
 
+    // Symbols of range(...)-loop induction variables currently in scope that are provably >= 0
+    // (single-arg range, or non-negative-literal start with positive step) AND not reassigned in
+    // the loop body. Used to prove non-negative list indices for IndexAccessLowering.NativeUnchecked
+    // (#1052). Uses reference equality (Symbol overrides it), so nested loops with distinct symbols
+    // never collide even when they share a variable name.
+    private readonly HashSet<Symbol> _nonNegativeInductionVars = new();
+
+    // Symbols whose C# emission is guaranteed to be a concrete Sharpy.List<T> (so it has the
+    // GetItemUnchecked accessor): non-variadic list-typed parameters and locals declared with an
+    // explicit list[T] annotation. This excludes list[T] values that are actually backed by a CLR
+    // array (e.g. *args, or interop returns) or narrowed to Sharpy.IList — those emit without a
+    // GetItemUnchecked method, so tagging them NativeUnchecked would not compile (#1052).
+    private readonly HashSet<Symbol> _sharpyListBackedSymbols = new();
+
     // Cancellation token for long-running analysis
     private CancellationToken _cancellationToken = default;
 

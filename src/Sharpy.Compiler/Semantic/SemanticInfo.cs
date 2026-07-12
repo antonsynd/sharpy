@@ -888,5 +888,14 @@ public enum IndexAccessLowering
     /// Tuple positional access: <c>t[k]</c> lowers to <c>t.Item(k+1)</c> because C# ValueTuples have
     /// no runtime indexer. The constant index is re-read from the (validated) literal by the emitter.
     /// </summary>
-    TupleItem
+    TupleItem,
+
+    /// <summary>
+    /// Provably non-negative <c>list[T]</c> access: <c>xs[i]</c> lowers to
+    /// <c>xs.GetItemUnchecked(i)</c>, which skips the negative-index normalization the ordinary
+    /// indexer performs (bounds are still enforced, raising <c>IndexError</c>). The TypeChecker only
+    /// records this when the index is provably &#8805; 0 — a non-negative int literal, or a
+    /// <c>range(...)</c>-loop induction variable that is not reassigned in the loop body (#1052).
+    /// </summary>
+    NativeUnchecked
 }

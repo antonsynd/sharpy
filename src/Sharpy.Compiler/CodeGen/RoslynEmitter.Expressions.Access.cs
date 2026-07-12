@@ -1582,6 +1582,15 @@ internal partial class RoslynEmitter
                         IdentifierName("GetItem")))
                 .AddArgumentListArguments(Argument(objExpr), Argument(index)),
 
+            // Provably non-negative list access: xs[i] -> xs.GetItemUnchecked(i), skipping the
+            // negative-index Normalize the ordinary indexer runs (#1052). The TypeChecker proved
+            // the index is >= 0; bounds are still enforced by GetItemUnchecked.
+            IndexAccessLowering.NativeUnchecked => InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        objExpr,
+                        IdentifierName("GetItemUnchecked")))
+                .AddArgumentListArguments(Argument(index)),
+
             _ => ElementAccessExpression(objExpr)
                 .AddArgumentListArguments(Argument(index))
         };

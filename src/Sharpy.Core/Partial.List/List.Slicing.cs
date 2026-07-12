@@ -57,6 +57,23 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Gets the element at a non-negative index, skipping the negative-index normalization the
+        /// ordinary indexer performs. The compiler emits this only when the index is provably &gt;= 0
+        /// (a non-negative literal, or a range-loop induction variable that is not reassigned; #1052),
+        /// so no negative wraparound can be observed. Bounds are still enforced: an out-of-range index
+        /// raises <see cref="IndexError"/>, matching the ordinary indexer's contract.
+        /// </summary>
+        public T GetItemUnchecked(int index)
+        {
+            if ((uint)index >= (uint)_list.Count)
+            {
+                throw new IndexError($"list index {index} out of range");
+            }
+
+            return _list[index];
+        }
+
+        /// <summary>
         /// Gets or sets a slice of the list using start and end indices.
         /// </summary>
         public List<T> this[int start, int end]
