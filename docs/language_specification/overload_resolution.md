@@ -4,7 +4,7 @@ This page is the **authoritative specification** for how Sharpy selects one targ
 (function, method, constructor, operator dunder, or builtin) has more than one candidate. It defines
 two things: which candidates are **applicable** to a call, and which applicable candidate is **better**
 than the others. Where this page and the current implementation disagree, the page governs
-([CLAUDE.md Critical Rule 7](../../CLAUDE.md)); the divergences are flagged inline under
+(CLAUDE.md Critical Rule 7); the divergences are flagged inline under
 *Current implementation status* and tracked by [#1043](https://github.com/antonsynd/sharpy/issues/1043).
 
 Overloading is a **.NET-side** concept (Axiom 1). Python has no static overloads — a later `def`
@@ -236,7 +236,7 @@ by exactly the rules this page specifies, and delegating to it guarantees the se
 matches what the generated assembly runs, including edge cases (`None` to a nullable parameter, enum
 conversions) that the Sharpy-side checker would have to re-derive. The trade-off is that a
 constructor-overload ambiguity surfaces as a C# diagnostic rather than a `SPY03xx` code; the
-[pipeline no-CS-leaks invariant](../../CLAUDE.md) constrains where that is acceptable.
+pipeline no-CS-leaks invariant (CLAUDE.md, #1035) constrains where that is acceptable.
 
 ## Diagnostics
 

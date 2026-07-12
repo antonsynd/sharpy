@@ -3,7 +3,7 @@
 > **Status:** Policy — 2026-07-10
 > **Issue:** [#1047](https://github.com/antonsynd/sharpy/issues/1047) (C4).
 > **Implements:** the `FeatureFlags` infrastructure (#1044, C1) + gated-syntax diagnostics (#1045, C2).
-> **Source of truth for the mechanism:** [`src/Sharpy.Compiler/Shared/FeatureFlags.cs`](../../src/Sharpy.Compiler/Shared/FeatureFlags.cs).
+> **Source of truth for the mechanism:** `src/Sharpy.Compiler/Shared/FeatureFlags.cs`.
 > This page is the *policy*; that file is the *code*. Where they disagree, the code wins and this page is stale — fix it.
 
 An **experimental feature** is a language or codegen change that ships in a release **disabled by
