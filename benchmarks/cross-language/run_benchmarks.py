@@ -73,6 +73,47 @@ def find_benchmarks(names: list[str] | None = None) -> list[Path]:
     return dirs
 
 
+def _read_sidecar_lines(path: Path) -> list[str]:
+    """Read a newline-delimited sidecar, dropping blanks and comments.
+
+    A ``#`` starts a comment only at the start of a line or after whitespace, so
+    the language token ``C#`` survives.
+    """
+    if not path.exists():
+        return []
+    out = []
+    for raw in path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if " #" in line:  # trailing comment (space before #); keeps C#
+            line = line.split(" #", 1)[0].strip()
+        if line:
+            out.append(line)
+    return out
+
+
+def read_features(bench_dir: Path) -> list[str]:
+    """Experimental feature flags a benchmark needs to compile (``bench.features``).
+
+    Each name is passed to the Sharpy compiler as ``--enable-feature <name>`` and
+    populates ``<Features>`` in the synthetic warm-compile project. Used by the
+    numpy ``@`` matmul variant, whose operator is gated behind the 'matmul' flag.
+    """
+    return _read_sidecar_lines(bench_dir / "bench.features")
+
+
+def read_languages(bench_dir: Path) -> set[str] | None:
+    """Languages a benchmark opts into (``bench.languages``); None = all three.
+
+    Lets a benchmark hold a language out of the harness — e.g. the numpy variant
+    excludes Sharpy until #1084 (compiled numpy programs can't load MathNet at
+    runtime) is fixed, while still exercising Python and C#.
+    """
+    langs = _read_sidecar_lines(bench_dir / "bench.languages")
+    return {l for l in langs if l in ALL_LANGUAGES} if langs else None
+
+
 def time_command(cmd: list[str], cwd: Path | None = None, timeout: int = 300) -> tuple[float, bool, str, str]:
     """Run a command. Returns (elapsed, success, error_detail, stdout)."""
     start = time.perf_counter()
@@ -177,12 +218,18 @@ def parse_sharpy_compile_phases(metrics_file: Path) -> dict[str, float]:
     return phases
 
 
-def compile_sharpy(cli_dll: Path, spy_file: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
+def compile_sharpy(
+    cli_dll: Path, spy_file: Path, tmp_dir: Path, features: list[str] | None = None,
+) -> tuple[float, bool, str, Path]:
     """Compile .spy to .dll via the Sharpy CLI 'compile' command.
 
     This measures the full Sharpy-to-.NET-assembly pipeline (front-end +
     codegen + Roslyn assembly generation), matching how the C# benchmark
     times 'dotnet build'. Returns (time, success, error, output_dll).
+
+    ``features`` (from a benchmark's ``bench.features`` sidecar) is passed through
+    as ``--enable-feature <name>`` so gated syntax (e.g. the numpy ``@`` matmul
+    operator) compiles.
 
     A per-phase metrics JSON is written to ``sharpy_metrics_path(tmp_dir)`` via
     ``--metrics-format json``; callers parse it with ``parse_sharpy_compile_phases``.
@@ -195,6 +242,8 @@ def compile_sharpy(cli_dll: Path, spy_file: Path, tmp_dir: Path) -> tuple[float,
         "dotnet", str(cli_dll), "compile", str(spy_file), "-o", str(output_dll),
         "--metrics-format", "json", "--metrics-output", str(metrics_file),
     ]
+    for feature in features or []:
+        cmd += ["--enable-feature", feature]
     start = time.perf_counter()
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     elapsed = time.perf_counter() - start
@@ -258,16 +307,20 @@ def compile_sharpy_project(cli_dll: Path, project_file: Path, incremental: bool)
     return elapsed, True, ""
 
 
-def measure_project_compile(cli_dll: Path, spy_file: Path) -> tuple[float | None, float | None, bool, str]:
+def measure_project_compile(
+    cli_dll: Path, spy_file: Path, features: list[str] | None = None,
+) -> tuple[float | None, float | None, bool, str]:
     """Measure cold + warm project-compile times for one benchmark.
 
     Builds a synthetic one-file .spyproj in a persistent temp dir, compiles it once
     with an empty incremental cache (cold), then WARM_COMPILE_RUNS more times with the
     cache present (warm, median). Returns (cold_seconds, warm_seconds, ok, error).
+
+    ``features`` populates the project's ``<Features>`` so gated syntax compiles.
     """
     project_dir = Path(tempfile.mkdtemp(prefix="spyproj_bench_"))
     try:
-        project_file = generate_spyproj(spy_file, project_dir)
+        project_file = generate_spyproj(spy_file, project_dir, features)
 
         cold_t, ok, err = compile_sharpy_project(cli_dll, project_file, incremental=True)
         if not ok:
@@ -291,7 +344,18 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     """Compile .cs to executable using dotnet build in a temp directory."""
     cs_file = bench_dir / "bench.cs"
 
-    proj_content = """<Project Sdk="Microsoft.NET.Sdk">
+    # The numpy variant's hand-written baseline uses MathNet.Numerics (the same
+    # backend Sharpy's numpy delegates to); add the package when the source needs
+    # it. Restores from the local NuGet cache already populated by Sharpy.Stdlib.
+    package_refs = ""
+    if "using MathNet" in cs_file.read_text():
+        package_refs = (
+            '\n  <ItemGroup>\n'
+            '    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />\n'
+            '  </ItemGroup>'
+        )
+
+    proj_content = f"""<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -300,7 +364,7 @@ def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Pa
     <Nullable>disable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <NoWarn>CS8981</NoWarn>
-  </PropertyGroup>
+  </PropertyGroup>{package_refs}
 </Project>"""
     proj_path = tmp_dir / "bench.csproj"
     proj_path.write_text(proj_content)
@@ -353,6 +417,12 @@ def run_benchmark(
 ) -> dict[str, BenchResult]:
     """Run selected languages for one benchmark. Returns dict keyed by language."""
     langs = languages or ALL_LANGUAGES
+    # A benchmark may opt out of a language via bench.languages (e.g. numpy holds
+    # Sharpy out pending #1084); intersect the request with what it supports.
+    supported = read_languages(bench_dir)
+    if supported is not None:
+        langs = langs & supported
+    features = read_features(bench_dir)
     results = {}
 
     if "Python" in langs:
@@ -387,7 +457,7 @@ def run_benchmark(
             compile_err = ""
             output_dll = tmp_path / "bench_output.dll"
             for _ in range(TIMED_RUNS):
-                ct, ok, err, output_dll = compile_sharpy(cli_dll, spy_file, tmp_path)
+                ct, ok, err, output_dll = compile_sharpy(cli_dll, spy_file, tmp_path, features)
                 compile_times.append(ct)
                 if not ok:
                     compile_ok = False
@@ -412,7 +482,7 @@ def run_benchmark(
                 compile_phases = parse_sharpy_compile_phases(sharpy_metrics_path(tmp_path))
                 # Cold + warm (--incremental) project-compile times. Additive to the
                 # single-file compile above (kept intact for history comparability).
-                cold_t, warm_t, _proj_ok, _proj_err = measure_project_compile(cli_dll, spy_file)
+                cold_t, warm_t, _proj_ok, _proj_err = measure_project_compile(cli_dll, spy_file, features)
                 results["Sharpy"] = BenchResult(
                     bench_dir.name, "Sharpy", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err,
                     compile_phases=compile_phases or None,
@@ -470,9 +540,10 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
         spy = langs.get("Sharpy")
         cs = langs.get("C#")
 
-        py_str = format_time(py.execute_seconds) if py and py.success else "FAIL"
-        spy_str = format_time(spy.execute_seconds) if spy and spy.success else "FAIL"
-        cs_str = format_time(cs.execute_seconds) if cs and cs.success else "FAIL"
+        # Absent (held out via bench.languages) prints "—"; present-but-failed prints "FAIL".
+        py_str = "—" if py is None else (format_time(py.execute_seconds) if py.success else "FAIL")
+        spy_str = "—" if spy is None else (format_time(spy.execute_seconds) if spy.success else "FAIL")
+        cs_str = "—" if cs is None else (format_time(cs.execute_seconds) if cs.success else "FAIL")
 
         py_t = py.execute_seconds if py and py.success else 0
         spy_t = spy.execute_seconds if spy and spy.success else 0
@@ -622,16 +693,19 @@ def main():
     if verbose:
         print("  Warmup pass...", end=" ", flush=True)
     for bench_dir in bench_dirs:
-        if "Python" in active_langs:
+        supported = read_languages(bench_dir)
+        bench_langs = active_langs & supported if supported is not None else active_langs
+        features = read_features(bench_dir)
+        if "Python" in bench_langs:
             subprocess.run([sys.executable, str(bench_dir / "bench.py")],
                            capture_output=True, timeout=120)
-        if "Sharpy" in active_langs and cli_dll is not None:
+        if "Sharpy" in bench_langs and cli_dll is not None:
             spy_file = bench_dir / "bench.spy"
             with tempfile.TemporaryDirectory() as tmp:
-                _, ok, _, output_dll = compile_sharpy(cli_dll, spy_file, Path(tmp))
+                _, ok, _, output_dll = compile_sharpy(cli_dll, spy_file, Path(tmp), features)
                 if ok:
                     execute_sharpy(output_dll)
-        if "C#" in active_langs:
+        if "C#" in bench_langs:
             with tempfile.TemporaryDirectory() as tmp:
                 tmp_path = Path(tmp)
                 compile_csharp(bench_dir, tmp_path)
@@ -655,7 +729,8 @@ def main():
                 if lang not in active_langs:
                     continue
                 r = results.get(lang)
-                statuses.append(f"{lang}={'ok' if r and r.success else 'FAIL'}")
+                status = "skip" if r is None else ("ok" if r.success else "FAIL")
+                statuses.append(f"{lang}={status}")
             print(" | ".join(statuses))
 
     if args.merge:

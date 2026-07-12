@@ -1,0 +1,3 @@
+# Experimental feature flags enabled when compiling bench.spy (one per line).
+# The `@` matrix-multiplication operator (PEP 465) is gated behind 'matmul'.
+matmul

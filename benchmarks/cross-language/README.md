@@ -11,6 +11,7 @@ Compares runtime performance of equivalent programs in **Sharpy** (compiled to .
 | `string_ops` | Concatenation, case conversion, splitting (string interning, GC) |
 | `list_comprehensions` | Filtered + nested comprehensions (collection construction) |
 | `matrix_multiply` | Nested loops, array indexing (tight numeric loops) |
+| `matrix_multiply_numpy` | Numeric path: numpy `@` / MathNet (native BLAS) vs the pure-list kernel |
 
 ## Running
 
@@ -44,6 +45,23 @@ Spy/C# ~ 1.0 = Sharpy matches raw C# (minimal overhead)
 2. Add three files: `bench.spy`, `bench.py`, `bench.cs`
 3. Each must produce identical output and do the same work
 4. Use `def main():` as entry point in `.spy` and `.py`
+
+### Optional sidecars
+
+| File | Effect |
+|------|--------|
+| `bench.features` | Experimental feature flags (one per line) passed to the Sharpy compiler as `--enable-feature <name>` and into the warm-compile project's `<Features>`. Needed for gated syntax such as the `@` matmul operator. |
+| `bench.languages` | Languages the benchmark opts into (one per line: `Python`, `Sharpy`, `C#`); absent = all three. Use to hold a language out of the harness. |
+
+`#` starts a comment at line start or after whitespace (so the `C#` token survives).
+The C# project also gains a `MathNet.Numerics` package reference automatically when
+`bench.cs` contains `using MathNet`.
+
+> `matrix_multiply_numpy` holds Sharpy out via `bench.languages` until **#1084**
+> lands: numpy delegates to MathNet.Numerics, but the emitted `deps.json` omits
+> transitive NuGet deps, so a compiled numpy program can't load MathNet at runtime.
+> `bench.spy` still compiles (proving the `@`/matmul path); its numeric-path numbers
+> come from Python (native BLAS) and C# (MathNet).
 
 ## Design Principles
 

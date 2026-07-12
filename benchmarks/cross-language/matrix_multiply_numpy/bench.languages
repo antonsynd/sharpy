@@ -1,0 +1,7 @@
+# Languages this benchmark runs (one per line); absent = all three.
+# Sharpy is held out until #1084 lands: numpy delegates to MathNet.Numerics, but
+# the emitted deps.json omits transitive NuGet deps, so a compiled numpy program
+# cannot run standalone yet. bench.spy still compiles (proving the @/matmul path);
+# the numpy-path numbers below come from Python (native BLAS) + C# (MathNet).
+Python
+C#

@@ -124,6 +124,57 @@ def test_results_to_json_includes_cold_warm_only_for_sharpy():
     assert "warm_compile_seconds" not in by_lang["Python"]
 
 
+def test_read_features_parses_names_and_comments(tmp_path):
+    (tmp_path / "bench.features").write_text(
+        "# leading comment\nmatmul\n\ndefer  # trailing comment\n"
+    )
+    assert run_benchmarks.read_features(tmp_path) == ["matmul", "defer"]
+
+
+def test_read_features_absent_returns_empty(tmp_path):
+    assert run_benchmarks.read_features(tmp_path) == []
+
+
+def test_read_languages_preserves_csharp_hash(tmp_path):
+    # The "#" comment convention must not truncate the "C#" language token.
+    (tmp_path / "bench.languages").write_text(
+        "# only the numeric-path languages\nPython\nC#\n"
+    )
+    assert run_benchmarks.read_languages(tmp_path) == {"Python", "C#"}
+
+
+def test_read_languages_absent_returns_none(tmp_path):
+    # Absent sidecar means "all languages" (None), not "no languages".
+    assert run_benchmarks.read_languages(tmp_path) is None
+
+
+def test_read_languages_ignores_unknown_names(tmp_path):
+    (tmp_path / "bench.languages").write_text("Python\nRust\n")
+    assert run_benchmarks.read_languages(tmp_path) == {"Python"}
+
+
+def test_compile_sharpy_threads_enable_feature(monkeypatch, tmp_path):
+    # compile_sharpy must pass each feature as --enable-feature <name>.
+    captured = {}
+
+    class _Result:
+        returncode = 0
+        stderr = ""
+        stdout = ""
+
+    def fake_run(cmd, *args, **kwargs):
+        captured["cmd"] = cmd
+        return _Result()
+
+    monkeypatch.setattr(run_benchmarks.subprocess, "run", fake_run)
+    run_benchmarks.compile_sharpy(
+        Path("cli.dll"), tmp_path / "bench.spy", tmp_path, features=["matmul"]
+    )
+    cmd = captured["cmd"]
+    assert "--enable-feature" in cmd
+    assert cmd[cmd.index("--enable-feature") + 1] == "matmul"
+
+
 def test_merge_results_round_trips_cold_warm(tmp_path):
     sharpy = run_benchmarks.BenchResult(
         "fib", "Sharpy", 0.5, 0.1, 0.6, True, "",

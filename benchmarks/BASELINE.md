@@ -35,6 +35,32 @@ below 1.0. `list_comprehensions` (~1.05x) and `string_ops` (~1.35x) remain above
 1.0; neither residual is closable by D4's collection-focused changes. See the
 residual analysis on issue #1051.
 
+## D5 Numeric-Path Results (#1052)
+
+> **Recorded:** 2026-07-12 · Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301 · Python 3.12.13
+> **Harness:** `benchmarks/cross-language/run_benchmarks.py` (median of 3 timed runs + warmup, ×3 outer)
+
+The `matrix_multiply_numpy` variant contrasts the numeric hot path against the
+pure-list `matrix_multiply` kernel. numpy's `@` (256×256, 200 products) runs the
+same work through native BLAS-class code:
+
+| Path | Python | Sharpy | C# | notes |
+|------|-------:|-------:|----|-------|
+| numpy `@` (256×256 ×200) | 169ms | (held out, #1084) | 375ms (MathNet) | native BLAS; Sharpy `np.Matmul` delegates to the same MathNet backend |
+| pure-list (100×100 ×10) | — | Spy/C# **2.50×** (post-D4) / *post-P6.7: pending #35* | — | bounds-checked nested `Sharpy.List` indexing |
+
+Sharpy's numpy column is held out of the harness until **#1084** (compiled numpy
+programs can't load MathNet at runtime — transitive NuGet deps copied but omitted
+from `deps.json`); `bench.spy` still compiles under the `matmul` flag. The emitted
+C# is `np.Matmul(a, b)` → `Sharpy.Numpy.Matmul` → `NumpyLinalg.Dot` → MathNet, so
+Sharpy-numpy throughput tracks the C#/MathNet column modulo one marshal per call.
+
+**Decision (D5, #1052):** the pure-list matmul gap is structural (nested
+bounds-checked `Sharpy.List` indexing) and the numeric fast path already exists via
+numpy → MathNet, which is ~50–100× faster than a same-scale pure-list kernel. Raw-array
+lowering is therefore dispositioned to Workstream E3 rather than built now; see the
+escalation memo on #1052.
+
 ## Benchmark Suite
 
 The benchmark suite is located in `src/Sharpy.Compiler.Benchmarks/` and uses [BenchmarkDotNet](https://benchmarkdotnet.org/).
