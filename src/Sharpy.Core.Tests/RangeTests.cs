@@ -92,4 +92,35 @@ public class Range_Tests
             .Should().Throw<ValueError>()
             .WithMessage("*step*zero*");
     }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(5, 5)]
+    [InlineData(-3, 0)]
+    public void Range_Count_SingleArgument_MatchesLen(int stop, int expected)
+    {
+        // Count matches Python's len(range(stop)) and is readable without enumerating.
+        ((ISized)Range(stop)).Count.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(2, 5, 1, 3)]     // 2,3,4
+    [InlineData(0, 10, 3, 4)]    // 0,3,6,9
+    [InlineData(5, 0, -1, 5)]    // 5,4,3,2,1
+    [InlineData(10, 0, -3, 4)]   // 10,7,4,1
+    [InlineData(0, 10, -1, 0)]   // empty (wrong-direction step)
+    public void Range_Count_StartStopStep_MatchesLen(int start, int stop, int step, int expected)
+    {
+        ((ISized)Range(start, stop, step)).Count.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Range_Count_DoesNotConsumeIterator()
+    {
+        // Reading Count must not advance the iterator.
+        var range = Range(3);
+        ((ISized)range).Count.Should().Be(3);
+        range.Next().Should().Be(0);
+        range.Next().Should().Be(1);
+    }
 }

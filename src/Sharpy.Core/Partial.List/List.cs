@@ -49,6 +49,16 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Constructs an empty list whose backing storage is pre-sized to hold at least
+        /// <paramref name="capacity"/> elements without reallocating. Used by comprehension
+        /// lowering when the source size is known up front; not part of Python's <c>list</c> API.
+        /// </summary>
+        public List(int capacity)
+        {
+            _list = new System.Collections.Generic.List<T>(capacity < 0 ? 0 : capacity);
+        }
+
+        /// <summary>
         /// Implicitly converts a .NET array to a Sharpy list.
         /// </summary>
         public static implicit operator List<T>(T[] array)

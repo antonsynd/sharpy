@@ -1,0 +1,7 @@
+# Single-for list comprehension over a NON-sized source (enumerate) with tuple
+# unpacking. The source is not ISized, so no capacity is preallocated; the loop
+# variables come from a flat-tuple binding.
+def main():
+    labels: list[str] = ["a", "b", "c"]
+    tagged: list[str] = [str(i) + v for i, v in enumerate(labels)]
+    print(tagged)

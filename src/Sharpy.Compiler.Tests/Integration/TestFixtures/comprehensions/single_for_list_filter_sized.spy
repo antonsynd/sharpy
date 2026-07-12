@@ -1,0 +1,6 @@
+# Single-for list comprehension with a filter over a sized source (range).
+# Exercises the imperative lowering + capacity preallocation + if-clause path.
+def main():
+    squares: list[int] = [x * x for x in range(6) if x % 2 == 0]
+    print(squares)
+    print(len(squares))

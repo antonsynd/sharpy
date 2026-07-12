@@ -30,12 +30,12 @@ public static partial class NestedComprehension
             }
         };
         var __comp_0 = new Sharpy.List<int>();
-        foreach (var __loopVar_2 in matrix)
+        foreach (var __loopVar_1 in matrix)
         {
-            var row = __loopVar_2;
-            foreach (var __loopVar_1 in row)
+            var row = __loopVar_1;
+            foreach (var __loopVar_2 in row)
             {
-                var x = __loopVar_1;
+                var x = __loopVar_2;
                 __comp_0.Add(x);
             }
         }

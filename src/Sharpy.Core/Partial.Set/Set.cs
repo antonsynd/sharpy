@@ -22,6 +22,16 @@ namespace Sharpy
             _set = new HashSet<T>();
         }
 
+        /// <summary>
+        /// Create an empty set whose backing storage is pre-sized to hold at least
+        /// <paramref name="capacity"/> elements without rehashing. Used by comprehension
+        /// lowering when the source size is known up front; not part of Python's <c>set</c> API.
+        /// </summary>
+        public Set(int capacity)
+        {
+            _set = new HashSet<T>(capacity < 0 ? 0 : capacity);
+        }
+
         /// <summary>Create a set as a copy of another set.</summary>
         public Set(Set<T> set) : this()
         {

@@ -31,6 +31,16 @@ namespace Sharpy
             _dict = new Dictionary<K, V>();
         }
 
+        /// <summary>
+        /// Create an empty dictionary whose backing storage is pre-sized to hold at least
+        /// <paramref name="capacity"/> entries without rehashing. Used by comprehension
+        /// lowering when the source size is known up front; not part of Python's <c>dict</c> API.
+        /// </summary>
+        public Dict(int capacity)
+        {
+            _dict = new Dictionary<K, V>(capacity < 0 ? 0 : capacity);
+        }
+
         /// <summary>Create a dictionary from an existing mapping.</summary>
         public Dict(IReadOnlyDictionary<K, V> mapping) : this()
         {

@@ -3,12 +3,35 @@ namespace Sharpy
     /// <summary>
     /// Iterator that yields integers in a range.
     /// </summary>
-    public class RangeIterator : Iterator<int>
+    public class RangeIterator : Iterator<int>, ISized
     {
         private readonly int _start;
         private readonly int _stop;
         private readonly int _step;
         private int _position;
+
+        /// <summary>
+        /// Gets the number of integers this range produces, matching Python's
+        /// <c>len(range(...))</c>. Computed from the bounds and step without iterating,
+        /// so it is safe to read before or independently of enumeration.
+        /// </summary>
+        public int Count
+        {
+            get
+            {
+                long count;
+                if (_step > 0)
+                {
+                    count = _start >= _stop ? 0 : ((long)_stop - _start + _step - 1) / _step;
+                }
+                else
+                {
+                    count = _start <= _stop ? 0 : ((long)_start - _stop - _step - 1) / -(long)_step;
+                }
+
+                return count > int.MaxValue ? int.MaxValue : (int)count;
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RangeIterator"/> class.

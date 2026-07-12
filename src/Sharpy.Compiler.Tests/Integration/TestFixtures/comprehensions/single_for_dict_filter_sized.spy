@@ -1,0 +1,8 @@
+# Single-for dict comprehension with a filter over a sized source (list).
+# Exercises imperative dict lowering ([key] = value) + capacity preallocation.
+def main():
+    doubled: dict[int, int] = {k: k * 10 for k in [1, 2, 3, 4] if k != 2}
+    print(len(doubled))
+    print(doubled[1])
+    print(doubled[3])
+    print(doubled[4])

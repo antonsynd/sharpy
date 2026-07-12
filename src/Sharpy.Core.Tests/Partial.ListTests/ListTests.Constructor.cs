@@ -107,4 +107,19 @@ public partial class List_Tests
         l[0].Should().Be("hello");
         l[1].Should().Be("world");
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(8)]
+    [InlineData(-4)]
+    public void List_Capacity_Constructor_CreatesEmptyList(int capacity)
+    {
+        // The capacity constructor (used by comprehension lowering) presizes storage but
+        // yields an empty list; a negative capacity is clamped to zero rather than throwing.
+        var l = new List<int>(capacity);
+
+        Len(l).Should().Be(0);
+        l.Append(1);
+        l[0].Should().Be(1);
+    }
 }

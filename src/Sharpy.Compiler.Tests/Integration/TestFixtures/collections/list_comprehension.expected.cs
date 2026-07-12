@@ -11,12 +11,20 @@ public static partial class ListComprehension
 {
     public static void Main()
     {
-#line (3, 5) - (3, 51) 1 "list_comprehension.spy"
-        Sharpy.List<int> result = new Sharpy.List<int>(global::Sharpy.Builtins.Range(5).Select(x => x * 2));
-#line (4, 5) - (6, 1) 1 "list_comprehension.spy"
-        foreach (var __loopVar_0 in result)
+        var __src_1 = global::Sharpy.Builtins.Range(5);
+        var __comp_0 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_1).Count);
+        foreach (var __loopVar_2 in __src_1)
         {
-            var item = __loopVar_0;
+            var x = __loopVar_2;
+            __comp_0.Add(x * 2);
+        }
+
+#line (3, 5) - (3, 51) 1 "list_comprehension.spy"
+        Sharpy.List<int> result = __comp_0;
+#line (4, 5) - (6, 1) 1 "list_comprehension.spy"
+        foreach (var __loopVar_3 in result)
+        {
+            var item = __loopVar_3;
 #line (5, 9) - (5, 20) 1 "list_comprehension.spy"
             global::Sharpy.Builtins.Print(item);
         }
