@@ -70,19 +70,29 @@ public class ReplSession
     private string _lastFullOutput = string.Empty;
     private int _evaluationCounter;
 
+    // Session-wide experimental feature flags (from --enable-feature). Unioned with any
+    // per-input `from __future__ import` features before gate checking, mirroring the
+    // batch pipelines.
+    private readonly Shared.FeatureFlags _features;
+
     /// <summary>
     /// Creates a new REPL session.
     /// </summary>
     /// <param name="logger">Optional compiler logger; defaults to <see cref="NullLogger.Instance"/>.</param>
-    public ReplSession(ICompilerLogger? logger = null)
-        : this(logger, emitterFactory: null)
+    /// <param name="features">Optional experimental feature flags enabled for the whole session.</param>
+    public ReplSession(ICompilerLogger? logger = null, Shared.FeatureFlags? features = null)
+        : this(logger, emitterFactory: null, features)
     {
     }
 
-    internal ReplSession(ICompilerLogger? logger, ICodeEmitterFactory? emitterFactory)
+    internal ReplSession(
+        ICompilerLogger? logger,
+        ICodeEmitterFactory? emitterFactory,
+        Shared.FeatureFlags? features = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
+        _features = features ?? Shared.FeatureFlags.None;
     }
 
     /// <summary>
@@ -315,7 +325,10 @@ public class ReplSession
         try
         {
             // Phase 1: Lex
-            var lexer = new Sharpy.Compiler.Lexer.Lexer(source, _logger);
+            var lexer = new Sharpy.Compiler.Lexer.Lexer(source, _logger)
+            {
+                Features = _features
+            };
             var tokens = lexer.TokenizeAll();
             if (lexer.Diagnostics.HasErrors)
                 return CompilationOutcome.Failure(lexer.Diagnostics.GetAll());
@@ -323,7 +336,8 @@ public class ReplSession
             cancellationToken.ThrowIfCancellationRequested();
 
             // Phase 2: Parse
-            var parser = new Sharpy.Compiler.Parser.Parser(tokens, _logger, cancellationToken: cancellationToken);
+            var parser = new Sharpy.Compiler.Parser.Parser(
+                tokens, _logger, cancellationToken: cancellationToken, features: _features);
             var module = parser.ParseModule();
             if (parser.Diagnostics.HasErrors)
                 return CompilationOutcome.Failure(parser.Diagnostics.GetAll());
@@ -361,12 +375,23 @@ public class ReplSession
             var aggregateDiagnostics = new List<CompilerDiagnostic>();
             aggregateDiagnostics.AddRange(importResolver.Diagnostics.GetAll());
 
+            // Feature gating: union session-wide flags with any `from __future__ import`
+            // features from this input, then reject ungated experimental constructs
+            // (SPY0331) before type checking — same contract as the batch pipelines.
+            var effectiveFeatures = importResolver.GetEffectiveFeatures(_features, ReplFileName);
+            var gateDiagnostics = new DiagnosticBag();
+            new FeatureGateChecker(gateDiagnostics, effectiveFeatures, ReplFileName).Check(module);
+            aggregateDiagnostics.AddRange(gateDiagnostics.GetAll());
+            if (gateDiagnostics.HasErrors)
+                return CompilationOutcome.Failure(aggregateDiagnostics);
+
             var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger)
             {
                 SemanticBinding = semanticBinding,
                 CurrentFilePath = ReplFileName,
-                ModuleRegistry = moduleRegistry
+                ModuleRegistry = moduleRegistry,
+                Features = effectiveFeatures
             };
             try
             {
@@ -397,7 +422,8 @@ public class ReplSession
                 Logger = _logger,
                 SemanticInfo = semanticInfo,
                 SemanticBinding = semanticBinding,
-                EmitLineDirectives = false
+                EmitLineDirectives = false,
+                Features = effectiveFeatures
             };
             var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
             var generatedSyntax = emitter.GenerateCompilationUnit(module);

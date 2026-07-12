@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Shared;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Services;
@@ -172,6 +173,49 @@ public class ReplSessionTests
         var useResult = await session.EvaluateAsync("sqrt(16.0)");
         Assert.True(useResult.Success, FormatDiagnostics(useResult));
         Assert.Equal("4.0" + Environment.NewLine, useResult.Output);
+    }
+
+    // -------------------------------------------------------------------------
+    // Experimental feature gating (#1045)
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task EvaluateAsync_GatedSyntaxWithoutFeature_ReportsSpy0331()
+    {
+        var session = new ReplSession();
+
+        // `defer` is parsed but gated; without --enable-feature the REPL must reject it
+        // with SPY0331 like the batch pipelines, not silently accept it.
+        var result = await session.EvaluateAsync(
+            "def f() -> None:\n    defer print(\"bye\")\n    print(\"hi\")\n");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Diagnostics, d => d.Code == "SPY0331");
+        Assert.Equal(0, session.EvaluationCount);
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_GatedSyntaxWithFeature_Compiles()
+    {
+        var session = new ReplSession(
+            logger: null,
+            features: FeatureFlags.None.Enable(new[] { "defer" }));
+
+        // f returns a value because the REPL auto-prints bare call expressions; a
+        // None-returning bare call would hit the pre-existing print(void) limitation (#1059).
+        var defResult = await session.EvaluateAsync(
+            "def f() -> int:\n"
+            + "    defer print(\"bye\")\n"
+            + "    print(\"hi\")\n"
+            + "    return 1\n");
+        Assert.True(defResult.Success, FormatDiagnostics(defResult));
+
+        var callResult = await session.EvaluateAsync("f()");
+        Assert.True(callResult.Success, FormatDiagnostics(callResult));
+        // Deferred body runs at f's scope exit (after "hi", before the value is printed).
+        Assert.Equal(
+            "hi" + Environment.NewLine + "bye" + Environment.NewLine + "1" + Environment.NewLine,
+            callResult.Output);
     }
 
     // -------------------------------------------------------------------------

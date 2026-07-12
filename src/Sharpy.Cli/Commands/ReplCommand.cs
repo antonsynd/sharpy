@@ -4,6 +4,7 @@ using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Cli.Commands;
 
@@ -17,19 +18,21 @@ internal static class ReplCommand
             var logLevel = globals.ResolveLogLevel(parseResult);
             CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
             var logFile = parseResult.GetValue(globals.LogFile);
+            var featureNames = parseResult.GetValue(globals.EnableFeature);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return await RunReplAsync(logger, cancellationToken).ConfigureAwait(false);
+            var features = FeatureFlags.None.Enable(featureNames ?? Array.Empty<string>());
+            return await RunReplAsync(logger, features, cancellationToken).ConfigureAwait(false);
         });
 
         root.Subcommands.Add(command);
     }
 
-    static async Task<int> RunReplAsync(ICompilerLogger logger, CancellationToken cancellationToken)
+    static async Task<int> RunReplAsync(ICompilerLogger logger, FeatureFlags features, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Sharpy REPL ({VersionInfo.GetDisplayString()})");
         Console.WriteLine("Type 'exit()' or press Ctrl+D to quit. End a line with ':' to start a multi-line block.");
 
-        var session = new ReplSession(logger);
+        var session = new ReplSession(logger, features);
         var pending = new StringBuilder();
         var inMultiLine = false;
 
