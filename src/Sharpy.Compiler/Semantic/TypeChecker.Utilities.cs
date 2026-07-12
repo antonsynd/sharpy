@@ -209,16 +209,19 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Runs the statement-level narrowing dataflow analysis (#1042) over a function body's CFG.
+    /// The graph comes from the shared <see cref="ControlFlowGraphCache"/> so the validation-pass
+    /// consumers (ControlFlowValidator, StructRulesValidator, PropertyValidator) reuse it instead
+    /// of rebuilding.
     /// </summary>
-    private static NarrowingFlowResult ComputeNarrowingFlow(FunctionDef function) =>
-        NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(function));
+    private NarrowingFlowResult ComputeNarrowingFlow(FunctionDef function) =>
+        NarrowingFlowAnalysis.Analyze(_controlFlowGraphs.GetOrBuild(function));
 
     /// <summary>
     /// Runs the statement-level narrowing dataflow analysis (#1042) over a raw statement list
-    /// (module body or property accessor body).
+    /// (module body or property accessor body), via the shared <see cref="ControlFlowGraphCache"/>.
     /// </summary>
-    private static NarrowingFlowResult ComputeNarrowingFlow(IReadOnlyList<Statement> body) =>
-        NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(body));
+    private NarrowingFlowResult ComputeNarrowingFlow(IReadOnlyList<Statement> body) =>
+        NarrowingFlowAnalysis.Analyze(_controlFlowGraphs.GetOrBuild(body));
 
     /// <summary>
     /// Resolves the narrowing facts currently in effect (<see cref="_currentFacts"/>) for a narrowing
