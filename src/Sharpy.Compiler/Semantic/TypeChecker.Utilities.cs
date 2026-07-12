@@ -124,133 +124,37 @@ internal partial class TypeChecker
             return (narrowedTypes, new NarrowingDecision(optionalNarrowings, isInstanceNarrowings));
         }
 
-        // Handle 'x is not None' pattern (x can be identifier or member access like self.field)
-        if (condition is BinaryOp { Operator: BinaryOperator.IsNot } binOp)
+        // Leaf recognition (`is`/`is not None`, `isinstance`) is shared with the dataflow engine via
+        // NarrowingConditionInterpreter.RecognizeLeaf (#1042); here we resolve each recognised symbolic
+        // fact to a concrete narrowed type and the emitter decision. NarrowInThenBranch is the branch
+        // polarity at this leaf (isPositiveBranch) — the recursive traversal above has already flipped
+        // it through any enclosing `not`, exactly as before.
+        foreach (var fact in NarrowingConditionInterpreter.RecognizeLeaf(condition, isPositiveBranch))
         {
-            if (binOp.Right is NoneLiteral)
+            if (fact.Kind == NarrowingActionKind.RemoveNone)
             {
-                var narrowingKey = ExtractNarrowingKey(binOp.Left);
-                if (narrowingKey != null && isPositiveBranch)
+                var resolvedType = ResolveNarrowedOperandType(fact.SourceExpression!);
+                if (resolvedType is NullableType nullable)
                 {
-                    // Get the type of the expression being narrowed
-                    SemanticType? resolvedType = null;
-                    if (binOp.Left is Identifier id)
-                    {
-                        var symbol = _symbolTable.Lookup(id.Name);
-                        if (symbol is VariableSymbol varSymbol)
-                            resolvedType = GetVariableType(varSymbol);
-                    }
+                    narrowedTypes[fact.Key] = nullable.UnderlyingType;
+                    if (nullable.IsValueType)
+                        optionalNarrowings.Add(new OptionalNarrowing(fact.Key, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: isPositiveBranch));
                     else
-                    {
-                        // For member access (self.field), use the already type-checked expression type
-                        resolvedType = _semanticInfo.GetExpressionType(binOp.Left);
-                    }
-
-                    if (resolvedType is NullableType nullable)
-                    {
-                        narrowedTypes[narrowingKey] = nullable.UnderlyingType;
-                        if (nullable.IsValueType)
-                            optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: true));
-                        else
-                            optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: true, IsReferenceTypeNullable: true));
-                    }
-                    else if (resolvedType is OptionalType optional)
-                    {
-                        narrowedTypes[narrowingKey] = optional.UnderlyingType;
-                        optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, optional.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: true));
-                    }
+                        optionalNarrowings.Add(new OptionalNarrowing(fact.Key, nullable.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: isPositiveBranch, IsReferenceTypeNullable: true));
+                }
+                else if (resolvedType is OptionalType optional)
+                {
+                    narrowedTypes[fact.Key] = optional.UnderlyingType;
+                    optionalNarrowings.Add(new OptionalNarrowing(fact.Key, optional.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: isPositiveBranch));
                 }
             }
-        }
-        // Handle 'x is None' pattern (x can be identifier or member access like self.field)
-        else if (condition is BinaryOp { Operator: BinaryOperator.Is } isOp)
-        {
-            if (isOp.Right is NoneLiteral)
+            else // IsType (isinstance)
             {
-                var narrowingKey = ExtractNarrowingKey(isOp.Left);
-                if (narrowingKey != null && !isPositiveBranch)
+                var narrowedType = ResolveIsTypeFactType(fact.TypeExpression!);
+                if (narrowedType != null)
                 {
-                    SemanticType? resolvedType = null;
-                    if (isOp.Left is Identifier id)
-                    {
-                        var symbol = _symbolTable.Lookup(id.Name);
-                        if (symbol is VariableSymbol varSymbol)
-                            resolvedType = GetVariableType(varSymbol);
-                    }
-                    else
-                    {
-                        resolvedType = _semanticInfo.GetExpressionType(isOp.Left);
-                    }
-
-                    if (resolvedType is NullableType nullable)
-                    {
-                        narrowedTypes[narrowingKey] = nullable.UnderlyingType;
-                        if (nullable.IsValueType)
-                            optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: false));
-                        else
-                            optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, nullable.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: false, IsReferenceTypeNullable: true));
-                    }
-                    else if (resolvedType is OptionalType optional)
-                    {
-                        narrowedTypes[narrowingKey] = optional.UnderlyingType;
-                        optionalNarrowings.Add(new OptionalNarrowing(narrowingKey, optional.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: false));
-                    }
-                }
-            }
-        }
-        // Handle 'isinstance(x, Type)' pattern
-        else if (condition is FunctionCall { Function: Identifier { Name: "isinstance" } } call)
-        {
-            if (call.Arguments.Length >= 2)
-            {
-                if (isPositiveBranch)
-                {
-                    // Extract the narrowing key from the first argument
-                    string? narrowingKey = ExtractNarrowingKey(call.Arguments[0]);
-
-                    if (narrowingKey != null && call.Arguments[1] is Identifier typeId)
-                    {
-                        // For isinstance, the second argument is an identifier referring to a type
-                        // We need to look it up in the symbol table
-                        // Check if the type is a builtin primitive first
-                        var builtinType = typeId.Name switch
-                        {
-                            BuiltinNames.Int => SemanticType.Int,
-                            BuiltinNames.Long => SemanticType.Long,
-                            BuiltinNames.Float => SemanticType.Float,
-                            BuiltinNames.Float32 => SemanticType.Float32,
-                            BuiltinNames.Decimal => SemanticType.Decimal,
-                            BuiltinNames.Double => SemanticType.Double,
-                            BuiltinNames.Bool => SemanticType.Bool,
-                            BuiltinNames.Str => SemanticType.Str,
-                            _ => (SemanticType?)null
-                        };
-
-                        if (builtinType != null)
-                        {
-                            narrowedTypes[narrowingKey] = builtinType;
-                            isInstanceNarrowings.Add(new IsInstanceNarrowing(narrowingKey, builtinType, NarrowInThenBranch: true));
-                        }
-                        else
-                        {
-                            var typeSymbol = _symbolTable.Lookup(typeId.Name) as TypeSymbol;
-                            if (typeSymbol != null)
-                            {
-                                var narrowedType = BuildIsInstanceNarrowedType(typeSymbol);
-                                narrowedTypes[narrowingKey] = narrowedType;
-                                isInstanceNarrowings.Add(new IsInstanceNarrowing(narrowingKey, narrowedType, NarrowInThenBranch: true));
-                            }
-                        }
-                    }
-                    // Module-qualified type argument: isinstance(err, email.MessageError) (#903).
-                    // The condition was already type-checked, so the MemberAccess type argument's
-                    // type is recorded as the referenced UserDefinedType; narrow to it.
-                    else if (narrowingKey != null && call.Arguments[1] is MemberAccess typeMemberAccess
-                        && _semanticInfo.GetExpressionType(typeMemberAccess) is UserDefinedType qualifiedNarrowedType)
-                    {
-                        narrowedTypes[narrowingKey] = qualifiedNarrowedType;
-                        isInstanceNarrowings.Add(new IsInstanceNarrowing(narrowingKey, qualifiedNarrowedType, NarrowInThenBranch: true));
-                    }
+                    narrowedTypes[fact.Key] = narrowedType;
+                    isInstanceNarrowings.Add(new IsInstanceNarrowing(fact.Key, narrowedType, NarrowInThenBranch: isPositiveBranch));
                 }
             }
         }
@@ -353,6 +257,19 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Resolves the (non-narrowed) type of a narrowed operand expression at the condition, for building
+    /// the <c>RemoveNone</c> emitter decision: identifiers resolve through the symbol table, member/
+    /// other expressions read their already-type-checked type from <see cref="SemanticInfo"/>. Mirrors
+    /// the operand resolution the inline is/is-not-None handling used before the leaf-recognition swap.
+    /// </summary>
+    private SemanticType? ResolveNarrowedOperandType(Expression operand)
+    {
+        if (operand is Identifier id)
+            return _symbolTable.Lookup(id.Name) is VariableSymbol varSymbol ? GetVariableType(varSymbol) : null;
+        return _semanticInfo.GetExpressionType(operand);
     }
 
     /// <summary>

@@ -55,21 +55,30 @@ internal sealed class NarrowingFact : IEquatable<NarrowingFact>
     /// </summary>
     public Expression? TypeExpression { get; }
 
-    private NarrowingFact(string key, NarrowingActionKind kind, string? typeKey, Expression? typeExpression)
+    /// <summary>
+    /// The narrowed operand expression at the point the fact was recognised (e.g. the <c>x</c> in
+    /// <c>x is not None</c> / <c>isinstance(x, T)</c>). Retained so the condition interpreter can
+    /// resolve the operand's type when producing the emitter decision. Not used by the dataflow
+    /// engine (which resolves against the read-site type) and not part of equality.
+    /// </summary>
+    public Expression? SourceExpression { get; }
+
+    private NarrowingFact(string key, NarrowingActionKind kind, string? typeKey, Expression? typeExpression, Expression? sourceExpression)
     {
         Key = key;
         Kind = kind;
         TypeKey = typeKey;
         TypeExpression = typeExpression;
+        SourceExpression = sourceExpression;
     }
 
-    /// <summary>Creates a <c>RemoveNone</c> fact for the given key.</summary>
-    public static NarrowingFact RemoveNone(string key) =>
-        new(key, NarrowingActionKind.RemoveNone, typeKey: null, typeExpression: null);
+    /// <summary>Creates a <c>RemoveNone</c> fact for the given key and narrowed operand.</summary>
+    public static NarrowingFact RemoveNone(string key, Expression? sourceExpression = null) =>
+        new(key, NarrowingActionKind.RemoveNone, typeKey: null, typeExpression: null, sourceExpression);
 
-    /// <summary>Creates an <c>IsType</c> fact for the given key and target type expression.</summary>
-    public static NarrowingFact IsType(string key, string typeKey, Expression typeExpression) =>
-        new(key, NarrowingActionKind.IsType, typeKey, typeExpression);
+    /// <summary>Creates an <c>IsType</c> fact for the given key, target type expression and narrowed operand.</summary>
+    public static NarrowingFact IsType(string key, string typeKey, Expression typeExpression, Expression? sourceExpression = null) =>
+        new(key, NarrowingActionKind.IsType, typeKey, typeExpression, sourceExpression);
 
     public bool Equals(NarrowingFact? other) =>
         other is not null && Key == other.Key && Kind == other.Kind && TypeKey == other.TypeKey;
@@ -123,6 +132,21 @@ internal static class NarrowingConditionInterpreter
             case BinaryOp { Operator: BinaryOperator.Or } orOp when !onTrueBranch:
                 return Recognize(orOp.Left, false).Concat(Recognize(orOp.Right, false));
 
+            default:
+                return RecognizeLeaf(condition, onTrueBranch);
+        }
+    }
+
+    /// <summary>
+    /// Recognises the narrowing facts from a single <em>leaf</em> condition (no boolean/parenthesis
+    /// composition): <c>x is not None</c> / <c>x is None</c> / <c>isinstance(x, T)</c>. Shared with the
+    /// TypeChecker's condition interpreter (which handles the composition and resolves the recognised
+    /// facts to concrete types + the emitter decision) so both agree on the leaf grammar (#1042).
+    /// </summary>
+    public static IEnumerable<NarrowingFact> RecognizeLeaf(Expression condition, bool onTrueBranch)
+    {
+        switch (condition)
+        {
             // then-branch of `x is not None` removes None from x.
             case BinaryOp { Operator: BinaryOperator.IsNot, Right: NoneLiteral } isNot when onTrueBranch:
                 return RemoveNoneFact(isNot.Left);
@@ -146,7 +170,7 @@ internal static class NarrowingConditionInterpreter
         var key = AstHelper.ExtractNarrowingKey(narrowed);
         return key == null
             ? Enumerable.Empty<NarrowingFact>()
-            : new[] { NarrowingFact.RemoveNone(key) };
+            : new[] { NarrowingFact.RemoveNone(key, narrowed) };
     }
 
     private static IEnumerable<NarrowingFact> IsInstanceFact(Expression narrowed, Expression typeArgument)
@@ -155,7 +179,7 @@ internal static class NarrowingConditionInterpreter
         var typeKey = DescribeTypeExpression(typeArgument);
         return key == null || typeKey == null
             ? Enumerable.Empty<NarrowingFact>()
-            : new[] { NarrowingFact.IsType(key, typeKey, typeArgument) };
+            : new[] { NarrowingFact.IsType(key, typeKey, typeArgument, narrowed) };
     }
 
     /// <summary>

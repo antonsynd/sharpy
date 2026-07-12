@@ -33,6 +33,11 @@ internal partial class TypeChecker
 
         foreach (var matchCase in matchStmt.Cases)
         {
+            // Match-case narrowing intentionally stays on the _narrowingContext scope stack rather than
+            // the CFG dataflow facts (#1042): the CFG builder connects match cases with plain edges and
+            // carries no pattern/subject on them, so pattern-derived narrowings (bound via CheckPattern)
+            // cannot be modelled as facts without extending the builder. This is the one narrowing form
+            // that did not migrate to NarrowingFlowAnalysis; the fact-based path and this path coexist.
             using (_narrowingContext.EnterScope())
             {
                 _symbolTable.EnterScope("match-case");
