@@ -267,6 +267,44 @@ internal static class GenStatements
                 };
             });
 
+    /// <summary>
+    /// Generates a defer statement in both inline (<c>defer &lt;simple-stmt&gt;</c>) and block
+    /// (<c>defer:</c> suite) forms. Gated at semantic analysis behind the experimental
+    /// <c>defer</c> feature, but the parser accepts it unconditionally, so it participates in
+    /// parse→unparse→reparse round-trip properties. Not wired into the shared
+    /// <see cref="CompoundStatement"/> because that also feeds semantic-compilation property
+    /// tests where an ungated defer would raise SPY0331 (#1075).
+    /// </summary>
+    public static Gen<DeferStatement> DeferStmt(GenContext ctx)
+    {
+        // A canonical call-expression statement (`f(x)`) as the deferred body. Kept simple and
+        // deterministically round-trippable so the property isolates the defer wrapper itself,
+        // not unrelated expression-round-trip quirks (e.g. a bare starred expression statement).
+        Gen<Statement> bodyStmt = Gen.Select(
+            GenIdentifier.Name,
+            GenExpressions.IdentifierExpr(ctx),
+            (fn, arg) => (Statement)new ExpressionStatement
+            {
+                Expression = new FunctionCall
+                {
+                    Function = new Identifier { Name = fn },
+                    Arguments = ImmutableArray.Create<Expression>(arg)
+                }
+            });
+
+        return Gen.Frequency(
+            (2, bodyStmt.Select(s => new DeferStatement
+            {
+                Body = ImmutableArray.Create(s),
+                IsBlock = false
+            })),
+            (1, bodyStmt.Array[1, 3].Select(stmts => new DeferStatement
+            {
+                Body = stmts.ToImmutableArray(),
+                IsBlock = true
+            })));
+    }
+
     public static Gen<BreakStatement> BreakStmt() =>
         Gen.Const(new BreakStatement());
 

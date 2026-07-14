@@ -486,6 +486,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
             BinaryOperator.IsNot => "is not",
             BinaryOperator.NullCoalesce => "??",
             BinaryOperator.PipeForward => "|>",
+            BinaryOperator.MatMul => "@",
             _ => op.ToString()
         };
     }
@@ -526,6 +527,7 @@ internal sealed partial class UnparseVisitor : AstVisitor
             AssignmentOperator.LeftShiftAssign => "<<=",
             AssignmentOperator.RightShiftAssign => ">>=",
             AssignmentOperator.NullCoalesceAssign => "??=",
+            AssignmentOperator.MatMulAssign => "@=",
             _ => op.ToString()
         };
     }

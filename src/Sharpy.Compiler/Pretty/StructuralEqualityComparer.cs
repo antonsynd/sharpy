@@ -76,6 +76,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             ForStatement a => ForEquals(a, (ForStatement)y),
             TryStatement a => TryEquals(a, (TryStatement)y),
             WithStatement a => WithEquals(a, (WithStatement)y),
+            DeferStatement a => a.IsBlock == ((DeferStatement)y).IsBlock && StatementsEqual(a.Body, ((DeferStatement)y).Body),
             FunctionDef a => FunctionDefEquals(a, (FunctionDef)y),
             ClassDef a => ClassDefEquals(a, (ClassDef)y),
             StructDef a => StructDefEquals(a, (StructDef)y),

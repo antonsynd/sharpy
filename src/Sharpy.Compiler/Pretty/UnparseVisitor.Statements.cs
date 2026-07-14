@@ -245,6 +245,27 @@ internal sealed partial class UnparseVisitor
         WriteBody(node.Body);
     }
 
+    public override void VisitDeferStatement(DeferStatement node)
+    {
+        // Inline form (`defer f.close()`) for a single-statement body; block form
+        // (`defer:` + indented suite) otherwise. IsBlock is the authoritative signal set
+        // by the parser, so a block-form defer with one statement still round-trips as a
+        // block. (#1075)
+        if (node.IsBlock)
+        {
+            _w.Write("defer:");
+            _w.WriteLine();
+            WriteBody(node.Body);
+        }
+        else
+        {
+            _w.Write("defer ");
+            // The inline body is a single simple statement; its visitor writes the
+            // trailing newline.
+            Visit(node.Body[0]);
+        }
+    }
+
     #endregion
 
     #region Definitions

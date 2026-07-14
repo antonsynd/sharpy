@@ -299,6 +299,9 @@ public sealed class AstNormalizer : AstVisitor<Node>
             Body = VisitStatements(node.Body)
         };
 
+    public override Node VisitDeferStatement(DeferStatement node) =>
+        Zero(node) with { Body = VisitStatements(node.Body) };
+
     #endregion
 
     #region Statements - Definitions
