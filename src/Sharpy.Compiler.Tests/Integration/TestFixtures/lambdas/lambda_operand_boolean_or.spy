@@ -1,0 +1,5 @@
+# #1078: CPython forbids a bare lambda as a binary operator's right operand.
+def main() -> None:
+    x = 1
+    y = x or lambda: x
+    print(y)

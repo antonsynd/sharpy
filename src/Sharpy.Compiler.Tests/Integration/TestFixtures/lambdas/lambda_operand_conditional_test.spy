@@ -1,0 +1,4 @@
+# #1078: CPython forbids a bare lambda as the conditional-expression test.
+def main() -> None:
+    y = 1 if lambda: True else 2
+    print(y)

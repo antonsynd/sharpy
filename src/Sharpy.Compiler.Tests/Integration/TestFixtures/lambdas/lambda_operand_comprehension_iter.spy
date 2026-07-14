@@ -1,0 +1,4 @@
+# #1078: CPython forbids a bare lambda as a comprehension `for ... in` iterator.
+def main() -> None:
+    y = [x for x in lambda: 1]
+    print(y)

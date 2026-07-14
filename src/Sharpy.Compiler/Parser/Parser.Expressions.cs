@@ -207,6 +207,25 @@ public partial class Parser
             };
         }
 
+        return ParseTest();
+    }
+
+    /// <summary>
+    /// Parses a <c>test</c> in Python's grammar sense:
+    /// <c>test: or_test ['if' or_test 'else' test] | lambdef</c>. A bare lambda is a whole
+    /// <c>test</c>, so it is only valid here (and wherever a full expression / <c>test</c> is
+    /// expected: call arguments, collection elements, subscript indices, the conditional
+    /// <c>else</c> branch, a lambda body, …). Operand positions — <c>or_test</c> and below:
+    /// binary/unary operands, non-first comparison operands, the conditional test and
+    /// then-value, comprehension <c>for … in</c> iterators — do not reach this method; they
+    /// descend to <see cref="ParsePrimary"/>, which rejects a stray <c>lambda</c> with SPY0141.
+    /// This matches CPython's operand grammar, where a bare lambda in those positions is a
+    /// syntax error (#1078).
+    /// </summary>
+    private Expression ParseTest()
+    {
+        if (Current.Type == TokenType.Lambda)
+            return ParseLambda();
         return ParseConditionalExpression();
     }
 
@@ -232,7 +251,9 @@ public partial class Parser
             Advance();
             var test = ParseNullCoalesce();
             Expect(TokenType.Else);
-            var elseValue = ParseConditionalExpression();
+            // The else branch is a full `test` (CPython: `... 'else' test`), so a bare lambda
+            // and a nested conditional are both allowed here (#1078).
+            var elseValue = ParseTest();
 
             return new ConditionalExpression
             {

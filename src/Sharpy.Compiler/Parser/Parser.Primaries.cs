@@ -668,158 +668,16 @@ public partial class Parser
                 }
 
             case TokenType.Lambda:
-                {
-                    var lambdaToken = Current;
-                    Advance();
-                    var parameters = new List<Parameter>();
-
-                    // Parse lambda parameters
-                    if (Current.Type != TokenType.Colon)
-                    {
-                        _lastLoopPosition = -1;
-                        do
-                        {
-                            if (!CheckLoopProgress())
-                                break;
-
-                            var paramToken = Current;
-                            var name = ExpectIdentifier();
-
-                            TypeAnnotation? paramType = null;
-                            if (Current.Type == TokenType.Colon)
-                            {
-                                // Lambda parameter type annotation disambiguation (#275, #289)
-                                //
-                                // Problem: In `lambda x: body`, the ':' separates params from body.
-                                // But in `lambda x: int: body`, the first ':' is a type annotation.
-                                // We need a lookahead heuristic to disambiguate.
-                                //
-                                // Strategy: After seeing ':', check if the NEXT token starts a type
-                                // (Identifier, Auto, or None), then check if the token AFTER THAT
-                                // is consistent with "still in parameter list" rather than "start of
-                                // lambda body expression".
-                                //
-                                // Tokens that confirm a type annotation (they follow a type name):
-                                //   , → another parameter follows      (lambda x: int, y: ...)
-                                //   = → default value follows           (lambda x: int = 0: ...)
-                                //   : → lambda body separator           (lambda x: int: body)
-                                //   [ → generic type arguments          (lambda x: list[int]: ...)
-                                //   ? → optional type                   (lambda x: int?: ...)
-                                //   ! → result type                     (lambda x: int!str: ...)
-                                //   | → nullable type only if followed by None (lambda x: int | None: ...)
-                                //       Otherwise '|' starts a bitwise-OR body (lambda x: a | b).
-                                //       None is not a valid bitwise-OR operand, so Peek(3)==None
-                                //       unambiguously identifies the type annotation case.
-                                //
-                                // Note: True/False are TokenType.True/TokenType.False (not Identifier),
-                                // so `lambda x: True | False` skips the type path entirely and parses
-                                // as a body expression, which is correct.
-                                //
-                                // This heuristic works for all currently supported type syntax
-                                // (simple, generic, optional, nullable, result types).
-                                var nextType = Peek().Type;
-                                var isTypeAnnotation = false;
-
-                                if (nextType == TokenType.Identifier
-                                    || nextType == TokenType.Auto
-                                    || nextType == TokenType.None)
-                                {
-                                    var afterType = Peek(2).Type;
-                                    if (afterType == TokenType.Pipe)
-                                    {
-                                        // Disambiguate: `int | None` is a nullable type annotation,
-                                        // but `a | b` (where b is not None) is a bitwise-OR body.
-                                        isTypeAnnotation = Peek(3).Type == TokenType.None;
-                                    }
-                                    else if (afterType == TokenType.LeftBracket)
-                                    {
-                                        // Disambiguate generic type annotation from a subscript body (#899):
-                                        //   `lambda t: list[int]: len(t)`  → `[int]` is generic args
-                                        //   `lambda t: t[0]`                → `[0]` subscripts the body
-                                        // Scan forward, counting '['/']' depth, to the matching ']'.
-                                        // It's a type annotation only if the token AFTER the matching
-                                        // ']' confirms we're still in the parameter list / annotation
-                                        // (',', '=', ':', '?', '!'). EOF/Newline mid-scan → not an
-                                        // annotation (treat as body so we get a clean error downstream).
-                                        isTypeAnnotation = IsBracketedTypeAnnotation();
-                                    }
-                                    else if (afterType == TokenType.Comma)
-                                    {
-                                        // ': IDENT ,' is ambiguous: a type annotation of a
-                                        // multi-param lambda (lambda x: int, y: int: body) vs a
-                                        // bare-identifier body terminated by the comma inside a
-                                        // call/tuple (apply(lambda v: v, 5)). Single-token
-                                        // lookahead cannot resolve it; scan ahead for a
-                                        // body-separator ':'. (#1011)
-                                        isTypeAnnotation = LambdaColonStartsTypeAnnotation();
-                                    }
-                                    else
-                                    {
-                                        isTypeAnnotation = afterType is TokenType.Assign
-                                            or TokenType.Colon
-                                            or TokenType.Question
-                                            or TokenType.Bang;
-                                    }
-                                }
-
-                                if (isTypeAnnotation)
-                                {
-                                    Advance();
-                                    paramType = ParseTypeAnnotation();
-                                }
-                            }
-
-                            Expression? defaultValue = null;
-                            if (Current.Type == TokenType.Assign)
-                            {
-                                Advance();
-                                defaultValue = ParseExpression();
-                            }
-
-                            var paramEndToken = Previous;
-                            var paramEndLine = defaultValue != null || paramType != null ? paramEndToken.Line : paramToken.Line;
-                            var paramEndColumn = defaultValue != null || paramType != null ? paramEndToken.Column + paramEndToken.Value.Length : paramToken.Column + name.Length;
-
-                            parameters.Add(new Parameter
-                            {
-                                Name = name,
-                                IsNameBacktickEscaped = paramToken.IsBacktickEscaped,
-                                Type = paramType,
-                                DefaultValue = defaultValue,
-                                LineStart = paramToken.Line,
-                                ColumnStart = paramToken.Column,
-                                LineEnd = paramEndLine,
-                                ColumnEnd = paramEndColumn,
-                                Span = defaultValue != null || paramType != null ? GetSpanFromTokens(paramToken, paramEndToken) : GetSpanFromToken(paramToken)
-                            });
-
-                            if (Current.Type == TokenType.Comma)
-                                Advance();
-                            else
-                                break;
-                        } while (true);
-                    }
-
-                    Expect(TokenType.Colon);
-                    var body = ParseExpression();
-
-                    // Combine lambda token span with body span
-                    var lambdaSpan = GetSpanFromToken(lambdaToken);
-                    var combinedSpan = lambdaSpan != null && body.Span != null
-                        ? lambdaSpan.Value.Union(body.Span.Value)
-                        : (Text.TextSpan?)null;
-
-                    return new LambdaExpression
-                    {
-                        Parameters = parameters.ToImmutableArray(),
-                        Body = body,
-                        LineStart = startLine,
-                        ColumnStart = startColumn,
-                        LineEnd = body.LineEnd,
-                        ColumnEnd = body.ColumnEnd,
-                        Span = combinedSpan
-                    };
-                }
+                // A bare (unparenthesized) lambda is a `test`, parsed by ParseLambda at the
+                // expression level. Reaching ParsePrimary means the lambda sits in an operand
+                // position where CPython's grammar forbids a `lambdef` (`a or lambda: b`,
+                // `not lambda: x`, `x if lambda: y else z`, a comprehension `for ... in`
+                // iterator). Reject to match CPython's operand grammar; parenthesizing the
+                // lambda makes it a primary again. (#1078)
+                throw ReportError(
+                    "A lambda cannot appear as an operand here; wrap it in parentheses",
+                    Current.Line, Current.Column,
+                    DiagnosticCodes.Parser.LambdaNotAllowedAsOperand, span: CurrentSpan);
 
             case TokenType.Match:
                 if (IsMatchSoftKeywordCall())
@@ -856,6 +714,169 @@ public partial class Parser
             default:
                 throw ReportError($"Unexpected token: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
         }
+    }
+
+    /// <summary>
+    /// Parses a bare (keyword) lambda: <c>lambda [params]: body</c>. Called from
+    /// <see cref="ParseTest"/> at the expression/<c>test</c> level — never from
+    /// <see cref="ParsePrimary"/> — which is exactly where CPython's grammar permits a
+    /// <c>lambdef</c> (#1078). The body is a full expression, so it extends greedily to the end
+    /// of the enclosing test (<c>lambda: a or b</c> parses as <c>lambda: (a or b)</c>).
+    /// </summary>
+    private LambdaExpression ParseLambda()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+        var lambdaToken = Current;
+        Advance();
+        var parameters = new List<Parameter>();
+
+        // Parse lambda parameters
+        if (Current.Type != TokenType.Colon)
+        {
+            _lastLoopPosition = -1;
+            do
+            {
+                if (!CheckLoopProgress())
+                    break;
+
+                var paramToken = Current;
+                var name = ExpectIdentifier();
+
+                TypeAnnotation? paramType = null;
+                if (Current.Type == TokenType.Colon)
+                {
+                    // Lambda parameter type annotation disambiguation (#275, #289)
+                    //
+                    // Problem: In `lambda x: body`, the ':' separates params from body.
+                    // But in `lambda x: int: body`, the first ':' is a type annotation.
+                    // We need a lookahead heuristic to disambiguate.
+                    //
+                    // Strategy: After seeing ':', check if the NEXT token starts a type
+                    // (Identifier, Auto, or None), then check if the token AFTER THAT
+                    // is consistent with "still in parameter list" rather than "start of
+                    // lambda body expression".
+                    //
+                    // Tokens that confirm a type annotation (they follow a type name):
+                    //   , → another parameter follows      (lambda x: int, y: ...)
+                    //   = → default value follows           (lambda x: int = 0: ...)
+                    //   : → lambda body separator           (lambda x: int: body)
+                    //   [ → generic type arguments          (lambda x: list[int]: ...)
+                    //   ? → optional type                   (lambda x: int?: ...)
+                    //   ! → result type                     (lambda x: int!str: ...)
+                    //   | → nullable type only if followed by None (lambda x: int | None: ...)
+                    //       Otherwise '|' starts a bitwise-OR body (lambda x: a | b).
+                    //       None is not a valid bitwise-OR operand, so Peek(3)==None
+                    //       unambiguously identifies the type annotation case.
+                    //
+                    // Note: True/False are TokenType.True/TokenType.False (not Identifier),
+                    // so `lambda x: True | False` skips the type path entirely and parses
+                    // as a body expression, which is correct.
+                    //
+                    // This heuristic works for all currently supported type syntax
+                    // (simple, generic, optional, nullable, result types).
+                    var nextType = Peek().Type;
+                    var isTypeAnnotation = false;
+
+                    if (nextType == TokenType.Identifier
+                        || nextType == TokenType.Auto
+                        || nextType == TokenType.None)
+                    {
+                        var afterType = Peek(2).Type;
+                        if (afterType == TokenType.Pipe)
+                        {
+                            // Disambiguate: `int | None` is a nullable type annotation,
+                            // but `a | b` (where b is not None) is a bitwise-OR body.
+                            isTypeAnnotation = Peek(3).Type == TokenType.None;
+                        }
+                        else if (afterType == TokenType.LeftBracket)
+                        {
+                            // Disambiguate generic type annotation from a subscript body (#899):
+                            //   `lambda t: list[int]: len(t)`  → `[int]` is generic args
+                            //   `lambda t: t[0]`                → `[0]` subscripts the body
+                            // Scan forward, counting '['/']' depth, to the matching ']'.
+                            // It's a type annotation only if the token AFTER the matching
+                            // ']' confirms we're still in the parameter list / annotation
+                            // (',', '=', ':', '?', '!'). EOF/Newline mid-scan → not an
+                            // annotation (treat as body so we get a clean error downstream).
+                            isTypeAnnotation = IsBracketedTypeAnnotation();
+                        }
+                        else if (afterType == TokenType.Comma)
+                        {
+                            // ': IDENT ,' is ambiguous: a type annotation of a
+                            // multi-param lambda (lambda x: int, y: int: body) vs a
+                            // bare-identifier body terminated by the comma inside a
+                            // call/tuple (apply(lambda v: v, 5)). Single-token
+                            // lookahead cannot resolve it; scan ahead for a
+                            // body-separator ':'. (#1011)
+                            isTypeAnnotation = LambdaColonStartsTypeAnnotation();
+                        }
+                        else
+                        {
+                            isTypeAnnotation = afterType is TokenType.Assign
+                                or TokenType.Colon
+                                or TokenType.Question
+                                or TokenType.Bang;
+                        }
+                    }
+
+                    if (isTypeAnnotation)
+                    {
+                        Advance();
+                        paramType = ParseTypeAnnotation();
+                    }
+                }
+
+                Expression? defaultValue = null;
+                if (Current.Type == TokenType.Assign)
+                {
+                    Advance();
+                    defaultValue = ParseExpression();
+                }
+
+                var paramEndToken = Previous;
+                var paramEndLine = defaultValue != null || paramType != null ? paramEndToken.Line : paramToken.Line;
+                var paramEndColumn = defaultValue != null || paramType != null ? paramEndToken.Column + paramEndToken.Value.Length : paramToken.Column + name.Length;
+
+                parameters.Add(new Parameter
+                {
+                    Name = name,
+                    IsNameBacktickEscaped = paramToken.IsBacktickEscaped,
+                    Type = paramType,
+                    DefaultValue = defaultValue,
+                    LineStart = paramToken.Line,
+                    ColumnStart = paramToken.Column,
+                    LineEnd = paramEndLine,
+                    ColumnEnd = paramEndColumn,
+                    Span = defaultValue != null || paramType != null ? GetSpanFromTokens(paramToken, paramEndToken) : GetSpanFromToken(paramToken)
+                });
+
+                if (Current.Type == TokenType.Comma)
+                    Advance();
+                else
+                    break;
+            } while (true);
+        }
+
+        Expect(TokenType.Colon);
+        var body = ParseExpression();
+
+        // Combine lambda token span with body span
+        var lambdaSpan = GetSpanFromToken(lambdaToken);
+        var combinedSpan = lambdaSpan != null && body.Span != null
+            ? lambdaSpan.Value.Union(body.Span.Value)
+            : (Text.TextSpan?)null;
+
+        return new LambdaExpression
+        {
+            Parameters = parameters.ToImmutableArray(),
+            Body = body,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = body.LineEnd,
+            ColumnEnd = body.ColumnEnd,
+            Span = combinedSpan
+        };
     }
 
     /// <summary>

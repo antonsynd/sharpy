@@ -110,8 +110,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0137 (38 codes)
-    /// Reserved: SPY0138-SPY0199 (62 codes)
+    /// Active: SPY0100-SPY0141
+    /// Reserved: SPY0142-SPY0199
     /// </summary>
     public static class Parser
     {
@@ -196,7 +196,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0141-SPY0199: Reserved for future parser diagnostics
+        #region Lambda operand grammar (SPY0141)
+
+        public const string LambdaNotAllowedAsOperand = "SPY0141";  // Active
+
+        #endregion
+
+        // SPY0142-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>

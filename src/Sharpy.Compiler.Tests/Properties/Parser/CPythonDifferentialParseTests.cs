@@ -293,8 +293,8 @@ public class CPythonDifferentialParseTests
     /// exclude wholesale to keep the biconditional clean (f-strings — micro-syntax differs; walrus —
     /// bare form is a Python error), and Sharpy-only flags on otherwise-shared nodes (backtick
     /// identifiers, null-conditional access, arrow lambdas, async comprehension clauses, numeric
-    /// suffixes). Also quarantines the known #1064, #1076, and #1078 shapes. Traverses via the
-    /// AST visitor; never inspects source text.
+    /// suffixes). Also quarantines the known #1064 shape (comparison-chain truncation in lambda
+    /// bodies / conditional branches). Traverses via the AST visitor; never inspects source text.
     /// </summary>
     private sealed class SubsetFilter : AstVisitor
     {
@@ -364,48 +364,12 @@ public class CPythonDifferentialParseTests
                 Reject();
                 return;
             }
-            // TODO(#1078): CPython forbids a bare lambda as a binary operator's right operand
-            // (`a or lambda: b`); Sharpy accepts it and the unparser emits it unparenthesized.
-            if (node.Right is LambdaExpression)
-            {
-                Reject();
-                return;
-            }
-            DefaultVisit(node);
-        }
-
-        // TODO(#1078): CPython forbids a bare lambda as a unary operand (`not lambda: x`) and as
-        // any non-first comparison-chain operand (`a < lambda: b`); Sharpy accepts both.
-        public override void VisitUnaryOp(UnaryOp node)
-        {
-            if (node.Operand is LambdaExpression)
-            {
-                Reject();
-                return;
-            }
-            DefaultVisit(node);
-        }
-
-        public override void VisitComparisonChain(ComparisonChain node)
-        {
-            if (node.Operands.Skip(1).Any(o => o is LambdaExpression))
-            {
-                Reject();
-                return;
-            }
             DefaultVisit(node);
         }
 
         public override void VisitForClause(ForClause node)
         {
             if (node.IsAsync)
-            {
-                Reject();
-                return;
-            }
-            // TODO(#1078): CPython forbids a bare lambda as a comprehension iterator
-            // (`[x for y in lambda: z]`); Sharpy accepts it.
-            if (node.Iterator is LambdaExpression)
             {
                 Reject();
                 return;
@@ -435,16 +399,6 @@ public class CPythonDifferentialParseTests
             // TODO(#1064): the same truncation applies to a 3+-operand comparison chain used as the
             // final (else) branch of a conditional.
             if (IsMultiComparisonChain(node.ElseValue))
-            {
-                Reject();
-                return;
-            }
-            // TODO(#1078): CPython forbids a bare lambda as the conditional's test
-            // (`x if lambda: y else z`); Sharpy accepts it and the unparser emits it
-            // unparenthesized. (A lambda then-value is fine: both sides read
-            // `lambda: a if t else e` as a lambda whose body is the conditional, and the
-            // landmark multiset is identical either way.)
-            if (node.Test is LambdaExpression)
             {
                 Reject();
                 return;

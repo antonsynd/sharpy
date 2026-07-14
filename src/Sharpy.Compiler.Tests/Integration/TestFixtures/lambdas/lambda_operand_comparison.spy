@@ -1,0 +1,5 @@
+# #1078: CPython forbids a bare lambda as a non-first comparison operand.
+def main() -> None:
+    x = 1
+    y = x < lambda: x
+    print(y)

@@ -1,0 +1,4 @@
+# #1078: CPython forbids a bare lambda as a unary operand.
+def main() -> None:
+    y = not lambda: 1
+    print(y)
