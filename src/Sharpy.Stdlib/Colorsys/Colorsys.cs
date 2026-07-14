@@ -83,7 +83,10 @@ namespace Sharpy
             }
             else
             {
-                s = rangec / (2.0 - sumc);
+                // CPython gh-106498: subtract maxc and minc separately rather
+                // than reusing sumc, so near-white inputs where maxc + minc
+                // rounds to exactly 2.0 don't divide by zero.
+                s = rangec / (2.0 - maxc - minc);
             }
             double rc = (maxc - r) / rangec;
             double gc = (maxc - g) / rangec;

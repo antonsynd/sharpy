@@ -4,10 +4,6 @@
 # NOTICE file in this directory. assertTripleEqual/assertAlmostEqual (7 decimal
 # places) are rendered as approx(..., abs=1e-7). The frange() roundtrip loops are
 # unrolled over an explicit list of sample values.
-#
-# Omitted: test_hls_nearwhite (gh-106498) — Sharpy's colorsys.rgb_to_hls returns
-# s == inf for near-white inputs like (0.9999999999999999, 1.0, 1.0) where CPython
-# returns 1.0. Tracked as a Sharpy stdlib divergence in #1063.
 
 from unittest import approx
 
@@ -115,6 +111,18 @@ def test_hls_values():
     _assert_triple(r, g, b, 0.0, 1.0, 0.0)
 
 @test
+def test_hls_nearwhite():
+    # gh-106498: for near-white inputs where maxc + minc rounds to exactly 2.0,
+    # rgb_to_hls must not divide by zero (s == inf). CPython returns a finite
+    # saturation of 1.0.
+    h, l, s = colorsys.rgb_to_hls(0.9999999999999999, 1.0, 1.0)
+    _assert_triple(h, l, s, 0.5, 1.0, 1.0)
+    h, l, s = colorsys.rgb_to_hls(1.0, 0.9999999999999999, 1.0)
+    _assert_triple(h, l, s, 0.8333333333333334, 1.0, 1.0)
+    h, l, s = colorsys.rgb_to_hls(1.0, 1.0, 0.9999999999999999)
+    _assert_triple(h, l, s, 0.16666666666666666, 1.0, 1.0)
+
+@test
 def test_yiq_values():
     y, i, q = colorsys.rgb_to_yiq(0.0, 0.0, 0.0)
     _assert_triple(y, i, q, 0.0, 0.0, 0.0)
@@ -133,20 +141,3 @@ def test_yiq_values():
     _assert_triple(r, g, b, 1.0, 1.0, 1.0)
     r, g, b = colorsys.yiq_to_rgb(0.0, 0.0, 0.0)
     _assert_triple(r, g, b, 0.0, 0.0, 0.0)
-
-# --- divergence-ledger annotations (machine-read by build_tools.cpython_oracle) ---
-# Kept at EOF so they never shift the generated #line map. See
-# build_tools/cpython_oracle/README.md#divergence-ledger.
-#
-# oracle-ledger:
-#   kind: not-ported
-#   test: ColorsysTest.test_hls_nearwhite
-#   side: sharpy
-#   bug: 1063
-#   spec_ref: docs/language_specification/primitive_types.md
-#   origin: Lib/test/test_colorsys.py::ColorsysTest.test_hls_nearwhite
-#   reason: >
-#     Sharpy's colorsys.rgb_to_hls returns s == inf for near-white inputs such as
-#     (0.9999999999999999, 1.0, 1.0), where CPython returns 1.0 (gh-106498). The
-#     method is omitted from the port until #1063 is fixed rather than encoding
-#     the buggy Sharpy result as an oracle assertion.
