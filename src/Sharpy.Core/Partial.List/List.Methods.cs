@@ -192,28 +192,26 @@ namespace Sharpy
         /// x.index(2, 2)    # 3
         /// </code>
         /// </example>
-        public int Index(T x, int start = 0, int end = -1)
+        public int Index(T x, int start = 0, int end = int.MaxValue)
         {
-            int count;
+            // start and end are interpreted as in slice notation: they clamp to
+            // [0, Count] and negative values count from the end. The default end
+            // (int.MaxValue) clamps to Count so the last element is searched.
+            start = Sharpy.Index.Normalize(start, _list.Count, true, false);
+            var stop = Sharpy.Index.Normalize(end, _list.Count, true, false);
+            var count = stop - start;
 
-            try
+            if (count > 0)
             {
-                start = Sharpy.Index.Normalize(start, _list.Count, false, false);
-                count = Sharpy.Index.Normalize(end, _list.Count, false, false) - start;
-            }
-            catch (IndexError)
-            {
-                throw new ValueError($"{x} is not in list");
-            }
+                var result = _list.IndexOf(x, start, count);
 
-            var result = _list.IndexOf(x, start, count);
-
-            if (result == -1)
-            {
-                throw new ValueError($"{x} is not in list");
+                if (result != -1)
+                {
+                    return result;
+                }
             }
 
-            return result;
+            throw new ValueError($"{x} is not in list");
         }
 
         /// <summary>

@@ -123,10 +123,9 @@ def _index_raises(a: list[int], v: int) -> bool:
 def test_index():
     u: list[int] = [0, 1]
     assert u.index(0) == 0
-    # Dropped (Sharpy divergence, #1073 — see the index ledger entry at EOF):
-    #   u.index(1) — a value present only at the last position — raises ValueError
-    #   because the default end bound normalizes -1 to Count-1, excluding the last
-    #   element.
+    # #1073: a value present only at the last position is found by the default
+    # end bound (which now includes the last element).
+    assert u.index(1) == 1
     assert _index_raises(u, 2)
 
     a: list[int] = [-2, -1, 0, 0, 1, 2]
@@ -338,21 +337,3 @@ def test_minmax():
     u: list[int] = [0, 1, 2]
     assert min(u) == 0
     assert max(u) == 2
-
-# --- divergence-ledger annotations (machine-read by build_tools.cpython_oracle) ---
-# Kept at EOF so they never shift the generated #line map. See
-# build_tools/cpython_oracle/README.md#divergence-ledger.
-#
-# oracle-ledger:
-#   kind: not-ported
-#   test: CommonTest.test_index
-#   side: sharpy
-#   bug: 1073
-#   spec_ref: docs/language_specification/collection_types.md
-#   origin: Lib/test/list_tests.py::CommonTest.test_index
-#   reason: >
-#     list.index(x) raises ValueError when x is present only at the final position:
-#     the default end bound (-1) is normalized to Count-1, so the search range excludes
-#     the last element. The last-position assertion (u.index(1) on [0, 1]) is dropped
-#     until #1073 is fixed; the remaining index rows (non-terminal and explicit
-#     start/end forms) stay ported.
