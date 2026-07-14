@@ -51,6 +51,10 @@ internal partial class TypeChecker
         // acronym casing (is_os_platform -> IsOSPlatform) without reflecting (#974).
         RecordResolvedClrMemberName(memberAccess, objectType);
 
+        // Materialize static-extension dispatch for str methods so codegen emits an explicit
+        // Sharpy.StringExtensions call rather than an instance call a shadowing BCL method captures (#1071, #1072, #1085).
+        RecordStaticExtensionDispatch(memberAccess, objectType);
+
         // Resolve type-name member access (int.parse(), Color.RED, MyClass.FIELD, Shape.Circle)
         // regardless of what CheckIdentifier returned for the type name. This handles cases
         // where primitive TypeSymbols return FunctionType instead of Unknown (#432).
@@ -1019,6 +1023,34 @@ internal partial class TypeChecker
         var clrName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
         if (clrName != null)
             _semanticInfo.SetResolvedClrMemberName(memberAccess, clrName);
+    }
+
+    /// <summary>
+    /// Records that a <c>str</c> method call must be emitted as a static
+    /// <c>Sharpy.StringExtensions</c> call rather than an instance call. Every Python string method
+    /// lives as an extension method in <c>Sharpy.StringExtensions</c> (registered as the sole source
+    /// of <c>str</c>'s instance methods in <see cref="Registry.BuiltinRegistry"/>), so an
+    /// instance-style emission <c>s.Method(args)</c> lets a same-named <c>System.String</c> BCL method
+    /// shadow the extension — silently wrong for <c>Split</c> (returns <c>string[]</c> not
+    /// <c>list[str]</c>) and <c>Replace</c> (the <c>count == 0</c> literal binds the
+    /// <c>StringComparison</c> overload and replaces all). Tagging every resolved <c>str</c> method
+    /// closes the whole class of shadowing, not just the two known cases (#1071, #1072, #1085).
+    /// </summary>
+    private void RecordStaticExtensionDispatch(MemberAccess memberAccess, SemanticType objectType)
+    {
+        if (objectType != SemanticType.Str)
+            return;
+
+        // str's builtin TypeSymbol.Methods are populated exclusively from Sharpy.StringExtensions
+        // (discovery finds no CLR "Str" type), so a resolved member here is always an extension method.
+        var (strTypeSymbol, _) = ResolveBuiltinTypeInfo(SemanticType.Str);
+        if (strTypeSymbol == null || strTypeSymbol.Methods.All(m => m.Name != memberAccess.Member))
+            return;
+
+        var methodName = NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped);
+        _semanticInfo.SetStaticExtensionDispatch(
+            memberAccess,
+            new StaticExtensionDispatch(CSharpTypeNames.SharpyStringExtensions, methodName));
     }
 
     /// <summary>

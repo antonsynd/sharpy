@@ -135,6 +135,15 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, long> _foldedIntegerConstants =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map method-call member-access expressions to a static-extension dispatch decision, so codegen
+    // emits `global::Ext.Method(receiver, args...)` instead of the instance form `receiver.Method(args)`.
+    // C# binds instance methods before extension methods, so an instance-style call to a str method
+    // whose semantics live in Sharpy.StringExtensions silently binds a shadowing System.String BCL
+    // method (e.g. Replace(old,new,count==0→StringComparison), Split→string[]). The TypeChecker makes
+    // the dispatch decision here so the emitter never re-derives it. Keyed by node identity (#1071, #1072, #1085).
+    private readonly ConcurrentDictionary<Expression, StaticExtensionDispatch> _staticExtensionDispatches =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map declarations to their source generator bindings (bracket attributes that resolve to SourceGenerator subclasses)
     private readonly ConcurrentDictionary<Statement, List<GeneratorBinding>> _generatorBindings =
         new(ReferenceEqualityComparer.Instance);
@@ -594,6 +603,26 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records that a method-call member access must be emitted as a static extension-method call
+    /// (<c>global::Ext.Method(receiver, args...)</c>) rather than the instance form. Set by the
+    /// TypeChecker when a call resolves to a Sharpy extension method that a shadowing BCL instance
+    /// method would otherwise capture (#1071, #1072, #1085).
+    /// </summary>
+    public void SetStaticExtensionDispatch(Expression memberAccess, StaticExtensionDispatch dispatch)
+    {
+        _staticExtensionDispatches[memberAccess] = dispatch;
+    }
+
+    /// <summary>
+    /// Gets the static-extension dispatch decision for a method-call member access, or <c>null</c>
+    /// when the call should emit as an ordinary instance-method invocation.
+    /// </summary>
+    public StaticExtensionDispatch? GetStaticExtensionDispatch(Expression memberAccess)
+    {
+        return _staticExtensionDispatches.TryGetValue(memberAccess, out var dispatch) ? dispatch : null;
+    }
+
+    /// <summary>
     /// Merges all entries from another SemanticInfo into this instance.
     /// Used to combine per-file SemanticInfo back into a project-level instance.
     /// </summary>
@@ -661,6 +690,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._foldedIntegerConstants)
             _foldedIntegerConstants.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._staticExtensionDispatches)
+            _staticExtensionDispatches.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._generatedStatements)
             _generatedStatements.TryAdd(kvp.Key, kvp.Value);
@@ -820,6 +852,17 @@ public sealed record IsInstanceNarrowing(
     bool NarrowInThenBranch);
 
 public sealed record GeneratorBinding(TypeSymbol GeneratorType, Decorator Trigger);
+
+/// <summary>
+/// A materialized decision that a method-call member access dispatches to a static extension method.
+/// Codegen emits <c>global::{ExtensionTypeName}.{MethodName}(receiver, args...)</c> so the extension
+/// is bound explicitly, never shadowed by a same-named BCL instance method (C# resolves instance
+/// methods before extensions). Used for <c>str</c> methods backed by <c>Sharpy.StringExtensions</c>
+/// (#1071, #1072, #1085).
+/// </summary>
+/// <param name="ExtensionTypeName">Fully-qualified extension class name, e.g. <c>Sharpy.StringExtensions</c>.</param>
+/// <param name="MethodName">The C# method name to invoke on the extension class, e.g. <c>Split</c>.</param>
+public sealed record StaticExtensionDispatch(string ExtensionTypeName, string MethodName);
 
 /// <summary>
 /// How codegen should emit an equality binary operation (<c>==</c>/<c>!=</c>).

@@ -17,6 +17,11 @@ internal static class CSharpTypeNames
     internal const string SharpyOptional = "Sharpy.Optional";
     internal const string SharpyResult = "Sharpy.Result";
     internal const string SharpyNdArray = "Sharpy.NdArray";
+
+    // Static extension classes whose methods codegen must call explicitly (never via instance syntax,
+    // which C# binds to a shadowing BCL instance method). Materialized as StaticExtensionDispatch.
+    internal const string SharpyStringExtensions = "Sharpy.StringExtensions";
+
     internal const string IEnumerable = "IEnumerable";
     internal const string IAsyncEnumerable = "IAsyncEnumerable";
     internal const string XunitTraitCategory = "Category";
