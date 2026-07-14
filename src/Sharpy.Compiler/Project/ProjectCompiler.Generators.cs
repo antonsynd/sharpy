@@ -101,6 +101,10 @@ internal partial class ProjectCompiler
         _logger.LogInfo("Stage 1: Compiling generator files to assembly");
 
         var generatorCSharp = new Dictionary<string, string>();
+        // D3 (#1050): trees the emitter built for freshly-generated generator files, keyed
+        // by the same path as generatorCSharp. Files served from cached text (below) have no
+        // tree and are reparsed when the generator assembly is compiled.
+        var generatorTrees = new Dictionary<string, SyntaxTree>();
         var builtinRegistry = new BuiltinRegistry(_logger);
 
         foreach (var filePath in partition.GeneratorFiles)
@@ -139,13 +143,20 @@ internal partial class ProjectCompiler
             }
 
             generatorCSharp[filePath] = csharpCode;
+            generatorTrees[filePath] = CSharpSyntaxTree.Create(
+                roslynUnit,
+                options: null,
+                path: filePath,
+                encoding: System.Text.Encoding.UTF8);
         }
 
         try
         {
             var syntaxTrees = generatorCSharp.Select(kvp =>
-                CSharpSyntaxTree.ParseText(kvp.Value, path: kvp.Key,
-                    encoding: System.Text.Encoding.UTF8)).ToList();
+                generatorTrees.TryGetValue(kvp.Key, out var prebuilt)
+                    ? prebuilt
+                    : CSharpSyntaxTree.ParseText(kvp.Value, path: kvp.Key,
+                        encoding: System.Text.Encoding.UTF8)).ToList();
 
             var references = AssemblyCompiler.GetDefaultReferences();
             var compilation = CSharpCompilation.Create(

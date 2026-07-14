@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Microsoft.CodeAnalysis;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
@@ -144,6 +145,17 @@ public class CompilationUnit
     /// Null until code generation completes.
     /// </summary>
     public string? GeneratedCSharp { get; internal set; }
+
+    /// <summary>
+    /// The post-processed Roslyn <see cref="SyntaxTree"/> the emitter produced for this
+    /// file (normalized, deconstruction-spaced, nullable-pragma'd), wrapping the exact
+    /// emitted node with no reparse. Null until code generation completes, and null for
+    /// incremental cache-hit files (they are restored from cached <see cref="GeneratedCSharp"/>
+    /// text only). The compile path hands this tree straight to <c>CSharpCompilation.Create</c>
+    /// (D3, #1050) instead of reparsing <see cref="GeneratedCSharp"/>; <see cref="GeneratedCSharp"/>
+    /// remains the source of truth for snapshots, the incremental cache, <c>emit csharp</c>, and LSP.
+    /// </summary>
+    internal SyntaxTree? GeneratedSyntaxTree { get; set; }
 
     #endregion
 

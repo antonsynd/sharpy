@@ -26,7 +26,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 14 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (15, 9) - (15, 59) 1 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    string attrStr = ", ".Join(_ToStringList(attrs));
+                    string attrStr = global::Sharpy.StringExtensions.Join(", ", _ToStringList(attrs));
 #line (16, 9) - (16, 59) 1 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                     this.Events.Append(FormattableString.Invariant($"starttag:{(tag)} [{(attrStr)}]"));
                 }
@@ -42,7 +42,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line 23 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 {
 #line (24, 9) - (24, 59) 1 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    string attrStr = ", ".Join(_ToStringList(attrs));
+                    string attrStr = global::Sharpy.StringExtensions.Join(", ", _ToStringList(attrs));
 #line (25, 9) - (25, 62) 1 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                     this.Events.Append(FormattableString.Invariant($"startendtag:{(tag)} [{(attrStr)}]"));
                 }
@@ -518,7 +518,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     var e = __loopVar_1;
 #line (283, 9) - (285, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    if (e.Startswith("data:"))
+                    if (global::Sharpy.StringExtensions.Startswith(e, "data:"))
                     {
 #line (284, 13) - (284, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                         combined = combined + global::Sharpy.Slice.GetSlice(e, 5, null, null);
@@ -713,7 +713,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     var e = __loopVar_2;
 #line (388, 9) - (390, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                    if (e.Startswith("data:"))
+                    if (global::Sharpy.StringExtensions.Startswith(e, "data:"))
                     {
 #line (389, 13) - (389, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                         combined = combined + global::Sharpy.Slice.GetSlice(e, 5, null, null);

@@ -1,0 +1,6 @@
+def main():
+    print("aaa".replace("a", "b", 0))
+    print("hello world".replace("o", "0", 0))
+    print("aaa".replace("a", "b", 1))
+    print("aaa".replace("a", "b", 2))
+    print("aaa".replace("a", "b"))

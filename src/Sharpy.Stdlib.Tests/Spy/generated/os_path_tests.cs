@@ -264,7 +264,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (153, 5) - (153, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 Xunit.Assert.EndsWith("foo", result);
 #line (154, 5) - (154, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-                Xunit.Assert.False(result.Startswith("~"));
+                Xunit.Assert.False(global::Sharpy.StringExtensions.Startswith(result, "~"));
             }
 
             [Xunit.FactAttribute]

@@ -1,0 +1,5 @@
+def main():
+    print("a  b\tc".split())
+    print("   leading  and  trailing   ".split())
+    print("single".split())
+    print("".split())

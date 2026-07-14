@@ -87,7 +87,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     var item = __loopVar_0;
 #line (38, 9) - (40, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
-                    if (item.Endswith(suffix))
+                    if (global::Sharpy.StringExtensions.Endswith(item, suffix))
                     {
 #line (39, 13) - (39, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                         return true;

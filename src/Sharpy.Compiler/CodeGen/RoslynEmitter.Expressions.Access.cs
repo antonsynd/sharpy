@@ -480,6 +480,23 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }
 
+            // Static-extension dispatch (#1071, #1072, #1085): the TypeChecker tagged this call to emit
+            // as global::Ext.Method(receiver, args...) so an instance-style call can't silently bind a
+            // shadowing BCL method (C# prefers instance methods over extensions). The receiver becomes
+            // the extension's first argument, ahead of the reordered call arguments.
+            var staticDispatch = _context.SemanticInfo?.GetStaticExtensionDispatch(memberAccess);
+            if (staticDispatch != null)
+            {
+                var extensionType = MakeGlobalQualifiedName(staticDispatch.ExtensionTypeName.Split('.'));
+                var staticMethodAccess = MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    extensionType,
+                    IdentifierName(staticDispatch.MethodName));
+                var staticArgs = new[] { Argument(obj) }.Concat(allArgs);
+                return InvocationExpression(staticMethodAccess)
+                    .WithArgumentList(ArgumentList(SeparatedList(staticArgs)));
+            }
+
             // Generate: obj.Method(args)
             var methodAccess = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,

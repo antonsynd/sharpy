@@ -408,7 +408,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 };
 #line (157, 5) - (157, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 writer.Writerow(row1);
-                Sharpy.List<string> __src_8 = sw.Getvalue().Split("\n");
+                Sharpy.List<string> __src_8 = global::Sharpy.StringExtensions.Split(sw.Getvalue(), "\n");
                 var __comp_7 = new Sharpy.List<string>(((global::Sharpy.ISized)__src_8).Count);
                 foreach (var __loopVar_9 in __src_8)
                 {

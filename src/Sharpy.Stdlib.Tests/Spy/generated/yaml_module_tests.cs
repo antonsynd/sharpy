@@ -836,11 +836,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (408, 5) - (408, 53) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 string text = yaml.SafeDump(data, sortKeys: true);
 #line (409, 5) - (409, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                int posA = text.Find("a:");
+                int posA = global::Sharpy.StringExtensions.Find(text, "a:");
 #line (410, 5) - (410, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                int posB = text.Find("b:");
+                int posB = global::Sharpy.StringExtensions.Find(text, "b:");
 #line (411, 5) - (411, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                int posC = text.Find("c:");
+                int posC = global::Sharpy.StringExtensions.Find(text, "c:");
 #line (412, 5) - (412, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.True(posA < posB);
 #line (413, 5) - (413, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -863,11 +863,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (421, 5) - (421, 54) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 string text = yaml.SafeDump(data, sortKeys: false);
 #line (422, 5) - (422, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                int posC = text.Find("c:");
+                int posC = global::Sharpy.StringExtensions.Find(text, "c:");
 #line (423, 5) - (423, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                int posA = text.Find("a:");
+                int posA = global::Sharpy.StringExtensions.Find(text, "a:");
 #line (424, 5) - (424, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                int posB = text.Find("b:");
+                int posB = global::Sharpy.StringExtensions.Find(text, "b:");
 #line (425, 5) - (425, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.True(posC < posA);
 #line (426, 5) - (426, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -1075,7 +1075,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (519, 5) - (519, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 string text = yaml.SafeDumpAll(documents);
 #line (520, 5) - (520, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.False(text.Startswith("---"));
+                Xunit.Assert.False(global::Sharpy.StringExtensions.Startswith(text, "---"));
             }
 
             [Xunit.FactAttribute]

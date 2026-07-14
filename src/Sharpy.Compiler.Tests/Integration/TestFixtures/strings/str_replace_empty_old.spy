@@ -1,0 +1,5 @@
+def main():
+    print("abc".replace("", "-"))
+    print("abc".replace("", "-", 2))
+    print("x".replace("", "_"))
+    print("".replace("", "*"))

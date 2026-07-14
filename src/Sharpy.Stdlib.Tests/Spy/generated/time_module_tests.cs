@@ -97,11 +97,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (84, 5) - (84, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
                 Xunit.Assert.Equal("-", global::Sharpy.StringHelpers.GetItem(result, 7));
 #line (85, 5) - (85, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(global::Sharpy.Slice.GetSlice(result, 0, 4, null).Isdigit());
+                Xunit.Assert.True(global::Sharpy.StringExtensions.Isdigit(global::Sharpy.Slice.GetSlice(result, 0, 4, null)));
 #line (86, 5) - (86, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(global::Sharpy.Slice.GetSlice(result, 5, 7, null).Isdigit());
+                Xunit.Assert.True(global::Sharpy.StringExtensions.Isdigit(global::Sharpy.Slice.GetSlice(result, 5, 7, null)));
 #line (87, 5) - (87, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(global::Sharpy.Slice.GetSlice(result, 8, 10, null).Isdigit());
+                Xunit.Assert.True(global::Sharpy.StringExtensions.Isdigit(global::Sharpy.Slice.GetSlice(result, 8, 10, null)));
             }
 
             [Xunit.FactAttribute]

@@ -48,6 +48,6 @@ public partial class TestFixtureBasicTests : Xunit.IClassFixture<GreetingFixture
     {
         string greeting = _greetingFixture.Value;
 #line (11, 5) - (11, 40) 1 "test_fixture_basic.spy"
-        Xunit.Assert.Equal("HELLO", greeting.Upper());
+        Xunit.Assert.Equal("HELLO", global::Sharpy.StringExtensions.Upper(greeting));
     }
 }

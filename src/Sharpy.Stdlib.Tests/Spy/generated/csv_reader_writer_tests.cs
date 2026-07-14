@@ -342,7 +342,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 writer.Writerow(new Sharpy.List<string>() { "Alice", "New York" });
 #line (154, 5) - (154, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 writer.Writerow(new Sharpy.List<string>() { "Bob", "San Francisco, CA" });
-                Sharpy.List<string> __src_10 = sw.Getvalue().Split("\n");
+                Sharpy.List<string> __src_10 = global::Sharpy.StringExtensions.Split(sw.Getvalue(), "\n");
                 var __comp_9 = new Sharpy.List<string>(((global::Sharpy.ISized)__src_10).Count);
                 foreach (var __loopVar_11 in __src_10)
                 {

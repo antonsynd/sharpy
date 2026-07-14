@@ -593,7 +593,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSubCallableReplacesWithLambdaResult()
             {
 #line (362, 5) - (362, 88) 1 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
-                string result = re.Sub("\\d+", m => m.Group().Upper() + "!", "abc 123 def 456");
+                string result = re.Sub("\\d+", m => global::Sharpy.StringExtensions.Upper(m.Group()) + "!", "abc 123 def 456");
 #line (363, 5) - (363, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/re/re_module_tests.spy"
                 Xunit.Assert.Equal("abc 123! def 456!", result);
             }

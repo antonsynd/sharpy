@@ -21,10 +21,19 @@ internal class AssemblyCompiler
     }
 
     /// <summary>
-    /// Compile C# source code to a .NET assembly
+    /// Compile C# source code to a .NET assembly.
     /// </summary>
+    /// <param name="csharpSources">Generated C# text keyed by output .cs path.</param>
+    /// <param name="prebuiltTrees">
+    /// Post-processed Roslyn <see cref="SyntaxTree"/>s the emitter already produced, keyed by
+    /// the same paths as <paramref name="csharpSources"/> (D3, #1050). When a source has a
+    /// prebuilt tree it is handed to <c>CSharpCompilation.Create</c> directly; only sources
+    /// without one (incremental cache hits, restored as text) are reparsed here.
+    /// </param>
+    /// <param name="projectConfig">The project configuration.</param>
     public AssemblyCompilationResult CompileToAssembly(
         Dictionary<string, string> csharpSources,
+        IReadOnlyDictionary<string, SyntaxTree> prebuiltTrees,
         ProjectConfig projectConfig)
     {
         _logger.LogInfo($"Compiling {csharpSources.Count} C# files to assembly");
@@ -34,11 +43,18 @@ internal class AssemblyCompiler
 
         try
         {
-            // Parse all C# source files into syntax trees
+            // Feed emitter-built trees straight to Roslyn; reparse only string-only inputs
+            // (incremental cache hits, whose tree was not carried across the cache boundary).
             metrics.StartPhase(CompilerPhaseNames.CSharpParsing);
             var syntaxTrees = new List<SyntaxTree>();
             foreach (var (filePath, sourceCode) in csharpSources)
             {
+                if (prebuiltTrees.TryGetValue(filePath, out var prebuilt))
+                {
+                    syntaxTrees.Add(prebuilt);
+                    continue;
+                }
+
                 var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode,
                     path: filePath,
                     encoding: System.Text.Encoding.UTF8);

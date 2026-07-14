@@ -16,7 +16,7 @@
 #   - str.count(sub, start[, end]): Sharpy count() takes a single arg (SPY0224); the
 #     range-limited count rows are dropped (find/index DO take start[,end]).
 #   - codecs / encode-decode (utf7/utf8/idna), %-formatting (__mod__), huge width/precision,
-#     and str.maketrans/.translate: no matching Sharpy surface (see EOF ledger entry).
+#     and str.maketrans/.translate: no matching Sharpy surface (see EOF note).
 #   - non-ASCII full-Unicode casing/titlecase edge cases beyond the ASCII + one vulgar
 #     fraction covered here (string-indexing-utf16 deviation).
 
@@ -281,10 +281,14 @@ def test_split():
     assert "a,b,c".split(",") == ["a", "b", "c"]
     assert "a,b,,c,".split(",") == ["a", "b", "", "c", ""]
     assert "endcase test".split("test") == ["endcase ", ""]
-    # Dropped (Sharpy divergence, #1071 — see the split ledger entry at EOF):
-    #   split(sep, maxsplit) is off-by-one (maxsplit=N yields N pieces, not N+1),
-    #   and no-arg split() does not collapse whitespace runs or strip empties
-    #   ("   a b   c ".split() / "   ".split()).
+    # Re-armed after #1071/#1085 (static-extension dispatch): no-arg split() collapses
+    # whitespace runs and strips leading/trailing empties, and split(sep, maxsplit) yields
+    # maxsplit+1 pieces.
+    assert "   a b   c ".split() == ["a", "b", "c"]
+    empty_split: list[str] = []
+    assert "   ".split() == empty_split
+    assert "a b c d".split(" ", 1) == ["a", "b c d"]
+    assert "a b c d".split(" ", 2) == ["a", "b", "c d"]
 
 @test
 def test_rsplit():
@@ -313,9 +317,10 @@ def test_replace():
     assert "one!two!three!".replace("!", "@", 2) == "one@two@three!"
     assert "one!two!three!".replace("x", "@") == "one!two!three!"
     assert "mississippi".replace("ss", "SS") == "miSSiSSippi"
-    # Dropped (Sharpy divergence, #1072 — see the replace ledger entry at EOF):
-    #   count=0 replaces all instead of none, and an empty old-string throws a
-    #   raw .NET ArgumentException instead of inserting new between every char.
+    # Re-armed after #1072 (static-extension dispatch): count=0 replaces nothing, and an
+    # empty old-string inserts new between every character (Python semantics).
+    assert "one!two!three!".replace("!", "@", 0) == "one!two!three!"
+    assert "abc".replace("", "-") == "-a-b-c-"
 
 @test
 def test_count():
@@ -467,33 +472,7 @@ def test_join():
 # not portable methods dropped for a filed bug — so per the pilot precedent
 # (bisect/textwrap) they stay header notes, not ledger entries.
 #
-# The following ARE portable assertions dropped for filed Sharpy bugs, recorded as
-# machine-read ledger entries (see build_tools/cpython_oracle/README.md#divergence-ledger).
-# Kept at EOF so they never shift the generated #line map.
-#
-# oracle-ledger:
-#   kind: not-ported
-#   test: CommonTest.test_split
-#   side: sharpy
-#   bug: 1071
-#   spec_ref: docs/language_specification/string_type.md
-#   origin: Lib/test/string_tests.py::CommonTest.test_split
-#   reason: >
-#     str.split diverges from Python on two portable rows: split(sep, maxsplit) is
-#     off-by-one (maxsplit=N yields N pieces instead of N+1), and no-arg split() does
-#     not collapse whitespace runs or strip leading/trailing empties. The maxsplit and
-#     whitespace-collapse assertions are dropped until #1071 is fixed; the sep-split,
-#     comma, and endcase rows remain ported.
-# oracle-ledger:
-#   kind: not-ported
-#   test: CommonTest.test_replace
-#   side: sharpy
-#   bug: 1072
-#   spec_ref: docs/language_specification/string_type.md
-#   origin: Lib/test/string_tests.py::CommonTest.test_replace
-#   reason: >
-#     str.replace diverges on two portable rows: count=0 replaces all occurrences
-#     instead of none, and an empty old-string throws a raw .NET ArgumentException
-#     instead of inserting new between every character. Those two assertions are
-#     dropped until #1072 is fixed; the count>=1, no-match, and multi-char rows
-#     remain ported.
+# The test_split/test_replace divergence-ledger entries (#1071, #1072) were removed once
+# static-extension dispatch (#1085) landed: str.split now collapses whitespace and honors
+# maxsplit, and str.replace honors count=0 and empty-old insertion. Those assertions are
+# now ported live in test_split/test_replace above.

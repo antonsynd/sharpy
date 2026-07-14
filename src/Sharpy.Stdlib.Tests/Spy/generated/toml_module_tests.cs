@@ -543,7 +543,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (279, 5) - (279, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 string result = toml.Dumps(d, sortKeys: true);
 #line (280, 5) - (280, 58) 1 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(result.Index("alpha") < result.Index("zebra"));
+                Xunit.Assert.True(global::Sharpy.StringExtensions.Index(result, "alpha") < global::Sharpy.StringExtensions.Index(result, "zebra"));
             }
 
             [Xunit.FactAttribute]

@@ -257,7 +257,7 @@ internal partial class ProjectCompiler
             }
 
             // Phase 6: Generate C# code for all files
-            var generatedCSharp = GenerateCode(config);
+            var generatedCode = GenerateCode(config);
             cancellationToken.ThrowIfCancellationRequested();
 
             // Codegen-only mode (synthetic project-of-one-file, #1038): stop here and hand
@@ -269,7 +269,7 @@ internal partial class ProjectCompiler
                 {
                     Success = !_diagnostics.HasErrors,
                     Diagnostics = _diagnostics,
-                    GeneratedCSharpFiles = generatedCSharp,
+                    GeneratedCSharpFiles = generatedCode.Sources,
                     Metrics = ProjectMetrics,
                     DependencyGraph = _dependencyGraph,
                     ProjectModel = _projectModel,
@@ -281,7 +281,7 @@ internal partial class ProjectCompiler
             }
 
             // Phase 7: Compile to assembly
-            return CompileAssembly(config, generatedCSharp);
+            return CompileAssembly(config, generatedCode);
         }
         catch (OperationCanceledException)
         {

@@ -52,7 +52,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (35, 5) - (35, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
                 string result = tempfile.Gettempdir();
 #line (36, 5) - (36, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_tests.spy"
-                Xunit.Assert.False(result.Endswith("/"));
+                Xunit.Assert.False(global::Sharpy.StringExtensions.Endswith(result, "/"));
             }
 
             [Xunit.FactAttribute]

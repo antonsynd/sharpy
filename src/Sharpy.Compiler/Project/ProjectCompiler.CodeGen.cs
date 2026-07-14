@@ -1,3 +1,5 @@
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -12,12 +14,20 @@ namespace Sharpy.Compiler.Project;
 internal partial class ProjectCompiler
 {
     /// <summary>
-    /// Phase 6: Generate C# code for all modules
+    /// Phase 6: Generate C# code for all modules.
     /// </summary>
-    private Dictionary<string, string> GenerateCode(ProjectConfig config)
+    /// <remarks>
+    /// Returns both the generated C# text (keyed by output .cs path — the source of truth
+    /// for snapshots, the incremental cache, <c>emit csharp</c>, and LSP) and the
+    /// post-processed Roslyn <see cref="SyntaxTree"/>s (D3, #1050). The trees wrap the exact
+    /// emitted nodes with no reparse and are handed straight to <c>CSharpCompilation.Create</c>;
+    /// only cache-served files (which have text but no tree) are reparsed downstream.
+    /// </remarks>
+    private GeneratedCode GenerateCode(ProjectConfig config)
     {
         _logger.LogInfo("Phase 6: Code Generation");
         var generatedCSharp = new Dictionary<string, string>();
+        var generatedTrees = new Dictionary<string, SyntaxTree>();
         var builtinRegistry = new BuiltinRegistry(_logger);
 
         foreach (var (_, unit) in _projectModel!.Units)
@@ -76,6 +86,16 @@ internal partial class ProjectCompiler
                 var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
                 var csharpCode = roslynCompilationUnit.ToFullString();
 
+                // D3 (#1050): wrap the exact emitted node in a SyntaxTree with no reparse,
+                // so the compile path hands it straight to CSharpCompilation.Create. The path
+                // and UTF-8 encoding mirror the ParseText call this replaces (AssemblyCompiler),
+                // keeping #line mapping, PDB checksums, and emit output byte-for-byte identical.
+                var syntaxTree = CSharpSyntaxTree.Create(
+                    roslynCompilationUnit,
+                    options: null,
+                    path: csharpFileName,
+                    encoding: System.Text.Encoding.UTF8);
+
                 // NOTE(#1077): enhanced #line directives keep the emitter's placeholder char
                 // offset here; LineDirectivePostProcessor (run by the deleted single-file path)
                 // is not yet wired into project-mode codegen. Wiring it requires regenerating all
@@ -98,8 +118,9 @@ internal partial class ProjectCompiler
                     continue;
                 }
 
-                // Store generated C# in CompilationUnit
+                // Store generated C# and its Roslyn tree in CompilationUnit
                 unit.GeneratedCSharp = csharpCode;
+                unit.GeneratedSyntaxTree = syntaxTree;
                 unit.Phase = CompilationPhase.CodeGenerated;
                 CompilerInvariants.AssertPostCodeGen(csharpCode, _diagnostics);
 
@@ -110,6 +131,7 @@ internal partial class ProjectCompiler
                 }
 
                 generatedCSharp[csharpFileName] = csharpCode;
+                generatedTrees[csharpFileName] = syntaxTree;
             }
             finally
             {
@@ -117,17 +139,18 @@ internal partial class ProjectCompiler
             }
         }
 
-        return generatedCSharp;
+        return new GeneratedCode(generatedCSharp, generatedTrees);
     }
 
     /// <summary>
     /// Phase 7: Compile generated C# code to assembly
     /// </summary>
-    private ProjectCompilationResult CompileAssembly(ProjectConfig config, Dictionary<string, string> generatedCSharp)
+    private ProjectCompilationResult CompileAssembly(ProjectConfig config, GeneratedCode generated)
     {
         _logger.LogInfo("Phase 7: Assembly Compilation");
+        var generatedCSharp = generated.Sources;
         var assemblyCompiler = new AssemblyCompiler(_logger);
-        var assemblyResult = assemblyCompiler.CompileToAssembly(generatedCSharp, config);
+        var assemblyResult = assemblyCompiler.CompileToAssembly(generatedCSharp, generated.Trees, config);
 
         // Add assembly metrics to project metrics
         if (assemblyResult.Metrics != null)
@@ -183,3 +206,13 @@ internal partial class ProjectCompiler
         };
     }
 }
+
+/// <summary>
+/// Output of Phase 6 (code generation): the generated C# text per output .cs path plus,
+/// for freshly-generated files, the post-processed Roslyn <see cref="SyntaxTree"/> that
+/// wraps the exact emitted node (no reparse — D3, #1050). Cache-served (skipped) files
+/// appear in <see cref="Sources"/> only; <see cref="AssemblyCompiler"/> reparses those.
+/// </summary>
+internal readonly record struct GeneratedCode(
+    Dictionary<string, string> Sources,
+    Dictionary<string, SyntaxTree> Trees);

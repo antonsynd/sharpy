@@ -155,7 +155,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (85, 5) - (85, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
                 var hexStr = h.Hexdigest();
 #line (86, 5) - (86, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
-                Xunit.Assert.Equal(hexStr.Lower(), hexStr);
+                Xunit.Assert.Equal(global::Sharpy.StringExtensions.Lower(hexStr), hexStr);
             }
 
             [Xunit.FactAttribute]
@@ -166,7 +166,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (91, 5) - (91, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
                 var hexStr = h.Hexdigest();
 #line (92, 5) - (92, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/hashlib/hashlib_complete_tests.spy"
-                Xunit.Assert.Equal(hexStr.Lower(), hexStr);
+                Xunit.Assert.Equal(global::Sharpy.StringExtensions.Lower(hexStr), hexStr);
             }
 
             [Xunit.FactAttribute]

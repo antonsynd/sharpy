@@ -289,21 +289,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     var l = __loopVar_2;
 #line (140, 9) - (142, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                    if (l.Startswith("--- "))
+                    if (global::Sharpy.StringExtensions.Startswith(l, "--- "))
                     {
 #line (141, 13) - (141, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                         hasFrom = true;
                     }
 
 #line (142, 9) - (144, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                    if (l.Startswith("+++ "))
+                    if (global::Sharpy.StringExtensions.Startswith(l, "+++ "))
                     {
 #line (143, 13) - (143, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                         hasTo = true;
                     }
 
 #line (144, 9) - (146, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                    if (l.Startswith("@@ "))
+                    if (global::Sharpy.StringExtensions.Startswith(l, "@@ "))
                     {
 #line (145, 13) - (145, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                         hasHunk = true;
@@ -361,14 +361,14 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     var l = __loopVar_3;
 #line (164, 9) - (166, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                    if (l.Startswith("*** "))
+                    if (global::Sharpy.StringExtensions.Startswith(l, "*** "))
                     {
 #line (165, 13) - (165, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                         hasStars = true;
                     }
 
 #line (166, 9) - (168, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                    if (l.Startswith("--- "))
+                    if (global::Sharpy.StringExtensions.Startswith(l, "--- "))
                     {
 #line (167, 13) - (167, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                         hasDashes = true;
@@ -430,7 +430,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     var l = __loopVar_5;
 #line (188, 9) - (190, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                    if (l.Startswith("- "))
+                    if (global::Sharpy.StringExtensions.Startswith(l, "- "))
                     {
 #line (189, 13) - (189, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                         hasMinus = true;
@@ -464,7 +464,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     var l = __loopVar_6;
 #line (199, 9) - (201, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                    if (l.Startswith("+ "))
+                    if (global::Sharpy.StringExtensions.Startswith(l, "+ "))
                     {
 #line (200, 13) - (200, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                         hasPlus = true;

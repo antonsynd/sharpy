@@ -220,7 +220,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (147, 5) - (147, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_additional_tests.spy"
                 var result = Expanduser("~/mydir/file.txt");
 #line (148, 5) - (148, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_additional_tests.spy"
-                Xunit.Assert.False(result.Startswith("~"));
+                Xunit.Assert.False(global::Sharpy.StringExtensions.Startswith(result, "~"));
 #line (149, 5) - (149, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_additional_tests.spy"
                 Xunit.Assert.EndsWith("mydir/file.txt", result);
             }
