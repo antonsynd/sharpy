@@ -83,11 +83,18 @@ jobs:
     - name: Test Core
       run: dotnet test src/Sharpy.Core.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
     - name: Test Compiler
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
+      # The interop conformance sweep (#1034) is heavy (~1–2 min, thousands of in-process
+      # compiles); it runs in its own dedicated step below so the main test pass stays fast.
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance"
     - name: Test Stdlib
       run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
     - name: Test LSP
       run: dotnet test src/Sharpy.Lsp.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
+    - name: Interop conformance sweep (#1034)
+      # Generated interop conformance sweep over every public stdlib member. Emits
+      # .claude/tmp/interop-conformance-report.json; becomes a ratchet once the reviewed
+      # allowlist (src/Sharpy.Compiler.Tests/Conformance/interop-allowlist.txt) is present.
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance"
     - name: Verify .spy stdlib native compilation
       run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
     - name: Verify .spy stdlib C# staleness
