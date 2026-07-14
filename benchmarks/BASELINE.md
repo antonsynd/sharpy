@@ -71,6 +71,52 @@ MathNet, ~50–100× faster than a same-scale pure-list kernel. Raw-array loweri
 therefore dispositioned to Workstream E3 rather than built now; see the escalation
 memo on #1052.
 
+## D3 Compile Round-Trip Breakdown (#1050)
+
+> **Recorded (pre-D3):** 2026-07-14
+> **Machine:** Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301 · Python 3.12.13
+> **Before commit:** `498ea38a4` (built in an isolated `git worktree` pinned at HEAD)
+> **Measurement:** `sharpyc compile <file> --metrics-format json`, median of 8 timed runs
+> (1 warmup discarded) per file, per-phase durations from `CompilationMetrics.FormatAsJson`.
+> **Conditions:** measured under heavy parallel-agent load (load avg ≈ 36, ~19 concurrent
+> `dotnet` processes). Absolute wall times are inflated by contention and are **not**
+> comparable across machines; the **per-phase proportions** below are the load-robust
+> before/after signal (see the note in Design Decision 8 of plan-136a52).
+
+**What D3 changes.** The emitter builds a normalized Roslyn `SyntaxTree`, flattens it to
+text with `ToFullString()`, and today that text is **reparsed** in `AssemblyCompiler` (the
+timed **"C# Parsing"** phase) before `CSharpCompilation.Create`. A *second*, untimed reparse
+of the same text runs in the always-on post-codegen invariant (`AssertGeneratedCSharpParses`).
+So every hot-path file is parsed to a tree, thrown away, and reparsed **twice**. D3 hands the
+original tree straight to `CSharpCompilation` and reads diagnostics off it, collapsing the
+"C# Parsing" phase (and the validation reparse) to zero on the hot path. `ToFullString()`
+stays (snapshots, incremental cache, `emit csharp`, LSP); cache-served string-only files still
+`ParseText` — that is the incremental path's cost, not the hot path's.
+
+**Pre-D3 per-phase medians (the reparse is "C# Parsing"):**
+
+| Input | Type Checking | Code Generation | **C# Parsing** | Roslyn Compilation | IL Emission | Total | C# Parsing % total |
+|-------|--------------:|----------------:|---------------:|-------------------:|------------:|------:|-------------------:|
+| `large_lexer_corpus.spy` (476 ln) | — | 137.8 ms | **3.30 ms** | 6.9 ms | 654.7 ms | 925.7 ms | 0.36% |
+| `large_functions.spy` (73 ln) | — | 129.9 ms | **1.02 ms** | 10.0 ms | 765.9 ms | 1002.7 ms | 0.10% |
+| `classes.spy` (35 ln) | — | 129.2 ms | **0.58 ms** | 10.1 ms | 683.8 ms | 994.1 ms | 0.06% |
+| `sorting/bench.spy` | — | 94.3 ms | **0.40 ms** | 7.1 ms | 589.7 ms | 775.0 ms | 0.05% |
+| `fibonacci/bench.spy` | — | 75.0 ms | **0.25 ms** | 6.8 ms | 453.4 ms | 601.2 ms | 0.04% |
+| synthetic 6000 ln (400 fn + 400 cls) | 307.3 ms | 1574.3 ms | **110.4 ms** | 13.4 ms | 2723.7 ms | 6722.9 ms | 1.64% |
+
+**Reading the split.** "C# Parsing" scales with generated-code size: **0.04–0.36%** of total
+for small corpus files, rising to **1.64%** of total (**6.55%** of the emit-related work,
+`Code Generation + C# Parsing`) for the 6000-line synthetic file. The always-on validation
+reparse is a second, equal-cost parse of the same text, so the redundant-reparse overhead D3
+removes is **≈ 2× the "C# Parsing" phase**. The round trip is real but narrow: for typical
+single files it is fractions of a percent; it becomes material for large files and
+whole-project (multi-file) builds where "C# Parsing" aggregates across every unit. The
+`Total` here is dominated by **IL Emission** (~70–80%), which folds in per-process
+`MetadataReference` (re)load over the full trusted-platform assembly set and the Roslyn emit —
+that cost is the target of **D2 (#1049)**, not D3.
+
+_Post-D3 numbers are recorded below once the tree-handoff and validation-reparse changes land._
+
 ## Benchmark Suite
 
 The benchmark suite is located in `src/Sharpy.Compiler.Benchmarks/` and uses [BenchmarkDotNet](https://benchmarkdotnet.org/).
@@ -105,7 +151,11 @@ Located in `src/Sharpy.Compiler.Benchmarks/Corpus/`:
 
 ## Baseline Numbers
 
-> **Note:** These are placeholder numbers. Run full benchmarks on your machine and update.
+> **Note:** The BenchmarkDotNet tables in this section are illustrative order-of-magnitude
+> figures for the `CompilerBenchmarks`/`LexerBenchmarks`/`ParserBenchmarks` micro-suite; run
+> them on your machine to refresh. For **measured per-phase compile breakdowns** (median of N
+> timed runs, per-phase from `CompilationMetrics.FormatAsJson`), see the D4/D5 and
+> **D3 Compile Round-Trip Breakdown** sections above.
 
 ### Full Pipeline Benchmarks (CompilerBenchmarks)
 
@@ -144,11 +194,17 @@ Located in `src/Sharpy.Compiler.Benchmarks/Corpus/`:
 
 2. **Memory**: Most allocations come from Roslyn's SyntaxFactory for code generation.
 
-3. **Bottlenecks**:
-   - Lexer: ~5% of total time
-   - Parser: ~10% of total time
-   - Semantic analysis: ~25% of total time
-   - Code generation: ~60% of total time (dominated by Roslyn)
+3. **Bottlenecks** (measured per-phase proportions of a single-file compile, from the
+   D3 breakdown above; front-end vs. Roslyn back-end split, medians under load):
+   - Lexer + Parser (front-end syntax): < 1% of total time
+   - Type checking: ~5% of total (grows with program size — ~4.6% on the 6000-line file)
+   - Code generation (emit + `ToFullString` flatten): ~15–25% of total
+   - **C# reparse ("C# Parsing" phase)**: 0.04–1.6% of total, ~6.5% of emit-related work on
+     large files — the redundant round trip **D3 (#1050)** removes (plus an equal untimed
+     validation reparse)
+   - Roslyn back-end (Reference Resolution + Roslyn Compilation + IL Emission): ~70–80% of
+     total, dominated by per-process metadata-reference loading and IL emit — the target of
+     **D2 (#1049)**, not D3
 
 4. **Incremental compilation**: Wired up for `.spyproj` projects since #756 and benchmarked as of #1053. The cross-language harness (`benchmarks/cross-language/run_benchmarks.py`) measures a cold compile (empty cache) and a warm `--incremental` compile (cache present) per benchmark via a synthetic one-file project; both are published in `results/latest.md`. Single-file compiles have no incremental cache and stay cold. The persistent compiler-server compile path is pending #1049 (D2).
 
