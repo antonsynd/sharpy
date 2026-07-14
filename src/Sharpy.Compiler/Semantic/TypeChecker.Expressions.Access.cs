@@ -1123,6 +1123,13 @@ internal partial class TypeChecker
     /// returns), narrowed-to-<c>IList</c> values, member/index accesses — is conservatively rejected
     /// so the fast path never targets a receiver without <c>GetItemUnchecked</c> (#1052).
     /// </summary>
+    /// <remarks>
+    /// Residual hole: this is a syntactic heuristic, not a tracked backing property. After #1085
+    /// <c>str.split</c> returns a genuine <c>Sharpy.List&lt;string&gt;</c> (static-extension dispatch),
+    /// so split results bound to annotated list locals are already covered here — but <c>*args</c> and
+    /// narrowed-<c>IList</c> values still must be rejected because they lack <c>GetItemUnchecked</c>.
+    /// TODO(#1089): replace this allowlist with a first-class backing-kind notion once the guard grows again.
+    /// </remarks>
     private bool IsGenuineSharpyListBacking(Expression objectExpr)
     {
         return objectExpr switch

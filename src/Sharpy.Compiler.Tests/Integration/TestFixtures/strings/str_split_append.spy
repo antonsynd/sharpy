@@ -1,0 +1,7 @@
+def main():
+    parts: list[str] = "a,b,c".split(",")
+    parts.append("d")
+    parts.append("e")
+    print(parts)
+    print(len(parts))
+    print(parts[-1])

@@ -1,0 +1,4 @@
+def main():
+    print("one two three".split()[-1])
+    print("a.b.c.d".split(".")[-1])
+    print("a.b.c.d".split(".")[0])

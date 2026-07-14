@@ -1,0 +1,5 @@
+def main():
+    parts: list[str] = "a.b.c.d".split(".")
+    print(parts[-1])
+    print(parts[-2])
+    print(parts[-4])
