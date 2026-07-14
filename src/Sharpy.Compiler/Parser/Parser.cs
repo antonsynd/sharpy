@@ -221,12 +221,14 @@ public partial class Parser
     /// structural. EOF/Newline or a depth-0 ')'/']'/'}' is a terminator (no body ':' ahead
     /// → not an annotation).
     ///
-    /// Known limitation: the scan does not descend into a nested lambda used as any kwarg
-    /// value or parameter default (<c>f(lambda v: v, key=lambda x: x)</c>,
-    /// <c>f(lambda v: v, cb=lambda x: x + 1)</c> — the inner lambda's colon sits at depth 0
-    /// and is mistaken for a body separator, producing a (recoverable) parse error for the
-    /// outer lambda). This is an extreme edge (a bare-identifier body followed by a kwarg
-    /// whose value is itself a lambda); all real cases resolve correctly.
+    /// A nested <c>lambda</c> used as a kwarg value or parameter default is skipped whole by
+    /// <c>SkipLambdaHeader</c> so its own body ':' is not mistaken for the outer lambda's body
+    /// separator (<c>f(lambda v: v, key=lambda x: x)</c>) (#1076).
+    ///
+    /// Residual limitation: the nested-lambda skip consumes only the first depth-0 ':', so a
+    /// <em>typed</em> nested-lambda parameter used as a kwarg value (<c>k=lambda x: int: y</c>)
+    /// still stops at the parameter ':' rather than the body ':'. This is an extreme edge with
+    /// no reported occurrence; all untyped nested lambdas resolve correctly.
     /// </remarks>
     private bool LambdaColonStartsTypeAnnotation()
     {
@@ -234,6 +236,43 @@ public partial class Parser
         // depth-0 delimiter, advancing `pos`. Returns: 'b' if a body-separator ':' is reached,
         // ',' for a depth-0 comma, '=' for a depth-0 '=' (type mode only), 't' for a terminator
         // or an empty expression.
+        // Skip a nested lambda's header — the `lambda` keyword, its parameter list (with any
+        // commas / bracketed defaults), and its body-separator ':' — leaving `pos` at the first
+        // token of the lambda body. Without this, a nested lambda used as a kwarg value or
+        // default (`k=lambda: x`, `default=lambda a, b: c`) leaks its depth-0 ':' and commas
+        // into the outer parameter-list simulation, so the inner body ':' is mistaken for the
+        // outer lambda's body separator and the parse fails (#1076). Only the first depth-0 ':'
+        // is consumed, which is correct for untyped nested params (the overwhelmingly common
+        // case and every reported repro); a *typed* nested-lambda parameter in a kwarg value
+        // (`k=lambda x: int: y`) would still stop at the parameter ':' — an accepted limitation.
+        void SkipLambdaHeader(ref int pos)
+        {
+            pos++; // consume 'lambda'
+            int d = 0;
+            while (true)
+            {
+                var type = Peek(pos).Type;
+                if (type == TokenType.Eof)
+                    return;
+                if (d == 0)
+                {
+                    if (type == TokenType.Colon)
+                    {
+                        pos++; // consume the body separator
+                        return;
+                    }
+                    if (type is TokenType.Newline
+                        or TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace)
+                        return; // malformed lambda header — bail without consuming the delimiter
+                }
+                if (type is TokenType.LeftParen or TokenType.LeftBracket or TokenType.LeftBrace)
+                    d++;
+                else if (type is TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace)
+                    d--;
+                pos++;
+            }
+        }
+
         char ScanExpr(ref int pos, bool typeMode)
         {
             int depth = 0;
@@ -247,6 +286,14 @@ public partial class Parser
                     return 't';
                 if (depth == 0)
                 {
+                    // A nested lambda owns its colon(s): skip its whole header so the inner body
+                    // ':' is not read as the outer lambda's body separator (#1076).
+                    if (type == TokenType.Lambda)
+                    {
+                        SkipLambdaHeader(ref pos);
+                        consumed = true;
+                        continue;
+                    }
                     if (type is TokenType.Newline
                         or TokenType.RightParen or TokenType.RightBracket or TokenType.RightBrace)
                         return 't';

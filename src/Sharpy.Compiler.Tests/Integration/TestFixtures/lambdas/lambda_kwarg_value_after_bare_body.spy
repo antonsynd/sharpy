@@ -1,0 +1,16 @@
+# #1076: the #1011 body-separator forward scan must skip a nested lambda used as a later
+# keyword argument's value. In `f(lambda v: v, k=lambda: x)` the inner lambda's `:` sits at
+# bracket depth 0 and was mistaken for the outer lambda's body separator, so the outer
+# bare-identifier body was misread as a type annotation and the parse failed (SPY0104).
+# CPython accepts all of these.
+def apply(f: (int) -> int, g: () -> int) -> int:
+    return f(g())
+
+def apply2(f: (int) -> int, g: (int) -> int) -> int:
+    return f(g(7))
+
+def main() -> None:
+    # Positional ambiguous lambda (bare-identifier body) + kwarg value that is a no-param lambda.
+    print(apply(lambda v: v, g=lambda: 42))
+    # Positional ambiguous lambda + kwarg value that is a one-param lambda.
+    print(apply2(lambda v: v, g=lambda x: x))

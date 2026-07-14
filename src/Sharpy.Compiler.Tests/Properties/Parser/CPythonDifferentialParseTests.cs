@@ -189,7 +189,7 @@ public class CPythonDifferentialParseTests
     /// minimized from fuzzer-found samples and reproduce deterministically. Un-skip (and
     /// remove the SubsetFilter.VisitFunctionCall quarantine) when #1076 is fixed.
     /// </summary>
-    [Theory(Skip = "TODO(#1076): lambda-param forward scan misreads a lambda kwarg value's colon as the body separator")]
+    [Theory]
     [InlineData("f(lambda v: v, k=lambda: x)")]
     [InlineData("f(lambda v: v, key=lambda x: x)")]
     [InlineData("f(lambda t: t[0], k=lambda: x)")]
@@ -450,49 +450,6 @@ public class CPythonDifferentialParseTests
                 return;
             }
             DefaultVisit(node);
-        }
-
-        public override void VisitFunctionCall(FunctionCall node)
-        {
-            // TODO(#1076): the #1011 lambda-param forward scan does not descend into a lambda
-            // used as a keyword-argument value. When a lambda with >= 1 parameter has a
-            // bare-identifier or subscript body (the ambiguous ': IDENT ,' / ': IDENT [...] ,'
-            // shapes) — whether it appears as a positional argument OR as an earlier keyword
-            // argument's value — and a later keyword argument's value contains an
-            // unparenthesized lambda, the inner lambda's depth-0 ':' is mistaken for the outer
-            // body separator and the parse fails, e.g. `f(lambda v: v, k=lambda: x)` or
-            // `n(("t",), value=lambda v: items, default=lambda b, a: "")` (fresh-seed find,
-            // 2026-07-12). CPython accepts these; quarantine the shape until the parser fix
-            // lands. Deliberately over-rejects a lone ambiguous kwarg lambda — quarantine only
-            // shrinks the tested subset, never hides a Sharpy-only rejection outside it.
-            if (HasAmbiguousLambdaArgument(node) && node.KeywordArguments.Any(k => ContainsLambda(k.Value)))
-            {
-                Reject();
-                return;
-            }
-            DefaultVisit(node);
-        }
-
-        private static bool HasAmbiguousLambdaArgument(FunctionCall call) =>
-            call.Arguments.Any(a => IsAmbiguousLambda(a))
-            || call.KeywordArguments.Any(k => IsAmbiguousLambda(k.Value));
-
-        private static bool IsAmbiguousLambda(Expression expr) =>
-            expr is LambdaExpression { Parameters.Length: >= 1 } l
-            && l.Body is Identifier or IndexAccess or SliceAccess or MultiAxisAccess;
-
-        private static bool ContainsLambda(Expression value)
-        {
-            var finder = new LambdaFinder();
-            finder.Visit(value);
-            return finder.Found;
-        }
-
-        private sealed class LambdaFinder : AstVisitor
-        {
-            public bool Found { get; private set; }
-
-            public override void VisitLambdaExpression(LambdaExpression node) => Found = true;
         }
 
         public override void VisitIntegerLiteral(IntegerLiteral node)
