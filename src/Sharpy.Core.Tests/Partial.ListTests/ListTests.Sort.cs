@@ -252,4 +252,77 @@ public partial class List_Tests
         var act = () => l.Sort();
         act.Should().Throw<TypeError>();
     }
+
+    [Fact]
+    public void List_Sort_With_Key_Is_Stable_For_Value_Types()
+    {
+        // #1066 — the key projection makes equal-key ordering observable even for
+        // value-type elements, so keyed sort must be stable unconditionally.
+        // Key = i / 10, so 11/12/13 share key 1 and 21/22 share key 2.
+        List<int> l = [11, 21, 12, 22, 13];
+
+        // When
+        l.Sort((int i) => i / 10);
+
+        // Then — matches Python sorted(..., key=lambda i: i // 10)
+        var actual = l.ToList();
+        DotNetList<int> expected = [11, 12, 13, 21, 22];
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
+    public void List_Sort_With_Key_Reverse_Is_Stable_For_Value_Types()
+    {
+        // #1066 — reverse=True keeps equal-key elements in ORIGINAL order (not
+        // sort-then-reverse), observable via value-type elements grouped by key.
+        List<int> l = [11, 21, 12, 22, 13];
+
+        // When
+        l.Sort((int i) => i / 10, true);
+
+        // Then — matches Python sorted(..., key=..., reverse=True)
+        var actual = l.ToList();
+        DotNetList<int> expected = [21, 22, 11, 12, 13];
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
+    public void List_Sort_With_Key_Is_Stable_For_Reference_Types()
+    {
+        // #1066 — equal-key elements keep insertion order under a key projection.
+        List<KeyedItem> l =
+        [
+            new KeyedItem(1, "a"),
+            new KeyedItem(0, "b"),
+            new KeyedItem(1, "c"),
+            new KeyedItem(0, "d"),
+            new KeyedItem(1, "e"),
+        ];
+
+        // When
+        l.Sort((KeyedItem item) => item.Key);
+
+        // Then — keys ascending; within equal keys, original order preserved.
+        TagOrder(l).Should().Be("b,d,a,c,e");
+    }
+
+    [Fact]
+    public void List_Sort_With_Key_Reverse_Is_Stable_For_Reference_Types()
+    {
+        // #1066 — reverse keeps equal-key elements in original order.
+        List<KeyedItem> l =
+        [
+            new KeyedItem(1, "a"),
+            new KeyedItem(0, "b"),
+            new KeyedItem(1, "c"),
+            new KeyedItem(0, "d"),
+            new KeyedItem(1, "e"),
+        ];
+
+        // When
+        l.Sort((KeyedItem item) => item.Key, true);
+
+        // Then — keys descending, equal keys keep ORIGINAL order.
+        TagOrder(l).Should().Be("a,c,e,b,d");
+    }
 }

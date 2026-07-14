@@ -239,7 +239,11 @@ namespace Sharpy
         /// sort customization, see Sorted() for their explanation).
         /// </summary>
         /// <remarks>
-        /// This is not a stable sort.
+        /// Stable: the relative order of elements with equal keys is preserved,
+        /// and <paramref name="reverse"/> preserves that order rather than
+        /// reversing it (matching Python). Unlike the keyless overload this is
+        /// always stable, even for value-type elements, because the key
+        /// projection makes equal-key ordering observable.
         /// </remarks>
         public void Sort<TKey>(Func<T, TKey> key, bool reverse = false)
         {
@@ -248,16 +252,13 @@ namespace Sharpy
                 throw TypeError.ArgNone("sort", "key");
             }
 
-            var comp = KeyComparerFactory<T, TKey>.Create(key);
+            if (_list.Count < 2)
+            {
+                return;
+            }
 
-            if (reverse)
-            {
-                _list.Sort(Comparer<T>.Create((a, b) => comp.Compare(b, a)));
-            }
-            else
-            {
-                _list.Sort(comp);
-            }
+            var comp = KeyComparerFactory<T, TKey>.Create(key);
+            StableSort(comp, reverse);
         }
 
         /// <summary>
