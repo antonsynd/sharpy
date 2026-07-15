@@ -744,7 +744,29 @@ internal partial class TypeChecker
     private SemanticType CheckTypeCoercion(TypeCoercion coercion)
     {
         var sourceType = CheckExpression(coercion.Value);
-        var targetType = _typeResolver.ResolveTypeAnnotation(coercion.TargetType);
+
+        // The `as?`/`as!` operators own their failure mode, so the target must be written
+        // non-nullable — the operator supplies the optionality. Reject `x as? T?` / `x as! T?`.
+        if (coercion.Syntax == CastSyntax.As && coercion.TargetType.IsOptional)
+        {
+            var op = coercion.Mode == CastFailureMode.Null ? "as?" : "as!";
+            AddError(
+                $"Redundant '?' on the target of '{op}': the operator already determines the " +
+                $"failure mode. Drop the '?' — write '{op} {coercion.TargetType.Name}'.",
+                coercion.LineStart, coercion.ColumnStart,
+                code: DiagnosticCodes.Semantic.RedundantNullableCastTarget,
+                span: coercion.Span);
+        }
+
+        // Resolve the target type. For the Null failure mode written with a non-nullable target
+        // (the `as?` form), the operator supplies the optionality, so the result type is T?
+        // exactly as `to T?` produces today. The `to T?` form already carries IsOptional.
+        var targetAnnotation = coercion.TargetType;
+        if (coercion.Mode == CastFailureMode.Null && !targetAnnotation.IsOptional)
+        {
+            targetAnnotation = targetAnnotation with { IsOptional = true };
+        }
+        var targetType = _typeResolver.ResolveTypeAnnotation(targetAnnotation);
 
         // If either type is unknown, skip validation to avoid cascading errors
         if (sourceType is UnknownType || targetType is UnknownType)

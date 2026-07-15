@@ -350,7 +350,8 @@ public static class DiagnosticCodes
         public const string FeatureNotEnabled = "SPY0331";          // Active — use of a construct gated behind an experimental feature that is not enabled
         public const string DeferOutsideFunction = "SPY0332";       // Active — defer statement used outside a function body
         public const string DeferControlFlowEscape = "SPY0333";     // Active — return/break/continue/yield escapes a deferred statement (would leave a finally block)
-        // SPY0334-SPY0339: Reserved for future protocol/operator/defer diagnostics
+        public const string RedundantNullableCastTarget = "SPY0334"; // Active — nullable target on the as?/as! failable-cast operators (#1029); the operator owns the failure mode
+        // SPY0335-SPY0339: Reserved for future protocol/operator/defer diagnostics
 
         #endregion
 
@@ -578,7 +579,8 @@ public static class DiagnosticCodes
         public const string SingleIsinstanceTypeHint = "SPY0475";     // Active
         public const string NegativeTupleIndexHint = "SPY0476";       // Active (emitted by TransitionWarningValidator)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
-        // SPY0478-SPY0489: Reserved for future transition diagnostics
+        public const string ToCastTransitionHint = "SPY0479";         // Active (emitted by TransitionWarningValidator only when failable_cast is enabled) — suggests the as?/as! spelling over `to` (#1029)
+        // SPY0478, SPY0480-SPY0489: Reserved for future transition diagnostics
 
         #endregion
     }
