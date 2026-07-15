@@ -694,6 +694,13 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._staticExtensionDispatches)
             _staticExtensionDispatches.TryAdd(kvp.Key, kvp.Value);
 
+        // Generator bindings are populated per-file during type checking (TypeChecker.Definitions)
+        // but read from the merged project SemanticInfo by the generator sub-pipeline
+        // (ProjectCompiler.Generators). Without this merge they are silently dropped and no source
+        // generator runs (#1042).
+        foreach (var kvp in other._generatorBindings)
+            _generatorBindings.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._generatedStatements)
             _generatedStatements.TryAdd(kvp.Key, kvp.Value);
 
