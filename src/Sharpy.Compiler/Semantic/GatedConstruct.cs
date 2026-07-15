@@ -63,5 +63,13 @@ public static class GatedConstructRegistry
             "defer",
             "the 'defer' statement",
             static n => n is DeferStatement),
+
+        // failable_cast (#1029): the `as?` / `as!` failable-cast operators. Always parsed (as
+        // `as`-form TypeCoercion nodes) but gated until they graduate; the legacy `to` operator
+        // (CastSyntax.To) is unconditional and never matches here.
+        new GatedConstruct(
+            "failable_cast",
+            "the 'as?' / 'as!' failable-cast operators",
+            static n => n is TypeCoercion { Syntax: CastSyntax.As }),
     };
 }

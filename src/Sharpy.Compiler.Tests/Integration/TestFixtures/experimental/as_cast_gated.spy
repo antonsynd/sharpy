@@ -1,0 +1,17 @@
+def main() -> None:
+    obj: object = 42
+
+    # as! — throwing cast; the boxed int unboxes, so this succeeds and yields int.
+    n: int = obj as! int
+    print(n)
+
+    # as? — failable cast; success yields Some.
+    x: int? = obj as? int
+    print(x.is_some)
+    print(x ?? 0)
+
+    # as? — failable cast; failure yields None.
+    obj2: object = "hello"
+    y: int? = obj2 as? int
+    print(y.is_none)
+    print(y ?? -1)

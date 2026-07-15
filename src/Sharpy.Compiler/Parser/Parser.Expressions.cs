@@ -558,26 +558,104 @@ public partial class Parser
     {
         var expr = ParsePipe();
 
-        // Handle `to` (type coercion) at precedence level 11
-        // (between pipe and comparisons). Left-to-right associativity.
-        while (Current.Type == TokenType.To)
+        // Cast operators at precedence level 11 (between pipe and comparisons), left-to-right:
+        //   value to T   / value to T?  — legacy operator; failure mode from the target's nullability
+        //   value as! T  / value as? T  — failable-cast operators (#1029, gated: failable_cast);
+        //                                 failure mode from the operator, target written non-nullable
+        // The `as!`/`as?` forms require the `!`/`?` to be lexically adjacent to `as` (no intervening
+        // whitespace), so `x as ? y` / `x as ! y` are NOT casts. Bare `as` in expression position is
+        // never a cast — it stays reserved for aliasing (SRP-0005) and remains a parse error here
+        // (errors/as_cast_rejected), because ParseCast only consumes `as` when an adjacent `?`/`!`
+        // follows. The parser always builds the node; the FeatureGateChecker rejects ungated `as` casts.
+        while (true)
         {
-            Advance();
-            var targetType = ParseTypeAnnotation();
-
-            expr = new TypeCoercion
+            if (Current.Type == TokenType.To)
             {
-                Value = expr,
-                TargetType = targetType,
-                LineStart = expr.LineStart,
-                ColumnStart = expr.ColumnStart,
-                LineEnd = Previous.Line,
-                ColumnEnd = Previous.Column + Previous.Value.Length,
-                Span = expr.Span
-            };
+                var opLine = Current.Line;
+                var opColumn = Current.Column;
+                Advance();
+                var targetType = ParseTypeAnnotation();
+
+                expr = new TypeCoercion
+                {
+                    Value = expr,
+                    TargetType = targetType,
+                    Mode = targetType.IsOptional ? CastFailureMode.Null : CastFailureMode.Throw,
+                    Syntax = CastSyntax.To,
+                    OperatorLine = opLine,
+                    OperatorColumn = opColumn,
+                    LineStart = expr.LineStart,
+                    ColumnStart = expr.ColumnStart,
+                    LineEnd = Previous.Line,
+                    ColumnEnd = Previous.Column + Previous.Value.Length,
+                    Span = expr.Span
+                };
+                continue;
+            }
+
+            if (Current.Type == TokenType.As)
+            {
+                var opLine = Current.Line;
+                var opColumn = Current.Column;
+                if (TryConsumeAdjacentCastSuffix(out var asMode))
+                {
+                    var targetType = ParseTypeAnnotation();
+
+                    expr = new TypeCoercion
+                    {
+                        Value = expr,
+                        TargetType = targetType,
+                        Mode = asMode,
+                        Syntax = CastSyntax.As,
+                        OperatorLine = opLine,
+                        OperatorColumn = opColumn,
+                        LineStart = expr.LineStart,
+                        ColumnStart = expr.ColumnStart,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        Span = expr.Span
+                    };
+                    continue;
+                }
+            }
+
+            break;
         }
 
         return expr;
+    }
+
+    /// <summary>
+    /// When the current token is <c>as</c> immediately followed by an adjacent <c>?</c> or <c>!</c>
+    /// (no intervening whitespace), consumes both tokens and reports the corresponding
+    /// <see cref="CastFailureMode"/> (<c>as?</c> → <see cref="CastFailureMode.Null"/>, <c>as!</c> →
+    /// <see cref="CastFailureMode.Throw"/>). Returns false and consumes nothing otherwise, leaving a
+    /// bare <c>as</c> for the statement grammar (aliasing) or an error to surface — the two-token
+    /// failable-cast operators (#1029) are lexically distinct from bare <c>as</c>.
+    /// </summary>
+    private bool TryConsumeAdjacentCastSuffix(out CastFailureMode mode)
+    {
+        mode = CastFailureMode.Throw;
+
+        var asToken = Current;
+        var suffix = Peek(1);
+
+        // Adjacency: the suffix must start exactly where `as` ends, on the same line.
+        var isAdjacent = suffix.Line == asToken.Line
+            && suffix.Column == asToken.Column + asToken.Value.Length;
+        if (!isAdjacent)
+            return false;
+
+        if (suffix.Type == TokenType.Question)
+            mode = CastFailureMode.Null;
+        else if (suffix.Type == TokenType.Bang)
+            mode = CastFailureMode.Throw;
+        else
+            return false;
+
+        Advance(); // as
+        Advance(); // ? or !
+        return true;
     }
 
     private Expression ParseBitwiseOr()

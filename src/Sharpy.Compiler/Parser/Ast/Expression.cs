@@ -871,14 +871,60 @@ public record ModifiedArgument : Expression
 }
 
 /// <summary>
-/// Type coercion (value to Type or value to Type?)
-/// Throws InvalidCastException on failure for non-nullable types
-/// or returns None for nullable types (T?).
+/// How a cast reports failure. This is the single discriminator the semantic and codegen
+/// phases read; it is set at parse time from the operator (<c>as!</c>/<c>as?</c>) or, for
+/// the legacy <c>to</c> operator, from the target type's nullability.
+/// </summary>
+public enum CastFailureMode
+{
+    /// <summary>Cast throws <c>InvalidCastException</c> on failure (<c>value to T</c>, <c>value as! T</c>).</summary>
+    Throw,
+
+    /// <summary>Cast evaluates to <c>None</c>/<c>T?</c> on failure (<c>value to T?</c>, <c>value as? T</c>).</summary>
+    Null,
+}
+
+/// <summary>
+/// Which surface syntax produced a <see cref="TypeCoercion"/>. Codegen ignores this (both
+/// syntaxes lower identically per <see cref="CastFailureMode"/>); it is needed only to keep
+/// gating (<c>failable_cast</c> applies to the <c>as</c> forms only) and the migration hint
+/// (fires on <c>to</c> forms only) precise, and to round-trip the original spelling.
+/// </summary>
+public enum CastSyntax
+{
+    /// <summary>The <c>to</c> / <c>to?</c> operator — failure mode read from the target's nullability.</summary>
+    To,
+
+    /// <summary>The <c>as!</c> / <c>as?</c> failable-cast operators (#1029) — failure mode read from the operator.</summary>
+    As,
+}
+
+/// <summary>
+/// Type coercion (<c>value to T</c>, <c>value to T?</c>, <c>value as! T</c>, or <c>value as? T</c>).
+/// Throws <c>InvalidCastException</c> on failure when <see cref="Mode"/> is
+/// <see cref="CastFailureMode.Throw"/>, or evaluates to <c>None</c>/<c>T?</c> when it is
+/// <see cref="CastFailureMode.Null"/>. The <c>as!</c>/<c>as?</c> spellings are gated behind
+/// the experimental <c>failable_cast</c> feature (#1029).
 /// </summary>
 public record TypeCoercion : Expression
 {
     public Expression Value { get; init; } = null!;
     public TypeAnnotation TargetType { get; init; } = null!;
+
+    /// <summary>
+    /// The failure mode this cast reports. Set at parse time: from the operator for the
+    /// <c>as!</c>/<c>as?</c> forms, or from <see cref="TargetType"/>'s nullability for <c>to</c>.
+    /// </summary>
+    public CastFailureMode Mode { get; init; } = CastFailureMode.Throw;
+
+    /// <summary>The surface syntax that produced this node (see <see cref="CastSyntax"/>).</summary>
+    public CastSyntax Syntax { get; init; } = CastSyntax.To;
+
+    /// <summary>Line of the cast operator keyword (<c>to</c>/<c>as</c>). Used by LSP token coloring.</summary>
+    public int OperatorLine { get; init; }
+
+    /// <summary>Column of the cast operator keyword (<c>to</c>/<c>as</c>). Used by LSP token coloring.</summary>
+    public int OperatorColumn { get; init; }
 
     /// <inheritdoc/>
     public override void ValidateInvariants()

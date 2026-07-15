@@ -60,7 +60,7 @@ public class FeatureFlagsTests
         // Exact-set guard: adding a feature must be a deliberate act that updates this list
         // (and, per docs/design/feature-lifecycle.md, registers its gated constructs).
         Assert.Equal(
-            new[] { "__test_feature", "defer", "matmul" },
+            new[] { "__test_feature", "defer", "failable_cast", "matmul" },
             FeatureFlags.KnownFeatures.Keys.OrderBy(k => k, StringComparer.Ordinal).ToArray());
     }
 

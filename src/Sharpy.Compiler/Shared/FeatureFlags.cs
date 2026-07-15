@@ -87,8 +87,8 @@ public sealed class FeatureFlags
     /// <summary>
     /// The single source of truth for all known feature names. <c>__test_feature</c> (hidden
     /// from <c>--help</c>) exists so the enable-a-feature plumbing is testable end-to-end;
-    /// real experimental features (currently <c>matmul</c> and <c>defer</c>, the Wave 2
-    /// pilots) register here per docs/design/feature-lifecycle.md.
+    /// real experimental features (currently <c>matmul</c>, <c>defer</c>, and
+    /// <c>failable_cast</c>) register here per docs/design/feature-lifecycle.md.
     /// </summary>
     public static IReadOnlyDictionary<string, FeatureInfo> KnownFeatures { get; } =
         new Dictionary<string, FeatureInfo>(StringComparer.Ordinal)
@@ -112,6 +112,15 @@ public sealed class FeatureFlags
                 "continue, exception) in reverse declaration order; lowers to nested try/finally.",
                 // Parser-scoped: `defer` is a new statement syntax. It is always parsed but its use
                 // is gated; a `from __future__ import` cannot unlock parser-scoped syntax.
+                FeatureScope.Parser),
+            ["failable_cast"] = new FeatureInfo(
+                "failable_cast",
+                "Experimental `as?` / `as!` failable-cast operators (#1029). `value as! T` throws " +
+                "InvalidCastException on failure (yields T); `value as? T` yields None on failure " +
+                "(yields T?). The failure mode moves from the target's nullability onto the operator; " +
+                "lowers identically to the `to` / `to?` operators. Bare `as` stays reserved for aliasing.",
+                // Parser-scoped: `as?`/`as!` are new expression syntax. Always parsed but gated; a
+                // `from __future__ import` cannot unlock parser-scoped syntax.
                 FeatureScope.Parser),
         };
 
