@@ -1,0 +1,14 @@
+def main() -> None:
+    # list(str) builds a list of 1-char strings, matching Python (#1067).
+    chars: list[str] = list("abc")
+    print(chars)
+    print(len(chars))
+    print(chars[0])
+    print(chars[-1])
+    for c in chars:
+        print(c)
+
+    # Empty string yields an empty list.
+    empty: list[str] = list("")
+    print(empty)
+    print(len(empty))
