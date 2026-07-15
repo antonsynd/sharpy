@@ -92,3 +92,17 @@ answered with data at E4 rather than speculation now.
 **Ongoing, all phases:** the Roslyn borrowing list (§4.4) — lazy semantic binding for
 LSP, pooling/allocation gates, determinism as contract, pull-based incremental
 memoization, diagnostics-with-fixes.
+
+### Borrowing list status
+
+The strategic-review §4.4 borrowing list has eight lessons; three are already realized
+(determinism-as-contract via the A3 harness, `IOperation`-as-precedent via the E1 lowering
+IR, and the compiler server). The remaining five are now tracked or implemented:
+
+| Lesson | Status |
+|--------|--------|
+| Lazy memoized semantic binding + red/green incremental reparse (one architecture) | Tracked: [#1099](https://github.com/antonsynd/sharpy/issues/1099) — measure first (LSP latency baseline), build later |
+| Object pooling in compiler hot paths | Tracked: [#1100](https://github.com/antonsynd/sharpy/issues/1100) — gated on the allocation-regression gate as prerequisite |
+| Pull-based memoization for the `.sharpy-symbols` cache | Tracked: [#1101](https://github.com/antonsynd/sharpy/issues/1101) — push→pull redesign, Roslyn incremental-generator model as precedent |
+| Allocation-regression gates | **Implemented** — `benchmarks/allocation-baseline.json` + CI gate (Wave 4 Phase 14) |
+| Diagnostics-with-fixes | **Implemented** — machine-readable `Data["suggestedName"]` + the LSP quick-fix registry (Wave 4 Phase 14) |
