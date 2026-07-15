@@ -1,0 +1,5 @@
+def main() -> None:
+    # A passing assert is a no-op (does not throw).
+    assert 1 + 1 == 2, "math works"
+    assert True
+    print("ok")

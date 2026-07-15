@@ -24,7 +24,10 @@ namespace Sharpy.Stdlib.Tests.Spy
             public static void AssertAlmostEqual(double actual, double expected, double tol = 1e-9d)
             {
 #line (18, 5) - (18, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                System.Diagnostics.Debug.Assert(global::Sharpy.Builtins.Abs(actual - expected) < tol);
+                if (!(global::Sharpy.Builtins.Abs(actual - expected) < tol))
+                {
+                    throw new global::Sharpy.AssertionError();
+                }
             }
         }
     }

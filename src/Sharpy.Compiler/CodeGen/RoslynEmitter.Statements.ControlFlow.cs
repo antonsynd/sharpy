@@ -38,60 +38,66 @@ internal partial class RoslynEmitter
             return GenerateTestAssert(assert);
         }
 
-        // assert condition, message → Debug.Assert(condition, message)
-        var condition = WrapTruthinessIfNeeded(GenerateExpression(assert.Test), assert.Test);
+        // Outside @test, `assert` is a real runtime check (#1070): it lowers to
+        //   if (!cond) throw new global::Sharpy.AssertionError(msg?)
+        // The former Debug.Assert lowering never executed — AssemblyCompiler parses with no
+        // preprocessor symbols in any configuration, so [Conditional("DEBUG")] stripped every
+        // assert. A future -O-analogue strip flag is spec'd but unbuilt (see the assert section
+        // of docs/language_specification/statements.md).
+        //
+        // approx(...) comparisons generalize to a tolerance form here too (#1074), so
+        // `assert x == approx(y)` works in plain functions and helpers, not only @test bodies.
+        var successCondition = TryGetApproxParts(assert.Test) is { } parts
+            ? BuildApproxSuccessCondition(parts)
+            : WrapTruthinessIfNeeded(GenerateExpression(assert.Test), assert.Test);
 
-        InvocationExpressionSyntax invocation;
-        if (assert.Message != null)
-        {
-            var message = GenerateExpression(assert.Message);
-            invocation = InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("System.Diagnostics.Debug"),
-                    IdentifierName("Assert")))
-                .AddArgumentListArguments(
-                    Argument(condition),
-                    Argument(message));
-        }
-        else
-        {
-            invocation = InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("System.Diagnostics.Debug"),
-                    IdentifierName("Assert")))
-                .AddArgumentListArguments(Argument(condition));
-        }
+        var ctorArgs = assert.Message != null
+            ? ArgumentList(SingletonSeparatedList(Argument(GenerateExpression(assert.Message))))
+            : ArgumentList();
+        var throwStmt = ThrowStatement(
+            ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "AssertionError"))
+                .WithArgumentList(ctorArgs));
 
-        // assert x is not None → narrow x for the rest of the scope. The assert narrows
-        // on the positive condition, so we process NarrowInThenBranch == true entries
-        // (the inverse of ApplyPostIfNarrowings). Not popped — persists until the method
-        // boundary's NarrowingState.Reset.
+        var guard = IfStatement(
+            PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(successCondition)),
+            Block(throwStmt));
+
+        // assert x is not None → narrow x for the rest of the scope. The assert narrows on the
+        // positive condition, so we process NarrowInThenBranch == true entries. Not popped —
+        // persists until the method boundary's NarrowingState.Reset.
+        ApplyAssertNarrowings(assert);
+
+        return guard;
+    }
+
+    /// <summary>
+    /// Applies the type narrowings an <c>assert</c> statement contributes to the following
+    /// statements (e.g. <c>assert x is not None</c> narrows <c>x</c> for the rest of the scope).
+    /// </summary>
+    private void ApplyAssertNarrowings(AssertStatement assert)
+    {
         var decision = _context.SemanticInfo?.GetNarrowingDecision(assert.Test);
-        if (decision is { NarrowsFollowingStatements: true })
+        if (decision is not { NarrowsFollowingStatements: true })
+            return;
+
+        foreach (var n in decision.OptionalNarrowings)
         {
-            foreach (var n in decision.OptionalNarrowings)
-            {
-                if (!n.NarrowInThenBranch)
-                    continue;
+            if (!n.NarrowInThenBranch)
+                continue;
 
-                _narrowing.PushNarrowing(n.VariableName);
-                if (n.IsValueTypeNullable)
-                    _narrowing.AddNullableNarrowing(n.VariableName);
-                else if (n.IsReferenceTypeNullable)
-                    _narrowing.AddReferenceNullableNarrowing(n.VariableName);
-            }
-
-            var isInstanceInfo = GetIsInstanceNarrowingsFromDecision(assert.Test, narrowInThen: true);
-            if (isInstanceInfo.HasValue)
-            {
-                foreach (var (varName, typeName) in isInstanceInfo.Value.Narrowings)
-                    _narrowing.PushIsInstanceNarrowing(varName, typeName);
-            }
+            _narrowing.PushNarrowing(n.VariableName);
+            if (n.IsValueTypeNullable)
+                _narrowing.AddNullableNarrowing(n.VariableName);
+            else if (n.IsReferenceTypeNullable)
+                _narrowing.AddReferenceNullableNarrowing(n.VariableName);
         }
 
-        return ExpressionStatement(invocation);
+        var isInstanceInfo = GetIsInstanceNarrowingsFromDecision(assert.Test, narrowInThen: true);
+        if (isInstanceInfo.HasValue)
+        {
+            foreach (var (varName, typeName) in isInstanceInfo.Value.Narrowings)
+                _narrowing.PushIsInstanceNarrowing(varName, typeName);
+        }
     }
 
     /// <summary>
@@ -105,41 +111,18 @@ internal partial class RoslynEmitter
         var test = assert.Test;
 
         // assert x == approx(y[, places=n | abs=d]) → tolerance/precision-based Xunit.Assert.Equal.
-        // Checked ahead of the generic `==` pattern. The approx(...) call's first argument is the
-        // expected value; the other operand of `==` is the actual value.
-        //   - abs=d (a double, keyword or 3rd positional) selects Assert.Equal(double, double, double tolerance)
-        //   - places=n (an int, keyword or 2nd positional) selects Assert.Equal(double, double, int precision)
-        //   - abs wins when both are present; default precision is 7.
-        // Only the `==` form is rewritten; `assert x != approx(y)` falls through to NotEqual.
-        if (test is BinaryOp { Operator: BinaryOperator.Equal } approxEq
-            && (AsApproxCall(approxEq.Left) ?? AsApproxCall(approxEq.Right)) is FunctionCall approxCall
-            && approxCall.Arguments.Length >= 1)
+        // Checked ahead of the generic `==` pattern. abs (a double) selects
+        // Assert.Equal(double, double, double tolerance); places (an int) selects
+        // Assert.Equal(double, double, int precision). Only the `==` form is rewritten;
+        // `assert x != approx(y)` falls through to NotEqual.
+        if (TryGetApproxParts(test) is { } approxParts)
         {
-            var actualExpr = AsApproxCall(approxEq.Left) != null ? approxEq.Right : approxEq.Left;
-            var expected = GenerateExpression(approxCall.Arguments[0]);
-            var actual = GenerateExpression(actualExpr);
-
-            var absKw = approxCall.KeywordArguments.FirstOrDefault(k => k.Name == "abs");
-            var placesKw = approxCall.KeywordArguments.FirstOrDefault(k => k.Name == "places");
-
-            ExpressionSyntax toleranceArg;
-            if (absKw != null)
-                toleranceArg = GenerateExpression(absKw.Value);
-            else if (approxCall.Arguments.Length >= 3)
-                toleranceArg = GenerateExpression(approxCall.Arguments[2]);   // abs (positional)
-            else if (placesKw != null)
-                toleranceArg = GenerateExpression(placesKw.Value);
-            else if (approxCall.Arguments.Length >= 2)
-                toleranceArg = GenerateExpression(approxCall.Arguments[1]);   // places (positional)
-            else
-                toleranceArg = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7));
-
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("Equal")))
                 .AddArgumentListArguments(
-                    Argument(expected),
-                    Argument(actual),
-                    Argument(toleranceArg)));
+                    Argument(approxParts.Expected),
+                    Argument(approxParts.Actual),
+                    Argument(approxParts.Tolerance)));
         }
 
         // assert a == None / a != None on a reference-semantics operand → Xunit.Assert.Null / NotNull.
@@ -1040,6 +1023,82 @@ internal partial class RoslynEmitter
             return call;
         }
         return null;
+    }
+
+    /// <summary>
+    /// The materialized operands of an <c>assert x == approx(y[, places | abs])</c> comparison:
+    /// the approx expected value, the actual value, and the tolerance. <see cref="IsPlaces"/>
+    /// distinguishes an integer <c>places</c> precision from a floating-point <c>abs</c> tolerance.
+    /// </summary>
+    private readonly record struct ApproxParts(
+        ExpressionSyntax Expected, ExpressionSyntax Actual, ExpressionSyntax Tolerance, bool IsPlaces);
+
+    /// <summary>
+    /// Recognizes <c>x == approx(y[, places=n | abs=d])</c> and materializes its operands. The
+    /// approx(...) call's first argument is the expected value; the other operand of <c>==</c> is
+    /// the actual value. abs (keyword or 3rd positional) wins over places (keyword or 2nd
+    /// positional); the default is <c>places=7</c>. Returns null for any other test expression.
+    /// Shared by the @test (xUnit) and non-@test (AssertionError) assert lowerings (#1074).
+    /// </summary>
+    private ApproxParts? TryGetApproxParts(Expression test)
+    {
+        if (test is not BinaryOp { Operator: BinaryOperator.Equal } approxEq
+            || (AsApproxCall(approxEq.Left) ?? AsApproxCall(approxEq.Right)) is not FunctionCall approxCall
+            || approxCall.Arguments.Length < 1)
+        {
+            return null;
+        }
+
+        var actualExpr = AsApproxCall(approxEq.Left) != null ? approxEq.Right : approxEq.Left;
+        var expected = GenerateExpression(approxCall.Arguments[0]);
+        var actual = GenerateExpression(actualExpr);
+
+        var absKw = approxCall.KeywordArguments.FirstOrDefault(k => k.Name == "abs");
+        var placesKw = approxCall.KeywordArguments.FirstOrDefault(k => k.Name == "places");
+
+        ExpressionSyntax toleranceArg;
+        bool isPlaces;
+        if (absKw != null) { toleranceArg = GenerateExpression(absKw.Value); isPlaces = false; }
+        else if (approxCall.Arguments.Length >= 3) { toleranceArg = GenerateExpression(approxCall.Arguments[2]); isPlaces = false; }
+        else if (placesKw != null) { toleranceArg = GenerateExpression(placesKw.Value); isPlaces = true; }
+        else if (approxCall.Arguments.Length >= 2) { toleranceArg = GenerateExpression(approxCall.Arguments[1]); isPlaces = true; }
+        else { toleranceArg = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7)); isPlaces = true; }
+
+        return new ApproxParts(expected, actual, toleranceArg, isPlaces);
+    }
+
+    /// <summary>
+    /// Builds the boolean success condition for an approx assertion outside a @test function,
+    /// matching Python's <c>assertAlmostEqual</c>/<c>approx</c> tolerance semantics:
+    /// <c>abs</c> → <c>Math.Abs(actual - expected) &lt;= tolerance</c>; <c>places</c> →
+    /// <c>Math.Round(Math.Abs(actual - expected), places) == 0</c>. The caller negates this to
+    /// decide whether to throw <c>AssertionError</c>.
+    /// </summary>
+    private ExpressionSyntax BuildApproxSuccessCondition(ApproxParts parts)
+    {
+        var doubleType = PredefinedType(Token(SyntaxKind.DoubleKeyword));
+        var diff = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("System", "Math"), IdentifierName("Abs")))
+            .AddArgumentListArguments(Argument(
+                BinaryExpression(SyntaxKind.SubtractExpression,
+                    CastExpression(doubleType, ParenthesizedExpression(parts.Actual)),
+                    CastExpression(doubleType, ParenthesizedExpression(parts.Expected)))));
+
+        if (parts.IsPlaces)
+        {
+            var rounded = InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        MakeGlobalQualifiedName("System", "Math"), IdentifierName("Round")))
+                .AddArgumentListArguments(
+                    Argument(diff),
+                    Argument(CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), ParenthesizedExpression(parts.Tolerance))));
+            return BinaryExpression(SyntaxKind.EqualsExpression, rounded,
+                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0.0)));
+        }
+
+        return BinaryExpression(SyntaxKind.LessThanOrEqualExpression, diff,
+            CastExpression(doubleType, ParenthesizedExpression(parts.Tolerance)));
     }
 
     /// <summary>

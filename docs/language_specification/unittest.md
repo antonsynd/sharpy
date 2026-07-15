@@ -51,7 +51,7 @@ test_decorator ::= '@test' [ '(' string_literal ')' ] NEWLINE
 
 ## Assert Rewriting
 
-Inside `@test` functions, `assert` statements are rewritten to xUnit assertions for rich error messages. Outside `@test` functions, `assert` continues to emit `Debug.Assert()`.
+Inside `@test` functions, `assert` statements are rewritten to xUnit assertions for rich error messages. Outside `@test` functions, `assert` lowers to a real runtime check that raises `AssertionError` (see [assert_statement.md](assert_statement.md)) (#1070).
 
 | Sharpy | xUnit C# |
 |--------|----------|

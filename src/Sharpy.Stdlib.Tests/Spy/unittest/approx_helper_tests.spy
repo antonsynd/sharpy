@@ -1,0 +1,29 @@
+# Regression coverage for #1074: approx() works outside @test bodies.
+#
+# Before the fix, an `assert x == approx(y)` in a plain (non-@test) helper fell through to the
+# Debug.Assert lowering and evaluated the runtime approx() marker, which throws
+# NotSupportedException. The compiler now lowers approx asserts to a tolerance comparison in
+# every function — the xUnit flavor inside @test, the AssertionError flavor elsewhere.
+
+from unittest import approx
+
+
+def _assert_close(actual: float, expected: float) -> None:
+    # Helper is NOT @test-decorated, so its assert takes the AssertionError lowering.
+    assert actual == approx(expected, abs=1e-9)
+
+
+@test
+def test_approx_passes_in_non_test_helper():
+    _assert_close(0.1 + 0.2, 0.3)
+    _assert_close(1.0, 1.0)
+
+
+@test
+def test_approx_failure_in_helper_raises_assertion_error():
+    raised: bool = False
+    try:
+        _assert_close(1.0, 2.0)
+    except AssertionError:
+        raised = True
+    assert raised

@@ -1,0 +1,12 @@
+def check(x: int) -> int:
+    # A plain assert inside a helper function (not @test) is a real runtime check.
+    assert x > 0, "must be positive"
+    return x * 2
+
+
+def main() -> None:
+    print(check(5))
+    try:
+        check(-1)
+    except AssertionError as e:
+        print(e.message)

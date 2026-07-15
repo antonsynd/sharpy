@@ -41,6 +41,30 @@ namespace Sharpy
     }
 
     /// <summary>
+    /// Raised when an <c>assert</c> statement's condition is false. Equivalent to Python's
+    /// <c>AssertionError</c>. Outside <c>@test</c> functions the compiler lowers
+    /// <c>assert cond, msg</c> to <c>if (!cond) throw new AssertionError(msg)</c> (#1070);
+    /// inside <c>@test</c> functions asserts lower to xUnit assertions instead.
+    /// </summary>
+    public class AssertionError : Exception
+    {
+        /// <summary>Create an AssertionError with an empty message (bare <c>assert cond</c>).</summary>
+        public AssertionError() : base(string.Empty)
+        {
+        }
+
+        /// <summary>Create an AssertionError with the specified message (<c>assert cond, msg</c>).</summary>
+        public AssertionError(string message) : base(message)
+        {
+        }
+
+        /// <summary>Create an AssertionError with the specified message and inner exception.</summary>
+        public AssertionError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
     /// Raised when an operation or function receives an argument with the right type but inappropriate value.
     /// Equivalent to Python's <c>ValueError</c>.
     /// </summary>

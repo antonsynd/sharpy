@@ -1,0 +1,7 @@
+def main() -> None:
+    # Outside @test, a failing assert raises a real AssertionError carrying its message (#1070).
+    try:
+        assert False, "boom"
+    except AssertionError as e:
+        print(e.message)
+    print("done")

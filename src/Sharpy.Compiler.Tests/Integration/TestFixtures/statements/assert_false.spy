@@ -1,3 +1,5 @@
 def main():
+    # `assert False` is a real runtime check (#1070): it raises AssertionError and halts, so
+    # "after assert" is never printed. See assert_false.runtime-error.
     assert False
     print("after assert")
