@@ -66,8 +66,9 @@ public class RoslynEmitterStatementTests
     }
 
     [Fact]
-    public void GenerateStatement_AssertWithCondition_GeneratesDebugAssert()
+    public void GenerateStatement_AssertWithCondition_ThrowsAssertionError()
     {
+        // Outside @test, assert is a real runtime check: if (!cond) throw new AssertionError() (#1070).
         var stmt = new AssertStatement
         {
             Test = new BooleanLiteral { Value = true }
@@ -75,11 +76,12 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Equal("System.Diagnostics.Debug.Assert(true);", result);
+        Assert.Contains("if (!(true))", result);
+        Assert.Contains("throw new global::Sharpy.AssertionError()", result);
     }
 
     [Fact]
-    public void GenerateStatement_AssertWithMessage_GeneratesDebugAssertWithMessage()
+    public void GenerateStatement_AssertWithMessage_ThrowsAssertionErrorWithMessage()
     {
         var stmt = new AssertStatement
         {
@@ -89,7 +91,8 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Equal("System.Diagnostics.Debug.Assert(true, \"condition failed\");", result);
+        Assert.Contains("if (!(true))", result);
+        Assert.Contains("throw new global::Sharpy.AssertionError(\"condition failed\")", result);
     }
 
     [Fact]

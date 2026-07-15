@@ -231,11 +231,11 @@ def main():
     }
 
     [Fact]
-    public void AssertOutsideTest_StillEmitsDebugAssert()
+    public void AssertOutsideTest_ThrowsAssertionError()
     {
-        // Regression guard: asserts in non-@test functions must continue to
-        // use System.Diagnostics.Debug.Assert and must NOT be rewritten to
-        // Xunit.Assert.*. This protects production code paths.
+        // Asserts in non-@test functions are real runtime checks (#1070): they lower to
+        // `if (!cond) throw new AssertionError(...)` — never the stripped Debug.Assert, and
+        // never rewritten to Xunit.Assert.* (that path is reserved for @test bodies).
         var source = @"
 def helper():
     x: int = 1
@@ -246,7 +246,8 @@ def main():
     helper()
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("System.Diagnostics.Debug.Assert");
+        code.Should().Contain("global::Sharpy.AssertionError");
+        code.Should().NotContain("System.Diagnostics.Debug.Assert");
         code.Should().NotContain("Xunit.Assert.");
     }
 
@@ -464,12 +465,12 @@ def main():
     }
 
     [Fact]
-    public void AssertRewrite_ApproxOutsideTest_NotRewritten()
+    public void AssertRewrite_ApproxOutsideTest_LowersToToleranceCheck()
     {
-        // The approx rewrite is gated to @test functions. In an ordinary function the
-        // assert lowers to System.Diagnostics.Debug.Assert and the approx() call is left
-        // as the runtime marker (which throws NotSupportedException), matching the
-        // behavior of every other unittest marker outside a test.
+        // #1074: the approx rewrite now applies outside @test too. In an ordinary function the
+        // assert lowers to a tolerance comparison guarding a throw of AssertionError (the
+        // AssertionError flavor) — never the runtime approx() marker, Debug.Assert, or the
+        // xUnit path (which is reserved for @test bodies).
         var source = @"
 from unittest import approx
 
@@ -481,9 +482,11 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source, requiresSharpyCore: true);
-        code.Should().Contain("System.Diagnostics.Debug.Assert(value == Approx(1.0d))");
-        // No tolerance/precision Xunit.Assert.Equal rewrite outside a @test function.
-        code.Should().NotContain("Xunit.Assert.Equal");
+        code.Should().Contain("global::System.Math.Abs");
+        code.Should().Contain("throw new global::Sharpy.AssertionError()");
+        code.Should().NotContain("System.Diagnostics.Debug.Assert");
+        code.Should().NotContain("Approx(");
+        code.Should().NotContain("Xunit.Assert.");
     }
 
     #endregion
