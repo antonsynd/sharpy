@@ -1096,10 +1096,12 @@ public class RoslynEmitterExpressionTests
     public void GenerateExpression_TypeCoercion_NullableValueType_GeneratesIsPattern()
     {
         // Arrange: value to int? → value is int _temp ? Optional<int>.Some(_temp) : default
+        // The parser sets Mode from the target's nullability for `to`-forms (#1029).
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
-            TargetType = new TypeAnnotation { Name = "int", IsOptional = true }
+            TargetType = new TypeAnnotation { Name = "int", IsOptional = true },
+            Mode = CastFailureMode.Null
         };
 
         // Act
@@ -1118,10 +1120,12 @@ public class RoslynEmitterExpressionTests
     public void GenerateExpression_TypeCoercion_NullableReferenceType_GeneratesIsPattern()
     {
         // Arrange: value to str? → value is string _temp ? Optional<string>.Some(_temp) : default
+        // The parser sets Mode from the target's nullability for `to`-forms (#1029).
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
-            TargetType = new TypeAnnotation { Name = "str", IsOptional = true }
+            TargetType = new TypeAnnotation { Name = "str", IsOptional = true },
+            Mode = CastFailureMode.Null
         };
 
         // Act
@@ -1139,10 +1143,12 @@ public class RoslynEmitterExpressionTests
     public void GenerateExpression_TypeCoercion_NullableUserType_GeneratesIsPattern()
     {
         // Arrange: value to Dog? → value is Dog _temp ? Optional<Dog>.Some(_temp) : default
+        // The parser sets Mode from the target's nullability for `to`-forms (#1029).
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "animal" },
-            TargetType = new TypeAnnotation { Name = "Dog", IsOptional = true }
+            TargetType = new TypeAnnotation { Name = "Dog", IsOptional = true },
+            Mode = CastFailureMode.Null
         };
 
         // Act
