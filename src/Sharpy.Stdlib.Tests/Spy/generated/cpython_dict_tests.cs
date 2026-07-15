@@ -20,30 +20,30 @@ namespace Sharpy.Stdlib.Tests.Spy
         {
             internal static bool _GetitemRaises(Sharpy.Dict<string, int> d, string k)
             {
-#line (149, 5) - (154, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (153, 5) - (158, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 try
                 {
-#line (150, 9) - (150, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (154, 9) - (154, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     return d[k] < 0;
                 }
                 catch (KeyError)
                 {
-#line (152, 9) - (152, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (156, 9) - (156, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     return true;
                 }
             }
 
             internal static bool _PopRaises(Sharpy.Dict<string, int> d, string k)
             {
-#line (177, 5) - (182, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (181, 5) - (186, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 try
                 {
-#line (178, 9) - (178, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (182, 9) - (182, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     return d.Pop(k) < 0;
                 }
                 catch (KeyError)
                 {
-#line (180, 9) - (180, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (184, 9) - (184, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     return true;
                 }
             }
@@ -57,28 +57,28 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestBool()
             {
-#line (29, 5) - (29, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (33, 5) - (33, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> empty = new Sharpy.Dict<int, int>()
                 {
                 };
-#line (30, 5) - (30, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (34, 5) - (34, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.False(global::Sharpy.Builtins.Bool(empty));
-#line (31, 5) - (31, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (35, 5) - (35, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True(global::Sharpy.Builtins.Bool(new Sharpy.Dict<int, int>() { { 1, 2 } }));
-#line (32, 5) - (32, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (36, 5) - (36, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(empty));
             }
 
             [Xunit.FactAttribute]
             public void TestLen()
             {
-#line (38, 5) - (38, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (42, 5) - (42, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (39, 5) - (39, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (43, 5) - (43, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(empty));
-#line (40, 5) - (40, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (44, 5) - (44, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -90,20 +90,20 @@ namespace Sharpy.Stdlib.Tests.Spy
                         2
                     }
                 };
-#line (41, 5) - (41, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (45, 5) - (45, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(d));
             }
 
             [Xunit.FactAttribute]
             public void TestContains()
             {
-#line (47, 5) - (47, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (51, 5) - (51, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (48, 5) - (48, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (52, 5) - (52, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True((!empty.Contains("a")));
-#line (49, 5) - (49, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (53, 5) - (53, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -115,24 +115,24 @@ namespace Sharpy.Stdlib.Tests.Spy
                         2
                     }
                 };
-#line (50, 5) - (50, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (54, 5) - (54, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True((d.Contains("a")));
-#line (51, 5) - (51, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (55, 5) - (55, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True((d.Contains("b")));
-#line (52, 5) - (52, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (56, 5) - (56, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True((!d.Contains("c")));
             }
 
             [Xunit.FactAttribute]
             public void TestKeys()
             {
-#line (58, 5) - (58, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (62, 5) - (62, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (59, 5) - (59, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (63, 5) - (63, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(empty));
-#line (60, 5) - (60, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (64, 5) - (64, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -144,24 +144,24 @@ namespace Sharpy.Stdlib.Tests.Spy
                         2
                     }
                 };
-#line (61, 5) - (61, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (65, 5) - (65, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<string>() { "a", "b" }, global::Sharpy.Builtins.Sorted<string>(d.Keys()));
-#line (62, 5) - (62, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (66, 5) - (66, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True((d.Contains("a")));
-#line (63, 5) - (63, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (67, 5) - (67, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True((d.Contains("b")));
             }
 
             [Xunit.FactAttribute]
             public void TestValues()
             {
-#line (69, 5) - (69, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (73, 5) - (73, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (70, 5) - (70, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (74, 5) - (74, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(empty));
-#line (71, 5) - (71, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (75, 5) - (75, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -169,42 +169,42 @@ namespace Sharpy.Stdlib.Tests.Spy
                         2
                     }
                 };
-#line (72, 5) - (72, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (76, 5) - (76, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.List<int> collected = new Sharpy.List<int>()
                 {
                 };
-#line (73, 5) - (75, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (77, 5) - (79, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 foreach (var __loopVar_0 in d.Values())
                 {
                     var v = __loopVar_0;
-#line (74, 9) - (74, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (78, 9) - (78, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     collected.Append(v);
                 }
 
-#line (75, 5) - (75, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (79, 5) - (79, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 2 }, collected);
             }
 
             [Xunit.FactAttribute]
             public void TestItems()
             {
-#line (81, 5) - (81, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (85, 5) - (85, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (82, 5) - (82, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (86, 5) - (86, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 int count = 0;
-#line (83, 5) - (85, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (87, 5) - (89, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 foreach (var __loopVar_1 in empty.Items())
                 {
                     var _pair = __loopVar_1;
-#line (84, 9) - (84, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (88, 9) - (88, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     count = count + 1;
                 }
 
-#line (85, 5) - (85, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (89, 5) - (89, 23) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, count);
-#line (86, 5) - (86, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (90, 5) - (90, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -216,34 +216,34 @@ namespace Sharpy.Stdlib.Tests.Spy
                         2
                     }
                 };
-#line (87, 5) - (87, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (91, 5) - (91, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.List<string> keyacc = new Sharpy.List<string>()
                 {
                 };
-#line (88, 5) - (88, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (92, 5) - (92, 21) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 int valsum = 0;
-#line (89, 5) - (92, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (93, 5) - (96, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 foreach (var __loopVar_2 in d.Items())
                 {
                     var pair = __loopVar_2;
-#line (90, 9) - (90, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (94, 9) - (94, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     keyacc.Append(pair.Item1);
-#line (91, 9) - (91, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (95, 9) - (95, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     valsum = valsum + pair.Item2;
                 }
 
-#line (92, 5) - (92, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (96, 5) - (96, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 keyacc.Sort();
-#line (93, 5) - (93, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (97, 5) - (97, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<string>() { "a", "b" }, keyacc);
-#line (94, 5) - (94, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (98, 5) - (98, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(3, valsum);
             }
 
             [Xunit.FactAttribute]
             public void TestClear()
             {
-#line (100, 5) - (100, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (104, 5) - (104, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> d = new Sharpy.Dict<int, int>()
                 {
                     {
@@ -259,24 +259,24 @@ namespace Sharpy.Stdlib.Tests.Spy
                         3
                     }
                 };
-#line (101, 5) - (101, 14) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (105, 5) - (105, 14) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 d.Clear();
-#line (102, 5) - (102, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (106, 5) - (106, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(d));
             }
 
             [Xunit.FactAttribute]
             public void TestGet()
             {
-#line (108, 5) - (108, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (112, 5) - (112, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (109, 5) - (109, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (113, 5) - (113, 37) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(-1, empty.Get("c", -1));
-#line (110, 5) - (110, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (114, 5) - (114, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(3, empty.Get("c", 3));
-#line (111, 5) - (111, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (115, 5) - (115, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -288,20 +288,20 @@ namespace Sharpy.Stdlib.Tests.Spy
                         2
                     }
                 };
-#line (112, 5) - (112, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (116, 5) - (116, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(-1, d.Get("c", -1));
-#line (113, 5) - (113, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (117, 5) - (117, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(3, d.Get("c", 3));
-#line (114, 5) - (114, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (118, 5) - (118, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(1, d.Get("a", 3));
-#line (115, 5) - (115, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (119, 5) - (119, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(1, d.Get("a", -1));
             }
 
             [Xunit.FactAttribute]
             public void TestCopy()
             {
-#line (121, 5) - (121, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (125, 5) - (125, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> d = new Sharpy.Dict<int, int>()
                 {
                     {
@@ -317,30 +317,30 @@ namespace Sharpy.Stdlib.Tests.Spy
                         3
                     }
                 };
-#line (122, 5) - (122, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (126, 5) - (126, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> c = d.Copy();
-#line (123, 5) - (123, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (127, 5) - (127, 19) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(d, c);
-#line (124, 5) - (124, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(c));
-#line (126, 5) - (126, 13) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                d[4] = 4;
-#line (127, 5) - (127, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(c));
 #line (128, 5) - (128, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(c));
+#line (130, 5) - (130, 13) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                d[4] = 4;
+#line (131, 5) - (131, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(c));
+#line (132, 5) - (132, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(4, global::Sharpy.Builtins.Len(d));
-#line (130, 5) - (130, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (134, 5) - (134, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> empty = new Sharpy.Dict<int, int>()
                 {
                 };
-#line (131, 5) - (131, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (135, 5) - (135, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(empty.Copy()));
             }
 
             [Xunit.FactAttribute]
             public void TestUpdate()
             {
-#line (137, 5) - (137, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (141, 5) - (141, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -348,24 +348,24 @@ namespace Sharpy.Stdlib.Tests.Spy
                         1
                     }
                 };
-#line (138, 5) - (138, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (142, 5) - (142, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 d.Update(new Sharpy.Dict<string, int>() { { "b", 2 }, { "c", 3 } });
-#line (139, 5) - (139, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (143, 5) - (143, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<string>() { "a", "b", "c" }, global::Sharpy.Builtins.Sorted<string>(d.Keys()));
-#line (140, 5) - (140, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (144, 5) - (144, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(2, d["b"]);
-#line (141, 5) - (141, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (145, 5) - (145, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(3, d["c"]);
-#line (143, 5) - (143, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (147, 5) - (147, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 d.Update(new Sharpy.Dict<string, int>() { { "a", 10 } });
-#line (144, 5) - (144, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (148, 5) - (148, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(10, d["a"]);
             }
 
             [Xunit.FactAttribute]
             public void TestKeyerrorOnMissing()
             {
-#line (156, 5) - (156, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (160, 5) - (160, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -373,43 +373,43 @@ namespace Sharpy.Stdlib.Tests.Spy
                         1
                     }
                 };
-#line (157, 5) - (157, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (161, 5) - (161, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True(_GetitemRaises(d, "z"));
-#line (158, 5) - (158, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (162, 5) - (162, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (159, 5) - (159, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (163, 5) - (163, 47) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True(_GetitemRaises(empty, "anything"));
             }
 
             [Xunit.FactAttribute]
             public void TestSetitemGetitem()
             {
-#line (165, 5) - (165, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (169, 5) - (169, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (166, 5) - (166, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (170, 5) - (170, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 d["a"] = 1;
-#line (167, 5) - (167, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (171, 5) - (171, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 d["b"] = 2;
-#line (168, 5) - (168, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.Equal(1, d["a"]);
-#line (169, 5) - (169, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.Equal(2, d["b"]);
-#line (170, 5) - (170, 16) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                d["a"] = 10;
-#line (171, 5) - (171, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                Xunit.Assert.Equal(10, d["a"]);
 #line (172, 5) - (172, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(1, d["a"]);
+#line (173, 5) - (173, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(2, d["b"]);
+#line (174, 5) - (174, 16) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                d["a"] = 10;
+#line (175, 5) - (175, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(10, d["a"]);
+#line (176, 5) - (176, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(d));
             }
 
             [Xunit.FactAttribute]
             public void TestPop()
             {
-#line (184, 5) - (184, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (188, 5) - (188, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -421,28 +421,28 @@ namespace Sharpy.Stdlib.Tests.Spy
                         2
                     }
                 };
-#line (185, 5) - (185, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (189, 5) - (189, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(1, d.Pop("a"));
-#line (186, 5) - (186, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (190, 5) - (190, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True((!d.Contains("a")));
-#line (187, 5) - (187, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (191, 5) - (191, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(d));
-#line (188, 5) - (188, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (192, 5) - (192, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(2, d["b"]);
-#line (189, 5) - (189, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (193, 5) - (193, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True(_PopRaises(d, "missing"));
             }
 
             [Xunit.FactAttribute]
             public void TestConstructor()
             {
-#line (195, 5) - (195, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (199, 5) - (199, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (196, 5) - (196, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (200, 5) - (200, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(empty));
-#line (197, 5) - (197, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (201, 5) - (201, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                     {
@@ -458,39 +458,39 @@ namespace Sharpy.Stdlib.Tests.Spy
                         3
                     }
                 };
-#line (198, 5) - (198, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (202, 5) - (202, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(d));
-#line (199, 5) - (199, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (203, 5) - (203, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(1, d["a"]);
-#line (200, 5) - (200, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (204, 5) - (204, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(3, d["c"]);
             }
 
             [Xunit.FactAttribute]
             public void TestEquality()
             {
-#line (206, 5) - (206, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (210, 5) - (210, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.Dict<string, int>() { { "b", 2 }, { "a", 1 } }, new Sharpy.Dict<string, int>() { { "a", 1 }, { "b", 2 } });
-#line (207, 5) - (207, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (211, 5) - (211, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.NotEqual(new Sharpy.Dict<string, int>() { { "a", 2 } }, new Sharpy.Dict<string, int>() { { "a", 1 } });
-#line (208, 5) - (208, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (212, 5) - (212, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.NotEqual(new Sharpy.Dict<string, int>() { { "a", 1 }, { "b", 2 } }, new Sharpy.Dict<string, int>() { { "a", 1 } });
-#line (209, 5) - (209, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (213, 5) - (213, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty1 = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (210, 5) - (210, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (214, 5) - (214, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> empty2 = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (211, 5) - (211, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (215, 5) - (215, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(empty2, empty1);
             }
 
             [Xunit.FactAttribute]
             public void TestMergeOperator()
             {
-#line (217, 5) - (217, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (221, 5) - (221, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> a = new Sharpy.Dict<int, int>()
                 {
                     {
@@ -506,7 +506,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                         1
                     }
                 };
-#line (218, 5) - (218, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (222, 5) - (222, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> b = new Sharpy.Dict<int, int>()
                 {
                     {
@@ -522,51 +522,51 @@ namespace Sharpy.Stdlib.Tests.Spy
                         3
                     }
                 };
-#line (221, 5) - (221, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (225, 5) - (225, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.Dict<int, int>() { { 0, 0 }, { 1, 1 }, { 2, 2 }, { 3, 3 } }, (a | b));
-#line (222, 5) - (222, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (226, 5) - (226, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.Dict<int, int>() { { 1, 1 }, { 2, 1 }, { 3, 3 }, { 0, 0 } }, (b | a));
-#line (223, 5) - (223, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (227, 5) - (227, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> c = a.Copy();
-#line (224, 5) - (224, 11) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (228, 5) - (228, 11) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 c = c | b;
-#line (225, 5) - (225, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (229, 5) - (229, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.Dict<int, int>() { { 0, 0 }, { 1, 1 }, { 2, 2 }, { 3, 3 } }, c);
             }
 
             [Xunit.FactAttribute]
             public void TestTupleKeyerror()
             {
-#line (231, 5) - (231, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (235, 5) - (235, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<global::System.ValueTuple<int, int>, string> d = new Sharpy.Dict<global::System.ValueTuple<int, int>, string>()
                 {
                 };
-#line (232, 5) - (232, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (236, 5) - (236, 20) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 d[(1, 2)] = "x";
-#line (233, 5) - (233, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (237, 5) - (237, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal("x", d[(1, 2)]);
-#line (234, 5) - (234, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (238, 5) - (238, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 bool ke = false;
-#line (235, 5) - (239, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (239, 5) - (243, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 try
                 {
-#line (236, 9) - (236, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (240, 9) - (240, 22) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     var _ = d[(3, 4)];
                 }
                 catch (KeyError)
                 {
-#line (238, 9) - (238, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (242, 9) - (242, 18) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     ke = true;
                 }
 
-#line (239, 5) - (239, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (243, 5) - (243, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.True(ke);
             }
 
             [Xunit.FactAttribute]
             public void TestMutatingIteration()
             {
-#line (245, 5) - (245, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (249, 5) - (249, 44) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> d = new Sharpy.Dict<int, int>()
                 {
                     {
@@ -582,37 +582,77 @@ namespace Sharpy.Stdlib.Tests.Spy
                         3
                     }
                 };
-#line (246, 5) - (248, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (250, 5) - (252, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 foreach (var __loopVar_3 in global::Sharpy.Builtins.Sorted<int>(d.Keys()))
                 {
                     var k = __loopVar_3;
-#line (247, 9) - (247, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (251, 9) - (251, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     d[k] = d[k] * 10;
                 }
 
-#line (248, 5) - (248, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (252, 5) - (252, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.Dict<int, int>() { { 1, 10 }, { 2, 20 }, { 3, 30 } }, d);
             }
 
             [Xunit.FactAttribute]
             public void TestStringKeysCanTrackValues()
             {
-#line (254, 5) - (254, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (258, 5) - (258, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
                 {
                 };
-#line (255, 5) - (255, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (259, 5) - (259, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 d["a"] = 1;
-#line (256, 5) - (256, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (260, 5) - (260, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 d["b"] = 2;
-#line (257, 5) - (257, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (261, 5) - (261, 15) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 d["a"] = 3;
-#line (258, 5) - (258, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (262, 5) - (262, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(3, d["a"]);
-#line (259, 5) - (259, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (263, 5) - (263, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(2, d["b"]);
-#line (260, 5) - (260, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (264, 5) - (264, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(d));
+            }
+
+            [Xunit.FactAttribute]
+            public void TestSetdefault()
+            {
+#line (273, 5) - (273, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
+                {
+                };
+#line (274, 5) - (274, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(0, d.SetDefault("key", 0));
+#line (275, 5) - (275, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(0, d["key"]);
+#line (276, 5) - (276, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(0, d.SetDefault("key", 99));
+#line (277, 5) - (277, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(0, d["key"]);
+#line (278, 5) - (278, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(3, d.SetDefault("other", 3));
+#line (279, 5) - (279, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(d));
+            }
+
+            [Xunit.FactAttribute]
+            public void TestPopitem()
+            {
+#line (287, 5) - (287, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
+                {
+                    {
+                        "a",
+                        1
+                    }
+                };
+#line (288, 5) - (288, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                global::System.ValueTuple<string, int> pair = d.PopItem();
+#line (289, 5) - (289, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(("a", 1), pair);
+#line (290, 5) - (290, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(d));
             }
         }
     }

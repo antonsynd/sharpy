@@ -426,8 +426,16 @@ internal partial class RoslynEmitter
                 ?? ResolveMethodForCall(memberAccess.Object, memberAccess.Member);
             var resolvedClrMethodName = GetClrMethodName(resolvedMethodSymbol)
                 ?? _context.SemanticInfo?.GetResolvedClrMemberName(memberAccess);
+            // The word-boundary table (setdefault/popitem, #1069) applies only to the builtin
+            // collections it was written for. A discovered type may deliberately spell a method to
+            // reverse-mangle cleanly — OrderedDict's one-capital `Popitem` demangles to `popitem`,
+            // so `od.popitem()` resolves; forcing the table's `PopItem` there would reference a
+            // nonexistent member (CS1061). Gate the table on a builtin-collection receiver.
+            var receiverType = GetExpressionSemanticType(memberAccess.Object);
+            var isBuiltinCollectionReceiver =
+                receiverType is GenericType { Name: BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set };
             var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
-                ?? NameMangler.GetListMethodMapping(memberAccess.Member)
+                ?? (isBuiltinCollectionReceiver ? NameMangler.GetListMethodMapping(memberAccess.Member) : null)
                 ?? NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, resolvedClrMethodName);
 
             // CLR property access: if the member is a property (not a method) on a

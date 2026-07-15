@@ -19,8 +19,12 @@
 #   - test_bad_key, test_missing, test_eq (dunder forms), test_repr, test_fromkeys,
 #     test_pop (dunder forms): local dunder-fixture key classes, exec(),
 #     RuntimeError-on-mutation-during-iteration — not expressible (Axiom 3 / DYNAMIC).
-#   - test_setdefault / test_popitem: dict.setdefault()/popitem() are unreachable from
-#     .spy (explicit-interface only, #1069); left unported — see the EOF ledger entry.
+#
+# Ported once #1069 fixed the mangling: setdefault()/popitem() now reach their CLR
+# methods (SetDefault/PopItem) — see test_setdefault / test_popitem below. Sharpy's
+# setdefault takes an explicit default (no single-arg None form), and popitem's removal
+# order is unspecified (Sharpy dict iteration order is unspecified), so the popitem test
+# uses a single-element dict.
 
 # --- test_bool (DictTest.test_bool) ---
 
@@ -259,16 +263,28 @@ def test_string_keys_can_track_values():
     assert d["b"] == 2
     assert len(d) == 2
 
-# --- divergence-ledger annotations (machine-read by build_tools.cpython_oracle) ---
-# oracle-ledger:
-#   kind: not-ported
-#   test: DictTest.test_setdefault
-#   side: sharpy
-#   bug: 1069
-#   spec_ref: docs/language_specification/collections.md
-#   origin: Lib/test/test_dict.py::DictTest.test_setdefault
-#   reason: >
-#     dict.setdefault()/popitem() are implemented only as explicit IDict interface
-#     members (SetDefault/PopItem) and are not reachable as instance methods from a
-#     .spy program, so the CPython setdefault/popitem tests cannot be expressed until
-#     #1069 exposes them as public instance methods.
+# --- test_setdefault (DictTest.test_setdefault — Sharpy 2-arg form) ---
+
+@test
+def test_setdefault():
+    # setdefault returns the existing value when the key is present, otherwise inserts
+    # the default and returns it. Sharpy requires an explicit default (no single-arg None
+    # form). Re-armed by #1069 (setdefault now mangles to SetDefault).
+    d: dict[str, int] = {}
+    assert d.setdefault("key", 0) == 0
+    assert d["key"] == 0
+    assert d.setdefault("key", 99) == 0
+    assert d["key"] == 0
+    assert d.setdefault("other", 3) == 3
+    assert len(d) == 2
+
+# --- test_popitem (DictTest.test_popitem — single element; removal order unspecified) ---
+
+@test
+def test_popitem():
+    # popitem removes and returns a (key, value) pair. Re-armed by #1069 (popitem now
+    # mangles to PopItem). A single-element dict keeps the result order-independent.
+    d: dict[str, int] = {"a": 1}
+    pair: tuple[str, int] = d.popitem()
+    assert pair == ("a", 1)
+    assert len(d) == 0

@@ -10,14 +10,21 @@ namespace Sharpy.Compiler.Shared;
 /// </summary>
 internal static class NameMangler
 {
-    // Python list method mappings to C# equivalents
-    // With Sharpy.List<T>, Pythonic method names are used directly (Append, Extend, Pop, etc.)
-    // so most mappings just use ToPascalCase. Only add entries here for methods whose
-    // PascalCase name differs from the target C# method name.
+    // Python collection method mappings to C# equivalents.
+    // With Sharpy.List<T>/Dict<K, V>, Pythonic method names are used directly (Append, Extend,
+    // Pop, etc.) so most mappings just use ToPascalCase. Only add entries here for methods whose
+    // PascalCase name differs from the target C# method name — i.e. single lowercase words that
+    // ToPascalCase cannot re-split into their true multi-word C# form.
     //
-    // See: #99 (unconditional mapping should use type information from semantic analysis)
+    //   setdefault -> SetDefault (ToPascalCase would give "Setdefault" -> CS1061)
+    //   popitem    -> PopItem    (ToPascalCase would give "Popitem"    -> CS1061)
+    //
+    // See: #99 (unconditional mapping should use type information from semantic analysis),
+    //      #1069 (dict setdefault/popitem mangled to non-existent CLR names).
     private static readonly Dictionary<string, string> _listMethodMap = new()
     {
+        ["setdefault"] = "SetDefault",
+        ["popitem"] = "PopItem",
     };
 
     /// <summary>

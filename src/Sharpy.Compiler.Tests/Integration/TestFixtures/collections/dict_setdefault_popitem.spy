@@ -1,0 +1,12 @@
+def main() -> None:
+    # setdefault/popitem are single lowercase words; the mangler must map them to their real
+    # CLR names SetDefault/PopItem rather than ToPascalCase's Setdefault/Popitem (#1069).
+    d: dict[str, int] = {"a": 1, "b": 2}
+    print(d.setdefault("a", 99))
+    print(d.setdefault("c", 3))
+    print(sorted(d.items()))
+
+    # Single-element dict keeps popitem's result order-independent.
+    single: dict[str, int] = {"x": 10}
+    print(single.popitem())
+    print(len(single))
