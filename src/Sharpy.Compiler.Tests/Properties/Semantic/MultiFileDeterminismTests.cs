@@ -5,6 +5,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Tests.Helpers;
+using Sharpy.Compiler.Tests.Lowering;
 using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
@@ -44,11 +45,12 @@ public class MultiFileDeterminismTests
     public void CompilationOrder_DoesNotAffectResult(string name, string mainSpy, string libSpy)
     {
         _output.WriteLine($"Testing: {name}");
-        var (diags1, csharp1) = CompileWithOrder(mainSpy, libSpy, mainFirst: true);
-        var (diags2, csharp2) = CompileWithOrder(mainSpy, libSpy, mainFirst: false);
+        var (diags1, csharp1, ir1) = CompileWithOrder(mainSpy, libSpy, mainFirst: true);
+        var (diags2, csharp2, ir2) = CompileWithOrder(mainSpy, libSpy, mainFirst: false);
 
         AssertDiagnosticsIdenticalInOrder(diags1, diags2);
         AssertGeneratedCSharpIdentical(csharp1, csharp2);
+        AssertIrStructuralDumpIdentical(ir1, ir2);
     }
 
     [Fact]
@@ -78,11 +80,12 @@ public class MultiFileDeterminismTests
             var libSpy = $"def {funcName}(x: {paramType}) -> {paramType}:\n    return x\n\nclass {className}:\n    value: {fieldType}\n    def __init__(self, v: {fieldType}):\n        self.value = v\n";
             var mainSpy = $"from lib import {funcName}, {className}\n\ndef main():\n    print({funcName}({defaultVal}))\n    obj: {className} = {className}({fieldDefault})\n    print(obj.value)\n";
 
-            var (diags1, csharp1) = CompileWithOrder(mainSpy, libSpy, mainFirst: true);
-            var (diags2, csharp2) = CompileWithOrder(mainSpy, libSpy, mainFirst: false);
+            var (diags1, csharp1, ir1) = CompileWithOrder(mainSpy, libSpy, mainFirst: true);
+            var (diags2, csharp2, ir2) = CompileWithOrder(mainSpy, libSpy, mainFirst: false);
 
             AssertDiagnosticsIdenticalInOrder(diags1, diags2, throwOnMismatch: true);
             AssertGeneratedCSharpIdentical(csharp1, csharp2, throwOnMismatch: true);
+            AssertIrStructuralDumpIdentical(ir1, ir2, throwOnMismatch: true);
         }, iter: 20);
     }
 
@@ -105,13 +108,15 @@ public class MultiFileDeterminismTests
         var reversed = Enumerable.Reverse(sorted).ToList();
 
         // A no-op when there is only one file, but the discovery filter guarantees >1.
-        var (diagsSorted, csharpSorted) = CompileFixtureWithOrder(fixtureDir, sorted);
-        var (diagsReversed, csharpReversed) = CompileFixtureWithOrder(fixtureDir, reversed);
+        var (diagsSorted, csharpSorted, irSorted) = CompileFixtureWithOrder(fixtureDir, sorted);
+        var (diagsReversed, csharpReversed, irReversed) = CompileFixtureWithOrder(fixtureDir, reversed);
 
         // Both compilations read the same on-disk files, so paths are identical between
         // runs — compare messages verbatim (no temp-path normalization needed here).
         AssertDiagnosticsIdenticalInOrder(diagsSorted, diagsReversed, normalizeMessages: false);
         AssertGeneratedCSharpIdentical(csharpSorted, csharpReversed, normalizeValues: false);
+        // The middle-end IR must also be construction-order-independent (E2, #1056).
+        AssertIrStructuralDumpIdentical(irSorted, irReversed);
     }
 
     public static IEnumerable<object[]> MultiFileFixtures()
@@ -122,7 +127,7 @@ public class MultiFileDeterminismTests
         }
     }
 
-    private (List<CompilerDiagnostic> diags, Dictionary<string, string> csharp)
+    private (List<CompilerDiagnostic> diags, Dictionary<string, string> csharp, string ir)
         CompileWithOrder(string mainSpy, string libSpy, bool mainFirst)
     {
         using var helper = new ProjectCompilationHelper(_output);
@@ -142,10 +147,11 @@ public class MultiFileDeterminismTests
 
         return (
             result.Diagnostics.GetAll().ToList(),
-            new Dictionary<string, string>(result.GeneratedCSharpFiles));
+            new Dictionary<string, string>(result.GeneratedCSharpFiles),
+            IrStructuralDump.Dump(result.ProjectModel?.IrCompilation));
     }
 
-    private (List<CompilerDiagnostic> diags, Dictionary<string, string> csharp)
+    private (List<CompilerDiagnostic> diags, Dictionary<string, string> csharp, string ir)
         CompileFixtureWithOrder(string fixtureDir, IReadOnlyList<string> orderedFiles)
     {
         var mainSpy = Path.Combine(fixtureDir, "main.spy");
@@ -171,7 +177,8 @@ public class MultiFileDeterminismTests
 
         return (
             result.Diagnostics.GetAll().ToList(),
-            new Dictionary<string, string>(result.GeneratedCSharpFiles));
+            new Dictionary<string, string>(result.GeneratedCSharpFiles),
+            IrStructuralDump.Dump(result.ProjectModel?.IrCompilation));
     }
 
     private static void AssertDiagnosticsIdenticalInOrder(
@@ -232,6 +239,16 @@ public class MultiFileDeterminismTests
                 Fail(throwOnMismatch, $"Generated C# differs for {key}");
                 return;
             }
+        }
+    }
+
+    private static void AssertIrStructuralDumpIdentical(string a, string b, bool throwOnMismatch = false)
+    {
+        if (a != b)
+        {
+            Fail(throwOnMismatch,
+                "Lowering IR structural dump differs between compile orders (A3, #1056): "
+                + "construction order leaked into the IR tree.");
         }
     }
 
