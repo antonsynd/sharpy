@@ -289,6 +289,32 @@ To view results from a PR:
 2. Click "Benchmarks" workflow
 3. Download "benchmark-results-N" artifact
 
+## Allocation-Regression Gate (Phase 14 — borrowing list)
+
+The benchmarks workflow fails the build if any `CompilerBenchmarks` benchmark's **Allocated**
+column (BenchmarkDotNet `[MemoryDiagnoser]` `BytesAllocatedPerOperation`) regresses more than
+**10%** versus the checked-in baseline `benchmarks/allocation-baseline.json`. Allocated bytes are
+measured precisely (not statistically), so this is a stable, machine-independent signal — and the
+prerequisite for the object-pooling work ([#1100](https://github.com/antonsynd/sharpy/issues/1100)),
+which needs regression detection before it starts.
+
+The baseline is a **deliberate artifact**, treated like a `.expected.cs` snapshot: it is only
+updated on purpose and the change is reviewed. "Regenerate to green" is exactly what the gate exists
+to prevent. If an allocation increase is intentional, refresh it and review the diff:
+
+```bash
+# 1) Produce a fresh JSON export (a short job is fine — allocation is precise regardless of length):
+dotnet run -c Release --project src/Sharpy.Compiler.Benchmarks -- \
+  --filter "*CompilerBenchmarks*" --job short --exporters json --artifacts ./BenchmarkResults
+
+# 2) Rewrite the baseline from that export, then review the git diff before committing:
+python -m build_tools.allocation_gate update \
+  --baseline benchmarks/allocation-baseline.json --results ./BenchmarkResults
+```
+
+The comparison script and its pytest live in `build_tools/allocation_gate.py` and
+`build_tools/tests/test_allocation_gate.py` (run via the standard `python -m pytest build_tools/tests/`).
+
 ## LSP Analysis Latency (Phase 14 — borrowing list "measure first")
 
 > **Recorded:** 2026-07-15 · Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301

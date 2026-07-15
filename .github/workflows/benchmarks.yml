@@ -36,8 +36,25 @@ jobs:
           --artifacts ./BenchmarkResults
 
     - name: Upload Results
+      if: always()
       uses: actions/upload-artifact@v7
       with:
         name: benchmark-results-${{ github.run_number }}
         path: BenchmarkResults/
         retention-days: 30
+
+    # Allocation-regression gate: fail the build if any benchmark's Allocated column
+    # (BenchmarkDotNet [MemoryDiagnoser]) regressed > 10% vs benchmarks/allocation-baseline.json.
+    # Refresh the baseline deliberately (reviewed like a snapshot) — see the file's _comment.
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+
+    - name: Allocation-regression gate
+      run: |
+        python -m build_tools.allocation_gate check \
+          --baseline benchmarks/allocation-baseline.json \
+          --results ./BenchmarkResults
+      env:
+        PYTHONPATH: ${{ github.workspace }}

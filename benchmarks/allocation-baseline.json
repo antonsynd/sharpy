@@ -1,0 +1,26 @@
+{
+  "_comment": "Allocation-regression baseline (BenchmarkDotNet [MemoryDiagnoser] BytesAllocatedPerOperation). Deliberately updated only via `python -m build_tools.allocation_gate update`; review the diff like a snapshot.",
+  "threshold": 0.1,
+  "benchmarks": {
+    "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_Classes": {
+      "allocated_bytes": 5594981,
+      "description": "Classes + Inheritance (35 lines)"
+    },
+    "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_Comprehensions": {
+      "allocated_bytes": 5520163,
+      "description": "Comprehensions (26 lines)"
+    },
+    "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_Fibonacci": {
+      "allocated_bytes": 5189691,
+      "description": "Fibonacci (22 lines)"
+    },
+    "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_HelloWorld": {
+      "allocated_bytes": 4766932,
+      "description": "Hello World (4 lines)"
+    },
+    "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_LargeFunctions": {
+      "allocated_bytes": 6395837,
+      "description": "Large Functions (73 lines)"
+    }
+  }
+}
