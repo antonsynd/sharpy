@@ -175,7 +175,8 @@ internal partial class TypeChecker
                 moduleMemberMessage += $". Did you mean '{moduleMemberSuggestion}'?";
             AddError(moduleMemberMessage,
                 memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember,
-                span: memberAccess.Span);
+                span: memberAccess.Span,
+                data: SuggestionData(moduleMemberSuggestion));
             return SemanticType.Unknown;
         }
 
@@ -351,15 +352,17 @@ internal partial class TypeChecker
             }
 
             var typeMemberMessage = $"Type '{memberLookupType.GetDisplayName()}' has no member '{effectiveMember}'";
+            string? typeMemberSuggestion = null;
             if (udt.Symbol != null)
             {
-                var typeMemberSuggestion = FindMemberSuggestion(effectiveMember, udt.Symbol);
+                typeMemberSuggestion = FindMemberSuggestion(effectiveMember, udt.Symbol);
                 if (typeMemberSuggestion != null)
                     typeMemberMessage += $". Did you mean '{typeMemberSuggestion}'?";
             }
             AddError(typeMemberMessage,
                 memberAccess.LineStart, memberAccess.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedMember,
-                span: memberAccess.Span);
+                span: memberAccess.Span,
+                data: SuggestionData(typeMemberSuggestion));
         }
 
         // Handle named tuple element access: pos.x, pos.y

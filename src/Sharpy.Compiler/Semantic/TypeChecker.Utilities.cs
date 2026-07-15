@@ -1226,7 +1226,7 @@ internal partial class TypeChecker
     /// span — that's where the user needs to fix the code.
     /// </summary>
     private void AddError(string message, int? line = null, int? column = null, string? code = null,
-        Text.TextSpan? span = null)
+        Text.TextSpan? span = null, IReadOnlyDictionary<string, string>? data = null)
     {
         if (_diagnostics.ErrorCount >= MaxErrors)
         {
@@ -1248,7 +1248,7 @@ internal partial class TypeChecker
         }
 
         _diagnostics.AddPhaseError(message, CompilerPhase.TypeChecking,
-            span, line, column, _currentFilePath, code, _logger);
+            span, line, column, _currentFilePath, code, _logger, data);
     }
 
     /// <summary>
@@ -1266,6 +1266,19 @@ internal partial class TypeChecker
     private string? FindSuggestion(string name)
     {
         return EditDistance.FindClosestMatch(name, _symbolTable.GetVisibleSymbolNames());
+    }
+
+    /// <summary>
+    /// Builds the machine-readable diagnostic <c>Data</c> payload carrying a "did you mean?"
+    /// rename target under the <c>suggestedName</c> key, mirroring
+    /// <see cref="Validation.NamingConventionValidator"/>. Returns null when there is no suggestion
+    /// so the diagnostic carries no data (LSP quick-fixes consume this key to offer a rename).
+    /// </summary>
+    private static IReadOnlyDictionary<string, string>? SuggestionData(string? suggestedName)
+    {
+        return suggestedName != null
+            ? new Dictionary<string, string> { ["suggestedName"] = suggestedName }
+            : null;
     }
 
     /// <summary>

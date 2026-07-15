@@ -255,6 +255,7 @@ internal partial class TypeChecker
             }
 
             var message = $"Undefined identifier '{id.Name}'";
+            string? suggestedName = null;
 
             // Enhanced diagnostic for Python developers: if the identifier was
             // declared inside a now-exited block scope (for/if/while/try/with/
@@ -278,14 +279,15 @@ internal partial class TypeChecker
             }
             else
             {
-                var suggestion = FindSuggestion(id.Name);
-                if (suggestion != null)
-                    message += $". Did you mean '{suggestion}'?";
+                suggestedName = FindSuggestion(id.Name);
+                if (suggestedName != null)
+                    message += $". Did you mean '{suggestedName}'?";
             }
 
             AddError(message,
                 id.LineStart, id.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedVariable,
-                span: id.Span);
+                span: id.Span,
+                data: SuggestionData(suggestedName));
             return SemanticType.Unknown;
         }
 

@@ -316,9 +316,10 @@ public class DiagnosticBag
     }
 
     public void AddError(string message, TextSpan? span, int? line = null, int? column = null,
-        string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+        string? filePath = null, string? code = null, CompilerPhase phase = CompilerPhase.Unknown,
+        IReadOnlyDictionary<string, string>? data = null)
     {
-        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, line, column, filePath, code, phase, span));
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, line, column, filePath, code, phase, span, data));
     }
 
     public void AddError(string message, ILocatable locatable, string? filePath = null,

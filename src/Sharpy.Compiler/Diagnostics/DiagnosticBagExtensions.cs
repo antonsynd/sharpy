@@ -19,9 +19,10 @@ internal static class DiagnosticBagExtensions
         string message, CompilerPhase phase,
         TextSpan? span = null, int? line = null, int? column = null,
         string? filePath = null, string? code = null,
-        ICompilerLogger? logger = null)
+        ICompilerLogger? logger = null,
+        IReadOnlyDictionary<string, string>? data = null)
     {
-        diagnostics.AddError(message, span, line, column, filePath, code: code, phase: phase);
+        diagnostics.AddError(message, span, line, column, filePath, code: code, phase: phase, data: data);
         logger?.LogError(message, line ?? 0, column ?? 0);
     }
 
