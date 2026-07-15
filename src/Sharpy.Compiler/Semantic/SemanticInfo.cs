@@ -128,13 +128,6 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, string> _resolvedClrMemberNames =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map binary-op expressions whose value was constant-folded at semantic time to that
-    // value, so codegen can emit the literal directly instead of a runtime computation.
-    // Currently used for constant integer exponentiation (`2 ** 10` → 1024); the inferred
-    // type (Int/Long) lives in the normal type map. Keyed by node identity. (#905)
-    private readonly ConcurrentDictionary<Expression, long> _foldedIntegerConstants =
-        new(ReferenceEqualityComparer.Instance);
-
     // Map method-call member-access expressions to a static-extension dispatch decision, so codegen
     // emits `global::Ext.Method(receiver, args...)` instead of the instance form `receiver.Method(args)`.
     // C# binds instance methods before extension methods, so an instance-style call to a str method
@@ -584,25 +577,6 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
-    /// Records the constant value a binary operation folded to at semantic time (e.g. integer
-    /// exponentiation <c>2 ** 10</c> → <c>1024</c>). Codegen emits this literal directly instead
-    /// of a runtime computation; the inferred result type (Int/Long) comes from the type map. (#905)
-    /// </summary>
-    public void SetFoldedIntegerConstant(Expression expr, long value)
-    {
-        _foldedIntegerConstants[expr] = value;
-    }
-
-    /// <summary>
-    /// Gets the constant-folded integer value of a binary operation, if one was recorded.
-    /// Returns <c>true</c> and the value when present; otherwise <c>false</c>.
-    /// </summary>
-    public bool TryGetFoldedIntegerConstant(Expression expr, out long value)
-    {
-        return _foldedIntegerConstants.TryGetValue(expr, out value);
-    }
-
-    /// <summary>
     /// Records that a method-call member access must be emitted as a static extension-method call
     /// (<c>global::Ext.Method(receiver, args...)</c>) rather than the instance form. Set by the
     /// TypeChecker when a call resolves to a Sharpy extension method that a shadowing BCL instance
@@ -687,9 +661,6 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._resolvedClrMemberNames)
             _resolvedClrMemberNames.TryAdd(kvp.Key, kvp.Value);
-
-        foreach (var kvp in other._foldedIntegerConstants)
-            _foldedIntegerConstants.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._staticExtensionDispatches)
             _staticExtensionDispatches.TryAdd(kvp.Key, kvp.Value);

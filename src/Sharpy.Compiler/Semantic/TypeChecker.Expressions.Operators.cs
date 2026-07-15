@@ -152,8 +152,8 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType? TryFoldIntegerPower(BinaryOp binOp)
     {
-        if (!TryGetConstantInteger(binOp.Left, out var baseValue)
-            || !TryGetConstantInteger(binOp.Right, out var exponent))
+        if (!IntegerConstantEvaluator.TryGetConstantInteger(binOp.Left, out var baseValue)
+            || !IntegerConstantEvaluator.TryGetConstantInteger(binOp.Right, out var exponent))
             return null;
 
         // Negative exponents are not folded — they keep the existing (double/runtime) path.
@@ -170,17 +170,14 @@ internal partial class TypeChecker
 
         var result = System.Numerics.BigInteger.Pow(baseValue, (int)exponent);
 
+        // The folded VALUE is re-derived into an IrConstant by the lowering pass (E2 #1056); the
+        // type checker keeps only the result-type + overflow decision here. Both sides read the same
+        // pure IntegerConstantEvaluator, so they cannot diverge.
         if (result >= int.MinValue && result <= int.MaxValue)
-        {
-            _semanticInfo.SetFoldedIntegerConstant(binOp, (long)result);
             return SemanticType.Int;
-        }
 
         if (result >= long.MinValue && result <= long.MaxValue)
-        {
-            _semanticInfo.SetFoldedIntegerConstant(binOp, (long)result);
             return SemanticType.Long;
-        }
 
         ReportIntegerPowerOverflow(binOp);
         return SemanticType.Unknown;
@@ -197,86 +194,9 @@ internal partial class TypeChecker
             span: binOp.Span);
     }
 
-    /// <summary>
-    /// Extracts a constant integer value (as <see cref="System.Numerics.BigInteger"/>) from an
-    /// expression, handling underscores, <c>0x</c>/<c>0o</c>/<c>0b</c> prefixes, and a leading
-    /// unary minus. Returns <c>false</c> for anything that is not a constant integer literal.
-    /// </summary>
-    private static bool TryGetConstantInteger(Expression expr, out System.Numerics.BigInteger value)
-    {
-        value = System.Numerics.BigInteger.Zero;
-
-        if (expr is IntegerLiteral intLit)
-            return TryParseIntegerLiteral(intLit.Value, out value);
-
-        if (expr is UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral negLit }
-            && TryParseIntegerLiteral(negLit.Value, out var magnitude))
-        {
-            value = -magnitude;
-            return true;
-        }
-
-        return false;
-    }
-
-    private static bool TryParseIntegerLiteral(string raw, out System.Numerics.BigInteger value)
-    {
-        value = System.Numerics.BigInteger.Zero;
-        var text = raw.Replace("_", "", System.StringComparison.Ordinal);
-        if (text.Length == 0)
-            return false;
-
-        try
-        {
-            if (text.StartsWith("0x", System.StringComparison.OrdinalIgnoreCase))
-            {
-                // Force a non-negative interpretation by prefixing "0" (BigInteger treats a
-                // leading hex digit >= 8 as a negative two's-complement value otherwise).
-                return System.Numerics.BigInteger.TryParse(
-                    "0" + text[2..],
-                    System.Globalization.NumberStyles.HexNumber,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out value);
-            }
-            if (text.StartsWith("0o", System.StringComparison.OrdinalIgnoreCase))
-            {
-                value = ParseBase(text[2..], 8);
-                return true;
-            }
-            if (text.StartsWith("0b", System.StringComparison.OrdinalIgnoreCase))
-            {
-                value = ParseBase(text[2..], 2);
-                return true;
-            }
-
-            return System.Numerics.BigInteger.TryParse(
-                text,
-                System.Globalization.NumberStyles.Integer,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out value);
-        }
-        catch (System.FormatException)
-        {
-            return false;
-        }
-    }
-
-    // Only called for radix 2 and 8 (hex goes through BigInteger.TryParse above), so
-    // numeric digits suffice. Malformed digits throw FormatException, which the caller's
-    // try/catch converts to false — the lexer has already validated the literal, so this
-    // is pure defense.
-    private static System.Numerics.BigInteger ParseBase(string digits, int radix)
-    {
-        var result = System.Numerics.BigInteger.Zero;
-        foreach (var c in digits)
-        {
-            var digit = c >= '0' && c <= '9' ? c - '0' : -1;
-            if (digit < 0 || digit >= radix)
-                throw new System.FormatException($"Invalid digit '{c}' for base {radix}");
-            result = result * radix + digit;
-        }
-        return result;
-    }
+    // Constant integer literal evaluation moved to the shared, pure IntegerConstantEvaluator so the
+    // lowering pass can re-derive the folded value into an IrConstant without duplicating parsing
+    // logic (E2 #1056).
 
     private SemanticType CheckBooleanAndOp(BinaryOp andOp)
     {

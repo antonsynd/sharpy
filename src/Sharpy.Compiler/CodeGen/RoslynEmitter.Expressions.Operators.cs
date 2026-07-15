@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -30,11 +31,14 @@ internal partial class RoslynEmitter
         {
             case BinaryOperator.Power:
                 {
-                    // Constant-folded integer power (#905): semantic records the value (widened to
-                    // int/long, or SPY0328 when it exceeds long), so emit the literal directly
-                    // instead of a lossy Math.Pow round-trip. e.g. `y: long = 10 ** 18`.
-                    if (_context.SemanticInfo?.TryGetFoldedIntegerConstant(binOp, out var foldedPow) == true)
+                    // Constant-folded integer power (#905): the lowering pass re-derives the value
+                    // (widened to int/long, or SPY0328 when it exceeds long) into an IrConstant, so
+                    // emit the literal directly instead of a lossy Math.Pow round-trip. e.g.
+                    // `y: long = 10 ** 18`. (E2 #1056: read from the IR, not SemanticInfo.)
+                    if (_context.Ir?.Index.TryGetValue(binOp, out var foldedNode) == true
+                        && foldedNode is IrConstant foldedConst)
                     {
+                        var foldedPow = (long)foldedConst.Value;
                         return GetExpressionSemanticType(binOp) == SemanticType.Long
                             ? LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(foldedPow))
                             : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)foldedPow));

@@ -70,10 +70,45 @@ internal sealed class LoweringPass
 
     private static IrExpression LowerExpression(Expression expression, SemanticInfo semanticInfo, Dictionary<Node, IrNode> index)
     {
-        var children = LowerChildren(expression, semanticInfo, index);
-        var ir = new IrOpaqueExpression(expression, semanticInfo.GetExpressionType(expression), SpanOf(expression), children);
+        IrExpression ir = expression switch
+        {
+            // Constant-folded integer exponentiation lowers to a leaf constant: the operands are
+            // folded away, so they are not lowered or indexed (E2 #1056, migrates _foldedIntegerConstants).
+            BinaryOp binOp when TryLowerFoldedPower(binOp, semanticInfo) is { } folded => folded,
+            _ => new IrOpaqueExpression(expression, semanticInfo.GetExpressionType(expression), SpanOf(expression),
+                LowerChildren(expression, semanticInfo, index)),
+        };
         index[expression] = ir;
         return ir;
+    }
+
+    /// <summary>
+    /// Re-derives a constant integer power (<c>base ** exponent</c>) into an <see cref="IrConstant"/>,
+    /// mirroring the type checker's <c>TryFoldIntegerPower</c> fold conditions exactly (same pure
+    /// <see cref="IntegerConstantEvaluator"/>). Returns <c>null</c> when the expression is not a folded
+    /// constant power. The result-type (<c>int</c>/<c>long</c>) is read from the already-inferred
+    /// expression type; overflow beyond <c>long</c> errored earlier (SPY0328) and never reaches here,
+    /// but is guarded defensively.
+    /// </summary>
+    private static IrConstant? TryLowerFoldedPower(BinaryOp binOp, SemanticInfo semanticInfo)
+    {
+        if (binOp.Operator != BinaryOperator.Power)
+            return null;
+
+        if (!IntegerConstantEvaluator.TryGetConstantInteger(binOp.Left, out var baseValue)
+            || !IntegerConstantEvaluator.TryGetConstantInteger(binOp.Right, out var exponent))
+            return null;
+
+        // Negative exponents keep the runtime (double) path; a constant exponent larger than int32
+        // can never produce a fixed-width result. Both mirror TryFoldIntegerPower.
+        if (exponent.Sign < 0 || exponent > int.MaxValue)
+            return null;
+
+        var result = System.Numerics.BigInteger.Pow(baseValue, (int)exponent);
+        if (result < long.MinValue || result > long.MaxValue)
+            return null;
+
+        return new IrConstant((long)result, semanticInfo.GetExpressionType(binOp), SpanOf(binOp));
     }
 
     private static ImmutableArray<IrNode> LowerChildren(Node node, SemanticInfo semanticInfo, Dictionary<Node, IrNode> index)
