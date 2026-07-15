@@ -149,6 +149,43 @@ public class DiagnosticQuickFixProviderTests
     }
 
     [Fact]
+    public async Task UndefinedIdentifier_WithSuggestedName_ReturnsRenameAction()
+    {
+        // The undefined-identifier diagnostic range is exactly the misspelled identifier,
+        // so renaming the whole range to the suggestion is correct.
+        var data = JObject.FromObject(new { suggestedName = "counter" });
+        var diag = MakeDiagnostic(
+            DiagnosticCodes.Semantic.UndefinedVariable,
+            new LspRange(new Position(2, 10), new Position(2, 16)),
+            data);
+
+        var actions = await GetActionsAsync(new Container<Diagnostic>(diag));
+
+        actions.Should().HaveCount(1);
+        var action = actions[0];
+        action.Title.Should().Be("Rename to 'counter'");
+        action.Kind.Should().Be(CodeActionKind.QuickFix);
+
+        var edits = action.Edit!.Changes![TestUri].ToList();
+        edits.Should().HaveCount(1);
+        edits[0].NewText.Should().Be("counter");
+        edits[0].Range.Should().Be(new LspRange(new Position(2, 10), new Position(2, 16)));
+    }
+
+    [Fact]
+    public async Task UndefinedIdentifier_WithoutSuggestedName_ReturnsNoAction()
+    {
+        // No suggestion in the data (nothing close enough) → no rename fix offered.
+        var diag = MakeDiagnostic(
+            DiagnosticCodes.Semantic.UndefinedVariable,
+            new LspRange(new Position(2, 10), new Position(2, 16)));
+
+        var actions = await GetActionsAsync(new Container<Diagnostic>(diag));
+
+        actions.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task UnsupportedDiagnosticCode_ReturnsNoAction()
     {
         var diag = MakeDiagnostic(

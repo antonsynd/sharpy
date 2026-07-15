@@ -7,11 +7,35 @@ using SCG = System.Collections.Generic;
 namespace Sharpy.Lsp.Refactoring;
 
 /// <summary>
-/// Provides quick fix code actions for diagnostics (unused imports, unused variables, naming conventions).
+/// Provides quick fix code actions for diagnostics (unused imports, unused variables,
+/// naming conventions, and undefined-identifier "did you mean?" renames).
 /// Extracted from the original SharpyCodeActionHandler.
 /// </summary>
+/// <remarks>
+/// Fixes are registered in <see cref="FixFactories"/>, a diagnostic-code → fix-factory map,
+/// so pairing a new diagnostic with a fix is a single registry entry rather than a switch
+/// arm. A factory returns null when it cannot produce a fix for the specific diagnostic
+/// (e.g. no <c>suggestedName</c> in the diagnostic data).
+/// </remarks>
 internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
 {
+    /// <summary>
+    /// Maps a diagnostic code to the factory that builds its quick fix. Factories may return
+    /// null to signal "no applicable fix" for a particular diagnostic instance.
+    /// </summary>
+    private static readonly SCG.IReadOnlyDictionary<string, Func<CodeActionProviderContext, Diagnostic, CodeAction?>> FixFactories =
+        new SCG.Dictionary<string, Func<CodeActionProviderContext, Diagnostic, CodeAction?>>(StringComparer.Ordinal)
+        {
+            [DiagnosticCodes.Validation.UnusedImport] =
+                static (ctx, diag) => CreateRemoveImportAction(ctx.DocumentUri, diag, ctx.SourceText),
+            [DiagnosticCodes.Validation.UnusedVariable] =
+                static (ctx, diag) => CreatePrefixUnderscoreAction(ctx.DocumentUri, diag),
+            [DiagnosticCodes.Validation.NamingConventionWarning] =
+                static (ctx, diag) => CreateRenameToSuggestionAction(ctx.DocumentUri, diag),
+            [DiagnosticCodes.Semantic.UndefinedVariable] =
+                static (ctx, diag) => CreateRenameToSuggestionAction(ctx.DocumentUri, diag),
+        };
+
     public Task<IReadOnlyList<CodeAction>> GetCodeActionsAsync(
         CodeActionProviderContext context,
         CancellationToken cancellationToken)
@@ -24,23 +48,11 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
             if (code == null)
                 continue;
 
-            switch (code)
+            if (FixFactories.TryGetValue(code, out var factory))
             {
-                case DiagnosticCodes.Validation.UnusedImport:
-                    actions.Add(CreateRemoveImportAction(context.DocumentUri, diag, context.SourceText));
-                    break;
-
-                case DiagnosticCodes.Validation.UnusedVariable:
-                    actions.Add(CreatePrefixUnderscoreAction(context.DocumentUri, diag));
-                    break;
-
-                case DiagnosticCodes.Validation.NamingConventionWarning:
-                    {
-                        var renameAction = CreateNamingFixAction(context.DocumentUri, diag);
-                        if (renameAction != null)
-                            actions.Add(renameAction);
-                        break;
-                    }
+                var action = factory(context, diag);
+                if (action != null)
+                    actions.Add(action);
             }
         }
 
@@ -115,7 +127,13 @@ internal sealed class DiagnosticQuickFixProvider : ICodeActionProvider
         };
     }
 
-    private static CodeAction? CreateNamingFixAction(
+    /// <summary>
+    /// Builds a "Rename to '&lt;suggestedName&gt;'" fix that replaces the diagnostic's range with
+    /// the <c>suggestedName</c> carried in the diagnostic data. Shared by naming-convention
+    /// warnings and undefined-identifier "did you mean?" errors — in both the diagnostic range
+    /// is exactly the identifier to rename. Returns null when no suggestion is present.
+    /// </summary>
+    private static CodeAction? CreateRenameToSuggestionAction(
         OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri uri,
         Diagnostic diag)
     {
