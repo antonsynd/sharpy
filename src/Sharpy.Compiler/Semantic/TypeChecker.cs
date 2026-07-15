@@ -223,6 +223,9 @@ internal partial class TypeChecker
         context.ControlFlowGraphs = _controlFlowGraphs;
         context.DeferredCycleSymbols = DeferredCycleSymbols;
         context.DeferredCycleFiles = DeferredCycleFiles;
+        // Thread the effective feature flags so validators can gate feature-conditional
+        // diagnostics (e.g. the to→as?/as! migration hint fires only under failable_cast).
+        context.Features = Features;
         return context;
     }
 

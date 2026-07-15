@@ -2,11 +2,18 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Rejected |
+| **Status** | Rejected — **superseded by [#1029](https://github.com/antonsynd/sharpy/issues/1029)** (2026-07-15) |
 | **Date** | 2026-03-08 |
 | **Phase** | — |
 | **Author** | — |
 | **Rejection reason** | Ambiguity with 4 other `as` contexts; anti-pattern "multiple ways to do same thing" |
+
+> **Superseded (2026-07-15).** This proposal rejected a **bare** `as` cast (`x as T`). The rejection
+> stands for that spelling — bare `as` remains reserved for aliasing/capture only. However, #1029
+> introduces the **two-token** `as?` / `as!` failable-cast operators, which are *lexically distinct*
+> from bare `as` (`As` + adjacent `Question`/`Bang`) and therefore carry none of this proposal's
+> ambiguity. See [Superseding design](#superseding-design-1029) below and the
+> [type casting spec](../language_specification/type_casting.md#experimental-as--as-failable-casts).
 
 ## Summary
 
@@ -67,6 +74,29 @@ dog = animal to Dog         # Throws InvalidCastException if not a Dog
 dog = animal to Dog?        # Returns None if not a Dog
 ```
 
+## Superseding design (#1029)
+
+[#1029](https://github.com/antonsynd/sharpy/issues/1029) revisits casting with `as?` / `as!` — two
+distinct operator tokens rather than a bare-`as` cast — and this defeats each rejection point above:
+
+- **Ambiguity (#1, #3):** `as?` / `as!` are `As` immediately followed by an adjacent `Question` / `Bang`
+  token. In every alias position (`except`/`with`/`import`/`case`) `as` is followed by an **identifier**,
+  never `?`/`!`, so the parser distinguishes them by token adjacency alone — no `_inhibitPostfixAs` hack,
+  no parenthesization rule, no context-sensitivity. Bare `x as T` stays a parse error (regression-anchored
+  by `errors/as_cast_rejected`).
+- **"Multiple ways" (#2):** the design's exit plan is to make `as?`/`as!` the **only** failable-cast
+  spelling and **retire `to`** at graduation, so the language converges on one syntax rather than two. A
+  migration hint (`SPY0479`, active only while `failable_cast` is enabled) steers code toward the new
+  spelling in the interim.
+- **Explicitness gain:** moving the failure mode onto the operator (`as!` throws, `as?` yields `None`)
+  makes each cast site self-describing, aligning with Axiom 3 / "explicit over magic."
+
+The feature ships **experimental behind the `failable_cast` flag** per the
+[feature lifecycle](../design/feature-lifecycle.md); corpus migration and `to` removal are graduation-time
+work tracked separately.
+
 ## See Also
 
-- [Type Casting spec](../language_specification/type_casting.md) — the `to` operator specification
+- [Type Casting spec](../language_specification/type_casting.md) — the `to` operator specification and the
+  experimental `as?`/`as!` operators
+- [#1029](https://github.com/antonsynd/sharpy/issues/1029) — the superseding `as?`/`as!` design

@@ -112,7 +112,7 @@ enabled **per file** with `from __future__ import <name>`, in addition to the tw
 mechanisms. Per-file future flags are stored separately from the compilation-wide set (they must not
 leak across files) and unioned in for that file only — see `ImportResolver.GetFileFutureFeatures`.
 
-Both pilots below are `Parser`-scoped, so both are enabled compilation-wide only.
+All pilots below are `Parser`-scoped, so all are enabled compilation-wide only.
 
 ## Unknown names are errors, never silent no-ops
 
@@ -150,17 +150,24 @@ enable with `--enable-feature=X` or `<Features>X</Features>` in .spyproj"*, appe
 
 ## Pilot features
 
-Two features pilot this lifecycle. Both are `Parser`-scoped and both ship experimental.
+Three features pilot this lifecycle. All are `Parser`-scoped and all ship experimental.
 
 | Feature | Flag | Issue | Scope | Lowering |
 |---------|------|-------|-------|----------|
 | `@` matrix-multiplication operator | `matmul` | [#989](https://github.com/antonsynd/sharpy/issues/989) | `Parser` | dispatches to `__matmul__` / `__imatmul__` |
 | `defer` statement | `defer` | [#1023](https://github.com/antonsynd/sharpy/issues/1023) | `Parser` | scope-exit registration lowered to try/finally |
+| `as?` / `as!` failable casts | `failable_cast` | [#1029](https://github.com/antonsynd/sharpy/issues/1029) | `Parser` | identical to `to` / `to?` — `(T)value` or `is T … ? Optional<T>.Some(…) : default` |
 
-Each pilot registers its name in `KnownFeatures`, registers its gated construct (`@`/`@=` and the
-`defer` statement respectively) in the feature-gate registry, and ships with the dual-fixture pattern:
-an ungated `.error` fixture asserting `SPY0331` and a gated `.expected` fixture (via `.features`)
-exercising the enabled behaviour.
+Each pilot registers its name in `KnownFeatures`, registers its gated construct (`@`/`@=`, the
+`defer` statement, and the `as?`/`as!`-form `TypeCoercion` respectively) in the feature-gate registry,
+and ships with the dual-fixture pattern: an ungated `.error` fixture asserting `SPY0331` and a gated
+`.expected` fixture (via `.features`) exercising the enabled behaviour.
+
+`failable_cast` additionally pilots a **feature-conditional transition hint**: while the flag is
+enabled, a legacy `to`/`to?` cast emits `SPY0479` suggesting the `as!`/`as?` spelling (the hint is
+suppressed when the flag is off, so it never advises syntax the build would reject). Graduation of
+`failable_cast` — making `as?`/`as!` primary and retiring `to` — is deferred graduation work tracked on
+its own issue.
 
 ## Proposing a new feature — checklist
 

@@ -446,6 +446,25 @@ deviations:
         last = t[-1]      # ERROR SPY0259: negative tuple index not allowed
         last = t[2]       # OK
 
+  - id: failable-cast-operators
+    code: SPY0479
+    category: operators
+    audience: both
+    severity: hint
+    python_behavior: "No cast operator; casting is via constructor calls (`int(x)`) or `typing.cast` (a no-op hint)."
+    sharpy_behavior: "Experimental `as?`/`as!` failable-cast operators (behind the `failable_cast` flag, #1029) move the failure mode onto the operator: `x as! T` throws, `x as? T` yields `T?`. The legacy `to`/`to?` operator still works; when `failable_cast` is enabled, a `to` cast emits SPY0479 suggesting the `as!`/`as?` spelling. A nullable target on `as?`/`as!` (`x as? T?`) is a hard error, SPY0334."
+    spec_ref: docs/language_specification/type_casting.md
+    existing_diagnostic: null
+    planned_diagnostic: SPY0479
+    example:
+      python: |
+        value = int(x)          # narrowing via constructor
+      sharpy: |
+        # --enable-feature=failable_cast
+        value = x as! int       # throws InvalidCastException on failure
+        maybe_value = x as? int # int? — None on failure
+        legacy = x to int       # still valid; emits SPY0479 hint under the flag
+
   # ============================================================
   # Other deviations (no current or planned diagnostic, or
   # covered by an existing diagnostic)

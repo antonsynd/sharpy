@@ -228,9 +228,58 @@ value is Dog _temp ? Optional<Dog>.Some(_temp) : default
 value is int _temp ? Optional<int>.Some(_temp) : default
 ```
 
+## Experimental: `as?` / `as!` failable casts
+
+> **Status:** Experimental — behind the `failable_cast` feature flag. Off by default; carries no
+> stability promise while experimental (see [feature lifecycle](../design/feature-lifecycle.md)).
+> Tracking issue: [#1029](https://github.com/antonsynd/sharpy/issues/1029). Graduation (making `as?`/`as!`
+> the primary spelling and retiring `to`) is tracked separately — see the migration note below.
+
+The `as?` / `as!` operators are a piloted alternative spelling for the two forms of `to`. The failure
+mode moves from the target type's nullability onto the **operator**, so the target is always written
+**non-nullable**:
+
+| `to` form (primary) | `as` form (experimental) | Result type | On failure |
+|---------------------|--------------------------|-------------|------------|
+| `value to T`  | `value as! T` | `T`  | throws `InvalidCastException` |
+| `value to T?` | `value as? T` | `T?` | evaluates to `None` |
+
+```python
+# Enable per compilation: --enable-feature=failable_cast, or <Features>failable_cast</Features>
+# in a .spyproj. (Parser-scoped: a `from __future__ import` cannot unlock it.)
+
+animal: Animal = get_animal()
+dog = animal as! Dog          # throws if not a Dog        (== animal to Dog)
+dog = animal as? Dog          # None if not a Dog          (== animal to Dog?)
+
+boxed: object = 42
+value = boxed as! int         # throws if not an int
+value = boxed as? int         # None if not an int
+
+some_result   = try   my_dog as! Cat   # Result[Cat, InvalidCastException]
+some_optional = maybe my_dog as? Cat   # Optional[Cat]
+```
+
+The `as?`/`as!` forms are **lexically distinct** from bare `as` — the `?`/`!` must be immediately
+adjacent to `as` (no intervening whitespace), so `x as ? T` and `x as ! T` are not casts. They lower
+**identically** to the equivalent `to`/`to?` form (snapshot parity), and `as!` invokes any user-defined
+`__explicit__` conversion exactly as `to` does.
+
+**Nullable-target rule.** Because the operator owns the failure mode, the target must be non-nullable.
+`x as? T?` / `x as! T?` is a **hard error** (`SPY0334`): *"drop the `?` on the target type."*
+
+**Migration hint.** When `failable_cast` is enabled, a `to`/`to?` cast emits an advisory hint
+(`SPY0479`) suggesting the `as!`/`as?` spelling. The hint fires *only* under the flag — it never advises
+syntax the build cannot accept.
+
 ## Note on `as`
 
-`as` is **not** a casting operator in Sharpy. The `as` keyword is reserved for other contexts (exception binding, context managers, import aliases, and match/case pattern binding). See SRP-0005 (rejected proposal) for rationale.
+Bare `as` is **not** a casting operator in Sharpy — the keyword stays reserved for aliasing and capture
+(exception binding, context managers, import aliases, and match/case pattern binding). `x as int`
+(bare `as`, no `?`/`!`) remains a parse error. SRP-0005 originally rejected an `as` cast over binder
+ambiguity; the two-token `as?`/`as!` operators (above) sidestep that ambiguity entirely because they are
+lexically distinct from bare `as`, which is why #1029 supersedes that rejection. See
+[SRP-0005](../rejected_proposals/SRP-0005-as-casting-operator.md).
 
 ## See Also
 
