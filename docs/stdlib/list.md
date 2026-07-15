@@ -58,7 +58,11 @@ Sort the items of the list in place (the arguments can be used for
 sort customization, see Sorted() for their explanation).
 
 !!! note
-    This is not a stable sort.
+    Stable: the relative order of elements with equal keys is preserved,
+    and *reverse* preserves that order rather than
+    reversing it (matching Python). Unlike the keyless overload this is
+    always stable, even for value-type elements, because the key
+    projection makes equal-key ordering observable.
 
 ### `to_list() -> list[T]`
 
@@ -180,7 +184,7 @@ x.count(2)    # 2
 x.count(5)    # 0
 ```
 
-### `index(x: T, start: int = 0, end: int = -1) -> int`
+### `index(x: T, start: int = 0, end: int = int.MaxValue) -> int`
 
 Return zero-based index in the list of the first item whose value
 is equal to x. Raises a `ValueError` if there is no

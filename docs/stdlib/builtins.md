@@ -831,6 +831,15 @@ Create empty list
 
 Convert list to list (copy)
 
+### `list_from_str(s: str) -> list[str]`
+
+Builds a list of single-character strings from a string, matching Python's
+`list("abc")` -&gt; `['a', 'b', 'c']` and `list("")` -&gt; `[]`.
+Iterates by UTF-16 code unit (Axiom 1), consistent with
+`StringHelpers.Iterate`: `list("abc")` selects this overload because
+C# would otherwise bind `list(string)` to `List&lt;char&gt;`
+(`string` is `IEnumerable&lt;char&gt;`), diverging from Python (#1067).
+
 ### `long(b: bool) -> long`
 
 Convert bool to long. True becomes 1, False becomes 0.
