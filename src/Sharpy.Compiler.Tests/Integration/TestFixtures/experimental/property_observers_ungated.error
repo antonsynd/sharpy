@@ -1,0 +1,2 @@
+# Without a `.features` sidecar enabling `property_observers`, the observer clauses are gated (SPY0331).
+property observers ('before_set' / 'after_set') requires experimental feature 'property_observers'

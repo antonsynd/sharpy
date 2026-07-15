@@ -1407,8 +1407,11 @@ public partial class Parser
             Advance(); // consume NEWLINE
             Expect(TokenType.Indent);
             var observerList = new List<PropertyObserver>();
+            _lastLoopPosition = -1;
             while (Current.Type != TokenType.Dedent && !IsAtEnd)
             {
+                if (!CheckLoopProgress())
+                    break;
                 SkipNewlines();
                 if (Current.Type == TokenType.Dedent || IsAtEnd)
                     break;

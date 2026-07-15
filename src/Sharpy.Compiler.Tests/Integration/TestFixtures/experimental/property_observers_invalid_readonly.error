@@ -1,0 +1,2 @@
+# @readonly properties cannot carry observers (no setter to wrap).
+are only valid on a settable auto-property

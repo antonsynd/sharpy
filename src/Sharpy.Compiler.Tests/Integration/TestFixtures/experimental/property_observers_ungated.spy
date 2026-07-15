@@ -1,0 +1,18 @@
+# Same source as property_observers_gated.spy, but WITHOUT the `.features` sidecar, so the
+# observer clauses are gated syntax and their use is rejected with SPY0331.
+class Character:
+    property health: int = 100
+        before_set(new_value):
+            print(f"before: {new_value}")
+        after_set(old_value):
+            print(f"after: {old_value} -> {self.health}")
+
+    def __init__(self):
+        self.health = 50
+
+
+def main() -> None:
+    c: Character = Character()
+    print(f"current={c.health}")
+    c.health = 75
+    print(f"final={c.health}")

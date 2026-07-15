@@ -1,0 +1,2 @@
+# @override properties cannot carry observers in v1.
+are only valid on a settable auto-property

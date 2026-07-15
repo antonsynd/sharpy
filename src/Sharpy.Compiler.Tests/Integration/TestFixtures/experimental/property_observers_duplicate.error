@@ -1,0 +1,2 @@
+# Each observer kind may appear at most once per property.
+has more than one 'before_set' observer

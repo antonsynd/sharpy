@@ -1,0 +1,23 @@
+# Property observers (#416), experimental `property_observers` feature.
+#
+# `before_set(param)` runs before the backing store is written (param = incoming value);
+# `after_set(param)` runs after (param = previous value; self.<prop> already holds the new value).
+# Every store goes through the expanded setter, INCLUDING constructor assignments (Design
+# Decision 9) — the ctor's `self.health = 50` fires the observers with old = the field default 100.
+# Python has no direct analogue (this is Swift-inspired), so the expected output is authored by hand.
+class Character:
+    property health: int = 100
+        before_set(new_value):
+            print(f"before: {new_value}")
+        after_set(old_value):
+            print(f"after: {old_value} -> {self.health}")
+
+    def __init__(self):
+        self.health = 50
+
+
+def main() -> None:
+    c: Character = Character()
+    print(f"current={c.health}")
+    c.health = 75
+    print(f"final={c.health}")

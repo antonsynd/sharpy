@@ -111,6 +111,27 @@ def main():
         tokens.Should().Contain(t => t.TokenType == TProperty);
     }
 
+    [Fact]
+    public void PropertyObservers_GetKeywordAndParameterTokens()
+    {
+        // Observer clauses parse unconditionally (gating is semantic), so the token collector
+        // sees them even without the feature enabled (#416).
+        var tokens = CollectTokensFrom(
+            "class Character:\n" +
+            "    property health: int = 0\n" +
+            "        before_set(new_value):\n" +
+            "            print(new_value)\n" +
+            "        after_set(old_value):\n" +
+            "            print(old_value)\n");
+
+        // before_set (line 2) and after_set (line 4) keywords.
+        tokens.Should().Contain(t => t.TokenType == TKeyword && t.Line == 2);
+        tokens.Should().Contain(t => t.TokenType == TKeyword && t.Line == 4);
+        // The declared observer parameters new_value / old_value.
+        tokens.Should().Contain(t => t.TokenType == TParameter && t.Line == 2);
+        tokens.Should().Contain(t => t.TokenType == TParameter && t.Line == 4);
+    }
+
     #endregion
 
     #region Modifier bits

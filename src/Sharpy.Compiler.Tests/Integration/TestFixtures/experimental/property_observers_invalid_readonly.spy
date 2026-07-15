@@ -1,0 +1,10 @@
+# A @readonly property has no setter, so observers have nothing to wrap (SPY0490).
+class C:
+    @readonly
+    property health: int
+        before_set(new_value):
+            print(new_value)
+
+
+def main() -> None:
+    pass

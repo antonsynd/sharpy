@@ -157,6 +157,7 @@ Three features pilot this lifecycle. All are `Parser`-scoped and all ship experi
 | `@` matrix-multiplication operator | `matmul` | [#989](https://github.com/antonsynd/sharpy/issues/989) | `Parser` | dispatches to `__matmul__` / `__imatmul__` |
 | `defer` statement | `defer` | [#1023](https://github.com/antonsynd/sharpy/issues/1023) | `Parser` | scope-exit registration lowered to try/finally |
 | `as?` / `as!` failable casts | `failable_cast` | [#1029](https://github.com/antonsynd/sharpy/issues/1029) | `Parser` | identical to `to` / `to?` — `(T)value` or `is T … ? Optional<T>.Some(…) : default` |
+| `before_set` / `after_set` property observers | `property_observers` | [#416](https://github.com/antonsynd/sharpy/issues/416) | `Parser` | auto-property lowered to a backing field + expanded setter running the observers around every store |
 
 Each pilot registers its name in `KnownFeatures`, registers its gated construct (`@`/`@=`, the
 `defer` statement, and the `as?`/`as!`-form `TypeCoercion` respectively) in the feature-gate registry,

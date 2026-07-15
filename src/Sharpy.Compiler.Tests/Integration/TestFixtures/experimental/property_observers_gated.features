@@ -1,0 +1,2 @@
+# Enables the experimental `before_set` / `after_set` property observers.
+property_observers

@@ -1,0 +1,2 @@
+# Interface properties cannot carry observers.
+are only valid on a settable auto-property

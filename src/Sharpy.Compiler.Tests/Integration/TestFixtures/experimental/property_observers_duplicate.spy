@@ -1,0 +1,11 @@
+# Two before_set clauses on one property is ambiguous (SPY0491).
+class C:
+    property health: int = 0
+        before_set(a):
+            print(a)
+        before_set(b):
+            print(b)
+
+
+def main() -> None:
+    pass

@@ -237,6 +237,15 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 PushNameToken(tokens, p.NameLineStart, p.NameColumnStart, p.Name.Length, TProperty, ModDeclaration | genMod);
                 CollectDecorators(p.Decorators, tokens);
                 CollectTokens(p.Body, tokens, semanticQuery);
+                foreach (var observer in p.Observers)
+                {
+                    // Highlight the contextual observer keyword and its declared parameter, then
+                    // its body (#416). before_set = 10 chars, after_set = 9.
+                    int keywordLen = observer.Kind == ObserverKind.BeforeSet ? 10 : 9;
+                    PushNameToken(tokens, observer.LineStart, observer.ColumnStart, keywordLen, TKeyword, 0);
+                    PushNameToken(tokens, observer.ParamNameLine, observer.ParamNameColumn, observer.ParamName.Length, TParameter, ModDeclaration);
+                    CollectTokens(observer.Body, tokens, semanticQuery);
+                }
                 break;
 
             case IfStatement ifStmt:

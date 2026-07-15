@@ -297,7 +297,7 @@ grapheme.slice("Héllo", 0, 3)  # "Hél"
 ## Proposals (Not Committed)
 
 See [docs/design/](../design/) for standalone proposal documents:
-- [Property Observers (`willset`/`didset`)](../design/property-observers-proposal.md) — [#416](https://github.com/antonsynd/sharpy/issues/416)
+- [Property Observers (`before_set`/`after_set`)](../design/property-observers-proposal.md) — [#416](https://github.com/antonsynd/sharpy/issues/416) — **shipped experimental** as `property_observers`.
 
 ---
 

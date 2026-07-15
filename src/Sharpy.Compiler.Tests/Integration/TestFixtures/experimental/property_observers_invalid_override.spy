@@ -1,0 +1,15 @@
+# Observers on an @override property are rejected in v1 (SPY0490).
+class Base:
+    @virtual
+    property health: int = 0
+
+
+class Derived(Base):
+    @override
+    property health: int = 0
+        before_set(new_value):
+            print(new_value)
+
+
+def main() -> None:
+    pass

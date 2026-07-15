@@ -1,0 +1,9 @@
+# Interface properties have no concrete accessors, so observers are rejected (SPY0490).
+interface IThing:
+    property health: int
+        after_set(old_value):
+            print(old_value)
+
+
+def main() -> None:
+    pass
