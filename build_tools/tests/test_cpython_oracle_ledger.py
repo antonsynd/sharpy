@@ -488,8 +488,17 @@ def test_committed_ledger_is_up_to_date():
     )
 
 
-def test_committed_pilot_annotation_is_valid():
-    """The colorsys not-ported annotation must parse into exactly one entry."""
+def test_committed_not_ported_annotations_are_valid():
+    """Every committed not-ported annotation must parse with its required fields intact.
+
+    The original pilot (colorsys, bug #1063) was fixed and re-ported in Wave 3, so this
+    no longer pins a specific bug number — bug-annotated entries are expected to drain
+    over time as bugs are fixed. Each remaining entry must carry either a tracking
+    ``bug`` or a documented ``deviation``, plus a reason and a source location."""
     data = ledger.build_ledger()
     not_ported = [e for e in data["entries"] if e["kind"] == "not-ported"]
-    assert any(e.get("bug") == 1063 for e in not_ported)
+    assert not_ported, "expected at least one committed not-ported annotation"
+    for entry in not_ported:
+        assert entry.get("bug") or entry.get("deviation"), entry
+        assert entry.get("reason"), entry
+        assert entry.get("source"), entry
