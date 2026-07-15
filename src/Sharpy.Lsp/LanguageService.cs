@@ -370,6 +370,11 @@ internal sealed class LanguageService : IDisposable
         await _analysisLock.WaitAsync(linkedToken).ConfigureAwait(false);
         try
         {
+            // Measure change→results-ready wall time for the project path: the whole-project
+            // reanalysis dominates it. Recorded so the LSP incremental-frontend work (#1099)
+            // starts from data, not intuition.
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             var result = await Task.Run(
                 () => _api.AnalyzeProject(config, linkedToken), linkedToken).ConfigureAwait(false);
 
@@ -392,6 +397,12 @@ internal sealed class LanguageService : IDisposable
                     }
                 }
             }
+
+            stopwatch.Stop();
+            _logger.LogInformation("{LatencyLine}", AnalysisLatencyLog.Format(
+                AnalysisLatencyLog.ProjectPath,
+                affectedFiles: updatedUris.Count,
+                stopwatch.Elapsed.TotalMilliseconds));
 
             return updatedUris;
         }

@@ -289,6 +289,38 @@ To view results from a PR:
 2. Click "Benchmarks" workflow
 3. Download "benchmark-results-N" artifact
 
+## LSP Analysis Latency (Phase 14 — borrowing list "measure first")
+
+> **Recorded:** 2026-07-15 · Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301
+> **Harness:** `LspAnalysisLatencyBaselineHarness` (`src/Sharpy.Lsp.Tests/`, `Category=Benchmark`,
+> excluded from the normal run); warm in-process medians of 15 timed runs after 3 warmups.
+
+Per-change **change→publish** analysis wall time for the two LSP paths, driven through the real
+instrumented code (`AnalysisLatencyLog` lines in `SharpyWorkspace.FireAndForgetAnalysis` and
+`LanguageService.OnDocumentChangedAsync`). Each change today re-runs a full analysis — no lazy
+memoized binding, no incremental reparse — so these are the numbers the incremental-frontend work
+([#1099](https://github.com/antonsynd/sharpy/issues/1099)) starts from, not intuition (the D1
+principle applied to the LSP).
+
+| Path | Input | median | min | max |
+|------|-------|-------:|----:|----:|
+| single-file full analysis | 227-line file (`GetAnalysisAsync`, no incremental reuse) | 1.7 ms | 1.7 ms | 4.8 ms |
+| project full reanalysis | 6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`) | 1.2 ms | 0.7 ms | 1.7 ms |
+
+Caveats: warm (post-JIT) medians on a fast machine and small representative inputs; the project path
+rebuilds a fresh `Compiler` + `ModuleRegistry` per change (`CompilerApi.cs:288/:314`) and re-analyzes
+the whole project, so the cost grows with project size, not just the edited file. Refresh with the
+harness command in its class doc comment.
+
+### To refresh the LSP latency baseline
+
+```bash
+.claude/scripts/dotnet-serialized test \
+  --filter "FullyQualifiedName~LspAnalysisLatencyBaselineHarness" \
+  --logger "console;verbosity=detailed"
+# Transcribe the "[LSP latency] …" lines into the table above.
+```
+
 ## Updating Baselines
 
 After significant compiler changes, run full benchmarks and update this file:

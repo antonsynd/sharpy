@@ -411,6 +411,10 @@ internal sealed class SharpyWorkspace : IDisposable
     {
         try
         {
+            // Measure change→publish wall time for the single-file path: analysis plus the
+            // DocumentAnalyzed handler that publishes diagnostics. Recorded so the LSP
+            // incremental-frontend work (#1099) starts from data, not intuition.
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var result = await GetAnalysisAsync(uri).ConfigureAwait(false);
             if (result != null)
             {
@@ -419,6 +423,11 @@ internal sealed class SharpyWorkspace : IDisposable
                 {
                     await handler(uri, result).ConfigureAwait(false);
                 }
+                stopwatch.Stop();
+                _logger.LogInformation("{LatencyLine}", AnalysisLatencyLog.Format(
+                    AnalysisLatencyLog.SingleFilePath,
+                    affectedFiles: 1,
+                    stopwatch.Elapsed.TotalMilliseconds));
             }
         }
         catch (OperationCanceledException)
