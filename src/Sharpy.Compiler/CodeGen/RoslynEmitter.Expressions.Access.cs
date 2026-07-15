@@ -435,7 +435,7 @@ internal partial class RoslynEmitter
             var isBuiltinCollectionReceiver =
                 receiverType is GenericType { Name: BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set };
             var methodName = DunderMapping.ResolveCSharpName(memberAccess.Member)
-                ?? (isBuiltinCollectionReceiver ? NameMangler.GetListMethodMapping(memberAccess.Member) : null)
+                ?? (isBuiltinCollectionReceiver ? NameMangler.GetCollectionMethodMapping(memberAccess.Member) : null)
                 ?? NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, resolvedClrMethodName);
 
             // CLR property access: if the member is a property (not a method) on a

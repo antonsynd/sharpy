@@ -147,13 +147,15 @@ public class CompilationUnit
     public string? GeneratedCSharp { get; internal set; }
 
     /// <summary>
-    /// The post-processed Roslyn <see cref="SyntaxTree"/> the emitter produced for this
-    /// file (normalized, deconstruction-spaced, nullable-pragma'd), wrapping the exact
-    /// emitted node with no reparse. Null until code generation completes, and null for
-    /// incremental cache-hit files (they are restored from cached <see cref="GeneratedCSharp"/>
-    /// text only). The compile path hands this tree straight to <c>CSharpCompilation.Create</c>
-    /// (D3, #1050) instead of reparsing <see cref="GeneratedCSharp"/>; <see cref="GeneratedCSharp"/>
-    /// remains the source of truth for snapshots, the incremental cache, <c>emit csharp</c>, and LSP.
+    /// The Roslyn <see cref="SyntaxTree"/> for this file's generated C#, parsed once from
+    /// <see cref="GeneratedCSharp"/> at code generation (D3, #1050). It is NOT built from the
+    /// emitter's raw node: emitter-built trees are not reparse-equivalent (string-built
+    /// <c>global::</c> identifiers), so wrapping the node directly is blocked on #1095.
+    /// Null until code generation completes, and null for incremental cache-hit files (they are
+    /// restored from cached <see cref="GeneratedCSharp"/> text only). The compile path hands this
+    /// tree straight to <c>CSharpCompilation.Create</c> so the text is never reparsed downstream;
+    /// <see cref="GeneratedCSharp"/> remains the source of truth for snapshots, the incremental
+    /// cache, <c>emit csharp</c>, and LSP.
     /// </summary>
     internal SyntaxTree? GeneratedSyntaxTree { get; set; }
 

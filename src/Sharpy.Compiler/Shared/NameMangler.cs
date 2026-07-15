@@ -21,7 +21,7 @@ internal static class NameMangler
     //
     // See: #99 (unconditional mapping should use type information from semantic analysis),
     //      #1069 (dict setdefault/popitem mangled to non-existent CLR names).
-    private static readonly Dictionary<string, string> _listMethodMap = new()
+    private static readonly Dictionary<string, string> _collectionMethodMap = new()
     {
         ["setdefault"] = "SetDefault",
         ["popitem"] = "PopItem",
@@ -399,11 +399,12 @@ internal static class NameMangler
     }
 
     /// <summary>
-    /// Get the C# equivalent name for a Python list method, if it exists
+    /// Get the C# equivalent name for a builtin-collection (list/dict/set) method whose
+    /// PascalCase form differs from the target CLR name, if such a mapping exists.
     /// </summary>
-    public static string? GetListMethodMapping(string methodName)
+    public static string? GetCollectionMethodMapping(string methodName)
     {
-        return _listMethodMap.TryGetValue(methodName, out var mapped) ? mapped : null;
+        return _collectionMethodMap.TryGetValue(methodName, out var mapped) ? mapped : null;
     }
 
     /// <summary>

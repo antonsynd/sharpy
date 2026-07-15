@@ -119,8 +119,8 @@ public class StaticStateConformanceTests
                 "Set of dunder property names, initialized inline and read-only.",
             [("Sharpy.Compiler.Shared.DunderNameMapping", "_dunderMethodMap")] =
                 "Dunder→C# operator/method map, initialized inline and read-only.",
-            [("Sharpy.Compiler.Shared.NameMangler", "_listMethodMap")] =
-                "List method-name map, initialized inline and read-only.",
+            [("Sharpy.Compiler.Shared.NameMangler", "_collectionMethodMap")] =
+                "Builtin-collection method-name map, initialized inline and read-only.",
             [("Sharpy.Compiler.Shared.NameMangler", "_upperCaseAcronyms")] =
                 "Uppercase-acronym set for namespace casing, initialized inline and read-only.",
             [("Sharpy.Compiler.Shared.TypingEquivalences", "Messages")] =

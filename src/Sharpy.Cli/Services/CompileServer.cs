@@ -29,6 +29,11 @@ internal sealed class CompileServer
     // Compiles mutate process-global Console.Out/Error (to capture compiler output) and the current
     // directory, so they must never overlap. A single-instance pipe already serializes connections;
     // this lock is the explicit "one compile at a time" guarantee the protocol promises.
+    // NOTE: what actually enforces serialization today is RunAsync's sequential accept loop
+    // (each connection is awaited to completion before the next WaitForConnectionAsync), so the
+    // synchronous Wait() below never contends. If the accept loop is ever made concurrent
+    // (e.g. multiple pipe instances), switch ExecuteCompile to WaitAsync — a contended
+    // synchronous Wait() would block a thread-pool thread in otherwise all-async code.
     private readonly SemaphoreSlim _compileLock = new(1, 1);
 
     private int _compileCount;
