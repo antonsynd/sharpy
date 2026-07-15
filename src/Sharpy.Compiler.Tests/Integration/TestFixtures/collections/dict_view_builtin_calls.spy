@@ -1,0 +1,13 @@
+def main() -> None:
+    # Builtin calls over dict views must read the semantic element type: values() yields V,
+    # items() yields (K, V) tuples, keys() yields K. Regression for #1068, where the emitter
+    # re-inferred TypeArguments[0] off DictValuesView<K, V> and picked the KEY type (CS1503).
+    d: dict[str, int] = {"banana": 3, "apple": 1, "cherry": 2}
+    print(sorted(d.values()))
+    print(sorted(d.keys()))
+    print(sorted(d.items()))
+
+    total: int = 0
+    for v in d.values():
+        total = total + v
+    print(total)

@@ -1,0 +1,4 @@
+[1, 2, 3]
+['apple', 'banana', 'cherry']
+[('apple', 1), ('banana', 3), ('cherry', 2)]
+6

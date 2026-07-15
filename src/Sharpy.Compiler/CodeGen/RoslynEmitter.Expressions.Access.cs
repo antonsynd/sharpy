@@ -1023,35 +1023,30 @@ internal partial class RoslynEmitter
     {
         var csharpName = NameCasing.ResolveMethod(name, isBacktickEscaped: false);
 
-        // Infer element type from first argument's semantic type
+        // Infer the element type argument (T in Sorted<T>/Reversed<T>). Read the semantic layer's
+        // already-resolved answer first: sorted() resolves to list[T] and reversed() to
+        // Iterator[T], so the call's resolved return type carries the correct element type at
+        // TypeArguments[0]. TypeChecker computed it via InferIterableElementType, which correctly
+        // picks the VALUE type for dict views (values()), the (K, V) tuple for items(), the KEY for
+        // keys(), etc. The emitter must not re-infer this: reading gt.TypeArguments[0] off the
+        // *argument* type picks the KEY for DictValuesView<K, V> (#1068 — an emitter-purity residue).
         TypeSyntax? typeArg = null;
         if (call.Arguments.Length > 0)
         {
-            var argType = GetExpressionSemanticType(call.Arguments[0]);
-            var elemType = argType switch
-            {
-                GenericType gt when gt.TypeArguments.Count > 0 => gt.TypeArguments[0],
-                _ when argType == SemanticType.Str => SemanticType.Str,
-                _ => null
-            };
+            SemanticType? elemType = null;
 
-            // Fallback: for user-defined types (e.g., with __reversed__), extract element type
-            // from the call's resolved return type (Iterator<T> -> T).
-            if (elemType == null || IsObjectType(elemType))
+            var callType = _context.SemanticInfo?.GetExpressionType(call);
+            if (callType is GenericType callGeneric
+                && callGeneric.TypeArguments.Count > 0
+                && callGeneric.TypeArguments[0] is not UnknownType
+                && !IsObjectType(callGeneric.TypeArguments[0]))
             {
-                var callType = _context.SemanticInfo?.GetExpressionType(call);
-                if (callType is GenericType callGeneric
-                    && callGeneric.TypeArguments.Count > 0
-                    && callGeneric.TypeArguments[0] is not UnknownType
-                    && !IsObjectType(callGeneric.TypeArguments[0]))
-                {
-                    elemType = callGeneric.TypeArguments[0];
-                }
+                elemType = callGeneric.TypeArguments[0];
             }
 
-            // Fallback: try to infer element type from the argument's AST structure (#555).
-            // Handles sorted(list(d.keys())) where d is a generic dict type.
-            if ((elemType == null || IsObjectType(elemType)) && call.Arguments.Length > 0)
+            // Fallback for error recovery, when the call's return type was not resolved: infer the
+            // element type from the argument's AST structure (#555, e.g. sorted(list(d.keys()))).
+            if (elemType == null || IsObjectType(elemType))
             {
                 var inferred = TryInferElementTypeFromArg(call.Arguments[0]);
                 if (inferred != null)
