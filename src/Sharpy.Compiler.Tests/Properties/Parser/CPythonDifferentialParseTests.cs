@@ -182,12 +182,12 @@ public class CPythonDifferentialParseTests
     }
 
     /// <summary>
-    /// QUARANTINED divergence this differential fuzzer found (#1076): the #1011 lambda-param
-    /// forward scan does not descend into a lambda used as a keyword-argument value, so the
-    /// inner lambda's depth-0 ':' is mistaken for the outer lambda's body separator and the
-    /// parse fails. CPython accepts every one of these (verified via ast.parse). Cases were
-    /// minimized from fuzzer-found samples and reproduce deterministically. Un-skip (and
-    /// remove the SubsetFilter.VisitFunctionCall quarantine) when #1076 is fixed.
+    /// Seeded regression for the divergence this differential fuzzer found (#1076, fixed): the
+    /// #1011 lambda-param forward scan did not descend into a lambda used as a keyword-argument
+    /// value, so the inner lambda's depth-0 ':' was mistaken for the outer lambda's body
+    /// separator and the parse failed. CPython accepts every one of these (verified via
+    /// ast.parse); Sharpy now does too (SkipLambdaHeader). Cases were minimized from fuzzer-found
+    /// samples and reproduce deterministically.
     /// </summary>
     [Theory]
     [InlineData("f(lambda v: v, k=lambda: x)")]
