@@ -73,9 +73,9 @@ public class CompileServerE2ETests : IDisposable
 
         var result = CliTestHarness.Invoke($"build \"{source}\" --output \"{output}\" --server={deadPipe}");
 
-        result.ExitCode.Should().Be(0, "the compile must succeed via the in-process fallback: {0}", result.Err);
-        result.Err.Should().Contain("no compile server", "the fallback must be announced");
-        result.Err.Should().Contain("compiling in-process");
+        result.ExitCode.Should().Be(0, "the compile must succeed via the in-process fallback: {0}", result.StdErr);
+        result.StdErr.Should().Contain("no compile server", "the fallback must be announced");
+        result.StdErr.Should().Contain("compiling in-process");
         File.Exists(output).Should().BeTrue("the in-process fallback still produces the binary");
     }
 

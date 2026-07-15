@@ -56,52 +56,80 @@ internal sealed class CompileServer
             $"sharpyc server listening on pipe '{_pipeName}' (idle timeout {idleDesc}). "
             + "Send a 'shutdown' request or press Ctrl+C to stop.").ConfigureAwait(false);
 
-        while (!cts.IsCancellationRequested && !_shutdownRequested)
+        // One reused server-stream instance for the whole lifetime: after a client disconnects we
+        // Disconnect() and WaitForConnection() again on the SAME instance. Disposing and recreating
+        // the stream per connection races on Unix, where the pipe is backed by a domain socket that
+        // is unbound/rebound each cycle — a client reconnecting in that window (e.g. a ping
+        // immediately followed by a compile) lands on a socket being torn down and gets a silently
+        // closed connection.
+        NamedPipeServerStream pipe;
+        try
         {
-            NamedPipeServerStream pipe;
-            try
-            {
-                pipe = new NamedPipeServerStream(
-                    _pipeName,
-                    PipeDirection.InOut,
-                    maxNumberOfServerInstances: 1,
-                    PipeTransmissionMode.Byte,
-                    PipeOptions.Asynchronous);
-            }
-            catch (IOException ex)
-            {
-                // The pipe name is already in use (another server) or otherwise unopenable.
-                await Console.Error.WriteLineAsync($"sharpyc server: cannot open pipe '{_pipeName}': {ex.Message}").ConfigureAwait(false);
-                return 1;
-            }
+            pipe = new NamedPipeServerStream(
+                _pipeName,
+                PipeDirection.InOut,
+                maxNumberOfServerInstances: 1,
+                PipeTransmissionMode.Byte,
+                PipeOptions.Asynchronous);
+        }
+        catch (IOException ex)
+        {
+            // The pipe name is already in use (another server) or otherwise unopenable.
+            await Console.Error.WriteLineAsync($"sharpyc server: cannot open pipe '{_pipeName}': {ex.Message}").ConfigureAwait(false);
+            return 1;
+        }
 
-            using (pipe)
+        using (pipe)
+        {
+            while (!cts.IsCancellationRequested && !_shutdownRequested)
             {
                 // A linked CTS that also fires on idle timeout, so WaitForConnectionAsync returns
-                // and we can shut down a server nobody is using. Disposed once a client connects,
-                // which cancels the pending timer.
-                using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
-                if (_idleTimeout != Timeout.InfiniteTimeSpan)
+                // and we can shut down a server nobody is using.
+                using (var idleCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token))
                 {
-                    idleCts.CancelAfter(_idleTimeout);
+                    if (_idleTimeout != Timeout.InfiniteTimeSpan)
+                    {
+                        idleCts.CancelAfter(_idleTimeout);
+                    }
+
+                    try
+                    {
+                        await pipe.WaitForConnectionAsync(idleCts.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        if (cts.IsCancellationRequested)
+                        {
+                            break;
+                        }
+
+                        await Console.Error.WriteLineAsync("sharpyc server: idle timeout reached; shutting down.").ConfigureAwait(false);
+                        break;
+                    }
                 }
 
                 try
                 {
-                    await pipe.WaitForConnectionAsync(idleCts.Token).ConfigureAwait(false);
+                    await HandleConnectionAsync(pipe, cts).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    if (cts.IsCancellationRequested)
-                    {
-                        break;
-                    }
-
-                    await Console.Error.WriteLineAsync("sharpyc server: idle timeout reached; shutting down.").ConfigureAwait(false);
-                    break;
+                    // A connection-level fault must not take the server down; log and accept the next.
+                    await Console.Error.WriteLineAsync($"sharpyc server: dropped a connection after an error: {ex.Message}").ConfigureAwait(false);
                 }
 
-                await HandleConnectionAsync(pipe, cts).ConfigureAwait(false);
+                // Reset the instance to accept the next client on the same socket.
+                if (pipe.IsConnected)
+                {
+                    try
+                    {
+                        pipe.Disconnect();
+                    }
+                    catch (IOException)
+                    {
+                        // Already torn down by the peer; the next WaitForConnection re-arms it.
+                    }
+                }
             }
         }
 
@@ -164,36 +192,65 @@ internal sealed class CompileServer
                 continue;
             }
 
-            switch (request.Command)
+            // A fault handling one request (a compiler crash, a broken write) must never take the
+            // server down or leave the client hanging on a silently-closed pipe: reply with a
+            // structured error and keep serving. A write failure means the client is already gone,
+            // so drop this connection but stay alive for the next one.
+            try
             {
-                case CompileServerProtocol.CommandShutdown:
-                    await WriteAsync(writer, new CompileServerResponse { ExitCode = 0, Stdout = "shutting down" }).ConfigureAwait(false);
-                    _shutdownRequested = true;
-                    await cts.CancelAsync().ConfigureAwait(false);
-                    return;
+                switch (request.Command)
+                {
+                    case CompileServerProtocol.CommandShutdown:
+                        await WriteAsync(writer, new CompileServerResponse { ExitCode = 0, Stdout = "shutting down" }).ConfigureAwait(false);
+                        _shutdownRequested = true;
+                        await cts.CancelAsync().ConfigureAwait(false);
+                        return;
 
-                case CompileServerProtocol.CommandPing:
-                    await WriteAsync(writer, new CompileServerResponse
-                    {
-                        ExitCode = 0,
-                        Stdout = "pong",
-                        CompileOrdinal = _compileCount,
-                    }).ConfigureAwait(false);
-                    break;
+                    case CompileServerProtocol.CommandPing:
+                        await WriteAsync(writer, new CompileServerResponse
+                        {
+                            ExitCode = 0,
+                            Stdout = "pong",
+                            CompileOrdinal = _compileCount,
+                        }).ConfigureAwait(false);
+                        break;
 
-                case CompileServerProtocol.CommandCompile:
-                case CompileServerProtocol.CommandProject:
-                    var response = ExecuteCompile(request);
-                    await WriteAsync(writer, response).ConfigureAwait(false);
-                    break;
+                    case CompileServerProtocol.CommandCompile:
+                    case CompileServerProtocol.CommandProject:
+                        var response = ExecuteCompile(request);
+                        await WriteAsync(writer, response).ConfigureAwait(false);
+                        break;
 
-                default:
+                    default:
+                        await WriteAsync(writer, new CompileServerResponse
+                        {
+                            ExitCode = CliHelpers.ExitInternalError,
+                            Error = $"unknown command '{request.Command}'",
+                        }).ConfigureAwait(false);
+                        break;
+                }
+            }
+            catch (IOException)
+            {
+                // The client disconnected before we could reply; nothing more to do on this pipe.
+                break;
+            }
+            catch (Exception ex)
+            {
+                await Console.Error.WriteLineAsync($"sharpyc server: error handling '{request.Command}': {ex}").ConfigureAwait(false);
+                try
+                {
                     await WriteAsync(writer, new CompileServerResponse
                     {
                         ExitCode = CliHelpers.ExitInternalError,
-                        Error = $"unknown command '{request.Command}'",
+                        Error = $"server fault handling '{request.Command}': {ex.Message}",
                     }).ConfigureAwait(false);
+                }
+                catch (IOException)
+                {
+                    // The client is gone; drop this connection and accept the next.
                     break;
+                }
             }
         }
     }
