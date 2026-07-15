@@ -124,6 +124,38 @@ def test_results_to_json_includes_cold_warm_only_for_sharpy():
     assert "warm_compile_seconds" not in by_lang["Python"]
 
 
+def test_results_to_json_includes_server_warm_only_for_sharpy():
+    sharpy = run_benchmarks.BenchResult(
+        "fib", "Sharpy", 0.5, 0.1, 0.6, True, "",
+        server_warm_compile_seconds=0.15,
+    )
+    python = run_benchmarks.BenchResult("fib", "Python", 0.1, 0.2, 0.3, True, "")
+    out = run_benchmarks.results_to_json({"fib": {"Sharpy": sharpy, "Python": python}})
+
+    by_lang = {e["language"]: e for e in out}
+    assert by_lang["Sharpy"]["server_warm_compile_seconds"] == 0.15
+    assert "server_warm_compile_seconds" not in by_lang["Python"]
+
+
+def test_results_to_json_omits_server_warm_when_none():
+    sharpy = run_benchmarks.BenchResult("fib", "Sharpy", 0.5, 0.1, 0.6, True, "")
+    out = run_benchmarks.results_to_json({"fib": {"Sharpy": sharpy}})
+    assert "server_warm_compile_seconds" not in out[0]
+
+
+def test_merge_results_round_trips_server_warm(tmp_path):
+    sharpy = run_benchmarks.BenchResult(
+        "fib", "Sharpy", 0.5, 0.1, 0.6, True, "",
+        server_warm_compile_seconds=0.15,
+    )
+    serialized = run_benchmarks.results_to_json({"fib": {"Sharpy": sharpy}})
+    merge_file = tmp_path / "partial.json"
+    merge_file.write_text(json.dumps(serialized))
+
+    merged = run_benchmarks.merge_results({}, merge_file)
+    assert merged["fib"]["Sharpy"].server_warm_compile_seconds == 0.15
+
+
 def test_read_features_parses_names_and_comments(tmp_path):
     (tmp_path / "bench.features").write_text(
         "# leading comment\nmatmul\n\ndefer  # trailing comment\n"

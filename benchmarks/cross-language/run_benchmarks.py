@@ -18,12 +18,14 @@ Usage:
 
 import argparse
 import json
+import os
 import py_compile
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -34,6 +36,8 @@ WARMUP_RUNS = 1
 TIMED_RUNS = 3
 # Number of warm (--incremental, cache-present) project compiles to median over.
 WARM_COMPILE_RUNS = 5
+# Number of warm compiles through a persistent 'sharpyc server' to median over (D2, #1049).
+SERVER_WARM_COMPILE_RUNS = 5
 
 
 @dataclass
@@ -61,6 +65,11 @@ class BenchResult:
     # for Sharpy results; other languages leave them None and omit them from JSON.
     cold_compile_seconds: float | None = None
     warm_compile_seconds: float | None = None
+    # End-to-end warm compile time through a persistent 'sharpyc server' process
+    # (D2, #1049): median of SERVER_WARM_COMPILE_RUNS `sharpyc build --server` runs
+    # after the server is warmed. Sharpy-only; None when the server path is disabled
+    # or unavailable, and omitted from JSON when None.
+    server_warm_compile_seconds: float | None = None
 
 
 def find_benchmarks(names: list[str] | None = None) -> list[Path]:
@@ -338,6 +347,99 @@ def measure_project_compile(
         shutil.rmtree(project_dir, ignore_errors=True)
 
 
+# --- Sharpy: persistent compile server (D2, #1049) ---
+
+def _start_compile_server(cli_dll: Path, pipe_name: str) -> subprocess.Popen:
+    """Start a keep-alive 'sharpyc server' process on the given pipe (no auto-spawn magic)."""
+    return subprocess.Popen(
+        ["dotnet", str(cli_dll), "server", "--pipe", pipe_name, "--idle-timeout", "120"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def _stop_compile_server(server: subprocess.Popen) -> None:
+    """Terminate the server process (idle-timeout is the backstop if this is missed)."""
+    try:
+        server.terminate()
+        server.wait(timeout=10)
+    except Exception:
+        try:
+            server.kill()
+        except Exception:
+            pass
+
+
+def _run_server_build(
+    cli_dll: Path, spy_file: Path, pipe_name: str, out_dir: Path, features: list[str] | None,
+) -> tuple[float, bool, bool, str]:
+    """One `sharpyc build --server` invocation.
+
+    Returns (elapsed_seconds, served_by_server, ok, error). ``served_by_server`` is False when the
+    client fell back to an in-process compile (the client prints that to stderr when no server
+    answered), which lets the caller distinguish a genuine server hit from a fallback.
+    """
+    output = out_dir / "server_bench.exe"
+    cmd = ["dotnet", str(cli_dll), "build", str(spy_file), "-o", str(output), f"--server={pipe_name}"]
+    for feature in features or []:
+        cmd += ["--enable-feature", feature]
+    start = time.perf_counter()
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    elapsed = time.perf_counter() - start
+    served = "compiling in-process" not in (result.stderr or "")
+    ok = result.returncode == 0
+    err = "" if ok else (result.stderr[:500] or result.stdout[:500] or f"exit {result.returncode}")
+    return elapsed, served, ok, err
+
+
+def measure_server_compile(
+    cli_dll: Path, spy_file: Path, features: list[str] | None = None,
+) -> tuple[float | None, bool, str]:
+    """Measure the warm compile time through a persistent 'sharpyc server' (D2, #1049).
+
+    Starts a dedicated server, drives `sharpyc build --server` at it until one request is genuinely
+    served (warming the process — its first compile is cold), then times SERVER_WARM_COMPILE_RUNS
+    more served compiles and returns their median. Returns (warm_seconds | None, ok, error);
+    failures degrade to (None, False, error) so a flaky server never breaks the whole run.
+    """
+    # Keep the pipe name short: on macOS a named pipe is backed by a Unix domain socket at
+    # $TMPDIR/CoreFxPipe_<name>, whose path is capped at 104 characters.
+    pipe_name = f"spy-b-{uuid.uuid4().hex[:8]}"
+    out_dir = Path(tempfile.mkdtemp(prefix="server_bench_"))
+    server = _start_compile_server(cli_dll, pipe_name)
+    try:
+        # Warm the server: retry until a build is actually served (server finished starting).
+        deadline = time.time() + 30
+        warmed = False
+        last_err = "server never served a compile"
+        while time.time() < deadline:
+            if server.poll() is not None:
+                return None, False, "server process exited before serving a compile"
+            _, served, ok, err = _run_server_build(cli_dll, spy_file, pipe_name, out_dir, features)
+            if ok and served:
+                warmed = True
+                break
+            last_err = err or "client fell back to in-process (server not ready)"
+            time.sleep(0.3)
+
+        if not warmed:
+            return None, False, last_err
+
+        warm_times = []
+        for _ in range(SERVER_WARM_COMPILE_RUNS):
+            elapsed, served, ok, err = _run_server_build(cli_dll, spy_file, pipe_name, out_dir, features)
+            if not ok:
+                return None, False, err
+            if not served:
+                return None, False, "server stopped serving mid-measurement"
+            warm_times.append(elapsed)
+
+        return median(warm_times), True, ""
+    finally:
+        _stop_compile_server(server)
+        shutil.rmtree(out_dir, ignore_errors=True)
+
+
 # --- C# ---
 
 def compile_csharp(bench_dir: Path, tmp_dir: Path) -> tuple[float, bool, str, Path]:
@@ -414,6 +516,7 @@ ALL_LANGUAGES = {"Python", "Sharpy", "C#"}
 
 def run_benchmark(
     bench_dir: Path, cli_dll: Path | None, languages: set[str] | None = None,
+    measure_server: bool = True,
 ) -> dict[str, BenchResult]:
     """Run selected languages for one benchmark. Returns dict keyed by language."""
     langs = languages or ALL_LANGUAGES
@@ -483,11 +586,17 @@ def run_benchmark(
                 # Cold + warm (--incremental) project-compile times. Additive to the
                 # single-file compile above (kept intact for history comparability).
                 cold_t, warm_t, _, _ = measure_project_compile(cli_dll, spy_file, features)
+                # Persistent-server warm compile (D2, #1049). Guarded: a server failure
+                # records None (prints "—") rather than breaking the benchmark run.
+                server_warm_t = None
+                if measure_server:
+                    server_warm_t, _, _ = measure_server_compile(cli_dll, spy_file, features)
                 results["Sharpy"] = BenchResult(
                     bench_dir.name, "Sharpy", compile_t, exec_t, compile_t + exec_t, exec_ok, exec_err,
                     compile_phases=compile_phases or None,
                     cold_compile_seconds=cold_t,
                     warm_compile_seconds=warm_t,
+                    server_warm_compile_seconds=server_warm_t,
                 )
 
     if "C#" in langs:
@@ -555,12 +664,13 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
         print(f"{name:<22} {py_str:<12} {spy_str:<12} {cs_str:<12} {ratio_py:<8} {ratio_cs:<8}")
 
     # Compilation time table. "Sharpy" is a cold single-file compile (unchanged, for
-    # history comparability); "Warm" is a warm --incremental project compile.
+    # history comparability); "Warm" is a warm --incremental project compile; "Server"
+    # is an end-to-end warm compile through a persistent 'sharpyc server' (D2, #1049).
     print()
     print("=== Compilation Time ===")
     print()
-    print(f"{'Benchmark':<22} {'Python':<12} {'Sharpy':<12} {'Warm':<12} {'C#':<12} {'Spy/C#':<8}")
-    print("-" * 74)
+    print(f"{'Benchmark':<22} {'Python':<10} {'Sharpy':<10} {'Warm':<10} {'Server':<10} {'C#':<10} {'Spy/C#':<8}")
+    print("-" * 82)
 
     for name in sorted(all_results):
         langs = all_results[name]
@@ -571,19 +681,20 @@ def print_table(all_results: dict[str, dict[str, BenchResult]]):
         py_str = format_time(py.compile_seconds) if py else "—"
         spy_str = format_time(spy.compile_seconds) if spy else "—"
         warm_str = format_time(spy.warm_compile_seconds) if spy and spy.warm_compile_seconds else "—"
+        server_str = format_time(spy.server_warm_compile_seconds) if spy and spy.server_warm_compile_seconds else "—"
         cs_str = format_time(cs.compile_seconds) if cs else "—"
 
         spy_t = spy.compile_seconds if spy else 0
         cs_t = cs.compile_seconds if cs else 0
         ratio_cs = f"{spy_t / cs_t:.2f}x" if cs_t > 0 and spy_t > 0 else "—"
 
-        print(f"{name:<22} {py_str:<12} {spy_str:<12} {warm_str:<12} {cs_str:<12} {ratio_cs:<8}")
+        print(f"{name:<22} {py_str:<10} {spy_str:<10} {warm_str:<10} {server_str:<10} {cs_str:<10} {ratio_cs:<8}")
 
     print()
     print("Spy/Py < 1.0 = Sharpy faster than Python")
     print("Spy/C# ~ 1.0 = Sharpy matches raw C# (minimal overhead)")
     print("Sharpy = cold single-file compile; Warm = warm --incremental project compile")
-    print("Compiler-server (persistent-process) compile column pending #1049")
+    print("Server = end-to-end warm compile through a persistent 'sharpyc server' (D2, #1049)")
     print()
 
 
@@ -610,6 +721,7 @@ def merge_results(
                 compile_phases=entry.get("compile_phases"),
                 cold_compile_seconds=entry.get("cold_compile_seconds"),
                 warm_compile_seconds=entry.get("warm_compile_seconds"),
+                server_warm_compile_seconds=entry.get("server_warm_compile_seconds"),
             )
     return all_results
 
@@ -635,6 +747,9 @@ def results_to_json(all_results: dict[str, dict[str, BenchResult]]) -> list[dict
                 entry["cold_compile_seconds"] = r.cold_compile_seconds
             if r.warm_compile_seconds is not None:
                 entry["warm_compile_seconds"] = r.warm_compile_seconds
+            # Persistent-server warm compile (D2, #1049); Sharpy-only, omit when absent.
+            if r.server_warm_compile_seconds is not None:
+                entry["server_warm_compile_seconds"] = r.server_warm_compile_seconds
             output.append(entry)
     return output
 
@@ -650,6 +765,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--merge", type=str, default=None, metavar="FILE",
         help="JSON file of partial results to merge (fresh results win on conflict)",
+    )
+    parser.add_argument(
+        "--no-server-compile", action="store_true",
+        help="Skip the persistent 'sharpyc server' warm-compile measurement (D2, #1049)",
     )
     return parser.parse_args()
 
@@ -720,7 +839,8 @@ def main():
         if verbose:
             print(f"  {bench_dir.name}...", end=" ", flush=True)
 
-        results = run_benchmark(bench_dir, cli_dll, languages)
+        results = run_benchmark(
+            bench_dir, cli_dll, languages, measure_server=not args.no_server_compile)
         all_results[bench_dir.name] = results
 
         if verbose:

@@ -117,6 +117,48 @@ that cost is the target of **D2 (#1049)**, not D3.
 
 _Post-D3 numbers are recorded below once the tree-handoff and validation-reparse changes land._
 
+## D2 Persistent-Server Compile (#1049)
+
+> **Harness:** `benchmarks/cross-language/run_benchmarks.py` (`Server` column) plus a direct
+> `sharpyc build --server` micro-measurement (median of 11 warm runs after warmup).
+> **Machine:** Apple Silicon macOS, .NET 10, Release CLI. **Measured under peer build/test load**
+> (three agents sharing the machine) — treat the absolute cold figure as an upper bound and
+> re-measure at a quiet window for the canonical record; the warm-vs-cold gap and the gate verdict
+> are robust to the load (every warm run was < 120 ms).
+
+**What landed.** Two process-lifetime caches remove the per-compile cold costs the D3 breakdown
+attributed to D2, and a keep-alive `sharpyc server` reuses one process across compiles:
+
+1. **`AssemblyCompiler.s_referenceCache`** — `MetadataReference`s keyed by (assembly path,
+   last-write time), so the trusted-platform-assembly set is read and parsed from disk at most once
+   per process instead of on every compile.
+2. **`OverloadIndexCache.s_inMemoryIndices`** — the deserialized stdlib overload index kept per
+   process (keyed by the content-addressed cache-file path), so a fresh `CachedModuleDiscovery` per
+   compile no longer re-reads every index from disk.
+3. **`sharpyc server`** — an explicitly-started keep-alive process on a named pipe; clients opt in
+   with `sharpyc build|run --server[=NAME]` and fall back to an in-process compile if none is
+   running (no daemon auto-spawn).
+
+**Measured warm compile of a small file** (`def main(): print("hi")`):
+
+| Path | Median | Range | Notes |
+|------|-------:|------:|-------|
+| Cold in-process `sharpyc build` | ~790 ms | — | fresh process: JIT + reference load + index deserialize + emit (inflated by peer load) |
+| **End-to-end `sharpyc build --server` (warm)** | **105 ms** | 97–120 ms | client process launch + pipe round-trip + warm server-side compile |
+| Server-side compile only (server-reported) | ~9 ms | 6–23 ms | the actual compilation once caches + JIT are warm |
+
+**Gate verdict — PASS.** The exit criterion (warm compile of a small file **< 200 ms**) is met with
+margin: end-to-end **105 ms** (every sample < 120 ms), of which the compilation itself is **~9 ms**;
+the remaining ~95 ms is the client `dotnet sharpyc.dll` process launch, not compilation.
+
+**Residual analysis.** With the server-side compile already ~9 ms, the dominant remaining cost on the
+`--server` path is **client process startup** (~95 ms of the 105 ms). If a stricter target is ever
+set, the next levers are, in order: (a) ReadyToRun/AOT-publishing the CLI *client* to cut its launch
+time (the `Sharpy.Cli.csproj` is a plain framework-dependent Exe today — no R2R/AOT configured),
+or (b) a resident client / editor-embedded client that skips a per-compile process launch entirely.
+Neither is needed to clear the 200 ms bar, so R2R/AOT is **recorded as evaluated and deferred**, not
+adopted, per Design Decision 9(c).
+
 ## Benchmark Suite
 
 The benchmark suite is located in `src/Sharpy.Compiler.Benchmarks/` and uses [BenchmarkDotNet](https://benchmarkdotnet.org/).
@@ -206,7 +248,7 @@ Located in `src/Sharpy.Compiler.Benchmarks/Corpus/`:
      total, dominated by per-process metadata-reference loading and IL emit — the target of
      **D2 (#1049)**, not D3
 
-4. **Incremental compilation**: Wired up for `.spyproj` projects since #756 and benchmarked as of #1053. The cross-language harness (`benchmarks/cross-language/run_benchmarks.py`) measures a cold compile (empty cache) and a warm `--incremental` compile (cache present) per benchmark via a synthetic one-file project; both are published in `results/latest.md`. Single-file compiles have no incremental cache and stay cold. The persistent compiler-server compile path is pending #1049 (D2).
+4. **Incremental compilation**: Wired up for `.spyproj` projects since #756 and benchmarked as of #1053. The cross-language harness (`benchmarks/cross-language/run_benchmarks.py`) measures a cold compile (empty cache) and a warm `--incremental` compile (cache present) per benchmark via a synthetic one-file project; both are published in `results/latest.md`. Single-file compiles have no incremental cache and stay cold. The **persistent compiler-server** compile path landed with **D2 (#1049)**: the harness now also measures an end-to-end `sharpyc build --server` compile through a keep-alive process (see the **D2 Persistent-Server Compile** section below), reported as the `Server` column.
 
 ## CI Integration
 
