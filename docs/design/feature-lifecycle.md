@@ -192,7 +192,7 @@ A behavioral flag differs from a syntax feature in three ways:
 
 ## Pilot features
 
-Three features pilot this lifecycle. All are `Parser`-scoped and all ship experimental.
+Four features pilot this lifecycle. All are `Parser`-scoped and all ship experimental.
 
 | Feature | Flag | Issue | Scope | Lowering |
 |---------|------|-------|-------|----------|
@@ -202,9 +202,10 @@ Three features pilot this lifecycle. All are `Parser`-scoped and all ship experi
 | `before_set` / `after_set` property observers | `property_observers` | [#416](https://github.com/antonsynd/sharpy/issues/416) | `Parser` | auto-property lowered to a backing field + expanded setter running the observers around every store |
 
 Each pilot registers its name in `KnownFeatures`, registers its gated construct (`@`/`@=`, the
-`defer` statement, and the `as?`/`as!`-form `TypeCoercion` respectively) in the feature-gate registry,
-and ships with the dual-fixture pattern: an ungated `.error` fixture asserting `SPY0331` and a gated
-`.expected` fixture (via `.features`) exercising the enabled behaviour.
+`defer` statement, the `as?`/`as!`-form `TypeCoercion`, and a `PropertyDef` carrying non-empty
+`before_set`/`after_set` observers respectively) in the feature-gate registry, and ships with the
+dual-fixture pattern: an ungated `.error` fixture asserting `SPY0331` and a gated `.expected` fixture
+(via `.features`) exercising the enabled behaviour.
 
 `failable_cast` additionally pilots a **feature-conditional transition hint**: while the flag is
 enabled, a legacy `to`/`to?` cast emits `SPY0479` suggesting the `as!`/`as?` spelling (the hint is
