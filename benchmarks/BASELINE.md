@@ -87,11 +87,15 @@ memo on #1052.
 text with `ToFullString()`, and today that text is **reparsed** in `AssemblyCompiler` (the
 timed **"C# Parsing"** phase) before `CSharpCompilation.Create`. A *second*, untimed reparse
 of the same text runs in the always-on post-codegen invariant (`AssertGeneratedCSharpParses`).
-So every hot-path file is parsed to a tree, thrown away, and reparsed **twice**. D3 hands the
-original tree straight to `CSharpCompilation` and reads diagnostics off it, collapsing the
-"C# Parsing" phase (and the validation reparse) to zero on the hot path. `ToFullString()`
-stays (snapshots, incremental cache, `emit csharp`, LSP); cache-served string-only files still
-`ParseText` — that is the incremental path's cost, not the hot path's.
+So every hot-path file was parsed to a tree, thrown away, and reparsed **twice**. D3 as landed
+parses the emitted text **once, at codegen time**, hands that parsed tree straight to
+`CSharpCompilation`, and reads the post-codegen invariant's diagnostics off the same tree —
+eliminating the separate "C# Parsing" phase and the validation reparse (2 parses → 1, the one
+parse folded into Code Generation). Handing the emitter's own node graph (zero parses) is
+**blocked on #1095**: some emitter nodes are not reparse-equivalent (string-built `global::`
+names inside identifier tokens), which broke stdlib-wide compilation when attempted.
+`ToFullString()` stays (snapshots, incremental cache, `emit csharp`, LSP); cache-served
+string-only files still `ParseText` — that is the incremental path's cost, not the hot path's.
 
 **Pre-D3 per-phase medians (the reparse is "C# Parsing"):**
 
@@ -115,7 +119,28 @@ whole-project (multi-file) builds where "C# Parsing" aggregates across every uni
 `MetadataReference` (re)load over the full trusted-platform assembly set and the Roslyn emit —
 that cost is the target of **D2 (#1049)**, not D3.
 
-_Post-D3 numbers are recorded below once the tree-handoff and validation-reparse changes land._
+**Post-D3 per-phase medians** (recorded 2026-07-15, quiet machine — no concurrent agent
+builds/tests; Release CLI at `2ba958fb4`; median of 8 runs, 1 warmup dropped):
+
+| Input | Code Generation | **C# Parsing** | Roslyn Compilation | IL Emission | Total | C# Parsing % total |
+|-------|----------------:|---------------:|-------------------:|------------:|------:|-------------------:|
+| `large_lexer_corpus.spy` (476 ln) | 136.0 ms | **0.009 ms** | 5.8 ms | 506.0 ms | 736.7 ms | 0.00% |
+| `large_functions.spy` (73 ln) | 104.6 ms | **0.009 ms** | 5.8 ms | 472.9 ms | 658.9 ms | 0.00% |
+| `classes.spy` (35 ln) | 106.4 ms | **0.011 ms** | 6.3 ms | 419.2 ms | 611.6 ms | 0.00% |
+| `comprehensions.spy` | 95.1 ms | **0.009 ms** | 6.4 ms | 489.8 ms | 668.1 ms | 0.00% |
+| `sorting/bench.spy` | 106.6 ms | **0.013 ms** | 6.2 ms | 520.0 ms | 708.0 ms | 0.00% |
+| `list_comprehensions/bench.spy` | 95.2 ms | **0.010 ms** | 6.6 ms | 477.3 ms | 659.0 ms | 0.00% |
+| `fibonacci/bench.spy` | 84.7 ms | **0.010 ms** | 6.6 ms | 442.8 ms | 611.9 ms | 0.00% |
+
+**Measured emit-phase drop (the #1050 done-when).** The "C# Parsing" phase collapsed from
+0.25–3.30 ms (0.04–0.36% of total; up to 1.64% on the 6000-line synthetic) to **≈ 0.01 ms
+(0.00%)** — only prebuilt trees flow through it on the hot path. The single remaining parse
+now happens inside Code Generation, whose medians are **at or below** their pre-D3 values on
+every corpus file (e.g. `large_lexer_corpus` 136.0 vs 137.8 ms), i.e. absorbing the parse cost
+is within noise. The untimed always-on validation reparse (an equal second parse of every
+generated file) is gone as well, replaced by `GetDiagnostics()` on the existing tree. Net:
+**two text parses per hot-path file → one**, with the residual zero-parse handoff tracked in
+#1095.
 
 ## D2 Persistent-Server Compile (#1049)
 
