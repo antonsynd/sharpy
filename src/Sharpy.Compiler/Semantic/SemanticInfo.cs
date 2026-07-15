@@ -112,6 +112,12 @@ public class SemanticInfo : ISemanticQuery
     // Only present when the strategy differs from the default native operator — e.g.
     // tuple equality and CLR types that implement Equals/IEquatable but define no
     // op_Equality must lower to an Equals call instead of a C# `==`. Keyed by node identity.
+    //
+    // TRANSPORT (E2 #1056): this fact now flows to codegen through the lowering IR
+    // (IrEqualityComparison.Strategy); the emitter reads the IR, never this dict. The dict is
+    // retained only as the lowering pass's input (the strategy is CLR-reflection-derived and cannot
+    // be recomputed post-type-check). Physical deletion + its MergeFrom line are deferred to the
+    // guardrail-retirement step (lowering-ir.md §6.4, post-E2).
     private readonly ConcurrentDictionary<Expression, BinaryOpLowering> _binaryOpLowerings =
         new(ReferenceEqualityComparer.Instance);
 
@@ -529,7 +535,12 @@ public class SemanticInfo : ISemanticQuery
     /// Gets the lowering strategy for an equality binary operation.
     /// Returns <see cref="BinaryOpLowering.NativeOperator"/> when no override was recorded.
     /// </summary>
-    public BinaryOpLowering GetBinaryOpLowering(Expression binaryOp)
+    /// <remarks>
+    /// Lowering-input only (E2 #1056): the lowering pass reads this to build
+    /// <c>IrEqualityComparison.Strategy</c>; code generation reads the IR, never this accessor.
+    /// Renamed with the <c>ForIr</c> suffix so nothing in <c>CodeGen/</c> can bind it.
+    /// </remarks>
+    public BinaryOpLowering GetBinaryOpLoweringForIr(Expression binaryOp)
     {
         return _binaryOpLowerings.TryGetValue(binaryOp, out var lowering)
             ? lowering

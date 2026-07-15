@@ -139,7 +139,7 @@ internal partial class RoslynEmitter
         // rather than mis-selecting an operand.
         if (test is BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } noneEq
             && (noneEq.Left is NoneLiteral) != (noneEq.Right is NoneLiteral)
-            && _context.SemanticInfo?.GetBinaryOpLowering(noneEq) == BinaryOpLowering.NoneCheck)
+            && GetIrBinaryOpLowering(noneEq) == BinaryOpLowering.NoneCheck)
         {
             var nonNoneOperand = noneEq.Left is NoneLiteral ? noneEq.Right : noneEq.Left;
             var nullAssert = noneEq.Operator == BinaryOperator.Equal ? "Null" : "NotNull";

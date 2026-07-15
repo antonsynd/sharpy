@@ -75,11 +75,27 @@ internal sealed class LoweringPass
             // Constant-folded integer exponentiation lowers to a leaf constant: the operands are
             // folded away, so they are not lowered or indexed (E2 #1056, migrates _foldedIntegerConstants).
             BinaryOp binOp when TryLowerFoldedPower(binOp, semanticInfo) is { } folded => folded,
+            // Equality (==/!=) carries its lowering strategy on the IR node (E2 #1056, migrates
+            // _binaryOpLowerings).
+            BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } eqOp
+                => LowerEqualityComparison(eqOp, semanticInfo, index),
             _ => new IrOpaqueExpression(expression, semanticInfo.GetExpressionType(expression), SpanOf(expression),
                 LowerChildren(expression, semanticInfo, index)),
         };
         index[expression] = ir;
         return ir;
+    }
+
+    private static IrEqualityComparison LowerEqualityComparison(BinaryOp binOp, SemanticInfo semanticInfo, Dictionary<Node, IrNode> index)
+    {
+        var left = LowerExpression(binOp.Left, semanticInfo, index);
+        var right = LowerExpression(binOp.Right, semanticInfo, index);
+        return new IrEqualityComparison(
+            left,
+            right,
+            semanticInfo.GetBinaryOpLoweringForIr(binOp),
+            semanticInfo.GetExpressionType(binOp),
+            SpanOf(binOp));
     }
 
     /// <summary>

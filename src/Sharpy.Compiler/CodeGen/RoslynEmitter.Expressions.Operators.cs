@@ -16,6 +16,20 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
+    /// <summary>
+    /// Reads the equality lowering strategy for a <c>==</c>/<c>!=</c> operation from the lowering IR
+    /// (E2 #1056, migrates <c>_binaryOpLowerings</c>). Returns <c>null</c> when the node has no
+    /// <see cref="IrEqualityComparison"/> (the IR was not built, or the node is not an equality
+    /// comparison), which callers treat the same as the default native operator.
+    /// </summary>
+    private BinaryOpLowering? GetIrBinaryOpLowering(Expression binaryOp)
+    {
+        return _context.Ir?.Index.TryGetValue(binaryOp, out var node) == true
+            && node is IrEqualityComparison equality
+            ? equality.Strategy
+            : null;
+    }
+
     private ExpressionSyntax GenerateBinaryOp(BinaryOp binOp)
     {
         if (binOp.Operator == BinaryOperator.And)
@@ -315,7 +329,7 @@ internal partial class RoslynEmitter
         // silently dropping the non-literal operand.
         if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
             && (binOp.Left is NoneLiteral) != (binOp.Right is NoneLiteral)
-            && _context.SemanticInfo?.GetBinaryOpLowering(binOp) == BinaryOpLowering.NoneCheck)
+            && GetIrBinaryOpLowering(binOp) == BinaryOpLowering.NoneCheck)
         {
             var operand = binOp.Left is NoneLiteral ? right : left;
             PatternSyntax nullPattern = ConstantPattern(
@@ -356,7 +370,7 @@ internal partial class RoslynEmitter
         // reference equality (wrong) or fail to compile (struct without op_Equality). The
         // instance-vs-static choice was materialized by the TypeChecker; the emitter switches on
         // the tag alone (value types -> left.Equals(right); reference types -> object.Equals(...)).
-        var equalsLowering = _context.SemanticInfo?.GetBinaryOpLowering(binOp);
+        var equalsLowering = GetIrBinaryOpLowering(binOp);
         if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
             && equalsLowering is BinaryOpLowering.EqualsCallInstance or BinaryOpLowering.EqualsCallStatic)
         {
