@@ -807,4 +807,94 @@ public class CompilationMetricsTests
         metrics!.SymbolCount.Should().BeGreaterThan(0,
             because: "symbols created before the error should still be counted");
     }
+
+    // ===== Allocated-Bytes Metrics (monotonic, GC-noise-free) =====
+
+    [Fact]
+    public void PhaseMetric_AllocatedBytes_IsDeltaOfAllocatedCounters()
+    {
+        var phase = new PhaseMetric
+        {
+            Name = "Test",
+            AllocatedBefore = 1_000,
+            AllocatedAfter = 3_048
+        };
+
+        phase.AllocatedBytes.Should().Be(2_048);
+    }
+
+    [Fact]
+    public void StartEndPhase_RecordsPositiveAllocatedBytes_ForWorkDoneInPhase()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+        // Allocate several MB across many objects so the (precise: false) allocation counter —
+        // which advances as each thread allocation context is exhausted — moves observably.
+        var sink = new List<byte[]>();
+        for (var i = 0; i < 512; i++)
+        {
+            sink.Add(new byte[8192]);
+        }
+        metrics.EndPhase();
+        GC.KeepAlive(sink);
+
+        var phase = metrics.Phases.Single();
+        phase.AllocatedBytes.Should().BeGreaterThan(0);
+        metrics.TotalAllocatedBytes.Should().BeGreaterThanOrEqualTo(phase.AllocatedBytes);
+    }
+
+    [Fact]
+    public void RecordExternalPhase_DefaultsAllocatedBytesToZero()
+    {
+        var metrics = new CompilationMetrics();
+
+        metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, TimeSpan.FromMilliseconds(5));
+
+        var phase = metrics.Phases.Single(p => p.Name == CompilerPhaseNames.ModuleDiscovery);
+        phase.AllocatedBytes.Should().Be(0);
+    }
+
+    [Fact]
+    public void FormatAsJson_IncludesAllocatedBytes()
+    {
+        var metrics = new CompilationMetrics();
+        metrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+        metrics.EndPhase();
+
+        var json = metrics.FormatAsJson();
+
+        json.Should().Contain("total_allocated_bytes");
+        json.Should().Contain("allocated_bytes");
+    }
+
+    [Fact]
+    public void AggregatePhaseMetrics_IncludesAllocatedBytes()
+    {
+        var projectMetrics = new ProjectCompilationMetrics("AllocProject", "Debug");
+        var fileMetrics = new CompilationMetrics(fileName: "main.spy");
+        fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+        fileMetrics.EndPhase();
+        projectMetrics.AddFileMetrics(fileMetrics);
+
+        var aggregates = projectMetrics.AggregatePhaseMetrics;
+
+        aggregates.Should().ContainKey(CompilerPhaseNames.LexicalAnalysis);
+        aggregates[CompilerPhaseNames.LexicalAnalysis].AllocatedBytes.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public void ProjectCompilationMetrics_FormatAsJson_IncludesAllocatedBytes()
+    {
+        var projectMetrics = new ProjectCompilationMetrics("AllocJsonProject", "Debug");
+        var fileMetrics = new CompilationMetrics(fileName: "main.spy");
+        fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
+        fileMetrics.EndPhase();
+        projectMetrics.AddFileMetrics(fileMetrics);
+
+        var json = projectMetrics.FormatAsJson();
+
+        json.Should().Contain("total_allocated_bytes");
+        json.Should().Contain("allocated_bytes");
+    }
 }

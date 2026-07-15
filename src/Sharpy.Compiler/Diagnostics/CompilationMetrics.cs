@@ -171,7 +171,8 @@ public class CompilationMetrics
         {
             Name = phaseName,
             StartTime = DateTime.UtcNow,
-            MemoryBefore = GC.GetTotalMemory(forceFullCollection: false)
+            MemoryBefore = GC.GetTotalMemory(forceFullCollection: false),
+            AllocatedBefore = GC.GetTotalAllocatedBytes(precise: false)
         };
     }
 
@@ -187,6 +188,7 @@ public class CompilationMetrics
 
         _currentPhase.EndTime = DateTime.UtcNow;
         _currentPhase.MemoryAfter = GC.GetTotalMemory(forceFullCollection: false);
+        _currentPhase.AllocatedAfter = GC.GetTotalAllocatedBytes(precise: false);
         _phases.Add(_currentPhase);
         _currentPhase = null;
     }
@@ -244,6 +246,13 @@ public class CompilationMetrics
     public long TotalMemoryDelta => _phases.Sum(p => p.MemoryDelta);
 
     /// <summary>
+    /// Get total bytes allocated across all phases. Unlike <see cref="TotalMemoryDelta"/> (a GC
+    /// live-heap delta that can be negative), this is the monotonic allocation total and is never
+    /// negative.
+    /// </summary>
+    public long TotalAllocatedBytes => _phases.Sum(p => p.AllocatedBytes);
+
+    /// <summary>
     /// Format metrics as human-readable text
     /// </summary>
     public string FormatAsText()
@@ -271,18 +280,19 @@ public class CompilationMetrics
         sb.AppendLine();
 
         sb.AppendLine("Phase Breakdown:");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"{"Phase",-30} {"Duration",-15} {"Memory Delta",-20}");
-        sb.AppendLine(new string('-', 65));
+        sb.AppendLine(CultureInfo.InvariantCulture, $"{"Phase",-30} {"Duration",-15} {"Memory Delta",-20} {"Allocated",-18}");
+        sb.AppendLine(new string('-', 83));
 
         foreach (var phase in _phases)
         {
             var durationStr = FormattableString.Invariant($"{phase.Duration.TotalMilliseconds:F2} ms");
             var memoryStr = FormatMemoryDelta(phase.MemoryDelta);
-            sb.AppendLine(CultureInfo.InvariantCulture, $"{phase.Name,-30} {durationStr,-15} {memoryStr,-20}");
+            var allocatedStr = FormatMemoryDelta(phase.AllocatedBytes);
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{phase.Name,-30} {durationStr,-15} {memoryStr,-20} {allocatedStr,-18}");
         }
 
-        sb.AppendLine(new string('-', 65));
-        sb.AppendLine(FormattableString.Invariant($"{"TOTAL",-30} {TotalDuration.TotalMilliseconds:F2} ms{"",-4} {FormatMemoryDelta(TotalMemoryDelta),-20}"));
+        sb.AppendLine(new string('-', 83));
+        sb.AppendLine(FormattableString.Invariant($"{"TOTAL",-30} {TotalDuration.TotalMilliseconds:F2} ms{"",-4} {FormatMemoryDelta(TotalMemoryDelta),-20} {FormatMemoryDelta(TotalAllocatedBytes),-18}"));
 
         // Validator timing breakdown (if available)
         if (_validatorTimes != null && _validatorTimes.Count > 0)
@@ -331,6 +341,7 @@ public class CompilationMetrics
             configuration = _configuration,
             total_duration_ms = TotalDuration.TotalMilliseconds,
             total_memory_delta_bytes = TotalMemoryDelta,
+            total_allocated_bytes = TotalAllocatedBytes,
 
             // Per-phase timing shortcuts
             lexer_time_ms = LexerTime.TotalMilliseconds,
@@ -362,7 +373,8 @@ public class CompilationMetrics
                 duration_ms = p.Duration.TotalMilliseconds,
                 memory_before_bytes = p.MemoryBefore,
                 memory_after_bytes = p.MemoryAfter,
-                memory_delta_bytes = p.MemoryDelta
+                memory_delta_bytes = p.MemoryDelta,
+                allocated_bytes = p.AllocatedBytes
             }).ToList()
         };
 
@@ -402,8 +414,34 @@ public class PhaseMetric
     public long MemoryBefore { get; init; }
     public long MemoryAfter { get; set; }
 
+    /// <summary>
+    /// Cumulative process-lifetime bytes allocated (from <see cref="GC.GetTotalAllocatedBytes(bool)"/>)
+    /// sampled at phase start. Unlike <see cref="MemoryBefore"/>, which is a live-heap snapshot, this
+    /// counter is monotonic, so <see cref="AllocatedBytes"/> is never distorted by a collection that
+    /// happens mid-phase.
+    /// </summary>
+    public long AllocatedBefore { get; init; }
+
+    /// <summary>
+    /// Cumulative process-lifetime bytes allocated, sampled at phase end. See <see cref="AllocatedBefore"/>.
+    /// </summary>
+    public long AllocatedAfter { get; set; }
+
     public TimeSpan Duration => EndTime - StartTime;
+
+    /// <summary>
+    /// GC live-heap change across the phase (<see cref="MemoryAfter"/> − <see cref="MemoryBefore"/>).
+    /// Can be negative when a collection reclaims memory mid-phase — i.e. it is GC-noisy. Prefer
+    /// <see cref="AllocatedBytes"/> for allocation-traffic analysis.
+    /// </summary>
     public long MemoryDelta => MemoryAfter - MemoryBefore;
+
+    /// <summary>
+    /// Bytes allocated during the phase (<see cref="AllocatedAfter"/> − <see cref="AllocatedBefore"/>).
+    /// Because the underlying counter is monotonic, this is always ≥ 0 and reflects real allocation
+    /// traffic rather than GC noise. Zero for externally-recorded phases that were not live-measured.
+    /// </summary>
+    public long AllocatedBytes => AllocatedAfter - AllocatedBefore;
 }
 
 /// <summary>
@@ -513,11 +551,11 @@ public class ProjectCompilationMetrics
     /// <summary>
     /// Get aggregate metrics across all phases
     /// </summary>
-    public Dictionary<string, (TimeSpan Duration, long MemoryDelta)> AggregatePhaseMetrics
+    public Dictionary<string, (TimeSpan Duration, long MemoryDelta, long AllocatedBytes)> AggregatePhaseMetrics
     {
         get
         {
-            var aggregates = new Dictionary<string, (TimeSpan Duration, long MemoryDelta)>();
+            var aggregates = new Dictionary<string, (TimeSpan Duration, long MemoryDelta, long AllocatedBytes)>();
 
             foreach (var fileMetric in _fileMetrics)
             {
@@ -538,19 +576,20 @@ public class ProjectCompilationMetrics
     /// <summary>
     /// Accumulates each phase of <paramref name="source"/> into <paramref name="aggregates"/>.
     /// </summary>
-    private static void FoldPhases(Dictionary<string, (TimeSpan Duration, long MemoryDelta)> aggregates, CompilationMetrics source)
+    private static void FoldPhases(Dictionary<string, (TimeSpan Duration, long MemoryDelta, long AllocatedBytes)> aggregates, CompilationMetrics source)
     {
         foreach (var phase in source.Phases)
         {
             if (!aggregates.ContainsKey(phase.Name))
             {
-                aggregates[phase.Name] = (TimeSpan.Zero, 0);
+                aggregates[phase.Name] = (TimeSpan.Zero, 0, 0);
             }
 
             var current = aggregates[phase.Name];
             aggregates[phase.Name] = (
                 current.Duration + phase.Duration,
-                current.MemoryDelta + phase.MemoryDelta
+                current.MemoryDelta + phase.MemoryDelta,
+                current.AllocatedBytes + phase.AllocatedBytes
             );
         }
     }
@@ -583,6 +622,20 @@ public class ProjectCompilationMetrics
     }
 
     /// <summary>
+    /// Get total bytes allocated across all files and the assembly compile. Monotonic (never
+    /// negative), so — unlike <see cref="TotalMemoryDelta"/> — it is not distorted by GC timing.
+    /// </summary>
+    public long TotalAllocatedBytes
+    {
+        get
+        {
+            var fileTotal = _fileMetrics.Sum(m => m.TotalAllocatedBytes);
+            var assemblyTotal = _assemblyMetrics?.TotalAllocatedBytes ?? 0;
+            return fileTotal + assemblyTotal;
+        }
+    }
+
+    /// <summary>
     /// Format project metrics as text
     /// </summary>
     public string FormatAsText()
@@ -603,15 +656,16 @@ public class ProjectCompilationMetrics
         }
 
         sb.AppendLine("Aggregate Phase Breakdown:");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"{"Phase",-30} {"Total Duration",-15} {"Total Memory Delta",-20}");
-        sb.AppendLine(new string('-', 65));
+        sb.AppendLine(CultureInfo.InvariantCulture, $"{"Phase",-30} {"Total Duration",-15} {"Total Memory Delta",-20} {"Total Allocated",-18}");
+        sb.AppendLine(new string('-', 83));
 
         var aggregates = AggregatePhaseMetrics;
         foreach (var (phase, metrics) in aggregates.OrderBy(kvp => kvp.Key))
         {
             var durationStr = FormattableString.Invariant($"{metrics.Duration.TotalMilliseconds:F2} ms");
             var memoryStr = FormatMemoryDelta(metrics.MemoryDelta);
-            sb.AppendLine(CultureInfo.InvariantCulture, $"{phase,-30} {durationStr,-15} {memoryStr,-20}");
+            var allocatedStr = FormatMemoryDelta(metrics.AllocatedBytes);
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{phase,-30} {durationStr,-15} {memoryStr,-20} {allocatedStr,-18}");
         }
 
         // Add assembly compilation metrics if available
@@ -623,12 +677,13 @@ public class ProjectCompilationMetrics
             {
                 var durationStr = FormattableString.Invariant($"{phase.Duration.TotalMilliseconds:F2} ms");
                 var memoryStr = FormatMemoryDelta(phase.MemoryDelta);
-                sb.AppendLine(CultureInfo.InvariantCulture, $"{phase.Name,-30} {durationStr,-15} {memoryStr,-20}");
+                var allocatedStr = FormatMemoryDelta(phase.AllocatedBytes);
+                sb.AppendLine(CultureInfo.InvariantCulture, $"{phase.Name,-30} {durationStr,-15} {memoryStr,-20} {allocatedStr,-18}");
             }
         }
 
-        sb.AppendLine(new string('-', 65));
-        sb.AppendLine(FormattableString.Invariant($"{"TOTAL",-30} {TotalDuration.TotalMilliseconds:F2} ms{"",-4} {FormatMemoryDelta(TotalMemoryDelta),-20}"));
+        sb.AppendLine(new string('-', 83));
+        sb.AppendLine(FormattableString.Invariant($"{"TOTAL",-30} {TotalDuration.TotalMilliseconds:F2} ms{"",-4} {FormatMemoryDelta(TotalMemoryDelta),-20} {FormatMemoryDelta(TotalAllocatedBytes),-18}"));
 
         return sb.ToString();
     }
@@ -649,12 +704,14 @@ public class ProjectCompilationMetrics
             total_files = TotalFiles,
             total_duration_ms = TotalDuration.TotalMilliseconds,
             total_memory_delta_bytes = TotalMemoryDelta,
+            total_allocated_bytes = TotalAllocatedBytes,
             module_discovery_time_ms = _discoveryTime.TotalMilliseconds,
             aggregate_phases = aggregates.Select(kvp => new
             {
                 phase = kvp.Key,
                 total_duration_ms = kvp.Value.Duration.TotalMilliseconds,
-                total_memory_delta_bytes = kvp.Value.MemoryDelta
+                total_memory_delta_bytes = kvp.Value.MemoryDelta,
+                total_allocated_bytes = kvp.Value.AllocatedBytes
             }).ToList(),
             assembly_compilation = _assemblyMetrics != null ? new
             {
@@ -664,7 +721,8 @@ public class ProjectCompilationMetrics
                     duration_ms = p.Duration.TotalMilliseconds,
                     memory_before_bytes = p.MemoryBefore,
                     memory_after_bytes = p.MemoryAfter,
-                    memory_delta_bytes = p.MemoryDelta
+                    memory_delta_bytes = p.MemoryDelta,
+                    allocated_bytes = p.AllocatedBytes
                 }).ToList()
             } : null,
             files = _fileMetrics.Select(fm => new
@@ -672,13 +730,15 @@ public class ProjectCompilationMetrics
                 file_name = fm.Phases.FirstOrDefault()?.Name, // Will be set properly when we add file tracking
                 total_duration_ms = fm.TotalDuration.TotalMilliseconds,
                 total_memory_delta_bytes = fm.TotalMemoryDelta,
+                total_allocated_bytes = fm.TotalAllocatedBytes,
                 phases = fm.Phases.Select(p => new
                 {
                     phase = p.Name,
                     duration_ms = p.Duration.TotalMilliseconds,
                     memory_before_bytes = p.MemoryBefore,
                     memory_after_bytes = p.MemoryAfter,
-                    memory_delta_bytes = p.MemoryDelta
+                    memory_delta_bytes = p.MemoryDelta,
+                    allocated_bytes = p.AllocatedBytes
                 }).ToList()
             }).ToList()
         };
