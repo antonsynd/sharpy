@@ -388,7 +388,11 @@ public partial class Parser
     {
         var left = ParseCast();
 
-        // Special case: "is" followed by a type name should be parsed as TypeCheck
+        // Special case: "is" followed by a type name should be parsed as TypeCheck. The result
+        // becomes the left operand of the comparison chain below rather than returning early —
+        // otherwise a trailing comparison operator (`x is Int == y`, `x is Int is Str`) is left
+        // unconsumed and mis-associates onto an enclosing expression, truncating the chain
+        // inside lambda bodies and conditional branches (#1064).
         if (Current.Type == TokenType.Is && Peek(1).Type == TokenType.Identifier)
         {
             var nextTokenValue = Peek(1).Value;
@@ -403,7 +407,7 @@ public partial class Parser
                 var typeAnnotation = ParseTypeAnnotation();
                 var endLine = Previous.Line;
                 var endColumn = Previous.Column;
-                return new TypeCheck
+                left = new TypeCheck
                 {
                     Value = left,
                     CheckType = typeAnnotation,

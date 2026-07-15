@@ -137,14 +137,16 @@ public class AmbiguityHotspotPropertyTests
     }
 
     /// <summary>
-    /// QUARANTINED regression for the parser bug this fuzzer found (#1064): a comparison
-    /// chain of 3+ operands used as a lambda body or as the final branch of a conditional
-    /// is truncated after the first comparison operator, so <c>lambda: a OP b OP c</c>
-    /// reparses as <c>(lambda: a OP b) OP c</c> instead of <c>lambda: (a OP b OP c)</c>.
-    /// Python keeps the whole chain in the body (verified). These cases were minimized from
-    /// the fuzzer and reproduce deterministically. Un-skip when #1064 is fixed.
+    /// Seeded regression for the parser bug this fuzzer found (#1064): a comparison chain of
+    /// 3+ operands used as a lambda body or as the final branch of a conditional was truncated
+    /// after the first comparison operator, so <c>lambda: a OP b OP c</c> reparsed as
+    /// <c>(lambda: a OP b) OP c</c> instead of <c>lambda: (a OP b OP c)</c>. The root cause was
+    /// the <c>is TypeName</c> → TypeCheck early return in <c>ParseComparison</c> leaving trailing
+    /// comparison operators to mis-associate onto an enclosing expression; now the TypeCheck
+    /// continues the chain. Python keeps the whole chain in the body (verified). These cases were
+    /// minimized from the fuzzer and reproduce deterministically.
     /// </summary>
-    [Theory(Skip = "TODO(#1064): comparison chain in lambda body / conditional branch is truncated on reparse")]
+    [Theory]
     [InlineData("lambda: a is b is c")]
     [InlineData("b[lambda y: super() is bool == super()]")]
     [InlineData("s(lambda : super() is object is double, lambda data: super())")]

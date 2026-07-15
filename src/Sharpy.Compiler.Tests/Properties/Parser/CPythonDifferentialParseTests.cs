@@ -293,8 +293,8 @@ public class CPythonDifferentialParseTests
     /// exclude wholesale to keep the biconditional clean (f-strings — micro-syntax differs; walrus —
     /// bare form is a Python error), and Sharpy-only flags on otherwise-shared nodes (backtick
     /// identifiers, null-conditional access, arrow lambdas, async comprehension clauses, numeric
-    /// suffixes). Also quarantines the known #1064 shape (comparison-chain truncation in lambda
-    /// bodies / conditional branches). Traverses via the AST visitor; never inspects source text.
+    /// suffixes). No parser-bug quarantines remain (#1064/#1076/#1078 are fixed). Traverses via
+    /// the AST visitor; never inspects source text.
     /// </summary>
     private sealed class SubsetFilter : AstVisitor
     {
@@ -384,25 +384,6 @@ public class CPythonDifferentialParseTests
                 Reject();
                 return;
             }
-            // TODO(#1064): a comparison chain of 3+ operands used directly as a lambda body is
-            // truncated on reparse; quarantine the shape until the parser fix lands.
-            if (IsMultiComparisonChain(node.Body))
-            {
-                Reject();
-                return;
-            }
-            DefaultVisit(node);
-        }
-
-        public override void VisitConditionalExpression(ConditionalExpression node)
-        {
-            // TODO(#1064): the same truncation applies to a 3+-operand comparison chain used as the
-            // final (else) branch of a conditional.
-            if (IsMultiComparisonChain(node.ElseValue))
-            {
-                Reject();
-                return;
-            }
             DefaultVisit(node);
         }
 
@@ -417,9 +398,6 @@ public class CPythonDifferentialParseTests
             if (node.Suffix is not null)
                 Reject();
         }
-
-        private static bool IsMultiComparisonChain(Expression e) =>
-            e is ComparisonChain { Operators.Length: >= 2 };
     }
 
     // ======================================================================= //
