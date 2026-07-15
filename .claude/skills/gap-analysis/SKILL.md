@@ -31,5 +31,6 @@ Run all gap discovery tests (fuzz, coverage, diagnostic sweep) and present a uni
    - `completion-fuzz-report.json` — crash count, null/unknown receiver count, missing member count, coverage %
    - `diagnostic-sweep-report.json` — pass/fail/crash counts, unexpected diagnostics, advisory warnings
    - `semantic-token-coverage-report.json` — AST node coverage, unused token types, low-coverage files
+   - `interop-conformance-report.json` (#1034) — members enumerated, snippets generated, pass/fail/crash per usage position, non-allowlisted failures (the ratchet), and `byPosition`/`byModule` breakdowns. The interop sweep is heavier (~1–2 min); it is excluded from the fast Compiler step and runs in its own CI step. When it fails, the offending `module::kind::member::position` keys need either a bridge fix (file an issue) or a justified entry in `src/Sharpy.Compiler.Tests/Conformance/interop-allowlist.txt`.
 7. Present a unified summary table with all metrics
 8. Echo "Full log: .claude/tmp/last-gap-analysis.log"

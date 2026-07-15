@@ -1,0 +1,54 @@
+# Interop conformance allowlist (A1, #1034)
+#
+# Reviewed baseline of known interop-round-trip failures found by the generated
+# interop sweep (InteropConformanceTests). Its presence puts the sweep in RATCHET
+# mode: any failure or crash whose `module::kind::member::position` key is NOT
+# matched here fails CI. Every entry is a KNOWN gap tracked by a GitHub issue — this
+# file is reviewed, never auto-grown. When an issue is fixed, delete its entries.
+#
+# Format: one `module::kind::member::position` key per line (text after `#` is a
+# comment). A line containing `*` is a simple glob matched against the whole key.
+#
+# Baseline: 69 failures / 2181 snippets / 0 crashes, taken on branch `dev`
+# at commit 5576b62f8 (2026-07-14). See .claude/tmp/interop-conformance-report.json.
+
+# ---- #1090: Sharpy.Generators source-generator plugin API does not round-trip ----
+# The whole Sharpy.Generators namespace is discovered as a user-referenceable surface
+# (the `sharpy.generators` module, plus reflection types misclassified into `builtins`
+# because their namespace begins with `Sharpy`), but every reference emits C# that
+# fails to bind (CS0246). Broad by design: the entire API is broken until #1090.
+sharpy.generators::*                 # #1090 GeneratorOutput/GeneratorContext/SourceGenerator emit `sharpy.generators.X`
+builtins::*ClassInfo*                # #1090 Sharpy.Generators.ClassInfo misclassified into builtins
+builtins::*MethodInfo*               # #1090 Sharpy.Generators.MethodInfo misclassified into builtins
+builtins::*FunctionInfo*             # #1090 Sharpy.Generators.FunctionInfo
+builtins::*ParameterInfo*            # #1090 Sharpy.Generators.ParameterInfo
+builtins::*FieldInfo*                # #1090 Sharpy.Generators.FieldInfo
+builtins::*DecoratorInfo*            # #1090 Sharpy.Generators.DecoratorInfo
+builtins::*GeneratorDiagnostic*      # #1090 GeneratorDiagnostic + GeneratorDiagnosticSeverity
+
+# ---- #1091: the `struct` stdlib module is unreferenceable (keyword collision) ----
+# `struct` is a Sharpy keyword; every `struct.X` reference is a parse error (SPY0101).
+struct::type::Struct::annotate                     # #1091
+struct::type::StructError::annotate                # #1091
+struct::function::pack::call                       # #1091
+struct::function::calcsize::call                   # #1091
+struct::method::Struct.pack::method                # #1091
+struct::method::StructError.get_base_exception::method   # #1091
+struct::property::Struct.size::property            # #1091
+struct::property::Struct.format::property          # #1091
+struct::property::StructError.stack_trace::property      # #1091
+struct::property::StructError.h_result::property         # #1091
+struct::property::StructError.source::property           # #1091
+struct::property::StructError.help_link::property        # #1091
+struct::property::StructError.inner_exception::property   # #1091
+struct::property::StructError.data::property             # #1091
+struct::property::StructError.message::property           # #1091
+struct::property::StructError.target_site::property      # #1091
+
+# ---- #1092: sqlite3.Row is not resolvable from user code (SPY0202) ----
+sqlite3::type::Row::annotate         # #1092
+sqlite3::property::Row.count::property   # #1092
+sqlite3::method::Row.keys::method     # #1092
+
+# ---- #1093: socket.Socket.type property mangling asymmetry (CS1061) ----
+socket::property::Socket.type::property   # #1093 forward mangle `type`->`Type` != real CLR member
