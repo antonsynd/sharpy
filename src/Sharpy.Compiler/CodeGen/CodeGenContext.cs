@@ -99,6 +99,14 @@ internal class CodeGenContext
     public SemanticInfo? SemanticInfo { get; set; }
 
     /// <summary>
+    /// The project's middle-end lowering IR, built once per project immediately before code
+    /// generation (E2, #1056). Handed to the emitter's context so migrated constructs can read
+    /// their lowering facts from the IR instead of <see cref="SemanticInfo"/> side-tables. In E2
+    /// Phase 1 nothing in the emitter reads it yet; the first migrated construct will.
+    /// </summary>
+    public Lowering.IrCompilation? Ir { get; set; }
+
+    /// <summary>
     /// The effective experimental features enabled for this file during code generation:
     /// compilation-wide <see cref="CompilerOptions.Features"/> unioned with this file's
     /// per-file <c>from __future__ import</c> features. Consumers gate

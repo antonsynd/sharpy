@@ -5,6 +5,7 @@ using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Utilities;
@@ -26,6 +27,12 @@ internal partial class ProjectCompiler
     private GeneratedCode GenerateCode(ProjectConfig config)
     {
         _logger.LogInfo("Phase 6: Code Generation");
+
+        // Lowering (E2, #1056): build the middle-end IR once per project — over the merged,
+        // project-level SemanticInfo — immediately before per-file code generation. Nothing reads
+        // it yet; it is handed to each file's CodeGenContext for the first migrated construct.
+        var ir = BuildLoweringIr(config);
+
         var generatedCSharp = new Dictionary<string, string>();
         var generatedTrees = new Dictionary<string, SyntaxTree>();
         var builtinRegistry = new BuiltinRegistry(_logger);
@@ -79,6 +86,7 @@ internal partial class ProjectCompiler
                     Logger = _logger,
                     SemanticBinding = _projectModel.SemanticBinding,
                     SemanticInfo = SemanticInfo,
+                    Ir = ir,
                     Features = ImportResolver.GetEffectiveFeatures(_features, unit.FilePath)
                 };
 
@@ -143,6 +151,39 @@ internal partial class ProjectCompiler
         }
 
         return new GeneratedCode(generatedCSharp, generatedTrees);
+    }
+
+    /// <summary>
+    /// Builds the middle-end lowering IR for the whole project (E2, #1056). Runs once per compile,
+    /// after <c>SemanticInfo.MergeFrom</c> and immediately before per-file code generation, over the
+    /// merged project-level <see cref="SemanticInfo"/> (Design Decision 2). The work is bracketed by
+    /// the <see cref="CompilerPhaseNames.Lowering"/> phase metric; the result is stored on the
+    /// project model and returned for the per-file <see cref="CodeGenContext"/>. In E2 Phase 1
+    /// nothing reads the IR, and the emitted C# is unchanged.
+    /// </summary>
+    private IrCompilation BuildLoweringIr(ProjectConfig config)
+    {
+        var metrics = new CompilationMetrics(projectName: config.RootNamespace, configuration: config.Configuration);
+        metrics.StartPhase(CompilerPhaseNames.Lowering);
+        try
+        {
+            // Order by source path so the module order is independent of unit-dictionary
+            // enumeration order (A3 determinism).
+            var modules = _projectModel!.Units.Values
+                .Where(unit => unit.Ast != null)
+                .OrderBy(unit => unit.FilePath, StringComparer.Ordinal)
+                .Select(unit => (unit.FilePath, unit.Ast!))
+                .ToList();
+
+            var ir = new LoweringPass().Lower(modules, SemanticInfo, SymbolTable);
+            _projectModel.IrCompilation = ir;
+            return ir;
+        }
+        finally
+        {
+            metrics.EndPhase();
+            ProjectMetrics.SetLoweringMetrics(metrics);
+        }
     }
 
     /// <summary>

@@ -32,6 +32,12 @@ public static class CompilerPhaseNames
     /// <summary>Type checking (inference and validation).</summary>
     public const string TypeChecking = "Type Checking";
 
+    /// <summary>
+    /// Lowering: building the middle-end IR from the type-checked AST, once per project between
+    /// type checking and code generation (E2, #1056; see <c>docs/design/lowering-ir.md</c>).
+    /// </summary>
+    public const string Lowering = "Lowering";
+
     /// <summary>Code generation (emitting C# via Roslyn SyntaxFactory).</summary>
     public const string CodeGeneration = "Code Generation";
 

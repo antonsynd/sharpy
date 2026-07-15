@@ -148,6 +148,15 @@ public class ProjectModel
     /// </summary>
     public SemanticBinding SemanticBinding { get; internal set; } = new();
 
+    /// <summary>
+    /// The middle-end lowering IR built once per project after type checking, immediately before
+    /// code generation (E2, #1056; see <c>docs/design/lowering-ir.md</c>). Null until the lowering
+    /// pass runs. This is codegen scaffolding — owned by the <c>Lowering</c> component and never
+    /// merged. In E2 Phase 1 nothing reads it; it is exposed here for the totality and determinism
+    /// guards.
+    /// </summary>
+    internal Lowering.IrCompilation? IrCompilation { get; set; }
+
     #endregion
 
     #region Dependencies

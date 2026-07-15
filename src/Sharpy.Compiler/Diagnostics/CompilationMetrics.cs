@@ -417,6 +417,7 @@ public class ProjectCompilationMetrics
     private readonly string _configuration;
     private readonly DateTime _startTime;
     private CompilationMetrics? _assemblyMetrics;
+    private CompilationMetrics? _loweringMetrics;
     private TimeSpan _discoveryTime;
 
     public ProjectCompilationMetrics(string projectName, string configuration)
@@ -452,6 +453,22 @@ public class ProjectCompilationMetrics
     {
         _assemblyMetrics = metrics;
     }
+
+    /// <summary>
+    /// Set the middle-end lowering metrics (the <see cref="CompilerPhaseNames.Lowering"/> phase,
+    /// which runs once per project between type checking and code generation, E2 #1056). Its
+    /// phase folds into <see cref="AggregatePhaseMetrics"/> so it surfaces in the verbose timing
+    /// summary and metrics JSON alongside the per-file phases.
+    /// </summary>
+    public void SetLoweringMetrics(CompilationMetrics metrics)
+    {
+        _loweringMetrics = metrics;
+    }
+
+    /// <summary>
+    /// Get the middle-end lowering metrics, or null if lowering did not run.
+    /// </summary>
+    public CompilationMetrics? LoweringMetrics => _loweringMetrics;
 
     /// <summary>
     /// Record the time spent in module discovery (loading referenced assemblies and
@@ -504,22 +521,37 @@ public class ProjectCompilationMetrics
 
             foreach (var fileMetric in _fileMetrics)
             {
-                foreach (var phase in fileMetric.Phases)
-                {
-                    if (!aggregates.ContainsKey(phase.Name))
-                    {
-                        aggregates[phase.Name] = (TimeSpan.Zero, 0);
-                    }
+                FoldPhases(aggregates, fileMetric);
+            }
 
-                    var current = aggregates[phase.Name];
-                    aggregates[phase.Name] = (
-                        current.Duration + phase.Duration,
-                        current.MemoryDelta + phase.MemoryDelta
-                    );
-                }
+            // The lowering pass runs once per project (not per file), so its phase is folded in
+            // here rather than accumulated from _fileMetrics.
+            if (_loweringMetrics != null)
+            {
+                FoldPhases(aggregates, _loweringMetrics);
             }
 
             return aggregates;
+        }
+    }
+
+    /// <summary>
+    /// Accumulates each phase of <paramref name="source"/> into <paramref name="aggregates"/>.
+    /// </summary>
+    private static void FoldPhases(Dictionary<string, (TimeSpan Duration, long MemoryDelta)> aggregates, CompilationMetrics source)
+    {
+        foreach (var phase in source.Phases)
+        {
+            if (!aggregates.ContainsKey(phase.Name))
+            {
+                aggregates[phase.Name] = (TimeSpan.Zero, 0);
+            }
+
+            var current = aggregates[phase.Name];
+            aggregates[phase.Name] = (
+                current.Duration + phase.Duration,
+                current.MemoryDelta + phase.MemoryDelta
+            );
         }
     }
 
@@ -532,7 +564,8 @@ public class ProjectCompilationMetrics
         {
             var fileTotal = _fileMetrics.Sum(m => m.TotalDuration.TotalMilliseconds);
             var assemblyTotal = _assemblyMetrics?.TotalDuration.TotalMilliseconds ?? 0;
-            return TimeSpan.FromMilliseconds(fileTotal + assemblyTotal + _discoveryTime.TotalMilliseconds);
+            var loweringTotal = _loweringMetrics?.TotalDuration.TotalMilliseconds ?? 0;
+            return TimeSpan.FromMilliseconds(fileTotal + assemblyTotal + loweringTotal + _discoveryTime.TotalMilliseconds);
         }
     }
 
