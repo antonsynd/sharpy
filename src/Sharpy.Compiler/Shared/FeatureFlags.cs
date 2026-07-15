@@ -122,6 +122,15 @@ public sealed class FeatureFlags
                 // Parser-scoped: `as?`/`as!` are new expression syntax. Always parsed but gated; a
                 // `from __future__ import` cannot unlock parser-scoped syntax.
                 FeatureScope.Parser),
+            ["property_observers"] = new FeatureInfo(
+                "property_observers",
+                "Experimental `before_set` / `after_set` property observers (#416). An auto-property " +
+                "may carry a `before_set(new_value):` and/or `after_set(old_value):` suite that runs " +
+                "around every store to its backing field (including constructor assignments); lowers " +
+                "to an expanded setter. Valid only on auto-properties with a setter.",
+                // Parser-scoped: the observer suite is new statement syntax. Always parsed but gated;
+                // a `from __future__ import` cannot unlock parser-scoped syntax.
+                FeatureScope.Parser),
         };
 
     /// <summary>The names of all enabled features, in ordinal order.</summary>

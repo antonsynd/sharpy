@@ -71,5 +71,13 @@ public static class GatedConstructRegistry
             "failable_cast",
             "the 'as?' / 'as!' failable-cast operators",
             static n => n is TypeCoercion { Syntax: CastSyntax.As }),
+
+        // property_observers (#416): the `before_set` / `after_set` observer suites on an
+        // auto-property. Always parsed onto PropertyDef.Observers, but gated until the feature
+        // graduates. A property without observers never matches.
+        new GatedConstruct(
+            "property_observers",
+            "property observers ('before_set' / 'after_set')",
+            static n => n is PropertyDef p && !p.Observers.IsEmpty),
     };
 }
