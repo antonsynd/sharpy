@@ -756,18 +756,23 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateTypeCoercion(TypeCoercion coercion)
     {
-        // The `to` operator:
-        // - value to T → (T)value (throws InvalidCastException on failure)
-        // - value to T? → value is T _temp ? Optional<T>.Some(_temp) : default
+        // The cast operators lower purely by their failure mode; the `to`/`to?` and
+        // `as!`/`as?` spellings share one lowering (snapshot parity, #1029):
+        // - Throw mode (value to T / value as! T)  → (T)value (throws InvalidCastException)
+        // - Null  mode (value to T? / value as? T) → value is T _temp ? Optional<T>.Some(_temp) : default
+        // For `to`, Mode is set from the target's nullability at parse time, so this branch
+        // selection is identical to the historical `TargetType.IsOptional` check.
 
         var value = GenerateExpression(coercion.Value);
 
-        if (coercion.TargetType.IsOptional)
+        if (coercion.Mode == CastFailureMode.Null)
         {
-            // Safe form: value to T?
+            // Safe form: value to T? / value as? T
             // Generate: value is T _temp ? Optional<T>.Some(_temp) : default
             // Works for both value types and reference types.
             // default produces Optional<T>.None (struct with _hasValue = false).
+            // The `as?` form writes T non-nullable while `to T?` carries IsOptional; stripping
+            // IsOptional here yields the same base type T for both.
             var baseType = new TypeAnnotation
             {
                 Name = coercion.TargetType.Name,
@@ -798,7 +803,8 @@ internal partial class RoslynEmitter
         }
         else
         {
-            // Throwing form: value to T → (T)value
+            // Throwing form: value to T / value as! T → (T)value. A user-defined __explicit__
+            // conversion, if present, is invoked by this C# cast exactly as it is for `to`.
             var targetType = _typeMapper.MapType(coercion.TargetType);
             return CastExpression(targetType, value);
         }

@@ -212,6 +212,11 @@ public class UnparserRoundTripTests
     public void OptionalType() => AssertRoundTrip("x: int?\n");
 
     [Fact] public void TypeCoercion() => AssertRoundTrip("x to int\n");
+    [Fact] public void TypeCoercionOptional() => AssertRoundTrip("x to int?\n");
+    // #1029: the failable-cast operators round-trip to their own spelling (parse→unparse→parse
+    // is gate-free, so these need no feature flag here).
+    [Fact] public void FailableCastThrow() => AssertRoundTrip("x as! int\n");
+    [Fact] public void FailableCastNull() => AssertRoundTrip("x as? int\n");
     [Fact] public void TypeCheck() => AssertRoundTrip("x is int\n");
     [Fact] public void TypeCheckNot() => AssertRoundTrip("x is not int\n");
     [Fact] public void MultiAxisAccess() => AssertRoundTrip("arr[0, 1]\n");
