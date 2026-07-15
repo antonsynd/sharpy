@@ -206,6 +206,11 @@ internal partial class RoslynEmitter : ICodeEmitter
     // handler parameter, but C# event accessors use implicit `value`.
     private string? _eventHandlerParamName;
 
+    // When set, identifier references to Source are rewritten to Target inside a property
+    // observer body (#416): before_set's parameter maps to the setter's implicit `value`;
+    // after_set's parameter maps to the captured old-value local.
+    private (string Source, string Target)? _observerParamRewrite;
+
     /// <summary>
     /// Encapsulates all narrowing state for Optional/Nullable and isinstance narrowing.
     /// Extracted from RoslynEmitter's top-level fields to reduce its field count.

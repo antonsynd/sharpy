@@ -167,6 +167,14 @@ internal partial class RoslynEmitter
             return IdentifierName("value");
         }
 
+        // In a property observer body, rewrite the observer parameter to its C# target
+        // (before_set → the setter's implicit `value`; after_set → the captured old-value local).
+        if (_observerParamRewrite is { } rewrite
+            && string.Equals(name.Name, rewrite.Source, StringComparison.Ordinal))
+        {
+            return IdentifierName(rewrite.Target);
+        }
+
         // Builtin function references (e.g., key=len, map(int, items)) need full qualification.
         // Shadowing check: if the semantic analysis resolved this identifier to a VariableSymbol,
         // it's a local variable shadowing the builtin — skip the builtin emission path.

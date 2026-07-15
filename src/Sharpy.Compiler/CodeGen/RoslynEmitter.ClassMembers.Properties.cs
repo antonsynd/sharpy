@@ -296,6 +296,12 @@ internal partial class RoslynEmitter
                 yield return GenerateFunctionStyleProperty(prop);
                 yield break;
             }
+            if (!prop.Observers.IsEmpty)
+            {
+                foreach (var member in GenerateObserverProperty(prop))
+                    yield return member;
+                yield break;
+            }
             yield return GenerateAutoProperty(prop);
             yield break;
         }
@@ -727,6 +733,132 @@ internal partial class RoslynEmitter
         }
 
         return property;
+    }
+
+    /// <summary>
+    /// Generates a backing field and an expanded-setter property for an auto-property carrying
+    /// <c>before_set</c>/<c>after_set</c> observers (#416). The getter returns the backing field;
+    /// the setter runs the observers around the store:
+    /// <code>
+    /// private T _name = &lt;default&gt;;
+    /// public T Name
+    /// {
+    ///     get { return _name; }
+    ///     set
+    ///     {
+    ///         var __old = _name;        // only when after_set exists
+    ///         { &lt;before_set body, param → value&gt; }
+    ///         _name = value;
+    ///         { &lt;after_set body, param → __old&gt; }
+    ///     }
+    /// }
+    /// </code>
+    /// Every store to the property — including constructor assignments, which target the property
+    /// rather than the field — therefore runs the observers (Design Decision 9).
+    /// </summary>
+    private IEnumerable<MemberDeclarationSyntax> GenerateObserverProperty(PropertyDef propDef)
+    {
+        var propertyName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
+        var backingFieldName = "_" + NameCasing.ResolveField(propDef.Name, propDef.IsNameBacktickEscaped);
+
+        TypeSyntax propertyType = propDef.Type != null
+            ? _typeMapper.MapType(propDef.Type)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+        // Backing field: private T _name [= default];
+        var fieldVariable = VariableDeclarator(Identifier(backingFieldName));
+        if (propDef.DefaultValue != null)
+        {
+            var previousTargetType = _targetTypeContext;
+            _targetTypeContext = propDef.Type;
+            try
+            {
+                var initExpr = GenerateInitializerValue(propDef.DefaultValue, propDef.Type);
+                fieldVariable = fieldVariable.WithInitializer(EqualsValueClause(initExpr));
+            }
+            finally
+            {
+                _targetTypeContext = previousTargetType;
+            }
+        }
+
+        yield return FieldDeclaration(
+                VariableDeclaration(propertyType).WithVariables(SingletonSeparatedList(fieldVariable)))
+            .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)));
+
+        var beforeSet = propDef.Observers.FirstOrDefault(o => o.Kind == ObserverKind.BeforeSet);
+        var afterSet = propDef.Observers.FirstOrDefault(o => o.Kind == ObserverKind.AfterSet);
+        const string oldValueLocal = "__old";
+
+        // Getter: { return _name; }
+        var getter = AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+            .WithBody(Block(ReturnStatement(IdentifierName(backingFieldName))));
+
+        // Setter: observers around the store.
+        var setterStatements = new List<StatementSyntax>();
+
+        if (afterSet != null)
+        {
+            // var __old = _name;  (captured before the store, read inside after_set)
+            setterStatements.Add(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(oldValueLocal))
+                            .WithInitializer(EqualsValueClause(IdentifierName(backingFieldName)))))));
+        }
+
+        if (beforeSet != null)
+        {
+            setterStatements.Add(GenerateObserverBody(beforeSet, targetName: "value"));
+        }
+
+        // _name = value;
+        setterStatements.Add(ExpressionStatement(AssignmentExpression(
+            SyntaxKind.SimpleAssignmentExpression,
+            IdentifierName(backingFieldName),
+            IdentifierName("value"))));
+
+        if (afterSet != null)
+        {
+            setterStatements.Add(GenerateObserverBody(afterSet, targetName: oldValueLocal));
+        }
+
+        var setter = AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+            .WithBody(Block(setterStatements));
+
+        var modifiers = GenerateMethodModifiers(propDef.Name, propDef.Decorators);
+
+        var property = PropertyDeclaration(propertyType, propertyName)
+            .WithModifiers(modifiers)
+            .WithAccessorList(AccessorList(List(new[] { getter, setter })));
+
+        var propAttributes = GenerateAttributeListsFromDecorators(propDef.Decorators);
+        if (propAttributes.Count > 0)
+            property = property.WithAttributeLists(propAttributes);
+
+        yield return property;
+    }
+
+    /// <summary>
+    /// Emits a single observer suite as a braced block, rewriting the observer's source parameter
+    /// to <paramref name="targetName"/> (the setter's implicit <c>value</c> for
+    /// <c>before_set</c>, or the captured old-value local for <c>after_set</c>).
+    /// </summary>
+    private BlockSyntax GenerateObserverBody(PropertyObserver observer, string targetName)
+    {
+        ResetMethodScope();
+        CollectSourceVariableNames(observer.Body);
+
+        var previousRewrite = _observerParamRewrite;
+        _observerParamRewrite = (observer.ParamName, targetName);
+        try
+        {
+            return Block(GenerateSuite(observer.Body));
+        }
+        finally
+        {
+            _observerParamRewrite = previousRewrite;
+        }
     }
 
     /// <summary>
