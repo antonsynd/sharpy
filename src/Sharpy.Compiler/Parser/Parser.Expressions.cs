@@ -567,46 +567,28 @@ public partial class Parser
         // never a cast — it stays reserved for aliasing (SRP-0005) and remains a parse error here
         // (errors/as_cast_rejected), because ParseCast only consumes `as` when an adjacent `?`/`!`
         // follows. The parser always builds the node; the FeatureGateChecker rejects ungated `as` casts.
-        while (true)
+        var savedLoopPosition = _lastLoopPosition;
+        _lastLoopPosition = -1;
+        try
         {
-            if (Current.Type == TokenType.To)
+            while (true)
             {
-                var opLine = Current.Line;
-                var opColumn = Current.Column;
-                Advance();
-                var targetType = ParseTypeAnnotation();
+                if (!CheckLoopProgress())
+                    break;
 
-                expr = new TypeCoercion
+                if (Current.Type == TokenType.To)
                 {
-                    Value = expr,
-                    TargetType = targetType,
-                    Mode = targetType.IsOptional ? CastFailureMode.Null : CastFailureMode.Throw,
-                    Syntax = CastSyntax.To,
-                    OperatorLine = opLine,
-                    OperatorColumn = opColumn,
-                    LineStart = expr.LineStart,
-                    ColumnStart = expr.ColumnStart,
-                    LineEnd = Previous.Line,
-                    ColumnEnd = Previous.Column + Previous.Value.Length,
-                    Span = expr.Span
-                };
-                continue;
-            }
-
-            if (Current.Type == TokenType.As)
-            {
-                var opLine = Current.Line;
-                var opColumn = Current.Column;
-                if (TryConsumeAdjacentCastSuffix(out var asMode))
-                {
+                    var opLine = Current.Line;
+                    var opColumn = Current.Column;
+                    Advance();
                     var targetType = ParseTypeAnnotation();
 
                     expr = new TypeCoercion
                     {
                         Value = expr,
                         TargetType = targetType,
-                        Mode = asMode,
-                        Syntax = CastSyntax.As,
+                        Mode = targetType.IsOptional ? CastFailureMode.Null : CastFailureMode.Throw,
+                        Syntax = CastSyntax.To,
                         OperatorLine = opLine,
                         OperatorColumn = opColumn,
                         LineStart = expr.LineStart,
@@ -617,9 +599,39 @@ public partial class Parser
                     };
                     continue;
                 }
-            }
 
-            break;
+                if (Current.Type == TokenType.As)
+                {
+                    var opLine = Current.Line;
+                    var opColumn = Current.Column;
+                    if (TryConsumeAdjacentCastSuffix(out var asMode))
+                    {
+                        var targetType = ParseTypeAnnotation();
+
+                        expr = new TypeCoercion
+                        {
+                            Value = expr,
+                            TargetType = targetType,
+                            Mode = asMode,
+                            Syntax = CastSyntax.As,
+                            OperatorLine = opLine,
+                            OperatorColumn = opColumn,
+                            LineStart = expr.LineStart,
+                            ColumnStart = expr.ColumnStart,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            Span = expr.Span
+                        };
+                        continue;
+                    }
+                }
+
+                break;
+            }
+        }
+        finally
+        {
+            _lastLoopPosition = savedLoopPosition;
         }
 
         return expr;
