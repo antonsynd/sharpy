@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Threading;
@@ -19,6 +20,17 @@ internal class OverloadIndexCache
     // v17: closed-generic CLR type construction for NdArray operator resolution (#970, #971).
     // v18: TypeParameters changed from List<string> to List<TypeParameterInfo> with CLR constraints (#976).
     internal const int CurrentCacheFormatVersion = 18;
+
+    // Process-lifetime in-memory layer over the on-disk index cache. Gunzip + JSON deserialize of
+    // an overload index costs milliseconds per stdlib assembly and, before this, ran once per
+    // compile: a fresh CachedModuleDiscovery per compile re-read every index from disk (#1049).
+    // Keyed by the full cache-file path, which embeds both the cache directory and the
+    // content-addressed AssemblyIdentity cache key (name-version-hash) — a changed assembly hashes
+    // to a different key, so the memo is self-invalidating and determinism-safe. Custom cache
+    // directories (used by tests for isolation) key distinctly, so there is no cross-test bleed.
+    // The stored OverloadIndex is read-only after load (CachedModuleDiscovery only reads it and
+    // builds per-instance TypeSymbols from it), so sharing one instance across compiles is safe.
+    private static readonly ConcurrentDictionary<string, OverloadIndex> s_inMemoryIndices = new();
 
     public CacheStatistics Statistics { get; } = new();
 
@@ -75,6 +87,14 @@ internal class OverloadIndexCache
         var cacheKey = identity.ToCacheKey();
         var cachePath = Path.Combine(_cacheDirectory, cacheKey);
 
+        // Process-lifetime fast path: a previously deserialized (and validated) index for this
+        // exact cache path is reused without touching disk again (#1049).
+        if (s_inMemoryIndices.TryGetValue(cachePath, out var memoized))
+        {
+            Statistics.RecordHit();
+            return memoized;
+        }
+
         if (!File.Exists(cachePath))
         {
             Statistics.RecordMiss();
@@ -98,6 +118,7 @@ internal class OverloadIndexCache
             // Verify the identity matches
             if (index.Identity.Equals(identity))
             {
+                s_inMemoryIndices[cachePath] = index;
                 Statistics.RecordHit();
                 return index;
             }
@@ -134,6 +155,10 @@ internal class OverloadIndexCache
         var cacheKey = index.Identity.ToCacheKey();
         var cachePath = Path.Combine(_cacheDirectory, cacheKey);
         var tempPath = cachePath + $".{Guid.NewGuid():N}.tmp";
+
+        // Populate the process-lifetime layer eagerly so a build-on-miss in one compile serves the
+        // next compile in this process warm, without a disk round-trip through TryLoad (#1049).
+        s_inMemoryIndices[cachePath] = index;
 
         // Clean up old cache files for this assembly (different versions/hashes older than 7 days)
         CleanupOldCaches(index.Identity.Name, cacheKey);
@@ -184,6 +209,16 @@ internal class OverloadIndexCache
     /// </summary>
     public void ClearAll()
     {
+        // Evict this directory's process-lifetime entries too, so a caller that clears the cache
+        // to force a fresh reflection build is not silently served the in-memory copy (#1049).
+        foreach (var key in s_inMemoryIndices.Keys)
+        {
+            if (key.StartsWith(_cacheDirectory, StringComparison.Ordinal))
+            {
+                s_inMemoryIndices.TryRemove(key, out _);
+            }
+        }
+
         if (Directory.Exists(_cacheDirectory))
         {
             foreach (var file in Directory.GetFiles(_cacheDirectory, "*.json.gz"))

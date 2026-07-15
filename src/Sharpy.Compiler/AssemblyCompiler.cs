@@ -1,4 +1,5 @@
 extern alias SharpyRT;
+using System.Collections.Concurrent;
 using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -15,9 +16,33 @@ internal class AssemblyCompiler
 {
     private readonly ICompilerLogger _logger;
 
+    // Process-lifetime cache of MetadataReference objects keyed by (assembly path, last-write
+    // time UTC). MetadataReference.CreateFromFile reads and parses an assembly's metadata from
+    // disk on every call; done over the full trusted-platform-assembly set on every compile it
+    // is the dominant cold cost the D2 warm path removes (#1049). A reference for a given
+    // (path, mtime) is a pure, immutable function of the file's bytes, so caching it process-wide
+    // is determinism-safe: a changed assembly gets a new mtime and thus a new key
+    // (content-addressed, append-only). Shared by every compile in the process — the keep-alive
+    // server, the LSP, the REPL, and the test host all benefit after the first touch.
+    private static readonly ConcurrentDictionary<(string Path, DateTime ModifiedUtc), MetadataReference>
+        s_referenceCache = new();
+
     public AssemblyCompiler(ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
+    }
+
+    /// <summary>
+    /// Return a <see cref="MetadataReference"/> for the assembly at <paramref name="assemblyPath"/>,
+    /// reusing the process-lifetime cache (keyed by path + last-write time) so the metadata is read
+    /// and parsed from disk at most once per (path, mtime) per process (#1049).
+    /// </summary>
+    private static MetadataReference GetOrCreateReference(string assemblyPath)
+    {
+        var mtime = File.GetLastWriteTimeUtc(assemblyPath);
+        return s_referenceCache.GetOrAdd(
+            (assemblyPath, mtime),
+            static key => MetadataReference.CreateFromFile(key.Path));
     }
 
     /// <summary>
@@ -199,7 +224,7 @@ internal class AssemblyCompiler
                 {
                     try
                     {
-                        references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                        references.Add(GetOrCreateReference(assemblyPath));
                     }
                     catch
                     {
@@ -214,20 +239,20 @@ internal class AssemblyCompiler
 
             if (!string.IsNullOrEmpty(coreLibDir))
             {
-                references.Add(MetadataReference.CreateFromFile(coreLibPath));
+                references.Add(GetOrCreateReference(coreLibPath));
                 addedPaths.Add(coreLibPath);
                 foreach (var dll in new[] { "System.Runtime.dll", "System.Collections.dll", "System.Linq.dll" })
                 {
                     var path = Path.Combine(coreLibDir, dll);
                     if (File.Exists(path) && addedPaths.Add(path))
-                        references.Add(MetadataReference.CreateFromFile(path));
+                        references.Add(GetOrCreateReference(path));
                 }
             }
         }
 
         var sharpyCorePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
         if (addedPaths.Add(sharpyCorePath))
-            references.Add(MetadataReference.CreateFromFile(sharpyCorePath));
+            references.Add(GetOrCreateReference(sharpyCorePath));
 
         return references;
     }
@@ -249,7 +274,7 @@ internal class AssemblyCompiler
                 {
                     try
                     {
-                        references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                        references.Add(GetOrCreateReference(assemblyPath));
                     }
                     catch (Exception ex)
                     {
@@ -266,13 +291,13 @@ internal class AssemblyCompiler
 
             if (!string.IsNullOrEmpty(coreLibDir))
             {
-                references.Add(MetadataReference.CreateFromFile(coreLibPath));
+                references.Add(GetOrCreateReference(coreLibPath));
                 addedPaths.Add(coreLibPath);
                 foreach (var dll in new[] { "System.Runtime.dll", "System.Console.dll", "System.Collections.dll", "System.Linq.dll", "System.Text.RegularExpressions.dll" })
                 {
                     var path = Path.Combine(coreLibDir, dll);
                     if (File.Exists(path) && addedPaths.Add(path))
-                        references.Add(MetadataReference.CreateFromFile(path));
+                        references.Add(GetOrCreateReference(path));
                 }
             }
         }
@@ -280,14 +305,14 @@ internal class AssemblyCompiler
         // Add Sharpy.Core reference
         var sharpyCorePath = typeof(SharpyRT::Sharpy.Builtins).Assembly.Location;
         if (addedPaths.Add(sharpyCorePath))
-            references.Add(MetadataReference.CreateFromFile(sharpyCorePath));
+            references.Add(GetOrCreateReference(sharpyCorePath));
 
         // Add netstandard reference (required because Sharpy.Core targets netstandard2.1/2.0)
         try
         {
             var netstandardAssembly = System.Reflection.Assembly.Load("netstandard");
             if (addedPaths.Add(netstandardAssembly.Location))
-                references.Add(MetadataReference.CreateFromFile(netstandardAssembly.Location));
+                references.Add(GetOrCreateReference(netstandardAssembly.Location));
         }
         catch
         {
@@ -297,7 +322,7 @@ internal class AssemblyCompiler
                 var netstandardPath = Path.Combine(coreLibDir2, "netstandard.dll");
                 if (File.Exists(netstandardPath) && addedPaths.Add(netstandardPath))
                 {
-                    references.Add(MetadataReference.CreateFromFile(netstandardPath));
+                    references.Add(GetOrCreateReference(netstandardPath));
                 }
             }
         }
@@ -309,7 +334,7 @@ internal class AssemblyCompiler
             {
                 if (addedPaths.Add(referencePath))
                 {
-                    references.Add(MetadataReference.CreateFromFile(referencePath));
+                    references.Add(GetOrCreateReference(referencePath));
                     _logger.LogDebug($"Added reference: {referencePath}");
                 }
             }
@@ -327,7 +352,7 @@ internal class AssemblyCompiler
             {
                 if (addedPaths.Add(assemblyPath))
                 {
-                    references.Add(MetadataReference.CreateFromFile(assemblyPath));
+                    references.Add(GetOrCreateReference(assemblyPath));
                     _logger.LogDebug($"Added package reference: {assemblyPath}");
                 }
             }

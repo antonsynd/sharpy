@@ -49,6 +49,17 @@ public class StaticStateConformanceTests
     // static readonly ConcurrentDictionary used as an idempotent cache keyed by CLR type.
     // It is intentionally NOT flagged (rule 2 excludes ConcurrentDictionary) and needs no
     // allowlist entry: its contents are a deterministic function of the key.
+    //
+    // The D2 warm-compile caches added for #1049 are the same shape and, likewise, need no
+    // keyed entry (a keyed entry would go stale since the field is never flagged) — they are
+    // recorded here so their determinism review is conscious and visible:
+    //   * AssemblyCompiler.s_referenceCache — MetadataReference keyed by (assembly path,
+    //     last-write time UTC). A reference is a pure function of the file's bytes; a changed
+    //     assembly gets a new mtime and thus a new key. Content-addressed, append-only.
+    //   * OverloadIndexCache.s_inMemoryIndices — deserialized OverloadIndex keyed by the full
+    //     cache-file path, which embeds the content-addressed AssemblyIdentity cache key
+    //     (name-version-hash). A changed assembly hashes to a different key. Content-addressed,
+    //     append-only; ClearAll evicts the directory's entries so the disk-clear path stays honest.
     private static readonly IReadOnlyDictionary<(string Type, string Field), string> Allowlist =
         new Dictionary<(string, string), string>
         {
