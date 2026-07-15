@@ -1058,11 +1058,16 @@ internal partial class RoslynEmitter
 
         ExpressionSyntax toleranceArg;
         bool isPlaces;
-        if (absKw != null) { toleranceArg = GenerateExpression(absKw.Value); isPlaces = false; }
-        else if (approxCall.Arguments.Length >= 3) { toleranceArg = GenerateExpression(approxCall.Arguments[2]); isPlaces = false; }
-        else if (placesKw != null) { toleranceArg = GenerateExpression(placesKw.Value); isPlaces = true; }
-        else if (approxCall.Arguments.Length >= 2) { toleranceArg = GenerateExpression(approxCall.Arguments[1]); isPlaces = true; }
-        else { toleranceArg = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7)); isPlaces = true; }
+        if (absKw != null)
+        { toleranceArg = GenerateExpression(absKw.Value); isPlaces = false; }
+        else if (approxCall.Arguments.Length >= 3)
+        { toleranceArg = GenerateExpression(approxCall.Arguments[2]); isPlaces = false; }
+        else if (placesKw != null)
+        { toleranceArg = GenerateExpression(placesKw.Value); isPlaces = true; }
+        else if (approxCall.Arguments.Length >= 2)
+        { toleranceArg = GenerateExpression(approxCall.Arguments[1]); isPlaces = true; }
+        else
+        { toleranceArg = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7)); isPlaces = true; }
 
         return new ApproxParts(expected, actual, toleranceArg, isPlaces);
     }

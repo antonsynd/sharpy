@@ -235,8 +235,10 @@ public class InteropConformanceTests
         {
             if (byPosition.TryGetValue(record.Snippet.Position, out var st))
             {
-                if (record.Stage == "crash") st.Crash++;
-                else st.Fail++;
+                if (record.Stage == "crash")
+                    st.Crash++;
+                else
+                    st.Fail++;
             }
         }
         foreach (var st in byPosition.Values)
@@ -370,7 +372,8 @@ public class InteropConformanceTests
                 if (p.IsVariadic || p.HasDefault)
                     continue;
                 var lit = TrySynthesizeLiteral(p.Type);
-                if (lit == null) { ok = false; break; }
+                if (lit == null)
+                { ok = false; break; }
                 parts.Add(lit);
             }
             if (ok && parts.Count < bestCount)
@@ -378,7 +381,8 @@ public class InteropConformanceTests
                 bestCount = parts.Count;
                 bestArgs = string.Join(", ", parts);
                 best = sig;
-                if (bestCount == 0) break;
+                if (bestCount == 0)
+                    break;
             }
         }
 
@@ -531,7 +535,8 @@ public class InteropConformanceTests
             var fileName = Path.GetFileName(dll);
             if (!seen.Add(fileName))
                 continue;
-            try { refs.Add(MetadataReference.CreateFromFile(dll)); }
+            try
+            { refs.Add(MetadataReference.CreateFromFile(dll)); }
             catch { /* not a managed assembly */ }
         }
 

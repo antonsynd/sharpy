@@ -118,7 +118,8 @@ public class SemanticInfoMergeConformanceTests
         int depth = 0;
         for (int i = open; i < source.Length; i++)
         {
-            if (source[i] == '{') depth++;
+            if (source[i] == '{')
+                depth++;
             else if (source[i] == '}')
             {
                 depth--;
