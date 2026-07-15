@@ -54,7 +54,7 @@ namespace Sharpy
             Sharpy.List<string> stack = new Sharpy.List<string>()
             {
             };
-            foreach (var __loopVar_0 in path.Replace("\\", "/").Split("/"))
+            foreach (var __loopVar_0 in global::Sharpy.StringExtensions.Split(global::Sharpy.StringExtensions.Replace(path, "\\", "/"), "/"))
             {
                 var part = __loopVar_0;
                 if (part == "" || part == ".")
@@ -79,7 +79,7 @@ namespace Sharpy
                 }
             }
 
-            string body = sep.Join(stack);
+            string body = global::Sharpy.StringExtensions.Join(sep, stack);
             if (isAbsolute)
             {
                 string prefix = (path.Length >= 2 && global::Sharpy.StringHelpers.GetItem(path, 1) == ":") ? path.Substring(0, 2) + sep : sep;

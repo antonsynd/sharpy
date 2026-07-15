@@ -34,7 +34,7 @@ namespace Sharpy
                 return result;
             }
 
-            Sharpy.List<string> words = collapsed.Split(" ");
+            Sharpy.List<string> words = global::Sharpy.StringExtensions.Split(collapsed, " ");
             global::System.Text.StringBuilder currentLine = new global::System.Text.StringBuilder();
             foreach (var __loopVar_0 in words)
             {
@@ -91,7 +91,7 @@ namespace Sharpy
         public static string Fill(string text, int width = 70)
         {
             Sharpy.List<string> lines = Wrap(text, width);
-            return "\n".Join(lines);
+            return global::Sharpy.StringExtensions.Join("\n", lines);
         }
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace Sharpy
                 throw new global::Sharpy.TypeError("argument must be str, not NoneType");
             }
 
-            Sharpy.List<string> lines = text.Split("\n");
+            Sharpy.List<string> lines = global::Sharpy.StringExtensions.Split(text, "\n");
             string commonPrefix = "";
             bool hasPrefix = false;
             foreach (var __loopVar_1 in lines)
@@ -152,7 +152,7 @@ namespace Sharpy
                     continue;
                 }
 
-                if (lines[i].Startswith(commonPrefix))
+                if (global::Sharpy.StringExtensions.Startswith(lines[i], commonPrefix))
                 {
                     sb.Append(lines[i].Substring(commonPrefix.Length));
                 }
@@ -246,7 +246,7 @@ namespace Sharpy
             foreach (var __loopVar_3 in global::Sharpy.StringHelpers.Iterate(text))
             {
                 var c = __loopVar_3;
-                if (c.Isspace())
+                if (global::Sharpy.StringExtensions.Isspace(c))
                 {
                     if (hasContent)
                     {
@@ -277,7 +277,7 @@ namespace Sharpy
             foreach (var __loopVar_4 in global::Sharpy.StringHelpers.Iterate(line))
             {
                 var c = __loopVar_4;
-                if (!c.Isspace())
+                if (!global::Sharpy.StringExtensions.Isspace(c))
                 {
                     return false;
                 }
@@ -292,7 +292,7 @@ namespace Sharpy
         internal static string _GetLeadingWhitespace(string line)
         {
             int i = 0;
-            while (i < line.Length && global::Sharpy.StringHelpers.GetItem(line, i).Isspace())
+            while (i < line.Length && global::Sharpy.StringExtensions.Isspace(global::Sharpy.StringHelpers.GetItem(line, i)))
             {
                 i = i + 1;
             }

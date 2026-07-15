@@ -246,7 +246,7 @@ namespace Sharpy
                         continue;
                     }
 
-                    if (global::Sharpy.StringHelpers.GetItem(template, i + 1).Isdigit())
+                    if (global::Sharpy.StringExtensions.Isdigit(global::Sharpy.StringHelpers.GetItem(template, i + 1)))
                     {
                         sb.Append("$");
                         sb.Append(global::Sharpy.StringHelpers.GetItem(template, i + 1));

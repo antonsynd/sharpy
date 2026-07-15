@@ -149,7 +149,7 @@ namespace Sharpy
                     {
                         string stuff = pat.Substring(i, j - i);
                         i = j + 1;
-                        stuff = stuff.Replace("\\", "\\\\");
+                        stuff = global::Sharpy.StringExtensions.Replace(stuff, "\\", "\\\\");
                         if (stuff.Length > 0 && stuff.StartsWith("!"))
                         {
                             stuff = "^" + stuff.Substring(1);
