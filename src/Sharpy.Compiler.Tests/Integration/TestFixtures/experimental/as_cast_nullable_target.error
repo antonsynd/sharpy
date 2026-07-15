@@ -1,0 +1,2 @@
+# `x as? T?` is a hard error (SPY0334): the operator already determines the failure mode.
+Redundant '?' on the target of 'as?': the operator already determines the failure mode
