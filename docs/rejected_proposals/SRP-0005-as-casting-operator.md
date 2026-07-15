@@ -93,7 +93,7 @@ distinct operator tokens rather than a bare-`as` cast — and this defeats each 
 
 The feature ships **experimental behind the `failable_cast` flag** per the
 [feature lifecycle](../design/feature-lifecycle.md); corpus migration and `to` removal are graduation-time
-work tracked separately.
+work tracked in [#1096](https://github.com/antonsynd/sharpy/issues/1096).
 
 ## See Also
 

@@ -594,6 +594,16 @@ public static partial class DiagnosticExplanations
             "Remove the control-flow statement from the deferred block; deferred code should only " +
             "perform cleanup side effects.");
 
+        Add(dict, DiagnosticCodes.Semantic.RedundantNullableCastTarget,
+            "Redundant nullable target on 'as?'/'as!'",
+            "Semantic",
+            "The 'as?' / 'as!' failable-cast operators (experimental, behind the failable_cast " +
+            "feature) already determine the failure mode: 'as?' yields None on failure (result type " +
+            "T?) and 'as!' throws. The target type must therefore be written non-nullable; a '?' on " +
+            "the target is redundant and would double up the optionality.",
+            "dog = animal as? Dog?  # redundant '?' — as? already yields Dog?",
+            "Drop the '?' on the target type:\n  dog = animal as? Dog");
+
         // ── Semantic errors: Module level (SPY0340-SPY0349) ─────────────
 
         Add(dict, DiagnosticCodes.Semantic.ModuleLevelExecutableStatement, "Executable statement at module level", "Semantic",

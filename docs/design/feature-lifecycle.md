@@ -166,8 +166,8 @@ and ships with the dual-fixture pattern: an ungated `.error` fixture asserting `
 `failable_cast` additionally pilots a **feature-conditional transition hint**: while the flag is
 enabled, a legacy `to`/`to?` cast emits `SPY0479` suggesting the `as!`/`as?` spelling (the hint is
 suppressed when the flag is off, so it never advises syntax the build would reject). Graduation of
-`failable_cast` — making `as?`/`as!` primary and retiring `to` — is deferred graduation work tracked on
-its own issue.
+`failable_cast` — making `as?`/`as!` primary and retiring `to` — is deferred graduation work tracked in
+[#1096](https://github.com/antonsynd/sharpy/issues/1096).
 
 ## Proposing a new feature — checklist
 

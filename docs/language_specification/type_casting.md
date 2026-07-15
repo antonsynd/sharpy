@@ -233,7 +233,8 @@ value is int _temp ? Optional<int>.Some(_temp) : default
 > **Status:** Experimental — behind the `failable_cast` feature flag. Off by default; carries no
 > stability promise while experimental (see [feature lifecycle](../design/feature-lifecycle.md)).
 > Tracking issue: [#1029](https://github.com/antonsynd/sharpy/issues/1029). Graduation (making `as?`/`as!`
-> the primary spelling and retiring `to`) is tracked separately — see the migration note below.
+> the primary spelling and retiring `to`) is tracked separately in
+> [#1096](https://github.com/antonsynd/sharpy/issues/1096) — see the migration note below.
 
 The `as?` / `as!` operators are a piloted alternative spelling for the two forms of `to`. The failure
 mode moves from the target type's nullability onto the **operator**, so the target is always written

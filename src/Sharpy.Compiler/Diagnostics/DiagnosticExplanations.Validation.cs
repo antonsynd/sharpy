@@ -665,5 +665,18 @@ public static partial class DiagnosticExplanations
             "class Math:\n    @static                     # redundant — already static\n    def square(x: int) -> int:\n        return x * x",
             "Drop the '@static' / '@staticmethod' decorator. The method remains static because it has no 'self' parameter.");
 
+        Add(dict, DiagnosticCodes.Validation.ToCastTransitionHint,
+            "Prefer the 'as?' / 'as!' cast over 'to'",
+            "Validation",
+            "The experimental failable_cast feature is enabled, so the 'as?' / 'as!' operators are " +
+            "available: 'value as! T' throws on failure (result T) and 'value as? T' yields None on " +
+            "failure (result T?). They carry the failure mode on the operator itself, making each " +
+            "cast site self-describing. This advisory hint fires only while failable_cast is enabled " +
+            "(so it never suggests syntax the build would reject) and steers code toward the new " +
+            "spelling; 'to' is retained for now but is slated for retirement once the feature " +
+            "graduates (#1096).",
+            "value = obj to int      # with failable_cast enabled",
+            "Use the failable-cast operator that matches the failure mode:\n  value = obj as! int   # throws on failure\n  maybe_value = obj as? int  # None on failure");
+
     }
 }
