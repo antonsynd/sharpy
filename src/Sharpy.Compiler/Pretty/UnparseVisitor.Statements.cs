@@ -514,6 +514,22 @@ internal sealed partial class UnparseVisitor
                 Visit(node.DefaultValue);
             }
             _w.WriteLine();
+
+            if (!node.Observers.IsEmpty)
+            {
+                // Observer clauses are one indent level under the auto-property header; each
+                // body is indented a further level by WriteBody.
+                _w.Indent();
+                foreach (var observer in node.Observers)
+                {
+                    _w.Write(observer.Kind == ObserverKind.BeforeSet ? "before_set(" : "after_set(");
+                    _w.Write(observer.ParamName);
+                    _w.Write("):");
+                    _w.WriteLine();
+                    WriteBody(observer.Body);
+                }
+                _w.Dedent();
+            }
         }
     }
 

@@ -351,7 +351,21 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         && NullableNodeEquals(a.DefaultValue, b.DefaultValue)
         && ParametersEqual(a.Parameters, b.Parameters)
         && DecoratorsEqual(a.Decorators, b.Decorators)
-        && StatementsEqual(a.Body, b.Body);
+        && StatementsEqual(a.Body, b.Body)
+        && ObserversEqual(a.Observers, b.Observers);
+
+    private bool ObserversEqual(ImmutableArray<PropertyObserver> a, ImmutableArray<PropertyObserver> b)
+    {
+        if (a.Length != b.Length)
+            return false;
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (a[i].Kind != b[i].Kind || a[i].ParamName != b[i].ParamName
+                || !StatementsEqual(a[i].Body, b[i].Body))
+                return false;
+        }
+        return true;
+    }
 
     private bool ImportEquals(ImportStatement a, ImportStatement b) =>
         ImportAliasesEqual(a.Names, b.Names);

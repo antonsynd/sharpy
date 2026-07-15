@@ -1396,7 +1396,33 @@ public partial class Parser
         }
 
         var autoEndToken = Previous;
-        ExpectStatementEnd();
+
+        // Optional observer block: the auto-property header is followed by a deeper-indented
+        // suite of `before_set`/`after_set` clauses. Detected by a NEWLINE immediately followed
+        // by an INDENT (nothing else may be indented under an auto-property). Always parsed; the
+        // feature gate rejects use unless `property_observers` is enabled.
+        var observers = ImmutableArray<PropertyObserver>.Empty;
+        if (Current.Type == TokenType.Newline && Peek().Type == TokenType.Indent)
+        {
+            Advance(); // consume NEWLINE
+            Expect(TokenType.Indent);
+            var observerList = new List<PropertyObserver>();
+            while (Current.Type != TokenType.Dedent && !IsAtEnd)
+            {
+                SkipNewlines();
+                if (Current.Type == TokenType.Dedent || IsAtEnd)
+                    break;
+                observerList.Add(ParsePropertyObserver());
+                SkipNewlines();
+            }
+            Expect(TokenType.Dedent);
+            autoEndToken = Previous;
+            observers = observerList.ToImmutableArray();
+        }
+        else
+        {
+            ExpectStatementEnd();
+        }
 
         return new PropertyDef
         {
@@ -1409,11 +1435,58 @@ public partial class Parser
             DefaultValue = defaultValue,
             IsFunctionStyle = false,
             ExplicitInterface = explicitInterface,
+            Observers = observers,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = autoEndToken.Line,
             ColumnEnd = autoEndToken.Column + autoEndToken.Value.Length,
             Span = CombineSpans(GetSpanFromToken(startToken), GetSpanFromToken(autoEndToken))
+        };
+    }
+
+    /// <summary>
+    /// Parses one property observer clause (<c>before_set(&lt;param&gt;):</c> or
+    /// <c>after_set(&lt;param&gt;):</c> followed by an indented suite). <c>before_set</c> and
+    /// <c>after_set</c> are contextual identifiers — special only here, in observer position —
+    /// so no dedicated token type exists. The parameter is required and user-named (no magic
+    /// <c>oldvalue</c> keyword). The clause is always parsed; whether it is permitted is decided
+    /// by the feature gate (the experimental <c>property_observers</c> feature) later.
+    /// </summary>
+    private PropertyObserver ParsePropertyObserver()
+    {
+        var startToken = Current;
+
+        if (Current.Type != TokenType.Identifier ||
+            (Current.Value != "before_set" && Current.Value != "after_set"))
+        {
+            throw ReportError(
+                $"Expected 'before_set' or 'after_set' property observer, got '{Current.Value}'",
+                Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
+        }
+
+        var kind = Current.Value == "before_set" ? ObserverKind.BeforeSet : ObserverKind.AfterSet;
+        Advance();
+
+        Expect(TokenType.LeftParen);
+        var paramToken = Current;
+        var paramName = ExpectIdentifier();
+        Expect(TokenType.RightParen);
+        Expect(TokenType.Colon);
+        ExpectNewline();
+        Expect(TokenType.Indent);
+        var body = ParseBlock();
+        Expect(TokenType.Dedent);
+        var endToken = Previous;
+
+        return new PropertyObserver(kind, paramName, body.ToImmutableArray())
+        {
+            LineStart = startToken.Line,
+            ColumnStart = startToken.Column,
+            LineEnd = endToken.Line,
+            ColumnEnd = endToken.Column + endToken.Value.Length,
+            ParamNameLine = paramToken.Line,
+            ParamNameColumn = paramToken.Column,
+            Span = GetSpanFromTokens(startToken, endToken)
         };
     }
 

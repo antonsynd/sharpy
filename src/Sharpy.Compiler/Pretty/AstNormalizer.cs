@@ -384,8 +384,22 @@ public sealed class AstNormalizer : AstVisitor<Node>
             DefaultValue = node.DefaultValue != null ? (Expression)Visit(node.DefaultValue) : null,
             Parameters = NormalizeParameters(node.Parameters),
             Body = VisitStatements(node.Body),
+            Observers = NormalizeObservers(node.Observers),
             Decorators = NormalizeDecorators(node.Decorators)
         };
+
+    private ImmutableArray<PropertyObserver> NormalizeObservers(ImmutableArray<PropertyObserver> observers) =>
+        observers.Select(o => o with
+        {
+            LineStart = 0,
+            ColumnStart = 0,
+            LineEnd = 0,
+            ColumnEnd = 0,
+            ParamNameLine = 0,
+            ParamNameColumn = 0,
+            Span = null,
+            Body = VisitStatements(o.Body)
+        }).ToImmutableArray();
 
     #endregion
 

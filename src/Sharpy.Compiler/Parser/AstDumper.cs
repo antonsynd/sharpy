@@ -520,6 +520,16 @@ internal class AstDumper : AstVisitor
                 VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
             }
         }
+        foreach (var observer in node.Observers)
+        {
+            var keyword = observer.Kind == ObserverKind.BeforeSet ? "before_set" : "after_set";
+            _output.AppendLine(CultureInfo.InvariantCulture,
+                $"{indent}{childPrefix}Observer {keyword}({observer.ParamName}): [{observer.Body.Length}]");
+            for (int i = 0; i < observer.Body.Length; i++)
+            {
+                VisitChild(observer.Body[i], depth + 2, i == observer.Body.Length - 1);
+            }
+        }
     }
 
     public override void VisitEventDef(EventDef node)

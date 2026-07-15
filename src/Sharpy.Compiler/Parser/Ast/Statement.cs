@@ -905,6 +905,42 @@ public record Parameter
 public enum PropertyAccessor { None, Get, Set, Init }
 
 /// <summary>
+/// Which store-time property observer a <see cref="PropertyObserver"/> clause is.
+/// </summary>
+public enum ObserverKind
+{
+    /// <summary>Runs before the backing store is written; its parameter is the incoming value.</summary>
+    BeforeSet,
+
+    /// <summary>Runs after the backing store is written; its parameter is the previous value.</summary>
+    AfterSet,
+}
+
+/// <summary>
+/// A property observer clause (<c>before_set(new_value):</c> or <c>after_set(old_value):</c>)
+/// attached to an auto-property. The parameter name is user-chosen and explicit (no magic
+/// <c>oldvalue</c> contextual keyword); <see cref="ObserverKind"/> selects whether the body
+/// runs before or after the backing store is written, and <see cref="ParamName"/> binds the
+/// incoming value (<c>before_set</c>) or the previous value (<c>after_set</c>) inside
+/// <see cref="Body"/>. Gated behind the experimental <c>property_observers</c> feature (#416).
+/// </summary>
+public record PropertyObserver(ObserverKind Kind, string ParamName, ImmutableArray<Statement> Body)
+{
+    /// <summary>Source position of the observer clause keyword.</summary>
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
+
+    /// <summary>Source position of the parameter identifier (used for LSP text edits/highlights).</summary>
+    public int ParamNameLine { get; init; }
+    public int ParamNameColumn { get; init; }
+
+    /// <summary>Character offset-based span. May be null if not tracked.</summary>
+    public Text.TextSpan? Span { get; init; }
+}
+
+/// <summary>
 /// Property definition (property name: type = default or property get name(self) -> type: body)
 /// </summary>
 public record PropertyDef : Statement
@@ -922,6 +958,13 @@ public record PropertyDef : Statement
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
     public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
     public string? ExplicitInterface { get; init; }
+
+    /// <summary>
+    /// Store-time observer clauses (<c>before_set</c>/<c>after_set</c>) on an auto-property.
+    /// Empty for function-style properties and auto-properties without observers. Gated behind
+    /// the experimental <c>property_observers</c> feature (#416).
+    /// </summary>
+    public ImmutableArray<PropertyObserver> Observers { get; init; } = ImmutableArray<PropertyObserver>.Empty;
 
     /// <inheritdoc/>
     public override void ValidateInvariants()
@@ -942,6 +985,11 @@ public record PropertyDef : Statement
         }
         foreach (var stmt in Body)
             yield return stmt;
+        foreach (var observer in Observers)
+        {
+            foreach (var stmt in observer.Body)
+                yield return stmt;
+        }
     }
 }
 
