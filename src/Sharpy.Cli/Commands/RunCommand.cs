@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Sharpy.Cli.Services;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Logging;
 
@@ -21,6 +22,7 @@ internal static class RunCommand
         modPathOpt.Aliases.Add("-m");
         var argsOpt = new Option<string[]>("--args") { Description = "Arguments to pass to the program", AllowMultipleArgumentsPerToken = true };
         var selfContainedOpt = new Option<bool>("--self-contained") { Description = "Publish as a self-contained executable (no .NET runtime required)" };
+        var serverOpt = new Option<string?>("--server") { Description = "Compile via a keep-alive 'sharpyc server' on the given pipe (default pipe if no name); falls back to in-process if none is running", Arity = ArgumentArity.ZeroOrOne };
 
         command.Arguments.Add(inputArg);
         command.Options.Add(outputOpt);
@@ -29,6 +31,7 @@ internal static class RunCommand
         command.Options.Add(modPathOpt);
         command.Options.Add(argsOpt);
         command.Options.Add(selfContainedOpt);
+        command.Options.Add(serverOpt);
 
         command.SetAction((parseResult) =>
         {
@@ -48,9 +51,12 @@ internal static class RunCommand
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
             var features = parseResult.GetValue(globals.EnableFeature);
+            var serverPipe = parseResult.GetResult(serverOpt) is not null
+                ? parseResult.GetValue(serverOpt) ?? CompileServerProtocol.DefaultPipeName
+                : null;
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained, features);
+            return HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained, features, serverPipe);
         });
 
         root.Subcommands.Add(command);
@@ -70,7 +76,8 @@ internal static class RunCommand
         string? nowarn = null,
         int? maxErrors = null,
         bool selfContained = false,
-        string[]? features = null)
+        string[]? features = null,
+        string? serverPipe = null)
     {
         if (!CliHelpers.ValidateInputFile(inputFile))
         {
@@ -94,18 +101,37 @@ internal static class RunCommand
 
         try
         {
-            var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features: features);
-            if (compileResult == null)
+            // Obtain the compiled binary + its runtime-dependency set either from a keep-alive
+            // server (--server) or by compiling in-process. A null result from the server means no
+            // server answered → fall back so run always works (#1049).
+            IReadOnlySet<string> usedAssemblyPaths;
+            if (serverPipe != null
+                && TryServerCompileForRun(serverPipe, inputFile, outputPath, references, projectReferences, modulePaths, warnAsError, nowarn, maxErrors, features, out var serverExit, out var serverUsedPaths))
             {
-                return CliHelpers.LastFailureExitCode;
+                if (serverExit != 0)
+                {
+                    return serverExit;
+                }
+
+                usedAssemblyPaths = serverUsedPaths;
+            }
+            else
+            {
+                var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features: features);
+                if (compileResult == null)
+                {
+                    return CliHelpers.LastFailureExitCode;
+                }
+
+                usedAssemblyPaths = compileResult.UsedAssemblyPaths;
             }
 
             var outputDir = Path.GetDirectoryName(outputPath)!;
-            copiedDeps = RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, compileResult.UsedAssemblyPaths);
+            copiedDeps = RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, usedAssemblyPaths);
 
             if (selfContained)
             {
-                return HandleSelfContainedRun(inputFile, outputPath, args, isTempOutput, compileResult.UsedAssemblyPaths, copiedDeps);
+                return HandleSelfContainedRun(inputFile, outputPath, args, isTempOutput, usedAssemblyPaths, copiedDeps);
             }
 
             Console.WriteLine();
@@ -234,4 +260,62 @@ internal static class RunCommand
 
     static void CleanupRuntimeDependencies(string dir, IReadOnlySet<string>? copiedDeps)
         => RuntimeDependencyHelper.CleanupRuntimeDependencies(dir, copiedDeps);
+
+    /// <summary>
+    /// Compile the entry file through a keep-alive server (#1049), producing the binary at
+    /// <paramref name="outputPath"/> and returning the program's runtime-dependency set so the
+    /// caller can copy deps and execute. Returns <c>true</c> when the server answered (its captured
+    /// output is echoed and <paramref name="exitCode"/>/<paramref name="usedAssemblyPaths"/> are
+    /// populated); returns <c>false</c> when no usable server responded, so the caller falls back to
+    /// an in-process compile.
+    /// </summary>
+    static bool TryServerCompileForRun(
+        string pipeName,
+        FileInfo inputFile,
+        string outputPath,
+        string[] references,
+        string[] projectReferences,
+        string[] modulePaths,
+        bool warnAsError,
+        string? nowarn,
+        int? maxErrors,
+        string[]? features,
+        out int exitCode,
+        out IReadOnlySet<string> usedAssemblyPaths)
+    {
+        exitCode = 0;
+        usedAssemblyPaths = new HashSet<string>();
+
+        var request = new CompileServerRequest
+        {
+            Command = CompileServerProtocol.CommandCompile,
+            Input = inputFile.FullName,
+            Output = outputPath,
+            OutputType = "exe",
+            References = references,
+            ProjectReferences = projectReferences,
+            ModulePaths = modulePaths,
+            Features = features ?? Array.Empty<string>(),
+            Configuration = "Debug",
+            WarnAsError = warnAsError,
+            Nowarn = nowarn,
+            MaxErrors = maxErrors,
+            WorkingDirectory = Directory.GetCurrentDirectory(),
+        };
+
+        if (!CompileServerClient.TrySend(pipeName, request, out var response, out var reason)
+            || response == null
+            || response.Error != null)
+        {
+            Console.Error.WriteLine(
+                $"sharpyc: no compile server on pipe '{pipeName}' ({response?.Error ?? reason}); compiling in-process.");
+            return false;
+        }
+
+        Console.Out.Write(response.Stdout);
+        Console.Error.Write(response.Stderr);
+        exitCode = response.ExitCode;
+        usedAssemblyPaths = new HashSet<string>(response.UsedAssemblyPaths);
+        return true;
+    }
 }

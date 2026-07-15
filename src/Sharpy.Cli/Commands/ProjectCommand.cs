@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Shared;
 
@@ -186,6 +187,84 @@ internal static class ProjectCommand
                 Console.Error.WriteLine(ex.StackTrace);
             }
             return 1;
+        }
+    }
+
+    /// <summary>
+    /// Compile a <c>.spyproj</c> for the keep-alive server (D2, #1049), writing progress/diagnostics
+    /// to the (captured) console and surfacing the per-phase <paramref name="metrics"/> the server
+    /// ships back so warm timings are reportable. A lean sibling of <see cref="CompileProject"/> —
+    /// no clean/emit-cs side effects — kept here so it stays in step with the option-building the
+    /// interactive path uses.
+    /// </summary>
+    internal static int CompileProjectForServer(
+        FileInfo projectFile,
+        string configuration,
+        bool incremental,
+        ICompilerLogger logger,
+        out ProjectCompilationMetrics? metrics)
+    {
+        metrics = null;
+        try
+        {
+            var projectConfig = ProjectFileParser.Load(projectFile.FullName, configuration);
+
+            Console.WriteLine($"Project: {projectConfig.RootNamespace}");
+            Console.WriteLine($"Configuration: {projectConfig.Configuration}");
+            Console.WriteLine($"Source files: {projectConfig.SourceFiles.Count}");
+            if (incremental)
+            {
+                Console.WriteLine("Mode: Incremental");
+            }
+            Console.WriteLine();
+
+            var allReferences = CliHelpers.GetDefaultReferences()
+                .Concat(projectConfig.References)
+                .Distinct()
+                .ToArray();
+
+            foreach (var defaultRef in CliHelpers.GetDefaultReferences())
+            {
+                if (!projectConfig.References.Contains(defaultRef))
+                    projectConfig.References.Add(defaultRef);
+            }
+
+            var compilerOptions = new CompilerOptions
+            {
+                References = allReferences,
+                ModulePaths = projectConfig.ModulePaths.ToArray(),
+                WarningsAsErrors = projectConfig.WarningsAsErrors,
+                SuppressedWarnings = new HashSet<string>(projectConfig.SuppressedWarnings),
+                Incremental = incremental,
+            };
+
+            var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
+            var result = compiler.CompileProject(projectConfig);
+            metrics = result.Metrics;
+
+            var projectWarnings = result.Diagnostics.GetWarnings();
+            if (projectWarnings.Count > 0)
+            {
+                CliHelpers.RenderDiagnosticsFromFiles(projectWarnings, Console.Out);
+            }
+
+            if (!result.Success)
+            {
+                Console.Error.WriteLine("Build FAILED.");
+                Console.Error.WriteLine();
+                var errors = result.Diagnostics.GetErrors();
+                CliHelpers.RenderDiagnosticsFromFiles(errors, Console.Error);
+                return CliHelpers.MapFailureExitCode(errors);
+            }
+
+            Console.WriteLine("Build succeeded.");
+            Console.WriteLine($"Output: {result.OutputAssemblyPath}");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+            return CliHelpers.ExitInternalError;
         }
     }
 

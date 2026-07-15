@@ -1,5 +1,6 @@
 extern alias SharpyRT;
 using System.CommandLine;
+using Sharpy.Cli.Services;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Shared;
@@ -24,6 +25,7 @@ internal static class BuildCommand
         projRefOpt.Aliases.Add("-p");
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
         modPathOpt.Aliases.Add("-m");
+        var serverOpt = new Option<string?>("--server") { Description = "Compile via a keep-alive 'sharpyc server' on the given pipe (default pipe if no name); falls back to in-process if none is running", Arity = ArgumentArity.ZeroOrOne };
 
         command.Arguments.Add(inputArg);
         command.Options.Add(typeOpt);
@@ -31,6 +33,7 @@ internal static class BuildCommand
         command.Options.Add(refOpt);
         command.Options.Add(projRefOpt);
         command.Options.Add(modPathOpt);
+        command.Options.Add(serverOpt);
 
         command.SetAction((parseResult) =>
         {
@@ -55,6 +58,37 @@ internal static class BuildCommand
             {
                 return 1;
             }
+
+            // --server: try the keep-alive server first; a null result means no server answered and
+            // we should fall through to the in-process compile below (explicit over magic, #1049).
+            if (parseResult.GetResult(serverOpt) is not null)
+            {
+                var pipeName = parseResult.GetValue(serverOpt) ?? CompileServerProtocol.DefaultPipeName;
+                var request = new CompileServerRequest
+                {
+                    Command = CompileServerProtocol.CommandCompile,
+                    Input = input.FullName,
+                    Output = output?.FullName,
+                    OutputType = type,
+                    References = reference,
+                    ProjectReferences = projectReference,
+                    ModulePaths = modulePath,
+                    Features = features ?? Array.Empty<string>(),
+                    Configuration = "Debug",
+                    WarnAsError = warnAsError,
+                    Nowarn = nowarn,
+                    MaxErrors = maxErrors,
+                    WorkingDirectory = Directory.GetCurrentDirectory(),
+                };
+
+                var serverExit = CompileServerClient.TryRun(
+                    pipeName, request, Console.Out, Console.Error, verbose: parseResult.GetValue(globals.Verbose));
+                if (serverExit.HasValue)
+                {
+                    return serverExit.Value;
+                }
+            }
+
             var compileResult = CompileToBinary(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, configuration: "Debug", features: features);
             return compileResult == null ? CliHelpers.LastFailureExitCode : 0;
         });

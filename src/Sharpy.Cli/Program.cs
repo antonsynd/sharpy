@@ -29,6 +29,7 @@ class Program
         LspCommand.Configure(rootCommand, globals);
         ReplCommand.Configure(rootCommand, globals);
         FormatCommand.Configure(rootCommand, globals);
+        ServerCommand.Configure(rootCommand, globals);
 
         return rootCommand.Parse(args).Invoke();
     }
