@@ -87,9 +87,13 @@ internal class OverloadIndexCache
         var cacheKey = identity.ToCacheKey();
         var cachePath = Path.Combine(_cacheDirectory, cacheKey);
 
-        // Process-lifetime fast path: a previously deserialized (and validated) index for this
-        // exact cache path is reused without touching disk again (#1049).
-        if (s_inMemoryIndices.TryGetValue(cachePath, out var memoized))
+        // Process-lifetime fast path: a previously deserialized index for this exact cache path is
+        // reused without touching disk again (#1049). It must uphold the same invariants the disk
+        // path checks below — current format version and matching identity — so this layer can
+        // never serve something the on-disk validation would reject.
+        if (s_inMemoryIndices.TryGetValue(cachePath, out var memoized)
+            && memoized.CacheFormatVersion == CurrentCacheFormatVersion
+            && memoized.Identity.Equals(identity))
         {
             Statistics.RecordHit();
             return memoized;
@@ -157,8 +161,13 @@ internal class OverloadIndexCache
         var tempPath = cachePath + $".{Guid.NewGuid():N}.tmp";
 
         // Populate the process-lifetime layer eagerly so a build-on-miss in one compile serves the
-        // next compile in this process warm, without a disk round-trip through TryLoad (#1049).
-        s_inMemoryIndices[cachePath] = index;
+        // next compile in this process warm, without a disk round-trip through TryLoad (#1049). Only
+        // current-format indices are memoized, mirroring what TryLoad will accept — never cache
+        // something the on-disk validation would reject.
+        if (index.CacheFormatVersion == CurrentCacheFormatVersion)
+        {
+            s_inMemoryIndices[cachePath] = index;
+        }
 
         // Clean up old cache files for this assembly (different versions/hashes older than 7 days)
         CleanupOldCaches(index.Identity.Name, cacheKey);
