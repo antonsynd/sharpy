@@ -143,9 +143,10 @@ internal partial class ProjectCompiler
             }
 
             generatorCSharp[filePath] = csharpCode;
-            generatorTrees[filePath] = CSharpSyntaxTree.Create(
-                roslynUnit,
-                options: null,
+            // Parse-once rather than CSharpSyntaxTree.Create — see #1095 (emitter nodes are
+            // not reparse-equivalent; the hot path in ProjectCompiler.CodeGen.cs matches).
+            generatorTrees[filePath] = CSharpSyntaxTree.ParseText(
+                csharpCode,
                 path: filePath,
                 encoding: System.Text.Encoding.UTF8);
         }

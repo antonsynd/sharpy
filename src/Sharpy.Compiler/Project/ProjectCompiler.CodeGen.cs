@@ -86,13 +86,14 @@ internal partial class ProjectCompiler
                 var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
                 var csharpCode = roslynCompilationUnit.ToFullString();
 
-                // D3 (#1050): wrap the exact emitted node in a SyntaxTree with no reparse,
-                // so the compile path hands it straight to CSharpCompilation.Create. The path
-                // and UTF-8 encoding mirror the ParseText call this replaces (AssemblyCompiler),
-                // keeping #line mapping, PDB checksums, and emit output byte-for-byte identical.
-                var syntaxTree = CSharpSyntaxTree.Create(
-                    roslynCompilationUnit,
-                    options: null,
+                // D3 (#1050): parse the emitted text once here and hand the parsed tree
+                // straight to CSharpCompilation.Create, replacing the second reparse
+                // AssemblyCompiler used to do. Handing the emitter's node graph directly
+                // (CSharpSyntaxTree.Create) is blocked on #1095: some emitter nodes are not
+                // reparse-equivalent (string-built "global::" qualified names inside single
+                // identifier tokens print correctly but fail to bind as trees).
+                var syntaxTree = CSharpSyntaxTree.ParseText(
+                    csharpCode,
                     path: csharpFileName,
                     encoding: System.Text.Encoding.UTF8);
 
