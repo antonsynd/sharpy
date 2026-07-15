@@ -148,6 +148,48 @@ The `SPY0331` message names the feature and how to enable it, e.g. *"requires ex
 enable with `--enable-feature=X` or `<Features>X</Features>` in .spyproj"*, appending *"or
 `from __future__ import X`"* for semantic/codegen-scoped features.
 
+## Behavioral (non-syntax) flags
+
+Everything above assumes an experimental feature adds **syntax** — a construct the parser builds and the
+gate checker rejects when disabled. A second species of flag gates **behavior, not syntax**: an
+optimization or codegen pass that changes *how* a valid program is compiled, never *whether* it parses.
+The E3 IR optimization passes **planned** under [#1057](https://github.com/antonsynd/sharpy/issues/1057)
+will be the first of these — `opt_const_fold`, `opt_comprehension_fusion`, `opt_devirt`,
+`opt_stack_collections` — and the first consumers of `CodeGenContext.Features`. (None are registered yet;
+they are named here as the motivating cohort, not as existing flags.)
+
+A behavioral flag differs from a syntax feature in three ways:
+
+- **No gated construct, no `SPY0331`.** There is nothing to reject when the flag is off. "Off" simply
+  means *the pass does not run*; the un-optimized program is valid on its own. So a behavioral flag gets
+  **no `GatedConstructRegistry` entry**, and the `FeatureGateChecker` has nothing to do for it — the
+  "requires experimental feature" diagnostic does not apply.
+- **`FeatureScope.CodeGen`.** It takes effect during code generation, so (per [Scope
+  asymmetry](#scope-asymmetry)) it is enable-able all three ways, including per file via
+  `from __future__ import`. It is still registered in `FeatureFlags.KnownFeatures` — so unknown-name
+  validation and the enable mechanisms work — only the *gate* is absent, not the registration.
+- **Snapshots, not `.error` fixtures, are the evidence.** Because there is no diagnostic to assert, the
+  entry criteria below replace the syntax-feature ones.
+
+### Entry criteria (behavioral)
+
+- **Default-off**, registered in `KnownFeatures` with `FeatureScope.CodeGen`.
+- **A `.features`-gated snapshot fixture pinning the optimized output** — the enabled behaviour is proven
+  by the generated C# it produces, held to the same standard as any other codegen.
+- **The default-path snapshots are unchanged** — flag-off must be byte-identical to before the pass
+  existed. This is the behavioral analogue of the ungated `.error` fixture: instead of asserting a
+  rejection, it asserts *no change*, which is exactly what "off means don't run the pass" must guarantee.
+
+### Graduation (behavioral)
+
+- **Benchmark evidence, then flip the default.** A behavioral flag graduates only after at least one
+  release in experimental *and* benchmark numbers that justify turning it on by default (an optimization
+  with no measured win does not graduate — it is deleted). Flip the default on, then follow the standard
+  two-step retirement: make the flag a no-op — so existing `--enable-feature` / `<Features>` /
+  `from __future__ import` sites keep compiling — then remove the name after a release.
+- **Deletion** is unchanged from the syntax case: remove the pass and the flag together. Nothing on the
+  default path unwinds, because the default path never depended on the pass.
+
 ## Pilot features
 
 Three features pilot this lifecycle. All are `Parser`-scoped and all ship experimental.
