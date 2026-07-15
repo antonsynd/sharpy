@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Linq;
+using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Services;
@@ -258,6 +259,35 @@ public class CompilerInvariantsTests
         var invalidCSharp = "namespace Test { public class { } }"; // Missing class name
 
         CompilerInvariants.AssertPostCodeGen(invalidCSharp, diagnostics);
+
+        var errors = diagnostics.GetErrors().ToList();
+        Assert.Single(errors);
+        Assert.Contains("generated C# contains", errors[0].Message);
+        Assert.Contains("syntax error", errors[0].Message);
+    }
+
+    [Fact]
+    public void AssertPostCodeGen_ValidTree_NoErrors()
+    {
+        // D3 (#1050): the hot-path overload reads GetDiagnostics off the emitter's tree
+        // instead of reparsing. A well-formed tree must not report a spurious error.
+        var diagnostics = CreateDiagnostics();
+        var tree = CSharpSyntaxTree.ParseText("namespace Test { public class Foo { } }");
+
+        CompilerInvariants.AssertPostCodeGen(tree, diagnostics);
+
+        Assert.Empty(diagnostics.GetErrors());
+    }
+
+    [Fact]
+    public void AssertPostCodeGen_InvalidTree_EmitsError()
+    {
+        // A structurally broken tree still surfaces the internal-error diagnostic via
+        // GetDiagnostics, without a reparse.
+        var diagnostics = CreateDiagnostics();
+        var tree = CSharpSyntaxTree.ParseText("namespace Test { public class { } }"); // Missing class name
+
+        CompilerInvariants.AssertPostCodeGen(tree, diagnostics);
 
         var errors = diagnostics.GetErrors().ToList();
         Assert.Single(errors);

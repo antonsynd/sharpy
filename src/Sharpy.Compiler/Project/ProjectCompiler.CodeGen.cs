@@ -122,7 +122,9 @@ internal partial class ProjectCompiler
                 unit.GeneratedCSharp = csharpCode;
                 unit.GeneratedSyntaxTree = syntaxTree;
                 unit.Phase = CompilationPhase.CodeGenerated;
-                CompilerInvariants.AssertPostCodeGen(csharpCode, _diagnostics);
+                // D3 (#1050): validate the emitter's tree directly (GetDiagnostics), instead
+                // of reparsing csharpCode — this is the same tree handed to Roslyn.
+                CompilerInvariants.AssertPostCodeGen(syntaxTree, _diagnostics);
 
                 // Log per-file code gen metrics at Debug level
                 if (_logger.IsEnabled(CompilerLogLevel.Debug) && fileMetrics != null)

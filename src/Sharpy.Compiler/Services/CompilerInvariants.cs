@@ -2,6 +2,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace Sharpy.Compiler.Services;
@@ -181,7 +182,21 @@ public static class CompilerInvariants
     }
 
     /// <summary>
-    /// Run post-code-generation invariants.
+    /// Run post-code-generation invariants against the emitter's own <see cref="SyntaxTree"/>
+    /// (D3, #1050). Reads <see cref="SyntaxTree.GetDiagnostics()"/> off the tree the compile
+    /// path already hands to Roslyn — no reparse. This is the hot-path form.
+    /// </summary>
+    public static void AssertPostCodeGen(SyntaxTree generatedTree, DiagnosticBag diagnostics)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostics);
+        ArgumentNullException.ThrowIfNull(generatedTree);
+        AssertGeneratedCSharpParses(generatedTree, diagnostics);
+    }
+
+    /// <summary>
+    /// Run post-code-generation invariants against generated C# <em>text</em>. Retained for
+    /// the incremental cache-hit path, where a file is restored as a string with no tree;
+    /// the tree overload is preferred everywhere a tree is available (D3, #1050).
     /// </summary>
     public static void AssertPostCodeGen(string generatedCSharp, DiagnosticBag diagnostics)
     {
@@ -363,7 +378,9 @@ public static class CompilerInvariants
     }
 
     /// <summary>
-    /// Verify generated C# code parses without syntax errors.
+    /// Verify generated C# <em>text</em> parses without syntax errors, by reparsing it.
+    /// Retained for the incremental cache-hit path, where only a string is available; the
+    /// hot path uses the <see cref="SyntaxTree"/> overload instead (D3, #1050).
     /// This catches codegen bugs that produce malformed C#.
     /// Always-on (not DEBUG-only) because invalid generated C# in Release builds
     /// would produce cryptic Roslyn compilation errors instead of a clear
@@ -373,6 +390,23 @@ public static class CompilerInvariants
     {
         var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
         var tree = CSharpSyntaxTree.ParseText(csharpCode, parseOptions);
+        ReportSyntaxErrors(tree, diagnostics);
+    }
+
+    /// <summary>
+    /// Verify the emitter's <see cref="SyntaxTree"/> carries no syntax errors, reading
+    /// <see cref="SyntaxTree.GetDiagnostics()"/> off the existing tree instead of reparsing
+    /// its text (D3, #1050). This is the same tree the compile path hands to
+    /// <c>CSharpCompilation.Create</c>, so a structural defect surfaces here as a clear
+    /// internal-error diagnostic before Roslyn reports it as a raw CS error.
+    /// </summary>
+    internal static void AssertGeneratedCSharpParses(SyntaxTree tree, DiagnosticBag diagnostics)
+    {
+        ReportSyntaxErrors(tree, diagnostics);
+    }
+
+    private static void ReportSyntaxErrors(SyntaxTree tree, DiagnosticBag diagnostics)
+    {
         var parseDiagnostics = tree.GetDiagnostics()
             .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
             .ToList();
