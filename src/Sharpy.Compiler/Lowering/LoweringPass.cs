@@ -79,6 +79,9 @@ internal sealed class LoweringPass
             // _binaryOpLowerings).
             BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } eqOp
                 => LowerEqualityComparison(eqOp, semanticInfo, index),
+            // Index access (obj[i]) carries its lowering strategy on the IR node (E2 #1056, migrates
+            // _indexAccessLowerings).
+            IndexAccess indexAccess => LowerIndexAccess(indexAccess, semanticInfo, index),
             _ => new IrOpaqueExpression(expression, semanticInfo.GetExpressionType(expression), SpanOf(expression),
                 LowerChildren(expression, semanticInfo, index)),
         };
@@ -96,6 +99,18 @@ internal sealed class LoweringPass
             semanticInfo.GetBinaryOpLoweringForIr(binOp),
             semanticInfo.GetExpressionType(binOp),
             SpanOf(binOp));
+    }
+
+    private static IrIndexAccess LowerIndexAccess(IndexAccess indexAccess, SemanticInfo semanticInfo, Dictionary<Node, IrNode> index)
+    {
+        var receiver = LowerExpression(indexAccess.Object, semanticInfo, index);
+        var argument = LowerExpression(indexAccess.Index, semanticInfo, index);
+        return new IrIndexAccess(
+            receiver,
+            ImmutableArray.Create(argument),
+            semanticInfo.GetIndexAccessLoweringForIr(indexAccess),
+            semanticInfo.GetExpressionType(indexAccess),
+            SpanOf(indexAccess));
     }
 
     /// <summary>

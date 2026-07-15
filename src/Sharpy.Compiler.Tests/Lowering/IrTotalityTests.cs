@@ -112,7 +112,6 @@ public class IrTotalityTests
             "FunctionDef",
             "Identifier",
             "IfStatement",
-            "IndexAccess",
             "IntegerLiteral",
             "ListLiteral",
             "MemberAccess",

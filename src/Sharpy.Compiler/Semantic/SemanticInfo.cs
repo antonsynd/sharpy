@@ -124,6 +124,13 @@ public class SemanticInfo : ISemanticQuery
     // Map index-access expressions to the strategy codegen must use to emit them. Only present when
     // the strategy differs from the default native element access (e.g. string/array helper calls,
     // params-indexer spreads, tuple .ItemN access). Keyed by node identity.
+    //
+    // TRANSPORT (E2 #1056): this fact now flows to codegen through the lowering IR
+    // (IrIndexAccess.Strategy); the emitter reads the IR, never this dict. The dict is retained only
+    // as the lowering pass's input — the NativeUnchecked strategy depends on transient TypeChecker
+    // traversal state (_nonNegativeInductionVars / _sharpyListBackedSymbols) that is gone by lowering
+    // time, so it cannot be recomputed. Physical deletion + its MergeFrom line are deferred to the
+    // guardrail-retirement step (lowering-ir.md §6.4, post-E2).
     private readonly ConcurrentDictionary<Expression, IndexAccessLowering> _indexAccessLowerings =
         new(ReferenceEqualityComparer.Instance);
 
@@ -561,7 +568,12 @@ public class SemanticInfo : ISemanticQuery
     /// Gets the lowering strategy for an index access.
     /// Returns <see cref="IndexAccessLowering.Native"/> when no override was recorded.
     /// </summary>
-    public IndexAccessLowering GetIndexAccessLowering(Expression indexAccess)
+    /// <remarks>
+    /// Lowering-input only (E2 #1056): the lowering pass reads this to build
+    /// <c>IrIndexAccess.Strategy</c>; code generation reads the IR, never this accessor.
+    /// Renamed with the <c>ForIr</c> suffix so nothing in <c>CodeGen/</c> can bind it.
+    /// </remarks>
+    public IndexAccessLowering GetIndexAccessLoweringForIr(Expression indexAccess)
     {
         return _indexAccessLowerings.TryGetValue(indexAccess, out var lowering)
             ? lowering

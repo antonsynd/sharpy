@@ -57,7 +57,9 @@ public class NonNegativeIndexLoweringTests
         var (module, info) = Analyze(source);
         var access = Descendants(module).OfType<IndexAccess>()
             .Single(ia => ia.Object is Identifier id && id.Name == objectName);
-        return info.GetIndexAccessLowering(access);
+        // Reads the materialized fact directly (E2 #1056 renamed the accessor to a lowering-facing
+        // name); this verifies the TypeChecker's computation, upstream of the IR.
+        return info.GetIndexAccessLoweringForIr(access);
     }
 
     [Fact]

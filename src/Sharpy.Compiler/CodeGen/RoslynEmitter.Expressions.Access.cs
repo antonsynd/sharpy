@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -1567,11 +1568,23 @@ internal partial class RoslynEmitter
         return currentExpr;
     }
 
+    /// <summary>
+    /// Reads the index-access lowering strategy from the lowering IR (E2 #1056, migrates
+    /// <c>_indexAccessLowerings</c>). Returns <c>null</c> when the node has no
+    /// <see cref="IrIndexAccess"/>, which the caller treats as the default native element access.
+    /// </summary>
+    private IndexAccessLowering? GetIrIndexAccessLowering(IndexAccess indexAccess)
+    {
+        return _context.Ir?.Index.TryGetValue(indexAccess, out var node) == true
+            && node is IrIndexAccess irIndexAccess
+            ? irIndexAccess.Strategy
+            : null;
+    }
+
     private ExpressionSyntax GenerateIndexAccess(IndexAccess indexAccess)
     {
-        // The lowering strategy was materialized by the TypeChecker; switch on the tag alone.
-        var lowering = _context.SemanticInfo?.GetIndexAccessLowering(indexAccess)
-            ?? IndexAccessLowering.Native;
+        // The lowering strategy was materialized during semantic analysis; switch on the tag alone.
+        var lowering = GetIrIndexAccessLowering(indexAccess) ?? IndexAccessLowering.Native;
 
         // Tuple positional indexing: t[0] -> t.Item1, t[1] -> t.Item2, etc.
         // C# ValueTuples don't support [] indexing, so we emit .ItemN member access.
