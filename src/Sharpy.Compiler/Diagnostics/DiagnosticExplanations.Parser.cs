@@ -214,5 +214,9 @@ public static partial class DiagnosticExplanations
             "try:\n    ...\nexcept ValueError:\n    ...\nexcept* TypeError as eg:\n    ...",
             "Use either all 'except' or all 'except*' handlers:\n  try:\n      ...\n  except* ValueError as eg:\n      ...\n  except* TypeError as eg:\n      ...");
 
+        Add(dict, DiagnosticCodes.Parser.LambdaNotAllowedAsOperand, "Lambda not allowed as operand", "Parser",
+            "A bare (unparenthesized) lambda cannot appear as the operand of a unary or binary operator, a conditional test, or a comprehension iterator. CPython's grammar forbids a lambdef in these operand positions, and Sharpy matches it. Parenthesizing the lambda makes it a primary expression, which is allowed anywhere.",
+            "y = x or lambda: x",
+            "Wrap the lambda in parentheses:\n  y = x or (lambda: x)");
     }
 }
