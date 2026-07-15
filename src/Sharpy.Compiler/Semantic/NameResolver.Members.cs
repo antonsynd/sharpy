@@ -402,6 +402,7 @@ internal partial class NameResolver
                 GetterAccess = hasGetter ? accessLevel : AccessLevel.Public,
                 SetterAccess = hasSetter || hasInit ? accessLevel : AccessLevel.Public,
                 ExplicitInterface = propDef.ExplicitInterface,
+                Observers = propDef.Observers,
             };
 
             owningType.Properties.Add(propSymbol);

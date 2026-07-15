@@ -47,6 +47,13 @@ internal class PropertyValidator : SemanticValidatorBase
                 case StructDef structDef:
                     ValidateTypeBody(structDef.Name, structDef.Body);
                     break;
+                case InterfaceDef interfaceDef:
+                    // Interfaces have no concrete accessors, so any observer on an interface
+                    // property is invalid (#416). The rest of PropertyValidator's rules do not
+                    // apply to interface members.
+                    foreach (var propDef in interfaceDef.Body.OfType<PropertyDef>())
+                        ValidatePropertyObservers(interfaceDef.Name, propDef, isInterface: true);
+                    break;
             }
         }
     }
@@ -98,6 +105,7 @@ internal class PropertyValidator : SemanticValidatorBase
             ValidateAbstractPropertyBody(typeName, propDef);
             ValidateFinalNotWithAbstractOrVirtual(typeName, propDef);
             ValidatePropertyOverride(typeName, propDef, typeSymbol);
+            ValidatePropertyObservers(typeName, propDef, isInterface: false);
         }
 
         // Check for mixed auto/function-style per property name
@@ -328,6 +336,77 @@ internal class PropertyValidator : SemanticValidatorBase
                     span: propDef.Span);
             }
         }
+    }
+
+    /// <summary>
+    /// Rule 9 (#416): 'before_set'/'after_set' observers are only valid on a settable
+    /// auto-property. Rejects observers on function-style, @abstract, @override, interface,
+    /// @readonly / get-only / init-only targets (SPY0490), and rejects a duplicate observer of
+    /// the same kind (SPY0491).
+    /// </summary>
+    private void ValidatePropertyObservers(string typeName, PropertyDef propDef, bool isInterface)
+    {
+        if (propDef.Observers.IsEmpty)
+            return;
+
+        var firstObserver = propDef.Observers[0];
+        string? invalidReason = DetermineObserverTargetError(propDef, isInterface);
+        if (invalidReason != null)
+        {
+            AddError(_context,
+                $"Property observers on '{propDef.Name}' in '{typeName}' are only valid on a settable " +
+                $"auto-property, but this is {invalidReason}",
+                firstObserver.LineStart, firstObserver.ColumnStart,
+                code: DiagnosticCodes.Validation.PropertyObserverInvalidTarget,
+                span: firstObserver.Span ?? propDef.Span);
+        }
+
+        // Each observer kind may appear at most once.
+        bool seenBeforeSet = false;
+        bool seenAfterSet = false;
+        foreach (var observer in propDef.Observers)
+        {
+            bool duplicate = observer.Kind == ObserverKind.BeforeSet ? seenBeforeSet : seenAfterSet;
+            if (duplicate)
+            {
+                var keyword = observer.Kind == ObserverKind.BeforeSet ? "before_set" : "after_set";
+                AddError(_context,
+                    $"Property '{propDef.Name}' in '{typeName}' has more than one '{keyword}' observer",
+                    observer.LineStart, observer.ColumnStart,
+                    code: DiagnosticCodes.Validation.DuplicatePropertyObserver,
+                    span: observer.Span ?? propDef.Span);
+            }
+
+            if (observer.Kind == ObserverKind.BeforeSet)
+                seenBeforeSet = true;
+            else
+                seenAfterSet = true;
+        }
+    }
+
+    /// <summary>
+    /// Returns a user-facing noun phrase describing why <paramref name="propDef"/> cannot carry
+    /// observers, or null if it is a valid (settable auto-property) target.
+    /// </summary>
+    private static string? DetermineObserverTargetError(PropertyDef propDef, bool isInterface)
+    {
+        if (isInterface)
+            return "an interface property";
+        if (propDef.IsFunctionStyle)
+            return "a function-style property";
+        if (propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract))
+            return "an @abstract property";
+        if (propDef.Decorators.Any(d => d.Name == DecoratorNames.Override))
+            return "an @override property";
+        if (propDef.Decorators.Any(d => d.Name == DecoratorNames.Readonly))
+            return "a @readonly property (no setter)";
+        return propDef.Accessor switch
+        {
+            PropertyAccessor.Get => "a get-only property (no setter)",
+            PropertyAccessor.Init => "an init-only property (no setter)",
+            PropertyAccessor.Set => "a set-only property (no standard get/set accessor)",
+            _ => null,
+        };
     }
 
     /// <summary>

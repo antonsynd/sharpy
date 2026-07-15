@@ -678,5 +678,27 @@ public static partial class DiagnosticExplanations
             "value = obj to int      # with failable_cast enabled",
             "Use the failable-cast operator that matches the failure mode:\n  value = obj as! int   # throws on failure\n  maybe_value = obj as? int  # None on failure");
 
+        // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
+
+        Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,
+            "Property observer on an invalid target",
+            "Validation",
+            "A 'before_set' / 'after_set' observer is only valid on a settable auto-property — one " +
+            "declared as 'property name: type' (optionally with a default). Observers cannot be attached " +
+            "to function-style properties (which already have custom accessors), @readonly / get-only or " +
+            "init-only properties (no setter to wrap), @abstract or @override properties, or interface " +
+            "members. This is the experimental property_observers feature (#416).",
+            "property health: int\n    before_set(new_value):    # OK — settable auto-property\n        assert new_value >= 0",
+            "Attach the observer to a settable auto-property, or use a function-style setter body directly " +
+            "if you need custom accessor logic.");
+
+        Add(dict, DiagnosticCodes.Validation.DuplicatePropertyObserver,
+            "Duplicate property observer",
+            "Validation",
+            "The same observer kind ('before_set' or 'after_set') is declared more than once on a single " +
+            "property. Each kind may appear at most once so the expanded setter has one unambiguous " +
+            "before-store and one after-store body.",
+            "property health: int\n    before_set(a):\n        pass\n    before_set(b):    # SPY0491 — second before_set\n        pass",
+            "Merge the two clauses into a single 'before_set' (or 'after_set') suite.");
     }
 }

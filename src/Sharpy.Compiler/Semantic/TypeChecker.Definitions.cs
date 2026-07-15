@@ -1858,6 +1858,10 @@ internal partial class TypeChecker
                         span: propDef.DefaultValue.Span);
                 }
             }
+
+            if (!propDef.Observers.IsEmpty)
+                CheckPropertyObservers(propDef, propertyType, propSymbol);
+
             return;
         }
 
@@ -1945,6 +1949,100 @@ internal partial class TypeChecker
         _currentFunctionReturnType = previousFunctionReturnType;
 
         _symbolTable.ExitScope();
+    }
+
+    /// <summary>
+    /// Type-checks the <c>before_set</c>/<c>after_set</c> observer bodies of an auto-property
+    /// (#416). Each observer runs in its own scope with <c>self</c> bound to the current class
+    /// (for instance properties) and the observer parameter bound to the property type — the
+    /// incoming value for <c>before_set</c>, the previous value for <c>after_set</c>. Observer
+    /// bodies return nothing, like a setter.
+    /// </summary>
+    private void CheckPropertyObservers(PropertyDef propDef, SemanticType propertyType, PropertySymbol? propSymbol)
+    {
+        if (_currentClass == null)
+            return;
+
+        bool isStatic = propSymbol?.IsStatic ?? false;
+
+        foreach (var observer in propDef.Observers)
+        {
+            _symbolTable.EnterScope($"observer:{propDef.Name}:{observer.Kind}");
+            using var isolatedNarrowing = _narrowingContext.EnterIsolatedScope();
+
+            // Instance auto-properties expose `self`; static ones do not.
+            if (!isStatic)
+            {
+                var selfType = new UserDefinedType { Name = _currentClass.Name, Symbol = _currentClass };
+                var selfSymbol = new VariableSymbol
+                {
+                    Name = PythonNames.Self,
+                    Kind = SymbolKind.Parameter,
+                    Type = selfType,
+                    IsParameter = true,
+                    DeclarationLine = propDef.LineStart,
+                    DeclarationColumn = propDef.ColumnStart,
+                    NameDeclarationLine = propDef.LineStart,
+                    NameDeclarationColumn = propDef.ColumnStart
+                };
+                _symbolTable.Define(selfSymbol);
+                SemanticBinding.SetVariableType(selfSymbol, selfType);
+            }
+
+            // The observer parameter carries the property type (before_set: incoming value;
+            // after_set: previous value).
+            var paramType = propertyType is UnknownType ? SemanticType.Unknown : propertyType;
+            var paramSymbol = new VariableSymbol
+            {
+                Name = observer.ParamName,
+                Kind = SymbolKind.Parameter,
+                Type = paramType,
+                IsParameter = true,
+                DeclarationLine = observer.ParamNameLine,
+                DeclarationColumn = observer.ParamNameColumn,
+                NameDeclarationLine = observer.ParamNameLine,
+                NameDeclarationColumn = observer.ParamNameColumn
+            };
+            _symbolTable.Define(paramSymbol);
+            SemanticBinding.SetVariableType(paramSymbol, paramType);
+
+            var previousFunctionReturnType = _currentFunctionReturnType;
+            var previousMethodName = _currentMethodName;
+            var previousControlFlowDepth = _controlFlowDepth;
+            var previousIsGenerator = _currentFunctionIsGenerator;
+            var previousIsAsync = _currentFunctionIsAsync;
+            var previousMethodIsOverride = _currentMethodIsOverride;
+            var previousMethodIsDunder = _currentMethodIsDunder;
+            _currentFunctionReturnType = SemanticType.Void;
+            _currentMethodName = propDef.Name;
+            _controlFlowDepth = 0;
+            _currentFunctionIsGenerator = false;
+            _currentFunctionIsAsync = false;
+            _currentMethodIsOverride = false;
+            _currentMethodIsDunder = false;
+
+            var previousFlow = _narrowingFlow;
+            var previousFacts = _currentFacts;
+            _narrowingFlow = ComputeNarrowingFlow(observer.Body);
+            _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
+
+            foreach (var stmt in observer.Body)
+            {
+                CheckStatement(stmt);
+            }
+
+            _narrowingFlow = previousFlow;
+            _currentFacts = previousFacts;
+            _currentFunctionReturnType = previousFunctionReturnType;
+            _currentMethodName = previousMethodName;
+            _controlFlowDepth = previousControlFlowDepth;
+            _currentFunctionIsGenerator = previousIsGenerator;
+            _currentFunctionIsAsync = previousIsAsync;
+            _currentMethodIsOverride = previousMethodIsOverride;
+            _currentMethodIsDunder = previousMethodIsDunder;
+
+            _symbolTable.ExitScope();
+        }
     }
 
     /// <summary>

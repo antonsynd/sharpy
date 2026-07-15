@@ -583,6 +583,19 @@ public static class DiagnosticCodes
         // SPY0478, SPY0480-SPY0489: Reserved for future transition diagnostics
 
         #endregion
+
+        #region Validation errors — overflow (SPY0490-SPY0499)
+
+        // The primary validation-error sub-band SPY0400-SPY0449 is fully allocated, so
+        // validation errors added after Wave 3 overflow into SPY0490-SPY0499 (the tail of the
+        // Validation range, previously unused). These are ERRORS despite the numeric position;
+        // severity is set explicitly at emission via AddError, never inferred from the code range.
+
+        // Property observer validation (SPY0490-SPY0491, #416)
+        public const string PropertyObserverInvalidTarget = "SPY0490"; // Active
+        public const string DuplicatePropertyObserver = "SPY0491";     // Active
+
+        #endregion
     }
 
     /// <summary>

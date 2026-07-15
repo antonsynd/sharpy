@@ -387,6 +387,14 @@ public record PropertySymbol
     public AccessLevel GetterAccess { get; init; } = AccessLevel.Public;
     public AccessLevel SetterAccess { get; init; } = AccessLevel.Public;
     public string? ExplicitInterface { get; init; }
+
+    /// <summary>
+    /// Store-time observer clauses (<c>before_set</c>/<c>after_set</c>) declared on this
+    /// auto-property. Empty for properties without observers. Populated during name resolution
+    /// from <see cref="PropertyDef.Observers"/>; consumed by hover/completion and the codegen
+    /// expanded setter. Gated behind the experimental <c>property_observers</c> feature (#416).
+    /// </summary>
+    public ImmutableArray<PropertyObserver> Observers { get; init; } = ImmutableArray<PropertyObserver>.Empty;
 }
 
 /// <summary>
