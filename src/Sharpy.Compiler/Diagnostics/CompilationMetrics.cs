@@ -617,7 +617,8 @@ public class ProjectCompilationMetrics
         {
             var fileTotal = _fileMetrics.Sum(m => m.TotalMemoryDelta);
             var assemblyTotal = _assemblyMetrics?.TotalMemoryDelta ?? 0;
-            return fileTotal + assemblyTotal;
+            var loweringTotal = _loweringMetrics?.TotalMemoryDelta ?? 0;
+            return fileTotal + assemblyTotal + loweringTotal;
         }
     }
 
@@ -631,7 +632,8 @@ public class ProjectCompilationMetrics
         {
             var fileTotal = _fileMetrics.Sum(m => m.TotalAllocatedBytes);
             var assemblyTotal = _assemblyMetrics?.TotalAllocatedBytes ?? 0;
-            return fileTotal + assemblyTotal;
+            var loweringTotal = _loweringMetrics?.TotalAllocatedBytes ?? 0;
+            return fileTotal + assemblyTotal + loweringTotal;
         }
     }
 
