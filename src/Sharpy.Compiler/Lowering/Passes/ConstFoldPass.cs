@@ -60,22 +60,22 @@ internal sealed class ConstFoldPass : IIrPass
                 return node;
 
             case IrOpaqueExpression opaque:
-            {
-                var children = FoldChildren(opaque.Children, out var childrenChanged);
-                if (TryFoldExpression(opaque.Ast, children, opaque.Type, opaque.Span) is { } constant)
-                    return constant;
-                return childrenChanged
-                    ? new IrOpaqueExpression(opaque.Ast, opaque.Type, opaque.Span, children)
-                    : opaque;
-            }
+                {
+                    var children = FoldChildren(opaque.Children, out var childrenChanged);
+                    if (TryFoldExpression(opaque.Ast, children, opaque.Type, opaque.Span) is { } constant)
+                        return constant;
+                    return childrenChanged
+                        ? new IrOpaqueExpression(opaque.Ast, opaque.Type, opaque.Span, children)
+                        : opaque;
+                }
 
             case IrOpaqueStatement opaqueStatement:
-            {
-                var children = FoldChildren(opaqueStatement.Children, out var childrenChanged);
-                return childrenChanged
-                    ? new IrOpaqueStatement(opaqueStatement.Ast, opaqueStatement.Span, children)
-                    : opaqueStatement;
-            }
+                {
+                    var children = FoldChildren(opaqueStatement.Children, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOpaqueStatement(opaqueStatement.Ast, opaqueStatement.Span, children)
+                        : opaqueStatement;
+                }
 
             default:
                 // Typed nodes (equality, index, member, lowered loop, scope guard, with-item): v1 does
@@ -218,9 +218,15 @@ internal sealed class ConstFoldPass : IIrPass
     {
         switch (c.Value)
         {
-            case double d: value = d; return true;
-            case long l: value = l; return true;
-            default: value = 0; return false;
+            case double d:
+                value = d;
+                return true;
+            case long l:
+                value = l;
+                return true;
+            default:
+                value = 0;
+                return false;
         }
     }
 

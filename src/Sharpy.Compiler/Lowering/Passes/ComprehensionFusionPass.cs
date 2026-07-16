@@ -52,32 +52,32 @@ internal sealed class ComprehensionFusionPass : IIrPass
         switch (node)
         {
             case IrLoweredLoop loop:
-            {
-                var children = OptimizeChildren(loop.Children, context, out var childrenChanged);
-                var rebuilt = childrenChanged
-                    ? new IrLoweredLoop(loop.CollectionKind, loop.Clauses, loop.SoleForClause, loop.Capacity,
-                        loop.ElementIsSpread, loop.Comprehension, loop.Type, loop.Span, children)
-                    : loop;
-                return QualifiesForProductPreallocation(loop, context)
-                    ? rebuilt with { ProductPreallocation = true }
-                    : rebuilt;
-            }
+                {
+                    var children = OptimizeChildren(loop.Children, context, out var childrenChanged);
+                    var rebuilt = childrenChanged
+                        ? new IrLoweredLoop(loop.CollectionKind, loop.Clauses, loop.SoleForClause, loop.Capacity,
+                            loop.ElementIsSpread, loop.Comprehension, loop.Type, loop.Span, children)
+                        : loop;
+                    return QualifiesForProductPreallocation(loop, context)
+                        ? rebuilt with { ProductPreallocation = true }
+                        : rebuilt;
+                }
 
             case IrOpaqueExpression opaque:
-            {
-                var children = OptimizeChildren(opaque.Children, context, out var childrenChanged);
-                return childrenChanged
-                    ? new IrOpaqueExpression(opaque.Ast, opaque.Type, opaque.Span, children)
-                    : opaque;
-            }
+                {
+                    var children = OptimizeChildren(opaque.Children, context, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOpaqueExpression(opaque.Ast, opaque.Type, opaque.Span, children)
+                        : opaque;
+                }
 
             case IrOpaqueStatement opaqueStatement:
-            {
-                var children = OptimizeChildren(opaqueStatement.Children, context, out var childrenChanged);
-                return childrenChanged
-                    ? new IrOpaqueStatement(opaqueStatement.Ast, opaqueStatement.Span, children)
-                    : opaqueStatement;
-            }
+                {
+                    var children = OptimizeChildren(opaqueStatement.Children, context, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOpaqueStatement(opaqueStatement.Ast, opaqueStatement.Span, children)
+                        : opaqueStatement;
+                }
 
             default:
                 // Typed nodes (equality, index, member, scope guard, with-item): v1 does not descend

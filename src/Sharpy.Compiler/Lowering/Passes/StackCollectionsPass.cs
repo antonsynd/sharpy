@@ -58,28 +58,28 @@ internal sealed class StackCollectionsPass : IIrPass
             // to a stack array. The remaining children (target, body, else body) recurse normally so a
             // nested for still gets its own chance.
             case IrOpaqueStatement { Ast: ForStatement forStatement } forStmt:
-            {
-                var children = RewriteForChildren(forStmt.Children, forStatement, out var childrenChanged);
-                return childrenChanged
-                    ? new IrOpaqueStatement(forStmt.Ast, forStmt.Span, children)
-                    : forStmt;
-            }
+                {
+                    var children = RewriteForChildren(forStmt.Children, forStatement, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOpaqueStatement(forStmt.Ast, forStmt.Span, children)
+                        : forStmt;
+                }
 
             case IrOpaqueStatement opaqueStatement:
-            {
-                var children = RewriteChildren(opaqueStatement.Children, out var childrenChanged);
-                return childrenChanged
-                    ? new IrOpaqueStatement(opaqueStatement.Ast, opaqueStatement.Span, children)
-                    : opaqueStatement;
-            }
+                {
+                    var children = RewriteChildren(opaqueStatement.Children, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOpaqueStatement(opaqueStatement.Ast, opaqueStatement.Span, children)
+                        : opaqueStatement;
+                }
 
             case IrOpaqueExpression opaque:
-            {
-                var children = RewriteChildren(opaque.Children, out var childrenChanged);
-                return childrenChanged
-                    ? new IrOpaqueExpression(opaque.Ast, opaque.Type, opaque.Span, children)
-                    : opaque;
-            }
+                {
+                    var children = RewriteChildren(opaque.Children, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOpaqueExpression(opaque.Ast, opaque.Type, opaque.Span, children)
+                        : opaque;
+                }
 
             default:
                 // Typed nodes (equality, index, member, lowered loop, scope guard, stack array): v1 does
