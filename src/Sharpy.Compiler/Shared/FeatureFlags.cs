@@ -87,8 +87,11 @@ public sealed class FeatureFlags
     /// <summary>
     /// The single source of truth for all known feature names. <c>__test_feature</c> (hidden
     /// from <c>--help</c>) exists so the enable-a-feature plumbing is testable end-to-end;
-    /// real experimental features (currently <c>matmul</c>, <c>defer</c>, and
-    /// <c>failable_cast</c>) register here per docs/design/feature-lifecycle.md.
+    /// real experimental features register here per docs/design/feature-lifecycle.md — the
+    /// parser/semantic <i>syntax</i> features (<c>matmul</c>, <c>defer</c>, <c>failable_cast</c>,
+    /// <c>property_observers</c>) and the CodeGen-scoped <i>behavioral</i> flags for the E3 IR
+    /// optimization passes (<c>opt_const_fold</c>, <c>opt_comprehension_fusion</c>, <c>opt_devirt</c>,
+    /// <c>opt_stack_collections</c>; a disabled behavioral flag means its pass does not run).
     /// </summary>
     public static IReadOnlyDictionary<string, FeatureInfo> KnownFeatures { get; } =
         new Dictionary<string, FeatureInfo>(StringComparer.Ordinal)
@@ -131,6 +134,34 @@ public sealed class FeatureFlags
                 // Parser-scoped: the observer suite is new statement syntax. Always parsed but gated;
                 // a `from __future__ import` cannot unlock parser-scoped syntax.
                 FeatureScope.Parser),
+            // E3 IR optimization passes (#1057) — behavioral flags (Design Decision 5): they gate how a
+            // valid program is compiled, not whether it parses, so they carry no GatedConstruct entry
+            // and no SPY0331 rejection. CodeGen-scoped, so each is per-file enableable via
+            // `from __future__ import`. Default-off; a disabled flag means the pass does not run.
+            ["opt_const_fold"] = new FeatureInfo(
+                "opt_const_fold",
+                "Experimental constant-folding IR pass. Folds compile-time-constant arithmetic, " +
+                "comparison, boolean (short-circuit), unary, and string-concat expressions to literals, " +
+                "using exactly the emitted C#'s wrapping semantics (no folding of traps like x/0).",
+                FeatureScope.CodeGen),
+            ["opt_comprehension_fusion"] = new FeatureInfo(
+                "opt_comprehension_fusion",
+                "Experimental comprehension fusion / generalized preallocation IR pass. Presizes " +
+                "multi-clause comprehensions over sized sources and fuses a comprehension whose sole " +
+                "consumer is another loop into one, eliminating the intermediate collection.",
+                FeatureScope.CodeGen),
+            ["opt_devirt"] = new FeatureInfo(
+                "opt_devirt",
+                "Experimental collection-call devirtualization IR pass. Where a receiver's static type " +
+                "is exactly Sharpy.List/Dict/Set (not an interface or narrowed supertype), marks calls " +
+                "for direct dispatch and keyed sorts for concrete comparer construction.",
+                FeatureScope.CodeGen),
+            ["opt_stack_collections"] = new FeatureInfo(
+                "opt_stack_collections",
+                "Experimental non-escaping-collection IR pass. Collection literals that provably never " +
+                "escape (v1: iterated directly by a for, or the receiver of len()/constant-index access) " +
+                "lower to raw arrays / direct values instead of Sharpy.List allocations.",
+                FeatureScope.CodeGen),
         };
 
     /// <summary>The names of all enabled features, in ordinal order.</summary>

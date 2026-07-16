@@ -155,8 +155,10 @@ gate checker rejects when disabled. A second species of flag gates **behavior, n
 optimization or codegen pass that changes *how* a valid program is compiled, never *whether* it parses.
 The E3 IR optimization passes **planned** under [#1057](https://github.com/antonsynd/sharpy/issues/1057)
 will be the first of these — `opt_const_fold`, `opt_comprehension_fusion`, `opt_devirt`,
-`opt_stack_collections` — and the first consumers of `CodeGenContext.Features`. (None are registered yet;
-they are named here as the motivating cohort, not as existing flags.)
+`opt_stack_collections` — and the first consumers of `CodeGenContext.Features`. (These four are now
+registered in `FeatureFlags.KnownFeatures` as CodeGen-scoped behavioral flags and are wired to the IR
+pass manager, but no pass stands behind them yet, so enabling one is currently a no-op; E3 Phases 6–9
+add the passes.)
 
 A behavioral flag differs from a syntax feature in three ways:
 

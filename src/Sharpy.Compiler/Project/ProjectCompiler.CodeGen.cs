@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Semantic;
@@ -176,6 +177,7 @@ internal partial class ProjectCompiler
                 .ToList();
 
             var ir = new LoweringPass().Lower(modules, SemanticInfo, SymbolTable);
+            ir = RunIrOptimizationPasses(ir);
             _projectModel.IrCompilation = ir;
             return ir;
         }
@@ -184,6 +186,40 @@ internal partial class ProjectCompiler
             metrics.EndPhase();
             ProjectMetrics.SetLoweringMetrics(metrics);
         }
+    }
+
+    /// <summary>
+    /// Runs the E3 IR optimization passes (#1057) over each lowered module, keyed to that module's
+    /// effective feature set (compilation-wide flags unioned with its per-file
+    /// <c>from __future__ import</c>). Passes are pure IR→IR rewrites gated on CodeGen-scoped flags via
+    /// <see cref="IrPassManager"/>; with no pass registered (the default) or every flag off, this is a
+    /// no-op that returns the same <see cref="IrCompilation"/>. Runs inside the Lowering phase bracket.
+    /// </summary>
+    /// <remarks>
+    /// When a pass rewrites a module, the returned <see cref="IrCompilation"/> carries the new modules
+    /// but the reference-keyed <see cref="IrCompilation.Index"/> still maps to the pre-rewrite nodes;
+    /// wiring the emitter to read rewritten IR is added by the pass phases (E3 Phases 6–9, #1057). Until
+    /// a pass is registered, no rewrite occurs and the index stays exact.
+    /// </remarks>
+    private IrCompilation RunIrOptimizationPasses(IrCompilation ir)
+    {
+        var manager = IrPassManager.Default;
+        var context = new IrRewriteContext(SymbolTable, SemanticInfo);
+
+        ImmutableArray<IrModule>.Builder? rewritten = null;
+        for (int i = 0; i < ir.Modules.Length; i++)
+        {
+            var module = ir.Modules[i];
+            var features = ImportResolver.GetEffectiveFeatures(_features, module.FilePath);
+            var optimized = manager.Run(module, features, context);
+            if (!ReferenceEquals(optimized, module))
+            {
+                rewritten ??= ir.Modules.ToBuilder();
+                rewritten[i] = optimized;
+            }
+        }
+
+        return rewritten is null ? ir : ir with { Modules = rewritten.ToImmutable() };
     }
 
     /// <summary>
