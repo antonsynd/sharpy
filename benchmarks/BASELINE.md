@@ -184,6 +184,74 @@ or (b) a resident client / editor-embedded client that skips a per-compile proce
 Neither is needed to clear the 200 ms bar, so R2R/AOT is **recorded as evaluated and deferred**, not
 adopted, per Design Decision 9(c).
 
+## E3 IR Optimization Pass Deltas (#1057)
+
+> **Recorded:** 2026-07-16
+> **Machine:** Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301 · Python 3.12.13
+> **Passes:** `opt_const_fold` (#640), `opt_comprehension_fusion`, `opt_stack_collections` — three
+> CodeGen-scoped behavioral flags, each default-off, each a pure IR→IR rewrite in
+> `IrPassManager.Default`. A fourth candidate, `opt_devirt`, was evaluated and **retired** (below).
+> **Method:** per-benchmark `emit csharp` diff (flags-off baseline vs each flag and all-on) is the
+> primary evidence. A flag that produces byte-identical C# produces identical IL, so its runtime delta
+> is **zero by construction** — not "within noise". A wall-time matrix is only informative where the
+> emit changes.
+
+**Matrix result — no pass fires on the cross-language suite.** Emitting each benchmark with all three
+flags on and diffing against the flags-off baseline yields **byte-identical C#** in every case:
+
+| Benchmark | opt_const_fold | opt_comprehension_fusion | opt_stack_collections | all-on vs off |
+|-----------|:--------------:|:------------------------:|:---------------------:|:-------------:|
+| fibonacci | identical | identical | identical | **identical** |
+| list_comprehensions | identical | identical | identical | **identical** |
+| matrix_multiply | identical | identical | identical | **identical** |
+| sorting | identical | identical | identical | **identical** |
+| string_ops | identical | identical | identical | **identical** |
+| matrix_multiply_numpy | identical | identical | identical | **identical** |
+
+Because the emitted IL is unchanged, the pre-E3 execution baseline (`results/latest.md`) stands
+unchanged as the post-E3 baseline **for every flag combination**; a wall-time matrix would measure only
+scheduler noise around it and is deliberately omitted (it would misrepresent noise as signal).
+
+**Why each pass is inert on these programs** (a reach limit, not a defect):
+
+| Pass | Why it does not fire here |
+|------|---------------------------|
+| `opt_const_fold` | The benchmarks contain no compile-time-constant *operations* — every arithmetic/comparison subexpression involves a runtime variable (`n - 1`, `x % 2`, `(i + j) % 7`). Bare literals (`30`, `range(1000)`) are already literals and are never re-emitted. Even where present, RyuJIT already folds constants. |
+| `opt_comprehension_fusion` | The only multi-`for` comprehension (`[a + b for a in range(50) for b in range(50)]`) draws from `range(...)` **call** sources, which v1 excludes (effect-free variable/attribute sources only, so re-evaluating the source for its `Count` is safe). Single-`for` comprehensions are already presized by the initial lowering. |
+| `opt_stack_collections` | No benchmark iterates a **list literal** directly (`for x in [..]`); the loops are `while` counters and comprehensions, so there is no non-escaping literal to stack. |
+
+**The passes are correct and reduce work where they fire** (micro-demonstrations, `emit csharp` diff):
+
+| Pass | Program | Flag off | Flag on | What it saves |
+|------|---------|----------|---------|---------------|
+| `opt_const_fold` | `x = 2 + 3 * 4` | `int x = 2 + 3 * 4;` | `int x = 14;` | two runtime IL arithmetic ops become one `ldc.i4` |
+| `opt_comprehension_fusion` | `[x + y for x in xs for y in ys]` (list params) | `new Sharpy.List<int>()` (grown incrementally) | `new Sharpy.List<int>(((ISized)xs).Count * ((ISized)ys).Count)` | the reallocation/copy churn of growing the result list |
+| `opt_stack_collections` | `for x in [1, 2, 3]` | `new Sharpy.List<int>() { 1, 2, 3 }` | `new int[] { 1, 2, 3 }` | **3 heap allocations → 1** (wrapper + backing `List<T>` + its array ⇒ one array) |
+
+**Two findings for the E4 backend decision (#1058):**
+
+- **Devirtualization has no headroom by construction.** `opt_devirt` was evaluated and **retired
+  without shipping a pass** (Phase 8): `Sharpy.List<T>`, `Dict<K,V>`, `Set<T>` are all `sealed`, so
+  RyuJIT already devirtualizes every call on a concrete receiver and the emitter already emits direct
+  calls — a "mark for direct dispatch" pass would produce byte-identical output. The protocol sites
+  (`len(x)` → `((ISized)x).Count`) are explicit-interface implementations that cannot be devirtualized.
+  The one non-JIT-redundant rewrite (identity-key `sort` → keyless) fires on zero real code. A custom
+  IL backend gains **no devirtualization headroom over RyuJIT** on a sealed-collection design.
+
+- **The preallocation win is allocation churn, not wall time.** `opt_comprehension_fusion`'s
+  product-of-counts presize — and D4's single-source presize before it — removes the incremental
+  reallocation/copy of a growing result list: an **allocation-count and GC-pressure** reduction, not a
+  measurable wall-time change on a benchmark whose result list is not the hot loop. The cross-language
+  suite does not isolate allocation churn from wall time, so the effect is real but invisible in the
+  execution-time table.
+
+**Plateau assessment.** All three shipped E3 passes are correct, toggleable, and byte-transparent when
+off, and each demonstrably reduces work on a program that exercises its pattern — yet **none fires on
+the representative cross-language workloads**, and the one pass a custom backend might have justified
+(devirtualization) has **no headroom against RyuJIT** because the collection types are sealed. The E3
+optimization surface, as scoped, has **limited reach on real code and no JIT-independent win to
+capture** — the central evidence Phase 10's go/no-go weighs.
+
 ## Benchmark Suite
 
 The benchmark suite is located in `src/Sharpy.Compiler.Benchmarks/` and uses [BenchmarkDotNet](https://benchmarkdotnet.org/).

@@ -28,5 +28,18 @@
 
 > **Sharpy (cold)** = single-file compile with no cache; **Sharpy (warm)** = `--incremental` one-file `.spyproj` compile with the symbol cache present; **Sharpy (server)** = end-to-end `sharpyc build --server` compile through a persistent keep-alive process ([#1049](https://github.com/antonsynd/sharpy/issues/1049), D2), which reuses the process-lifetime `MetadataReference`/overload-index caches across compiles.
 
+## E3 Optimization Passes (#1057)
+
+The three E3 IR optimization passes — `opt_const_fold`, `opt_comprehension_fusion`,
+`opt_stack_collections` — are all default-off CodeGen-scoped behavioral flags. Emitting each benchmark
+above with all three flags on and diffing against the flags-off baseline yields **byte-identical C#**
+for every benchmark, so the execution-time and compilation-time numbers above are unchanged by E3 and
+stand as both the flags-off and flags-on baseline. The passes do not fire on these workloads (no
+constant-folding operations; the multi-`for` comprehension uses `range()` call sources the fusion pass
+excludes; no `for`-over-list-literal to stack). Per-pass deltas, micro-demonstrations proving each pass
+reduces work where it fires, and the `opt_devirt` retirement finding are recorded in
+[`benchmarks/BASELINE.md`](../../BASELINE.md#e3-ir-optimization-pass-deltas-1057).
+
 ---
-*Pre-E3 baseline (#1057), generated 2026-07-16*
+*Baseline table generated 2026-07-16 (pre-E3); confirmed unchanged post-E3 (#1057) by emit-diff — the
+E3 passes produce byte-identical IL on this suite.*
