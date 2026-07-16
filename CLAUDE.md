@@ -185,8 +185,9 @@ All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 | SPY0001–SPY0099 | Error | Lexer |
 | SPY0100–SPY0199 | Error | Parser |
 | SPY0200–SPY0399 | Error | Semantic |
-| SPY0400–SPY0449 | Error | Validation |
-| SPY0450–SPY0499 | Warning | Validation (unreachable code, naming conventions) |
+| SPY0400–SPY0449 | Error | Validation (primary error sub-band — fully allocated) |
+| SPY0450–SPY0489 | Warning | Validation (unreachable code, naming conventions) |
+| SPY0490–SPY0499 | Error | Validation errors — overflow (SPY0400–SPY0449 full; e.g., property observers SPY0490/0491) |
 | SPY0500–SPY0599 | Error | Code generation |
 | SPY0900–SPY0999 | Error | Infrastructure (compilation, file I/O) |
 | SPY1000–SPY1099 | Info | Informational (e.g., implicit interface synthesis) |
