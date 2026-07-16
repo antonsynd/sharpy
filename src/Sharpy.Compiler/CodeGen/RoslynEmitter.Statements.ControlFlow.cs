@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -965,6 +966,18 @@ internal partial class RoslynEmitter
             DiagnosticCodes.CodeGen.UnsupportedExpressionType, target.LineStart, target.ColumnStart);
     }
 
+    /// <summary>
+    /// Reads a with-item's context-manager kind from the lowering IR (E2 #1056, migrates
+    /// <c>_contextManagerKinds</c>). Returns <c>null</c> when no <see cref="IrWithItem"/> was recorded
+    /// (an error case), which the caller treats as the default disposable protocol.
+    /// </summary>
+    private ContextManagerKind? GetIrContextManagerKind(WithItem item)
+    {
+        return _context.Ir?.WithItems.TryGetValue(item, out var withItem) == true
+            ? withItem.Kind
+            : null;
+    }
+
     private StatementSyntax GenerateWith(WithStatement withStmt)
     {
         // Special case for @test functions:
@@ -995,7 +1008,7 @@ internal partial class RoslynEmitter
         for (int i = withStmt.Items.Length - 1; i >= 0; i--)
         {
             var item = withStmt.Items[i];
-            var cmKind = _context.SemanticInfo?.GetContextManagerKind(item.ContextExpression);
+            var cmKind = GetIrContextManagerKind(item);
 
             if (cmKind is ContextManagerKind.DunderProtocol or ContextManagerKind.AsyncDunderProtocol)
             {

@@ -43,32 +43,69 @@ internal sealed class LoweringPass
         SemanticInfo semanticInfo,
         SymbolTable symbolTable)
     {
-        // Reference-keyed: AST nodes are records with value equality, but the index must
-        // distinguish structurally-identical nodes at different positions (same discipline as
-        // SemanticInfo's side-tables).
-        var index = new Dictionary<Node, IrNode>(ReferenceEqualityComparer.Instance);
+        var state = new LoweringState();
 
         var irModules = ImmutableArray.CreateBuilder<IrModule>(modules.Count);
         foreach (var (filePath, ast) in modules)
         {
             var body = ImmutableArray.CreateBuilder<IrStatement>(ast.Body.Length);
             foreach (var statement in ast.Body)
-                body.Add(LowerStatement(statement, semanticInfo, index));
+                body.Add(LowerStatement(statement, semanticInfo, state));
             irModules.Add(new IrModule(filePath, body.ToImmutable()));
         }
 
-        return new IrCompilation(irModules.ToImmutable(), new IrIndex(index));
+        return new IrCompilation(irModules.ToImmutable(), new IrIndex(state.Index), state.WithItems);
     }
 
-    private static IrStatement LowerStatement(Statement statement, SemanticInfo semanticInfo, Dictionary<Node, IrNode> index)
+    private static IrStatement LowerStatement(Statement statement, SemanticInfo semanticInfo, LoweringState state)
     {
-        var children = LowerChildren(statement, semanticInfo, index);
+        if (statement is WithStatement withStatement)
+            return LowerWithStatement(withStatement, semanticInfo, state);
+
+        var children = LowerChildren(statement, semanticInfo, state);
         var ir = new IrOpaqueStatement(statement, SpanOf(statement), children);
-        index[statement] = ir;
+        state.Index[statement] = ir;
         return ir;
     }
 
-    private static IrExpression LowerExpression(Expression expression, SemanticInfo semanticInfo, Dictionary<Node, IrNode> index)
+    /// <summary>
+    /// Lowers a <c>with</c> statement, producing an <see cref="IrWithItem"/> per item that carries
+    /// the context-manager kind (E2 #1056, migrates _contextManagerKinds). The statement itself
+    /// stays an opaque wrapper — its structural <c>using</c>/try lowering is Phase 3 — and each
+    /// context expression is lowered exactly once, referenced by both the opaque children and its
+    /// <see cref="IrWithItem"/>, preserving totality. A <c>WithItem</c> is not an AST
+    /// <see cref="Node"/>, so the IrWithItems live in a dedicated reference-keyed lookup rather than
+    /// the node-keyed index.
+    /// </summary>
+    private static IrStatement LowerWithStatement(WithStatement withStatement, SemanticInfo semanticInfo, LoweringState state)
+    {
+        var children = ImmutableArray.CreateBuilder<IrNode>();
+
+        // WithStatement.GetChildNodes yields all context expressions, then all body statements —
+        // mirror that order so the opaque children match a plain LowerChildren walk (totality).
+        foreach (var item in withStatement.Items)
+        {
+            var contextExpr = LowerExpression(item.ContextExpression, semanticInfo, state);
+            children.Add(contextExpr);
+
+            var kind = semanticInfo.GetContextManagerKindForIr(item.ContextExpression);
+            if (kind is { } contextManagerKind)
+            {
+                // _withItemSymbols is an ISemanticQuery/LSP fact, not a codegen consumer, so the
+                // as-variable (AsVar) is not folded here — deferred (see report).
+                state.WithItems[item] = new IrWithItem(contextExpr, contextManagerKind, null, item.Span ?? TextSpan.Empty);
+            }
+        }
+
+        foreach (var bodyStatement in withStatement.Body)
+            children.Add(LowerStatement(bodyStatement, semanticInfo, state));
+
+        var ir = new IrOpaqueStatement(withStatement, SpanOf(withStatement), children.ToImmutable());
+        state.Index[withStatement] = ir;
+        return ir;
+    }
+
+    private static IrExpression LowerExpression(Expression expression, SemanticInfo semanticInfo, LoweringState state)
     {
         IrExpression ir = expression switch
         {
@@ -78,21 +115,21 @@ internal sealed class LoweringPass
             // Equality (==/!=) carries its lowering strategy on the IR node (E2 #1056, migrates
             // _binaryOpLowerings).
             BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } eqOp
-                => LowerEqualityComparison(eqOp, semanticInfo, index),
+                => LowerEqualityComparison(eqOp, semanticInfo, state),
             // Index access (obj[i]) carries its lowering strategy on the IR node (E2 #1056, migrates
             // _indexAccessLowerings).
-            IndexAccess indexAccess => LowerIndexAccess(indexAccess, semanticInfo, index),
+            IndexAccess indexAccess => LowerIndexAccess(indexAccess, semanticInfo, state),
             _ => new IrOpaqueExpression(expression, semanticInfo.GetExpressionType(expression), SpanOf(expression),
-                LowerChildren(expression, semanticInfo, index)),
+                LowerChildren(expression, semanticInfo, state)),
         };
-        index[expression] = ir;
+        state.Index[expression] = ir;
         return ir;
     }
 
-    private static IrEqualityComparison LowerEqualityComparison(BinaryOp binOp, SemanticInfo semanticInfo, Dictionary<Node, IrNode> index)
+    private static IrEqualityComparison LowerEqualityComparison(BinaryOp binOp, SemanticInfo semanticInfo, LoweringState state)
     {
-        var left = LowerExpression(binOp.Left, semanticInfo, index);
-        var right = LowerExpression(binOp.Right, semanticInfo, index);
+        var left = LowerExpression(binOp.Left, semanticInfo, state);
+        var right = LowerExpression(binOp.Right, semanticInfo, state);
         return new IrEqualityComparison(
             left,
             right,
@@ -101,10 +138,10 @@ internal sealed class LoweringPass
             SpanOf(binOp));
     }
 
-    private static IrIndexAccess LowerIndexAccess(IndexAccess indexAccess, SemanticInfo semanticInfo, Dictionary<Node, IrNode> index)
+    private static IrIndexAccess LowerIndexAccess(IndexAccess indexAccess, SemanticInfo semanticInfo, LoweringState state)
     {
-        var receiver = LowerExpression(indexAccess.Object, semanticInfo, index);
-        var argument = LowerExpression(indexAccess.Index, semanticInfo, index);
+        var receiver = LowerExpression(indexAccess.Object, semanticInfo, state);
+        var argument = LowerExpression(indexAccess.Index, semanticInfo, state);
         return new IrIndexAccess(
             receiver,
             ImmutableArray.Create(argument),
@@ -142,7 +179,7 @@ internal sealed class LoweringPass
         return new IrConstant((long)result, semanticInfo.GetExpressionType(binOp), SpanOf(binOp));
     }
 
-    private static ImmutableArray<IrNode> LowerChildren(Node node, SemanticInfo semanticInfo, Dictionary<Node, IrNode> index)
+    private static ImmutableArray<IrNode> LowerChildren(Node node, SemanticInfo semanticInfo, LoweringState state)
     {
         ImmutableArray<IrNode>.Builder? builder = null;
         foreach (var child in node.GetChildNodes())
@@ -151,17 +188,17 @@ internal sealed class LoweringPass
             switch (child)
             {
                 case Statement statement:
-                    builder.Add(LowerStatement(statement, semanticInfo, index));
+                    builder.Add(LowerStatement(statement, semanticInfo, state));
                     break;
                 case Expression expression:
-                    builder.Add(LowerExpression(expression, semanticInfo, index));
+                    builder.Add(LowerExpression(expression, semanticInfo, state));
                     break;
                 default:
                     // Structural helper nodes (comprehension clauses, subscript dimensions, ...)
                     // are neither Expression nor Statement and get no IR node of their own in v1;
                     // flatten through them so their Expression/Statement descendants still lower to
                     // exactly one IR node each.
-                    builder.AddRange(LowerChildren(child, semanticInfo, index));
+                    builder.AddRange(LowerChildren(child, semanticInfo, state));
                     break;
             }
         }
@@ -170,15 +207,33 @@ internal sealed class LoweringPass
     }
 
     private static TextSpan SpanOf(Node node) => node.Span ?? TextSpan.Empty;
+
+    /// <summary>
+    /// Mutable accumulation state for a single lowering run: the reference-keyed AST→IR index and the
+    /// with-item lookup. A <c>WithItem</c> is not an AST <see cref="Node"/>, so it cannot live in the
+    /// node-keyed <see cref="Index"/>; both use reference equality because AST records have value
+    /// equality but must be distinguished by identity (same discipline as SemanticInfo's side-tables).
+    /// </summary>
+    private sealed class LoweringState
+    {
+        public Dictionary<Node, IrNode> Index { get; } = new(ReferenceEqualityComparer.Instance);
+        public Dictionary<WithItem, IrWithItem> WithItems { get; } = new(ReferenceEqualityComparer.Instance);
+    }
 }
 
 /// <summary>
-/// The lowering IR for an entire project: one <see cref="IrModule"/> per source file, plus the
-/// <see cref="IrIndex"/> mapping each originating AST node back to its IR node.
+/// The lowering IR for an entire project: one <see cref="IrModule"/> per source file, the
+/// <see cref="IrIndex"/> mapping each originating AST node back to its IR node, and the
+/// <see cref="WithItems"/> lookup for <c>with</c>-item facts (with-items are not AST nodes).
 /// </summary>
 /// <param name="Modules">The per-file IR modules, in source-path order.</param>
 /// <param name="Index">The AST-to-IR index (transitional scaffolding, Design Decision 1a).</param>
-internal sealed record IrCompilation(ImmutableArray<IrModule> Modules, IrIndex Index);
+/// <param name="WithItems">Reference-keyed lookup from a <c>with</c>-item to its lowered
+/// <see cref="IrWithItem"/> (E2 #1056, migrates _contextManagerKinds).</param>
+internal sealed record IrCompilation(
+    ImmutableArray<IrModule> Modules,
+    IrIndex Index,
+    IReadOnlyDictionary<WithItem, IrWithItem> WithItems);
 
 /// <summary>
 /// The lowering IR for a single source file: the lowered top-level statements.
