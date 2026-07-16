@@ -63,7 +63,7 @@ public class FeatureFlagsTests
             new[]
             {
                 "__test_feature", "defer", "failable_cast", "matmul",
-                "opt_comprehension_fusion", "opt_const_fold", "opt_devirt", "opt_stack_collections",
+                "opt_comprehension_fusion", "opt_const_fold", "opt_stack_collections",
                 "property_observers",
             },
             FeatureFlags.KnownFeatures.Keys.OrderBy(k => k, StringComparer.Ordinal).ToArray());

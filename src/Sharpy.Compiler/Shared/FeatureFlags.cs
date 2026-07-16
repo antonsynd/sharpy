@@ -90,8 +90,10 @@ public sealed class FeatureFlags
     /// real experimental features register here per docs/design/feature-lifecycle.md — the
     /// parser/semantic <i>syntax</i> features (<c>matmul</c>, <c>defer</c>, <c>failable_cast</c>,
     /// <c>property_observers</c>) and the CodeGen-scoped <i>behavioral</i> flags for the E3 IR
-    /// optimization passes (<c>opt_const_fold</c>, <c>opt_comprehension_fusion</c>, <c>opt_devirt</c>,
+    /// optimization passes (<c>opt_const_fold</c>, <c>opt_comprehension_fusion</c>,
     /// <c>opt_stack_collections</c>; a disabled behavioral flag means its pass does not run).
+    /// <c>opt_devirt</c> was evaluated and retired (the sealed collection types leave nothing to
+    /// devirtualize that RyuJIT does not already do — see the retirement note below).
     /// </summary>
     public static IReadOnlyDictionary<string, FeatureInfo> KnownFeatures { get; } =
         new Dictionary<string, FeatureInfo>(StringComparer.Ordinal)
@@ -150,12 +152,11 @@ public sealed class FeatureFlags
                 "multi-clause comprehensions over sized sources and fuses a comprehension whose sole " +
                 "consumer is another loop into one, eliminating the intermediate collection.",
                 FeatureScope.CodeGen),
-            ["opt_devirt"] = new FeatureInfo(
-                "opt_devirt",
-                "Experimental collection-call devirtualization IR pass. Where a receiver's static type " +
-                "is exactly Sharpy.List/Dict/Set (not an interface or narrowed supertype), marks calls " +
-                "for direct dispatch and keyed sorts for concrete comparer construction.",
-                FeatureScope.CodeGen),
+            // opt_devirt was evaluated (E3 Phase 8, #1057) and RETIRED before shipping a pass:
+            // Sharpy.List/Dict/Set are `sealed`, so RyuJIT already devirtualizes every call on them and
+            // the emitter already emits direct calls on concrete receivers — the pass would produce
+            // byte-identical output. The scope is obsolete, not deferred. Recorded as E4 plateau
+            // evidence (a sealed-collection design leaves no devirt headroom for a custom IL backend).
             ["opt_stack_collections"] = new FeatureInfo(
                 "opt_stack_collections",
                 "Experimental non-escaping-collection IR pass. Collection literals that provably never " +

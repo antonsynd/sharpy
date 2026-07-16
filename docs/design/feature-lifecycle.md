@@ -153,12 +153,15 @@ enable with `--enable-feature=X` or `<Features>X</Features>` in .spyproj"*, appe
 Everything above assumes an experimental feature adds **syntax** — a construct the parser builds and the
 gate checker rejects when disabled. A second species of flag gates **behavior, not syntax**: an
 optimization or codegen pass that changes *how* a valid program is compiled, never *whether* it parses.
-The E3 IR optimization passes **planned** under [#1057](https://github.com/antonsynd/sharpy/issues/1057)
-will be the first of these — `opt_const_fold`, `opt_comprehension_fusion`, `opt_devirt`,
-`opt_stack_collections` — and the first consumers of `CodeGenContext.Features`. (These four are now
-registered in `FeatureFlags.KnownFeatures` as CodeGen-scoped behavioral flags and are wired to the IR
-pass manager, but no pass stands behind them yet, so enabling one is currently a no-op; E3 Phases 6–9
-add the passes.)
+The E3 IR optimization passes under [#1057](https://github.com/antonsynd/sharpy/issues/1057)
+are the first of these — `opt_const_fold`, `opt_comprehension_fusion`, `opt_stack_collections` — and the
+first consumers of `CodeGenContext.Features`. They register in `FeatureFlags.KnownFeatures` as
+CodeGen-scoped behavioral flags and are wired to the IR pass manager. A fourth flag, `opt_devirt`, was
+registered then **retired** in Phase 8: the Sharpy collection types (`List`/`Dict`/`Set`) are `sealed`,
+so RyuJIT already devirtualizes every call on them — there was nothing for the pass to do that the JIT
+does not already do, so its scope is *obsolete* (not deferred) and the flag was removed rather than
+shipped behind an empty pass. This is a **retirement** path a behavioral flag can take: an
+optimization that measurement shows has no headroom is deleted, not kept as a no-op.
 
 A behavioral flag differs from a syntax feature in three ways:
 
