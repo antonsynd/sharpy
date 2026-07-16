@@ -223,6 +223,13 @@ named interface, without any commitment to build one. Per the roadmap, the defau
 remains **no-go** — Roslyn stays the test oracle, the `#line` path, and free interop verification — and
 nothing in this design changes that expectation. It only makes the seam concrete enough to measure against.
 
+> **E4 resolved (2026-07-16):** the backend decision landed **no-go** on the measured merits — see
+> [backend-decision.md](backend-decision.md) (#1058). E3 plateaued (all three optimization passes emit
+> byte-identical C# on the benchmark suite; devirtualization has no headroom against RyuJIT because the
+> collection types are `sealed`), none of the three go-criteria holds, and leaving Roslyn would forfeit
+> the CS-leak test oracle, the `#line` debugging path, and free interop verification. The seam stays a
+> single-backend interface with explicit revisit triggers.
+
 ## 4. What moves into IR nodes first
 
 E2 does not move all 23 tables and all four transforms at once. The first tranche is the set of facts
