@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
@@ -122,6 +123,70 @@ public class IrTotalityTests
         };
 
         Assert.Equal(expected, opaque);
+    }
+
+    /// <summary>
+    /// The comprehension transform (E2 #1056) lowers a list/set/dict comprehension to an
+    /// <see cref="IrLoweredLoop"/> carrying its emission decisions, and the tree stays total. The
+    /// representative module above contains no comprehension, so the opaque census does not track this
+    /// migration; this focused case pins it instead. A single-<c>for</c> comprehension over a sized
+    /// <c>list[int]</c> source exercises the D4 capacity decision (<see cref="IrLoweredLoop.Capacity"/>
+    /// non-null).
+    /// </summary>
+    [Fact]
+    public void Comprehension_LowersToIrLoweredLoop_AndStaysTotal()
+    {
+        const string source = """
+            def build(xs: list[int]) -> list[int]:
+                return [x * 2 for x in xs]
+
+
+            def main() -> None:
+                print(len(build([1, 2, 3])))
+
+            """;
+        var (model, ir) = CompileToIr(source);
+
+        // Exactly one IrLoweredLoop, carrying the migrated decisions.
+        var loop = Assert.Single(CollectNodes<IrLoweredLoop>(ir));
+        Assert.Equal(BuiltinNames.List, loop.CollectionKind);
+        Assert.NotNull(loop.SoleForClause);   // exactly one for-clause
+        Assert.NotNull(loop.Capacity);        // xs: list[int] is a sized source → D4 preallocation
+        Assert.False(loop.ElementIsSpread);
+
+        // Totality holds with the migrated node: every AST expression/statement in the build module
+        // lowers to exactly one IR node (the Capacity reuses the already-indexed source iterator, so
+        // it adds no duplicate node).
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var index = ir.Index;
+        var astNodes = new HashSet<Node>(ReferenceEqualityComparer.Instance);
+        foreach (var node in WalkExpressionsAndStatements(ast))
+        {
+            Assert.True(astNodes.Add(node), $"AST node visited more than once: {node.GetType().Name}");
+            Assert.True(index.ContainsKey(node), $"AST {node.GetType().Name} did not lower to an IR node");
+        }
+
+        Assert.Equal(astNodes.Count, index.Count);
+        Assert.Equal(astNodes.Count, CountExpressionAndStatementNodes(ir));
+    }
+
+    private static IReadOnlyList<T> CollectNodes<T>(IrCompilation ir) where T : IrNode
+    {
+        var result = new List<T>();
+
+        void Visit(IrNode node)
+        {
+            if (node is T match)
+                result.Add(match);
+            foreach (var child in node.Children)
+                Visit(child);
+        }
+
+        foreach (var module in ir.Modules)
+            foreach (var statement in module.Body)
+                Visit(statement);
+
+        return result;
     }
 
     private (ProjectModel Model, IrCompilation Ir) CompileToIr(string source)

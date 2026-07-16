@@ -52,6 +52,15 @@ one merge method. That is the structure an IR replaces.
 `MemberAccess`, `FunctionDef`, `Pattern`, `WithItem`, or `Statement`. They are the material an IR
 would subsume:
 
+> **[Updated 2026-07-16, E2]** This table is the E1 design-time snapshot and is two entries stale.
+> It already omitted Wave 3's `_staticExtensionDispatches` (`Expression` → `StaticExtensionDispatch`),
+> so the **pre-E2** count was **24 node-keyed + 1 symbol-keyed = 25 dicts**, not the 24 stated above.
+> **Post-E2** (this workstream) the count is **23 node-keyed + 1 symbol-keyed = 24 dicts**: E2 Phase 2
+> physically deleted `_foldedIntegerConstants` (row 21), while five Phase-2 facts and the
+> `_generatorFunctions` marker (row 8) are **retained as doc-commented transports** (their CodeGen
+> consumers now read the lowering IR; the dicts stay for the validators / the lowering pass, deletion
+> deferred to [§6.4](#6-migration-plan-sketch-e2)). See the [E2 migration state appendix](#appendix-state-as-of-e2-2026-07-16) for the full per-fact ledger.
+
 | # | Field | Key node | What it records | In `MergeFrom`? |
 |---|-------|----------|-----------------|:---:|
 | 1 | `_expressionTypes` | `Expression` | resolved `SemanticType` per expression | ✅ |
@@ -345,3 +354,122 @@ open-coded across ~22,000 emitter lines. Its input boundary is the post-TypeChec
 evaluate a non-Roslyn backend against — named here, committed to nowhere. v1 is a faithful,
 snapshot-guarded lowering with no optimization passes, no IL-backend commitment, and no LSP consumption;
 E2 migrates onto it one side-table at a time, and only then does E3 add passes and E4 weigh backends.
+
+## Appendix: state as of E2 (2026-07-16)
+
+E2 (#1056) is complete. This appendix records what actually shipped, where it deviated from the §6
+sketch, and what is deliberately deferred. The acceptance test throughout was byte-identical emitted
+C#: the `FileBasedIntegrationTests` `.expected.cs` snapshot corpus stayed identical across every
+migration commit, and the full `Sharpy.Compiler.Tests` suite (~11,460 tests) stayed green.
+
+### Facts migrated (7) and the dictionary ledger
+
+Seven node/marker facts had their **code-generation consumers** moved onto the IR:
+
+| Fact | IR carrier | Dict disposition |
+|------|-----------|------------------|
+| `_binaryOpLowerings` | `IrEqualityComparison.Strategy` | retained transport |
+| `_indexAccessLowerings` | `IrIndexAccess.Strategy` | retained transport |
+| `_contextManagerKinds` | `IrWithItem.Kind` (side-lookup) | retained transport |
+| `_staticExtensionDispatches` | `IrMemberAccess.ExtensionDispatch` | retained transport |
+| `_resolvedClrMemberNames` | `IrMemberAccess.ResolvedClrMemberName` | retained transport |
+| `_foldedIntegerConstants` | `IrConstant` | **physically deleted** |
+| `_generatorFunctions` | `IrCompilation.IsGenerator` (side-lookup) | retained transport |
+
+**Physically deleted dicts: 1** (`_foldedIntegerConstants` — a pure computation the lowering pass
+re-derives via `IntegerConstantEvaluator`, so nothing else needs it). **Retained transports: 6** (the
+five Phase-2 facts above plus `_generatorFunctions`). "Retained transport" means the CodeGen-facing
+accessor was deleted or renamed with a `ForIr` suffix (a `grep` of `CodeGen/` for the old accessor
+returns zero), but the dictionary and its `MergeFrom` line stay because a **non-codegen** reader still
+needs them. Physical deletion of the six is deferred to the [§6.4](#6-migration-plan-sketch-e2)
+guardrail-retirement step, so the "23 node-keyed + 1 symbol-keyed = 24 dicts" count in
+[§1.2](#12-the-node-keyed-side-table-inventory) is a post-E2 fact, not the end state.
+
+### The generator-routing fallback (Option A)
+
+The plan's letter called for **deleting** `_generatorFunctions` in E2 (Option B), which required
+repointing its two pre-lowering validators (`ControlFlowValidator`, `GeneratorValidator`) from
+`SemanticInfo.IsGenerator(FunctionDef)` to the symbol-keyed `FunctionSymbol.IsGenerator`. That rewire
+has **no clean channel**: those validators walk raw `FunctionDef` nodes out of class / struct / module
+bodies, and the only `FunctionDef → FunctionSymbol` resolution (`TypeChecker.Definitions.cs`) depends on
+`_currentClass` traversal state and line-based overload disambiguation the validators do not have;
+building a new resolution map would just re-add a side-table. The team-lead's pre-authorized **Option A
+fallback** was taken: the seven codegen consumers read `IrCompilation.IsGenerator`; the dict is retained
+as the validators' + lowering pass's input. Its commit (39bf3e121) is titled "…`_generatorFunctions`
+retained as validator transport", accurately deviating from the plan's "…retired".
+
+### Phase-2 deviations (recorded)
+
+- **Tables 4–5** (`_staticExtensionDispatches`, `_resolvedClrMemberNames`) landed on **`IrMemberAccess`**,
+  not the `IrCall` the §4 sketch named — both facts are keyed by the member-access node, so the member
+  node is their natural carrier. (The table-4 commit message says "IR call node"; the implementation
+  uses `IrMemberAccess`.)
+- **`_withItemSymbols`** (the `with … as` variable) was **not** folded onto `IrWithItem`: it has no
+  codegen consumer (it is an LSP / `ISemanticQuery` fact), so `IrWithItem.AsVar` is left `null` and the
+  dict is untouched.
+- **`IrWithItem` and the generator fact are side-lookups**, not fields on a typed `with`/function IR
+  node (`WithItem` and the routing marker are not `Expression`/`Statement` AST nodes). Typed carriers
+  wait on suite/definition-level IR — post-E2.
+- One semantic unit test was repointed from a deleted accessor to its `ForIr`-suffixed sibling.
+
+### Structural transforms migrated (2)
+
+- **Comprehensions → `IrLoweredLoop`.** The lowering pass now owns the decisions the emitter used to
+  compute inline: collection kind, result type, the single-`for` clause, the D4 sized-source capacity
+  decision (`Capacity: IrExpression?`), and the spread-vs-add flag; `SingleForClause` and
+  `IsSizedComprehensionSource` moved to `LoweringPass.Comprehensions.cs`.
+- **`defer` → `IrScopeGuard`.** A `DeferStatement` now lowers to an explicit scope-exit guard instead
+  of an opaque wrapper; the emitter emits the `try { remainder } finally { deferred }` envelope.
+
+**Phase-3 scoping — what moved vs. what stayed.** Only the **decisions** (what to emit) moved onto the
+IR. The **mechanical, state-dependent emission** stays in the emitter: temp-variable naming
+(`GenerateTempVarName`), statement hoisting (`_hoistedStatements`), loop-variable scope versioning
+(`SaveScope`/`RestoreScope`), the suite-split + LIFO nesting for `defer`, and every sub-expression
+`GenerateExpression`. That split is exactly what keeps output byte-identical. A **full** mechanical
+migration — folding the guarded remainder onto `IrScopeGuard`, and folding temp naming onto the IR so
+the emitter is a pure translator — requires **IR-owned name allocation** (suite-level lowering and a
+naming authority in the middle-end), a deliberate post-E2 question.
+
+### Null-IR codegen paths
+
+The IR is built once per project in the main compile path. The REPL, the source-generator sub-pipeline,
+and the direct-emitter unit tests construct a `CodeGenContext` **without** an IR. For the migrated
+structural transforms the emitter therefore reads the decision from the IR **when present** and
+otherwise recomputes it via the shared `LoweringPass` helpers (the same single source of truth the
+lowering pass uses), so those paths stay byte-identical too. Giving every codegen entry point an IR is
+future work.
+
+### The `IrIndex` scaffolding and its exit criterion
+
+While the emitter still dispatches over the AST, each migrated fact is read by looking the AST node up
+in the reference-keyed `IrCompilation.Index` (plus the `WithItems` / `GeneratorFunctions` side-lookups
+for non-`Node` facts). This is transitional scaffolding, not side-table #25: it is owned by the
+`Lowering` component, built once post-`MergeFrom`, and never itself merged. Its **exit criterion** is
+IR-driven emitter dispatch per construct category (the emitter switching on IR node type rather than
+AST node type); Phase 3 starts that for the migrated transforms but the emitter still enters through
+the AST, so the index remains.
+
+### Emitter LOC — the "decrease" done-when is not met (and why)
+
+| Point | `wc -l src/Sharpy.Compiler/CodeGen/RoslynEmitter*.cs` |
+|-------|------|
+| pre-E2 baseline | **22,241** |
+| post-Phase-2 | **22,456** (+215) |
+| post-Phase-3 (this workstream) | **22,457** |
+
+#1056's "emitter LOC decreases" done-when is **not met**: the final count exceeds the baseline. The
+cause is structural, not a shortfall of effort. Phase 2 **added** ~11 `GetIr*` reader helpers to the
+emitter (the cost of reading facts from the IR by node identity), which outweigh the decision logic the
+transforms removed (`SingleForClause`, `IsSizedComprehensionSource`, and the inline capacity block are
+~60 lines). Under E2's twin constraints — **byte-identical output** and **decisions-only migration**
+(stateful emission stays emitter-side) — the emitter cannot shrink: it still performs all the mechanical
+emission, and now also reads the IR. The genuine decrease path is the **thin-translator** end state
+(IR-owned name allocation, emitter switching on IR nodes), which is deliberately post-E2. Recorded here
+rather than forced: no deletions were made to fake the number.
+
+### Not done in E2 (post-E2 follow-ups)
+
+Resolution/marker/narrowing side-tables (types, symbols, patterns, narrowing) and dataclass synthesis
+are unmigrated; the six retained transports await §6.4 physical deletion; typed `with`/function/`defer`
+IR nodes (folding the side-lookups and the guarded remainder onto the tree) and IR-owned name
+allocation are the path to a genuinely thinner emitter and the emitter-LOC decrease.
