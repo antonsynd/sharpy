@@ -613,6 +613,56 @@ internal partial class RoslynEmitter : ICodeEmitter
     }
 
     /// <summary>
+    /// Parses a C# name that may carry a <c>global::</c> alias prefix into proper Roslyn syntax. A
+    /// plain (non-<c>global::</c>) name goes through <see cref="ParseName"/> unchanged — it tokenizes
+    /// reparse-equivalently. A <c>global::</c>-prefixed name is rebuilt with a real
+    /// <see cref="AliasQualifiedNameSyntax"/> on its leftmost segment (via <see cref="Globalize"/>),
+    /// because <c>ParseName("global::X.Y")</c> mis-tokenizes <c>global</c> as an ordinary identifier —
+    /// the tree prints correctly but fails to bind when handed straight to
+    /// <c>CSharpSyntaxTree.Create</c> (#1095). Output text is identical either way, so snapshots are
+    /// unaffected.
+    /// </summary>
+    internal static NameSyntax ParseQualifiedName(string name) =>
+        name.StartsWith("global::", StringComparison.Ordinal)
+            ? Globalize((NameSyntax)ParseName(name["global::".Length..]))
+            : ParseName(name);
+
+    /// <summary>
+    /// Type-position counterpart of <see cref="ParseQualifiedName"/>: parses a C# type name that may
+    /// carry a <c>global::</c> alias prefix (including generic type names such as
+    /// <c>global::System.Collections.Generic.IEnumerable&lt;object[]&gt;</c>) into reparse-equivalent
+    /// syntax (#1095). Non-<c>global::</c> type names pass through <see cref="ParseTypeName"/>.
+    /// </summary>
+    internal static TypeSyntax ParseQualifiedTypeName(string name) =>
+        name.StartsWith("global::", StringComparison.Ordinal)
+            ? Globalize((NameSyntax)ParseTypeName(name["global::".Length..]))
+            : ParseTypeName(name);
+
+    /// <summary>
+    /// Rewrites the leftmost simple-name segment of <paramref name="name"/> (walking the left spine of
+    /// nested <see cref="QualifiedNameSyntax"/>) into a <c>global::</c> alias-qualified name. This is
+    /// the correct structural form of a global-qualified name: <c>global::A.B.C</c> is
+    /// <c>QualifiedName(QualifiedName(AliasQualifiedName(global, A), B), C)</c>, so only the leftmost
+    /// identifier gets the alias qualifier.
+    /// </summary>
+    private static NameSyntax Globalize(NameSyntax name)
+    {
+        var leftmost = LeftmostSimpleName(name);
+        var aliased = AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), leftmost);
+        return leftmost == name ? aliased : name.ReplaceNode(leftmost, aliased);
+    }
+
+    /// <summary>Returns the leftmost <see cref="SimpleNameSyntax"/> on a name's left spine.</summary>
+    private static SimpleNameSyntax LeftmostSimpleName(NameSyntax name) => name switch
+    {
+        QualifiedNameSyntax qualified => LeftmostSimpleName(qualified.Left),
+        SimpleNameSyntax simple => simple,
+        AliasQualifiedNameSyntax alias => alias.Name,
+        _ => throw new InvalidOperationException(
+            $"Cannot global-qualify name of kind {name.Kind()}: {name.ToFullString()}"),
+    };
+
+    /// <summary>
     /// Resolve the C# name for a variable using CodeGenInfo.
     /// Returns null if CodeGenInfo is not available or if this is a local redeclaration.
     /// </summary>

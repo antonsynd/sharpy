@@ -1082,7 +1082,7 @@ internal partial class RoslynEmitter
             : "integer division or modulo by zero";
 
         var throwExpr = ThrowExpression(
-            ObjectCreationExpression(ParseTypeName("global::Sharpy.ZeroDivisionError"))
+            ObjectCreationExpression(ParseQualifiedTypeName("global::Sharpy.ZeroDivisionError"))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(
                     Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(errorMessage)))))));
 

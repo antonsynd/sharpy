@@ -42,7 +42,7 @@ internal class TypeSyntaxMapper
             BuiltinType builtin when type == SemanticType.Double => PredefinedType(Token(SyntaxKind.DoubleKeyword)),
             BuiltinType builtin when type == SemanticType.Float32 => PredefinedType(Token(SyntaxKind.FloatKeyword)),
             BuiltinType builtin when type == SemanticType.Decimal => PredefinedType(Token(SyntaxKind.DecimalKeyword)),
-            BuiltinType builtin => ParseTypeName(GetMappedTypeName(builtin.Name)),
+            BuiltinType builtin => RoslynEmitter.ParseQualifiedTypeName(GetMappedTypeName(builtin.Name)),
 
             // Handle generic types
             GenericType generic => MapGenericSemanticType(generic),
@@ -65,13 +65,13 @@ internal class TypeSyntaxMapper
             NullableType nullable => NullableType(MapSemanticType(nullable.UnderlyingType)),
 
             // Handle user-defined types
-            UserDefinedType udt => ParseTypeName(GetMappedTypeNameFromSymbol(udt)),
+            UserDefinedType udt => RoslynEmitter.ParseQualifiedTypeName(GetMappedTypeNameFromSymbol(udt)),
 
             // Handle type parameters (e.g., T in class Box[T])
             TypeParameterType typeParam => IdentifierName(typeParam.Name),
 
             // Template emits as Sharpy.Template
-            TemplateType => ParseTypeName("global::" + CSharpTypeNames.SharpyTemplate),
+            TemplateType => RoslynEmitter.ParseQualifiedTypeName("global::" + CSharpTypeNames.SharpyTemplate),
 
             // LiteralString emits as string (compile-time only distinction)
             LiteralStringType => PredefinedType(Token(SyntaxKind.StringKeyword)),
@@ -392,7 +392,7 @@ internal class TypeSyntaxMapper
         }
 
         // Handle nullable/optional non-generic types
-        var typeSyntax = ParseTypeName(baseTypeName);
+        var typeSyntax = RoslynEmitter.ParseQualifiedTypeName(baseTypeName);
         return WrapOptionalOrNullable(typeSyntax, type);
     }
 

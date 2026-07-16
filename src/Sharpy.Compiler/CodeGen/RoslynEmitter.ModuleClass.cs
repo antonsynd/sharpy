@@ -661,7 +661,7 @@ internal partial class RoslynEmitter
         var selectCall = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                ParseName("global::System.Linq.Enumerable"),
+                ParseQualifiedName("global::System.Linq.Enumerable"),
                 IdentifierName("Select")),
             ArgumentList(SeparatedList(new[]
             {
@@ -671,7 +671,7 @@ internal partial class RoslynEmitter
             })));
 
         return PropertyDeclaration(
-                ParseTypeName("global::System.Collections.Generic.IEnumerable<object[]>"),
+                ParseQualifiedTypeName("global::System.Collections.Generic.IEnumerable<object[]>"),
                 Identifier(GetMemberDataPropertyName(variableName)))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithExpressionBody(ArrowExpressionClause(selectCall))
