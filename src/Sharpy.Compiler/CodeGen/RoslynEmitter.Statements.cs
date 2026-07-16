@@ -220,7 +220,7 @@ internal partial class RoslynEmitter
         CollectSourceVariableNames(func.Body);
 
         // Set generator and async scope (disposable — auto-restores)
-        using var _ = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
+        using var _ = SetGeneratorScope(_context.Ir?.IsGenerator(func) == true);
         using var _async = SetAsyncScope(func.IsAsync);
 
         // Mangle name: snake_case → PascalCase

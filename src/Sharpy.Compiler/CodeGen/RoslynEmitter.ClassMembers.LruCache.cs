@@ -110,7 +110,7 @@ internal partial class RoslynEmitter
             return members;
         }
 
-        bool isGenerator = _context.SemanticInfo?.IsGenerator(func) == true;
+        bool isGenerator = _context.Ir?.IsGenerator(func) == true;
         if (isGenerator)
         {
             _context.AddError(

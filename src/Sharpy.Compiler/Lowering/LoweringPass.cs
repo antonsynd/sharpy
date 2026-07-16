@@ -54,11 +54,17 @@ internal sealed class LoweringPass
             irModules.Add(new IrModule(filePath, body.ToImmutable()));
         }
 
-        return new IrCompilation(irModules.ToImmutable(), new IrIndex(state.Index), state.WithItems);
+        return new IrCompilation(irModules.ToImmutable(), new IrIndex(state.Index), state.WithItems, state.GeneratorFunctions);
     }
 
     private static IrStatement LowerStatement(Statement statement, SemanticInfo semanticInfo, LoweringState state)
     {
+        // Record the generator-routing fact on the IR (E2 #1056, migrates _generatorFunctions's
+        // codegen consumers). The walk visits every FunctionDef — module, method, and nested — so
+        // this captures them all. yield emission stays in the emitter (Roslyn builds the machine).
+        if (statement is FunctionDef functionDef && semanticInfo.IsGenerator(functionDef))
+            state.GeneratorFunctions.Add(functionDef);
+
         if (statement is WithStatement withStatement)
             return LowerWithStatement(withStatement, semanticInfo, state);
 
@@ -244,6 +250,7 @@ internal sealed class LoweringPass
     {
         public Dictionary<Node, IrNode> Index { get; } = new(ReferenceEqualityComparer.Instance);
         public Dictionary<WithItem, IrWithItem> WithItems { get; } = new(ReferenceEqualityComparer.Instance);
+        public HashSet<FunctionDef> GeneratorFunctions { get; } = new(ReferenceEqualityComparer.Instance);
     }
 }
 
@@ -256,10 +263,22 @@ internal sealed class LoweringPass
 /// <param name="Index">The AST-to-IR index (transitional scaffolding, Design Decision 1a).</param>
 /// <param name="WithItems">Reference-keyed lookup from a <c>with</c>-item to its lowered
 /// <see cref="IrWithItem"/> (E2 #1056, migrates _contextManagerKinds).</param>
+/// <param name="GeneratorFunctions">Reference-keyed set of the <c>FunctionDef</c>s that are
+/// generators (E2 #1056, migrates _generatorFunctions's codegen consumers). Both this and
+/// <see cref="WithItems"/> are IR side-lookups pending typed function/with nodes.</param>
 internal sealed record IrCompilation(
     ImmutableArray<IrModule> Modules,
     IrIndex Index,
-    IReadOnlyDictionary<WithItem, IrWithItem> WithItems);
+    IReadOnlyDictionary<WithItem, IrWithItem> WithItems,
+    IReadOnlySet<FunctionDef> GeneratorFunctions)
+{
+    /// <summary>
+    /// Whether <paramref name="functionDef"/> is a generator (its body contains <c>yield</c>), read
+    /// by code generation to route iterator/method emission. Replaces the emitter's former
+    /// <c>SemanticInfo.IsGenerator</c> read (E2 #1056).
+    /// </summary>
+    public bool IsGenerator(FunctionDef functionDef) => GeneratorFunctions.Contains(functionDef);
+}
 
 /// <summary>
 /// The lowering IR for a single source file: the lowered top-level statements.

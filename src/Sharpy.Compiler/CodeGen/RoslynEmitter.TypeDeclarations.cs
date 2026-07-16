@@ -46,7 +46,7 @@ internal partial class RoslynEmitter
             : NameMangler.Transform(func.Name, NameContext.Method);
 
         // Check if this function is a generator and/or async
-        using var _ = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
+        using var _ = SetGeneratorScope(_context.Ir?.IsGenerator(func) == true);
         using var _async = SetAsyncScope(func.IsAsync);
 
         // Track @test context so assert statements in the body emit xUnit assertions

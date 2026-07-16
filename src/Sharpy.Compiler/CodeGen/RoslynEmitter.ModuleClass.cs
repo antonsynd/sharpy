@@ -837,7 +837,7 @@ internal partial class RoslynEmitter
             ResetMethodScope(func);
             CollectSourceVariableNames(func.Body);
 
-            using var _gen = SetGeneratorScope(_context.SemanticInfo?.IsGenerator(func) == true);
+            using var _gen = SetGeneratorScope(_context.Ir?.IsGenerator(func) == true);
             using var _async = SetAsyncScope(func.IsAsync);
 
             var mangledName = NameMangler.Transform(func.Name, NameContext.Method);

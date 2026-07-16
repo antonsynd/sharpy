@@ -59,6 +59,15 @@ public class SemanticInfo : ISemanticQuery
         new(ReferenceEqualityComparer.Instance);
 
     // Track functions that contain yield statements (generators)
+    //
+    // TRANSPORT (E2 #1056): the CODEGEN routing consumers now read this fact from the lowering IR
+    // (IrCompilation.IsGenerator); the emitter never reads this dict. Full plan-letter deletion
+    // (Option B) would repoint the two pre-lowering validators (ControlFlowValidator,
+    // GeneratorValidator) to the symbol-keyed FunctionSymbol.IsGenerator, but resolving
+    // FunctionDef→FunctionSymbol for those raw class/struct/module-body FunctionDefs (incl. nested and
+    // decorated defs) has no clean validator-side channel — the team lead's pre-authorized Option-A
+    // fallback. So the dict is retained as the validators' + lowering pass's input; physical deletion
+    // + its MergeFrom line are deferred to the guardrail-retirement step (lowering-ir.md §6.4).
     private readonly ConcurrentDictionary<FunctionDef, byte> _generatorFunctions = new(ReferenceEqualityComparer.Instance);
 
     // Track member access expressions that resolve to events (for codegen to emit +=/-= correctly)
