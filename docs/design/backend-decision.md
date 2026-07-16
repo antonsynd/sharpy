@@ -6,8 +6,8 @@
 > E2 emitter port ([#1056](https://github.com/antonsynd/sharpy/issues/1056)), E3 optimization passes
 > ([#1057](https://github.com/antonsynd/sharpy/issues/1057)) — all landed.
 > **Roadmap:** [roadmap-2026-07.md](roadmap-2026-07.md) (Workstream E, §4.4).
-> **Measurements:** [benchmarks/BASELINE.md](../../benchmarks/BASELINE.md) (D2 server compile, D3 round-trip,
-> E3 pass deltas) and [benchmarks/cross-language/results/latest.md](../../benchmarks/cross-language/results/latest.md).
+> **Measurements:** `benchmarks/BASELINE.md` (D2 server compile, D3 round-trip,
+> E3 pass deltas) and `benchmarks/cross-language/results/latest.md` (repo files, outside the docs site).
 > This page is the **written go/no-go** the E4 done-when requires ("a written go/no-go decision with
 > measurements attached"). It is a decision, not code; it is reviewed before merge, per the E1 precedent.
 
@@ -18,7 +18,7 @@ is **evaluated and declined** — not deferred pending more work, declined on th
 explicit revisit triggers listed at the end. This is the roadmap's default expectation, and the E3 plateau
 plus the three go-criteria evaluation below confirm it rather than merely assume it.
 
-The seam this decision is *about* already exists and stays: the E1 design ([lowering-ir.md §3](lowering-ir.md#3-boundary--the-backend-seam))
+The seam this decision is *about* already exists and stays: the E1 design ([lowering-ir.md §3](lowering-ir.md#3-boundary-the-backend-seam))
 names the `IR → backend` boundary as the E4 seam, with `RoslynEmitter` as the first and default backend and a
 hypothetical `MetadataBuilder` backend as a *second implementation of the same interface*. Declining E4 keeps
 the optionality (the seam is real and measured) without building the second backend.
