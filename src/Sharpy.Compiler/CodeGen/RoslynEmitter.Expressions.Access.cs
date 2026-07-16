@@ -426,7 +426,7 @@ internal partial class RoslynEmitter
                 ?? _context.SemanticInfo?.GetMemberAccessResolution(memberAccess)?.Member
                 ?? ResolveMethodForCall(memberAccess.Object, memberAccess.Member);
             var resolvedClrMethodName = GetClrMethodName(resolvedMethodSymbol)
-                ?? _context.SemanticInfo?.GetResolvedClrMemberName(memberAccess);
+                ?? GetIrResolvedClrMemberName(memberAccess);
             // The word-boundary table (setdefault/popitem, #1069) applies only to the builtin
             // collections it was written for. A discovered type may deliberately spell a method to
             // reverse-mangle cleanly — OrderedDict's one-capital `Popitem` demangles to `popitem`,
@@ -1591,6 +1591,19 @@ internal partial class RoslynEmitter
         return _context.Ir?.Index.TryGetValue(memberAccess, out var node) == true
             && node is IrMemberAccess irMemberAccess
             ? irMemberAccess.ExtensionDispatch
+            : null;
+    }
+
+    /// <summary>
+    /// Reads the resolved CLR member name for a member access from the lowering IR (E2 #1056,
+    /// migrates <c>_resolvedClrMemberNames</c>). Returns <c>null</c> when none was recorded (codegen
+    /// then applies normal name mangling).
+    /// </summary>
+    private string? GetIrResolvedClrMemberName(MemberAccess memberAccess)
+    {
+        return _context.Ir?.Index.TryGetValue(memberAccess, out var node) == true
+            && node is IrMemberAccess irMemberAccess
+            ? irMemberAccess.ResolvedClrMemberName
             : null;
     }
 

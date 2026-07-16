@@ -144,20 +144,22 @@ internal sealed class LoweringPass
 
     /// <summary>
     /// Lowers a member access to an <see cref="IrMemberAccess"/> when it carries a member-keyed
-    /// lowering fact — a static-extension dispatch (E2 #1056, migrates _staticExtensionDispatches).
-    /// Returns <c>null</c> (falls back to an opaque wrapper) for ordinary member accesses.
+    /// lowering fact — a static-extension dispatch (E2 #1056, migrates _staticExtensionDispatches) or
+    /// a resolved CLR member name (migrates _resolvedClrMemberNames). Returns <c>null</c> (falls back
+    /// to an opaque wrapper) for ordinary member accesses that carry neither.
     /// </summary>
     private static IrMemberAccess? TryLowerMemberAccess(MemberAccess memberAccess, SemanticInfo semanticInfo, LoweringState state)
     {
         var extensionDispatch = semanticInfo.GetStaticExtensionDispatchForIr(memberAccess);
-        if (extensionDispatch is null)
+        var resolvedClrMemberName = semanticInfo.GetResolvedClrMemberNameForIr(memberAccess);
+        if (extensionDispatch is null && resolvedClrMemberName is null)
             return null;
 
         var receiver = LowerExpression(memberAccess.Object, semanticInfo, state);
         return new IrMemberAccess(
             receiver,
             extensionDispatch,
-            ResolvedClrMemberName: null,
+            resolvedClrMemberName,
             semanticInfo.GetExpressionType(memberAccess),
             SpanOf(memberAccess));
     }
