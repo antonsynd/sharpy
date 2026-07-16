@@ -119,6 +119,10 @@ internal sealed class LoweringPass
             // Index access (obj[i]) carries its lowering strategy on the IR node (E2 #1056, migrates
             // _indexAccessLowerings).
             IndexAccess indexAccess => LowerIndexAccess(indexAccess, semanticInfo, state),
+            // Member access (obj.member) carries the static-extension-dispatch and resolved-CLR-name
+            // facts on the IR node (E2 #1056, migrates _staticExtensionDispatches / _resolvedClrMemberNames).
+            MemberAccess memberAccess when TryLowerMemberAccess(memberAccess, semanticInfo, state) is { } irMember
+                => irMember,
             _ => new IrOpaqueExpression(expression, semanticInfo.GetExpressionType(expression), SpanOf(expression),
                 LowerChildren(expression, semanticInfo, state)),
         };
@@ -136,6 +140,26 @@ internal sealed class LoweringPass
             semanticInfo.GetBinaryOpLoweringForIr(binOp),
             semanticInfo.GetExpressionType(binOp),
             SpanOf(binOp));
+    }
+
+    /// <summary>
+    /// Lowers a member access to an <see cref="IrMemberAccess"/> when it carries a member-keyed
+    /// lowering fact — a static-extension dispatch (E2 #1056, migrates _staticExtensionDispatches).
+    /// Returns <c>null</c> (falls back to an opaque wrapper) for ordinary member accesses.
+    /// </summary>
+    private static IrMemberAccess? TryLowerMemberAccess(MemberAccess memberAccess, SemanticInfo semanticInfo, LoweringState state)
+    {
+        var extensionDispatch = semanticInfo.GetStaticExtensionDispatchForIr(memberAccess);
+        if (extensionDispatch is null)
+            return null;
+
+        var receiver = LowerExpression(memberAccess.Object, semanticInfo, state);
+        return new IrMemberAccess(
+            receiver,
+            extensionDispatch,
+            ResolvedClrMemberName: null,
+            semanticInfo.GetExpressionType(memberAccess),
+            SpanOf(memberAccess));
     }
 
     private static IrIndexAccess LowerIndexAccess(IndexAccess indexAccess, SemanticInfo semanticInfo, LoweringState state)

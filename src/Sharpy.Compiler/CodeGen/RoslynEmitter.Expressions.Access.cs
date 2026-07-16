@@ -493,7 +493,7 @@ internal partial class RoslynEmitter
             // as global::Ext.Method(receiver, args...) so an instance-style call can't silently bind a
             // shadowing BCL method (C# prefers instance methods over extensions). The receiver becomes
             // the extension's first argument, ahead of the reordered call arguments.
-            var staticDispatch = _context.SemanticInfo?.GetStaticExtensionDispatch(memberAccess);
+            var staticDispatch = GetIrStaticExtensionDispatch(memberAccess);
             if (staticDispatch != null)
             {
                 var extensionType = MakeGlobalQualifiedName(staticDispatch.ExtensionTypeName.Split('.'));
@@ -1578,6 +1578,19 @@ internal partial class RoslynEmitter
         return _context.Ir?.Index.TryGetValue(indexAccess, out var node) == true
             && node is IrIndexAccess irIndexAccess
             ? irIndexAccess.Strategy
+            : null;
+    }
+
+    /// <summary>
+    /// Reads the static-extension dispatch decision for a method-call member access from the lowering
+    /// IR (E2 #1056, migrates <c>_staticExtensionDispatches</c>). Returns <c>null</c> when the call
+    /// should emit as an ordinary instance-method invocation.
+    /// </summary>
+    private StaticExtensionDispatch? GetIrStaticExtensionDispatch(MemberAccess memberAccess)
+    {
+        return _context.Ir?.Index.TryGetValue(memberAccess, out var node) == true
+            && node is IrMemberAccess irMemberAccess
+            ? irMemberAccess.ExtensionDispatch
             : null;
     }
 

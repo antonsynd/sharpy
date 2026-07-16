@@ -110,6 +110,32 @@ internal sealed record IrCall(
 }
 
 /// <summary>
+/// A lowered member access (<c>obj.member</c>) that carries the member-keyed lowering facts today
+/// held in <c>SemanticInfo</c>: the <see cref="ExtensionDispatch"/> decision
+/// (<c>_staticExtensionDispatches</c>) that routes a shadowed <c>str</c> method to its extension
+/// class, and the <see cref="ResolvedClrMemberName"/> (<c>_resolvedClrMemberNames</c>) that preserves
+/// CLR acronym casing without reflecting. Both are keyed by the member-access node, so they live here
+/// rather than on <see cref="IrCall"/>.
+/// </summary>
+/// <param name="Receiver">The lowered receiver (the <c>obj</c> in <c>obj.member</c>).</param>
+/// <param name="ExtensionDispatch">Set when a method call on this member access must emit as a static
+/// extension-method invocation; otherwise <c>null</c>.</param>
+/// <param name="ResolvedClrMemberName">The original CLR member name to emit, when acronym casing must
+/// be preserved; otherwise <c>null</c> (ordinary name mangling applies).</param>
+/// <param name="Type">The member access's resolved type.</param>
+/// <param name="Span">The originating source span.</param>
+internal sealed record IrMemberAccess(
+    IrExpression Receiver,
+    StaticExtensionDispatch? ExtensionDispatch,
+    string? ResolvedClrMemberName,
+    SemanticType? Type,
+    TextSpan Span) : IrExpression(Type, Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children => ImmutableArray.Create<IrNode>(Receiver);
+}
+
+/// <summary>
 /// A compile-time constant value: the fact that today lives node-keyed in
 /// <c>SemanticInfo._foldedIntegerConstants</c>. A backend emits <see cref="Value"/> as a literal
 /// directly instead of a runtime computation; the inferred width (<c>int</c>/<c>long</c>) is on

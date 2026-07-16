@@ -153,6 +153,12 @@ public class SemanticInfo : ISemanticQuery
     // whose semantics live in Sharpy.StringExtensions silently binds a shadowing System.String BCL
     // method (e.g. Replace(old,new,count==0→StringComparison), Split→string[]). The TypeChecker makes
     // the dispatch decision here so the emitter never re-derives it. Keyed by node identity (#1071, #1072, #1085).
+    //
+    // TRANSPORT (E2 #1056): this fact now flows to codegen through the lowering IR
+    // (IrMemberAccess.ExtensionDispatch); the emitter reads the IR, never this dict. The dict is
+    // retained only as the lowering pass's input (the dispatch is resolved via the builtin registry /
+    // str-method lookup and cannot be recomputed post-type-check). Physical deletion + its MergeFrom
+    // line are deferred to the guardrail-retirement step (lowering-ir.md §6.4, post-E2).
     private readonly ConcurrentDictionary<Expression, StaticExtensionDispatch> _staticExtensionDispatches =
         new(ReferenceEqualityComparer.Instance);
 
@@ -625,7 +631,12 @@ public class SemanticInfo : ISemanticQuery
     /// Gets the static-extension dispatch decision for a method-call member access, or <c>null</c>
     /// when the call should emit as an ordinary instance-method invocation.
     /// </summary>
-    public StaticExtensionDispatch? GetStaticExtensionDispatch(Expression memberAccess)
+    /// <remarks>
+    /// Lowering-input only (E2 #1056): the lowering pass reads this to build
+    /// <c>IrMemberAccess.ExtensionDispatch</c>; code generation reads the IR, never this accessor.
+    /// Renamed with the <c>ForIr</c> suffix so nothing in <c>CodeGen/</c> can bind it.
+    /// </remarks>
+    public StaticExtensionDispatch? GetStaticExtensionDispatchForIr(Expression memberAccess)
     {
         return _staticExtensionDispatches.TryGetValue(memberAccess, out var dispatch) ? dispatch : null;
     }
