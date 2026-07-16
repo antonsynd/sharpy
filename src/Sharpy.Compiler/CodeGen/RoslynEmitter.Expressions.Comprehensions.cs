@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -36,45 +37,65 @@ internal partial class RoslynEmitter
     }
 
     private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
-    {
-        var listType = TypeSyntaxMapper.QualifiedGenericName(
-            CSharpTypeNames.SharpyList, MapComprehensionTypeArgument(listComp, 0));
-        return GenerateImperativeComprehension(
-            listComp.Clauses, listComp.Element, null, null,
-            BuiltinNames.List, listType, listComp.Element is SpreadElement);
-    }
+        => GenerateImperativeComprehension(
+            listComp, listComp.Clauses, listComp.Element, null, null, BuiltinNames.List);
 
     private ExpressionSyntax GenerateSetComprehension(SetComprehension setComp)
-    {
-        var setType = TypeSyntaxMapper.QualifiedGenericName(
-            CSharpTypeNames.SharpySet, MapComprehensionTypeArgument(setComp, 0));
-        return GenerateImperativeComprehension(
-            setComp.Clauses, setComp.Element, null, null,
-            BuiltinNames.Set, setType, setComp.Element is SpreadElement);
-    }
+        => GenerateImperativeComprehension(
+            setComp, setComp.Clauses, setComp.Element, null, null, BuiltinNames.Set);
 
     private ExpressionSyntax GenerateDictComprehension(DictComprehension dictComp)
+        => GenerateImperativeComprehension(
+            dictComp, dictComp.Clauses, null, dictComp.Key, dictComp.Value, BuiltinNames.Dict);
+
+    /// <summary>
+    /// Reads the lowered comprehension node for <paramref name="comprehension"/> from the lowering IR
+    /// (E2 #1056, migrates the comprehension transform). Returns <c>null</c> when the IR was not built
+    /// for this codegen path (the REPL and the source-generator sub-pipeline do not build it, and
+    /// direct-emitter unit tests construct a context without it); callers then recompute the decisions
+    /// via the shared <see cref="LoweringPass"/> helpers so output is unchanged.
+    /// </summary>
+    private IrLoweredLoop? GetIrLoweredLoop(Expression comprehension)
     {
-        var dictType = TypeSyntaxMapper.QualifiedGenericName(
-            CSharpTypeNames.SharpyDict,
-            MapComprehensionTypeArgument(dictComp, 0),
-            MapComprehensionTypeArgument(dictComp, 1));
-        return GenerateImperativeComprehension(
-            dictComp.Clauses, null, dictComp.Key, dictComp.Value,
-            BuiltinNames.Dict, dictType);
+        return _context.Ir?.Index.TryGetValue(comprehension, out var node) == true
+            && node is IrLoweredLoop loop
+            ? loop
+            : null;
     }
+
+    /// <summary>
+    /// Builds the fully-resolved C# result collection type for a comprehension of
+    /// <paramref name="collectionKind"/> from its <paramref name="resultType"/>
+    /// (<c>list[T]</c>/<c>set[T]</c> → <c>Sharpy.List/Set&lt;T&gt;</c>, <c>dict[K,V]</c> →
+    /// <c>Sharpy.Dict&lt;K,V&gt;</c>). The result-collection type is a syntax mapping; the decision of
+    /// <em>which</em> semantic type it comes from is made in the lowering pass (on the IR node) and
+    /// only mapped to syntax here.
+    /// </summary>
+    private TypeSyntax BuildComprehensionCollectionType(string collectionKind, SemanticType? resultType)
+        => collectionKind switch
+        {
+            BuiltinNames.Set => TypeSyntaxMapper.QualifiedGenericName(
+                CSharpTypeNames.SharpySet, MapComprehensionTypeArgument(resultType, 0)),
+            BuiltinNames.Dict => TypeSyntaxMapper.QualifiedGenericName(
+                CSharpTypeNames.SharpyDict,
+                MapComprehensionTypeArgument(resultType, 0),
+                MapComprehensionTypeArgument(resultType, 1)),
+            _ => TypeSyntaxMapper.QualifiedGenericName(
+                CSharpTypeNames.SharpyList, MapComprehensionTypeArgument(resultType, 0)),
+        };
 
     /// <summary>
     /// Maps type argument <paramref name="index"/> of a comprehension's own (already type-checked)
     /// result type — <c>list[T]</c>/<c>set[T]</c> → T, <c>dict[K,V]</c> → K/V — to C# syntax.
-    /// Reading the comprehension node's result type (not the element/key/value node) is what makes
-    /// spread elements correct: a spread node caches the *collection* type it flattens, while the
-    /// comprehension result already carries the unwrapped element type from semantic analysis.
-    /// Falls back to <c>object</c> when the type is unresolved (error recovery).
+    /// The result type is supplied by the lowering pass (via <see cref="IrLoweredLoop.Type"/>) or, on
+    /// null-IR codegen paths, recomputed from <c>SemanticInfo</c>; reading the comprehension's own
+    /// result type (not the element/key/value node) is what makes spread elements correct, since a
+    /// spread node caches the *collection* type it flattens while the comprehension result carries the
+    /// unwrapped element type. Falls back to <c>object</c> when the type is unresolved (error recovery).
     /// </summary>
-    private TypeSyntax MapComprehensionTypeArgument(Expression comprehension, int index)
+    private TypeSyntax MapComprehensionTypeArgument(SemanticType? resultType, int index)
     {
-        if (GetExpressionSemanticType(comprehension) is GenericType generic
+        if (resultType is GenericType generic
             && index < generic.TypeArguments.Count
             && generic.TypeArguments[index] is not UnknownType)
         {
@@ -109,25 +130,6 @@ internal partial class RoslynEmitter
 
         return iterExpr;
     }
-
-    /// <summary>
-    /// True when a comprehension source's already-materialized <see cref="SemanticType"/> maps to a
-    /// C# collection that implements <c>Sharpy.ISized</c>, so its element count can be read cheaply
-    /// (via an <c>ISized</c> cast) for capacity preallocation: the Sharpy collections
-    /// (<c>list</c>/<c>set</c>/<c>dict</c>/<c>frozendict</c>) and <c>range(...)</c> (whose
-    /// <c>RangeIterator</c> is <c>ISized</c>). The dict views are deliberately excluded — they
-    /// implement <c>IReadOnlyCollection&lt;T&gt;</c> but not <c>ISized</c>, so an <c>ISized</c> cast
-    /// would not compile. Pure: reads only the type recorded during semantic analysis.
-    /// </summary>
-    private static bool IsSizedComprehensionSource(SemanticType? sourceType) => sourceType switch
-    {
-        GenericType g => g.Name is BuiltinNames.List
-            or BuiltinNames.Set
-            or BuiltinNames.Dict
-            or BuiltinNames.FrozenDict,
-        BuiltinType b => b.Name == "RangeIterator",
-        _ => false,
-    };
 
     private ExpressionSyntax GenerateDictSpreadComprehension(DictSpreadComprehension dictSpreadComp)
     {
@@ -271,30 +273,43 @@ internal partial class RoslynEmitter
     /// comprehension allocates no intermediate LINQ iterators or delegates.
     ///
     /// <para>
-    /// When there is exactly one <c>for</c> clause and its source is a sized collection
-    /// (<see cref="IsSizedComprehensionSource"/>), the source is hoisted into a temp and the result
-    /// collection is constructed with that source's <c>Count</c> as its capacity, so <c>.Add()</c>
-    /// never reallocates the backing store. Hoisting the source also guarantees single evaluation of
-    /// a side-effecting iterable (its <c>Count</c> and its enumeration read the same temp).
+    /// The emission <b>decisions</b> — the result collection type, the single-<c>for</c> clause, the
+    /// D4 sized-source capacity decision, and the spread-vs-add flag — are read from the lowered
+    /// <see cref="IrLoweredLoop"/> when the IR was built for this path (E2 #1056), or recomputed via
+    /// the shared <see cref="LoweringPass"/> helpers otherwise. The stateful emission below (temp
+    /// naming, hoisting, loop-variable scoping) stays here, which is what keeps output byte-identical.
+    /// </para>
+    ///
+    /// <para>
+    /// When there is exactly one <c>for</c> clause and its source is a sized collection, the source is
+    /// hoisted into a temp and the result collection is constructed with that source's <c>Count</c> as
+    /// its capacity, so <c>.Add()</c> never reallocates the backing store. Hoisting the source also
+    /// guarantees single evaluation of a side-effecting iterable (its <c>Count</c> and its enumeration
+    /// read the same temp).
     /// </para>
     /// </summary>
+    /// <param name="comprehension">The comprehension AST node, used to look up its lowered IR node.</param>
     /// <param name="clauses">The comprehension clauses (for/if)</param>
     /// <param name="element">Element expression for list/set comprehensions (null for dict)</param>
     /// <param name="keyExpr">Key expression for dict comprehensions (null for list/set)</param>
     /// <param name="valueExpr">Value expression for dict comprehensions (null for list/set)</param>
     /// <param name="collectionKind">BuiltinNames.List, BuiltinNames.Set, or BuiltinNames.Dict</param>
-    /// <param name="collectionType">Fully-resolved C# result collection type (element types taken
-    /// from the comprehension's own semantic type by the caller, so spread elements are correct)</param>
-    /// <param name="elementIsSpread">When true, use SpreadMethodName (Extend/UnionWith) instead of AddMethodName</param>
     private ExpressionSyntax GenerateImperativeComprehension(
+        Expression comprehension,
         ImmutableArray<ComprehensionClause> clauses,
         Expression? element,
         Expression? keyExpr,
         Expression? valueExpr,
-        string collectionKind,
-        TypeSyntax collectionType,
-        bool elementIsSpread = false)
+        string collectionKind)
     {
+        // Emission decisions: read from the lowered IR node when present, else recompute (null-IR
+        // codegen paths — REPL, source generators, direct-emitter unit tests). Both yield the same
+        // values, so emitted C# is byte-identical.
+        var loop = GetIrLoweredLoop(comprehension);
+        var resultType = loop != null ? loop.Type : GetExpressionSemanticType(comprehension);
+        var elementIsSpread = loop != null ? loop.ElementIsSpread : element is SpreadElement;
+        var collectionType = BuildComprehensionCollectionType(collectionKind, resultType);
+
         var tempName = GenerateTempVarName("comp");
 
         CollectionTypeRegistry.TryGet(collectionKind, out var collInfo);
@@ -302,28 +317,33 @@ internal partial class RoslynEmitter
         // Capacity preallocation: a single-for comprehension over a sized source presizes the result
         // to the source's element count. The source is hoisted into __src_N so its Count (used as the
         // constructor capacity) and its enumeration reference one evaluation.
-        var soleForClause = SingleForClause(clauses);
+        var soleForClause = loop != null ? loop.SoleForClause : LoweringPass.SingleForClause(clauses);
         string? sourceTempName = null;
         StatementSyntax? sourceDecl = null;
         List<StatementSyntax>? sourceHoisted = null;
         ArgumentListSyntax capacityArgs = ArgumentList();
 
-        var sourceSemanticType = soleForClause != null
-            ? GetExpressionSemanticType(soleForClause.Iterator)
-            : null;
-        if (soleForClause != null && IsSizedComprehensionSource(sourceSemanticType))
+        // The sized-source semantic type when D4 preallocation applies, else null. On the IR path the
+        // decision is encoded by IrLoweredLoop.Capacity (whose Type is the source type); otherwise the
+        // shared lowering helper recomputes it. Non-null implies a single sized for-clause source.
+        var sizedSourceType = loop != null
+            ? loop.Capacity?.Type
+            : soleForClause != null && LoweringPass.IsSizedComprehensionSource(GetExpressionSemanticType(soleForClause.Iterator))
+                ? GetExpressionSemanticType(soleForClause.Iterator)
+                : null;
+        if (sizedSourceType != null)
         {
             sourceTempName = GenerateTempVarName("src");
             ExpressionSyntax sourceExpr = null!;
-            sourceHoisted = CaptureHoisted(() => sourceExpr = GenerateComprehensionIterator(soleForClause.Iterator));
+            sourceHoisted = CaptureHoisted(() => sourceExpr = GenerateComprehensionIterator(soleForClause!.Iterator));
             // Declare the hoisted source with its mapped Sharpy collection type rather than `var`:
             // a semantic list[T] can be backed by a CLR array at the C# level (e.g. str.split
             // returns string[]), which does not implement ISized — the typed declaration coerces
             // such sources through the collection's implicit array conversion so the ISized
             // capacity cast below always compiles. Sharpy-backed sources bind by identity.
             // range(...) keeps `var` (RangeIterator is never interop-backed).
-            var sourceDeclType = sourceSemanticType is GenericType
-                ? _typeMapper.MapSemanticType(sourceSemanticType)
+            var sourceDeclType = sizedSourceType is GenericType
+                ? _typeMapper.MapSemanticType(sizedSourceType)
                 : IdentifierName("var");
             sourceDecl = LocalDeclarationStatement(
                 VariableDeclaration(sourceDeclType)
@@ -567,27 +587,5 @@ internal partial class RoslynEmitter
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(Identifier(name))
                         .WithInitializer(EqualsValueClause(initializer)))));
-    }
-
-    /// <summary>
-    /// Returns the single <see cref="ForClause"/> in <paramref name="clauses"/>, or null when there
-    /// is not exactly one. Capacity preallocation only applies to single-for comprehensions: with
-    /// nested for-clauses the result size is the product of the sources, which no single source
-    /// <c>Count</c> bounds.
-    /// </summary>
-    private static ForClause? SingleForClause(ImmutableArray<ComprehensionClause> clauses)
-    {
-        ForClause? found = null;
-        foreach (var clause in clauses)
-        {
-            if (clause is ForClause forClause)
-            {
-                if (found != null)
-                    return null;
-                found = forClause;
-            }
-        }
-
-        return found;
     }
 }

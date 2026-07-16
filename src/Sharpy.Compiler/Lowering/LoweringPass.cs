@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Lowering;
@@ -26,7 +27,7 @@ namespace Sharpy.Compiler.Lowering;
 /// yet read by any backend.
 /// </para>
 /// </remarks>
-internal sealed class LoweringPass
+internal sealed partial class LoweringPass
 {
     /// <summary>
     /// Lowers every module to its IR form and returns the whole-project
@@ -129,6 +130,18 @@ internal sealed class LoweringPass
             // facts on the IR node (E2 #1056, migrates _staticExtensionDispatches / _resolvedClrMemberNames).
             MemberAccess memberAccess when TryLowerMemberAccess(memberAccess, semanticInfo, state) is { } irMember
                 => irMember,
+            // List/set/dict comprehensions carry their imperative-loop decisions on the IR node
+            // (E2 #1056, migrates the comprehension transform). Dict-spread comprehensions are a
+            // separate transform and stay opaque for now.
+            ListComprehension listComp
+                => LowerComprehension(listComp, BuiltinNames.List, listComp.Clauses,
+                    listComp.Element is SpreadElement, semanticInfo, state),
+            SetComprehension setComp
+                => LowerComprehension(setComp, BuiltinNames.Set, setComp.Clauses,
+                    setComp.Element is SpreadElement, semanticInfo, state),
+            DictComprehension dictComp
+                => LowerComprehension(dictComp, BuiltinNames.Dict, dictComp.Clauses,
+                    elementIsSpread: false, semanticInfo, state),
             _ => new IrOpaqueExpression(expression, semanticInfo.GetExpressionType(expression), SpanOf(expression),
                 LowerChildren(expression, semanticInfo, state)),
         };

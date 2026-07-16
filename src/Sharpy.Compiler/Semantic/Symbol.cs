@@ -185,8 +185,9 @@ public record FunctionSymbol : Symbol
     public bool IsOverride { get; init; }
     /// <summary>
     /// Set by TypeChecker.Definitions.cs in sync with SemanticInfo.MarkAsGenerator().
-    /// CodeGen uses SemanticInfo.IsGenerator(FunctionDef) when it has the AST node;
-    /// SynthesisAnalyzer uses this property when it has only the FunctionSymbol.
+    /// CodeGen reads the routing fact from the lowering IR (IrCompilation.IsGenerator, E2 #1056);
+    /// the pre-lowering validators read SemanticInfo.IsGenerator(FunctionDef); SynthesisAnalyzer
+    /// uses this property when it has only the FunctionSymbol.
     /// </summary>
     public bool IsGenerator { get; internal set; }
 

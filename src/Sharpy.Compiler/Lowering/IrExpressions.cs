@@ -154,6 +154,55 @@ internal sealed record IrConstant(
 }
 
 /// <summary>
+/// A lowered list/set/dict comprehension: the imperative loop that builds a collection. Carries the
+/// emission <b>decisions</b> the emitter used to compute inline (E2 #1056, migrates the
+/// comprehension transform out of <c>RoslynEmitter.Expressions.Comprehensions.cs</c>):
+/// <list type="bullet">
+/// <item>the <see cref="CollectionKind"/> (<c>list</c>/<c>set</c>/<c>dict</c>),</item>
+/// <item>the result collection type on <see cref="IrNode.Type"/> (its type arguments give the
+/// element/key/value types),</item>
+/// <item>the <see cref="ElementIsSpread"/> flag (spread <c>Extend</c>/<c>UnionWith</c> vs.
+/// <c>Add</c>),</item>
+/// <item>the <see cref="SoleForClause"/> (the single <c>for</c> clause, or <c>null</c>), and</item>
+/// <item>the D4 capacity-preallocation decision as <see cref="Capacity"/>: non-<c>null</c> ⇒
+/// presize the result from a sized single source, whose already-inferred element type is the
+/// capacity expression's <see cref="IrNode.Type"/>.</item>
+/// </list>
+/// The <b>stateful</b> C# emission (temp naming, hoisting via <c>_hoistedStatements</c>,
+/// loop-variable scope versioning, sub-expression <c>GenerateExpression</c>) stays in the emitter
+/// during E2 — that is what keeps output byte-identical — so the AST <see cref="Clauses"/> ride along
+/// for the emitter's stateful walk. The lowered clause sub-expressions live in
+/// <see cref="IrNode.Children"/> for totality/determinism and for E3's comprehension-fusion pass.
+/// </summary>
+/// <param name="CollectionKind">The result collection kind: <c>BuiltinNames.List</c>/<c>Set</c>/<c>Dict</c>.</param>
+/// <param name="Clauses">The AST comprehension clauses (ordered), consumed by the emitter's stateful
+/// loop construction.</param>
+/// <param name="SoleForClause">The single <c>for</c> clause when there is exactly one, else
+/// <c>null</c> (capacity preallocation applies only to single-<c>for</c> comprehensions).</param>
+/// <param name="Capacity">The lowered sized single source when D4 preallocation applies, else
+/// <c>null</c>. Its <see cref="IrNode.Type"/> is the source's semantic type (used to choose the
+/// hoisted-source declaration type). The emitter re-generates the source statefully; this field
+/// records the decision and, for E3, the source to size from.</param>
+/// <param name="ElementIsSpread">True when the element is a spread (<c>*it</c>), so the emitter uses
+/// the collection's spread method instead of add.</param>
+/// <param name="Type">The comprehension's own result type (<c>list[T]</c>/<c>set[T]</c>/<c>dict[K,V]</c>).</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The lowered child IR nodes (element/key/value and clause sub-expressions).</param>
+internal sealed record IrLoweredLoop(
+    string CollectionKind,
+    ImmutableArray<ComprehensionClause> Clauses,
+    ForClause? SoleForClause,
+    IrExpression? Capacity,
+    bool ElementIsSpread,
+    SemanticType? Type,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrExpression(Type, Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}
+
+/// <summary>
 /// A not-yet-migrated expression: a totality wrapper (Design Decision 1b) that carries the original
 /// <see cref="Ast"/> node plus its lowered <see cref="IrNode.Children"/>, so the IR tree is
 /// structurally complete even before a construct has its own typed node. Migration replaces these
