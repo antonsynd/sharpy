@@ -51,6 +51,7 @@ internal sealed partial class LoweringPass
             soleForClause,
             capacity,
             elementIsSpread,
+            comprehension,
             semanticInfo.GetExpressionType(comprehension),
             SpanOf(comprehension),
             children);

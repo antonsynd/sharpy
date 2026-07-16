@@ -1,0 +1,15 @@
+# Multi-for comprehensions over sized, effect-free sources presize to the product of the sources'
+# counts under opt_comprehension_fusion (E3, #1057). Observable behaviour (elements, order, count)
+# is identical with or without the flag; the flag only changes the result collection's initial
+# capacity. A filtered multi-for is deliberately NOT presized but must stay correct.
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    ys: list[int] = [10, 20]
+    pairs: list[int] = [x + y for x in xs for y in ys]
+    print(len(pairs))
+    for p in pairs:
+        print(p)
+    evens: list[int] = [x + y for x in xs for y in ys if (x + y) % 2 == 0]
+    print(len(evens))
+    for e in evens:
+        print(e)

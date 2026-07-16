@@ -27,7 +27,8 @@ internal sealed class IrPassManager
     /// E3 Phases 7–9 append the comprehension-fusion, devirtualization, and stack-collection passes.
     /// Ordering is the pipeline order in which enabled passes compose.
     /// </summary>
-    public static IrPassManager Default { get; } = new(ImmutableArray.Create<IIrPass>(new ConstFoldPass()));
+    public static IrPassManager Default { get; } =
+        new(ImmutableArray.Create<IIrPass>(new ConstFoldPass(), new ComprehensionFusionPass()));
 
     public IrPassManager(ImmutableArray<IIrPass> passes) => _passes = passes;
 
@@ -50,6 +51,27 @@ internal sealed class IrPassManager
             into[ast] = constant;
         foreach (var child in node.Children)
             Collect(child, into);
+    }
+
+    /// <summary>
+    /// Collects the comprehension pass's optimized <see cref="IrLoweredLoop"/>s from an already-rewritten
+    /// <paramref name="module"/> into <paramref name="into"/>, keyed by the comprehension AST node the
+    /// emitter will generate (only loops the pass actually marked — currently
+    /// <see cref="IrLoweredLoop.ProductPreallocation"/>). Surfaces the pass's results to the AST-driven
+    /// emitter via <see cref="IrCompilation.OptimizedComprehensions"/>.
+    /// </summary>
+    public static void CollectOptimizedComprehensions(IrModule module, IDictionary<Expression, IrLoweredLoop> into)
+    {
+        foreach (var statement in module.Body)
+            CollectLoops(statement, into);
+    }
+
+    private static void CollectLoops(IrNode node, IDictionary<Expression, IrLoweredLoop> into)
+    {
+        if (node is IrLoweredLoop { ProductPreallocation: true } loop)
+            into[loop.Comprehension] = loop;
+        foreach (var child in node.Children)
+            CollectLoops(child, into);
     }
 
     /// <summary>

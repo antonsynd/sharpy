@@ -57,10 +57,46 @@ internal partial class RoslynEmitter
     /// </summary>
     private IrLoweredLoop? GetIrLoweredLoop(Expression comprehension)
     {
+        // Prefer the E3 comprehension pass's optimized copy (opt_comprehension_fusion, #1057) when it
+        // marked this comprehension; the map is empty unless the pass ran, so the default path reads
+        // the initial-lowering copy from the index and is byte-identical.
+        if (_context.Ir?.OptimizedComprehensions.TryGetValue(comprehension, out var optimized) == true)
+            return optimized;
+
         return _context.Ir?.Index.TryGetValue(comprehension, out var node) == true
             && node is IrLoweredLoop loop
             ? loop
             : null;
+    }
+
+    /// <summary>
+    /// Builds the constructor capacity argument for a product-of-counts presized comprehension (E3
+    /// <c>opt_comprehension_fusion</c>): <c>((global::Sharpy.ISized)src1).Count * … * ((..)srcN).Count</c>
+    /// over the <c>for</c>-clause sources. The pass guarantees every source is sized and effect-free, so
+    /// re-generating each here (also generated during iteration) is safe. The <c>ISized</c> cast reads
+    /// the interface Count uniformly (a plain <c>.Count</c> on <c>List&lt;T&gt;</c> would bind LINQ).
+    /// </summary>
+    private ArgumentListSyntax BuildProductCapacityArgs(ImmutableArray<ComprehensionClause> clauses)
+    {
+        ExpressionSyntax? product = null;
+        foreach (var clause in clauses)
+        {
+            if (clause is not ForClause forClause)
+                continue;
+
+            var count = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                ParenthesizedExpression(CastExpression(
+                    MakeGlobalQualifiedName("Sharpy", "ISized"),
+                    GenerateExpression(forClause.Iterator))),
+                IdentifierName("Count"));
+
+            product = product is null
+                ? count
+                : BinaryExpression(SyntaxKind.MultiplyExpression, product, count);
+        }
+
+        return ArgumentList(SingletonSeparatedList(Argument(product!)));
     }
 
     /// <summary>
@@ -326,12 +362,21 @@ internal partial class RoslynEmitter
         // The sized-source semantic type when D4 preallocation applies, else null. On the IR path the
         // decision is encoded by IrLoweredLoop.Capacity (whose Type is the source type); otherwise the
         // shared lowering helper recomputes it. Non-null implies a single sized for-clause source.
-        var sizedSourceType = loop != null
+        SemanticType? sizedSourceType = loop != null
             ? loop.Capacity?.Type
             : soleForClause != null && LoweringPass.IsSizedComprehensionSource(GetExpressionSemanticType(soleForClause.Iterator))
                 ? GetExpressionSemanticType(soleForClause.Iterator)
                 : null;
-        if (sizedSourceType != null)
+
+        // Product-of-counts presize (E3 opt_comprehension_fusion, #1057): the pass marks a multi-for
+        // comprehension whose sources are all sized + effect-free with no filter. Presize the result to
+        // the product of the sources' Counts, re-evaluating each (effect-free) source; the loop structure
+        // below is unchanged (no hoisting — sourceTempName stays null and every clause iterates normally).
+        if (loop?.ProductPreallocation == true)
+        {
+            capacityArgs = BuildProductCapacityArgs(clauses);
+        }
+        else if (sizedSourceType != null)
         {
             sourceTempName = GenerateTempVarName("src");
             ExpressionSyntax sourceExpr = null!;

@@ -209,6 +209,7 @@ internal partial class ProjectCompiler
 
         ImmutableArray<IrModule>.Builder? rewritten = null;
         Dictionary<Expression, IrConstant>? folds = null;
+        Dictionary<Expression, IrLoweredLoop>? loops = null;
         for (int i = 0; i < ir.Modules.Length; i++)
         {
             var module = ir.Modules[i];
@@ -220,6 +221,8 @@ internal partial class ProjectCompiler
                 rewritten[i] = optimized;
                 folds ??= new Dictionary<Expression, IrConstant>(ReferenceEqualityComparer.Instance);
                 IrPassManager.CollectFoldedConstants(optimized, folds);
+                loops ??= new Dictionary<Expression, IrLoweredLoop>(ReferenceEqualityComparer.Instance);
+                IrPassManager.CollectOptimizedComprehensions(optimized, loops);
             }
         }
 
@@ -227,7 +230,11 @@ internal partial class ProjectCompiler
             return ir;
 
         var result = ir with { Modules = rewritten.ToImmutable() };
-        return folds is null ? result : result with { FoldedConstants = folds };
+        if (folds is { Count: > 0 })
+            result = result with { FoldedConstants = folds };
+        if (loops is { Count: > 0 })
+            result = result with { OptimizedComprehensions = loops };
+        return result;
     }
 
     /// <summary>

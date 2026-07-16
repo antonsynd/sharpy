@@ -1,0 +1,2 @@
+# Enables the experimental comprehension fusion / preallocation IR pass.
+opt_comprehension_fusion

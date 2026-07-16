@@ -190,6 +190,8 @@ internal sealed record IrConstant(
 /// records the decision and, for E3, the source to size from.</param>
 /// <param name="ElementIsSpread">True when the element is a spread (<c>*it</c>), so the emitter uses
 /// the collection's spread method instead of add.</param>
+/// <param name="Comprehension">The AST comprehension node this lowered from — the key the emitter
+/// generates and by which the E3 pass manager surfaces an optimized copy of this loop.</param>
 /// <param name="Type">The comprehension's own result type (<c>list[T]</c>/<c>set[T]</c>/<c>dict[K,V]</c>).</param>
 /// <param name="Span">The originating source span.</param>
 /// <param name="Children">The lowered child IR nodes (element/key/value and clause sub-expressions).</param>
@@ -199,10 +201,20 @@ internal sealed record IrLoweredLoop(
     ForClause? SoleForClause,
     IrExpression? Capacity,
     bool ElementIsSpread,
+    Expression Comprehension,
     SemanticType? Type,
     TextSpan Span,
     ImmutableArray<IrNode> Children) : IrExpression(Type, Span)
 {
+    /// <summary>
+    /// Set by the E3 comprehension pass (<c>opt_comprehension_fusion</c>, #1057) on a multi-<c>for</c>
+    /// comprehension whose sources are <em>all</em> sized and which has <b>no</b> <c>if</c> clause (a
+    /// pure cross-product): the emitter then presizes the result collection to the product of the
+    /// sources' counts. Left <c>false</c> by the initial lowering, so the default path is unchanged.
+    /// Filtered comprehensions are excluded — the product would grossly over-reserve capacity.
+    /// </summary>
+    public bool ProductPreallocation { get; init; }
+
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children { get; } = Children;
 }

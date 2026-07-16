@@ -297,6 +297,9 @@ internal sealed record IrCompilation(
     private static readonly IReadOnlyDictionary<Expression, IrConstant> EmptyFolds =
         new Dictionary<Expression, IrConstant>(ReferenceEqualityComparer.Instance);
 
+    private static readonly IReadOnlyDictionary<Expression, IrLoweredLoop> EmptyLoops =
+        new Dictionary<Expression, IrLoweredLoop>(ReferenceEqualityComparer.Instance);
+
     /// <summary>
     /// AST expressions the E3 const-folding pass (<c>opt_const_fold</c>, #640) reduced to a compile-time
     /// <see cref="IrConstant"/>, keyed by the expression node the AST-driven emitter will generate. Empty
@@ -304,6 +307,14 @@ internal sealed record IrCompilation(
     /// pass manager fills it from the rewritten modules' <see cref="IrConstant.SourceAst"/> entries.
     /// </summary>
     public IReadOnlyDictionary<Expression, IrConstant> FoldedConstants { get; init; } = EmptyFolds;
+
+    /// <summary>
+    /// Comprehensions the E3 comprehension pass (<c>opt_comprehension_fusion</c>, #1057) optimized,
+    /// keyed by the comprehension AST node the emitter generates. Empty unless the pass ran, so the
+    /// default emitter path is byte-identical; the emitter reads the optimized <see cref="IrLoweredLoop"/>
+    /// from here in preference to the initial-lowering copy in <see cref="Index"/>.
+    /// </summary>
+    public IReadOnlyDictionary<Expression, IrLoweredLoop> OptimizedComprehensions { get; init; } = EmptyLoops;
 
     /// <summary>
     /// Whether <paramref name="functionDef"/> is a generator (its body contains <c>yield</c>), read
