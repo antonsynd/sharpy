@@ -69,6 +69,15 @@ internal sealed partial class LoweringPass
         if (statement is WithStatement withStatement)
             return LowerWithStatement(withStatement, semanticInfo, state);
 
+        // A defer lowers to an explicit scope-exit guard rather than an opaque wrapper (E2 #1056,
+        // migrates the defer transform). The suite-split/LIFO nesting stays emitter-side.
+        if (statement is DeferStatement deferStatement)
+        {
+            var guard = LowerDefer(deferStatement, semanticInfo, state);
+            state.Index[deferStatement] = guard;
+            return guard;
+        }
+
         var children = LowerChildren(statement, semanticInfo, state);
         var ir = new IrOpaqueStatement(statement, SpanOf(statement), children);
         state.Index[statement] = ir;

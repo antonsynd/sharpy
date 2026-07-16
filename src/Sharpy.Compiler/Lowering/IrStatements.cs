@@ -30,6 +30,32 @@ internal sealed record IrOpaqueStatement(
 }
 
 /// <summary>
+/// A lowered <c>defer</c>: the scope-exit guard whose <see cref="DeferredBody"/> runs on every exit
+/// path of the enclosing suite (E2 #1056, migrates the <c>defer</c> transform out of
+/// <c>RoslynEmitter.Statements.cs</c>). The emitter turns a guard into a
+/// <c>try { remainder } finally { DeferredBody }</c> envelope, and the recursive split of the
+/// enclosing suite (later defers nesting inside earlier ones, so their finally blocks run in reverse
+/// declaration order — LIFO) is what threads the guards together.
+/// <para>
+/// In E2 the <em>guarded</em> remainder is not folded onto this node — it is the following siblings
+/// of the <c>defer</c> in the enclosing suite, which the emitter has in hand and generates statefully
+/// (hoisting, line directives). Folding the guarded body onto the node requires suite-level IR
+/// lowering, a deliberate post-E2 step. This node makes the scope-exit lowering explicit in the IR
+/// (the <c>DeferStatement</c> no longer lowers to an opaque wrapper) and carries the deferred body so
+/// the tree stays total.
+/// </para>
+/// </summary>
+/// <param name="DeferredBody">The lowered statements that run on scope exit (the <c>finally</c> body).</param>
+/// <param name="Span">The originating source span.</param>
+internal sealed record IrScopeGuard(
+    ImmutableArray<IrStatement> DeferredBody,
+    TextSpan Span) : IrStatement(Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = DeferredBody.CastArray<IrNode>();
+}
+
+/// <summary>
 /// A lowered <c>with</c>-item. Carries the context-manager <see cref="Kind"/> — the fact that today
 /// lives node-keyed in <c>SemanticInfo._contextManagerKinds</c> — and the resolved
 /// <see cref="AsVar"/> (<c>_withItemSymbols</c>), which is otherwise unavailable to a backend

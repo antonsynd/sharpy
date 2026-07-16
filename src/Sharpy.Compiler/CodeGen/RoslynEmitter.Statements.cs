@@ -35,6 +35,9 @@ internal partial class RoslynEmitter
     /// Emits the statements of <paramref name="statements"/> starting at <paramref name="start"/>,
     /// splitting at the first <see cref="DeferStatement"/> into a <c>try/finally</c> whose try
     /// block is the recursively-generated remainder and whose finally block is the deferred body.
+    /// A <c>defer</c> lowers to an <c>IrScopeGuard</c> (E2 #1056); this emits that guard's
+    /// <c>try/finally</c> envelope. The suite-scoped split stays here because statement emission is
+    /// stateful and must work on the null-IR codegen paths (REPL, source generators) too.
     /// </summary>
     private List<StatementSyntax> GenerateSuiteFrom(IReadOnlyList<Statement> statements, int start)
     {
@@ -43,7 +46,7 @@ internal partial class RoslynEmitter
         {
             if (statements[i] is DeferStatement defer)
             {
-                result.Add(GenerateDefer(defer, statements, i));
+                result.Add(GenerateScopeGuard(defer, statements, i));
                 // The remainder of the suite was consumed into the try block above.
                 return result;
             }
@@ -55,12 +58,12 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Lowers a <see cref="DeferStatement"/> at index <paramref name="deferIndex"/> of
-    /// <paramref name="statements"/> into <c>try { remainder } finally { deferred-body }</c>.
+    /// Emits the <c>IrScopeGuard</c> a <see cref="DeferStatement"/> at index
+    /// <paramref name="deferIndex"/> lowered to: <c>try { remainder } finally { deferred-body }</c>.
     /// The remainder (statements after the defer) is generated recursively so that any further
     /// defers nest inside, preserving LIFO cleanup order.
     /// </summary>
-    private StatementSyntax GenerateDefer(DeferStatement defer, IReadOnlyList<Statement> statements, int deferIndex)
+    private StatementSyntax GenerateScopeGuard(DeferStatement defer, IReadOnlyList<Statement> statements, int deferIndex)
     {
         var tryBlock = Block(GenerateSuiteFrom(statements, deferIndex + 1));
         var finallyBlock = Block(GenerateSuite(defer.Body));
@@ -150,7 +153,7 @@ internal partial class RoslynEmitter
             // suite (e.g. constructor bodies): emit try {} finally { body } so the deferred body
             // still runs, though without wrapping later statements. TODO(#1065): thread defer
             // through constructor/test-fixture body emission for full remainder-wrapping semantics.
-            DeferStatement deferStmt => GenerateDefer(deferStmt, new[] { (Statement)deferStmt }, 0),
+            DeferStatement deferStmt => GenerateScopeGuard(deferStmt, new[] { (Statement)deferStmt }, 0),
             MatchStatement matchStmt => GenerateMatch(matchStmt),
             FunctionDef funcDef => GenerateLocalFunction(funcDef),
             _ => null
