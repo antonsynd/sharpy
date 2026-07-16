@@ -50,6 +50,11 @@ real, not a scoping artifact.
 | sorting | 0.89x | 0.64x | keyless-sort fast path (D4) |
 | string_ops | 1.16x | 1.07x | UTF-16 string methods |
 
+The sixth cross-language benchmark, `matrix_multiply_numpy`, has no Sharpy row: its Sharpy execution fails
+(pre-existing, predates this workstream — [#1084](https://github.com/antonsynd/sharpy/issues/1084), standalone
+runs of numpy programs missing the transitive MathNet.Numerics dependency in `deps.json`), so the harness
+records no result. Its *emit* is included in the byte-identical E3 diff above; only execution is excluded.
+
 The one large Spy/C# ratio (`matrix_multiply` 2.27x) is a **data-structure** cost (no flat 2D array; every
 `a[i][k]` is a bounds-checked `Sharpy.List` indexer), diagnosed on #1052 as structural and unclosable by
 index-normalization. A direct IL backend emits the *same* indexer calls — it does not change the data structure,
