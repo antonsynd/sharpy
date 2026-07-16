@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -207,6 +208,7 @@ internal partial class ProjectCompiler
         var context = new IrRewriteContext(SymbolTable, SemanticInfo);
 
         ImmutableArray<IrModule>.Builder? rewritten = null;
+        Dictionary<Expression, IrConstant>? folds = null;
         for (int i = 0; i < ir.Modules.Length; i++)
         {
             var module = ir.Modules[i];
@@ -216,10 +218,16 @@ internal partial class ProjectCompiler
             {
                 rewritten ??= ir.Modules.ToBuilder();
                 rewritten[i] = optimized;
+                folds ??= new Dictionary<Expression, IrConstant>(ReferenceEqualityComparer.Instance);
+                IrPassManager.CollectFoldedConstants(optimized, folds);
             }
         }
 
-        return rewritten is null ? ir : ir with { Modules = rewritten.ToImmutable() };
+        if (rewritten is null)
+            return ir;
+
+        var result = ir with { Modules = rewritten.ToImmutable() };
+        return folds is null ? result : result with { FoldedConstants = folds };
     }
 
     /// <summary>

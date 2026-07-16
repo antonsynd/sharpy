@@ -294,6 +294,17 @@ internal sealed record IrCompilation(
     IReadOnlyDictionary<WithItem, IrWithItem> WithItems,
     IReadOnlySet<FunctionDef> GeneratorFunctions)
 {
+    private static readonly IReadOnlyDictionary<Expression, IrConstant> EmptyFolds =
+        new Dictionary<Expression, IrConstant>(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// AST expressions the E3 const-folding pass (<c>opt_const_fold</c>, #640) reduced to a compile-time
+    /// <see cref="IrConstant"/>, keyed by the expression node the AST-driven emitter will generate. Empty
+    /// unless the pass ran for a module, so the default (flag-off) emitter path is byte-identical. The
+    /// pass manager fills it from the rewritten modules' <see cref="IrConstant.SourceAst"/> entries.
+    /// </summary>
+    public IReadOnlyDictionary<Expression, IrConstant> FoldedConstants { get; init; } = EmptyFolds;
+
     /// <summary>
     /// Whether <paramref name="functionDef"/> is a generator (its body contains <c>yield</c>), read
     /// by code generation to route iterator/method emission. Replaces the emitter's former

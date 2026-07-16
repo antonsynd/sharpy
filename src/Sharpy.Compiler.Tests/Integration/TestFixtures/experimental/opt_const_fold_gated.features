@@ -1,0 +1,2 @@
+# Enables the experimental constant-folding IR pass.
+opt_const_fold

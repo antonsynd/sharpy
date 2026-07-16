@@ -18,6 +18,12 @@ internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression expr)
     {
+        // E3 const-folding (opt_const_fold, #640): an operation the pass reduced emits as its literal
+        // value. FoldedConstants is empty unless the pass ran for this file, so the default
+        // (flag-off) path is byte-identical.
+        if (_context.Ir?.FoldedConstants.TryGetValue(expr, out var foldedConstant) == true)
+            return EmitFoldedConstant(foldedConstant);
+
         return expr switch
         {
             // Literals
@@ -386,6 +392,36 @@ internal partial class RoslynEmitter
     private SemanticType? GetExpressionSemanticType(Sharpy.Compiler.Parser.Ast.Expression expr)
     {
         return _context.SemanticInfo?.GetExpressionType(expr);
+    }
+
+    /// <summary>
+    /// Emits a const-folded value (E3 <c>opt_const_fold</c>, #640) as a C# literal. Integers are boxed
+    /// as <c>long</c> and narrowed to <c>int</c> unless the folded type is <c>long</c> (mirroring the
+    /// <c>**</c> fold in the power case); doubles and booleans emit directly.
+    /// </summary>
+    private static ExpressionSyntax EmitFoldedConstant(Lowering.IrConstant constant) => constant.Value switch
+    {
+        bool b => LiteralExpression(b ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
+        double d => LiteralExpression(SyntaxKind.NumericLiteralExpression, DoubleLiteralToken(d)),
+        long l when constant.Type == SemanticType.Long =>
+            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(l)),
+        long l => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)l)),
+        _ => throw new System.InvalidOperationException(
+            $"Unexpected folded constant value kind: {constant.Value?.GetType().Name ?? "null"}"),
+    };
+
+    /// <summary>
+    /// Builds a numeric-literal token for a folded <c>double</c> whose text is unambiguously a
+    /// floating-point literal — appending <c>.0</c> when the round-trip text has no <c>.</c>/exponent —
+    /// so a whole-valued fold like <c>3.0</c> emits as <c>3.0</c>, not the <c>int</c>-typed <c>3</c>
+    /// (which could bind a different overload). The token value stays the exact <see cref="double"/>.
+    /// </summary>
+    private static Microsoft.CodeAnalysis.SyntaxToken DoubleLiteralToken(double d)
+    {
+        var text = d.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        if (text.IndexOfAny(new[] { '.', 'e', 'E' }) < 0)
+            text += ".0";
+        return Literal(text, d);
     }
 
     /// <summary>

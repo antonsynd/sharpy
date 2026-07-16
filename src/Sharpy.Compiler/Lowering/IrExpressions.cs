@@ -144,10 +144,15 @@ internal sealed record IrMemberAccess(
 /// <param name="Value">The constant value (e.g. a boxed <c>long</c> for folded integer arithmetic).</param>
 /// <param name="Type">The constant's type.</param>
 /// <param name="Span">The originating source span.</param>
+/// <param name="SourceAst">The AST expression this constant folded from, when produced by the E3
+/// const-folding pass (<c>opt_const_fold</c>, #640), so the pass manager can key the fold back to the
+/// node the AST-driven emitter will generate. <c>null</c> for the always-on <c>**</c> fold that the
+/// initial lowering records in the node-keyed index (read by the emitter's power case).</param>
 internal sealed record IrConstant(
     object Value,
     SemanticType? Type,
-    TextSpan Span) : IrExpression(Type, Span)
+    TextSpan Span,
+    Expression? SourceAst = null) : IrExpression(Type, Span)
 {
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children => ImmutableArray<IrNode>.Empty;

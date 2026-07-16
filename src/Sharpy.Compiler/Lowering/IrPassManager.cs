@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using Sharpy.Compiler.Lowering.Passes;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Lowering;
@@ -21,13 +23,34 @@ internal sealed class IrPassManager
     private readonly ImmutableArray<IIrPass> _passes;
 
     /// <summary>
-    /// The default, ordered pass registry. Empty until E3 Phases 6–9 register the const-folding,
-    /// comprehension-fusion, devirtualization, and stack-collection passes; ordering is the pipeline
-    /// order in which enabled passes compose.
+    /// The default, ordered pass registry. Const folding runs first so later passes see literals;
+    /// E3 Phases 7–9 append the comprehension-fusion, devirtualization, and stack-collection passes.
+    /// Ordering is the pipeline order in which enabled passes compose.
     /// </summary>
-    public static IrPassManager Default { get; } = new(ImmutableArray<IIrPass>.Empty);
+    public static IrPassManager Default { get; } = new(ImmutableArray.Create<IIrPass>(new ConstFoldPass()));
 
     public IrPassManager(ImmutableArray<IIrPass> passes) => _passes = passes;
+
+    /// <summary>
+    /// Collects the const-folding pass's reductions from an already-rewritten <paramref name="module"/>
+    /// into <paramref name="into"/>, keyed by the AST expression the emitter will generate (only
+    /// <see cref="IrConstant"/>s that carry a <see cref="IrConstant.SourceAst"/> — i.e. operation folds,
+    /// not lone literals). This is how the tree-rewriting passes surface their results to the
+    /// AST-driven emitter (via <see cref="IrCompilation.FoldedConstants"/>).
+    /// </summary>
+    public static void CollectFoldedConstants(IrModule module, IDictionary<Expression, IrConstant> into)
+    {
+        foreach (var statement in module.Body)
+            Collect(statement, into);
+    }
+
+    private static void Collect(IrNode node, IDictionary<Expression, IrConstant> into)
+    {
+        if (node is IrConstant { SourceAst: { } ast } constant)
+            into[ast] = constant;
+        foreach (var child in node.Children)
+            Collect(child, into);
+    }
 
     /// <summary>
     /// Applies each enabled pass to <paramref name="module"/> in registration order and returns the
