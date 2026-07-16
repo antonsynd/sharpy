@@ -143,14 +143,15 @@ public sealed class FeatureFlags
             ["opt_const_fold"] = new FeatureInfo(
                 "opt_const_fold",
                 "Experimental constant-folding IR pass. Folds compile-time-constant arithmetic, " +
-                "comparison, boolean (short-circuit), unary, and string-concat expressions to literals, " +
-                "using exactly the emitted C#'s wrapping semantics (no folding of traps like x/0).",
+                "comparison, boolean (short-circuit), unary, and bitwise expressions to literals, " +
+                "using exactly the emitted C#'s wrapping semantics (no folding of traps like x/0; " +
+                "strings are not folded in v1 — recorded on #640).",
                 FeatureScope.CodeGen),
             ["opt_comprehension_fusion"] = new FeatureInfo(
                 "opt_comprehension_fusion",
-                "Experimental comprehension fusion / generalized preallocation IR pass. Presizes " +
-                "multi-clause comprehensions over sized sources and fuses a comprehension whose sole " +
-                "consumer is another loop into one, eliminating the intermediate collection.",
+                "Experimental generalized-preallocation IR pass. Presizes multi-clause " +
+                "comprehensions over sized, effect-free sources (product capacity). Fusion of " +
+                "comprehension chains is not yet implemented — see #1102.",
                 FeatureScope.CodeGen),
             // opt_devirt was evaluated (E3 Phase 8, #1057) and RETIRED before shipping a pass:
             // Sharpy.List/Dict/Set are `sealed`, so RyuJIT already devirtualizes every call on them and
@@ -160,8 +161,8 @@ public sealed class FeatureFlags
             ["opt_stack_collections"] = new FeatureInfo(
                 "opt_stack_collections",
                 "Experimental non-escaping-collection IR pass. Collection literals that provably never " +
-                "escape (v1: iterated directly by a for, or the receiver of len()/constant-index access) " +
-                "lower to raw arrays / direct values instead of Sharpy.List allocations.",
+                "escape (v1: iterated directly by a for only; len()/constant-index positions are " +
+                "deferred to #1103) lower to raw arrays instead of Sharpy.List allocations.",
                 FeatureScope.CodeGen),
         };
 

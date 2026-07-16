@@ -24,7 +24,8 @@ internal sealed class IrPassManager
 
     /// <summary>
     /// The default, ordered pass registry. Const folding runs first so later passes see literals;
-    /// E3 Phases 7–9 append the comprehension-fusion, devirtualization, and stack-collection passes.
+    /// E3 Phases 7 and 9 appended the comprehension-fusion and stack-collection passes (the Phase 8
+    /// devirtualization pass was retired before shipping — sealed collections leave no headroom).
     /// Ordering is the pipeline order in which enabled passes compose.
     /// </summary>
     public static IrPassManager Default { get; } =
