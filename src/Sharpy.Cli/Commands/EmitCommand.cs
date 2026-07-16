@@ -7,6 +7,7 @@ using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 using Sharpy.Lsp;
 
@@ -107,8 +108,9 @@ internal static class EmitCommand
             var warnAsError = parseResult.GetValue(globals.WarnAsError);
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
+            var features = parseResult.GetValue(globals.EnableFeature);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives, emitType, namespaceName);
+            return EmitCSharp(input, output, reference, modulePath, logger, warnAsError, nowarn, maxErrors, showLineDirectives, emitType, namespaceName, features);
         });
         parent.Subcommands.Add(command);
     }
@@ -159,8 +161,9 @@ internal static class EmitCommand
             var warnAsError = parseResult.GetValue(globals.WarnAsError);
             var nowarn = parseResult.GetValue(globals.Nowarn);
             var maxErrors = parseResult.GetValue(globals.MaxErrors);
+            var features = parseResult.GetValue(globals.EnableFeature);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return EmitDiagnostics(input, logger, format, warnAsError, nowarn, maxErrors, includeCodegen);
+            return EmitDiagnostics(input, logger, format, warnAsError, nowarn, maxErrors, includeCodegen, features);
         });
         parent.Subcommands.Add(command);
     }
@@ -317,7 +320,8 @@ internal static class EmitCommand
     }
 
     static int EmitDiagnostics(FileInfo inputFile, ICompilerLogger logger, string format,
-        bool warnAsError = false, string? nowarn = null, int? maxErrors = null, bool includeCodegen = false)
+        bool warnAsError = false, string? nowarn = null, int? maxErrors = null, bool includeCodegen = false,
+        string[]? features = null)
     {
         try
         {
@@ -332,7 +336,10 @@ internal static class EmitCommand
                 {
                     WarningsAsErrors = warnAsError,
                     SuppressedWarnings = CliHelpers.ParseNowarnCodes(nowarn),
-                    MaxErrors = maxErrors ?? 0
+                    MaxErrors = maxErrors ?? 0,
+                    // Thread --enable-feature so gated syntax is analyzed, not rejected (SPY0331),
+                    // when inspecting codegen diagnostics (#1097).
+                    Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>())
                 };
                 var result = api.Compile(source, compilerOptions, inputFile.FullName);
                 diagnostics = result.Diagnostics;
@@ -430,7 +437,8 @@ internal static class EmitCommand
 
     static int EmitCSharp(FileInfo inputFile, FileInfo? output, string[] references, string[] modulePaths,
         ICompilerLogger logger, bool warnAsError = false, string? nowarn = null, int? maxErrors = null,
-        bool showLineDirectives = false, string outputType = "exe", string? namespaceName = null)
+        bool showLineDirectives = false, string outputType = "exe", string? namespaceName = null,
+        string[]? features = null)
     {
         try
         {
@@ -451,7 +459,11 @@ internal static class EmitCommand
                 WarningsAsErrors = warnAsError,
                 SuppressedWarnings = CliHelpers.ParseNowarnCodes(nowarn),
                 MaxErrors = maxErrors ?? 0,
-                Namespace = namespaceName
+                Namespace = namespaceName,
+                // Thread --enable-feature so gated syntax (matmul, defer, …) and CodeGen behavioral
+                // flags emit under `emit csharp` instead of hitting SPY0331 (#1097); the other emit
+                // subcommands thread the same option below.
+                Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>())
             };
             var api = CliHelpers.CreateCompilerApi(logger);
             var result = api.Compile(source, compilerOptions, inputFile.FullName);

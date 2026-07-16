@@ -9,6 +9,11 @@ public class EmitCommandTests
     // declaration-only module that produces zero diagnostics.
     private const string ValidSource = "def greet() -> str:\n    return \"hello\"\n";
 
+    // Uses the gated `defer` statement, which requires the `defer` experimental feature. Without
+    // the feature the gate rejects it (SPY0331); with it the emitter lowers it to try/finally.
+    private const string GatedDeferSource =
+        "def main() -> None:\n    defer:\n        print(\"cleanup\")\n    print(\"body\")\n";
+
     // ---- Parse-level tests ----
 
     [Theory]
@@ -144,6 +149,36 @@ public class EmitCommandTests
             "the command should succeed; stderr=<{0}> stdout=<{1}>", invocation.StdErr, invocation.StdOut);
         File.Exists(outPath).Should().BeTrue();
         File.ReadAllText(outPath).Should().Contain("class");
+    }
+
+    [Fact]
+    public void CSharp_GatedSyntax_WithoutFeature_ReportsSPY0331()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy(GatedDeferSource);
+        var outPath = ws.PathFor("gated.cs");
+
+        var invocation = CliTestHarness.Invoke($"emit csharp \"{spy}\" --output \"{outPath}\"");
+
+        invocation.ExitCode.Should().Be(1);
+        invocation.StdErr.Should().Contain("SPY0331");
+        File.Exists(outPath).Should().BeFalse("emit should not write output when compilation fails");
+    }
+
+    [Fact]
+    public void CSharp_GatedSyntax_WithEnableFeature_Emits()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy(GatedDeferSource);
+        var outPath = ws.PathFor("gated.cs");
+
+        var invocation = CliTestHarness.Invoke($"emit csharp \"{spy}\" --output \"{outPath}\" --enable-feature defer");
+
+        invocation.ExitCode.Should().Be(0,
+            "the gated feature is enabled; stderr=<{0}> stdout=<{1}>", invocation.StdErr, invocation.StdOut);
+        File.Exists(outPath).Should().BeTrue();
+        // defer lowers to a try/finally envelope.
+        File.ReadAllText(outPath).Should().Contain("finally");
     }
 
     [Fact]
