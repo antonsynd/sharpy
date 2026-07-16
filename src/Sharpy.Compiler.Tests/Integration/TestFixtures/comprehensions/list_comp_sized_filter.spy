@@ -1,0 +1,5 @@
+def main() -> None:
+    nums: list[int] = [1, -2, 3, -4, 5]
+    result: list[int] = [x * 2 for x in nums if x > 0]
+    for r in result:
+        print(r)
