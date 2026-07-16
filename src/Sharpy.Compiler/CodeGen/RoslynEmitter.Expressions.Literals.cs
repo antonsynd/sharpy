@@ -53,6 +53,23 @@ internal partial class RoslynEmitter
             elementType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
+        // E3 stack-collections (opt_stack_collections, #1057): a list literal the pass proved cannot
+        // escape (its only use is as a for-statement iterator) emits as a raw array instead of the
+        // three-object Sharpy.List construction. StackAllocatedLiterals is empty unless the pass ran, so
+        // the default path is byte-identical; the pass never marks a spread literal, so the array form
+        // always has plain elements (no spread builder needed).
+        if (_context.Ir?.StackAllocatedLiterals.Contains(list) == true)
+        {
+            var arrayElements = list.Elements.Select(elem => GenerateWithNestedTargetType(elem, _targetTypeContext));
+            return ArrayCreationExpression(
+                    ArrayType(elementType)
+                        .WithRankSpecifiers(SingletonList(
+                            ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression())))))
+                .WithInitializer(InitializerExpression(
+                    SyntaxKind.ArrayInitializerExpression,
+                    SeparatedList(arrayElements)));
+        }
+
         var listType = TypeSyntaxMapper.QualifiedGenericName(CSharpTypeNames.SharpyList, elementType);
 
         // If any element is a spread, use imperative builder pattern

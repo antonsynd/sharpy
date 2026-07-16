@@ -220,6 +220,38 @@ internal sealed record IrLoweredLoop(
 }
 
 /// <summary>
+/// A collection literal proven not to escape (E3 #1057, <c>opt_stack_collections</c>): its only use
+/// is as the direct iterator of a <c>for</c> statement, so it can be emitted as a raw array
+/// (<c>new T[] { ... }</c>) instead of allocating the three-object <c>Sharpy.List</c> wrapper
+/// (wrapper + backing <c>List&lt;T&gt;</c> + its array). Iteration order and per-element evaluation are
+/// identical, so the substitution is observably transparent.
+/// </summary>
+/// <remarks>
+/// The E3 stack-collections pass produces this node in place of the opaque wrapper for an eligible
+/// for-iterator literal; the pass manager harvests <see cref="Literal"/> into
+/// <see cref="IrCompilation.StackAllocatedLiterals"/>, and the AST-driven emitter emits the array form
+/// for exactly those literals. The lowered element expressions ride along in
+/// <see cref="IrNode.Children"/> for totality/determinism; the emitter re-generates them statefully
+/// (unchanged from the wrapper form — only the container syntax differs). Spread literals are never
+/// marked, so the array form always has plain elements.
+/// </remarks>
+/// <param name="Literal">The originating list literal — the key the emitter generates and by which the
+/// pass manager surfaces the array-emission decision.</param>
+/// <param name="Type">The literal's inferred collection type (<c>list[T]</c>); its element type argument
+/// is the array's element type.</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The lowered element IR nodes.</param>
+internal sealed record IrStackArray(
+    ListLiteral Literal,
+    SemanticType? Type,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrExpression(Type, Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}
+
+/// <summary>
 /// A not-yet-migrated expression: a totality wrapper (Design Decision 1b) that carries the original
 /// <see cref="Ast"/> node plus its lowered <see cref="IrNode.Children"/>, so the IR tree is
 /// structurally complete even before a construct has its own typed node. Migration replaces these

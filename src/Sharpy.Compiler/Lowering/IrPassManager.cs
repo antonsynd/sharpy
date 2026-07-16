@@ -28,7 +28,7 @@ internal sealed class IrPassManager
     /// Ordering is the pipeline order in which enabled passes compose.
     /// </summary>
     public static IrPassManager Default { get; } =
-        new(ImmutableArray.Create<IIrPass>(new ConstFoldPass(), new ComprehensionFusionPass()));
+        new(ImmutableArray.Create<IIrPass>(new ConstFoldPass(), new ComprehensionFusionPass(), new StackCollectionsPass()));
 
     public IrPassManager(ImmutableArray<IIrPass> passes) => _passes = passes;
 
@@ -72,6 +72,27 @@ internal sealed class IrPassManager
             into[loop.Comprehension] = loop;
         foreach (var child in node.Children)
             CollectLoops(child, into);
+    }
+
+    /// <summary>
+    /// Collects the stack-collections pass's non-escaping <see cref="IrStackArray"/> literals from an
+    /// already-rewritten <paramref name="module"/> into <paramref name="into"/>, keyed by the list-literal
+    /// AST node the emitter will generate. Surfaces the pass's results to the AST-driven emitter via
+    /// <see cref="IrCompilation.StackAllocatedLiterals"/>, which emits the raw-array form for exactly
+    /// these literals.
+    /// </summary>
+    public static void CollectStackAllocatedLiterals(IrModule module, ISet<ListLiteral> into)
+    {
+        foreach (var statement in module.Body)
+            CollectStackLiterals(statement, into);
+    }
+
+    private static void CollectStackLiterals(IrNode node, ISet<ListLiteral> into)
+    {
+        if (node is IrStackArray stackArray)
+            into.Add(stackArray.Literal);
+        foreach (var child in node.Children)
+            CollectStackLiterals(child, into);
     }
 
     /// <summary>

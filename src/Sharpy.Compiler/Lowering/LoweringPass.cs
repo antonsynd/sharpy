@@ -300,6 +300,9 @@ internal sealed record IrCompilation(
     private static readonly IReadOnlyDictionary<Expression, IrLoweredLoop> EmptyLoops =
         new Dictionary<Expression, IrLoweredLoop>(ReferenceEqualityComparer.Instance);
 
+    private static readonly IReadOnlySet<ListLiteral> EmptyStackLiterals =
+        new HashSet<ListLiteral>(ReferenceEqualityComparer.Instance);
+
     /// <summary>
     /// AST expressions the E3 const-folding pass (<c>opt_const_fold</c>, #640) reduced to a compile-time
     /// <see cref="IrConstant"/>, keyed by the expression node the AST-driven emitter will generate. Empty
@@ -315,6 +318,16 @@ internal sealed record IrCompilation(
     /// from here in preference to the initial-lowering copy in <see cref="Index"/>.
     /// </summary>
     public IReadOnlyDictionary<Expression, IrLoweredLoop> OptimizedComprehensions { get; init; } = EmptyLoops;
+
+    /// <summary>
+    /// List literals the E3 stack-collections pass (<c>opt_stack_collections</c>, #1057) proved
+    /// non-escaping (their only use is as a <c>for</c>-statement iterator), keyed by the literal AST
+    /// node the emitter generates. The emitter emits <c>new T[] { ... }</c> for exactly these literals
+    /// instead of the <c>Sharpy.List</c> wrapper. Empty unless the pass ran for a module, so the default
+    /// (flag-off) emitter path is byte-identical; the pass manager fills it from the rewritten modules'
+    /// <see cref="IrStackArray"/> nodes.
+    /// </summary>
+    public IReadOnlySet<ListLiteral> StackAllocatedLiterals { get; init; } = EmptyStackLiterals;
 
     /// <summary>
     /// Whether <paramref name="functionDef"/> is a generator (its body contains <c>yield</c>), read

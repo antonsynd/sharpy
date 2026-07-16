@@ -1,0 +1,11 @@
+# A list literal whose only use is as a for-loop iterator never escapes, so under
+# opt_stack_collections (E3, #1057) it lowers to a raw array instead of a Sharpy.List wrapper. The
+# program's observable behaviour — iteration order and per-element evaluation — is identical with or
+# without the flag; the flag only changes the emitted C#.
+def main() -> None:
+    total: int = 0
+    for n in [10, 20, 30]:
+        total = total + n
+    print(total)
+    for word in ["a", "bb", "ccc"]:
+        print(word)

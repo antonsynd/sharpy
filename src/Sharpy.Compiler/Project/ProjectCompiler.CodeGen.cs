@@ -210,6 +210,7 @@ internal partial class ProjectCompiler
         ImmutableArray<IrModule>.Builder? rewritten = null;
         Dictionary<Expression, IrConstant>? folds = null;
         Dictionary<Expression, IrLoweredLoop>? loops = null;
+        HashSet<ListLiteral>? stackLiterals = null;
         for (int i = 0; i < ir.Modules.Length; i++)
         {
             var module = ir.Modules[i];
@@ -223,6 +224,8 @@ internal partial class ProjectCompiler
                 IrPassManager.CollectFoldedConstants(optimized, folds);
                 loops ??= new Dictionary<Expression, IrLoweredLoop>(ReferenceEqualityComparer.Instance);
                 IrPassManager.CollectOptimizedComprehensions(optimized, loops);
+                stackLiterals ??= new HashSet<ListLiteral>(ReferenceEqualityComparer.Instance);
+                IrPassManager.CollectStackAllocatedLiterals(optimized, stackLiterals);
             }
         }
 
@@ -234,6 +237,8 @@ internal partial class ProjectCompiler
             result = result with { FoldedConstants = folds };
         if (loops is { Count: > 0 })
             result = result with { OptimizedComprehensions = loops };
+        if (stackLiterals is { Count: > 0 })
+            result = result with { StackAllocatedLiterals = stackLiterals };
         return result;
     }
 
