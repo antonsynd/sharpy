@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Cli;
@@ -469,6 +470,8 @@ internal static class CliHelpers
             nowarn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             StringComparer.OrdinalIgnoreCase);
     }
+
+    internal static FeatureFlags ParseFeatures(string[]? features) => FeatureFlags.None.Enable(features ?? Array.Empty<string>());
 
     internal static string StripLineDirectives(string csharpCode)
     {

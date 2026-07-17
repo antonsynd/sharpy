@@ -339,7 +339,7 @@ internal static class EmitCommand
                     MaxErrors = maxErrors ?? 0,
                     // Thread --enable-feature so gated syntax is analyzed, not rejected (SPY0331),
                     // when inspecting codegen diagnostics (#1097).
-                    Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>())
+                    Features = CliHelpers.ParseFeatures(features)
                 };
                 var result = api.Compile(source, compilerOptions, inputFile.FullName);
                 diagnostics = result.Diagnostics;
@@ -463,7 +463,7 @@ internal static class EmitCommand
                 // Thread --enable-feature so gated syntax (matmul, defer, …) and CodeGen behavioral
                 // flags emit under `emit csharp` instead of hitting SPY0331 (#1097); the other emit
                 // subcommands thread the same option below.
-                Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>())
+                Features = CliHelpers.ParseFeatures(features)
             };
             var api = CliHelpers.CreateCompilerApi(logger);
             var result = api.Compile(source, compilerOptions, inputFile.FullName);

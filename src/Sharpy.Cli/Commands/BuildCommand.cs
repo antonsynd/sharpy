@@ -155,7 +155,7 @@ internal static class BuildCommand
                 WarningsAsErrors = warnAsError,
                 SuppressedWarnings = CliHelpers.ParseNowarnCodes(nowarn),
                 MaxErrors = maxErrors ?? 0,
-                Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>()),
+                Features = CliHelpers.ParseFeatures(features),
                 Configuration = configuration,
                 AssemblyName = assemblyName,
                 OutputAssemblyPath = finalOutputPath

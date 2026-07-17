@@ -130,7 +130,7 @@ internal static class ProjectCommand
                 SuppressedWarnings = mergedSuppressed,
                 MaxErrors = maxErrors ?? 0,
                 Incremental = incremental,
-                Features = FeatureFlags.None.Enable(features ?? Array.Empty<string>())
+                Features = CliHelpers.ParseFeatures(features)
             };
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);

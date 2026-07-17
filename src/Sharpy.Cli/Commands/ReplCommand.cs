@@ -20,7 +20,7 @@ internal static class ReplCommand
             var logFile = parseResult.GetValue(globals.LogFile);
             var featureNames = parseResult.GetValue(globals.EnableFeature);
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            var features = FeatureFlags.None.Enable(featureNames ?? Array.Empty<string>());
+            var features = CliHelpers.ParseFeatures(featureNames);
             return await RunReplAsync(logger, features, cancellationToken).ConfigureAwait(false);
         });
 
