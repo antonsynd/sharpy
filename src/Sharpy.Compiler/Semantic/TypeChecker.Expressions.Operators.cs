@@ -76,12 +76,29 @@ internal partial class TypeChecker
         // (validators may not catch all type incompatibilities)
         if (resultType == null)
         {
+            var message =
+                $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binOp.Operator)}' with operand of type '{rightType.GetDisplayName()}'";
+
+            // When comparing against the `None` literal with ==/!=, point the user at the
+            // supported spelling: Sharpy rejects `x == None` (SPY0222) but accepts `x is None`
+            // (#1079). Both operand orders (`x == None` and `None == x`) get the hint. The
+            // suggested operator rides the diagnostic data payload for a future LSP quick-fix.
+            IReadOnlyDictionary<string, string>? data = null;
+            if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
+                && (binOp.Left is NoneLiteral || binOp.Right is NoneLiteral))
+            {
+                var suggestedOperator = binOp.Operator == BinaryOperator.Equal ? "is None" : "is not None";
+                message += $". Did you mean '{suggestedOperator}'?";
+                data = new Dictionary<string, string> { ["suggestedOperator"] = suggestedOperator };
+            }
+
             AddError(
-                $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binOp.Operator)}' with operand of type '{rightType.GetDisplayName()}'",
+                message,
                 binOp.LineStart,
                 binOp.ColumnStart,
                 code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                span: binOp.Span);
+                span: binOp.Span,
+                data: data);
             return SemanticType.Unknown;
         }
 

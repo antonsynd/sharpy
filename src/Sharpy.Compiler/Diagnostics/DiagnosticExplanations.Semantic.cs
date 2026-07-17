@@ -62,9 +62,9 @@ public static partial class DiagnosticExplanations
             "Ensure the types are compatible. Use explicit conversions if needed.");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidBinaryOperation, "Invalid binary operation", "Semantic",
-            "A binary operator was used with operand types that do not support it. For example, using + between an int and a bool, or - with strings.",
+            "A binary operator was used with operand types that do not support it. For example, using + between an int and a bool, or - with strings. Comparing against the None literal with == or != is also rejected: use the identity operators 'is None' / 'is not None' instead.",
             "x: str = \"hello\" - \"world\"  # str doesn't support -",
-            "Use an operator that is supported for the given types, or convert the operands to compatible types.");
+            "Use an operator that is supported for the given types, or convert the operands to compatible types. To check for None, use 'x is None' or 'x is not None' rather than 'x == None' / 'x != None'.");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidUnaryOperation, "Invalid unary operation", "Semantic",
             "A unary operator was used with an operand type that does not support it. For example, using the negation operator (-) on a string.",
