@@ -1,0 +1,5 @@
+def main() -> None:
+    # SPY0222 hint regression guard (#1079): the `!=` variant and the reversed
+    # operand order (`None != x`) both get the "is not None" suggestion.
+    x: int = 5
+    print(None != x)
