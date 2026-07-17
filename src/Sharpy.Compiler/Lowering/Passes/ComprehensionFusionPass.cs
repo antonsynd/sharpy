@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 
@@ -29,75 +28,36 @@ namespace Sharpy.Compiler.Lowering.Passes;
 /// <see href="https://github.com/antonsynd/sharpy/issues/1102">#1102</see>.
 /// </para>
 /// </remarks>
-internal sealed class ComprehensionFusionPass : IIrPass
+internal sealed class ComprehensionFusionPass : IrTreeRewriter, IIrPass
 {
     public string FlagName => "opt_comprehension_fusion";
 
-    public IrModule Rewrite(IrModule module, IrRewriteContext context)
-    {
-        var body = ImmutableArray.CreateBuilder<IrStatement>(module.Body.Length);
-        var changed = false;
-        foreach (var statement in module.Body)
-        {
-            var optimized = (IrStatement)Optimize(statement, context);
-            body.Add(optimized);
-            changed |= !ReferenceEquals(optimized, statement);
-        }
-
-        return changed ? module with { Body = body.ToImmutable() } : module;
-    }
-
-    private IrNode Optimize(IrNode node, IrRewriteContext context)
+    /// <summary>
+    /// Marks a qualifying multi-<c>for</c> comprehension for product preallocation. An
+    /// <see cref="IrLoweredLoop"/> recurses into its children and, when it qualifies, is rebuilt with
+    /// <see cref="IrLoweredLoop.ProductPreallocation"/> set; every other node — the opaque recursion and
+    /// the typed-node fallthrough — is the shared base walk. The qualification consults
+    /// <see cref="IrTreeRewriter.Context"/>'s <c>SemanticInfo</c> rather than threading it through the walk.
+    /// </summary>
+    protected override IrNode RewriteNode(IrNode node)
     {
         switch (node)
         {
             case IrLoweredLoop loop:
                 {
-                    var children = OptimizeChildren(loop.Children, context, out var childrenChanged);
+                    var children = RewriteChildren(loop.Children, out var childrenChanged);
                     var rebuilt = childrenChanged
                         ? new IrLoweredLoop(loop.CollectionKind, loop.Clauses, loop.SoleForClause, loop.Capacity,
                             loop.ElementIsSpread, loop.Comprehension, loop.Type, loop.Span, children)
                         : loop;
-                    return QualifiesForProductPreallocation(loop, context)
+                    return QualifiesForProductPreallocation(loop, Context)
                         ? rebuilt with { ProductPreallocation = true }
                         : rebuilt;
                 }
 
-            case IrOpaqueExpression opaque:
-                {
-                    var children = OptimizeChildren(opaque.Children, context, out var childrenChanged);
-                    return childrenChanged
-                        ? new IrOpaqueExpression(opaque.Ast, opaque.Type, opaque.Span, children)
-                        : opaque;
-                }
-
-            case IrOpaqueStatement opaqueStatement:
-                {
-                    var children = OptimizeChildren(opaqueStatement.Children, context, out var childrenChanged);
-                    return childrenChanged
-                        ? new IrOpaqueStatement(opaqueStatement.Ast, opaqueStatement.Span, children)
-                        : opaqueStatement;
-                }
-
             default:
-                // Typed nodes (equality, index, member, scope guard, with-item): v1 does not descend
-                // into them looking for nested comprehensions — conservative and rare.
-                return node;
+                return base.RewriteNode(node);
         }
-    }
-
-    private ImmutableArray<IrNode> OptimizeChildren(ImmutableArray<IrNode> children, IrRewriteContext context, out bool changed)
-    {
-        ImmutableArray<IrNode>.Builder? builder = null;
-        for (int i = 0; i < children.Length; i++)
-        {
-            var optimized = Optimize(children[i], context);
-            if (!ReferenceEquals(optimized, children[i]))
-                (builder ??= children.ToBuilder())[i] = optimized;
-        }
-
-        changed = builder is not null;
-        return builder is null ? children : builder.ToImmutable();
     }
 
     /// <summary>

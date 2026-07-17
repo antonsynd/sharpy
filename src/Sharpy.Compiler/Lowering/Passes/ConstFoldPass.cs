@@ -28,31 +28,18 @@ namespace Sharpy.Compiler.Lowering.Passes;
 /// not an opaque node), shifts, strings, and any expression nested inside a typed IR node.
 /// </para>
 /// </remarks>
-internal sealed class ConstFoldPass : IIrPass
+internal sealed class ConstFoldPass : IrTreeRewriter, IIrPass
 {
     public string FlagName => "opt_const_fold";
 
-    public IrModule Rewrite(IrModule module, IrRewriteContext context)
-    {
-        var body = ImmutableArray.CreateBuilder<IrStatement>(module.Body.Length);
-        var changed = false;
-        foreach (var statement in module.Body)
-        {
-            var folded = (IrStatement)FoldNode(statement);
-            body.Add(folded);
-            changed |= !ReferenceEquals(folded, statement);
-        }
-
-        return changed ? module with { Body = body.ToImmutable() } : module;
-    }
-
     /// <summary>
-    /// Folds an IR node bottom-up. Opaque expressions whose folded operands are all constant collapse
-    /// to an <see cref="IrConstant"/>; every other node is rebuilt with its folded children (so nested
-    /// constants inside otherwise-dynamic expressions/statements still reduce). Typed IR nodes are
-    /// returned as-is (v1 does not fold inside them).
+    /// Folds an IR node bottom-up. An opaque expression whose folded operands are all constant collapses
+    /// to an <see cref="IrConstant"/> (a fresh node the shared walk returns as-is); a constant is left
+    /// untouched (v1 never re-folds one). Everything else — the opaque-statement recursion and the
+    /// typed-node fallthrough — is the base walk, which still reduces nested constants inside otherwise
+    /// dynamic expressions/statements.
     /// </summary>
-    private IrNode FoldNode(IrNode node)
+    protected override IrNode RewriteNode(IrNode node)
     {
         switch (node)
         {
@@ -61,7 +48,7 @@ internal sealed class ConstFoldPass : IIrPass
 
             case IrOpaqueExpression opaque:
                 {
-                    var children = FoldChildren(opaque.Children, out var childrenChanged);
+                    var children = RewriteChildren(opaque.Children, out var childrenChanged);
                     if (TryFoldExpression(opaque.Ast, children, opaque.Type, opaque.Span) is { } constant)
                         return constant;
                     return childrenChanged
@@ -69,33 +56,9 @@ internal sealed class ConstFoldPass : IIrPass
                         : opaque;
                 }
 
-            case IrOpaqueStatement opaqueStatement:
-                {
-                    var children = FoldChildren(opaqueStatement.Children, out var childrenChanged);
-                    return childrenChanged
-                        ? new IrOpaqueStatement(opaqueStatement.Ast, opaqueStatement.Span, children)
-                        : opaqueStatement;
-                }
-
             default:
-                // Typed nodes (equality, index, member, lowered loop, scope guard, with-item): v1 does
-                // not fold inside them, so leave them untouched to stay conservative and pure.
-                return node;
+                return base.RewriteNode(node);
         }
-    }
-
-    private ImmutableArray<IrNode> FoldChildren(ImmutableArray<IrNode> children, out bool changed)
-    {
-        ImmutableArray<IrNode>.Builder? builder = null;
-        for (int i = 0; i < children.Length; i++)
-        {
-            var folded = FoldNode(children[i]);
-            if (!ReferenceEquals(folded, children[i]))
-                (builder ??= children.ToBuilder())[i] = folded;
-        }
-
-        changed = builder is not null;
-        return builder is null ? children : builder.ToImmutable();
     }
 
     /// <summary>

@@ -32,31 +32,19 @@ namespace Sharpy.Compiler.Lowering.Passes;
 /// syntactic escape rule, so v1 ships only the for-iterator case.
 /// </para>
 /// </remarks>
-internal sealed class StackCollectionsPass : IIrPass
+internal sealed class StackCollectionsPass : IrTreeRewriter, IIrPass
 {
     public string FlagName => "opt_stack_collections";
 
-    public IrModule Rewrite(IrModule module, IrRewriteContext context)
-    {
-        var body = ImmutableArray.CreateBuilder<IrStatement>(module.Body.Length);
-        var changed = false;
-        foreach (var statement in module.Body)
-        {
-            var rewritten = (IrStatement)Rewrite(statement);
-            body.Add(rewritten);
-            changed |= !ReferenceEquals(rewritten, statement);
-        }
-
-        return changed ? module with { Body = body.ToImmutable() } : module;
-    }
-
-    private IrNode Rewrite(IrNode node)
+    /// <summary>
+    /// Converts a <c>for</c>-statement's direct list-literal iterator to a stack array — the one child
+    /// that provably never escapes. The remaining children (target, body, else body) and every other
+    /// node fall through to the shared base walk, so a nested <c>for</c> still gets its own chance.
+    /// </summary>
+    protected override IrNode RewriteNode(IrNode node)
     {
         switch (node)
         {
-            // A for-statement's direct list-literal iterator never escapes: convert exactly that child
-            // to a stack array. The remaining children (target, body, else body) recurse normally so a
-            // nested for still gets its own chance.
             case IrOpaqueStatement { Ast: ForStatement forStatement } forStmt:
                 {
                     var children = RewriteForChildren(forStmt.Children, forStatement, out var childrenChanged);
@@ -65,26 +53,8 @@ internal sealed class StackCollectionsPass : IIrPass
                         : forStmt;
                 }
 
-            case IrOpaqueStatement opaqueStatement:
-                {
-                    var children = RewriteChildren(opaqueStatement.Children, out var childrenChanged);
-                    return childrenChanged
-                        ? new IrOpaqueStatement(opaqueStatement.Ast, opaqueStatement.Span, children)
-                        : opaqueStatement;
-                }
-
-            case IrOpaqueExpression opaque:
-                {
-                    var children = RewriteChildren(opaque.Children, out var childrenChanged);
-                    return childrenChanged
-                        ? new IrOpaqueExpression(opaque.Ast, opaque.Type, opaque.Span, children)
-                        : opaque;
-                }
-
             default:
-                // Typed nodes (equality, index, member, lowered loop, scope guard, stack array): v1 does
-                // not descend into them looking for a nested for-iterator — conservative and rare.
-                return node;
+                return base.RewriteNode(node);
         }
     }
 
@@ -102,23 +72,9 @@ internal sealed class StackCollectionsPass : IIrPass
             }
             else
             {
-                rewritten = Rewrite(children[i]);
+                rewritten = RewriteNode(children[i]);
             }
 
-            if (!ReferenceEquals(rewritten, children[i]))
-                (builder ??= children.ToBuilder())[i] = rewritten;
-        }
-
-        changed = builder is not null;
-        return builder is null ? children : builder.ToImmutable();
-    }
-
-    private ImmutableArray<IrNode> RewriteChildren(ImmutableArray<IrNode> children, out bool changed)
-    {
-        ImmutableArray<IrNode>.Builder? builder = null;
-        for (int i = 0; i < children.Length; i++)
-        {
-            var rewritten = Rewrite(children[i]);
             if (!ReferenceEquals(rewritten, children[i]))
                 (builder ??= children.ToBuilder())[i] = rewritten;
         }
