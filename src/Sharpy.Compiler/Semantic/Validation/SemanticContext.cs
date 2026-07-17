@@ -153,7 +153,7 @@ internal class SemanticContext
             ?? throw new InvalidOperationException("TypeResolver must be a TypeResolverAdapter");
         Logger = services.Logger;
         Diagnostics = services.DiagnosticReporter.Diagnostics;
-        ClrCache = (services.ClrMapper as ClrTypeMapperAdapter)?.UnderlyingCache ?? new ClrMemberCache();
+        ClrCache = services.ClrMemberCache;
         CurrentFilePath = services.CurrentFilePath;
 
         // Propagate configuration from CompilerServices

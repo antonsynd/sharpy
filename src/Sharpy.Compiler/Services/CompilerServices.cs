@@ -30,8 +30,8 @@ public class CompilerServices
     // Symbol services
     public ISymbolLookup SymbolLookup { get; }
 
-    // CLR interop
-    public IClrTypeMapper ClrMapper { get; }
+    // CLR interop: the shared per-compilation reflection cache (read by SemanticContext).
+    internal ClrMemberCache ClrMemberCache { get; }
 
     // Underlying infrastructure (for components that need direct access during migration)
     public SymbolTable SymbolTable { get; }
@@ -68,7 +68,7 @@ public class CompilerServices
         SemanticInfo semanticInfo,
         ITypeResolver typeResolver,
         ISymbolLookup symbolLookup,
-        IClrTypeMapper clrMapper,
+        ClrMemberCache clrMemberCache,
         IDiagnosticReporter diagnosticReporter)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -77,7 +77,7 @@ public class CompilerServices
         SemanticInfo = semanticInfo ?? throw new ArgumentNullException(nameof(semanticInfo));
         TypeResolver = typeResolver ?? throw new ArgumentNullException(nameof(typeResolver));
         SymbolLookup = symbolLookup ?? throw new ArgumentNullException(nameof(symbolLookup));
-        ClrMapper = clrMapper ?? throw new ArgumentNullException(nameof(clrMapper));
+        ClrMemberCache = clrMemberCache ?? throw new ArgumentNullException(nameof(clrMemberCache));
         DiagnosticReporter = diagnosticReporter ?? throw new ArgumentNullException(nameof(diagnosticReporter));
 
         // Apply initial configuration

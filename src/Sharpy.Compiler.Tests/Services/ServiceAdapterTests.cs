@@ -131,62 +131,6 @@ public class ServiceAdapterTests
     }
 
     [Fact]
-    public void ClrTypeMapperAdapter_GetClrType_MapsBuiltins()
-    {
-        // Arrange
-        var clrCache = new ClrMemberCache();
-        var adapter = new ClrTypeMapperAdapter(clrCache);
-
-        // Act & Assert
-        Assert.Equal(typeof(int), adapter.GetClrType(SemanticType.Int));
-        Assert.Equal(typeof(string), adapter.GetClrType(SemanticType.Str));
-        Assert.Equal(typeof(bool), adapter.GetClrType(SemanticType.Bool));
-        Assert.Equal(typeof(double), adapter.GetClrType(SemanticType.Float));
-    }
-
-    [Fact]
-    public void ClrTypeMapperAdapter_GetSemanticType_MapsFromClr()
-    {
-        // Arrange
-        var clrCache = new ClrMemberCache();
-        var adapter = new ClrTypeMapperAdapter(clrCache);
-
-        // Act & Assert
-        Assert.Equal(SemanticType.Int, adapter.GetSemanticType(typeof(int)));
-        Assert.Equal(SemanticType.Str, adapter.GetSemanticType(typeof(string)));
-        Assert.Equal(SemanticType.Bool, adapter.GetSemanticType(typeof(bool)));
-        Assert.Equal(SemanticType.Long, adapter.GetSemanticType(typeof(long)));
-    }
-
-    [Fact]
-    public void ClrTypeMapperAdapter_HasMember_ReturnsCorrectResult()
-    {
-        // Arrange
-        var clrCache = new ClrMemberCache();
-        var adapter = new ClrTypeMapperAdapter(clrCache);
-
-        // Act & Assert
-        Assert.True(adapter.HasMember(typeof(string), "Length")); // Property
-        Assert.True(adapter.HasMember(typeof(string), "ToUpper")); // Method
-        Assert.False(adapter.HasMember(typeof(string), "NonExistentMember"));
-    }
-
-    [Fact]
-    public void ClrTypeMapperAdapter_GetMember_ReturnsPropertyInfo()
-    {
-        // Arrange
-        var clrCache = new ClrMemberCache();
-        var adapter = new ClrTypeMapperAdapter(clrCache);
-
-        // Act
-        var member = adapter.GetMember(typeof(string), "Length");
-
-        // Assert
-        Assert.NotNull(member);
-        Assert.IsAssignableFrom<System.Reflection.PropertyInfo>(member);
-    }
-
-    [Fact]
     public void DiagnosticReporter_ReportError_WithNode()
     {
         // Arrange

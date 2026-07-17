@@ -91,7 +91,6 @@ internal class CompilerServicesBuilder
         // Create adapters
         var typeResolverAdapter = new TypeResolverAdapter(typeResolver);
         var symbolLookupAdapter = new SymbolLookupAdapter(_symbolTable);
-        var clrMapperAdapter = new ClrTypeMapperAdapter(clrCache);
         var diagnosticReporter = new DiagnosticReporter(logger);
 
         return new CompilerServices(
@@ -101,7 +100,7 @@ internal class CompilerServicesBuilder
             _semanticInfo,
             typeResolverAdapter,
             symbolLookupAdapter,
-            clrMapperAdapter,
+            clrCache,
             diagnosticReporter);
     }
 

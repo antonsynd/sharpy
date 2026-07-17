@@ -27,7 +27,6 @@ The services layer provides common operations used throughout compilation:
 ### Interfaces
 - `ITypeResolver.cs` - Type resolution service interface
 - `ISymbolLookup.cs` - Symbol lookup service interface
-- `IClrTypeMapper.cs` - CLR type mapping service interface
 - `IDiagnosticReporter.cs` - Diagnostic reporting service interface
 - `IDependencyQuery.cs` - Dependency graph query interface
 - `IImportQuery.cs` - Import resolution query interface
@@ -36,7 +35,6 @@ The services layer provides common operations used throughout compilation:
 ### Adapters
 - `TypeResolverAdapter.cs` - Adapter wrapping existing TypeResolver
 - `SymbolLookupAdapter.cs` - Adapter wrapping existing SymbolTable
-- `ClrTypeMapperAdapter.cs` - Adapter for CLR type mapping
 - `ImportQueryAdapter.cs` - Adapter for import queries
 - `DiagnosticReporter.cs` - Implementation of diagnostic reporting
 
@@ -122,7 +120,7 @@ CompilerServicesBuilder
                         |
                         +-- ITypeResolver (TypeResolverAdapter)
                         +-- ISymbolLookup (SymbolLookupAdapter)
-                        +-- IClrTypeMapper (ClrTypeMapperAdapter)
+                        +-- ClrMemberCache (direct access to the CLR reflection cache)
                         +-- IDiagnosticReporter (DiagnosticReporter)
                         +-- SymbolTable (direct access for migration)
                         +-- SemanticInfo (direct access for migration)
@@ -131,7 +129,6 @@ CompilerServicesBuilder
 ## Thread Safety
 
 - `DiagnosticBag` uses locking for thread-safe error collection
-- `ClrTypeMapperAdapter` uses `ConcurrentDictionary` for member caching
 - Configuration is immutable after construction
 
 ## Future Considerations

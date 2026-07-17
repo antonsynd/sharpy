@@ -18,7 +18,7 @@ public class CompilerServicesTests
         Assert.NotNull(services);
         Assert.NotNull(services.TypeResolver);
         Assert.NotNull(services.SymbolLookup);
-        Assert.NotNull(services.ClrMapper);
+        Assert.NotNull(services.ClrMemberCache);
         Assert.NotNull(services.DiagnosticReporter);
         Assert.NotNull(services.Logger);
         Assert.NotNull(services.SymbolTable);
@@ -197,7 +197,7 @@ public class CompilerServicesTests
             .Build();
 
         // Assert
-        Assert.NotNull(services.ClrMapper);
+        Assert.NotNull(services.ClrMemberCache);
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public class CompilerServicesTests
         // Assert — all optional components should have default values
         Assert.NotNull(services.Logger);
         Assert.NotNull(services.TypeResolver);
-        Assert.NotNull(services.ClrMapper);
+        Assert.NotNull(services.ClrMemberCache);
         Assert.NotNull(services.DiagnosticReporter);
     }
 
