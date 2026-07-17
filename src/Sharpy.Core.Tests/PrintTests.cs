@@ -4,8 +4,15 @@ using System.IO;
 
 namespace Sharpy.Core.Tests;
 
-public class Print_Tests
+public class Print_Tests : IDisposable
 {
+    private readonly TextWriter _originalOut = Console.Out;
+
+    public void Dispose()
+    {
+        Console.SetOut(_originalOut);
+    }
+
     [Fact]
     public void Print_SingleValue_WritesToStdout()
     {
