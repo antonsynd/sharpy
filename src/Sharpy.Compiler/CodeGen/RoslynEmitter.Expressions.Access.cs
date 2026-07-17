@@ -1260,11 +1260,15 @@ internal partial class RoslynEmitter
         // Apply name mangling to member names:
         // - Dunder methods use DunderMapping
         // - ALL_CAPS names (Python-style constants) use CONSTANT_CASE
-        // - Other names use PascalCase
+        // - Other names use PascalCase, unless a resolved CLR property name was materialized
+        //   (a verbatim CLR member such as socket's lowercase `type`, #1093), which wins.
         var mangledMemberName = DunderMapping.ResolveCSharpName(memberAccess.Member)
             ?? (NameFormDetector.IsConstantCaseName(memberAccess.Member)
                 ? NameMangler.ToConstantCase(memberAccess.Member)
-                : NameCasing.ResolveField(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped));
+                : NameCasing.ResolveField(
+                    memberAccess.Member,
+                    isBacktickEscaped: memberAccess.IsMemberBacktickEscaped,
+                    GetIrResolvedClrMemberName(memberAccess)));
         var member = IdentifierName(mangledMemberName);
 
         ExpressionSyntax result;

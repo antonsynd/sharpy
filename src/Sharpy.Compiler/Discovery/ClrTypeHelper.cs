@@ -17,6 +17,9 @@ internal static class ClrTypeHelper
     // Caches (CLR type, Sharpy member name) -> original CLR method name.
     private static readonly ConcurrentDictionary<(Type, string), string?> _clrMethodNameCache = new();
 
+    // Caches (CLR type, Sharpy member name) -> original CLR property name.
+    private static readonly ConcurrentDictionary<(Type, string), string?> _clrPropertyNameCache = new();
+
     /// <summary>
     /// Resolves the original CLR method name on <paramref name="clrType"/> whose reverse-mangled
     /// Sharpy form equals <paramref name="memberName"/> (e.g. <c>is_os_platform</c> ->
@@ -49,6 +52,47 @@ internal static class ClrTypeHelper
         }
 
         _clrMethodNameCache[(clrType, memberName)] = resolved;
+        return resolved;
+    }
+
+    /// <summary>
+    /// Resolves the original CLR property name on <paramref name="clrType"/> whose reverse-mangled
+    /// Sharpy form equals <paramref name="memberName"/>, mirroring <see cref="ResolveClrMethodName"/>
+    /// for the property/field emission path. This lets a verbatim (backtick-escaped) spy-stdlib
+    /// property such as socket's lowercase <c>type</c> survive to code generation instead of being
+    /// forward-mangled to <c>Type</c> (CS1061, #1093). Indexers (which are never reached by member
+    /// name) are skipped. Returns <c>null</c> when there is no unambiguous match. Reflection lives
+    /// here (Discovery), never in the emitter (#974); the TypeChecker materializes the result into
+    /// <c>SemanticInfo</c> for the emitter to read.
+    /// </summary>
+    internal static string? ResolveClrPropertyName(Type clrType, string memberName)
+    {
+        if (_clrPropertyNameCache.TryGetValue((clrType, memberName), out var cached))
+            return cached;
+
+        string? resolved = null;
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance;
+        foreach (var prop in clrType.GetProperties(flags))
+        {
+            // Indexers carry index parameters and are never accessed by member name.
+            if (prop.GetIndexParameters().Length > 0)
+                continue;
+
+            // A CLR name already written verbatim should be left untouched; only match when the
+            // Sharpy (reverse-mangled) form equals the written name.
+            if (NameMangler.ToSharpyName(prop.Name, ReverseNameContext.Property) == memberName)
+            {
+                if (resolved != null && resolved != prop.Name)
+                {
+                    // Ambiguous (multiple distinct CLR names map to this Sharpy name) — bail out.
+                    resolved = null;
+                    break;
+                }
+                resolved = prop.Name;
+            }
+        }
+
+        _clrPropertyNameCache[(clrType, memberName)] = resolved;
         return resolved;
     }
 

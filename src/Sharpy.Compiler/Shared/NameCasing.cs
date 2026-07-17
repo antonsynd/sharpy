@@ -43,6 +43,21 @@ internal static class NameCasing
         return NameMangler.ToPascalCase(name);
     }
 
+    /// <summary>
+    /// Resolves a field/property name, preferring the original CLR member name when available.
+    /// CLR names are emitted verbatim so a lowercase or acronym-cased property survives (e.g.,
+    /// socket's <c>type</c> instead of forward-mangling to <c>Type</c>, #1093). Backtick escaping
+    /// still takes precedence.
+    /// </summary>
+    public static string ResolveField(string name, bool isBacktickEscaped, string? clrName)
+    {
+        if (isBacktickEscaped)
+            return name;
+        if (clrName is not null)
+            return clrName;
+        return NameMangler.ToPascalCase(name);
+    }
+
     public static string ResolveVariable(string name, bool isBacktickEscaped)
     {
         if (isBacktickEscaped)

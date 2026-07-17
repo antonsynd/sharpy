@@ -49,6 +49,3 @@ struct::property::StructError.target_site::property      # #1091
 sqlite3::type::Row::annotate         # #1092
 sqlite3::property::Row.count::property   # #1092
 sqlite3::method::Row.keys::method     # #1092
-
-# ---- #1093: socket.Socket.type property mangling asymmetry (CS1061) ----
-socket::property::Socket.type::property   # #1093 forward mangle `type`->`Type` != real CLR member

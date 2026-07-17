@@ -332,4 +332,47 @@ def main():
         Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
         Assert.Equal("ok\n", result.StandardOutput);
     }
+
+    [Fact]
+    public void ClrLowercaseProperty_SocketType_EmitsVerbatimClrName()
+    {
+        // socket.Socket exposes a backtick-escaped, lowercase `type` property (spy/socket_module.spy).
+        // Forward name mangling would produce `.Type` (CS1061); the resolved-CLR-member-name path
+        // (#1093) must emit `.type` verbatim so the access binds to the real CLR member.
+        var source = @"
+import socket
+
+def read_type(s: socket.Socket) -> int:
+    return s.type
+
+def main():
+    pass
+";
+        var result = CompileAndExecute(source);
+        Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
+        Assert.NotNull(result.GeneratedCSharp);
+        Assert.Contains(".type", result.GeneratedCSharp);
+        Assert.DoesNotContain(".Type", result.GeneratedCSharp);
+    }
+
+    [Fact]
+    public void ClrLowercaseProperty_UserSideBacktickEscaped_StillEmitsVerbatim()
+    {
+        // A user who backtick-escapes the member (`s.`type``) already bypasses mangling; verify the
+        // resolved-CLR-member-name path does not double-handle it — output is still `.type` and clean.
+        var source = @"
+import socket
+
+def read_type(s: socket.Socket) -> int:
+    return s.`type`
+
+def main():
+    pass
+";
+        var result = CompileAndExecute(source);
+        Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
+        Assert.NotNull(result.GeneratedCSharp);
+        Assert.Contains(".type", result.GeneratedCSharp);
+        Assert.DoesNotContain(".Type", result.GeneratedCSharp);
+    }
 }

@@ -1023,7 +1023,11 @@ internal partial class TypeChecker
         if (clrType == null)
             return;
 
-        var clrName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
+        // Resolve a method name first (preserves the #705/#974 acronym-casing behavior), falling
+        // back to a property name so a verbatim CLR property (e.g. socket's lowercase `type`) is
+        // emitted unmangled instead of forward-mangled to `Type` (CS1061, #1093).
+        var clrName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member)
+            ?? Discovery.ClrTypeHelper.ResolveClrPropertyName(clrType, memberAccess.Member);
         if (clrName != null)
             _semanticInfo.SetResolvedClrMemberName(memberAccess, clrName);
     }
