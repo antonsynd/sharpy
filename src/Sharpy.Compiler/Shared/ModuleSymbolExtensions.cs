@@ -34,6 +34,28 @@ internal static class ModuleSymbolExtensions
     }
 
     /// <summary>
+    /// Looks up a type in a module's types-only export lookup, applying a PascalCase fallback
+    /// for .NET modules (mirrors <see cref="TryGetExport"/>). This is consulted before
+    /// <see cref="ModuleSymbol.Exports"/> so a value-position export sharing a name with a type
+    /// (e.g. <c>sqlite3.Row</c>'s <c>row_factory</c> field) cannot shadow the type (#1092).
+    /// </summary>
+    public static bool TryGetExportedType(this ModuleSymbol moduleSymbol, string typeName, out TypeSymbol typeSymbol)
+    {
+        if (moduleSymbol.ExportedTypes.TryGetValue(typeName, out typeSymbol!))
+            return true;
+
+        if (moduleSymbol.IsNetModule)
+        {
+            var pascalName = NameMangler.ToPascalCase(typeName);
+            if (moduleSymbol.ExportedTypes.TryGetValue(pascalName, out typeSymbol!))
+                return true;
+        }
+
+        typeSymbol = default!;
+        return false;
+    }
+
+    /// <summary>
     /// Resolves a module-qualified type by walking <paramref name="parts"/> from
     /// <paramref name="startIndex"/> through intermediate module exports and resolving the final
     /// segment as a <see cref="TypeSymbol"/>.
@@ -60,7 +82,14 @@ internal static class ModuleSymbolExtensions
             moduleSymbol = nestedModule;
         }
 
-        // The final part must resolve to an exported type.
+        // The final part must resolve to an exported type. Consult the types-only lookup first
+        // so a value-position export sharing the name (e.g. sqlite3.Row's row_factory field)
+        // does not shadow the type in annotation position (#1092), then fall back to Exports.
+        if (moduleSymbol.TryGetExportedType(parts[^1], out var exportedType))
+        {
+            return exportedType;
+        }
+
         if (moduleSymbol.TryGetExport(parts[^1], out var exportedSymbol)
             && exportedSymbol is TypeSymbol typeSymbol)
         {

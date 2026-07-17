@@ -459,6 +459,15 @@ public record ModuleSymbol : Symbol
 {
     public string FilePath { get; init; } = string.Empty;
     public Dictionary<string, Symbol> Exports { get; init; } = new();
+
+    /// <summary>
+    /// Exported types keyed by name, mirrored from <see cref="ModuleInfo.ExportedTypes"/> at
+    /// each construction site. Kept separate from <see cref="Exports"/> so a value-position
+    /// export that shares a name with a type does not shadow the type in annotation position
+    /// (e.g. <c>sqlite3.Row</c> — both the <c>Row</c> type and the <c>row_factory</c> value).
+    /// <c>ResolveQualifiedType</c> consults this first; value lookups keep using <see cref="Exports"/> (#1092).
+    /// </summary>
+    public Dictionary<string, TypeSymbol> ExportedTypes { get; init; } = new();
     public Dictionary<string, List<FunctionSymbol>> FunctionOverloads { get; init; } = new();
     public bool IsNetModule { get; init; } = false;
 

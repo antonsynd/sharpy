@@ -33,6 +33,14 @@ def _eq_int(value: object, expected: long) -> bool:
     return operator.eq(value, expected)
 
 
+def _row_key_count(r: sqlite3.Row) -> int:
+    # Regression (#1092): `sqlite3.Row` must resolve as an annotatable type even
+    # though the `Row` export name is also bound to the row_factory *value* used
+    # throughout this file (conn.row_factory = sqlite3.Row). This exercises the
+    # type position (parameter annotation) plus a member access on it (keys()).
+    return len(r.keys())
+
+
 def _make_row() -> Sqlite3Row:
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
@@ -253,6 +261,18 @@ def test_row_factory_iterator_returns_row_instances():
             case _:
                 assert False
     conn.close()
+
+
+# --- Type annotation (#1092) ---
+
+
+@test
+def test_row_type_annotation_resolves_and_member_access_works():
+    # A parameter annotated `sqlite3.Row` accepts a row obtained via the factory,
+    # and keys() is reachable through that annotation. Guards the value/type
+    # coexistence: the same `sqlite3.Row` name is the row_factory value above.
+    row = _make_row()
+    assert _row_key_count(row) == 3
 
 
 # --- Single column row ---

@@ -67,6 +67,7 @@ internal partial class ImportResolver
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
+                            ExportedTypes = new Dictionary<string, TypeSymbol>(moduleInfo.ExportedTypes),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
@@ -91,6 +92,7 @@ internal partial class ImportResolver
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
                             Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
+                            ExportedTypes = new Dictionary<string, TypeSymbol>(moduleInfo.ExportedTypes),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
@@ -876,6 +878,9 @@ internal partial class ImportResolver
         foreach (var type in types)
         {
             moduleInfo.ExportedSymbols[type.Name] = type;
+            // Also record in the types-only lookup so a same-named field (added below) can't
+            // shadow the type in annotation position — ResolveQualifiedType reads this (#1092).
+            moduleInfo.ExportedTypes[type.Name] = type;
         }
 
         foreach (var (fieldName, fieldType, isConst) in fields)
@@ -922,6 +927,7 @@ internal partial class ImportResolver
         foreach (var typeSymbol in types)
         {
             moduleInfo.ExportedSymbols[typeSymbol.Name] = typeSymbol;
+            moduleInfo.ExportedTypes[typeSymbol.Name] = typeSymbol;
         }
 
         if (_moduleRegistry.IsModuleLoaded(moduleName))

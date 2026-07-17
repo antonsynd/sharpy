@@ -44,8 +44,3 @@ struct::property::StructError.inner_exception::property   # #1091
 struct::property::StructError.data::property             # #1091
 struct::property::StructError.message::property           # #1091
 struct::property::StructError.target_site::property      # #1091
-
-# ---- #1092: sqlite3.Row is not resolvable from user code (SPY0202) ----
-sqlite3::type::Row::annotate         # #1092
-sqlite3::property::Row.count::property   # #1092
-sqlite3::method::Row.keys::method     # #1092
