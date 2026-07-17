@@ -288,3 +288,14 @@ def test_popitem():
     pair: tuple[str, int] = d.popitem()
     assert pair == ("a", 1)
     assert len(d) == 0
+
+@test
+def test_popitem_lifo_order():
+    # popitem() is LIFO in CPython: successive calls pop the most recently inserted
+    # pair first. Build a fresh dict (no interleaved removals) to keep enumeration
+    # order aligned with insertion order (#1098).
+    d: dict[str, int] = {"a": 1, "b": 2, "c": 3}
+    assert d.popitem() == ("c", 3)
+    assert d.popitem() == ("b", 2)
+    assert d.popitem() == ("a", 1)
+    assert len(d) == 0

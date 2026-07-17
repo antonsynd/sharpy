@@ -73,13 +73,13 @@ def test_default_dict_values_enumeration_includes_all_values():
 # --- PopItem Default Behavior ---
 
 @test
-def test_default_dict_pop_item_default_is_first_not_last():
+def test_default_dict_pop_item_default_is_last_not_first():
     dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
     dd["a"] = 1
     dd["b"] = 2
-    # Default last=false means FIFO (first inserted)
+    # Default last=true means LIFO (last inserted), matching CPython
     pair: tuple[str, int] = dd.pop_item()
-    assert pair == ("a", 1)
+    assert pair == ("b", 2)
 
 # --- Update from DefaultDict ---
 

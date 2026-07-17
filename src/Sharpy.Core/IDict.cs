@@ -71,7 +71,7 @@ namespace Sharpy
         /// <summary>
         /// Remove and return a (key, value) pair.
         /// </summary>
-        (object?, object?) PopItem(bool last = false);
+        (object?, object?) PopItem(bool last = true);
 
         /// <summary>
         /// If <paramref name="key"/> is present, return its value.

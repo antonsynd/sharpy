@@ -547,11 +547,11 @@ namespace Sharpy
         /// pairs are returned in LIFO order; otherwise in FIFO order.
         /// </summary>
         /// <exception cref="KeyError">Thrown if the defaultdict is empty.</exception>
-        public (TKey, TValue) PopItem(bool last = false)
+        public (TKey, TValue) PopItem(bool last = true)
         {
             if (_dict.Count == 0)
             {
-                throw new KeyError("dictionary is empty");
+                throw new KeyError("popitem(): dictionary is empty");
             }
 
             var pair = last ? _dict.Last() : _dict.First();

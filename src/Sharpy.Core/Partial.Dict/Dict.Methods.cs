@@ -219,8 +219,13 @@ namespace Sharpy
         /// d.popitem()    # ("b", 2)
         /// </code>
         /// </example>
-        public (K, V) PopItem(bool last = false)
+        public (K, V) PopItem(bool last = true)
         {
+            if (_dict.Count == 0)
+            {
+                throw new KeyError("popitem(): dictionary is empty");
+            }
+
             var pair = last ? _dict.Last() : _dict.First();
             _dict.Remove(pair.Key);
 

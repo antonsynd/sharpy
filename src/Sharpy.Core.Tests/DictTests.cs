@@ -347,7 +347,7 @@ public class Dict_Tests
     }
 
     [Fact]
-    public void PopItem_RemovesAndReturnsFirstItem()
+    public void PopItem_RemovesAndReturnsLastItem()
     {
         // Arrange
         var dict = new Dict<string, int>();
@@ -355,26 +355,30 @@ public class Dict_Tests
         dict["b"] = 2;
         dict["c"] = 3;
 
-        // Act
-        var (key, value) = dict.PopItem();
+        // Act - popitem() is LIFO by default, matching CPython
+        var (key1, value1) = dict.PopItem();
+        var (key2, value2) = dict.PopItem();
 
         // Assert
-        key.Should().Be("a"); // First inserted (last=false is default)
-        value.Should().Be(1);
-        dict.Count.Should().Be(2);
-        dict.ContainsKey("a").Should().BeFalse();
+        key1.Should().Be("c"); // Last inserted (last=true is default)
+        value1.Should().Be(3);
+        key2.Should().Be("b"); // Next-most-recently inserted
+        value2.Should().Be(2);
+        dict.Count.Should().Be(1);
+        dict.ContainsKey("c").Should().BeFalse();
+        dict.ContainsKey("b").Should().BeFalse();
     }
 
     [Fact]
-    public void PopItem_ThrowsInvalidOperationOnEmptyDict()
+    public void PopItem_ThrowsKeyErrorOnEmptyDict()
     {
         // Arrange
         var dict = new Dict<string, int>();
 
-        // Act & Assert
+        // Act & Assert - matches CPython's KeyError message
         dict.Invoking(d => d.PopItem())
-            .Should().Throw<InvalidOperationException>()
-            .WithMessage("*no elements*");
+            .Should().Throw<KeyError>()
+            .WithMessage("*popitem(): dictionary is empty*");
     }
 
     [Fact]

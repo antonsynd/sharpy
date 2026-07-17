@@ -768,8 +768,8 @@ namespace Sharpy.Stdlib.Tests.Spy
                 dd["a"] = 1;
 #line (389, 5) - (389, 16) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["b"] = 2;
-#line (390, 5) - (390, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                global::System.ValueTuple<string, int> pair = dd.PopItem();
+#line (390, 5) - (390, 53) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+                global::System.ValueTuple<string, int> pair = dd.PopItem(last: false);
 #line (391, 5) - (391, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(("a", 1), pair);
 #line (392, 5) - (392, 26) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"

@@ -654,6 +654,35 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (290, 5) - (290, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(d));
             }
+
+            [Xunit.FactAttribute]
+            public void TestPopitemLifoOrder()
+            {
+#line (297, 5) - (297, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
+                {
+                    {
+                        "a",
+                        1
+                    },
+                    {
+                        "b",
+                        2
+                    },
+                    {
+                        "c",
+                        3
+                    }
+                };
+#line (298, 5) - (298, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(("c", 3), d.PopItem());
+#line (299, 5) - (299, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(("b", 2), d.PopItem());
+#line (300, 5) - (300, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(("a", 1), d.PopItem());
+#line (301, 5) - (301, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(d));
+            }
         }
     }
 }

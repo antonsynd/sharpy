@@ -387,7 +387,7 @@ def test_default_dict_pop_item_fifo_returns_first_pair():
     dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
     dd["a"] = 1
     dd["b"] = 2
-    pair: tuple[str, int] = dd.pop_item()
+    pair: tuple[str, int] = dd.pop_item(last=False)
     assert pair == ("a", 1)
     assert dd.count == 1
 

@@ -139,7 +139,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             }
 
             [Xunit.FactAttribute]
-            public void TestDefaultDictPopItemDefaultIsFirstNotLast()
+            public void TestDefaultDictPopItemDefaultIsLastNotFirst()
             {
 #line (77, 5) - (77, 90) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
                 global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
@@ -150,7 +150,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (81, 5) - (81, 43) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
                 global::System.ValueTuple<string, int> pair = dd.PopItem();
 #line (82, 5) - (82, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
-                Xunit.Assert.Equal(("a", 1), pair);
+                Xunit.Assert.Equal(("b", 2), pair);
             }
 
             [Xunit.FactAttribute]
