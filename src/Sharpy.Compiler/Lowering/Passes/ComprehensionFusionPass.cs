@@ -36,27 +36,27 @@ internal sealed class ComprehensionFusionPass : IrTreeRewriter, IIrPass
     /// Marks a qualifying multi-<c>for</c> comprehension for product preallocation. An
     /// <see cref="IrLoweredLoop"/> recurses into its children and, when it qualifies, is rebuilt with
     /// <see cref="IrLoweredLoop.ProductPreallocation"/> set; every other node — the opaque recursion and
-    /// the typed-node fallthrough — is the shared base walk. The qualification consults
-    /// <see cref="IrTreeRewriter.Context"/>'s <c>SemanticInfo</c> rather than threading it through the walk.
+    /// the typed-node fallthrough — is the shared base walk. The qualification consults the threaded
+    /// <paramref name="context"/>'s <c>SemanticInfo</c>, so the pass holds no state.
     /// </summary>
-    protected override IrNode RewriteNode(IrNode node)
+    protected override IrNode RewriteNode(IrNode node, IrRewriteContext context)
     {
         switch (node)
         {
             case IrLoweredLoop loop:
                 {
-                    var children = RewriteChildren(loop.Children, out var childrenChanged);
+                    var children = RewriteChildren(loop.Children, context, out var childrenChanged);
                     var rebuilt = childrenChanged
                         ? new IrLoweredLoop(loop.CollectionKind, loop.Clauses, loop.SoleForClause, loop.Capacity,
                             loop.ElementIsSpread, loop.Comprehension, loop.Type, loop.Span, children)
                         : loop;
-                    return QualifiesForProductPreallocation(loop, Context)
+                    return QualifiesForProductPreallocation(loop, context)
                         ? rebuilt with { ProductPreallocation = true }
                         : rebuilt;
                 }
 
             default:
-                return base.RewriteNode(node);
+                return base.RewriteNode(node, context);
         }
     }
 

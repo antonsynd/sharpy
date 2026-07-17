@@ -41,24 +41,24 @@ internal sealed class StackCollectionsPass : IrTreeRewriter, IIrPass
     /// that provably never escapes. The remaining children (target, body, else body) and every other
     /// node fall through to the shared base walk, so a nested <c>for</c> still gets its own chance.
     /// </summary>
-    protected override IrNode RewriteNode(IrNode node)
+    protected override IrNode RewriteNode(IrNode node, IrRewriteContext context)
     {
         switch (node)
         {
             case IrOpaqueStatement { Ast: ForStatement forStatement } forStmt:
                 {
-                    var children = RewriteForChildren(forStmt.Children, forStatement, out var childrenChanged);
+                    var children = RewriteForChildren(forStmt.Children, forStatement, context, out var childrenChanged);
                     return childrenChanged
                         ? new IrOpaqueStatement(forStmt.Ast, forStmt.Span, children)
                         : forStmt;
                 }
 
             default:
-                return base.RewriteNode(node);
+                return base.RewriteNode(node, context);
         }
     }
 
-    private ImmutableArray<IrNode> RewriteForChildren(ImmutableArray<IrNode> children, ForStatement forStatement, out bool changed)
+    private ImmutableArray<IrNode> RewriteForChildren(ImmutableArray<IrNode> children, ForStatement forStatement, IrRewriteContext context, out bool changed)
     {
         ImmutableArray<IrNode>.Builder? builder = null;
         for (int i = 0; i < children.Length; i++)
@@ -72,7 +72,7 @@ internal sealed class StackCollectionsPass : IrTreeRewriter, IIrPass
             }
             else
             {
-                rewritten = RewriteNode(children[i]);
+                rewritten = RewriteNode(children[i], context);
             }
 
             if (!ReferenceEquals(rewritten, children[i]))

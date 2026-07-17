@@ -39,7 +39,7 @@ internal sealed class ConstFoldPass : IrTreeRewriter, IIrPass
     /// typed-node fallthrough — is the base walk, which still reduces nested constants inside otherwise
     /// dynamic expressions/statements.
     /// </summary>
-    protected override IrNode RewriteNode(IrNode node)
+    protected override IrNode RewriteNode(IrNode node, IrRewriteContext context)
     {
         switch (node)
         {
@@ -48,7 +48,7 @@ internal sealed class ConstFoldPass : IrTreeRewriter, IIrPass
 
             case IrOpaqueExpression opaque:
                 {
-                    var children = RewriteChildren(opaque.Children, out var childrenChanged);
+                    var children = RewriteChildren(opaque.Children, context, out var childrenChanged);
                     if (TryFoldExpression(opaque.Ast, children, opaque.Type, opaque.Span) is { } constant)
                         return constant;
                     return childrenChanged
@@ -57,7 +57,7 @@ internal sealed class ConstFoldPass : IrTreeRewriter, IIrPass
                 }
 
             default:
-                return base.RewriteNode(node);
+                return base.RewriteNode(node, context);
         }
     }
 
