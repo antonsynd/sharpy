@@ -221,4 +221,41 @@ public class DiagnosticProvenanceTests
         typeError.Should().NotBeNull(
             "the type error must retain its TypeChecking phase stamp through project-mode bag merging");
     }
+
+    // ----- Crash-context high-water mark advances into type checking (#1083) -----
+
+    [Fact]
+    public void Analyze_advances_last_entered_phase_to_type_checking()
+    {
+        // #1083: the last-chance ICE handler reads DiagnosticBag.LastEnteredPhase to attribute a
+        // crash to the phase the compiler had reached. Until a TypeChecking scope opens on the
+        // *main* bag, that mark is still NameResolution/ImportResolution — so a crash inside
+        // CheckModule was mis-attributed. A completed analysis must leave the main bag's mark at
+        // TypeChecking (the scope opened around the type-check call, reaffirmed at merge-back).
+        var compiler = new Compiler(new CompilerOptions { OutputType = "library" });
+
+        var result = compiler.Analyze("def main():\n    x: int = 1\n    print(x)", "<source>");
+
+        result.Diagnostics.HasErrors.Should().BeFalse();
+        result.Diagnostics.LastEnteredPhase.Should().Be(CompilerPhase.TypeChecking);
+    }
+
+    [Fact]
+    public void Project_advances_last_entered_phase_into_type_checking_or_later()
+    {
+        // Same invariant on the project driver: the per-file type-check scope advances the shared
+        // project bag's high-water mark past import/name resolution, so a crash in the first file's
+        // type check reports TypeChecking rather than the stale earlier mark. A full compile runs on
+        // to codegen, so the mark ends at TypeChecking or a later phase (never a pre-type-check one).
+        using var helper = new ProjectCompilationHelper(_output);
+        helper.WithRootNamespace("Test")
+            .AddSourceFile("main.spy", "def main():\n    x: int = 1\n    print(x)");
+
+        var result = helper.Compile();
+
+        var phase = result.Diagnostics.LastEnteredPhase;
+        phase.Should().NotBeNull();
+        phase.Should().NotBe(CompilerPhase.Unknown);
+        ((int)phase!.Value).Should().BeGreaterThanOrEqualTo((int)CompilerPhase.TypeChecking);
+    }
 }

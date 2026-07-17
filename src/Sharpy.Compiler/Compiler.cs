@@ -394,6 +394,12 @@ public class Compiler
             // Reject uses of constructs gated behind experimental features that are not enabled,
             // before type resolution runs. No-op until a real gated construct is registered.
             pipeline.CheckFeatureGates(module, filePath, fileFeatures, diagnostics);
+            // Advance the main bag's phase high-water mark to TypeChecking for the whole type-check
+            // window. The ICE handler reads diagnostics.LastEnteredPhase, and until this scope opens
+            // the mark is still NameResolution/ImportResolution — so a crash inside CheckModule would
+            // otherwise be mis-attributed. The merge-back scopes below only open after TypeCheck
+            // returns, leaving the call itself uncovered (#1083).
+            using var typeCheckPhaseScope = diagnostics.BeginPhaseScope(CompilerPhase.TypeChecking);
             var typeCheckResult = pipeline.TypeCheck(
                 module, filePath, isEntryPoint, _options.MaxErrors, diagnostics,
                 computeCodeGenInfo: true, cancellationToken: cancellationToken,

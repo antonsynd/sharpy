@@ -672,6 +672,12 @@ internal partial class ProjectCompiler
                     unit.Diagnostics.Merge(gateDiagnostics);
                     _diagnostics.Merge(gateDiagnostics);
                 }
+                // Advance the project bag's phase high-water mark to TypeChecking for the whole
+                // type-check window. The ICE handler reads _diagnostics.LastEnteredPhase; before
+                // the first MergeWithPhase runs (below) the mark is still name/import resolution,
+                // so a crash in the first file's type check would otherwise be mis-attributed
+                // (#1083).
+                using var typeCheckPhaseScope = _diagnostics.BeginPhaseScope(CompilerPhase.TypeChecking);
                 var typeCheckResult = compilationPipeline.TypeCheck(
                     unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
                     computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
