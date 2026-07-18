@@ -1785,6 +1785,18 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Builds the parser-shaped type <c>System.Collections.Generic.List&lt;System.Exception&gt;</c> used
+    /// by except* lowering. <c>GenericName(Identifier("System.Collections.Generic.List"))</c> packs the
+    /// dotted name into a single identifier token that prints correctly but fails to bind (CS1070)
+    /// when the emitter tree is handed straight to <c>CSharpSyntaxTree.Create</c> (#1095). Building the
+    /// qualified spine via <see cref="TypeSyntaxMapper.QualifiedGenericName(string, TypeSyntax[])"/>
+    /// keeps the printed text identical, so snapshots stay byte-identical.
+    /// </summary>
+    private static NameSyntax SystemExceptionListType() =>
+        TypeSyntaxMapper.QualifiedGenericName(
+            "System.Collections.Generic.List", MakeGlobalQualifiedName("System", "Exception"));
+
+    /// <summary>
     /// Generate catch clauses for except* handlers (PEP 654).
     /// All except* handlers are combined into a single catch(AggregateException) block
     /// that filters inner exceptions by type, dispatches to matching handler bodies,
@@ -1801,17 +1813,11 @@ internal partial class RoslynEmitter
 
         // var __allMatched_N = new System.Collections.Generic.List<System.Exception>();
         catchBodyStatements.Add(LocalDeclarationStatement(
-            VariableDeclaration(
-                GenericName(Identifier("System.Collections.Generic.List"))
-                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
-                        MakeGlobalQualifiedName("System", "Exception")))))
+            VariableDeclaration(SystemExceptionListType())
             .WithVariables(SingletonSeparatedList(
                 VariableDeclarator(EscapedIdentifier(allMatchedVar))
                     .WithInitializer(EqualsValueClause(
-                        ObjectCreationExpression(
-                            GenericName(Identifier("System.Collections.Generic.List"))
-                                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
-                                    MakeGlobalQualifiedName("System", "Exception")))))
+                        ObjectCreationExpression(SystemExceptionListType())
                         .WithArgumentList(ArgumentList())))))));
 
         foreach (var handler in handlers)
