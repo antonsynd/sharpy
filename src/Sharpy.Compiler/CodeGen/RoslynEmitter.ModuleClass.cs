@@ -980,9 +980,8 @@ internal partial class RoslynEmitter
                 .OrderBy(f => f.SharpyName, System.StringComparer.Ordinal))
             {
                 baseTypes.Add(SimpleBaseType(
-                    GenericName(Identifier("Xunit.IClassFixture"))
-                        .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
-                            IdentifierName(fixture.ClassName))))));
+                    TypeSyntaxMapper.QualifiedGenericName(
+                        "Xunit.IClassFixture", IdentifierName(fixture.ClassName))));
 
                 // private readonly XFixture _xFixture;
                 var fieldDecl = FieldDeclaration(
