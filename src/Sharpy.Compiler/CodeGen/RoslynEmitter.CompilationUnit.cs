@@ -105,7 +105,7 @@ internal partial class RoslynEmitter
             if (!alreadyPresent)
             {
                 usingDirectives.Add(
-                    UsingDirective(ParseName(fqn))
+                    UsingDirective(ParseQualifiedName(fqn))
                         .WithStaticKeyword(Token(SyntaxKind.StaticKeyword)));
             }
         }
@@ -215,10 +215,10 @@ internal partial class RoslynEmitter
         // With project namespace, use it directly
         if (!string.IsNullOrEmpty(_context.ProjectNamespace))
         {
-            return ParseName(_context.ProjectNamespace);
+            return ParseQualifiedName(_context.ProjectNamespace);
         }
 
-        return ParseName("SharpyGenerated");
+        return ParseQualifiedName("SharpyGenerated");
     }
 
     /// <summary>
@@ -266,10 +266,10 @@ internal partial class RoslynEmitter
         var usings = new List<UsingDirectiveSyntax>();
 
         // Add default System usings
-        usings.Add(UsingDirective(ParseName("System")));
-        usings.Add(UsingDirective(ParseName("System.Collections.Generic")));
-        usings.Add(UsingDirective(ParseName("System.Linq")));
-        usings.Add(UsingDirective(ParseName("System.Threading.Tasks")));
+        usings.Add(UsingDirective(ParseQualifiedName("System")));
+        usings.Add(UsingDirective(ParseQualifiedName("System.Collections.Generic")));
+        usings.Add(UsingDirective(ParseQualifiedName("System.Linq")));
+        usings.Add(UsingDirective(ParseQualifiedName("System.Threading.Tasks")));
 
         // Add Sharpy runtime usings (use global:: to avoid conflicts when output namespace contains "Sharpy")
         usings.Add(UsingDirective(MakeGlobalQualifiedName("Sharpy")));
@@ -281,7 +281,7 @@ internal partial class RoslynEmitter
         if (!string.IsNullOrEmpty(_context.ProjectNamespace) &&
             _context.ProjectNamespace != "Sharpy")
         {
-            usings.Add(UsingDirective(ParseName(_context.ProjectNamespace)));
+            usings.Add(UsingDirective(ParseQualifiedName(_context.ProjectNamespace)));
         }
 
         // Process import statements
@@ -300,7 +300,7 @@ internal partial class RoslynEmitter
         // Add `using Xunit;` for files containing any @test-decorated functions or methods.
         if (HasTestDecoratedMembers(module))
         {
-            usings.Add(UsingDirective(ParseName("Xunit")));
+            usings.Add(UsingDirective(ParseQualifiedName("Xunit")));
         }
 
         // Deduplicate using directives by their normalized string representation
@@ -336,7 +336,7 @@ internal partial class RoslynEmitter
                     // import system.io as io -> using io = System.IO;
                     yield return UsingDirective(
                         NameEquals(alias.AsName),
-                        ParseName(namespaceName));
+                        ParseQualifiedName(namespaceName));
                 }
                 else if (IsStdlibModule(alias.Name))
                 {
@@ -370,7 +370,7 @@ internal partial class RoslynEmitter
 
                     yield return UsingDirective(
                         NameEquals(alias.AsName),
-                        ParseName(fullModuleClass));
+                        ParseQualifiedName(fullModuleClass));
                 }
             }
             else
@@ -378,7 +378,7 @@ internal partial class RoslynEmitter
                 if (isNetFramework)
                 {
                     // import system.io -> using System.IO;
-                    yield return UsingDirective(ParseName(namespaceName));
+                    yield return UsingDirective(ParseQualifiedName(namespaceName));
                 }
                 else if (IsStdlibModule(alias.Name))
                 {
@@ -417,7 +417,7 @@ internal partial class RoslynEmitter
 
                     yield return UsingDirective(
                         NameEquals(sanitizedAlias),
-                        ParseName(fullModuleClass));
+                        ParseQualifiedName(fullModuleClass));
                 }
             }
         }
@@ -443,7 +443,7 @@ internal partial class RoslynEmitter
             if (fromImport.ImportAll || fromImport.Names.Length == 0)
             {
                 // from system.io import * -> using System.IO; (import everything)
-                yield return UsingDirective(ParseName(namespaceName));
+                yield return UsingDirective(ParseQualifiedName(namespaceName));
             }
             else if (string.IsNullOrEmpty(_context.ProjectNamespace))
             {
@@ -522,7 +522,7 @@ internal partial class RoslynEmitter
                 fullModuleClass = moduleNamespacePath;
             }
 
-            yield return UsingDirective(ParseName(fullModuleClass))
+            yield return UsingDirective(ParseQualifiedName(fullModuleClass))
                 .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
 
             // For imported types that are re-exported from a different module,
@@ -548,7 +548,7 @@ internal partial class RoslynEmitter
                         {
                             fullDefiningModuleClass = definingModulePath;
                         }
-                        yield return UsingDirective(ParseName(fullDefiningModuleClass))
+                        yield return UsingDirective(ParseQualifiedName(fullDefiningModuleClass))
                             .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
                     }
                 }

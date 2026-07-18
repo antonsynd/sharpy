@@ -445,7 +445,7 @@ internal partial class RoslynEmitter
         var classDecl = ClassDeclaration(info.ClassName)
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
             .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
-                SimpleBaseType(ParseName("Xunit.IAsyncLifetime")))))
+                SimpleBaseType(ParseQualifiedName("Xunit.IAsyncLifetime")))))
             .WithMembers(List(members));
 
         if (!string.IsNullOrEmpty(func.DocString))

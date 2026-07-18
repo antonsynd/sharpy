@@ -278,7 +278,7 @@ internal partial class RoslynEmitter
             var narrowedType = _narrowing.GetIsInstanceNarrowedType(name.Name)!;
             expr = ParenthesizedExpression(
                 CastExpression(
-                    ParseTypeName(narrowedType),
+                    ParseQualifiedTypeName(narrowedType),
                     expr));
         }
 
@@ -382,7 +382,7 @@ internal partial class RoslynEmitter
                     SyntaxKind.ArrayInitializerExpression,
                     SeparatedList<ExpressionSyntax>(byteValues)));
 
-        return ObjectCreationExpression(ParseTypeName(CSharpTypeNames.SharpyBytes))
+        return ObjectCreationExpression(ParseQualifiedTypeName(CSharpTypeNames.SharpyBytes))
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(byteArrayInit))));
     }
 

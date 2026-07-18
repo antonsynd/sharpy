@@ -614,7 +614,7 @@ internal partial class RoslynEmitter
             {
                 return MakeGlobalQualifiedName("Sharpy", "Builtins", NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped));
             }
-            return ParseName(NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped));
+            return ParseQualifiedName(NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped));
         }
 
         // For member access and other expressions, use standard expression generation

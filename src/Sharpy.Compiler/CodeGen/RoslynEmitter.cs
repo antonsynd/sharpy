@@ -624,8 +624,8 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// </summary>
     internal static NameSyntax ParseQualifiedName(string name) =>
         name.StartsWith("global::", StringComparison.Ordinal)
-            ? Globalize((NameSyntax)ParseName(name["global::".Length..]))
-            : ParseName(name);
+            ? Globalize((NameSyntax)ParseName(name["global::".Length..])) // conformance:allow-raw-parse — sanctioned wrapper
+            : ParseName(name); // conformance:allow-raw-parse — sanctioned wrapper
 
     /// <summary>
     /// Type-position counterpart of <see cref="ParseQualifiedName"/>: parses a C# type name that may
@@ -635,8 +635,8 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// </summary>
     internal static TypeSyntax ParseQualifiedTypeName(string name) =>
         name.StartsWith("global::", StringComparison.Ordinal)
-            ? Globalize((NameSyntax)ParseTypeName(name["global::".Length..]))
-            : ParseTypeName(name);
+            ? Globalize((NameSyntax)ParseTypeName(name["global::".Length..])) // conformance:allow-raw-parse — sanctioned wrapper
+            : ParseTypeName(name); // conformance:allow-raw-parse — sanctioned wrapper
 
     /// <summary>
     /// Rewrites the leftmost simple-name segment of <paramref name="name"/> (walking the left spine of

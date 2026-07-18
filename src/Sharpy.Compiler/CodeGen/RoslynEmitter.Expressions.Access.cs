@@ -210,7 +210,7 @@ internal partial class RoslynEmitter
                         }
                         NameSyntax collectionTypeSyntax = needsGlobalQualification
                             ? MakeGlobalQualifiedName(collectionName.Split('.'))
-                            : ParseName(collectionName);
+                            : ParseQualifiedName(collectionName);
                         return ObjectCreationExpression(collectionTypeSyntax)
                             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
                     }
@@ -242,7 +242,7 @@ internal partial class RoslynEmitter
             if (_narrowing.IsNarrowed(funcName.Name))
                 calleeExpr = GenerateExpression(call.Function);
             else
-                calleeExpr = ParseName(funcCSharpName);
+                calleeExpr = ParseQualifiedName(funcCSharpName);
             return InvocationExpression(calleeExpr)
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
@@ -649,7 +649,7 @@ internal partial class RoslynEmitter
         var csharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
         var outerName = GetNestedTypeOuterPrefix(nestedTypeSymbol);
         var qualifiedGenericName = QualifiedName(
-            ParseName(outerName),
+            ParseQualifiedName(outerName),
             GenericName(csharpName)
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax))));
 
@@ -820,7 +820,7 @@ internal partial class RoslynEmitter
         var (dottedName, globalQualified) = NormalizeTypeName(baseCSharpName);
         NameSyntax typeSyntax = globalQualified
             ? MakeGlobalQualifiedName(dottedName.Split('.'))
-            : ParseName(dottedName);
+            : ParseQualifiedName(dottedName);
         return ObjectCreationExpression(typeSyntax)
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
     }
@@ -850,7 +850,7 @@ internal partial class RoslynEmitter
         var (dotted, globalQualified) = NormalizeTypeName(fqn);
         return globalQualified
             ? MakeGlobalQualifiedName(dotted.Split('.'))
-            : ParseName(dotted);
+            : ParseQualifiedName(dotted);
     }
 
     /// <summary>
@@ -1337,7 +1337,7 @@ internal partial class RoslynEmitter
             var narrowedType = _narrowing.GetIsInstanceNarrowedType(dottedPath)!;
             result = ParenthesizedExpression(
                 CastExpression(
-                    ParseTypeName(narrowedType),
+                    ParseQualifiedTypeName(narrowedType),
                     result));
         }
 

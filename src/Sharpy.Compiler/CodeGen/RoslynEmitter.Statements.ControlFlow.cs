@@ -108,7 +108,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private StatementSyntax GenerateTestAssert(AssertStatement assert)
     {
-        var xunitAssert = ParseName("Xunit.Assert");
+        var xunitAssert = ParseQualifiedName("Xunit.Assert");
         var test = assert.Test;
 
         // assert x == approx(y[, places=n | abs=d]) → tolerance/precision-based Xunit.Assert.Equal.
@@ -1226,7 +1226,7 @@ internal partial class RoslynEmitter
         var throwsCall = InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("Xunit.Assert"),
+                    ParseQualifiedName("Xunit.Assert"),
                     GenericName(Identifier("Throws"))
                         .WithTypeArgumentList(TypeArgumentList(
                             SingletonSeparatedList(exceptionType)))))
@@ -1266,7 +1266,7 @@ internal partial class RoslynEmitter
             result.Add(ExpressionStatement(InvocationExpression(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        ParseName("Xunit.Assert"),
+                        ParseQualifiedName("Xunit.Assert"),
                         IdentifierName("Matches")))
                 .AddArgumentListArguments(
                     Argument(GenerateExpression(matchExpr)),

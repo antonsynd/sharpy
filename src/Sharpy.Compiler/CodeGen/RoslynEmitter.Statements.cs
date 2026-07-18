@@ -523,7 +523,7 @@ internal partial class RoslynEmitter
             return ExpressionStatement(InvocationExpression(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        ParseName("Xunit.Assert"),
+                        ParseQualifiedName("Xunit.Assert"),
                         IdentifierName("True")))
                 .AddArgumentListArguments(Argument(condition)));
         }
@@ -544,7 +544,7 @@ internal partial class RoslynEmitter
         return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("Xunit.Assert"),
+                    ParseQualifiedName("Xunit.Assert"),
                     IdentifierName("Equal")))
             .AddArgumentListArguments(
                 Argument(expected),
@@ -581,7 +581,7 @@ internal partial class RoslynEmitter
         return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("Xunit.Assert"),
+                    ParseQualifiedName("Xunit.Assert"),
                     IdentifierName("Equal")))
             .AddArgumentListArguments(
                 Argument(expected),
@@ -626,7 +626,7 @@ internal partial class RoslynEmitter
         return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("Xunit.Assert"),
+                    ParseQualifiedName("Xunit.Assert"),
                     IdentifierName("Matches")))
             .AddArgumentListArguments(
                 Argument(pattern),
@@ -703,7 +703,7 @@ internal partial class RoslynEmitter
         return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("Xunit.Assert"),
+                    ParseQualifiedName("Xunit.Assert"),
                     IdentifierName(xunitMethod)))
             .AddArgumentListArguments(Argument(arg)));
     }
@@ -722,7 +722,7 @@ internal partial class RoslynEmitter
         return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("Xunit.Assert"),
+                    ParseQualifiedName("Xunit.Assert"),
                     IdentifierName("True")))
             .AddArgumentListArguments(Argument(comparison), Argument(message)));
     }
@@ -738,7 +738,7 @@ internal partial class RoslynEmitter
         return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    ParseName("Xunit.Assert"),
+                    ParseQualifiedName("Xunit.Assert"),
                     IdentifierName(method)))
             .AddArgumentListArguments(Argument(item), Argument(collection)));
     }

@@ -793,7 +793,7 @@ internal partial class RoslynEmitter
             "System.Collections.Generic" => QualifiedName(
                 QualifiedName(IdentifierName("System"), IdentifierName("Collections")),
                 IdentifierName("Generic")),
-            _ => ParseName(info.Namespace)
+            _ => ParseQualifiedName(info.Namespace)
         };
 
         SimpleNameSyntax interfaceName;
@@ -1265,7 +1265,7 @@ internal partial class RoslynEmitter
                     if (decorator.Arguments.Length == 1
                         && decorator.Arguments[0] is StringLiteral collectionName)
                     {
-                        var collectionAttribute = Attribute(ParseName("Xunit.CollectionAttribute"))
+                        var collectionAttribute = Attribute(ParseQualifiedName("Xunit.CollectionAttribute"))
                             .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
                                 AttributeArgument(LiteralExpression(
                                     SyntaxKind.StringLiteralExpression,
@@ -1282,7 +1282,7 @@ internal partial class RoslynEmitter
                     if (decorator.Arguments.Length == 1
                         && decorator.Arguments[0] is StringLiteral markValue)
                     {
-                        var traitAttribute = Attribute(ParseName("Xunit.TraitAttribute"))
+                        var traitAttribute = Attribute(ParseQualifiedName("Xunit.TraitAttribute"))
                             .WithArgumentList(AttributeArgumentList(SeparatedList(new[]
                             {
                                 AttributeArgument(LiteralExpression(
@@ -1301,7 +1301,7 @@ internal partial class RoslynEmitter
                 // @test("description") → [Xunit.FactAttribute(DisplayName = "description")]
                 if (decorator.Name == DecoratorNames.Test)
                 {
-                    var factAttribute = Attribute(ParseName("Xunit.FactAttribute"));
+                    var factAttribute = Attribute(ParseQualifiedName("Xunit.FactAttribute"));
                     var factArgs = new List<AttributeArgumentSyntax>();
 
                     if (decorator.Arguments.Length == 1
@@ -1388,7 +1388,7 @@ internal partial class RoslynEmitter
         // synthesize a [Fact(Skip = "reason")] so the method is registered as a skipped test.
         if (skipReason != null && !emittedTestAttribute)
         {
-            var skippedFact = Attribute(ParseName("Xunit.FactAttribute"))
+            var skippedFact = Attribute(ParseQualifiedName("Xunit.FactAttribute"))
                 .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
                     AttributeArgument(LiteralExpression(
                         SyntaxKind.StringLiteralExpression,
@@ -1455,7 +1455,7 @@ internal partial class RoslynEmitter
         var result = new List<AttributeListSyntax>();
 
         // [Xunit.TheoryAttribute] (with optional Skip)
-        var theoryAttr = Attribute(ParseName("Xunit.TheoryAttribute"));
+        var theoryAttr = Attribute(ParseQualifiedName("Xunit.TheoryAttribute"));
         if (skipReason != null)
         {
             theoryAttr = theoryAttr.WithArgumentList(
@@ -1496,7 +1496,7 @@ internal partial class RoslynEmitter
                 .Select(v => AttributeArgument(GenerateAttributeArgumentExpression(v)))
                 .ToArray();
 
-            var inlineData = Attribute(ParseName("Xunit.InlineDataAttribute"));
+            var inlineData = Attribute(ParseQualifiedName("Xunit.InlineDataAttribute"));
             if (args.Length > 0)
             {
                 inlineData = inlineData.WithArgumentList(AttributeArgumentList(SeparatedList(args)));
@@ -1534,7 +1534,7 @@ internal partial class RoslynEmitter
             TypeOfExpression(IdentifierName(moduleClassName)))
             .WithNameEquals(NameEquals("MemberType"));
 
-        return Attribute(ParseName("Xunit.MemberDataAttribute"))
+        return Attribute(ParseQualifiedName("Xunit.MemberDataAttribute"))
             .WithArgumentList(AttributeArgumentList(SeparatedList(new[]
             {
                 nameofArgument,
