@@ -86,6 +86,20 @@ public class RuntimeClosureResolverTests
         Assert.True(HasPrefix(closure.ManagedAssemblies, "SQLitePCLRaw"),
             "sqlite3's SQLitePCLRaw.* assemblies must be in the transitive closure");
 
+        // The provider-registration assembly is reachable only via the companion pass — nothing
+        // in the reference graph names it, but without it SetProvider is never called and a
+        // standalone sqlite3 program throws at connect time. Only assert where it is deployed.
+        if (File.Exists(Path.Combine(CoreDir, "SQLitePCLRaw.batteries_v2.dll")))
+        {
+            Assert.True(HasName(closure.ManagedAssemblies, "SQLitePCLRaw.batteries_v2.dll"),
+                "the companion pass must pull in SQLitePCLRaw.batteries_v2 (runtime provider registration)");
+        }
+        if (File.Exists(Path.Combine(CoreDir, "SQLitePCLRaw.provider.e_sqlite3.dll")))
+        {
+            Assert.True(HasName(closure.ManagedAssemblies, "SQLitePCLRaw.provider.e_sqlite3.dll"),
+                "the forward walk from batteries_v2 must pull in the SQLitePCLRaw provider");
+        }
+
         // The e_sqlite3 native library ships per-RID under runtimes/<rid>/native/. Assert the
         // resolver reports it only when the current RID's native layout is actually present.
         if (ExpectedNativeAvailable(CoreDir, "e_sqlite3"))

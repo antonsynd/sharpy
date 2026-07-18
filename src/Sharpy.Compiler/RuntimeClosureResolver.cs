@@ -18,6 +18,13 @@ namespace Sharpy.Compiler;
 /// </para>
 ///
 /// <para>
+/// A bounded companion pass additionally captures runtime-registration assemblies the reference
+/// graph cannot reach — a bundle like SQLitePCLRaw registers its provider from a module
+/// initializer that only runs if the assembly is deployed and listed, yet nothing references it.
+/// See <see cref="RunCompanionPass"/>.
+/// </para>
+///
+/// <para>
 /// This replaces the two hand-maintained dependency lists that previously drifted apart
 /// (<see cref="RuntimeClosure.ManagedAssemblies"/> feeds <c>deps.json</c> generation and the
 /// CLI's runtime-dependency copy) with a single mechanical source of truth (#1084).
@@ -47,9 +54,19 @@ internal static class RuntimeClosureResolver
         // Keyed by full path (case-insensitive) so an assembly is visited at most once even
         // if it is referenced from several directories or under differing case.
         var closure = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var closureSimpleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var queue = new Queue<string>();
         var directoryIndexCache = new Dictionary<string, Dictionary<string, string>>(
             StringComparer.OrdinalIgnoreCase);
+        var referenceNamesCache = new Dictionary<string, IReadOnlyList<string>>(
+            StringComparer.OrdinalIgnoreCase);
+
+        void Add(string fullPath)
+        {
+            closure[fullPath] = fullPath;
+            closureSimpleNames.Add(Path.GetFileNameWithoutExtension(fullPath));
+            queue.Enqueue(fullPath);
+        }
 
         foreach (var referencePath in referencePaths)
         {
@@ -60,10 +77,38 @@ internal static class RuntimeClosureResolver
             if (!File.Exists(fullPath) || closure.ContainsKey(fullPath))
                 continue;
 
-            closure[fullPath] = fullPath;
-            queue.Enqueue(fullPath);
+            Add(fullPath);
         }
 
+        // Alternate forward (reference-graph) walking and the companion pass to a fixpoint: the
+        // companion pass may add a runtime-registration assembly (e.g. SQLitePCLRaw.batteries_v2)
+        // whose own references then pull further siblings forward (e.g. the native provider).
+        var changed = true;
+        while (changed)
+        {
+            DrainForwardReferences(queue, closure, directoryIndexCache, referenceNamesCache, Add);
+            changed = RunCompanionPass(closure, closureSimpleNames, directoryIndexCache, referenceNamesCache, Add);
+        }
+
+        var managed = closure.Values
+            .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var native = ResolveNativeAssets(managed);
+
+        return new RuntimeClosure(managed, native);
+    }
+
+    /// <summary>
+    /// Forward BFS: for every queued assembly, resolve each of its declared assembly references
+    /// against sibling <c>.dll</c> files in the same directory and add any not yet in the closure.
+    /// </summary>
+    private static void DrainForwardReferences(
+        Queue<string> queue,
+        Dictionary<string, string> closure,
+        Dictionary<string, Dictionary<string, string>> directoryIndexCache,
+        Dictionary<string, IReadOnlyList<string>> referenceNamesCache,
+        Action<string> add)
+    {
         while (queue.Count > 0)
         {
             var current = queue.Dequeue();
@@ -73,23 +118,113 @@ internal static class RuntimeClosureResolver
 
             var index = GetDirectoryIndex(directory, directoryIndexCache);
 
-            foreach (var referencedName in ReadAssemblyReferenceNames(current))
+            foreach (var referencedName in GetReferenceNames(current, referenceNamesCache))
             {
                 if (index.TryGetValue(referencedName, out var siblingPath)
                     && !closure.ContainsKey(siblingPath))
                 {
-                    closure[siblingPath] = siblingPath;
-                    queue.Enqueue(siblingPath);
+                    add(siblingPath);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Discover runtime-registration companions that the reference graph cannot reach. Some NuGet
+    /// bundles register themselves at load time rather than being referenced: nothing in the
+    /// closure names <c>SQLitePCLRaw.batteries_v2</c>, yet it must ship (and be listed in
+    /// <c>deps.json</c>) so its module initializer runs and calls <c>SetProvider</c>. A sibling is
+    /// pulled in when it belongs to the same third-party package family as a closure member (shares
+    /// the leading dotted name segment) and itself references that member. Umbrella vendor prefixes
+    /// (<c>Microsoft</c>, <c>System</c>) and first-party <c>Sharpy.*</c> assemblies are excluded so
+    /// the scan stays scoped to a handful of same-family siblings and never drags in unrelated
+    /// assemblies (Roslyn, test frameworks). Returns whether anything was added.
+    /// </summary>
+    private static bool RunCompanionPass(
+        Dictionary<string, string> closure,
+        HashSet<string> closureSimpleNames,
+        Dictionary<string, Dictionary<string, string>> directoryIndexCache,
+        Dictionary<string, IReadOnlyList<string>> referenceNamesCache,
+        Action<string> add)
+    {
+        var familyRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in closureSimpleNames)
+        {
+            if (IsFirstParty(name))
+                continue;
+
+            var segment = FirstSegment(name);
+            if (IsUmbrellaVendor(segment))
+                continue;
+
+            familyRoots.Add(segment);
+        }
+
+        if (familyRoots.Count == 0)
+            return false;
+
+        // Materialize member directories before mutating the closure (Add updates closure.Values).
+        var memberDirectories = closure.Values
+            .Select(Path.GetDirectoryName)
+            .Where(d => d is not null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var added = false;
+        foreach (var directory in memberDirectories)
+        {
+            var index = GetDirectoryIndex(directory!, directoryIndexCache);
+            foreach (var (simpleName, path) in index)
+            {
+                if (closure.ContainsKey(path) || IsFirstParty(simpleName))
+                    continue;
+
+                var segment = FirstSegment(simpleName);
+                if (!familyRoots.Contains(segment))
+                    continue;
+
+                foreach (var referencedName in GetReferenceNames(path, referenceNamesCache))
+                {
+                    if (closureSimpleNames.Contains(referencedName)
+                        && FirstSegment(referencedName).Equals(segment, StringComparison.OrdinalIgnoreCase))
+                    {
+                        add(path);
+                        added = true;
+                        break;
+                    }
                 }
             }
         }
 
-        var managed = closure.Values
-            .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var native = ResolveNativeAssets(managed);
+        return added;
+    }
 
-        return new RuntimeClosure(managed, native);
+    private static IReadOnlyList<string> GetReferenceNames(
+        string assemblyPath,
+        Dictionary<string, IReadOnlyList<string>> cache)
+    {
+        if (cache.TryGetValue(assemblyPath, out var cached))
+            return cached;
+
+        var names = ReadAssemblyReferenceNames(assemblyPath);
+        cache[assemblyPath] = names;
+        return names;
+    }
+
+    private static bool IsFirstParty(string simpleName) =>
+        simpleName.StartsWith("Sharpy.", StringComparison.OrdinalIgnoreCase)
+        || simpleName.Equals("Sharpy", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsUmbrellaVendor(string firstSegment) =>
+        firstSegment.Equals("Microsoft", StringComparison.OrdinalIgnoreCase)
+        || firstSegment.Equals("System", StringComparison.OrdinalIgnoreCase)
+        || firstSegment.Equals("netstandard", StringComparison.OrdinalIgnoreCase)
+        || firstSegment.Equals("mscorlib", StringComparison.OrdinalIgnoreCase);
+
+    private static string FirstSegment(string simpleName)
+    {
+        var dot = simpleName.IndexOf('.', StringComparison.Ordinal);
+        return dot >= 0 ? simpleName.Substring(0, dot) : simpleName;
     }
 
     /// <summary>
