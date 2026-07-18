@@ -348,7 +348,7 @@ internal partial class RoslynEmitter
                 if (staticCallTarget != null)
                 {
                     var staticArgs = call.Arguments.Select(a => Argument(GenerateExpression(a))).ToArray();
-                    return InvocationExpression(ParseName(staticCallTarget))
+                    return InvocationExpression(ParseQualifiedName(staticCallTarget))
                         .WithArgumentList(ArgumentList(SeparatedList(staticArgs)));
                 }
             }

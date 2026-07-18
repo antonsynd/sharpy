@@ -848,6 +848,16 @@ internal class TypeSyntaxMapper
 
     internal static NameSyntax QualifiedGenericName(string dottedTypeName, bool globalQualified, params TypeSyntax[] typeArguments)
     {
+        // A dottedTypeName may already carry a global:: alias prefix (e.g. from
+        // GetFullyQualifiedTypeName). Splitting on '.' would leave "global::System" as parts[0],
+        // an invalid identifier that prints correctly but fails to bind under direct tree handoff
+        // (#1095). Strip the prefix and route the leftmost segment through the alias-qualified path.
+        if (dottedTypeName.StartsWith("global::", StringComparison.Ordinal))
+        {
+            dottedTypeName = dottedTypeName["global::".Length..];
+            globalQualified = true;
+        }
+
         var typeArgList = TypeArgumentList(
             typeArguments.Length == 1
                 ? SingletonSeparatedList(typeArguments[0])
@@ -857,7 +867,10 @@ internal class TypeSyntaxMapper
 
         if (parts.Length == 1)
         {
-            return GenericName(parts[0]).WithTypeArgumentList(typeArgList);
+            var simpleGeneric = GenericName(parts[0]).WithTypeArgumentList(typeArgList);
+            return globalQualified
+                ? AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), simpleGeneric)
+                : simpleGeneric;
         }
 
         NameSyntax result = globalQualified

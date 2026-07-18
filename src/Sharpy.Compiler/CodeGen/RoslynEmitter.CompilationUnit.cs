@@ -353,7 +353,7 @@ internal partial class RoslynEmitter
                     var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
                     yield return UsingDirective(
                         NameEquals(alias.AsName),
-                        ParseName(fullModuleClass));
+                        ParseQualifiedName(fullModuleClass));
                 }
                 else
                 {
@@ -396,7 +396,7 @@ internal partial class RoslynEmitter
                     var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
                     yield return UsingDirective(
                         NameEquals(sanitizedAlias),
-                        ParseName(fullModuleClass));
+                        ParseQualifiedName(fullModuleClass));
                 }
                 else
                 {
@@ -471,7 +471,7 @@ internal partial class RoslynEmitter
                     var qualifiedName = $"global::{namespaceName}.{NameMangler.ToNamespacePart(importedName.Name)}";
                     yield return UsingDirective(
                         NameEquals(csharpName),
-                        ParseName(qualifiedName));
+                        ParseQualifiedName(qualifiedName));
                 }
             }
         }
@@ -497,7 +497,7 @@ internal partial class RoslynEmitter
                 if (className != null)
                 {
                     var fullModuleClass = ConvertNetModuleToFullyQualified(fromImport.Module, ns, className);
-                    yield return UsingDirective(ParseName(fullModuleClass))
+                    yield return UsingDirective(ParseQualifiedName(fullModuleClass))
                         .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
                 }
             }
