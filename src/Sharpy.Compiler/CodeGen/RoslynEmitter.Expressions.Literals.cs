@@ -207,7 +207,7 @@ internal partial class RoslynEmitter
                         _hoistedStatements.Add(LocalDeclarationStatement(
                             VariableDeclaration(IdentifierName("var"))
                                 .WithVariables(SingletonSeparatedList(
-                                    VariableDeclarator(Identifier(tempName))
+                                    VariableDeclarator(EscapedIdentifier(tempName))
                                         .WithInitializer(EqualsValueClause(spreadExpr))))));
 
                         for (int i = 0; i < tt.ElementTypes.Count; i++)
@@ -1095,14 +1095,14 @@ internal partial class RoslynEmitter
                 LocalDeclarationStatement(
                     VariableDeclaration(typeSyntax)
                         .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(varName))))));
+                            VariableDeclarator(EscapedIdentifier(varName))))));
             _declaredVariables.Add(varName);
 
             // Return: (varName = value)
             return ParenthesizedExpression(
                 AssignmentExpression(
                     SyntaxKind.SimpleAssignmentExpression,
-                    IdentifierName(varName),
+                    EscapedIdentifierName(varName),
                     value));
         }
 
@@ -1111,12 +1111,12 @@ internal partial class RoslynEmitter
             LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(varName))
+                        VariableDeclarator(EscapedIdentifier(varName))
                             .WithInitializer(EqualsValueClause(value))))));
         _declaredVariables.Add(varName);
 
         // The walrus expression evaluates to the variable itself
-        return IdentifierName(varName);
+        return EscapedIdentifierName(varName);
     }
 
     /// <summary>
@@ -1140,7 +1140,7 @@ internal partial class RoslynEmitter
         _hoistedStatements.Add(LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(tempName))
+                    VariableDeclarator(EscapedIdentifier(tempName))
                         .WithInitializer(EqualsValueClause(
                             ObjectCreationExpression(collectionType)
                                 .WithArgumentList(ArgumentList())))))));
@@ -1157,7 +1157,7 @@ internal partial class RoslynEmitter
                     _hoistedStatements.Add(LocalDeclarationStatement(
                         VariableDeclaration(IdentifierName("var"))
                             .WithVariables(SingletonSeparatedList(
-                                VariableDeclarator(Identifier(tupTemp))
+                                VariableDeclarator(EscapedIdentifier(tupTemp))
                                     .WithInitializer(EqualsValueClause(GenerateExpression(spread.Value)))))));
                     for (int i = 0; i < tupleType.ElementTypes.Count; i++)
                     {
@@ -1218,7 +1218,7 @@ internal partial class RoslynEmitter
         _hoistedStatements.Add(LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(tempName))
+                    VariableDeclarator(EscapedIdentifier(tempName))
                         .WithInitializer(EqualsValueClause(
                             ObjectCreationExpression(dictType)
                                 .WithArgumentList(ArgumentList())))))));

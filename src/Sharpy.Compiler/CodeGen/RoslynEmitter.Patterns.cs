@@ -424,7 +424,7 @@ internal partial class RoslynEmitter
                         var fieldName = NameMangler.Transform(field.Name, NameContext.Field);
                         var subPattern = GenerateMatchPattern(field.Pattern, memberGuards, ref matchVarCounter);
                         subPatterns.Add(Subpattern(subPattern)
-                            .WithNameColon(NameColon(IdentifierName(fieldName))));
+                            .WithNameColon(NameColon(EscapedIdentifierName(fieldName))));
                     }
                     var recursivePattern = RecursivePattern()
                         .WithPropertyPatternClause(
@@ -473,7 +473,7 @@ internal partial class RoslynEmitter
                             var subPattern = GenerateMatchPattern(
                                 positionalPattern.Elements[i], memberGuards, ref matchVarCounter);
                             subPatterns.Add(Subpattern(subPattern)
-                                .WithNameColon(NameColon(IdentifierName(fieldName))));
+                                .WithNameColon(NameColon(EscapedIdentifierName(fieldName))));
                         }
                         var recursivePattern = RecursivePattern()
                             .WithPropertyPatternClause(

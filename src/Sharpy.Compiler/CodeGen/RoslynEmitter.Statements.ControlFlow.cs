@@ -699,7 +699,7 @@ internal partial class RoslynEmitter
         statements.Add(LocalDeclarationStatement(
             VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(flagName))
+                    VariableDeclarator(EscapedIdentifier(flagName))
                         .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
 
         // Transform the body to set flag to false before break
@@ -787,7 +787,7 @@ internal partial class RoslynEmitter
         statements.Add(LocalDeclarationStatement(
             VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(flagName))
+                    VariableDeclarator(EscapedIdentifier(flagName))
                         .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
 
         // Transform the body to set flag to false before break
@@ -870,7 +870,7 @@ internal partial class RoslynEmitter
                 loopVarInit = LocalDeclarationStatement(
                     VariableDeclaration(IdentifierName("var"))
                         .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(loopVar))
+                            VariableDeclarator(EscapedIdentifier(loopVar))
                                 .WithInitializer(EqualsValueClause(loopVarValue)))));
             }
 
@@ -917,7 +917,7 @@ internal partial class RoslynEmitter
                     .Select(id =>
                     {
                         var name = NameMangler.ToCamelCase(id.Name);
-                        return SingleVariableDesignation(Identifier(name));
+                        return SingleVariableDesignation(EscapedIdentifier(name));
                     })
                     .ToList();
 
@@ -1252,7 +1252,7 @@ internal partial class RoslynEmitter
             result.Add(LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(localName))
+                        VariableDeclarator(EscapedIdentifier(localName))
                             .WithInitializer(EqualsValueClause(throwsCall))))));
         }
         else
@@ -1295,7 +1295,7 @@ internal partial class RoslynEmitter
 
             var declaration = VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(varName))
+                    VariableDeclarator(EscapedIdentifier(varName))
                         .WithInitializer(EqualsValueClause(contextExpr))));
 
             var usingStmt = UsingStatement(declaration, null, innermost is BlockSyntax block ? block : Block(innermost));
@@ -1353,7 +1353,7 @@ internal partial class RoslynEmitter
         statements.Add(LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(ctxVarName))
+                    VariableDeclarator(EscapedIdentifier(ctxVarName))
                         .WithInitializer(EqualsValueClause(contextExpr))))));
 
         // Build the Enter() / AenterAsync() call
@@ -1373,7 +1373,7 @@ internal partial class RoslynEmitter
             statements.Add(LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(varName))
+                        VariableDeclarator(EscapedIdentifier(varName))
                             .WithInitializer(EqualsValueClause(enterCall))))));
         }
         else
@@ -1467,7 +1467,7 @@ internal partial class RoslynEmitter
         var excDecl = LocalDeclarationStatement(
             VariableDeclaration(excTypeSyntax)
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(excVarName))
+                    VariableDeclarator(EscapedIdentifier(excVarName))
                         .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.NullLiteralExpression))))));
 
         // __e_N.GetType()
@@ -1495,7 +1495,7 @@ internal partial class RoslynEmitter
         var suppressDecl = LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(suppressVarName))
+                    VariableDeclarator(EscapedIdentifier(suppressVarName))
                         .WithInitializer(EqualsValueClause(exitCallInCatchExpr)))));
 
         // __exc_N = __e_N;
@@ -1633,7 +1633,7 @@ internal partial class RoslynEmitter
         var flagDecl = LocalDeclarationStatement(
             VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(flagName))
+                    VariableDeclarator(EscapedIdentifier(flagName))
                         .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
 
         // Generate try body with flag set to true at the end.
@@ -1806,7 +1806,7 @@ internal partial class RoslynEmitter
                     .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
                         MakeGlobalQualifiedName("System", "Exception")))))
             .WithVariables(SingletonSeparatedList(
-                VariableDeclarator(Identifier(allMatchedVar))
+                VariableDeclarator(EscapedIdentifier(allMatchedVar))
                     .WithInitializer(EqualsValueClause(
                         ObjectCreationExpression(
                             GenericName(Identifier("System.Collections.Generic.List"))
@@ -1842,7 +1842,7 @@ internal partial class RoslynEmitter
             catchBodyStatements.Add(LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(matchedVar))
+                        VariableDeclarator(EscapedIdentifier(matchedVar))
                             .WithInitializer(EqualsValueClause(toListCall))))));
 
             // if (__matched_N.Count > 0) { ... handler body ... }
@@ -1908,7 +1908,7 @@ internal partial class RoslynEmitter
                 handlerBodyStatements.Add(LocalDeclarationStatement(
                     VariableDeclaration(IdentifierName("var"))
                         .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(asVar))
+                            VariableDeclarator(EscapedIdentifier(asVar))
                                 .WithInitializer(EqualsValueClause(egCreation))))));
 
                 // Generate handler body statements
@@ -1953,7 +1953,7 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(
                     Argument(
                         SimpleLambdaExpression(
-                            Parameter(Identifier(whereParam)),
+                            Parameter(EscapedIdentifier(whereParam)),
                             PrefixUnaryExpression(
                                 SyntaxKind.LogicalNotExpression,
                                 InvocationExpression(
@@ -1968,7 +1968,7 @@ internal partial class RoslynEmitter
         catchBodyStatements.Add(LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(unmatchedVar))
+                    VariableDeclarator(EscapedIdentifier(unmatchedVar))
                         .WithInitializer(EqualsValueClause(whereCall))))));
 
         // if (__unmatched.Count > 0) throw new System.AggregateException(__unmatched);

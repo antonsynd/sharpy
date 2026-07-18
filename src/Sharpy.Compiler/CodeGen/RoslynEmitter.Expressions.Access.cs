@@ -1187,7 +1187,7 @@ internal partial class RoslynEmitter
                     var enumMemberAccess = MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         enumType,
-                        IdentifierName(fieldName));
+                        EscapedIdentifierName(fieldName));
                     // String enums: Color.RED already returns the string value from the static field
                     return enumMemberAccess;
                 }
@@ -1269,7 +1269,7 @@ internal partial class RoslynEmitter
                     memberAccess.Member,
                     isBacktickEscaped: memberAccess.IsMemberBacktickEscaped,
                     GetIrResolvedClrMemberName(memberAccess)));
-        var member = IdentifierName(mangledMemberName);
+        var member = EscapedIdentifierName(mangledMemberName);
 
         ExpressionSyntax result;
 
@@ -1545,7 +1545,7 @@ internal partial class RoslynEmitter
                 expr = MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
                     expr,
-                    IdentifierName(mangledMemberName));
+                    EscapedIdentifierName(mangledMemberName));
             }
 
             return expr;
@@ -1566,7 +1566,7 @@ internal partial class RoslynEmitter
             currentExpr = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 currentExpr,
-                IdentifierName(memberName));
+                EscapedIdentifierName(memberName));
         }
 
         return currentExpr;

@@ -49,7 +49,7 @@ internal partial class RoslynEmitter
 
         // lambda x, y: x + y → (x, y) => x + y
         var parameters = lambda.Parameters
-            .Select(p => Parameter(Identifier(NameMangler.ToCamelCase(p.Name))))
+            .Select(p => Parameter(EscapedIdentifier(NameMangler.ToCamelCase(p.Name))))
             .ToArray();
 
         var body = GenerateExpression(lambda.Body);
@@ -83,7 +83,7 @@ internal partial class RoslynEmitter
             var paramName = NameMangler.ToCamelCase(param.Name);
             var paramType = ResolveParameterTypeSyntax(lambda, lambdaType, i);
 
-            parameters.Add(Parameter(Identifier(paramName)).WithType(paramType));
+            parameters.Add(Parameter(EscapedIdentifier(paramName)).WithType(paramType));
         }
 
         var body = GenerateExpression(lambda.Body);
@@ -142,7 +142,7 @@ internal partial class RoslynEmitter
             var paramName = NameMangler.ToCamelCase(param.Name);
             var paramType = ResolveParameterTypeSyntax(lambda, lambdaType, i);
 
-            var paramSyntax = Parameter(Identifier(paramName)).WithType(paramType);
+            var paramSyntax = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
 
             // Handle default value
             if (param.DefaultValue != null)
@@ -344,7 +344,7 @@ internal partial class RoslynEmitter
             : generated;
         var capture = IsPatternExpression(
             captureTarget,
-            VarPattern(SingleVariableDesignation(Identifier(tempName))));
+            VarPattern(SingleVariableDesignation(EscapedIdentifier(tempName))));
         return (tempIdent, capture);
     }
 
@@ -967,7 +967,7 @@ internal partial class RoslynEmitter
                         SyntaxKind.SuppressNullableWarningExpression, kwargValue);
                 }
                 return Argument(kwargValue)
-                    .WithNameColon(NameColon(IdentifierName(csharpName)));
+                    .WithNameColon(NameColon(EscapedIdentifierName(csharpName)));
             });
             if (prependedArgument != null)
                 return new[] { prependedArgument }.Concat(positionalArgs).Concat(keywordArgs).ToArray();
@@ -995,7 +995,7 @@ internal partial class RoslynEmitter
             var firstParam = paramList[0];
             string csharpName = GetCSharpParameterName(firstParam.Name, funcSymbol);
             argByParam[firstParam.Name] = prependedArgument
-                .WithNameColon(NameColon(IdentifierName(csharpName)));
+                .WithNameColon(NameColon(EscapedIdentifierName(csharpName)));
             paramStartIndex = 1;
         }
 
@@ -1019,7 +1019,7 @@ internal partial class RoslynEmitter
                 kwargGenerated = ApplyArrayBridge(
                     kwarg.Value, kwargGenerated, param.Type);
                 argByParam[param.Name] = Argument(kwargGenerated)
-                    .WithNameColon(NameColon(IdentifierName(csharpParamName)));
+                    .WithNameColon(NameColon(EscapedIdentifierName(csharpParamName)));
                 keywordArgsByName.Remove(param.Name);
             }
             else if (!param.IsKeywordOnly && positionalIndex < call.Arguments.Length)
@@ -1040,7 +1040,7 @@ internal partial class RoslynEmitter
                         if (remainingParam is { IsLateBound: true })
                             remainingCsharpName += LateBoundSuffix;
                         result.Add(Argument(GenerateExpression(remaining.Value))
-                            .WithNameColon(NameColon(IdentifierName(remainingCsharpName))));
+                            .WithNameColon(NameColon(EscapedIdentifierName(remainingCsharpName))));
                     }
                     return result.ToArray();
                 }
@@ -1052,7 +1052,7 @@ internal partial class RoslynEmitter
                 posGenerated = ApplyArrayBridge(
                     argExpr, posGenerated, param.Type);
                 argByParam[param.Name] = Argument(posGenerated)
-                    .WithNameColon(NameColon(IdentifierName(csharpParamName)));
+                    .WithNameColon(NameColon(EscapedIdentifierName(csharpParamName)));
                 positionalIndex++;
             }
             // else: parameter has a default value and was not provided — skip
@@ -1080,7 +1080,7 @@ internal partial class RoslynEmitter
             if (remainingParam is { IsLateBound: true })
                 remainingCsharpName += LateBoundSuffix;
             orderedResult.Add(Argument(GenerateExpression(remaining.Value))
-                .WithNameColon(NameColon(IdentifierName(remainingCsharpName))));
+                .WithNameColon(NameColon(EscapedIdentifierName(remainingCsharpName))));
         }
 
         // Phase 3: Variadic trailing args (remaining positional, unnamed)
@@ -1190,7 +1190,7 @@ internal partial class RoslynEmitter
                     yield return Argument(
                         DeclarationExpression(
                             typeSyntax,
-                            SingleVariableDesignation(Identifier(mangledName))))
+                            SingleVariableDesignation(EscapedIdentifier(mangledName))))
                         .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
                 }
                 else
@@ -1305,7 +1305,7 @@ internal partial class RoslynEmitter
         return MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
             typeExpr,
-            IdentifierName(fieldName));
+            EscapedIdentifierName(fieldName));
     }
 
     /// <summary>
@@ -1424,7 +1424,7 @@ internal partial class RoslynEmitter
         {
             var paramTypeSyntax = _typeMapper.MapSemanticType(resultType.ParameterTypes[i]);
             var paramName = NameMangler.ToCamelCase(remainingParamNames[i]);
-            lambdaParams.Add(Parameter(Identifier(paramName)).WithType(paramTypeSyntax));
+            lambdaParams.Add(Parameter(EscapedIdentifier(paramName)).WithType(paramTypeSyntax));
             lambdaParamIdentifiers.Add(paramName);
         }
 
@@ -1443,7 +1443,7 @@ internal partial class RoslynEmitter
         {
             var csharpName = GetCSharpParameterName(kwName, targetSymbol);
             bodyArgs.Add(Argument(kwValue)
-                .WithNameColon(NameColon(IdentifierName(csharpName))));
+                .WithNameColon(NameColon(EscapedIdentifierName(csharpName))));
         }
 
         var body = InvocationExpression(targetCSharp)

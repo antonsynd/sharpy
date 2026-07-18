@@ -663,6 +663,32 @@ internal partial class RoslynEmitter : ICodeEmitter
     };
 
     /// <summary>
+    /// Builds an <see cref="IdentifierNameSyntax"/> from a C# name that may be a verbatim
+    /// (<c>@</c>-escaped) identifier. <c>SyntaxFactory.Identifier("@default")</c> gives the token
+    /// ValueText <c>"@default"</c>, but Roslyn's parser produces a verbatim identifier whose
+    /// ValueText is <c>"default"</c> (Text <c>"@default"</c>). That mismatch makes an <c>@</c>-escaped
+    /// name — e.g. a <c>NameColon</c> argument name — resolve to the wrong thing (CS1739) when the
+    /// emitter tree is handed straight to <c>CSharpSyntaxTree.Create</c> (#1095). Splitting Text and
+    /// ValueText makes the token reparse-equivalent; the printed text is unchanged.
+    /// </summary>
+    internal static IdentifierNameSyntax EscapedIdentifierName(string csharpName) =>
+        IdentifierName(EscapedIdentifier(csharpName));
+
+    /// <summary>
+    /// Token counterpart of <see cref="EscapedIdentifierName"/>: builds an identifier
+    /// <see cref="SyntaxToken"/> from a C# name that may be a verbatim (<c>@</c>-escaped) identifier,
+    /// with the same Text/ValueText split Roslyn's parser produces (Text <c>"@default"</c>, ValueText
+    /// <c>"default"</c>). Used for declaration positions (parameters, variable declarators, variable
+    /// designations, tuple element names) so an <c>@</c>-escaped name binds the same way its
+    /// references do under direct <c>CSharpSyntaxTree.Create</c> handoff (#1095). Printed text is
+    /// unchanged. A plain name passes through <see cref="Identifier(string)"/> unchanged.
+    /// </summary>
+    internal static SyntaxToken EscapedIdentifier(string csharpName) =>
+        csharpName.StartsWith("@", StringComparison.Ordinal)
+            ? Identifier(TriviaList(), SyntaxKind.IdentifierToken, csharpName, csharpName[1..], TriviaList())
+            : Identifier(csharpName);
+
+    /// <summary>
     /// Resolve the C# name for a variable using CodeGenInfo.
     /// Returns null if CodeGenInfo is not available or if this is a local redeclaration.
     /// </summary>

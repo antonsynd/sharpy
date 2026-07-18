@@ -90,7 +90,7 @@ internal partial class RoslynEmitter
                     return ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName(currentName),
+                            EscapedIdentifierName(currentName),
                             value));
                 }
                 else
@@ -116,7 +116,7 @@ internal partial class RoslynEmitter
 
                     var declaration = VariableDeclaration(declType)
                         .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(varName))
+                            VariableDeclarator(EscapedIdentifier(varName))
                                 .WithInitializer(EqualsValueClause(value))));
 
                     return LocalDeclarationStatement(declaration);
@@ -127,7 +127,7 @@ internal partial class RoslynEmitter
                 // Augmented assignment: x += value
                 // This references the current version and modifies it
                 var varName = GetMangledVariableName(name.Name, isNewDeclaration: false);
-                var target = IdentifierName(varName);
+                var target = EscapedIdentifierName(varName);
 
                 // For the read side of augmented assignment, apply Optional/Nullable narrowing
                 // so that x += 1 with narrowed Optional<int> reads as x.Unwrap() + 1
@@ -138,13 +138,13 @@ internal partial class RoslynEmitter
                     if (_narrowing.IsNullableNarrowed(name.Name))
                     {
                         readExpr = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName(varName), IdentifierName("Value"));
+                            EscapedIdentifierName(varName), IdentifierName("Value"));
                     }
                     else
                     {
                         readExpr = InvocationExpression(
                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                IdentifierName(varName), IdentifierName(ProtocolConstants.Unwrap)))
+                                EscapedIdentifierName(varName), IdentifierName(ProtocolConstants.Unwrap)))
                             .WithArgumentList(ArgumentList());
                     }
                 }
@@ -276,7 +276,7 @@ internal partial class RoslynEmitter
                 starStmts.Add(LocalDeclarationStatement(
                     VariableDeclaration(IdentifierName("var"))
                         .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(starTempVar))
+                            VariableDeclarator(EscapedIdentifier(starTempVar))
                                 .WithInitializer(EqualsValueClause(value))))));
 
                 var valueType = GetExpressionSemanticType(assign.Value);
@@ -318,7 +318,7 @@ internal partial class RoslynEmitter
                         {
                             var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
                             _declaredVariables.Add(varName);
-                            return SingleVariableDesignation(Identifier(varName));
+                            return SingleVariableDesignation(EscapedIdentifier(varName));
                         })
                         .ToList();
 
@@ -343,7 +343,7 @@ internal partial class RoslynEmitter
                         {
                             _narrowing.ClearNarrowing(id.Name);
                             var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
-                            return Argument(IdentifierName(currentName));
+                            return Argument(EscapedIdentifierName(currentName));
                         })
                         .ToList();
 
@@ -373,7 +373,7 @@ internal partial class RoslynEmitter
                         stmts.Add(LocalDeclarationStatement(
                             VariableDeclaration(IdentifierName("var"))
                                 .WithVariables(SingletonSeparatedList(
-                                    VariableDeclarator(Identifier(mixedTempName))
+                                    VariableDeclarator(EscapedIdentifier(mixedTempName))
                                         .WithInitializer(EqualsValueClause(value))))));
 
                         for (int i = 0; i < identifiers.Count; i++)
@@ -391,7 +391,7 @@ internal partial class RoslynEmitter
                                 stmts.Add(ExpressionStatement(
                                     AssignmentExpression(
                                         SyntaxKind.SimpleAssignmentExpression,
-                                        IdentifierName(currentName),
+                                        EscapedIdentifierName(currentName),
                                         itemAccess)));
                             }
                             else
@@ -401,7 +401,7 @@ internal partial class RoslynEmitter
                                 stmts.Add(LocalDeclarationStatement(
                                     VariableDeclaration(IdentifierName("var"))
                                         .WithVariables(SingletonSeparatedList(
-                                            VariableDeclarator(Identifier(varName))
+                                            VariableDeclarator(EscapedIdentifier(varName))
                                                 .WithInitializer(EqualsValueClause(itemAccess))))));
                             }
                         }
@@ -411,7 +411,7 @@ internal partial class RoslynEmitter
                         // Non-tuple RHS — deconstruct into fresh temps, then assign
                         var tempNames = identifiers.Select(_ => $"__d{_tempVarCounter++}").ToList();
                         var tempDesignations = tempNames
-                            .Select(n => (VariableDesignationSyntax)SingleVariableDesignation(Identifier(n)))
+                            .Select(n => (VariableDesignationSyntax)SingleVariableDesignation(EscapedIdentifier(n)))
                             .ToList();
 
                         var deconstructPattern = ParenthesizedVariableDesignation(
@@ -434,7 +434,7 @@ internal partial class RoslynEmitter
                                 stmts.Add(ExpressionStatement(
                                     AssignmentExpression(
                                         SyntaxKind.SimpleAssignmentExpression,
-                                        IdentifierName(currentName),
+                                        EscapedIdentifierName(currentName),
                                         tempRef)));
                             }
                             else
@@ -444,7 +444,7 @@ internal partial class RoslynEmitter
                                 stmts.Add(LocalDeclarationStatement(
                                     VariableDeclaration(IdentifierName("var"))
                                         .WithVariables(SingletonSeparatedList(
-                                            VariableDeclarator(Identifier(varName))
+                                            VariableDeclarator(EscapedIdentifier(varName))
                                                 .WithInitializer(EqualsValueClause(tempRef))))));
                             }
                         }
@@ -464,7 +464,7 @@ internal partial class RoslynEmitter
             unpackStmts.Add(LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(tempVarName))
+                        VariableDeclarator(EscapedIdentifier(tempVarName))
                             .WithInitializer(EqualsValueClause(value))))));
             GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, unpackStmts);
 
@@ -718,8 +718,8 @@ internal partial class RoslynEmitter
         }
 
         VariableDeclaratorSyntax declarator = initialValue != null
-            ? VariableDeclarator(Identifier(varName)).WithInitializer(EqualsValueClause(initialValue))
-            : VariableDeclarator(Identifier(varName));
+            ? VariableDeclarator(EscapedIdentifier(varName)).WithInitializer(EqualsValueClause(initialValue))
+            : VariableDeclarator(EscapedIdentifier(varName));
 
         var declaration = VariableDeclaration(typeSyntax)
             .WithVariables(SingletonSeparatedList(declarator));
@@ -833,7 +833,7 @@ internal partial class RoslynEmitter
             try
             {
                 var value = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
-                declarator = VariableDeclarator(Identifier(varName))
+                declarator = VariableDeclarator(EscapedIdentifier(varName))
                     .WithInitializer(EqualsValueClause(value));
             }
             finally
@@ -843,7 +843,7 @@ internal partial class RoslynEmitter
         }
         else
         {
-            declarator = VariableDeclarator(Identifier(varName));
+            declarator = VariableDeclarator(EscapedIdentifier(varName));
         }
 
         var declaration = VariableDeclaration(typeSyntax)
@@ -965,7 +965,7 @@ internal partial class RoslynEmitter
                     statements.Add(ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName(currentName),
+                            EscapedIdentifierName(currentName),
                             indexExpr)));
                 }
                 else
@@ -975,7 +975,7 @@ internal partial class RoslynEmitter
                     statements.Add(LocalDeclarationStatement(
                         VariableDeclaration(IdentifierName("var"))
                             .WithVariables(SingletonSeparatedList(
-                                VariableDeclarator(Identifier(varName))
+                                VariableDeclarator(EscapedIdentifier(varName))
                                     .WithInitializer(EqualsValueClause(indexExpr))))));
                 }
             }
@@ -1044,7 +1044,7 @@ internal partial class RoslynEmitter
                 statements.Add(ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
-                        IdentifierName(currentStarName),
+                        EscapedIdentifierName(currentStarName),
                         starValueExpr)));
             }
             else
@@ -1054,7 +1054,7 @@ internal partial class RoslynEmitter
                 statements.Add(LocalDeclarationStatement(
                     VariableDeclaration(IdentifierName("var"))
                         .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(starVarName))
+                            VariableDeclarator(EscapedIdentifier(starVarName))
                                 .WithInitializer(EqualsValueClause(starValueExpr))))));
             }
         }
@@ -1100,7 +1100,7 @@ internal partial class RoslynEmitter
                     statements.Add(ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName(currentName),
+                            EscapedIdentifierName(currentName),
                             afterExpr)));
                 }
                 else
@@ -1110,7 +1110,7 @@ internal partial class RoslynEmitter
                     statements.Add(LocalDeclarationStatement(
                         VariableDeclaration(IdentifierName("var"))
                             .WithVariables(SingletonSeparatedList(
-                                VariableDeclarator(Identifier(varName))
+                                VariableDeclarator(EscapedIdentifier(varName))
                                     .WithInitializer(EqualsValueClause(afterExpr))))));
                 }
             }
@@ -1142,7 +1142,7 @@ internal partial class RoslynEmitter
                     statements.Add(ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName(currentName),
+                            EscapedIdentifierName(currentName),
                             itemAccess)));
                 }
                 else
@@ -1153,7 +1153,7 @@ internal partial class RoslynEmitter
                     statements.Add(LocalDeclarationStatement(
                         VariableDeclaration(IdentifierName("var"))
                             .WithVariables(SingletonSeparatedList(
-                                VariableDeclarator(Identifier(varName))
+                                VariableDeclarator(EscapedIdentifier(varName))
                                     .WithInitializer(EqualsValueClause(itemAccess))))));
                 }
             }
@@ -1163,7 +1163,7 @@ internal partial class RoslynEmitter
                 statements.Add(LocalDeclarationStatement(
                     VariableDeclaration(IdentifierName("var"))
                         .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(tempVarName))
+                            VariableDeclarator(EscapedIdentifier(tempVarName))
                                 .WithInitializer(EqualsValueClause(itemAccess))))));
                 GenerateRecursiveTupleUnpacking(nestedTuple.Elements, tempVarName, statements);
             }

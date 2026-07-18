@@ -223,7 +223,7 @@ internal class TypeSyntaxMapper
                 var name = tupleType.ElementNames!.Value[i];
                 if (name != null)
                 {
-                    element = element.WithIdentifier(Identifier(name));
+                    element = element.WithIdentifier(RoslynEmitter.EscapedIdentifier(name));
                 }
                 return element;
             });
@@ -321,7 +321,7 @@ internal class TypeSyntaxMapper
                 var name = type.TupleElementNames[i];
                 if (name != null)
                 {
-                    element = element.WithIdentifier(Identifier(name));
+                    element = element.WithIdentifier(RoslynEmitter.EscapedIdentifier(name));
                 }
                 return element;
             });
@@ -726,7 +726,7 @@ internal class TypeSyntaxMapper
                 var name = tupleType.ElementNames[i];
                 if (name != null)
                 {
-                    element = element.WithIdentifier(Identifier(name));
+                    element = element.WithIdentifier(RoslynEmitter.EscapedIdentifier(name));
                 }
                 return element;
             });

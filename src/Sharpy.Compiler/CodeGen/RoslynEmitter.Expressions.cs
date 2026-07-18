@@ -239,7 +239,7 @@ internal partial class RoslynEmitter
         }
 
         var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false);
-        ExpressionSyntax expr = IdentifierName(mangledName);
+        ExpressionSyntax expr = EscapedIdentifierName(mangledName);
 
         // If this variable has been narrowed from Optional<T>/Nullable<T> to T,
         // emit .Unwrap() for Optional, .Value for value-type Nullable, or ! for reference-type Nullable

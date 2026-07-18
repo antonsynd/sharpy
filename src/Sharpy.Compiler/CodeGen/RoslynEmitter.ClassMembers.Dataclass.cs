@@ -174,7 +174,7 @@ internal partial class RoslynEmitter
                         SyntaxKind.SimpleMemberAccessExpression,
                         ThisExpression(),
                         IdentifierName(propName)),
-                    IdentifierName(paramName))));
+                    EscapedIdentifierName(paramName))));
         }
 
         // Call __post_init__ if present

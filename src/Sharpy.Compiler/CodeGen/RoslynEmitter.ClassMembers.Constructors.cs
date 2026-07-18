@@ -149,13 +149,13 @@ internal partial class RoslynEmitter
                     var thisAccess = MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         ThisExpression(),
-                        IdentifierName(fieldName));
+                        EscapedIdentifierName(fieldName));
 
                     // For the right-hand side, check if it's an identifier that matches a parameter
                     ExpressionSyntax assignValue;
                     if (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
                     {
-                        assignValue = IdentifierName(mappedName);
+                        assignValue = EscapedIdentifierName(mappedName);
                     }
                     else
                     {
@@ -304,7 +304,7 @@ internal partial class RoslynEmitter
                 ? _typeMapper.MapType(fieldDecl.Type)
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
-            var param = Parameter(Identifier(paramName))
+            var param = Parameter(EscapedIdentifier(paramName))
                 .WithType(paramType);
 
             // Add default value if present
@@ -343,7 +343,7 @@ internal partial class RoslynEmitter
                         SyntaxKind.SimpleMemberAccessExpression,
                         ThisExpression(),
                         IdentifierName(propName)),
-                    IdentifierName(paramName))));
+                    EscapedIdentifierName(paramName))));
         }
 
         // Only add the parameterized constructor if it has at least one parameter
@@ -406,7 +406,7 @@ internal partial class RoslynEmitter
                                 .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression()))));
                         }
 
-                        var paramSyntax = Parameter(Identifier(paramName)).WithType(paramType);
+                        var paramSyntax = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
 
                         // For variadic parameters, add the 'params' modifier
                         if (p.IsVariadic)
@@ -428,7 +428,7 @@ internal partial class RoslynEmitter
                     var baseArgs = orderedNonSelfParams.Select(p =>
                     {
                         var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
-                        return Argument(IdentifierName(paramName));
+                        return Argument(EscapedIdentifierName(paramName));
                     }).ToArray();
 
                     var ctor = ConstructorDeclaration(Identifier(className))

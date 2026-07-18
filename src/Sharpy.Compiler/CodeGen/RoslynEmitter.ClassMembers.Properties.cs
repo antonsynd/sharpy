@@ -38,7 +38,7 @@ internal partial class RoslynEmitter
             fieldType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
-        var variable = VariableDeclarator(Identifier(fieldName));
+        var variable = VariableDeclarator(EscapedIdentifier(fieldName));
 
         // Add initializer if present
         if (varDecl.InitialValue != null)
@@ -348,7 +348,7 @@ internal partial class RoslynEmitter
         }
 
         // Generate the backing field: private T _name;
-        var fieldVariable = VariableDeclarator(Identifier(backingFieldName));
+        var fieldVariable = VariableDeclarator(EscapedIdentifier(backingFieldName));
         if (autoProp.DefaultValue != null)
         {
             var previousTargetType = _targetTypeContext;
@@ -766,7 +766,7 @@ internal partial class RoslynEmitter
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         // Backing field: private T _name [= default];
-        var fieldVariable = VariableDeclarator(Identifier(backingFieldName));
+        var fieldVariable = VariableDeclarator(EscapedIdentifier(backingFieldName));
         if (propDef.DefaultValue != null)
         {
             var previousTargetType = _targetTypeContext;
@@ -803,7 +803,7 @@ internal partial class RoslynEmitter
             setterStatements.Add(LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(oldValueLocal))
+                        VariableDeclarator(EscapedIdentifier(oldValueLocal))
                             .WithInitializer(EqualsValueClause(IdentifierName(backingFieldName)))))));
         }
 

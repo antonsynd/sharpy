@@ -201,7 +201,7 @@ internal partial class RoslynEmitter
         var creation = ObjectCreationExpression(cacheType)
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(maxSizeExpr))));
 
-        var declarator = VariableDeclarator(Identifier(fieldName))
+        var declarator = VariableDeclarator(EscapedIdentifier(fieldName))
             .WithInitializer(EqualsValueClause(creation));
 
         var modifiers = new List<SyntaxToken> { Token(SyntaxKind.PrivateKeyword) };

@@ -242,9 +242,9 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapType(funcDef.ReturnType)
             : classTypeSyntax;
 
-        var param1 = Parameter(Identifier("left")).WithType(classTypeSyntax);
+        var param1 = Parameter(EscapedIdentifier("left")).WithType(classTypeSyntax);
         var param2Type = otherParam.Type != null ? _typeMapper.MapType(otherParam.Type) : classTypeSyntax;
-        var param2 = Parameter(Identifier("right")).WithType(param2Type);
+        var param2 = Parameter(EscapedIdentifier("right")).WithType(param2Type);
 
         BlockSyntax operatorBody;
 
@@ -305,9 +305,9 @@ internal partial class RoslynEmitter
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
         var classTypeSyntax = GetCurrentClassTypeSyntax(className);
-        var param1 = Parameter(Identifier("left")).WithType(classTypeSyntax);
+        var param1 = Parameter(EscapedIdentifier("left")).WithType(classTypeSyntax);
         var param2Type = otherParam.Type != null ? _typeMapper.MapType(otherParam.Type) : classTypeSyntax;
-        var param2 = Parameter(Identifier("right")).WithType(param2Type);
+        var param2 = Parameter(EscapedIdentifier("right")).WithType(param2Type);
 
         BlockSyntax operatorBody;
 
@@ -362,7 +362,7 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapType(funcDef.ReturnType)
             : classTypeSyntax;
 
-        var param = Parameter(Identifier("value")).WithType(classTypeSyntax);
+        var param = Parameter(EscapedIdentifier("value")).WithType(classTypeSyntax);
 
         BlockSyntax operatorBody;
 
@@ -425,14 +425,14 @@ internal partial class RoslynEmitter
             : classTypeSyntax;
 
         // Generate parameter for the operator — use generic type syntax for generic classes
-        var param1 = Parameter(Identifier("left"))
+        var param1 = Parameter(EscapedIdentifier("left"))
             .WithType(classTypeSyntax);
 
         var param2Type = otherParam.Type != null
             ? _typeMapper.MapType(otherParam.Type)
             : classTypeSyntax;
 
-        var param2 = Parameter(Identifier("right"))
+        var param2 = Parameter(EscapedIdentifier("right"))
             .WithType(param2Type);
 
         // Generate body - call the actual dunder method on left operand
@@ -478,14 +478,14 @@ internal partial class RoslynEmitter
 
         // Generate parameters — use generic type syntax for generic classes (e.g., Box<T>)
         var classTypeSyntax = GetCurrentClassTypeSyntax(className);
-        var param1 = Parameter(Identifier("left"))
+        var param1 = Parameter(EscapedIdentifier("left"))
             .WithType(classTypeSyntax);
 
         var param2Type = otherParam.Type != null
             ? _typeMapper.MapType(otherParam.Type)
             : classTypeSyntax;
 
-        var param2 = Parameter(Identifier("right"))
+        var param2 = Parameter(EscapedIdentifier("right"))
             .WithType(param2Type);
 
         // Generate body - for __eq__ on class types, use null-safe dispatch through Equals(T)
@@ -552,7 +552,7 @@ internal partial class RoslynEmitter
     {
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
-        var param = Parameter(Identifier("value"))
+        var param = Parameter(EscapedIdentifier("value"))
             .WithType(GetCurrentClassTypeSyntax(className));
 
         // Reference the IsTrue property
@@ -576,7 +576,7 @@ internal partial class RoslynEmitter
     {
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
-        var param = Parameter(Identifier("value"))
+        var param = Parameter(EscapedIdentifier("value"))
             .WithType(GetCurrentClassTypeSyntax(className));
 
         // Negate the IsTrue property
@@ -607,7 +607,7 @@ internal partial class RoslynEmitter
             : classTypeSyntax;
 
         // Generate parameter for the operator — use generic type syntax for generic classes
-        var param = Parameter(Identifier("value"))
+        var param = Parameter(EscapedIdentifier("value"))
             .WithType(classTypeSyntax);
 
         // Generate body - call the actual dunder method on the operand
@@ -645,7 +645,7 @@ internal partial class RoslynEmitter
             : Token(SyntaxKind.ExplicitKeyword);
 
         var paramName = NameMangler.ToCamelCase(sourceParam.Name);
-        var param = Parameter(Identifier(paramName)).WithType(paramType);
+        var param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
 
         var body = Block(GenerateSuite(funcDef.Body));
 
@@ -672,7 +672,7 @@ internal partial class RoslynEmitter
             : Token(SyntaxKind.ExplicitKeyword);
 
         var paramName = NameMangler.ToCamelCase(sourceParam.Name);
-        var param = Parameter(Identifier(paramName)).WithType(paramType);
+        var param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
 
         _variableVersions[paramName] = 0;
         var body = Block(GenerateSuite(funcDef.Body));
@@ -694,9 +694,9 @@ internal partial class RoslynEmitter
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
         var classTypeSyntax = GetCurrentClassTypeSyntax(className);
-        var param1 = Parameter(Identifier("left"))
+        var param1 = Parameter(EscapedIdentifier("left"))
             .WithType(classTypeSyntax);
-        var param2 = Parameter(Identifier("right"))
+        var param2 = Parameter(EscapedIdentifier("right"))
             .WithType(classTypeSyntax);
 
         // operator == returns !(left != right)
@@ -732,9 +732,9 @@ internal partial class RoslynEmitter
             ? _typeMapper.MapType(otherParam.Type)
             : classTypeSyntax;
 
-        var param1 = Parameter(Identifier("left"))
+        var param1 = Parameter(EscapedIdentifier("left"))
             .WithType(classTypeSyntax);
-        var param2 = Parameter(Identifier("right"))
+        var param2 = Parameter(EscapedIdentifier("right"))
             .WithType(param2Type);
 
         ExpressionSyntax returnExpr;

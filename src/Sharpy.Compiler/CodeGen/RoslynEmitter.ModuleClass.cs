@@ -665,8 +665,8 @@ internal partial class RoslynEmitter
                 IdentifierName("Select")),
             ArgumentList(SeparatedList(new[]
             {
-                Argument(IdentifierName(fieldName)),
-                Argument(SimpleLambdaExpression(Parameter(Identifier("row")))
+                Argument(EscapedIdentifierName(fieldName)),
+                Argument(SimpleLambdaExpression(Parameter(EscapedIdentifier("row")))
                     .WithExpressionBody(rowArray)),
             })));
 
@@ -732,7 +732,7 @@ internal partial class RoslynEmitter
             {
                 var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
                 var paramType = _typeMapper.MapSemanticType(p.Type);
-                return Parameter(Identifier(paramName)).WithType(paramType);
+                return Parameter(EscapedIdentifier(paramName)).WithType(paramType);
             })
             .ToArray();
 
@@ -993,7 +993,7 @@ internal partial class RoslynEmitter
 
                 // ctor parameter: XFixture xFixture
                 var paramName = fixture.FieldName.TrimStart('_');
-                ctorParams.Add(Parameter(Identifier(paramName))
+                ctorParams.Add(Parameter(EscapedIdentifier(paramName))
                     .WithType(IdentifierName(fixture.ClassName)));
 
                 // _xFixture = xFixture;

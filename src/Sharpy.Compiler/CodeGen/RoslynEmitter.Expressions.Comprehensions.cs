@@ -190,7 +190,7 @@ internal partial class RoslynEmitter
         var tempDecl = LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(tempName))
+                    VariableDeclarator(EscapedIdentifier(tempName))
                         .WithInitializer(EqualsValueClause(
                             ObjectCreationExpression(dictType)
                                 .WithArgumentList(ArgumentList()))))));
@@ -241,7 +241,7 @@ internal partial class RoslynEmitter
                         var varInit = LocalDeclarationStatement(
                             VariableDeclaration(IdentifierName("var"))
                                 .WithVariables(SingletonSeparatedList(
-                                    VariableDeclarator(Identifier(loopVar))
+                                    VariableDeclarator(EscapedIdentifier(loopVar))
                                         .WithInitializer(EqualsValueClause(IdentifierName(tempLoopVar))))));
 
                         var foreachBody = new List<StatementSyntax> { varInit };
@@ -269,7 +269,7 @@ internal partial class RoslynEmitter
                         }
 
                         var designations = tupleVars
-                            .Select(name => (VariableDesignationSyntax)SingleVariableDesignation(Identifier(name)))
+                            .Select(name => (VariableDesignationSyntax)SingleVariableDesignation(EscapedIdentifier(name)))
                             .ToList();
                         var deconstructStmt = ExpressionStatement(
                             AssignmentExpression(
@@ -393,7 +393,7 @@ internal partial class RoslynEmitter
             sourceDecl = LocalDeclarationStatement(
                 VariableDeclaration(sourceDeclType)
                     .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(sourceTempName))
+                        VariableDeclarator(EscapedIdentifier(sourceTempName))
                             .WithInitializer(EqualsValueClause(sourceExpr)))));
             // ((global::Sharpy.ISized)__src_N).Count — List<T> implements Count only explicitly
             // (per interface), so a plain __src_N.Count would bind to LINQ's Count() method group;
@@ -412,7 +412,7 @@ internal partial class RoslynEmitter
         var tempDecl = LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(tempName))
+                    VariableDeclarator(EscapedIdentifier(tempName))
                         .WithInitializer(EqualsValueClause(
                             ObjectCreationExpression(collectionType)
                                 .WithArgumentList(capacityArgs))))));
@@ -586,7 +586,7 @@ internal partial class RoslynEmitter
                 {
                     var name = GetMangledVariableName(elemId.Name, isNewDeclaration: true);
                     _declaredVariables.Add(name);
-                    designations.Add(SingleVariableDesignation(Identifier(name)));
+                    designations.Add(SingleVariableDesignation(EscapedIdentifier(name)));
                 }
 
                 statements.Add(ExpressionStatement(
@@ -630,7 +630,7 @@ internal partial class RoslynEmitter
         return LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(name))
+                    VariableDeclarator(EscapedIdentifier(name))
                         .WithInitializer(EqualsValueClause(initializer)))));
     }
 }

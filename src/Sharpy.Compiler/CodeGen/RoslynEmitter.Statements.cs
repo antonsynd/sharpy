@@ -811,7 +811,7 @@ internal partial class RoslynEmitter
         var itemIdentifier = Identifier(itemName);
         var yieldReturn = YieldStatement(
             SyntaxKind.YieldReturnStatement,
-            IdentifierName(itemName));
+            EscapedIdentifierName(itemName));
         var foreachStmt = ForEachStatement(
             IdentifierName("var"),
             itemIdentifier,

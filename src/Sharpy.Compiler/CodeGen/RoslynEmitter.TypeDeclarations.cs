@@ -176,7 +176,7 @@ internal partial class RoslynEmitter
                 ? NullableType(baseType)
                 : baseType;
 
-            return Parameter(Identifier(paramName + LateBoundSuffix))
+            return Parameter(EscapedIdentifier(paramName + LateBoundSuffix))
                 .WithType(lbType)
                 .WithDefault(EqualsValueClause(
                     LiteralExpression(SyntaxKind.NullLiteralExpression)));
@@ -194,7 +194,7 @@ internal partial class RoslynEmitter
                 .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression()))));
         }
 
-        var parameter = Parameter(Identifier(paramName))
+        var parameter = Parameter(EscapedIdentifier(paramName))
             .WithType(paramType);
 
         // Add ref/out/in modifier
@@ -276,7 +276,7 @@ internal partial class RoslynEmitter
             yield return LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"),
                     SingletonSeparatedList(
-                        VariableDeclarator(Identifier(paramName))
+                        VariableDeclarator(EscapedIdentifier(paramName))
                             .WithInitializer(EqualsValueClause(
                                 BinaryExpression(
                                     SyntaxKind.CoalesceExpression,
@@ -846,7 +846,7 @@ internal partial class RoslynEmitter
                         .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression()))));
                 }
 
-                var param = Parameter(Identifier(paramName)).WithType(paramType);
+                var param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
                 if (p.IsVariadic)
                 {
                     param = param.WithModifiers(TokenList(Token(SyntaxKind.ParamsKeyword)));
@@ -1171,7 +1171,7 @@ internal partial class RoslynEmitter
                 )
                 .WithVariables(
                     SingletonSeparatedList(
-                        VariableDeclarator(Identifier(fieldName))
+                        VariableDeclarator(EscapedIdentifier(fieldName))
                             .WithInitializer(EqualsValueClause(valueExpr))
                     )
                 )
@@ -1527,7 +1527,7 @@ internal partial class RoslynEmitter
                     Argument(MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(moduleClassName),
-                        IdentifierName(propertyName)))))));
+                        EscapedIdentifierName(propertyName)))))));
 
         // MemberType = typeof(Module)
         var memberTypeArgument = AttributeArgument(
@@ -1713,7 +1713,7 @@ internal partial class RoslynEmitter
         if (fields.Count > 0)
         {
             var ctorParams = fields.Select(f =>
-                Parameter(Identifier(NameMangler.ToCamelCase(f.Name)))
+                Parameter(EscapedIdentifier(NameMangler.ToCamelCase(f.Name)))
                     .WithType(_typeMapper.MapSemanticType(f.Type)))
                 .ToArray();
 
@@ -1754,7 +1754,7 @@ internal partial class RoslynEmitter
     private MethodDeclarationSyntax GenerateDeconstructMethod(List<VariableSymbol> fields)
     {
         var outParams = fields.Select(f =>
-            Parameter(Identifier(NameMangler.ToCamelCase(f.Name)))
+            Parameter(EscapedIdentifier(NameMangler.ToCamelCase(f.Name)))
                 .WithType(_typeMapper.MapSemanticType(f.Type))
                 .WithModifiers(TokenList(Token(SyntaxKind.OutKeyword))))
             .ToArray();
