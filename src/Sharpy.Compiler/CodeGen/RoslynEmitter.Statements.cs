@@ -470,9 +470,19 @@ internal partial class RoslynEmitter
         return ExpressionStatement(
             AssignmentExpression(
                 SyntaxKind.SimpleAssignmentExpression,
-                IdentifierName("_"),
+                DiscardIdentifierName(),
                 generated));
     }
+
+    /// <summary>
+    /// Builds the discard target <c>_</c> for a <c>_ = expr;</c> statement. The identifier token
+    /// carries <see cref="SyntaxKind.UnderscoreToken"/> as its contextual kind — the exact shape
+    /// Roslyn's parser produces for a discard — so the binder recognizes it as a discard. A plain
+    /// <c>IdentifierName("_")</c> prints identically but binds as an out-of-scope read reference
+    /// (CS0103) when the emitter tree is handed straight to <c>CSharpSyntaxTree.Create</c> (#1095).
+    /// </summary>
+    private static IdentifierNameSyntax DiscardIdentifierName() =>
+        IdentifierName(Identifier(TriviaList(), SyntaxKind.UnderscoreToken, "_", "_", TriviaList()));
 
     /// <summary>
     /// Returns true if the given call targets unittest.assert_almost_equal (bare or qualified).
