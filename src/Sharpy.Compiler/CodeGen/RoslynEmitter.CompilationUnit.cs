@@ -395,7 +395,7 @@ internal partial class RoslynEmitter
                         continue;
                     var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
                     yield return UsingDirective(
-                        NameEquals(sanitizedAlias),
+                        NameEquals(EscapedIdentifierName(sanitizedAlias)),
                         ParseQualifiedName(fullModuleClass));
                 }
                 else
@@ -416,7 +416,7 @@ internal partial class RoslynEmitter
                     }
 
                     yield return UsingDirective(
-                        NameEquals(sanitizedAlias),
+                        NameEquals(EscapedIdentifierName(sanitizedAlias)),
                         ParseQualifiedName(fullModuleClass));
                 }
             }

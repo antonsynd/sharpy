@@ -1508,7 +1508,7 @@ internal partial class RoslynEmitter
             }
             else
             {
-                moduleExpr = IdentifierName(EscapeCSharpKeyword(string.Join("_", moduleParts)));
+                moduleExpr = EscapedIdentifierName(EscapeCSharpKeyword(string.Join("_", moduleParts)));
             }
 
             // If the entire path is just the module (no member access), return it
