@@ -207,32 +207,22 @@ def main():
     [Fact]
     public void NuGetDepMapping_NumpyRequiresMathNet()
     {
-        var cliDir = CoreDir;
-        var mathNetDll = Path.Combine(cliDir, "MathNet.Numerics.dll");
+        // The hand-maintained numpy→MathNet NuGet map is gone (#1084); the dependency is now
+        // derived mechanically. MathNet.Numerics must appear in the transitive managed closure
+        // of the stdlib references (numpy is implemented on top of MathNet).
+        var mathNetDll = Path.Combine(CoreDir, "MathNet.Numerics.dll");
         if (!File.Exists(mathNetDll))
         {
-            _output.WriteLine("MathNet.Numerics.dll not found in CLI output dir");
+            _output.WriteLine("MathNet.Numerics.dll not found in test host output dir; skipping.");
             return;
         }
 
-        var numpyAssembly = "Sharpy.Stdlib.Numpy.dll";
-        var numpyPath = Path.Combine(cliDir, numpyAssembly);
-        if (!File.Exists(numpyPath) && Directory.Exists(PerModuleDir))
-            numpyPath = Path.Combine(PerModuleDir, numpyAssembly);
+        var references = GetStdlibReferences();
+        var closure = RuntimeClosureResolver.Resolve(references);
 
-        if (!File.Exists(numpyPath))
-        {
-            _output.WriteLine("Sharpy.Stdlib.Numpy.dll not found");
-            return;
-        }
-
-        var registry = new ModuleRegistry(NullLogger.Instance);
-        registry.LoadReference(numpyPath);
-        registry.GetModuleFunctions("numpy");
-        var used = registry.GetUsedAssemblyPaths();
-
-        Assert.Contains(used, p => Path.GetFileName(p).Contains("Numpy", StringComparison.OrdinalIgnoreCase));
-        _output.WriteLine($"Numpy assembly tracked, MathNet.Numerics.dll present at: {mathNetDll}");
+        Assert.Contains(closure.ManagedAssemblies,
+            p => Path.GetFileName(p).Equals("MathNet.Numerics.dll", StringComparison.OrdinalIgnoreCase));
+        _output.WriteLine($"MathNet.Numerics.dll resolved in stdlib closure: {mathNetDll}");
     }
 
     [Fact]
