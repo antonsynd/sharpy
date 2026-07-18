@@ -96,22 +96,20 @@ internal partial class ProjectCompiler
                 var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
                 var csharpCode = roslynCompilationUnit.ToFullString();
 
-                // D3 (#1050): parse the emitted text once here and hand the parsed tree
-                // straight to CSharpCompilation.Create, replacing the second reparse
-                // AssemblyCompiler used to do. Handing the emitter's node graph directly
-                // (CSharpSyntaxTree.Create) is blocked on #1095: some emitter nodes are not
-                // reparse-equivalent (string-built "global::" qualified names inside single
-                // identifier tokens print correctly but fail to bind as trees).
-                var syntaxTree = CSharpSyntaxTree.ParseText(
-                    csharpCode,
+                // The emitter's tree is handed directly to CSharpCompilation (zero-parse, #1095):
+                // no ToFullString()→ParseText round-trip. ReparseEquivalenceConformanceTests
+                // guarantees Create(root) binds identically to ParseText(root.ToFullString()) across
+                // the stdlib + fixture corpus. #line directives are emitter-built syntax that Create
+                // carries natively (the tree still prints them into csharpCode below for snapshots).
+                //
+                // INVARIANT: any TEXT transformation of the generated C# after emission — e.g.
+                // LineDirectivePostProcessor when #1077 wires it — must revert THIS path to
+                // CSharpSyntaxTree.ParseText(processedText): a text edit invalidates the prebuilt tree.
+                var syntaxTree = CSharpSyntaxTree.Create(
+                    roslynCompilationUnit,
+                    options: CSharpParseOptions.Default,
                     path: csharpFileName,
                     encoding: System.Text.Encoding.UTF8);
-
-                // NOTE(#1077): enhanced #line directives keep the emitter's placeholder char
-                // offset here; LineDirectivePostProcessor (run by the deleted single-file path)
-                // is not yet wired into project-mode codegen. Wiring it requires regenerating all
-                // line-directive .expected.cs snapshots, so it is deferred out of the #1038
-                // pipeline-deletion change.
 
                 fileMetrics?.EndPhase();
 

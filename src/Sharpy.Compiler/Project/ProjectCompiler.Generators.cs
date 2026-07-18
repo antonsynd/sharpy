@@ -143,10 +143,16 @@ internal partial class ProjectCompiler
             }
 
             generatorCSharp[filePath] = csharpCode;
-            // Parse-once rather than CSharpSyntaxTree.Create — see #1095 (emitter nodes are
-            // not reparse-equivalent; the hot path in ProjectCompiler.CodeGen.cs matches).
-            generatorTrees[filePath] = CSharpSyntaxTree.ParseText(
-                csharpCode,
+            // The emitter's tree is handed directly to CSharpCompilation (zero-parse, #1095) —
+            // matches the hot path in ProjectCompiler.CodeGen.cs; ReparseEquivalenceConformanceTests
+            // guarantees Create(root) binds identically to ParseText(root.ToFullString()).
+            //
+            // INVARIANT: any TEXT transformation of the generated C# after emission — e.g.
+            // LineDirectivePostProcessor when #1077 wires it — must revert THIS path to
+            // CSharpSyntaxTree.ParseText(processedText): a text edit invalidates the prebuilt tree.
+            generatorTrees[filePath] = CSharpSyntaxTree.Create(
+                roslynUnit,
+                options: CSharpParseOptions.Default,
                 path: filePath,
                 encoding: System.Text.Encoding.UTF8);
         }

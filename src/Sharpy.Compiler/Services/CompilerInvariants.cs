@@ -186,6 +186,16 @@ public static class CompilerInvariants
     /// (D3, #1050). Reads <see cref="SyntaxTree.GetDiagnostics()"/> off the tree the compile
     /// path already hands to Roslyn — no reparse. This is the hot-path form.
     /// </summary>
+    /// <remarks>
+    /// Since the zero-parse flip (#1095) the tree handed here is built by
+    /// <c>CSharpSyntaxTree.Create</c>, not parsed from text, so <see cref="SyntaxTree.GetDiagnostics()"/>
+    /// carries no parser diagnostics — the "generated C# parses" invariant is <b>vacuous</b> on this
+    /// path. Reparse-equivalence (that the Create'd tree binds identically to a reparse of its text)
+    /// is instead guaranteed by <c>ReparseEquivalenceConformanceTests</c> and by the executing
+    /// file-based fixture corpus; genuine binding errors still surface downstream when the trees reach
+    /// <c>CSharpCompilation</c>. The call is kept because it still fires meaningfully on the reparse
+    /// paths (incremental cache-hit text restore, REPL) that hand over a <c>ParseText</c>'d tree.
+    /// </remarks>
     public static void AssertPostCodeGen(SyntaxTree generatedTree, DiagnosticBag diagnostics)
     {
         ArgumentNullException.ThrowIfNull(diagnostics);
