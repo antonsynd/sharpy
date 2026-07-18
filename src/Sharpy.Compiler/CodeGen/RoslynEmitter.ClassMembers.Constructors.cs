@@ -403,7 +403,7 @@ internal partial class RoslynEmitter
                         if (p.IsVariadic)
                         {
                             paramType = ArrayType(paramType)
-                                .WithRankSpecifiers(SingletonList(ArrayRankSpecifier()));
+                                .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression()))));
                         }
 
                         var paramSyntax = Parameter(Identifier(paramName)).WithType(paramType);
