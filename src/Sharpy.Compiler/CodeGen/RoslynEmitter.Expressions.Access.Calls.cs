@@ -1251,9 +1251,28 @@ internal partial class RoslynEmitter
 
         if (fqn.Contains('.', StringComparison.Ordinal))
         {
-            var parts = fqn.Split('.');
+            // A global::-prefixed FQN must build its leftmost segment as a real
+            // AliasQualifiedName, not IdentifierName("global::System") — the latter prints
+            // correctly but is a single broken identifier token that fails to bind under direct
+            // tree handoff (#1095). The member-access spine matches what ParseText produces for a
+            // dotted name in expression position, so the printed text is unchanged.
+            ExpressionSyntax baseExpr;
+            string[] parts;
+            if (fqn.StartsWith("global::", StringComparison.Ordinal))
+            {
+                parts = fqn["global::".Length..].Split('.');
+                baseExpr = AliasQualifiedName(
+                    IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                    IdentifierName(parts[0]));
+            }
+            else
+            {
+                parts = fqn.Split('.');
+                baseExpr = IdentifierName(parts[0]);
+            }
+
             return parts.Skip(1).Aggregate(
-                (ExpressionSyntax)IdentifierName(parts[0]),
+                baseExpr,
                 (left, part) => MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName(part)));
         }
