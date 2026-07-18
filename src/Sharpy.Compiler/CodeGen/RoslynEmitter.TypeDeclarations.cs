@@ -1520,9 +1520,13 @@ internal partial class RoslynEmitter
         var moduleClassName = _resolvedModuleClassName ?? GetModuleClassName();
         var propertyName = GetMemberDataPropertyName(variableName);
 
-        // nameof(Module.VarMemberData)
+        // nameof(Module.VarMemberData) — the invocation target must carry ContextualKind ==
+        // NameOfKeyword (the shape Roslyn's parser produces) so the binder recognizes the
+        // nameof-expression. A plain IdentifierName("nameof") prints identically but binds as a
+        // call to an undefined method 'nameof' (CS0103) under direct CSharpSyntaxTree.Create (#1095).
         var nameofArgument = AttributeArgument(
-            InvocationExpression(IdentifierName("nameof"))
+            InvocationExpression(IdentifierName(
+                Identifier(TriviaList(), SyntaxKind.NameOfKeyword, "nameof", "nameof", TriviaList())))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(
                     Argument(MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
