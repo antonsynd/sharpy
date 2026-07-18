@@ -293,6 +293,47 @@ public class ReparseEquivalenceConformanceTests
     }
 
     // ---------------------------------------------------------------------------------------------
+    // Keyword-named-module coverage (#1095, regression fixed in 664f3332f).
+    //
+    // The flip (P5.2) un-masked a corpus blind spot: a module whose name is a C# keyword (e.g. a
+    // `base.spy`) is referenced through an @-escaped identifier at two sites — the `using @base = ...;`
+    // alias name and the `@base.Member(...)` module-reference expression. Both were built with
+    // SyntaxFactory.Identifier("@base") (ValueText "@base") instead of the parser's "base", so under
+    // direct CSharpSyntaxTree.Create handoff the reference failed to bind (CS0103); only one multi-file
+    // integration test caught it because no fixture in the discovered corpus has a keyword-named module.
+    // (Keyword-named top-level functions and classes need no such escaping under direct handoff: they are
+    // mangled to PascalCase — `lock` -> `Lock` — which is never a C# keyword. A module name, used verbatim
+    // in the alias and reference, is the only vector, so that is what this covers.)
+    // ---------------------------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("base")]
+    [InlineData("lock")]
+    [InlineData("params")]
+    public void KeywordNamedModule_EmitterTrees_BindEquivalentlyUnderDirectHandoff(string moduleName)
+    {
+        var (success, units) = CompileProjectFilesCapturing(
+            new[]
+            {
+                ($"{moduleName}.spy", "def get_value() -> int:\n    return 42\n"),
+                ("main.spy", $"import {moduleName}\n\ndef main() -> None:\n    print({moduleName}.get_value())\n"),
+            },
+            entryPoint: "main.spy");
+
+        success.Should().BeTrue($"the project importing keyword-named module '{moduleName}' must compile");
+        units.Should().NotBeEmpty();
+
+        // Guard that the scenario is genuinely exercised: the emitter must @-escape the module name at the
+        // using-alias and module-reference sites. If a future change ever stopped emitting the escaped form,
+        // this assertion — not just the binding check below — fails loudly rather than passing vacuously.
+        string.Join("\n", units.Select(u => u.Unit.ToFullString()))
+            .Should().Contain($"@{moduleName}",
+                $"the keyword-named module '{moduleName}' must be referenced through an @-escaped identifier");
+
+        ExtraBindingErrors(units, IntegrationTestBase.GetSharedReferences()).Should().BeEmpty();
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // Binding-equivalence check.
     // ---------------------------------------------------------------------------------------------
 
@@ -464,6 +505,56 @@ public class ReparseEquivalenceConformanceTests
         };
         _ = new Compiler(options, _logger, factory).Compile(source, fileName);
         return factory.Captured;
+    }
+
+    /// <summary>
+    /// Writes an in-memory multi-file project to a throwaway temp directory and compiles it through the
+    /// same <see cref="ProjectCompiler"/> + capturing-factory path the multi-file fixture corpus uses,
+    /// returning the emitter units. Used for scenarios (e.g. keyword-named modules) that need a real
+    /// cross-module import but are clearer to express inline than as an on-disk fixture.
+    /// </summary>
+    private (bool Success, IReadOnlyList<(string? Path, CompilationUnitSyntax Unit)> Units)
+        CompileProjectFilesCapturing(IReadOnlyList<(string RelPath, string Source)> files, string entryPoint)
+    {
+        var projectDir = Path.Combine(Path.GetTempPath(), "sharpy_reparse_kw_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(projectDir);
+        try
+        {
+            var sourceFiles = new List<string>();
+            foreach (var (relPath, source) in files)
+            {
+                var fullPath = Path.Combine(projectDir, relPath);
+                File.WriteAllText(fullPath, source);
+                sourceFiles.Add(fullPath);
+            }
+            sourceFiles.Sort(StringComparer.Ordinal);
+
+            var factory = new CapturingEmitterFactory();
+            var config = new ProjectConfig
+            {
+                ProjectDirectory = projectDir,
+                ProjectFilePath = Path.Combine(projectDir, "test.spyproj"),
+                RootNamespace = "Sharpy.Test",
+                OutputType = "exe",
+                EntryPoint = entryPoint,
+                SourceFiles = sourceFiles,
+                Configuration = "Debug",
+                TargetFramework = "net10.0"
+            };
+
+            var moduleRegistry = new ModuleRegistry(_logger);
+            moduleRegistry.LoadReference(SharpyCoreReference.Location);
+
+            var projectCompiler = new ProjectCompiler(
+                _logger, moduleRegistry, emitterFactory: factory, features: FeatureFlags.None);
+            var result = projectCompiler.Compile(config, CancellationToken.None, emitAssembly: false);
+            return (result.Success, factory.Captured);
+        }
+        finally
+        {
+            try { Directory.Delete(projectDir, recursive: true); }
+            catch { /* best-effort temp cleanup */ }
+        }
     }
 
     private static IReadOnlyList<MetadataReference> BuildStdlibReferences()
