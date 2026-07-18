@@ -239,7 +239,7 @@ internal partial class RoslynEmitter
                 return InvocationExpression(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName("System.ValueTuple"),
+                        ValueTupleTypeAccess(),
                         IdentifierName("Create")))
                     .WithArgumentList(ArgumentList(SeparatedList(expandedArgs)));
             }
@@ -250,7 +250,7 @@ internal partial class RoslynEmitter
                 return InvocationExpression(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName("System.ValueTuple"),
+                        ValueTupleTypeAccess(),
                         IdentifierName("Create")))
                     .WithArgumentList(ArgumentList());
             }
@@ -286,7 +286,7 @@ internal partial class RoslynEmitter
             return InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("System.ValueTuple"),
+                    ValueTupleTypeAccess(),
                     IdentifierName("Create")))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(elements[0]))));
         }
@@ -297,7 +297,7 @@ internal partial class RoslynEmitter
             return InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("System.ValueTuple"),
+                    ValueTupleTypeAccess(),
                     IdentifierName("Create")))
                 .WithArgumentList(ArgumentList());
         }
@@ -306,6 +306,20 @@ internal partial class RoslynEmitter
         return TupleExpression(SeparatedList(
             elements.Select(e => Argument(e))));
     }
+
+    /// <summary>
+    /// Builds the <c>System.ValueTuple</c> receiver for a <c>ValueTuple.Create(...)</c> call as a
+    /// real member-access spine (<c>IdentifierName("System") . IdentifierName("ValueTuple")</c>) —
+    /// the shape Roslyn's parser produces in expression position. A single
+    /// <c>IdentifierName("System.ValueTuple")</c> packs the dotted name into one identifier token
+    /// that prints correctly but binds as CS0103 under direct <c>CSharpSyntaxTree.Create</c> handoff
+    /// (#1095). The printed text is unchanged, so snapshots stay byte-identical.
+    /// </summary>
+    private static ExpressionSyntax ValueTupleTypeAccess() =>
+        MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            IdentifierName("System"),
+            IdentifierName("ValueTuple"));
 
     private ExpressionSyntax GenerateFString(FStringLiteral fstring)
     {
