@@ -495,7 +495,14 @@ internal class AssemblyCompiler
     }
 """);
 
-            foreach (var refPath in projectConfig.References)
+            // Emit the full transitive managed runtime closure, not just the direct references:
+            // a program that imports numpy pulls MathNet.Numerics (and sqlite3 pulls
+            // SQLitePCLRaw.*, etc.) transitively, and with a deps.json present the host resolves
+            // ONLY listed managed assemblies into the trusted-platform-assembly set — so an
+            // omitted transitive dependency is invisible at runtime (#1084).
+            var runtimeClosure = RuntimeClosureResolver.Resolve(projectConfig.References);
+
+            foreach (var refPath in runtimeClosure.ManagedAssemblies)
             {
                 var fileName = Path.GetFileName(refPath);
                 if (!File.Exists(refPath) || fileName == "Sharpy.Core.dll")

@@ -250,6 +250,37 @@ public class CompileCommandTests
     }
 
     [Fact]
+    public void Compile_DepsJson_ListsTransitiveNuGetDependencies()
+    {
+        // A stdlib monolith reference pulls MathNet (numpy), YamlDotNet (yaml), Tomlyn (toml),
+        // and Microsoft.Data.Sqlite transitively. With a deps.json present the host resolves
+        // ONLY listed managed assemblies into the trusted-platform-assembly set, so an omitted
+        // transitive dependency is invisible at runtime and a standalone `dotnet out.dll` dies
+        // at first use (#1084).
+        var mathNet = Path.Combine(AppContext.BaseDirectory, "MathNet.Numerics.dll");
+        if (!File.Exists(mathNet))
+        {
+            // Stdlib built without NuGet-backed modules in this test host; nothing to assert.
+            return;
+        }
+
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy("def main():\n    print(\"hello\")\n", "hello.spy");
+        var outDir = ws.PathFor("out");
+        var outPath = Path.Combine(outDir, "hello.dll");
+
+        var invocation = CliTestHarness.Invoke($"compile \"{spy}\" -o \"{outPath}\"");
+
+        invocation.ExitCode.Should().Be(0);
+        var depsPath = Path.Combine(outDir, "hello.deps.json");
+        File.Exists(depsPath).Should().BeTrue();
+
+        var deps = File.ReadAllText(depsPath);
+        deps.Should().Contain("MathNet.Numerics",
+            "deps.json must declare transitive NuGet dependencies reachable via the stdlib monolith (#1084)");
+    }
+
+    [Fact]
     public void Compile_NoDeps_SkipsCopyingRuntimeDependencies()
     {
         using var ws = new TempWorkspace();
