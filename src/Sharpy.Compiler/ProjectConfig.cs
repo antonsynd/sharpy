@@ -1,6 +1,8 @@
 using System.Xml.Linq;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
+using Sharpy.Compiler.Lexer;
+using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler;
 
@@ -8,6 +10,18 @@ namespace Sharpy.Compiler;
 /// A NuGet package reference declared in a .spyproj file
 /// </summary>
 public record PackageRef(string Name, string Version);
+
+/// <summary>
+/// A source file the import-closure discovery pass already lexed and parsed cleanly, handed
+/// forward so <see cref="Project.ProjectCompiler.ParseAllFiles"/> can reuse the artifacts
+/// instead of lexing and parsing the same file a second time (#1086). Only clean parses (zero
+/// lexer/parser diagnostics) are cached; error-bearing files are omitted so the parse phase
+/// re-runs them to produce authoritative diagnostics. The captured <see cref="Source"/> is the
+/// exact text the artifacts were produced from, so a cache hit compiles that text (no disk
+/// TOCTOU) — the same contract as <see cref="ProjectConfig.InMemorySources"/>.
+/// </summary>
+internal sealed record PreParsedUnit(
+    string Source, IReadOnlyList<Token> Tokens, Module Ast, IReadOnlyList<CommentSpan>? CommentSpans);
 
 /// <summary>
 /// Configuration for a Sharpy project loaded from a .spyproj file
@@ -63,6 +77,17 @@ public class ProjectConfig
     /// directives and deterministic output) without materializing a temp file.
     /// </summary>
     internal Dictionary<string, string>? InMemorySources { get; init; }
+
+    /// <summary>
+    /// Optional pre-parsed artifacts keyed by source-file path (same
+    /// <see cref="StringComparer.OrdinalIgnoreCase"/> comparer as <see cref="InMemorySources"/>,
+    /// supplied at construction in <see cref="SyntheticProject.BuildConfig"/>). When a file in
+    /// <see cref="SourceFiles"/> has an entry here, the parse phase reuses the discovery pass's
+    /// tokens/AST/CommentSpans instead of lexing and parsing it again (#1086). Only clean parses
+    /// are handed forward; a file with lexer/parser diagnostics is absent from this map so
+    /// <see cref="Project.ProjectCompiler.ParseAllFiles"/> re-parses it for real diagnostics.
+    /// </summary>
+    internal Dictionary<string, PreParsedUnit>? PreParsedUnits { get; init; }
 
     /// <summary>
     /// When true, the parse phase lexes with trivia preservation on and surfaces
