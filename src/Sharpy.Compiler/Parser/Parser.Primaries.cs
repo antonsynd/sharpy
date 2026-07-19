@@ -207,21 +207,6 @@ public partial class Parser
                     };
                 }
 
-            case TokenType.Struct:
-                {
-                    var keywordToken = Current;
-                    Advance();
-                    return new Identifier
-                    {
-                        Name = keywordToken.Value,
-                        LineStart = startLine,
-                        ColumnStart = startColumn,
-                        LineEnd = keywordToken.Line,
-                        ColumnEnd = keywordToken.Column + keywordToken.Value.Length,
-                        Span = GetSpanFromToken(keywordToken)
-                    };
-                }
-
             case TokenType.Identifier:
                 {
                     var identToken = Current;
@@ -712,6 +697,25 @@ public partial class Parser
                 }
 
             default:
+                // A keyword used as an identifier qualifier (e.g. `struct.pack(...)`, `enum.Enum`).
+                // Consume it as a plain identifier so ParsePostfix can build the member access (#1091).
+                // Subsumes the former struct-only special case; the Type/Match/Case soft-keyword cases
+                // above stay separate because they legally appear without a following dot (e.g. type(x)).
+                if (IsKeywordQualifierStart())
+                {
+                    var keywordToken = Current;
+                    Advance();
+                    return new Identifier
+                    {
+                        Name = keywordToken.Value,
+                        LineStart = startLine,
+                        ColumnStart = startColumn,
+                        LineEnd = keywordToken.Line,
+                        ColumnEnd = keywordToken.Column + keywordToken.Value.Length,
+                        Span = GetSpanFromToken(keywordToken)
+                    };
+                }
+
                 throw ReportError($"Unexpected token: {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
         }
     }
