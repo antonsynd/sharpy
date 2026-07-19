@@ -48,75 +48,81 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSafeLoadTypedSimpleClassDeserializes()
             {
-#line (34, 5) - (34, 96) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (34, 5) - (34, 96) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var result = yaml.SafeLoadTyped<ServerConfig>("host: localhost\nport: 8080\nenabled: true\n");
-#line (35, 5) - (35, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (35, 5) - (35, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
-#line (36, 5) - (36, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (36, 5) - (36, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var config = result.Unwrap();
-#line (37, 5) - (37, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (37, 5) - (37, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal("localhost", config.Host);
-#line (38, 5) - (38, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (38, 5) - (38, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal(8080, config.Port);
-#line (39, 5) - (39, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (39, 5) - (39, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(config.Enabled);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestSafeLoadTypedSnakeCaseKeysMapToPascalCase()
             {
-#line (43, 5) - (43, 96) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (43, 5) - (43, 96) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var result = yaml.SafeLoadTyped<SnakeCaseConfig>("service_name: api\nmax_connections: 100\n");
-#line (44, 5) - (44, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (44, 5) - (44, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
-#line (45, 5) - (45, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (45, 5) - (45, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var config = result.Unwrap();
-#line (46, 5) - (46, 41) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (46, 5) - (46, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal("api", config.ServiceName);
-#line (47, 5) - (47, 42) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (47, 5) - (47, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal(100, config.MaxConnections);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestSafeLoadTypedNestedClassDeserializes()
             {
-#line (51, 5) - (51, 119) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (51, 5) - (51, 119) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var result = yaml.SafeLoadTyped<NestedConfig>("label: outer\nserver:\n  host: db\n  port: 5432\n  enabled: false\n");
-#line (52, 5) - (52, 24) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (52, 5) - (52, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsOk);
-#line (53, 5) - (53, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (53, 5) - (53, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var config = result.Unwrap();
-#line (54, 5) - (54, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (54, 5) - (54, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal("outer", config.Label);
-#line (55, 5) - (55, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (55, 5) - (55, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal("db", config.Server.Host);
-#line (56, 5) - (56, 39) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (56, 5) - (56, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal(5432, config.Server.Port);
-#line (57, 5) - (57, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (57, 5) - (57, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.False(config.Server.Enabled);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestSafeLoadTypedTypeMismatchReturnsErr()
             {
-#line (63, 5) - (63, 104) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (63, 5) - (63, 104) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var result = yaml.SafeLoadTyped<ServerConfig>("host: localhost\nport: not_a_number\nenabled: true\n");
-#line (64, 5) - (64, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (64, 5) - (64, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsErr);
-#line (65, 5) - (65, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (65, 5) - (65, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var error = result.UnwrapErr();
-#line (66, 5) - (66, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (66, 5) - (66, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(error is global::Sharpy.YAMLError);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestSafeLoadTypedMalformedYamlReturnsErr()
             {
-#line (70, 5) - (70, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (70, 5) - (70, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var result = yaml.SafeLoadTyped<ServerConfig>("host: [unbalanced\n");
-#line (71, 5) - (71, 25) 1 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+#line (71, 5) - (71, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.True(result.IsErr);
+#line hidden
             }
         }
     }
 }
+#line default

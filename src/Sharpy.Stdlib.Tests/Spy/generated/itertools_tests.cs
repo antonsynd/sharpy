@@ -30,52 +30,59 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestChainConcatenatesMultipleIterables()
             {
-#line (9, 5) - (9, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (9, 5) - (9, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.Chain(new Sharpy.List<int>() { 1, 2 }, new Sharpy.List<int>() { 3, 4 }, new Sharpy.List<int>() { 5 }));
-#line (10, 5) - (10, 38) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (10, 5) - (10, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2, 3, 4, 5 }, result);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestChainEmptyIterablesReturnsEmpty()
             {
-#line (14, 5) - (14, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (14, 5) - (14, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> empty = new Sharpy.List<int>()
+#line hidden
                 {
                 };
-#line (15, 5) - (15, 61) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (15, 5) - (15, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.Chain(empty, empty));
-#line (16, 5) - (16, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (16, 5) - (16, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestChainSingleIterableBehavesLikeOriginal()
             {
-#line (20, 5) - (20, 61) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (20, 5) - (20, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.Chain(new Sharpy.List<int>() { 10, 20, 30 }));
-#line (21, 5) - (21, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (21, 5) - (21, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 10, 20, 30 }, result);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestChainWithEmptyIntermediateIterableSkipsIt()
             {
-#line (25, 5) - (25, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (25, 5) - (25, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> empty = new Sharpy.List<int>()
+#line hidden
                 {
                 };
-#line (26, 5) - (26, 64) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (26, 5) - (26, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.Chain(new Sharpy.List<int>() { 1 }, empty, new Sharpy.List<int>() { 2 }));
-#line (27, 5) - (27, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (27, 5) - (27, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2 }, result);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestIsliceStopOnlyTakesFirstNElements()
             {
-#line (33, 5) - (33, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (33, 5) - (33, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> source = new Sharpy.List<int>()
+#line hidden
                 {
                     10,
                     20,
@@ -83,23 +90,25 @@ namespace Sharpy.Stdlib.Tests.Spy
                     40,
                     50
                 };
-#line (34, 5) - (34, 59) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (34, 5) - (34, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.Islice(source, 3));
-#line (35, 5) - (35, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (35, 5) - (35, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(result));
-#line (36, 5) - (36, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (36, 5) - (36, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(10, result.GetItemUnchecked(0));
-#line (37, 5) - (37, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (37, 5) - (37, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(20, result.GetItemUnchecked(1));
-#line (38, 5) - (38, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (38, 5) - (38, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(30, result.GetItemUnchecked(2));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestIsliceStartAndStopSkipsToStart()
             {
-#line (42, 5) - (42, 46) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (42, 5) - (42, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> source = new Sharpy.List<int>()
+#line hidden
                 {
                     10,
                     20,
@@ -107,23 +116,25 @@ namespace Sharpy.Stdlib.Tests.Spy
                     40,
                     50
                 };
-#line (43, 5) - (43, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (43, 5) - (43, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.IsliceRange(source, 1, 4));
-#line (44, 5) - (44, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (44, 5) - (44, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(result));
-#line (45, 5) - (45, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (45, 5) - (45, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(20, result.GetItemUnchecked(0));
-#line (46, 5) - (46, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (46, 5) - (46, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(30, result.GetItemUnchecked(1));
-#line (47, 5) - (47, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (47, 5) - (47, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(40, result.GetItemUnchecked(2));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestIsliceWithStepSkipsElements()
             {
-#line (51, 5) - (51, 50) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (51, 5) - (51, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> source = new Sharpy.List<int>()
+#line hidden
                 {
                     10,
                     20,
@@ -132,235 +143,264 @@ namespace Sharpy.Stdlib.Tests.Spy
                     50,
                     60
                 };
-#line (52, 5) - (52, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (52, 5) - (52, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.IsliceRange(source, 0, 6, 2));
-#line (53, 5) - (53, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (53, 5) - (53, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(result));
-#line (54, 5) - (54, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (54, 5) - (54, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(10, result.GetItemUnchecked(0));
-#line (55, 5) - (55, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (55, 5) - (55, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(30, result.GetItemUnchecked(1));
-#line (56, 5) - (56, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (56, 5) - (56, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(50, result.GetItemUnchecked(2));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestIsliceNegativeStartReturnsEmpty()
             {
-#line (60, 5) - (60, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (60, 5) - (60, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> source = new Sharpy.List<int>()
+#line hidden
                 {
                     1
                 };
-#line (61, 5) - (61, 69) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (61, 5) - (61, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.IsliceRange(source, -1, 5));
-#line (62, 5) - (62, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (62, 5) - (62, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestIsliceZeroStepYieldsOnlyMatchingIndex()
             {
-#line (66, 5) - (66, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (66, 5) - (66, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> source = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2,
                     3
                 };
-#line (67, 5) - (67, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (67, 5) - (67, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.IsliceRange(source, 0, 5, 0));
-#line (68, 5) - (68, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (68, 5) - (68, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
-#line (69, 5) - (69, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (69, 5) - (69, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(1, result.GetItemUnchecked(0));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestIsliceStartBeyondSourceReturnsEmpty()
             {
-#line (73, 5) - (73, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (73, 5) - (73, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> source = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2
                 };
-#line (74, 5) - (74, 70) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (74, 5) - (74, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.IsliceRange(source, 10, 20));
-#line (75, 5) - (75, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (75, 5) - (75, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestCombinationsReturnsCorrectCombinations()
             {
-#line (81, 5) - (81, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (81, 5) - (81, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2,
                     3
                 };
-#line (82, 5) - (82, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (82, 5) - (82, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<Sharpy.List<int>> results = new global::Sharpy.List<Sharpy.List<int>>(itertools.Combinations(items, 2));
-#line (83, 5) - (83, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (83, 5) - (83, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(results));
-#line (84, 5) - (84, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (84, 5) - (84, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2 }, results.GetItemUnchecked(0));
-#line (85, 5) - (85, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (85, 5) - (85, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 3 }, results.GetItemUnchecked(1));
-#line (86, 5) - (86, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (86, 5) - (86, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 2, 3 }, results.GetItemUnchecked(2));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestCombinationsRLargerThanPoolReturnsEmpty()
             {
-#line (90, 5) - (90, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (90, 5) - (90, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2
                 };
-#line (91, 5) - (91, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (91, 5) - (91, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<Sharpy.List<int>> results = new global::Sharpy.List<Sharpy.List<int>>(itertools.Combinations(items, 5));
-#line (92, 5) - (92, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (92, 5) - (92, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(results));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestCombinationsRZeroReturnsSingleEmptyList()
             {
-#line (96, 5) - (96, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (96, 5) - (96, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2,
                     3
                 };
-#line (97, 5) - (97, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (97, 5) - (97, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<Sharpy.List<int>> results = new global::Sharpy.List<Sharpy.List<int>>(itertools.Combinations(items, 0));
-#line (98, 5) - (98, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (98, 5) - (98, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(results));
-#line (99, 5) - (99, 33) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (99, 5) - (99, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(results.GetItemUnchecked(0)));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestCombinationsNegativeRThrowsValueError()
             {
-#line (103, 5) - (103, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (103, 5) - (103, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     1
                 };
-#line (104, 5) - (107, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (104, 5) - (107, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+#line hidden
                 {
-#line (105, 9) - (105, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (105, 9) - (105, 48) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                     new global::Sharpy.List<Sharpy.List<int>>(itertools.Combinations(items, -1));
+#line hidden
                 }));
             }
 
             [Xunit.FactAttribute]
             public void TestCombinationsREqualsPoolSizeReturnsSingleCombination()
             {
-#line (109, 5) - (109, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (109, 5) - (109, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2,
                     3
                 };
-#line (110, 5) - (110, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (110, 5) - (110, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<Sharpy.List<int>> results = new global::Sharpy.List<Sharpy.List<int>>(itertools.Combinations(items, 3));
-#line (111, 5) - (111, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (111, 5) - (111, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(results));
-#line (112, 5) - (112, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (112, 5) - (112, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2, 3 }, results.GetItemUnchecked(0));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestPermutationsDefaultRReturnsFullPermutations()
             {
-#line (118, 5) - (118, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (118, 5) - (118, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2,
                     3
                 };
-#line (119, 5) - (119, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (119, 5) - (119, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<Sharpy.List<int>> results = new global::Sharpy.List<Sharpy.List<int>>(itertools.Permutations(items));
-#line (120, 5) - (120, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (120, 5) - (120, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(6, global::Sharpy.Builtins.Len(results));
-#line (121, 5) - (121, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (121, 5) - (121, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 2, 3 }, results.GetItemUnchecked(0));
-#line (122, 5) - (122, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (122, 5) - (122, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 3, 2 }, results.GetItemUnchecked(1));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestPermutationsWithRReturnsRLengthPermutations()
             {
-#line (126, 5) - (126, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (126, 5) - (126, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2,
                     3
                 };
-#line (127, 5) - (127, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (127, 5) - (127, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<Sharpy.List<int>> results = new global::Sharpy.List<Sharpy.List<int>>(itertools.Permutations(items, 2));
-#line (128, 5) - (128, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (128, 5) - (128, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(6, global::Sharpy.Builtins.Len(results));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestPermutationsRLargerThanPoolReturnsEmpty()
             {
-#line (132, 5) - (132, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (132, 5) - (132, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2
                 };
-#line (133, 5) - (133, 71) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (133, 5) - (133, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<Sharpy.List<int>> results = new global::Sharpy.List<Sharpy.List<int>>(itertools.Permutations(items, 5));
-#line (134, 5) - (134, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (134, 5) - (134, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(results));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestPermutationsNegativeRReturnsFullPermutations()
             {
-#line (138, 5) - (138, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (138, 5) - (138, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     1,
                     2
                 };
-#line (139, 5) - (139, 72) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (139, 5) - (139, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<Sharpy.List<int>> results = new global::Sharpy.List<Sharpy.List<int>>(itertools.Permutations(items, -1));
-#line (140, 5) - (140, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (140, 5) - (140, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(results));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestPermutationsSingleElementReturnsSinglePermutation()
             {
-#line (144, 5) - (144, 29) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (144, 5) - (144, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
                 {
                     42
                 };
-#line (145, 5) - (145, 68) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (145, 5) - (145, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Sharpy.List<Sharpy.List<int>> results = new global::Sharpy.List<Sharpy.List<int>>(itertools.Permutations(items));
-#line (146, 5) - (146, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (146, 5) - (146, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(results));
-#line (147, 5) - (147, 31) 1 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (147, 5) - (147, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 42 }, results.GetItemUnchecked(0));
+#line hidden
             }
         }
     }
 }
+#line default

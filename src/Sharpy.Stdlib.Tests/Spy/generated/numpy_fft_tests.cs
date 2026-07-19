@@ -30,79 +30,88 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFftfreqEvenLength()
             {
-#line (23, 5) - (23, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (23, 5) - (23, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var freqs = global::Sharpy.NumpyFft.Fftfreq(8, 1.0d);
-#line (24, 5) - (24, 80) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (24, 5) - (24, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var expected = np.Array(new Sharpy.List<double>() { 0.0d, 0.125d, 0.25d, 0.375d, -0.5d, -0.375d, -0.25d, -0.125d });
-#line (25, 5) - (25, 63) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (25, 5) - (25, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.True(np.Allclose(freqs, expected, rtol: 0.0d, atol: 1e-12d));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestFftfreqOddLength()
             {
-#line (29, 5) - (29, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (29, 5) - (29, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var freqs = global::Sharpy.NumpyFft.Fftfreq(7, 1.0d);
-#line (30, 5) - (30, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (30, 5) - (30, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.Equal(7, freqs.Size);
-#line (31, 5) - (31, 40) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (31, 5) - (31, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.True(global::Sharpy.Builtins.Abs(freqs[0] - 0.0d) < 1e-12d);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestFftfreqCustomSpacing()
             {
-#line (35, 5) - (35, 35) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (35, 5) - (35, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var freqs = global::Sharpy.NumpyFft.Fftfreq(4, 0.5d);
-#line (36, 5) - (36, 48) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (36, 5) - (36, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var expected = np.Array(new Sharpy.List<double>() { 0.0d, 0.5d, -1.0d, -0.5d });
-#line (37, 5) - (37, 63) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (37, 5) - (37, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.True(np.Allclose(freqs, expected, rtol: 0.0d, atol: 1e-12d));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestFftfreqZeroLength()
             {
-#line (41, 5) - (41, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (41, 5) - (41, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var freqs = global::Sharpy.NumpyFft.Fftfreq(0);
-#line (42, 5) - (42, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (42, 5) - (42, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.Equal(0, freqs.Shape[0]);
-#line (43, 5) - (43, 28) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (43, 5) - (43, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.Equal(0, freqs.Size);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestFftfreqNegativeNThrows()
             {
-#line (47, 5) - (50, 1) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (47, 5) - (50, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+#line hidden
                 {
-#line (48, 9) - (48, 27) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (48, 9) - (48, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                     global::Sharpy.NumpyFft.Fftfreq(-1);
+#line hidden
                 }));
             }
 
             [Xunit.FactAttribute]
             public void TestFftfreqLengthOne()
             {
-#line (52, 5) - (52, 30) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (52, 5) - (52, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var freqs = global::Sharpy.NumpyFft.Fftfreq(1);
-#line (53, 5) - (53, 32) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (53, 5) - (53, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.Equal(1, freqs.Shape[0]);
-#line (54, 5) - (54, 34) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (54, 5) - (54, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.True(global::Sharpy.Builtins.Abs(freqs[0]) < 1e-12d);
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestFftfreqNegativeSpacing()
             {
-#line (58, 5) - (58, 36) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (58, 5) - (58, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var freqs = global::Sharpy.NumpyFft.Fftfreq(4, -1.0d);
-#line (59, 5) - (59, 49) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (59, 5) - (59, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var expected = np.Array(new Sharpy.List<double>() { 0.0d, -0.25d, 0.5d, 0.25d });
-#line (60, 5) - (60, 63) 1 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (60, 5) - (60, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.True(np.Allclose(freqs, expected, rtol: 0.0d, atol: 1e-12d));
+#line hidden
             }
         }
     }
 }
+#line default
