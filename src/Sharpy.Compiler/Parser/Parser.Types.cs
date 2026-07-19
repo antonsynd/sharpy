@@ -576,11 +576,27 @@ public partial class Parser
     }
 
     /// <summary>
-    /// Keywords that are allowed as module names in import statements (e.g., <c>import struct</c>).
+    /// Keywords that are allowed as module names in import statements (e.g.,
+    /// <c>import struct</c>, <c>import enum</c>). Any keyword that can double as an
+    /// identifier is accepted as a leading module segment so keyword-named stdlib
+    /// modules remain importable (#1091).
     /// </summary>
     private static bool IsModuleNameKeyword(TokenType type)
     {
-        return type == TokenType.Struct;
+        return IsKeywordToken(type);
+    }
+
+    /// <summary>
+    /// True when the current token is a keyword immediately followed by <c>.</c>, meaning
+    /// it is being used as an identifier qualifier (e.g., <c>struct.pack(...)</c>,
+    /// <c>enum.Enum</c>, <c>match.group()</c>) rather than as a keyword. Used to route such
+    /// constructs to expression/annotation parsing instead of the keyword's dedicated parser (#1091).
+    /// Non-leading keyword segments (<c>foo.struct.Bar</c>) stay out of scope — member names
+    /// after <c>.</c> already accept keywords via <see cref="ExpectIdentifierOrKeyword"/>.
+    /// </summary>
+    private bool IsKeywordQualifierStart()
+    {
+        return IsKeywordToken(Current.Type) && Peek().Type == TokenType.Dot;
     }
 
     private void ExpectNewline()

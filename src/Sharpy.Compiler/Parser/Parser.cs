@@ -746,6 +746,13 @@ public partial class Parser
         if (Current.Type == TokenType.At)
             return ParseDecoratedStatement();
 
+        // A keyword immediately followed by '.' is an identifier qualifier, not the keyword itself
+        // (e.g. bare `struct.pack(...)`, `enum.Enum`, `match.group()`). Route it to expression
+        // parsing before the keyword-specific dispatch below claims it (#1091). Placed ahead of the
+        // try/async/match disambiguations so soft-keyword member access (`match.group()`) works too.
+        if (IsKeywordQualifierStart())
+            return ParseSimpleStatement();
+
         // Special handling for 'try' - it can be either a statement (try:) or an expression (try expr)
         // Disambiguate by looking ahead: try statement has 'try:' while try expression has 'try expr'
         if (Current.Type == TokenType.Try)
