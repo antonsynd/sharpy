@@ -500,6 +500,10 @@ internal class AssemblyCompiler
             // SQLitePCLRaw.*, etc.) transitively, and with a deps.json present the host resolves
             // ONLY listed managed assemblies into the trusted-platform-assembly set — so an
             // omitted transitive dependency is invisible at runtime (#1084).
+            // This deliberately declares the closure of ALL configured references — a superset of
+            // what RuntimeDependencyHelper copies next to the output (it seeds from used modules
+            // only). Declared-but-absent assemblies are harmless: the host resolves deps.json
+            // entries lazily, so an entry is only consulted when the assembly actually loads.
             var runtimeClosure = RuntimeClosureResolver.Resolve(projectConfig.References);
 
             foreach (var refPath in runtimeClosure.ManagedAssemblies)

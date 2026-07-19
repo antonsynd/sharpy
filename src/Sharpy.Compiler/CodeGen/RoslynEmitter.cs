@@ -663,6 +663,17 @@ internal partial class RoslynEmitter : ICodeEmitter
     };
 
     /// <summary>
+    /// Builds the array type for a variadic (<c>params</c>) parameter with a parser-shaped rank
+    /// specifier. The rank must carry an <see cref="OmittedArraySizeExpressionSyntax"/> — a bare
+    /// <c>ArrayRankSpecifier()</c> has an empty size list, which prints identically (<c>T[]</c>)
+    /// but binds as a different array shape under direct tree handoff (CS0225, #1095).
+    /// </summary>
+    private static ArrayTypeSyntax VariadicArrayType(TypeSyntax elementType) =>
+        ArrayType(elementType)
+            .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(
+                SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression()))));
+
+    /// <summary>
     /// Builds an <see cref="IdentifierNameSyntax"/> from a C# name that may be a verbatim
     /// (<c>@</c>-escaped) identifier. <c>SyntaxFactory.Identifier("@default")</c> gives the token
     /// ValueText <c>"@default"</c>, but Roslyn's parser produces a verbatim identifier whose

@@ -190,8 +190,7 @@ internal partial class RoslynEmitter
         // For variadic parameters (*args), wrap the element type in an array
         if (param.IsVariadic)
         {
-            paramType = ArrayType(paramType)
-                .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression()))));
+            paramType = VariadicArrayType(paramType);
         }
 
         var parameter = Parameter(EscapedIdentifier(paramName))
@@ -842,8 +841,7 @@ internal partial class RoslynEmitter
                 // For variadic parameters, wrap in array
                 if (p.IsVariadic)
                 {
-                    paramType = ArrayType(paramType)
-                        .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression()))));
+                    paramType = VariadicArrayType(paramType);
                 }
 
                 var param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
