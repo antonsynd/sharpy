@@ -77,7 +77,8 @@ internal partial class ProjectCompiler
 
                 fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
                 var sourceText = new Text.SourceText(source, sourceFile);
-                var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: cancellationToken);
+                var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: cancellationToken,
+                    preserveTrivia: config.PreserveTrivia);
                 if (_maxErrors > 0)
                 {
                     lexer.MaxErrors = _maxErrors;
@@ -108,6 +109,12 @@ internal partial class ProjectCompiler
                 // Store tokens in CompilationUnit
                 compilationUnit.Tokens = tokens;
                 compilationUnit.Phase = CompilationPhase.Lexed;
+
+                // Surface comment locations for the single-file analyze path (LSP hover).
+                // Only computed when trivia preservation is requested; the flag is off for
+                // ordinary project/CLI compiles, keeping their output byte-identical.
+                if (config.PreserveTrivia)
+                    compilationUnit.CommentSpans = CommentSpanExtractor.Extract(tokens);
 
                 fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
                 var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;

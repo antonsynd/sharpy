@@ -79,6 +79,15 @@ public class CompilationUnit
     /// </summary>
     public Module? Ast { get; internal set; }
 
+    /// <summary>
+    /// Source spans of comments in this file (1-based line/column), extracted from lexer
+    /// trivia when the project was parsed with <see cref="ProjectConfig.PreserveTrivia"/>.
+    /// Empty when trivia preservation is off (the default) or the file has no comments.
+    /// Consumed by the single-file analyze path (LSP hover filtering) via
+    /// <see cref="Project.FileAnalysisResult.CommentSpans"/>.
+    /// </summary>
+    public IReadOnlyList<CommentSpan> CommentSpans { get; internal set; } = Array.Empty<CommentSpan>();
+
     #endregion
 
     #region Semantic Artifacts

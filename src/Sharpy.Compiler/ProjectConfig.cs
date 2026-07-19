@@ -65,6 +65,16 @@ public class ProjectConfig
     internal Dictionary<string, string>? InMemorySources { get; init; }
 
     /// <summary>
+    /// When true, the parse phase lexes with trivia preservation on and surfaces
+    /// per-unit <see cref="Model.CompilationUnit.CommentSpans"/>. Off by default (the
+    /// project/CLI compile path never needs comment locations); the single-file analyze
+    /// path (LSP hover) sets it so <see cref="Project.FileAnalysisResult.CommentSpans"/>
+    /// matches what the former single-file analyze driver produced. With the flag off,
+    /// output is byte-identical to trivia-less parsing.
+    /// </summary>
+    internal bool PreserveTrivia { get; init; }
+
+    /// <summary>
     /// List of .NET assembly references
     /// </summary>
     public List<string> References { get; init; } = new();

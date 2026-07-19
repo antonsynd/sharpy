@@ -305,7 +305,7 @@ public class Compiler
             result.Tokens = lexResult.Tokens;
             metrics.TokenCount = lexResult.Tokens.Count;
             if (preserveTrivia)
-                result.CommentSpans = ExtractCommentSpans(lexResult.Tokens);
+                result.CommentSpans = CommentSpanExtractor.Extract(lexResult.Tokens);
             LogPhaseEnd(filePath, lexResult.Diagnostics.ErrorCount);
             metrics.EndPhase();
 
@@ -487,36 +487,6 @@ public class Compiler
     }
 
     // ----- Helpers -----
-
-    private static IReadOnlyList<CommentSpan> ExtractCommentSpans(IReadOnlyList<Lexer.Token> tokens)
-    {
-        var spans = new List<CommentSpan>();
-        var seen = new HashSet<(int, int)>();
-        foreach (var tok in tokens)
-        {
-            AppendCommentSpans(tok.LeadingTrivia, spans, seen);
-            AppendCommentSpans(tok.TrailingTrivia, spans, seen);
-        }
-        return spans;
-
-        static void AppendCommentSpans(
-            IReadOnlyList<Lexer.Trivia>? trivia,
-            List<CommentSpan> spans,
-            HashSet<(int, int)> seen)
-        {
-            if (trivia == null)
-                return;
-            foreach (var t in trivia)
-            {
-                if (t.Kind != Lexer.TriviaKind.Comment)
-                    continue;
-                var key = (t.Line, t.Column);
-                if (!seen.Add(key))
-                    continue;
-                spans.Add(new CommentSpan(t.Line, t.Column, t.Column + t.Text.Length));
-            }
-        }
-    }
 
     private static CompilationResult MergeAndFail(
         DiagnosticBag target, DiagnosticBag source, CompilationMetrics metrics, CompilationResultBuilder result,
