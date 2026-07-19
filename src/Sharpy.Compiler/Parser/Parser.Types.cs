@@ -184,7 +184,10 @@ public partial class Parser
         }
         else
         {
-            name = ExpectIdentifier();
+            // A keyword immediately followed by '.' is a module qualifier (e.g. `struct.Struct`,
+            // `struct.StructError`); accept it as the leading dotted segment (#1091). Keyword segments
+            // after the first '.' stay unsupported — the continuation loop below only follows identifiers.
+            name = IsKeywordQualifierStart() ? ExpectIdentifierOrKeyword() : ExpectIdentifier();
 
             // Handle dotted type names for nested types (e.g., Outer.Inner)
             while (Current.Type == TokenType.Dot && Peek().Type == TokenType.Identifier)
