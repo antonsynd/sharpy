@@ -70,8 +70,11 @@ internal partial class ProjectCompiler
                     {
                         if (!SymbolTable.TryDefine(symbol))
                         {
+                            // Carry the symbol's declaration span so the cross-file duplicate points
+                            // at the redefinition, not just a bare line/column (SPY0204 parity, #1077).
                             _diagnostics.AddError(
                                 $"Duplicate definition '{symbol.Name}' across files",
+                                symbol.DeclarationSpan,
                                 symbol.DeclarationLine, symbol.DeclarationColumn,
                                 code: DiagnosticCodes.Semantic.DuplicateDefinition,
                                 phase: CompilerPhase.NameResolution);
@@ -93,13 +96,16 @@ internal partial class ProjectCompiler
             unit.ModuleScope = SymbolTable.GetModuleScope(unit.ModulePath);
             unit.FileSymbolTable = null; // Clear per-file table after merge
 
-            // Collect per-file declaration errors
+            // Collect per-file declaration errors. Forward each diagnostic record wholesale so its
+            // Span (and any future fields) survives the per-file → project reconstruction — the name
+            // resolver already stamps CompilerPhase.NameResolution and the originating span, so the
+            // span-less line/column reconstruction dropped location fidelity (SPY0204 parity, #1077).
             if (fileResolver.Diagnostics.HasErrors)
             {
                 foreach (var error in fileResolver.Diagnostics.GetErrors())
                 {
-                    _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code);
-                    _diagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code, phase: CompilerPhase.NameResolution);
+                    _projectModel!.GlobalDiagnostics.Add(error);
+                    _diagnostics.Add(error);
                 }
             }
         }

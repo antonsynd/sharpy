@@ -110,7 +110,7 @@ public class DiagnosticSpanCoverageTests
     }
 
     [Fact]
-    public void NameResolution_DuplicateDefinition_HasValidLocation()
+    public void NameResolution_DuplicateDefinition_HasValidSpan()
     {
         var api = CreateApi();
         var result = api.Compile("def foo() -> int:\n    return 1\n\ndef foo() -> int:\n    return 2\n\ndef main():\n    pass\n");
@@ -121,12 +121,9 @@ public class DiagnosticSpanCoverageTests
             d.IsError && d.Code == DiagnosticCodes.Semantic.DuplicateDefinition);
 
         Assert.NotNull(error);
-        // The diagnostic is located at the redefinition (line/column present). Through the
-        // unified ProjectCompiler path (#1038), the module-level duplicate-function diagnostic
-        // currently loses its full Span (project-mode name-resolution parity gap tracked in
-        // #1077); assert on line/column until that is restored.
-        Assert.True(error!.Line > 0, $"Diagnostic '{error.Code}' should have a line, got {error.Line}");
-        Assert.True(error.Column > 0, $"Diagnostic '{error.Code}' should have a column, got {error.Column}");
+        // The per-file → project reconstruction now forwards the diagnostic record wholesale, so
+        // the redefinition's originating Span survives to the surfaced diagnostic (#1077).
+        AssertDiagnosticHasValidSpan(error);
     }
 
     [Fact]
