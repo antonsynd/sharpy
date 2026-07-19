@@ -40,7 +40,8 @@ internal static class SyntheticProject
         var projectDirectory = Path.GetDirectoryName(entryFilePath);
         if (string.IsNullOrEmpty(projectDirectory))
             projectDirectory = Directory.GetCurrentDirectory();
-        var sourceFiles = DiscoverLocalImportClosure(source, entryFilePath, options, logger);
+        var sourceFiles = DiscoverLocalImportClosure(
+            source, entryFilePath, options, preserveTrivia, logger, out var preParsedUnits);
 
         // Feed the entry file's source in-memory keyed by its verbatim path so the compiler
         // uses the caller-supplied text (matching the historical single-file contract) and
@@ -70,7 +71,8 @@ internal static class SyntheticProject
             SuppressedWarnings = new HashSet<string>(options.SuppressedWarnings, StringComparer.OrdinalIgnoreCase),
             OutputAssemblyPathOverride = options.OutputAssemblyPath,
             PreserveTrivia = preserveTrivia,
-            NullifyEntryFilePath = nullifyEntryFilePath
+            NullifyEntryFilePath = nullifyEntryFilePath,
+            PreParsedUnits = preParsedUnits
         };
     }
 
@@ -80,10 +82,20 @@ internal static class SyntheticProject
     /// on-disk <c>.spy</c> sources become project source files. The entry file's live
     /// <paramref name="entrySource"/> is used for its own scan; imported files are read from disk.
     /// </summary>
+    /// <remarks>
+    /// Every file the walk visits is lexed and parsed to find its imports. Files whose parse was
+    /// pristine (zero lexer/parser diagnostics) are handed forward in <paramref name="preParsed"/>
+    /// so <see cref="Project.ProjectCompiler.ParseAllFiles"/> reuses the tokens/AST instead of
+    /// lexing and parsing them a second time (#1086). Error-bearing files are deliberately not
+    /// cached: discovery swallows their diagnostics, so the parse phase must re-run them to
+    /// produce authoritative diagnostics.
+    /// </remarks>
     private static List<string> DiscoverLocalImportClosure(
-        string entrySource, string entryFilePath, CompilerOptions options, ICompilerLogger logger)
+        string entrySource, string entryFilePath, CompilerOptions options, bool preserveTrivia,
+        ICompilerLogger logger, out Dictionary<string, PreParsedUnit> preParsed)
     {
         var closure = new List<string>();
+        preParsed = new Dictionary<string, PreParsedUnit>(StringComparer.OrdinalIgnoreCase);
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var resolver = new Semantic.ModuleResolver(logger, options.ModulePaths);
 
@@ -111,12 +123,24 @@ internal static class SyntheticProject
                 catch { continue; }
             }
 
-            var module = ParseModuleForImports(moduleSource, file, options.Features, logger);
-            if (module == null)
+            var parse = ParseModuleForImports(moduleSource, file, options.Features, preserveTrivia, logger);
+            if (parse.Module == null)
                 continue;
 
+            // Retain pristine parses for reuse by ParseAllFiles. The cached source is the exact
+            // text these artifacts were built from, so a cache hit compiles that text (no disk
+            // TOCTOU); CommentSpans are extracted only when trivia is preserved so they match
+            // what the parse phase would surface for the same source.
+            if (parse.IsClean)
+            {
+                var commentSpans = preserveTrivia
+                    ? CommentSpanExtractor.Extract(parse.Tokens!)
+                    : null;
+                preParsed[file] = new PreParsedUnit(moduleSource, parse.Tokens!, parse.Module, commentSpans);
+            }
+
             resolver.SetCurrentModulePath(file);
-            foreach (var moduleName in CollectImportModuleNames(module))
+            foreach (var moduleName in CollectImportModuleNames(parse.Module))
             {
                 var resolved = resolver.Resolve(moduleName);
                 if (resolved == null)
@@ -132,26 +156,40 @@ internal static class SyntheticProject
     }
 
     /// <summary>
-    /// Lexes and parses <paramref name="source"/> just far enough to inspect its import
-    /// statements. Returns null if lexing/parsing fails; import discovery is best-effort and
-    /// real syntax errors surface later in the actual compile.
+    /// The outcome of a best-effort discovery-pass parse: the module (null when lexing failed or
+    /// an exception was thrown), the tokens it was built from, and whether the parse was pristine
+    /// (zero lexer and parser diagnostics) and therefore eligible to be handed to ParseAllFiles.
     /// </summary>
-    private static Parser.Ast.Module? ParseModuleForImports(
-        string source, string filePath, Shared.FeatureFlags features, ICompilerLogger logger)
+    private readonly record struct DiscoveryParse(
+        Parser.Ast.Module? Module, List<Lexer.Token>? Tokens, bool IsClean);
+
+    /// <summary>
+    /// Lexes and parses <paramref name="source"/> to inspect its import statements. Returns a
+    /// null <see cref="DiscoveryParse.Module"/> if lexing errors or an exception aborts the parse;
+    /// import discovery is best-effort and real syntax errors surface later in the actual compile.
+    /// <see cref="DiscoveryParse.IsClean"/> is true only when neither the lexer nor the parser
+    /// recorded any diagnostic — the gate for reusing the artifacts (#1086). Lexing honors
+    /// <paramref name="preserveTrivia"/> so reused tokens/CommentSpans match the parse phase.
+    /// </summary>
+    private static DiscoveryParse ParseModuleForImports(
+        string source, string filePath, Shared.FeatureFlags features, bool preserveTrivia,
+        ICompilerLogger logger)
     {
         try
         {
             var sourceText = new SourceText(source, filePath);
-            var lexer = new Lexer.Lexer(sourceText, logger) { Features = features };
+            var lexer = new Lexer.Lexer(sourceText, logger, preserveTrivia: preserveTrivia) { Features = features };
             var tokens = lexer.TokenizeAll();
             if (lexer.Diagnostics.HasErrors)
-                return null;
+                return default;
             var parser = new Parser.Parser(tokens, logger, maxErrors: 25, features: features);
-            return parser.ParseModule();
+            var module = parser.ParseModule();
+            var isClean = lexer.Diagnostics.GetAll().Count == 0 && parser.Diagnostics.GetAll().Count == 0;
+            return new DiscoveryParse(module, tokens, isClean);
         }
         catch
         {
-            return null;
+            return default;
         }
     }
 
