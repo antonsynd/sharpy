@@ -11,8 +11,9 @@ public static partial class SetComprehension
 {
     public static void Main()
     {
-#line (3, 5) - (3, 43) 1 "set_comprehension.spy"
+#line (3, 5) - (3, 43) 8 "set_comprehension.spy"
         Sharpy.List<int> items = new Sharpy.List<int>()
+#line hidden
         {
             1,
             2,
@@ -29,9 +30,11 @@ public static partial class SetComprehension
             __comp_0.Add(x);
         }
 
-#line (4, 5) - (4, 43) 1 "set_comprehension.spy"
+#line (4, 5) - (4, 43) 8 "set_comprehension.spy"
         Sharpy.Set<int> result = __comp_0;
-#line (5, 5) - (5, 23) 1 "set_comprehension.spy"
+#line (5, 5) - (5, 23) 8 "set_comprehension.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(result));
+#line hidden
     }
 }
+#line default

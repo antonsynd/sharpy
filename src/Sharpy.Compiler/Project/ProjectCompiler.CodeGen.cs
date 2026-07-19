@@ -96,22 +96,46 @@ internal partial class ProjectCompiler
 
                 var emitter = _emitterFactory.Create(codeGenContext, _cancellationToken);
                 var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
-                var csharpCode = roslynCompilationUnit.ToFullString();
+                var emittedCode = roslynCompilationUnit.ToFullString();
 
-                // The emitter's tree is handed directly to CSharpCompilation (zero-parse, #1095):
-                // no ToFullString()→ParseText round-trip. ReparseEquivalenceConformanceTests
-                // guarantees Create(root) binds identically to ParseText(root.ToFullString()) across
-                // the stdlib + fixture corpus. #line directives are emitter-built syntax that Create
-                // carries natively (the tree still prints them into csharpCode below for snapshots).
+                // Two tree-construction paths, keyed on whether #line post-processing is requested:
                 //
-                // INVARIANT: any TEXT transformation of the generated C# after emission — e.g.
-                // LineDirectivePostProcessor when #1077 wires it — must revert THIS path to
-                // CSharpSyntaxTree.ParseText(processedText): a text edit invalidates the prebuilt tree.
-                var syntaxTree = CSharpSyntaxTree.Create(
-                    roslynCompilationUnit,
-                    options: CSharpParseOptions.Default,
-                    path: csharpFileName,
-                    encoding: System.Text.Encoding.UTF8);
+                //  • EmitLineDirectives ON (the default): the enhanced #line directives the emitter
+                //    plants carry placeholder char offsets and no #line hidden/#line default framing.
+                //    LineDirectivePostProcessor fixes those on TEXT (real indentation offsets; hidden
+                //    framing around multi-line constructs — #1077), so the generated C# stored below
+                //    and the tree handed to Roslyn are the reparse of that post-processed text. A text
+                //    edit invalidates the emitter's prebuilt node, hence the ParseText round-trip.
+                //
+                //  • EmitLineDirectives OFF (REPL): no text transform runs, so the emitter's exact
+                //    tree goes straight to Roslyn with no ToFullString()→ParseText round-trip
+                //    (zero-parse — #1095/#1050). ReparseEquivalenceConformanceTests guarantees
+                //    Create(root) binds identically to ParseText(root.ToFullString()).
+                //
+                // #1095 seam: when the zero-parse handoff flips the default emit path to
+                // CSharpSyntaxTree.Create, it MUST preserve THIS ParseText round-trip on the
+                // EmitLineDirectives-on branch (or reimplement the post-processor as a syntax
+                // rewriter) — a TEXT transform cannot ride a prebuilt tree.
+                string csharpCode;
+                SyntaxTree syntaxTree;
+                if (config.EmitLineDirectives)
+                {
+                    csharpCode = LineDirectivePostProcessor.Process(emittedCode);
+                    syntaxTree = CSharpSyntaxTree.ParseText(
+                        csharpCode,
+                        options: CSharpParseOptions.Default,
+                        path: csharpFileName,
+                        encoding: System.Text.Encoding.UTF8);
+                }
+                else
+                {
+                    csharpCode = emittedCode;
+                    syntaxTree = CSharpSyntaxTree.Create(
+                        roslynCompilationUnit,
+                        options: CSharpParseOptions.Default,
+                        path: csharpFileName,
+                        encoding: System.Text.Encoding.UTF8);
+                }
 
                 fileMetrics?.EndPhase();
                 LogPhaseEndEvent(fileMetrics, sourceFile, codeGenContext.Diagnostics.ErrorCount);
@@ -138,8 +162,9 @@ internal partial class ProjectCompiler
                 // Structured code-gen event carrying this file's generated C# size (#1077). One
                 // per successfully generated unit; the deleted single-file driver emitted the same.
                 LogCodeGenEvent(sourceFile, System.Text.Encoding.UTF8.GetByteCount(csharpCode));
-                // D3 (#1050): validate the emitter's tree directly (GetDiagnostics), instead
-                // of reparsing csharpCode — this is the same tree handed to Roslyn.
+                // Validate the tree that is actually handed to Roslyn (GetDiagnostics on this same
+                // instance): the emitter's node on the zero-parse path, or the reparse of the
+                // post-processed #line text on the EmitLineDirectives path (#1050/#1077).
                 CompilerInvariants.AssertPostCodeGen(syntaxTree, _diagnostics);
 
                 // Log per-file code gen metrics at Debug level

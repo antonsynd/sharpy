@@ -15,8 +15,9 @@ public static partial class DunderBool
         {
             get
             {
-#line (9, 9) - (9, 32) 1 "dunder_bool.spy"
+#line (9, 9) - (9, 32) 16 "dunder_bool.spy"
                 return this.Value != 0;
+#line hidden
             }
         }
 
@@ -28,8 +29,9 @@ public static partial class DunderBool
         public Truthy(int value)
 #line 5 "dunder_bool.spy"
         {
-#line (6, 9) - (6, 27) 1 "dunder_bool.spy"
+#line (6, 9) - (6, 27) 12 "dunder_bool.spy"
             this.Value = value;
+#line hidden
         }
 
         public static bool operator false(Truthy value)
@@ -40,27 +42,33 @@ public static partial class DunderBool
 
     public static void Main()
     {
-#line (12, 5) - (12, 18) 1 "dunder_bool.spy"
+#line (12, 5) - (12, 18) 8 "dunder_bool.spy"
         var t = new Truthy(1);
-#line (13, 5) - (13, 18) 1 "dunder_bool.spy"
+#line (13, 5) - (13, 18) 8 "dunder_bool.spy"
         var f = new Truthy(0);
-#line (14, 5) - (16, 1) 1 "dunder_bool.spy"
+#line (14, 5) - (16, 1) 8 "dunder_bool.spy"
         if (t)
+#line hidden
         {
-#line (15, 9) - (15, 24) 1 "dunder_bool.spy"
+#line (15, 9) - (15, 24) 12 "dunder_bool.spy"
             global::Sharpy.Builtins.Print("truthy");
+#line hidden
         }
 
-#line (16, 5) - (20, 1) 1 "dunder_bool.spy"
+#line (16, 5) - (20, 1) 8 "dunder_bool.spy"
         if (f)
+#line hidden
         {
-#line (17, 9) - (17, 34) 1 "dunder_bool.spy"
+#line (17, 9) - (17, 34) 12 "dunder_bool.spy"
             global::Sharpy.Builtins.Print("should not print");
+#line hidden
         }
         else
         {
-#line (19, 9) - (19, 23) 1 "dunder_bool.spy"
+#line (19, 9) - (19, 23) 12 "dunder_bool.spy"
             global::Sharpy.Builtins.Print("falsy");
+#line hidden
         }
     }
 }
+#line default

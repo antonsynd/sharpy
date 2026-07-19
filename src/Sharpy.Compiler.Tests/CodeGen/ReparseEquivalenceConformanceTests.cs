@@ -293,19 +293,24 @@ public class ReparseEquivalenceConformanceTests
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Seam pin (#1095, P5.2): the codegen seam must hand the emitter's tree to Roslyn via
-    // CSharpSyntaxTree.Create. Green-node identity is the one cheap observable separating Create
-    // (re-roots the SAME green tree) from a silent revert to ParseText(ToFullString()) (a fresh
-    // parse, fresh green nodes) — the two are behaviorally identical otherwise and differ only in
-    // the double-parse cost #1095 removed.
+    // Seam pin (#1095, P5.2) reconciled with #1077 line-directive post-processing:
+    //
+    // The codegen seam hands the emitter's tree to Roslyn via CSharpSyntaxTree.Create (zero-parse)
+    // ONLY when no text transform runs. #1077 wires LineDirectivePostProcessor — a TEXT pass that
+    // rewrites the enhanced #line directives — onto the EmitLineDirectives-on path (the default), so
+    // that path MUST round-trip through ParseText (a text edit invalidates the prebuilt green tree).
+    // When EmitLineDirectives is off (e.g. the REPL) no text transform runs and the zero-parse
+    // handoff is preserved. Green-node identity is the cheap observable separating Create (re-roots
+    // the SAME green tree) from ParseText(ToFullString()) (a fresh parse, fresh green nodes).
     // ---------------------------------------------------------------------------------------------
 
     [Fact]
-    public void CodeGenSeam_HandsEmitterTreeToRoslynWithoutReparse()
+    public void CodeGenSeam_WithoutLineDirectives_HandsEmitterTreeToRoslynWithoutReparse()
     {
         var (result, units) = CompileProjectFilesCapturing(
             new[] { ("main.spy", "def main() -> None:\n    print(42)\n") },
-            entryPoint: "main.spy");
+            entryPoint: "main.spy",
+            emitLineDirectives: false);
 
         result.Success.Should().BeTrue("the trivial program must compile");
         var emitted = units.Should().ContainSingle().Subject.Unit;
@@ -315,8 +320,35 @@ public class ReparseEquivalenceConformanceTests
             .Single(t => t is not null)!;
 
         generatedTree.GetRoot().IsIncrementallyIdenticalTo(emitted).Should().BeTrue(
-            "the seam must pass the emitter's tree via CSharpSyntaxTree.Create — a reparse of the "
-            + "generated text produces fresh green nodes and silently reintroduces the #1095 double parse");
+            "with #line post-processing off, the seam must pass the emitter's tree via "
+            + "CSharpSyntaxTree.Create — a reparse of the generated text produces fresh green nodes "
+            + "and silently reintroduces the #1095 double parse");
+    }
+
+    [Fact]
+    public void CodeGenSeam_WithLineDirectives_ReparsesPostProcessedText()
+    {
+        // On the EmitLineDirectives-on path (the default), LineDirectivePostProcessor edits the
+        // generated #line text (#1077), so the tree handed to Roslyn is a ParseText of that text —
+        // NOT the emitter's prebuilt green tree. This pins the #1077 side of the seam so a future
+        // change cannot silently drop the post-processing (or the required text round-trip).
+        var (result, units) = CompileProjectFilesCapturing(
+            new[] { ("main.spy", "def main() -> None:\n    print(42)\n") },
+            entryPoint: "main.spy",
+            emitLineDirectives: true);
+
+        result.Success.Should().BeTrue("the trivial program must compile");
+        var emitted = units.Should().ContainSingle().Subject.Unit;
+
+        var generatedTree = result.ProjectModel!.Units.Values
+            .Select(u => u.GeneratedSyntaxTree)
+            .Single(t => t is not null)!;
+
+        generatedTree.GetRoot().IsIncrementallyIdenticalTo(emitted).Should().BeFalse(
+            "with #line post-processing on, the tree is a reparse of the post-processed text, "
+            + "so it is not green-node-identical to the emitter's prebuilt tree");
+        generatedTree.ToString().Should().Contain("#line hidden",
+            "the post-processor must have inserted #line hidden framing into the compiled text");
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -541,7 +573,8 @@ public class ReparseEquivalenceConformanceTests
     /// cross-module import but are clearer to express inline than as an on-disk fixture.
     /// </summary>
     private (ProjectCompilationResult Result, IReadOnlyList<(string? Path, CompilationUnitSyntax Unit)> Units)
-        CompileProjectFilesCapturing(IReadOnlyList<(string RelPath, string Source)> files, string entryPoint)
+        CompileProjectFilesCapturing(IReadOnlyList<(string RelPath, string Source)> files, string entryPoint,
+            bool emitLineDirectives = true)
     {
         var projectDir = Path.Combine(Path.GetTempPath(), "sharpy_reparse_kw_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(projectDir);
@@ -566,7 +599,8 @@ public class ReparseEquivalenceConformanceTests
                 EntryPoint = entryPoint,
                 SourceFiles = sourceFiles,
                 Configuration = "Debug",
-                TargetFramework = "net10.0"
+                TargetFramework = "net10.0",
+                EmitLineDirectives = emitLineDirectives
             };
 
             var moduleRegistry = new ModuleRegistry(_logger);

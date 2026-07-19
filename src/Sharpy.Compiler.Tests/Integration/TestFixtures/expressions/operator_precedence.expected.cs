@@ -10,17 +10,19 @@ public static partial class OperatorPrecedence
 {
     public static void Main()
     {
-#line (4, 5) - (4, 23) 1 "operator_precedence.spy"
+#line (4, 5) - (4, 23) 8 "operator_precedence.spy"
         global::Sharpy.Builtins.Print((int)(global::System.Math.Pow(2, 9)));
-#line (6, 5) - (6, 21) 1 "operator_precedence.spy"
+#line (6, 5) - (6, 21) 8 "operator_precedence.spy"
         global::Sharpy.Builtins.Print(2 + 3 * 4);
-#line (8, 5) - (8, 23) 1 "operator_precedence.spy"
+#line (8, 5) - (8, 23) 8 "operator_precedence.spy"
         global::Sharpy.Builtins.Print((2 + 3) * 4);
-#line (10, 5) - (10, 26) 1 "operator_precedence.spy"
+#line (10, 5) - (10, 26) 8 "operator_precedence.spy"
         int? x = null;
-#line (11, 5) - (11, 25) 1 "operator_precedence.spy"
+#line (11, 5) - (11, 25) 8 "operator_precedence.spy"
         int y = x ?? 5 + 3;
-#line (12, 5) - (12, 13) 1 "operator_precedence.spy"
+#line (12, 5) - (12, 13) 8 "operator_precedence.spy"
         global::Sharpy.Builtins.Print(y);
+#line hidden
     }
 }
+#line default

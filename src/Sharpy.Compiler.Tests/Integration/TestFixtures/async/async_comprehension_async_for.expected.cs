@@ -11,12 +11,13 @@ public static partial class AsyncComprehensionAsyncFor
 {
     public static async System.Collections.Generic.IAsyncEnumerable<int> Gen()
     {
-#line (2, 5) - (2, 13) 1 "async_comprehension_async_for.spy"
+#line (2, 5) - (2, 13) 8 "async_comprehension_async_for.spy"
         yield return 1;
-#line (3, 5) - (3, 13) 1 "async_comprehension_async_for.spy"
+#line (3, 5) - (3, 13) 8 "async_comprehension_async_for.spy"
         yield return 2;
-#line (4, 5) - (4, 13) 1 "async_comprehension_async_for.spy"
+#line (4, 5) - (4, 13) 8 "async_comprehension_async_for.spy"
         yield return 3;
+#line hidden
     }
 
     public static async System.Threading.Tasks.Task Main()
@@ -31,9 +32,11 @@ public static partial class AsyncComprehensionAsyncFor
             }
         }
 
-#line (7, 5) - (7, 51) 1 "async_comprehension_async_for.spy"
+#line (7, 5) - (7, 51) 8 "async_comprehension_async_for.spy"
         var result = __comp_0;
-#line (8, 5) - (8, 18) 1 "async_comprehension_async_for.spy"
+#line (8, 5) - (8, 18) 8 "async_comprehension_async_for.spy"
         global::Sharpy.Builtins.Print(result);
+#line hidden
     }
 }
+#line default

@@ -11,8 +11,9 @@ public static partial class SpreadUnpackDict
 {
     public static void Main()
     {
-#line (2, 5) - (2, 64) 1 "spread_unpack_dict.spy"
+#line (2, 5) - (2, 64) 8 "spread_unpack_dict.spy"
         Sharpy.List<Sharpy.Dict<string, int>> dicts = new Sharpy.List<Sharpy.Dict<string, int>>()
+#line hidden
         {
             new Sharpy.Dict<string, int>()
             {
@@ -40,16 +41,19 @@ public static partial class SpreadUnpackDict
             __comp_0.Update(d);
         }
 
-#line (3, 5) - (3, 51) 1 "spread_unpack_dict.spy"
+#line (3, 5) - (3, 51) 8 "spread_unpack_dict.spy"
         Sharpy.Dict<string, int> result = __comp_0;
-#line (4, 5) - (4, 45) 1 "spread_unpack_dict.spy"
+#line (4, 5) - (4, 45) 8 "spread_unpack_dict.spy"
         Sharpy.List<string> keys = global::Sharpy.Builtins.Sorted<string>(result.Keys());
-#line (5, 5) - (7, 1) 1 "spread_unpack_dict.spy"
+#line (5, 5) - (7, 1) 8 "spread_unpack_dict.spy"
         foreach (var __loopVar_2 in keys)
+#line hidden
         {
             var k = __loopVar_2;
-#line (6, 9) - (6, 28) 1 "spread_unpack_dict.spy"
+#line (6, 9) - (6, 28) 12 "spread_unpack_dict.spy"
             global::Sharpy.Builtins.Print(k, result[k]);
+#line hidden
         }
     }
 }
+#line default

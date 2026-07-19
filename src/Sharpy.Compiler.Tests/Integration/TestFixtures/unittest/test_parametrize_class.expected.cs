@@ -17,8 +17,9 @@ public static partial class TestParametrizeClass
         public void TestAdd(int a, int b, int expected)
 #line 3 "test_parametrize_class.spy"
         {
-#line (4, 9) - (4, 34) 1 "test_parametrize_class.spy"
+#line (4, 9) - (4, 34) 12 "test_parametrize_class.spy"
             Xunit.Assert.Equal(expected, a + b);
+#line hidden
         }
 
         [Xunit.TheoryAttribute]
@@ -27,14 +28,17 @@ public static partial class TestParametrizeClass
         public void TestMultiply(int a, int b, int expected)
 #line 7 "test_parametrize_class.spy"
         {
-#line (8, 9) - (8, 34) 1 "test_parametrize_class.spy"
+#line (8, 9) - (8, 34) 12 "test_parametrize_class.spy"
             Xunit.Assert.Equal(expected, a * b);
+#line hidden
         }
     }
 
     public static void Main()
     {
-#line (11, 5) - (11, 16) 1 "test_parametrize_class.spy"
+#line (11, 5) - (11, 16) 8 "test_parametrize_class.spy"
         global::Sharpy.Builtins.Print("ok");
+#line hidden
     }
 }
+#line default

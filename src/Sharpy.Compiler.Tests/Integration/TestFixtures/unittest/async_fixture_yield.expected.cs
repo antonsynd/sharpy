@@ -12,8 +12,9 @@ public static partial class AsyncFixtureYield
 {
     public static void Main()
     {
-#line (12, 5) - (12, 16) 1 "async_fixture_yield.spy"
+#line (12, 5) - (12, 16) 8 "async_fixture_yield.spy"
         global::Sharpy.Builtins.Print("ok");
+#line hidden
     }
 }
 
@@ -24,13 +25,15 @@ public class ResourceFixture : Xunit.IAsyncLifetime
     private global::System.Func<System.Threading.Tasks.Task>? _teardown;
     public async System.Threading.Tasks.Task InitializeAsync()
     {
-#line (3, 5) - (3, 21) 1 "async_fixture_yield.spy"
+#line (3, 5) - (3, 21) 8 "async_fixture_yield.spy"
         int value = 42;
+#line hidden
         Value = value;
         _teardown = async () =>
         {
-#line (5, 5) - (5, 14) 1 "async_fixture_yield.spy"
+#line (5, 5) - (5, 14) 12 "async_fixture_yield.spy"
             value = 0;
+#line hidden
             await global::System.Threading.Tasks.Task.CompletedTask;
         };
         await global::System.Threading.Tasks.Task.CompletedTask;
@@ -57,7 +60,9 @@ public partial class AsyncFixtureYieldTests : Xunit.IClassFixture<ResourceFixtur
     public async System.Threading.Tasks.Task TestUsesResource()
     {
         int resource = _resourceFixture.Value;
-#line (9, 5) - (9, 27) 1 "async_fixture_yield.spy"
+#line (9, 5) - (9, 27) 8 "async_fixture_yield.spy"
         Xunit.Assert.Equal(42, resource);
+#line hidden
     }
 }
+#line default

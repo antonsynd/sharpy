@@ -15,16 +15,19 @@ public static partial class BracketAttrOnField
         public Settings()
 #line 6 "bracket_attr_on_field.spy"
         {
-#line (7, 9) - (7, 29) 1 "bracket_attr_on_field.spy"
+#line (7, 9) - (7, 29) 12 "bracket_attr_on_field.spy"
             this.Threshold = 100;
+#line hidden
         }
     }
 
     public static void Main()
     {
-#line (10, 5) - (10, 19) 1 "bracket_attr_on_field.spy"
+#line (10, 5) - (10, 19) 8 "bracket_attr_on_field.spy"
         var s = new Settings();
-#line (11, 5) - (11, 23) 1 "bracket_attr_on_field.spy"
+#line (11, 5) - (11, 23) 8 "bracket_attr_on_field.spy"
         global::Sharpy.Builtins.Print(s.Threshold);
+#line hidden
     }
 }
+#line default

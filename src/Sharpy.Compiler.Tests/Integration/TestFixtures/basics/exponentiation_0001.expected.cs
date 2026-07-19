@@ -11,17 +11,19 @@ public static partial class Exponentiation0001
 {
     public static void Main()
     {
-#line (2, 5) - (2, 21) 1 "exponentiation_0001.spy"
+#line (2, 5) - (2, 21) 8 "exponentiation_0001.spy"
         int x = 9;
-#line (3, 5) - (3, 13) 1 "exponentiation_0001.spy"
+#line (3, 5) - (3, 13) 8 "exponentiation_0001.spy"
         global::Sharpy.Builtins.Print(x);
-#line (4, 5) - (4, 22) 1 "exponentiation_0001.spy"
+#line (4, 5) - (4, 22) 8 "exponentiation_0001.spy"
         int y = 1024;
-#line (5, 5) - (5, 13) 1 "exponentiation_0001.spy"
+#line (5, 5) - (5, 13) 8 "exponentiation_0001.spy"
         global::Sharpy.Builtins.Print(y);
-#line (6, 5) - (6, 27) 1 "exponentiation_0001.spy"
+#line (6, 5) - (6, 27) 8 "exponentiation_0001.spy"
         double z = global::System.Math.Pow(2.0d, 3.0d);
-#line (7, 5) - (7, 13) 1 "exponentiation_0001.spy"
+#line (7, 5) - (7, 13) 8 "exponentiation_0001.spy"
         global::Sharpy.Builtins.Print(z);
+#line hidden
     }
 }
+#line default

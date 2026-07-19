@@ -11,29 +11,34 @@ public static partial class ModuleOverloadByArity
 {
     public static string Greet(string name)
     {
-#line (2, 5) - (2, 29) 1 "module_overload_by_arity.spy"
+#line (2, 5) - (2, 29) 8 "module_overload_by_arity.spy"
         return "Hello, " + name;
+#line hidden
     }
 
     public static string Greet(string name, string greeting)
     {
-#line (5, 5) - (5, 35) 1 "module_overload_by_arity.spy"
+#line (5, 5) - (5, 35) 8 "module_overload_by_arity.spy"
         return greeting + ", " + name;
+#line hidden
     }
 
     public static string Greet(string name, string greeting, string punctuation)
     {
-#line (8, 5) - (8, 49) 1 "module_overload_by_arity.spy"
+#line (8, 5) - (8, 49) 8 "module_overload_by_arity.spy"
         return greeting + ", " + name + punctuation;
+#line hidden
     }
 
     public static void Main()
     {
-#line (11, 5) - (11, 26) 1 "module_overload_by_arity.spy"
+#line (11, 5) - (11, 26) 8 "module_overload_by_arity.spy"
         global::Sharpy.Builtins.Print(Greet("World"));
-#line (12, 5) - (12, 32) 1 "module_overload_by_arity.spy"
+#line (12, 5) - (12, 32) 8 "module_overload_by_arity.spy"
         global::Sharpy.Builtins.Print(Greet("World", "Hi"));
-#line (13, 5) - (13, 38) 1 "module_overload_by_arity.spy"
+#line (13, 5) - (13, 38) 8 "module_overload_by_arity.spy"
         global::Sharpy.Builtins.Print(Greet("World", "Hey", "!"));
+#line hidden
     }
 }
+#line default

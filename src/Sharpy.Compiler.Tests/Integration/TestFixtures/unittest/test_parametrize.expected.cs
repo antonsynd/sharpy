@@ -12,8 +12,9 @@ public static partial class TestParametrize
 {
     public static void Main()
     {
-#line (14, 5) - (14, 16) 1 "test_parametrize.spy"
+#line (14, 5) - (14, 16) 8 "test_parametrize.spy"
         global::Sharpy.Builtins.Print("ok");
+#line hidden
     }
 }
 
@@ -25,8 +26,9 @@ public partial class TestParametrizeTests
     [Xunit.InlineDataAttribute(10, 20, 30)]
     public void TestAdd(int a, int b, int expected)
     {
-#line (3, 5) - (3, 30) 1 "test_parametrize.spy"
+#line (3, 5) - (3, 30) 8 "test_parametrize.spy"
         Xunit.Assert.Equal(expected, a + b);
+#line hidden
     }
 
     [Xunit.TheoryAttribute]
@@ -35,8 +37,9 @@ public partial class TestParametrizeTests
     [Xunit.InlineDataAttribute("", 0)]
     public void TestStringLength(string s, int expected)
     {
-#line (7, 5) - (7, 31) 1 "test_parametrize.spy"
+#line (7, 5) - (7, 31) 8 "test_parametrize.spy"
         Xunit.Assert.Equal(expected, s.Length);
+#line hidden
     }
 
     [Xunit.TheoryAttribute]
@@ -45,7 +48,9 @@ public partial class TestParametrizeTests
     [Xunit.InlineDataAttribute(true)]
     public void TestBool(bool flag)
     {
-#line (11, 5) - (11, 42) 1 "test_parametrize.spy"
+#line (11, 5) - (11, 42) 8 "test_parametrize.spy"
         Xunit.Assert.True(flag == true || flag == false);
+#line hidden
     }
 }
+#line default

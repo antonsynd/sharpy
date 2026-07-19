@@ -10,19 +10,22 @@ public static partial class ArrowLambdaClosure
 {
     public static global::System.Func<int, int> MakeAdder(int n)
     {
-#line (2, 5) - (2, 30) 1 "arrow_lambda_closure.spy"
+#line (2, 5) - (2, 30) 8 "arrow_lambda_closure.spy"
         return (int x) => x + n;
+#line hidden
     }
 
     public static void Main()
     {
-#line (5, 5) - (5, 25) 1 "arrow_lambda_closure.spy"
+#line (5, 5) - (5, 25) 8 "arrow_lambda_closure.spy"
         global::System.Func<int, int> add5 = MakeAdder(5);
-#line (6, 5) - (6, 27) 1 "arrow_lambda_closure.spy"
+#line (6, 5) - (6, 27) 8 "arrow_lambda_closure.spy"
         global::System.Func<int, int> add10 = MakeAdder(10);
-#line (7, 5) - (7, 19) 1 "arrow_lambda_closure.spy"
+#line (7, 5) - (7, 19) 8 "arrow_lambda_closure.spy"
         global::Sharpy.Builtins.Print(add5(3));
-#line (8, 5) - (8, 20) 1 "arrow_lambda_closure.spy"
+#line (8, 5) - (8, 20) 8 "arrow_lambda_closure.spy"
         global::Sharpy.Builtins.Print(add10(3));
+#line hidden
     }
 }
+#line default

@@ -19,19 +19,21 @@ public static partial class DictComprehension
             __comp_0[i] = i * 2;
         }
 
-#line (3, 5) - (3, 59) 1 "dict_comprehension.spy"
+#line (3, 5) - (3, 59) 8 "dict_comprehension.spy"
         Sharpy.Dict<int, int> result = __comp_0;
-#line (4, 5) - (4, 23) 1 "dict_comprehension.spy"
+#line (4, 5) - (4, 23) 8 "dict_comprehension.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(result));
-#line (5, 5) - (5, 21) 1 "dict_comprehension.spy"
+#line (5, 5) - (5, 21) 8 "dict_comprehension.spy"
         global::Sharpy.Builtins.Print(result[0]);
-#line (6, 5) - (6, 21) 1 "dict_comprehension.spy"
+#line (6, 5) - (6, 21) 8 "dict_comprehension.spy"
         global::Sharpy.Builtins.Print(result[1]);
-#line (7, 5) - (7, 21) 1 "dict_comprehension.spy"
+#line (7, 5) - (7, 21) 8 "dict_comprehension.spy"
         global::Sharpy.Builtins.Print(result[2]);
-#line (8, 5) - (8, 21) 1 "dict_comprehension.spy"
+#line (8, 5) - (8, 21) 8 "dict_comprehension.spy"
         global::Sharpy.Builtins.Print(result[3]);
-#line (9, 5) - (9, 21) 1 "dict_comprehension.spy"
+#line (9, 5) - (9, 21) 8 "dict_comprehension.spy"
         global::Sharpy.Builtins.Print(result[4]);
+#line hidden
     }
 }
+#line default

@@ -21,16 +21,18 @@ public static partial class TestCollectionBasic
         private void Setup()
 #line 7 "test_collection_basic.spy"
         {
-#line (8, 9) - (8, 25) 1 "test_collection_basic.spy"
+#line (8, 9) - (8, 25) 12 "test_collection_basic.spy"
             this.Value = 100;
+#line hidden
         }
 
         [Xunit.FactAttribute]
         public void TestValue()
 #line 11 "test_collection_basic.spy"
         {
-#line (12, 9) - (12, 34) 1 "test_collection_basic.spy"
+#line (12, 9) - (12, 34) 12 "test_collection_basic.spy"
             Xunit.Assert.Equal(100, this.Value);
+#line hidden
         }
     }
 
@@ -41,16 +43,19 @@ public static partial class TestCollectionBasic
         public void TestSimple()
 #line 17 "test_collection_basic.spy"
         {
-#line (18, 9) - (18, 20) 1 "test_collection_basic.spy"
+#line (18, 9) - (18, 20) 12 "test_collection_basic.spy"
             int x = 7;
-#line (19, 9) - (19, 23) 1 "test_collection_basic.spy"
+#line (19, 9) - (19, 23) 12 "test_collection_basic.spy"
             Xunit.Assert.Equal(7, x);
+#line hidden
         }
     }
 
     public static void Main()
     {
-#line (22, 5) - (22, 16) 1 "test_collection_basic.spy"
+#line (22, 5) - (22, 16) 8 "test_collection_basic.spy"
         global::Sharpy.Builtins.Print("ok");
+#line hidden
     }
 }
+#line default

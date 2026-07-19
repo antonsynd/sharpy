@@ -18,15 +18,17 @@ public static partial class ArithmeticOperators
     public static int ModResult = A % B;
     public static void Main()
     {
-#line (13, 5) - (13, 22) 1 "arithmetic_operators.spy"
+#line (13, 5) - (13, 22) 8 "arithmetic_operators.spy"
         global::Sharpy.Builtins.Print(SumResult);
-#line (14, 5) - (14, 23) 1 "arithmetic_operators.spy"
+#line (14, 5) - (14, 23) 8 "arithmetic_operators.spy"
         global::Sharpy.Builtins.Print(DiffResult);
-#line (15, 5) - (15, 23) 1 "arithmetic_operators.spy"
+#line (15, 5) - (15, 23) 8 "arithmetic_operators.spy"
         global::Sharpy.Builtins.Print(ProdResult);
-#line (16, 5) - (16, 22) 1 "arithmetic_operators.spy"
+#line (16, 5) - (16, 22) 8 "arithmetic_operators.spy"
         global::Sharpy.Builtins.Print(DivResult);
-#line (17, 5) - (17, 22) 1 "arithmetic_operators.spy"
+#line (17, 5) - (17, 22) 8 "arithmetic_operators.spy"
         global::Sharpy.Builtins.Print(ModResult);
+#line hidden
     }
 }
+#line default

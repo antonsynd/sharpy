@@ -11,31 +11,36 @@ public static partial class FunctionCallingFunction0002
 {
     public static int CalculateSum(int a, int b)
     {
-#line (3, 5) - (3, 18) 1 "function_calling_function_0002.spy"
+#line (3, 5) - (3, 18) 8 "function_calling_function_0002.spy"
         return a + b;
+#line hidden
     }
 
     public static int CalculateProduct(int a, int b)
     {
-#line (6, 5) - (6, 18) 1 "function_calling_function_0002.spy"
+#line (6, 5) - (6, 18) 8 "function_calling_function_0002.spy"
         return a * b;
+#line hidden
     }
 
     public static int CombinedOperation(int x, int y)
     {
-#line (9, 5) - (9, 37) 1 "function_calling_function_0002.spy"
+#line (9, 5) - (9, 37) 8 "function_calling_function_0002.spy"
         var sumResult = CalculateSum(x, y);
-#line (10, 5) - (10, 45) 1 "function_calling_function_0002.spy"
+#line (10, 5) - (10, 45) 8 "function_calling_function_0002.spy"
         var productResult = CalculateProduct(x, y);
-#line (11, 5) - (11, 40) 1 "function_calling_function_0002.spy"
+#line (11, 5) - (11, 40) 8 "function_calling_function_0002.spy"
         return sumResult + productResult;
+#line hidden
     }
 
     public static void Main()
     {
-#line (14, 5) - (14, 38) 1 "function_calling_function_0002.spy"
+#line (14, 5) - (14, 38) 8 "function_calling_function_0002.spy"
         var result = CombinedOperation(3, 7);
-#line (15, 5) - (15, 18) 1 "function_calling_function_0002.spy"
+#line (15, 5) - (15, 18) 8 "function_calling_function_0002.spy"
         global::Sharpy.Builtins.Print(result);
+#line hidden
     }
 }
+#line default

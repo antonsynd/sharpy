@@ -38,10 +38,8 @@ public class EnhancedLineDirectiveTests
         var code = result.GeneratedCSharpCode!;
         var lines = code.Split('\n');
 
-        // NOTE(#1077): the single-file path used to post-process the enhanced #line char offset
-        // to match the C# indentation. Through the unified ProjectCompiler path (#1038) that
-        // post-processing is not yet wired, so the emitter's placeholder offset is emitted. Until
-        // #1077 restores it, assert only that a positive char offset is present.
+        // LineDirectivePostProcessor (wired into project-mode codegen in #1077) rewrites the
+        // emitter's placeholder char offset to the actual indentation of the following C# line.
         for (int i = 0; i < lines.Length; i++)
         {
             var line = lines[i].TrimStart();
@@ -54,8 +52,19 @@ public class EnhancedLineDirectiveTests
                     var offsetStr = afterLastParen.Split(' ')[0];
                     if (int.TryParse(offsetStr, out int charOffset))
                     {
-                        charOffset.Should().BeGreaterThan(0,
-                            $"enhanced #line directive should carry a positive char offset (line {i + 2})");
+                        // charOffset should equal the leading-space indentation of the next C# line.
+                        var nextLine = lines[i + 1];
+                        int actualIndent = 0;
+                        foreach (char c in nextLine)
+                        {
+                            if (c == ' ')
+                                actualIndent++;
+                            else
+                                break;
+                        }
+
+                        charOffset.Should().Be(actualIndent,
+                            $"charOffset should match indentation of next C# line (line {i + 2})");
                     }
                 }
             }

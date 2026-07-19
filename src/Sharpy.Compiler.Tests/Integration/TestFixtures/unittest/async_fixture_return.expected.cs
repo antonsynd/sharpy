@@ -12,8 +12,9 @@ public static partial class AsyncFixtureReturn
 {
     public static void Main()
     {
-#line (10, 5) - (10, 16) 1 "async_fixture_return.spy"
+#line (10, 5) - (10, 16) 8 "async_fixture_return.spy"
         global::Sharpy.Builtins.Print("ok");
+#line hidden
     }
 }
 
@@ -45,7 +46,9 @@ public partial class AsyncFixtureReturnTests : Xunit.IClassFixture<ResourceFixtu
     public async System.Threading.Tasks.Task TestUsesResource()
     {
         int resource = _resourceFixture.Value;
-#line (7, 5) - (7, 27) 1 "async_fixture_return.spy"
+#line (7, 5) - (7, 27) 8 "async_fixture_return.spy"
         Xunit.Assert.Equal(42, resource);
+#line hidden
     }
 }
+#line default

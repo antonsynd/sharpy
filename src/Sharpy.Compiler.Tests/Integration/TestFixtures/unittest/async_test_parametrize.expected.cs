@@ -12,8 +12,9 @@ public static partial class AsyncTestParametrize
 {
     public static void Main()
     {
-#line (7, 5) - (7, 16) 1 "async_test_parametrize.spy"
+#line (7, 5) - (7, 16) 8 "async_test_parametrize.spy"
         global::Sharpy.Builtins.Print("ok");
+#line hidden
     }
 }
 
@@ -25,9 +26,11 @@ public partial class AsyncTestParametrizeTests
     [Xunit.InlineDataAttribute(3, 9)]
     public async System.Threading.Tasks.Task TestAsyncSquare(int value, int expected)
     {
-#line (3, 5) - (3, 33) 1 "async_test_parametrize.spy"
+#line (3, 5) - (3, 33) 8 "async_test_parametrize.spy"
         int result = value * value;
-#line (4, 5) - (4, 31) 1 "async_test_parametrize.spy"
+#line (4, 5) - (4, 31) 8 "async_test_parametrize.spy"
         Xunit.Assert.Equal(expected, result);
+#line hidden
     }
 }
+#line default

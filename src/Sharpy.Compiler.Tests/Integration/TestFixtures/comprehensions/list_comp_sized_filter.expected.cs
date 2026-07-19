@@ -11,8 +11,9 @@ public static partial class ListCompSizedFilter
 {
     public static void Main()
     {
-#line (2, 5) - (2, 41) 1 "list_comp_sized_filter.spy"
+#line (2, 5) - (2, 41) 8 "list_comp_sized_filter.spy"
         Sharpy.List<int> nums = new Sharpy.List<int>()
+#line hidden
         {
             1,
             -2,
@@ -31,14 +32,17 @@ public static partial class ListCompSizedFilter
             }
         }
 
-#line (3, 5) - (3, 56) 1 "list_comp_sized_filter.spy"
+#line (3, 5) - (3, 56) 8 "list_comp_sized_filter.spy"
         Sharpy.List<int> result = __comp_0;
-#line (4, 5) - (6, 1) 1 "list_comp_sized_filter.spy"
+#line (4, 5) - (6, 1) 8 "list_comp_sized_filter.spy"
         foreach (var __loopVar_3 in result)
+#line hidden
         {
             var r = __loopVar_3;
-#line (5, 9) - (5, 17) 1 "list_comp_sized_filter.spy"
+#line (5, 9) - (5, 17) 12 "list_comp_sized_filter.spy"
             global::Sharpy.Builtins.Print(r);
+#line hidden
         }
     }
 }
+#line default

@@ -11,24 +11,28 @@ public static partial class ListShorthand
 {
     public static int SumList(Sharpy.List<int> items)
     {
-#line (3, 5) - (3, 20) 1 "list_shorthand.spy"
+#line (3, 5) - (3, 20) 8 "list_shorthand.spy"
         int total = 0;
-#line (4, 5) - (6, 1) 1 "list_shorthand.spy"
+#line (4, 5) - (6, 1) 8 "list_shorthand.spy"
         foreach (var __loopVar_0 in items)
+#line hidden
         {
             var item = __loopVar_0;
-#line (5, 9) - (5, 29) 1 "list_shorthand.spy"
+#line (5, 9) - (5, 29) 12 "list_shorthand.spy"
             total = total + item;
+#line hidden
         }
 
-#line (6, 5) - (6, 18) 1 "list_shorthand.spy"
+#line (6, 5) - (6, 18) 8 "list_shorthand.spy"
         return total;
+#line hidden
     }
 
     public static void Main()
     {
-#line (9, 5) - (9, 38) 1 "list_shorthand.spy"
+#line (9, 5) - (9, 38) 8 "list_shorthand.spy"
         Sharpy.List<int> numbers = new Sharpy.List<int>()
+#line hidden
         {
             1,
             2,
@@ -36,7 +40,9 @@ public static partial class ListShorthand
             4,
             5
         };
-#line (10, 5) - (10, 29) 1 "list_shorthand.spy"
+#line (10, 5) - (10, 29) 8 "list_shorthand.spy"
         global::Sharpy.Builtins.Print(SumList(numbers));
+#line hidden
     }
 }
+#line default

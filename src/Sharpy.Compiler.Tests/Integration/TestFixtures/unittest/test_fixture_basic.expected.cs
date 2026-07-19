@@ -12,8 +12,9 @@ public static partial class TestFixtureBasic
 {
     public static void Main()
     {
-#line (14, 5) - (14, 16) 1 "test_fixture_basic.spy"
+#line (14, 5) - (14, 16) 8 "test_fixture_basic.spy"
         global::Sharpy.Builtins.Print("ok");
+#line hidden
     }
 }
 
@@ -39,15 +40,18 @@ public partial class TestFixtureBasicTests : Xunit.IClassFixture<GreetingFixture
     public void TestUsesGreeting()
     {
         string greeting = _greetingFixture.Value;
-#line (7, 5) - (7, 32) 1 "test_fixture_basic.spy"
+#line (7, 5) - (7, 32) 8 "test_fixture_basic.spy"
         Xunit.Assert.Equal("hello", greeting);
+#line hidden
     }
 
     [Xunit.FactAttribute]
     public void TestGreetingUpper()
     {
         string greeting = _greetingFixture.Value;
-#line (11, 5) - (11, 40) 1 "test_fixture_basic.spy"
+#line (11, 5) - (11, 40) 8 "test_fixture_basic.spy"
         Xunit.Assert.Equal("HELLO", global::Sharpy.StringExtensions.Upper(greeting));
+#line hidden
     }
 }
+#line default

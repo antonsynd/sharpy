@@ -14,16 +14,19 @@ public static partial class BracketAttrKwargs
         public int GetDefaultThreshold()
 #line 4 "bracket_attr_kwargs.spy"
         {
-#line (5, 9) - (5, 20) 1 "bracket_attr_kwargs.spy"
+#line (5, 9) - (5, 20) 12 "bracket_attr_kwargs.spy"
             return -42;
+#line hidden
         }
     }
 
     public static void Main()
     {
-#line (8, 5) - (8, 19) 1 "bracket_attr_kwargs.spy"
+#line (8, 5) - (8, 19) 8 "bracket_attr_kwargs.spy"
         var s = new Settings();
-#line (9, 5) - (9, 37) 1 "bracket_attr_kwargs.spy"
+#line (9, 5) - (9, 37) 8 "bracket_attr_kwargs.spy"
         global::Sharpy.Builtins.Print(s.GetDefaultThreshold());
+#line hidden
     }
 }
+#line default

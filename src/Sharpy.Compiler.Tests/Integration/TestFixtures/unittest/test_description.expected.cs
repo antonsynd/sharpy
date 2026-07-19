@@ -12,8 +12,9 @@ public static partial class TestDescription
 {
     public static void Main()
     {
-#line (6, 5) - (6, 16) 1 "test_description.spy"
+#line (6, 5) - (6, 16) 8 "test_description.spy"
         global::Sharpy.Builtins.Print("ok");
+#line hidden
     }
 }
 
@@ -22,7 +23,9 @@ public partial class TestDescriptionTests
     [Xunit.FactAttribute(DisplayName = "my test description")]
     public void TestWithDesc()
     {
-#line (3, 5) - (3, 19) 1 "test_description.spy"
+#line (3, 5) - (3, 19) 8 "test_description.spy"
         Xunit.Assert.Equal(1, 1);
+#line hidden
     }
 }
+#line default

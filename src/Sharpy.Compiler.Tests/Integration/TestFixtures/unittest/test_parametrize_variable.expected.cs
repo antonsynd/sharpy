@@ -18,8 +18,9 @@ public static partial class TestParametrizeVariable
     };
     public static void Main()
     {
-#line (8, 5) - (8, 16) 1 "test_parametrize_variable.spy"
+#line (8, 5) - (8, 16) 8 "test_parametrize_variable.spy"
         global::Sharpy.Builtins.Print("ok");
+#line hidden
     }
 
     public static global::System.Collections.Generic.IEnumerable<object[]> TestDataMemberData => global::System.Linq.Enumerable.Select(TEST_DATA, row => new object[] { row.Item1, row.Item2, row.Item3 });
@@ -31,7 +32,9 @@ public partial class TestParametrizeVariableTests
     [Xunit.MemberDataAttribute(nameof(TestParametrizeVariable.TestDataMemberData), MemberType = typeof(TestParametrizeVariable))]
     public void TestAdd(int a, int b, int expected)
     {
-#line (5, 5) - (5, 30) 1 "test_parametrize_variable.spy"
+#line (5, 5) - (5, 30) 8 "test_parametrize_variable.spy"
         Xunit.Assert.Equal(expected, a + b);
+#line hidden
     }
 }
+#line default

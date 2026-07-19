@@ -10,8 +10,9 @@ public static partial class NestedComprehension
 {
     public static void Main()
     {
-#line (2, 5) - (2, 56) 1 "nested_comprehension.spy"
+#line (2, 5) - (2, 56) 8 "nested_comprehension.spy"
         Sharpy.List<Sharpy.List<int>> matrix = new Sharpy.List<Sharpy.List<int>>()
+#line hidden
         {
             new Sharpy.List<int>()
             {
@@ -40,9 +41,11 @@ public static partial class NestedComprehension
             }
         }
 
-#line (3, 5) - (3, 58) 1 "nested_comprehension.spy"
+#line (3, 5) - (3, 58) 8 "nested_comprehension.spy"
         Sharpy.List<int> flat = __comp_0;
-#line (4, 5) - (4, 16) 1 "nested_comprehension.spy"
+#line (4, 5) - (4, 16) 8 "nested_comprehension.spy"
         global::Sharpy.Builtins.Print(flat);
+#line hidden
     }
 }
+#line default

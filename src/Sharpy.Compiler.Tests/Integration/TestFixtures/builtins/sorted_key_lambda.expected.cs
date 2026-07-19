@@ -10,8 +10,9 @@ public static partial class SortedKeyLambda
 {
     public static void Main()
     {
-#line (3, 5) - (3, 64) 1 "sorted_key_lambda.spy"
+#line (3, 5) - (3, 64) 8 "sorted_key_lambda.spy"
         Sharpy.List<string> data = new Sharpy.List<string>()
+#line hidden
         {
             "3",
             "1",
@@ -22,9 +23,11 @@ public static partial class SortedKeyLambda
             "2",
             "6"
         };
-#line (4, 5) - (4, 60) 1 "sorted_key_lambda.spy"
+#line (4, 5) - (4, 60) 8 "sorted_key_lambda.spy"
         Sharpy.List<string> result = global::Sharpy.Builtins.Sorted(data, key: x => global::Sharpy.Builtins.Int(x));
-#line (5, 5) - (5, 18) 1 "sorted_key_lambda.spy"
+#line (5, 5) - (5, 18) 8 "sorted_key_lambda.spy"
         global::Sharpy.Builtins.Print(result);
+#line hidden
     }
 }
+#line default
