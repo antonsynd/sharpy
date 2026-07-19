@@ -61,7 +61,8 @@ public sealed class ProjectAnalysisResult
             Ast: unit.Ast,
             SemanticInfo: semanticInfo,
             SymbolTable: ProjectModel.GlobalSymbols,
-            Diagnostics: unit.Diagnostics.GetAll());
+            Diagnostics: unit.Diagnostics.GetAll(),
+            CommentSpans: unit.CommentSpans);
     }
 }
 
@@ -73,7 +74,8 @@ public sealed record FileAnalysisResult(
     Module? Ast,
     SemanticInfo? SemanticInfo,
     SymbolTable? SymbolTable,
-    IReadOnlyList<CompilerDiagnostic> Diagnostics)
+    IReadOnlyList<CompilerDiagnostic> Diagnostics,
+    IReadOnlyList<CommentSpan> CommentSpans)
 {
     /// <summary>Read-only query interface for semantic information.</summary>
     public ISemanticQuery? SemanticQuery => SemanticInfo;

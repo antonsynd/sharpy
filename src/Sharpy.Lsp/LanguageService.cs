@@ -473,7 +473,8 @@ internal sealed class LanguageService : IDisposable
             Diagnostics = fileResult.Diagnostics,
             Ast = fileResult.Ast,
             SemanticInfo = fileResult.SemanticInfo,
-            SymbolTable = fileResult.SymbolTable
+            SymbolTable = fileResult.SymbolTable,
+            CommentSpans = fileResult.CommentSpans
         };
     }
 
