@@ -434,14 +434,11 @@ public class ReplSession
 
         if (!emitResult.Success)
         {
-            var diagnostics = emitResult.Diagnostics
-                .Where(d => d.Severity == DiagnosticSeverity.Error)
-                .Select(d => new CompilerDiagnostic(
-                    Message: d.GetMessage(System.Globalization.CultureInfo.InvariantCulture),
-                    Severity: CompilerDiagnosticSeverity.Error,
-                    Code: d.Id,
-                    Phase: CompilerPhase.CodeGeneration))
-                .ToList();
+            // Share the assembly path's SPY0908 net so a compiler bug that emits invalid
+            // C# surfaces as an internal-error diagnostic, never a bare CSxxxx code (#1059).
+            // EmitLineDirectives is off in the REPL, so any mapped location is generated-C#
+            // coords — that's the documented scope; SPY0908 + preserved CS text is the point.
+            var diagnostics = AssemblyCompiler.MapGeneratedCodeDiagnostics(emitResult.Diagnostics);
             return (null, diagnostics);
         }
 
