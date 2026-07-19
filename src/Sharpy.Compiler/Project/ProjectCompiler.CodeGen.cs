@@ -72,6 +72,7 @@ internal partial class ProjectCompiler
                 var fileMetrics = unit.Metrics;
 
                 fileMetrics?.StartPhase(CompilerPhaseNames.CodeGeneration);
+                LogPhaseStartEvent(CompilerPhaseNames.CodeGeneration, sourceFile);
 
                 // Determine if this file is the entry point
                 var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
@@ -113,6 +114,7 @@ internal partial class ProjectCompiler
                     encoding: System.Text.Encoding.UTF8);
 
                 fileMetrics?.EndPhase();
+                LogPhaseEndEvent(fileMetrics, sourceFile, codeGenContext.Diagnostics.ErrorCount);
 
                 // Surface all code generation diagnostics — not just errors. Warnings and
                 // info notes (e.g. SPY1001 implicit-interface synthesis) must reach the
@@ -132,6 +134,10 @@ internal partial class ProjectCompiler
                 unit.GeneratedCSharp = csharpCode;
                 unit.GeneratedSyntaxTree = syntaxTree;
                 unit.Phase = CompilationPhase.CodeGenerated;
+
+                // Structured code-gen event carrying this file's generated C# size (#1077). One
+                // per successfully generated unit; the deleted single-file driver emitted the same.
+                LogCodeGenEvent(sourceFile, System.Text.Encoding.UTF8.GetByteCount(csharpCode));
                 // D3 (#1050): validate the emitter's tree directly (GetDiagnostics), instead
                 // of reparsing csharpCode — this is the same tree handed to Roslyn.
                 CompilerInvariants.AssertPostCodeGen(syntaxTree, _diagnostics);

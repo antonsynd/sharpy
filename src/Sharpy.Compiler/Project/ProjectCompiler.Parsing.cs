@@ -87,6 +87,7 @@ internal partial class ProjectCompiler
                 var compilationUnit = _projectModel!.CreateUnit(sourceFile, modulePath, source);
 
                 fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+                LogPhaseStartEvent(CompilerPhaseNames.LexicalAnalysis, sourceFile);
                 var sourceText = new Text.SourceText(source, sourceFile);
                 var lexer = new Lexer.Lexer(sourceText, _logger, cancellationToken: cancellationToken,
                     preserveTrivia: config.PreserveTrivia);
@@ -97,6 +98,7 @@ internal partial class ProjectCompiler
                 lexer.Features = _features;
                 var tokens = lexer.TokenizeAll();
                 fileMetrics.EndPhase();
+                LogPhaseEndEvent(fileMetrics, sourceFile, lexer.Diagnostics.ErrorCount);
 
                 // Capture token count immediately (available even if later phases fail)
                 fileMetrics.TokenCount = tokens.Count;
@@ -128,10 +130,12 @@ internal partial class ProjectCompiler
                     compilationUnit.CommentSpans = CommentSpanExtractor.Extract(tokens);
 
                 fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
+                LogPhaseStartEvent(CompilerPhaseNames.SyntaxAnalysis, sourceFile, tokens.Count);
                 var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
                 var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, cancellationToken, _features);
                 var module = parser.ParseModule();
                 fileMetrics.EndPhase();
+                LogPhaseEndEvent(fileMetrics, sourceFile, parser.Diagnostics.ErrorCount);
 
                 // Capture AST node count immediately (available even if later phases fail)
                 if (module != null)
@@ -230,8 +234,13 @@ internal partial class ProjectCompiler
         var modulePath = CompilationUnitFactory.ComputeModulePath(sourceFile, config.ProjectDirectory);
         var compilationUnit = _projectModel!.CreateUnit(sourceFile, modulePath, preParsed.Source);
 
+        // The discovery pass already lexed/parsed this file cleanly, so these brackets close
+        // with near-zero durations. They still fire (metric + structured event) so per-file
+        // observability sees every phase; a clean cached parse carries zero phase errors.
         fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+        LogPhaseStartEvent(CompilerPhaseNames.LexicalAnalysis, sourceFile);
         fileMetrics.EndPhase();
+        LogPhaseEndEvent(fileMetrics, sourceFile);
         fileMetrics.TokenCount = preParsed.Tokens.Count;
         compilationUnit.Tokens = preParsed.Tokens;
         compilationUnit.Phase = CompilationPhase.Lexed;
@@ -242,7 +251,9 @@ internal partial class ProjectCompiler
             compilationUnit.CommentSpans = preParsed.CommentSpans;
 
         fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
+        LogPhaseStartEvent(CompilerPhaseNames.SyntaxAnalysis, sourceFile, preParsed.Tokens.Count);
         fileMetrics.EndPhase();
+        LogPhaseEndEvent(fileMetrics, sourceFile);
         fileMetrics.AstNodeCount = AstValidator.CountNodes(preParsed.Ast);
         compilationUnit.Ast = preParsed.Ast;
         compilationUnit.Phase = CompilationPhase.Parsed;
@@ -302,6 +313,7 @@ internal partial class ProjectCompiler
                     unit.GeneratedCSharp = null; // Clear cached C#
 
                     fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+                    LogPhaseStartEvent(CompilerPhaseNames.LexicalAnalysis, sourceFile);
                     var sourceText = new Text.SourceText(source, sourceFile);
                     var lexer = new Lexer.Lexer(sourceText, _logger);
                     if (_maxErrors > 0)
@@ -311,6 +323,7 @@ internal partial class ProjectCompiler
                     lexer.Features = _features;
                     var tokens = lexer.TokenizeAll();
                     fileMetrics.EndPhase();
+                    LogPhaseEndEvent(fileMetrics, sourceFile, lexer.Diagnostics.ErrorCount);
 
                     // Capture token count immediately (available even if later phases fail)
                     fileMetrics.TokenCount = tokens.Count;
@@ -329,10 +342,12 @@ internal partial class ProjectCompiler
                     unit.Phase = CompilationPhase.Lexed;
 
                     fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
+                    LogPhaseStartEvent(CompilerPhaseNames.SyntaxAnalysis, sourceFile, tokens.Count);
                     var parserMaxErrors = _maxErrors > 0 ? _maxErrors : 25;
                     var parser = new Parser.Parser(tokens, _logger, parserMaxErrors, features: _features);
                     var module = parser.ParseModule();
                     fileMetrics.EndPhase();
+                    LogPhaseEndEvent(fileMetrics, sourceFile, parser.Diagnostics.ErrorCount);
 
                     // Capture AST node count immediately (available even if later phases fail)
                     if (module != null)

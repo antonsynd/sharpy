@@ -71,6 +71,46 @@ internal partial class ProjectCompiler
             target.Merge(source);
         }
     }
+
+    /// <summary>
+    /// Emits a <see cref="PhaseStartEvent"/> for <paramref name="phase"/> when the logger captures
+    /// structured events. Sits beside the <see cref="CompilationMetrics.StartPhase"/> bracket at each
+    /// phase boundary so project mode gets the structured phase stream the deleted single-file driver
+    /// emitted (#1077). A no-op for the common non-capturing loggers, so ordinary compiles pay nothing.
+    /// </summary>
+    private void LogPhaseStartEvent(string phase, string? filePath, int nodeCount = 0)
+    {
+        if (_logger.SupportsStructuredLogging)
+            _logger.LogEvent(new PhaseStartEvent(phase, nodeCount) { FilePath = filePath });
+    }
+
+    /// <summary>
+    /// Emits a <see cref="PhaseEndEvent"/> for the phase just closed on <paramref name="metrics"/>
+    /// (its most recently recorded <see cref="PhaseMetric"/>), carrying that phase's measured duration
+    /// and the caller-supplied <paramref name="errorCount"/>. Call immediately after
+    /// <see cref="CompilationMetrics.EndPhase"/> so the reported name and duration match the bracket.
+    /// A no-op unless the logger captures structured events (#1077).
+    /// </summary>
+    private void LogPhaseEndEvent(CompilationMetrics? metrics, string? filePath, int errorCount = 0)
+    {
+        if (!_logger.SupportsStructuredLogging || metrics is not { Phases.Count: > 0 })
+            return;
+
+        var completed = metrics.Phases[^1];
+        _logger.LogEvent(
+            new PhaseEndEvent(completed.Name, completed.Duration, errorCount) { FilePath = filePath });
+    }
+
+    /// <summary>
+    /// Emits a <see cref="CodeGenEvent"/> for a successfully generated file when the logger captures
+    /// structured events (#1077). <paramref name="byteCount"/> is the UTF-8 size of the generated C#.
+    /// </summary>
+    private void LogCodeGenEvent(string? filePath, int byteCount)
+    {
+        if (_logger.SupportsStructuredLogging)
+            _logger.LogEvent(new CodeGenEvent("CSharp", byteCount) { FilePath = filePath });
+    }
+
     private DependencyGraph? _dependencyGraph;
 
     // Files involved in deferred circular import cycles (normalized paths)

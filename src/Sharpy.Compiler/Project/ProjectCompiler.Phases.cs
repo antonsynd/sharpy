@@ -673,6 +673,7 @@ internal partial class ProjectCompiler
 
                 // Type checking via shared pipeline with per-file state
                 fileMetrics.StartPhase(CompilerPhaseNames.TypeChecking);
+                LogPhaseStartEvent(CompilerPhaseNames.TypeChecking, unit.FilePath, unit.Ast.Body.Length);
                 var isEntryPoint = IsEntryPointFileForTypeCheck(sourceFile, config);
                 var deferredSymbols = ImportResolver.DeferredCycleSymbols.Count > 0
                     ? ImportResolver.DeferredCycleSymbols
@@ -715,6 +716,7 @@ internal partial class ProjectCompiler
                 {
                     // End the Type Checking phase even on error for consistent metrics
                     fileMetrics.EndPhase();
+                    LogPhaseEndEvent(fileMetrics, unit.FilePath, typeChecker.Diagnostics.ErrorCount);
 
                     // Capture artifact counts even on error paths for better observability
                     fileMetrics.SymbolCount = SymbolTable.GlobalScope.GetAllSymbols().Count();
@@ -730,6 +732,7 @@ internal partial class ProjectCompiler
                     continue;
                 }
                 fileMetrics.EndPhase();
+                LogPhaseEndEvent(fileMetrics, unit.FilePath, typeChecker.Diagnostics.ErrorCount);
 
                 // Capture per-validator timing for performance analysis
                 if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> validatorDict)
