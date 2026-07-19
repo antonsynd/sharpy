@@ -41,10 +41,6 @@ public class Compiler
     private readonly ICodeEmitterFactory _emitterFactory;
     private readonly CompilerOptions _options;
 
-    // Phase timing for structured logging
-    private readonly Stopwatch _phaseStopwatch = new();
-    private string? _currentPhaseName;
-
     // Accumulated time spent loading module references (module discovery). This runs
     // before any CompilationMetrics object exists (in the ctor and in CompileProject),
     // so it is stashed here and recorded as a first-class phase once metrics are created.
@@ -153,19 +149,99 @@ public class Compiler
     }
 
     /// <summary>
-    /// Analyze Sharpy source code through phases 1–3 (Lexer → Parser → Semantic) without codegen.
+    /// Analyze Sharpy source code through semantic analysis (no codegen).
     /// Returns the same <see cref="CompilationResult"/> shape but with no generated C#.
     /// </summary>
     public CompilationResult Analyze(string sourceCode, string filePath) =>
         Analyze(sourceCode, filePath, CancellationToken.None);
 
     /// <summary>
-    /// Analyze Sharpy source code through phases 1–3 (Lexer → Parser → Semantic) without codegen.
-    /// Returns the same <see cref="CompilationResult"/> shape but with no generated C#.
+    /// Analyze Sharpy source code through semantic analysis (no codegen). Like
+    /// <see cref="Compile(string, string, CancellationToken)"/>, this lowers the entry file plus
+    /// its local-import closure to a synthetic project-of-one-file and drives
+    /// <see cref="ProjectCompiler.AnalyzeProject"/> (#1087) — there is no separate analyze
+    /// sequencer. The entry file is given no path identity (matching the historical single-file
+    /// analyze contract) so tooling that reads reference/declaration paths falls back to the
+    /// caller's document.
     /// </summary>
     public CompilationResult Analyze(string sourceCode, string filePath, CancellationToken cancellationToken,
-        bool preserveTrivia = false) =>
-        AnalyzeInternal(sourceCode, filePath, cancellationToken, preserveTrivia: preserveTrivia);
+        bool preserveTrivia = false)
+    {
+        _logger.LogInfo($"Starting analysis of {filePath}");
+
+        var entryFilePath = File.Exists(filePath) ? Path.GetFullPath(filePath) : filePath;
+
+        var config = SyntheticProject.BuildConfig(sourceCode, entryFilePath, _options, _logger,
+            preserveTrivia: preserveTrivia, nullifyEntryFilePath: true);
+        var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
+            _options.WarningsAsErrors, _options.SuppressedWarnings, _options.MaxErrors,
+            incremental: false, _emitterFactory, _options.Features);
+
+        var analysis = projectCompiler.AnalyzeProject(config, cancellationToken);
+
+        // Reference-load failures are recorded on the shared module registry in the constructor,
+        // before the pipeline runs; surface them so analyze callers see the same errors compile does.
+        if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
+            analysis.Diagnostics.Merge(_moduleRegistry.Diagnostics);
+
+        return MapAnalysisResult(analysis, entryFilePath, filePath, sourceCode, preserveTrivia);
+    }
+
+    /// <summary>
+    /// Reconstitutes a single-file <see cref="CompilationResult"/> from the unified project
+    /// analyze pipeline's per-unit artifacts (parse through type checking, no codegen), without
+    /// re-running any analysis. Mirrors <see cref="MapProjectResult"/> for the analyze path.
+    /// </summary>
+    private CompilationResult MapAnalysisResult(
+        Project.ProjectAnalysisResult analysis, string entryFilePath, string originalFilePath,
+        string sourceCode, bool preserveTrivia)
+    {
+        var model = analysis.ProjectModel;
+        Model.CompilationUnit? entryUnit = null;
+        foreach (var unit in model.Units.Values)
+        {
+            if (SyntheticProject.PathsEqual(unit.FilePath, entryFilePath))
+            {
+                entryUnit = unit;
+                break;
+            }
+        }
+
+        // Position the shared table at the entry file's module scope so bare SymbolTable.Lookup
+        // resolves module-level symbols (the project pipeline scopes them per module rather than
+        // in the global scope). Same adaptation CompilerApi.Analyze makes.
+        var symbolTable = model.GlobalSymbols;
+        if (symbolTable != null && entryUnit != null
+            && symbolTable.CurrentScope == symbolTable.GlobalScope
+            && symbolTable.GetModuleScope(entryUnit.ModulePath) != null)
+        {
+            symbolTable.EnterModuleScope(entryUnit.ModulePath);
+        }
+
+        // Reference/stdlib discovery ran in the constructor before any per-file metrics existed;
+        // record it as a first-class phase on the entry file's metrics (parity with MapProjectResult).
+        if (entryUnit?.Metrics != null && _discoveryTime > TimeSpan.Zero
+            && !entryUnit.Metrics.Phases.Any(p => p.Name == CompilerPhaseNames.ModuleDiscovery))
+        {
+            entryUnit.Metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, _discoveryTime);
+        }
+
+        return new CompilationResult
+        {
+            Success = !analysis.Diagnostics.HasErrors,
+            Diagnostics = analysis.Diagnostics,
+            Module = entryUnit?.Ast,
+            SymbolTable = symbolTable,
+            SemanticInfo = entryUnit?.FileSemanticInfo ?? model.SemanticInfo,
+            SemanticBinding = model.SemanticBinding,
+            ModuleRegistry = _moduleRegistry,
+            GeneratedCSharpCode = null,
+            Metrics = entryUnit?.Metrics,
+            SourceText = new SourceText(sourceCode, originalFilePath),
+            Tokens = entryUnit?.Tokens,
+            CommentSpans = preserveTrivia ? entryUnit?.CommentSpans : null
+        };
+    }
 
     public CompilationResult Compile(string sourceCode, string filePath) =>
         Compile(sourceCode, filePath, CancellationToken.None);
@@ -273,294 +349,6 @@ public class Compiler
         };
     }
 
-    /// <summary>
-    /// Analyze Sharpy source code through phases 1–3 (Lexer → Parser → Semantic) without codegen.
-    /// </summary>
-    private CompilationResult AnalyzeInternal(
-        string sourceCode, string filePath, CancellationToken cancellationToken,
-        bool preserveTrivia = false)
-    {
-        _logger.LogInfo($"Starting analysis of {filePath}");
-        var metrics = new CompilationMetrics(fileName: filePath);
-
-        // Module discovery ran in the constructor (loading referenced assemblies/stdlib),
-        // before this metrics object existed — surface it as a first-class phase.
-        if (_discoveryTime > TimeSpan.Zero)
-        {
-            metrics.RecordExternalPhase(CompilerPhaseNames.ModuleDiscovery, _discoveryTime);
-        }
-
-        var diagnostics = new DiagnosticBag(_options.WarningsAsErrors, _options.SuppressedWarnings);
-        var result = new CompilationResultBuilder(diagnostics, metrics);
-        var assertionTimer = new Stopwatch();
-
-        try
-        {
-            // Phase 1: Lexical Analysis
-            metrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
-            LogPhaseStart(CompilerPhaseNames.LexicalAnalysis, filePath);
-            var sourceText = new SourceText(sourceCode, filePath);
-            result.SourceText = sourceText;
-            var lexResult = FileCompilationPipeline.Lex(sourceText, _logger, _options.MaxErrors, cancellationToken, preserveTrivia, _options.Features);
-            result.Tokens = lexResult.Tokens;
-            metrics.TokenCount = lexResult.Tokens.Count;
-            if (preserveTrivia)
-                result.CommentSpans = CommentSpanExtractor.Extract(lexResult.Tokens);
-            LogPhaseEnd(filePath, lexResult.Diagnostics.ErrorCount);
-            metrics.EndPhase();
-
-            if (lexResult.HasErrors)
-                return MergeAndFail(diagnostics, lexResult.Diagnostics, metrics, result, CompilerPhase.Lexer);
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Phase 2: Syntax Analysis
-            metrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
-            LogPhaseStart(CompilerPhaseNames.SyntaxAnalysis, filePath, lexResult.Tokens.Count);
-            var parserMaxErrors = _options.MaxErrors > 0 ? _options.MaxErrors : 25;
-            var parseResult = FileCompilationPipeline.Parse(lexResult.Tokens, _logger, parserMaxErrors, cancellationToken, _options.Features);
-            var module = parseResult.Module;
-            result.Module = module;
-            if (module != null)
-            {
-                metrics.AstNodeCount = AstValidator.CountNodes(module);
-            }
-            LogPhaseEnd(filePath, parseResult.Diagnostics.ErrorCount);
-            metrics.EndPhase();
-
-            if (parseResult.HasErrors)
-                return MergeAndFail(diagnostics, parseResult.Diagnostics, metrics, result, CompilerPhase.Parser);
-            MergeWithPhase(diagnostics, parseResult.Diagnostics, CompilerPhase.Parser);
-
-            Debug.Assert(module != null, "Parser should produce a non-null Module");
-            Debug.Assert(module.Body != null, "Module.Body should not be null");
-            RunTimedAssertion(assertionTimer, "Post-parse", () => CompilerInvariants.AssertPostParse(module, diagnostics));
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Phase 3: Semantic Analysis
-            var builtinRegistry = new BuiltinRegistry(_logger);
-            var symbolTable = new SymbolTable(builtinRegistry);
-            var semanticInfo = new SemanticInfo();
-            semanticInfo.SetSymbolTable(symbolTable);
-            var semanticBinding = new SemanticBinding();
-            result.SemanticBinding = semanticBinding;
-
-            if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
-                return MergeAndFail(diagnostics, _moduleRegistry.Diagnostics, metrics, result);
-
-            var pipeline = new FileCompilationPipeline(symbolTable, semanticInfo, semanticBinding, _logger);
-
-            // Pass 1: Name resolution
-            metrics.StartPhase(CompilerPhaseNames.NameResolution);
-            LogPhaseStart(CompilerPhaseNames.NameResolution, filePath, module.Body.Length);
-            var nameResult = pipeline.ResolveNames(module, cancellationToken);
-            LogPhaseEnd(filePath, nameResult.Diagnostics.ErrorCount);
-            metrics.EndPhase();
-            MergeWithPhase(diagnostics, nameResult.Diagnostics, CompilerPhase.NameResolution);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Pass 1.5 + 1b: Import resolution + inheritance
-            metrics.StartPhase(CompilerPhaseNames.ImportResolution);
-            LogPhaseStart(CompilerPhaseNames.ImportResolution, filePath);
-            var importResult = pipeline.ResolveImports(
-                module, nameResult.NameResolver, filePath, _moduleRegistry, cancellationToken);
-            var importResolver = importResult.ImportResolver;
-            result.ImportResolver = importResolver;
-
-            RunTimedAssertion(assertionTimer, "Post-name-resolution", () => CompilerInvariants.AssertPostNameResolution(symbolTable, diagnostics));
-            RunTimedAssertion(assertionTimer, "Post-inheritance", () => CompilerInvariants.AssertPostInheritance(symbolTable, diagnostics));
-
-            LogPhaseEnd(filePath, importResolver.Diagnostics.ErrorCount);
-            metrics.EndPhase();
-
-            if (importResolver.Diagnostics.GetAll().Count > 0)
-                MergeWithPhase(diagnostics, importResolver.Diagnostics, CompilerPhase.ImportResolution);
-
-            if (nameResult.HasErrors)
-            {
-                metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
-                return FailWithDiagnostics(diagnostics, metrics, result);
-            }
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Pass 2: Type checking
-            metrics.StartPhase(CompilerPhaseNames.TypeChecking);
-            LogPhaseStart(CompilerPhaseNames.TypeChecking, filePath);
-            var isEntryPoint = _options.OutputType.Equals("exe", StringComparison.OrdinalIgnoreCase);
-            // Union compilation-wide features with any per-file `from __future__ import`
-            // features discovered during import resolution for this file.
-            var fileFeatures = importResolver.GetEffectiveFeatures(_options.Features, filePath);
-            // Reject uses of constructs gated behind experimental features that are not enabled,
-            // before type resolution runs. No-op until a real gated construct is registered.
-            pipeline.CheckFeatureGates(module, filePath, fileFeatures, diagnostics);
-            // Advance the main bag's phase high-water mark to TypeChecking for the whole type-check
-            // window. The ICE handler reads diagnostics.LastEnteredPhase, and until this scope opens
-            // the mark is still NameResolution/ImportResolution — so a crash inside CheckModule would
-            // otherwise be mis-attributed. The merge-back scopes below only open after TypeCheck
-            // returns, leaving the call itself uncovered (#1083).
-            using var typeCheckPhaseScope = diagnostics.BeginPhaseScope(CompilerPhase.TypeChecking);
-            var typeCheckResult = pipeline.TypeCheck(
-                module, filePath, isEntryPoint, _options.MaxErrors, diagnostics,
-                computeCodeGenInfo: true, cancellationToken: cancellationToken,
-                moduleRegistry: _moduleRegistry, features: fileFeatures);
-            var typeChecker = typeCheckResult.TypeChecker;
-
-            if (typeCheckResult.Aborted)
-            {
-                LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
-                metrics.EndPhase();
-                metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
-                if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> errorValidatorDict)
-                    metrics.SetValidatorTimes(errorValidatorDict);
-                metrics.DiagnosticCount = diagnostics.GetAll().Count + typeChecker.Diagnostics.GetAll().Count;
-                MergeWithPhase(diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
-                return result.WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo).BuildFailure();
-            }
-            LogPhaseEnd(filePath, typeChecker.Diagnostics.ErrorCount);
-            metrics.EndPhase();
-
-            // Type-check imported .spy modules for SemanticInfo population
-            pipeline.TypeCheckImportedModules(importResolver, filePath, diagnostics, cancellationToken, _moduleRegistry);
-
-            RunTimedAssertion(assertionTimer, "Post-type-checking", () => CompilerInvariants.AssertPostTypeChecking(semanticInfo, typeChecker.Diagnostics));
-            AssertExpressionTypesRecorded(module, semanticInfo, diagnostics);
-
-            RunTimedAssertion(assertionTimer, "Post-materialization", () => pipeline.MaterializeTypeInfo());
-
-            metrics.SymbolCount = symbolTable.GlobalScope.GetAllSymbols().Count();
-            if (typeChecker.ValidatorTimes is Dictionary<string, TimeSpan> validatorDict)
-                metrics.SetValidatorTimes(validatorDict);
-            MergeWithPhase(diagnostics, typeChecker.Diagnostics, CompilerPhase.TypeChecking);
-
-            if (diagnostics.HasErrors)
-                return FailWithDiagnostics(diagnostics, metrics, result.WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo));
-            cancellationToken.ThrowIfCancellationRequested();
-
-            metrics.DiagnosticCount = diagnostics.GetAll().Count;
-            return result
-                .WithSuccess(!diagnostics.HasErrors)
-                .WithSymbolTable(symbolTable).WithSemanticInfo(semanticInfo)
-                .WithModuleRegistry(_moduleRegistry).Build();
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInfo("Analysis cancelled");
-            diagnostics.AddError("Compilation cancelled", filePath: filePath, code: DiagnosticCodes.Infrastructure.CompilationCancelled);
-            return result.BuildFailure();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Compilation failed with {ex.GetType().Name}: {ex}", 0, 0);
-
-            // Last-chance ICE handler (SPY0909): an exception that reaches here is a compiler bug,
-            // not a user error. Write a minimal-repro crash bundle and point the diagnostic at it.
-            var ice = ex as InternalCompilerErrorException;
-            var request = new CrashBundleRequest
-            {
-                Exception = ex,
-                Phase = diagnostics.LastEnteredPhase,
-                Producer = diagnostics.LastEnteredProducer,
-                Component = ice?.Component,
-                SourceFiles = new Dictionary<string, string> { [filePath] = sourceCode },
-                Node = ice?.Node,
-                Span = ice?.Span,
-                SpanFilePath = filePath,
-                Line = ice?.Node is { LineStart: > 0 } n ? n.LineStart : null,
-                Column = ice?.Node is { ColumnStart: > 0 } c ? c.ColumnStart : null
-            };
-            var crashDir = File.Exists(filePath) ? Path.GetDirectoryName(filePath) : null;
-            var bundlePath = CrashBundleWriter.TryWrite(crashDir, request);
-
-            var component = ice != null ? $" in {ice.Component}" : string.Empty;
-            var bundleNote = bundlePath != null
-                ? $" A minimal-repro crash bundle was written to: {bundlePath}"
-                : string.Empty;
-            var errorMessage =
-                $"internal compiler error{component} ({ex.GetType().Name}): {ex.Message}. "
-                + "This is a Sharpy compiler bug — please report it at https://github.com/antonsynd/sharpy/issues."
-                + bundleNote;
-
-            diagnostics.AddError(errorMessage, filePath: filePath, code: DiagnosticCodes.Infrastructure.InternalCompilerError);
-            return result.BuildFailure();
-        }
-    }
-
-    // ----- Helpers -----
-
-    private static CompilationResult MergeAndFail(
-        DiagnosticBag target, DiagnosticBag source, CompilationMetrics metrics, CompilationResultBuilder result,
-        CompilerPhase phase = CompilerPhase.Unknown)
-    {
-        MergeWithPhase(target, source, phase);
-        metrics.DiagnosticCount = target.GetAll().Count;
-        return result.BuildFailure();
-    }
-
-    /// <summary>
-    /// Merges <paramref name="source"/> into <paramref name="target"/>, back-filling any
-    /// still-<see cref="CompilerPhase.Unknown"/> diagnostics with <paramref name="phase"/>.
-    /// Diagnostics that already carry an explicit phase (or a validator producer) keep it.
-    /// </summary>
-    private static void MergeWithPhase(DiagnosticBag target, DiagnosticBag source, CompilerPhase phase)
-    {
-        if (phase == CompilerPhase.Unknown)
-        {
-            target.Merge(source);
-            return;
-        }
-        using (target.BeginPhaseScope(phase))
-        {
-            target.Merge(source);
-        }
-    }
-
-    private static CompilationResult FailWithDiagnostics(
-        DiagnosticBag diagnostics, CompilationMetrics metrics, CompilationResultBuilder result)
-    {
-        metrics.DiagnosticCount = diagnostics.GetAll().Count;
-        return result.BuildFailure();
-    }
-
-    private void RunTimedAssertion(Stopwatch timer, string label, Action action)
-    {
-        timer.Restart();
-        action();
-        timer.Stop();
-        _logger.LogDebug($"{label} assertions completed in {timer.ElapsedMilliseconds}ms");
-    }
-
-    private static void AssertExpressionTypesRecorded(Module module, SemanticInfo semanticInfo, DiagnosticBag diagnostics)
-    {
-        var hasOnlyDeclarations = module.Body.All(s =>
-            s is InterfaceDef or ClassDef or StructDef or FunctionDef
-            or ImportStatement or FromImportStatement or TypeAlias);
-        Debug.Assert(semanticInfo.ExpressionTypeCount > 0 || module.Body.Length == 0 || diagnostics.HasErrors || hasOnlyDeclarations,
-            "Type checker should record at least one expression type for non-empty error-free modules with executable statements");
-    }
-
-    private void LogPhaseStart(string phaseName, string? filePath = null, int nodeCount = 0)
-    {
-        _currentPhaseName = phaseName;
-        _phaseStopwatch.Restart();
-
-        if (_logger.SupportsStructuredLogging)
-        {
-            _logger.LogEvent(new PhaseStartEvent(phaseName, nodeCount) { FilePath = filePath });
-        }
-    }
-
-    private void LogPhaseEnd(string? filePath = null, int errorCount = 0)
-    {
-        _phaseStopwatch.Stop();
-
-        if (_logger.SupportsStructuredLogging && _currentPhaseName != null)
-        {
-            _logger.LogEvent(new PhaseEndEvent(_currentPhaseName, _phaseStopwatch.Elapsed, errorCount) { FilePath = filePath });
-        }
-
-        _currentPhaseName = null;
-    }
 }
 
 /// <summary>

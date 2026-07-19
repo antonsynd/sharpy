@@ -289,13 +289,14 @@ public sealed class CompilerApi
         // Single-file analyze is a synthetic project-of-one-file driven through the same
         // ProjectCompiler that compile uses (#1087) — no parallel phase sequencer. The entry
         // source is fed in-memory under a virtual path (LSP buffers have no on-disk file);
-        // forAnalysis = true preserves trivia (so per-unit CommentSpans reach the SemanticResult
-        // for hover filtering) and records the entry file's references with a null path (so LSP
-        // handlers treat them as the current document, the historical single-file contract).
-        // OutputType flows from the caller's options (the no-options overload keeps its "library"
-        // default so LSP analysis gains no entry-point/missing-main diagnostics).
+        // preserveTrivia surfaces per-unit CommentSpans for hover, and nullifyEntryFilePath
+        // records the entry file's symbols/references with a null path (so LSP handlers treat
+        // them as the current document, the historical single-file contract). OutputType flows
+        // from the caller's options (the no-options overload keeps its "library" default so LSP
+        // analysis gains no entry-point/missing-main diagnostics).
         const string entryPath = "<source>";
-        var config = SyntheticProject.BuildConfig(source, entryPath, opts, _logger, forAnalysis: true);
+        var config = SyntheticProject.BuildConfig(source, entryPath, opts, _logger,
+            preserveTrivia: true, nullifyEntryFilePath: true);
         var registry = BuildModuleRegistry(config);
 
         // Construct with the caller's full options — WarningsAsErrors, SuppressedWarnings,
