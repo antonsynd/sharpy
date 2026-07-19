@@ -552,7 +552,8 @@ public class ReparseEquivalenceConformanceTests
         }
         finally
         {
-            try { Directory.Delete(projectDir, recursive: true); }
+            try
+            { Directory.Delete(projectDir, recursive: true); }
             catch { /* best-effort temp cleanup */ }
         }
     }
