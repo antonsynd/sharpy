@@ -67,13 +67,24 @@ internal partial class ProjectCompiler
                     continue;
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Reuse discovery-pass artifacts when available: the import-closure walk already
+                // lexed and parsed this file cleanly, so re-lexing/re-parsing here is exactly the
+                // #1086 double parse. The cache holds only pristine parses — error-bearing files are
+                // absent and fall through to a normal parse that surfaces their diagnostics.
+                if (config.PreParsedUnits != null
+                    && config.PreParsedUnits.TryGetValue(sourceFile, out var preParsed))
+                {
+                    ConsumePreParsedUnit(sourceFile, config, preParsed, fileMetrics);
+                    continue;
+                }
+
                 var source = ReadSource(sourceFile, config);
 
                 // Create CompilationUnit for this file
                 var modulePath = CompilationUnitFactory.ComputeModulePath(sourceFile, config.ProjectDirectory);
                 var compilationUnit = _projectModel!.CreateUnit(sourceFile, modulePath, source);
-
-                cancellationToken.ThrowIfCancellationRequested();
 
                 fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
                 var sourceText = new Text.SourceText(source, sourceFile);
@@ -201,6 +212,64 @@ internal partial class ProjectCompiler
         }
 
         return !_diagnostics.HasErrors;
+    }
+
+    /// <summary>
+    /// Reuses a discovery-pass parse (<see cref="ProjectConfig.PreParsedUnits"/>) for
+    /// <paramref name="sourceFile"/> rather than lexing and parsing it a second time (#1086).
+    /// The unit is populated exactly as the normal parse path would leave it — same tokens, AST,
+    /// CommentSpans, import lists, and post-parse invariant checks — and the lexical/syntax phases
+    /// are still bracketed (near-zero durations) so per-file metrics and structured logging observe
+    /// them.
+    /// </summary>
+    private void ConsumePreParsedUnit(
+        string sourceFile, ProjectConfig config, PreParsedUnit preParsed, CompilationMetrics fileMetrics)
+    {
+        // Compile the exact text the artifacts were built from (no disk re-read) so tokens, AST,
+        // and content hash stay consistent — the same no-TOCTOU contract as InMemorySources.
+        var modulePath = CompilationUnitFactory.ComputeModulePath(sourceFile, config.ProjectDirectory);
+        var compilationUnit = _projectModel!.CreateUnit(sourceFile, modulePath, preParsed.Source);
+
+        fileMetrics.StartPhase(CompilerPhaseNames.LexicalAnalysis);
+        fileMetrics.EndPhase();
+        fileMetrics.TokenCount = preParsed.Tokens.Count;
+        compilationUnit.Tokens = preParsed.Tokens;
+        compilationUnit.Phase = CompilationPhase.Lexed;
+
+        // CommentSpans were extracted at discovery only when trivia preservation was on; the
+        // cached list already matches what the parse path would produce for this source.
+        if (config.PreserveTrivia && preParsed.CommentSpans != null)
+            compilationUnit.CommentSpans = preParsed.CommentSpans;
+
+        fileMetrics.StartPhase(CompilerPhaseNames.SyntaxAnalysis);
+        fileMetrics.EndPhase();
+        fileMetrics.AstNodeCount = AstValidator.CountNodes(preParsed.Ast);
+        compilationUnit.Ast = preParsed.Ast;
+        compilationUnit.Phase = CompilationPhase.Parsed;
+
+        // Same post-parse invariants the parse path enforces (read-only over the AST).
+        CompilerInvariants.AssertPostParse(preParsed.Ast, _diagnostics);
+        AstValidator.ValidateTree(preParsed.Ast);
+
+        // Recompute import lists from the cached AST (identical extraction to the parse path).
+        var imports = new List<ImportStatement>();
+        var fromImports = new List<FromImportStatement>();
+        foreach (var stmt in preParsed.Ast.Body)
+        {
+            if (stmt is ImportStatement import)
+                imports.Add(import);
+            else if (stmt is FromImportStatement fromImport)
+                fromImports.Add(fromImport);
+        }
+        compilationUnit.Imports = imports;
+        compilationUnit.FromImports = fromImports;
+
+        compilationUnit.Metrics = fileMetrics;
+
+        if (_logger.IsEnabled(CompilerLogLevel.Debug))
+            _logger.LogDebug($"Reused discovery parse for {Path.GetFileName(sourceFile)} (no re-lex/parse)");
+
+        ProjectMetrics.AddFileMetrics(fileMetrics);
     }
 
     /// <summary>
