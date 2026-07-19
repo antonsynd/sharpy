@@ -229,6 +229,8 @@ internal partial class DecoratorValidator : ValidatingAstWalker
             .Append(DecoratorNames.Cache)
             .Append(DecoratorNames.StaticMethod)
             .Append(DecoratorNames.ClassMethod)
+            // @suppress is a compile-time-only diagnostic decorator (scoped warning suppression).
+            .Append(DecoratorNames.Suppress)
             // @test.mark is supplementary metadata: not in KnownTestDecorators
             // (so ValidateTestDecoratorNotOnType doesn't reject it on classes for collection use),
             // but still must pass the unknown-decorator check.
@@ -280,6 +282,13 @@ internal partial class DecoratorValidator : ValidatingAstWalker
             if (decorator.Name == DecoratorNames.Deprecated)
             {
                 ValidateDeprecatedArguments(decorator, definitionName);
+                continue;
+            }
+
+            // @suppress requires one or more positional string-literal diagnostic codes
+            if (decorator.Name == DecoratorNames.Suppress)
+            {
+                ValidateSuppressArguments(decorator, definitionName);
                 continue;
             }
 

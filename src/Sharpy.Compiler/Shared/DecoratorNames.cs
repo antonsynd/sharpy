@@ -21,6 +21,10 @@ internal static class DecoratorNames
     public const string Cache = "cache";
     public const string Test = "test";
 
+    // Diagnostic-oriented decorators. Compile-time only: they steer validation
+    // (suppression, must-use), never the emitted C#.
+    public const string Suppress = "suppress";
+
     // Test framework sub-decorators (member access form: @test.parametrize, etc.)
     public const string TestParametrize = "test.parametrize";
     public const string TestSkip = "test.skip";

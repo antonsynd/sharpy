@@ -1260,4 +1260,216 @@ class DatabaseTests:
     }
 
     #endregion
+
+    #region @suppress argument validation (#1024)
+
+    [Fact]
+    public void Suppress_ValidWarningCode_NoDiagnostics()
+    {
+        var code = @"
+@suppress(""SPY0451"")
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        Assert.Empty(context.Diagnostics.GetAll());
+    }
+
+    [Fact]
+    public void Suppress_MultipleValidCodes_NoDiagnostics()
+    {
+        var code = @"
+@suppress(""SPY0451"", ""SPY0452"", ""SPY0479"")
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.Empty(context.Diagnostics.GetAll());
+    }
+
+    [Fact]
+    public void Suppress_NoArguments_ReportsError()
+    {
+        var code = @"
+@suppress
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Semantic.InvalidDecoratorUsage, errors[0].Code);
+        Assert.Contains("at least one", errors[0].Message);
+    }
+
+    [Fact]
+    public void Suppress_EmptyParens_ReportsError()
+    {
+        var code = @"
+@suppress()
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Semantic.InvalidDecoratorUsage, errors[0].Code);
+    }
+
+    [Fact]
+    public void Suppress_NonStringArgument_ReportsError()
+    {
+        var code = @"
+@suppress(451)
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Semantic.InvalidDecoratorUsage, errors[0].Code);
+        Assert.Contains("string literal", errors[0].Message);
+    }
+
+    [Fact]
+    public void Suppress_KeywordArgument_ReportsError()
+    {
+        var code = @"
+@suppress(""SPY0451"", reason=""noisy"")
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.True(context.Diagnostics.HasErrors);
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Semantic.InvalidDecoratorUsage, errors[0].Code);
+        Assert.Contains("keyword arguments", errors[0].Message);
+    }
+
+    [Fact]
+    public void Suppress_MalformedCode_WarnsInvalidSuppressionCode()
+    {
+        var code = @"
+@suppress(""not-a-code"")
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(DiagnosticCodes.Validation.InvalidSuppressionCode, warnings[0].Code);
+        Assert.Contains("SPYnnnn", warnings[0].Message);
+    }
+
+    [Fact]
+    public void Suppress_UnknownCode_WarnsInvalidSuppressionCode()
+    {
+        var code = @"
+@suppress(""SPY9999"")
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(DiagnosticCodes.Validation.InvalidSuppressionCode, warnings[0].Code);
+        Assert.Contains("not a recognized", warnings[0].Message);
+    }
+
+    [Fact]
+    public void Suppress_ErrorSeverityCode_WarnsInvalidSuppressionCode()
+    {
+        var code = @"
+@suppress(""SPY0200"")
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(DiagnosticCodes.Validation.InvalidSuppressionCode, warnings[0].Code);
+        Assert.Contains("cannot be suppressed", warnings[0].Message);
+    }
+
+    [Fact]
+    public void Suppress_MixedValidAndErrorCodes_WarnsOnlyForErrorCode()
+    {
+        var code = @"
+@suppress(""SPY0451"", ""SPY0200"")
+def foo():
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.Single(warnings);
+        Assert.Equal(DiagnosticCodes.Validation.InvalidSuppressionCode, warnings[0].Code);
+        Assert.Contains("SPY0200", warnings[0].Message);
+    }
+
+    [Fact]
+    public void Suppress_OnClass_ValidCode_NoDiagnostics()
+    {
+        var code = @"
+@suppress(""SPY0451"")
+class Foo:
+    pass
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.Empty(context.Diagnostics.GetAll());
+    }
+
+    #endregion
 }

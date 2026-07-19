@@ -1245,6 +1245,11 @@ internal partial class RoslynEmitter
                     || decorator.Name == DecoratorNames.ClassMethod)
                     continue;
 
+                // @suppress is a compile-time-only diagnostic decorator — it scopes warning
+                // suppression during validation and emits no C# attribute.
+                if (decorator.Name == DecoratorNames.Suppress)
+                    continue;
+
                 // @test.skip / @test.skip_if are merged into the [Fact]/[Theory] attribute
                 // (handled via skipReason above), not emitted as separate attributes.
                 if (decorator.Name == DecoratorNames.TestSkip

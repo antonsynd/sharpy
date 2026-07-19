@@ -104,6 +104,87 @@ internal partial class DecoratorValidator
     }
 
     /// <summary>
+    /// Validates the arguments of a <c>@suppress(...)</c> decorator.
+    ///
+    /// Argument <em>shape</em> errors (no arguments, keyword arguments, or a non-string-literal
+    /// positional) reuse SPY0322 (InvalidDecoratorUsage), mirroring @deprecated. Well-formed
+    /// string arguments are then checked <em>per code</em>: a malformed code (not SPYnnnn), an
+    /// unrecognized code, or an error-severity code (which can never be suppressed) each warn
+    /// SPY0482 (InvalidSuppressionCode). Only Warning/Hint/Info codes pass clean.
+    /// </summary>
+    private void ValidateSuppressArguments(Decorator decorator, string definitionName)
+    {
+        if (decorator.Arguments.Length == 0)
+        {
+            AddError(
+                $"'@suppress' on '{definitionName}' requires at least one diagnostic-code string argument: @suppress(\"SPY0451\")",
+                decorator.LineStart,
+                decorator.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: decorator.Span);
+            return;
+        }
+
+        if (decorator.KeywordArguments.Length > 0)
+        {
+            AddError(
+                $"'@suppress' on '{definitionName}' does not accept keyword arguments",
+                decorator.KeywordArguments[0].Value.LineStart,
+                decorator.KeywordArguments[0].Value.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: decorator.KeywordArguments[0].Value.Span);
+        }
+
+        foreach (var arg in decorator.Arguments)
+        {
+            if (arg is not StringLiteral stringLiteral)
+            {
+                AddError(
+                    $"'@suppress' arguments must be diagnostic-code string literals, e.g. @suppress(\"SPY0451\")",
+                    arg.LineStart,
+                    arg.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                    span: arg.Span);
+                continue;
+            }
+
+            var code = stringLiteral.Value;
+
+            if (!DiagnosticCodeCatalog.IsWellFormed(code))
+            {
+                AddWarning(
+                    $"'{code}' is not a valid diagnostic code; expected the form 'SPYnnnn', e.g. \"SPY0451\".",
+                    stringLiteral.LineStart,
+                    stringLiteral.ColumnStart,
+                    code: DiagnosticCodes.Validation.InvalidSuppressionCode,
+                    span: stringLiteral.Span);
+                continue;
+            }
+
+            if (!DiagnosticCodeCatalog.IsKnown(code))
+            {
+                AddWarning(
+                    $"'{code}' is not a recognized diagnostic code and cannot be suppressed.",
+                    stringLiteral.LineStart,
+                    stringLiteral.ColumnStart,
+                    code: DiagnosticCodes.Validation.InvalidSuppressionCode,
+                    span: stringLiteral.Span);
+                continue;
+            }
+
+            if (!DiagnosticCodeCatalog.IsSuppressible(code))
+            {
+                AddWarning(
+                    $"'{code}' is an error-severity diagnostic and cannot be suppressed; only warnings, hints, and info diagnostics can be silenced with @suppress.",
+                    stringLiteral.LineStart,
+                    stringLiteral.ColumnStart,
+                    code: DiagnosticCodes.Validation.InvalidSuppressionCode,
+                    span: stringLiteral.Span);
+            }
+        }
+    }
+
+    /// <summary>
     /// Validates that @deprecated is not applied to variable declarations.
     /// It's valid on functions, methods, classes, and properties.
     /// </summary>
