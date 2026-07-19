@@ -1,0 +1,18 @@
+# The struct_module-shaped binding-hostile combination from #1095: a variadic
+# (params object[]) parameter plus spread call sites — both a variadic bundle
+# spread onward (sink(first, *values)) and a list spread (sink(..., *items),
+# the .ToArray() bridge). Syntax-error-free, prints identically under either
+# tree handoff, but binds only when the params rank specifier is parser-shaped
+# (CS0225/CS0411 under direct CSharpSyntaxTree.Create before the fix).
+def sink(first: str, *values: object) -> str:
+    return first
+
+
+def forward(first: str, *values: object) -> str:
+    return sink(first, *values)
+
+
+def main():
+    print(forward("params-ok", 1, "a", 2.5))
+    items: list[object] = ["x", "y"]
+    print(sink("spread-ok", *items))
