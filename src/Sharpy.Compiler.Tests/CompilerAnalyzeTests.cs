@@ -419,4 +419,116 @@ def add(a: int, b: int) -> int:
 
         result.Success.Should().BeFalse();
     }
+
+    /// <summary>
+    /// LSP regression guard (#1087): the no-options overload analyzes as a library, so a
+    /// buffer without <c>main()</c> must not gain a missing-entry-point diagnostic when
+    /// single-file analyze rides the project pipeline.
+    /// </summary>
+    [Fact]
+    public void Analyze_NoOptionsOverload_MainlessSource_HasNoMissingMainDiagnostic()
+    {
+        var api = new CompilerApi();
+        var result = api.Analyze("def helper() -> int:\n    return 1\n");
+
+        result.Success.Should().BeTrue(
+            because: string.Join("; ", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
+        result.Diagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Validation.MissingMainFunction,
+            "library-mode analyze must not require an entry point");
+    }
+
+    /// <summary>
+    /// Analyze-path parity (#1087): the analyze facade preserves trivia, so comments in the
+    /// buffer surface as <see cref="SemanticResult.CommentSpans"/> (consumed by LSP hover).
+    /// </summary>
+    [Fact]
+    public void Analyze_SourceWithComments_SurfacesCommentSpans()
+    {
+        var api = new CompilerApi();
+        var result = api.Analyze("# leading comment\ndef helper() -> int:\n    return 1  # trailing\n");
+
+        result.Success.Should().BeTrue(
+            because: string.Join("; ", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
+        result.CommentSpans.Should().NotBeEmpty("preserveTrivia is always on for the analyze path");
+        result.CommentSpans.Should().Contain(s => s.Line == 1, "the leading comment is on line 1");
+        result.CommentSpans.Should().Contain(s => s.Line == 3, "the trailing comment is on line 3");
+    }
+}
+
+/// <summary>
+/// Covers single-file analyze of an entry file with a local import closure (#1087): the
+/// re-pointed <see cref="Compiler.Analyze(string, string)"/> discovers and analyzes imported
+/// local <c>.spy</c> files through the synthetic project (where the deleted single-file driver
+/// used lazy <c>ImportResolver</c> loading), and the entry file's symbols carry no path
+/// identity while imported files keep theirs (the <c>NullifyEntryFilePath</c> contract LSP
+/// handlers rely on).
+/// </summary>
+public class CompilerAnalyzeImportClosureTests : IDisposable
+{
+    private readonly string _tempDir;
+
+    public CompilerAnalyzeImportClosureTests()
+    {
+        _tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_analyze_closure_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_tempDir);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_tempDir))
+            Directory.Delete(_tempDir, recursive: true);
+    }
+
+    [Fact]
+    public void Analyze_FileWithLocalImport_ResolvesImportedSymbols()
+    {
+        File.WriteAllText(Path.Combine(_tempDir, "helpers.spy"),
+            "def helper_value() -> int:\n    return 41\n");
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        const string mainSource = "import helpers\n\ndef local_fn() -> int:\n    return helpers.helper_value() + 1\n";
+        File.WriteAllText(mainPath, mainSource);
+
+        var compiler = new Compiler(new CompilerOptions { OutputType = "library" });
+        var result = compiler.Analyze(mainSource, mainPath);
+
+        // Type-checking helpers.helper_value() succeeds only if the imported module was
+        // discovered, parsed, and semantically analyzed as part of the closure.
+        result.Success.Should().BeTrue(because: string.Join("; ",
+            result.Diagnostics.GetErrors().Select(d => $"[{d.Code}] {d.Message}")));
+        result.Module.Should().NotBeNull();
+        result.SymbolTable.Should().NotBeNull();
+        result.SymbolTable!.Lookup("local_fn").Should().NotBeNull(
+            "entry-file module-level symbols resolve via bare Lookup");
+    }
+
+    [Fact]
+    public void Analyze_EntryFileSymbolsPathless_ImportedFileSymbolsKeepPath()
+    {
+        var helpersPath = Path.Combine(_tempDir, "helpers.spy");
+        File.WriteAllText(helpersPath, "def helper_value() -> int:\n    return 41\n");
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        const string mainSource = "import helpers\n\ndef local_fn() -> int:\n    return helpers.helper_value() + 1\n";
+        File.WriteAllText(mainPath, mainSource);
+
+        var compiler = new Compiler(new CompilerOptions { OutputType = "library" });
+        var result = compiler.Analyze(mainSource, mainPath);
+
+        result.Success.Should().BeTrue(because: string.Join("; ",
+            result.Diagnostics.GetErrors().Select(d => $"[{d.Code}] {d.Message}")));
+
+        var table = result.SymbolTable!;
+        var localFn = table.Lookup("local_fn");
+        localFn.Should().NotBeNull();
+        localFn!.DeclaringFilePath.Should().BeNull(
+            "the analyze entry file has no path identity — LSP handlers substitute the request document URI");
+
+        var helpersScope = table.GetModuleScope("helpers");
+        helpersScope.Should().NotBeNull("the imported module has its own module scope");
+        var helperFn = helpersScope!.GetAllSymbols().FirstOrDefault(s => s.Name == "helper_value");
+        helperFn.Should().NotBeNull();
+        helperFn!.DeclaringFilePath.Should().NotBeNull(
+            "imported closure files keep their real path identity");
+        Path.GetFileName(helperFn.DeclaringFilePath).Should().Be("helpers.spy");
+    }
 }

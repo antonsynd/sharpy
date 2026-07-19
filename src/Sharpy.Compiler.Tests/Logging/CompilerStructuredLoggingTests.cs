@@ -298,3 +298,97 @@ def main():
         logger.SupportsStructuredLogging.Should().BeFalse();
     }
 }
+
+/// <summary>
+/// Project-mode structured logging (#1077): a genuinely multi-file project must emit per-file
+/// phase events — this is the coverage the single-file facade tests above cannot provide, since
+/// they only ever observe a one-file synthetic project.
+/// </summary>
+public class ProjectCompilerStructuredLoggingTests : IDisposable
+{
+    private readonly string _tempDir;
+
+    public ProjectCompilerStructuredLoggingTests()
+    {
+        _tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_proj_events_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_tempDir);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_tempDir))
+            Directory.Delete(_tempDir, recursive: true);
+    }
+
+    [Fact]
+    public void ProjectCompile_MultiFile_EmitsPerFilePhaseAndCodeGenEvents()
+    {
+        var libPath = Path.Combine(_tempDir, "lib.spy");
+        File.WriteAllText(libPath, "def lib_value() -> int:\n    return 41\n");
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        File.WriteAllText(mainPath, "import lib\n\ndef main():\n    print(lib.lib_value() + 1)\n");
+
+        var logger = new StructuredLogger();
+        var config = new ProjectConfig
+        {
+            ProjectDirectory = _tempDir,
+            ProjectFilePath = mainPath,
+            RootNamespace = string.Empty,
+            EntryPoint = mainPath,
+            SourceFiles = new List<string> { mainPath, libPath }
+        };
+
+        var compiler = new Sharpy.Compiler.Project.ProjectCompiler(logger);
+        var result = compiler.Compile(config, CancellationToken.None, emitAssembly: false);
+
+        result.Success.Should().BeTrue(because: string.Join("; ",
+            result.Diagnostics.GetErrors().Select(d => $"[{d.Code}] {d.Message}")));
+
+        // Every file gets its own Lexical/Syntax bracket; type checking and codegen also
+        // run per file. Assert per-file presence, not global presence.
+        var startEvents = logger.GetEvents<PhaseStartEvent>().ToList();
+        var endEvents = logger.GetEvents<PhaseEndEvent>().ToList();
+        startEvents.Should().HaveCount(endEvents.Count, "every phase start has a matching end");
+
+        foreach (var path in new[] { mainPath, libPath })
+        {
+            var phasesForFile = startEvents.Where(e => e.FilePath == path).Select(e => e.Phase).ToList();
+            phasesForFile.Should().Contain(CompilerPhaseNames.LexicalAnalysis,
+                $"file '{Path.GetFileName(path)}' must have a lexical phase event");
+            phasesForFile.Should().Contain(CompilerPhaseNames.SyntaxAnalysis,
+                $"file '{Path.GetFileName(path)}' must have a syntax phase event");
+        }
+
+        var codeGenEvents = logger.GetEvents<CodeGenEvent>().ToList();
+        codeGenEvents.Select(e => e.FilePath).Distinct().Should().HaveCountGreaterThanOrEqualTo(2,
+            "each generated unit reports its own CodeGenEvent");
+        codeGenEvents.Should().OnlyContain(e => e.ByteCount > 0);
+    }
+
+    [Fact]
+    public void ProjectCompile_FileWithTypeError_ThatFilesPhaseEndReportsErrors()
+    {
+        var badPath = Path.Combine(_tempDir, "bad.spy");
+        File.WriteAllText(badPath, "def broken() -> int:\n    return \"not an int\"\n");
+        var mainPath = Path.Combine(_tempDir, "main.spy");
+        File.WriteAllText(mainPath, "def main():\n    print(1)\n");
+
+        var logger = new StructuredLogger();
+        var config = new ProjectConfig
+        {
+            ProjectDirectory = _tempDir,
+            ProjectFilePath = mainPath,
+            RootNamespace = string.Empty,
+            EntryPoint = mainPath,
+            SourceFiles = new List<string> { mainPath, badPath }
+        };
+
+        var compiler = new Sharpy.Compiler.Project.ProjectCompiler(logger);
+        var result = compiler.Compile(config, CancellationToken.None, emitAssembly: false);
+
+        result.Success.Should().BeFalse();
+        logger.GetEvents<PhaseEndEvent>().Should().Contain(
+            e => e.FilePath == badPath && e.ErrorCount > 0,
+            "the failing file's phase-end event carries its error count");
+    }
+}
