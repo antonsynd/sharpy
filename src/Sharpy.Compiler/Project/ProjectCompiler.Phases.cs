@@ -37,7 +37,10 @@ internal partial class ProjectCompiler
             // Create per-file SymbolTable and NameResolver
             var fileTable = new SymbolTable(SymbolTable.BuiltinRegistry);
             var fileResolver = new NameResolver(fileTable, _logger, _projectModel!.SemanticBinding);
-            fileResolver.SetCurrentFilePath(unit.FilePath);
+            // Single-file analyze (#1087) strips the entry file's path identity so its symbols
+            // get a null DeclaringFilePath, matching the historical single-file contract that
+            // LSP rename/hierarchy handlers rely on (they fall back to the request document URI).
+            fileResolver.SetCurrentFilePath(IsNullPathEntryFile(config, unit) ? null : unit.FilePath);
 
             fileTable.EnterModuleScope(unit.ModulePath);
             fileResolver.SetCurrentModulePath(unit.ModulePath);
@@ -105,6 +108,17 @@ internal partial class ProjectCompiler
         _sharedNameResolver = new NameResolver(SymbolTable, _logger, _projectModel!.SemanticBinding);
         _sharedNameResolver.AggregateTypeDefinitionsFrom(_perFileResolvers);
     }
+
+    /// <summary>
+    /// True when <paramref name="unit"/> is the entry file of a single-file analyze project
+    /// whose path identity should be stripped (<see cref="ProjectConfig.NullifyEntryFilePath"/>).
+    /// Its symbols and references then carry a null path so LSP handlers fall back to the request
+    /// document URI — the historical single-file analyze contract (#1087).
+    /// </summary>
+    private static bool IsNullPathEntryFile(ProjectConfig config, Model.CompilationUnit unit)
+        => config.NullifyEntryFilePath
+            && config.EntryPoint != null
+            && SyntheticProject.PathsEqual(unit.FilePath, config.EntryPoint);
 
     /// <summary>
     /// Phase 4b: Resolve inheritance relationships
@@ -644,7 +658,12 @@ internal partial class ProjectCompiler
                 // Create per-file SemanticInfo for isolation
                 var localSemanticInfo = new SemanticInfo();
                 localSemanticInfo.SetSymbolTable(SymbolTable);
-                localSemanticInfo.CurrentFilePath = unit.FilePath;
+                // For the single-file analyze path (#1087), the entry file's references carry a
+                // null path so LSP handlers treat them as the current document — the historical
+                // single-file contract, where the main file recorded no reference path. Imported
+                // closure files keep their real paths for cross-file navigation.
+                localSemanticInfo.CurrentFilePath =
+                    IsNullPathEntryFile(config, unit) ? null : unit.FilePath;
                 unit.FileSemanticInfo = localSemanticInfo;
 
                 // Create per-file SemanticBinding for isolation

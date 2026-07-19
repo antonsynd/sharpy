@@ -24,8 +24,16 @@ internal static class SyntheticProject
     /// <param name="entryFilePath">The full, on-disk path of the entry file.</param>
     /// <param name="options">Compiler options supplying namespace, output type, references, etc.</param>
     /// <param name="logger">Logger for the best-effort import scan.</param>
+    /// <param name="forAnalysis">
+    /// When true, the synthetic project is a single-file LSP/tooling analyze (#1087): the parse
+    /// phase preserves trivia and surfaces per-unit CommentSpans for hover, and the entry file
+    /// is given no path identity (null DeclaringFilePath / reference paths) so LSP handlers fall
+    /// back to the request document URI — the historical single-file contract. The compile path
+    /// leaves this off for byte-identical output.
+    /// </param>
     public static ProjectConfig BuildConfig(
-        string source, string entryFilePath, CompilerOptions options, ICompilerLogger logger)
+        string source, string entryFilePath, CompilerOptions options, ICompilerLogger logger,
+        bool forAnalysis = false)
     {
         var projectDirectory = Path.GetDirectoryName(entryFilePath);
         if (string.IsNullOrEmpty(projectDirectory))
@@ -58,7 +66,9 @@ internal static class SyntheticProject
             Configuration = options.Configuration,
             WarningsAsErrors = options.WarningsAsErrors,
             SuppressedWarnings = new HashSet<string>(options.SuppressedWarnings, StringComparer.OrdinalIgnoreCase),
-            OutputAssemblyPathOverride = options.OutputAssemblyPath
+            OutputAssemblyPathOverride = options.OutputAssemblyPath,
+            PreserveTrivia = forAnalysis,
+            NullifyEntryFilePath = forAnalysis
         };
     }
 

@@ -75,6 +75,17 @@ public class ProjectConfig
     internal bool PreserveTrivia { get; init; }
 
     /// <summary>
+    /// When true, the entry file is given no path identity: its symbols' DeclaringFilePath /
+    /// DefiningFilePath and its per-node reference locations are recorded with a null path.
+    /// Off by default. The single-file analyze path (#1087) sets it to reproduce the historical
+    /// single-file contract where the main file carried no path, so LSP handlers (rename, type
+    /// hierarchy, highlight) fall back to the request document URI instead of the synthetic
+    /// entry path (<c>&lt;source&gt;</c>). Only the entry file is affected; imported closure
+    /// files keep their real paths for cross-file navigation.
+    /// </summary>
+    internal bool NullifyEntryFilePath { get; init; }
+
+    /// <summary>
     /// List of .NET assembly references
     /// </summary>
     public List<string> References { get; init; } = new();
