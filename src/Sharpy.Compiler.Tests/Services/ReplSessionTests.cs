@@ -301,6 +301,25 @@ public class ReplSessionTests
     }
 
     // -------------------------------------------------------------------------
+    // SPY0908 net: generated-C# emit failures never leak a raw CS code (#1059)
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void CompileCSharp_InvalidGeneratedCode_ReportsSpy0908_NeverRawCsCode()
+    {
+        // Deliberately invalid C# stands in for a compiler bug that emits code the final
+        // Roslyn emit rejects. Every surfaced diagnostic must be SPY0908 — never a bare
+        // CSxxxx code the user cannot act on.
+        var (assembly, diagnostics) = ReplSession.CompileCSharp("class {", CancellationToken.None);
+
+        Assert.Null(assembly);
+        Assert.NotEmpty(diagnostics);
+        Assert.All(diagnostics, d => Assert.Equal("SPY0908", d.Code));
+        Assert.DoesNotContain(diagnostics,
+            d => d.Code is not null && d.Code.StartsWith("CS", StringComparison.Ordinal));
+    }
+
+    // -------------------------------------------------------------------------
     // Accumulated source / introspection
     // -------------------------------------------------------------------------
 

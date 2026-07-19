@@ -416,7 +416,9 @@ public class ReplSession
         }
     }
 
-    private static (byte[]? Assembly, IReadOnlyList<CompilerDiagnostic> Diagnostics) CompileCSharp(
+    // internal (not private) so the SPY0908 no-CS-leak net can be exercised directly with
+    // deliberately invalid generated C# (#1059). InternalsVisibleTo covers Sharpy.Compiler.Tests.
+    internal static (byte[]? Assembly, IReadOnlyList<CompilerDiagnostic> Diagnostics) CompileCSharp(
         string generatedCSharp,
         CancellationToken cancellationToken)
     {
