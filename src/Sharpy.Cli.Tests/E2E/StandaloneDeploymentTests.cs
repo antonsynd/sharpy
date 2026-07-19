@@ -44,6 +44,18 @@ public class StandaloneDeploymentTests : IDisposable
             """).Should().Be("3.0");
 
     [Fact]
+    public void PlainProgram_RunsStandalone() =>
+        // No stdlib import at all. deps.json deliberately declares the full closure of the
+        // default references — a superset of what the CLI copies beside the output — so this
+        // pins that declared-but-absent entries stay harmless: the host only consults an entry
+        // when the assembly actually loads.
+        CompileAndRunStandalone(
+            """
+            def main():
+                print("hello")
+            """).Should().Be("hello");
+
+    [Fact]
     public void Toml_RunsStandalone() =>
         CompileAndRunStandalone(
             """

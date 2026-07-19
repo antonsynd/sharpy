@@ -293,6 +293,33 @@ public class ReparseEquivalenceConformanceTests
     }
 
     // ---------------------------------------------------------------------------------------------
+    // Seam pin (#1095, P5.2): the codegen seam must hand the emitter's tree to Roslyn via
+    // CSharpSyntaxTree.Create. Green-node identity is the one cheap observable separating Create
+    // (re-roots the SAME green tree) from a silent revert to ParseText(ToFullString()) (a fresh
+    // parse, fresh green nodes) — the two are behaviorally identical otherwise and differ only in
+    // the double-parse cost #1095 removed.
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void CodeGenSeam_HandsEmitterTreeToRoslynWithoutReparse()
+    {
+        var (result, units) = CompileProjectFilesCapturing(
+            new[] { ("main.spy", "def main() -> None:\n    print(42)\n") },
+            entryPoint: "main.spy");
+
+        result.Success.Should().BeTrue("the trivial program must compile");
+        var emitted = units.Should().ContainSingle().Subject.Unit;
+
+        var generatedTree = result.ProjectModel!.Units.Values
+            .Select(u => u.GeneratedSyntaxTree)
+            .Single(t => t is not null)!;
+
+        generatedTree.GetRoot().IsIncrementallyIdenticalTo(emitted).Should().BeTrue(
+            "the seam must pass the emitter's tree via CSharpSyntaxTree.Create — a reparse of the "
+            + "generated text produces fresh green nodes and silently reintroduces the #1095 double parse");
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // Keyword-named-module coverage (#1095, regression fixed in 664f3332f).
     //
     // The flip (P5.2) un-masked a corpus blind spot: a module whose name is a C# keyword (e.g. a
@@ -312,7 +339,7 @@ public class ReparseEquivalenceConformanceTests
     [InlineData("params")]
     public void KeywordNamedModule_EmitterTrees_BindEquivalentlyUnderDirectHandoff(string moduleName)
     {
-        var (success, units) = CompileProjectFilesCapturing(
+        var (result, units) = CompileProjectFilesCapturing(
             new[]
             {
                 ($"{moduleName}.spy", "def get_value() -> int:\n    return 42\n"),
@@ -320,7 +347,7 @@ public class ReparseEquivalenceConformanceTests
             },
             entryPoint: "main.spy");
 
-        success.Should().BeTrue($"the project importing keyword-named module '{moduleName}' must compile");
+        result.Success.Should().BeTrue($"the project importing keyword-named module '{moduleName}' must compile");
         units.Should().NotBeEmpty();
 
         // Guard that the scenario is genuinely exercised: the emitter must @-escape the module name at the
@@ -513,7 +540,7 @@ public class ReparseEquivalenceConformanceTests
     /// returning the emitter units. Used for scenarios (e.g. keyword-named modules) that need a real
     /// cross-module import but are clearer to express inline than as an on-disk fixture.
     /// </summary>
-    private (bool Success, IReadOnlyList<(string? Path, CompilationUnitSyntax Unit)> Units)
+    private (ProjectCompilationResult Result, IReadOnlyList<(string? Path, CompilationUnitSyntax Unit)> Units)
         CompileProjectFilesCapturing(IReadOnlyList<(string RelPath, string Source)> files, string entryPoint)
     {
         var projectDir = Path.Combine(Path.GetTempPath(), "sharpy_reparse_kw_" + Guid.NewGuid().ToString("N"));
@@ -548,7 +575,7 @@ public class ReparseEquivalenceConformanceTests
             var projectCompiler = new ProjectCompiler(
                 _logger, moduleRegistry, emitterFactory: factory, features: FeatureFlags.None);
             var result = projectCompiler.Compile(config, CancellationToken.None, emitAssembly: false);
-            return (result.Success, factory.Captured);
+            return (result, factory.Captured);
         }
         finally
         {

@@ -188,6 +188,38 @@ public class RuntimeClosureResolverTests
         Assert.Empty(closure.NativeAssets);
     }
 
+    [Fact]
+    public void Resolve_CorruptAndNonPeFiles_DoNotBreakTheWalk()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "sharpy_closure_corrupt_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            // A seed that exists on disk but is not a PE file at all, and a corrupt sibling
+            // sitting next to a valid seed: neither may throw out of Resolve, and the valid
+            // seed's walk must be unaffected by its unreadable neighbor.
+            var garbageSeed = Path.Combine(dir, "Garbage.dll");
+            File.WriteAllText(garbageSeed, "not a PE file");
+            File.WriteAllText(Path.Combine(dir, "Corrupt.dll"), "also not a PE file");
+
+            var validSeed = Path.Combine(dir, "Sharpy.Core.dll");
+            File.Copy(Path.Combine(CoreDir, "Sharpy.Core.dll"), validSeed);
+
+            var closure = RuntimeClosureResolver.Resolve(new[] { garbageSeed, validSeed });
+
+            Assert.True(HasName(closure.ManagedAssemblies, "Sharpy.Core.dll"),
+                "a valid seed must survive corrupt neighbors");
+            Assert.False(HasName(closure.ManagedAssemblies, "Corrupt.dll"),
+                "an unreferenced corrupt sibling must not be pulled into the closure");
+        }
+        finally
+        {
+            try
+            { Directory.Delete(dir, recursive: true); }
+            catch { /* best-effort temp cleanup */ }
+        }
+    }
+
     [Theory]
     [InlineData("osx-arm64", new[] { "osx-arm64", "osx", "unix-arm64", "unix", "any" })]
     [InlineData("linux-x64", new[] { "linux-x64", "linux", "unix-x64", "unix", "any" })]
