@@ -678,6 +678,29 @@ public static partial class DiagnosticExplanations
             "value = obj to int      # with failable_cast enabled",
             "Use the failable-cast operator that matches the failure mode:\n  value = obj as! int   # throws on failure\n  maybe_value = obj as? int  # None on failure");
 
+        // ── Validation warnings — overflow (SPY0480-SPY0489) ───────────
+        // Warnings that overflow the fully-allocated SPY0450-0469 sub-band.
+        // Severity is Warning at emission, never inferred from the code range.
+
+        Add(dict, DiagnosticCodes.Validation.UnusedSuppression,
+            "Unused @suppress",
+            "Validation",
+            "A '@suppress' decorator lists one or more diagnostic codes, but none of those codes was " +
+            "actually emitted within the annotated scope (the decorated declaration or statement and its " +
+            "body). The suppression has no effect and can be removed. Unused suppressions are not reported " +
+            "when the file already has errors, so a broken build never nags about them.",
+            "@suppress(\"SPY0451\")   # nothing is unused here, so SPY0451 never fires\ndef f() -> None:\n    x: int = compute()\n    print(x)",
+            "Remove the '@suppress' decorator, or correct the code list if you meant to silence a different diagnostic.");
+
+        Add(dict, DiagnosticCodes.Validation.InvalidSuppressionCode,
+            "Invalid @suppress code",
+            "Validation",
+            "A code passed to '@suppress' cannot be suppressed. Either it is not a valid 'SPYxxxx' code, it " +
+            "is not a recognized diagnostic, or it names an error-severity diagnostic. Only Warning, Hint, " +
+            "and Info diagnostics can be suppressed — errors are never silenceable and must be fixed.",
+            "@suppress(\"SPY0201\")   # SPY0201 is an error; errors cannot be suppressed\ndef f() -> None:\n    ...",
+            "Pass a valid warning/hint/info code (e.g. \"SPY0451\"). Fix errors at the source instead of suppressing them.");
+
         // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
 
         Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,

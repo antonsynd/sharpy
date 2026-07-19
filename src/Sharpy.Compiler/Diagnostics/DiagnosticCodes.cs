@@ -437,7 +437,8 @@ public static class DiagnosticCodes
     /// <summary>
     /// Validation diagnostic codes (SPY0400-SPY0499).
     /// Errors: SPY0400-SPY0449, Warnings: SPY0450-SPY0469,
-    /// Transition hints: SPY0470-SPY0489 (advisory; emitted at Hint severity).
+    /// Transition hints: SPY0470-SPY0479 (advisory; emitted at Hint severity),
+    /// Warnings — overflow of 0450-0469: SPY0480-SPY0489.
     /// </summary>
     public static class Validation
     {
@@ -564,7 +565,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region Transition diagnostics (SPY0470-SPY0489)
+        #region Transition diagnostics (SPY0470-SPY0479)
 
         // Hint-severity diagnostics that warn Python/C# developers about behavioral
         // differences in Sharpy. These share the validation-warning code range but
@@ -580,7 +581,23 @@ public static class DiagnosticCodes
         public const string NegativeTupleIndexHint = "SPY0476";       // Active (emitted by TransitionWarningValidator)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
         public const string ToCastTransitionHint = "SPY0479";         // Active (emitted by TransitionWarningValidator only when failable_cast is enabled) — suggests the as?/as! spelling over `to` (#1029)
-        // SPY0478, SPY0480-SPY0489: Reserved for future transition diagnostics
+        // SPY0478: Reserved for future transition diagnostics
+
+        #endregion
+
+        #region Validation warnings — overflow (SPY0480-SPY0489)
+
+        // The primary validation-warning sub-band SPY0450-SPY0469 is fully allocated, so
+        // warnings added afterward overflow into SPY0480-SPY0489. These are WARNINGS despite
+        // sitting numerically above the transition-hint band; severity is set explicitly at
+        // emission via AddWarning, never inferred from the code range (mirrors the SPY0490-0499
+        // error-overflow band precedent).
+
+        // SPY0480: Reserved for MustUseValueDiscarded (#1022) — allocated in the must-use phase
+        // so the suppression/must-use trio (0480-0482) stays contiguous.
+        public const string UnusedSuppression = "SPY0481";           // Active (#1024)
+        public const string InvalidSuppressionCode = "SPY0482";      // Active (#1024)
+        // SPY0483-SPY0489: Reserved for future validation warnings
 
         #endregion
 
