@@ -139,21 +139,7 @@ internal class AssemblyCompiler
             metrics.EndPhase();
 
             var diagnostics = new DiagnosticBag();
-            foreach (var d in emitResult.Diagnostics)
-            {
-                if (d.Severity == DiagnosticSeverity.Error)
-                {
-                    diagnostics.Add(ToCompilerDiagnostic(d));
-                }
-                else if (d.Severity == DiagnosticSeverity.Warning
-                         && !d.Id.StartsWith("CS", StringComparison.Ordinal))
-                {
-                    // Keep non-CS warnings (e.g. analyzer warnings) untouched. Warnings
-                    // with a CS id come from the compiler's own generated C# and are
-                    // internal noise the user cannot act on, so they are dropped below.
-                    diagnostics.Add(ToCompilerDiagnostic(d));
-                }
-            }
+            diagnostics.AddRange(MapGeneratedCodeDiagnostics(emitResult.Diagnostics));
 
             if (!emitResult.Success)
             {
@@ -364,9 +350,51 @@ internal class AssemblyCompiler
     // NuGet resolution moved to Project.NuGetResolver (shared with CompilerApi)
 
     /// <summary>
+    /// Map Roslyn diagnostics produced by compiling <em>generated</em> C# into the
+    /// compiler's own <see cref="CompilerDiagnostic"/> shape, applying the SPY0908 net.
+    /// This is the single mapping shared by the on-disk assembly path
+    /// (<see cref="CompileToAssembly"/>) and the REPL's in-memory emit
+    /// (<c>ReplSession.CompileCSharp</c>) so neither front end can ever leak a raw
+    /// <c>CSxxxx</c> code from generated C# to the user (#1059).
+    /// </summary>
+    /// <remarks>
+    /// Filtering matches what a user can act on:
+    /// <list type="bullet">
+    ///   <item>Errors (CS or not) are kept — CS errors are remapped to SPY0908 with the
+    ///   original CS id + text preserved in the message; non-CS errors pass through.</item>
+    ///   <item>Non-CS warnings (e.g. analyzer warnings) are kept.</item>
+    ///   <item>CS warnings are dropped — they come from the compiler's own generated C#
+    ///   and are internal noise the user cannot act on.</item>
+    ///   <item>Info/hidden diagnostics are dropped.</item>
+    /// </list>
+    /// </remarks>
+    internal static IReadOnlyList<CompilerDiagnostic> MapGeneratedCodeDiagnostics(
+        IEnumerable<Diagnostic> diagnostics)
+    {
+        var mapped = new List<CompilerDiagnostic>();
+        foreach (var d in diagnostics)
+        {
+            if (d.Severity == DiagnosticSeverity.Error)
+            {
+                mapped.Add(ToCompilerDiagnostic(d));
+            }
+            else if (d.Severity == DiagnosticSeverity.Warning
+                     && !d.Id.StartsWith("CS", StringComparison.Ordinal))
+            {
+                // Keep non-CS warnings (e.g. analyzer warnings) untouched. Warnings
+                // with a CS id come from the compiler's own generated C# and are
+                // internal noise the user cannot act on, so they are dropped.
+                mapped.Add(ToCompilerDiagnostic(d));
+            }
+        }
+
+        return mapped;
+    }
+
+    /// <summary>
     /// Convert a Roslyn diagnostic to a structured CompilerDiagnostic
     /// </summary>
-    private CompilerDiagnostic ToCompilerDiagnostic(Diagnostic diagnostic)
+    private static CompilerDiagnostic ToCompilerDiagnostic(Diagnostic diagnostic)
     {
         var severity = diagnostic.Severity == DiagnosticSeverity.Error
             ? CompilerDiagnosticSeverity.Error
