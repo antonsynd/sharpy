@@ -1,4 +1,8 @@
+using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Model;
+using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler;
@@ -74,6 +78,59 @@ internal static class SyntheticProject
             NullifyEntryFilePath = nullifyEntryFilePath,
             PreParsedUnits = preParsedUnits
         };
+    }
+
+    /// <summary>
+    /// Drives <see cref="ProjectCompiler.AnalyzeProject"/> over a synthetic single-file config
+    /// and applies the single-file analyze adaptations shared by
+    /// <see cref="Compiler.Analyze(string, string, CancellationToken, bool)"/> and
+    /// <see cref="CompilerApi.Analyze(string, CompilerOptions, CancellationToken)"/> (#1087):
+    /// the <see cref="ProjectCompiler"/> is constructed with the caller's full options
+    /// (WarningsAsErrors, SuppressedWarnings, MaxErrors, and Features are ctor args, not config
+    /// fields — dropping them would silently lose feature flags and SPY0331 gating in analyze
+    /// mode), the entry file's unit is located by path, and the shared symbol table is
+    /// positioned at the entry file's module scope so bare <c>SymbolTable.Lookup</c> resolves
+    /// module-level symbols (the project pipeline scopes them per module rather than in the
+    /// global scope). The table is built fresh per call and consumed read-only afterward, so
+    /// entering a scope here is safe; it is skipped on parse failure, when no module scope
+    /// exists — there are no symbols to find anyway.
+    /// </summary>
+    public static SyntheticAnalysis Analyze(
+        ProjectConfig config, CompilerOptions options, ICompilerLogger logger,
+        ModuleRegistry? moduleRegistry, ICodeEmitterFactory? emitterFactory,
+        CancellationToken cancellationToken)
+    {
+        var projectCompiler = new ProjectCompiler(logger, moduleRegistry,
+            options.WarningsAsErrors, options.SuppressedWarnings, options.MaxErrors,
+            incremental: false, emitterFactory, options.Features);
+
+        var analysis = projectCompiler.AnalyzeProject(config, cancellationToken);
+
+        // Pick the entry file's unit out of the project model (the closure may also contain
+        // imported local .spy files). Match by path the same way MapProjectResult does.
+        // EntryPoint is always set by BuildConfig; the null check satisfies the nullable type.
+        CompilationUnit? entryUnit = null;
+        if (config.EntryPoint is { } entryPoint)
+        {
+            foreach (var unit in analysis.ProjectModel.Units.Values)
+            {
+                if (PathsEqual(unit.FilePath, entryPoint))
+                {
+                    entryUnit = unit;
+                    break;
+                }
+            }
+        }
+
+        var symbolTable = analysis.ProjectModel.GlobalSymbols;
+        if (symbolTable != null && entryUnit != null
+            && symbolTable.CurrentScope == symbolTable.GlobalScope
+            && symbolTable.GetModuleScope(entryUnit.ModulePath) != null)
+        {
+            symbolTable.EnterModuleScope(entryUnit.ModulePath);
+        }
+
+        return new SyntheticAnalysis(analysis, entryUnit);
     }
 
     /// <summary>
@@ -232,3 +289,11 @@ internal static class SyntheticProject
     public static bool PathsEqual(string a, string b)
         => string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 }
+
+/// <summary>
+/// Result of <see cref="SyntheticProject.Analyze"/>: the whole-project analysis plus the entry
+/// file's compilation unit (null when the entry never made it into the project model). The
+/// analysis' shared symbol table is already positioned at the entry file's module scope.
+/// </summary>
+internal readonly record struct SyntheticAnalysis(
+    ProjectAnalysisResult Analysis, CompilationUnit? EntryUnit);

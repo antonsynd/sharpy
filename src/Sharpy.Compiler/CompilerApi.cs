@@ -299,50 +299,17 @@ public sealed class CompilerApi
             preserveTrivia: true, nullifyEntryFilePath: true);
         var registry = BuildModuleRegistry(config);
 
-        // Construct with the caller's full options — WarningsAsErrors, SuppressedWarnings,
-        // MaxErrors, and Features are ctor args (not config fields), the way Compiler.Compile
-        // builds it. Dropping them (as CompilerApi.AnalyzeProject's option-less construction
-        // does) would silently lose LSP feature flags and SPY0331 gating in analyze mode.
-        var projectCompiler = new Project.ProjectCompiler(
-            logger: _logger,
-            moduleRegistry: registry,
-            warningsAsErrors: opts.WarningsAsErrors,
-            suppressedWarnings: opts.SuppressedWarnings,
-            maxErrors: opts.MaxErrors,
-            incremental: false,
-            emitterFactory: _emitterFactory,
-            features: opts.Features);
-
-        var analysis = projectCompiler.AnalyzeProject(config, cancellationToken);
-
-        // Pick the entry file's per-file view out of the project result (the closure may also
-        // contain imported local .spy files). Match by path the same way MapProjectResult does.
-        Project.FileAnalysisResult? entryResult = null;
-        string? entryModulePath = null;
-        foreach (var unit in analysis.ProjectModel.Units.Values)
-        {
-            if (SyntheticProject.PathsEqual(unit.FilePath, entryPath))
-            {
-                entryResult = analysis.GetFileResult(unit.FilePath);
-                entryModulePath = unit.ModulePath;
-                break;
-            }
-        }
-
-        // The project pipeline leaves each file's module-level symbols in a per-module scope,
-        // but the single-file analyze contract (LSP handlers and tests) resolves them via bare
-        // SymbolTable.Lookup, which searches the current scope chain. Position the returned
-        // table at the entry file's module scope so Lookup finds module-level symbols, walking
-        // up to the global scope for builtins. The table is built fresh per Analyze call and
-        // consumed read-only afterward, so entering a scope here is safe. Skipped on parse
-        // failure (no module scope created) — there are no symbols to find anyway.
-        var symbolTable = entryResult?.SymbolTable;
-        if (symbolTable != null && entryModulePath != null
-            && symbolTable.CurrentScope == symbolTable.GlobalScope
-            && symbolTable.GetModuleScope(entryModulePath) != null)
-        {
-            symbolTable.EnterModuleScope(entryModulePath);
-        }
+        // SyntheticProject.Analyze constructs the ProjectCompiler with the caller's full
+        // options (WarningsAsErrors, SuppressedWarnings, MaxErrors, Features — ctor args the
+        // option-less CompilerApi.AnalyzeProject construction drops, see #1109), locates the
+        // entry unit, and positions the shared symbol table at the entry file's module scope
+        // so bare SymbolTable.Lookup resolves module-level symbols.
+        var result = SyntheticProject.Analyze(config, opts, _logger, registry,
+            _emitterFactory, cancellationToken);
+        var analysis = result.Analysis;
+        var entryResult = result.EntryUnit != null
+            ? analysis.GetFileResult(result.EntryUnit.FilePath)
+            : null;
 
         return new SemanticResult
         {
@@ -353,7 +320,8 @@ public sealed class CompilerApi
             Diagnostics = analysis.Diagnostics.GetAll(),
             Ast = entryResult?.Ast,
             SemanticInfo = entryResult?.SemanticInfo,
-            SymbolTable = symbolTable,
+            // Already positioned at the entry file's module scope by SyntheticProject.Analyze.
+            SymbolTable = entryResult?.SymbolTable,
             CommentSpans = entryResult?.CommentSpans ?? Array.Empty<CommentSpan>()
         };
     }

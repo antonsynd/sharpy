@@ -173,18 +173,15 @@ public class Compiler
 
         var config = SyntheticProject.BuildConfig(sourceCode, entryFilePath, _options, _logger,
             preserveTrivia: preserveTrivia, nullifyEntryFilePath: true);
-        var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
-            _options.WarningsAsErrors, _options.SuppressedWarnings, _options.MaxErrors,
-            incremental: false, _emitterFactory, _options.Features);
-
-        var analysis = projectCompiler.AnalyzeProject(config, cancellationToken);
+        var result = SyntheticProject.Analyze(config, _options, _logger, _moduleRegistry,
+            _emitterFactory, cancellationToken);
 
         // Reference-load failures are recorded on the shared module registry in the constructor,
         // before the pipeline runs; surface them so analyze callers see the same errors compile does.
         if (_moduleRegistry != null && _moduleRegistry.Diagnostics.HasErrors)
-            analysis.Diagnostics.Merge(_moduleRegistry.Diagnostics);
+            result.Analysis.Diagnostics.Merge(_moduleRegistry.Diagnostics);
 
-        return MapAnalysisResult(analysis, entryFilePath, filePath, sourceCode, preserveTrivia);
+        return MapAnalysisResult(result, filePath, sourceCode, preserveTrivia);
     }
 
     /// <summary>
@@ -193,30 +190,11 @@ public class Compiler
     /// re-running any analysis. Mirrors <see cref="MapProjectResult"/> for the analyze path.
     /// </summary>
     private CompilationResult MapAnalysisResult(
-        Project.ProjectAnalysisResult analysis, string entryFilePath, string originalFilePath,
-        string sourceCode, bool preserveTrivia)
+        SyntheticAnalysis result, string originalFilePath, string sourceCode, bool preserveTrivia)
     {
+        var analysis = result.Analysis;
         var model = analysis.ProjectModel;
-        Model.CompilationUnit? entryUnit = null;
-        foreach (var unit in model.Units.Values)
-        {
-            if (SyntheticProject.PathsEqual(unit.FilePath, entryFilePath))
-            {
-                entryUnit = unit;
-                break;
-            }
-        }
-
-        // Position the shared table at the entry file's module scope so bare SymbolTable.Lookup
-        // resolves module-level symbols (the project pipeline scopes them per module rather than
-        // in the global scope). Same adaptation CompilerApi.Analyze makes.
-        var symbolTable = model.GlobalSymbols;
-        if (symbolTable != null && entryUnit != null
-            && symbolTable.CurrentScope == symbolTable.GlobalScope
-            && symbolTable.GetModuleScope(entryUnit.ModulePath) != null)
-        {
-            symbolTable.EnterModuleScope(entryUnit.ModulePath);
-        }
+        var entryUnit = result.EntryUnit;
 
         // Reference/stdlib discovery ran in the constructor before any per-file metrics existed;
         // record it as a first-class phase on the entry file's metrics (parity with MapProjectResult).
@@ -231,7 +209,9 @@ public class Compiler
             Success = !analysis.Diagnostics.HasErrors,
             Diagnostics = analysis.Diagnostics,
             Module = entryUnit?.Ast,
-            SymbolTable = symbolTable,
+            // The shared table was already positioned at the entry file's module scope by
+            // SyntheticProject.Analyze.
+            SymbolTable = model.GlobalSymbols,
             SemanticInfo = entryUnit?.FileSemanticInfo ?? model.SemanticInfo,
             SemanticBinding = model.SemanticBinding,
             ModuleRegistry = _moduleRegistry,
