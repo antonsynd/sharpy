@@ -9,7 +9,7 @@ using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic.Registry;
 
 namespace Sharpy.Compiler.Services;
@@ -324,33 +324,12 @@ public class ReplSession
     {
         try
         {
-            // Phase 1: Lex
-            var lexer = new Sharpy.Compiler.Lexer.Lexer(source, _logger)
-            {
-                Features = _features
-            };
-            var tokens = lexer.TokenizeAll();
-            if (lexer.Diagnostics.HasErrors)
-                return CompilationOutcome.Failure(lexer.Diagnostics.GetAll());
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Phase 2: Parse
-            var parser = new Sharpy.Compiler.Parser.Parser(
-                tokens, _logger, cancellationToken: cancellationToken, features: _features);
-            var module = parser.ParseModule();
-            if (parser.Diagnostics.HasErrors)
-                return CompilationOutcome.Failure(parser.Diagnostics.GetAll());
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Phase 3: Semantic analysis
-            var builtinRegistry = new BuiltinRegistry();
-            var symbolTable = new SymbolTable(builtinRegistry);
-            var semanticInfo = new SemanticInfo();
-            var semanticBinding = new SemanticBinding();
+            // The REPL's replayed source becomes a synthetic project-of-one-file driven through
+            // the unified ProjectCompiler (#1087) — no hand-rolled phase pipeline. The REPL keeps
+            // only its in-memory Roslyn emit + execute. EmitLineDirectives is off so the emitted
+            // C# carries no source-line mapping (it is compiled and run in memory). Feature gating
+            // (SPY0331), entry-point rules, and all analysis diagnostics come from ProjectCompiler.
             var moduleRegistry = new ModuleRegistry(_logger);
-
             moduleRegistry.LoadReference(SharpyCoreAssembly.Location);
             var stdlibPath = Path.Combine(Path.GetDirectoryName(SharpyCoreAssembly.Location)!, "Sharpy.Stdlib.dll");
             if (File.Exists(stdlibPath))
@@ -358,97 +337,68 @@ public class ReplSession
             else
                 _logger.LogWarning("Sharpy.Stdlib.dll not found — stdlib modules will not be available.", 0, 0);
 
-            var nameResolver = new NameResolver(symbolTable, _logger, semanticBinding);
-            nameResolver.ResolveDeclarations(module);
-
-            var importResolver = new ImportResolver(_logger, moduleRegistry, semanticBinding: semanticBinding);
-            importResolver.ResolveAllImports(module, symbolTable, null);
-
-            nameResolver.ResolveInheritance();
-
-            semanticBinding.MaterializeInheritance();
-            semanticBinding.FreezeInheritance();
-
-            if (nameResolver.Diagnostics.HasErrors)
-                return CompilationOutcome.Failure(nameResolver.Diagnostics.GetAll());
-
-            var aggregateDiagnostics = new List<CompilerDiagnostic>();
-            aggregateDiagnostics.AddRange(importResolver.Diagnostics.GetAll());
-
-            // Feature gating: union session-wide flags with any `from __future__ import`
-            // features from this input, then reject ungated experimental constructs
-            // (SPY0331) before type checking — same contract as the batch pipelines.
-            var effectiveFeatures = importResolver.GetEffectiveFeatures(_features, ReplFileName);
-            var gateDiagnostics = new DiagnosticBag();
-            new FeatureGateChecker(gateDiagnostics, effectiveFeatures, ReplFileName).Check(module);
-            aggregateDiagnostics.AddRange(gateDiagnostics.GetAll());
-            if (gateDiagnostics.HasErrors)
-                return CompilationOutcome.Failure(aggregateDiagnostics);
-
-            var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
-            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger)
+            var config = new ProjectConfig
             {
-                SemanticBinding = semanticBinding,
-                CurrentFilePath = ReplFileName,
-                ModuleRegistry = moduleRegistry,
-                Features = effectiveFeatures
+                ProjectFilePath = ReplFileName,
+                ProjectDirectory = Directory.GetCurrentDirectory(),
+                // Empty root namespace keeps generated code in the global namespace, matching the
+                // single-file compile path (and what the REPL's own codegen produced before).
+                RootNamespace = string.Empty,
+                OutputType = "exe",
+                EntryPoint = ReplFileName,
+                SourceFiles = new List<string> { ReplFileName },
+                InMemorySources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [ReplFileName] = source
+                },
+                EmitLineDirectives = false
             };
-            try
+
+            var projectCompiler = new ProjectCompiler(
+                _logger, moduleRegistry,
+                warningsAsErrors: false, suppressedWarnings: null, maxErrors: 0,
+                incremental: false, _emitterFactory, _features);
+
+            var result = projectCompiler.Compile(config, cancellationToken, emitAssembly: false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var diagnostics = result.Diagnostics.GetAll();
+
+            // Pull the entry file's generated C# out of the project model. Absent on any
+            // analysis/codegen failure, in which case the diagnostics carry the reason.
+            string? generatedCSharp = null;
+            if (result.ProjectModel != null)
             {
-                typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+                foreach (var unit in result.ProjectModel.Units.Values)
+                {
+                    if (SyntheticProject.PathsEqual(unit.FilePath, ReplFileName))
+                    {
+                        generatedCSharp = unit.GeneratedCSharp;
+                        break;
+                    }
+                }
             }
-            catch (SemanticAnalysisException)
-            {
-                // MaxErrors exceeded — diagnostics already recorded.
-            }
 
-            semanticBinding.MaterializeCodeGenInfo();
-            semanticBinding.MaterializeVariableTypes();
-            semanticBinding.FreezeVariableTypes();
-            semanticBinding.FreezeCodeGenInfo();
+            if (!result.Success || generatedCSharp == null)
+                return CompilationOutcome.Failure(diagnostics);
 
-            aggregateDiagnostics.AddRange(typeChecker.Diagnostics.GetAll());
-
-            if (importResolver.Diagnostics.HasErrors || typeChecker.Diagnostics.HasErrors)
-                return CompilationOutcome.Failure(aggregateDiagnostics);
+            // Carry warnings/info forward so a successful eval still surfaces them.
+            var replDiagnostics = diagnostics.ToList();
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Phase 4: Code generation
-            var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
-            {
-                SourceFilePath = ReplFileName,
-                IsEntryPoint = true,
-                Logger = _logger,
-                SemanticInfo = semanticInfo,
-                SemanticBinding = semanticBinding,
-                EmitLineDirectives = false,
-                Features = effectiveFeatures
-            };
-            var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
-            var generatedSyntax = emitter.GenerateCompilationUnit(module);
-            var generatedCSharp = generatedSyntax.ToFullString();
-
-            aggregateDiagnostics.AddRange(codeGenContext.Diagnostics.GetAll());
-
-            if (codeGenContext.HasErrors)
-                return CompilationOutcome.Failure(aggregateDiagnostics);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Phase 5: Compile generated C# to an in-memory assembly.
+            // Compile generated C# to an in-memory assembly, then load and run it in-process.
             var (assemblyBytes, csharpDiagnostics) = CompileCSharp(generatedCSharp, cancellationToken);
             if (assemblyBytes == null)
             {
-                aggregateDiagnostics.AddRange(csharpDiagnostics);
-                return CompilationOutcome.Failure(aggregateDiagnostics);
+                replDiagnostics.AddRange(csharpDiagnostics);
+                return CompilationOutcome.Failure(replDiagnostics);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Phase 6: Load and run.
             var output = ExecuteAssembly(assemblyBytes, cancellationToken);
-            return CompilationOutcome.SuccessfulRun(output, aggregateDiagnostics);
+            return CompilationOutcome.SuccessfulRun(output, replDiagnostics);
         }
         catch (OperationCanceledException)
         {

@@ -86,6 +86,15 @@ public class ProjectConfig
     internal bool NullifyEntryFilePath { get; init; }
 
     /// <summary>
+    /// Controls whether code generation emits <c>#line</c> directives mapping generated C# back
+    /// to Sharpy source. Defaults to true (the <see cref="CodeGen.CodeGenContext"/> default).
+    /// The REPL (#1087) sets it false: it compiles the generated C# to an in-memory assembly and
+    /// executes it, so source-line mapping is irrelevant and generated-C# coordinates are what the
+    /// SPY0908 net reports on emit failure.
+    /// </summary>
+    internal bool EmitLineDirectives { get; init; } = true;
+
+    /// <summary>
     /// List of .NET assembly references
     /// </summary>
     public List<string> References { get; init; } = new();

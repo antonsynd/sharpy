@@ -89,6 +89,7 @@ internal partial class ProjectCompiler
                     SemanticBinding = _projectModel.SemanticBinding,
                     SemanticInfo = SemanticInfo,
                     Ir = ir,
+                    EmitLineDirectives = config.EmitLineDirectives,
                     Features = ImportResolver.GetEffectiveFeatures(_features, unit.FilePath)
                 };
 
