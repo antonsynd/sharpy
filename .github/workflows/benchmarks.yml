@@ -47,7 +47,7 @@ jobs:
     # (BenchmarkDotNet [MemoryDiagnoser]) regressed > 10% vs benchmarks/allocation-baseline.json.
     # Refresh the baseline deliberately (reviewed like a snapshot) — see the file's _comment.
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
 
