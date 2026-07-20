@@ -609,6 +609,7 @@ public abstract class AstVisitor<T>
             MatchExpression n => VisitMatchExpression(n),
 
             // Statements - Simple
+            DecoratedStatement n => VisitDecoratedStatement(n),
             ExpressionStatement n => VisitExpressionStatement(n),
             Assignment n => VisitAssignment(n),
             VariableDeclaration n => VisitVariableDeclaration(n),
@@ -797,6 +798,7 @@ public abstract class AstVisitor<T>
 
     #region Statements - Simple
 
+    public virtual T VisitDecoratedStatement(DecoratedStatement node) => VisitStatement(node);
     public virtual T VisitExpressionStatement(ExpressionStatement node) => VisitStatement(node);
     public virtual T VisitAssignment(Assignment node) => VisitStatement(node);
     public virtual T VisitVariableDeclaration(VariableDeclaration node) => VisitStatement(node);

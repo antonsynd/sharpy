@@ -77,6 +77,8 @@ public class AstExhaustivenessTests
         {
             // Simple
             "ExpressionStatement", "Assignment", "VariableDeclaration",
+            // DecoratedStatement (#1024): unwrapped to its inner statement in GenerateBodyStatements.
+            "DecoratedStatement",
             "AssertStatement", "PassStatement", "BreakStatement",
             "BreakWithFlagStatement", "ContinueStatement", "ReturnStatement",
             "YieldStatement", "RaiseStatement",
