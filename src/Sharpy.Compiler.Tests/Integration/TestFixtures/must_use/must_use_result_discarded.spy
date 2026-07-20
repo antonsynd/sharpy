@@ -1,0 +1,7 @@
+def risky() -> int:
+    return 5
+
+
+def main() -> None:
+    try risky()
+    print("done")

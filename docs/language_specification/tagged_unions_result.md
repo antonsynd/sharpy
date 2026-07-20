@@ -250,6 +250,28 @@ public readonly struct Result<T, E>
 The static helpers `Ok(value)` and `Err(error)` are available at module scope
 for convenient construction.
 
+## Must-Use Warning (SPY0480)
+
+A `Result` produced as a bare expression statement and thrown away triggers the **must-use** warning `SPY0480` — discarding a `Result` usually means an error is being silently ignored:
+
+```python
+def parse(text: str) -> int !ParseError:
+    ...
+
+def main() -> None:
+    parse("42")        # ⚠ SPY0480: result of type 'int !ParseError' is silently discarded
+```
+
+Clear the warning by using the value in any of the sanctioned ways:
+
+```python
+value = parse("42")    # bind it
+parse("42")?           # propagate the error with ?
+_ = parse("42")        # discard explicitly
+```
+
+The warning is scoped-suppressible with [`@suppress("SPY0480")`](diagnostic_suppression.md) when a discard is genuinely intended in one place. See [Diagnostic Suppression](diagnostic_suppression.md) for details.
+
 ## See Also
 
 - [Tagged Unions](tagged_unions.md) - General tagged union syntax and implementation

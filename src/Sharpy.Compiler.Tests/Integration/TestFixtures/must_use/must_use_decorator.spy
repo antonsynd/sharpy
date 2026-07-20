@@ -1,0 +1,8 @@
+@must_use
+def parse() -> int:
+    return 5
+
+
+def main() -> None:
+    parse()
+    print("ran")

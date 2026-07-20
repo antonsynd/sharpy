@@ -165,6 +165,8 @@ value: int = compute()??? fallback
 would silently discard a pending exception or return value, which is a footgun
 rather than error propagation.
 
+`?` is also the idiomatic way to clear the [must-use warning `SPY0480`](tagged_unions_result.md#must-use-warning-spy0480): a `Result`/`Optional` produced only to be thrown away as a bare statement warns, and appending `?` both propagates the failure and satisfies the must-use check. Because `?` yields the *unwrapped* inner value, `expr?` is never itself flagged as a discarded carrier.
+
 ## Interaction with `try` / `maybe`
 
 `?`, [`try`](try_expressions.md), and [`maybe`](maybe_expressions.md) are

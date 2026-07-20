@@ -1,0 +1,8 @@
+def risky() -> int:
+    return 5
+
+
+@suppress("SPY0480")
+def main() -> None:
+    try risky()
+    print("quiet")

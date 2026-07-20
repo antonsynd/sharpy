@@ -310,6 +310,20 @@ public readonly struct Optional<T>
 The static helpers `Some(value)` and `None()` are available at module scope
 for convenient construction.
 
+## Must-Use Warning (SPY0480)
+
+An `Optional[T]` (`T?`) produced as a bare expression statement and thrown away triggers the **must-use** warning `SPY0480` — discarding an `Optional` usually means an absent value is being silently ignored:
+
+```python
+def find(key: str) -> int?:
+    ...
+
+def main() -> None:
+    find("x")          # ⚠ SPY0480: result of type 'int?' is silently discarded
+```
+
+Bind the value, propagate it with `?`, or discard it explicitly with `_ = find("x")`. Note this applies to the strict `Optional[T]` (`T?`) carrier — the loose `T | None` [nullable type](nullable_types.md) used for .NET interop is *not* flagged. The warning is scoped-suppressible with [`@suppress("SPY0480")`](diagnostic_suppression.md).
+
 ## See Also
 
 - [Tagged Unions](tagged_unions.md) - General tagged union syntax and implementation
