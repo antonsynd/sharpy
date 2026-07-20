@@ -1,0 +1,28 @@
+class Circle:
+    r: int
+
+    def __init__(self, r: int) -> None:
+        self.r = r
+
+class Square:
+    s: int
+
+    def __init__(self, s: int) -> None:
+        self.s = s
+
+def describe(shape: object) -> str:
+    # isinstance narrowing pairs with as! to reach the concrete-type members.
+    if isinstance(shape, Circle):
+        c: Circle = shape as! Circle
+        return f"circle-{c.r}"
+    elif isinstance(shape, Square):
+        sq: Square = shape as! Square
+        return f"square-{sq.s}"
+    return "unknown"
+
+def main() -> None:
+    shapes: list[object] = [Circle(3), Square(4)]
+    i: int = 0
+    while i < len(shapes):
+        print(describe(shapes[i]))
+        i = i + 1

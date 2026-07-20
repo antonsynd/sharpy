@@ -1,0 +1,3 @@
+# A failed `as!` reference downcast lowers to a C# cast `(Cat)a`, which raises
+# System.InvalidCastException at runtime (the throwing counterpart of `as?`).
+InvalidCastException

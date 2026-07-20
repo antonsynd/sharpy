@@ -1,0 +1,10 @@
+def main() -> None:
+    x: int = 5
+    # Should parse as (x + 1) as! float, not x + (1 as! float).
+    result: float = x + 1 as! float
+    print(result as! int)
+
+    # Member access should still bind tighter than as!.
+    y: float = 3.14
+    z: int = y as! int
+    print(z)

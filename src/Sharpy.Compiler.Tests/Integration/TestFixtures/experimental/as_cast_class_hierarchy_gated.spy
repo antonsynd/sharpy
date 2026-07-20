@@ -1,0 +1,30 @@
+class Animal:
+    def speak(self) -> str:
+        return "..."
+
+class Dog(Animal):
+    def speak(self) -> str:
+        return "woof"
+
+    def fetch(self) -> str:
+        return "fetching"
+
+class Cat(Animal):
+    def speak(self) -> str:
+        return "meow"
+
+def main() -> None:
+    a: Animal = Dog()
+
+    # as! downcast to the runtime type succeeds; the Dog-only method is reachable.
+    d: Dog = a as! Dog
+    print(d.fetch())
+
+    # as? downcast to the runtime type yields Some.
+    maybe_dog: Dog? = a as? Dog
+    print(maybe_dog.is_some)
+    print(maybe_dog.unwrap().speak())
+
+    # as? downcast to a sibling type yields None instead of raising.
+    not_cat: Cat? = a as? Cat
+    print(not_cat.is_none)

@@ -1,0 +1,19 @@
+def main() -> None:
+    boxed: object = 42
+
+    # `try` wraps the throwing `as!` cast into a Result carrier: success -> Ok.
+    r = try boxed as! int
+    match r:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print("err")
+
+    # A failed `as!` under `try` is caught into Err instead of raising.
+    text: object = "not a number"
+    r2 = try text as! int
+    match r2:
+        case Ok(v):
+            print(v)
+        case Err(e):
+            print("err")

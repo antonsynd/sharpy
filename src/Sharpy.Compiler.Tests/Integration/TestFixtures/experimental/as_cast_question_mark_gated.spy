@@ -1,0 +1,22 @@
+def try_double(o: object) -> int?:
+    # `?` propagates the None from a failed `as?` cast out of the function.
+    cast_result: int? = o as? int
+    val: int = cast_result?
+    return Some(val * 2)
+
+def main() -> None:
+    boxed: object = 21
+    result = try_double(boxed)
+    match result:
+        case Some(v):
+            print(v)
+        case None():
+            print("none")
+
+    text: object = "nope"
+    result2 = try_double(text)
+    match result2:
+        case Some(v):
+            print(v)
+        case None():
+            print("none")

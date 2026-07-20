@@ -1,0 +1,5 @@
+def main() -> None:
+    x: int = 5
+    # Without the `failable_cast` feature the cast is gated (SPY0331).
+    result: float = x + 1 as! float
+    print(result as! int)

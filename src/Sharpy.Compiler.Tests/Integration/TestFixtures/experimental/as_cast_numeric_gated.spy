@@ -1,0 +1,17 @@
+def main() -> None:
+    # as! narrows float -> int (truncates toward zero), like the throwing `to` form.
+    x: float = 3.14
+    y: int = x as! int
+    print(y)
+
+    # as! widens int -> float.
+    z: int = 7
+    w: float = z as! float
+    print(w)
+
+    # Unboxing an object through as! (throwing) and as? (failable Some).
+    boxed: object = 99
+    print(boxed as! int)
+    unboxed: int? = boxed as? int
+    print(unboxed.is_some)
+    print(unboxed ?? -1)

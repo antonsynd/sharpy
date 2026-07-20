@@ -1,0 +1,21 @@
+class Animal:
+    def speak(self) -> str:
+        return "..."
+
+class Dog(Animal):
+    def speak(self) -> str:
+        return "woof"
+
+    def fetch(self) -> str:
+        return "fetching"
+
+class Cat(Animal):
+    def speak(self) -> str:
+        return "meow"
+
+def main() -> None:
+    a: Animal = Dog()
+
+    # Without the `failable_cast` feature the downcast is gated (SPY0331).
+    d: Dog = a as! Dog
+    print(d.fetch())

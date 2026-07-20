@@ -1,0 +1,6 @@
+def main() -> None:
+    obj: object = 42
+    # `as!` also rejects a nullable target (SPY0334): the operator's `!` already
+    # determines the failure mode, so the `?` on the target is redundant.
+    x: int = obj as! int?
+    print(x)
