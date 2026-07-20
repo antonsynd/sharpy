@@ -90,5 +90,23 @@ public partial class ParserTests
         module.Body[0].Should().BeOfType<FromImportStatement>();
     }
 
+    [Fact]
+    public void KeywordNamedModule_StillImportable()
+    {
+        // A keyword may still name a module segment (`import struct`, `import match`) — the
+        // exclusion only removes the import-statement delimiters, not general keywords.
+        Parse("import struct").Body[0].Should().BeOfType<ImportStatement>();
+        Parse("import match").Body[0].Should().BeOfType<ImportStatement>();
+    }
+
+    [Fact]
+    public void FromWithMissingModule_StillReportsExpectedModuleName()
+    {
+        // Regression: `from import x` must NOT consume the `import` delimiter as the module name;
+        // it stays an "Expected module name" error rather than "Expected Import, got Identifier".
+        var error = ParseExpectingError("from import x");
+        error.Should().Contain("Expected module name");
+    }
+
     #endregion
 }

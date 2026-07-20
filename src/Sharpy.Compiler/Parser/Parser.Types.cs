@@ -586,7 +586,11 @@ public partial class Parser
     /// </summary>
     private static bool IsModuleNameKeyword(TokenType type)
     {
-        return IsKeywordToken(type);
+        // Any keyword may name a module segment (e.g. `import struct`, `import match`), EXCEPT the
+        // import-statement delimiters themselves: `import` separates `from <module> import <names>`,
+        // so consuming it as a module name would swallow the delimiter and break `from import x`
+        // error recovery. `from` never legitimately begins a module segment either (#1091).
+        return IsKeywordToken(type) && type is not (TokenType.Import or TokenType.From);
     }
 
     /// <summary>
