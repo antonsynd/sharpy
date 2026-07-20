@@ -593,8 +593,7 @@ public static class DiagnosticCodes
         // emission via AddWarning, never inferred from the code range (mirrors the SPY0490-0499
         // error-overflow band precedent).
 
-        // SPY0480: Reserved for MustUseValueDiscarded (#1022) — allocated in the must-use phase
-        // so the suppression/must-use trio (0480-0482) stays contiguous.
+        public const string MustUseValueDiscarded = "SPY0480";       // Active (#1022)
         public const string UnusedSuppression = "SPY0481";           // Active (#1024)
         public const string InvalidSuppressionCode = "SPY0482";      // Active (#1024)
         // SPY0483-SPY0489: Reserved for future validation warnings

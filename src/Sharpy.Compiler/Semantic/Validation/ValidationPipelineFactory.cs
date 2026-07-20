@@ -40,6 +40,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new VarianceValidator())            // Order: 415 (type parameter variance rules)
             .AddValidator(new UnusedVariableValidator())      // Order: 420 (unused variable warnings)
             .AddValidator(new UnusedImportValidator())       // Order: 430 (unused import warnings)
+            .AddValidator(new MustUseValidator())            // Order: 435 (discarded Result/Optional — SPY0480)
             .AddValidator(new AccessValidator())            // Order: 450
             .AddValidator(new DunderInvocationValidator())  // Order: 460 (dunder call rules)
             .AddValidator(new InterfaceImplementationValidator()) // Order: 480 (interface impl checks)

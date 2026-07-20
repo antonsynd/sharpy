@@ -682,6 +682,16 @@ public static partial class DiagnosticExplanations
         // Warnings that overflow the fully-allocated SPY0450-0469 sub-band.
         // Severity is Warning at emission, never inferred from the code range.
 
+        Add(dict, DiagnosticCodes.Validation.MustUseValueDiscarded,
+            "Must-use value discarded",
+            "Validation",
+            "A 'Result[T, E]' or 'Optional[T]' value (or the result of a '@must_use' function or type) was " +
+            "produced as a bare expression statement and silently thrown away. These carriers exist to make " +
+            "failure and absence explicit, so discarding one usually hides an unhandled error or a forgotten " +
+            "result. Binding, propagating with '?', or discarding explicitly with '_ = ...' all clear the warning.",
+            "json.loads[Config](text)   # the Result is discarded\n\n# instead:\n_ = json.loads[Config](text)   # explicit throw-away\ncfg = json.loads[Config](text)  # or bind it\nvalue = json.loads[Config](text)?  # or propagate",
+            "Bind the value to a name, propagate it with '?', or discard it explicitly with '_ = <expr>'.");
+
         Add(dict, DiagnosticCodes.Validation.UnusedSuppression,
             "Unused @suppress",
             "Validation",
