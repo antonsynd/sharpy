@@ -1,0 +1,12 @@
+import struct
+
+
+def main() -> None:
+    # Bare statement-level member call on the keyword-named `struct` module. Before #1091 this
+    # committed to ParseStructDef and failed with SPY0101 "Expected identifier, got Dot".
+    struct.calcsize(">I")
+
+    # `struct.Struct` used as a type annotation — the other #1091 gap site (ParseStandardTypeAnnotation).
+    s: struct.Struct = struct.Struct(">I")
+    print(s.size)
+    print(s.format)

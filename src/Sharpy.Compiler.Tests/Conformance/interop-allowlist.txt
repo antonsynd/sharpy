@@ -12,21 +12,5 @@
 # Baseline: 69 failures / 2181 snippets / 0 crashes, taken on branch `dev`
 # at commit 5576b62f8 (2026-07-14). See .claude/tmp/interop-conformance-report.json.
 
-# ---- #1091: the `struct` stdlib module is unreferenceable (keyword collision) ----
-# `struct` is a Sharpy keyword; every `struct.X` reference is a parse error (SPY0101).
-struct::type::Struct::annotate                     # #1091
-struct::type::StructError::annotate                # #1091
-struct::function::pack::call                       # #1091
-struct::function::calcsize::call                   # #1091
-struct::method::Struct.pack::method                # #1091
-struct::method::StructError.get_base_exception::method   # #1091
-struct::property::Struct.size::property            # #1091
-struct::property::Struct.format::property          # #1091
-struct::property::StructError.stack_trace::property      # #1091
-struct::property::StructError.h_result::property         # #1091
-struct::property::StructError.source::property           # #1091
-struct::property::StructError.help_link::property        # #1091
-struct::property::StructError.inner_exception::property   # #1091
-struct::property::StructError.data::property             # #1091
-struct::property::StructError.message::property           # #1091
-struct::property::StructError.target_site::property      # #1091
+# (No remaining allowlisted gaps — #1090 and #1091 both fixed. The file's presence
+# still keeps the interop sweep in RATCHET mode: any new failure fails CI.)
