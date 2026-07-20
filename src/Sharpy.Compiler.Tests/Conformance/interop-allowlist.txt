@@ -12,20 +12,6 @@
 # Baseline: 69 failures / 2181 snippets / 0 crashes, taken on branch `dev`
 # at commit 5576b62f8 (2026-07-14). See .claude/tmp/interop-conformance-report.json.
 
-# ---- #1090: Sharpy.Generators source-generator plugin API does not round-trip ----
-# The whole Sharpy.Generators namespace is discovered as a user-referenceable surface
-# (the `sharpy.generators` module, plus reflection types misclassified into `builtins`
-# because their namespace begins with `Sharpy`), but every reference emits C# that
-# fails to bind (CS0246). Broad by design: the entire API is broken until #1090.
-sharpy.generators::*                 # #1090 GeneratorOutput/GeneratorContext/SourceGenerator emit `sharpy.generators.X`
-builtins::*ClassInfo*                # #1090 Sharpy.Generators.ClassInfo misclassified into builtins
-builtins::*MethodInfo*               # #1090 Sharpy.Generators.MethodInfo misclassified into builtins
-builtins::*FunctionInfo*             # #1090 Sharpy.Generators.FunctionInfo
-builtins::*ParameterInfo*            # #1090 Sharpy.Generators.ParameterInfo
-builtins::*FieldInfo*                # #1090 Sharpy.Generators.FieldInfo
-builtins::*DecoratorInfo*            # #1090 Sharpy.Generators.DecoratorInfo
-builtins::*GeneratorDiagnostic*      # #1090 GeneratorDiagnostic + GeneratorDiagnosticSeverity
-
 # ---- #1091: the `struct` stdlib module is unreferenceable (keyword collision) ----
 # `struct` is a Sharpy keyword; every `struct.X` reference is a parse error (SPY0101).
 struct::type::Struct::annotate                     # #1091
