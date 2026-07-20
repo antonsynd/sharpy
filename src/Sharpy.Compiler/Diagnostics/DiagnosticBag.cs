@@ -293,7 +293,8 @@ public class DiagnosticBag
         if (diagnostic.IsWarning && _warningsAsErrors)
         {
             diagnostic = StampOriginalSeverity(diagnostic, CompilerDiagnosticSeverity.Warning)
-                with { Severity = CompilerDiagnosticSeverity.Error };
+                with
+            { Severity = CompilerDiagnosticSeverity.Error };
         }
 
         // Deduplicate by code and location.
