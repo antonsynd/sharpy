@@ -599,6 +599,12 @@ public partial class Parser
     /// </summary>
     private bool IsKeywordQualifierStart()
     {
+        // `from` and `import` are import-statement keywords whose following `.` is meaningful in a
+        // different way — a relative import such as `from .mod import x` — so they must never be
+        // reinterpreted as identifier qualifiers even though they are keyword-then-dot (#1091).
+        if (Current.Type is TokenType.From or TokenType.Import)
+            return false;
+
         return IsKeywordToken(Current.Type) && Peek().Type == TokenType.Dot;
     }
 
