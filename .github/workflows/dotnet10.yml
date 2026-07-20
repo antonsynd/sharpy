@@ -53,7 +53,7 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     - name: Setup .NET
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
     - name: Setup Python
@@ -61,7 +61,7 @@ jobs:
       # (Sharpy.Compiler.Tests -> CPythonDifferentialParseTests, #1037), which
       # oracle generated programs against `python3` ast.parse. Pinned to 3.12 so
       # parse behavior is stable; the tests soft-skip if no suitable python is found.
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: '3.12'
     - name: Restore dependencies

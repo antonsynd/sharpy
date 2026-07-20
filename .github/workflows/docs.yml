@@ -32,7 +32,7 @@ jobs:
 
       # Build MkDocs site
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -49,7 +49,7 @@ jobs:
 
       # Build Blazor WASM playground
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
