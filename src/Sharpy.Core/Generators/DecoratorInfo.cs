@@ -1,6 +1,7 @@
 namespace Sharpy.Generators
 {
     /// <summary>Read-only description of a decorator (or bracket attribute) applied to a declaration.</summary>
+    [SharpyModuleType("sharpy.generators")]
     public sealed class DecoratorInfo
     {
         public string Name { get; }

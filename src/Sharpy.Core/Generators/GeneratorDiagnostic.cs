@@ -1,6 +1,7 @@
 namespace Sharpy.Generators
 {
     /// <summary>A diagnostic reported by a <see cref="SourceGenerator"/>.</summary>
+    [SharpyModuleType("sharpy.generators")]
     public sealed class GeneratorDiagnostic
     {
         public string Message { get; }

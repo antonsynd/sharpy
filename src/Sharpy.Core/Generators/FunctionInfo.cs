@@ -1,6 +1,7 @@
 namespace Sharpy.Generators
 {
     /// <summary>Read-only description of a function visible to a <see cref="SourceGenerator"/>.</summary>
+    [SharpyModuleType("sharpy.generators")]
     public sealed class FunctionInfo
     {
         public string Name { get; }

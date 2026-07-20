@@ -1,6 +1,7 @@
 namespace Sharpy.Generators
 {
     /// <summary>Read-only description of a field visible to a <see cref="SourceGenerator"/>.</summary>
+    [SharpyModuleType("sharpy.generators")]
     public sealed class FieldInfo
     {
         public string Name { get; }

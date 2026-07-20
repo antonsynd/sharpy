@@ -1,6 +1,7 @@
 namespace Sharpy.Generators
 {
     /// <summary>Read-only description of a method visible to a <see cref="SourceGenerator"/>.</summary>
+    [SharpyModuleType("sharpy.generators")]
     public sealed class MethodInfo
     {
         public string Name { get; }
