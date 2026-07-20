@@ -1,0 +1,3 @@
+@suppress("SPY0201")
+def main() -> None:
+    print("hi")

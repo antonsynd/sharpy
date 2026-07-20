@@ -1,0 +1,4 @@
+@suppress("SPY0451")
+def main() -> None:
+    x = 5
+    print(x)

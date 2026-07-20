@@ -160,6 +160,7 @@ nav:
       - Conversion Operators: language_specification/conversion_operators.md
     - Pattern Matching: language_specification/match_statement.md
     - Type Aliases: language_specification/type_aliases.md
+    - Diagnostic Suppression: language_specification/diagnostic_suppression.md
     - Tagged Unions:
       - Tagged Unions: language_specification/tagged_unions.md
       - Result Type: language_specification/tagged_unions_result.md
