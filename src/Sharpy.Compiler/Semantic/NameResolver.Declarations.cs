@@ -89,7 +89,8 @@ internal partial class NameResolver
             NameDeclarationLine = classDef.NameLineStart,
             NameDeclarationColumn = classDef.NameColumnStart,
             Documentation = classDef.DocString,
-            DeprecationMessage = GetDeprecationMessage(classDef.Decorators)
+            DeprecationMessage = GetDeprecationMessage(classDef.Decorators),
+            IsMustUse = HasMustUse(classDef.Decorators)
         };
 
         // Define in current scope

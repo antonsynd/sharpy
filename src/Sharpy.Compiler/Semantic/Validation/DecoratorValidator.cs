@@ -231,6 +231,8 @@ internal partial class DecoratorValidator : ValidatingAstWalker
             .Append(DecoratorNames.ClassMethod)
             // @suppress is a compile-time-only diagnostic decorator (scoped warning suppression).
             .Append(DecoratorNames.Suppress)
+            // @must_use is a compile-time-only marker (its produced value must not be discarded).
+            .Append(DecoratorNames.MustUse)
             // @test.mark is supplementary metadata: not in KnownTestDecorators
             // (so ValidateTestDecoratorNotOnType doesn't reject it on classes for collection use),
             // but still must pass the unknown-decorator check.
@@ -289,6 +291,21 @@ internal partial class DecoratorValidator : ValidatingAstWalker
             if (decorator.Name == DecoratorNames.Suppress)
             {
                 ValidateSuppressArguments(decorator, definitionName);
+                continue;
+            }
+
+            // @must_use takes no arguments
+            if (decorator.Name == DecoratorNames.MustUse)
+            {
+                if (decorator.Arguments.Length > 0 || decorator.KeywordArguments.Length > 0)
+                {
+                    AddError(
+                        "Built-in decorator '@must_use' does not accept arguments",
+                        decorator.LineStart,
+                        decorator.ColumnStart,
+                        code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                        span: decorator.Span);
+                }
                 continue;
             }
 

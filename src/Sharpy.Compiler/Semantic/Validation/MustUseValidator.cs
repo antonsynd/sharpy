@@ -24,12 +24,11 @@ internal sealed class MustUseValidator : ValidatingAstWalker
 
     public override void VisitExpressionStatement(ExpressionStatement node)
     {
-        var type = Context.SemanticInfo.GetEffectiveType(node.Expression);
-        if (type is ResultType or OptionalType)
+        var message = DiscardMessage(node.Expression);
+        if (message != null)
         {
             AddWarning(
-                $"result of type '{type.GetDisplayName()}' is silently discarded; bind it, " +
-                "propagate with '?', or discard explicitly with '_ = ...'",
+                message,
                 node.Expression.LineStart,
                 node.Expression.ColumnStart,
                 code: DiagnosticCodes.Validation.MustUseValueDiscarded,
@@ -37,5 +36,37 @@ internal sealed class MustUseValidator : ValidatingAstWalker
         }
 
         base.VisitExpressionStatement(node);
+    }
+
+    /// <summary>
+    /// Returns the SPY0480 message if <paramref name="expression"/>, discarded as a bare statement,
+    /// is a must-use value — a Result/Optional carrier, a call to a <c>@must_use</c> function, or a
+    /// value of a <c>@must_use</c> type — otherwise null. Carrier checks come first so the message
+    /// names the carrier; the explicit '_ =' and '?' escapes never reach here as carriers.
+    /// </summary>
+    private string? DiscardMessage(Expression expression)
+    {
+        var type = Context.SemanticInfo.GetEffectiveType(expression);
+
+        if (type is ResultType or OptionalType)
+        {
+            return $"result of type '{type.GetDisplayName()}' is silently discarded; bind it, " +
+                "propagate with '?', or discard explicitly with '_ = ...'";
+        }
+
+        if (expression is FunctionCall call
+            && Context.SemanticInfo.GetCallTarget(call) is { IsMustUse: true } target)
+        {
+            return $"the result of '@must_use' function '{target.Name}' is silently discarded; " +
+                "bind it or discard explicitly with '_ = ...'";
+        }
+
+        if (type is UserDefinedType { Symbol.IsMustUse: true } udt)
+        {
+            return $"value of '@must_use' type '{udt.GetDisplayName()}' is silently discarded; " +
+                "bind it or discard explicitly with '_ = ...'";
+        }
+
+        return null;
     }
 }

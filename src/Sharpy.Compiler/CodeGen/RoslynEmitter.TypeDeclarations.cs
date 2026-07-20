@@ -1250,6 +1250,10 @@ internal partial class RoslynEmitter
                 if (decorator.Name == DecoratorNames.Suppress)
                     continue;
 
+                // @must_use is a compile-time-only marker read by MustUseValidator — no C# attribute.
+                if (decorator.Name == DecoratorNames.MustUse)
+                    continue;
+
                 // @test.skip / @test.skip_if are merged into the [Fact]/[Theory] attribute
                 // (handled via skipReason above), not emitted as separate attributes.
                 if (decorator.Name == DecoratorNames.TestSkip

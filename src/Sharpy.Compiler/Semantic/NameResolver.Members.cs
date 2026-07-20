@@ -41,7 +41,8 @@ internal partial class NameResolver
             NameDeclarationColumn = functionDef.NameColumnStart,
             SignatureKey = GetMethodSignatureKey(functionDef),
             Documentation = functionDef.DocString,
-            DeprecationMessage = GetDeprecationMessage(functionDef.Decorators)
+            DeprecationMessage = GetDeprecationMessage(functionDef.Decorators),
+            IsMustUse = HasMustUse(functionDef.Decorators)
         };
 
         var existingSymbol = _symbolTable.Lookup(functionDef.Name, searchParents: false);

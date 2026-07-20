@@ -192,6 +192,13 @@ public record FunctionSymbol : Symbol
     public bool IsGenerator { get; internal set; }
 
     /// <summary>
+    /// Set by NameResolver when the function carries the '@must_use' decorator (#1022). The
+    /// MustUseValidator warns (SPY0480) when a call to this function is discarded as a bare
+    /// expression statement, even when the return type is not itself a Result/Optional carrier.
+    /// </summary>
+    public bool IsMustUse { get; internal set; }
+
+    /// <summary>
     /// Set by TypeChecker.Definitions.cs when the function is declared with 'async def'.
     /// CodeGen uses this to wrap return types in Task&lt;T&gt; and enable await expressions.
     /// Follows the same pattern as IsGenerator.
@@ -249,6 +256,12 @@ public record TypeSymbol : Symbol
     /// Whether this type extends SourceGenerator (detected during inheritance resolution).
     /// </summary>
     public bool IsSourceGenerator { get; internal set; }
+
+    /// <summary>
+    /// Whether this type carries the '@must_use' decorator (#1022). The MustUseValidator warns
+    /// (SPY0480) when an expression of this type is discarded as a bare expression statement.
+    /// </summary>
+    public bool IsMustUse { get; internal set; }
 
     /// <summary>
     /// Whether this type is a @dataclass.

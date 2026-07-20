@@ -535,6 +535,13 @@ internal partial class NameResolver
         return null;
     }
 
+    /// <summary>
+    /// True when <paramref name="decorators"/> includes '@must_use' (#1022). Marks a function or
+    /// type whose produced value must not be silently discarded (enforced by MustUseValidator).
+    /// </summary>
+    internal static bool HasMustUse(IEnumerable<Decorator> decorators)
+        => decorators.Any(d => d.Name == DecoratorNames.MustUse);
+
     private static bool IsSourceGeneratorType(TypeSymbol symbol)
     {
         if (symbol.ClrType != null)

@@ -108,6 +108,76 @@ def main() -> None:
     }
 
     [Fact]
+    public void MustUseFunction_DiscardedResult_Warns()
+    {
+        var tc = Check(@"
+@must_use
+def parse() -> int:
+    return 5
+
+def main() -> None:
+    parse()
+");
+        Assert.Equal(1, MustUseWarnings(tc));
+    }
+
+    [Fact]
+    public void MustUseFunction_BoundOrExplicitlyDiscarded_NoWarning()
+    {
+        var tc = Check(@"
+@must_use
+def parse() -> int:
+    return 5
+
+def main() -> None:
+    x = parse()
+    _ = parse()
+    print(x)
+");
+        Assert.Equal(0, MustUseWarnings(tc));
+    }
+
+    [Fact]
+    public void MustUseType_DiscardedValue_Warns()
+    {
+        var tc = Check(@"
+@must_use
+class Handle:
+    id: int
+
+    def __init__(self, id: int) -> None:
+        self.id = id
+
+def open_handle() -> Handle:
+    return Handle(1)
+
+def main() -> None:
+    open_handle()
+");
+        Assert.Equal(1, MustUseWarnings(tc));
+    }
+
+    [Fact]
+    public void PlainType_DiscardedValue_NoWarning()
+    {
+        // Same shape without @must_use — no warning, proving the flag drives the behavior.
+        var tc = Check(@"
+class Handle:
+    id: int
+
+    def __init__(self, id: int) -> None:
+        self.id = id
+
+def open_handle() -> Handle:
+    return Handle(1)
+
+def main() -> None:
+    open_handle()
+");
+        Assert.Equal(0, MustUseWarnings(tc));
+    }
+
+    [Fact]
     public void NullableValueStatement_NotFlagged()
     {
         // A loose C#-interop nullable (int | None) is NOT a must-use carrier — flagging it would

@@ -24,6 +24,7 @@ internal static class DecoratorNames
     // Diagnostic-oriented decorators. Compile-time only: they steer validation
     // (suppression, must-use), never the emitted C#.
     public const string Suppress = "suppress";
+    public const string MustUse = "must_use";
 
     // Test framework sub-decorators (member access form: @test.parametrize, etc.)
     public const string TestParametrize = "test.parametrize";
