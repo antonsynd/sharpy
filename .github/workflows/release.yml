@@ -24,7 +24,7 @@ jobs:
           ref: ${{ inputs.tag || github.ref }}
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -51,7 +51,7 @@ jobs:
           ref: ${{ inputs.tag || github.ref }}
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -96,7 +96,7 @@ jobs:
           ref: ${{ inputs.tag || github.ref }}
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
