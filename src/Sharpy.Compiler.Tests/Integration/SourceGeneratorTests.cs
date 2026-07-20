@@ -42,7 +42,7 @@ def main():
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));
     }
 
-    [Fact(Skip = "Requires ModuleRegistry with Sharpy.Core loaded — available in CLI, not unit test harness")]
+    [Fact(Skip = "Module resolution now works via WithRuntimeReferences (#1090), but a .spy class overriding the CLR-abstract SourceGenerator.generate emits no `override` — CS0534, tracked in #1122")]
     public void GeneratorClass_Compiles_WithoutErrors()
     {
         var helper = CreateHelper();
@@ -60,7 +60,37 @@ def main():
     print('hello')
 ");
 
-        helper.WithRootNamespace("GenClassTest").WithEntryPoint("main.spy").CreateProjectFile();
+        helper.WithRootNamespace("GenClassTest").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
+        var result = helper.Compile();
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));
+    }
+
+    [Fact(Skip = "Blocked by #1122 (CS0534: .spy override of CLR-abstract SourceGenerator.generate). The #1090 reflection-type resolution works; this exercises it once #1122 lands.")]
+    public void GeneratorClass_ReadingReflectionTypes_Compiles()
+    {
+        // Exercises the Sharpy.Generators reflection types (ClassInfo/MethodInfo/ParameterInfo)
+        // through codegen — the Mode-A types that #1090 fixed — from a .spy-authored generator.
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("gen.spy", @"
+from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput, ClassInfo, MethodInfo
+
+class DescribeGen(SourceGenerator):
+    def generate(self, context: GeneratorContext) -> GeneratorOutput:
+        target: ClassInfo = context.target_class
+        first: MethodInfo = target.methods[0]
+        return GeneratorOutput('// ' + first.name)
+");
+
+        helper.AddSourceFile("main.spy", @"
+def main():
+    print('hello')
+");
+
+        helper.WithRootNamespace("GenReflectionTest").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
         var result = helper.Compile();
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));

@@ -115,6 +115,41 @@ public class ProjectCompilationHelper : IDisposable
         return this;
     }
 
+    private bool _includeRuntimeReferences;
+
+    /// <summary>
+    /// Emits &lt;Reference&gt; items for the Sharpy runtime DLLs (Sharpy.Core.dll, Sharpy.Stdlib.dll)
+    /// resolved next to the test assembly, so module discovery can resolve `from sharpy.generators
+    /// import ...` and other runtime-backed modules in the unit-test harness (the CLI gets these via
+    /// its ProjectReference). Mirrors TestProjectScaffold.BuildRuntimeReferences.
+    /// </summary>
+    public ProjectCompilationHelper WithRuntimeReferences()
+    {
+        _includeRuntimeReferences = true;
+        return this;
+    }
+
+    private static string BuildRuntimeReferenceItems()
+    {
+        var dir = Path.GetDirectoryName(typeof(ProjectCompilationHelper).Assembly.Location);
+        if (string.IsNullOrEmpty(dir))
+            return string.Empty;
+
+        var refs = new StringBuilder();
+        foreach (var dll in new[] { "Sharpy.Core.dll", "Sharpy.Stdlib.dll" })
+        {
+            var path = Path.Combine(dir, dll);
+            if (File.Exists(path))
+            {
+                refs.AppendLine($"    <Reference Include=\"{Path.GetFileNameWithoutExtension(dll)}\">");
+                refs.AppendLine($"      <HintPath>{path}</HintPath>");
+                refs.AppendLine("    </Reference>");
+            }
+        }
+
+        return refs.ToString();
+    }
+
     /// <summary>
     /// Adds a Sharpy source file to the project.
     /// Entry point files are automatically wrapped in a main() function if needed.
@@ -281,6 +316,18 @@ public class ProjectCompilationHelper : IDisposable
         projectContent.AppendLine("  <ItemGroup>");
         projectContent.AppendLine($"    <SourceFile Include=\"{sourceFilePattern}\" />");
         projectContent.AppendLine("  </ItemGroup>");
+
+        if (_includeRuntimeReferences)
+        {
+            var runtimeReferences = BuildRuntimeReferenceItems();
+            if (!string.IsNullOrEmpty(runtimeReferences))
+            {
+                projectContent.AppendLine("  <ItemGroup>");
+                projectContent.Append(runtimeReferences);
+                projectContent.AppendLine("  </ItemGroup>");
+            }
+        }
+
         projectContent.AppendLine("</Project>");
 
         File.WriteAllText(_projectFilePath, projectContent.ToString());
