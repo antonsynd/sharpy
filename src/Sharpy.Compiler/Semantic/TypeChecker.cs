@@ -383,6 +383,11 @@ internal partial class TypeChecker
             _diagnostics.Add(diag);
         }
 
+        // Apply scoped @suppress (#1024): drop suppressible diagnostics that fall inside a
+        // suppressor's region, then flag suppressors that silenced nothing. Runs here, after
+        // the validation merge, because only now do warnings from every phase live in one bag.
+        ApplyScopedSuppression(module);
+
         // Compute CodeGenInfo for all symbols if enabled
         if (computeCodeGenInfo)
         {
@@ -391,6 +396,72 @@ internal partial class TypeChecker
         }
 
         _logger.LogInfo($"Completed type checking ({module.Body.Length} statements, {_diagnostics.ErrorCount} errors)");
+    }
+
+    /// <summary>
+    /// Applies scoped <c>@suppress</c> suppression (#1024) over the per-file diagnostic bag:
+    /// removes every suppressible diagnostic (Warning/Hint/Info — including a warning promoted to
+    /// an error under <c>-Werror</c>) whose code is named by an enclosing suppressor and whose
+    /// location lies within that suppressor's region, then emits SPY0481 for suppressors that
+    /// silenced nothing. Errors are never removed. SPY0481 is skipped when the file still has
+    /// errors, so a broken file does not also nag about ineffective suppressions.
+    /// </summary>
+    private void ApplyScopedSuppression(Module module)
+    {
+        var regions = SuppressionCollector.Collect(module);
+        if (regions.Count == 0)
+            return;
+
+        _diagnostics.RemoveWhere(diagnostic =>
+        {
+            if (string.IsNullOrEmpty(diagnostic.Code) || !IsSuppressibleSeverity(diagnostic))
+                return false;
+
+            foreach (var region in regions)
+            {
+                if (region.Codes.Contains(diagnostic.Code) && region.Contains(diagnostic))
+                {
+                    region.DroppedAny = true;
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        if (_diagnostics.ErrorCount != 0)
+            return;
+
+        foreach (var region in regions)
+        {
+            if (region.DroppedAny)
+                continue;
+
+            _diagnostics.AddWarning(
+                "suppression has no effect: no matching diagnostic was reported in this scope",
+                region.DecoratorSpan,
+                region.DecoratorLine,
+                region.DecoratorColumn,
+                _currentFilePath,
+                DiagnosticCodes.Validation.UnusedSuppression,
+                CompilerPhase.Validation);
+        }
+    }
+
+    /// <summary>
+    /// True when <paramref name="diagnostic"/> may be silenced by <c>@suppress</c>: any
+    /// non-error diagnostic, plus a warning that <c>-Werror</c> promoted to an error (recognized
+    /// via the original severity stamped into <see cref="DiagnosticBag.OriginalSeverityDataKey"/>).
+    /// A genuine error is never suppressible.
+    /// </summary>
+    private static bool IsSuppressibleSeverity(CompilerDiagnostic diagnostic)
+    {
+        if (!diagnostic.IsError)
+            return true;
+
+        return diagnostic.Data != null
+            && diagnostic.Data.TryGetValue(DiagnosticBag.OriginalSeverityDataKey, out var original)
+            && original == nameof(CompilerDiagnosticSeverity.Warning);
     }
 
     private void CheckStatement(Statement statement)

@@ -112,6 +112,15 @@ public class DiagnosticBag
     /// </summary>
     public const string ProducerDataKey = "producer";
 
+    /// <summary>
+    /// The <see cref="CompilerDiagnostic.Data"/> key under which a warning's pre-promotion
+    /// severity is recorded when <c>warningsAsErrors</c> turns it into an error. Scoped
+    /// suppression (<c>@suppress</c>) reads this so a warning that was promoted to an error
+    /// under <c>-Werror</c> remains suppressible — mirroring C# <c>#pragma warning disable</c>
+    /// under <c>/warnaserror</c>. The value is the original severity's name (always "Warning").
+    /// </summary>
+    public const string OriginalSeverityDataKey = "originalSeverity";
+
     // Ambient provenance stamped onto every diagnostic added while a scope is active
     // (see BeginPhaseScope / BeginProducerScope). These are set and cleared on the same
     // thread that drives a compilation phase or validator, so they intentionally sit
@@ -217,6 +226,21 @@ public class DiagnosticBag
         return diagnostic;
     }
 
+    /// <summary>
+    /// Records <paramref name="original"/> under <see cref="OriginalSeverityDataKey"/> on a copy
+    /// of <paramref name="diagnostic"/> (copy-on-write, mirroring <see cref="ApplyProvenanceStamp"/>).
+    /// Used when a warning is promoted to an error so scoped suppression can recover its origin.
+    /// </summary>
+    private static CompilerDiagnostic StampOriginalSeverity(
+        CompilerDiagnostic diagnostic, CompilerDiagnosticSeverity original)
+    {
+        var data = diagnostic.Data == null
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string>(diagnostic.Data);
+        data[OriginalSeverityDataKey] = original.ToString();
+        return diagnostic with { Data = data };
+    }
+
     private sealed class ScopeRestorer : IDisposable
     {
         private readonly DiagnosticBag _bag;
@@ -264,9 +288,12 @@ public class DiagnosticBag
         // Apply promotion: warnings become errors when WarningsAsErrors is enabled.
         // Hints are NOT promoted — they are advisory diagnostics about behavioral
         // differences from Python/C# and remain hint-severity even under -Werror.
+        // The pre-promotion severity is stamped into Data so scoped @suppress can still
+        // recognize (and silence) a warning that -Werror turned into an error.
         if (diagnostic.IsWarning && _warningsAsErrors)
         {
-            diagnostic = diagnostic with { Severity = CompilerDiagnosticSeverity.Error };
+            diagnostic = StampOriginalSeverity(diagnostic, CompilerDiagnosticSeverity.Warning)
+                with { Severity = CompilerDiagnosticSeverity.Error };
         }
 
         // Deduplicate by code and location.
@@ -334,7 +361,9 @@ public class DiagnosticBag
     {
         if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
             return;
-        var severity = _warningsAsErrors ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning;
+        // Emit at Warning severity; Add() centralizes the -Werror promotion and stamps the
+        // original severity so scoped @suppress can still silence a promoted warning.
+        var severity = CompilerDiagnosticSeverity.Warning;
         Add(new CompilerDiagnostic(message, severity, line, column, filePath, code, phase));
     }
 
@@ -344,7 +373,9 @@ public class DiagnosticBag
     {
         if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
             return;
-        var severity = _warningsAsErrors ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning;
+        // Emit at Warning severity; Add() centralizes the -Werror promotion and stamps the
+        // original severity so scoped @suppress can still silence a promoted warning.
+        var severity = CompilerDiagnosticSeverity.Warning;
         Add(new CompilerDiagnostic(message, severity, line, column, filePath, code, phase, span, data));
     }
 
@@ -353,7 +384,9 @@ public class DiagnosticBag
     {
         if (!string.IsNullOrEmpty(code) && _suppressedWarnings.Contains(code))
             return;
-        var severity = _warningsAsErrors ? CompilerDiagnosticSeverity.Error : CompilerDiagnosticSeverity.Warning;
+        // Emit at Warning severity; Add() centralizes the -Werror promotion and stamps the
+        // original severity so scoped @suppress can still silence a promoted warning.
+        var severity = CompilerDiagnosticSeverity.Warning;
         Add(new CompilerDiagnostic(message, severity, Span: locatable.Span,
             FilePath: filePath, Code: code, Phase: phase));
     }
@@ -510,6 +543,38 @@ public class DiagnosticBag
             _errorCount = 0;
             _warningCount = 0;
             _hintCount = 0;
+        }
+    }
+
+    /// <summary>
+    /// Removes every diagnostic for which <paramref name="predicate"/> returns true, keeping the
+    /// severity counts and dedup key set consistent. Returns the number removed. Used by scoped
+    /// <c>@suppress</c> to drop suppressed diagnostics after all phases have reported (the bag has
+    /// no other mutation-after-add path, so this is the single filtering entry point).
+    /// </summary>
+    public int RemoveWhere(Func<CompilerDiagnostic, bool> predicate)
+    {
+        lock (_lock)
+        {
+            var removed = 0;
+            for (var i = _diagnostics.Count - 1; i >= 0; i--)
+            {
+                var diagnostic = _diagnostics[i];
+                if (!predicate(diagnostic))
+                    continue;
+
+                _diagnostics.RemoveAt(i);
+                _seenDiagnostics.Remove(GetDeduplicationKey(diagnostic));
+                if (diagnostic.IsError)
+                    _errorCount--;
+                else if (diagnostic.IsWarning)
+                    _warningCount--;
+                else if (diagnostic.IsHint)
+                    _hintCount--;
+                removed++;
+            }
+
+            return removed;
         }
     }
 
