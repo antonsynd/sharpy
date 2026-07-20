@@ -100,6 +100,11 @@ internal partial class RoslynEmitter
     {
         _cancellationToken.ThrowIfCancellationRequested();
 
+        // @suppress wrapper (#1024): decorators are compile-time-only and emit nothing — unwrap and
+        // emit the inner statement (which keeps, e.g., the import/type-alias no-emit allowlist below).
+        if (stmt is DecoratedStatement decorated)
+            stmt = decorated.Statement;
+
         // Save any walrus declarations from an outer scope so they aren't
         // accidentally consumed by inner body statement generation.
         List<StatementSyntax>? savedWalrus = null;

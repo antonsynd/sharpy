@@ -5,6 +5,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Parser;
 
@@ -927,6 +928,20 @@ public partial class Parser
         // Make decorators available to definition parsers (e.g., ParseFunctionDef checks for @abstract)
         _pendingDecorators = decorators.ToImmutableArray();
 
+        // When every decorator is @suppress, the decorators may scope-suppress an *arbitrary*
+        // statement (not just a decoratable definition) — statement-scoped suppression (#1024). Such
+        // a statement is parsed normally and wrapped in a DecoratedStatement below. Any other
+        // decorator on a non-definition target keeps today's SPY0105 parse error exactly.
+        var allSuppress = decorators.Count > 0;
+        foreach (var d in decorators)
+        {
+            if (d.Name != DecoratorNames.Suppress)
+            {
+                allSuppress = false;
+                break;
+            }
+        }
+
         Statement stmt;
         try
         {
@@ -944,12 +959,36 @@ public partial class Parser
                 TokenType.Event => ParseEventDef(),
                 // Allow decorators on variable declarations (e.g., @static field in class body)
                 TokenType.Identifier => ParseSimpleStatement(),
+                // Import statements are never suppress targets — keep today's SPY0105.
+                TokenType.Import or TokenType.From => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, enums, properties, events, or field declarations", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan),
+                // Statement-scoped @suppress may prefix an expression statement or assignment
+                // (call-site suppression, e.g. of the must-use SPY0480 warning); it is wrapped below.
+                _ when allSuppress => ParseSimpleStatement(),
                 _ => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, enums, properties, events, or field declarations", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan)
             };
         }
         finally
         {
             _pendingDecorators = ImmutableArray<Decorator>.Empty;
+        }
+
+        // Statement-scoped @suppress: wrap any non-definition target rather than rejecting it.
+        if (allSuppress && stmt is not (FunctionDef or ClassDef or StructDef or InterfaceDef
+            or UnionDef or EnumDef or PropertyDef or EventDef or VariableDeclaration))
+        {
+            var decoratorSpan = decorators[0].Span;
+            return new DecoratedStatement
+            {
+                Decorators = decorators.ToImmutableArray(),
+                Statement = stmt,
+                LineStart = decorators[0].LineStart,
+                ColumnStart = decorators[0].ColumnStart,
+                LineEnd = stmt.LineEnd,
+                ColumnEnd = stmt.ColumnEnd,
+                Span = decoratorSpan.HasValue && stmt.Span.HasValue
+                    ? CombineSpans(decoratorSpan.Value, stmt.Span.Value)
+                    : stmt.Span
+            };
         }
 
         // Attach decorators

@@ -32,8 +32,11 @@ internal class ModuleLevelValidator : SemanticValidatorBase
         var untypedVariables = new List<VariableDeclaration>();
 
         // First pass: categorize all top-level statements
-        foreach (var stmt in module.Body)
+        foreach (var topLevel in module.Body)
         {
+            // A statement-scoped @suppress wrapper (#1024) is transparent here — classify by the
+            // inner statement so a `@suppress(...) import x` is still a valid module-level import.
+            var stmt = topLevel is DecoratedStatement decorated ? decorated.Statement : topLevel;
             switch (stmt)
             {
                 case FunctionDef funcDef when funcDef.Name == "main":

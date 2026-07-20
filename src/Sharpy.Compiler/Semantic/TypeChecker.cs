@@ -568,6 +568,11 @@ internal partial class TypeChecker
                 CheckExpression(exprStmt.Expression);
                 break;
 
+            case DecoratedStatement decorated:
+                // @suppress wrapper (#1024): decorators are compile-time-only; check the inner statement.
+                CheckStatement(decorated.Statement);
+                break;
+
             case PassStatement:
                 // No type checking needed
                 break;

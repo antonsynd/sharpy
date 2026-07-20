@@ -6,6 +6,13 @@ internal sealed partial class UnparseVisitor
 {
     #region Simple statements
 
+    public override void VisitDecoratedStatement(DecoratedStatement node)
+    {
+        // Round-trip the @suppress decorator(s), then the inner statement (#1024).
+        WriteDecorators(node.Decorators);
+        Visit(node.Statement);
+    }
+
     public override void VisitExpressionStatement(ExpressionStatement node)
     {
         Visit(node.Expression);

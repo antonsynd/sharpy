@@ -32,6 +32,31 @@ public record ExpressionStatement : Statement
 }
 
 /// <summary>
+/// A statement carrying one or more compile-time-only decorators that do not attach to a
+/// dedicated declaration — currently only <c>@suppress</c> on an arbitrary statement (#1024).
+/// The decorators are advisory (scoped diagnostic suppression) and emit nothing; every phase
+/// delegates to the inner <see cref="Statement"/>. Additive, immutable-AST-friendly.
+/// </summary>
+public record DecoratedStatement : Statement
+{
+    public ImmutableArray<Decorator> Decorators { get; init; } = ImmutableArray<Decorator>.Empty;
+    public Statement Statement { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Statement != null, "DecoratedStatement.Statement cannot be null");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Statement;
+    }
+}
+
+/// <summary>
 /// Assignment statement (x = value, x += value, etc.)
 /// </summary>
 public record Assignment : Statement

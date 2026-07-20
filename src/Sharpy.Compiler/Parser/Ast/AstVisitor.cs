@@ -169,6 +169,9 @@ public abstract class AstVisitor
                 break;
 
             // Statements - Simple
+            case DecoratedStatement n:
+                VisitDecoratedStatement(n);
+                break;
             case ExpressionStatement n:
                 VisitExpressionStatement(n);
                 break;
@@ -450,6 +453,7 @@ public abstract class AstVisitor
 
     #region Statements - Simple
 
+    public virtual void VisitDecoratedStatement(DecoratedStatement node) => VisitStatement(node);
     public virtual void VisitExpressionStatement(ExpressionStatement node) => VisitStatement(node);
     public virtual void VisitAssignment(Assignment node) => VisitStatement(node);
     public virtual void VisitVariableDeclaration(VariableDeclaration node) => VisitStatement(node);

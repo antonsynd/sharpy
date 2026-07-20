@@ -216,6 +216,12 @@ internal class ControlFlowGraphBuilder
                 // Type/function/property definitions and imports don't affect control flow
                 break;
 
+            case DecoratedStatement decorated:
+                // @suppress wrapper (#1024): decorators are compile-time-only; the inner statement
+                // drives control flow.
+                BuildStatement(decorated.Statement);
+                break;
+
             case MatchStatement matchStmt:
                 BuildMatch(matchStmt);
                 break;

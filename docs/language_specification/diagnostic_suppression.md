@@ -30,6 +30,19 @@ def b() -> None:
     unused = 1     # SPY0451 still fires — outside any suppressor
 ```
 
+### Statement scope
+
+`@suppress` may also prefix an individual **expression statement or assignment** inside a body — *call-site* suppression, useful for silencing a single diagnostic without widening the scope to the whole enclosing function. This is the idiomatic way to opt out of the [must-use warning](tagged_unions_result.md#must-use-warning-spy0480) at one call site:
+
+```python
+def main() -> None:
+    @suppress("SPY0480")
+    try risky()          # this one discard is intentional; the rest of main() still warns
+    result = try risky() # bound normally
+```
+
+Statement scope is limited to expression statements and assignments; `@suppress` on an `import`, or any non-`@suppress` decorator on a statement, keeps the ordinary "decorators can only be applied to …" parse error.
+
 ## What can be suppressed
 
 Only **Warning**, **Hint**, and **Info** diagnostics are suppressible. **Errors are never silenceable** — regardless of their numeric code range — and must be fixed. This holds even under `--warnings-as-errors`: a warning that was *promoted* to an error by that flag remains suppressible (its original severity is remembered), mirroring C#'s `#pragma warning disable` under `/warnaserror`.

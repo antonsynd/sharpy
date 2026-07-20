@@ -155,4 +155,12 @@ internal sealed class SuppressionCollector : AstVisitor
         AddRegionsFrom(node.Decorators, node);
         base.VisitVariableDeclaration(node);
     }
+
+    public override void VisitDecoratedStatement(DecoratedStatement node)
+    {
+        // Statement-scoped @suppress (#1024): the wrapper's span covers the inner statement, so the
+        // region silences diagnostics emitted anywhere within it.
+        AddRegionsFrom(node.Decorators, node);
+        base.VisitDecoratedStatement(node);
+    }
 }
