@@ -440,6 +440,21 @@ internal class TypeSyntaxMapper
                 ?? typeSymbol.CodeGenInfo;
             var resolvedName = codeGenInfo?.OriginalImportName ?? sharpyTypeName;
 
+            // A *module-qualified* ClrType-backed symbol in the Sharpy runtime namespace (e.g.
+            // sharpy.generators.GeneratorOutput) can resolve — via LookupModuleQualifiedType — to a
+            // symbol whose DefiningModule was never populated, then fall through to the verbatim
+            // lowercase dotted name below (#1090). Route it through the CLR emit path instead.
+            // Gated on a dotted reference so simple-name Sharpy CLR types (builtin exceptions like
+            // ValueError, current-scope types) keep their existing short-name resolution; bare
+            // `from sharpy.generators import X` names carry DefiningModule and are handled by the
+            // module branch further down.
+            if (typeSymbol.ClrType != null
+                && sharpyTypeName.Contains('.', System.StringComparison.Ordinal)
+                && ClrTypeBridge.SpecialCases.IsSharpyNamespace(typeSymbol.ClrType.Namespace))
+            {
+                return GetFullyQualifiedTypeName(typeSymbol, resolvedName);
+            }
+
             // Check if type is from a different file (cross-file reference in same project)
             if (!string.IsNullOrEmpty(typeSymbol.DefiningFilePath) &&
                 !string.IsNullOrEmpty(_context.SourceFilePath) &&
@@ -501,9 +516,11 @@ internal class TypeSyntaxMapper
             // Type arguments are added separately by the caller via QualifiedGenericName.
             var fullName = ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
 
-            // Always use global:: for Sharpy namespace CLR types to avoid
-            // Sharpy.Sharpy.X when code is inside namespace Sharpy.
-            if (typeSymbol.ClrType.Namespace == ClrTypeBridge.SpecialCases.SharpyNamespace)
+            // Always use global:: for Sharpy namespace CLR types (including sub-namespaces
+            // such as Sharpy.Generators) to avoid Sharpy.Sharpy.X when code is inside
+            // namespace Sharpy. Uses the prefix-aware IsSharpyNamespace rule so module types
+            // like sharpy.generators.GeneratorOutput round-trip (#1090).
+            if (ClrTypeBridge.SpecialCases.IsSharpyNamespace(typeSymbol.ClrType.Namespace))
                 return $"global::{fullName}";
 
             // When inside a user-defined namespace, use global:: for all CLR types

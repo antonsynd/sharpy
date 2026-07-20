@@ -220,13 +220,14 @@ internal partial class RoslynEmitter
                 var ts = (resolvedSymbol as TypeSymbol) ?? (symbol as TypeSymbol);
                 if (ts?.ClrType != null)
                 {
-                    // Exact-match (not the IsSharpyNamespace prefix rule): the branch emits the
-                    // literal "Sharpy" namespace, so it is only correct for types whose namespace
-                    // is exactly "Sharpy" (a Sharpy.Sub.X type would be mis-qualified).
-                    if (ts.ClrType.Namespace == ClrTypeBridge.SpecialCases.SharpyNamespace)
+                    // Sharpy namespace (or a sub-namespace such as Sharpy.Generators): emit the
+                    // full CLR namespace path so a Sharpy.Sub.X type binds rather than being
+                    // mis-qualified to global::Sharpy.X (#1090). For types directly in "Sharpy"
+                    // this is byte-identical to the previous two-part emission.
+                    if (ClrTypeBridge.SpecialCases.IsSharpyNamespace(ts.ClrType.Namespace))
                     {
-                        var clrName = ClrNameHelper.StripArity(ts.ClrType.Name);
-                        return MakeGlobalQualifiedName("Sharpy", clrName);
+                        var fullName = ClrNameHelper.StripArity(ts.ClrType.FullName!);
+                        return MakeGlobalQualifiedName(fullName.Split('.'));
                     }
 
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
