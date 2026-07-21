@@ -960,6 +960,9 @@ public partial class Parser
                 // Allow decorators on variable declarations (e.g., @static field in class body)
                 TokenType.Identifier => ParseSimpleStatement(),
                 // Import statements are never suppress targets — keep today's SPY0105.
+                // Deliberate narrowing of the #1024 plan (#1124): ImportResolver's Pass-1.5 scans
+                // do raw `is ImportStatement` checks over module.Body, so a wrapped import would
+                // silently fail to register rather than resolve.
                 TokenType.Import or TokenType.From => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, enums, properties, events, or field declarations", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: CurrentSpan),
                 // Statement-scoped @suppress may prefix an expression statement or assignment
                 // (call-site suppression, e.g. of the must-use SPY0480 warning); it is wrapped below.
