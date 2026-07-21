@@ -101,6 +101,11 @@ internal class ExecutionOrderAnalyzer
         {
             var stmt = statements[i];
 
+            // @suppress wrapper (#1024): decorators are compile-time-only; the inner
+            // assignment still participates in module-level execution ordering.
+            if (stmt is DecoratedStatement decorated)
+                stmt = decorated.Statement;
+
             if (stmt is VariableDeclaration varDecl && !_constVariables.Contains(varDecl.Name))
             {
                 var varName = varDecl.Name;

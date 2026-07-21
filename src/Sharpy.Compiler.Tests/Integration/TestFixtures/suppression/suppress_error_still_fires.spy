@@ -1,0 +1,7 @@
+# Errors are never suppressible: a real error inside a @suppress region must still fire.
+@suppress("SPY0451")
+def f() -> None:
+    undefined_name()
+
+def main() -> None:
+    f()

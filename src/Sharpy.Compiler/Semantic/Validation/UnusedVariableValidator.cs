@@ -279,6 +279,12 @@ internal class UnusedVariableValidator : ValidatingAstWalker
             case EventDef:
                 // These define their own scope and are validated at the top level
                 break;
+
+            case DecoratedStatement decorated:
+                // @suppress wrapper (#1024): decorators are compile-time-only; the inner
+                // statement's definitions and reads must still be tracked.
+                CollectFromStatement(decorated.Statement, defined, read, parameters, readCollector);
+                break;
         }
     }
 

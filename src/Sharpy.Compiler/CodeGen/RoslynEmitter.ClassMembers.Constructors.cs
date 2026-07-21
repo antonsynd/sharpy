@@ -130,6 +130,11 @@ internal partial class RoslynEmitter
 
             var stmt = func.Body[i];
 
+            // @suppress wrapper (#1024): decorators are compile-time-only; the inner
+            // statement must still get the constructor's field-assignment conversion.
+            if (stmt is DecoratedStatement decorated)
+                stmt = decorated.Statement;
+
             // Convert self.field = value to this.Field = value (capitalized)
             if (stmt is Assignment assign)
             {

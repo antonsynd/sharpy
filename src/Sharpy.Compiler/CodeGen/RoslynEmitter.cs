@@ -919,6 +919,13 @@ internal partial class RoslynEmitter : ICodeEmitter
                     CollectSourceVariableNames(caseClause.Body);
                 }
                 break;
+
+            case DecoratedStatement decorated:
+                // @suppress wrapper (#1024): decorators are compile-time-only; variable
+                // names declared by the inner statement must still be pre-registered so
+                // synthetic names cannot collide with them.
+                CollectSourceVariableNamesFromStatement(decorated.Statement);
+                break;
         }
     }
 

@@ -231,6 +231,11 @@ internal class FinalFieldValidator : SemanticValidatorBase
             case FunctionDef nestedFunc:
                 yield return nestedFunc.Body;
                 break;
+            case DecoratedStatement decorated:
+                // @suppress wrapper (#1024): suppression is warning-only metadata; the final-field
+                // assignment *error* inside must still be found (errors are never suppressible).
+                yield return new[] { decorated.Statement };
+                break;
         }
     }
 }

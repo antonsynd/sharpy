@@ -634,6 +634,11 @@ internal class PropertyValidator : SemanticValidatorBase
             case WithStatement withStmt:
                 yield return withStmt.Body;
                 break;
+            case DecoratedStatement decorated:
+                // @suppress wrapper (#1024): suppression is warning-only metadata; the readonly
+                // assignment *error* inside must still be found (errors are never suppressible).
+                yield return new[] { decorated.Statement };
+                break;
         }
     }
 }

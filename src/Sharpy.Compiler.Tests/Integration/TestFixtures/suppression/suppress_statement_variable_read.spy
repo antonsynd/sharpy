@@ -1,0 +1,10 @@
+# A variable read only inside a statement-scoped @suppress wrapper must still count
+# as used — regression test for the DecoratedStatement unwrap in UnusedVariableValidator.
+def risky_with(v: int) -> int:
+    return v
+
+def main() -> None:
+    x: int = 10
+    @suppress("SPY0480")
+    try risky_with(x)
+    print("done")
