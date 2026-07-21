@@ -145,6 +145,7 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
         ValidateReadonlyOnProperty(node, definitionName);
         ValidateTestDecoratorNotOnType(node.Decorators, definitionName, "property");
+        ValidateMustUseNotOnTarget(node.Decorators, definitionName, "property");
         base.VisitPropertyDef(node);
     }
 
@@ -156,6 +157,7 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         ValidateDecorators(node.Decorators, definitionName);
         ValidateAccessModifierDecorators(node.Decorators, node.Name, definitionName);
         ValidateTestDecoratorNotOnType(node.Decorators, definitionName, "event");
+        ValidateMustUseNotOnTarget(node.Decorators, definitionName, "event");
 
         if (_containingType != null)
         {
@@ -184,6 +186,28 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         }
 
         base.VisitVariableDeclaration(node);
+    }
+
+    /// <summary>
+    /// Validates that @must_use is not applied to targets where it has no effect (#1022).
+    /// Valid targets are functions and type definitions (class/struct/interface/enum/union);
+    /// anywhere else the flag would be silently ignored, so reject it loudly instead.
+    /// </summary>
+    private void ValidateMustUseNotOnTarget(IEnumerable<Decorator> decorators, string definitionName, string targetKind)
+    {
+        foreach (var decorator in decorators)
+        {
+            if (decorator.Name != DecoratorNames.MustUse)
+                continue;
+
+            AddError(
+                $"'@must_use' cannot be applied to {targetKind} '{definitionName}'. " +
+                "It is only valid on functions and type definitions.",
+                decorator.LineStart,
+                decorator.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidDecoratorUsage,
+                span: decorator.Span);
+        }
     }
 
     /// <summary>

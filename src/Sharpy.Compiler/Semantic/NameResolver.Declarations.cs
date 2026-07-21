@@ -177,7 +177,8 @@ internal partial class NameResolver
             DeclarationColumn = structDef.ColumnStart,
             NameDeclarationLine = structDef.NameLineStart,
             NameDeclarationColumn = structDef.NameColumnStart,
-            Documentation = structDef.DocString
+            Documentation = structDef.DocString,
+            IsMustUse = HasMustUse(structDef.Decorators)
         };
 
         _symbolTable.Define(typeSymbol);
@@ -262,7 +263,8 @@ internal partial class NameResolver
             DeclarationColumn = interfaceDef.ColumnStart,
             NameDeclarationLine = interfaceDef.NameLineStart,
             NameDeclarationColumn = interfaceDef.NameColumnStart,
-            Documentation = interfaceDef.DocString
+            Documentation = interfaceDef.DocString,
+            IsMustUse = HasMustUse(interfaceDef.Decorators)
         };
 
         _symbolTable.Define(typeSymbol);
@@ -426,7 +428,8 @@ internal partial class NameResolver
             DeclarationColumn = enumDef.ColumnStart,
             NameDeclarationLine = enumDef.NameLineStart,
             NameDeclarationColumn = enumDef.NameColumnStart,
-            Documentation = enumDef.DocString
+            Documentation = enumDef.DocString,
+            IsMustUse = HasMustUse(enumDef.Decorators)
         };
 
         // Register enum members as static fields so pattern matching and
@@ -479,7 +482,8 @@ internal partial class NameResolver
             DeclarationColumn = unionDef.ColumnStart,
             NameDeclarationLine = unionDef.NameLineStart,
             NameDeclarationColumn = unionDef.NameColumnStart,
-            Documentation = unionDef.DocString
+            Documentation = unionDef.DocString,
+            IsMustUse = HasMustUse(unionDef.Decorators)
         };
 
         // Create case type symbols as nested types

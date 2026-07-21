@@ -189,4 +189,101 @@ def main() -> None:
 ");
         Assert.Equal(0, MustUseWarnings(tc));
     }
+
+    [Fact]
+    public void QuestionMarkPropagation_NoWarning()
+    {
+        // `get()?` checks as the *unwrapped* int (QuestionMarkExpression), so discarding it as a
+        // bare statement is the sanctioned propagation escape — no warning.
+        var tc = Check(Preamble + @"
+def caller() -> int?:
+    get()?
+    return None
+");
+        Assert.Equal(0, MustUseWarnings(tc));
+    }
+
+    [Fact]
+    public void CarrierInConditionPosition_NoWarning()
+    {
+        // A carrier consumed inside an `if` test is not an ExpressionStatement — never flagged.
+        var tc = Check(@"
+@must_use
+def parse() -> int:
+    return 5
+
+def main() -> None:
+    if parse() > 0:
+        print(1)
+");
+        Assert.Equal(0, MustUseWarnings(tc));
+    }
+
+    [Fact]
+    public void NestedCarrier_QuestionUnwrapStillWrapped_Warns()
+    {
+        // `get_nested()?` unwraps the outer Result but the value is *still* an `int !str` —
+        // discarding a still-wrapped inner carrier warns.
+        var tc = Check(@"
+def inner() -> int !str:
+    return Ok(42)
+
+def get_nested() -> Result[int !str, str]:
+    return Ok(inner())
+
+def process() -> int !str:
+    get_nested()?
+    return Ok(1)
+");
+        Assert.Equal(1, MustUseWarnings(tc));
+    }
+
+    [Fact]
+    public void MaybeStatement_Warns()
+    {
+        // `maybe expr` produces an OptionalType — discarding it as a bare statement warns.
+        var tc = Check(Preamble + @"
+def main() -> None:
+    maybe get_n()
+");
+        Assert.Equal(1, MustUseWarnings(tc));
+    }
+
+    [Fact]
+    public void MustUseStruct_DiscardedValue_Warns()
+    {
+        var tc = Check(@"
+@must_use
+struct Pair:
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def make() -> Pair:
+    return Pair(1)
+
+def main() -> None:
+    make()
+");
+        Assert.Equal(1, MustUseWarnings(tc));
+    }
+
+    [Fact]
+    public void MustUseEnum_DiscardedValue_Warns()
+    {
+        var tc = Check(@"
+@must_use
+enum Color:
+    RED = 1
+    GREEN = 2
+
+def pick() -> Color:
+    return Color.RED
+
+def main() -> None:
+    pick()
+");
+        Assert.Equal(1, MustUseWarnings(tc));
+    }
 }

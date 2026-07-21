@@ -1261,6 +1261,74 @@ class DatabaseTests:
 
     #endregion
 
+    #region @must_use target validation (#1022)
+
+    [Fact]
+    public void MustUse_OnProperty_Errors()
+    {
+        var code = @"
+class Sensor:
+    @must_use
+    property get value(self) -> int:
+        return 1
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Semantic.InvalidDecoratorUsage, errors[0].Code);
+        Assert.Contains("cannot be applied to property", errors[0].Message);
+    }
+
+    [Fact]
+    public void MustUse_OnEvent_Errors()
+    {
+        var code = @"
+delegate Handler(sender: object) -> None
+
+class Button:
+    @must_use
+    event add clicked(self, handler: Handler): ...
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        var errors = context.Diagnostics.GetErrors();
+        Assert.Single(errors);
+        Assert.Equal(DiagnosticCodes.Semantic.InvalidDecoratorUsage, errors[0].Code);
+        Assert.Contains("cannot be applied to event", errors[0].Message);
+    }
+
+    [Fact]
+    public void MustUse_OnStructAndEnum_NoDiagnostics()
+    {
+        var code = @"
+@must_use
+struct Pair:
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+@must_use
+enum Color:
+    RED = 1
+";
+        var (module, context) = Parse(code);
+
+        var validator = new DecoratorValidator();
+        validator.Validate(module, context);
+
+        Assert.False(context.Diagnostics.HasErrors);
+    }
+
+    #endregion
+
     #region @suppress argument validation (#1024)
 
     [Fact]
