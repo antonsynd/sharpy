@@ -49,8 +49,12 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
         LspRange range,
         List<InlayHint> hints)
     {
-        foreach (var stmt in statements)
+        foreach (var rawStmt in statements)
         {
+            // Statement-scoped @suppress (#1024): hints apply to the wrapped statement
+            // exactly as if it were unwrapped.
+            var stmt = rawStmt is DecoratedStatement decorated ? decorated.Statement : rawStmt;
+
             // Variable declarations without type annotations -> show inferred type
             if (stmt is VariableDeclaration varDecl && varDecl.Type == null)
             {

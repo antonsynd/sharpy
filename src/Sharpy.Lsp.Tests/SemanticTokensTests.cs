@@ -29,6 +29,20 @@ public class SemanticTokensTests
     #region Token type assignment
 
     [Fact]
+    public void DecoratedStatement_InnerStatementAndDecorator_GetTokens()
+    {
+        // Statement-scoped @suppress (#1024): the wrapper must be transparent to coloring —
+        // the decorator gets a decorator token and everything inside the wrapped statement
+        // is tokenized exactly as if unwrapped (`not` emits a keyword token).
+        var tokens = CollectTokensFrom(
+            "def main() -> None:\n    flag: bool = True\n    @suppress(\"SPY0480\")\n    flag = not flag\n    print(flag)");
+        tokens.Should().Contain(t => t.TokenType == TDecorator && t.Line == 2,
+            "@suppress should be colored as a decorator");
+        tokens.Should().Contain(t => t.TokenType == TKeyword && t.Line == 3,
+            "the wrapped statement's contents should still produce tokens");
+    }
+
+    [Fact]
     public void Function_GetsTokenTypeFunction()
     {
         var tokens = CollectTokensFrom("def greet() -> str:\n    return \"hi\"\ndef main():\n    print(greet())");

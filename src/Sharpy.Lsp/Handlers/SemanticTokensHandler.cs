@@ -319,6 +319,13 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
             case YieldStatement yieldStmt:
                 CollectExpressionTokens(yieldStmt.Value, tokens, parameterNames);
                 break;
+
+            case DecoratedStatement decorated:
+                // Statement-scoped @suppress (#1024): color the decorators and the wrapped
+                // statement exactly as if the statement were unwrapped.
+                CollectDecorators(decorated.Decorators, tokens);
+                CollectStatementTokens(decorated.Statement, tokens, parameterNames, semanticQuery);
+                break;
         }
     }
 
