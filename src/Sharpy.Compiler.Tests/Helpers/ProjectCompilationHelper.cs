@@ -131,20 +131,14 @@ public class ProjectCompilationHelper : IDisposable
 
     private static string BuildRuntimeReferenceItems()
     {
-        var dir = Path.GetDirectoryName(typeof(ProjectCompilationHelper).Assembly.Location);
-        if (string.IsNullOrEmpty(dir))
-            return string.Empty;
-
+        // DLL list and resolution shared with the compiler's own scaffold so the two
+        // can't drift (#1090).
         var refs = new StringBuilder();
-        foreach (var dll in new[] { "Sharpy.Core.dll", "Sharpy.Stdlib.dll" })
+        foreach (var path in TestProjectScaffold.ResolveRuntimeDllPaths())
         {
-            var path = Path.Combine(dir, dll);
-            if (File.Exists(path))
-            {
-                refs.AppendLine($"    <Reference Include=\"{Path.GetFileNameWithoutExtension(dll)}\">");
-                refs.AppendLine($"      <HintPath>{path}</HintPath>");
-                refs.AppendLine("    </Reference>");
-            }
+            refs.AppendLine($"    <Reference Include=\"{Path.GetFileNameWithoutExtension(path)}\">");
+            refs.AppendLine($"      <HintPath>{path}</HintPath>");
+            refs.AppendLine("    </Reference>");
         }
 
         return refs.ToString();
@@ -310,6 +304,11 @@ public class ProjectCompilationHelper : IDisposable
         if (Options.Features.Count > 0)
         {
             projectContent.AppendLine($"    <Features>{string.Join(";", Options.Features)}</Features>");
+        }
+
+        if (Options.WarningsAsErrors)
+        {
+            projectContent.AppendLine("    <WarningsAsErrors>true</WarningsAsErrors>");
         }
 
         projectContent.AppendLine("  </PropertyGroup>");
@@ -605,6 +604,12 @@ public class ProjectOptions
     /// PropertyGroup value in the generated .spyproj.
     /// </summary>
     public List<string> Features { get; set; } = new();
+
+    /// <summary>
+    /// When true, emits &lt;WarningsAsErrors&gt;true&lt;/WarningsAsErrors&gt; so warnings are
+    /// promoted to errors (used to verify @suppress parity under -Werror, #1024).
+    /// </summary>
+    public bool WarningsAsErrors { get; set; }
 }
 
 /// <summary>

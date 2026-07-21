@@ -1,0 +1,7 @@
+# `maybe` interaction with as-casts: `as?` already yields an Optional, and `maybe`
+# requires a loose nullable (T | None) operand — so `maybe expr as? T` (which parses as
+# `maybe (expr as? T)` by precedence) is rejected as the documented idempotency error.
+def main() -> None:
+    boxed: object = 42
+    x = maybe boxed as? int
+    print(x)

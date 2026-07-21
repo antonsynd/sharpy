@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Collections.Generic;
 using Sharpy.Compiler.Logging;
@@ -115,25 +116,40 @@ internal static class TestProjectScaffold
     }
 
     /// <summary>
-    /// Builds Reference items for Sharpy runtime DLLs (Sharpy.Core.dll, Sharpy.Stdlib.dll)
-    /// resolved from the compiler's own assembly location.
+    /// Resolves the on-disk paths of the Sharpy runtime DLLs (Sharpy.Core.dll,
+    /// Sharpy.Stdlib.dll) next to the compiler's own assembly location. Shared with
+    /// test harnesses (e.g. ProjectCompilationHelper) so the DLL list lives in one place.
     /// </summary>
-    private static string BuildRuntimeReferences()
+    internal static IReadOnlyList<string> ResolveRuntimeDllPaths()
     {
         var compilerDir = Path.GetDirectoryName(typeof(TestProjectScaffold).Assembly.Location);
         if (string.IsNullOrEmpty(compilerDir))
-            return string.Empty;
+            return Array.Empty<string>();
 
         var runtimeDlls = new[] { "Sharpy.Core.dll", "Sharpy.Stdlib.dll" };
-        var references = new List<string>();
+        var paths = new List<string>();
 
         foreach (var dll in runtimeDlls)
         {
             var dllPath = Path.Combine(compilerDir, dll);
             if (File.Exists(dllPath))
-            {
-                references.Add($"<Reference Include=\"{Path.GetFileNameWithoutExtension(dll)}\">\n      <HintPath>{dllPath}</HintPath>\n    </Reference>");
-            }
+                paths.Add(dllPath);
+        }
+
+        return paths;
+    }
+
+    /// <summary>
+    /// Builds Reference items for Sharpy runtime DLLs (Sharpy.Core.dll, Sharpy.Stdlib.dll)
+    /// resolved from the compiler's own assembly location.
+    /// </summary>
+    private static string BuildRuntimeReferences()
+    {
+        var references = new List<string>();
+
+        foreach (var dllPath in ResolveRuntimeDllPaths())
+        {
+            references.Add($"<Reference Include=\"{Path.GetFileNameWithoutExtension(dllPath)}\">\n      <HintPath>{dllPath}</HintPath>\n    </Reference>");
         }
 
         return string.Join("\n    ", references);
