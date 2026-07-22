@@ -1,0 +1,6 @@
+# Negative: or-RHS narrowing must NOT escape the `or` expression. Inside `x is None or
+# x > 0` the read `x > 0` is narrowed, but the later `x + 1` (whose `and` left operand
+# is a plain bool, not a fact about x) still sees int?, so it is a type error.
+def f(x: int?) -> bool:
+    flag: bool = x is None or x > 0
+    return flag and x + 1 > 0

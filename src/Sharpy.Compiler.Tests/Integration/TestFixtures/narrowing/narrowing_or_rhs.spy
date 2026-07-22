@@ -1,0 +1,16 @@
+# or-RHS narrowing (#1080): the RHS of `or` sees the LEFT operand's negative facts.
+# `x is None or <rhs>` only reaches <rhs> when x is NOT None, so x is narrowed there —
+# Optional reads through `.Unwrap()`, value-nullable through `.Value`.
+def check_opt(x: int?) -> bool:
+    return x is None or x + 1 > 0
+
+def check_null(x: int | None) -> bool:
+    return x is None or x + 1 > 0
+
+def main() -> None:
+    print(check_opt(Some(5)))
+    print(check_opt(Some(-10)))
+    print(check_opt(None()))
+    print(check_null(5))
+    print(check_null(-10))
+    print(check_null(None))
