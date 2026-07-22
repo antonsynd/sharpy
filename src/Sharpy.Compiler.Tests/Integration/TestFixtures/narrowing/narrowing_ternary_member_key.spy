@@ -1,0 +1,14 @@
+# Dotted narrowing key in a ternary: `self.value is not None` narrows `self.value`
+# inside the true arm (`self.value + 1`).
+class Counter:
+    value: int?
+
+    def __init__(self, v: int?):
+        self.value = v
+
+    def read(self) -> int:
+        return self.value + 1 if self.value is not None else 0
+
+def main() -> None:
+    print(Counter(Some(41)).read())
+    print(Counter(None()).read())

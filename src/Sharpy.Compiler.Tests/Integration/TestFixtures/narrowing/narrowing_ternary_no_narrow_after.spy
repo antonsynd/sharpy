@@ -1,0 +1,4 @@
+# Negative: narrowing must NOT leak out of a ternary arm. The trailing `x + 1` is
+# outside the conditional expression, where x is still int?, so it is a type error.
+def f(x: int?) -> int:
+    return (x + 1 if x is not None else 0) + x + 1

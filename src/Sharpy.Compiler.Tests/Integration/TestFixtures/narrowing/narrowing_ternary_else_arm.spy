@@ -1,0 +1,8 @@
+# Negative narrowing: `x is None` puts the non-None fact on the ELSE arm, so `x + 1`
+# in the else arm is narrowed even though the condition tests for None.
+def f(x: int?) -> int:
+    return 0 if x is None else x + 1
+
+def main() -> None:
+    print(f(None()))
+    print(f(Some(41)))

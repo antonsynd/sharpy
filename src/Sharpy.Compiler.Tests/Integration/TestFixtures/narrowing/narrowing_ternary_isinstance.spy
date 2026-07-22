@@ -1,0 +1,12 @@
+# isinstance in a ternary condition narrows the object inside the true arm
+# (parenthesized cast), so `a.bark()` resolves; the else arm keeps the wide type.
+class Dog:
+    def bark(self) -> str:
+        return "woof"
+
+def sound(a: object) -> str:
+    return a.bark() if isinstance(a, Dog) else "?"
+
+def main() -> None:
+    print(sound(Dog()))
+    print(sound(42))

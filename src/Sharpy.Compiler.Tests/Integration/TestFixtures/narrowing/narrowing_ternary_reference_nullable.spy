@@ -1,0 +1,7 @@
+# Reference-nullable (`str | None`) narrows in a ternary arm; the read emits `!`.
+def shout(s: str | None) -> str:
+    return s + "!" if s is not None else "none"
+
+def main() -> None:
+    print(shout("hi"))
+    print(shout(None))

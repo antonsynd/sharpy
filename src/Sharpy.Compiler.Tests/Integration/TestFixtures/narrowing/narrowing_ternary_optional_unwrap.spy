@@ -1,0 +1,17 @@
+# Optional (`T?`) narrows in the true arm of a ternary; the else arm supplies a
+# default. `x.get()` reads through `x.Unwrap()`.
+class Box:
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+    def get(self) -> int:
+        return self.v
+
+def unwrap_or(x: Box?, default: int) -> int:
+    return x.get() if x is not None else default
+
+def main() -> None:
+    print(unwrap_or(Some(Box(7)), -1))
+    print(unwrap_or(None(), -1))

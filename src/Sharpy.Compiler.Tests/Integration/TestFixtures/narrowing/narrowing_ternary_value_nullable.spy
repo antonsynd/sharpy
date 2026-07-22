@@ -1,0 +1,7 @@
+# Value-nullable (`int | None`) narrows in a ternary arm; the read emits `.Value`.
+def f(x: int | None) -> int:
+    return x + 1 if x is not None else 0
+
+def main() -> None:
+    print(f(41))
+    print(f(None))

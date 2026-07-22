@@ -1,0 +1,15 @@
+# A ternary nested inside a ternary arm, and a ternary used as the RHS of `and`.
+# Both inner and outer conditions narrow the same optional independently.
+def classify(x: int?) -> str:
+    return ("big" if x > 10 else "small") if x is not None else "none"
+
+def guard(x: int?) -> bool:
+    return x is not None and (x + 1 if x is not None else 0) > 5
+
+def main() -> None:
+    print(classify(Some(20)))
+    print(classify(Some(3)))
+    print(classify(None()))
+    print(guard(Some(10)))
+    print(guard(Some(1)))
+    print(guard(None()))
