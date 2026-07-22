@@ -1,0 +1,7 @@
+# Calling through a narrowed `T | None` function value emits `!` (null-forgiving)
+# before the invocation.
+cb: ((int) -> int) | None = lambda x: int: x + 100
+
+def main() -> None:
+    if cb is not None:
+        print(cb(5))

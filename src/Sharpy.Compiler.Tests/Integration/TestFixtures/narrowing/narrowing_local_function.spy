@@ -1,0 +1,12 @@
+# Defining a local function while a narrowing is active must not discard the outer
+# narrowing (the emitter's Snapshot/Restore path): `x` is still narrowed after the
+# nested `def`, so `x + 100` reads through `.Unwrap()`.
+def outer(x: int?) -> None:
+    if x is not None:
+        def twice(n: int) -> int:
+            return n * 2
+        print(twice(3))
+        print(x + 100)
+
+def main() -> None:
+    outer(Some(5))

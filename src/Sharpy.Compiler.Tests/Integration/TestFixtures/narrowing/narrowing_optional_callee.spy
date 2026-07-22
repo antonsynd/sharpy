@@ -1,0 +1,18 @@
+# Calling through a narrowed Optional function value emits `.Unwrap()` before the
+# invocation — both for a module-level function variable and a member field.
+handler: ((int) -> int)? = Some(lambda x: int: x * 2)
+
+class Registry:
+    fn: ((int) -> str)?
+
+    def __init__(self):
+        self.fn = Some(lambda n: int: "n=" + str(n))
+
+    def run(self) -> None:
+        if self.fn is not None:
+            print(self.fn(7))
+
+def main() -> None:
+    if handler is not None:
+        print(handler(5))
+    Registry().run()

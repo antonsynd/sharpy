@@ -1,0 +1,7 @@
+# Index-access narrowing: guarding `xs[0] is not None` narrows the element read so
+# `xs[0] + 1` type-checks (without the guard this is SPY0222). Locks the runtime
+# behavior for the value-nullable element case.
+def main() -> None:
+    xs: list[int | None] = [10, None]
+    if xs[0] is not None:
+        print(xs[0] + 1)

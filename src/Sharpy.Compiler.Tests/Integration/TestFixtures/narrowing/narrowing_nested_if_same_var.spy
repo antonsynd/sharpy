@@ -1,0 +1,13 @@
+# Re-narrowing the SAME optional variable in a nested `if` exercises the emitter's
+# ref-counted narrowing: the inner block increments the count, and the outer
+# narrowing is still active (x + 2) after the inner `if` closes.
+def check(x: int?) -> None:
+    if x is not None:
+        if x is not None:
+            print(x + 1)
+        print(x + 2)
+    print("done")
+
+def main() -> None:
+    check(Some(10))
+    check(None())

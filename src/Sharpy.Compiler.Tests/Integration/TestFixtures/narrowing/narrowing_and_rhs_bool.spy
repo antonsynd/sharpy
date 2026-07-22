@@ -1,0 +1,16 @@
+# `is not None` on the left of `and` narrows the right operand even when the `and`
+# is in value position (assignment / return), not just a branch condition.
+def positive_opt(x: int?) -> bool:
+    return x is not None and x > 0
+
+def positive_null(x: int | None) -> bool:
+    return x is not None and x > 0
+
+def main() -> None:
+    a: int? = Some(5)
+    ok: bool = a is not None and a > 0
+    print(ok)
+    print(positive_opt(Some(3)))
+    print(positive_opt(None()))
+    print(positive_null(-1))
+    print(positive_null(None))
