@@ -79,7 +79,7 @@ would subsume:
 | 14 | `_errorRecoveryNodes` | `Expression` | marker: `UnknownType` is expected (error recovery) | ✅ |
 | 15 | `_contextManagerKinds` | `Expression` | `ContextManagerKind` for a `with`-item | ✅ |
 | 16 | `_withItemSymbols` | `WithItem` | `as` variable symbol (scope already exited) | ✅ |
-| 17 | `_narrowingDecisions` | `Expression` | `NarrowingDecision` for a conditional test | ✅ |
+| 17 | `_narrowedReadLowerings` | `Expression` | `NarrowedReadLowering` accessor for a narrowed read (replaced `_narrowingDecisions`, #1081) | ✅ |
 | 18 | `_binaryOpLowerings` | `Expression` | `BinaryOpLowering` strategy for `==`/`!=` | ✅ |
 | 19 | `_indexAccessLowerings` | `Expression` | `IndexAccessLowering` strategy for `obj[i]` | ✅ |
 | 20 | `_resolvedClrMemberNames` | `Expression` | original CLR member name (acronym casing) | ✅ |

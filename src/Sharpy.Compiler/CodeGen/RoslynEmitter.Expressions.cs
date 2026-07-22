@@ -288,6 +288,8 @@ internal partial class RoslynEmitter
                     // isinstance narrowing → parenthesized cast ((Dog)animal) so member access works.
                     // Builtin collections narrow to the non-generic Sharpy.IList/IDict/ISet protocol
                     // interface (#912) so the cast against an object receiver succeeds at runtime.
+                    // Invariant: CastTarget is non-null whenever Kind == Cast — every TypeChecker
+                    // construction site passes the narrowed type alongside the kind.
                     var castType = lowering.CastTarget is GenericType generic
                         && TryMapBuiltinCollectionToNonGenericInterface(generic.Name) is { } nonGenericInterface
                             ? nonGenericInterface
