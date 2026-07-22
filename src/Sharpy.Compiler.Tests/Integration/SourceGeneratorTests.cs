@@ -42,7 +42,7 @@ def main():
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));
     }
 
-    [Fact(Skip = "Module resolution now works via WithRuntimeReferences (#1090), but a .spy class overriding the CLR-abstract SourceGenerator.generate emits no `override` — CS0534, tracked in #1122")]
+    [Fact]
     public void GeneratorClass_Compiles_WithoutErrors()
     {
         var helper = CreateHelper();
@@ -67,7 +67,7 @@ def main():
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));
     }
 
-    [Fact(Skip = "Blocked by #1122 (CS0534: .spy override of CLR-abstract SourceGenerator.generate). The #1090 reflection-type resolution works; this exercises it once #1122 lands.")]
+    [Fact]
     public void GeneratorClass_ReadingReflectionTypes_Compiles()
     {
         // Exercises the Sharpy.Generators reflection types (ClassInfo/MethodInfo/ParameterInfo)
@@ -94,6 +94,40 @@ def main():
         var result = helper.Compile();
 
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));
+    }
+
+    [Fact]
+    public void GeneratorClass_EmitsOverrideModifier_OnClrAbstractMethod()
+    {
+        // #1122: a .spy method overriding the CLR-abstract SourceGenerator.Generate must be
+        // emitted with the `override` modifier (auto-detected — no @override decorator). The
+        // CLR-virtual (non-abstract) override case is covered by ClrBaseOverrideDetectorTests,
+        // since no abstract-free bridged base is available in the runtime-reference harness.
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("gen.spy", @"
+from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
+
+class MyGen(SourceGenerator):
+    def generate(self, context: GeneratorContext) -> GeneratorOutput:
+        return GeneratorOutput('')
+");
+
+        helper.AddSourceFile("main.spy", @"
+def main():
+    print('hello')
+");
+
+        helper.WithRootNamespace("GenOverrideTest").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
+        var result = helper.Compile();
+
+        Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        var generatorCSharp = result.GeneratedCSharpFiles
+            .First(kvp => kvp.Key.Contains("gen", StringComparison.Ordinal)).Value;
+        Assert.Contains("override", generatorCSharp);
+        Assert.Contains("GeneratorOutput Generate(", generatorCSharp);
     }
 
     [Fact]
