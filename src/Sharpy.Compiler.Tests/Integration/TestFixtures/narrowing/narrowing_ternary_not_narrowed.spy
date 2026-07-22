@@ -1,7 +1,0 @@
-# KNOWN LIMITATION (#1080): type narrowing is applied at statement granularity, so
-# it does not flow into the arms of a ternary/conditional expression. The guard
-# `x is not None` does not narrow x within `x + 1`, so this is a type error. If
-# expression-level narrowing is ever implemented, this fixture flips and should be
-# converted to an `.expected`.
-def f(x: int?) -> int:
-    return x + 1 if x is not None else 0

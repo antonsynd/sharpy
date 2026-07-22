@@ -1,0 +1,10 @@
+# Ternary arms narrow (#1080, resolved): a conditional expression `A if cond else B`
+# applies cond's positive facts inside the true arm and its negative facts inside the
+# false arm. So `x is not None` narrows `x` within `x + 1`, and the read emits
+# `x.Unwrap() + 1`.
+def f(x: int?) -> int:
+    return x + 1 if x is not None else 0
+
+def main() -> None:
+    print(f(Some(41)))
+    print(f(None()))
