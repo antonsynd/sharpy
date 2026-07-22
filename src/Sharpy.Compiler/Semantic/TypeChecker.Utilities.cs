@@ -54,11 +54,18 @@ internal partial class TypeChecker
         return false;
     }
 
-    private (Dictionary<string, SemanticType> NarrowedTypes, NarrowingDecision Decision) ExtractNarrowedTypes(Expression condition, bool isPositiveBranch)
+    /// <summary>
+    /// Interprets a condition into the per-key type narrowings it implies for the given branch polarity,
+    /// each paired with the accessor codegen must apply at a read site (#1081). This is the expression-
+    /// level condition interpreter used by <c>and</c>-RHS (and, in Phase 5, ternary/or) scopes; the
+    /// statement-level branch bodies are narrowed by the CFG dataflow facts instead (#1042). Leaf
+    /// recognition (<c>is</c>/<c>is not None</c>, <c>isinstance</c>) is shared with the dataflow engine
+    /// via <see cref="NarrowingConditionInterpreter.RecognizeLeaf"/>; <c>and</c> (positive) and <c>or</c>
+    /// (negative, the De Morgan dual) combine both sides with the right operand winning on key overlap.
+    /// </summary>
+    private Dictionary<string, NarrowingEntry> ExtractNarrowedTypes(Expression condition, bool isPositiveBranch)
     {
-        var narrowedTypes = new Dictionary<string, SemanticType>();
-        var optionalNarrowings = new List<OptionalNarrowing>();
-        var isInstanceNarrowings = new List<IsInstanceNarrowing>();
+        var entries = new Dictionary<string, NarrowingEntry>();
 
         // Unwrap parenthesized expressions
         if (condition is Parenthesized paren)
@@ -72,63 +79,32 @@ internal partial class TypeChecker
             return ExtractNarrowedTypes(notOp.Operand, !isPositiveBranch);
         }
 
-        // Handle 'A and B' pattern - combine narrowings from both sides
+        // Handle 'A and B' pattern - in the positive branch both conditions hold, so combine
+        // narrowings from both sides (right operand wins on key overlap — the more-refining check).
         if (condition is BinaryOp { Operator: BinaryOperator.And } andOp && isPositiveBranch)
         {
-            // In the positive branch, both conditions must be true, so we combine narrowings
-            var (leftNarrowed, leftDecision) = ExtractNarrowedTypes(andOp.Left, true);
-            var (rightNarrowed, rightDecision) = ExtractNarrowedTypes(andOp.Right, true);
-
-            // Merge the dictionaries, with right side taking precedence if there's overlap
-            foreach (var kvp in leftNarrowed)
-            {
-                narrowedTypes[kvp.Key] = kvp.Value;
-            }
-            foreach (var kvp in rightNarrowed)
-            {
-                // If we have a narrowing for this variable from both sides,
-                // use the more specific one (from the right side)
-                narrowedTypes[kvp.Key] = kvp.Value;
-            }
-
-            // Merge narrowing decisions from both sides
-            optionalNarrowings.AddRange(leftDecision.OptionalNarrowings);
-            optionalNarrowings.AddRange(rightDecision.OptionalNarrowings);
-            isInstanceNarrowings.AddRange(leftDecision.IsInstanceNarrowings);
-            isInstanceNarrowings.AddRange(rightDecision.IsInstanceNarrowings);
-
-            return (narrowedTypes, new NarrowingDecision(optionalNarrowings, isInstanceNarrowings));
+            foreach (var kvp in ExtractNarrowedTypes(andOp.Left, true))
+                entries[kvp.Key] = kvp.Value;
+            foreach (var kvp in ExtractNarrowedTypes(andOp.Right, true))
+                entries[kvp.Key] = kvp.Value;
+            return entries;
         }
 
         // Handle 'A or B' pattern in the else-branch - De Morgan dual of 'and' narrowing:
         // else of (A or B) is equivalent to then of (not A and not B), so both sides narrow.
         if (condition is BinaryOp { Operator: BinaryOperator.Or } orOp && !isPositiveBranch)
         {
-            var (leftNarrowed, leftDecision) = ExtractNarrowedTypes(orOp.Left, false);
-            var (rightNarrowed, rightDecision) = ExtractNarrowedTypes(orOp.Right, false);
-
-            foreach (var kvp in leftNarrowed)
-            {
-                narrowedTypes[kvp.Key] = kvp.Value;
-            }
-            foreach (var kvp in rightNarrowed)
-            {
-                narrowedTypes[kvp.Key] = kvp.Value;
-            }
-
-            optionalNarrowings.AddRange(leftDecision.OptionalNarrowings);
-            optionalNarrowings.AddRange(rightDecision.OptionalNarrowings);
-            isInstanceNarrowings.AddRange(leftDecision.IsInstanceNarrowings);
-            isInstanceNarrowings.AddRange(rightDecision.IsInstanceNarrowings);
-
-            return (narrowedTypes, new NarrowingDecision(optionalNarrowings, isInstanceNarrowings));
+            foreach (var kvp in ExtractNarrowedTypes(orOp.Left, false))
+                entries[kvp.Key] = kvp.Value;
+            foreach (var kvp in ExtractNarrowedTypes(orOp.Right, false))
+                entries[kvp.Key] = kvp.Value;
+            return entries;
         }
 
         // Leaf recognition (`is`/`is not None`, `isinstance`) is shared with the dataflow engine via
         // NarrowingConditionInterpreter.RecognizeLeaf (#1042); here we resolve each recognised symbolic
-        // fact to a concrete narrowed type and the emitter decision. NarrowInThenBranch is the branch
-        // polarity at this leaf (isPositiveBranch) — the recursive traversal above has already flipped
-        // it through any enclosing `not`, exactly as before.
+        // fact to a concrete narrowed type and the accessor codegen applies at the read site. Branch
+        // polarity has already been flipped through any enclosing `not` by the recursion above.
         foreach (var fact in NarrowingConditionInterpreter.RecognizeLeaf(condition, isPositiveBranch))
         {
             if (fact.Kind == NarrowingActionKind.RemoveNone)
@@ -136,30 +112,23 @@ internal partial class TypeChecker
                 var resolvedType = ResolveNarrowedOperandType(fact.SourceExpression!);
                 if (resolvedType is NullableType nullable)
                 {
-                    narrowedTypes[fact.Key] = nullable.UnderlyingType;
-                    if (nullable.IsValueType)
-                        optionalNarrowings.Add(new OptionalNarrowing(fact.Key, nullable.UnderlyingType, IsValueTypeNullable: true, NarrowInThenBranch: isPositiveBranch));
-                    else
-                        optionalNarrowings.Add(new OptionalNarrowing(fact.Key, nullable.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: isPositiveBranch, IsReferenceTypeNullable: true));
+                    var kind = nullable.IsValueType ? NarrowedReadKind.NullableValue : NarrowedReadKind.NullForgiving;
+                    entries[fact.Key] = new NarrowingEntry(nullable.UnderlyingType, new NarrowedReadLowering(kind));
                 }
                 else if (resolvedType is OptionalType optional)
                 {
-                    narrowedTypes[fact.Key] = optional.UnderlyingType;
-                    optionalNarrowings.Add(new OptionalNarrowing(fact.Key, optional.UnderlyingType, IsValueTypeNullable: false, NarrowInThenBranch: isPositiveBranch));
+                    entries[fact.Key] = new NarrowingEntry(optional.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.UnwrapOptional));
                 }
             }
             else // IsType (isinstance)
             {
                 var narrowedType = ResolveIsTypeFactType(fact.TypeExpression!);
                 if (narrowedType != null)
-                {
-                    narrowedTypes[fact.Key] = narrowedType;
-                    isInstanceNarrowings.Add(new IsInstanceNarrowing(fact.Key, narrowedType, NarrowInThenBranch: isPositiveBranch));
-                }
+                    entries[fact.Key] = new NarrowingEntry(narrowedType, new NarrowedReadLowering(NarrowedReadKind.Cast, narrowedType));
             }
         }
 
-        return (narrowedTypes, new NarrowingDecision(optionalNarrowings, isInstanceNarrowings));
+        return entries;
     }
 
     /// <summary>
@@ -269,56 +238,10 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Builds lowering-bearing narrowing entries for <c>and</c>-RHS scope application from a condition's
-    /// extracted narrowings. The type comes from <paramref name="narrowedTypes"/> (authoritative, with
-    /// <c>and</c> precedence already applied); the accessor lowering comes from the parallel
-    /// <paramref name="decision"/> — <c>isinstance</c> (<see cref="NarrowedReadKind.Cast"/>) preferred
-    /// over Optional/Nullable when a key carries both, matching the type that won (#1081).
-    /// </summary>
-    private static Dictionary<string, NarrowingEntry> BuildNarrowingEntries(
-        Dictionary<string, SemanticType> narrowedTypes, NarrowingDecision decision)
-    {
-        var entries = new Dictionary<string, NarrowingEntry>(narrowedTypes.Count);
-        foreach (var kvp in narrowedTypes)
-        {
-            entries[kvp.Key] = new NarrowingEntry(kvp.Value, ResolveReadLowering(kvp.Key, kvp.Value, decision));
-        }
-        return entries;
-    }
-
-    /// <summary>
-    /// Picks the read accessor for a narrowed key from a <see cref="NarrowingDecision"/>: an
-    /// <c>isinstance</c> narrowing lowers to a cast to the narrowed type; an Optional/Nullable narrowing
-    /// lowers to <c>.Value</c> (value-type nullable), null-forgiving <c>!</c> (reference-type nullable),
-    /// or <c>.Unwrap()</c> (Sharpy Optional). Returns null when the key has no accessor-implying narrowing.
-    /// </summary>
-    private static NarrowedReadLowering? ResolveReadLowering(string key, SemanticType narrowedType, NarrowingDecision decision)
-    {
-        foreach (var isInstance in decision.IsInstanceNarrowings)
-        {
-            if (isInstance.VariableName == key)
-                return new NarrowedReadLowering(NarrowedReadKind.Cast, narrowedType);
-        }
-
-        foreach (var optional in decision.OptionalNarrowings)
-        {
-            if (optional.VariableName == key)
-            {
-                var kind = optional.IsValueTypeNullable ? NarrowedReadKind.NullableValue
-                    : optional.IsReferenceTypeNullable ? NarrowedReadKind.NullForgiving
-                    : NarrowedReadKind.UnwrapOptional;
-                return new NarrowedReadLowering(kind);
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Resolves the (non-narrowed) type of a narrowed operand expression at the condition, for building
-    /// the <c>RemoveNone</c> emitter decision: identifiers resolve through the symbol table, member/
-    /// other expressions read their already-type-checked type from <see cref="SemanticInfo"/>. Mirrors
-    /// the operand resolution the inline is/is-not-None handling used before the leaf-recognition swap.
+    /// Resolves the (non-narrowed) type of a narrowed operand expression at the condition, so the
+    /// <c>RemoveNone</c> leaf can pick the read accessor from its <see cref="NullableType"/>/
+    /// <see cref="OptionalType"/> shape: identifiers resolve through the symbol table, member/other
+    /// expressions read their already-type-checked type from <see cref="SemanticInfo"/>.
     /// </summary>
     private SemanticType? ResolveNarrowedOperandType(Expression operand)
     {
@@ -367,30 +290,6 @@ internal partial class TypeChecker
 
         return null;
     }
-
-    /// <summary>
-    /// Returns true if a statement body unconditionally transfers control out of the
-    /// enclosing block (ends with return/raise/break/continue, possibly via an if
-    /// statement whose branches all exit). Used to propagate inverse type narrowing
-    /// past early-exit guards like <c>if x is None: return</c> (#817).
-    /// </summary>
-    private static bool BodyExitsUnconditionally(System.Collections.Immutable.ImmutableArray<Statement> body)
-        => body.Length > 0 && StatementExitsUnconditionally(body[^1]);
-
-    /// <summary>
-    /// Returns true if executing the statement always transfers control out of the
-    /// enclosing block. Conservative: only recognizes direct exit statements and
-    /// if statements whose then/elif/else branches all exit.
-    /// </summary>
-    private static bool StatementExitsUnconditionally(Statement statement) => statement switch
-    {
-        ReturnStatement or RaiseStatement or BreakStatement or ContinueStatement => true,
-        IfStatement ifStmt => ifStmt.ElseBody.Length > 0
-            && BodyExitsUnconditionally(ifStmt.ThenBody)
-            && ifStmt.ElifClauses.All(elif => BodyExitsUnconditionally(elif.Body))
-            && BodyExitsUnconditionally(ifStmt.ElseBody),
-        _ => false
-    };
 
     /// <summary>
     /// Returns true if the given type contains any <see cref="TypeParameterType"/>

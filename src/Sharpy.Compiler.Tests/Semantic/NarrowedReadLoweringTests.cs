@@ -22,7 +22,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 public class NarrowedReadLoweringTests
 {
     [Fact]
-    public void OptionalNarrowing_RecordsUnwrapOptional()
+    public void OptionalTypeNarrowing_RecordsUnwrapOptional()
     {
         var (module, info) = Analyze(@"
 def f(x: int?) -> int:
@@ -69,7 +69,7 @@ def f(x: str | None) -> str:
     }
 
     [Fact]
-    public void IsInstanceNarrowing_RecordsCastToTargetType()
+    public void IsInstanceCheck_RecordsCastToTargetType()
     {
         var (module, info) = Analyze(@"
 class Animal:

@@ -126,11 +126,6 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<WithItem, VariableSymbol> _withItemSymbols =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map conditional test expressions to their narrowing decisions
-    // Used by codegen to determine how to emit branches with type narrowing
-    private readonly ConcurrentDictionary<Expression, NarrowingDecision> _narrowingDecisions =
-        new(ReferenceEqualityComparer.Instance);
-
     // Map binary-op expressions (==/!=) to the strategy codegen must use to emit them.
     // Only present when the strategy differs from the default native operator — e.g.
     // tuple equality and CLR types that implement Equals/IEquatable but define no
@@ -571,24 +566,6 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
-    /// Records a narrowing decision for a conditional test expression.
-    /// Used by the TypeChecker to communicate narrowing context to codegen.
-    /// </summary>
-    public void SetNarrowingDecision(Expression test, NarrowingDecision decision)
-    {
-        _narrowingDecisions[test] = decision;
-    }
-
-    /// <summary>
-    /// Gets the narrowing decision for a conditional test expression.
-    /// Returns null if no narrowing was recorded for this expression.
-    /// </summary>
-    public NarrowingDecision? GetNarrowingDecision(Expression test)
-    {
-        return _narrowingDecisions.TryGetValue(test, out var decision) ? decision : null;
-    }
-
-    /// <summary>
     /// Records how an equality binary operation (<c>==</c>/<c>!=</c>) should be lowered by codegen.
     /// Only set when the strategy is not the default <see cref="BinaryOpLowering.NativeOperator"/>;
     /// the absence of an entry means codegen should emit a native C# operator.
@@ -745,9 +722,6 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._withItemSymbols)
             _withItemSymbols.TryAdd(kvp.Key, kvp.Value);
-
-        foreach (var kvp in other._narrowingDecisions)
-            _narrowingDecisions.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._binaryOpLowerings)
             _binaryOpLowerings.TryAdd(kvp.Key, kvp.Value);
@@ -913,49 +887,6 @@ public enum NarrowedReadKind
 /// routes builtin collections through the non-generic-interface rule, #912); <c>null</c> for all other kinds.
 /// </param>
 public sealed record NarrowedReadLowering(NarrowedReadKind Kind, SemanticType? CastTarget = null);
-
-/// <summary>
-/// Represents a narrowing decision for a conditional statement.
-/// Records all type narrowings that a condition's test expression implies,
-/// so codegen can emit the correct accessor patterns (e.g., <c>.Value</c> for value-type nullables).
-/// </summary>
-/// <param name="OptionalNarrowings">Optional/Nullable narrowings implied by the test.</param>
-/// <param name="IsInstanceNarrowings">isinstance() narrowings implied by the test.</param>
-/// <param name="NarrowsFollowingStatements">
-/// True if the else-branch narrowings (entries with <c>NarrowInThenBranch == false</c>) also apply
-/// to the statements following the if statement, because the then-branch unconditionally exits
-/// (e.g., <c>if x is None: return</c>). Only set by the TypeChecker for if statements at the top
-/// level of a function/module body so the narrowing's lifetime matches the rest of the method (#817).
-/// </param>
-public sealed record NarrowingDecision(
-    IReadOnlyList<OptionalNarrowing> OptionalNarrowings,
-    IReadOnlyList<IsInstanceNarrowing> IsInstanceNarrowings,
-    bool NarrowsFollowingStatements = false);
-
-/// <summary>
-/// A variable narrowed from <see cref="OptionalType"/> or <see cref="NullableType"/> to its underlying type.
-/// </summary>
-/// <param name="VariableName">The name of the narrowed variable.</param>
-/// <param name="NarrowedType">The type after narrowing (the underlying type of Optional/Nullable).</param>
-/// <param name="IsValueTypeNullable">True if <see cref="NullableType"/> (value-type); needs <c>.Value</c> access in codegen.</param>
-/// <param name="NarrowInThenBranch">True if narrowing applies in the then-branch; false for the else-branch.</param>
-public sealed record OptionalNarrowing(
-    string VariableName,
-    SemanticType NarrowedType,
-    bool IsValueTypeNullable,
-    bool NarrowInThenBranch,
-    bool IsReferenceTypeNullable = false);
-
-/// <summary>
-/// A variable narrowed via an <c>isinstance()</c> check.
-/// </summary>
-/// <param name="VariableName">The name of the narrowed variable.</param>
-/// <param name="NarrowedType">The type after narrowing (the target type of the isinstance check).</param>
-/// <param name="NarrowInThenBranch">True if narrowing applies in the then-branch; false for the else-branch.</param>
-public sealed record IsInstanceNarrowing(
-    string VariableName,
-    SemanticType NarrowedType,
-    bool NarrowInThenBranch);
 
 public sealed record GeneratorBinding(TypeSymbol GeneratorType, Decorator Trigger);
 
