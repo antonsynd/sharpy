@@ -1,0 +1,8 @@
+# #1124 key test: suppressing an UNRELATED code (SPY0480) must NOT hide the
+# unused-import warning (SPY0452). Suppression silences the named codes, not the import itself.
+@suppress("SPY0480")
+from System.IO import StringWriter
+
+
+def main():
+    print("ok")

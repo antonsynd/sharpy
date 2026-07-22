@@ -1,0 +1,7 @@
+# #1124: only @suppress is a legal import decorator; any other keeps SPY0105.
+@lru_cache
+from System.IO import StringWriter
+
+
+def main():
+    print("ok")

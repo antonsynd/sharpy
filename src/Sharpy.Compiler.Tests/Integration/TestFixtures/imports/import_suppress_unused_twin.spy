@@ -1,0 +1,6 @@
+# #1124 twin: the same unused import without @suppress still warns SPY0452.
+from System.IO import StringWriter
+
+
+def main():
+    print("ok")

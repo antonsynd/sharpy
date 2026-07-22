@@ -1,0 +1,9 @@
+# #1124: a suppress-decorated import of a USED sibling module must still drive
+# dependency-graph extraction and using-directive generation. `multiply` is unused,
+# so @suppress("SPY0452") silences its warning while `add` remains callable.
+@suppress("SPY0452")
+from helpers import add, multiply
+
+
+def main():
+    print(add(2, 3))

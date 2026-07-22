@@ -1,0 +1,7 @@
+# #1124: @suppress("SPY0452") on an import silences its unused-import warning.
+@suppress("SPY0452")
+from System.IO import StringWriter
+
+
+def main():
+    print("ok")

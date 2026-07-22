@@ -145,6 +145,33 @@ public class OrganizeImportsProviderTests
     }
 
     [Fact]
+    public async Task OrganizeImports_DecoratedImport_LeftInPlace_BlockNotTruncated()
+    {
+        // #1124: a suppress-decorated import is recognized (so the block scan is not truncated) but
+        // pinned at its position and rendered verbatim so its decorator/suppression span survive,
+        // while the surrounding plain imports are still sorted (math before sys).
+        var source = "import sys\n@suppress(\"SPY0452\")\nimport mymodule\nimport math\n\ndef main():\n    print(math.floor(1.5))\n    print(sys.argv)";
+        var provider = new OrganizeImportsProvider();
+
+        var actions = await GetActionsAsync(provider, source);
+
+        actions.Should().ContainSingle();
+        var edits = actions[0].Edit!.Changes![TestUri].ToList();
+        var newText = edits[0].NewText;
+
+        // The decorator and its import are preserved verbatim (not deleted, not stripped).
+        newText.Should().Contain("@suppress(\"SPY0452\")");
+        newText.Should().Contain("import mymodule");
+
+        // The block is not truncated: the plain imports on both sides are still present and sorted.
+        newText.Should().Contain("import math");
+        newText.Should().Contain("import sys");
+        var mathIndex = newText.IndexOf("import math", StringComparison.Ordinal);
+        var sysIndex = newText.IndexOf("import sys", StringComparison.Ordinal);
+        mathIndex.Should().BeLessThan(sysIndex, "plain imports are still sorted around the pinned decorated import");
+    }
+
+    [Fact]
     public async Task OrganizeImports_MixedImportForms_SortedCorrectly()
     {
         // Mix of `import X` and `from X import Y` forms
