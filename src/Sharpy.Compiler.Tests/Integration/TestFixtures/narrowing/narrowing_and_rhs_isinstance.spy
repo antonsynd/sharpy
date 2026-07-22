@@ -1,0 +1,29 @@
+# `and`-RHS narrowing with an isinstance left operand: in `isinstance(a, Dog) and a.bark()`
+# the RHS sees `a` narrowed to Dog, so the emitter must cast the receiver (((Dog)a).Bark()).
+# Before #1081 the emitter's own `and` interpreter recognized only `is not None`, so it emitted
+# an uncast object receiver -> CS1061 (surfaced as SPY0908). Covers both return position and
+# assignment (expression) position.
+class Animal:
+    def __init__(self):
+        pass
+
+class Dog(Animal):
+    def bark(self) -> str:
+        return "woof"
+
+def is_barking_dog(a: Animal) -> bool:
+    return isinstance(a, Dog) and a.bark() == "woof"
+
+def describe(a: Animal) -> str:
+    ok: bool = isinstance(a, Dog) and a.bark() == "woof"
+    if ok:
+        return "barking dog"
+    return "other"
+
+def main() -> None:
+    d: Animal = Dog()
+    a: Animal = Animal()
+    print(is_barking_dog(d))
+    print(is_barking_dog(a))
+    print(describe(d))
+    print(describe(a))
