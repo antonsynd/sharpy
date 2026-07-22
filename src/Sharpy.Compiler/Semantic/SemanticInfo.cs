@@ -47,6 +47,14 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, SemanticType> _narrowedExpressionTypes =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map narrowed read expressions (Identifier / MemberAccess / IndexAccess) to the exact accessor
+    // codegen must apply at that read site (.Unwrap() / .Value / ! / cast). Recorded by the TypeChecker
+    // per read node so the emitter is a dumb applier and never re-derives narrowing flow (#1081,
+    // Critical Rule 2 pattern (b)). Match-arm reads never appear here — they narrow via redefined
+    // symbols, so no accessor is needed.
+    private readonly ConcurrentDictionary<Expression, NarrowedReadLowering> _narrowedReadLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map generic function calls to their inferred type arguments
     // Used by codegen to emit explicit type arguments in generated C#
     private readonly ConcurrentDictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
@@ -264,6 +272,26 @@ public class SemanticInfo : ISemanticQuery
     public SemanticType? GetNarrowedType(Expression expr)
     {
         return _narrowedExpressionTypes.TryGetValue(expr, out var type) ? type : null;
+    }
+
+    /// <summary>
+    /// Records the accessor codegen must apply at a narrowed read site (the Identifier, MemberAccess,
+    /// or IndexAccess node being read). The TypeChecker sets this alongside <see cref="SetNarrowedType"/>
+    /// whenever a narrowing origin implies an accessor; the emitter reads it and applies the accessor
+    /// verbatim (#1081).
+    /// </summary>
+    public void SetNarrowedReadLowering(Expression expr, NarrowedReadLowering lowering)
+    {
+        _narrowedReadLowerings[expr] = lowering;
+    }
+
+    /// <summary>
+    /// Gets the accessor lowering recorded for a narrowed read site, or <c>null</c> when the read needs
+    /// no accessor (e.g. a match-arm binding, or an unnarrowed read).
+    /// </summary>
+    public NarrowedReadLowering? GetNarrowedReadLowering(Expression expr)
+    {
+        return _narrowedReadLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
     }
 
     /// <summary>
@@ -682,6 +710,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._narrowedExpressionTypes)
             _narrowedExpressionTypes.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._narrowedReadLowerings)
+            _narrowedReadLowerings.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._inferredTypeArguments)
             _inferredTypeArguments.TryAdd(kvp.Key, kvp.Value);
 
@@ -850,6 +881,38 @@ public enum ContextManagerKind
     /// <summary>Implements __aenter__/__aexit__ async dunder protocol — emit AenterAsync()/AexitAsync() calls.</summary>
     AsyncDunderProtocol
 }
+
+/// <summary>
+/// The accessor codegen applies when reading a narrowed value at a specific read site. Each kind maps
+/// to one emitter transformation, so the emitter switches on the tag alone and never re-derives
+/// narrowing flow (#1081, Critical Rule 2 pattern (b)).
+/// </summary>
+public enum NarrowedReadKind
+{
+    /// <summary>Sharpy <c>T?</c> (<see cref="OptionalType"/>) narrowed to <c>T</c> — emit <c>.Unwrap()</c>.</summary>
+    UnwrapOptional,
+
+    /// <summary>Value-type <c>T | None</c> (<see cref="NullableType"/> <c>{IsValueType: true}</c>) — emit <c>.Value</c>.</summary>
+    NullableValue,
+
+    /// <summary>Reference-type <c>T | None</c> (<see cref="NullableType"/>) — emit the null-forgiving <c>!</c>.</summary>
+    NullForgiving,
+
+    /// <summary>isinstance narrowing — emit a parenthesized cast to <see cref="NarrowedReadLowering.CastTarget"/>.</summary>
+    Cast
+}
+
+/// <summary>
+/// The exact accessor codegen must apply at a narrowed read site, materialized per read node by the
+/// TypeChecker (#1081). Node-keyed <see cref="SemanticInfo"/> record (Critical Rule 2 pattern (b)); the
+/// emitter looks it up and applies the accessor without re-deriving narrowing origins.
+/// </summary>
+/// <param name="Kind">Which accessor to apply.</param>
+/// <param name="CastTarget">
+/// The target type for a <see cref="NarrowedReadKind.Cast"/> lowering (the emitter maps it to syntax and
+/// routes builtin collections through the non-generic-interface rule, #912); <c>null</c> for all other kinds.
+/// </param>
+public sealed record NarrowedReadLowering(NarrowedReadKind Kind, SemanticType? CastTarget = null);
 
 /// <summary>
 /// Represents a narrowing decision for a conditional statement.

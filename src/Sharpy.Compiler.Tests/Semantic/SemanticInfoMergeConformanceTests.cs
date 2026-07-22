@@ -86,6 +86,27 @@ public class SemanticInfoMergeConformanceTests
     }
 
     /// <summary>
+    /// A narrowed-read lowering recorded on one SemanticInfo must survive
+    /// <see cref="SemanticInfo.MergeFrom"/> into another. Codegen reads narrowing accessors from the
+    /// merged project-level SemanticInfo; if <c>_narrowedReadLowerings</c> were absent from
+    /// <c>MergeFrom</c>, narrowed reads in imported modules would silently emit no accessor (#1081).
+    /// </summary>
+    [Fact]
+    public void MergeFrom_CarriesNarrowedReadLowerings()
+    {
+        var perFile = new SemanticInfo();
+        var readNode = new Identifier { Name = "x" };
+        perFile.SetNarrowedReadLowering(readNode, new NarrowedReadLowering(NarrowedReadKind.UnwrapOptional));
+
+        var project = new SemanticInfo();
+        project.MergeFrom(perFile);
+
+        var merged = project.GetNarrowedReadLowering(readNode);
+        merged.Should().NotBeNull("the narrowed-read lowering must survive the per-file → project merge");
+        merged!.Kind.Should().Be(NarrowedReadKind.UnwrapOptional);
+    }
+
+    /// <summary>
     /// Collects the names of private dictionary/set side-table fields declared in SemanticInfo.
     /// Matches <c>ConcurrentDictionary</c>/<c>Dictionary</c>/<c>HashSet</c> declarations (the field
     /// identifier follows the closing generic bracket on the same line).
