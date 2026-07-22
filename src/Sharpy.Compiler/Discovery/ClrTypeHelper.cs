@@ -134,6 +134,49 @@ internal static class ClrTypeHelper
         return result;
     }
 
+    // Caches (CLR type, Sharpy member name, arity) -> whether an overridable member matches.
+    private static readonly ConcurrentDictionary<(Type, string, int), bool> _overridableMemberCache = new();
+
+    /// <summary>
+    /// Returns true when <paramref name="clrType"/> exposes an abstract or virtual (non-sealed)
+    /// instance method whose reverse-mangled Sharpy name equals <paramref name="sharpyMethodName"/>
+    /// and whose parameter count equals <paramref name="arity"/> (#1122). Used by the TypeChecker to
+    /// decide whether a <c>.spy</c> method overrides a CLR-base member for directly-imported base
+    /// classes (e.g. <c>SourceGenerator</c>) whose members are not eagerly discovered into the
+    /// bridged <see cref="TypeSymbol"/>. Reflection lives here (Discovery), never in the emitter
+    /// (#974); the decision is materialized onto <c>CodeGenInfo</c> for code generation to read.
+    /// Members declared on <see cref="object"/> are excluded — those (ToString/Equals/GetHashCode)
+    /// are handled by the dunder-override path.
+    /// </summary>
+    internal static bool HasOverridableClrMember(Type clrType, string sharpyMethodName, int arity)
+    {
+        var key = (clrType, sharpyMethodName, arity);
+        if (_overridableMemberCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var result = false;
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+        foreach (var method in clrType.GetMethods(flags))
+        {
+            // object.ToString/Equals/GetHashCode are handled by the dunder-override path.
+            if (method.DeclaringType == typeof(object))
+                continue;
+            // Overridable only when abstract or virtual (IsVirtual covers both) and not sealed.
+            if (!method.IsVirtual || method.IsFinal)
+                continue;
+            if (method.GetParameters().Length != arity)
+                continue;
+            if (NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method) == sharpyMethodName)
+            {
+                result = true;
+                break;
+            }
+        }
+
+        _overridableMemberCache[key] = result;
+        return result;
+    }
+
     internal static Type? TryConstructClosedGeneric(GenericType generic, Func<SemanticType, Type?> resolveClrType)
     {
         var openDef = generic.GenericDefinition?.ClrType;

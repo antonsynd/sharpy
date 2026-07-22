@@ -291,6 +291,9 @@ internal partial class TypeChecker
         // Mark memoization decorator metadata (@lru_cache, @cache)
         ProcessCacheMetadata(functionDef, functionSymbol);
 
+        // Detect an override of a CLR-backed base member (#1122) so codegen emits `override`.
+        ProcessClrOverrideMetadata(functionDef);
+
         // Restore previous method context
         _currentMethodName = previousMethodName;
         _currentMethodIsOverride = previousMethodIsOverride;
@@ -832,6 +835,62 @@ internal partial class TypeChecker
 
         currentSymbol.IsCached = true;
         currentSymbol.CacheMaxSize = maxSize;
+    }
+
+    /// <summary>
+    /// Detects whether an instance method overrides an abstract/virtual member of a CLR-backed
+    /// base type (#1122) and records the fact in <see cref="SemanticBinding"/> so code generation
+    /// emits the <c>override</c> modifier. Detection is Pythonic — no <c>@override</c> decorator is
+    /// required; for a CLR-abstract member an override is the only legal meaning, and for a
+    /// CLR-virtual member Python same-name semantics (Axiom 2) mean the method overrides.
+    /// </summary>
+    /// <remarks>
+    /// Scope guard (D2): fires only for class instance methods whose base chain contains a
+    /// CLR-backed type, and only when the matched base member is declared by that CLR base
+    /// (<see cref="TypeSymbol.ClrType"/> != null, or the bridged member carries
+    /// <see cref="FunctionSymbol.ClrMethodName"/>). Pure-Sharpy hierarchies keep today's
+    /// decorator-driven override behavior. Matching is conservative: instance methods only
+    /// (not static, not <c>__init__</c>), by Sharpy-facing name plus parameter arity (excluding
+    /// the implicit <c>self</c>/<c>cls</c> receiver), and the base member must be abstract or
+    /// virtual. Sealed base members are not tracked on bridged symbols (only IsVirtual/IsAbstract
+    /// are), so a rare override of a sealed CLR member relies on the C# compiler to reject it.
+    /// </remarks>
+    private void ProcessClrOverrideMetadata(FunctionDef functionDef)
+    {
+        // Class instance methods only (not module-level/nested functions, structs, or interfaces).
+        if (_currentClass is not { TypeKind: TypeKind.Class })
+            return;
+
+        // Re-look up the post-update method symbol from the class Methods list (the reference
+        // passed into CheckFunction is stale after UpdateFunctionSymbol's `with` replacement),
+        // mirroring ProcessGeneratorMetadata/ProcessAsyncMetadata/ProcessCacheMetadata.
+        var currentSymbol = _currentClass.Methods.FirstOrDefault(m =>
+            m.Name == functionDef.Name && m.DeclarationLine == functionDef.LineStart);
+        if (currentSymbol == null)
+            return;
+
+        bool isStatic = functionDef.Decorators.Any(d => d.Name == DecoratorNames.Static)
+            || functionDef.Parameters.Length == 0
+            || functionDef.Parameters[0].Name != PythonNames.Self;
+
+        // Sharpy-facing arity, excluding the implicit self/cls receiver. Bridged CLR instance
+        // methods carry no self parameter, so this matches their parameter count directly.
+        int arity = functionDef.Parameters.Count(p =>
+            p.Name != PythonNames.Self && p.Name != PythonNames.Cls);
+
+        var baseTypes = TypeHierarchyService.GetAllBaseTypes(_currentClass, SemanticBinding);
+
+        if (ClrBaseOverrideDetector.ShouldEmitClrOverride(
+                currentSymbol.Name,
+                isStatic,
+                isInitConstructor: functionDef.Name == DunderNames.Init,
+                isAlreadyOverride: currentSymbol.IsOverride,
+                arity,
+                baseTypes,
+                clrMemberProbe: Discovery.ClrTypeHelper.HasOverridableClrMember))
+        {
+            SemanticBinding.MarkOverridesClrBaseMember(currentSymbol);
+        }
     }
 
     /// <summary>

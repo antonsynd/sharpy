@@ -51,6 +51,12 @@ public class SemanticBinding
     private readonly ConcurrentDictionary<Symbol, CodeGenInfo> _codeGenInfo =
         new(ReferenceEqualityComparer.Instance);
 
+    // Method symbols that override an abstract/virtual member of a CLR-backed base type (#1122).
+    // Written by TypeChecker during type checking; bridged onto CodeGenInfo.OverridesClrBaseMember
+    // at MaterializeCodeGenInfo. Symbol-keyed (Rule 2a) with reference equality.
+    private readonly ConcurrentDictionary<Symbol, bool> _clrBaseOverrides =
+        new(ReferenceEqualityComparer.Instance);
+
     // Maps variable symbols to their resolved types
     private readonly ConcurrentDictionary<VariableSymbol, SemanticType> _variableTypes =
         new(ReferenceEqualityComparer.Instance);
@@ -167,6 +173,27 @@ public class SemanticBinding
     /// </summary>
     public bool RemoveCodeGenInfo(Symbol symbol)
         => _codeGenInfo.TryRemove(symbol, out _);
+
+    /// <summary>
+    /// Marks a method symbol as overriding an abstract/virtual member of a CLR-backed base
+    /// type (#1122). The fact is bridged onto <see cref="CodeGenInfo.OverridesClrBaseMember"/>
+    /// at <see cref="MaterializeCodeGenInfo"/> so code generation emits the <c>override</c>
+    /// modifier from a frozen fact.
+    /// </summary>
+    public void MarkOverridesClrBaseMember(Symbol symbol)
+    {
+        if (_codeGenInfoFrozen)
+        {
+            AssertNotFrozen("CodeGenInfo", symbol.Name);
+        }
+        _clrBaseOverrides[symbol] = true;
+    }
+
+    /// <summary>
+    /// Whether a method symbol was marked as overriding a CLR-backed base member.
+    /// </summary>
+    public bool OverridesClrBaseMember(Symbol symbol)
+        => _clrBaseOverrides.ContainsKey(symbol);
 
     #endregion
 
@@ -289,12 +316,19 @@ public class SemanticBinding
     {
         foreach (var (symbol, info) in _codeGenInfo)
         {
+            var effective = info;
+
             // Preserve the original CLR method name on the CodeGenInfo so code
             // generation can emit it verbatim (avoids name-mangling acronym loss).
-            if (symbol is FunctionSymbol { ClrMethodName: { } clrName } && info.ClrMethodName is null)
-                symbol.CodeGenInfo = info with { ClrMethodName = clrName };
-            else
-                symbol.CodeGenInfo = info;
+            if (symbol is FunctionSymbol { ClrMethodName: { } clrName } && effective.ClrMethodName is null)
+                effective = effective with { ClrMethodName = clrName };
+
+            // Bridge the CLR-base-override fact (#1122) so code generation emits `override`
+            // from a frozen fact without re-deriving the base-member match.
+            if (_clrBaseOverrides.ContainsKey(symbol) && !effective.OverridesClrBaseMember)
+                effective = effective with { OverridesClrBaseMember = true };
+
+            symbol.CodeGenInfo = effective;
         }
     }
 
@@ -310,6 +344,11 @@ public class SemanticBinding
     {
         foreach (var (symbol, info) in other._codeGenInfo)
             _codeGenInfo.TryAdd(symbol, info);
+
+        // CLR-base-override marks are consumed at MaterializeCodeGenInfo, which runs on the
+        // project-level binding after this merge — so per-file marks must carry across (#1122).
+        foreach (var (symbol, _) in other._clrBaseOverrides)
+            _clrBaseOverrides.TryAdd(symbol, true);
 
         foreach (var (symbol, type) in other._variableTypes)
             _variableTypes.TryAdd(symbol, type);

@@ -68,6 +68,15 @@ public sealed record CodeGenInfo
     /// </summary>
     public string? ClrMethodName { get; init; }
 
+    /// <summary>
+    /// True when this method (in a class whose base chain contains a CLR-backed type)
+    /// overrides an abstract/virtual member of that CLR base (#1122). Detected in semantic
+    /// analysis (<see cref="TypeChecker"/>) and frozen here at <c>MaterializeCodeGenInfo</c>;
+    /// code generation emits the <c>override</c> modifier from this frozen fact without any
+    /// reflection or re-derivation. Pure-Sharpy hierarchies keep decorator-driven override.
+    /// </summary>
+    public bool OverridesClrBaseMember { get; init; }
+
     // ============================================================
     // FUTURE EXTENSIBILITY (for v0.2.x+)
     // These fields are reserved for future features. They are
