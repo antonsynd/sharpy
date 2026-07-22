@@ -117,97 +117,96 @@ internal partial class RoslynEmitter
             // Statements before the call are emitted as regular constructor body.
         }
 
-        // Generate constructor body
-        // In Python __init__, assignments like self.name = name set instance fields
-        // In C#, these become this.Name = name in the constructor body
-        var bodyStatements = new List<StatementSyntax>();
-
-        for (int i = bodyStartIndex; i < func.Body.Length; i++)
+        // Generate constructor body.
+        // In Python __init__, assignments like self.name = name set instance fields;
+        // in C# these become this.Name = name in the constructor body.
+        //
+        // The body is routed through GenerateSuite so a `defer` in the constructor wraps the
+        // remainder of the body in try/finally (#1065). The per-statement special-casing
+        // (self.field → this.Field mapping, collection-literal target-type context,
+        // Optional-delegate conversion) is threaded in as the suite's statement generator so it
+        // survives the defer split.
+        List<StatementSyntax> GenerateConstructorBodyStatement(Statement stmt)
         {
-            // Skip the initializer call — it was already converted to : base(...) or : this(...)
-            if (i == initializerCallIndex)
-                continue;
-
-            var stmt = func.Body[i];
-
             // @suppress wrapper (#1024): decorators are compile-time-only; the inner
             // statement must still get the constructor's field-assignment conversion.
             if (stmt is DecoratedStatement decorated)
                 stmt = decorated.Statement;
 
             // Convert self.field = value to this.Field = value (capitalized)
-            if (stmt is Assignment assign)
+            if (stmt is Assignment assign &&
+                assign.Target is MemberAccess memberAccess &&
+                memberAccess.Object is Identifier id &&
+                string.Equals(id.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             {
-                // Check if this is a self.field assignment
-                if (assign.Target is MemberAccess memberAccess &&
-                    memberAccess.Object is Identifier id &&
-                    string.Equals(id.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                // Look up the field name from the field mapping to ensure consistency
+                // For fields not in mapping (inherited fields), use PascalCase to match
+                // the convention used by GenerateField
+                string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
+                    ? mappedFieldName
+                    : NameCasing.ResolveField(memberAccess.Member, false);
+
+                // Generate: this.Field = value;
+                var thisAccess = MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ThisExpression(),
+                    EscapedIdentifierName(fieldName));
+
+                // For the right-hand side, check if it's an identifier that matches a parameter
+                ExpressionSyntax assignValue;
+                if (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
                 {
-                    // Look up the field name from the field mapping to ensure consistency
-                    // For fields not in mapping (inherited fields), use PascalCase to match
-                    // the convention used by GenerateField
-                    string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
-                        ? mappedFieldName
-                        : NameCasing.ResolveField(memberAccess.Member, false);
-
-                    // Generate: this.Field = value;
-                    var thisAccess = MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        ThisExpression(),
-                        EscapedIdentifierName(fieldName));
-
-                    // For the right-hand side, check if it's an identifier that matches a parameter
-                    ExpressionSyntax assignValue;
-                    if (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
-                    {
-                        assignValue = EscapedIdentifierName(mappedName);
-                    }
-                    else
-                    {
-                        // Set target type context for collection literal inference (e.g., self.items = [])
-                        var previousTargetType = _targetTypeContext;
-                        var hasFieldType = fieldTypeMapping.TryGetValue(memberAccess.Member, out var fieldType);
-                        if (hasFieldType)
-                        {
-                            _targetTypeContext = fieldType;
-                        }
-                        try
-                        {
-                            // `self.field = None` for an Optional<T> field → Optional<T>.None.
-                            assignValue = (hasFieldType
-                                    ? GenerateInitializerValue(assign.Value, fieldType)
-                                    : null)
-                                ?? GenerateExpression(assign.Value);
-                        }
-                        finally
-                        {
-                            _targetTypeContext = previousTargetType;
-                        }
-
-                        // Method group → Optional<delegate> field needs an explicit delegate cast
-                        assignValue = ApplyOptionalDelegateConversion(
-                            assign.Value, assignValue, GetExpressionSemanticType(assign.Target));
-                    }
-
-                    var selfAssign = ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            thisAccess,
-                            assignValue));
-                    bodyStatements.Add(AttachLineDirective(selfAssign, stmt));
+                    assignValue = EscapedIdentifierName(mappedName);
                 }
                 else
                 {
-                    // Other assignments, generate normally
-                    bodyStatements.AddRange(GenerateBodyStatements(stmt));
+                    // Set target type context for collection literal inference (e.g., self.items = [])
+                    var previousTargetType = _targetTypeContext;
+                    var hasFieldType = fieldTypeMapping.TryGetValue(memberAccess.Member, out var fieldType);
+                    if (hasFieldType)
+                    {
+                        _targetTypeContext = fieldType;
+                    }
+                    try
+                    {
+                        // `self.field = None` for an Optional<T> field → Optional<T>.None.
+                        assignValue = (hasFieldType
+                                ? GenerateInitializerValue(assign.Value, fieldType)
+                                : null)
+                            ?? GenerateExpression(assign.Value);
+                    }
+                    finally
+                    {
+                        _targetTypeContext = previousTargetType;
+                    }
+
+                    // Method group → Optional<delegate> field needs an explicit delegate cast
+                    assignValue = ApplyOptionalDelegateConversion(
+                        assign.Value, assignValue, GetExpressionSemanticType(assign.Target));
                 }
+
+                var selfAssign = ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        thisAccess,
+                        assignValue));
+                return new List<StatementSyntax> { AttachLineDirective(selfAssign, stmt) };
             }
-            else
-            {
-                // Other statements, generate normally
-                bodyStatements.AddRange(GenerateBodyStatements(stmt));
-            }
+
+            // Other statements, generate normally
+            return GenerateBodyStatements(stmt);
         }
+
+        var constructorBody = new List<Statement>();
+        for (int i = bodyStartIndex; i < func.Body.Length; i++)
+        {
+            // Skip the initializer call — it was already converted to : base(...) or : this(...)
+            if (i == initializerCallIndex)
+                continue;
+            constructorBody.Add(func.Body[i]);
+        }
+
+        var bodyStatements = GenerateSuite(constructorBody, GenerateConstructorBodyStatement);
 
         var body = AttachLineDirectiveToBlock(Block(bodyStatements), func.LineStart);
 
