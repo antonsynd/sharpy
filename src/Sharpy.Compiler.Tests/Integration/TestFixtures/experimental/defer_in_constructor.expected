@@ -1,0 +1,9 @@
+ctor body start
+ctor body end
+cleanup b (runs first)
+cleanup a (runs last)
+---
+ctor body start
+cleanup b (runs first)
+cleanup a (runs last)
+caught in main

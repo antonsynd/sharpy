@@ -1,0 +1,16 @@
+@test.fixture
+def resource() -> str:
+    defer print("cleanup a (runs last)")
+    defer print("cleanup b (runs first)")
+    print("setup")
+    yield "the-resource"
+    print("teardown")
+
+
+@test
+def test_uses_resource(resource: str):
+    assert resource == "the-resource"
+
+
+def main() -> None:
+    print("ok")

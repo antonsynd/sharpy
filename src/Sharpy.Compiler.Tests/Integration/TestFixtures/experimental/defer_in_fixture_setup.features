@@ -1,0 +1,2 @@
+# Enables the experimental `defer` scope-exit statement (fixture setup-suite wrapping).
+defer

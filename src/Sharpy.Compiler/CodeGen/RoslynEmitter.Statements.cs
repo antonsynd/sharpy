@@ -166,11 +166,11 @@ internal partial class RoslynEmitter
             ForStatement forStmt => GenerateFor(forStmt),
             TryStatement tryStmt => GenerateTry(tryStmt),
             WithStatement withStmt => GenerateWith(withStmt),
-            // A defer normally wraps the remainder of its suite (handled in GenerateSuite). If one
-            // reaches here it is being emitted from a per-statement loop that does not thread the
-            // suite (e.g. constructor bodies): emit try {} finally { body } so the deferred body
-            // still runs, though without wrapping later statements. TODO(#1065): thread defer
-            // through constructor/test-fixture body emission for full remainder-wrapping semantics.
+            // A defer normally wraps the remainder of its suite (handled in GenerateSuite, which
+            // every block-emitting call site now routes through — constructor and test-fixture
+            // bodies included, #1065). This defensive arm handles a defer reaching the per-statement
+            // dispatcher directly: emit try {} finally { body } so the deferred body still runs, even
+            // though there is no enclosing suite here to wrap later statements into.
             DeferStatement deferStmt => GenerateScopeGuard(deferStmt, new[] { (Statement)deferStmt }, 0),
             MatchStatement matchStmt => GenerateMatch(matchStmt),
             FunctionDef funcDef => GenerateLocalFunction(funcDef),

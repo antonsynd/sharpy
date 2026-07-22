@@ -1,0 +1,2 @@
+# Without a `.features` sidecar enabling `defer`, a `defer` in a constructor is gated (SPY0331).
+the 'defer' statement requires experimental feature 'defer'

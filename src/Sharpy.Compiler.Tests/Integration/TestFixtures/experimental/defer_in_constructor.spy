@@ -1,0 +1,17 @@
+class Resource:
+    def __init__(self, fail: bool) -> None:
+        defer print("cleanup a (runs last)")
+        defer print("cleanup b (runs first)")
+        print("ctor body start")
+        if fail:
+            raise ValueError("boom")
+        print("ctor body end")
+
+
+def main() -> None:
+    Resource(False)
+    print("---")
+    try:
+        Resource(True)
+    except ValueError as e:
+        print("caught in main")
