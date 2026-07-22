@@ -242,48 +242,62 @@ internal partial class RoslynEmitter
         var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false);
         ExpressionSyntax expr = EscapedIdentifierName(mangledName);
 
-        // If this variable has been narrowed from Optional<T>/Nullable<T> to T,
-        // emit .Unwrap() for Optional, .Value for value-type Nullable, or ! for reference-type Nullable
-        if (_narrowing.IsNarrowed(name.Name))
+        // Apply the narrowed-read accessor the TypeChecker recorded for this identifier node, if any
+        // (Optional → .Unwrap(), value-nullable → .Value, reference-nullable → !, isinstance → cast).
+        return ApplyNarrowedReadLowering(name, expr);
+    }
+
+    /// <summary>
+    /// Applies the narrowed-read accessor the TypeChecker materialized for <paramref name="node"/>
+    /// (#1081). The emitter is a pure applier here: it switches on the recorded
+    /// <see cref="NarrowedReadKind"/> and never re-derives narrowing flow. Returns
+    /// <paramref name="expr"/> unchanged when the node carries no lowering — unnarrowed reads and
+    /// match-arm bindings (whose C# pattern binding already carries the narrowed type).
+    /// </summary>
+    private ExpressionSyntax ApplyNarrowedReadLowering(Expression node, ExpressionSyntax expr)
+    {
+        var lowering = _context.SemanticInfo?.GetNarrowedReadLowering(node);
+        if (lowering == null)
+            return expr;
+
+        switch (lowering.Kind)
         {
-            if (_narrowing.IsNullableNarrowed(name.Name))
-            {
+            case NarrowedReadKind.NullableValue:
                 // Value-type nullable (int?, bool?, etc.) → .Value
-                expr = MemberAccessExpression(
+                return MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
                     expr,
                     IdentifierName("Value"));
-            }
-            else if (_narrowing.IsReferenceNullableNarrowed(name.Name))
-            {
+
+            case NarrowedReadKind.NullForgiving:
                 // Reference-type nullable (string?, MyClass?, etc.) → !
                 // C# only auto-narrows locals after null checks, not fields.
-                expr = PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression, expr);
-            }
-            else
-            {
+                return PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression, expr);
+
+            case NarrowedReadKind.UnwrapOptional:
                 // Optional<T> → .Unwrap()
-                expr = InvocationExpression(
+                return InvocationExpression(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         expr,
                         IdentifierName(ProtocolConstants.Unwrap)))
                     .WithArgumentList(ArgumentList());
-            }
-        }
 
-        // If this variable has been narrowed by isinstance(), wrap with cast
-        // Wraps in parentheses: ((Dog)animal) so member access works: ((Dog)animal).Breed
-        if (_narrowing.IsInstanceNarrowed(name.Name))
-        {
-            var narrowedType = _narrowing.GetIsInstanceNarrowedType(name.Name)!;
-            expr = ParenthesizedExpression(
-                CastExpression(
-                    ParseQualifiedTypeName(narrowedType),
-                    expr));
-        }
+            case NarrowedReadKind.Cast:
+                {
+                    // isinstance narrowing → parenthesized cast ((Dog)animal) so member access works.
+                    // Builtin collections narrow to the non-generic Sharpy.IList/IDict/ISet protocol
+                    // interface (#912) so the cast against an object receiver succeeds at runtime.
+                    var castType = lowering.CastTarget is GenericType generic
+                        && TryMapBuiltinCollectionToNonGenericInterface(generic.Name) is { } nonGenericInterface
+                            ? nonGenericInterface
+                            : _typeMapper.MapSemanticType(lowering.CastTarget!);
+                    return ParenthesizedExpression(CastExpression(castType, expr));
+                }
 
-        return expr;
+            default:
+                return expr;
+        }
     }
 
     private ExpressionSyntax GenerateIntegerLiteral(IntegerLiteral literal)
