@@ -120,6 +120,25 @@ huge: float = 1e100
 n = huge to int?                 # None: out of int range
 ```
 
+### Edge-case semantics of the safe numeric form
+
+For the safe form (`value to T?` / `value as? T`) with a concrete numeric source, the boundary
+cases are defined as follows:
+
+| Case | Result |
+|------|--------|
+| In-range float → `int`/`long` | `Some(truncated)` — truncation is toward zero, so `3.9 to int?` is `Some(3)` and `-3.9 to int?` is `Some(-3)` (matching Python's `int(x)`) |
+| Out-of-range float → `int`/`long` | `None` |
+| `NaN` → `int`/`long` | `None` — `NaN` is not an integer, so a safe cast to any integral target yields `None` (the throwing form raises) |
+| `±inf` → `int`/`long` | `None` |
+| Integer → `float32`/`float` | Always `Some` — precision may be lost for large integers (as in Python's `float(big_int)`), but overflow is impossible because the floating range exceeds the integer range |
+| `float` (64-bit) → `float32` | **Always `Some`** — a value outside `float32`'s finite range maps to `±inf`, and `NaN` is preserved; both are representable in `float32`, so IEEE semantics apply and there is no `None` case |
+
+The narrowing checks compare the source value against the target's representable range *before*
+truncating, so no cast ever overflows. (The exact boundary predicates live in
+`Sharpy.NumericSafeCast`; note that `long.MaxValue` is not exactly representable as a `double`, so the
+upper `long` guard is a strict `< 2^63` rather than `<= long.MaxValue`.)
+
 ## Relationship to Conversion Functions
 
 The built-in conversion functions (`int()`, `str()`, `float()`, etc.) remain available and are equivalent to the throwing form of `to` for their respective types:
