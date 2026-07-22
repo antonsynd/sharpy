@@ -19,19 +19,80 @@ if isinstance(obj, str):
     print(obj.upper())
 ```
 
-Type narrowing does not occur with `or` as type union semantics do not exist in Sharpy:
+The **body** of a branch guarded by `or` is not narrowed, because the operands can imply different
+types and there is no single narrowed type that holds:
 
 ```python
 if isinstance(x, int) or isinstance(x, str):
-    # x is not narrowed
+    # x is NOT narrowed here — it could be int or str
 ```
+
+(This is distinct from *expression-level* `or`-RHS narrowing, described below, which narrows the
+**right operand** of an `or` from the left operand's negation.)
 
 ## Narrowing Rules
 
 - `is not None` narrows nullable type (`T?`) to non-nullable (`T`)
 - `is None` narrows the variable to `T` (non-optional) in the **else** branch
 - `isinstance(x, Type)` narrows `x` to `Type` in the `if` branch
+- Narrowing forms compose through `not`, `and`, and parentheses; `== None` is rejected — use
+  `is None` (see [#1079])
 - Narrowing only affects the scope of the conditional block
 
+## Expression-level narrowing
+
+Narrowing is not limited to statement branches — it also applies within expressions whose evaluation
+order makes a narrowing fact hold for a sub-expression (#1080). The same narrowing forms
+(`is None` / `is not None` / `isinstance`, and their `not`/`and`/`or` compositions) are used.
+
+### Conditional expressions (ternary)
+
+In `A if cond else B`, the condition's **positive** narrowings apply inside `A` (evaluated only when
+`cond` is true) and its **negative** narrowings apply inside `B` (evaluated only when `cond` is false):
+
+```python
+def describe(x: int?) -> int:
+    # In the true arm, `x` is narrowed from int? to int; in the false arm it stays int?.
+    return x + 1 if x is not None else 0
+
+def label(a: object) -> str:
+    # `a` is narrowed to Dog inside the true arm.
+    return a.bark() if isinstance(a, Dog) else "unknown"
+```
+
+Narrowing does not leak past the arm: a use of `x` after the conditional expression sees the
+original (un-narrowed) type.
+
+### `and` — right operand
+
+The right operand of `and` sees the left operand's **positive** narrowings, because the right operand
+is evaluated only when the left is truthy:
+
+```python
+def is_positive(x: int?) -> bool:
+    # `x` is narrowed to int on the right of `and`, so `x > 0` type-checks.
+    return x is not None and x > 0
+
+def can_bark(a: object) -> bool:
+    # `a` is narrowed to Dog on the right of `and`.
+    return isinstance(a, Dog) and a.can_bark()
+```
+
+### `or` — right operand
+
+The right operand of `or` sees the left operand's **negative** narrowings, because the right operand
+is evaluated only when the left is falsy:
+
+```python
+def value_or_default(x: int?) -> int:
+    # If the left `x is None` is false, `x` is not None on the right, so `x + 1` type-checks.
+    return x is None or use(x + 1)
+```
+
+As with ternary arms, expression-level narrowing does not leak past the operand it applies to.
+
 *Implementation*
-- *✅ Native - C# supports flow analysis for nullable types.*
+- *✅ Native — C# supports flow analysis for nullable types; expression-level narrowing (ternary
+  arms, `and`/`or` right operands) is applied by the Sharpy type checker (#1080).*
+
+[#1079]: https://github.com/antonsynd/sharpy/issues/1079
