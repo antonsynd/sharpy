@@ -108,6 +108,48 @@ def f(x: int?) -> bool:
     }
 
     [Fact]
+    public void OrRhsNarrowing_RecordsLoweringOnRightOperandRead()
+    {
+        var (module, info) = Analyze(@"
+def f(x: int?) -> bool:
+    return x is None or x > 0
+");
+
+        var reads = ReadsWithLowering(module, info);
+        reads.Should().ContainSingle("only the RHS read of x sees the left operand's negative narrowing");
+        reads[0].Node.Should().BeOfType<Identifier>();
+        reads[0].Lowering.Kind.Should().Be(NarrowedReadKind.UnwrapOptional);
+    }
+
+    [Fact]
+    public void TernaryThenArm_RecordsLoweringFromPositiveCondition()
+    {
+        var (module, info) = Analyze(@"
+def f(x: int?) -> int:
+    return x + 1 if x is not None else 0
+");
+
+        var reads = ReadsWithLowering(module, info);
+        reads.Should().ContainSingle("only the then-arm read of x is narrowed by the condition");
+        reads[0].Node.Should().BeOfType<Identifier>();
+        reads[0].Lowering.Kind.Should().Be(NarrowedReadKind.UnwrapOptional);
+    }
+
+    [Fact]
+    public void TernaryElseArm_RecordsLoweringFromNegativeCondition()
+    {
+        var (module, info) = Analyze(@"
+def f(x: int | None) -> int:
+    return 0 if x is None else x + 1
+");
+
+        var reads = ReadsWithLowering(module, info);
+        reads.Should().ContainSingle("only the else-arm read of x is narrowed by the negated condition");
+        reads[0].Node.Should().BeOfType<Identifier>();
+        reads[0].Lowering.Kind.Should().Be(NarrowedReadKind.NullableValue);
+    }
+
+    [Fact]
     public void IndexAccessNarrowing_RecordsLoweringOnIndexNode()
     {
         var (module, info) = Analyze(@"
