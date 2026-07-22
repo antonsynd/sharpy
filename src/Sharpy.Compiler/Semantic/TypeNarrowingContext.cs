@@ -1,6 +1,25 @@
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
+/// A single expression-level narrowing: the narrowed type plus the optional accessor codegen must
+/// apply when reading the narrowed value. The lowering is <c>null</c> for narrowing forms that need
+/// no accessor (e.g. match-arm scope guards), and non-null for <c>and</c>-RHS / ternary-arm entries
+/// where the read site must emit <c>.Unwrap()</c>/<c>.Value</c>/<c>!</c>/a cast (#1081).
+/// </summary>
+public readonly struct NarrowingEntry
+{
+    public NarrowingEntry(SemanticType type, NarrowedReadLowering? lowering = null)
+    {
+        Type = type;
+        Lowering = lowering;
+    }
+
+    public SemanticType Type { get; }
+
+    public NarrowedReadLowering? Lowering { get; }
+}
+
+/// <summary>
 /// Manages type narrowing within conditional contexts using a stack-based scope model.
 /// Type narrowing occurs when control flow analysis determines a more specific type
 /// for a variable (e.g., after <c>if x is not None:</c>, the type of <c>x</c> narrows
@@ -21,14 +40,14 @@ namespace Sharpy.Compiler.Semantic;
 /// </remarks>
 public sealed class TypeNarrowingContext
 {
-    private readonly Stack<Dictionary<string, SemanticType>> _scopeStack = new();
+    private readonly Stack<Dictionary<string, NarrowingEntry>> _scopeStack = new();
 
     /// <summary>
     /// Creates a new TypeNarrowingContext with an initial root scope.
     /// </summary>
     public TypeNarrowingContext()
     {
-        _scopeStack.Push(new Dictionary<string, SemanticType>());
+        _scopeStack.Push(new Dictionary<string, NarrowingEntry>());
     }
 
     /// <summary>
@@ -53,7 +72,7 @@ public sealed class TypeNarrowingContext
     /// </example>
     public IDisposable EnterScope()
     {
-        _scopeStack.Push(new Dictionary<string, SemanticType>());
+        _scopeStack.Push(new Dictionary<string, NarrowingEntry>());
         return new ScopeDisposer(this);
     }
 
@@ -84,7 +103,7 @@ public sealed class TypeNarrowingContext
         // Save the current stack and create a fresh isolated context
         var savedStack = _scopeStack.ToArray();
         _scopeStack.Clear();
-        _scopeStack.Push(new Dictionary<string, SemanticType>());
+        _scopeStack.Push(new Dictionary<string, NarrowingEntry>());
         return new IsolatedScopeDisposer(this, savedStack);
     }
 
@@ -94,12 +113,16 @@ public sealed class TypeNarrowingContext
     /// </summary>
     /// <param name="name">The variable name (or narrowing key for subscript expressions).</param>
     /// <param name="type">The narrowed type.</param>
-    public void Narrow(string name, SemanticType type)
+    /// <param name="lowering">
+    /// The accessor codegen must apply when reading this narrowed value, or <c>null</c> when no
+    /// accessor is needed (#1081).
+    /// </param>
+    public void Narrow(string name, SemanticType type, NarrowedReadLowering? lowering = null)
     {
         if (_scopeStack.Count == 0)
             throw new InvalidOperationException("Cannot narrow without an active scope.");
 
-        _scopeStack.Peek()[name] = type;
+        _scopeStack.Peek()[name] = new NarrowingEntry(type, lowering);
     }
 
     /// <summary>
@@ -113,8 +136,8 @@ public sealed class TypeNarrowingContext
         // Search from innermost to outermost scope
         foreach (var scope in _scopeStack)
         {
-            if (scope.TryGetValue(name, out var type))
-                return type;
+            if (scope.TryGetValue(name, out var entry))
+                return entry.Type;
         }
         return null;
     }
@@ -129,6 +152,30 @@ public sealed class TypeNarrowingContext
     {
         type = GetNarrowedType(name);
         return type != null;
+    }
+
+    /// <summary>
+    /// Tries to get both the narrowed type and its optional read lowering for the given name,
+    /// searching from the innermost scope outward.
+    /// </summary>
+    /// <param name="name">The variable name (or narrowing key) to look up.</param>
+    /// <param name="type">The narrowed type, if found.</param>
+    /// <param name="lowering">The accessor lowering recorded on the entry, or <c>null</c> if none.</param>
+    /// <returns>True if a narrowing was found, false otherwise.</returns>
+    public bool TryGetNarrowing(string name, out SemanticType? type, out NarrowedReadLowering? lowering)
+    {
+        foreach (var scope in _scopeStack)
+        {
+            if (scope.TryGetValue(name, out var entry))
+            {
+                type = entry.Type;
+                lowering = entry.Lowering;
+                return true;
+            }
+        }
+        type = null;
+        lowering = null;
+        return false;
     }
 
     /// <summary>
@@ -150,14 +197,29 @@ public sealed class TypeNarrowingContext
     public void ClearAllNarrowings()
     {
         _scopeStack.Clear();
-        _scopeStack.Push(new Dictionary<string, SemanticType>());
+        _scopeStack.Push(new Dictionary<string, NarrowingEntry>());
     }
 
     /// <summary>
-    /// Applies multiple narrowings to the current scope at once.
+    /// Applies multiple narrowings (types only, no read lowering) to the current scope at once.
     /// </summary>
     /// <param name="narrowings">The narrowings to apply.</param>
     public void ApplyNarrowings(IEnumerable<KeyValuePair<string, SemanticType>> narrowings)
+    {
+        var currentScope = _scopeStack.Peek();
+        foreach (var kvp in narrowings)
+        {
+            currentScope[kvp.Key] = new NarrowingEntry(kvp.Value);
+        }
+    }
+
+    /// <summary>
+    /// Applies multiple narrowings (each carrying an optional read lowering) to the current scope at
+    /// once. Used by expression-level narrowing (<c>and</c>-RHS, ternary arms) so the read sites in the
+    /// scope can copy the recorded accessor for codegen (#1081).
+    /// </summary>
+    /// <param name="narrowings">The narrowing entries to apply.</param>
+    public void ApplyNarrowings(IEnumerable<KeyValuePair<string, NarrowingEntry>> narrowings)
     {
         var currentScope = _scopeStack.Peek();
         foreach (var kvp in narrowings)
@@ -204,10 +266,10 @@ public sealed class TypeNarrowingContext
     private sealed class IsolatedScopeDisposer : IDisposable
     {
         private readonly TypeNarrowingContext _context;
-        private readonly Dictionary<string, SemanticType>[]? _savedStack;
+        private readonly Dictionary<string, NarrowingEntry>[]? _savedStack;
         private bool _disposed;
 
-        public IsolatedScopeDisposer(TypeNarrowingContext context, Dictionary<string, SemanticType>[] savedStack)
+        public IsolatedScopeDisposer(TypeNarrowingContext context, Dictionary<string, NarrowingEntry>[] savedStack)
         {
             _context = context;
             _savedStack = savedStack;
