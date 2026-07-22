@@ -145,7 +145,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (67, 5) - (67, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
                 Xunit.Assert.NotNull(allVals);
 #line (68, 5) - (68, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(allVals));
+                Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(allVals!));
 #line hidden
             }
 
@@ -239,7 +239,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (116, 5) - (116, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
                 Xunit.Assert.NotNull(ct);
 #line (117, 5) - (117, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-                Xunit.Assert.Contains("text/html", ct);
+                Xunit.Assert.Contains("text/html", ct!);
 #line hidden
             }
 

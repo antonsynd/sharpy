@@ -170,7 +170,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     else
                     {
 #line (78, 13) - (78, 53) 24 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
-                        result.Append(FormattableString.Invariant($"({(attr.Item1)}, {(attr.Item2)})"));
+                        result.Append(FormattableString.Invariant($"({(attr.Item1)}, {(attr.Item2!)})"));
 #line hidden
                     }
                 }

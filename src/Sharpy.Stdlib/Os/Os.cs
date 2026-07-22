@@ -240,11 +240,11 @@ namespace Sharpy
                 var entry = __loopVar_1;
                 if (entry is global::System.Collections.DictionaryEntry)
                 {
-                    var k = ((global::System.Collections.DictionaryEntry)entry).Key;
-                    var v = ((global::System.Collections.DictionaryEntry)entry).Value;
+                    var k = ((global::System.Collections.DictionaryEntry)entry!).Key;
+                    var v = ((global::System.Collections.DictionaryEntry)entry!).Value;
                     if (k is string && v is string)
                     {
-                        result[((string)k)] = ((string)v);
+                        result[((string)k!)] = ((string)v!);
                     }
                 }
             }

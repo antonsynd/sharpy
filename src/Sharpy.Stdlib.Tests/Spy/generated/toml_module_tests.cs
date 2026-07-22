@@ -447,15 +447,15 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (210, 9) - (210, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(2024, ((global::Sharpy.DateTime)value).Year);
+                    Xunit.Assert.Equal(2024, ((global::Sharpy.DateTime)value!).Year);
 #line (211, 9) - (211, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(1, ((global::Sharpy.DateTime)value).Month);
+                    Xunit.Assert.Equal(1, ((global::Sharpy.DateTime)value!).Month);
 #line (212, 9) - (212, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(15, ((global::Sharpy.DateTime)value).Day);
+                    Xunit.Assert.Equal(15, ((global::Sharpy.DateTime)value!).Day);
 #line (213, 9) - (213, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(10, ((global::Sharpy.DateTime)value).Hour);
+                    Xunit.Assert.Equal(10, ((global::Sharpy.DateTime)value!).Hour);
 #line (214, 9) - (214, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(30, ((global::Sharpy.DateTime)value).Minute);
+                    Xunit.Assert.Equal(30, ((global::Sharpy.DateTime)value!).Minute);
 #line hidden
                 }
             }
@@ -486,11 +486,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (228, 9) - (228, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(2024, ((global::Sharpy.Date)value).Year);
+                    Xunit.Assert.Equal(2024, ((global::Sharpy.Date)value!).Year);
 #line (229, 9) - (229, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(1, ((global::Sharpy.Date)value).Month);
+                    Xunit.Assert.Equal(1, ((global::Sharpy.Date)value!).Month);
 #line (230, 9) - (230, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(15, ((global::Sharpy.Date)value).Day);
+                    Xunit.Assert.Equal(15, ((global::Sharpy.Date)value!).Day);
 #line hidden
                 }
             }
@@ -509,9 +509,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (238, 9) - (238, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(10, ((global::Sharpy.Time)value).Hour);
+                    Xunit.Assert.Equal(10, ((global::Sharpy.Time)value!).Hour);
 #line (239, 9) - (239, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                    Xunit.Assert.Equal(30, ((global::Sharpy.Time)value).Minute);
+                    Xunit.Assert.Equal(30, ((global::Sharpy.Time)value!).Minute);
 #line hidden
                 }
             }

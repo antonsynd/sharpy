@@ -164,7 +164,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (76, 13) - (76, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<int>(d["key"]);
 #line (77, 13) - (77, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], 42));
+                        Xunit.Assert.True(@operator.Eq(((int)d["key"]!), 42));
 #line hidden
                         break;
                     default:
@@ -212,7 +212,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (96, 13) - (96, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         long value = 9999999999L;
 #line (97, 13) - (97, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], value));
+                        Xunit.Assert.True(@operator.Eq(((long)d["key"]!), value));
 #line hidden
                         break;
                     default:
@@ -310,7 +310,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (137, 13) - (137, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<bool>(d["key"]);
 #line (138, 13) - (138, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], true));
+                        Xunit.Assert.True(@operator.Eq(((bool)d["key"]!), true));
 #line hidden
                         break;
                     default:
@@ -400,7 +400,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (177, 13) - (177, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (178, 13) - (178, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "NO"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "NO"));
 #line hidden
                         break;
                     default:
@@ -424,7 +424,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (187, 13) - (187, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (188, 13) - (188, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "no"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "no"));
 #line hidden
                         break;
                     default:
@@ -448,7 +448,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (197, 13) - (197, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (198, 13) - (198, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "No"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "No"));
 #line hidden
                         break;
                     default:
@@ -472,7 +472,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (207, 13) - (207, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (208, 13) - (208, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "Yes"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "Yes"));
 #line hidden
                         break;
                     default:
@@ -496,7 +496,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (217, 13) - (217, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (218, 13) - (218, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "yes"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "yes"));
 #line hidden
                         break;
                     default:
@@ -520,7 +520,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (227, 13) - (227, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (228, 13) - (228, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "on"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "on"));
 #line hidden
                         break;
                     default:
@@ -544,7 +544,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (237, 13) - (237, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (238, 13) - (238, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "On"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "On"));
 #line hidden
                         break;
                     default:
@@ -568,7 +568,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (247, 13) - (247, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (248, 13) - (248, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "off"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "off"));
 #line hidden
                         break;
                     default:
@@ -592,7 +592,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (257, 13) - (257, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (258, 13) - (258, 49) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "OFF"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "OFF"));
 #line hidden
                         break;
                     default:
@@ -616,7 +616,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (267, 13) - (267, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (268, 13) - (268, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "Y"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "Y"));
 #line hidden
                         break;
                     default:
@@ -640,7 +640,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (277, 13) - (277, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(d["key"]);
 #line (278, 13) - (278, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(d["key"], "N"));
+                        Xunit.Assert.True(@operator.Eq(((string)d["key"]!), "N"));
 #line hidden
                         break;
                     default:
