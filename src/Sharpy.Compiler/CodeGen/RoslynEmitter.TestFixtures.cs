@@ -137,12 +137,11 @@ internal partial class RoslynEmitter
             return GenerateAsyncFixtureClass(func, info, setupStmts, teardownStmts, exposedValueExpr);
         }
 
-        // Body of the constructor: setup statements + `Value = expr;` (if any).
-        var ctorStmts = new List<StatementSyntax>();
-        foreach (var stmt in setupStmts)
-        {
-            ctorStmts.AddRange(GenerateBodyStatements(stmt));
-        }
+        // Body of the constructor: setup statements + `Value = expr;` (if any). Routed through
+        // GenerateSuite so a `defer` in the fixture setup wraps the remainder of the setup suite
+        // (#1065). Per D3, the synthesized `Value = expr;` assignment stays outside the defer
+        // envelope — the .spy-authored suite is the defer's scope.
+        var ctorStmts = GenerateSuite(setupStmts);
         if (exposedValueExpr != null)
         {
             ctorStmts.Add(ExpressionStatement(AssignmentExpression(
@@ -166,11 +165,8 @@ internal partial class RoslynEmitter
                         .WithVariables(SingletonSeparatedList(VariableDeclarator("_teardown"))))
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)));
 
-            var teardownBodyStmts = new List<StatementSyntax>();
-            foreach (var stmt in teardownStmts)
-            {
-                teardownBodyStmts.AddRange(GenerateBodyStatements(stmt));
-            }
+            // Routed through GenerateSuite so a `defer` in the teardown wraps the remainder (#1065).
+            var teardownBodyStmts = GenerateSuite(teardownStmts);
 
             // _teardown = () => { ...teardown... };  (appended to ctor body)
             ctorStmts.Add(ExpressionStatement(AssignmentExpression(
@@ -374,8 +370,8 @@ internal partial class RoslynEmitter
         var initStmts = new List<StatementSyntax>();
         using (SetAsyncScope(true))
         {
-            foreach (var stmt in setupStmts)
-                initStmts.AddRange(GenerateBodyStatements(stmt));
+            // Routed through GenerateSuite so a `defer` in the async setup wraps the remainder (#1065).
+            initStmts.AddRange(GenerateSuite(setupStmts));
 
             if (exposedValueExpr != null)
             {
@@ -388,9 +384,8 @@ internal partial class RoslynEmitter
             if (info.IsDisposable)
             {
                 // _teardown = async () => { ...teardown... };
-                var teardownBodyStmts = new List<StatementSyntax>();
-                foreach (var stmt in teardownStmts)
-                    teardownBodyStmts.AddRange(GenerateBodyStatements(stmt));
+                // Routed through GenerateSuite so a `defer` in the teardown wraps the remainder (#1065).
+                var teardownBodyStmts = GenerateSuite(teardownStmts);
 
                 // CS1998 guard for the async teardown lambda when its body has no await.
                 if (!HasTopLevelAwait(teardownBodyStmts))
