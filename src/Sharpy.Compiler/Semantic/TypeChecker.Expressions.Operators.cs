@@ -23,6 +23,11 @@ internal partial class TypeChecker
             return CheckBooleanAndOp(binOp);
         }
 
+        if (binOp.Operator == BinaryOperator.Or)
+        {
+            return CheckBooleanOrOp(binOp);
+        }
+
         var leftType = CheckExpression(binOp.Left);
         var rightType = CheckExpression(binOp.Right);
 
@@ -248,6 +253,46 @@ internal partial class TypeChecker
                 andOp.ColumnStart,
                 code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
                 span: andOp.Span);
+            return SemanticType.Unknown;
+        }
+
+        return resultType;
+    }
+
+    private SemanticType CheckBooleanOrOp(BinaryOp orOp)
+    {
+        var leftType = CheckExpression(orOp.Left);
+
+        if (leftType is UnknownType)
+        {
+            CheckExpression(orOp.Right);
+            return SemanticType.Unknown;
+        }
+
+        // Expression-level narrowing (#1080): the right operand is evaluated only when the left is
+        // falsy, so the left's NEGATIVE narrowings hold inside it (e.g. `x is None or use(x + 1)` —
+        // the RHS sees x non-None). The narrowings do not leak past the operand.
+        var leftNegativeNarrowed = ExtractNarrowedTypes(orOp.Left, false);
+
+        SemanticType rightType;
+        using (_narrowingContext.EnterScope())
+        {
+            _narrowingContext.ApplyNarrowings(leftNegativeNarrowed);
+            rightType = CheckExpression(orOp.Right);
+        }
+
+        if (rightType is UnknownType)
+            return SemanticType.Unknown;
+
+        var resultType = _typeInference.InferBinaryOpType(BinaryOperator.Or, leftType, rightType);
+        if (resultType == null)
+        {
+            AddError(
+                $"Type '{leftType.GetDisplayName()}' does not support operator 'or' with operand of type '{rightType.GetDisplayName()}'",
+                orOp.LineStart,
+                orOp.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                span: orOp.Span);
             return SemanticType.Unknown;
         }
 
