@@ -143,6 +143,21 @@ internal partial class RoslynEmitter
             // virtual+override conflict is resolved by ResolveModifierConflicts() below
         }
 
+        // #1122: add 'override' for a method that overrides an abstract/virtual member of a
+        // CLR-backed base type. The decision was made in semantic analysis and frozen onto
+        // CodeGenInfo.OverridesClrBaseMember — the emitter applies it verbatim (no reflection,
+        // no base-chain re-derivation). ShouldStripOverrideKeyword below keeps the token because
+        // the matched base member is abstract/virtual.
+        if (!modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
+        {
+            var overrideMethodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m =>
+                m.Name == func.Name && m.DeclarationLine == func.LineStart);
+            if (overrideMethodSymbol?.CodeGenInfo?.OverridesClrBaseMember == true)
+            {
+                modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
+            }
+        }
+
         // In C#, you cannot use 'override' for interface methods (default or abstract).
         // If @override targets an interface method (not a base class), remove the override keyword.
         if (modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
