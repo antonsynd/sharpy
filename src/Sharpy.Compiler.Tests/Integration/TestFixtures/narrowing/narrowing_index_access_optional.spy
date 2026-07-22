@@ -1,0 +1,11 @@
+# Index-access narrowing, Optional element (list[int?]): guarding `xs[0] is not None`
+# narrows the Optional element read so `xs[0] + 1` emits `.Unwrap()`. Before #1081 the
+# emitter applied no accessor to narrowed index reads, so this produced `Optional<int> + 1`
+# (CS0019 → SPY0908). A list[int?] cannot be built from a `[Some(1), None()]` literal
+# (SPY0230/0244), so the elements are appended.
+def main() -> None:
+    xs: list[int?] = []
+    xs.append(Some(10))
+    xs.append(None())
+    if xs[0] is not None:
+        print(xs[0] + 1)

@@ -129,29 +129,11 @@ internal partial class RoslynEmitter
                 var varName = GetMangledVariableName(name.Name, isNewDeclaration: false);
                 var target = EscapedIdentifierName(varName);
 
-                // For the read side of augmented assignment, apply Optional/Nullable narrowing
-                // so that x += 1 with narrowed Optional<int> reads as x.Unwrap() + 1
-                // or with narrowed int? reads as x.Value + 1
-                ExpressionSyntax readExpr;
-                if (_narrowing.IsNarrowed(name.Name))
-                {
-                    if (_narrowing.IsNullableNarrowed(name.Name))
-                    {
-                        readExpr = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            EscapedIdentifierName(varName), IdentifierName("Value"));
-                    }
-                    else
-                    {
-                        readExpr = InvocationExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                EscapedIdentifierName(varName), IdentifierName(ProtocolConstants.Unwrap)))
-                            .WithArgumentList(ArgumentList());
-                    }
-                }
-                else
-                {
-                    readExpr = target;
-                }
+                // For the read side of augmented assignment, apply the narrowed-read accessor the
+                // TypeChecker recorded for the target identifier so x += 1 with a narrowed
+                // Optional<int> reads as x.Unwrap() + 1 (or .Value / ! for nullables). The write side
+                // (target) is the un-narrowed identifier.
+                var readExpr = ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName));
 
                 var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value);
 
@@ -238,17 +220,13 @@ internal partial class RoslynEmitter
                     AssignmentExpression(assignKind, eventTarget, value));
             }
 
-            // For simple assignments, clear narrowing on the target field so we emit
-            // the raw field (e.g., this.BestScore) not the unwrapped version
-            // (e.g., this.BestScore.Unwrap()). Narrowing only applies to reads.
-            if (assign.Operator == AssignmentOperator.Assign)
-            {
-                var path = TryBuildDottedPath(memberAccess);
-                if (path != null)
-                    _narrowing.ClearNarrowing(path);
-            }
-
-            var target = GenerateMemberAccess(memberAccess);
+            // Narrowing applies only to reads. For a simple (rebinding) assignment, emit the raw
+            // field target (this.BestScore) rather than the narrowed read (this.BestScore.Unwrap());
+            // the TypeChecker may record a narrowed-read lowering on this node, which must not be
+            // applied to the write (a narrowed LHS is not an lvalue). Augmented assignments keep the
+            // read-side accessor so `self.x += v` reads the narrowed value.
+            var target = GenerateMemberAccess(memberAccess,
+                applyNarrowing: assign.Operator != AssignmentOperator.Assign);
 
             // Method group → Optional<delegate> field needs an explicit delegate cast.
             // `obj.field = None` for an Optional<T> field must produce Optional<T>.None.

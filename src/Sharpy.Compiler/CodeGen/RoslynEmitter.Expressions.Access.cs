@@ -237,9 +237,10 @@ internal partial class RoslynEmitter
             }
 
             // If the callee is a narrowed Optional delegate (e.g., `if cb is not None: cb(x)`),
-            // generate through GenerateExpression so .Unwrap() is applied before invocation.
+            // generate through GenerateExpression so the recorded accessor (.Unwrap()/!) is applied
+            // before invocation. A lowering on the callee node is exactly this narrowed-read signal.
             ExpressionSyntax calleeExpr;
-            if (_narrowing.IsNarrowed(funcName.Name))
+            if (_context.SemanticInfo?.GetNarrowedReadLowering(call.Function) != null)
                 calleeExpr = GenerateExpression(call.Function);
             else
                 calleeExpr = ParseQualifiedName(funcCSharpName);
@@ -385,10 +386,9 @@ internal partial class RoslynEmitter
 
             // Narrowed Optional delegate field invocation: self._cb(msg) after
             // `if self._cb is not None`. The callee is a delegate-typed field, not a
-            // method — generate through GenerateMemberAccess so the Optional narrowing
-            // (.Unwrap()) is applied to the callee, then invoke the resulting delegate.
-            var calleeDottedPath = TryBuildDottedPath(memberAccess);
-            if (calleeDottedPath != null && _narrowing.IsNarrowed(calleeDottedPath)
+            // method — generate through GenerateMemberAccess so the recorded narrowing accessor
+            // (.Unwrap()/!) is applied to the callee, then invoke the resulting delegate.
+            if (_context.SemanticInfo?.GetNarrowedReadLowering(memberAccess) != null
                 && GetExpressionSemanticType(memberAccess) is Semantic.FunctionType)
             {
                 var delegateCallee = GenerateMemberAccess(memberAccess);
@@ -1145,7 +1145,7 @@ internal partial class RoslynEmitter
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
     }
 
-    private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess)
+    private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess, bool applyNarrowing = true)
     {
         // A module-qualified type used as a value/type reference (e.g. the receiver
         // `http.HTTPStatus` of `http.HTTPStatus.OK`). The module alias points at the module
@@ -1329,41 +1329,11 @@ internal partial class RoslynEmitter
                 member);
         }
 
-        // If this member access path has been narrowed by isinstance(),
-        // wrap with cast: ((Dog)this.Animal) so further member access works
-        var dottedPath = TryBuildDottedPath(memberAccess);
-        if (dottedPath != null && _narrowing.IsInstanceNarrowed(dottedPath))
-        {
-            var narrowedType = _narrowing.GetIsInstanceNarrowedType(dottedPath)!;
-            result = ParenthesizedExpression(
-                CastExpression(
-                    ParseQualifiedTypeName(narrowedType),
-                    result));
-        }
-
-        // Optional<T>/Nullable<T> narrowing for member access paths (self.field is not None)
-        if (dottedPath != null && _narrowing.IsNarrowed(dottedPath))
-        {
-            if (_narrowing.IsNullableNarrowed(dottedPath))
-            {
-                result = MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression, result, IdentifierName("Value"));
-            }
-            else if (_narrowing.IsReferenceNullableNarrowed(dottedPath))
-            {
-                // Reference-type nullable field → ! (null-forgiving operator)
-                result = PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression, result);
-            }
-            else
-            {
-                result = InvocationExpression(
-                    MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression, result, IdentifierName(ProtocolConstants.Unwrap)))
-                    .WithArgumentList(ArgumentList());
-            }
-        }
-
-        return result;
+        // Apply the narrowed-read accessor the TypeChecker recorded for this member-access node, if
+        // any: isinstance → parenthesized cast (((Dog)this.Animal)); self.field is not None →
+        // .Unwrap()/.Value/! per the field's declared shape. Suppressed for assignment write targets
+        // (applyNarrowing: false) — narrowing applies only to reads, and a narrowed LHS is not an lvalue.
+        return applyNarrowing ? ApplyNarrowedReadLowering(memberAccess, result) : result;
     }
 
     /// <summary>
@@ -1622,10 +1592,10 @@ internal partial class RoslynEmitter
             && TryGetConstantIntIndex(indexAccess.Index, out var tupleIndex))
         {
             var obj = GenerateExpression(indexAccess.Object);
-            return MemberAccessExpression(
+            return ApplyNarrowedReadLowering(indexAccess, MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 obj,
-                IdentifierName($"Item{tupleIndex + 1}"));
+                IdentifierName($"Item{tupleIndex + 1}")));
         }
 
         // Spread TupleLiteral index into separate arguments for params indexers (#956).
@@ -1637,14 +1607,17 @@ internal partial class RoslynEmitter
             var args = new List<ArgumentSyntax>();
             foreach (var elem in tuple.Elements)
                 args.Add(Argument(GenerateExpression(elem)));
-            return ElementAccessExpression(objExprSpread)
-                .AddArgumentListArguments(args.ToArray());
+            return ApplyNarrowedReadLowering(indexAccess, ElementAccessExpression(objExprSpread)
+                .AddArgumentListArguments(args.ToArray()));
         }
 
         var objExpr = GenerateExpression(indexAccess.Object);
         var index = GenerateExpression(indexAccess.Index);
 
-        return lowering switch
+        // Compose the container access with any narrowed-read accessor the TypeChecker recorded for
+        // this index node (e.g. list[int?] → xs.GetItemUnchecked(0).Unwrap(); list[int | None] →
+        // xs[0].Value): container access first, then the accessor (#1081).
+        ExpressionSyntax indexResult = lowering switch
         {
             // String indexing: s[i] -> StringHelpers.GetItem(s, i) to return string, not char,
             // and to support negative indexing.
@@ -1673,6 +1646,8 @@ internal partial class RoslynEmitter
             _ => ElementAccessExpression(objExpr)
                 .AddArgumentListArguments(Argument(index))
         };
+
+        return ApplyNarrowedReadLowering(indexAccess, indexResult);
     }
 
     /// <summary>
