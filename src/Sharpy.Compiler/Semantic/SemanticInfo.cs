@@ -152,6 +152,14 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, IndexAccessLowering> _indexAccessLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map safe-cast expressions (value to T? / value as? T) to the shape codegen must emit. Only present
+    // when the source and stripped target are both plain numeric primitives (int/long/float32/double) —
+    // the TypeChecker classifies widening/identity vs narrowing here so the emitter never inspects the
+    // operand types to pick a lowering (#1110, Critical Rule 2 pattern (b)). Absent ⇒ the default
+    // type-pattern lowering (which is the only correct shape for object/reference/optional sources).
+    private readonly ConcurrentDictionary<Expression, TypeCoercionLowering> _typeCoercionLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map member-access expressions on CLR-backed receivers to the original CLR method name
     // (e.g. is_os_platform -> IsOSPlatform), resolved by reflection during type checking so codegen
     // never reflects (#974). Only present when a directly-imported CLR method's acronym casing
@@ -287,6 +295,25 @@ public class SemanticInfo : ISemanticQuery
     public NarrowedReadLowering? GetNarrowedReadLowering(Expression expr)
     {
         return _narrowedReadLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
+    /// Records the emission shape codegen must apply for a numeric safe cast (<c>value to T?</c> /
+    /// <c>value as? T</c>). Set by the TypeChecker only when the numeric applicability guard holds; the
+    /// emitter applies it verbatim and never re-derives the shape from operand types (#1110).
+    /// </summary>
+    public void SetTypeCoercionLowering(Expression coercion, TypeCoercionLowering lowering)
+    {
+        _typeCoercionLowerings[coercion] = lowering;
+    }
+
+    /// <summary>
+    /// Gets the numeric safe-cast lowering recorded for a coercion, or <c>null</c> when none was recorded
+    /// (the emitter then falls back to the default type-pattern lowering).
+    /// </summary>
+    public TypeCoercionLowering? GetTypeCoercionLowering(Expression coercion)
+    {
+        return _typeCoercionLowerings.TryGetValue(coercion, out var lowering) ? lowering : null;
     }
 
     /// <summary>
@@ -729,6 +756,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._indexAccessLowerings)
             _indexAccessLowerings.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._typeCoercionLowerings)
+            _typeCoercionLowerings.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._resolvedClrMemberNames)
             _resolvedClrMemberNames.TryAdd(kvp.Key, kvp.Value);
 
@@ -887,6 +917,44 @@ public enum NarrowedReadKind
 /// routes builtin collections through the non-generic-interface rule, #912); <c>null</c> for all other kinds.
 /// </param>
 public sealed record NarrowedReadLowering(NarrowedReadKind Kind, SemanticType? CastTarget = null);
+
+/// <summary>
+/// The emission shape codegen applies for a safe cast (<c>value to T?</c> / <c>value as? T</c>) whose
+/// source and stripped target are both plain numeric primitives. The TypeChecker classifies the pair
+/// during type checking so the emitter switches on the tag alone and never inspects operand types
+/// (#1110, Critical Rule 2 pattern (b)).
+/// </summary>
+public enum TypeCoercionLoweringKind
+{
+    /// <summary>
+    /// Widening or identity (int→long/float32/double, long→float32/double, float32→double,
+    /// double→float32, and same-type). Emit <c>Optional&lt;T&gt;.Some((T)value)</c> unconditionally — the
+    /// value always fits (double→float32 maps overflow to ±∞ and preserves NaN, both representable). Never
+    /// routed through the type pattern, which would raise a CS8794-class "expression is always
+    /// true/false" warning on an identity source (spy-test C# compiles under TreatWarningsAsErrors).
+    /// </summary>
+    NumericAlwaysFits,
+
+    /// <summary>
+    /// Narrowing (double→int, double→long, float32→int, float32→long, long→int). Emit
+    /// <c>global::Sharpy.NumericSafeCast.{SafeCastMethod}(value)</c>, which range-checks and returns
+    /// <c>None</c> for out-of-range, NaN, or ±∞.
+    /// </summary>
+    NumericRangeChecked
+}
+
+/// <summary>
+/// A materialized numeric safe-cast lowering decision, keyed per coercion node (Critical Rule 2 pattern
+/// (b), #1110). Absent from <see cref="SemanticInfo"/> ⇒ the emitter uses its default type-pattern
+/// lowering (correct for object/reference/optional/non-numeric sources).
+/// </summary>
+/// <param name="Kind">Which emission shape to apply.</param>
+/// <param name="SafeCastMethod">
+/// For <see cref="TypeCoercionLoweringKind.NumericRangeChecked"/>, the <c>Sharpy.NumericSafeCast</c> method
+/// to invoke (<c>ToIntOrNone</c> / <c>ToLongOrNone</c>); <c>null</c> for
+/// <see cref="TypeCoercionLoweringKind.NumericAlwaysFits"/>.
+/// </param>
+public sealed record TypeCoercionLowering(TypeCoercionLoweringKind Kind, string? SafeCastMethod = null);
 
 public sealed record GeneratorBinding(TypeSymbol GeneratorType, Decorator Trigger);
 

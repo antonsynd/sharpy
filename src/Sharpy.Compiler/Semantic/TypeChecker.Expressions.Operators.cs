@@ -798,11 +798,72 @@ internal partial class TypeChecker
             _ => targetType
         };
 
+        // For the failable form (`to T?` / `as? T`), decide the emission shape here so the emitter never
+        // inspects operand types. When the source and stripped target are both plain numeric primitives,
+        // record a numeric lowering (widening/identity ⇒ AlwaysFits; narrowing ⇒ a range-checked helper).
+        // Any other source keeps the emitter's default type-pattern lowering, which is the only correct
+        // shape for object/reference/optional sources but is uncompilable (CS8121) for concrete numerics
+        // — the gap #1110 closes.
+        if (coercion.Mode == CastFailureMode.Null)
+        {
+            var lowering = ClassifyNumericSafeCast(sourceType, underlyingTargetType);
+            if (lowering != null)
+            {
+                _semanticInfo.SetTypeCoercionLowering(coercion, lowering);
+            }
+        }
+
         // Validate the coercion
         ValidateTypeCoercion(coercion, sourceType, underlyingTargetType);
 
         return targetType;
     }
+
+    /// <summary>
+    /// Classifies a failable numeric cast into its emission shape, or returns <c>null</c> when the
+    /// numeric lowering does not apply (leaving the default type-pattern lowering in place). Applies only
+    /// when BOTH the source and the stripped target are plain numeric <c>int</c>/<c>long</c>/
+    /// <c>float32</c>/<c>double</c> — object, reference, optional/nullable, type-parameter, and other
+    /// numeric-family (byte/short/uint/decimal/…) sources are intentionally excluded so their generated
+    /// C# stays byte-for-byte unchanged (#1110).
+    /// </summary>
+    private static TypeCoercionLowering? ClassifyNumericSafeCast(SemanticType source, SemanticType target)
+    {
+        var srcClr = PrimitiveCatalog.GetPrimitiveInfo(source)?.ClrType;
+        var tgtClr = PrimitiveCatalog.GetPrimitiveInfo(target)?.ClrType;
+
+        if (!IsSafeCastNumeric(srcClr) || !IsSafeCastNumeric(tgtClr))
+        {
+            return null;
+        }
+
+        // Narrowing to int: long/float32/double → int is range-checked. int → int is identity.
+        if (tgtClr == typeof(int))
+        {
+            return srcClr == typeof(int)
+                ? new TypeCoercionLowering(TypeCoercionLoweringKind.NumericAlwaysFits)
+                : new TypeCoercionLowering(TypeCoercionLoweringKind.NumericRangeChecked, "ToIntOrNone");
+        }
+
+        // Narrowing to long: float32/double → long is range-checked. int/long → long widens/identity.
+        if (tgtClr == typeof(long))
+        {
+            return srcClr == typeof(float) || srcClr == typeof(double)
+                ? new TypeCoercionLowering(TypeCoercionLoweringKind.NumericRangeChecked, "ToLongOrNone")
+                : new TypeCoercionLowering(TypeCoercionLoweringKind.NumericAlwaysFits);
+        }
+
+        // Target is float32 or double: every int/long/float32/double source fits (widening/identity, or
+        // double → float32 which maps overflow to ±∞ and preserves NaN, both representable in float32).
+        return new TypeCoercionLowering(TypeCoercionLoweringKind.NumericAlwaysFits);
+    }
+
+    /// <summary>
+    /// True for exactly the four plain numeric CLR types the safe-cast numeric lowering handles:
+    /// <c>int</c>, <c>long</c>, <c>float</c> (Sharpy <c>float32</c>), <c>double</c> (Sharpy <c>float</c>).
+    /// </summary>
+    private static bool IsSafeCastNumeric(System.Type? clr)
+        => clr == typeof(int) || clr == typeof(long) || clr == typeof(float) || clr == typeof(double);
 
     /// <summary>
     /// Validates that a type coercion is valid per the language specification.
