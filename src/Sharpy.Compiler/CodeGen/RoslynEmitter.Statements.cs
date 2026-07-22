@@ -25,10 +25,18 @@ internal partial class RoslynEmitter
     /// the same suite nest (later defers become inner try/finally blocks), which makes their
     /// finally blocks run in reverse declaration order (LIFO).
     /// </summary>
-    private List<StatementSyntax> GenerateSuite(IEnumerable<Statement> body)
+    /// <param name="generator">
+    /// Per-statement emitter for the non-defer statements of this suite. Defaults to
+    /// <see cref="GenerateBodyStatements"/>. Call sites with block-specific special-casing
+    /// (e.g. constructor <c>self.field = value</c> mapping, test-fixture setup) pass their own
+    /// generator so that defer split/nesting comes for free while keeping their special-casing
+    /// (#1065). The generator applies only to the enclosing suite; a defer's own body is always
+    /// emitted with the default generator.
+    /// </param>
+    private List<StatementSyntax> GenerateSuite(IEnumerable<Statement> body, Func<Statement, List<StatementSyntax>>? generator = null)
     {
         var statements = body as IReadOnlyList<Statement> ?? body.ToList();
-        return GenerateSuiteFrom(statements, 0);
+        return GenerateSuiteFrom(statements, 0, generator);
     }
 
     /// <summary>
@@ -38,20 +46,23 @@ internal partial class RoslynEmitter
     /// A <c>defer</c> lowers to an <c>IrScopeGuard</c> (E2 #1056); this emits that guard's
     /// <c>try/finally</c> envelope. The suite-scoped split stays here because statement emission is
     /// stateful and must work on the null-IR codegen paths (REPL, source generators) too.
+    /// The <paramref name="generator"/> callback threads through the recursion so nested defers
+    /// keep LIFO order while preserving each call site's per-statement special-casing (#1065).
     /// </summary>
-    private List<StatementSyntax> GenerateSuiteFrom(IReadOnlyList<Statement> statements, int start)
+    private List<StatementSyntax> GenerateSuiteFrom(IReadOnlyList<Statement> statements, int start, Func<Statement, List<StatementSyntax>>? generator = null)
     {
+        var emit = generator ?? GenerateBodyStatements;
         var result = new List<StatementSyntax>();
         for (int i = start; i < statements.Count; i++)
         {
             if (statements[i] is DeferStatement defer)
             {
-                result.Add(GenerateScopeGuard(defer, statements, i));
+                result.Add(GenerateScopeGuard(defer, statements, i, generator));
                 // The remainder of the suite was consumed into the try block above.
                 return result;
             }
 
-            result.AddRange(GenerateBodyStatements(statements[i]));
+            result.AddRange(emit(statements[i]));
         }
 
         return result;
@@ -61,11 +72,13 @@ internal partial class RoslynEmitter
     /// Emits the <c>IrScopeGuard</c> a <see cref="DeferStatement"/> at index
     /// <paramref name="deferIndex"/> lowered to: <c>try { remainder } finally { deferred-body }</c>.
     /// The remainder (statements after the defer) is generated recursively so that any further
-    /// defers nest inside, preserving LIFO cleanup order.
+    /// defers nest inside, preserving LIFO cleanup order. The remainder inherits the enclosing
+    /// suite's <paramref name="generator"/>; the deferred body is a fresh suite emitted with the
+    /// default generator.
     /// </summary>
-    private StatementSyntax GenerateScopeGuard(DeferStatement defer, IReadOnlyList<Statement> statements, int deferIndex)
+    private StatementSyntax GenerateScopeGuard(DeferStatement defer, IReadOnlyList<Statement> statements, int deferIndex, Func<Statement, List<StatementSyntax>>? generator = null)
     {
-        var tryBlock = Block(GenerateSuiteFrom(statements, deferIndex + 1));
+        var tryBlock = Block(GenerateSuiteFrom(statements, deferIndex + 1, generator));
         var finallyBlock = Block(GenerateSuite(defer.Body));
         var tryStmt = TryStatement(
             tryBlock,
