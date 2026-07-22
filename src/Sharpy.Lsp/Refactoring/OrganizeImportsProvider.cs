@@ -41,15 +41,23 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
         if (ast is null || context.SourceText is null)
             return Task.FromResult<IReadOnlyList<CodeAction>>(Array.Empty<CodeAction>());
 
-        // Collect all import statements from the module body.
-        var allImports = new System.Collections.Generic.List<Statement>();
+        // Collect import-like statements in document order. A plain import is reorderable; a
+        // suppress-decorated import (#1124) is recognized here (so the block scan is not truncated
+        // and it is never deleted) but pinned at its position and rendered verbatim — v1 policy
+        // leaves decorated imports in place; real reordering is deferred to a user request.
+        var importLike = new System.Collections.Generic.List<Statement>();
+        bool anyDecoratedImport = false;
         foreach (var s in ast.Body)
         {
-            if (s is ImportStatement or FromImportStatement)
-                allImports.Add(s);
+            if (s.UnwrapDecorated() is ImportStatement or FromImportStatement)
+            {
+                importLike.Add(s);
+                if (s is DecoratedStatement)
+                    anyDecoratedImport = true;
+            }
         }
 
-        if (allImports.Count == 0)
+        if (importLike.Count == 0)
             return Task.FromResult<IReadOnlyList<CodeAction>>(Array.Empty<CodeAction>());
 
         // Build a set of line numbers that have SPY0452 (unused import) diagnostics.
@@ -78,12 +86,15 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
             }
         }
 
-        // Classify imports, filtering out unused ones.
+        // Classify the reorderable (plain, undecorated) imports, filtering out unused ones.
         var stdlibImports = new System.Collections.Generic.List<Statement>();
         var projectImports = new System.Collections.Generic.List<Statement>();
 
-        foreach (var stmt in allImports)
+        foreach (var stmt in importLike)
         {
+            if (stmt is DecoratedStatement)
+                continue; // pinned in place; rendered verbatim below
+
             if (IsUnusedImport(stmt, unusedImportLines))
                 continue;
 
@@ -97,12 +108,16 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
         SortImportGroup(stdlibImports);
         SortImportGroup(projectImports);
 
-        // Generate the replacement text.
-        var newText = GenerateImportText(stdlibImports, projectImports);
-
         // Determine the text range covering all existing imports.
         var sourceLines = context.SourceText.Split('\n');
-        var importRange = GetImportRange(allImports, sourceLines);
+        var importRange = GetImportRange(importLike, sourceLines);
+
+        // Generate the replacement text. With no decorated imports this is byte-identical to the
+        // original grouped-and-sorted output; when a decorated import is present, plain imports fill
+        // their slots in sorted order while decorated imports stay pinned and verbatim.
+        var newText = anyDecoratedImport
+            ? GenerateImportTextWithPinned(importLike, stdlibImports, projectImports, unusedImportLines, sourceLines)
+            : GenerateImportText(stdlibImports, projectImports);
 
         var edit = new WorkspaceEdit
         {
@@ -233,6 +248,67 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Generates the replacement text when the import region contains one or more suppress-decorated
+    /// imports (#1124). Walks the import-like statements in document order, filling each plain-import
+    /// slot with the next sorted plain import (stdlib group first, then project) and emitting each
+    /// decorated import verbatim at its original position so its decorator and suppression span are
+    /// preserved. This keeps decorated imports in place (v1 policy) while still sorting the rest.
+    /// </summary>
+    private static string GenerateImportTextWithPinned(
+        System.Collections.Generic.List<Statement> importLike,
+        System.Collections.Generic.List<Statement> stdlibImports,
+        System.Collections.Generic.List<Statement> projectImports,
+        HashSet<int> unusedImportLines,
+        string[] sourceLines)
+    {
+        var sortedPlain = new Queue<Statement>(stdlibImports.Count + projectImports.Count);
+        foreach (var stmt in stdlibImports)
+            sortedPlain.Enqueue(stmt);
+        foreach (var stmt in projectImports)
+            sortedPlain.Enqueue(stmt);
+
+        var sb = new StringBuilder();
+        foreach (var stmt in importLike)
+        {
+            if (stmt is DecoratedStatement decorated)
+            {
+                sb.AppendLine(RenderDecoratedImportVerbatim(decorated, sourceLines));
+            }
+            else if (!IsUnusedImport(stmt, unusedImportLines) && sortedPlain.Count > 0)
+            {
+                sb.AppendLine(RenderImportStatement(sortedPlain.Dequeue()));
+            }
+            // Unused plain imports (and plain slots past the sorted supply) emit nothing.
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Renders a decorated import by slicing its original source lines, preserving the decorator
+    /// exactly. Falls back to reconstructing the inner import if the span is out of range.
+    /// </summary>
+    private static string RenderDecoratedImportVerbatim(DecoratedStatement decorated, string[] sourceLines)
+    {
+        var first = decorated.LineStart - 1; // AST lines are 1-based
+        var last = decorated.LineEnd - 1;
+        if (first >= 0 && last >= first && last < sourceLines.Length)
+        {
+            var sb = new StringBuilder();
+            for (int i = first; i <= last; i++)
+            {
+                if (i > first)
+                    sb.Append('\n');
+                sb.Append(sourceLines[i].TrimEnd('\r'));
+            }
+            return sb.ToString();
+        }
+
+        // Defensive fallback: render the inner import without its decorator.
+        return RenderImportStatement(decorated.Statement);
     }
 
     /// <summary>

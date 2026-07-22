@@ -114,11 +114,13 @@ internal static class CompilationUnitFactory
 
         foreach (var statement in ast.Body)
         {
-            if (statement is ImportStatement import)
+            // Unwrap suppress-decorated imports (#1124) so dependency extraction sees them.
+            var scanned = statement.UnwrapDecorated();
+            if (scanned is ImportStatement import)
             {
                 imports.Add(import);
             }
-            else if (statement is FromImportStatement fromImport)
+            else if (scanned is FromImportStatement fromImport)
             {
                 fromImports.Add(fromImport);
             }

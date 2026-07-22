@@ -170,9 +170,11 @@ internal partial class ProjectCompiler
                 var fromImports = new List<FromImportStatement>();
                 foreach (var stmt in module!.Body)
                 {
-                    if (stmt is ImportStatement import)
+                    // Unwrap suppress-decorated imports (#1124) so dependency extraction sees them.
+                    var scanned = stmt.UnwrapDecorated();
+                    if (scanned is ImportStatement import)
                         imports.Add(import);
-                    else if (stmt is FromImportStatement fromImport)
+                    else if (scanned is FromImportStatement fromImport)
                         fromImports.Add(fromImport);
                 }
                 compilationUnit.Imports = imports;
@@ -267,9 +269,11 @@ internal partial class ProjectCompiler
         var fromImports = new List<FromImportStatement>();
         foreach (var stmt in preParsed.Ast.Body)
         {
-            if (stmt is ImportStatement import)
+            // Unwrap suppress-decorated imports (#1124) so dependency extraction sees them.
+            var scanned = stmt.UnwrapDecorated();
+            if (scanned is ImportStatement import)
                 imports.Add(import);
-            else if (stmt is FromImportStatement fromImport)
+            else if (scanned is FromImportStatement fromImport)
                 fromImports.Add(fromImport);
         }
         compilationUnit.Imports = imports;
@@ -378,9 +382,11 @@ internal partial class ProjectCompiler
                     var fromImports = new List<FromImportStatement>();
                     foreach (var stmt in module!.Body)
                     {
-                        if (stmt is ImportStatement import)
+                        // Unwrap suppress-decorated imports (#1124) so dependency extraction sees them.
+                        var scanned = stmt.UnwrapDecorated();
+                        if (scanned is ImportStatement import)
                             imports.Add(import);
-                        else if (stmt is FromImportStatement fromImport)
+                        else if (scanned is FromImportStatement fromImport)
                             fromImports.Add(fromImport);
                     }
                     unit.Imports = imports;

@@ -100,7 +100,7 @@ internal class PackageResolver
 
         foreach (var statement in moduleInfo.Module.Body)
         {
-            switch (statement)
+            switch (statement.UnwrapDecorated())
             {
                 case FromImportStatement fromImport:
                     ProcessFromImport(fromImport, packageInfo, searchPath, initPath);

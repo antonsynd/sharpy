@@ -20,10 +20,14 @@ internal class UnusedImportValidator : ValidatingAstWalker
         _importedNames = new Dictionary<string, ImportInfo>();
         _referencedNames = new HashSet<string>();
 
-        // First pass: collect imports from module body (imports are always top-level)
+        // First pass: collect imports from module body (imports are always top-level).
+        // Unwrap suppress-decorated imports (#1124) so they are collected here and can still
+        // warn SPY0452 — suppression is applied downstream by SuppressionCollector, not by making
+        // the import invisible. Without this unwrap an @suppress-wrapped import with an unrelated
+        // code would silently never warn.
         foreach (var stmt in module.Body)
         {
-            switch (stmt)
+            switch (stmt.UnwrapDecorated())
             {
                 case FromImportStatement fromImport:
                     if (!fromImport.ImportAll)

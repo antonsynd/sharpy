@@ -29,7 +29,10 @@ internal sealed partial class UnparseVisitor : AstVisitor
         for (int i = 0; i < module.Body.Length; i++)
         {
             var stmt = module.Body[i];
-            bool isImport = stmt is ImportStatement or FromImportStatement;
+            // Unwrap for classification only (#1124): a suppress-decorated import groups with other
+            // imports for blank-line formatting, but VisitStatementWithTrivia below still unparses the
+            // original DecoratedStatement so the decorator is preserved in the output.
+            bool isImport = stmt.UnwrapDecorated() is ImportStatement or FromImportStatement;
             bool isDef = stmt is FunctionDef or ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef;
 
             if (fmt != null && i > 0)

@@ -39,7 +39,7 @@ internal partial class ImportResolver
         {
             _cancellationToken.ThrowIfCancellationRequested();
 
-            if (statement is ImportStatement import)
+            if (statement.UnwrapDecorated() is ImportStatement import)
             {
                 importCount++;
                 var modules = ResolveImport(import, currentDir);
@@ -126,7 +126,7 @@ internal partial class ImportResolver
                     }
                 }
             }
-            else if (statement is FromImportStatement fromImport)
+            else if (statement.UnwrapDecorated() is FromImportStatement fromImport)
             {
                 importCount++;
                 _logger.LogDebug($"Processing from-import: from {fromImport.Module} import {string.Join(", ", fromImport.Names.Select(n => n.Name))}");
@@ -765,7 +765,7 @@ internal partial class ImportResolver
                     // This ensures ExportedSymbols is populated for transitive resolution.
                     foreach (var statement in module.Body)
                     {
-                        if (statement is FromImportStatement fromImport)
+                        if (statement.UnwrapDecorated() is FromImportStatement fromImport)
                         {
                             ExtractReExportedSymbols(fromImport, loadedModuleInfo);
                         }
@@ -802,7 +802,7 @@ internal partial class ImportResolver
     {
         foreach (var statement in module.Body)
         {
-            switch (statement)
+            switch (statement.UnwrapDecorated())
             {
                 case ImportStatement import:
                     ResolveImport(import, searchPath);

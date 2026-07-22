@@ -177,7 +177,9 @@ internal partial class ProjectCompiler
 
                 foreach (var statement in unit.Ast.Body)
                 {
-                    if (statement is ImportStatement import)
+                    // Unwrap suppress-decorated imports (#1124) so they register in module scope.
+                    var scanned = statement.UnwrapDecorated();
+                    if (scanned is ImportStatement import)
                     {
                         var modules = ImportResolver.ResolveImport(import, config.ProjectDirectory,
                             currentModulePath: unit.FilePath, cancellationToken: cancellationToken);
@@ -270,7 +272,7 @@ internal partial class ProjectCompiler
                             }
                         }
                     }
-                    else if (statement is FromImportStatement fromImport)
+                    else if (scanned is FromImportStatement fromImport)
                     {
                         var moduleInfo = ImportResolver.ResolveFromImport(fromImport, config.ProjectDirectory,
                             currentModulePath: unit.FilePath, cancellationToken: cancellationToken);
@@ -562,7 +564,8 @@ internal partial class ProjectCompiler
 
             foreach (var statement in unit.Ast.Body)
             {
-                if (statement is not FromImportStatement fromImport)
+                // Unwrap suppress-decorated imports (#1124) so a cycle routed through one is seen.
+                if (statement.UnwrapDecorated() is not FromImportStatement fromImport)
                     continue;
 
                 // Check if this import targets another file in the cycle

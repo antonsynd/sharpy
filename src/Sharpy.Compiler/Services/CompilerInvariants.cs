@@ -227,8 +227,9 @@ public static class CompilerInvariants
     {
         foreach (var stmt in module.Body)
         {
-            // Import statements may not have spans (they're processed before codegen)
-            if (stmt is ImportStatement or FromImportStatement)
+            // Import statements may not have spans (they're processed before codegen).
+            // Unwrap suppress-decorated imports (#1124) so they receive the same exemption.
+            if (stmt.UnwrapDecorated() is ImportStatement or FromImportStatement)
                 continue;
 
             if (!stmt.Span.HasValue)

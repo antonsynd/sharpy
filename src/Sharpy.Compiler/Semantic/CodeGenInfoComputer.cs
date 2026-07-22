@@ -82,7 +82,10 @@ internal class CodeGenInfoComputer
     {
         foreach (var stmt in module.Body)
         {
-            switch (stmt)
+            // Unwrap for classification only: a suppress-decorated import (#1124) must still
+            // produce its module-level CodeGenInfo. Definitions/variables are never wrapped
+            // (decorators attach directly), so unwrap is a no-op for the other cases.
+            switch (stmt.UnwrapDecorated())
             {
                 case VariableDeclaration varDecl when varDecl.IsConst:
                     ProcessModuleLevelConstant(varDecl);
