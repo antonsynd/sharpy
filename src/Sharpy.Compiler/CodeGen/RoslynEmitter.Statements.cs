@@ -214,7 +214,6 @@ internal partial class RoslynEmitter
         var savedVersions = new Dictionary<string, int>(_variableVersions);
         var savedConsts = new HashSet<string>(_constVariables);
         var savedSourceNames = new HashSet<string>(_sourceVariableNames);
-        var savedNarrowing = _narrowing.Snapshot();
         var savedLocalFuncs = new Dictionary<string, string>(_localFunctionNames);
 
         // Clear scope for the local function
@@ -222,7 +221,6 @@ internal partial class RoslynEmitter
         _variableVersions.Clear();
         _constVariables.Clear();
         _sourceVariableNames.Clear();
-        _narrowing.Reset();
 
         // Pre-scan the local function body for source variable names
         CollectSourceVariableNames(func.Body);
@@ -317,7 +315,6 @@ internal partial class RoslynEmitter
         _constVariables.UnionWith(savedConsts);
         _sourceVariableNames.Clear();
         _sourceVariableNames.UnionWith(savedSourceNames);
-        _narrowing.Restore(savedNarrowing);
         _localFunctionNames.Clear();
         foreach (var (k, v) in savedLocalFuncs)
             _localFunctionNames[k] = v;

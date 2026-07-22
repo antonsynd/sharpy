@@ -167,7 +167,6 @@ internal partial class RoslynEmitter
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
                 _constVariables.Clear();
-                _narrowing.Reset();
                 continue;
             }
 
@@ -181,7 +180,6 @@ internal partial class RoslynEmitter
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
                 _constVariables.Clear();
-                _narrowing.Reset();
                 continue;
             }
 
@@ -194,7 +192,6 @@ internal partial class RoslynEmitter
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
                 _constVariables.Clear();
-                _narrowing.Reset();
                 continue;
             }
 
@@ -214,7 +211,6 @@ internal partial class RoslynEmitter
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
                 _constVariables.Clear();
-                _narrowing.Reset();
                 continue;
             }
 
@@ -227,7 +223,6 @@ internal partial class RoslynEmitter
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
                 _constVariables.Clear();
-                _narrowing.Reset();
             }
 
             if (member is MemberDeclarationSyntax memberDecl)
@@ -949,7 +944,6 @@ internal partial class RoslynEmitter
             _declaredVariables.Clear();
             _variableVersions.Clear();
             _constVariables.Clear();
-            _narrowing.Reset();
         }
 
         _isInTestFunction = savedIsInTestFunction;

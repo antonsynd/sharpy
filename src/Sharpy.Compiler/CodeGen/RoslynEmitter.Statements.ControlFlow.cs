@@ -63,42 +63,10 @@ internal partial class RoslynEmitter
             PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(successCondition)),
             Block(throwStmt));
 
-        // assert x is not None → narrow x for the rest of the scope. The assert narrows on the
-        // positive condition, so we process NarrowInThenBranch == true entries. Not popped —
-        // persists until the method boundary's NarrowingState.Reset.
-        ApplyAssertNarrowings(assert);
-
+        // Narrowing an assert contributes to following statements (e.g. `assert x is not None`
+        // narrows x for the rest of the scope) is materialized per-read-node by the TypeChecker
+        // (#1081); the reads apply their own accessors, so no emitter-side flow update is needed.
         return guard;
-    }
-
-    /// <summary>
-    /// Applies the type narrowings an <c>assert</c> statement contributes to the following
-    /// statements (e.g. <c>assert x is not None</c> narrows <c>x</c> for the rest of the scope).
-    /// </summary>
-    private void ApplyAssertNarrowings(AssertStatement assert)
-    {
-        var decision = _context.SemanticInfo?.GetNarrowingDecision(assert.Test);
-        if (decision is not { NarrowsFollowingStatements: true })
-            return;
-
-        foreach (var n in decision.OptionalNarrowings)
-        {
-            if (!n.NarrowInThenBranch)
-                continue;
-
-            _narrowing.PushNarrowing(n.VariableName);
-            if (n.IsValueTypeNullable)
-                _narrowing.AddNullableNarrowing(n.VariableName);
-            else if (n.IsReferenceTypeNullable)
-                _narrowing.AddReferenceNullableNarrowing(n.VariableName);
-        }
-
-        var isInstanceInfo = GetIsInstanceNarrowingsFromDecision(assert.Test, narrowInThen: true);
-        if (isInstanceInfo.HasValue)
-        {
-            foreach (var (varName, typeName) in isInstanceInfo.Value.Narrowings)
-                _narrowing.PushIsInstanceNarrowing(varName, typeName);
-        }
     }
 
     /// <summary>
@@ -372,10 +340,8 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateIf(IfStatement ifStmt)
     {
-        // Read narrowing decisions from SemanticInfo (computed by TypeChecker)
-        var narrowingInfo = GetOptionalNarrowingsFromDecision(ifStmt.Test, narrowInThen: true);
-        var isInstanceNarrowingInfo = GetIsInstanceNarrowingsFromDecision(ifStmt.Test, narrowInThen: true);
-
+        // Narrowing of reads inside each branch is materialized per-read-node by the TypeChecker
+        // (#1081); the emitter no longer re-derives which variables a branch condition narrows.
         var condition = WrapTruthinessIfNeeded(GenerateExpression(ifStmt.Test), ifStmt.Test);
 
         // Save scope before the if statement so each branch (then/elif/else)
@@ -383,35 +349,7 @@ internal partial class RoslynEmitter
         // branch from leaking into sibling branches (fixes #363).
         var preIfScope = SaveScope();
 
-        // Generate then-block with narrowing if applicable
-        BlockSyntax thenBlock;
-
-        // Push isinstance narrowings for the then-body only when NarrowInThen is true
-        if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
-        {
-            foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
-                _narrowing.PushIsInstanceNarrowing(varName, typeName);
-        }
-
-        if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
-        {
-            foreach (var name in narrowingInfo.Value.VariableNames)
-                _narrowing.PushNarrowing(name);
-            thenBlock = Block(GenerateSuite(ifStmt.ThenBody));
-            foreach (var name in narrowingInfo.Value.VariableNames)
-                _narrowing.PopNarrowing(name);
-        }
-        else
-        {
-            thenBlock = Block(GenerateSuite(ifStmt.ThenBody));
-        }
-
-        // Pop isinstance narrowings after then-body
-        if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
-        {
-            foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
-                _narrowing.PopIsInstanceNarrowing(varName);
-        }
+        var thenBlock = Block(GenerateSuite(ifStmt.ThenBody));
 
         // Save scope after then-block so we can restore it after all branches.
         // Post-if code needs to see then-block's variable declarations for correct
@@ -439,39 +377,7 @@ internal partial class RoslynEmitter
             {
                 // Restore to pre-if scope so else doesn't see then-block variables (#363)
                 RestoreScope(preIfScope);
-
-                // Read else-branch narrowings from SemanticInfo
-                var elseIsInstanceNarrowingInfo = GetIsInstanceNarrowingsFromDecision(ifStmt.Test, narrowInThen: false);
-                var elseNarrowingInfo = GetOptionalNarrowingsFromDecision(ifStmt.Test, narrowInThen: false);
-
-                // Push isinstance narrowings for else-body
-                if (elseIsInstanceNarrowingInfo.HasValue)
-                {
-                    foreach (var (varName, typeName) in elseIsInstanceNarrowingInfo.Value.Narrowings)
-                        _narrowing.PushIsInstanceNarrowing(varName, typeName);
-                }
-
-                // Generate else-block with narrowing if applicable (is None → narrow in else)
-                if (elseNarrowingInfo.HasValue)
-                {
-                    foreach (var name in elseNarrowingInfo.Value.VariableNames)
-                        _narrowing.PushNarrowing(name);
-                    currentElse = Block(GenerateSuite(ifStmt.ElseBody));
-                    foreach (var name in elseNarrowingInfo.Value.VariableNames)
-                        _narrowing.PopNarrowing(name);
-                }
-                else
-                {
-                    currentElse = Block(GenerateSuite(ifStmt.ElseBody));
-                }
-
-                // Pop isinstance narrowings after else-body
-                if (elseIsInstanceNarrowingInfo.HasValue)
-                {
-                    foreach (var (varName, _) in elseIsInstanceNarrowingInfo.Value.Narrowings)
-                        _narrowing.PopIsInstanceNarrowing(varName);
-                }
-
+                currentElse = Block(GenerateSuite(ifStmt.ElseBody));
             }
 
             // Process elif clauses in reverse order
@@ -482,38 +388,7 @@ internal partial class RoslynEmitter
 
                 var elif = ifStmt.ElifClauses[i];
                 var elifCondition = WrapTruthinessIfNeeded(GenerateExpression(elif.Test), elif.Test);
-
-                // Read narrowing decisions for this elif's condition from SemanticInfo
-                var elifNarrowing = GetOptionalNarrowingsFromDecision(elif.Test, narrowInThen: true);
-                var elifIsInstanceNarrowingInfo = GetIsInstanceNarrowingsFromDecision(elif.Test, narrowInThen: true);
-
-                // Push isinstance narrowings for elif body (only when NarrowInThen is true)
-                if (elifIsInstanceNarrowingInfo.HasValue && elifIsInstanceNarrowingInfo.Value.NarrowInThen)
-                {
-                    foreach (var (varName, typeName) in elifIsInstanceNarrowingInfo.Value.Narrowings)
-                        _narrowing.PushIsInstanceNarrowing(varName, typeName);
-                }
-
-                BlockSyntax elifBody;
-                if (elifNarrowing.HasValue && elifNarrowing.Value.NarrowInThen)
-                {
-                    foreach (var name in elifNarrowing.Value.VariableNames)
-                        _narrowing.PushNarrowing(name);
-                    elifBody = Block(GenerateSuite(elif.Body));
-                    foreach (var name in elifNarrowing.Value.VariableNames)
-                        _narrowing.PopNarrowing(name);
-                }
-                else
-                {
-                    elifBody = Block(GenerateSuite(elif.Body));
-                }
-
-                // Pop isinstance narrowings after elif body
-                if (elifIsInstanceNarrowingInfo.HasValue && elifIsInstanceNarrowingInfo.Value.NarrowInThen)
-                {
-                    foreach (var (varName, _) in elifIsInstanceNarrowingInfo.Value.Narrowings)
-                        _narrowing.PopIsInstanceNarrowing(varName);
-                }
+                var elifBody = Block(GenerateSuite(elif.Body));
 
                 var elifElseClause = currentElse != null ? ElseClause(currentElse) : null;
                 var elifStatement = IfStatement(elifCondition, elifBody, elifElseClause);
@@ -533,112 +408,13 @@ internal partial class RoslynEmitter
         // then-branch scope is restored (deliberate asymmetry for variable versioning).
         RestoreScope(postThenScope);
 
-        // #817: When the then-branch unconditionally exits (e.g., `if x is None: return`),
-        // the TypeChecker narrows the else-branch optionals for the statements following
-        // the if statement. Mirror that here so subsequent references emit .Unwrap()/.Value.
-        ApplyPostIfNarrowings(ifStmt.Test);
-
         return IfStatement(condition, thenBlock, elseClause);
-    }
-
-    /// <summary>
-    /// Applies else-branch Optional/Nullable narrowings to the statements following an
-    /// if statement whose then-branch unconditionally exits (#817). The TypeChecker only
-    /// sets <see cref="NarrowingDecision.NarrowsFollowingStatements"/> for if statements
-    /// at the top level of a function/module body, so the pushed narrowing is intentionally
-    /// not popped — it remains valid for the rest of the method and is cleaned up by
-    /// <see cref="NarrowingState.Reset"/> at the next method boundary.
-    /// </summary>
-    private void ApplyPostIfNarrowings(Expression test)
-    {
-        var decision = _context.SemanticInfo?.GetNarrowingDecision(test);
-        if (decision is not { NarrowsFollowingStatements: true })
-            return;
-
-        foreach (var n in decision.OptionalNarrowings)
-        {
-            if (n.NarrowInThenBranch)
-                continue;
-
-            _narrowing.PushNarrowing(n.VariableName);
-            if (n.IsValueTypeNullable)
-                _narrowing.AddNullableNarrowing(n.VariableName);
-            else if (n.IsReferenceTypeNullable)
-                _narrowing.AddReferenceNullableNarrowing(n.VariableName);
-        }
-    }
-
-    /// <summary>
-    /// Reads Optional narrowing decisions from SemanticInfo for a given condition expression.
-    /// Filters entries by <paramref name="narrowInThen"/> to get either then-branch or else-branch narrowings.
-    /// Also registers value-type nullable narrowings via <see cref="NarrowingState.AddNullableNarrowing"/>
-    /// so the emitter uses <c>.Value</c> instead of <c>.Unwrap()</c>.
-    /// </summary>
-    private (IReadOnlyList<string> VariableNames, bool NarrowInThen)? GetOptionalNarrowingsFromDecision(
-        Expression test, bool narrowInThen)
-    {
-        var decision = _context.SemanticInfo?.GetNarrowingDecision(test);
-        if (decision == null || decision.OptionalNarrowings.Count == 0)
-            return null;
-
-        var varNames = new List<string>();
-        foreach (var n in decision.OptionalNarrowings)
-        {
-            if (n.NarrowInThenBranch == narrowInThen)
-            {
-                varNames.Add(n.VariableName);
-                // Preserve AddNullableNarrowing side effect for value-type nullables
-                if (n.IsValueTypeNullable)
-                    _narrowing.AddNullableNarrowing(n.VariableName);
-                else if (n.IsReferenceTypeNullable)
-                    _narrowing.AddReferenceNullableNarrowing(n.VariableName);
-            }
-        }
-
-        return varNames.Count > 0 ? (varNames, narrowInThen) : null;
-    }
-
-    /// <summary>
-    /// Reads isinstance narrowing decisions from SemanticInfo for a given condition expression.
-    /// Filters entries by <paramref name="narrowInThen"/> to get either then-branch or else-branch narrowings.
-    /// Maps <see cref="SemanticType"/> to C# type names via <see cref="TypeSyntaxMapper"/>.
-    /// </summary>
-    private (IReadOnlyList<(string VariableName, string CSharpTypeName)> Narrowings, bool NarrowInThen)?
-        GetIsInstanceNarrowingsFromDecision(Expression test, bool narrowInThen)
-    {
-        var decision = _context.SemanticInfo?.GetNarrowingDecision(test);
-        if (decision == null || decision.IsInstanceNarrowings.Count == 0)
-            return null;
-
-        var narrowings = new List<(string, string)>();
-        foreach (var n in decision.IsInstanceNarrowings)
-        {
-            if (n.NarrowInThenBranch == narrowInThen)
-            {
-                // Builtin collections narrow to the non-generic Sharpy.IList/IDict/ISet protocol
-                // interface so the narrowing cast (e.g. ((Sharpy.IList)value)[0]) succeeds at
-                // runtime — casting an object holding List<int> to the closed generic
-                // Sharpy.List<object> would throw (invariant), and indexing it would require the
-                // exact element type (#912). The type-erased interface indexers return object.
-                var nonGenericInterface = n.NarrowedType is GenericType narrowedGeneric
-                    ? TryMapBuiltinCollectionToNonGenericInterface(narrowedGeneric.Name)
-                        ?.NormalizeWhitespace().ToFullString()
-                    : null;
-                var csharpType = nonGenericInterface
-                    ?? _typeMapper.MapSemanticType(n.NarrowedType)
-                        .NormalizeWhitespace().ToFullString();
-                narrowings.Add((n.VariableName, csharpType));
-            }
-        }
-
-        return narrowings.Count > 0 ? (narrowings, narrowInThen) : null;
     }
 
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)
     {
-        // Read narrowing decisions from SemanticInfo (computed by TypeChecker)
-        var narrowingInfo = GetOptionalNarrowingsFromDecision(whileStmt.Test, narrowInThen: true);
-        var isInstanceNarrowingInfo = GetIsInstanceNarrowingsFromDecision(whileStmt.Test, narrowInThen: true);
+        // Narrowing of reads inside the loop body is materialized per-read-node by the TypeChecker
+        // (#1081); the emitter no longer re-derives which variables the condition narrows.
 
         // For walrus operators in while conditions, use inline assignment mode so the
         // expression is re-evaluated each iteration instead of being hoisted once.
@@ -657,34 +433,7 @@ internal partial class RoslynEmitter
         // If there's no else clause, generate simple while loop
         if (whileStmt.ElseBody.IsEmpty)
         {
-            if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
-            {
-                foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
-                    _narrowing.PushIsInstanceNarrowing(varName, typeName);
-            }
-
-            if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
-            {
-                foreach (var name in narrowingInfo.Value.VariableNames)
-                    _narrowing.PushNarrowing(name);
-                var body = Block(GenerateSuite(whileStmt.Body));
-                foreach (var name in narrowingInfo.Value.VariableNames)
-                    _narrowing.PopNarrowing(name);
-
-                if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
-                {
-                    foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
-                        _narrowing.PopIsInstanceNarrowing(varName);
-                }
-                return WrapWithWalrusPreDeclarations(WhileStatement(condition, body));
-            }
             var simpleBody = Block(GenerateSuite(whileStmt.Body));
-
-            if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
-            {
-                foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
-                    _narrowing.PopIsInstanceNarrowing(varName);
-            }
             return WrapWithWalrusPreDeclarations(WhileStatement(condition, simpleBody));
         }
 
@@ -704,32 +453,7 @@ internal partial class RoslynEmitter
 
         // Transform the body to set flag to false before break
         var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
-        BlockSyntax bodyBlock;
-
-        if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
-        {
-            foreach (var (varName, typeName) in isInstanceNarrowingInfo.Value.Narrowings)
-                _narrowing.PushIsInstanceNarrowing(varName, typeName);
-        }
-
-        if (narrowingInfo.HasValue && narrowingInfo.Value.NarrowInThen)
-        {
-            foreach (var name in narrowingInfo.Value.VariableNames)
-                _narrowing.PushNarrowing(name);
-            bodyBlock = Block(GenerateSuite(transformedBody));
-            foreach (var name in narrowingInfo.Value.VariableNames)
-                _narrowing.PopNarrowing(name);
-        }
-        else
-        {
-            bodyBlock = Block(GenerateSuite(transformedBody));
-        }
-
-        if (isInstanceNarrowingInfo.HasValue && isInstanceNarrowingInfo.Value.NarrowInThen)
-        {
-            foreach (var (varName, _) in isInstanceNarrowingInfo.Value.Narrowings)
-                _narrowing.PopIsInstanceNarrowing(varName);
-        }
+        var bodyBlock = Block(GenerateSuite(transformedBody));
 
         // while (condition) { transformedBody }
         statements.Add(WhileStatement(condition, bodyBlock));

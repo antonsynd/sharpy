@@ -64,8 +64,6 @@ internal partial class RoslynEmitter
                 if (existsAsModuleLevel || existsAsLocal)
                 {
                     // Variable exists - just update it with a regular assignment
-                    // Clear any Optional narrowing since the variable is being reassigned
-                    _narrowing.ClearNarrowing(name.Name);
                     var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false);
 
                     // `x = None` for an Optional<T> variable must produce Optional<T>.None
@@ -319,7 +317,6 @@ internal partial class RoslynEmitter
                     var arguments = identifiers
                         .Select(id =>
                         {
-                            _narrowing.ClearNarrowing(id.Name);
                             var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
                             return Argument(EscapedIdentifierName(currentName));
                         })
@@ -364,7 +361,6 @@ internal partial class RoslynEmitter
 
                             if (existenceFlags[i])
                             {
-                                _narrowing.ClearNarrowing(id.Name);
                                 var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
                                 stmts.Add(ExpressionStatement(
                                     AssignmentExpression(
@@ -407,7 +403,6 @@ internal partial class RoslynEmitter
 
                             if (existenceFlags[i])
                             {
-                                _narrowing.ClearNarrowing(id.Name);
                                 var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
                                 stmts.Add(ExpressionStatement(
                                     AssignmentExpression(
@@ -938,7 +933,6 @@ internal partial class RoslynEmitter
 
                 if (existsAsModuleLevel || existsAsLocal)
                 {
-                    _narrowing.ClearNarrowing(id.Name);
                     var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
                     statements.Add(ExpressionStatement(
                         AssignmentExpression(
@@ -1017,7 +1011,6 @@ internal partial class RoslynEmitter
 
             if (starIsExisting)
             {
-                _narrowing.ClearNarrowing(starId.Name);
                 var currentStarName = GetMangledVariableName(starId.Name, isNewDeclaration: false);
                 statements.Add(ExpressionStatement(
                     AssignmentExpression(
@@ -1073,7 +1066,6 @@ internal partial class RoslynEmitter
 
                 if (existsAsModuleLevel || existsAsLocal)
                 {
-                    _narrowing.ClearNarrowing(id.Name);
                     var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
                     statements.Add(ExpressionStatement(
                         AssignmentExpression(
@@ -1115,7 +1107,6 @@ internal partial class RoslynEmitter
                 if (existsAsModuleLevel || existsAsLocal)
                 {
                     // Existing variable — update
-                    _narrowing.ClearNarrowing(id.Name);
                     var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
                     statements.Add(ExpressionStatement(
                         AssignmentExpression(
