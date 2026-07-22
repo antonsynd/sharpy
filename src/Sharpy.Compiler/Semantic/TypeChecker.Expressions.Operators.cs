@@ -659,8 +659,27 @@ internal partial class TypeChecker
     private SemanticType CheckConditionalExpression(ConditionalExpression cond)
     {
         CheckExpression(cond.Test);
-        var thenType = CheckExpression(cond.ThenValue);
-        var elseType = CheckExpression(cond.ElseValue);
+
+        // Expression-level narrowing (#1080): the true arm is evaluated only when the condition holds,
+        // so it sees the condition's positive narrowings; the false arm sees the negative narrowings.
+        // Reads inside each arm record their accessor lowering via the narrowing context, exactly as
+        // `and`-RHS does — codegen needs no special handling. The narrowings do not leak past the arm.
+        var thenEntries = ExtractNarrowedTypes(cond.Test, true);
+        var elseEntries = ExtractNarrowedTypes(cond.Test, false);
+
+        SemanticType thenType;
+        using (_narrowingContext.EnterScope())
+        {
+            _narrowingContext.ApplyNarrowings(thenEntries);
+            thenType = CheckExpression(cond.ThenValue);
+        }
+
+        SemanticType elseType;
+        using (_narrowingContext.EnterScope())
+        {
+            _narrowingContext.ApplyNarrowings(elseEntries);
+            elseType = CheckExpression(cond.ElseValue);
+        }
 
         // Return common type
         if (thenType.IsAssignableTo(elseType))
