@@ -225,14 +225,16 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Resolves the narrowing facts currently in effect (<see cref="_currentFacts"/>) for a narrowing
-    /// key against the value's live type, returning the narrowed type or null if nothing narrows it.
-    /// This is the read-time counterpart to the resolution <see cref="ExtractNarrowedTypes"/> performs
-    /// at the condition: a <c>RemoveNone</c> fact strips <see cref="NullableType"/>/<see cref="OptionalType"/>,
-    /// an <c>IsType</c> fact resolves the recorded type expression. When a key carries both (e.g.
-    /// <c>x is not None and isinstance(x, T)</c>), the more specific <c>IsType</c> wins — matching the
-    /// dict-overwrite precedence in <see cref="ExtractNarrowedTypes"/>'s <c>and</c> handling.
+    /// key against the value's live type, returning the narrowed type and the accessor codegen must
+    /// apply at the read site, or null if nothing narrows it. This is the read-time counterpart to the
+    /// resolution <see cref="ExtractNarrowedTypes"/> performs at the condition: a <c>RemoveNone</c> fact
+    /// strips <see cref="NullableType"/>/<see cref="OptionalType"/> (with the lowering keyed on the live
+    /// type shape), an <c>IsType</c> fact resolves the recorded type expression to a cast. When a key
+    /// carries both (e.g. <c>x is not None and isinstance(x, T)</c>), the more specific <c>IsType</c>
+    /// wins — matching the dict-overwrite precedence in <see cref="ExtractNarrowedTypes"/>'s <c>and</c>
+    /// handling. The lowering is materialized per read node so codegen never re-derives flow (#1081).
     /// </summary>
-    private SemanticType? ResolveNarrowedTypeFromFacts(string key, SemanticType liveType)
+    private (SemanticType Type, NarrowedReadLowering Lowering)? ResolveNarrowedTypeFromFacts(string key, SemanticType liveType)
     {
         NarrowingFact? isTypeFact = null;
         NarrowingFact? removeNoneFact = null;
@@ -247,16 +249,66 @@ internal partial class TypeChecker
         }
 
         if (isTypeFact?.TypeExpression is { } typeExpr && ResolveIsTypeFactType(typeExpr) is { } narrowed)
-            return narrowed;
+            return (narrowed, new NarrowedReadLowering(NarrowedReadKind.Cast, narrowed));
 
         if (removeNoneFact != null)
         {
             return liveType switch
             {
-                NullableType nullable => nullable.UnderlyingType,
-                OptionalType optional => optional.UnderlyingType,
+                NullableType { IsValueType: true } nullable =>
+                    (nullable.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.NullableValue)),
+                NullableType nullable =>
+                    (nullable.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.NullForgiving)),
+                OptionalType optional =>
+                    (optional.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.UnwrapOptional)),
                 _ => null
             };
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Builds lowering-bearing narrowing entries for <c>and</c>-RHS scope application from a condition's
+    /// extracted narrowings. The type comes from <paramref name="narrowedTypes"/> (authoritative, with
+    /// <c>and</c> precedence already applied); the accessor lowering comes from the parallel
+    /// <paramref name="decision"/> — <c>isinstance</c> (<see cref="NarrowedReadKind.Cast"/>) preferred
+    /// over Optional/Nullable when a key carries both, matching the type that won (#1081).
+    /// </summary>
+    private static Dictionary<string, NarrowingEntry> BuildNarrowingEntries(
+        Dictionary<string, SemanticType> narrowedTypes, NarrowingDecision decision)
+    {
+        var entries = new Dictionary<string, NarrowingEntry>(narrowedTypes.Count);
+        foreach (var kvp in narrowedTypes)
+        {
+            entries[kvp.Key] = new NarrowingEntry(kvp.Value, ResolveReadLowering(kvp.Key, kvp.Value, decision));
+        }
+        return entries;
+    }
+
+    /// <summary>
+    /// Picks the read accessor for a narrowed key from a <see cref="NarrowingDecision"/>: an
+    /// <c>isinstance</c> narrowing lowers to a cast to the narrowed type; an Optional/Nullable narrowing
+    /// lowers to <c>.Value</c> (value-type nullable), null-forgiving <c>!</c> (reference-type nullable),
+    /// or <c>.Unwrap()</c> (Sharpy Optional). Returns null when the key has no accessor-implying narrowing.
+    /// </summary>
+    private static NarrowedReadLowering? ResolveReadLowering(string key, SemanticType narrowedType, NarrowingDecision decision)
+    {
+        foreach (var isInstance in decision.IsInstanceNarrowings)
+        {
+            if (isInstance.VariableName == key)
+                return new NarrowedReadLowering(NarrowedReadKind.Cast, narrowedType);
+        }
+
+        foreach (var optional in decision.OptionalNarrowings)
+        {
+            if (optional.VariableName == key)
+            {
+                var kind = optional.IsValueTypeNullable ? NarrowedReadKind.NullableValue
+                    : optional.IsReferenceTypeNullable ? NarrowedReadKind.NullForgiving
+                    : NarrowedReadKind.UnwrapOptional;
+                return new NarrowedReadLowering(kind);
+            }
         }
 
         return null;

@@ -225,12 +225,14 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        var (leftNarrowed, _) = ExtractNarrowedTypes(andOp.Left, true);
+        var (leftNarrowed, leftDecision) = ExtractNarrowedTypes(andOp.Left, true);
 
         SemanticType rightType;
         using (_narrowingContext.EnterScope())
         {
-            _narrowingContext.ApplyNarrowings(leftNarrowed);
+            // Apply lowering-bearing entries so RHS reads of the narrowed variables record the accessor
+            // codegen must emit (e.g. `x.Unwrap()`, `(Dog)a`) — #1081.
+            _narrowingContext.ApplyNarrowings(BuildNarrowingEntries(leftNarrowed, leftDecision));
             rightType = CheckExpression(andOp.Right);
         }
 

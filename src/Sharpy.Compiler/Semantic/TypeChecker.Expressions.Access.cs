@@ -16,22 +16,28 @@ internal partial class TypeChecker
 
         // Expression-level narrowing (the `and` right-hand side, match arms) is pre-resolved in
         // _narrowingContext and short-circuits — preserving the prior behaviour of returning the
-        // narrowed type without re-resolving the member.
-        if (narrowingKey != null && _narrowingContext.GetNarrowedType(narrowingKey) is { } contextNarrowed)
+        // narrowed type without re-resolving the member. Copy any read lowering the context entry
+        // carries so codegen applies the accessor (#1081).
+        if (narrowingKey != null
+            && _narrowingContext.TryGetNarrowing(narrowingKey, out var contextNarrowed, out var contextLowering))
         {
-            _semanticInfo.SetNarrowedType(memberAccess, contextNarrowed);
-            return contextNarrowed;
+            _semanticInfo.SetNarrowedType(memberAccess, contextNarrowed!);
+            if (contextLowering != null)
+                _semanticInfo.SetNarrowedReadLowering(memberAccess, contextLowering);
+            return contextNarrowed!;
         }
 
         var memberType = CheckMemberAccessCore(memberAccess);
 
         // Statement-level control-flow narrowing (#1042): resolve the CFG facts against the member's
         // computed (non-narrowed) type — e.g. isinstance(self.animal, Dog) narrows "self.animal" to
-        // Dog, `if self.value is not None:` strips the Optional from "self.value".
-        if (narrowingKey != null && ResolveNarrowedTypeFromFacts(narrowingKey, memberType) is { } factNarrowed)
+        // Dog, `if self.value is not None:` strips the Optional from "self.value". The lowering tells
+        // codegen which accessor to emit (#1081).
+        if (narrowingKey != null && ResolveNarrowedTypeFromFacts(narrowingKey, memberType) is { } factRead)
         {
-            _semanticInfo.SetNarrowedType(memberAccess, factNarrowed);
-            return factNarrowed;
+            _semanticInfo.SetNarrowedType(memberAccess, factRead.Type);
+            _semanticInfo.SetNarrowedReadLowering(memberAccess, factRead.Lowering);
+            return factRead.Type;
         }
 
         return memberType;
@@ -735,22 +741,30 @@ internal partial class TypeChecker
         // container-specific lowering for the narrowed access — e.g. a narrowed tuple element t[1]
         // must still lower to .Item2, which requires the object's TupleType in SemanticInfo.
         // CheckExpression is cached, so this is cheap and idempotent.
-        if (narrowingKey != null && _narrowingContext.GetNarrowedType(narrowingKey) is { } contextNarrowed)
+        if (narrowingKey != null
+            && _narrowingContext.TryGetNarrowing(narrowingKey, out var contextNarrowed, out var contextLowering))
         {
             var narrowedObjectType = CheckExpression(indexAccess.Object);
             CheckExpression(indexAccess.Index);
             RecordIndexAccessLowering(indexAccess, narrowedObjectType);
-            return contextNarrowed;
+            // The container access strategy (RecordIndexAccessLowering above) and the narrowed-read
+            // accessor are distinct facts on the same node; codegen composes them (e.g. xs[0].Unwrap()).
+            if (contextLowering != null)
+                _semanticInfo.SetNarrowedReadLowering(indexAccess, contextLowering);
+            return contextNarrowed!;
         }
 
         var elementType = CheckIndexAccessCore(indexAccess);
 
         // Statement-level control-flow narrowing (#1042): CheckIndexAccessCore already recorded the
-        // index-access lowering on the normal path, so only the element type needs swapping. Matches
-        // the prior index-access narrowing path, which did not record a narrowed type in SemanticInfo.
-        if (narrowingKey != null && ResolveNarrowedTypeFromFacts(narrowingKey, elementType) is { } factNarrowed)
+        // index-access container lowering on the normal path, so only the element type needs swapping.
+        // The narrowed element read still needs an accessor (#1081) — the read lowering is recorded per
+        // index node here; it composes with the container lowering already on the node. Matches the
+        // prior index-access narrowing path, which did not record a narrowed *type* in SemanticInfo.
+        if (narrowingKey != null && ResolveNarrowedTypeFromFacts(narrowingKey, elementType) is { } factRead)
         {
-            return factNarrowed;
+            _semanticInfo.SetNarrowedReadLowering(indexAccess, factRead.Lowering);
+            return factRead.Type;
         }
 
         return elementType;

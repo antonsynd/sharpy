@@ -306,16 +306,23 @@ internal partial class TypeChecker
         // Check if this identifier has a narrowed type. Expression-level narrowings (the `and`
         // right-hand side, match arms) live in _narrowingContext and take precedence; statement-level
         // control-flow narrowings come from the CFG dataflow facts resolved against the variable's
-        // live type (#1042).
-        var narrowedType = _narrowingContext.GetNarrowedType(id.Name);
-        if (narrowedType == null && symbol is VariableSymbol narrowableVar)
-            narrowedType = ResolveNarrowedTypeFromFacts(id.Name, GetVariableType(narrowableVar));
-        if (narrowedType != null)
+        // live type (#1042). Each narrowing that implies an accessor also records a
+        // NarrowedReadLowering so codegen applies it without re-deriving flow (#1081).
+        if (_narrowingContext.TryGetNarrowing(id.Name, out var contextNarrowed, out var contextLowering))
         {
-            // Persist the narrowed type for code generation
-            // This allows RoslynEmitter to use the narrowed type when generating code
-            _semanticInfo.SetNarrowedType(id, narrowedType);
-            return narrowedType;
+            // Persist the narrowed type for code generation and tooling (ISemanticQuery).
+            _semanticInfo.SetNarrowedType(id, contextNarrowed!);
+            if (contextLowering != null)
+                _semanticInfo.SetNarrowedReadLowering(id, contextLowering);
+            return contextNarrowed!;
+        }
+
+        if (symbol is VariableSymbol narrowableVar
+            && ResolveNarrowedTypeFromFacts(id.Name, GetVariableType(narrowableVar)) is { } factRead)
+        {
+            _semanticInfo.SetNarrowedType(id, factRead.Type);
+            _semanticInfo.SetNarrowedReadLowering(id, factRead.Lowering);
+            return factRead.Type;
         }
 
         var identifierType = symbol switch
