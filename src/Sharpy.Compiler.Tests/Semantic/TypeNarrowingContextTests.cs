@@ -42,26 +42,42 @@ public class TypeNarrowingContextTests
     }
 
     [Fact]
-    public void TryGetNarrowedType_ReturnsTrue_WhenFound()
+    public void TryGetNarrowing_ReturnsTypeAndLowering_WhenFound()
+    {
+        var context = new TypeNarrowingContext();
+        var lowering = new NarrowedReadLowering(NarrowedReadKind.UnwrapOptional);
+        context.Narrow("x", SemanticType.Int, lowering);
+
+        var found = context.TryGetNarrowing("x", out var type, out var recordedLowering);
+
+        found.Should().BeTrue();
+        type.Should().Be(SemanticType.Int);
+        recordedLowering.Should().Be(lowering);
+    }
+
+    [Fact]
+    public void TryGetNarrowing_ReturnsNullLowering_WhenEntryHasNone()
     {
         var context = new TypeNarrowingContext();
         context.Narrow("x", SemanticType.Int);
 
-        var found = context.TryGetNarrowedType("x", out var type);
+        var found = context.TryGetNarrowing("x", out var type, out var lowering);
 
         found.Should().BeTrue();
         type.Should().Be(SemanticType.Int);
+        lowering.Should().BeNull();
     }
 
     [Fact]
-    public void TryGetNarrowedType_ReturnsFalse_WhenNotFound()
+    public void TryGetNarrowing_ReturnsFalse_WhenNotFound()
     {
         var context = new TypeNarrowingContext();
 
-        var found = context.TryGetNarrowedType("unknown", out var type);
+        var found = context.TryGetNarrowing("unknown", out var type, out var lowering);
 
         found.Should().BeFalse();
         type.Should().BeNull();
+        lowering.Should().BeNull();
     }
 
     #endregion
@@ -217,19 +233,24 @@ public class TypeNarrowingContextTests
     #region ApplyNarrowings
 
     [Fact]
-    public void ApplyNarrowings_AddsMultipleNarrowings()
+    public void ApplyNarrowings_AddsMultipleEntries_CarryingLowerings()
     {
         var context = new TypeNarrowingContext();
-        var narrowings = new Dictionary<string, SemanticType>
+        var narrowings = new Dictionary<string, NarrowingEntry>
         {
-            ["x"] = SemanticType.Int,
-            ["y"] = SemanticType.Str
+            ["x"] = new(SemanticType.Int, new NarrowedReadLowering(NarrowedReadKind.NullableValue)),
+            ["y"] = new(SemanticType.Str)
         };
 
         context.ApplyNarrowings(narrowings);
 
-        context.GetNarrowedType("x").Should().Be(SemanticType.Int);
-        context.GetNarrowedType("y").Should().Be(SemanticType.Str);
+        context.TryGetNarrowing("x", out var xType, out var xLowering).Should().BeTrue();
+        xType.Should().Be(SemanticType.Int);
+        xLowering!.Kind.Should().Be(NarrowedReadKind.NullableValue);
+
+        context.TryGetNarrowing("y", out var yType, out var yLowering).Should().BeTrue();
+        yType.Should().Be(SemanticType.Str);
+        yLowering.Should().BeNull();
     }
 
     [Fact]
@@ -238,9 +259,9 @@ public class TypeNarrowingContextTests
         var context = new TypeNarrowingContext();
         context.Narrow("x", SemanticType.Int);
 
-        var narrowings = new Dictionary<string, SemanticType>
+        var narrowings = new Dictionary<string, NarrowingEntry>
         {
-            ["x"] = SemanticType.Str
+            ["x"] = new(SemanticType.Str)
         };
 
         context.ApplyNarrowings(narrowings);

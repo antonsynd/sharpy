@@ -110,15 +110,8 @@ internal partial class TypeChecker
             if (fact.Kind == NarrowingActionKind.RemoveNone)
             {
                 var resolvedType = ResolveNarrowedOperandType(fact.SourceExpression!);
-                if (resolvedType is NullableType nullable)
-                {
-                    var kind = nullable.IsValueType ? NarrowedReadKind.NullableValue : NarrowedReadKind.NullForgiving;
-                    entries[fact.Key] = new NarrowingEntry(nullable.UnderlyingType, new NarrowedReadLowering(kind));
-                }
-                else if (resolvedType is OptionalType optional)
-                {
-                    entries[fact.Key] = new NarrowingEntry(optional.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.UnwrapOptional));
-                }
+                if (LoweringForRemoveNone(resolvedType) is { } removeNone)
+                    entries[fact.Key] = new NarrowingEntry(removeNone.Type, removeNone.Lowering);
             }
             else // IsType (isinstance)
             {
@@ -221,20 +214,31 @@ internal partial class TypeChecker
             return (narrowed, new NarrowedReadLowering(NarrowedReadKind.Cast, narrowed));
 
         if (removeNoneFact != null)
-        {
-            return liveType switch
-            {
-                NullableType { IsValueType: true } nullable =>
-                    (nullable.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.NullableValue)),
-                NullableType nullable =>
-                    (nullable.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.NullForgiving)),
-                OptionalType optional =>
-                    (optional.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.UnwrapOptional)),
-                _ => null
-            };
-        }
+            return LoweringForRemoveNone(liveType);
 
         return null;
+    }
+
+    /// <summary>
+    /// The single decision point mapping a <c>RemoveNone</c> narrowing onto a value's un-narrowed
+    /// type shape: strips <see cref="NullableType"/>/<see cref="OptionalType"/> and pairs the
+    /// underlying type with the accessor codegen must apply at the read site. Shared by the
+    /// condition-side (<see cref="ExtractNarrowedTypes"/>) and read-side
+    /// (<see cref="ResolveNarrowedTypeFromFacts"/>) resolutions so the fact→accessor mapping cannot
+    /// drift between them (#1081). Returns null for shapes a <c>RemoveNone</c> fact cannot narrow.
+    /// </summary>
+    private static (SemanticType Type, NarrowedReadLowering Lowering)? LoweringForRemoveNone(SemanticType? type)
+    {
+        return type switch
+        {
+            NullableType { IsValueType: true } nullable =>
+                (nullable.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.NullableValue)),
+            NullableType nullable =>
+                (nullable.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.NullForgiving)),
+            OptionalType optional =>
+                (optional.UnderlyingType, new NarrowedReadLowering(NarrowedReadKind.UnwrapOptional)),
+            _ => null
+        };
     }
 
     /// <summary>

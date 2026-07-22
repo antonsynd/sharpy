@@ -131,28 +131,8 @@ public sealed class TypeNarrowingContext
     /// </summary>
     /// <param name="name">The variable name to look up.</param>
     /// <returns>The narrowed type, or null if not narrowed.</returns>
-    public SemanticType? GetNarrowedType(string name)
-    {
-        // Search from innermost to outermost scope
-        foreach (var scope in _scopeStack)
-        {
-            if (scope.TryGetValue(name, out var entry))
-                return entry.Type;
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Tries to get the narrowed type for the given name.
-    /// </summary>
-    /// <param name="name">The variable name to look up.</param>
-    /// <param name="type">The narrowed type, if found.</param>
-    /// <returns>True if a narrowing was found, false otherwise.</returns>
-    public bool TryGetNarrowedType(string name, out SemanticType? type)
-    {
-        type = GetNarrowedType(name);
-        return type != null;
-    }
+    public SemanticType? GetNarrowedType(string name) =>
+        TryGetNarrowing(name, out var type, out _) ? type : null;
 
     /// <summary>
     /// Tries to get both the narrowed type and its optional read lowering for the given name,
@@ -201,22 +181,9 @@ public sealed class TypeNarrowingContext
     }
 
     /// <summary>
-    /// Applies multiple narrowings (types only, no read lowering) to the current scope at once.
-    /// </summary>
-    /// <param name="narrowings">The narrowings to apply.</param>
-    public void ApplyNarrowings(IEnumerable<KeyValuePair<string, SemanticType>> narrowings)
-    {
-        var currentScope = _scopeStack.Peek();
-        foreach (var kvp in narrowings)
-        {
-            currentScope[kvp.Key] = new NarrowingEntry(kvp.Value);
-        }
-    }
-
-    /// <summary>
     /// Applies multiple narrowings (each carrying an optional read lowering) to the current scope at
-    /// once. Used by expression-level narrowing (<c>and</c>-RHS, ternary arms) so the read sites in the
-    /// scope can copy the recorded accessor for codegen (#1081).
+    /// once. Used by expression-level narrowing (<c>and</c>/<c>or</c>-RHS, ternary arms) so the read
+    /// sites in the scope can copy the recorded accessor for codegen (#1081).
     /// </summary>
     /// <param name="narrowings">The narrowing entries to apply.</param>
     public void ApplyNarrowings(IEnumerable<KeyValuePair<string, NarrowingEntry>> narrowings)
