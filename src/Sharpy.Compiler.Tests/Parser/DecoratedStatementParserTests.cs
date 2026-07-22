@@ -39,10 +39,40 @@ public partial class ParserTests
     }
 
     [Fact]
-    public void Suppress_OnImport_StillErrors()
+    public void Suppress_OnImport_WrapsInDecoratedStatement()
     {
-        // Imports are never suppress targets — statement-scoped @suppress does not cover them.
-        var error = ParseExpectingError("@suppress(\"SPY0452\")\nimport os");
+        // Statement-scoped @suppress now covers plain imports (#1124): the import parses normally
+        // and is wrapped in a DecoratedStatement so every module.Body scan can classify it via
+        // Statement.UnwrapDecorated.
+        var module = Parse("@suppress(\"SPY0452\")\nimport os");
+        var decorated = module.Body[0].Should().BeOfType<DecoratedStatement>().Subject;
+        decorated.Decorators.Should().ContainSingle().Which.Name.Should().Be("suppress");
+        decorated.Statement.Should().BeOfType<ImportStatement>();
+    }
+
+    [Fact]
+    public void Suppress_OnFromImport_WrapsInDecoratedStatement()
+    {
+        var module = Parse("@suppress(\"SPY0452\")\nfrom os import path");
+        var decorated = module.Body[0].Should().BeOfType<DecoratedStatement>().Subject;
+        decorated.Decorators.Should().ContainSingle().Which.Name.Should().Be("suppress");
+        decorated.Statement.Should().BeOfType<FromImportStatement>();
+    }
+
+    [Fact]
+    public void NonSuppressDecorator_OnImport_StillErrors()
+    {
+        // A non-@suppress decorator on an import keeps today's SPY0105 — imports have no CLR
+        // attribute target, so anything but @suppress is meaningless.
+        var error = ParseExpectingError("@lru_cache\nimport os");
+        error.Should().Contain("Decorators can only be applied to");
+    }
+
+    [Fact]
+    public void MixedDecorators_OnImport_StillErrors()
+    {
+        // If any decorator is not @suppress, the import keeps its SPY0105.
+        var error = ParseExpectingError("@suppress(\"SPY0452\")\n@lru_cache\nimport os");
         error.Should().Contain("Decorators can only be applied to");
     }
 
