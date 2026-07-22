@@ -708,18 +708,21 @@ internal partial class RoslynEmitter
         // The cast operators lower purely by their failure mode; the `to`/`to?` and
         // `as!`/`as?` spellings share one lowering (snapshot parity, #1029):
         // - Throw mode (value to T / value as! T)  → (T)value (throws InvalidCastException)
-        // - Null  mode (value to T? / value as? T) → value is T _temp ? Optional<T>.Some(_temp) : default
-        // For `to`, Mode is set from the target's nullability at parse time, so this branch
-        // selection is identical to the historical `TargetType.IsOptional` check.
+        // - Null  mode (value to T? / value as? T) → one of three shapes, chosen entirely in semantic
+        //   analysis and materialized as a TypeCoercionLowering (#1110); the emitter only applies it:
+        //     * NumericRangeChecked (narrowing) → global::Sharpy.NumericSafeCast.To{T}OrNone(value)
+        //     * NumericAlwaysFits (widening/identity) → Optional<T>.Some((T)value)
+        //     * absent (object/reference/optional/non-numeric source) → the type-pattern form
+        //       value is T _temp ? Optional<T>.Some(_temp) : default
+        // The type pattern is only correct for object/reference sources — a concrete numeric source
+        // (`x is int` when x is double) is CS8121, which is exactly why the numeric shapes exist.
+        // For `to`, Mode is set from the target's nullability at parse time, so this branch selection
+        // is identical to the historical `TargetType.IsOptional` check.
 
         var value = GenerateExpression(coercion.Value);
 
         if (coercion.Mode == CastFailureMode.Null)
         {
-            // Safe form: value to T? / value as? T
-            // Generate: value is T _temp ? Optional<T>.Some(_temp) : default
-            // Works for both value types and reference types.
-            // default produces Optional<T>.None (struct with _hasValue = false).
             // The `as?` form writes T non-nullable while `to T?` carries IsOptional; stripping
             // IsOptional here yields the same base type T for both.
             var baseType = new TypeAnnotation
@@ -730,6 +733,39 @@ internal partial class RoslynEmitter
             };
             var baseTypeSyntax = _typeMapper.MapType(baseType);
 
+            var numericLowering = _context.SemanticInfo?.GetTypeCoercionLowering(coercion);
+            if (numericLowering != null)
+            {
+                var optionalTypeName = GenericName("Optional")
+                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(baseTypeSyntax)));
+
+                if (numericLowering.Kind == TypeCoercionLoweringKind.NumericRangeChecked)
+                {
+                    // Narrowing: global::Sharpy.NumericSafeCast.To{T}OrNone(value). The helper returns
+                    // Optional<T> directly (Some in range, None for out-of-range/NaN/±inf).
+                    return InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            MakeGlobalQualifiedName("Sharpy", "NumericSafeCast"),
+                            IdentifierName(numericLowering.SafeCastMethod!)))
+                        .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(value))));
+                }
+
+                // NumericAlwaysFits: Optional<T>.Some((T)value). The C# cast is a widening/identity
+                // conversion (or double→float32, which maps overflow to ±inf), so it never overflows.
+                var castOperand = IsTrivialExpression(coercion.Value) ? value : ParenthesizedExpression(value);
+                return InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        optionalTypeName,
+                        IdentifierName("Some")))
+                    .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                        Argument(CastExpression(baseTypeSyntax, castOperand)))));
+            }
+
+            // Default type-pattern form (object/reference/optional sources):
+            // value is T _temp ? Optional<T>.Some(_temp) : default
+            // default produces Optional<T>.None (struct with _hasValue = false).
             var tempName = $"__coerce_temp_{_tempVarCounter++}";
 
             var optionalType = GenericName("Optional")
