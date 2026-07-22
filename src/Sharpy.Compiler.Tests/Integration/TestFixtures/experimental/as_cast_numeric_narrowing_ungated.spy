@@ -1,0 +1,6 @@
+def main() -> None:
+    # Same numeric as? narrowing as the gated twin, but with no `.features` sidecar enabling
+    # `failable_cast` — the operator is gated (SPY0331).
+    x: float = 3.9
+    y: int? = x as? int
+    print(y ?? -1)

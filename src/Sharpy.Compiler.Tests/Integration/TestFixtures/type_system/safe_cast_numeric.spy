@@ -1,0 +1,40 @@
+# Numeric safe casts (value to T?) from concrete numeric sources (#1110).
+# In range -> Some(truncated toward zero); out of range / NaN / inf -> None.
+
+def main() -> None:
+    # float -> int?: in-range truncates toward zero
+    a: float = 3.9
+    print((a to int?) ?? -1)
+
+    # float -> int?: negative truncation toward zero
+    b: float = -3.9
+    print((b to int?) ?? -1)
+
+    # float -> int?: out of range -> None
+    big: float = 1e30
+    print((big to int?) ?? -1)
+
+    # float -> int?: NaN and inf -> None
+    inf: float = 1e300 * 1e300
+    nan: float = inf - inf
+    print((nan to int?) ?? -1)
+    print((inf to int?) ?? -1)
+
+    # long -> int?: in range and out of range
+    small: long = 100
+    print((small to int?) ?? -1)
+    huge: long = 5000000000
+    print((huge to int?) ?? -1)
+
+    # int -> float?: widening always fits
+    n: int = 7
+    print((n to float?) ?? 0.0)
+
+    # identity int -> int?
+    m: int = 42
+    print((m to int?) ?? -1)
+
+    # ?? default flows from a None result
+    oob: int? = big to int?
+    print(oob.is_none)
+    print(oob ?? -999)

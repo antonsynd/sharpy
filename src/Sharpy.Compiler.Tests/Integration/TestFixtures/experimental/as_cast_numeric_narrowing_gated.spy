@@ -1,0 +1,12 @@
+def main() -> None:
+    # as? narrows a concrete float -> int? via the range-checked helper (#1110). The existing
+    # as_cast_numeric_gated fixture deliberately avoided this path (it cast from object); this twin
+    # covers it.
+    x: float = 3.9
+    y: int? = x as? int
+    print(y ?? -1)
+
+    # Out of range -> None.
+    big: float = 1e30
+    z: int? = big as? int
+    print(z ?? -1)
