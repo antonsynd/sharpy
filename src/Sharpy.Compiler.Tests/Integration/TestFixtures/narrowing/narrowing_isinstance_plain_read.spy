@@ -1,0 +1,13 @@
+# isinstance narrowing applied to plain value reads (not member access): the narrowed read
+# emits a null-forgiven cast (`(int)r!`) so nullable receivers compile warning-clean (CS8605),
+# while the isinstance subjects themselves read raw — a cast there would presuppose the very
+# fact being tested. Locked by the C# snapshot (#1081).
+def get_value() -> object:
+    return 42
+
+def main():
+    r: object = get_value()
+    assert isinstance(r, int)
+    if isinstance(r, int):
+        print(r + 1)
+    print(r)

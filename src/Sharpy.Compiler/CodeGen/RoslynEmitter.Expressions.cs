@@ -294,7 +294,13 @@ internal partial class RoslynEmitter
                         && TryMapBuiltinCollectionToNonGenericInterface(generic.Name) is { } nonGenericInterface
                             ? nonGenericInterface
                             : _typeMapper.MapSemanticType(lowering.CastTarget!);
-                    return ParenthesizedExpression(CastExpression(castType, expr));
+                    // The narrowing proved the value inhabits the cast target on every path reaching
+                    // this read — which also proves it is non-null. Assert that to C#'s nullable flow
+                    // with `!` so unboxing casts over nullable receivers (e.g. `(long)obj` where obj
+                    // is object?) compile warning-clean (CS8605).
+                    return ParenthesizedExpression(CastExpression(
+                        castType,
+                        PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression, expr)));
                 }
 
             default:

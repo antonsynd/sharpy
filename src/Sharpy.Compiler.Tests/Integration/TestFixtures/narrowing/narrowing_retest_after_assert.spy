@@ -1,0 +1,19 @@
+# A redundant re-test of an already-narrowed value reads the RAW value: the operand of
+# `is (not) None` never acquires a narrowing accessor, so `if x is not None:` after
+# `assert x is not None` emits `x != null` — not the degenerate `x.Value != null`
+# (CS0472/CS8073 in user builds with warnings-as-errors). Locked by the C# snapshot (#1081).
+def check_nullable(x: int | None) -> int:
+    assert x is not None
+    if x is not None:
+        return x + 1
+    return 0
+
+def check_optional(x: int?) -> int:
+    assert x is not None
+    if x is not None:
+        return x + 1
+    return 0
+
+def main():
+    print(check_nullable(5))
+    print(check_optional(Some(7)))

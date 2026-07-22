@@ -166,6 +166,52 @@ def f(xs: list[int | None]) -> int:
     }
 
     [Fact]
+    public void NoneTestOperand_AcquiresNoLowering()
+    {
+        // A redundant re-test of an already-narrowed value must observe the raw value: the operand
+        // of `is (not) None` never acquires an accessor. Otherwise `if x is not None:` after an
+        // assert emits the degenerate `x.Value != null` (CS0472 under warnings-as-errors).
+        var (module, info) = Analyze(@"
+def f(x: int | None) -> int:
+    assert x is not None
+    if x is not None:
+        return x + 1
+    return 0
+");
+
+        var reads = ReadsWithLowering(module, info);
+        reads.Should().ContainSingle("only the body read of x is lowered — never the test operands");
+        reads[0].Node.Should().BeOfType<Identifier>();
+        reads[0].Lowering.Kind.Should().Be(NarrowedReadKind.NullableValue);
+    }
+
+    [Fact]
+    public void IsInstanceTestOperand_AcquiresNoLowering()
+    {
+        // isinstance's subject reads the honest value — a cast on the operand would presuppose
+        // the fact the test is checking (`((Dog)a) is Dog` after an isinstance assert).
+        var (module, info) = Analyze(@"
+class Animal:
+    pass
+
+class Dog(Animal):
+    def speak(self) -> str:
+        return ""woof""
+
+def f(a: Animal) -> str:
+    assert isinstance(a, Dog)
+    if isinstance(a, Dog):
+        return a.speak()
+    return """"
+");
+
+        var reads = ReadsWithLowering(module, info);
+        reads.Should().ContainSingle("only the a.speak() receiver read is lowered — not the isinstance subjects");
+        reads[0].Node.Should().BeOfType<Identifier>();
+        reads[0].Lowering.Kind.Should().Be(NarrowedReadKind.Cast);
+    }
+
+    [Fact]
     public void MatchArmRead_AcquiresNoLowering()
     {
         // Match patterns narrow by redefining the bound symbol (n : int), not through the narrowing

@@ -28,8 +28,21 @@ internal partial class TypeChecker
             return CheckBooleanOrOp(binOp);
         }
 
+        // The operand of an `is (not) None` test reads the honest, un-narrowed value: mark it so
+        // the read sites skip narrowing for that node (see _typeTestOperand). Restored immediately
+        // after the operand checks — the suppression must not leak into sibling expressions.
+        var savedTypeTestOperand = _typeTestOperand;
+        if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
+        {
+            if (binOp.Right is NoneLiteral)
+                _typeTestOperand = UnwrapParenthesized(binOp.Left);
+            else if (binOp.Left is NoneLiteral)
+                _typeTestOperand = UnwrapParenthesized(binOp.Right);
+        }
+
         var leftType = CheckExpression(binOp.Left);
         var rightType = CheckExpression(binOp.Right);
+        _typeTestOperand = savedTypeTestOperand;
 
         // If either operand is Unknown, return Unknown to avoid cascading errors
         if (leftType is UnknownType || rightType is UnknownType)

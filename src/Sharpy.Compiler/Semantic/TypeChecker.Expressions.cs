@@ -307,22 +307,26 @@ internal partial class TypeChecker
         // right-hand side, match arms) live in _narrowingContext and take precedence; statement-level
         // control-flow narrowings come from the CFG dataflow facts resolved against the variable's
         // live type (#1042). Each narrowing that implies an accessor also records a
-        // NarrowedReadLowering so codegen applies it without re-deriving flow (#1081).
-        if (_narrowingContext.TryGetNarrowing(id.Name, out var contextNarrowed, out var contextLowering))
+        // NarrowedReadLowering so codegen applies it without re-deriving flow (#1081). Type-test
+        // operands (`x is (not) None`, isinstance subjects) are exempt — they read the raw value.
+        if (!ReferenceEquals(id, _typeTestOperand))
         {
-            // Persist the narrowed type for code generation and tooling (ISemanticQuery).
-            _semanticInfo.SetNarrowedType(id, contextNarrowed!);
-            if (contextLowering != null)
-                _semanticInfo.SetNarrowedReadLowering(id, contextLowering);
-            return contextNarrowed!;
-        }
+            if (_narrowingContext.TryGetNarrowing(id.Name, out var contextNarrowed, out var contextLowering))
+            {
+                // Persist the narrowed type for code generation and tooling (ISemanticQuery).
+                _semanticInfo.SetNarrowedType(id, contextNarrowed!);
+                if (contextLowering != null)
+                    _semanticInfo.SetNarrowedReadLowering(id, contextLowering);
+                return contextNarrowed!;
+            }
 
-        if (symbol is VariableSymbol narrowableVar
-            && ResolveNarrowedTypeFromFacts(id.Name, GetVariableType(narrowableVar)) is { } factRead)
-        {
-            _semanticInfo.SetNarrowedType(id, factRead.Type);
-            _semanticInfo.SetNarrowedReadLowering(id, factRead.Lowering);
-            return factRead.Type;
+            if (symbol is VariableSymbol narrowableVar
+                && ResolveNarrowedTypeFromFacts(id.Name, GetVariableType(narrowableVar)) is { } factRead)
+            {
+                _semanticInfo.SetNarrowedType(id, factRead.Type);
+                _semanticInfo.SetNarrowedReadLowering(id, factRead.Lowering);
+                return factRead.Type;
+            }
         }
 
         var identifierType = symbol switch

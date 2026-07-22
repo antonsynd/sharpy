@@ -62,6 +62,13 @@ internal partial class TypeChecker
     private IReadOnlyCollection<Analysis.ControlFlow.NarrowingFact> _currentFacts =
         System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
 
+    // The expression currently being read as the operand of a type test (`x is (not) None`,
+    // `isinstance(x, T)`). Type-test operands observe the honest, un-narrowed value: the read
+    // sites skip narrowing for exactly this node, so a redundant re-test of an already-narrowed
+    // value neither acquires an accessor (which would degenerate to `x.Value != null` — CS0472)
+    // nor presupposes the very fact the test is checking (an isinstance operand cast).
+    private Expression? _typeTestOperand;
+
     // Track whether we're inside an except block (for bare raise validation)
     private bool _inExceptBlock = false;
 

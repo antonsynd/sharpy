@@ -100,9 +100,15 @@ internal partial class TypeChecker
         // Resolve function symbol early for constructor inference on arguments
         var (earlyFuncSymbol, earlyParamOffset) = ResolveEarlyFunctionSymbol(call);
 
-        // Check arguments and keyword arguments, collecting their types
+        // Check arguments and keyword arguments, collecting their types. isinstance's subject
+        // reads the honest, un-narrowed value (see _typeTestOperand): a narrowing cast on the
+        // operand would presuppose the very fact the test is checking.
         var calleeFunctionType = calleeType as FunctionType;
+        var savedTypeTestOperand = _typeTestOperand;
+        if (call.Function is Identifier { Name: BuiltinNames.Isinstance } && call.Arguments.Length > 0)
+            _typeTestOperand = UnwrapParenthesized(call.Arguments[0]);
         var (argTypes, kwargTypes) = CheckCallArguments(call, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
+        _typeTestOperand = savedTypeTestOperand;
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
         MarkTypeReferenceArguments(call);

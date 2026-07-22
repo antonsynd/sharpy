@@ -12,7 +12,11 @@ internal partial class TypeChecker
 {
     private SemanticType CheckMemberAccess(MemberAccess memberAccess)
     {
-        var narrowingKey = ExtractNarrowingKey(memberAccess);
+        // Type-test operands (`x.f is (not) None`, isinstance subjects) read the raw member value —
+        // the node's own narrowing must not apply (its receiver still narrows normally).
+        var narrowingKey = ReferenceEquals(memberAccess, _typeTestOperand)
+            ? null
+            : ExtractNarrowingKey(memberAccess);
 
         // Expression-level narrowing (the `and` right-hand side, match arms) is pre-resolved in
         // _narrowingContext and short-circuits — preserving the prior behaviour of returning the
@@ -734,7 +738,11 @@ internal partial class TypeChecker
 
     private SemanticType CheckIndexAccess(IndexAccess indexAccess)
     {
-        var narrowingKey = ExtractNarrowingKey(indexAccess);
+        // Type-test operands (`xs[0] is (not) None`, isinstance subjects) read the raw element —
+        // the node's own narrowing must not apply (its container access still lowers normally).
+        var narrowingKey = ReferenceEquals(indexAccess, _typeTestOperand)
+            ? null
+            : ExtractNarrowingKey(indexAccess);
 
         // Expression-level narrowing (and-RHS, match arms) is pre-resolved and short-circuits. Still
         // type-check (and thereby record) the object and index expressions so codegen can resolve
