@@ -1464,6 +1464,71 @@ def main():
     }
 
     [Fact]
+    public void IncrementalMode_Sqlite3RowAnnotation_ResolvesAcrossCacheReuse()
+    {
+        // TRIPWIRE (#1105): a file importing sqlite3 and using sqlite3.Row in annotation
+        // position must keep resolving the Row TYPE (not degrade to SPY0202) when it is
+        // reused from the incremental cache. This is green today because ExtractFileSymbols
+        // never selects the imported sqlite3 ModuleSymbol (it carries sqlite3's own definition
+        // path, not the importing file's), so no module symbol is round-tripped yet — the
+        // annotation resolves via the always-live TryResolveNetModule path. It becomes the
+        // live regression net the moment ExtractFileSymbols / DeclaringFilePath handling
+        // changes to cache imported module symbols: with the serializer round-trip in place
+        // (ExportedTypes + IsNetModule + NetNamespaceName), the types-only lookup survives
+        // restore; without it, a value-position export could shadow Row and reintroduce
+        // SPY0202 under --incremental.
+        var dbFile = CreateTempFile("dbwrap.spy", @"
+import sqlite3
+
+def describe(row: sqlite3.Row) -> int:
+    return 0
+");
+        var appFile = CreateTempFile("app.spy", @"
+def main():
+    print('v1')
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { appFile, dbFile },
+            Configuration = "Debug"
+        };
+
+        // The sqlite3 module is discovered from the Sharpy.Stdlib reference assembly.
+        var options = new CompilerOptions
+        {
+            Incremental = true,
+            References = new[] { SharpyStdlibReference.Location }
+        };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build - both files compiled; sqlite3.Row must resolve without SPY0202.
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+        Assert.DoesNotContain(result1.Diagnostics.GetErrors(), d => d.Code == "SPY0202");
+
+        // Touch only the OTHER file so dbwrap.spy (the sqlite3 importer) becomes cache-eligible.
+        File.WriteAllText(appFile, @"
+def main():
+    print('v2')
+");
+
+        // Second build - dbwrap.spy is reused from cache; annotation still resolves.
+        var result2 = compiler.CompileProject(config);
+        Assert.True(result2.Success, string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+        Assert.DoesNotContain(result2.Diagnostics.GetErrors(), d => d.Code == "SPY0202");
+
+        // Confirm the incremental path was actually exercised (dbwrap.spy skipped).
+        var metrics = result2.Metrics;
+        Assert.NotNull(metrics);
+        Assert.True(metrics!.SkippedFileCount > 0,
+            $"Expected dbwrap.spy to be skipped, got SkippedFileCount={metrics.SkippedFileCount}");
+    }
+
+    [Fact]
     public void IncrementalMode_AllFilesUnchanged_WithClass_BuildsSuccessfully()
     {
         // Regression test: When ALL files are unchanged and restored from cache,
