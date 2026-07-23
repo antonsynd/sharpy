@@ -3,6 +3,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -533,6 +534,108 @@ def main():
         Assert.False(ifaceRef.TypeArgAnnotations.IsDefaultOrEmpty);
         Assert.Single(ifaceRef.TypeArgAnnotations);
         Assert.Equal("str", ifaceRef.TypeArgAnnotations[0].Name);
+    }
+
+    [Fact]
+    public void SymbolSerializer_RoundTrip_ModuleSymbol_PreservesTypesOnlyExportLookup()
+    {
+        // Models the #1092 collision shape: a net module where the name "Row" maps to a
+        // value-position export (VariableSymbol, simulating row_factory) in Exports and to a
+        // TypeSymbol in the types-only ExportedTypes lookup. After a cache round-trip the type
+        // must still win in annotation position, and the net-module PascalCase fallback must
+        // survive (both depend on IsNetModule/ExportedTypes being round-tripped — #1105).
+        var modPath = CreateTempFile("sqlite3.spy", "# net module stub");
+
+        var rowType = new TypeSymbol
+        {
+            Name = "Row",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            DefiningFilePath = modPath
+        };
+        var rowFactoryValue = new VariableSymbol
+        {
+            Name = "Row",
+            Kind = SymbolKind.Variable,
+            AccessLevel = AccessLevel.Public
+        };
+
+        var module = new ModuleSymbol
+        {
+            Name = "sqlite3",
+            Kind = SymbolKind.Module,
+            AccessLevel = AccessLevel.Public,
+            FilePath = modPath,
+            IsNetModule = true,
+            NetNamespaceName = "Sqlite3"
+        };
+        module.Exports["Row"] = rowFactoryValue;   // value shadows in Exports
+        module.ExportedTypes["Row"] = rowType;      // type wins in annotation position
+
+        var cached = SymbolSerializer.Serialize(module, modPath);
+
+        // The three new fields are written to the cache.
+        Assert.True(cached.IsNetModule);
+        Assert.Equal("Sqlite3", cached.NetNamespaceName);
+        Assert.NotNull(cached.ExportedTypeIds);
+        Assert.True(cached.ExportedTypeIds!.ContainsKey("Row"));
+
+        // Deserialize; init-only IsNetModule/NetNamespaceName are set at construction.
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as ModuleSymbol;
+        Assert.NotNull(restored);
+        Assert.True(restored!.IsNetModule);
+        Assert.Equal("Sqlite3", restored.NetNamespaceName);
+
+        // Register both export symbols and the module itself so references resolve.
+        registry[SymbolSerializer.ComputeSymbolId(rowType, modPath)] = rowType;
+        registry[SymbolSerializer.ComputeSymbolId(rowFactoryValue, modPath)] = rowFactoryValue;
+        registry[cached.Id] = restored;
+
+        SymbolSerializer.ResolveReferences(new[] { cached }, registry);
+
+        // Exports keeps the value; ExportedTypes keeps the type — no shadowing after round-trip.
+        Assert.IsType<VariableSymbol>(restored.Exports["Row"]);
+        Assert.True(restored.ExportedTypes.ContainsKey("Row"));
+        Assert.Same(rowType, restored.ExportedTypes["Row"]);
+
+        // Direct types-only lookup returns the TypeSymbol, not the shadowing value.
+        Assert.True(restored.TryGetExportedType("Row", out var found));
+        Assert.Same(rowType, found);
+
+        // The net-module PascalCase fallback still works (gated on IsNetModule, now round-tripped).
+        Assert.True(restored.TryGetExportedType("row", out var foundLower));
+        Assert.Same(rowType, foundLower);
+    }
+
+    [Fact]
+    public void SymbolSerializer_ResolveReferences_SkipsNonTypeExportedTypeId()
+    {
+        // A corrupt cache whose ExportedTypeIds entry resolves to a non-TypeSymbol must be
+        // skipped silently (the `s is TypeSymbol` guard), not throw and not populate the
+        // strongly-typed ExportedTypes dictionary (#1105).
+        var moduleCached = new CachedSymbol
+        {
+            Id = "/x.spy:Module:m",
+            Kind = "Module",
+            Name = "m",
+            FilePath = "/x.spy",
+            IsNetModule = true,
+            ExportedTypeIds = new Dictionary<string, string> { ["Bogus"] = "/x.spy:Variable:Bogus" }
+        };
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(moduleCached, registry) as ModuleSymbol;
+        Assert.NotNull(restored);
+
+        // The ExportedTypeId points at a VariableSymbol, not a TypeSymbol.
+        registry["/x.spy:Variable:Bogus"] = new VariableSymbol { Name = "Bogus", Kind = SymbolKind.Variable };
+        registry[moduleCached.Id] = restored!;
+
+        var ex = Record.Exception(() => SymbolSerializer.ResolveReferences(new[] { moduleCached }, registry));
+        Assert.Null(ex);
+        Assert.False(restored!.ExportedTypes.ContainsKey("Bogus"));
     }
 
     [Fact]
