@@ -217,6 +217,109 @@ public class ReparseEquivalenceConformanceTests
     }
 
     // ---------------------------------------------------------------------------------------------
+    // Corpus-wide #line differential (#1108): the load-bearing guard that the zero-parse tree rewrite
+    // (LineDirectiveTreeRewriter) produces text byte-identical to the LineDirectivePostProcessor text
+    // oracle, over the same two corpora. This is what lets the post-processor be retired after a soak
+    // (D5): as long as this passes, rewriter and oracle cannot have drifted.
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void StdlibModules_TreeRewriteText_ByteIdenticalToOracle()
+    {
+        var factory = new CapturingEmitterFactory();
+        CompileStdlibProject(factory);
+
+        var units = factory.Captured;
+        units.Should().NotBeEmpty("the spy-stdlib project must emit at least one module");
+
+        var mismatches = RewriteOracleMismatches(units);
+        _output.WriteLine($"Differenced {units.Count} stdlib module unit(s) (rewriter vs oracle).");
+        mismatches.Should().BeEmpty(BuildRewriteFailureMessage(mismatches));
+    }
+
+    [Fact]
+    public void FileBasedFixtures_TreeRewriteText_ByteIdenticalToOracle()
+    {
+        var fixtures = FixtureDiscoveryHelper.DiscoverFixtures()
+            .OrderBy(f => f.TestName, StringComparer.Ordinal)
+            .ToList();
+
+        fixtures.Should().NotBeEmpty("the fixture corpus must be discoverable");
+
+        var failures = new List<string>();
+        int assertedUnits = 0;
+
+        foreach (var fixture in fixtures)
+        {
+            bool success;
+            IReadOnlyList<(string? Path, CompilationUnitSyntax Unit)> units;
+            try
+            {
+                (success, units) = CompileFixture(fixture);
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"skipped {fixture.TestName}: compile threw {ex.GetType().Name}: {ex.Message}");
+                continue;
+            }
+
+            if (!success || units.Count == 0)
+                continue;
+
+            assertedUnits += units.Count;
+            foreach (var m in RewriteOracleMismatches(units))
+                failures.Add($"  fixture {fixture.TestName}: {m}");
+        }
+
+        _output.WriteLine($"Differenced {assertedUnits} unit(s) across the fixture corpus (rewriter vs oracle).");
+        failures.Should().BeEmpty(BuildRewriteFailureMessage(failures));
+    }
+
+    /// <summary>
+    /// For each emitter unit, asserts <see cref="LineDirectiveTreeRewriter"/> produces text byte-for-byte
+    /// equal to <see cref="LineDirectivePostProcessor.Process"/> — both driven by the one
+    /// <see cref="LineDirectiveEditPlanner"/> plan over the same snapshot. Returns the divergences.
+    /// </summary>
+    private static IReadOnlyList<string> RewriteOracleMismatches(
+        IReadOnlyList<(string? Path, CompilationUnitSyntax Unit)> units)
+    {
+        var mismatches = new List<string>();
+        foreach (var (path, unit) in units)
+        {
+            var text = unit.ToFullString();
+            var plan = LineDirectiveEditPlanner.Plan(text);
+            var rewritten = LineDirectiveTreeRewriter.Apply(unit, plan).ToFullString();
+            var oracle = LineDirectivePostProcessor.Process(text);
+            if (rewritten != oracle)
+                mismatches.Add($"{Label(path)}: rewriter text diverges from oracle at char {FirstDifference(rewritten, oracle)}");
+        }
+        return mismatches;
+    }
+
+    private static int FirstDifference(string a, string b)
+    {
+        int n = Math.Min(a.Length, b.Length);
+        for (int i = 0; i < n; i++)
+        {
+            if (a[i] != b[i])
+                return i;
+        }
+        return a.Length == b.Length ? -1 : n;
+    }
+
+    private static string BuildRewriteFailureMessage(IReadOnlyList<string> mismatches)
+    {
+        const int cap = 25;
+        var body = string.Join("\n", mismatches.Take(cap));
+        if (mismatches.Count > cap)
+            body += $"\n  ... and {mismatches.Count - cap} more";
+        return $"{mismatches.Count} unit(s) where the #line tree rewrite is not byte-identical to the "
+            + "post-processor oracle (#1108). The two share one LineDirectiveEditPlanner; a divergence "
+            + "means the tree applier mis-mapped an edit (char offset, #line hidden/#line default, or the "
+            + "#nullable newline).\n" + body;
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // Self-tests: the mechanism flags the known reparse-hostile shapes and accepts the sanctioned /
     // benign ones. These pin the guard against silently going toothless.
     // ---------------------------------------------------------------------------------------------
@@ -293,15 +396,15 @@ public class ReparseEquivalenceConformanceTests
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Seam pin (#1095, P5.2) reconciled with #1077 line-directive post-processing:
+    // Seam pin (#1095, P5.2) reconciled with #1108 line-directive tree rewrite:
     //
-    // The codegen seam hands the emitter's tree to Roslyn via CSharpSyntaxTree.Create (zero-parse)
-    // ONLY when no text transform runs. #1077 wires LineDirectivePostProcessor — a TEXT pass that
-    // rewrites the enhanced #line directives — onto the EmitLineDirectives-on path (the default), so
-    // that path MUST round-trip through ParseText (a text edit invalidates the prebuilt green tree).
-    // When EmitLineDirectives is off (e.g. the REPL) no text transform runs and the zero-parse
-    // handoff is preserved. Green-node identity is the cheap observable separating Create (re-roots
-    // the SAME green tree) from ParseText(ToFullString()) (a fresh parse, fresh green nodes).
+    // The codegen seam hands the emitter's tree to Roslyn via CSharpSyntaxTree.Create (zero-parse) on
+    // BOTH branches. When EmitLineDirectives is off (e.g. the REPL) the emitter's exact tree flows
+    // through unchanged. When it is on (the default), #1108 applies the #line post-processing as a
+    // tree rewrite (LineDirectiveTreeRewriter) instead of the old ParseText round-trip, so the
+    // emitter's green nodes for untouched subtrees are preserved and re-rooted — a reparse would
+    // discard them. Green-node identity is the cheap observable separating Create (re-roots the SAME
+    // green tree) from ParseText(ToFullString()) (a fresh parse, fresh green nodes).
     // ---------------------------------------------------------------------------------------------
 
     [Fact]
@@ -326,12 +429,12 @@ public class ReparseEquivalenceConformanceTests
     }
 
     [Fact]
-    public void CodeGenSeam_WithLineDirectives_ReparsesPostProcessedText()
+    public void CodeGenSeam_WithLineDirectives_RewritesTreeWithoutReparse()
     {
-        // On the EmitLineDirectives-on path (the default), LineDirectivePostProcessor edits the
-        // generated #line text (#1077), so the tree handed to Roslyn is a ParseText of that text —
-        // NOT the emitter's prebuilt green tree. This pins the #1077 side of the seam so a future
-        // change cannot silently drop the post-processing (or the required text round-trip).
+        // On the EmitLineDirectives-on path (the default), #1108 applies the #line post-processing as
+        // a tree rewrite and hands the rewritten unit to CSharpSyntaxTree.Create — NOT a ParseText of
+        // the post-processed text. This pins that seam so a future change cannot silently reintroduce
+        // the reparse (or drop the post-processing).
         var (result, units) = CompileProjectFilesCapturing(
             new[] { ("main.spy", "def main() -> None:\n    print(42)\n") },
             entryPoint: "main.spy",
@@ -344,11 +447,31 @@ public class ReparseEquivalenceConformanceTests
             .Select(u => u.GeneratedSyntaxTree)
             .Single(t => t is not null)!;
 
-        generatedTree.GetRoot().IsIncrementallyIdenticalTo(emitted).Should().BeFalse(
-            "with #line post-processing on, the tree is a reparse of the post-processed text, "
-            + "so it is not green-node-identical to the emitter's prebuilt tree");
+        // (a) No reparse: the rewrite re-roots the emitter's green tree, so a subtree it does not
+        // touch (the `42` argument — no #line trivia edited on or under it) keeps its exact green node.
+        // A ParseText would have produced an all-fresh tree where this identity fails.
+        var emittedLiteral = emitted.DescendantTokens()
+            .First(t => t.IsKind(SyntaxKind.NumericLiteralToken) && t.ValueText == "42");
+        var compiledLiteral = generatedTree.GetRoot().DescendantTokens()
+            .First(t => t.IsKind(SyntaxKind.NumericLiteralToken) && t.ValueText == "42");
+        compiledLiteral.IsIncrementallyIdenticalTo(emittedLiteral).Should().BeTrue(
+            "with #line post-processing applied as a tree rewrite, the seam re-roots the emitter's "
+            + "green tree via CSharpSyntaxTree.Create — a reparse would discard those nodes and "
+            + "silently reintroduce the #1095 double parse");
+
+        // (b) The compiled tree's text is byte-identical to the text oracle, including #line hidden.
+        generatedTree.ToString().Should().Be(
+            LineDirectivePostProcessor.Process(emitted.ToFullString()),
+            "the rewritten tree text must equal the LineDirectivePostProcessor oracle byte-for-byte");
         generatedTree.ToString().Should().Contain("#line hidden",
-            "the post-processor must have inserted #line hidden framing into the compiled text");
+            "the rewrite must insert the #line hidden framing the post-processor produces");
+
+        // (c) Binding-equivalence: the rewritten tree (what the seam actually hands to Roslyn) binds
+        // identically to a reparse of its own text — reusing the suite's diagnostic-multiset machinery.
+        ExtraBindingErrors(
+            Single((CompilationUnitSyntax)generatedTree.GetRoot()),
+            IntegrationTestBase.GetSharedReferences())
+            .Should().BeEmpty("the rewritten tree must bind exactly like a reparse of its text");
     }
 
     // ---------------------------------------------------------------------------------------------
