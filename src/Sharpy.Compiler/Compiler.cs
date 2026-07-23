@@ -109,15 +109,10 @@ public class Compiler
     /// </summary>
     public ProjectCompilationResult CompileProject(ProjectConfig projectConfig, CancellationToken cancellationToken)
     {
-        // Merge project-level and compiler-level warning/error settings
-        var mergedSuppressed = new HashSet<string>(_options.SuppressedWarnings, StringComparer.OrdinalIgnoreCase);
-        mergedSuppressed.UnionWith(projectConfig.SuppressedWarnings);
-        var warnAsErrors = _options.WarningsAsErrors || projectConfig.WarningsAsErrors;
-
-        // Union CLI-supplied features with the project's <Features>, mirroring the
-        // SuppressedWarnings merge above. Names are already validated at each boundary
-        // (CLI arg parsing and project load), so this is a pure union.
-        var mergedFeatures = _options.Features.Enable(projectConfig.Features);
+        // Merge project-level and compiler-level warning/error/feature settings. This is the
+        // single shared definition of the merge (also used by CompilerApi.AnalyzeProject), so the
+        // compile and analyze paths can never diverge (#1109). MaxErrors comes from options only.
+        var merged = ProjectOptionsMerge.Merge(_options, projectConfig);
 
         // Resolve NuGet package references so their types are available during semantic analysis
         if (_moduleRegistry != null && projectConfig.PackageReferences.Count > 0)
@@ -134,8 +129,8 @@ public class Compiler
         }
 
         var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
-            warnAsErrors, mergedSuppressed, _options.MaxErrors, _options.Incremental,
-            _emitterFactory, mergedFeatures);
+            merged.WarningsAsErrors, merged.SuppressedWarnings, _options.MaxErrors, _options.Incremental,
+            _emitterFactory, merged.Features);
         var projectResult = projectCompiler.Compile(projectConfig, cancellationToken);
 
         // Record module discovery (reference + NuGet loading) as a project-level phase,
