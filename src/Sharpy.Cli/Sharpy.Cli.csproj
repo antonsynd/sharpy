@@ -11,6 +11,14 @@
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.10" />
+    <!-- #1107: runtime-only assets (batteries_v2/provider/native e_sqlite3) don't flow through the
+         Stdlib reference (ReferenceOutputAssembly="false" carries only lib assets like SQLitePCLRaw.core);
+         reference the bundle directly so the managed provider DLLs and runtimes/*/native/*e_sqlite3*
+         co-locate with sharpyc for RuntimeClosureResolver to copy standalone. ExcludeAssets="compile"
+         keeps the CLI's compile surface free of the SQLitePCL API (stdlib is discovered at runtime).
+         Keep Version in lock-step with Microsoft.Data.Sqlite in Sharpy.Stdlib.csproj — the
+         SQLitePCLRaw bundle/core version-drift tripwire test guards this. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.11" ExcludeAssets="compile" />
   </ItemGroup>
 
   <ItemGroup>
