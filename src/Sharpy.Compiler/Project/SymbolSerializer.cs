@@ -219,6 +219,11 @@ internal static class SymbolSerializer
             ExportIds = ms.Exports.ToDictionary(
                 kvp => kvp.Key,
                 kvp => ComputeSymbolId(kvp.Value, ms.FilePath)),
+            ExportedTypeIds = ms.ExportedTypes.ToDictionary(
+                kvp => kvp.Key,
+                kvp => ComputeSymbolId(kvp.Value, ms.FilePath)),
+            IsNetModule = ms.IsNetModule,
+            NetNamespaceName = ms.NetNamespaceName,
             IsReExport = ms.IsReExport,
             OriginalModule = ms.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(ms.CodeGenInfo),
@@ -494,10 +499,13 @@ internal static class SymbolSerializer
             DeclaringFilePath = cached.FilePath,
             FilePath = cached.FilePath,
             CanonicalModuleName = cached.CanonicalModuleName,
+            IsNetModule = cached.IsNetModule,
+            NetNamespaceName = cached.NetNamespaceName,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
         };
+        // ExportedTypes (like Exports) is resolved in the ResolveReferences second pass
         symbol.Documentation = cached.Documentation;
         return symbol;
     }
@@ -793,13 +801,30 @@ internal static class SymbolSerializer
             }
 
             // Resolve ModuleSymbol exports
-            if (symbol is ModuleSymbol ms && cached.ExportIds != null)
+            if (symbol is ModuleSymbol ms)
             {
-                foreach (var (name, exportId) in cached.ExportIds)
+                if (cached.ExportIds != null)
                 {
-                    if (symbolRegistry.TryGetValue(exportId, out var exportSymbol))
+                    foreach (var (name, exportId) in cached.ExportIds)
                     {
-                        ms.Exports[name] = exportSymbol;
+                        if (symbolRegistry.TryGetValue(exportId, out var exportSymbol))
+                        {
+                            ms.Exports[name] = exportSymbol;
+                        }
+                    }
+                }
+
+                // Restore the types-only export lookup (#1105). A registry hit that is not a
+                // TypeSymbol indicates a corrupt cache entry — skip it silently, matching the
+                // tolerant style of the Exports restore above.
+                if (cached.ExportedTypeIds != null)
+                {
+                    foreach (var (name, typeId) in cached.ExportedTypeIds)
+                    {
+                        if (symbolRegistry.TryGetValue(typeId, out var typeSymbol) && typeSymbol is TypeSymbol t)
+                        {
+                            ms.ExportedTypes[name] = t;
+                        }
                     }
                 }
             }

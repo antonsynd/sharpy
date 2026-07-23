@@ -46,7 +46,8 @@ internal class IncrementalCompilationCache
     // v13: Added GeneratorOutputs to FileCacheEntry for source generator caching (#636)
     // v14: Added ClrMethodName to CachedCodeGenInfo for CLR name preservation (#705)
     // v15: Added IsModuleProperty/HasPropertyGetter/HasPropertySetter to VariableSymbol properties (#844)
-    internal const int CurrentSchemaVersion = 15;
+    // v16: Added ExportedTypeIds/IsNetModule/NetNamespaceName to ModuleSymbol round-trip (#1105)
+    internal const int CurrentSchemaVersion = 16;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

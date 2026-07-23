@@ -145,6 +145,24 @@ internal record CachedSymbol
     public Dictionary<string, string>? ExportIds { get; init; }
 
     /// <summary>
+    /// For ModuleSymbol: types-only exports (symbol IDs), mirrored from
+    /// <see cref="Semantic.ModuleSymbol.ExportedTypes"/> so a value-position export cannot
+    /// shadow a same-named type in annotation position after a cache round-trip (#1105/#1092).
+    /// </summary>
+    public Dictionary<string, string>? ExportedTypeIds { get; init; }
+
+    /// <summary>
+    /// For ModuleSymbol: whether this is a .NET (CLR) module. Gates the PascalCase fallback in
+    /// <c>TryGetExportedType</c>; must round-trip so the fallback survives deserialization (#1105).
+    /// </summary>
+    public bool IsNetModule { get; init; }
+
+    /// <summary>
+    /// For ModuleSymbol: the .NET namespace name (e.g. "System"), or null for non-CLR modules (#1105).
+    /// </summary>
+    public string? NetNamespaceName { get; init; }
+
+    /// <summary>
     /// Whether this symbol is a re-export from another module
     /// </summary>
     public bool IsReExport { get; init; }
