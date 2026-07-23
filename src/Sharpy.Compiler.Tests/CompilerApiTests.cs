@@ -299,6 +299,96 @@ def add(a: int, b: int) -> int:
         result.Success.Should().BeFalse();
     }
 
+    // ----- AnalyzeProject option-parity tests (#1109) -----
+
+    // `defer` is an experimental, parser-scoped feature: the statement is always parsed, but its
+    // use is rejected with SPY0331 unless the feature is enabled. That makes it a clean probe for
+    // whether AnalyzeProject threads a project's <Features> into the feature gate.
+    private const string DeferProgram = @"
+def run() -> None:
+    defer print(""cleanup"")
+    print(""body"")
+
+
+def main() -> None:
+    run()
+";
+
+    [Fact]
+    public void AnalyzeProject_ProjectEnablesFeature_NoFeatureGateError()
+    {
+        // #1109: the .spyproj analyze path must gate identically to the compile path. A project
+        // whose <Features> enables `defer` analyzes a defer-using file with no SPY0331 — the merge
+        // now carries config-side features into the ProjectCompiler AnalyzeProject constructs.
+        using var helper = new Helpers.ProjectCompilationHelper(_output)
+            .WithRootNamespace("DeferAnalyze")
+            .WithOutputType("exe")
+            .WithEntryPoint("main.spy");
+        helper.Options.Features.Add("defer");
+        helper.AddSourceFile("main.spy", DeferProgram);
+        helper.CreateProjectFile();
+
+        var config = ProjectFileParser.Load(
+            Path.Combine(helper.ProjectDirectory, "DeferAnalyze.spyproj"));
+
+        var result = _api.AnalyzeProject(config);
+
+        result.Diagnostics.GetAll().Should().NotContain(
+            d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled,
+            "the project's <Features>defer</Features> must reach AnalyzeProject's feature gate");
+        result.Success.Should().BeTrue(
+            "a defer program analyzes cleanly once the feature is enabled");
+    }
+
+    [Fact]
+    public void AnalyzeProject_ProjectOmitsFeature_ReportsFeatureGateError()
+    {
+        // The same file in a project WITHOUT <Features> must still report SPY0331 — parity with
+        // the compile path, and a regression guard on the option-less construction #1109 fixed.
+        using var helper = new Helpers.ProjectCompilationHelper(_output)
+            .WithRootNamespace("DeferAnalyzeUngated")
+            .WithOutputType("exe")
+            .WithEntryPoint("main.spy");
+        helper.AddSourceFile("main.spy", DeferProgram);
+        helper.CreateProjectFile();
+
+        var config = ProjectFileParser.Load(
+            Path.Combine(helper.ProjectDirectory, "DeferAnalyzeUngated.spyproj"));
+
+        var result = _api.AnalyzeProject(config);
+
+        result.Diagnostics.GetAll().Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled,
+            "an ungated defer use must still report SPY0331 through AnalyzeProject");
+    }
+
+    [Fact]
+    public void AnalyzeProject_ExplicitOptionsEnableFeature_NoFeatureGateError()
+    {
+        // The optional CompilerOptions parameter carries CLI-side features too: a project without
+        // <Features> analyzes cleanly when the caller supplies the feature via options (parity
+        // with --enable-feature on the compile path).
+        using var helper = new Helpers.ProjectCompilationHelper(_output)
+            .WithRootNamespace("DeferAnalyzeCliOpt")
+            .WithOutputType("exe")
+            .WithEntryPoint("main.spy");
+        helper.AddSourceFile("main.spy", DeferProgram);
+        helper.CreateProjectFile();
+
+        var config = ProjectFileParser.Load(
+            Path.Combine(helper.ProjectDirectory, "DeferAnalyzeCliOpt.spyproj"));
+
+        var options = new CompilerOptions
+        {
+            Features = Sharpy.Compiler.Shared.FeatureFlags.None.Enable("defer")
+        };
+        var result = _api.AnalyzeProject(config, options);
+
+        result.Diagnostics.GetAll().Should().NotContain(
+            d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled,
+            "options-supplied features must reach AnalyzeProject's feature gate");
+    }
+
     // ----- Result immutability tests -----
 
     [Fact]

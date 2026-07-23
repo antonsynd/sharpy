@@ -300,8 +300,7 @@ public sealed class CompilerApi
         var registry = BuildModuleRegistry(config);
 
         // SyntheticProject.Analyze constructs the ProjectCompiler with the caller's full
-        // options (WarningsAsErrors, SuppressedWarnings, MaxErrors, Features — ctor args the
-        // option-less CompilerApi.AnalyzeProject construction drops, see #1109), locates the
+        // options (WarningsAsErrors, SuppressedWarnings, MaxErrors, Features), locates the
         // entry unit, and positions the shared symbol table at the entry file's module scope
         // so bare SymbolTable.Lookup resolves module-level symbols.
         var result = SyntheticProject.Analyze(config, opts, _logger, registry,
@@ -331,15 +330,35 @@ public sealed class CompilerApi
     /// Runs phases 1-5 of the project compilation pipeline.
     /// </summary>
     /// <param name="config">The project configuration.</param>
+    /// <param name="options">
+    /// Optional compiler options. When null a fresh <see cref="CompilerOptions"/> is used, so the
+    /// project's own <c>&lt;Features&gt;</c>, <c>&lt;WarningsAsErrors&gt;</c>, and <c>&lt;NoWarn&gt;</c>
+    /// still apply via the shared merge. Threading real options future-proofs <c>MaxErrors</c> and
+    /// CLI-supplied feature/warning parity for <c>.spyproj</c> analysis (#1109).
+    /// </param>
     /// <param name="cancellationToken">Cancellation token for cooperative cancellation.</param>
     /// <returns>A <see cref="ProjectAnalysisResult"/> with the analysis outcome.</returns>
     public Project.ProjectAnalysisResult AnalyzeProject(
         ProjectConfig config,
+        CompilerOptions? options = null,
         CancellationToken cancellationToken = default)
     {
+        var opts = options ?? new CompilerOptions();
+
+        // Same option×project merge the compile path uses, so .spyproj analysis gates (SPY0331)
+        // and warns identically to .spyproj compilation (#1109). Analysis never emits, so
+        // incremental stays false and MaxErrors comes from the options only.
+        var merged = ProjectOptionsMerge.Merge(opts, config);
         var registry = BuildModuleRegistry(config);
-        var compiler = new Project.ProjectCompiler(logger: _logger, moduleRegistry: registry,
-            emitterFactory: _emitterFactory);
+        var compiler = new Project.ProjectCompiler(
+            logger: _logger,
+            moduleRegistry: registry,
+            warningsAsErrors: merged.WarningsAsErrors,
+            suppressedWarnings: merged.SuppressedWarnings,
+            maxErrors: opts.MaxErrors,
+            incremental: false,
+            emitterFactory: _emitterFactory,
+            features: merged.Features);
         return compiler.AnalyzeProject(config, cancellationToken);
     }
 

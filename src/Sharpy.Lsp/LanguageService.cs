@@ -122,7 +122,7 @@ internal sealed class LanguageService : IDisposable
                 try
                 {
                     var result = await Task.Run(
-                        () => _api.AnalyzeProject(config, ct), ct).ConfigureAwait(false);
+                        () => _api.AnalyzeProject(config, cancellationToken: ct), ct).ConfigureAwait(false);
 
                     Volatile.Write(ref _projectAnalysis, result);
 
@@ -376,7 +376,7 @@ internal sealed class LanguageService : IDisposable
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             var result = await Task.Run(
-                () => _api.AnalyzeProject(config, linkedToken), linkedToken).ConfigureAwait(false);
+                () => _api.AnalyzeProject(config, cancellationToken: linkedToken), linkedToken).ConfigureAwait(false);
 
             Volatile.Write(ref _projectAnalysis, result);
 
