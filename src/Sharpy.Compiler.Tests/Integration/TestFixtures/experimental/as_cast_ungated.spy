@@ -1,4 +1,0 @@
-def main() -> None:
-    obj: object = 42
-    n: int = obj as! int
-    print(n)

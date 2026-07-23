@@ -886,9 +886,9 @@ public enum CastFailureMode
 
 /// <summary>
 /// Which surface syntax produced a <see cref="TypeCoercion"/>. Codegen ignores this (both
-/// syntaxes lower identically per <see cref="CastFailureMode"/>); it is needed only to keep
-/// gating (<c>failable_cast</c> applies to the <c>as</c> forms only) and the migration hint
-/// (fires on <c>to</c> forms only) precise, and to round-trip the original spelling.
+/// syntaxes lower identically per <see cref="CastFailureMode"/>); it is needed only to keep the
+/// migration hint (SPY0479 fires on <c>to</c> forms only) precise, and to round-trip the original
+/// spelling.
 /// </summary>
 public enum CastSyntax
 {
@@ -903,8 +903,8 @@ public enum CastSyntax
 /// Type coercion (<c>value to T</c>, <c>value to T?</c>, <c>value as! T</c>, or <c>value as? T</c>).
 /// Throws <c>InvalidCastException</c> on failure when <see cref="Mode"/> is
 /// <see cref="CastFailureMode.Throw"/>, or evaluates to <c>None</c>/<c>T?</c> when it is
-/// <see cref="CastFailureMode.Null"/>. The <c>as!</c>/<c>as?</c> spellings are gated behind
-/// the experimental <c>failable_cast</c> feature (#1029).
+/// <see cref="CastFailureMode.Null"/>. The <c>as!</c>/<c>as?</c> spellings graduated from the
+/// experimental <c>failable_cast</c> feature (#1029, #1096) and are now unconditional.
 /// </summary>
 public record TypeCoercion : Expression
 {

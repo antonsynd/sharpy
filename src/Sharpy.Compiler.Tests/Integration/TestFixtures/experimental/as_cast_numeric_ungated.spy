@@ -1,5 +1,0 @@
-def main() -> None:
-    x: float = 3.14
-    # Without the `failable_cast` feature the numeric cast is gated (SPY0331).
-    y: int = x as! int
-    print(y)

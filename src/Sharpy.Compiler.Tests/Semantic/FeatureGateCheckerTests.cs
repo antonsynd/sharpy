@@ -104,6 +104,20 @@ public class FeatureGateCheckerTests
     }
 
     [Fact]
+    public void FailableCast_Graduated_ProducesNoSpy0331_WithProductionRegistry()
+    {
+        // #1096: `as?`/`as!` graduated — the production registry no longer carries a failable_cast
+        // gate, so an ungated as-cast is accepted (no SPY0331). Regression guard against re-adding
+        // the gate; the five ungated `.error` twins that used to assert SPY0331 here were deleted.
+        var diags = RunChecker(
+            "def main() -> None:\n    y = x as? int\n",
+            FeatureFlags.None,
+            GatedConstructRegistry.All);
+
+        diags.Where(d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled).Should().BeEmpty();
+    }
+
+    [Fact]
     public void GatedConstruct_EnabledViaFutureImport_ReportsNothing()
     {
         // End-to-end union path: `from __future__ import __test_feature` must satisfy the gate

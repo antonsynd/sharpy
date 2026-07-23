@@ -560,13 +560,13 @@ public partial class Parser
 
         // Cast operators at precedence level 11 (between pipe and comparisons), left-to-right:
         //   value to T   / value to T?  — legacy operator; failure mode from the target's nullability
-        //   value as! T  / value as? T  — failable-cast operators (#1029, gated: failable_cast);
+        //   value as! T  / value as? T  — failable-cast operators (#1029, #1096: graduated, ungated);
         //                                 failure mode from the operator, target written non-nullable
         // The `as!`/`as?` forms require the `!`/`?` to be lexically adjacent to `as` (no intervening
         // whitespace), so `x as ? y` / `x as ! y` are NOT casts. Bare `as` in expression position is
         // never a cast — it stays reserved for aliasing (SRP-0005) and remains a parse error here
         // (errors/as_cast_rejected), because ParseCast only consumes `as` when an adjacent `?`/`!`
-        // follows. The parser always builds the node; the FeatureGateChecker rejects ungated `as` casts.
+        // follows.
         var savedLoopPosition = _lastLoopPosition;
         _lastLoopPosition = -1;
         try

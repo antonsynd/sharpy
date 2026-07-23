@@ -64,13 +64,9 @@ public static class GatedConstructRegistry
             "the 'defer' statement",
             static n => n is DeferStatement),
 
-        // failable_cast (#1029): the `as?` / `as!` failable-cast operators. Always parsed (as
-        // `as`-form TypeCoercion nodes) but gated until they graduate; the legacy `to` operator
-        // (CastSyntax.To) is unconditional and never matches here.
-        new GatedConstruct(
-            "failable_cast",
-            "the 'as?' / 'as!' failable-cast operators",
-            static n => n is TypeCoercion { Syntax: CastSyntax.As }),
+        // failable_cast graduated (#1096): the `as?` / `as!` operators are now unconditional
+        // language surface, so they carry no GatedConstruct entry. The flag name is retained as a
+        // no-op in FeatureFlags.KnownFeatures.
 
         // property_observers (#416): the `before_set` / `after_set` observer suites on an
         // auto-property. Always parsed onto PropertyDef.Observers, but gated until the feature

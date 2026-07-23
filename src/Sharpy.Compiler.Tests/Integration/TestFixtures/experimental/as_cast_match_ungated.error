@@ -1,2 +1,0 @@
-# Without a `.features` sidecar enabling `failable_cast`, the `as?`/`as!` operators are gated (SPY0331).
-the 'as?' / 'as!' failable-cast operators requires experimental feature 'failable_cast'

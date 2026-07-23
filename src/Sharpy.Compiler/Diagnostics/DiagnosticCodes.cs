@@ -580,7 +580,7 @@ public static class DiagnosticCodes
         public const string SingleIsinstanceTypeHint = "SPY0475";     // Active
         public const string NegativeTupleIndexHint = "SPY0476";       // Active (emitted by TransitionWarningValidator)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
-        public const string ToCastTransitionHint = "SPY0479";         // Active (emitted by TransitionWarningValidator only when failable_cast is enabled) — suggests the as?/as! spelling over `to` (#1029)
+        public const string ToCastTransitionHint = "SPY0479";         // Active (emitted by TransitionWarningValidator on `to`/`to?` casts) — suggests the graduated as?/as! spelling over `to` (#1029, #1096)
         // SPY0478: Reserved for future transition diagnostics
 
         #endregion
