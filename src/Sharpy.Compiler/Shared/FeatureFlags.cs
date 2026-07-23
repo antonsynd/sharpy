@@ -53,7 +53,16 @@ public enum FeatureScope
 /// When true, the feature is omitted from user-facing <c>--help</c> listings. Used for
 /// test-only plumbing features that ship disabled and undocumented.
 /// </param>
-public sealed record FeatureInfo(string Name, string Description, FeatureScope Scope, bool Hidden = false);
+/// <param name="IsNoOp">
+/// When true, the feature has <b>graduated</b>: its gate has been removed and the construct is now
+/// unconditional language surface, but the name is retained in <see cref="FeatureFlags.KnownFeatures"/>
+/// so that existing <c>--enable-feature</c>, <c>&lt;Features&gt;</c>, and <c>from __future__ import</c>
+/// sites keep compiling instead of erroring on a now-unknown name. Per the graduation policy
+/// (docs/design/feature-lifecycle.md step 1: "The <c>FeatureInfo</c> is marked so tooling can note it
+/// is a no-op"), feature-listing surfaces annotate no-op entries so users know the flag is safe to
+/// remove. The name is dropped from <c>KnownFeatures</c> after at least one release as a no-op.
+/// </param>
+public sealed record FeatureInfo(string Name, string Description, FeatureScope Scope, bool Hidden = false, bool IsNoOp = false);
 
 /// <summary>
 /// An immutable set of enabled experimental feature names, carried on
@@ -120,13 +129,16 @@ public sealed class FeatureFlags
                 FeatureScope.Parser),
             ["failable_cast"] = new FeatureInfo(
                 "failable_cast",
-                "Experimental `as?` / `as!` failable-cast operators (#1029). `value as! T` throws " +
-                "InvalidCastException on failure (yields T); `value as? T` yields None on failure " +
-                "(yields T?). The failure mode moves from the target's nullability onto the operator; " +
-                "lowers identically to the `to` / `to?` operators. Bare `as` stays reserved for aliasing.",
-                // Parser-scoped: `as?`/`as!` are new expression syntax. Always parsed but gated; a
-                // `from __future__ import` cannot unlock parser-scoped syntax.
-                FeatureScope.Parser),
+                "Graduated (#1096): the `as?` / `as!` failable-cast operators are now unconditional " +
+                "language surface. This flag is a no-op, retained for back-compat, and will be removed " +
+                "a release after graduation — delete it from your configuration. (`value as! T` throws " +
+                "InvalidCastException on failure and yields T; `value as? T` yields None on failure and " +
+                "yields T?; lowers identically to the `to` / `to?` operators.)",
+                // Parser-scoped: `as?`/`as!` are expression syntax, so a `from __future__ import` could
+                // never have unlocked them. The gate is gone now (graduated), but the scope is retained
+                // so a re-gating would still reject the future-import path.
+                FeatureScope.Parser,
+                IsNoOp: true),
             ["property_observers"] = new FeatureInfo(
                 "property_observers",
                 "Experimental `before_set` / `after_set` property observers (#416). An auto-property " +
@@ -214,10 +226,12 @@ public sealed class FeatureFlags
     /// </summary>
     public static string KnownFeatureListMessage()
     {
+        // No-op (graduated) features are annotated so the listing tells users the flag is safe to
+        // delete — see FeatureInfo.IsNoOp and docs/design/feature-lifecycle.md.
         var visible = KnownFeatures.Values
             .Where(f => !f.Hidden)
-            .Select(f => f.Name)
-            .OrderBy(n => n, StringComparer.Ordinal)
+            .OrderBy(f => f.Name, StringComparer.Ordinal)
+            .Select(f => f.IsNoOp ? $"{f.Name} (no-op — graduated, safe to remove)" : f.Name)
             .ToList();
 
         return visible.Count == 0
