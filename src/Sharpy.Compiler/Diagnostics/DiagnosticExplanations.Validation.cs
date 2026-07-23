@@ -668,14 +668,12 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.Validation.ToCastTransitionHint,
             "Prefer the 'as?' / 'as!' cast over 'to'",
             "Validation",
-            "The experimental failable_cast feature is enabled, so the 'as?' / 'as!' operators are " +
-            "available: 'value as! T' throws on failure (result T) and 'value as? T' yields None on " +
-            "failure (result T?). They carry the failure mode on the operator itself, making each " +
-            "cast site self-describing. This advisory hint fires only while failable_cast is enabled " +
-            "(so it never suggests syntax the build would reject) and steers code toward the new " +
-            "spelling; 'to' is retained for now but is slated for retirement once the feature " +
-            "graduates (#1096).",
-            "value = obj to int      # with failable_cast enabled",
+            "The 'as?' / 'as!' failable-cast operators are the primary cast spelling: 'value as! T' " +
+            "throws on failure (result T) and 'value as? T' yields None on failure (result T?). They " +
+            "carry the failure mode on the operator itself, making each cast site self-describing. " +
+            "This advisory hint steers code toward the primary spelling; the 'to' operator is a " +
+            "transitional spelling — still valid, but slated for retirement in a future release (#1096).",
+            "value = obj to int",
             "Use the failable-cast operator that matches the failure mode:\n  value = obj as! int   # throws on failure\n  maybe_value = obj as? int  # None on failure");
 
         // ── Validation warnings — overflow (SPY0480-SPY0489) ───────────

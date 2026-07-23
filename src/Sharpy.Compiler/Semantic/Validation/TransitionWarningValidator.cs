@@ -30,10 +30,10 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///         lacks a <c>self</c> parameter (decorator is unnecessary; Sharpy auto-detects
 ///         static methods). Note: <c>@staticmethod</c> is a hard error via
 ///         DecoratorValidator, so it is not flagged here.</item>
-///   <item>SPY0479 — a <c>to</c>/<c>to?</c> cast when the experimental
-///         <c>failable_cast</c> feature is enabled — suggests the <c>as!</c>/<c>as?</c>
-///         spelling (#1029). Emitted only under the flag so the build can accept the
-///         suggested syntax.</item>
+///   <item>SPY0479 — a <c>to</c>/<c>to?</c> cast — suggests the graduated
+///         <c>as!</c>/<c>as?</c> spelling (#1029, #1096), which carries the failure mode on
+///         the operator. Advisory and default-on; the <c>to</c> operator remains a valid
+///         transitional spelling pending its retirement.</item>
 /// </list>
 ///
 /// Hints share suppression with warnings but are NOT promoted to errors under
@@ -356,19 +356,15 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    // SPY0479 — prefer the as?/as! spelling over `to` (only under failable_cast)
+    // SPY0479 — prefer the as?/as! spelling over `to`
     // ──────────────────────────────────────────────────────────────────────
 
     private void CheckToCastTransition(TypeCoercion node)
     {
-        // Only advise the new spelling when the build can actually accept it. Advising
-        // `as?`/`as!` while `failable_cast` is disabled would suggest syntax that trips
-        // SPY0331, so the hint is strictly gated on the feature being enabled (#1029).
-        if (!Context.Features.IsEnabled("failable_cast"))
-            return;
-
-        // Only the legacy `to`/`to?` spelling is a migration candidate; the `as` forms are
-        // already the target syntax.
+        // The `as?`/`as!` operators graduated (#1096) and are now unconditional language surface,
+        // so this migration hint is default-on: the build always accepts the suggested spelling.
+        // Only the legacy `to`/`to?` spelling is a migration candidate; the `as` forms are already
+        // the target syntax.
         if (node.Syntax != CastSyntax.To)
             return;
 
@@ -380,11 +376,10 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
             : "throws InvalidCastException on failure";
 
         AddHint(
-            $"Prefer '{suggestion}' over the 'to' cast: with failable_cast enabled, the "
-                + $"'as?'/'as!' operators carry the failure mode on the operator itself "
-                + $"('{suggestion}' {failure}), making each cast site explicit. The 'to' "
-                + "operator is retained for now but is slated for retirement once the feature "
-                + "graduates.",
+            $"Prefer '{suggestion}' over the 'to' cast: the 'as?'/'as!' operators carry the "
+                + $"failure mode on the operator itself ('{suggestion}' {failure}), making each "
+                + "cast site explicit. The 'to' operator is a transitional spelling — still valid, "
+                + "but slated for retirement in a future release.",
             node.OperatorLine > 0 ? node.OperatorLine : node.LineStart,
             node.OperatorLine > 0 ? node.OperatorColumn : node.ColumnStart,
             code: DiagnosticCodes.Validation.ToCastTransitionHint,

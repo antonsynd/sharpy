@@ -231,7 +231,9 @@ internal partial class TypeChecker
         context.DeferredCycleSymbols = DeferredCycleSymbols;
         context.DeferredCycleFiles = DeferredCycleFiles;
         // Thread the effective feature flags so validators can gate feature-conditional
-        // diagnostics (e.g. the to→as?/as! migration hint fires only under failable_cast).
+        // diagnostics. No validator consults this today (the SPY0479 to→as?/as! hint went
+        // unconditional when failable_cast graduated, #1096); retained deliberately for future
+        // feature-conditional diagnostics — see SemanticContext.Features.
         context.Features = Features;
         return context;
     }
