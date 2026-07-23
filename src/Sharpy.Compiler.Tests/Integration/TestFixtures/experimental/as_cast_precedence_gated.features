@@ -1,2 +1,0 @@
-# Enables the experimental `as?` / `as!` failable-cast operators (#1029).
-failable_cast

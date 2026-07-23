@@ -1,2 +1,0 @@
-# Enables failable_cast so the to->as! migration hint (SPY0479) fires.
-failable_cast
