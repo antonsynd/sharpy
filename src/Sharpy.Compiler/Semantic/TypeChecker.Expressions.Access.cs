@@ -1425,7 +1425,10 @@ internal partial class TypeChecker
 
                 // Add types
                 foreach (var type in subModuleTypes)
+                {
                     subModule.Exports[type.Name] = type;
+                    subModule.ExportedTypes[type.Name] = type;
+                }
 
                 // Add fields
                 foreach (var (fieldName, _, _) in subModuleFields)
@@ -1462,7 +1465,10 @@ internal partial class TypeChecker
                     };
 
                     foreach (var typeSymbol in ModuleRegistry.GetNamespaceTypes(fullName))
+                    {
                         subModule.Exports[typeSymbol.Name] = typeSymbol;
+                        subModule.ExportedTypes[typeSymbol.Name] = typeSymbol;
+                    }
 
                     moduleSymbol.Exports[memberAccess.Member] = subModule;
                     return new ModuleType { Symbol = subModule };
@@ -1479,6 +1485,7 @@ internal partial class TypeChecker
                 if (typeSymbol != null)
                 {
                     moduleSymbol.Exports[memberAccess.Member] = typeSymbol;
+                    moduleSymbol.ExportedTypes[memberAccess.Member] = typeSymbol;
                     return new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol };
                 }
             }
