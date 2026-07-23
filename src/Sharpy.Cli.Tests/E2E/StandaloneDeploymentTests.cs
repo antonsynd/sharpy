@@ -17,8 +17,9 @@ namespace Sharpy.Cli.Tests.E2E;
 /// The <c>numpy</c> fixture is the #1084 regression proper: before the fix, <c>MathNet.Numerics</c>
 /// was copied next to the output but never listed in <c>deps.json</c>, so the host never resolved
 /// it and the program died at the first MathNet call. <c>toml</c> and <c>yaml</c> are the issue's
-/// requested audit, executable. <c>sqlite3</c> skips until #1107 (the SQLitePCLRaw provider bundle
-/// and native asset are not co-located with the CLI); the resolver already copies them once present.
+/// requested audit, executable. <c>sqlite3</c> forces a native <c>e_sqlite3</c> load; it went green
+/// with #1107, which co-locates the SQLitePCLRaw provider bundle and native asset with the CLI so
+/// the resolver has something to copy.
 /// </para>
 /// </summary>
 public class StandaloneDeploymentTests : IDisposable
@@ -79,10 +80,7 @@ public class StandaloneDeploymentTests : IDisposable
                 print(result)
             """).Should().Be("42");
 
-    [Fact(Skip = "Blocked by #1107: the SQLitePCLRaw provider bundle (batteries_v2/provider) and native "
-        + "e_sqlite3 asset are not co-located with the CLI, so there is nothing for the copy path to pick "
-        + "up. RuntimeClosureResolver already discovers and copies them once present (see "
-        + "RuntimeClosureResolverTests); remove this Skip when #1107 lands.")]
+    [Fact]
     public void Sqlite3_RunsStandalone() =>
         // In-memory DB roundtrip — forces a native e_sqlite3 load.
         CompileAndRunStandalone(
