@@ -203,6 +203,43 @@ public class ProjectConfig
             return Path.Combine(OutputPath, assemblyName + extension);
         }
     }
+
+    /// <summary>
+    /// Returns a shallow copy of this config with <see cref="InMemorySources"/> set to
+    /// <paramref name="sources"/>, leaving the original untouched. The LSP (#1099) uses this to
+    /// overlay unsaved workspace buffers onto project-mode analysis without mutating the cached
+    /// <c>_projectConfig</c>. Every other property (the source-file list, references, feature
+    /// flags, ...) is carried over by reference; the compiler treats those as read-only during a
+    /// single compile, so sharing the collection instances is safe.
+    /// </summary>
+    internal ProjectConfig WithInMemorySources(Dictionary<string, string> sources)
+    {
+        return new ProjectConfig
+        {
+            ProjectFilePath = ProjectFilePath,
+            ProjectDirectory = ProjectDirectory,
+            RootNamespace = RootNamespace,
+            OutputType = OutputType,
+            TargetFramework = TargetFramework,
+            AssemblyName = AssemblyName,
+            EntryPoint = EntryPoint,
+            SourceFiles = SourceFiles,
+            InMemorySources = sources,
+            PreParsedUnits = PreParsedUnits,
+            PreserveTrivia = PreserveTrivia,
+            NullifyEntryFilePath = NullifyEntryFilePath,
+            EmitLineDirectives = EmitLineDirectives,
+            References = References,
+            ModulePaths = ModulePaths,
+            PackageReferences = PackageReferences,
+            Configuration = Configuration,
+            WarningsAsErrors = WarningsAsErrors,
+            SuppressedWarnings = SuppressedWarnings,
+            Features = Features,
+            OutputAssemblyPathOverride = OutputAssemblyPathOverride,
+            UsePrecomputedCodeGenInfo = UsePrecomputedCodeGenInfo,
+        };
+    }
 }
 
 /// <summary>

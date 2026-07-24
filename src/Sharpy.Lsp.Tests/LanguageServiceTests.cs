@@ -144,6 +144,37 @@ public class LanguageServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task OnDocumentChanged_UnsavedBufferEdit_UpdatesCrossFileDiagnostics()
+    {
+        // On disk both files type-check: main.spy assigns helper()'s str result to a str local.
+        CreateProjectFiles(
+            ("lib.spy", "def helper() -> str:\n    return \"hello\""),
+            ("main.spy", "from lib import helper\ndef main():\n    x: str = helper()\n    print(x)"));
+        await _service.InitializeProjectAsync(_tempDir);
+
+        var libPath = IOPath.Combine(_tempDir, "lib.spy");
+        var mainPath = IOPath.Combine(_tempDir, "main.spy");
+        var libUri = new Uri(libPath).ToString();
+        var mainUri = new Uri(mainPath).ToString();
+
+        var before = await _service.GetAnalysisAsync(mainUri);
+        before!.Success.Should().BeTrue("main.spy type-checks against the on-disk lib.spy");
+
+        // Open lib.spy with an UNSAVED edit changing helper's return type to int; main.spy's
+        // `x: str = helper()` becomes a cross-file type error — and the disk file stays as-is.
+        _workspace.OpenDocument(libUri, "def helper() -> int:\n    return 42", 2);
+
+        var affected = await _service.OnDocumentChangedAsync(libUri);
+
+        affected.Should().NotBeEmpty("changing lib.spy affects its dependent main.spy");
+        var after = await _service.GetAnalysisAsync(mainUri);
+        after!.Success.Should().BeFalse(
+            "project analysis must read the unsaved lib.spy buffer, surfacing the mismatch in main.spy");
+
+        File.ReadAllText(libPath).Should().Contain("-> str", "the edit lived only in the workspace buffer");
+    }
+
+    [Fact]
     public async Task OnDocumentChanged_NonProjectFile_ReturnsEmpty()
     {
         CreateProjectFiles(

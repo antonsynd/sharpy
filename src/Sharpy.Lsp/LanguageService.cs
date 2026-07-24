@@ -121,8 +121,11 @@ internal sealed class LanguageService : IDisposable
                 await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
                 try
                 {
+                    // Overlay any open workspace buffers so a reload (files already open) analyzes
+                    // unsaved edits, not just what is on disk (#1099).
+                    var analysisConfig = WithOpenBuffers(config);
                     var result = await Task.Run(
-                        () => _api.AnalyzeProject(config, cancellationToken: ct), ct).ConfigureAwait(false);
+                        () => _api.AnalyzeProject(analysisConfig, cancellationToken: ct), ct).ConfigureAwait(false);
 
                     Volatile.Write(ref _projectAnalysis, result);
 
@@ -375,8 +378,12 @@ internal sealed class LanguageService : IDisposable
             // starts from data, not intuition.
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
+            // Overlay open workspace buffers so project diagnostics reflect unsaved edits, not the
+            // last-saved bytes on disk (#1099). The cached _projectConfig is left untouched.
+            var analysisConfig = WithOpenBuffers(config);
+
             var result = await Task.Run(
-                () => _api.AnalyzeProject(config, cancellationToken: linkedToken), linkedToken).ConfigureAwait(false);
+                () => _api.AnalyzeProject(analysisConfig, cancellationToken: linkedToken), linkedToken).ConfigureAwait(false);
 
             Volatile.Write(ref _projectAnalysis, result);
 
@@ -476,6 +483,58 @@ internal sealed class LanguageService : IDisposable
             SymbolTable = fileResult.SymbolTable,
             CommentSpans = fileResult.CommentSpans
         };
+    }
+
+    /// <summary>
+    /// Builds an <see cref="ProjectConfig.InMemorySources"/> overlay mapping each project source
+    /// file currently open in the workspace to its unsaved buffer text (#1099), so project-mode
+    /// analysis reflects in-editor edits rather than the last-saved bytes on disk. Returns null
+    /// when no open document maps to a project source file, in which case the caller analyzes the
+    /// on-disk config unchanged. Paths are matched via <see cref="PathNormalizer"/> so the overlay
+    /// keys line up with <c>ProjectCompiler.ReadSource</c>'s case-insensitive lookup.
+    /// </summary>
+    private Dictionary<string, string>? BuildBufferOverlay(ProjectConfig config)
+    {
+        var openUris = _workspace.GetAllDocumentUris();
+        if (openUris.Count == 0)
+            return null;
+
+        // Index open buffers by normalized path so a project source file can be matched to its
+        // open document regardless of URI-vs-path spelling or case differences.
+        var openByPath = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var docUri in openUris)
+        {
+            var docPath = UriToFilePath(docUri);
+            if (docPath == null)
+                continue;
+            var text = _workspace.GetDocument(docUri)?.Text;
+            if (text == null)
+                continue;
+            openByPath[PathNormalizer.Normalize(docPath)] = text;
+        }
+
+        Dictionary<string, string>? overlay = null;
+        foreach (var sourceFile in config.SourceFiles)
+        {
+            if (openByPath.TryGetValue(PathNormalizer.Normalize(sourceFile), out var bufferText))
+            {
+                // Key by the exact SourceFiles entry so ReadSource's TryGetValue(sourceFile, ...) hits.
+                overlay ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                overlay[sourceFile] = bufferText;
+            }
+        }
+
+        return overlay;
+    }
+
+    /// <summary>
+    /// Returns <paramref name="config"/> with any open-buffer overlay applied, or the same
+    /// instance when nothing is open. The cached <c>_projectConfig</c> is never mutated.
+    /// </summary>
+    private ProjectConfig WithOpenBuffers(ProjectConfig config)
+    {
+        var overlay = BuildBufferOverlay(config);
+        return overlay != null ? config.WithInMemorySources(overlay) : config;
     }
 
     private static string? UriToFilePath(string uri)
