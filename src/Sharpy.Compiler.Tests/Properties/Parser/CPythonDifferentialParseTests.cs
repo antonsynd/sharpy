@@ -155,6 +155,10 @@ public class CPythonDifferentialParseTests
     [InlineData("h(a if b else c, key=1)")]
     [InlineData("super()")]
     [InlineData("data[lambda: n]")]
+    // #1130: bare lambda slice bounds — landmark skeletons must agree, not just acceptance.
+    [InlineData("x[lambda qux, m, tmp: t:]")]
+    [InlineData("x[:lambda a: t:]")]
+    [InlineData("x[lambda a: t : b]")]
     public void AnchoredSharedSubset_DualParsesWithMatchingSkeleton(string source)
     {
         var python = PythonOracle.TryLocate();
@@ -206,14 +210,13 @@ public class CPythonDifferentialParseTests
     }
 
     /// <summary>
-    /// QUARANTINED divergence this differential fuzzer found (#1130): a bare lambda as a slice
-    /// bound whose next slice separator ':' is followed by an empty component fails with SPY0100
-    /// at the closing ']'. CPython accepts both (verified via ast.parse); parenthesized lambdas,
-    /// plain-index lambdas, and non-empty following components all parse. Minimized from a
-    /// fuzzer-found sample. Un-skip (and remove the SubsetFilter.VisitSliceAccess quarantine)
-    /// when #1130 is fixed.
+    /// Seeded regression for the divergence this differential fuzzer found (#1130, fixed): a bare
+    /// lambda as a slice bound whose next slice separator ':' is followed by an empty component
+    /// failed with SPY0100 at the closing ']'. CPython accepts both (verified via ast.parse);
+    /// Sharpy now reads them as slices too (the subscript-element context that suppresses the
+    /// param-annotation heuristic). Minimized from a fuzzer-found sample.
     /// </summary>
-    [Theory(Skip = "QUARANTINED until #1130: bare lambda slice bound + empty following component")]
+    [Theory]
     [InlineData("x[lambda qux, m, tmp: t:]")]
     [InlineData("x[:lambda a: t:]")]
     public void LambdaSliceBoundBeforeEmptyComponent_Parses(string source)
@@ -400,21 +403,6 @@ public class CPythonDifferentialParseTests
         public override void VisitLambdaExpression(LambdaExpression node)
         {
             if (node.IsArrowSyntax)
-            {
-                Reject();
-                return;
-            }
-            DefaultVisit(node);
-        }
-
-        // TODO(#1130): quarantine — Sharpy rejects a bare lambda slice bound when the next slice
-        // separator is followed by an empty component (`x[lambda a: t:]`), which CPython accepts.
-        // Deliberately broad (any lambda bound) for robustness; remove wholesale when #1130 is
-        // fixed and un-skip LambdaSliceBoundBeforeEmptyComponent_Parses.
-        public override void VisitSliceAccess(SliceAccess node)
-        {
-            if (node.Start is LambdaExpression || node.Stop is LambdaExpression
-                || node.Step is LambdaExpression)
             {
                 Reject();
                 return;
