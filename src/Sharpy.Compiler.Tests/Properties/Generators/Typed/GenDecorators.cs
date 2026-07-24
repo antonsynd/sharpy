@@ -6,17 +6,32 @@ namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
 internal static class GenDecorators
 {
+    // Valid method-decorator corpus. Spellings must match DecoratorNames
+    // (Sharpy.Compiler.Shared): Virtual = "virtual", Override = "override",
+    // Final = "final". @final is only legal on an @override (DecoratorValidator
+    // .ValidateFinalRequiresOverride emits SPY0412 otherwise), so the "final"
+    // variant is generated as a real Base.@virtual -> Derived.@override @final
+    // chain rather than a bare @final on a base-less method (#1031).
     private static readonly string[] ValidMethodDecorators =
         { "virtual", "final" };
 
+    // DecoratorNames.Dataclass = "dataclass".
     private static readonly string[] ValidClassDecorators =
         { "dataclass" };
 
+    // Invalid decorator *combinations*: conflicting access modifiers
+    // (DecoratorNames.Public/Protected/Private/Internal). Each pair is rejected as
+    // a combination by DecoratorValidator.ValidateAccessModifierDecorators with
+    // ConflictingAccessModifiers (SPY0430) — a genuine two-decorator conflict.
+    // Earlier this array used @staticmethod/@abstractmethod (an unsupported and an
+    // unknown spelling) on a base-less method, so samples were diagnosed for the
+    // wrong reason (unsupported-decorator / override-without-base), never as
+    // combinations (#1031).
     private static readonly string[][] InvalidCombinations =
     {
-        new[] { "staticmethod", "override" },
-        new[] { "abstractmethod", "final" },
-        new[] { "staticmethod", "abstractmethod" }
+        new[] { "public", "private" },
+        new[] { "public", "protected" },
+        new[] { "protected", "internal" }
     };
 
     public static Gen<Module> ModuleWithDecoratedFunction(bool validDecorator) =>
@@ -37,7 +52,14 @@ internal static class GenDecorators
     public static Gen<Module> ModuleWithDecoratorDeterminism() =>
         Gen.OneOfConst(ValidMethodDecorators).Select(BuildValidDecoratedModule);
 
-    private static Module BuildValidDecoratedModule(string decorator)
+    private static Module BuildValidDecoratedModule(string decorator) =>
+        // @final requires an @override chain; every other valid decorator sits on a
+        // single base-less method. See ValidMethodDecorators / SPY0412 (#1031).
+        decorator == "final"
+            ? BuildFinalOverrideModule()
+            : BuildSingleDecoratedModule(decorator);
+
+    private static Module BuildSingleDecoratedModule(string decorator)
     {
         var moduleBody = ImmutableArray.CreateBuilder<Statement>();
 
@@ -66,6 +88,60 @@ internal static class GenDecorators
         moduleBody.Add(BuildMainWithClassCall("Base", "action"));
 
         return new Module { Body = moduleBody.ToImmutable() };
+    }
+
+    // Base.@virtual action  ->  Derived(Base).@override @final action.
+    // This is the only legal home for @final: it requires an @override target
+    // (DecoratorValidator.ValidateFinalRequiresOverride, SPY0412).
+    private static Module BuildFinalOverrideModule()
+    {
+        var baseDef = new ClassDef
+        {
+            Name = "Base",
+            Body = ImmutableArray.Create<Statement>(
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
+                    Body = ImmutableArray.Create<Statement>(new PassStatement())
+                },
+                new FunctionDef
+                {
+                    Name = "action",
+                    Decorators = ImmutableArray.Create(
+                        new Decorator { QualifiedParts = ImmutableArray.Create("virtual") }),
+                    Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
+                    ReturnType = new TypeAnnotation { Name = "str" },
+                    Body = ImmutableArray.Create<Statement>(
+                        new ReturnStatement { Value = new StringLiteral { Value = "base" } })
+                })
+        };
+
+        var derivedDef = new ClassDef
+        {
+            Name = "Derived",
+            BaseClasses = ImmutableArray.Create(new TypeAnnotation { Name = "Base" }),
+            Body = ImmutableArray.Create<Statement>(
+                new FunctionDef
+                {
+                    Name = "action",
+                    Decorators = ImmutableArray.Create(
+                        new Decorator { QualifiedParts = ImmutableArray.Create("override") },
+                        new Decorator { QualifiedParts = ImmutableArray.Create("final") }),
+                    Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
+                    ReturnType = new TypeAnnotation { Name = "str" },
+                    Body = ImmutableArray.Create<Statement>(
+                        new ReturnStatement { Value = new StringLiteral { Value = "derived" } })
+                })
+        };
+
+        return new Module
+        {
+            Body = ImmutableArray.Create<Statement>(
+                baseDef,
+                derivedDef,
+                BuildMainWithClassCall("Derived", "action"))
+        };
     }
 
     private static Module BuildInvalidDecoratedModule(string[] decorators)

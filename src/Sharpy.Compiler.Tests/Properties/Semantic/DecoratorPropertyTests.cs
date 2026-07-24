@@ -27,8 +27,9 @@ public class DecoratorPropertyTests
         var set = RunSamples(GenDecorators.ModuleWithDecoratedFunction(validDecorator: true));
 
         PrintFailures("Valid decorator compilation", set, s => !s.Success);
-        Assert.True(set.Passed > set.Total / 3,
-            $"Valid decorator pass rate too low: {set.Passed}/{set.Total}");
+        // The valid corpus is valid by construction, so every sample must compile.
+        // PrintFailures above dumps source + diagnostics for any that don't (#1031).
+        Assert.Equal(set.Total, set.Passed);
     }
 
     [Fact]
@@ -37,8 +38,8 @@ public class DecoratorPropertyTests
         var set = RunSamples(GenDecorators.ModuleWithDecoratorStack(valid: true));
 
         PrintFailures("Valid decorator stacking", set, s => !s.Success);
-        Assert.True(set.Passed > set.Total / 3,
-            $"Valid decorator stacking pass rate too low: {set.Passed}/{set.Total}");
+        // Deterministic single valid module (Service.@virtual compute) — must compile.
+        Assert.Equal(set.Total, set.Passed);
     }
 
     [Fact]
@@ -46,19 +47,22 @@ public class DecoratorPropertyTests
     {
         var set = RunSamples(GenDecorators.ModuleWithDecoratorStack(valid: false));
 
-        int diagnosed = set.Samples.Count(s => !s.Success || s.Diagnostics.Count > 0);
+        // Each invalid combination is a conflicting-access-modifier pair, so every
+        // sample must be rejected with ConflictingAccessModifiers (SPY0430) — the
+        // combination rule itself, not an incidental single-decorator error. Assert
+        // the specific code, not mere !Success (which passed for the wrong reason
+        // when the corpus used unsupported/unknown spellings — #1031).
+        string expectedCode = DiagnosticCodes.Validation.ConflictingAccessModifiers;
+        int withExpected = set.Samples.Count(
+            s => s.Diagnostics.Any(d => d.Code == expectedCode));
 
-        // A sample that compiled clean with no diagnostics is a failure of this
-        // test's premise (invalid combinations must be rejected).
-        PrintFailures("Undiagnosed invalid combinations", set,
-            s => s.Success && s.Diagnostics.Count == 0);
+        PrintFailures($"Invalid combos missing {expectedCode}", set,
+            s => s.Diagnostics.All(d => d.Code != expectedCode));
         _output.WriteLine("Diagnostic codes seen: " + string.Join(", ",
             set.Samples.SelectMany(s => s.Diagnostics)
                 .Select(d => d.Code ?? "----").Distinct().OrderBy(c => c)));
-        _output.WriteLine($"Invalid decorator stacking diagnostic: {diagnosed}/{set.Total} diagnosed");
 
-        Assert.True(diagnosed > set.Total / 4,
-            $"Invalid decorator diagnostic rate too low: {diagnosed}/{set.Total}");
+        Assert.Equal(set.Total, withExpected);
     }
 
     [Fact]
@@ -67,8 +71,8 @@ public class DecoratorPropertyTests
         var set = RunSamples(GenDecorators.ModuleWithDataclass());
 
         PrintFailures("Dataclass decorator", set, s => !s.Success);
-        Assert.True(set.Passed > set.Total / 3,
-            $"Dataclass decorator pass rate too low: {set.Passed}/{set.Total}");
+        // Field counts 1-4 are all valid dataclasses — must compile.
+        Assert.Equal(set.Total, set.Passed);
     }
 
     [Fact]
