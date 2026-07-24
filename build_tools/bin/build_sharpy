@@ -2,11 +2,20 @@
 import argparse
 import logging
 import os
+import random
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import AbstractSet, Mapping, MutableSequence, Sequence, Tuple
+from typing import (
+    AbstractSet,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+    Tuple,
+)
 
 _logger: logging.Logger = logging.getLogger(name="build_sharpy")
 
@@ -32,6 +41,9 @@ DOCS_DIR: Path = ROOT_DIR / "docs"
 
 EDITORS_DIR: Path = ROOT_DIR / "editors"
 VSCODE_EXT_DIR: Path = EDITORS_DIR / "vscode"
+
+# Where the property-stress crash watchdog writes per-round blame artifacts (#1033).
+PROPERTY_STRESS_DIR: Path = ROOT_DIR / ".claude" / "tmp" / "property-stress"
 
 CSHARP_PROJECTS: Sequence[Path] = [
     COMPILER_DIR / "Sharpy.Compiler.csproj",
@@ -649,6 +661,51 @@ def test_python(args: argparse.Namespace, rest: Sequence[str]) -> None:
         sys.exit(1)
 
 
+# CsCheck's base-64 seed-string alphabet (SeedString.Chars64).
+_CSCHECK_SEED_CHARS: str = (
+    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-"
+)
+
+
+def generate_cscheck_seed() -> str:
+    """Return a valid CsCheck seed string for a fresh random generation start.
+
+    Encodes a random 64-bit PCG state as 11 big-endian base-64 digits plus a
+    trailing '0' stream digit — byte-identical to CsCheck's own
+    ``SeedString.ToString(state, stream=0)`` (verified against CsCheck 4.7.0).
+    The format is strict: a malformed ``CsCheck_Seed`` makes ``SeedString.Parse``
+    throw ``IndexOutOfRangeException`` at startup, aborting *every* test in the
+    invocation, so the encoding must match exactly.
+
+    ``CsCheck_Seed`` pins only the *first* generated case per test (later
+    iterations draw fresh entropy), so a fresh per-round seed keeps full
+    stress diversity while making first-case crashes reproducible.
+    """
+    state: int = random.getrandbits(64)
+    digits: str = "".join(
+        _CSCHECK_SEED_CHARS[(state >> (6 * i)) & 63] for i in range(10, -1, -1)
+    )
+    return digits + "0"
+
+
+def extract_crashing_tests(sequence_xml: Path) -> str:
+    """Name the test(s) in flight when the host crashed, per a blame Sequence file.
+
+    ``--blame-crash`` writes ``Sequence_*.xml`` marking each in-flight test with
+    ``Completed="False"``; those are the blame targets.
+    """
+    try:
+        text: str = sequence_xml.read_text()
+    except OSError:
+        return "(unknown)"
+    running: Sequence[str] = re.findall(
+        r'<Test\b(?=[^>]*\bCompleted="False")[^>]*\bName="([^"]*)"', text
+    )
+    if not running:
+        running = re.findall(r'<Test\b[^>]*\bName="([^"]*)"', text)
+    return ", ".join(running) if running else "(unknown)"
+
+
 def property_test(args: argparse.Namespace, rest: Sequence[str]) -> None:
     build_type: str = "Release" if args.release else "Debug"
     rounds: int = max(1, args.rounds)
@@ -667,12 +724,24 @@ def property_test(args: argparse.Namespace, rest: Sequence[str]) -> None:
         get_logger().error(f"Build failed: {e}")
         sys.exit(1)
 
+    PROPERTY_STRESS_DIR.mkdir(parents=True, exist_ok=True)
+
     passes: int = 0
     failures: int = 0
 
     for i in range(1, rounds + 1):
         if rounds > 1:
             get_logger().info(f"=== Round {i}/{rounds} ===")
+
+        # Fresh CsCheck seed per round: logged for reproduction, exported so the
+        # round's generation start is pinned (crash watchdog, #1033).
+        seed: str = generate_cscheck_seed()
+        results_dir: Path = PROPERTY_STRESS_DIR / f"round-{i}-results"
+        if results_dir.exists():
+            shutil.rmtree(results_dir, ignore_errors=True)
+
+        env: MutableMapping[str, str] = {**os.environ, "CsCheck_Seed": seed}
+        get_logger().info(f"Round {i}: CsCheck_Seed={seed}")
 
         cmd: MutableSequence[str] = [
             "dotnet",
@@ -683,19 +752,55 @@ def property_test(args: argparse.Namespace, rest: Sequence[str]) -> None:
             "--filter",
             test_filter,
             "--no-build",
+            # Blame watchdog: name the running test + leave a dump if the host dies.
+            "--blame-crash",
+            "--blame-hang",
+            "--blame-hang-timeout",
+            "15m",
+            "--results-directory",
+            str(results_dir),
             *rest,
         ]
 
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, env=env)
 
         if result.returncode == 0:
             passes += 1
             if rounds > 1:
-                get_logger().info(f"Round {i}: PASS")
-        else:
-            failures += 1
-            if rounds > 1:
-                get_logger().info(f"Round {i}: FAIL")
+                get_logger().info(f"Round {i}: PASS (seed {seed})")
+            shutil.rmtree(results_dir, ignore_errors=True)
+            continue
+
+        failures += 1
+
+        # Nonzero exit: capture blame artifacts (a host crash) or report an
+        # ordinary assertion failure (CsCheck prints its own reproduction seed).
+        blame_dir: Path = PROPERTY_STRESS_DIR / f"round-{i}-blame"
+        sequence_found: bool = False
+        crashing_test: str = "(unknown)"
+        dump_path: str = "(none)"
+        if results_dir.exists():
+            for seq in results_dir.rglob("Sequence_*.xml"):
+                sequence_found = True
+                blame_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(seq, blame_dir / seq.name)
+                crashing_test = extract_crashing_tests(seq)
+            for pattern in ("*.dmp", "*.crashdump", "core.*"):
+                for dump in results_dir.rglob(pattern):
+                    blame_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(dump, blame_dir / dump.name)
+                    dump_path = str(blame_dir / dump.name)
+
+        if sequence_found:
+            get_logger().error(
+                f"Round {i}: CRASH — test {crashing_test}, seed {seed}, "
+                f"dump {dump_path}, blame {blame_dir}"
+            )
+        elif rounds > 1:
+            get_logger().info(f"Round {i}: FAIL (seed {seed})")
+
+        # Blame copies (if any) live under blame_dir; drop the bulky results dir.
+        shutil.rmtree(results_dir, ignore_errors=True)
 
     if rounds > 1:
         get_logger().info(f"=== Property Test Summary ===")
