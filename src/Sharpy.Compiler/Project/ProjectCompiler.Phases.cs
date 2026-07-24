@@ -515,8 +515,21 @@ internal partial class ProjectCompiler
     /// <summary>
     /// Merge exports from a source module into a target module.
     /// Used to combine nested module structures when the same root is imported multiple times.
+    ///
+    /// Both the value-position <see cref="ModuleSymbol.Exports"/> map and the types-only
+    /// <see cref="ModuleSymbol.ExportedTypes"/> mirror are merged first-import-wins. The mirror
+    /// must not be dropped: annotation-position resolution
+    /// (<see cref="Shared.ModuleSymbolExtensions.ResolveQualifiedType"/>) consults
+    /// <see cref="Shared.ModuleSymbolExtensions.TryGetExportedType"/> BEFORE <c>Exports</c>, so
+    /// a merged root that lost its <c>ExportedTypes</c> would fail to resolve a type whose name is
+    /// also taken by a value-position export (e.g. <c>sqlite3.Row</c> — #1092, #1135). Nested
+    /// modules' own <c>ExportedTypes</c> are carried through by the recursive <c>Exports</c> branch,
+    /// so the mirror merge here is intentionally non-recursive (it holds <see cref="TypeSymbol"/>s only).
+    ///
+    /// Internal (not private) so the merge seam can be unit-tested directly; static because it
+    /// touches no instance state.
     /// </summary>
-    private void MergeModuleExports(ModuleSymbol target, ModuleSymbol source)
+    internal static void MergeModuleExports(ModuleSymbol target, ModuleSymbol source)
     {
         foreach (var (name, symbol) in source.Exports)
         {
@@ -532,6 +545,16 @@ internal partial class ProjectCompiler
             else
             {
                 target.Exports[name] = symbol;
+            }
+        }
+
+        // Mirror the types-only lookup the same first-import-wins way. Non-recursive: nested
+        // modules' ExportedTypes ride along on their ModuleSymbol via the Exports branch above.
+        foreach (var (name, typeSymbol) in source.ExportedTypes)
+        {
+            if (!target.ExportedTypes.ContainsKey(name))
+            {
+                target.ExportedTypes[name] = typeSymbol;
             }
         }
     }
