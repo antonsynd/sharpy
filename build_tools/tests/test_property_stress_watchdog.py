@@ -25,6 +25,7 @@ def _load_build_sharpy():
     path = Path(__file__).parent.parent / "bin" / "build_sharpy"
     loader = SourceFileLoader("build_sharpy_module", str(path))
     spec = importlib.util.spec_from_loader("build_sharpy_module", loader)
+    assert spec is not None, f"could not load spec for {path}"
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
     return module
@@ -61,7 +62,7 @@ class TestGenerateCsCheckSeed:
         [0, 1, 63, 64, 65, 4096, 1234567890, 2**32, 2**64 - 1],
     )
     def test_matches_cscheck_encoder_for_known_states(self, state, monkeypatch):
-        monkeypatch.setattr(bs.random, "getrandbits", lambda _bits: state)
+        monkeypatch.setattr(bs.random, "getrandbits", lambda _: state)
         assert bs.generate_cscheck_seed() == _reference_encode(state)
 
 
