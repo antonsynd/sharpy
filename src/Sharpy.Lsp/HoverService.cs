@@ -181,6 +181,13 @@ public sealed class HoverService
     {
         var query = analysis.SemanticQuery!;
 
+        // A statement-scoped @suppress wraps its target in a DecoratedStatement (#1124). Unwrap so
+        // the import case arms (and any other statement kind) resolve against the inner statement,
+        // mirroring the module.Body UnwrapDecorated sweep. Plain statements are returned unchanged,
+        // so undecorated hover is byte-identical.
+        if (node is Statement stmt)
+            node = stmt.UnwrapDecorated();
+
         switch (node)
         {
             case Identifier id:
