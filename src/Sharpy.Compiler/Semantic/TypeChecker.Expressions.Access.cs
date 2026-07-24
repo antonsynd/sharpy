@@ -663,6 +663,56 @@ internal partial class TypeChecker
         => TypeHierarchyService.FindMethod(type, methodName, SemanticBinding);
 
     /// <summary>
+    /// Resolves <paramref name="memberName"/> to a generic instance method on the receiver's
+    /// declared type (<paramref name="ownerType"/>), for the explicit-type-argument reference
+    /// <c>recv.method[T]</c> (#1133). Handles user-defined classes/structs, user-defined generic
+    /// types, and discovered CLR types (via the builtin-registry TypeSymbol). Returns null when
+    /// the member is absent or is not a generic method — the caller then falls through to the
+    /// ordinary index-access path. A generic overload sitting behind a non-generic sibling is
+    /// preferred (the first-by-name <see cref="FindMethodInHierarchy"/> result may be the
+    /// non-generic one).
+    /// </summary>
+    private FunctionSymbol? TryResolveGenericInstanceMethod(SemanticType ownerType, string memberName)
+    {
+        TypeSymbol? ownerSymbol = ownerType switch
+        {
+            UserDefinedType { Symbol: { } udtSym } => udtSym,
+            GenericType { GenericDefinition: { } genDef } => genDef,
+            _ => ResolveBuiltinTypeInfo(ownerType).TypeSymbol
+        };
+        if (ownerSymbol == null)
+            return null;
+
+        var (found, _) = FindMethodInHierarchy(ownerSymbol, memberName);
+        if (found is { IsGeneric: true })
+            return found;
+
+        // The first-by-name method was non-generic (or absent); scan the type and its
+        // base/interface chain for a generic overload of the same name.
+        foreach (var candidate in EnumerateTypeAndHierarchy(ownerSymbol))
+        {
+            var generic = candidate.Methods.FirstOrDefault(m => m.Name == memberName && m.IsGeneric);
+            if (generic != null)
+                return generic;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Yields <paramref name="type"/> followed by its base classes and interfaces, for member
+    /// scans that need to consider every declaring type (not just the first-by-name match).
+    /// </summary>
+    private IEnumerable<TypeSymbol> EnumerateTypeAndHierarchy(TypeSymbol type)
+    {
+        yield return type;
+        foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(type, SemanticBinding))
+            yield return baseType;
+        foreach (var iface in TypeHierarchyService.GetAllInterfaces(type, SemanticBinding))
+            yield return iface;
+    }
+
+    /// <summary>
     /// Tries to resolve member access on a TypeSymbol (enum values, union cases,
     /// static fields/methods). Returns null if no member was found.
     /// </summary>
@@ -928,6 +978,39 @@ internal partial class TypeChecker
                             };
                         }
                     }
+                }
+            }
+            // Generic-method reference on an instance receiver (e.g. b.convert[int],
+            // self.convert[str], a.b.convert[int]) — the non-module twin of the module-member
+            // arm above. When the member resolves to a generic method (user-defined OR discovered
+            // CLR) on the receiver's type, validate the type-argument count (#1004) and record a
+            // GenericFunctionType so CheckFunctionCall / the emitter treat it exactly like the
+            // bare identity[int] case. As in the module-member and bare Box[int] arms, no
+            // expression type is recorded for indexAccess.Object (the b.convert MemberAccess) —
+            // mirroring the pattern above — so ProtocolValidator.ValidateIndexAccess stays quiet
+            // for these nodes (#1133).
+            else if (ownerType is not UnknownType
+                && TryResolveGenericInstanceMethod(ownerType, memberAccessObj.Member) is { } instanceMethod)
+            {
+                var typeArgs = TryResolveTypeArguments(indexAccess.Index);
+                if (typeArgs != null)
+                {
+                    if (instanceMethod.TypeParameters.Count != typeArgs.Count)
+                    {
+                        AddError(
+                            $"Generic function '{memberAccessObj.Member}' expects {instanceMethod.TypeParameters.Count} type argument(s) but got {typeArgs.Count}",
+                            indexAccess.LineStart,
+                            indexAccess.ColumnStart,
+                            code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                            span: indexAccess.Span);
+                        return SemanticType.Unknown;
+                    }
+                    _semanticInfo.SetExpressionType(indexAccess, new GenericFunctionType
+                    {
+                        FunctionSymbol = instanceMethod,
+                        TypeArguments = typeArgs
+                    });
+                    return _semanticInfo.GetExpressionType(indexAccess)!;
                 }
             }
         }
