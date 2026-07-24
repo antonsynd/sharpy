@@ -51,6 +51,13 @@ internal partial class RoslynEmitter
             result = GenerateModuleGenericTypeInstantiation(nestedIndexAccess, nestedMemberAccess, call);
             if (result != null)
                 return result;
+
+            // Explicit type args on an instance generic-method call: recv.convert[int](x) →
+            // recv.Convert<int>(x). Runs after the module helpers (which handle a module/type
+            // receiver and return first), so only a value receiver reaches here (#1133).
+            result = GenerateInstanceGenericMethodCall(nestedIndexAccess, nestedMemberAccess, call);
+            if (result != null)
+                return result;
         }
 
         if (call.Function is Identifier funcName)
@@ -722,6 +729,36 @@ internal partial class RoslynEmitter
             SyntaxKind.SimpleMemberAccessExpression, moduleExpr, genericMethodName);
 
         var allArgs = GenerateReorderedCallArguments(call, funcSymbol);
+        return InvocationExpression(qualifiedCall)
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+    }
+
+    /// <summary>
+    /// Emits an instance generic-method call with explicit type arguments:
+    /// <c>recv.convert[int](x)</c> → <c>recv.Convert&lt;int&gt;(x)</c>. The semantic phase records
+    /// a <see cref="Semantic.GenericFunctionType"/> on the index-access node and pins the resolved
+    /// method as the call target (<c>CheckGenericInstantiation</c>), so this is a pure translator:
+    /// it reads the recorded call target and threads the receiver through a
+    /// <see cref="MemberAccessExpression"/> + <see cref="GenericName"/>. Returns null when the
+    /// call target is not a generic method — the sibling module-function / module-type / nested-type
+    /// helpers run first and return for those receivers, so only a value receiver reaches here (#1133).
+    /// </summary>
+    private ExpressionSyntax? GenerateInstanceGenericMethodCall(
+        IndexAccess indexAccess, MemberAccess memberAccess, FunctionCall call)
+    {
+        if (_context.SemanticInfo?.GetCallTarget(call) is not { IsGeneric: true } methodSymbol)
+            return null;
+
+        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var genericMethodName = GenericName(
+                NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, GetClrMethodName(methodSymbol)))
+            .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+
+        var receiverExpr = GenerateExpression(memberAccess.Object);
+        var qualifiedCall = MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression, receiverExpr, genericMethodName);
+
+        var allArgs = GenerateReorderedCallArguments(call, methodSymbol);
         return InvocationExpression(qualifiedCall)
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
     }
