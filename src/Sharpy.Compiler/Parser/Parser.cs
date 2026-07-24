@@ -71,6 +71,19 @@ public partial class Parser
     private bool _parsingInterface;
 
     /// <summary>
+    /// True while parsing a direct subscript-element expression (a bound of <c>x[...]</c>),
+    /// and only until we descend below the element's <c>test</c> level. Consulted by
+    /// <see cref="ParseLambda"/> to suppress the parameter-annotation heuristic: directly
+    /// inside a subscript, CPython reads any unparenthesized <c>lambda p: X: Y</c> as the
+    /// slice <c>slice(start=lambda p: X, stop=Y)</c>, never as an annotated-parameter lambda,
+    /// so the first <c>:</c> is always the body separator (#1130). Set in
+    /// <see cref="ParseSliceOrIndex"/> and cleared in <see cref="ParsePostfix"/> (every
+    /// grouping/call descends through it); a nested subscript re-establishes it. Saved and
+    /// restored at each boundary so sibling dimensions and nested subscripts don't corrupt it.
+    /// </summary>
+    private bool _inSubscriptElement;
+
+    /// <summary>
     /// Decorators parsed for the current definition being processed.
     /// Set by ParseDecoratedStatement() before dispatching to the definition parser,
     /// so that ParseFunctionDef() can check for @abstract to allow body-less syntax.

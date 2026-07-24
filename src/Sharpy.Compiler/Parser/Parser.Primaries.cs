@@ -779,12 +779,23 @@ public partial class Parser
                     //
                     // This heuristic works for all currently supported type syntax
                     // (simple, generic, optional, nullable, result types).
+                    //
+                    // Subscript exception (#1130): directly inside `x[...]` (not within a
+                    // nested paren/bracket/call — those clear _inSubscriptElement), CPython
+                    // reads ANY unparenthesized `lambda p: X: Y` as the slice
+                    // `slice(start=lambda p: X, stop=Y)`, never as a param annotation. So we
+                    // skip the classification entirely: the first `:` is the body separator,
+                    // and the body terminates at the depth-0 slice `:` / `]` / `,`.
+                    // Parenthesizing re-enables the annotation extension — CPython has no typed
+                    // lambdas, so `x[(lambda a: int: a)]` is a syntax error there and the
+                    // parenthesized annotation reading is a Sharpy-only escape hatch.
                     var nextType = Peek().Type;
                     var isTypeAnnotation = false;
 
-                    if (nextType == TokenType.Identifier
-                        || nextType == TokenType.Auto
-                        || nextType == TokenType.None)
+                    if (!_inSubscriptElement
+                        && (nextType == TokenType.Identifier
+                            || nextType == TokenType.Auto
+                            || nextType == TokenType.None))
                     {
                         var afterType = Peek(2).Type;
                         if (afterType == TokenType.Pipe)

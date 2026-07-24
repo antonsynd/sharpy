@@ -947,12 +947,18 @@ public partial class Parser
 
     private Expression ParsePostfix()
     {
-        var expr = ParsePrimary();
-
+        // Descending into the operand/primary chain (and any call/index postfix) leaves the
+        // direct subscript-element level: a lambda reached from here is nested in a grouping
+        // or call, so it keeps the param-annotation reading. A direct-bound lambda is caught
+        // earlier at ParseTest and never reaches ParsePostfix; a nested subscript re-arms the
+        // context via ParseSliceOrIndex. Outside a subscript this is a FALSE→FALSE no-op. (#1130)
+        var savedInSubscript = _inSubscriptElement;
+        _inSubscriptElement = false;
         var savedLoopPosition = _lastLoopPosition;
         _lastLoopPosition = -1;
         try
         {
+            var expr = ParsePrimary();
             while (true)
             {
                 if (!CheckLoopProgress())
@@ -1080,13 +1086,14 @@ public partial class Parser
                     break;
                 }
             }
+
+            return expr;
         }
         finally
         {
             _lastLoopPosition = savedLoopPosition;
+            _inSubscriptElement = savedInSubscript;
         }
-
-        return expr;
     }
 
     private static bool IsExpressionStart(TokenType type)
@@ -1118,6 +1125,24 @@ public partial class Parser
     }
 
     private Expression ParseSliceOrIndex()
+    {
+        // Every bound parsed here is a direct subscript element: mark the context so
+        // ParseLambda yields its param-annotation heuristic to CPython's slice reading
+        // (#1130). Save/restore covers nested subscripts inside a lambda body
+        // (`x[lambda a: b[0]:]`) — the inner call re-sets and then restores this flag.
+        var savedInSubscript = _inSubscriptElement;
+        _inSubscriptElement = true;
+        try
+        {
+            return ParseSliceOrIndexCore();
+        }
+        finally
+        {
+            _inSubscriptElement = savedInSubscript;
+        }
+    }
+
+    private Expression ParseSliceOrIndexCore()
     {
         var firstDim = ParseSubscriptElement();
 

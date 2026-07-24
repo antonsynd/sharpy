@@ -159,6 +159,170 @@ public partial class ParserTests
 
     #endregion
 
+    #region Lambda as Slice Bound (#1130)
+
+    // #1130: directly inside a subscript, CPython reads ANY unparenthesized
+    // `lambda p: X: Y` as slice(start=lambda p: X, stop=Y) — never as an
+    // annotated-parameter lambda. Parenthesizing (or nesting in a call/list) re-enables
+    // Sharpy's typed-lambda extension, matching the escape hatch (CPython has no typed
+    // lambdas, so those parenthesized forms are its own syntax errors). Each test pins the
+    // parsed SHAPE (slice vs index, lambda body, param annotation) against that oracle.
+
+    private static SliceAccess ParseSubscriptSlice(string src)
+    {
+        var stmt = Parse(src).Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        return stmt.Expression.Should().BeOfType<SliceAccess>().Subject;
+    }
+
+    private static IndexAccess ParseSubscriptIndex(string src)
+    {
+        var stmt = Parse(src).Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        return stmt.Expression.Should().BeOfType<IndexAccess>().Subject;
+    }
+
+    private static LambdaExpression AsLambda(Expression? expr)
+    {
+        var inner = expr is Parenthesized p ? p.Expression : expr;
+        return inner.Should().BeOfType<LambdaExpression>().Subject;
+    }
+
+    [Fact]
+    public void ParseSubscript_LambdaStartEmptyStop_IsSlice()
+    {
+        // Row 1 (fuzzer minimization, was SPY0100): Slice(lower=lambda qux,m,tmp -> t).
+        var slice = ParseSubscriptSlice("x[lambda qux, m, tmp: t:]");
+        slice.Stop.Should().BeNull();
+        slice.Step.Should().BeNull();
+        var lambda = AsLambda(slice.Start);
+        lambda.Parameters.Should().HaveCount(3);
+        lambda.Parameters[0].Name.Should().Be("qux");
+        lambda.Parameters[1].Name.Should().Be("m");
+        lambda.Parameters[2].Name.Should().Be("tmp");
+        lambda.Parameters[2].Type.Should().BeNull();
+        lambda.Body.Should().BeOfType<Identifier>().Which.Name.Should().Be("t");
+    }
+
+    [Fact]
+    public void ParseSubscript_LambdaStopEmptyStep_IsSlice()
+    {
+        // Row 2 (was SPY0100): Slice(upper=lambda a -> t) with an empty (present) step.
+        var slice = ParseSubscriptSlice("x[:lambda a: t:]");
+        slice.Start.Should().BeNull();
+        slice.Step.Should().BeNull();
+        var lambda = AsLambda(slice.Stop);
+        lambda.Parameters.Should().ContainSingle().Which.Name.Should().Be("a");
+        lambda.Body.Should().BeOfType<Identifier>().Which.Name.Should().Be("t");
+    }
+
+    [Fact]
+    public void ParseSubscript_ParenthesizedLambdaStart_IsSlice()
+    {
+        // Row 3: parenthesized lambda start — already worked, still a slice.
+        var slice = ParseSubscriptSlice("x[(lambda qux, m, tmp: t):]");
+        slice.Stop.Should().BeNull();
+        AsLambda(slice.Start).Parameters.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void ParseSubscript_BareLambdaNoTrailingColon_IsPlainIndex()
+    {
+        // Row 4: no following slice `:` → plain index whose key is the lambda.
+        var index = ParseSubscriptIndex("x[lambda qux, m, tmp: t]");
+        var lambda = AsLambda(index.Index);
+        lambda.Parameters.Should().HaveCount(3);
+        lambda.Body.Should().BeOfType<Identifier>().Which.Name.Should().Be("t");
+    }
+
+    [Fact]
+    public void ParseSubscript_LambdaStopNothingFollows_IsSlice()
+    {
+        // Row 5: Slice(upper=lambda a -> t), no step.
+        var slice = ParseSubscriptSlice("x[:lambda a: t]");
+        slice.Start.Should().BeNull();
+        slice.Step.Should().BeNull();
+        AsLambda(slice.Stop).Body.Should().BeOfType<Identifier>().Which.Name.Should().Be("t");
+    }
+
+    [Fact]
+    public void ParseSubscript_LambdaStartNonEmptyStop_IsSliceNotAnnotatedIndex()
+    {
+        // Row 6 — the load-bearing divergence: `x[lambda a: t : b]` parsed WITHOUT error
+        // pre-fix but as IndexAccess of a lambda with annotated param `a: t` and body `b`.
+        // CPython reads Slice(lower=lambda a -> t, upper=b); the second `:` is the slice
+        // separator, so the param carries no annotation.
+        var slice = ParseSubscriptSlice("x[lambda a: t : b]");
+        var lambda = AsLambda(slice.Start);
+        lambda.Parameters.Should().ContainSingle().Which.Type.Should().BeNull();
+        lambda.Body.Should().BeOfType<Identifier>().Which.Name.Should().Be("t");
+        slice.Stop.Should().BeOfType<Identifier>().Which.Name.Should().Be("b");
+    }
+
+    [Fact]
+    public void ParseSubscript_LambdaBodyLooksLikeType_IsSliceNotAnnotation()
+    {
+        // Row 7: `x[lambda a: int: a]` — `int` is the lambda BODY (a bare name), not a
+        // param annotation, because in subscript context the first `:` is the body sep.
+        // CPython: Slice(lower=lambda a -> int, upper=a).
+        var slice = ParseSubscriptSlice("x[lambda a: int: a]");
+        var lambda = AsLambda(slice.Start);
+        lambda.Parameters.Should().ContainSingle().Which.Type.Should().BeNull();
+        lambda.Body.Should().BeOfType<Identifier>().Which.Name.Should().Be("int");
+        slice.Stop.Should().BeOfType<Identifier>().Which.Name.Should().Be("a");
+    }
+
+    [Fact]
+    public void ParseSubscript_ParenthesizedLambda_KeepsParamAnnotation()
+    {
+        // Escape hatch: parenthesizing re-enables Sharpy's typed-lambda extension —
+        // `(lambda a: int: a)` is a lambda with param `a: int` and body `a`.
+        var index = ParseSubscriptIndex("x[(lambda a: int: a)]");
+        var lambda = AsLambda(index.Index);
+        var param = lambda.Parameters.Should().ContainSingle().Subject;
+        param.Type.Should().NotBeNull();
+        param.Type!.Name.Should().Be("int");
+        lambda.Body.Should().BeOfType<Identifier>().Which.Name.Should().Be("a");
+    }
+
+    [Fact]
+    public void ParseSubscript_CallArgLambda_KeepsParamAnnotation()
+    {
+        // Escape hatch: a lambda inside a call argument is not a direct bound; the
+        // annotation reading survives (`f(lambda a: int: a)`).
+        var index = ParseSubscriptIndex("x[f(lambda a: int: a)]");
+        var call = index.Index.Should().BeOfType<FunctionCall>().Subject;
+        var lambda = AsLambda(call.Arguments.Should().ContainSingle().Subject);
+        lambda.Parameters.Should().ContainSingle().Which.Type!.Name.Should().Be("int");
+    }
+
+    [Fact]
+    public void ParseSubscript_ListLiteralLambda_KeepsParamAnnotation()
+    {
+        // Escape hatch: a lambda inside a nested list literal keeps the annotation
+        // (`[lambda a: int: a][0]`).
+        var index = ParseSubscriptIndex("x[[lambda a: int: a][0]]");
+        var innerIndex = index.Index.Should().BeOfType<IndexAccess>().Subject;
+        var list = innerIndex.Object.Should().BeOfType<ListLiteral>().Subject;
+        var lambda = AsLambda(list.Elements.Should().ContainSingle().Subject);
+        lambda.Parameters.Should().ContainSingle().Which.Type!.Name.Should().Be("int");
+    }
+
+    [Fact]
+    public void ParseSubscript_NestedSubscriptInLambdaBody_DoesNotCorruptContext()
+    {
+        // Save/restore guard: a nested subscript in the lambda body (`b[0]`) re-arms and
+        // then restores the subscript-element context, so the outer bound still parses as
+        // Slice(lower=lambda a -> b[0]).
+        var slice = ParseSubscriptSlice("x[lambda a: b[0]:]");
+        slice.Stop.Should().BeNull();
+        var lambda = AsLambda(slice.Start);
+        lambda.Parameters.Should().ContainSingle().Which.Type.Should().BeNull();
+        var bodyIndex = lambda.Body.Should().BeOfType<IndexAccess>().Subject;
+        bodyIndex.Object.Should().BeOfType<Identifier>().Which.Name.Should().Be("b");
+        bodyIndex.Index.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("0");
+    }
+
+    #endregion
+
     #region Type Annotations and Casts
 
     [Fact]
