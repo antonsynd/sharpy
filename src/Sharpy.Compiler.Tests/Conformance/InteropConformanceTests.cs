@@ -108,7 +108,7 @@ public class InteropConformanceTests
                 foreach (var (funcName, sigs) in module.Functions)
                 {
                     membersEnumerated++;
-                    var chosen = PickCallableOverload(sigs, allowGenericTypeArgs: true, out var args, out var typeArgs, out var reason);
+                    var chosen = PickCallableOverload(sigs, allowGenericTypeArgs: true, typeSubst: null, out var args, out var typeArgs, out var reason);
                     if (chosen != null)
                     {
                         var callExpr = typeArgs != null
@@ -138,19 +138,54 @@ public class InteropConformanceTests
                 foreach (var typeInfo in module.Types)
                 {
                     var clrType = ResolveClrType(typeInfo.ClrTypeName);
+                    var isGeneric = clrType is { IsGenericType: true } || clrType is { IsGenericTypeDefinition: true }
+                                    || typeInfo.Name.Contains('`', StringComparison.Ordinal);
 
-                    // Generic types need type-argument synthesis to render (annotating a bare
-                    // `SequenceMatcher<T>` emits CS0305); that is future scope. The arity is
-                    // often absent from the discovered Name, so also consult the CLR type.
-                    if (!IsUsableTypeName(typeInfo.Name) || clrType is { IsGenericType: true }
-                        || clrType is { IsGenericTypeDefinition: true })
+                    string typeRef;
+                    IReadOnlyDictionary<string, string>? typeSubst = null;
+                    if (isGeneric)
                     {
-                        notAttempted.Add(new { module = moduleName, member = typeInfo.Name, kind = "type", position = PosAnnotate, reason = "generic/unrenderable type name" });
-                        continue;
+                        // Render a CLOSED construction (SequenceMatcher[int], List[int], Deque[int])
+                        // so the annotation binds instead of tripping CS0305 on the open definition.
+                        // Every type parameter is filled with `int`; where the CLR type resolves we
+                        // also build a subst map so receiver-position methods with T-typed parameters
+                        // can be exercised against the closed receiver.
+                        var arity = GenericArity(typeInfo, clrType);
+                        var cleanName = CleanGenericName(typeInfo.Name);
+                        if (arity is not > 0 || !IsUsableTypeName(cleanName))
+                        {
+                            notAttempted.Add(new { module = moduleName, member = typeInfo.Name, kind = "type", position = PosAnnotate, reason = "generic type: arity/name not synthesizable" });
+                            continue;
+                        }
+                        typeRef = $"{qualifier}{cleanName}[{string.Join(", ", Enumerable.Repeat("int", arity.Value))}]";
+
+                        // Core-internal generic types (List, Set, iterators, views) are not
+                        // annotatable under their discovered CamelCase names — the user-facing
+                        // spelling is `list`/`set`/…, so `List[int]` yields SPY0202. Probe the
+                        // closed annotation once and skip the whole type when it doesn't resolve,
+                        // so its methods/properties/subclass don't each fail downstream.
+                        var probe = $"{importLine}def _probe(x: {typeRef}) -> None:\n    pass\n";
+                        if (!CompilesClean(api, probe))
+                        {
+                            notAttempted.Add(new { module = moduleName, member = typeInfo.Name, kind = "type", position = PosAnnotate, reason = "generic type not user-annotatable under discovered name" });
+                            continue;
+                        }
+
+                        if (clrType != null)
+                            typeSubst = clrType.GetGenericArguments()
+                                .ToDictionary(a => a.Name, _ => "int", StringComparer.Ordinal);
+                    }
+                    else
+                    {
+                        if (!IsUsableTypeName(typeInfo.Name))
+                        {
+                            notAttempted.Add(new { module = moduleName, member = typeInfo.Name, kind = "type", position = PosAnnotate, reason = "unrenderable type name" });
+                            continue;
+                        }
+                        typeRef = qualifier + typeInfo.Name;
                     }
 
                     membersEnumerated++;
-                    var typeRef = qualifier + typeInfo.Name;
 
                     snippets.Add(new Snippet(asmName, moduleName, "type", typeInfo.Name, PosAnnotate,
                         $"{importLine}def _use(x: {typeRef}) -> None:\n    pass\n"));
@@ -183,7 +218,7 @@ public class InteropConformanceTests
                         membersEnumerated++;
                         // Instance methods reject explicit type args (recv.m[T](…) parses as
                         // indexing, SPY0320, #1133), so generic overloads stay notAttempted.
-                        var chosen = PickCallableOverload(group.ToList(), allowGenericTypeArgs: false, out var margs, out _, out var mReason);
+                        var chosen = PickCallableOverload(group.ToList(), allowGenericTypeArgs: false, typeSubst, out var margs, out _, out var mReason);
                         if (chosen != null)
                         {
                             var body = CallStatement($"recv.{group.Key}({margs})", chosen.ReturnType);
@@ -280,7 +315,8 @@ public class InteropConformanceTests
                 "index/match positions are deferred (need per-type scrutinee/key synthesis); tracked as follow-up.",
                 "Instance methods/properties use a typed parameter as the receiver, so no constructor is exercised.",
                 "Generic functions/methods are called with synthesized type arguments (unconstrained/struct/new() -> int, class -> str); constraint-blocked overloads stay notAttempted (constraint synthesis future scope).",
-                "Members with non-synthesizable required parameters or generic type names are counted as notAttempted, not failures.",
+                "Generic types are annotated/subclassed as a closed construction with every type parameter filled with int (List[int], Deque[int]); receiver-position methods substitute those args for T-typed parameters.",
+                "Members with non-synthesizable required parameters are counted as notAttempted, not failures.",
             },
             crashes = crashes.Take(100).Select(f => f.ToReport(allowlist)),
             failures = failures.Take(500).Select(f => f.ToReport(allowlist)),
@@ -372,6 +408,7 @@ public class InteropConformanceTests
     private static FunctionSignature? PickCallableOverload(
         IReadOnlyList<FunctionSignature> overloads,
         bool allowGenericTypeArgs,
+        IReadOnlyDictionary<string, string>? typeSubst,
         out string args,
         out string? typeArgs,
         out string notAttemptedReason)
@@ -393,7 +430,9 @@ public class InteropConformanceTests
 
         foreach (var sig in overloads)
         {
-            IReadOnlyDictionary<string, string>? subst = null;
+            // A closed-generic receiver pins the type's own parameters (T -> int); method-level
+            // type args, when rendered, layer on top.
+            IReadOnlyDictionary<string, string>? subst = typeSubst;
             string? renderedTypeArgs = null;
             if (sig.TypeParameters.Count > 0)
             {
@@ -411,9 +450,12 @@ public class InteropConformanceTests
                     sawUnsynthesizableConstraint = true;
                     continue;
                 }
-                subst = sig.TypeParameters
-                    .Select((tp, i) => (tp.Name, Arg: synthesized[i]))
-                    .ToDictionary(x => x.Name, x => x.Arg, StringComparer.Ordinal);
+                var merged = typeSubst == null
+                    ? new Dictionary<string, string>(StringComparer.Ordinal)
+                    : new Dictionary<string, string>(typeSubst, StringComparer.Ordinal);
+                for (var i = 0; i < sig.TypeParameters.Count; i++)
+                    merged[sig.TypeParameters[i].Name] = synthesized[i];
+                subst = merged;
                 renderedTypeArgs = string.Join(", ", synthesized);
             }
 
@@ -589,6 +631,28 @@ public class InteropConformanceTests
         => !string.IsNullOrEmpty(name)
            && name.IndexOfAny(new[] { '`', '<', '[', '+', '.' }) < 0;
 
+    /// <summary>
+    /// Number of type parameters to fill for a closed-generic construction, from the resolved
+    /// CLR type when available (authoritative) or the discovered name's <c>`N</c> arity suffix,
+    /// or null when neither yields a positive arity.
+    /// </summary>
+    private static int? GenericArity(DiscoveredTypeInfo typeInfo, Type? clrType)
+    {
+        if (clrType is { IsGenericType: true })
+            return clrType.GetGenericArguments().Length;
+        var tick = typeInfo.Name.IndexOf('`', StringComparison.Ordinal);
+        if (tick >= 0 && int.TryParse(typeInfo.Name.AsSpan(tick + 1), out var n) && n > 0)
+            return n;
+        return null;
+    }
+
+    /// <summary>Strips the <c>`N</c> arity suffix so a generic name renders as a bare identifier.</summary>
+    private static string CleanGenericName(string name)
+    {
+        var tick = name.IndexOf('`', StringComparison.Ordinal);
+        return tick >= 0 ? name.Substring(0, tick) : name;
+    }
+
     /// <summary>True when the name is a plain identifier (letters/digits/underscore, no leading digit).</summary>
     private static bool IsIdentifier(string name)
     {
@@ -608,10 +672,12 @@ public class InteropConformanceTests
             return false;
         if (clrType == null)
             return false;
-        if (clrType.IsSealed || clrType.IsAbstract || clrType.IsGenericType)
+        if (clrType.IsSealed || clrType.IsAbstract)
             return false;
         // Only classes with an accessible parameterless constructor: `class _Sub(T): pass`
-        // must not need to forward base-constructor arguments.
+        // must not need to forward base-constructor arguments. Generic bases are subclassed
+        // through their closed construction (`class _Sub(Deque[int]): pass`); the open
+        // definition's parameterless ctor carries over to the closed type.
         return clrType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
             .Any(c => (c.IsPublic || c.IsFamily) && c.GetParameters().Length == 0);
     }
@@ -629,11 +695,14 @@ public class InteropConformanceTests
     }
 
     private static bool ImportsClean(CompilerApi api, string moduleName)
+        => CompilesClean(api, $"import {moduleName}\n\ndef _p() -> None:\n    pass\n");
+
+    /// <summary>True when <paramref name="source"/> compiles (Sharpy phase) with no errors.</summary>
+    private static bool CompilesClean(CompilerApi api, string source)
     {
         try
         {
-            var r = api.Compile($"import {moduleName}\n\ndef _p() -> None:\n    pass\n",
-                new CompilerOptions { OutputType = "library" });
+            var r = api.Compile(source, new CompilerOptions { OutputType = "library" });
             return r.Diagnostics.All(d => d.Severity != CompilerDiagnosticSeverity.Error);
         }
         catch
