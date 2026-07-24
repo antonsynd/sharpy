@@ -1,6 +1,0 @@
-def main() -> None:
-    obj: object = 42
-    # The legacy `to` cast still compiles and runs, but the
-    # TransitionWarningValidator emits SPY0479 suggesting the `as!` spelling.
-    n: int = obj to int
-    print(n)
