@@ -25,7 +25,7 @@ import sqlite3
 #     Count is already covered via len().
 #   - RowFactory_WithoutRowFactory_ReturnsTupleArrays: BeOfType<object?[]> reflection
 #     check — no Sharpy surface for asserting the runtime type. The default object?[]
-#     row is itself indexable (narrow with `to array[object]`; see the cursor tests
+#     row is itself indexable (narrow with `as! array[object]`; see the cursor tests
 #     and stdlib_sqlite3_default_row_indexing fixture, #951).
 
 

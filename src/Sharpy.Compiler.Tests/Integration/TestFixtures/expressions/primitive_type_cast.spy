@@ -1,15 +1,15 @@
 def main():
     x: int = 42
     # Cast to CLR primitive types
-    s: short = x to short
+    s: short = x as! short
     print(s)
-    b: byte = x to byte
+    b: byte = x as! byte
     print(b)
     # Cast using Sharpy-style names
-    s2: int16 = x to int16
+    s2: int16 = x as! int16
     print(s2)
-    b2: uint8 = x to uint8
+    b2: uint8 = x as! uint8
     print(b2)
     # Cast between CLR primitives
-    u: ushort = s to ushort
+    u: ushort = s as! ushort
     print(u)

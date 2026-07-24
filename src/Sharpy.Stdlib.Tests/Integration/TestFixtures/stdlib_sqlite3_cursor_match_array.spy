@@ -1,4 +1,4 @@
-# Test sqlite3 cursor default-row narrowing: `match fetchone() to array[object]`
+# Test sqlite3 cursor default-row narrowing: `match fetchone() as! array[object]`
 # matches the CLR object?[] row and indexes it (#951)
 import operator
 import sqlite3
@@ -13,7 +13,7 @@ def main():
     conn.commit()
 
     cursor = conn.execute("SELECT id, name FROM t WHERE id = 1")
-    match cursor.fetchone() to array[object]:
+    match cursor.fetchone() as! array[object]:
         case list() as r:
             assert _eq_int(r[0], 1)
             assert operator.eq(r[1], "Alice")
@@ -22,7 +22,7 @@ def main():
             print("no match")
 
     empty = conn.execute("SELECT id FROM t WHERE id = 999")
-    match empty.fetchone() to array[object]:
+    match empty.fetchone() as! array[object]:
         case list():
             print("unexpected")
         case _:

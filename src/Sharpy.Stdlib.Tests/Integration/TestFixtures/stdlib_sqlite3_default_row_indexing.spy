@@ -1,5 +1,5 @@
 # Test sqlite3 default rows (no row_factory): object?[] surfaces as array[object],
-# indexable via `to array[object]` and matchable with `case list()` (#951)
+# indexable via `as! array[object]` and matchable with `case list()` (#951)
 import sqlite3
 
 def main():
@@ -15,8 +15,8 @@ def main():
         print("no row")
         return
 
-    # Narrow the default object row to an indexable array via `to`.
-    r = row to array[object]
+    # Narrow the default object row to an indexable array via `as!`.
+    r = row as! array[object]
     print(r[0])
     print(r[1])
 
