@@ -54,15 +54,18 @@ public class InteropConformanceTests
         _output = output;
     }
 
-    // Usage positions v1. index/match are recognized in the plan but deferred: a sound
-    // scrutinee/key requires per-type synthesis that would otherwise generate false
-    // failures. Tracked for a follow-up; see the sweep report's scopeNotes.
+    // Usage positions. index/match join the original six (#1094): index reads x[key] for types
+    // exposing a gettable indexer (key synthesized from the indexer parameter, or the closed
+    // receiver's type-arg substitution); match scrutinizes the annotate-position variable with a
+    // wildcard `case _:` arm, exhaustive by construction.
     private const string PosAnnotate = "annotate";
     private const string PosCall = "call";
     private const string PosReference = "reference";
     private const string PosMethod = "method";
     private const string PosProperty = "property";
     private const string PosSubclass = "subclass";
+    private const string PosIndex = "index";
+    private const string PosMatch = "match";
 
     [Fact]
     public void InteropSweep_AllPublicStdlibMembers_CompileClean()
@@ -82,8 +85,19 @@ public class InteropConformanceTests
         var builder = new OverloadIndexBuilder(NullLogger.Instance);
         var snippets = new List<Snippet>();
         var notAttempted = new List<object>();
+        var notAttemptedByReason = new Dictionary<(string Position, string Reason), int>();
         var skippedModules = new List<object>();
         var membersEnumerated = 0;
+
+        // Records a notAttempted member for the flat report list and, in parallel, keeps a full
+        // (uncapped) per-position/per-reason tally so bucket deltas stay measurable even though
+        // the flat list is capped in the report.
+        void RecordNotAttempted(string module, string member, string kind, string position, string reason)
+        {
+            notAttempted.Add(new { module, member, kind, position, reason });
+            var key = (position, reason);
+            notAttemptedByReason[key] = notAttemptedByReason.GetValueOrDefault(key) + 1;
+        }
 
         foreach (var (asmName, asmPath) in new[] { ("Sharpy.Core", corePath), ("Sharpy.Stdlib", stdlibPath) })
         {
@@ -120,7 +134,7 @@ public class InteropConformanceTests
                     }
                     else
                     {
-                        notAttempted.Add(new { module = moduleName, member = funcName, kind = "function", position = PosCall, reason });
+                        RecordNotAttempted(moduleName, funcName, "function", PosCall, reason);
                     }
                 }
 
@@ -154,7 +168,7 @@ public class InteropConformanceTests
                         var cleanName = CleanGenericName(typeInfo.Name);
                         if (arity is not > 0 || !IsUsableTypeName(cleanName))
                         {
-                            notAttempted.Add(new { module = moduleName, member = typeInfo.Name, kind = "type", position = PosAnnotate, reason = "generic type: arity/name not synthesizable" });
+                            RecordNotAttempted(moduleName, typeInfo.Name, "type", PosAnnotate, "generic type: arity/name not synthesizable");
                             continue;
                         }
                         typeRef = $"{qualifier}{cleanName}[{string.Join(", ", Enumerable.Repeat("int", arity.Value))}]";
@@ -167,7 +181,7 @@ public class InteropConformanceTests
                         var probe = $"{importLine}def _probe(x: {typeRef}) -> None:\n    pass\n";
                         if (!CompilesClean(api, probe))
                         {
-                            notAttempted.Add(new { module = moduleName, member = typeInfo.Name, kind = "type", position = PosAnnotate, reason = "generic type not user-annotatable under discovered name" });
+                            RecordNotAttempted(moduleName, typeInfo.Name, "type", PosAnnotate, "generic type not user-annotatable under discovered name");
                             continue;
                         }
 
@@ -179,7 +193,7 @@ public class InteropConformanceTests
                     {
                         if (!IsUsableTypeName(typeInfo.Name))
                         {
-                            notAttempted.Add(new { module = moduleName, member = typeInfo.Name, kind = "type", position = PosAnnotate, reason = "unrenderable type name" });
+                            RecordNotAttempted(moduleName, typeInfo.Name, "type", PosAnnotate, "unrenderable type name");
                             continue;
                         }
                         typeRef = qualifier + typeInfo.Name;
@@ -190,10 +204,33 @@ public class InteropConformanceTests
                     snippets.Add(new Snippet(asmName, moduleName, "type", typeInfo.Name, PosAnnotate,
                         $"{importLine}def _use(x: {typeRef}) -> None:\n    pass\n"));
 
+                    // Match position: scrutinize the annotate-position variable with a wildcard arm
+                    // (exhaustive by construction, so no per-type pattern synthesis is needed).
+                    snippets.Add(new Snippet(asmName, moduleName, "type", typeInfo.Name, PosMatch,
+                        $"{importLine}def _use(x: {typeRef}) -> None:\n    match x:\n        case _:\n            pass\n"));
+
                     if (IsSubclassable(typeInfo, clrType))
                     {
                         snippets.Add(new Snippet(asmName, moduleName, "type", typeInfo.Name, PosSubclass,
                             $"{importLine}class _Sub({typeRef}):\n    pass\n"));
+                    }
+
+                    // Index position: a read x[key] for types exposing a gettable indexer. The key
+                    // comes from the indexer's parameter type — synthesized directly, or via the
+                    // closed receiver's type-arg substitution for a generic key (Dict this[TKey]).
+                    if (clrType != null)
+                    {
+                        var indexer = clrType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                            .FirstOrDefault(p => p.GetIndexParameters().Length > 0 && p.GetGetMethod() != null);
+                        if (indexer != null)
+                        {
+                            var key = TrySynthesizeKeyLiteral(indexer.GetIndexParameters()[0].ParameterType, typeSubst);
+                            if (key != null)
+                                snippets.Add(new Snippet(asmName, moduleName, "type", typeInfo.Name, PosIndex,
+                                    $"{importLine}def _use(recv: {typeRef}) -> None:\n    _x = recv[{key}]\n"));
+                            else
+                                RecordNotAttempted(moduleName, typeInfo.Name, "type", PosIndex, "non-synthesizable indexer key type");
+                        }
                     }
 
                     // Instance methods (receiver supplied by a typed parameter — no ctor needed).
@@ -203,7 +240,7 @@ public class InteropConformanceTests
                         // a real public surface; skip anything that isn't a plain identifier.
                         if (!IsIdentifier(group.Key))
                         {
-                            notAttempted.Add(new { module = moduleName, member = $"{typeInfo.Name}.{group.Key}", kind = "method", position = PosMethod, reason = "non-identifier / compiler-generated member" });
+                            RecordNotAttempted(moduleName, $"{typeInfo.Name}.{group.Key}", "method", PosMethod, "non-identifier / compiler-generated member");
                             continue;
                         }
 
@@ -211,7 +248,7 @@ public class InteropConformanceTests
                         // (SPY0427); the sweep exercises them via their protocol surface instead.
                         if (group.Key.StartsWith("__", StringComparison.Ordinal) && group.Key.EndsWith("__", StringComparison.Ordinal))
                         {
-                            notAttempted.Add(new { module = moduleName, member = $"{typeInfo.Name}.{group.Key}", kind = "method", position = PosMethod, reason = "dunder invoked via protocol, not directly" });
+                            RecordNotAttempted(moduleName, $"{typeInfo.Name}.{group.Key}", "method", PosMethod, "dunder invoked via protocol, not directly");
                             continue;
                         }
 
@@ -227,7 +264,7 @@ public class InteropConformanceTests
                         }
                         else
                         {
-                            notAttempted.Add(new { module = moduleName, member = $"{typeInfo.Name}.{group.Key}", kind = "method", position = PosMethod, reason = mReason });
+                            RecordNotAttempted(moduleName, $"{typeInfo.Name}.{group.Key}", "method", PosMethod, mReason);
                         }
                     }
 
@@ -237,7 +274,7 @@ public class InteropConformanceTests
                         var sharpyProp = NameMangler.ToSharpyName(prop.Name, ReverseNameContext.Property);
                         if (!IsIdentifier(sharpyProp))
                         {
-                            notAttempted.Add(new { module = moduleName, member = $"{typeInfo.Name}.{sharpyProp}", kind = "property", position = PosProperty, reason = "non-identifier / compiler-generated member" });
+                            RecordNotAttempted(moduleName, $"{typeInfo.Name}.{sharpyProp}", "property", PosProperty, "non-identifier / compiler-generated member");
                             continue;
                         }
                         membersEnumerated++;
@@ -283,6 +320,18 @@ public class InteropConformanceTests
         }
         foreach (var st in byPosition.Values)
             st.Pass = st.Generated - st.Fail - st.Crash;
+        // Fold the notAttempted tally into the per-position breakdown so each position reports
+        // pass/fail/crash AND notAttempted (a position may be entirely notAttempted with no
+        // generated snippet, so create the entry if absent).
+        foreach (var ((position, _), count) in notAttemptedByReason)
+        {
+            if (!byPosition.TryGetValue(position, out var st))
+            {
+                st = new PositionStats();
+                byPosition[position] = st;
+            }
+            st.NotAttempted += count;
+        }
         var passCount = snippets.Count - failures.Count - crashes.Count;
 
         // Ratchet: any non-allowlisted failure/crash fails CI once an allowlist exists.
@@ -308,11 +357,17 @@ public class InteropConformanceTests
                 nonAllowlistedFailures = offenders.Count,
             },
             ratchetMode = AllowlistFileExists(),
-            byPosition = byPosition.ToDictionary(kv => kv.Key, kv => new { kv.Value.Generated, kv.Value.Pass, kv.Value.Fail, kv.Value.Crash }),
+            byPosition = byPosition.ToDictionary(kv => kv.Key, kv => new { kv.Value.Generated, kv.Value.Pass, kv.Value.Fail, kv.Value.Crash, kv.Value.NotAttempted }),
+            // Full (uncapped) per-position/per-reason notAttempted tally — the flat list below is
+            // capped, so this is the authoritative source for bucket deltas.
+            notAttemptedByReason = notAttemptedByReason
+                .OrderByDescending(kv => kv.Value)
+                .Select(kv => new { position = kv.Key.Position, reason = kv.Key.Reason, count = kv.Value }),
             scopeNotes = new[]
             {
-                "Usage positions v1: annotate, call, reference, method, property, subclass.",
-                "index/match positions are deferred (need per-type scrutinee/key synthesis); tracked as follow-up.",
+                "Usage positions: annotate, call, reference, method, property, subclass, index, match.",
+                "Index reads x[key] for types exposing a gettable indexer (key synthesized from the indexer parameter, or the closed receiver's type-arg substitution); non-synthesizable key types are notAttempted.",
+                "Match scrutinizes the annotate-position variable with a wildcard `case _:` arm (exhaustive by construction), so every rendered type gets a match snippet.",
                 "Instance methods/properties use a typed parameter as the receiver, so no constructor is exercised.",
                 "Generic functions/methods are called with synthesized type arguments (unconstrained/struct/new() -> int, class -> str); constraint-blocked overloads stay notAttempted (constraint synthesis future scope).",
                 "Generic types are annotated/subclassed as a closed construction with every type parameter filled with int (List[int], Deque[int]); receiver-position methods substitute those args for T-typed parameters.",
@@ -576,6 +631,29 @@ public class InteropConformanceTests
     /// <summary>Synthesizes a literal for the <paramref name="index"/>th type argument, or null.</summary>
     private static string? SynthElement(TypeSignature t, int index, IReadOnlyDictionary<string, string>? subst = null)
         => index < t.TypeArguments.Count ? TrySynthesizeLiteral(t.TypeArguments[index], subst) : null;
+
+    /// <summary>
+    /// Produces a Sharpy literal for an indexer's key (parameter) CLR type, or null when it is
+    /// not one we can construct. A generic key (e.g. Dict's <c>this[TKey]</c>) resolves through
+    /// the closed receiver's type-arg substitution; concrete primitive key types map directly.
+    /// </summary>
+    private static string? TrySynthesizeKeyLiteral(Type keyType, IReadOnlyDictionary<string, string>? typeSubst)
+    {
+        if (keyType.IsGenericParameter)
+            return typeSubst != null && typeSubst.TryGetValue(keyType.Name, out var concrete)
+                ? TrySynthesizeLiteral(new TypeSignature { Name = concrete })
+                : null;
+
+        return keyType.FullName switch
+        {
+            "System.Int32" or "System.Int64" or "System.Int16" or "System.SByte" or "System.Byte"
+                or "System.UInt16" or "System.UInt32" or "System.UInt64" or "System.IntPtr" or "System.UIntPtr" => "0",
+            "System.String" => "\"\"",
+            "System.Boolean" => "True",
+            "System.Double" or "System.Single" => "0.0",
+            _ => null,
+        };
+    }
 
     /// <summary>
     /// Synthesizes concrete Sharpy type-argument spellings for a generic function/method's
@@ -913,5 +991,6 @@ public class InteropConformanceTests
         public int Pass;
         public int Fail;
         public int Crash;
+        public int NotAttempted;
     }
 }
