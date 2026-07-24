@@ -101,6 +101,48 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
         Report($"project full reanalysis ({files.Length} files)", totalLines, samples);
     }
 
+    [Fact]
+    [Trait("Category", "Benchmark")]
+    public async Task Measure_project_no_change_edit_latency()
+    {
+        var files = MediumProjectFiles();
+        CreateProject(files);
+        using var workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
+        using var service = new LanguageService(workspace, _api, _serviceLogger);
+        await service.InitializeProjectAsync(_tempDir);
+
+        // stats.spy is used deliberately: AstFingerprint conservatively reports BodyOnly for any
+        // function body it cannot prove equal (e.g. list literals/comprehensions, which main.spy
+        // has), so only files whose bodies stay within its provable subset ever classify NoChange.
+        // stats.spy qualifies, so a whitespace/comment-only edit to it exercises the real skip.
+        var statsUri = new Uri(IOPath.Combine(_tempDir, "stats.spy")).ToString();
+        var statsSource = files.First(f => f.Name == "stats.spy").Content;
+
+        // Open the file with its on-disk content: every subsequent change is structurally identical
+        // (a comment/whitespace-only edit), which the NoChange fast path (#1099) must skip without
+        // re-running whole-project analysis — the cost this row isolates.
+        workspace.OpenDocument(statsUri, statsSource, 1);
+
+        var samples = new SCG.List<double>();
+        for (var i = 0; i < Warmups + TimedRuns; i++)
+        {
+            var sw = Stopwatch.StartNew();
+            var affected = await service.OnDocumentChangedAsync(statsUri);
+            sw.Stop();
+            Assert.Empty(affected); // the fast path publishes nothing
+            if (i >= Warmups)
+                samples.Add(sw.Elapsed.TotalMilliseconds);
+        }
+
+        // Confirm the skip is the path exercised: a project latency line with affectedFiles=0.
+        Assert.Contains(_serviceLogger.Lines, l => l.Contains(AnalysisLatencyLog.Marker)
+            && l.Contains($"path={AnalysisLatencyLog.ProjectPath}")
+            && l.Contains("affectedFiles=0"));
+
+        var totalLines = files.Sum(f => LineCount(f.Content));
+        Report($"project no-change edit skip ({files.Length} files)", totalLines, samples);
+    }
+
     private readonly CapturingLogger<LanguageService> _serviceLogger = new();
 
     private void Report(string label, int lines, SCG.List<double> samples)

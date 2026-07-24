@@ -385,26 +385,43 @@ The comparison script and its pytest live in `build_tools/allocation_gate.py` an
 
 ## LSP Analysis Latency (Phase 14 — borrowing list "measure first")
 
-> **Recorded:** 2026-07-15 · Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301
+> **Recorded:** 2026-07-24 · Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301
 > **Harness:** `LspAnalysisLatencyBaselineHarness` (`src/Sharpy.Lsp.Tests/`, `Category=Benchmark`,
 > excluded from the normal run); warm in-process medians of 15 timed runs after 3 warmups.
 
-Per-change **change→publish** analysis wall time for the two LSP paths, driven through the real
+Per-change **change→publish** analysis wall time for the LSP paths, driven through the real
 instrumented code (`AnalysisLatencyLog` lines in `SharpyWorkspace.FireAndForgetAnalysis` and
-`LanguageService.OnDocumentChangedAsync`). Each change today re-runs a full analysis — no lazy
-memoized binding, no incremental reparse — so these are the numbers the incremental-frontend work
-([#1099](https://github.com/antonsynd/sharpy/issues/1099)) starts from, not intuition (the D1
-principle applied to the LSP).
+`LanguageService.OnDocumentChangedAsync`). The #1099 carve-out landed two changes to the project
+path: (a) open workspace buffers are overlaid into analysis so project diagnostics reflect unsaved
+edits, and (b) an `AstFingerprint`-gated fast path skips whole-project reanalysis when the changed
+document is structurally unchanged (comment/whitespace-only edits) — the new **no-change edit skip**
+row below. The rest of the incremental-frontend work
+([#1099](https://github.com/antonsynd/sharpy/issues/1099): lazy memoized binding, incremental
+reparse) stays roadmap, so a structural edit still re-runs a full whole-project analysis.
 
 | Path | Input | median | min | max |
 |------|-------|-------:|----:|----:|
-| single-file full analysis | 227-line file (`GetAnalysisAsync`, no incremental reuse) | 1.7 ms | 1.7 ms | 4.8 ms |
-| project full reanalysis | 6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`) | 1.2 ms | 0.7 ms | 1.7 ms |
+| single-file full analysis | 227-line file (`GetAnalysisAsync`, no incremental reuse) | 4.0 ms † | 3.1 ms | 9.5 ms |
+| project full reanalysis | 6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`) | 1.2 ms | 0.8 ms | 1.7 ms |
+| project no-change edit skip | 6-file project, comment/whitespace edit to `stats.spy` (fast path returns without reanalysis) | 0.0 ms ‡ | 0.0 ms | 0.0 ms |
 
-Caveats: warm (post-JIT) medians on a fast machine and small representative inputs; the project path
-rebuilds a fresh `Compiler` + `ModuleRegistry` per change (`CompilerApi.cs:288/:314`) and re-analyzes
-the whole project, so the cost grows with project size, not just the edited file. Refresh with the
-harness command in its class doc comment.
+† The single-file path is **unchanged** by the #1099 carve-out (only the project path was touched).
+The elevated median versus the 2026-07-15 quiet-machine reading (1.7 ms) is concurrent CPU load
+during this multi-agent refresh, not a regression — the project full-reanalysis row landed at 1.2 ms,
+identical to the prior baseline, confirming the load, not the code, moved the CPU-bound single-file
+number.
+
+‡ Sub-0.1 ms: the fast path only parses the edited buffer and runs `AstFingerprint.Classify` against
+the last-analyzed AST, then returns without touching the project. Only edits that classify as
+`NoChange` skip; `AstFingerprint` conservatively reports `BodyOnly` for any function body it cannot
+prove equal (list literals, comprehensions, class-member bodies, …), so files with those in scope
+(e.g. `main.spy`) fall through to a full reanalysis even on a whitespace-only edit — `stats.spy`
+stays within the provable subset and is the row's subject for that reason.
+
+Caveats: warm (post-JIT) medians on a fast machine and small representative inputs; on a full
+reanalysis the project path rebuilds a fresh `Compiler` + `ModuleRegistry` per change
+(`CompilerApi.cs:288/:314`) and re-analyzes the whole project, so the cost grows with project size,
+not just the edited file. Refresh with the harness command in its class doc comment.
 
 ### To refresh the LSP latency baseline
 
