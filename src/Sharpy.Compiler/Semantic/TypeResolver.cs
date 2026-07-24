@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -363,14 +364,15 @@ internal class TypeResolver
     /// factory companion (currently only <c>Dict</c>, whose <c>Sharpy.Dict</c> holds
     /// <c>dict.fromkeys</c>); see the redirect in <see cref="ResolveGenericType"/> (#1134).
     /// </summary>
-    private static readonly Dictionary<string, string> BuiltinCamelCaseAliases = new(StringComparer.Ordinal)
-    {
-        ["Dict"] = BuiltinNames.Dict,
-        ["List"] = BuiltinNames.List,
-        ["Set"] = BuiltinNames.Set,
-        ["Bytes"] = BuiltinNames.Bytes,
-        ["Str"] = BuiltinNames.Str,
-    };
+    private static readonly FrozenDictionary<string, string> BuiltinCamelCaseAliases =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Dict"] = BuiltinNames.Dict,
+            ["List"] = BuiltinNames.List,
+            ["Set"] = BuiltinNames.Set,
+            ["Bytes"] = BuiltinNames.Bytes,
+            ["Str"] = BuiltinNames.Str,
+        }.ToFrozenDictionary(StringComparer.Ordinal);
 
     private SemanticType ResolveGenericType(TypeAnnotation annotation)
     {
