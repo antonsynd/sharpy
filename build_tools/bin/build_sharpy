@@ -5,6 +5,7 @@ import os
 import random
 import re
 import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -706,6 +707,68 @@ def extract_crashing_tests(sequence_xml: Path) -> str:
     return ", ".join(running) if running else "(unknown)"
 
 
+def snapshot_testhost_pids() -> AbstractSet[int]:
+    """Return the PIDs of the test host processes currently running.
+
+    Used to scope per-round cleanup to only the hosts a round spawns (see
+    ``new_testhost_pids``). ``pgrep`` exits 1 when nothing matches — not an
+    error for us. If ``pgrep`` is unavailable (or otherwise errors), return an
+    empty set so the caller silently skips cleanup (zero behavior change);
+    losing per-round cleanup is strictly safer than killing another session's
+    hosts.
+    """
+    try:
+        completed = subprocess.run(
+            ["pgrep", "-f", "testhost"],
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, ValueError):
+        return set()
+    pids: set = set()
+    for token in completed.stdout.split():
+        try:
+            pids.add(int(token))
+        except ValueError:
+            continue
+    return pids
+
+
+def new_testhost_pids(before: set, after: set) -> set:
+    """Return the test host PIDs present in ``after`` but not ``before``.
+
+    A plain set difference, factored out so the per-round cleanup decision is
+    unit-testable without spawning processes. ``before`` is the snapshot taken
+    before a round starts (other sessions' hosts included); ``after`` is a
+    fresh snapshot once the round finishes. Only the difference — the hosts
+    *this* round spawned — is eligible to be killed.
+    """
+    return after - before
+
+
+def kill_new_testhosts(before: AbstractSet[int]) -> None:
+    """Kill only the test host processes spawned since the ``before`` snapshot.
+
+    Scoped cleanup — never a blanket ``pkill -f testhost``. A blanket kill
+    reaps test hosts belonging to OTHER concurrent agent sessions (the same
+    cross-session-kill incident class as the ``pkill -f dotnet`` crashes seen
+    4x during plan-f08ccf; #1132). When ``pgrep`` is unavailable the fresh
+    snapshot is empty and nothing is killed (silent skip, zero behavior
+    change). Residual race: a host another session starts mid-round is absent
+    from ``before`` and could be caught here — accepted as strictly safer than
+    a blanket pkill, and rare (test hosts are long-lived; the window is one
+    round).
+
+    Mirrors the scoped-diff cleanup in
+    ``.claude/skills/property-stress/SKILL.md`` step 4 — keep both in sync.
+    """
+    for pid in new_testhost_pids(set(before), set(snapshot_testhost_pids())):
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+
+
 def property_test(args: argparse.Namespace, rest: Sequence[str]) -> None:
     build_type: str = "Release" if args.release else "Debug"
     rounds: int = max(1, args.rounds)
@@ -736,6 +799,12 @@ def property_test(args: argparse.Namespace, rest: Sequence[str]) -> None:
         # Fresh CsCheck seed per round: logged for reproduction, exported so the
         # round's generation start is pinned (crash watchdog, #1033).
         seed: str = generate_cscheck_seed()
+
+        # Snapshot pre-existing test hosts (other sessions' included) so the
+        # post-round cleanup targets only PIDs this round spawns. Mirrors
+        # BEFORE_HOSTS in .claude/skills/property-stress/SKILL.md step 4.
+        hosts_before: AbstractSet[int] = snapshot_testhost_pids()
+
         results_dir: Path = PROPERTY_STRESS_DIR / f"round-{i}-results"
         if results_dir.exists():
             shutil.rmtree(results_dir, ignore_errors=True)
@@ -763,6 +832,13 @@ def property_test(args: argparse.Namespace, rest: Sequence[str]) -> None:
         ]
 
         result = subprocess.run(cmd, env=env)
+
+        # Scoped cleanup: kill only the test hosts THIS round spawned, never a
+        # blanket `pkill -f testhost` (that reaps other sessions' hosts — same
+        # cross-session-kill incident class as `pkill -f dotnet`, #1132). This
+        # mirrors the scoped diff in .claude/skills/property-stress/SKILL.md
+        # step 4 — keep both in sync.
+        kill_new_testhosts(hosts_before)
 
         if result.returncode == 0:
             passes += 1
