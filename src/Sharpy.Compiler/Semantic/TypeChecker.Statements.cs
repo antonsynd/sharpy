@@ -418,9 +418,10 @@ internal partial class TypeChecker
 
         // A local declared with an explicit list[T] annotation emits as a concrete Sharpy.List<T>
         // (the annotation forces that C# type), so it is eligible for the non-negative index fast
-        // path (#1052). Inferred locals go through `var` and may bind a CLR array, so they are not.
+        // path (#1052). Inferred locals go through `var` and may bind a CLR array, so they default
+        // to Unknown (not recorded here).
         if (varDecl.Type != null && declaredType is GenericType { Name: BuiltinNames.List })
-            _sharpyListBackedSymbols.Add(newSymbol);
+            _listBackingKinds[newSymbol] = ListBackingKind.SharpyList;
     }
 
     private void CheckReturn(ReturnStatement returnStmt)

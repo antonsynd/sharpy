@@ -94,12 +94,14 @@ internal partial class TypeChecker
     // never collide even when they share a variable name.
     private readonly HashSet<Symbol> _nonNegativeInductionVars = new();
 
-    // Symbols whose C# emission is guaranteed to be a concrete Sharpy.List<T> (so it has the
-    // GetItemUnchecked accessor): non-variadic list-typed parameters and locals declared with an
-    // explicit list[T] annotation. This excludes list[T] values that are actually backed by a CLR
-    // array (e.g. *args, or interop returns) or narrowed to Sharpy.IList — those emit without a
-    // GetItemUnchecked method, so tagging them NativeUnchecked would not compile (#1052).
-    private readonly HashSet<Symbol> _sharpyListBackedSymbols = new();
+    // How each tracked list[T] symbol is backed in the emitted C#, which decides #1052 fast-path
+    // eligibility (only ListBackingKind.SharpyList exposes GetItemUnchecked). Populated at the same
+    // binding sites the old _sharpyListBackedSymbols set was, but now records the negative facts
+    // explicitly: SharpyList for non-variadic list parameters and explicitly-annotated list locals,
+    // ClrArray for *args variadic list parameters. Symbols absent from the map default to Unknown
+    // (interop returns, inferred locals, narrowed values), which stays conservative. Uses reference
+    // equality (Symbol overrides it).
+    private readonly Dictionary<Symbol, ListBackingKind> _listBackingKinds = new();
 
     // Cancellation token for long-running analysis
     private CancellationToken _cancellationToken = default;

@@ -626,9 +626,12 @@ internal partial class TypeChecker
             SemanticBinding.SetVariableType(paramSymbol, paramType);
 
             // A non-variadic list[T] parameter emits as a concrete Sharpy.List<T>, so it is eligible
-            // for the non-negative index fast path (#1052). Variadic params emit as a CLR array.
-            if (!param.IsVariadic && paramType is GenericType { Name: BuiltinNames.List })
-                _sharpyListBackedSymbols.Add(paramSymbol);
+            // for the non-negative index fast path (#1052). A *args variadic list[T] parameter emits
+            // as a CLR array (no GetItemUnchecked), so it is recorded as the negative fact ClrArray.
+            if (paramType is GenericType { Name: BuiltinNames.List })
+                _listBackingKinds[paramSymbol] = param.IsVariadic
+                    ? ListBackingKind.ClrArray
+                    : ListBackingKind.SharpyList;
 
             // Update the function symbol's parameter type
             if (functionSymbol != null && i < functionSymbol.Parameters.Count)

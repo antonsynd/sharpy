@@ -146,7 +146,7 @@ public class SemanticInfo : ISemanticQuery
     // TRANSPORT (E2 #1056): this fact now flows to codegen through the lowering IR
     // (IrIndexAccess.Strategy); the emitter reads the IR, never this dict. The dict is retained only
     // as the lowering pass's input — the NativeUnchecked strategy depends on transient TypeChecker
-    // traversal state (_nonNegativeInductionVars / _sharpyListBackedSymbols) that is gone by lowering
+    // traversal state (_nonNegativeInductionVars / _listBackingKinds) that is gone by lowering
     // time, so it cannot be recomputed. Physical deletion + its MergeFrom line are deferred to the
     // guardrail-retirement step (lowering-ir.md §6.4, post-E2).
     private readonly ConcurrentDictionary<Expression, IndexAccessLowering> _indexAccessLowerings =

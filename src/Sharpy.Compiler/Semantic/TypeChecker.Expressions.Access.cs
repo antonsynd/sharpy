@@ -1230,8 +1230,8 @@ internal partial class TypeChecker
     /// Whether <paramref name="objectExpr"/> is guaranteed to emit as a concrete
     /// <c>Sharpy.List&lt;T&gt;</c> (which has the <c>GetItemUnchecked</c> accessor). Only a list
     /// literal / comprehension, or an identifier bound to a symbol proven Sharpy.List-backed
-    /// (<c>_sharpyListBackedSymbols</c>: non-variadic list parameters and explicitly-annotated list
-    /// locals), qualifies. Everything else — CLR-array-backed list[T] values (<c>*args</c>, interop
+    /// (<c>_listBackingKinds</c> = <c>ListBackingKind.SharpyList</c>: non-variadic list parameters and
+    /// explicitly-annotated list locals), qualifies. Everything else — CLR-array-backed list[T] values (<c>*args</c>, interop
     /// returns), narrowed-to-<c>IList</c> values, member/index accesses — is conservatively rejected
     /// so the fast path never targets a receiver without <c>GetItemUnchecked</c> (#1052).
     /// </summary>
@@ -1249,7 +1249,8 @@ internal partial class TypeChecker
             ListLiteral => true,
             ListComprehension => true,
             Identifier id => _semanticInfo.GetIdentifierSymbol(id) is { } symbol
-                && _sharpyListBackedSymbols.Contains(symbol),
+                && _listBackingKinds.TryGetValue(symbol, out var kind)
+                && kind == ListBackingKind.SharpyList,
             _ => false
         };
     }
