@@ -58,7 +58,7 @@ class ScoreContainer(DataContainer[Score]):
         return self._score == 0.0
 
 def calculate_bonus(base: Score, multiplier: int) -> Score:
-    return base * multiplier to Score
+    return base * multiplier as! Score
 
 def format_user_id(uid: UserId) -> str:
     return f"User-{uid}"

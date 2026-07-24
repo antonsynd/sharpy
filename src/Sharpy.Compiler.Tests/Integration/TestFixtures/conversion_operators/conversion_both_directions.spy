@@ -18,5 +18,5 @@ class Meters:
 def main():
     m: Meters = Meters(5.0)
     print(m)
-    raw: float = m to float
+    raw: float = m as! float
     print(raw)

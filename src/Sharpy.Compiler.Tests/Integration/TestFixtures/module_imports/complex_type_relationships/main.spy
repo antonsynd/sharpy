@@ -20,14 +20,14 @@ def test_shape_hierarchy():
 def test_struct():
     # Test struct from calculator module
     dims: Dimensions = create_dimensions(10.0, 8.0, 5.0)
-    print(dims.length to int)
-    print(dims.width to int)
-    print(dims.height to int)
+    print(dims.length as! int)
+    print(dims.width as! int)
+    print(dims.height as! int)
 
 def test_direct_rect():
     rect: Rectangle = Rectangle(4.0, 6.0)
     area_result: float = rect.area()
-    print(area_result to int)
+    print(area_result as! int)
 
 def main():
     print(999)

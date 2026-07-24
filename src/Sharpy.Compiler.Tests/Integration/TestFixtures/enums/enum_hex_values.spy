@@ -4,6 +4,6 @@ enum Color:
     BLUE = 0x0000FF
 
 def main():
-    print(Color.RED to int)
-    print(Color.GREEN to int)
-    print(Color.BLUE to int)
+    print(Color.RED as! int)
+    print(Color.GREEN as! int)
+    print(Color.BLUE as! int)

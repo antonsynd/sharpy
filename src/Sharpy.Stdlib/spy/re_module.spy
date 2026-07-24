@@ -151,14 +151,14 @@ def _flags_to_options(flags: int) -> RegexOptions:
     """Map Python flag ints to .NET RegexOptions."""
     options: int = 0
     if (flags & IGNORECASE) != 0:
-        options = options | (RegexOptions.IgnoreCase to int)
+        options = options | (RegexOptions.IgnoreCase as! int)
     if (flags & MULTILINE) != 0:
-        options = options | (RegexOptions.Multiline to int)
+        options = options | (RegexOptions.Multiline as! int)
     if (flags & DOTALL) != 0:
-        options = options | (RegexOptions.Singleline to int)
+        options = options | (RegexOptions.Singleline as! int)
     if (flags & VERBOSE) != 0:
-        options = options | (RegexOptions.IgnorePatternWhitespace to int)
-    return options to RegexOptions
+        options = options | (RegexOptions.IgnorePatternWhitespace as! int)
+    return options as! RegexOptions
 
 # ---- Exception class ----
 
@@ -288,7 +288,7 @@ class Pattern:
         result: list[object] = []
         has_groups: bool = len(self._regex.get_group_numbers()) > 1
         for m_raw in matches:
-            m: NetMatch = m_raw to NetMatch
+            m: NetMatch = m_raw as! NetMatch
             if m.index < pos:
                 continue
             if not has_groups:
@@ -315,7 +315,7 @@ class Pattern:
         if endpos is not None:
             actual_endpos = endpos
         for m_raw in matches:
-            m: NetMatch = m_raw to NetMatch
+            m: NetMatch = m_raw as! NetMatch
             if m.index < pos:
                 continue
             result.append(MatchResult(m, s, self._pattern_str, pos, actual_endpos, self))

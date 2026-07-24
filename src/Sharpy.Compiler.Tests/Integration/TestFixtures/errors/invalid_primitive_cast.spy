@@ -1,2 +1,2 @@
 x: int = 42
-s = x to str
+s = x as! str

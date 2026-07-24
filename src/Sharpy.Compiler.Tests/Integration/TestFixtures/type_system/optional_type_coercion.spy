@@ -1,26 +1,26 @@
-# Test type coercion (to T?) with Optional types
-# Verifies that `value to T?` produces Optional<T>.Some on success, default on failure
+# Test the safe cast `as? T` with Optional types
+# Verifies that `value as? T` produces Optional<T>.Some on success, None on failure
 
 def main():
     # Value type coercion - success
     obj: object = 42
-    x: int? = obj to int?
+    x: int? = obj as? int
     print(x.is_some)
     print(x ?? 0)
 
     # Value type coercion - failure
     obj2: object = "hello"
-    y: int? = obj2 to int?
+    y: int? = obj2 as? int
     print(y.is_none)
     print(y ?? -1)
 
     # Reference type coercion - success
     obj3: object = "world"
-    z: str? = obj3 to str?
+    z: str? = obj3 as? str
     print(z ?? "none")
 
     # Reference type coercion - failure
     obj4: object = 42
-    w: str? = obj4 to str?
+    w: str? = obj4 as? str
     print(w.is_none)
     print(w ?? "was_none")

@@ -12,4 +12,4 @@ class Bar:
 
 def main():
     f: Foo = Foo()
-    b: Bar = f to Bar
+    b: Bar = f as! Bar

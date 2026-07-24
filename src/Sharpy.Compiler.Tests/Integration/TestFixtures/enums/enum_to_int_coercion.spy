@@ -5,7 +5,7 @@ enum Color:
     BLUE = 3
 
 def get_color_value(c: Color) -> int:
-    return c to int
+    return c as! int
 
 # Create and compare enum values
 primary: Color = Color.RED

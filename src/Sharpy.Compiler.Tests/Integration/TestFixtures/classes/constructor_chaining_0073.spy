@@ -38,7 +38,7 @@ def main():
     diagonal: Point = Point(3)
     print(describe_point(origin))
     print(describe_point(diagonal))
-    print(diagonal.magnitude() to int)
+    print(diagonal.magnitude() as! int)
 
     # Test derived with super() and self-chaining
     red_point: ColoredPoint = ColoredPoint(5)

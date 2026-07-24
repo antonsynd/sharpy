@@ -1,3 +1,5 @@
+# Transitional `to`-cast precedence coverage, retained until `to` retirement (#1127).
+# The primary `as!`/`as?` precedence is covered by expressions/as_cast_precedence.
 def main():
     x: int = 5
     # Should parse as (x + 1) to float, not x + (1 to float)

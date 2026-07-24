@@ -13,5 +13,5 @@ class Celsius:
 
 def main():
     temp: Celsius = Celsius(100.0)
-    raw: float = temp to float
+    raw: float = temp as! float
     print(raw)
