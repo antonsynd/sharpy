@@ -30,9 +30,9 @@ s: int16 = 42
 b: uint8 = 255
 sb: int8 = -128
 
-# Explicit casting (with `to` operator)
-s = 42 to int16
-b = 255 to uint8
+# Explicit casting (with the `as!` operator)
+s = 42 as! int16
+b = 255 as! uint8
 ```
 
 ## Overflow Promotion
