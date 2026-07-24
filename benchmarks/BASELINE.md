@@ -405,11 +405,12 @@ reparse) stays roadmap, so a structural edit still re-runs a full whole-project 
 | project full reanalysis | 6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`) | 1.2 ms | 0.8 ms | 1.7 ms |
 | project no-change edit skip | 6-file project, comment/whitespace edit to `stats.spy` (fast path returns without reanalysis) | 0.0 ms ‡ | 0.0 ms | 0.0 ms |
 
-† The single-file path is **unchanged** by the #1099 carve-out (only the project path was touched).
-The elevated median versus the 2026-07-15 quiet-machine reading (1.7 ms) is concurrent CPU load
-during this multi-agent refresh, not a regression — the project full-reanalysis row landed at 1.2 ms,
-identical to the prior baseline, confirming the load, not the code, moved the CPU-bound single-file
-number.
+† The single-file path is **unchanged** by the #1099 carve-out (only the project path was touched),
+but the elevated median versus the 2026-07-15 reading (1.7 ms) is **not** load skew: an uncontended
+re-run the same evening reproduced it (3.8 ms median, min 3.5, max 6.9, 15 runs) while the project
+full-reanalysis row improved to 0.9 ms median. The shift landed somewhere between 2026-07-15 and
+2026-07-24, outside this carve-out — tracked in
+[#1137](https://github.com/antonsynd/sharpy/issues/1137).
 
 ‡ Sub-0.1 ms: the fast path only parses the edited buffer and runs `AstFingerprint.Classify` against
 the last-analyzed AST, then returns without touching the project. Only edits that classify as
