@@ -53,7 +53,9 @@ internal sealed class SharpyDocumentLinkHandler : DocumentLinkHandlerBase
     {
         foreach (var stmt in statements)
         {
-            switch (stmt)
+            // A statement-scoped @suppress wraps its target in a DecoratedStatement (#1124);
+            // unwrap so decorated imports still produce links, mirroring the module.Body sweep.
+            switch (stmt.UnwrapDecorated())
             {
                 case ImportStatement import:
                     AddImportLinks(import, symbolTable, links);
