@@ -237,7 +237,8 @@ public class DocumentLinkTests : IDisposable
         }
         finally
         {
-            try { Directory.Delete(dir, recursive: true); }
+            try
+            { Directory.Delete(dir, recursive: true); }
             catch { /* best-effort cleanup */ }
         }
     }
