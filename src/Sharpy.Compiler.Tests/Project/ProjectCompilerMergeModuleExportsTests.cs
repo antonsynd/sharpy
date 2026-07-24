@@ -94,6 +94,26 @@ public class ProjectCompilerMergeModuleExportsTests
     }
 
     [Fact]
+    public void Merge_SourceExportedTypesEmpty_MergesExportsButSynthesizesNoMirrorEntries()
+    {
+        // Degenerate case: the source carries exports (including a TypeSymbol in value position)
+        // but an empty types-only mirror. The merge must not synthesize ExportedTypes entries —
+        // mirror membership is decided at the construction sites (#1106), never by the merge.
+        var target = MakeModule("pkg");
+        var valueOnly = MakeVariable("helper");
+        var typeInValuePositionOnly = MakeType("Row");
+        var source = MakeModule("pkg");
+        source.Exports["helper"] = valueOnly;
+        source.Exports["Row"] = typeInValuePositionOnly;
+
+        ProjectCompiler.MergeModuleExports(target, source);
+
+        Assert.Same(valueOnly, target.Exports["helper"]);
+        Assert.Same(typeInValuePositionOnly, target.Exports["Row"]);
+        Assert.Empty(target.ExportedTypes);
+    }
+
+    [Fact]
     public void Merge_NestedModuleRecursion_CarriesNestedExportedTypes()
     {
         // Root "lib" already has a nested "math" module (no exports yet). The source contributes
