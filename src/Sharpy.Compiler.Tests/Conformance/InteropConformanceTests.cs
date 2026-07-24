@@ -253,12 +253,16 @@ public class InteropConformanceTests
                         }
 
                         membersEnumerated++;
-                        // Instance methods reject explicit type args (recv.m[T](…) parses as
-                        // indexing, SPY0320, #1133), so generic overloads stay notAttempted.
-                        var chosen = PickCallableOverload(group.ToList(), allowGenericTypeArgs: false, typeSubst, out var margs, out _, out var mReason);
+                        // Instance methods now accept explicit type args (recv.m[T](…) →
+                        // recv.M<T>(…), #1133), so a generic instance method renders and is
+                        // enforced exactly like a module-level generic function.
+                        var chosen = PickCallableOverload(group.ToList(), allowGenericTypeArgs: true, typeSubst, out var margs, out var mTypeArgs, out var mReason);
                         if (chosen != null)
                         {
-                            var body = CallStatement($"recv.{group.Key}({margs})", chosen.ReturnType);
+                            var callExpr = mTypeArgs != null
+                                ? $"recv.{group.Key}[{mTypeArgs}]({margs})"
+                                : $"recv.{group.Key}({margs})";
+                            var body = CallStatement(callExpr, chosen.ReturnType);
                             var src = $"{importLine}def _use(recv: {typeRef}) -> None:\n    {body}\n";
                             snippets.Add(new Snippet(asmName, moduleName, "method", $"{typeInfo.Name}.{group.Key}", PosMethod, src));
                         }
@@ -452,12 +456,13 @@ public class InteropConformanceTests
     /// narrowed reason to record.
     /// <para>
     /// Explicit type arguments are only rendered when <paramref name="allowGenericTypeArgs"/> is
-    /// true (instance methods reject <c>recv.m[T](…)</c> — parsed as indexing, SPY0320, #1133 —
-    /// so callers pass false there) AND the overload set is unambiguous: exactly one generic
-    /// arity and no non-generic sibling. A non-generic sibling makes Sharpy prefer it and reject
-    /// the type args (e.g. <c>len</c> binds <c>(object) -> int</c>); mixed arities make the
-    /// count ambiguous (e.g. <c>itertools.product</c>). In those cases generic overloads are not
-    /// rendered and the member stays notAttempted.
+    /// true AND the overload set is unambiguous: exactly one generic arity and no non-generic
+    /// sibling. A non-generic sibling makes Sharpy prefer it and reject the type args (e.g.
+    /// <c>len</c> binds <c>(object) -> int</c>); mixed arities make the count ambiguous (e.g.
+    /// <c>itertools.product</c>). In those cases generic overloads are not rendered and the member
+    /// stays notAttempted. Since #1133 both module-level functions and instance methods pass
+    /// <see langword="true"/> — instance generic-method calls (<c>recv.m[T](…)</c> →
+    /// <c>recv.M&lt;T&gt;(…)</c>) are rendered and enforced like any other generic call.
     /// </para>
     /// </summary>
     private static FunctionSignature? PickCallableOverload(
@@ -546,14 +551,13 @@ public class InteropConformanceTests
         args = bestArgs ?? "";
         typeArgs = bestTypeArgs;
         // Precedence: a genuine non-synthesizable parameter dominates; then generic constraint
-        // synthesis being out of scope; then an unsafe generic overload set (either the
-        // instance-method carve-out, #1133, or an ambiguous arity/non-generic-sibling set).
+        // synthesis being out of scope; then an unsafe generic overload set (an ambiguous
+        // arity / non-generic-sibling set — no longer the #1133 instance-method carve-out, which
+        // now renders like any generic call).
         notAttemptedReason =
             sawParamFailure ? "non-synthesizable required parameter"
             : sawUnsynthesizableConstraint ? "constraint synthesis future scope"
-            : sawUnsafeGeneric ? (allowGenericTypeArgs
-                ? "generic overload set — type-argument synthesis future scope"
-                : "instance-method type-argument synthesis future scope (#1133)")
+            : sawUnsafeGeneric ? "generic overload set — type-argument synthesis future scope"
             : "non-synthesizable required parameter";
         return best;
     }
