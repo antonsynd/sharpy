@@ -1198,11 +1198,12 @@ internal partial class TypeChecker
             return IndexAccessLowering.Array;
 
         // Non-negative access into a genuine Sharpy.List<T> skips the ordinary indexer's negative-index
-        // Normalize (#1052). Both conditions are required: a list[T] backed by a CLR array or narrowed
-        // to Sharpy.IList has no GetItemUnchecked accessor, so tagging it would not compile.
+        // Normalize (#1052). Both conditions are required: only a SharpyList backing exposes the
+        // GetItemUnchecked accessor; a ClrArray (*args) or narrowed IList backing lacks it, so tagging
+        // those would not compile — they stay on the ordinary indexer (#1089).
         if (objectType is GenericType { Name: BuiltinNames.List }
             && IsProvablyNonNegativeIndex(index)
-            && IsGenuineSharpyListBacking(objectExpr))
+            && ClassifyListBacking(objectExpr) == ListBackingKind.SharpyList)
         {
             return IndexAccessLowering.NativeUnchecked;
         }
@@ -1227,32 +1228,51 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Whether <paramref name="objectExpr"/> is guaranteed to emit as a concrete
-    /// <c>Sharpy.List&lt;T&gt;</c> (which has the <c>GetItemUnchecked</c> accessor). Only a list
-    /// literal / comprehension, or an identifier bound to a symbol proven Sharpy.List-backed
-    /// (<c>_listBackingKinds</c> = <c>ListBackingKind.SharpyList</c>: non-variadic list parameters and
-    /// explicitly-annotated list locals), qualifies. Everything else — CLR-array-backed list[T] values (<c>*args</c>, interop
-    /// returns), narrowed-to-<c>IList</c> values, member/index accesses — is conservatively rejected
-    /// so the fast path never targets a receiver without <c>GetItemUnchecked</c> (#1052).
+    /// Classifies how the <c>list[T]</c> value produced by <paramref name="objectExpr"/> is backed in
+    /// the emitted C#, which decides #1052 fast-path eligibility (only <see cref="ListBackingKind.SharpyList"/>
+    /// exposes <c>GetItemUnchecked</c>). The verdicts:
+    /// <list type="bullet">
+    /// <item>list literal / comprehension → <see cref="ListBackingKind.SharpyList"/> (always a concrete
+    /// <c>Sharpy.List&lt;T&gt;</c>);</item>
+    /// <item>identifier → the tracked <c>_listBackingKinds</c> entry for its symbol, or
+    /// <see cref="ListBackingKind.Unknown"/> when untracked;</item>
+    /// <item>a call whose recorded return contract is a genuine <c>Sharpy.List&lt;T&gt;</c> →
+    /// <see cref="ListBackingKind.SharpyList"/>. Recognized via the <c>StaticExtensionDispatch</c> already
+    /// recorded on the callee (the #1085 <c>str.split</c> family, whose <c>SharpyStringExtensions</c>
+    /// methods return <c>Sharpy.List&lt;string&gt;</c>), so a direct <c>"a,b".split(",")[i]</c> receiver is
+    /// eligible for the first time. Keyed on the recorded contract, not a method-name allowlist, so any
+    /// future genuine-<c>Sharpy.List</c> static-extension return joins automatically;</item>
+    /// <item>everything else — interop returns, member/index accesses, narrowed values →
+    /// <see cref="ListBackingKind.Unknown"/>.</item>
+    /// </list>
+    /// This replaces the former syntactic allowlist with a tracked backing-kind notion (#1089): the
+    /// distinction is now a first-class fact rather than a growing set of AST shapes.
     /// </summary>
-    /// <remarks>
-    /// Residual hole: this is a syntactic heuristic, not a tracked backing property. After #1085
-    /// <c>str.split</c> returns a genuine <c>Sharpy.List&lt;string&gt;</c> (static-extension dispatch),
-    /// so split results bound to annotated list locals are already covered here — but <c>*args</c> and
-    /// narrowed-<c>IList</c> values still must be rejected because they lack <c>GetItemUnchecked</c>.
-    /// TODO(#1089): replace this allowlist with a first-class backing-kind notion once the guard grows again.
-    /// </remarks>
-    private bool IsGenuineSharpyListBacking(Expression objectExpr)
+    private ListBackingKind ClassifyListBacking(Expression objectExpr)
     {
-        return objectExpr switch
+        switch (objectExpr)
         {
-            ListLiteral => true,
-            ListComprehension => true,
-            Identifier id => _semanticInfo.GetIdentifierSymbol(id) is { } symbol
-                && _listBackingKinds.TryGetValue(symbol, out var kind)
-                && kind == ListBackingKind.SharpyList,
-            _ => false
-        };
+            case ListLiteral:
+            case ListComprehension:
+                return ListBackingKind.SharpyList;
+
+            case Identifier id:
+                return _semanticInfo.GetIdentifierSymbol(id) is { } symbol
+                    && _listBackingKinds.TryGetValue(symbol, out var kind)
+                    ? kind
+                    : ListBackingKind.Unknown;
+
+            // A call routed through a static extension (only str's SharpyStringExtensions today) whose
+            // result is used as a list[T] receiver returns a genuine Sharpy.List<T> — the split family
+            // is the only such str extension. The dispatch record is the return contract; no method-name
+            // matching (#1089).
+            case FunctionCall { Function: MemberAccess callee }
+                when _semanticInfo.GetStaticExtensionDispatchForIr(callee) is not null:
+                return ListBackingKind.SharpyList;
+
+            default:
+                return ListBackingKind.Unknown;
+        }
     }
 
     /// <summary>
