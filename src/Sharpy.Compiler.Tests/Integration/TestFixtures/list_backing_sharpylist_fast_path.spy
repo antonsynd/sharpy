@@ -1,0 +1,18 @@
+# Backing-kind fast path (#1089): each receiver below is a genuine Sharpy.List<T>
+# (has GetItemUnchecked), so a provably non-negative index lowers to
+# IndexAccessLowering.NativeUnchecked. The str.split receiver is newly eligible —
+# its recorded return contract is Sharpy.List<string> (#1085), so a direct
+# "a,b".split(",")[0] receiver no longer needs to be bound to a local first.
+def main() -> None:
+    # Explicitly-annotated list[int] local.
+    xs: list[int] = [10, 20, 30]
+    print(xs[0])
+
+    # List literal receiver.
+    print([1, 2, 3][2])
+
+    # Comprehension receiver.
+    print([n * n for n in range(4)][3])
+
+    # Direct str.split receiver -> genuine Sharpy.List<string>, newly eligible (#1089).
+    print("a,b,c".split(",")[0])

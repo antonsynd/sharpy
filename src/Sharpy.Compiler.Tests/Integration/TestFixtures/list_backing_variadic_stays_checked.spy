@@ -1,0 +1,8 @@
+# A *args variadic list[T] parameter emits as a CLR array (params Sharpy.List<int>[]),
+# which has no GetItemUnchecked. Its backing is ListBackingKind.ClrArray, so even a
+# non-negative index stays on the ordinary indexer (#1089).
+def show(*rows: list[int]) -> None:
+    print(rows[0])
+
+def main() -> None:
+    show([1, 2], [3, 4])

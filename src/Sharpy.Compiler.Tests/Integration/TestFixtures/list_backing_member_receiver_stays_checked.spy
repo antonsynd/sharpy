@@ -1,0 +1,15 @@
+# A member-access receiver is not tracked (ListBackingKind.Unknown), so it stays on
+# the ordinary Sharpy.List indexer even though the field is a genuine Sharpy.List<int>.
+# The fast path only targets receivers whose backing is proven SharpyList (#1089).
+class Bag:
+    items: list[int]
+
+    def __init__(self) -> None:
+        self.items = [1, 2, 3]
+
+    def first(self) -> int:
+        return self.items[0]
+
+def main() -> None:
+    b: Bag = Bag()
+    print(b.first())
