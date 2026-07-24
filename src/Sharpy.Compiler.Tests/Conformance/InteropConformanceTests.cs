@@ -689,8 +689,12 @@ public class InteropConformanceTests
     /// <summary>Maps one type parameter's constraints to a synthesizable Sharpy type, or null.</summary>
     private static string? TrySynthesizeTypeArgument(TypeParameterInfo tp)
     {
-        // Interface / base-class constraints require a type satisfying an arbitrary contract —
-        // future scope. (TypeParameterInfo records these under InterfaceConstraints.)
+        // Interface constraints require a type satisfying an arbitrary contract — future scope.
+        // Note: OverloadIndexBuilder keeps only interface types in InterfaceConstraints
+        // (.Where(c => c.IsInterface)); a base-class constraint (T : SomeBase) is not recorded on
+        // TypeParameterInfo at all, so it would be treated as unconstrained here and synthesize
+        // `int` — the snippet then fails to compile and trips the ratchet loudly. No base-class-
+        // constrained generic exists in the swept assemblies today.
         if (tp.InterfaceConstraints.Count > 0)
             return null;
 

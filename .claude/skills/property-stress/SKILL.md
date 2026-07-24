@@ -68,7 +68,8 @@ For each round 1..N:
    RC=$?
    ```
 4. Kill lingering test host processes to prevent memory accumulation: `pkill -f testhost 2>/dev/null || true`
-5. If `RC` is non-zero, distinguish a **host crash** from an ordinary **assertion failure**:
+5. If `RC` is non-zero, distinguish a **host crash** from an ordinary **assertion failure**
+   (this logic is mirrored in `build_tools/bin/build_sharpy` `property_test` — keep both in sync):
    ```bash
    SEQ=$(find "$RESULTS" -name 'Sequence_*.xml' 2>/dev/null | head -1)
    if [ -n "$SEQ" ]; then
@@ -86,6 +87,11 @@ PY
 )
      DUMP=$(find "$BLAME" \( -name '*.dmp' -o -name '*.crashdump' -o -name 'core.*' \) | head -1)
      echo "Round ${i}: CRASH — test ${CRASHED}, seed ${SEED}, dump ${DUMP:-(none)}, blame ${BLAME}"
+   elif [ ! -d "$RESULTS" ]; then
+     # Results dir never created: if this was a host crash it predated blame attachment,
+     # so no Sequence/dump artifacts exist. Flag it distinctly — don't let it pass as a
+     # plain assertion failure.
+     echo "Round ${i}: FAIL — round seed ${SEED}; results dir absent (a crash this early predates blame attachment — no artifacts)"
    else
      # Ordinary assertion failure — CsCheck printed its own reproduction seed.
      echo "Round ${i}: FAIL — round seed ${SEED} (grep the log for 'Set seed:' for the shrunk case)"

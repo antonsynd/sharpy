@@ -775,6 +775,8 @@ def property_test(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
         # Nonzero exit: capture blame artifacts (a host crash) or report an
         # ordinary assertion failure (CsCheck prints its own reproduction seed).
+        # This logic is mirrored in .claude/skills/property-stress/SKILL.md step 5
+        # (bash version) — keep both in sync.
         blame_dir: Path = PROPERTY_STRESS_DIR / f"round-{i}-blame"
         sequence_found: bool = False
         crashing_test: str = "(unknown)"
@@ -795,6 +797,14 @@ def property_test(args: argparse.Namespace, rest: Sequence[str]) -> None:
             get_logger().error(
                 f"Round {i}: CRASH — test {crashing_test}, seed {seed}, "
                 f"dump {dump_path}, blame {blame_dir}"
+            )
+        elif not results_dir.exists():
+            # Results dir never created: if this was a host crash it predated blame
+            # attachment, so no Sequence/dump artifacts exist. Flag it distinctly
+            # rather than letting it pass as a plain assertion failure.
+            get_logger().warning(
+                f"Round {i}: FAIL (seed {seed}) — results dir absent; a crash this "
+                f"early predates blame attachment, no artifacts available"
             )
         elif rounds > 1:
             get_logger().info(f"Round {i}: FAIL (seed {seed})")
