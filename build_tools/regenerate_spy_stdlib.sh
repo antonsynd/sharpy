@@ -45,6 +45,7 @@ MODULES=(
     "hashlib_module:Hashlib/Hashlib.cs"
     "csv_module:Csv/CsvModule.cs"
     "re_module:Re/ReModule.cs"
+    "socket_module:Socket/SocketModule.cs"
 )
 
 mode="regenerate"
