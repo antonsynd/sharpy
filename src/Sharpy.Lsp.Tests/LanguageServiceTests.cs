@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sharpy.Compiler;
 using Xunit;
@@ -173,6 +174,44 @@ public class LanguageServiceTests : IDisposable
 
         File.ReadAllText(libPath).Should().Contain("-> str", "the edit lived only in the workspace buffer");
     }
+
+    [Fact]
+    public async Task OnDocumentChanged_NoStructuralChange_SkipsProjectReanalysis()
+    {
+        var capturingLogger = new CapturingLogger<LanguageService>();
+        using var workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
+        using var service = new LanguageService(workspace, _api, capturingLogger);
+
+        var source = "def main():\n    x: int = 1\n    print(x)";
+        CreateProjectFiles(("main.spy", source));
+        await service.InitializeProjectAsync(_tempDir);
+
+        var mainPath = IOPath.Combine(_tempDir, "main.spy");
+        var mainUri = new Uri(mainPath).ToString();
+
+        // Open the buffer with a comment-only (structurally identical) variant of the disk file.
+        workspace.OpenDocument(mainUri, source + "\n# a trailing comment", 2);
+
+        var noChangeAffected = await service.OnDocumentChangedAsync(mainUri);
+
+        noChangeAffected.Should().BeEmpty("a comment-only edit leaves diagnostics valid — no republish");
+        ProjectLatencyLines(capturingLogger).Should().ContainSingle(
+            "the skip is still observable via the latency log")
+            .Which.Should().Contain("affectedFiles=0", "affectedFiles=0 uniquely marks the fast-path skip");
+
+        // A genuine structural edit must still trigger a full whole-project reanalysis.
+        workspace.UpdateDocument(mainUri, source + "\ndef added() -> int:\n    return 0", 3);
+        var structuralAffected = await service.OnDocumentChangedAsync(mainUri);
+
+        structuralAffected.Should().NotBeEmpty("a structural edit reanalyzes the project");
+        ProjectLatencyLines(capturingLogger).Should().HaveCount(2);
+        ProjectLatencyLines(capturingLogger).Last().Should().Contain(
+            "affectedFiles=1", "the structural edit reanalyzed and republished main.spy");
+    }
+
+    private static IEnumerable<string> ProjectLatencyLines(CapturingLogger<LanguageService> logger) =>
+        logger.Lines.Where(l => l.Contains(AnalysisLatencyLog.Marker)
+            && l.Contains($"path={AnalysisLatencyLog.ProjectPath}"));
 
     [Fact]
     public async Task OnDocumentChanged_NonProjectFile_ReturnsEmpty()
@@ -634,6 +673,31 @@ public class LanguageServiceTests : IDisposable
 #pragma warning restore VSTHRD003
 
     private record DocumentChangedResult(bool Cancelled, IReadOnlyList<string> AffectedUris);
+
+    /// <summary>Minimal ILogger that records formatted messages so the tests can assert on
+    /// the analysis-latency log lines (the observable signal for the NoChange fast-path skip).</summary>
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<string> Lines { get; } = new();
+
+        public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            lock (Lines)
+            {
+                Lines.Add(formatter(state, exception));
+            }
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+            public void Dispose() { }
+        }
+    }
 
     private void CreateProjectFiles(params (string Name, string Content)[] files)
     {

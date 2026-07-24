@@ -359,6 +359,34 @@ internal sealed class LanguageService : IDisposable
         using var scope = new CancellableAnalysisScope(_documentCts, uri, ct);
         var linkedToken = scope.Token;
 
+        // Fast path: when the edit leaves the changed document structurally identical to what was
+        // last analyzed (whitespace/comment-only), the diagnostics already published for every file
+        // stay valid. Skip the whole-project reanalysis and republish nothing (#1099). This is sound
+        // only because the buffer overlay makes the analyzed content and this classify signal the
+        // same source; it mirrors DocumentState.GetOrRunAnalysisAsync's single-file NoChange reuse.
+        // Only NoChange is skipped — BodyOnly still needs the file re-checked project-wide and has no
+        // cheap path here, so it falls through with Structural (deferred to the #1099 remainder).
+        var bufferText = GetDocumentText(uri);
+        if (bufferText != null
+            && _fileResults.TryGetValue(changedFilePath, out var previousResult)
+            && previousResult.Ast is { } previousAst)
+        {
+            var skipWatch = System.Diagnostics.Stopwatch.StartNew();
+            var newParse = _api.Parse(bufferText, linkedToken);
+            if (newParse.Ast != null
+                && AstFingerprint.Classify(previousAst, newParse.Ast).Kind == AstChangeKind.NoChange)
+            {
+                skipWatch.Stop();
+                // affectedFiles=0 marks the skip: a full reanalysis of a changed file always
+                // touches at least the file itself, so this value is unique to the fast path.
+                _logger.LogInformation("{LatencyLine}", AnalysisLatencyLog.Format(
+                    AnalysisLatencyLog.ProjectPath,
+                    affectedFiles: 0,
+                    skipWatch.Elapsed.TotalMilliseconds));
+                return Array.Empty<string>();
+            }
+        }
+
         // Determine affected files using the dependency graph
         var deps = _projectAnalysis?.Dependencies;
         var affectedPaths = deps != null
