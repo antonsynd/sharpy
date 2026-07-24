@@ -113,7 +113,7 @@ See [type_narrowing.md](type_narrowing.md) for type narrowing rules with `is not
 
 See [expressions.md](expressions.md) for primary expressions, member access, index access, function calls, conditional expressions, and expression evaluation order.
 
-See [type_casting.md](type_casting.md) for the `to` operator and type casting.
+See [type_casting.md](type_casting.md) for the `as!`/`as?` operators and type casting.
 
 See [lambdas.md](lambdas.md) for lambda expressions.
 

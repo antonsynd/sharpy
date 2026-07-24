@@ -82,6 +82,6 @@ public static explicit operator double(Celsius val)
 ## See Also
 
 - [Dunder Methods](dunder_methods.md) — Overview of special methods
-- [Type Casting](type_casting.md) — The `to` operator
+- [Type Casting](type_casting.md) — The `as!`/`as?` operators
 - [Operator Overloading](operator_overloading.md) — Custom operators
 - [Arithmetic Operators](arithmetic_operators.md) — Numeric type promotion
