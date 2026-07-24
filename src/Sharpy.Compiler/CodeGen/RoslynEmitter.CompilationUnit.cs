@@ -695,6 +695,9 @@ internal partial class RoslynEmitter
     /// <item>An IsPatternExpression whose operand ends in a close paren:
     /// "new Thing()is not null" instead of "new Thing() is not null" — emitted by
     /// the NoneCheck lowering for call-expression operands (#901).</item>
+    /// <item>A catch clause with an exception filter:
+    /// "catch (X ex)when (...)" instead of "catch (X ex) when (...)" — surfaced by the
+    /// socket module's guarded excepts when its generated C# joined the format gate (#1131).</item>
     /// </list>
     /// Restores the missing spaces. Must run after NormalizeWhitespace.
     /// </summary>
@@ -729,6 +732,25 @@ internal partial class RoslynEmitter
                 && !visited.Expression.GetLastToken().HasTrailingTrivia)
             {
                 visited = visited.WithIsKeyword(visited.IsKeyword.WithLeadingTrivia(Space));
+            }
+
+            return visited;
+        }
+
+        public override SyntaxNode? VisitCatchClause(CatchClauseSyntax node)
+        {
+            var visited = (CatchClauseSyntax)base.VisitCatchClause(node)!;
+
+            // "catch (X ex)when (...)" -> "catch (X ex) when (...)": NormalizeWhitespace omits
+            // the space before the `when` keyword when the declaration's close paren carries no
+            // trailing trivia.
+            if (visited.Filter is { } filter
+                && visited.Declaration is { } declaration
+                && !filter.WhenKeyword.HasLeadingTrivia
+                && !declaration.CloseParenToken.HasTrailingTrivia)
+            {
+                visited = visited.WithFilter(
+                    filter.WithWhenKeyword(filter.WhenKeyword.WithLeadingTrivia(Space)));
             }
 
             return visited;
