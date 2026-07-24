@@ -1,0 +1,35 @@
+# float32 edge semantics for the safe numeric cast (#1110).
+# float (64-bit) -> float32 always fits: overflow maps to +/-inf and NaN is
+# preserved (IEEE semantics), so there is no None case. float32 sources narrow
+# to int/long through the same range-checked helpers as float.
+
+def main() -> None:
+    # float -> float32?: overflow maps to +/-inf, not None
+    big: float = 1e300
+    print((big as? float32) ?? 0.0f)
+    neg: float = -1e300
+    print((neg as? float32) ?? 0.0f)
+
+    # float -> float32?: NaN is preserved as Some(nan), never None
+    inf: float = 1e300 * 1e300
+    nan: float = inf - inf
+    r: float32? = nan as? float32
+    print(r.is_none)
+    print(r ?? 0.0f)
+
+    # float32 -> int?: in-range truncates toward zero, both signs
+    x: float32 = 3.9f
+    print((x as? int) ?? -1)
+    y: float32 = -3.9f
+    print((y as? int) ?? -1)
+
+    # float32 -> int?: out of range -> None
+    huge: float32 = 1e30f
+    print((huge as? int) ?? -1)
+
+    # float32 -> long?: in-range truncation
+    print((x as? long) ?? -1)
+
+    # int -> float32?: widening always fits
+    n: int = 7
+    print((n as? float32) ?? 0.0f)

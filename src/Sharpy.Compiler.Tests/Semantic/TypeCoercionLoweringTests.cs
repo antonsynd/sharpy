@@ -83,6 +83,34 @@ def f(x: long) -> int?:
     }
 
     [Fact]
+    public void DoubleToFloat32Optional_RecordsAlwaysFits()
+    {
+        // The spec's designed edge case: double -> float32 always fits — overflow maps to ±inf and
+        // NaN is preserved (IEEE semantics), so there is no None case and no range check.
+        var lowering = CoercionLowering(@"
+def f(x: float) -> float32?:
+    return x to float32?
+");
+
+        lowering.Should().NotBeNull("float -> float32? always fits under IEEE semantics");
+        lowering!.Kind.Should().Be(TypeCoercionLoweringKind.NumericAlwaysFits);
+        lowering.SafeCastMethod.Should().BeNull();
+    }
+
+    [Fact]
+    public void Float32ToIntOptional_RecordsRangeCheckedToInt()
+    {
+        var lowering = CoercionLowering(@"
+def f(x: float32) -> int?:
+    return x to int?
+");
+
+        lowering.Should().NotBeNull("float32 -> int? narrows and must lower via a range-checked helper");
+        lowering!.Kind.Should().Be(TypeCoercionLoweringKind.NumericRangeChecked);
+        lowering.SafeCastMethod.Should().Be("ToIntOrNone");
+    }
+
+    [Fact]
     public void ObjectSource_RecordsNothing()
     {
         // Unboxing from object keeps the default type-pattern lowering (`obj is int _t ? ... : default`),
