@@ -162,7 +162,7 @@ f(1, 2)  # ERROR (SPY0353): Ambiguous - neither candidate is better at both posi
 ```python
 f(1, 2.0)         # Calls f(int, float)
 f(1.0, 2)         # Calls f(float, int)
-f(1 to float, 2)  # Explicitly calls f(float, int)
+f(1 as! float, 2)  # Explicitly calls f(float, int)
 ```
 
 ### Default Parameters and Overloads

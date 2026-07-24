@@ -401,7 +401,7 @@ def main():
     t = obj.get_type()
     attrs = Attribute.get_custom_attributes(t)
     for a in attrs:
-        author = a to AuthorAttribute?
+        author = a as? AuthorAttribute
         if author is not None:
             print(author.name)   # Alice
             print(author.year)   # 2026

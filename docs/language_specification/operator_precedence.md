@@ -15,7 +15,7 @@ Operators listed from highest to lowest precedence:
 | 9 | `^` | Bitwise XOR | Left-to-right |
 | 10 | `\|` | Bitwise OR | Left-to-right |
 | 11 | `\|>` | Pipe operator | Left-to-right |
-| 12 | `to` | Type cast | Left-to-right |
+| 12 | `as!`, `as?` (and transitional `to`) | Type cast | Left-to-right |
 | 13 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons | **Chained** (see below) |
 | 14 | `not` | Logical NOT | Right-to-left (unary) |
 | 15 | `and` | Logical AND | Left-to-right |
@@ -119,16 +119,13 @@ w = try foo() if cond else bar()  # Parsed as: (try foo()) if cond else bar()
 opt = maybe get_value() + default  # Parsed as: maybe (get_value() + default)
 ```
 
-Since `try` and `maybe` have lower precedence than `to`, they naturally wrap type casts:
+Since `try` and `maybe` have lower precedence than the cast operators, `try` naturally wraps a
+throwing cast:
 
 ```python
-# try captures the entire cast expression
-result = try animal to Dog     # Parsed as: try (animal to Dog)
+# try captures the entire cast expression (maybe binds at the same low precedence)
+result = try animal as! Dog    # Parsed as: try (animal as! Dog)
                                # Result[Dog, InvalidCastException]
-
-# maybe with safe cast
-opt = maybe obj to Widget?     # Parsed as: maybe (obj to Widget?)
-                               # Widget?
 ```
 
 Use parentheses when you need different grouping:

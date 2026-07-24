@@ -47,16 +47,16 @@ This is correct behavior — `maybe` requires a C# nullable, and `Optional[T]` i
 
 ## Precedence Rules
 
-Like `try`, the `maybe` expression has very low precedence (lower than `to`, arithmetic, comparisons, and logical operators), meaning it captures the entire following expression:
+Like `try`, the `maybe` expression has very low precedence (lower than the cast operators, arithmetic, comparisons, and logical operators), meaning it captures the entire following expression:
 
 ```python
 # maybe captures the full expression
 x = maybe get_value() + default    # Parsed as: maybe (get_value() + default)
                                    # Optional wrapping the entire sum
 
-# maybe is lower precedence than `to`, so it wraps safe casts
-y = maybe obj to Widget?           # Parsed as: maybe (obj to Widget?)
-                                   # Widget?
+# maybe is lower precedence than member access and calls, so it captures the whole chain
+y = maybe registry.lookup(key)     # Parsed as: maybe (registry.lookup(key))
+                                   # Optional[Widget] if lookup returns Widget | None
 
 # maybe does NOT capture conditional expressions
 z = maybe foo() if cond else bar()  # Parsed as: (maybe foo()) if cond else bar()

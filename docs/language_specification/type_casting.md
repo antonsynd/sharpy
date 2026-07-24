@@ -58,12 +58,15 @@ the cast behavior in safe tagged unions:
 
 ```python
 my_dog: object = Dog()
-some_result = try my_dog as! Cat     # some_result = Result[Cat, InvalidCastException]
-some_optional = maybe my_dog as? Cat # some_optional = Optional[Cat]
+some_result = try my_dog as! Cat     # Result[Cat, InvalidCastException] — try wraps the throwing cast
+
+# `as?` already yields an Optional, so use it directly (no `maybe` needed):
+some_optional = my_dog as? Cat       # Optional[Cat] — None if my_dog is not a Cat
 ```
 
-`as?` already yields an `Optional`, so `maybe … as? T` is redundant — prefer `as?` on its own and
-reserve `maybe` for loose `T | None` values.
+Wrapping a safe `as?` cast in `maybe` is redundant and **rejected** (`SPY0243`): the cast already
+yields an `Optional`. Reserve `maybe` for loose `T | None` values (e.g. a nullable returned from .NET
+interop).
 
 ## Safe Casting Pattern
 
@@ -225,9 +228,8 @@ if animal as? Dog is not None:
 if (dog := animal as? Dog) is not None and dog.age > 5:
     pass
 
-# `try` and `maybe` capture the entire cast expression
+# `try` captures the entire cast expression (`maybe` binds at the same low precedence)
 result = try animal as! Dog      # Parsed as: try (animal as! Dog)
-opt = maybe obj as? Widget       # Parsed as: maybe (obj as? Widget)
 ```
 
 ## Invalid Casts

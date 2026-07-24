@@ -117,18 +117,17 @@ Why this fits Sharpy better than `TypeIs` (Axiom-ordered):
 ### Concise single-type checks: the `as?` failable cast
 
 The conversion form's only wart is hand-writing `s if isinstance(s, T) else None` for a plain
-type test. The experimental `as?` operator closes that gap — a small, lexical operator (not a
+type test. The `as?` operator closes that gap — a small, lexical operator (not a
 type-system subsystem) that lowers to a checked cast and evaluates to `None` on failure:
 
 ```python
 c = shape as? Circle          # Circle? — None if shape is not a Circle
 ```
 
-`as?` is experimental behind the `failable_cast` feature flag (tracking issue
-[#1029](https://github.com/antonsynd/sharpy/issues/1029)); see
-[Type Casting — `as?` / `as!`](type_casting.md#experimental-as--as-failable-casts) for the full
-semantics. It composes with `??` / `?.` and, like the conversion form, introduces a narrowed binding
-rather than reinterpreting the original variable in place.
+`as?` is a graduated language operator ([#1096](https://github.com/antonsynd/sharpy/issues/1096));
+see [Type Casting](type_casting.md) for the full semantics. It composes with `??` / `?.` and, like
+the conversion form, introduces a narrowed binding rather than reinterpreting the original variable in
+place.
 
 ### Why `TypeIs[T]` itself is deferred
 

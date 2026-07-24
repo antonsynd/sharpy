@@ -16,14 +16,14 @@ x: Result[int, Exception] = try int("some string")
 ```
 
 The only place where `E` is not automatically made to be the
-base `Exception` type is in type casting of the form `to` where
+base `Exception` type is in a throwing cast (`as!`), where
 it is `InvalidCastException`:
 
 ```python
-x = try my_dog to Cat  # x is of type Result[Cat, InvalidCastException]
+x = try my_dog as! Cat  # x is of type Result[Cat, InvalidCastException]
 
 # With explicit type annotation:
-x: Result[Cat, InvalidCastException] = try my_dog to Cat
+x: Result[Cat, InvalidCastException] = try my_dog as! Cat
 ```
 
 A `try` expression can be specified for a specific type
@@ -64,8 +64,8 @@ x = try some_func(4) + 5     # Parsed as: try (some_func(4) + 5)
 y = try parse_int(s) > 0 and validate(s)  # Parsed as: try (parse_int(s) > 0 and validate(s))
                                           # Result[bool, Exception]
 
-# try is lower precedence than `to`, so it wraps casts
-z = try animal to Dog        # Parsed as: try (animal to Dog)
+# try is lower precedence than the cast operators, so it wraps casts
+z = try animal as! Dog       # Parsed as: try (animal as! Dog)
                              # Result[Dog, InvalidCastException]
 
 # try does NOT capture conditional expressions (which have lower precedence)

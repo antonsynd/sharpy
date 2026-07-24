@@ -45,11 +45,11 @@ Emits: `public static implicit operator Celsius(double val) { ... }`
 
 ## Explicit Conversions (`__explicit__`)
 
-Explicit conversions require the `to` operator:
+Explicit conversions require an explicit cast (`as!`, or the transitional `to`):
 
 ```python
 temp: Celsius = Celsius(100.0)
-raw: float = temp to float  # invokes __explicit__
+raw: float = temp as! float  # invokes __explicit__
 ```
 
 Emits: `public static explicit operator double(Celsius val) { ... }`
