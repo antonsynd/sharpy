@@ -20,6 +20,14 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// These tests feed a decorated import through the Pass-1/1.5 consumers (dependency extraction,
 /// invariant checks, import resolution, using-directive generation) and assert it is still seen —
 /// the durable defense against a future hand-rolled scan re-introducing the raw <c>is</c> test.
+///
+/// LSP consumers live in a separate project and are guarded in <c>Sharpy.Lsp.Tests</c>: document
+/// links by <c>DocumentLinkTests.DecoratedPlainImport_ProducesSameLinkAsUndecoratedTwin</c> /
+/// <c>DecoratedFromImport_ProducesSameLinkAsUndecoratedTwin</c>, and hover by
+/// <c>HoverServiceTests.GetHoverMarkdown_OverDecoratedImport_MatchesUndecoratedTwin</c> /
+/// <c>GetHoverMarkdown_OverDecoratedFromImport_MatchesUndecoratedTwin</c> (#1125). Any future
+/// <c>module.Body</c> import-scan sweep must cover both projects — #1124's D4 sweep stopped at the
+/// compiler boundary and left these two LSP consumers type-testing the bare import type.
 /// </summary>
 [Collection("HeavyCompilation")]
 public class DecoratedImportConformanceTests : IDisposable

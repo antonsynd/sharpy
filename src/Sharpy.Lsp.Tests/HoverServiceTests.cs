@@ -560,4 +560,37 @@ public class HoverServiceTests
         hover.Should().Contain("lambda");
         hover.Should().Contain("int");
     }
+
+    // --- #1125: decorated-import hover parity ---
+    // A statement-scoped @suppress wraps the import in a DecoratedStatement (#1124). Hover over the
+    // import must resolve the module identically to the undecorated twin (byte-identical markdown).
+
+    [Fact]
+    public void GetHoverMarkdown_OverDecoratedImport_MatchesUndecoratedTwin()
+    {
+        var undecorated = _api.Analyze("import mymodule\ndef main():\n    pass");
+        var decorated = _api.Analyze("@suppress(\"SPY0452\")\nimport mymodule\ndef main():\n    pass");
+
+        // Hover over the import keyword: line 1 (undecorated) vs line 2 (decorated), col 1.
+        var undecoratedHover = _hoverService.GetHoverMarkdown(undecorated, 1, 1);
+        var decoratedHover = _hoverService.GetHoverMarkdown(decorated, 2, 1);
+
+        undecoratedHover.Should().NotBeNull().And.Contain("mymodule");
+        decoratedHover.Should().Be(undecoratedHover,
+            "decorated-import hover must be byte-identical to the undecorated twin");
+    }
+
+    [Fact]
+    public void GetHoverMarkdown_OverDecoratedFromImport_MatchesUndecoratedTwin()
+    {
+        var undecorated = _api.Analyze("from mymodule import thing\ndef main():\n    pass");
+        var decorated = _api.Analyze("@suppress(\"SPY0452\")\nfrom mymodule import thing\ndef main():\n    pass");
+
+        var undecoratedHover = _hoverService.GetHoverMarkdown(undecorated, 1, 1);
+        var decoratedHover = _hoverService.GetHoverMarkdown(decorated, 2, 1);
+
+        undecoratedHover.Should().NotBeNull().And.Contain("mymodule");
+        decoratedHover.Should().Be(undecoratedHover,
+            "decorated from-import hover must be byte-identical to the undecorated twin");
+    }
 }
