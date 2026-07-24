@@ -13,14 +13,6 @@ internal sealed record GenContext
     public bool InFunction { get; init; }
     public bool InClass { get; init; }
 
-    /// <summary>
-    /// When true, the expression generator may emit the experimental <c>as!</c>/<c>as?</c>
-    /// failable-cast forms (#1029) in addition to the legacy <c>to</c>/<c>to?</c> forms. Off by
-    /// default so ungated round-trip/compile property suites never generate gated syntax
-    /// (which would trip SPY0331 in any compile-based property test).
-    /// </summary>
-    public bool AllowFailableCast { get; init; }
-
     public GenContext Burn(int amount = 1) =>
         this with { Fuel = Math.Max(0, Fuel - amount), Depth = Depth + 1 };
 

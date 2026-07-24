@@ -228,48 +228,38 @@ internal static class GenExpressions
             });
 
     public static Gen<TypeCoercion> TypeCoercionExpr(GenContext ctx) =>
-        ctx.AllowFailableCast
-            // With the flag on, mix the legacy `to`/`to?` forms with the `as!`/`as?` forms
-            // (#1029). The `as` forms carry their failure mode on the operator, so their target
-            // is always written non-nullable.
-            ? Gen.Select(
-                Expression(ctx),
-                GenTypes.SimpleType,
-                Gen.Int[0, 2],
-                (expr, type, form) => form switch
+        // The primary `as!`/`as?` forms are graduated language surface (#1096), so they are always
+        // in the pool alongside the legacy `to`/`to?` forms — both must round-trip until `to`
+        // retirement (#1127). The `as` forms carry their failure mode on the operator, so their
+        // target is always written non-nullable.
+        Gen.Select(
+            Expression(ctx),
+            GenTypes.SimpleType,
+            Gen.Int[0, 2],
+            (expr, type, form) => form switch
+            {
+                1 => new TypeCoercion
                 {
-                    1 => new TypeCoercion
-                    {
-                        Value = expr,
-                        TargetType = type with { IsOptional = false },
-                        Mode = CastFailureMode.Throw,
-                        Syntax = CastSyntax.As,
-                    },
-                    2 => new TypeCoercion
-                    {
-                        Value = expr,
-                        TargetType = type with { IsOptional = false },
-                        Mode = CastFailureMode.Null,
-                        Syntax = CastSyntax.As,
-                    },
-                    _ => new TypeCoercion
-                    {
-                        Value = expr,
-                        TargetType = type,
-                        Mode = type.IsOptional ? CastFailureMode.Null : CastFailureMode.Throw,
-                        Syntax = CastSyntax.To,
-                    },
-                })
-            : Gen.Select(
-                Expression(ctx),
-                GenTypes.SimpleType,
-                (expr, type) => new TypeCoercion
+                    Value = expr,
+                    TargetType = type with { IsOptional = false },
+                    Mode = CastFailureMode.Throw,
+                    Syntax = CastSyntax.As,
+                },
+                2 => new TypeCoercion
+                {
+                    Value = expr,
+                    TargetType = type with { IsOptional = false },
+                    Mode = CastFailureMode.Null,
+                    Syntax = CastSyntax.As,
+                },
+                _ => new TypeCoercion
                 {
                     Value = expr,
                     TargetType = type,
                     Mode = type.IsOptional ? CastFailureMode.Null : CastFailureMode.Throw,
                     Syntax = CastSyntax.To,
-                });
+                },
+            });
 
     public static Gen<TypeCheck> TypeCheckExpr(GenContext ctx) =>
         Gen.Select(

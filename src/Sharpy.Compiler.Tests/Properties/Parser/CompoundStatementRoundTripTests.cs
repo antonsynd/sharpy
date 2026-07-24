@@ -81,14 +81,14 @@ public class CompoundStatementRoundTripTests
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
     }
 
-    // AllowFailableCast axis (#1096): with the flag on, TypeCoercionExpr mixes the legacy
-    // `to`/`to?` forms with the experimental `as!`/`as?` forms, so the round trip exercises both
-    // spellings through unparse and reparse. Parsing is not gated (the failable_cast feature gate
-    // lives in semantic analysis), so no feature enablement is needed here.
+    // Cast round-trip axis (#1096): TypeCoercionExpr now always mixes the legacy `to`/`to?` forms
+    // with the graduated `as!`/`as?` forms, so the round trip exercises both spellings through
+    // unparse and reparse. Parsing was never gated (the retired failable_cast gate lived in
+    // semantic analysis), so no feature enablement is needed here.
     [Fact]
     public void LinearProgram_WithFailableCast_NeverCrashesParser()
     {
-        GenShape.LinearProgram(GenContext.Default with { AllowFailableCast = true }).Sample(module =>
+        GenShape.LinearProgram(GenContext.Default).Sample(module =>
         {
             var unparsed = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
             var lexer = new Sharpy.Compiler.Lexer.Lexer(unparsed);
@@ -101,7 +101,7 @@ public class CompoundStatementRoundTripTests
     [Fact]
     public void ClassHierarchy_WithFailableCast_NeverCrashesParser()
     {
-        GenShape.ClassHierarchy(GenContext.Default with { AllowFailableCast = true }).Sample(module =>
+        GenShape.ClassHierarchy(GenContext.Default).Sample(module =>
         {
             var unparsed = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
             var lexer = new Sharpy.Compiler.Lexer.Lexer(unparsed);
