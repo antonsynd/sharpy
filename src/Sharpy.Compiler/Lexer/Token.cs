@@ -79,7 +79,6 @@ public enum TokenType
     // Keywords - Other
     Delegate,       // Delegate type declaration
     Del,            // Delete statement
-    To,             // Type coercion operator
     Maybe,          // Optional from nullable expressions
     Super,          // Super class access
     SelfType,       // Self type for method return annotations

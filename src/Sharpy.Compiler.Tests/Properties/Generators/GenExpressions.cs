@@ -235,29 +235,22 @@ internal static class GenExpressions
         Gen.Select(
             Expression(ctx),
             GenTypes.SimpleType,
-            Gen.Int[0, 2],
+            Gen.Int[0, 1],
             (expr, type, form) => form switch
             {
-                1 => new TypeCoercion
+                0 => new TypeCoercion
                 {
                     Value = expr,
                     TargetType = type with { IsOptional = false },
                     Mode = CastFailureMode.Throw,
                     Syntax = CastSyntax.As,
                 },
-                2 => new TypeCoercion
+                _ => new TypeCoercion
                 {
                     Value = expr,
                     TargetType = type with { IsOptional = false },
                     Mode = CastFailureMode.Null,
                     Syntax = CastSyntax.As,
-                },
-                _ => new TypeCoercion
-                {
-                    Value = expr,
-                    TargetType = type,
-                    Mode = type.IsOptional ? CastFailureMode.Null : CastFailureMode.Throw,
-                    Syntax = CastSyntax.To,
                 },
             });
 

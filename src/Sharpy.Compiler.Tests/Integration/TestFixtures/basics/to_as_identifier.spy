@@ -1,0 +1,12 @@
+# `to` is an ordinary identifier after being retired as a cast operator (#1127):
+# it works as a function name and as a variable name.
+def to(value: int) -> int:
+    return value + 1
+
+def use_to_variable() -> int:
+    to: int = 100
+    return to
+
+def main() -> None:
+    print(to(20))
+    print(use_to_variable())

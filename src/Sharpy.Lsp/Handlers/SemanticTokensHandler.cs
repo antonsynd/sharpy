@@ -599,11 +599,11 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
 
             case TypeCoercion coercion:
                 CollectExpressionTokens(coercion.Value, tokens, parameterNames);
-                // Color the cast operator keyword: `to` (2 chars) or `as!`/`as?` (3 chars, #1029).
-                // This adds the previously-missing `to` coloring as well.
+                // Color the cast operator keyword: `as!` / `as?` (3 chars, #1029). The legacy
+                // `to` operator (2 chars) was retired in 0.8.0 (#1127), so the length is fixed.
                 if (coercion.OperatorLine > 0)
                 {
-                    var opLen = coercion.Syntax == CastSyntax.As ? 3 : 2;
+                    const int opLen = 3;
                     PushNameToken(tokens, coercion.OperatorLine, coercion.OperatorColumn, opLen, TKeyword, 0);
                 }
                 CollectTypeAnnotationTokens(coercion.TargetType, tokens);

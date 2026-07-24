@@ -872,35 +872,31 @@ public record ModifiedArgument : Expression
 
 /// <summary>
 /// How a cast reports failure. This is the single discriminator the semantic and codegen
-/// phases read; it is set at parse time from the operator (<c>as!</c>/<c>as?</c>) or, for
-/// the legacy <c>to</c> operator, from the target type's nullability.
+/// phases read; it is set at parse time from the operator (<c>as!</c>/<c>as?</c>).
 /// </summary>
 public enum CastFailureMode
 {
-    /// <summary>Cast throws <c>InvalidCastException</c> on failure (<c>value to T</c>, <c>value as! T</c>).</summary>
+    /// <summary>Cast throws <c>InvalidCastException</c> on failure (<c>value as! T</c>).</summary>
     Throw,
 
-    /// <summary>Cast evaluates to <c>None</c>/<c>T?</c> on failure (<c>value to T?</c>, <c>value as? T</c>).</summary>
+    /// <summary>Cast evaluates to <c>None</c>/<c>T?</c> on failure (<c>value as? T</c>).</summary>
     Null,
 }
 
 /// <summary>
-/// Which surface syntax produced a <see cref="TypeCoercion"/>. Codegen ignores this (both
-/// syntaxes lower identically per <see cref="CastFailureMode"/>); it is needed only to keep the
-/// migration hint (SPY0479 fires on <c>to</c> forms only) precise, and to round-trip the original
-/// spelling.
+/// Which surface syntax produced a <see cref="TypeCoercion"/>. Codegen ignores this (casts lower
+/// identically per <see cref="CastFailureMode"/>); it is retained to round-trip the original
+/// spelling. The legacy <c>to</c> spelling was retired in 0.8.0 (#1127), leaving only the
+/// <c>as!</c>/<c>as?</c> forms.
 /// </summary>
 public enum CastSyntax
 {
-    /// <summary>The <c>to</c> / <c>to?</c> operator — failure mode read from the target's nullability.</summary>
-    To,
-
     /// <summary>The <c>as!</c> / <c>as?</c> failable-cast operators (#1029) — failure mode read from the operator.</summary>
     As,
 }
 
 /// <summary>
-/// Type coercion (<c>value to T</c>, <c>value to T?</c>, <c>value as! T</c>, or <c>value as? T</c>).
+/// Type coercion (<c>value as! T</c> or <c>value as? T</c>).
 /// Throws <c>InvalidCastException</c> on failure when <see cref="Mode"/> is
 /// <see cref="CastFailureMode.Throw"/>, or evaluates to <c>None</c>/<c>T?</c> when it is
 /// <see cref="CastFailureMode.Null"/>. The <c>as!</c>/<c>as?</c> spellings graduated from the
@@ -912,18 +908,17 @@ public record TypeCoercion : Expression
     public TypeAnnotation TargetType { get; init; } = null!;
 
     /// <summary>
-    /// The failure mode this cast reports. Set at parse time: from the operator for the
-    /// <c>as!</c>/<c>as?</c> forms, or from <see cref="TargetType"/>'s nullability for <c>to</c>.
+    /// The failure mode this cast reports. Set at parse time from the <c>as!</c>/<c>as?</c> operator.
     /// </summary>
     public CastFailureMode Mode { get; init; } = CastFailureMode.Throw;
 
     /// <summary>The surface syntax that produced this node (see <see cref="CastSyntax"/>).</summary>
-    public CastSyntax Syntax { get; init; } = CastSyntax.To;
+    public CastSyntax Syntax { get; init; } = CastSyntax.As;
 
-    /// <summary>Line of the cast operator keyword (<c>to</c>/<c>as</c>). Used by LSP token coloring.</summary>
+    /// <summary>Line of the cast operator keyword (<c>as!</c>/<c>as?</c>). Used by LSP token coloring.</summary>
     public int OperatorLine { get; init; }
 
-    /// <summary>Column of the cast operator keyword (<c>to</c>/<c>as</c>). Used by LSP token coloring.</summary>
+    /// <summary>Column of the cast operator keyword (<c>as!</c>/<c>as?</c>). Used by LSP token coloring.</summary>
     public int OperatorColumn { get; init; }
 
     /// <inheritdoc/>

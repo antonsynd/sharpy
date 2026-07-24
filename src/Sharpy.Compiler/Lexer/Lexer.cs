@@ -126,7 +126,6 @@ public partial class Lexer
         // Other
         { "delegate", TokenType.Delegate },
         { "del", TokenType.Del },
-        { "to", TokenType.To },
         { "maybe", TokenType.Maybe },
         { "super", TokenType.Super },
         { "Self", TokenType.SelfType },

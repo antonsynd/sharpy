@@ -8,7 +8,7 @@ using Sharpy.Compiler.Parser.Ast;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Tests for type coercion validation (the `to` operator).
+/// Tests for type coercion validation (the `as!` / `as?` operators).
 /// Validates that invalid casts are rejected at compile time.
 /// </summary>
 public class TypeCoercionValidationTests
@@ -49,7 +49,7 @@ public class TypeCoercionValidationTests
         var source = @"
 def test():
     x: int = 42
-    s = x to str
+    s = x as! str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -67,7 +67,7 @@ def test():
         var source = @"
 def test():
     x: long = 42
-    s = x to str
+    s = x as! str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -83,7 +83,7 @@ def test():
         var source = @"
 def test():
     x: float = 3.14
-    s = x to str
+    s = x as! str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -99,7 +99,7 @@ def test():
         var source = @"
 def test():
     x: bool = True
-    s = x to str
+    s = x as! str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -117,7 +117,7 @@ def test():
         var source = @"
 def test():
     x: long = 42
-    y = x to int
+    y = x as! int
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -131,7 +131,7 @@ def test():
         var source = @"
 def test():
     x: int = 42
-    y = x to long
+    y = x as! long
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -145,7 +145,7 @@ def test():
         var source = @"
 def test():
     x: float = 3.14
-    y = x to int
+    y = x as! int
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -159,7 +159,7 @@ def test():
         var source = @"
 def test():
     x: int = 42
-    y = x to float
+    y = x as! float
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -175,7 +175,7 @@ def test():
         var source = @"
 def test():
     x: object = 42
-    y = x to int
+    y = x as! int
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -189,7 +189,7 @@ def test():
         var source = @"
 def test():
     x: object = ""hello""
-    y = x to str
+    y = x as! str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -211,7 +211,7 @@ class Dog(Animal):
 
 def test():
     a: Animal = Dog()
-    d = a to Dog
+    d = a as! Dog
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -231,7 +231,7 @@ class Dog(Animal):
 
 def test():
     d: Dog = Dog()
-    a = d to Animal
+    a = d as! Animal
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -247,7 +247,7 @@ def test():
         var source = @"
 def test():
     x: int = 42
-    s = x to str?
+    s = x as? str
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -293,7 +293,7 @@ def test():
         var source = $@"
 def test():
     x: int = 42
-    y = x to {targetType}
+    y = x as! {targetType}
 ";
         var (module, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);

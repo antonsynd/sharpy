@@ -276,15 +276,10 @@ internal sealed partial class UnparseVisitor
     public override void VisitTypeCoercion(TypeCoercion node)
     {
         VisitExprInContext(node.Value, PrecCast, isRightChild: false, parentIsRightAssoc: false);
-        // Render the original spelling: `to` carries its failure mode in the target's
-        // nullability, while `as!`/`as?` (#1029) carry it in the operator (target written
-        // non-nullable). Both round-trip to the same node they were parsed from.
-        var op = node.Syntax switch
-        {
-            CastSyntax.As when node.Mode == CastFailureMode.Null => " as? ",
-            CastSyntax.As => " as! ",
-            _ => " to ",
-        };
+        // Render `as?`/`as!` (#1029): the operator carries the failure mode (target written
+        // non-nullable). `as?` maps to CastFailureMode.Null, `as!` to CastFailureMode.Throw.
+        // The legacy `to` spelling was retired in 0.8.0 (#1127).
+        var op = node.Mode == CastFailureMode.Null ? " as? " : " as! ";
         _w.Write(op);
         WriteTypeAnnotation(node.TargetType);
     }

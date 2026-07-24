@@ -103,7 +103,6 @@ public class Phase010ExitCriteriaTests
 
             // Keywords - Other
             { TokenType.Del, "del" },
-            { TokenType.To, "to" },
             { TokenType.Maybe, "maybe" },
 
             // Future Keywords (reserved)
@@ -462,7 +461,6 @@ x = 1";
     [InlineData("property", TokenType.Property)]
     [InlineData("event", TokenType.Event)]
     [InlineData("del", TokenType.Del)]
-    [InlineData("to", TokenType.To)]
     [InlineData("maybe", TokenType.Maybe)]
     [InlineData("defer", TokenType.Defer)]
     [InlineData("do", TokenType.Do)]

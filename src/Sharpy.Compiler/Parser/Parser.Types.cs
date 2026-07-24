@@ -564,7 +564,7 @@ public partial class Parser
             // Member keywords
             TokenType.Property or TokenType.Event or
             // Other keywords
-            TokenType.Del or TokenType.To or TokenType.Maybe or TokenType.Super or
+            TokenType.Del or TokenType.Maybe or TokenType.Super or
             // Future keywords
             TokenType.Defer or TokenType.Do or
             // Rejected Python keywords

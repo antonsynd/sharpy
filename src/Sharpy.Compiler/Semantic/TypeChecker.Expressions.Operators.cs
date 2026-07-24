@@ -774,9 +774,8 @@ internal partial class TypeChecker
                 span: coercion.Span);
         }
 
-        // Resolve the target type. For the Null failure mode written with a non-nullable target
-        // (the `as?` form), the operator supplies the optionality, so the result type is T?
-        // exactly as `to T?` produces today. The `to T?` form already carries IsOptional.
+        // Resolve the target type. For the Null failure mode (`as?`) the operator supplies the
+        // optionality, so the non-nullable target is promoted to T? here to form the result type.
         var targetAnnotation = coercion.TargetType;
         if (coercion.Mode == CastFailureMode.Null && !targetAnnotation.IsOptional)
         {
@@ -798,7 +797,7 @@ internal partial class TypeChecker
             _ => targetType
         };
 
-        // For the failable form (`to T?` / `as? T`), decide the emission shape here so the emitter never
+        // For the failable form (`as? T`), decide the emission shape here so the emitter never
         // inspects operand types. When the source and stripped target are both plain numeric primitives,
         // record a numeric lowering (widening/identity ⇒ AlwaysFits; narrowing ⇒ a range-checked helper).
         // Any other source keeps the emitter's default type-pattern lowering, which is the only correct

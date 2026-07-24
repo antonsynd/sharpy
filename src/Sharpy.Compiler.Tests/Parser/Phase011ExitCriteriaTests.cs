@@ -788,23 +788,33 @@ def foo():
     }
 
     [Fact]
-    public void ExitCriteria_ToOperator()
+    public void ExitCriteria_AsCastOperator()
     {
-        var module = Parse("x to int");
+        var module = Parse("x as! int");
         var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
         var coercion = exprStmt.Expression.Should().BeOfType<TypeCoercion>().Subject;
         coercion.Value.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
         coercion.TargetType.Name.Should().Be("int");
+        coercion.Mode.Should().Be(CastFailureMode.Throw);
     }
 
     [Fact]
-    public void ExitCriteria_ToOperatorNullable()
+    public void ExitCriteria_AsCastNullable()
     {
-        var module = Parse("x to int?");
+        var module = Parse("x as? int");
         var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
         var coercion = exprStmt.Expression.Should().BeOfType<TypeCoercion>().Subject;
         coercion.TargetType.Name.Should().Be("int");
-        coercion.TargetType.IsOptional.Should().BeTrue();
+        coercion.Mode.Should().Be(CastFailureMode.Null);
+    }
+
+    [Fact]
+    public void ExitCriteria_RetiredToOperator_IsParseError()
+    {
+        // `to` was retired as a cast operator in 0.8.0 (#1127); it is now an ordinary
+        // identifier, so `x to int` no longer parses as a cast.
+        var errors = ParseExpectingError("x to int");
+        errors.Should().Contain("Expected end of statement");
     }
 
     [Fact]

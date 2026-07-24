@@ -94,7 +94,7 @@ public class StandaloneDeploymentTests : IDisposable
                 conn.execute("INSERT INTO t VALUES (42)")
                 conn.commit()
                 cursor = conn.execute("SELECT x FROM t")
-                match cursor.fetchone() to array[object]:
+                match cursor.fetchone() as! array[object]:
                     case list() as row:
                         print(row[0])
                     case _:

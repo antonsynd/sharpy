@@ -541,7 +541,7 @@ def main():
     {
         var code = @"
 def test(obj: object) -> int?:
-    return obj to int?
+    return obj as? int
 ";
         var csharp = CompileToCSharp(code);
         csharp.Should().Contain("Optional<int>.Some(");
@@ -554,7 +554,7 @@ def test(obj: object) -> int?:
     {
         var code = @"
 def test(obj: object) -> str?:
-    return obj to str?
+    return obj as? str
 ";
         var csharp = CompileToCSharp(code);
         csharp.Should().Contain("Optional<string>.Some(");

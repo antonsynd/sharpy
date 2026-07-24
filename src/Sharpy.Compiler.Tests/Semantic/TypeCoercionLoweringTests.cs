@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
 /// Verifies that the TypeChecker materializes a <see cref="TypeCoercionLowering"/> on a failable numeric
-/// safe cast (<c>value to T?</c>) so the emitter applies the range-checked/widening shape without
+/// safe cast (<c>value as? T</c>) so the emitter applies the range-checked/widening shape without
 /// inspecting operand types (#1110), and that non-plain-numeric sources (object, optional, class) record
 /// nothing — keeping the emitter's default type-pattern lowering byte-for-byte.
 /// </summary>
@@ -23,7 +23,7 @@ public class TypeCoercionLoweringTests
     {
         var lowering = CoercionLowering(@"
 def f(x: float) -> int?:
-    return x to int?
+    return x as? int
 ");
 
         lowering.Should().NotBeNull("float -> int? narrows and must lower via a range-checked helper");
@@ -36,7 +36,7 @@ def f(x: float) -> int?:
     {
         var lowering = CoercionLowering(@"
 def f(x: float) -> long?:
-    return x to long?
+    return x as? long
 ");
 
         lowering.Should().NotBeNull();
@@ -49,7 +49,7 @@ def f(x: float) -> long?:
     {
         var lowering = CoercionLowering(@"
 def f(x: int) -> float?:
-    return x to float?
+    return x as? float
 ");
 
         lowering.Should().NotBeNull("int -> float? widens and always fits");
@@ -62,7 +62,7 @@ def f(x: int) -> float?:
     {
         var lowering = CoercionLowering(@"
 def f(x: int) -> int?:
-    return x to int?
+    return x as? int
 ");
 
         lowering.Should().NotBeNull("int -> int? is identity and always fits");
@@ -74,7 +74,7 @@ def f(x: int) -> int?:
     {
         var lowering = CoercionLowering(@"
 def f(x: long) -> int?:
-    return x to int?
+    return x as? int
 ");
 
         lowering.Should().NotBeNull("long -> int? narrows");
@@ -89,7 +89,7 @@ def f(x: long) -> int?:
         // NaN is preserved (IEEE semantics), so there is no None case and no range check.
         var lowering = CoercionLowering(@"
 def f(x: float) -> float32?:
-    return x to float32?
+    return x as? float32
 ");
 
         lowering.Should().NotBeNull("float -> float32? always fits under IEEE semantics");
@@ -102,7 +102,7 @@ def f(x: float) -> float32?:
     {
         var lowering = CoercionLowering(@"
 def f(x: float32) -> int?:
-    return x to int?
+    return x as? int
 ");
 
         lowering.Should().NotBeNull("float32 -> int? narrows and must lower via a range-checked helper");
@@ -117,7 +117,7 @@ def f(x: float32) -> int?:
         // which is legal for object sources — the numeric guard must not fire here.
         CoercionLowering(@"
 def f(x: object) -> int?:
-    return x to int?
+    return x as? int
 ").Should().BeNull();
     }
 
@@ -127,7 +127,7 @@ def f(x: object) -> int?:
         // An optional source is not a plain numeric BuiltinType, so no numeric lowering is recorded.
         CoercionLowering(@"
 def f(x: int?) -> int?:
-    return x to int?
+    return x as? int
 ").Should().BeNull();
     }
 
@@ -142,7 +142,7 @@ class Dog(Animal):
     pass
 
 def f(a: Animal) -> Dog?:
-    return a to Dog?
+    return a as? Dog
 ").Should().BeNull();
     }
 

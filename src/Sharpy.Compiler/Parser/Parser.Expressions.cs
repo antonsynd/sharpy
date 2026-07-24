@@ -559,14 +559,14 @@ public partial class Parser
         var expr = ParsePipe();
 
         // Cast operators at precedence level 11 (between pipe and comparisons), left-to-right:
-        //   value to T   / value to T?  — legacy operator; failure mode from the target's nullability
         //   value as! T  / value as? T  — failable-cast operators (#1029, #1096: graduated, ungated);
         //                                 failure mode from the operator, target written non-nullable
         // The `as!`/`as?` forms require the `!`/`?` to be lexically adjacent to `as` (no intervening
         // whitespace), so `x as ? y` / `x as ! y` are NOT casts. Bare `as` in expression position is
         // never a cast — it stays reserved for aliasing (SRP-0005) and remains a parse error here
         // (errors/as_cast_rejected), because ParseCast only consumes `as` when an adjacent `?`/`!`
-        // follows.
+        // follows. The legacy `to` cast operator was retired in 0.8.0 (#1127); `to` is now an
+        // ordinary identifier.
         var savedLoopPosition = _lastLoopPosition;
         _lastLoopPosition = -1;
         try
@@ -575,30 +575,6 @@ public partial class Parser
             {
                 if (!CheckLoopProgress())
                     break;
-
-                if (Current.Type == TokenType.To)
-                {
-                    var opLine = Current.Line;
-                    var opColumn = Current.Column;
-                    Advance();
-                    var targetType = ParseTypeAnnotation();
-
-                    expr = new TypeCoercion
-                    {
-                        Value = expr,
-                        TargetType = targetType,
-                        Mode = targetType.IsOptional ? CastFailureMode.Null : CastFailureMode.Throw,
-                        Syntax = CastSyntax.To,
-                        OperatorLine = opLine,
-                        OperatorColumn = opColumn,
-                        LineStart = expr.LineStart,
-                        ColumnStart = expr.ColumnStart,
-                        LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Value.Length,
-                        Span = expr.Span
-                    };
-                    continue;
-                }
 
                 if (Current.Type == TokenType.As)
                 {
