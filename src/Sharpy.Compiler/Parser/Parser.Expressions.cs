@@ -589,7 +589,6 @@ public partial class Parser
                             Value = expr,
                             TargetType = targetType,
                             Mode = asMode,
-                            Syntax = CastSyntax.As,
                             OperatorLine = opLine,
                             OperatorColumn = opColumn,
                             LineStart = expr.LineStart,

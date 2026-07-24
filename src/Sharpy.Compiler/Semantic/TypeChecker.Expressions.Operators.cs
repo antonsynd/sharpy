@@ -763,7 +763,7 @@ internal partial class TypeChecker
 
         // The `as?`/`as!` operators own their failure mode, so the target must be written
         // non-nullable — the operator supplies the optionality. Reject `x as? T?` / `x as! T?`.
-        if (coercion.Syntax == CastSyntax.As && coercion.TargetType.IsOptional)
+        if (coercion.TargetType.IsOptional)
         {
             var op = coercion.Mode == CastFailureMode.Null ? "as?" : "as!";
             AddError(

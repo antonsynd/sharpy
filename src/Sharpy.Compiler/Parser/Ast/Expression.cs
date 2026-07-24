@@ -884,18 +884,6 @@ public enum CastFailureMode
 }
 
 /// <summary>
-/// Which surface syntax produced a <see cref="TypeCoercion"/>. Codegen ignores this (casts lower
-/// identically per <see cref="CastFailureMode"/>); it is retained to round-trip the original
-/// spelling. The legacy <c>to</c> spelling was retired in 0.8.0 (#1127), leaving only the
-/// <c>as!</c>/<c>as?</c> forms.
-/// </summary>
-public enum CastSyntax
-{
-    /// <summary>The <c>as!</c> / <c>as?</c> failable-cast operators (#1029) — failure mode read from the operator.</summary>
-    As,
-}
-
-/// <summary>
 /// Type coercion (<c>value as! T</c> or <c>value as? T</c>).
 /// Throws <c>InvalidCastException</c> on failure when <see cref="Mode"/> is
 /// <see cref="CastFailureMode.Throw"/>, or evaluates to <c>None</c>/<c>T?</c> when it is
@@ -911,9 +899,6 @@ public record TypeCoercion : Expression
     /// The failure mode this cast reports. Set at parse time from the <c>as!</c>/<c>as?</c> operator.
     /// </summary>
     public CastFailureMode Mode { get; init; } = CastFailureMode.Throw;
-
-    /// <summary>The surface syntax that produced this node (see <see cref="CastSyntax"/>).</summary>
-    public CastSyntax Syntax { get; init; } = CastSyntax.As;
 
     /// <summary>Line of the cast operator keyword (<c>as!</c>/<c>as?</c>). Used by LSP token coloring.</summary>
     public int OperatorLine { get; init; }

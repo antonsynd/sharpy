@@ -243,14 +243,12 @@ internal static class GenExpressions
                     Value = expr,
                     TargetType = type with { IsOptional = false },
                     Mode = CastFailureMode.Throw,
-                    Syntax = CastSyntax.As,
                 },
                 _ => new TypeCoercion
                 {
                     Value = expr,
                     TargetType = type with { IsOptional = false },
                     Mode = CastFailureMode.Null,
-                    Syntax = CastSyntax.As,
                 },
             });
 
