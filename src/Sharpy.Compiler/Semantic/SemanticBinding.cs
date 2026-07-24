@@ -314,6 +314,16 @@ public class SemanticBinding
     /// </summary>
     internal void MaterializeCodeGenInfo()
     {
+        // Ordering invariant: the bridging below only fires for symbols that already have a
+        // _codeGenInfo entry. CodeGenInfoComputer unconditionally records CodeGenInfo for every
+        // method before this freeze point runs, so a _clrBaseOverrides mark (#1122) always finds
+        // its entry — if SetCodeGenInfo ever becomes conditional for methods, marks would be
+        // silently dropped here.
+        System.Diagnostics.Debug.Assert(
+            System.Linq.Enumerable.All(_clrBaseOverrides.Keys, s => _codeGenInfo.ContainsKey(s)),
+            "A CLR-base-override mark exists for a symbol with no CodeGenInfo entry; " +
+            "the fact would be silently dropped at materialization (#1122).");
+
         foreach (var (symbol, info) in _codeGenInfo)
         {
             var effective = info;

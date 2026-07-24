@@ -15,7 +15,7 @@ public static class StatementExtensions
     /// Every <c>module.Body</c> scan that type-tests for a concrete statement kind (e.g.
     /// <see cref="ImportStatement"/>, <see cref="FromImportStatement"/>) must call this first so a
     /// suppress-decorated statement is classified by its inner target rather than silently skipped
-    /// (#1124). A conformance test in <c>CompilerInvariants</c> guards this contract.
+    /// (#1124). <c>DecoratedImportConformanceTests</c> guards this contract.
     /// </remarks>
     public static Statement UnwrapDecorated(this Statement stmt)
         => stmt is DecoratedStatement decorated ? decorated.Statement : stmt;
