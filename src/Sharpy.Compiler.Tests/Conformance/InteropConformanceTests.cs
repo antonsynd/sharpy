@@ -108,16 +108,19 @@ public class InteropConformanceTests
                 foreach (var (funcName, sigs) in module.Functions)
                 {
                     membersEnumerated++;
-                    var chosen = PickCallableOverload(sigs, out var args);
+                    var chosen = PickCallableOverload(sigs, allowGenericTypeArgs: true, out var args, out var typeArgs, out var reason);
                     if (chosen != null)
                     {
-                        var body = CallStatement($"{qualifier}{funcName}({args})", chosen.ReturnType);
+                        var callExpr = typeArgs != null
+                            ? $"{qualifier}{funcName}[{typeArgs}]({args})"
+                            : $"{qualifier}{funcName}({args})";
+                        var body = CallStatement(callExpr, chosen.ReturnType);
                         var src = $"{importLine}def _use() -> None:\n    {body}\n";
                         snippets.Add(new Snippet(asmName, moduleName, "function", funcName, PosCall, src));
                     }
                     else
                     {
-                        notAttempted.Add(new { module = moduleName, member = funcName, kind = "function", position = PosCall, reason = "non-synthesizable required parameter" });
+                        notAttempted.Add(new { module = moduleName, member = funcName, kind = "function", position = PosCall, reason });
                     }
                 }
 
@@ -178,7 +181,9 @@ public class InteropConformanceTests
                         }
 
                         membersEnumerated++;
-                        var chosen = PickCallableOverload(group.ToList(), out var margs);
+                        // Instance methods reject explicit type args (recv.m[T](…) parses as
+                        // indexing, SPY0320, #1133), so generic overloads stay notAttempted.
+                        var chosen = PickCallableOverload(group.ToList(), allowGenericTypeArgs: false, out var margs, out _, out var mReason);
                         if (chosen != null)
                         {
                             var body = CallStatement($"recv.{group.Key}({margs})", chosen.ReturnType);
@@ -187,7 +192,7 @@ public class InteropConformanceTests
                         }
                         else
                         {
-                            notAttempted.Add(new { module = moduleName, member = $"{typeInfo.Name}.{group.Key}", kind = "method", position = PosMethod, reason = "non-synthesizable required parameter" });
+                            notAttempted.Add(new { module = moduleName, member = $"{typeInfo.Name}.{group.Key}", kind = "method", position = PosMethod, reason = mReason });
                         }
                     }
 
@@ -274,7 +279,7 @@ public class InteropConformanceTests
                 "Usage positions v1: annotate, call, reference, method, property, subclass.",
                 "index/match positions are deferred (need per-type scrutinee/key synthesis); tracked as follow-up.",
                 "Instance methods/properties use a typed parameter as the receiver, so no constructor is exercised.",
-                "Generic functions/methods are not called (type-argument synthesis is future scope); counted as notAttempted.",
+                "Generic functions/methods are called with synthesized type arguments (unconstrained/struct/new() -> int, class -> str); constraint-blocked overloads stay notAttempted (constraint synthesis future scope).",
                 "Members with non-synthesizable required parameters or generic type names are counted as notAttempted, not failures.",
             },
             crashes = crashes.Take(100).Select(f => f.ToReport(allowlist)),
@@ -348,22 +353,69 @@ public class InteropConformanceTests
     /// <summary>
     /// Picks the most-callable overload and builds a positional argument list: parameters
     /// with defaults or params-arrays are omitted (fewest-args strategy); each remaining
-    /// required parameter gets a synthesized literal. Returns the chosen signature (so the
-    /// caller can honor its return type), or null if no overload is callable.
+    /// required parameter gets a synthesized literal. Generic overloads are pinned via
+    /// <see cref="TrySynthesizeTypeArguments"/> — <paramref name="typeArgs"/> then carries the
+    /// rendered <c>T1, …</c> list for a <c>func[T1, …](…)</c> call, or null for a non-generic
+    /// call. Returns the chosen signature (so the caller can honor its return type), or null if
+    /// no overload is callable — in which case <paramref name="notAttemptedReason"/> is the
+    /// narrowed reason to record.
+    /// <para>
+    /// Explicit type arguments are only rendered when <paramref name="allowGenericTypeArgs"/> is
+    /// true (instance methods reject <c>recv.m[T](…)</c> — parsed as indexing, SPY0320, #1133 —
+    /// so callers pass false there) AND the overload set is unambiguous: exactly one generic
+    /// arity and no non-generic sibling. A non-generic sibling makes Sharpy prefer it and reject
+    /// the type args (e.g. <c>len</c> binds <c>(object) -> int</c>); mixed arities make the
+    /// count ambiguous (e.g. <c>itertools.product</c>). In those cases generic overloads are not
+    /// rendered and the member stays notAttempted.
+    /// </para>
     /// </summary>
-    private static FunctionSignature? PickCallableOverload(IReadOnlyList<FunctionSignature> overloads, out string args)
+    private static FunctionSignature? PickCallableOverload(
+        IReadOnlyList<FunctionSignature> overloads,
+        bool allowGenericTypeArgs,
+        out string args,
+        out string? typeArgs,
+        out string notAttemptedReason)
     {
+        var genericArities = overloads.Where(s => s.TypeParameters.Count > 0)
+            .Select(s => s.TypeParameters.Count)
+            .Distinct()
+            .ToList();
+        var hasNonGeneric = overloads.Any(s => s.TypeParameters.Count == 0);
+        var genericArgsSafe = allowGenericTypeArgs && genericArities.Count == 1 && !hasNonGeneric;
+
         FunctionSignature? best = null;
         string? bestArgs = null;
+        string? bestTypeArgs = null;
         var bestCount = int.MaxValue;
+        var sawParamFailure = false;
+        var sawUnsynthesizableConstraint = false;
+        var sawUnsafeGeneric = false;
 
         foreach (var sig in overloads)
         {
-            // Generic functions/methods need type-argument synthesis to pin their type
-            // parameters (e.g. sorted/zip/reversed emit an unbound `T`); that is future
-            // scope, so a generic overload is not a callable candidate here.
+            IReadOnlyDictionary<string, string>? subst = null;
+            string? renderedTypeArgs = null;
             if (sig.TypeParameters.Count > 0)
-                continue;
+            {
+                if (!genericArgsSafe)
+                {
+                    // Instance-method position, or an ambiguous generic overload set: rendering
+                    // explicit type args here would not bind. Skip this overload.
+                    sawUnsafeGeneric = true;
+                    continue;
+                }
+                var synthesized = TrySynthesizeTypeArguments(sig.TypeParameters);
+                if (synthesized == null)
+                {
+                    // Interface/base-constrained (or class+new()) type params: out of scope.
+                    sawUnsynthesizableConstraint = true;
+                    continue;
+                }
+                subst = sig.TypeParameters
+                    .Select((tp, i) => (tp.Name, Arg: synthesized[i]))
+                    .ToDictionary(x => x.Name, x => x.Arg, StringComparer.Ordinal);
+                renderedTypeArgs = string.Join(", ", synthesized);
+            }
 
             var parts = new List<string>();
             var ok = true;
@@ -371,22 +423,41 @@ public class InteropConformanceTests
             {
                 if (p.IsVariadic || p.HasDefault)
                     continue;
-                var lit = TrySynthesizeLiteral(p.Type);
+                var lit = TrySynthesizeLiteral(p.Type, subst);
                 if (lit == null)
                 { ok = false; break; }
                 parts.Add(lit);
             }
-            if (ok && parts.Count < bestCount)
+            if (!ok)
+            {
+                sawParamFailure = true;
+                continue;
+            }
+            if (parts.Count < bestCount)
             {
                 bestCount = parts.Count;
                 bestArgs = string.Join(", ", parts);
+                bestTypeArgs = renderedTypeArgs;
                 best = sig;
-                if (bestCount == 0)
+                // A zero-arg non-generic call is already optimal; a generic one still has to
+                // render its type args, so keep scanning for a non-generic alternative.
+                if (bestCount == 0 && renderedTypeArgs == null)
                     break;
             }
         }
 
         args = bestArgs ?? "";
+        typeArgs = bestTypeArgs;
+        // Precedence: a genuine non-synthesizable parameter dominates; then generic constraint
+        // synthesis being out of scope; then an unsafe generic overload set (either the
+        // instance-method carve-out, #1133, or an ambiguous arity/non-generic-sibling set).
+        notAttemptedReason =
+            sawParamFailure ? "non-synthesizable required parameter"
+            : sawUnsynthesizableConstraint ? "constraint synthesis future scope"
+            : sawUnsafeGeneric ? (allowGenericTypeArgs
+                ? "generic overload set — type-argument synthesis future scope"
+                : "instance-method type-argument synthesis future scope (#1133)")
+            : "non-synthesizable required parameter";
         return best;
     }
 
@@ -413,8 +484,14 @@ public class InteropConformanceTests
     /// Collection literals are element-typed and non-empty so inference is pinned — an empty
     /// literal (<c>[]</c>/<c>set()</c>) would trip SPY0227 and masquerade as a bridge failure.
     /// </summary>
-    private static string? TrySynthesizeLiteral(TypeSignature t)
+    private static string? TrySynthesizeLiteral(TypeSignature t, IReadOnlyDictionary<string, string>? subst = null)
     {
+        // Generic-parameter substitution: when rendering a call to a generic function/method
+        // the caller pins each type parameter to a concrete Sharpy type; a parameter typed as
+        // (or nesting) `T` resolves to that pinned type before literal synthesis.
+        if (subst != null && t.IsGenericParameter && subst.TryGetValue(t.Name, out var concrete))
+            return TrySynthesizeLiteral(new TypeSignature { Name = concrete }, subst);
+
         if (t.Name == TypeSignature.NullableSentinel || t.Name == "Optional")
             return "None";
 
@@ -436,18 +513,18 @@ public class InteropConformanceTests
             case "bytes":
                 return "b\"\"";
             case "list":
-                return SynthElement(t, 0) is { } le ? $"[{le}]" : null;
+                return SynthElement(t, 0, subst) is { } le ? $"[{le}]" : null;
             case "set":
-                return SynthElement(t, 0) is { } se ? $"{{{se}}}" : null;
+                return SynthElement(t, 0, subst) is { } se ? $"{{{se}}}" : null;
             case "dict":
                 return t.TypeArguments.Count == 2
-                       && SynthElement(t, 0) is { } dk && SynthElement(t, 1) is { } dv
+                       && SynthElement(t, 0, subst) is { } dk && SynthElement(t, 1, subst) is { } dv
                     ? $"{{{dk}: {dv}}}"
                     : null;
             case "tuple":
                 if (t.TypeArguments.Count == 0)
                     return null;
-                var elems = t.TypeArguments.Select(TrySynthesizeLiteral).ToList();
+                var elems = t.TypeArguments.Select(a => TrySynthesizeLiteral(a, subst)).ToList();
                 return elems.All(e => e != null) ? "(" + string.Join(", ", elems) + ")" : null;
             default:
                 return null;
@@ -455,8 +532,8 @@ public class InteropConformanceTests
     }
 
     /// <summary>Synthesizes a literal for the <paramref name="index"/>th type argument, or null.</summary>
-    private static string? SynthElement(TypeSignature t, int index)
-        => index < t.TypeArguments.Count ? TrySynthesizeLiteral(t.TypeArguments[index]) : null;
+    private static string? SynthElement(TypeSignature t, int index, IReadOnlyDictionary<string, string>? subst = null)
+        => index < t.TypeArguments.Count ? TrySynthesizeLiteral(t.TypeArguments[index], subst) : null;
 
     /// <summary>
     /// Synthesizes concrete Sharpy type-argument spellings for a generic function/method's
