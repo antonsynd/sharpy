@@ -1,0 +1,12 @@
+# #1133: explicit type arguments on a DISCOVERED CLR generic instance method.
+# argparse.Namespace.get[T](name) is a generic instance method (public T Get<T>(string));
+# calling it as ns.get[str]("name") must lower to ns.Get<string>("name"), the same
+# recv.M<T>(...) shape used for user-defined generic methods and module-level generic functions.
+from argparse import ArgumentParser, Namespace
+
+def main() -> None:
+    parser: ArgumentParser = ArgumentParser()
+    parser.add_argument("name")
+    ns: Namespace = parser.parse_args(["sharpy"])
+    value: str = ns.get[str]("name")
+    print(value)

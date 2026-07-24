@@ -1,0 +1,28 @@
+# #1133: explicit type arguments on instance generic-method calls.
+# recv.method[T](args) now works everywhere identity[T](args) does — for a plain
+# receiver (b.convert[int]), a self receiver (self.convert[U] from inside the class),
+# and a chained receiver (h.box.convert[int]).
+class Box:
+    def __init__(self):
+        pass
+
+    def convert[T](self, value: T) -> str:
+        return f"converted: {value}"
+
+    def describe[U](self, value: U) -> str:
+        return self.convert[U](value)
+
+
+class Holder:
+    box: Box
+
+    def __init__(self):
+        self.box = Box()
+
+
+def main() -> None:
+    b: Box = Box()
+    print(b.convert[int](5))
+    print(b.describe[str]("hi"))
+    h: Holder = Holder()
+    print(h.box.convert[int](99))

@@ -1,0 +1,15 @@
+# #1133: excess explicit type arguments on an instance generic-method reference -> SPY0224.
+# `def convert[T]` has one type parameter; referencing it as convert[int, str] must be
+# diagnosed at the reference site (same #1004-style wrong-count diagnostic as the bare
+# identity[...] and module-member json.loads[...] arms), not silently accepted.
+class Box:
+    def __init__(self):
+        pass
+
+    def convert[T](self, value: T) -> str:
+        return "converted"
+
+
+def main() -> None:
+    b: Box = Box()
+    print(b.convert[int, str](5))
