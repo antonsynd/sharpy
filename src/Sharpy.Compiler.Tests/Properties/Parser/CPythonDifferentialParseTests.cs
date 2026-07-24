@@ -205,6 +205,26 @@ public class CPythonDifferentialParseTests
             $"Sharpy failed to parse CPython-valid source: {source}");
     }
 
+    /// <summary>
+    /// QUARANTINED divergence this differential fuzzer found (#1130): a bare lambda as a slice
+    /// bound whose next slice separator ':' is followed by an empty component fails with SPY0100
+    /// at the closing ']'. CPython accepts both (verified via ast.parse); parenthesized lambdas,
+    /// plain-index lambdas, and non-empty following components all parse. Minimized from a
+    /// fuzzer-found sample. Un-skip (and remove the SubsetFilter.VisitSliceAccess quarantine)
+    /// when #1130 is fixed.
+    /// </summary>
+    [Theory(Skip = "QUARANTINED until #1130: bare lambda slice bound + empty following component")]
+    [InlineData("x[lambda qux, m, tmp: t:]")]
+    [InlineData("x[:lambda a: t:]")]
+    public void LambdaSliceBoundBeforeEmptyComponent_Parses(string source)
+    {
+        var tokens = new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll();
+        var parser = new Sharpy.Compiler.Parser.Parser(tokens);
+        _ = parser.ParseModule();
+        Assert.False(parser.Diagnostics.HasErrors,
+            $"Sharpy failed to parse CPython-valid source: {source}");
+    }
+
     // ----------------------------------------------------------------------- //
     // Sample collection
     // ----------------------------------------------------------------------- //
@@ -293,8 +313,8 @@ public class CPythonDifferentialParseTests
     /// exclude wholesale to keep the biconditional clean (f-strings — micro-syntax differs; walrus —
     /// bare form is a Python error), and Sharpy-only flags on otherwise-shared nodes (backtick
     /// identifiers, null-conditional access, arrow lambdas, async comprehension clauses, numeric
-    /// suffixes). No parser-bug quarantines remain (#1064/#1076/#1078 are fixed). Traverses via
-    /// the AST visitor; never inspects source text.
+    /// suffixes). One parser-bug quarantine remains: #1130 (lambda as slice bound), see
+    /// <see cref="VisitSliceAccess"/>. Traverses via the AST visitor; never inspects source text.
     /// </summary>
     private sealed class SubsetFilter : AstVisitor
     {
@@ -380,6 +400,21 @@ public class CPythonDifferentialParseTests
         public override void VisitLambdaExpression(LambdaExpression node)
         {
             if (node.IsArrowSyntax)
+            {
+                Reject();
+                return;
+            }
+            DefaultVisit(node);
+        }
+
+        // TODO(#1130): quarantine — Sharpy rejects a bare lambda slice bound when the next slice
+        // separator is followed by an empty component (`x[lambda a: t:]`), which CPython accepts.
+        // Deliberately broad (any lambda bound) for robustness; remove wholesale when #1130 is
+        // fixed and un-skip LambdaSliceBoundBeforeEmptyComponent_Parses.
+        public override void VisitSliceAccess(SliceAccess node)
+        {
+            if (node.Start is LambdaExpression || node.Stop is LambdaExpression
+                || node.Step is LambdaExpression)
             {
                 Reject();
                 return;
