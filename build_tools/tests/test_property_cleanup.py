@@ -72,7 +72,7 @@ class TestSnapshotTesthostPids:
         class _Result:
             stdout = "111\n222\n333\n"
 
-        monkeypatch.setattr(bs.subprocess, "run", lambda *a, **k: _Result())
+        monkeypatch.setattr(bs.subprocess, "run", lambda *_a, **_k: _Result())
         assert bs.snapshot_testhost_pids() == {111, 222, 333}
 
     def test_no_matches_returns_empty(self, monkeypatch):
@@ -80,11 +80,11 @@ class TestSnapshotTesthostPids:
         class _Result:
             stdout = ""
 
-        monkeypatch.setattr(bs.subprocess, "run", lambda *a, **k: _Result())
+        monkeypatch.setattr(bs.subprocess, "run", lambda *_a, **_k: _Result())
         assert bs.snapshot_testhost_pids() == set()
 
     def test_missing_pgrep_returns_empty(self, monkeypatch):
-        def _boom(*a, **k):
+        def _boom(*_a, **_k):
             raise FileNotFoundError("pgrep")
 
         monkeypatch.setattr(bs.subprocess, "run", _boom)
@@ -94,7 +94,7 @@ class TestSnapshotTesthostPids:
         class _Result:
             stdout = "111\ngarbage\n222\n"
 
-        monkeypatch.setattr(bs.subprocess, "run", lambda *a, **k: _Result())
+        monkeypatch.setattr(bs.subprocess, "run", lambda *_a, **_k: _Result())
         assert bs.snapshot_testhost_pids() == {111, 222}
 
 
@@ -104,14 +104,14 @@ class TestKillNewTesthosts:
     def test_kills_only_new_pids(self, monkeypatch):
         killed = []
         monkeypatch.setattr(bs, "snapshot_testhost_pids", lambda: {1, 2, 3})
-        monkeypatch.setattr(bs.os, "kill", lambda pid, sig: killed.append(pid))
+        monkeypatch.setattr(bs.os, "kill", lambda pid, _sig: killed.append(pid))
         bs.kill_new_testhosts({1})
         assert sorted(killed) == [2, 3]
 
     def test_no_new_pids_kills_nothing(self, monkeypatch):
         killed = []
         monkeypatch.setattr(bs, "snapshot_testhost_pids", lambda: {1, 2})
-        monkeypatch.setattr(bs.os, "kill", lambda pid, sig: killed.append(pid))
+        monkeypatch.setattr(bs.os, "kill", lambda pid, _sig: killed.append(pid))
         bs.kill_new_testhosts({1, 2})
         assert killed == []
 
@@ -120,14 +120,14 @@ class TestKillNewTesthosts:
         # even though hosts existed before (silent skip, zero behavior change).
         killed = []
         monkeypatch.setattr(bs, "snapshot_testhost_pids", lambda: set())
-        monkeypatch.setattr(bs.os, "kill", lambda pid, sig: killed.append(pid))
+        monkeypatch.setattr(bs.os, "kill", lambda pid, _sig: killed.append(pid))
         bs.kill_new_testhosts({1, 2, 3})
         assert killed == []
 
     def test_tolerates_already_dead_pid(self, monkeypatch):
         # os.kill raises OSError if the PID already exited between snapshot and
         # kill — must be swallowed rather than aborting the round loop.
-        def _kill(pid, sig):
+        def _kill(pid, _sig):
             raise ProcessLookupError(pid)
 
         monkeypatch.setattr(bs, "snapshot_testhost_pids", lambda: {5})
