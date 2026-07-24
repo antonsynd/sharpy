@@ -665,17 +665,6 @@ public static partial class DiagnosticExplanations
             "class Math:\n    @static                     # redundant — already static\n    def square(x: int) -> int:\n        return x * x",
             "Drop the '@static' / '@staticmethod' decorator. The method remains static because it has no 'self' parameter.");
 
-        Add(dict, DiagnosticCodes.Validation.ToCastTransitionHint,
-            "Prefer the 'as?' / 'as!' cast over 'to'",
-            "Validation",
-            "The 'as?' / 'as!' failable-cast operators are the primary cast spelling: 'value as! T' " +
-            "throws on failure (result T) and 'value as? T' yields None on failure (result T?). They " +
-            "carry the failure mode on the operator itself, making each cast site self-describing. " +
-            "This advisory hint steers code toward the primary spelling; the 'to' operator is a " +
-            "transitional spelling — still valid, but slated for retirement in a future release (#1096).",
-            "value = obj to int",
-            "Use the failable-cast operator that matches the failure mode:\n  value = obj as! int   # throws on failure\n  maybe_value = obj as? int  # None on failure");
-
         // ── Validation warnings — overflow (SPY0480-SPY0489) ───────────
         // Warnings that overflow the fully-allocated SPY0450-0469 sub-band.
         // Severity is Warning at emission, never inferred from the code range.

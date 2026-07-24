@@ -1352,7 +1352,7 @@ def foo():
     public void Suppress_MultipleValidCodes_NoDiagnostics()
     {
         var code = @"
-@suppress(""SPY0451"", ""SPY0452"", ""SPY0479"")
+@suppress(""SPY0451"", ""SPY0452"", ""SPY0453"")
 def foo():
     pass
 ";

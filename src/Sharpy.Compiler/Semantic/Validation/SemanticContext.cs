@@ -52,10 +52,10 @@ internal class SemanticContext
     /// compilation-wide and per-file <c>from __future__ import</c> features, exactly as the
     /// TypeChecker computed them). Exposed so validators can gate feature-conditional diagnostics.
     /// After <c>failable_cast</c> graduated (#1096) no validator currently consults this — the
-    /// SPY0479 <c>to</c>→<c>as?</c>/<c>as!</c> migration hint that once did is now unconditional —
-    /// but it is retained deliberately for future feature-conditional diagnostics; do not remove it
-    /// as dead code. Defaults to an empty set so contexts created without a TypeChecker behave as
-    /// "no features enabled".
+    /// SPY0479 <c>to</c>→<c>as?</c>/<c>as!</c> migration hint that once did went unconditional and
+    /// was then removed along with the <c>to</c> operator (#1127) — but it is retained deliberately
+    /// for future feature-conditional diagnostics; do not remove it as dead code. Defaults to an
+    /// empty set so contexts created without a TypeChecker behave as "no features enabled".
     /// </summary>
     public Shared.FeatureFlags Features { get; set; } = Shared.FeatureFlags.None;
 

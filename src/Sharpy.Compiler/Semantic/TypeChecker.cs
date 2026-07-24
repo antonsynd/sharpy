@@ -232,8 +232,9 @@ internal partial class TypeChecker
         context.DeferredCycleFiles = DeferredCycleFiles;
         // Thread the effective feature flags so validators can gate feature-conditional
         // diagnostics. No validator consults this today (the SPY0479 to→as?/as! hint went
-        // unconditional when failable_cast graduated, #1096); retained deliberately for future
-        // feature-conditional diagnostics — see SemanticContext.Features.
+        // unconditional when failable_cast graduated (#1096) and was then removed along with
+        // the `to` operator, #1127); retained deliberately for future feature-conditional
+        // diagnostics — see SemanticContext.Features.
         context.Features = Features;
         return context;
     }

@@ -30,10 +30,6 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///         lacks a <c>self</c> parameter (decorator is unnecessary; Sharpy auto-detects
 ///         static methods). Note: <c>@staticmethod</c> is a hard error via
 ///         DecoratorValidator, so it is not flagged here.</item>
-///   <item>SPY0479 — a <c>to</c>/<c>to?</c> cast — suggests the graduated
-///         <c>as!</c>/<c>as?</c> spelling (#1029, #1096), which carries the failure mode on
-///         the operator. Advisory and default-on; the <c>to</c> operator remains a valid
-///         transitional spelling pending its retirement.</item>
 /// </list>
 ///
 /// Hints share suppression with warnings but are NOT promoted to errors under
@@ -109,12 +105,6 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     {
         CheckNegativeTupleIndex(node);
         base.VisitIndexAccess(node);
-    }
-
-    public override void VisitTypeCoercion(TypeCoercion node)
-    {
-        CheckToCastTransition(node);
-        base.VisitTypeCoercion(node);
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -353,37 +343,6 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
             staticDecorator.LineStart, staticDecorator.ColumnStart,
             code: DiagnosticCodes.Validation.UnnecessaryStaticDecoratorHint,
             span: staticDecorator.Span);
-    }
-
-    // ──────────────────────────────────────────────────────────────────────
-    // SPY0479 — prefer the as?/as! spelling over `to`
-    // ──────────────────────────────────────────────────────────────────────
-
-    private void CheckToCastTransition(TypeCoercion node)
-    {
-        // The `as?`/`as!` operators graduated (#1096) and are now unconditional language surface,
-        // so this migration hint is default-on: the build always accepts the suggested spelling.
-        // Only the legacy `to`/`to?` spelling is a migration candidate; the `as` forms are already
-        // the target syntax.
-        if (node.Syntax != CastSyntax.To)
-            return;
-
-        var suggestion = node.Mode == CastFailureMode.Null
-            ? $"as? {node.TargetType.Name}"
-            : $"as! {node.TargetType.Name}";
-        var failure = node.Mode == CastFailureMode.Null
-            ? "yields None on failure"
-            : "throws InvalidCastException on failure";
-
-        AddHint(
-            $"Prefer '{suggestion}' over the 'to' cast: the 'as?'/'as!' operators carry the "
-                + $"failure mode on the operator itself ('{suggestion}' {failure}), making each "
-                + "cast site explicit. The 'to' operator is a transitional spelling — still valid, "
-                + "but slated for retirement in a future release.",
-            node.OperatorLine > 0 ? node.OperatorLine : node.LineStart,
-            node.OperatorLine > 0 ? node.OperatorColumn : node.ColumnStart,
-            code: DiagnosticCodes.Validation.ToCastTransitionHint,
-            span: node.Span);
     }
 
     /// <summary>
