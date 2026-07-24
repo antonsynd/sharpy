@@ -458,6 +458,55 @@ public class InteropConformanceTests
     private static string? SynthElement(TypeSignature t, int index)
         => index < t.TypeArguments.Count ? TrySynthesizeLiteral(t.TypeArguments[index]) : null;
 
+    /// <summary>
+    /// Synthesizes concrete Sharpy type-argument spellings for a generic function/method's
+    /// type parameters so the sweep can render an explicit <c>func[T1, …](…)</c> call, or
+    /// null when any parameter's constraints put synthesis out of scope (the caller then
+    /// records the member <c>notAttempted</c> with reason "constraint synthesis future scope").
+    /// <para>
+    /// Minimal v1 (plan D4): an unconstrained parameter, a value-type constraint
+    /// (<c>T : struct</c>), or a bare <c>new()</c> constraint → <c>int</c>; a reference-type
+    /// constraint (<c>T : class</c>) → <c>str</c>; an interface or base-class constraint, or a
+    /// <c>class</c>+<c>new()</c> combination (<see cref="string"/> has no parameterless ctor),
+    /// fails the whole synthesis. Reads constraint metadata from <see cref="TypeParameterInfo"/>
+    /// (materialized into the OverloadIndex, #976) rather than a parallel <c>MethodInfo</c>
+    /// reflection path, so the sweep sees the same generic surface the compiler does.
+    /// </para>
+    /// </summary>
+    internal static string[]? TrySynthesizeTypeArguments(IReadOnlyList<TypeParameterInfo> typeParameters)
+    {
+        if (typeParameters.Count == 0)
+            return Array.Empty<string>();
+
+        var args = new string[typeParameters.Count];
+        for (var i = 0; i < typeParameters.Count; i++)
+        {
+            var synth = TrySynthesizeTypeArgument(typeParameters[i]);
+            if (synth == null)
+                return null;
+            args[i] = synth;
+        }
+        return args;
+    }
+
+    /// <summary>Maps one type parameter's constraints to a synthesizable Sharpy type, or null.</summary>
+    private static string? TrySynthesizeTypeArgument(TypeParameterInfo tp)
+    {
+        // Interface / base-class constraints require a type satisfying an arbitrary contract —
+        // future scope. (TypeParameterInfo records these under InterfaceConstraints.)
+        if (tp.InterfaceConstraints.Count > 0)
+            return null;
+
+        // A reference-type constraint (`T : class`) rules out int; `str` (System.String) is a
+        // reference type. But `class` + `new()` together need a reference type with a public
+        // parameterless ctor, which String lacks — bail rather than emit code Roslyn rejects.
+        if (tp.HasReferenceTypeConstraint)
+            return tp.HasDefaultConstructorConstraint ? null : "str";
+
+        // Value-type (`T : struct`), bare `new()`, or unconstrained: int satisfies all three.
+        return "int";
+    }
+
     /// <summary>Rejects open-generic / unrenderable type names for annotation positions.</summary>
     private static bool IsUsableTypeName(string name)
         => !string.IsNullOrEmpty(name)
