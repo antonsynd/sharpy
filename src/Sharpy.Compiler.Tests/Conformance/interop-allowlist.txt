@@ -12,10 +12,5 @@
 # Baseline: 69 failures / 2181 snippets / 0 crashes, taken on branch `dev`
 # at commit 5576b62f8 (2026-07-14). See .claude/tmp/interop-conformance-report.json.
 
-# The interop-surface Dict[K,V] annotates but rejects [] indexing (SPY0320) while native
-# dict[K,V] indexes — the __getitem__ protocol is not wired for the annotatable Dict surface.
-# Surfaced by the #1094 index-position coverage; tracked by #1134. Delete when fixed.
-builtins::type::Dict`2::index
-
 # The file's presence keeps the interop sweep in RATCHET mode: any new non-allowlisted
 # failure fails CI.

@@ -1,0 +1,18 @@
+# The CamelCase interop surface Dict[K, V] must index (read + write) exactly like
+# the native lowercase dict[K, V] — both are the same Sharpy.Dict<K,V> (#1134).
+
+def roundtrip_interop(recv: Dict[int, str]) -> str:
+    read0: str = recv[0]
+    recv[1] = "one"
+    return read0 + "," + recv[1]
+
+def roundtrip_native(recv: dict[int, str]) -> str:
+    read0: str = recv[0]
+    recv[1] = "one"
+    return read0 + "," + recv[1]
+
+def main() -> None:
+    a: dict[int, str] = {0: "zero"}
+    b: dict[int, str] = {0: "zero"}
+    print(roundtrip_interop(a))
+    print(roundtrip_native(b))
