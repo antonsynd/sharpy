@@ -356,6 +356,22 @@ internal class TypeResolver
         return null;
     }
 
+    /// <summary>
+    /// CamelCase interop spellings of the builtin collections mapped to their lowercase builtin
+    /// name. Reverse of the <c>SharpyToClrNameMap</c> in <see cref="Discovery.CachedModuleDiscovery"/>.
+    /// Consulted only when the CamelCase name would otherwise resolve to a non-generic static
+    /// factory companion (currently only <c>Dict</c>, whose <c>Sharpy.Dict</c> holds
+    /// <c>dict.fromkeys</c>); see the redirect in <see cref="ResolveGenericType"/> (#1134).
+    /// </summary>
+    private static readonly Dictionary<string, string> BuiltinCamelCaseAliases = new(StringComparer.Ordinal)
+    {
+        ["Dict"] = BuiltinNames.Dict,
+        ["List"] = BuiltinNames.List,
+        ["Set"] = BuiltinNames.Set,
+        ["Bytes"] = BuiltinNames.Bytes,
+        ["Str"] = BuiltinNames.Str,
+    };
+
     private SemanticType ResolveGenericType(TypeAnnotation annotation)
     {
         // Handle explicit Optional[T] syntax
@@ -449,6 +465,24 @@ internal class TypeResolver
         }
 
         typeSymbol ??= _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
+
+        // #1134: A builtin collection that also ships a non-generic static factory companion
+        // shadows its real generic type in the CLR fallback above. `Sharpy.Dict` (the
+        // `dict.fromkeys` helper) is such a static class, so the CamelCase interop spelling
+        // `Dict[K, V]` resolves to it — annotatable, but exposing none of the collection
+        // protocols, so `d[k]` reports SPY0320 while native `dict[K, V]` indexes. When the only
+        // CLR match is such a static shadow, redirect to the builtin so the CamelCase surface is
+        // a true alias of the lowercase spelling for type-checking, protocols, and codegen alike.
+        // The static-shadow gate keeps `List`/`Set` (no companion) resolving as before.
+        var normalizedToBuiltin = false;
+        if (typeSymbol is { ClrType: { IsAbstract: true, IsSealed: true, IsInterface: false } }
+            && BuiltinCamelCaseAliases.TryGetValue(annotation.Name, out var builtinAlias)
+            && _symbolTable.BuiltinRegistry.GetType(builtinAlias) is { } aliasedBuiltin)
+        {
+            typeSymbol = aliasedBuiltin;
+            normalizedToBuiltin = true;
+        }
+
         if (typeSymbol == null)
         {
             var genericMessage = $"Generic type '{annotation.Name}' not found";
@@ -508,7 +542,9 @@ internal class TypeResolver
             // For module-qualified generics, use the bare type name so identity matches the
             // GenericType produced by `module.Type[T](...)` instantiation. Emission relies on
             // GenericDefinition (which carries DefiningModule) to fully-qualify the name.
-            Name = isModuleQualified ? typeSymbol.Name : annotation.Name,
+            // A CamelCase builtin alias normalized to its lowercase builtin (#1134) likewise
+            // takes the builtin's name so its representation is identical to the native spelling.
+            Name = isModuleQualified || normalizedToBuiltin ? typeSymbol.Name : annotation.Name,
             TypeArguments = typeArgs,
             GenericDefinition = typeSymbol
         };
