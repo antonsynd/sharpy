@@ -9,9 +9,9 @@ result = expression as! TargetType   # throwing
 result = expression as? TargetType   # safe (yields TargetType?)
 ```
 
-> The legacy `to` operator (`value to T` / `value to T?`) is still accepted but **transitional** and
-> slated for retirement ([#1127](https://github.com/antonsynd/sharpy/issues/1127)). It lowers
-> identically to `as!`/`as?`; see [Transitional `to` spelling](#transitional-to-spelling) below.
+> The legacy `to` operator (`value to T` / `value to T?`) was **removed in 0.8.0**
+> ([#1127](https://github.com/antonsynd/sharpy/issues/1127)); `to` is now an ordinary identifier.
+> Migrate `x to T` → `x as! T` and `x to T?` → `x as? T` (the lowering is identical).
 
 ## Two Forms
 
@@ -136,7 +136,7 @@ n = huge as? int                 # None: out of int range
 
 ### Edge-case semantics of the safe numeric form
 
-For the safe form (`value as? T` / `value to T?`) with a concrete numeric source, the boundary
+For the safe form (`value as? T`) with a concrete numeric source, the boundary
 cases are defined as follows:
 
 | Case | Result |
@@ -204,7 +204,7 @@ tighter than comparison and logical operators:
 | | `^` |
 | | `\|` |
 | | `\|>` |
-| | `as!`, `as?` (and transitional `to`) |
+| | `as!`, `as?` |
 | | `in`, `is`, `<`, `>`, `==`, etc. |
 | | `not`, `and`, `or`, `??` |
 | | `try`, `maybe` |
@@ -269,28 +269,7 @@ value is Dog _temp ? Optional<Dog>.Some(_temp) : default
 value is int _temp ? Optional<int>.Some(_temp) : default
 ```
 
-`as!` invokes any user-defined `__explicit__` conversion exactly as the legacy `to` form does.
-
-## Transitional `to` spelling
-
-The legacy `to` operator is still accepted as a transitional spelling. It is **semantically identical**
-to `as!`/`as?` — the two lower to the same C# (snapshot parity) — but it is slated for retirement
-([#1127](https://github.com/antonsynd/sharpy/issues/1127)):
-
-| `to` form (transitional) | `as` form (primary) | Result type | On failure |
-|--------------------------|---------------------|-------------|------------|
-| `value to T`  | `value as! T` | `T`  | throws `InvalidCastException` |
-| `value to T?` | `value as? T` | `T?` | evaluates to `None` |
-
-```python
-animal: Animal = get_animal()
-dog = animal to Dog       # == animal as! Dog
-dog = animal to Dog?      # == animal as? Dog
-```
-
-**Migration hint.** Every `to`/`to?` cast emits an advisory hint (`SPY0479`, Hint severity) suggesting
-the `as!`/`as?` spelling. The hint is on by default now that the failable-cast operators are graduated
-language surface; migrate `x to T` → `x as! T` and `x to T?` → `x as? T`.
+`as!` invokes any user-defined `__explicit__` conversion.
 
 ## Note on `as`
 
