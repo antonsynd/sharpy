@@ -171,7 +171,7 @@ The standard library follows these conventions for when to use `Result` vs excep
 | File/network open | `Result` | `open(path: str) -> File !IOError` |
 | Collection "get" | `Optional` | `dict.get(key: K) -> V?` |
 | Collection index | Exception | `list[i]` throws `IndexError` |
-| Type casting | `Result` | `obj to Dog` returns `Result` |
+| Type casting | `Optional` | `obj as? Dog` returns `Dog?` |
 
 **Guiding principle:** Exceptions are for bugs. Results are for expected failures.
 
