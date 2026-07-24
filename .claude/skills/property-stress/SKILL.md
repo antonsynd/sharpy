@@ -50,9 +50,12 @@ Run `.claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q 2>&1 | tai
 For each round 1..N:
 
 1. Print progress: `=== Round {i}/{N} ===`
-2. Generate a fresh valid CsCheck seed and export it for this round:
+2. Generate a fresh valid CsCheck seed and snapshot the pre-round test hosts:
    ```bash
    SEED=$(python3 -c 'import random;C="0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-";s=random.getrandbits(64);print("".join(C[(s>>(6*i))&63] for i in range(10,-1,-1))+"0")')
+   # Snapshot testhost PIDs that already exist (including OTHER sessions' hosts)
+   # so the post-round cleanup in step 4 can target only PIDs this round spawns.
+   BEFORE_HOSTS=$(pgrep -f testhost 2>/dev/null || true)
    ```
 3. Run the round with the watchdog flags, seed in the log header, artifacts scoped to a per-round results dir:
    ```bash
@@ -67,7 +70,26 @@ For each round 1..N:
      --results-directory "$RESULTS" >> "$LOG" 2>&1
    RC=$?
    ```
-4. Kill lingering test host processes to prevent memory accumulation: `pkill -f testhost 2>/dev/null || true`
+4. Kill only the test hosts **this round** spawned, to bound memory accumulation
+   without touching other sessions' hosts. Diff a fresh `pgrep` against the
+   `$BEFORE_HOSTS` snapshot from step 4.2 and kill only the newly-appeared PIDs:
+   ```bash
+   # Scoped cleanup — do NOT use a bare `pkill -f testhost`. A blanket pkill
+   # reaps test hosts belonging to OTHER concurrent agent sessions (the same
+   # cross-session-kill incident class as the `pkill -f dotnet` crashes seen
+   # 4× during plan-f08ccf; #1132). Kill only PIDs absent from the pre-round
+   # snapshot. Residual race: a host another session starts mid-round is not in
+   # $BEFORE_HOSTS and could be caught here — accepted as strictly safer than a
+   # blanket pkill, and rare (test hosts are long-lived; the window is one
+   # round). This scoped diff is mirrored in `build_tools/bin/build_sharpy`
+   # `property_test` (kill_new_testhosts) — keep both in sync.
+   AFTER_HOSTS=$(pgrep -f testhost 2>/dev/null || true)
+   for pid in $AFTER_HOSTS; do
+     if ! printf '%s\n' "$BEFORE_HOSTS" | grep -qx "$pid"; then
+       kill "$pid" 2>/dev/null || true
+     fi
+   done
+   ```
 5. If `RC` is non-zero, distinguish a **host crash** from an ordinary **assertion failure**
    (this logic is mirrored in `build_tools/bin/build_sharpy` `property_test` — keep both in sync):
    ```bash
