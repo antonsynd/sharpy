@@ -198,8 +198,8 @@ internal sealed class DocumentState : IDisposable
 
             // The parse result to remember for the next edit's fingerprint and for parse-only
             // handlers. The incremental path already parsed (newParse); the fresh path derives it
-            // from the analysis's entry AST — structurally identical to a standalone parse, and both
-            // the fingerprint and the parse-only handlers read only .Ast (never diagnostics). A null
+            // from the analysis's entry AST — structurally identical to a standalone parse, with
+            // the syntactic diagnostic slice projected so Success/Diagnostics stay honest. A null
             // AST leaves the caches cold, matching an on-demand parse.
             var parseForCache = newParse ?? ParseResultFromAnalysis(result);
 
@@ -269,16 +269,30 @@ internal sealed class DocumentState : IDisposable
 
     /// <summary>
     /// Builds a <see cref="ParseResult"/> view over an analysis result's entry AST, for the fresh
-    /// document path where no standalone parse was run (#1137). Only <see cref="ParseResult.Ast"/>
-    /// is consumed downstream — by the incremental fingerprint and the parse-only LSP handlers;
-    /// parse diagnostics live on the <see cref="SemanticResult"/>. Returns null when analysis
-    /// produced no AST, leaving the parse cache cold so a later parse-only request reparses on
-    /// demand (identical to how a fresh parse would populate it).
+    /// document path where no standalone parse was run (#1137). The syntactic slice of the analysis
+    /// diagnostics (lexer/parser phases) is projected onto the result so
+    /// <see cref="ParseResult.Success"/> and <see cref="ParseResult.Diagnostics"/> honor their
+    /// contract on error-recovered documents — today's consumers (the incremental fingerprint and
+    /// the parse-only LSP handlers) read only <see cref="ParseResult.Ast"/>, but a cached result
+    /// claiming success on a syntax-error document would mislead the next consumer that trusts it.
+    /// Returns null when analysis produced no AST, leaving the parse cache cold so a later
+    /// parse-only request reparses on demand (identical to how a fresh parse would populate it).
     /// </summary>
     private static ParseResult? ParseResultFromAnalysis(SemanticResult result)
-        => result.Ast == null
-            ? null
-            : new ParseResult { Success = true, Ast = result.Ast };
+    {
+        if (result.Ast == null)
+            return null;
+
+        var syntaxDiagnostics = result.Diagnostics
+            .Where(d => d.Phase is CompilerPhase.Lexer or CompilerPhase.Parser)
+            .ToArray();
+        return new ParseResult
+        {
+            Success = !syntaxDiagnostics.Any(d => d.IsError),
+            Diagnostics = syntaxDiagnostics,
+            Ast = result.Ast
+        };
+    }
 
     private static bool IsCancelledResult(SemanticResult result)
     {

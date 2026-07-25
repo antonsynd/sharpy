@@ -176,6 +176,27 @@ public class WorkspaceTests : IDisposable
         parseResult!.Ast.Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task FreshDocument_WithSyntaxError_ParseCacheReportsHonestFailure()
+    {
+        // #1137 follow-up: the analysis-derived ParseResult must honor the ParseResult contract on
+        // error-recovered documents. The parser recovers and still yields an AST, but Success must
+        // be false and the syntactic diagnostics present — exactly what a standalone parse would
+        // report. Before the honesty fix, the fresh-path derivation hardcoded Success = true with
+        // an empty Diagnostics list, a landmine for the first consumer that trusts either.
+        _workspace.OpenDocument("file:///bad.spy", "def broken(:\n    return 1", 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///bad.spy", CancellationToken.None);
+        analysis.Should().NotBeNull();
+
+        var parseResult = await _workspace.GetParseResultAsync("file:///bad.spy", CancellationToken.None);
+        parseResult.Should().NotBeNull();
+        parseResult!.Success.Should().BeFalse(
+            "a syntax-error document must not be cached as a successful parse");
+        parseResult.Diagnostics.Should().Contain(
+            d => d.IsError, "the syntactic error must be visible on the cached parse result");
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();
