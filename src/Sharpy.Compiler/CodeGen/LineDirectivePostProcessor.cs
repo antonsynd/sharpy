@@ -6,10 +6,13 @@ namespace Sharpy.Compiler.CodeGen;
 /// 2. Insert #line hidden for multi-line C# constructs between #line directives
 /// </summary>
 /// <remarks>
-/// Since #1108 this is a thin text applier over <see cref="LineDirectiveEditPlanner"/>. It stays as the
-/// differential-testing oracle (D5): the zero-parse default emit path uses
-/// <see cref="LineDirectiveTreeRewriter"/>, and a corpus-wide conformance test asserts the rewriter's
-/// tree text is byte-identical to <see cref="Process"/>. Both share the one planner, so the #line
+/// Since #1108 this is a thin text applier over <see cref="LineDirectiveEditPlanner"/>. Since the
+/// #1126 revert it is the <b>production</b> #line path again: the default emit seam post-processes
+/// the emitted text with <see cref="Process"/> and reparses it (the #1108 zero-parse tree rewrite
+/// lost at scale — 2.9× on directive-dense files, see the benchmark on #1126).
+/// <see cref="LineDirectiveTreeRewriter"/> is the one retained without production callers, as the
+/// corpus-differential subject and benchmark arm; a corpus-wide conformance test asserts its tree
+/// text stays byte-identical to <see cref="Process"/>. Both share the one planner, so the #line
 /// arithmetic cannot drift between them.
 /// </remarks>
 internal static class LineDirectivePostProcessor

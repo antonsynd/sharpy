@@ -187,14 +187,15 @@ public static class CompilerInvariants
     /// path already hands to Roslyn — no reparse. This is the hot-path form.
     /// </summary>
     /// <remarks>
-    /// Since the zero-parse flip (#1095) the tree handed here is built by
-    /// <c>CSharpSyntaxTree.Create</c>, not parsed from text, so <see cref="SyntaxTree.GetDiagnostics()"/>
-    /// carries no parser diagnostics — the "generated C# parses" invariant is <b>vacuous</b> on this
-    /// path. Reparse-equivalence (that the Create'd tree binds identically to a reparse of its text)
-    /// is instead guaranteed by <c>ReparseEquivalenceConformanceTests</c> and by the executing
-    /// file-based fixture corpus; genuine binding errors still surface downstream when the trees reach
-    /// <c>CSharpCompilation</c>. The call is kept because it still fires meaningfully on the reparse
-    /// paths (incremental cache-hit text restore, REPL) that hand over a <c>ParseText</c>'d tree.
+    /// What this checks depends on the emit seam (#1126): the default path (EmitLineDirectives on)
+    /// reparses the processed text via <c>CSharpSyntaxTree.ParseText</c>, so the tree handed here
+    /// carries genuine parser diagnostics and the "generated C# parses" invariant fires
+    /// meaningfully — as it does on the other reparse paths (incremental cache-hit text restore).
+    /// On the zero-parse paths (EmitLineDirectives off, i.e. the REPL — the #1095 win) the tree is
+    /// built by <c>CSharpSyntaxTree.Create</c> and carries no parser diagnostics, making the check
+    /// <b>vacuous</b> there; reparse-equivalence for those trees is instead guaranteed by
+    /// <c>ReparseEquivalenceConformanceTests</c> and the executing file-based fixture corpus, and
+    /// genuine binding errors still surface downstream when the trees reach <c>CSharpCompilation</c>.
     /// </remarks>
     public static void AssertPostCodeGen(SyntaxTree generatedTree, DiagnosticBag diagnostics)
     {

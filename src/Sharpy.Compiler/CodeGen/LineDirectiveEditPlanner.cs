@@ -8,9 +8,10 @@ namespace Sharpy.Compiler.CodeGen;
 /// <summary>
 /// A single edit the #line post-processing makes to the generated C# snapshot. Edits are computed
 /// once (over the emitter's normalized text) by <see cref="LineDirectiveEditPlanner"/> and are the
-/// SINGLE source of the arithmetic for both the text oracle
-/// (<see cref="LineDirectivePostProcessor.Process"/>) and the zero-parse
-/// <see cref="LineDirectiveTreeRewriter"/> — so the two can never drift (D4/D5, #1108).
+/// SINGLE source of the arithmetic for both the production text applier
+/// (<see cref="LineDirectivePostProcessor.Process"/>, the default emit path since the #1126
+/// revert) and the tree-rewriting <see cref="LineDirectiveTreeRewriter"/> (differential-oracle and
+/// benchmark subject only since #1126) — so the two can never drift (D4/D5, #1108).
 /// </summary>
 internal abstract record LineDirectiveEdit
 {
