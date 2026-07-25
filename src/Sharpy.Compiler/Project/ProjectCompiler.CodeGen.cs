@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -22,11 +21,12 @@ internal partial class ProjectCompiler
     /// </summary>
     /// <remarks>
     /// Returns both the generated C# text (keyed by output .cs path — the source of truth
-    /// for snapshots, the incremental cache, <c>emit csharp</c>, and LSP) and the
-    /// Roslyn <see cref="SyntaxTree"/>s (D3, #1050). The trees wrap the emitter's nodes with no
-    /// reparse — verbatim (REPL) or with the #line rewrite applied
-    /// (<see cref="LineDirectiveTreeRewriter"/>, #1108) — and are handed straight to
-    /// <c>CSharpCompilation.Create</c>; only cache-served files (which have text but no tree) are
+    /// for snapshots, the incremental cache, <c>emit csharp</c>, and LSP) and the Roslyn
+    /// <see cref="SyntaxTree"/>s (D3, #1050). The EmitLineDirectives-off branch (REPL) wraps the
+    /// emitter's exact nodes with no reparse and hands them straight to
+    /// <c>CSharpCompilation.Create</c> (zero-parse — #1095); the on branch (the default) reparses
+    /// the post-processed #line text by choice (#1126 — the tree rewrite scales with directive
+    /// count and lost at scale). Only cache-served files (text but no tree) are additionally
     /// reparsed downstream.
     /// </remarks>
     private GeneratedCode GenerateCode(ProjectConfig config)
@@ -101,46 +101,47 @@ internal partial class ProjectCompiler
                 var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
                 var emittedCode = roslynCompilationUnit.ToFullString();
 
-                // Both branches hand the emitter's tree straight to Roslyn via CSharpSyntaxTree.Create
-                // — zero-parse (#1095/#1050) — differing only in whether the #line post-processing runs:
+                // Two tree-construction paths, keyed on whether #line post-processing is requested:
                 //
                 //  • EmitLineDirectives ON (the default): the enhanced #line directives the emitter
                 //    plants carry placeholder char offsets and no #line hidden/#line default framing.
-                //    LineDirectiveEditPlanner computes the fixes (real indentation offsets; hidden
-                //    framing around multi-line constructs — #1077) and LineDirectiveTreeRewriter applies
-                //    them AS A TREE REWRITE (#1108): a single ReplaceTokens pass on leading trivia,
-                //    preserving the emitter's green nodes. LineDirectivePostProcessor.Process stays as
-                //    the text oracle — the rewritten tree's text is byte-identical to it (both share the
-                //    one planner), pinned by ReparseEquivalenceConformanceTests.
+                //    LineDirectivePostProcessor fixes those on TEXT (real indentation offsets; hidden
+                //    framing around multi-line constructs — #1077), so the generated C# stored below
+                //    and the tree handed to Roslyn are the reparse of that post-processed text. A text
+                //    edit invalidates the emitter's prebuilt node, hence the ParseText round-trip.
                 //
-                //  • EmitLineDirectives OFF (REPL): no post-processing, so the emitter's exact tree goes
-                //    straight to Roslyn unchanged.
+                //  • EmitLineDirectives OFF (REPL): no text transform runs, so the emitter's exact
+                //    tree goes straight to Roslyn with no ToFullString()→ParseText round-trip
+                //    (zero-parse — #1095/#1050). ReparseEquivalenceConformanceTests guarantees
+                //    Create(root) binds identically to ParseText(root.ToFullString()).
                 //
-                // ReparseEquivalenceConformanceTests guarantees Create(unit) binds identically to
-                // ParseText(unit.ToFullString()) for both the raw and the rewritten unit.
+                // #1126: the #1108 attempt reimplemented the post-processor as a tree rewrite
+                // (LineDirectiveEditPlanner + LineDirectiveTreeRewriter) to keep the on branch
+                // zero-parse, but the rewrite scales with directive count — LineDirectiveSeamBenchmarks
+                // measured a 2.9× regression at 446 edits (ReplaceTokens alone costs 4.3× the ParseText
+                // it avoids), crossover below ~80 edits, so real modules lose. The rewrite was reverted
+                // to this ParseText round-trip by choice; it survives as the corpus-differential oracle
+                // subject + benchmark arm (LineDirectiveTreeRewriter has no production callers since).
                 string csharpCode;
                 SyntaxTree syntaxTree;
-                CompilationUnitSyntax treeUnit;
                 if (config.EmitLineDirectives)
                 {
-                    var linePlan = LineDirectiveEditPlanner.Plan(emittedCode);
-                    treeUnit = LineDirectiveTreeRewriter.Apply(roslynCompilationUnit, linePlan);
-                    csharpCode = treeUnit.ToFullString();
-                    System.Diagnostics.Debug.Assert(
-                        csharpCode == LineDirectivePostProcessor.Process(emittedCode),
-                        "zero-parse #line rewrite must be byte-identical to the post-processor oracle (#1108)");
+                    csharpCode = LineDirectivePostProcessor.Process(emittedCode);
+                    syntaxTree = CSharpSyntaxTree.ParseText(
+                        csharpCode,
+                        options: CSharpParseOptions.Default,
+                        path: csharpFileName,
+                        encoding: System.Text.Encoding.UTF8);
                 }
                 else
                 {
-                    treeUnit = roslynCompilationUnit;
                     csharpCode = emittedCode;
+                    syntaxTree = CSharpSyntaxTree.Create(
+                        roslynCompilationUnit,
+                        options: CSharpParseOptions.Default,
+                        path: csharpFileName,
+                        encoding: System.Text.Encoding.UTF8);
                 }
-
-                syntaxTree = CSharpSyntaxTree.Create(
-                    treeUnit,
-                    options: CSharpParseOptions.Default,
-                    path: csharpFileName,
-                    encoding: System.Text.Encoding.UTF8);
 
                 fileMetrics?.EndPhase();
                 LogPhaseEndEvent(fileMetrics, sourceFile, codeGenContext.Diagnostics.ErrorCount);
@@ -168,8 +169,8 @@ internal partial class ProjectCompiler
                 // per successfully generated unit; the deleted single-file driver emitted the same.
                 LogCodeGenEvent(sourceFile, System.Text.Encoding.UTF8.GetByteCount(csharpCode));
                 // Validate the tree that is actually handed to Roslyn (GetDiagnostics on this same
-                // instance): the emitter's node — either verbatim (REPL) or with the #line rewrite
-                // applied (EmitLineDirectives) — in both cases zero-parse (#1050/#1077/#1108).
+                // instance): the emitter's node on the zero-parse path (REPL), or the reparse of the
+                // post-processed #line text on the EmitLineDirectives path (#1050/#1077/#1126).
                 CompilerInvariants.AssertPostCodeGen(syntaxTree, _diagnostics);
 
                 // Log per-file code gen metrics at Debug level

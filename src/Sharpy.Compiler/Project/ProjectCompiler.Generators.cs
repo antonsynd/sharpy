@@ -147,9 +147,9 @@ internal partial class ProjectCompiler
             // matches the hot path in ProjectCompiler.CodeGen.cs; ReparseEquivalenceConformanceTests
             // guarantees Create(root) binds identically to ParseText(root.ToFullString()).
             //
-            // Source generators emit no #line directives, so no post-processing runs here. If that
-            // ever changes, apply it as a tree rewrite (LineDirectiveTreeRewriter, #1108) — as the hot
-            // path now does — rather than reverting to ParseText: a text edit needn't leave the tree.
+            // Source generators emit no #line directives, so no post-processing runs here — this is
+            // the same zero-parse handoff as the EmitLineDirectives-off branch in
+            // ProjectCompiler.CodeGen.cs. (The directives-on hot path there reparses by choice, #1126.)
             generatorTrees[filePath] = CSharpSyntaxTree.Create(
                 roslynUnit,
                 options: CSharpParseOptions.Default,
