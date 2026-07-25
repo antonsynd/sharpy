@@ -1,0 +1,5 @@
+# Both uncalled generic-function references are diagnosed independently (SPY0335); the
+# guard substitutes Unknown so there is no downstream cascade. Locations point at the
+# start of each reference (the object of the IndexAccess), matching the #1133 arm.
+'identity[...]' cannot be used as a value @17:9
+'convert[...]' cannot be used as a value @19:9

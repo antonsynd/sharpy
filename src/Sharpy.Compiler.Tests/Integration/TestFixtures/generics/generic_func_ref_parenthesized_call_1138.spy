@@ -1,0 +1,16 @@
+# #1138: legal called forms of a generic-function reference must compile and run. The direct
+# call already worked; the parenthesized callee (identity[int])(x) previously mis-emitted as C#
+# element access on a method group (CS0021 -> SPY0908). The emitter now unwraps the Parenthesized
+# wrapper so it sees the same IndexAccess it would for the unparenthesized form.
+def identity[T](x: T) -> T:
+    return x
+
+
+def twice(n: int) -> int:
+    return n * 2
+
+
+def main() -> None:
+    print(identity[int](5))
+    print((identity[int])(6))
+    print(twice(identity[int](7)))

@@ -86,9 +86,12 @@ def use() -> None:
     {
         // No user shadow: map[int, int, int] must still resolve to the builtin overload whose
         // type-parameter count matches the supplied type args (the #999 behaviour this guard preserves).
+        // The reference is observed as a call callee — since #1138 an *uncalled* generic reference is
+        // an error (SPY0335), so we observe the arity selection on the callee node of a legal call,
+        // where the GenericFunctionType is recorded and accepted.
         var source = @"
 def use() -> None:
-    f = map[int, int, int]
+    f = map[int, int, int](lambda a, b: a + b, [1, 2], [10, 20])
 ";
         var (module, _, info, diagnostics) = Analyze(source);
 
@@ -101,6 +104,8 @@ def use() -> None:
             "explicit-generic builtin map must select the arity-matching (3 type-parameter) overload (#999)");
         diagnostics.GetErrors().Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.WrongArgumentCount,
             "a genuine arity-matching builtin reference must not be diagnosed (#1004 must not regress #999)");
+        diagnostics.GetErrors().Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.GenericFunctionReferenceNotCalled,
+            "a called generic reference is legal — the #1138 uncalled-reference guard must not fire on the callee");
     }
 
     // ── #1004: wrong explicit type-argument count on a generic function reference ──
@@ -145,21 +150,26 @@ def use() -> None:
     [Fact]
     public void UserGeneric_CorrectTypeArgs_NotDiagnosed()
     {
-        // Exact arity binds cleanly with no diagnostic.
+        // Exact arity binds cleanly with no #1004 wrong-count diagnostic. Observed as a call callee:
+        // since #1138 an uncalled generic reference is SPY0335, so the correct-arity binding is
+        // observed on the callee node of a legal call (identity[int](5)), where the GenericFunctionType
+        // is recorded and the #1138 guard accepts it.
         var source = @"
 def identity[T](x: T) -> T:
     return x
 
 def use() -> None:
-    f = identity[int]
+    f = identity[int](5)
 ";
         var (module, _, info, diagnostics) = Analyze(source);
 
         diagnostics.GetErrors().Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.WrongArgumentCount,
             "a correct type-arg count must not be diagnosed (#1004)");
+        diagnostics.GetErrors().Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.GenericFunctionReferenceNotCalled,
+            "a called generic reference is legal — the #1138 uncalled-reference guard must not fire on the callee");
 
         var genericRef = FindGenericRef(module, "identity");
         info.GetExpressionType(genericRef!).Should().BeOfType<GenericFunctionType>(
-            "a correct generic reference still records its GenericFunctionType");
+            "a correct generic reference still records its GenericFunctionType on the callee node");
     }
 }

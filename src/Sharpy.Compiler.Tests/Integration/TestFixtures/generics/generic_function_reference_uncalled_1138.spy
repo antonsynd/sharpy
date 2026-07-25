@@ -1,0 +1,20 @@
+# #1138: an uncalled generic-function reference with explicit type arguments is not a
+# first-class value — it must be called immediately. Using it as a value (assigned here)
+# is SPY0335, a semantic error, instead of the old codegen internal error (CS0021 -> SPY0908).
+def identity[T](x: T) -> T:
+    return x
+
+
+class Box:
+    def __init__(self):
+        pass
+
+    def convert[U](self, value: U) -> str:
+        return f"converted: {value}"
+
+
+def main() -> None:
+    f = identity[int]
+    b: Box = Box()
+    g = b.convert[str]
+    print("done")
