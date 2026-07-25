@@ -3,23 +3,23 @@
   "threshold": 0.1,
   "benchmarks": {
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_Classes": {
-      "allocated_bytes": 5594981,
+      "allocated_bytes": 5506288,
       "description": "Classes + Inheritance (35 lines)"
     },
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_Comprehensions": {
-      "allocated_bytes": 5520163,
+      "allocated_bytes": 5498291,
       "description": "Comprehensions (26 lines)"
     },
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_Fibonacci": {
-      "allocated_bytes": 5189691,
+      "allocated_bytes": 5175115,
       "description": "Fibonacci (22 lines)"
     },
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_HelloWorld": {
-      "allocated_bytes": 4766932,
+      "allocated_bytes": 4757914,
       "description": "Hello World (4 lines)"
     },
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_LargeFunctions": {
-      "allocated_bytes": 6395837,
+      "allocated_bytes": 6371837,
       "description": "Large Functions (73 lines)"
     }
   }
