@@ -385,7 +385,7 @@ The comparison script and its pytest live in `build_tools/allocation_gate.py` an
 
 ## LSP Analysis Latency (Phase 14 — borrowing list "measure first")
 
-> **Recorded:** 2026-07-24 · Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301
+> **Recorded:** 2026-07-25 (re-measured on dev HEAD after the #1137 fix) · Apple M4 Max (14 cores), macOS 26.5.2 · .NET 10.0.301
 > **Harness:** `LspAnalysisLatencyBaselineHarness` (`src/Sharpy.Lsp.Tests/`, `Category=Benchmark`,
 > excluded from the normal run); warm in-process medians of 15 timed runs after 3 warmups.
 
@@ -401,16 +401,20 @@ reparse) stays roadmap, so a structural edit still re-runs a full whole-project 
 
 | Path | Input | median | min | max |
 |------|-------|-------:|----:|----:|
-| single-file full analysis | 227-line file (`GetAnalysisAsync`, no incremental reuse) | 4.0 ms † | 3.1 ms | 9.5 ms |
-| project full reanalysis | 6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`) | 1.2 ms | 0.8 ms | 1.7 ms |
+| single-file full analysis | 227-line file (`GetAnalysisAsync`, no incremental reuse) | 2.3 ms † | 2.1 ms | 6.0 ms |
+| project full reanalysis | 6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`) | 0.9 ms | 0.6 ms | 1.4 ms |
 | project no-change edit skip | 6-file project, comment/whitespace edit to `stats.spy` (fast path returns without reanalysis) | 0.0 ms ‡ | 0.0 ms | 0.0 ms |
 
-† The single-file path is **unchanged** by the #1099 carve-out (only the project path was touched),
-but the elevated median versus the 2026-07-15 reading (1.7 ms) is **not** load skew: an uncontended
-re-run the same evening reproduced it (3.8 ms median, min 3.5, max 6.9, 15 runs) while the project
-full-reanalysis row improved to 0.9 ms median. The shift landed somewhere between 2026-07-15 and
-2026-07-24, outside this carve-out — tracked in
-[#1137](https://github.com/antonsynd/sharpy/issues/1137).
+† The 2026-07-15 → 07-24 doubling of this row (1.7 ms → ~3.8 ms median) was bisected under
+[#1137](https://github.com/antonsynd/sharpy/issues/1137) to a **single commit** — `c8e9e5276`
+("single-file Analyze routes through ProjectCompiler.AnalyzeProject", #1087), which routed
+single-file analysis through the whole-project pipeline: +1.3 ms median / +1.1 ms floor at that
+commit (`763d66adf` 1.9 ms → `c8e9e5276` 3.2 ms), and nothing after it moved the floor
+(narrowing/batches held ~3.1 ms). The fix in this batch removed the redundant fresh-document
+standalone parse — waste that predated the drift — recovering median 3.1 → 2.3 ms and floor
+2.8 → 2.1 ms (same-HEAD before/after). The residual ~0.4 ms floor over the pre-drift 1.7 ms is the
+unified pipeline's structural per-call overhead, tracked in
+[#1140](https://github.com/antonsynd/sharpy/issues/1140) on the #1099 incremental-frontend workstream.
 
 ‡ Sub-0.1 ms: the fast path only parses the edited buffer and runs `AstFingerprint.Classify` against
 the last-analyzed AST, then returns without touching the project. Only edits that classify as
