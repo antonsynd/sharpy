@@ -25,8 +25,18 @@ internal partial class RoslynEmitter
             return GenerateFunctoolsPartialCall(call);
         }
 
+        // A parenthesized generic-instantiation callee — (identity[int])(5) or (b.convert[int])(5) —
+        // wraps the IndexAccess in Parenthesized. The semantic phase already pinned the call target
+        // through the wrapper (CheckExpression recurses through Parenthesized), so unwrap here to let
+        // the generic-call detection below see the IndexAccess it would for the unparenthesized form.
+        // Without this the callee emits verbatim as C# element access on a method group (CS0021 →
+        // SPY0908). Purely structural — no type or lowering decision (#1138).
+        var callee = call.Function;
+        while (callee is Parenthesized parenCallee)
+            callee = parenCallee.Expression;
+
         // Handle generic type/function instantiation: Box[int](42) or identity[int](42)
-        if (call.Function is IndexAccess indexAccess &&
+        if (callee is IndexAccess indexAccess &&
             indexAccess.Object is Identifier genericName)
         {
             var result = GenerateGenericInstantiation(indexAccess, genericName, call);
@@ -36,7 +46,7 @@ internal partial class RoslynEmitter
 
         // Handle generic nested type instantiation: Outer.Inner[int](42)
         // and generic module function calls: json.loads[int](text)
-        if (call.Function is IndexAccess nestedIndexAccess &&
+        if (callee is IndexAccess nestedIndexAccess &&
             nestedIndexAccess.Object is MemberAccess nestedMemberAccess)
         {
             var result = GenerateNestedGenericInstantiation(nestedIndexAccess, nestedMemberAccess, call);
