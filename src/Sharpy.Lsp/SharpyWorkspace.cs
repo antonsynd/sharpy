@@ -138,10 +138,15 @@ internal sealed class DocumentState : IDisposable
 
             using var scope = new CancellableAnalysisScope(_pendingCtsRegistry, Uri, ct);
 
-            // Try partial re-analysis: parse first, then check if only a function body changed
-            var newParse = api.Parse(text, scope.Token);
+            // Incremental fast paths compare a fresh parse against the previous analysis's AST. A
+            // fresh document has no previous analysis to fingerprint against, so parsing up front is
+            // pure waste there (#1137): api.Analyze reparses internally, and its entry AST feeds the
+            // parse cache below. Only parse up front when a prior analysis exists to compare against.
+            ParseResult? newParse = null;
+            if (previousAnalysis != null && previousParse?.Ast != null)
+                newParse = api.Parse(text, scope.Token);
 
-            if (previousAnalysis != null && previousParse?.Ast != null && newParse.Ast != null)
+            if (previousAnalysis != null && previousParse?.Ast != null && newParse?.Ast != null)
             {
                 var change = AstFingerprint.Classify(previousParse.Ast, newParse.Ast);
                 if (change.Kind == AstChangeKind.NoChange)
@@ -191,6 +196,13 @@ internal sealed class DocumentState : IDisposable
                 scope.Token
             ).ConfigureAwait(false);
 
+            // The parse result to remember for the next edit's fingerprint and for parse-only
+            // handlers. The incremental path already parsed (newParse); the fresh path derives it
+            // from the analysis's entry AST — structurally identical to a standalone parse, and both
+            // the fingerprint and the parse-only handlers read only .Ast (never diagnostics). A null
+            // AST leaves the caches cold, matching an on-demand parse.
+            var parseForCache = newParse ?? ParseResultFromAnalysis(result);
+
             lock (_stateLock)
             {
                 // Only cache if document hasn't changed during analysis
@@ -199,9 +211,9 @@ internal sealed class DocumentState : IDisposable
                 if (_analysisVersion == versionAtStart && !IsCancelledResult(result))
                 {
                     _previousAnalysis = result;
-                    _previousParseResult = newParse;
+                    _previousParseResult = parseForCache;
                     CachedAnalysis = result;
-                    CachedParseResult = newParse;
+                    CachedParseResult = parseForCache;
                 }
             }
             return result;
@@ -254,6 +266,19 @@ internal sealed class DocumentState : IDisposable
             _parseSemaphore.Release();
         }
     }
+
+    /// <summary>
+    /// Builds a <see cref="ParseResult"/> view over an analysis result's entry AST, for the fresh
+    /// document path where no standalone parse was run (#1137). Only <see cref="ParseResult.Ast"/>
+    /// is consumed downstream — by the incremental fingerprint and the parse-only LSP handlers;
+    /// parse diagnostics live on the <see cref="SemanticResult"/>. Returns null when analysis
+    /// produced no AST, leaving the parse cache cold so a later parse-only request reparses on
+    /// demand (identical to how a fresh parse would populate it).
+    /// </summary>
+    private static ParseResult? ParseResultFromAnalysis(SemanticResult result)
+        => result.Ast == null
+            ? null
+            : new ParseResult { Success = true, Ast = result.Ast };
 
     private static bool IsCancelledResult(SemanticResult result)
     {

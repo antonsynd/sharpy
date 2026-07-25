@@ -133,6 +133,49 @@ public class WorkspaceTests : IDisposable
         analysis!.Success.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task SecondEdit_IdenticalText_ReusesPreviousAnalysis_FingerprintGateArmed()
+    {
+        // #1137: the fresh-document path skips the up-front standalone parse and instead derives
+        // the cached parse from the analysis's own entry AST. That derived parse is what the NEXT
+        // edit fingerprints against — so if the derivation were dropped (a naive gate), the second
+        // analysis would fall through to a full re-analysis and return a fresh object. A simple
+        // (comprehension-free) body lets AstFingerprint prove NoChange, whose fast path returns the
+        // very same previous result instance; reference-equality is the observable that the gate
+        // armed on the fresh path and fired on the second edit.
+        const string source = "def greet() -> str:\n    return \"hello\"\ndef main():\n    print(greet())";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+        var first = await _workspace.GetAnalysisAsync("file:///test.spy", CancellationToken.None);
+        first.Should().NotBeNull();
+
+        // Re-open with byte-identical text: structurally NoChange, so the fingerprint fast path
+        // must reuse the exact previous analysis instance.
+        _workspace.UpdateDocument("file:///test.spy", source, 2);
+        var second = await _workspace.GetAnalysisAsync("file:///test.spy", CancellationToken.None);
+
+        second.Should().NotBeNull();
+        ReferenceEquals(first, second).Should().BeTrue(
+            "the fresh-path parse derivation must arm the fingerprint so an identical second edit "
+            + "reuses the previous analysis instead of re-analyzing");
+    }
+
+    [Fact]
+    public async Task FreshDocument_AnalyzeThenParse_ParseCacheServedFromAnalysisAst()
+    {
+        // #1137: after a fresh full analysis (which no longer runs a standalone parse), the parse
+        // cache is populated from the analysis's entry AST, so a subsequent parse-only request
+        // returns that AST without reparsing. Analyze first (fresh path), then request the parse.
+        _workspace.OpenDocument("file:///test.spy", "def main():\n    print(\"hello\")", 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test.spy", CancellationToken.None);
+        analysis.Should().NotBeNull();
+        analysis!.Success.Should().BeTrue();
+
+        var parseResult = await _workspace.GetParseResultAsync("file:///test.spy", CancellationToken.None);
+        parseResult.Should().NotBeNull();
+        parseResult!.Ast.Should().NotBeNull();
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();
