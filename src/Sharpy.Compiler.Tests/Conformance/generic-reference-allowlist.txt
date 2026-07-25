@@ -1,0 +1,87 @@
+# Generic-reference conformance allowlist (ratchet ledger).
+#
+# One `specimen::form::arity` cell key per line (see GenericReferenceConformanceTests). A cell whose
+# outcome is ice / subscriptMisfire / csLeak / wrongOutput / crash fails the ratchet UNLESS its key
+# appears here. `#` starts a comment; blank lines are ignored. Presence of this file switches the
+# sweep into ratchet mode; delete a line when the underlying bug is fixed (the sweep then fails loudly
+# if the cell still misbehaves, forcing the ledger to stay honest).
+#
+# Every entry below is a CONFIRMED failing cell from the baseline run. Two are known-open issues
+# (#1142); the rest are NEW discoveries this sweep found (draft issues in the PR/handoff notes). No
+# cell is allowlisted speculatively — each was observed failing.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# #1142 (OPEN) — explicit type arguments on a USER-MODULE generic function are unresolved.
+# `genlib.identity[int](5)` (and its uncalled/paren/ternary/passed/excess/deficient forms) resolve the
+# member to a plain FunctionType, so `[...]` falls through to value-indexing → SPY0320 "does not
+# support indexing" (the subscript-misfire signature). The .NET-module arm (json.loads[int]) works;
+# only the user-module (.spy import) arm is missing. This is the class-A face the sweep was built to
+# pin. (A related face — a plain no-type-args call `genlib.identity(5)` failing inference with SPY0220
+# — surfaces as a *deliberate* diagnostic, so it is a PASS here, not allowlisted, but is the same
+# root cause: user-module generic functions are not modeled with their type parameters.)
+usermod_identity::called::exact
+usermod_identity::called::excess
+usermod_identity::uncalledAssigned::exact
+usermod_identity::uncalledAssigned::excess
+usermod_identity::uncalledThenCalled::exact
+usermod_identity::passedAsArg::exact
+usermod_identity::parenCalled::exact
+usermod_identity::ternaryCalled::exact
+usermod_pair::called::exact
+usermod_pair::called::excess
+usermod_pair::called::deficient
+usermod_pair::uncalledAssigned::exact
+usermod_pair::uncalledAssigned::excess
+usermod_pair::uncalledAssigned::deficient
+usermod_pair::uncalledThenCalled::exact
+usermod_pair::passedAsArg::exact
+usermod_pair::parenCalled::exact
+usermod_pair::ternaryCalled::exact
+
+# ─────────────────────────────────────────────────────────────────────────────
+# #1147 (OPEN, NEW) — a parenthesized method-group callee with NO explicit type args is emitted as a C#
+# CAST, not an invocation. `(identity)(5)` emits `(Identity)(5)`, which Roslyn parses as a cast to a
+# type `Identity` → CS0246/CS0118/CS0426 (a csLeak: clean Sharpy analysis, uncompilable C#). Root
+# cause: RoslynEmitter.GenerateCall (CodeGen/RoslynEmitter.Expressions.Access.cs:34-36) unwraps the
+# `Parenthesized` wrapper into a local `callee` for the generic-instantiation (IndexAccess) detection
+# only; the plain-identifier/member dispatch below (line 73 `call.Function is Identifier`, and the
+# member-access arm) still tests the ORIGINAL `call.Function`, so a parenthesized method group with no
+# `[T]` misses every proper arm and falls through to a verbatim `(Name)(args)` emit. This is the
+# sibling gap to the #1138 fix (which unwrapped only the `(f[int])(x)` IndexAccess shape); class X1
+# (semantics accepts, codegen emits uncompilable C#). A fix should retest the unwrapped `callee` for
+# the identifier/member arms (or unwrap once at the top of GenerateCall). Confirmed NOT generic-specific:
+# the two `nongeneric_*` cells below are a plain user fn `(foo)(5)` and a non-generic method
+# `(p.method)(5)`, both of which mis-emit the same way (CLI `run` reports SPY0908 wrapping CS0246/CS0118)
+# — the generics sweep merely surfaced a general parenthesized-callee defect.
+user_identity::parenCalled::none
+user_pair::parenCalled::none
+builtin_map::parenCalled::none
+shadow_map::parenCalled::none
+instance_convert::parenCalled::none
+instance_pick::parenCalled::none
+stdlib_json_loads::parenCalled::none
+bcl_convertall::parenCalled::none
+nongeneric_userfn::parenCalled::none
+nongeneric_instance::parenCalled::none
+
+# ─────────────────────────────────────────────────────────────────────────────
+# #1141 (OPEN) — a typo'd (nonexistent) member on a RAW BCL type WITH explicit type args is not
+# rejected at semantic time; it reaches codegen and emits `lst.NoSuchGeneric<...>(...)` → CS1061
+# "'List<int>' does not contain a definition for 'NoSuchGeneric'". User classes and modules correctly
+# reject the same shape with SPY0203 (member-not-found) — a deliberate diagnostic / PASS — so this is
+# specifically the BCL member-resolution path missing the pre-check. (The known fixture
+# bcl_generic_method_not_found_1136 pins the SPY0908-net face; this sweep's library compile path does
+# not run the assembly-emit step, so the same defect surfaces one layer earlier as the raw CS1061 leak
+# — identical root cause, class X1/X2.)
+bcl_convertall::typoMember::exact
+
+# ─────────────────────────────────────────────────────────────────────────────
+# #1148 (OPEN, NEW) — an explicit-generic builtin call whose type-argument COUNT selects a real overload
+# but whose VALUE arguments don't match that overload is accepted by semantics and mis-emitted.
+# `map[int, int, int](_dbl, xs)` selects Map<T1,T2,TOut>(Func<T1,T2,TOut>, IEnumerable<T1>,
+# IEnumerable<T2>) (three type params) but is given a one-arg func and a single iterable; Sharpy
+# reports no diagnostic and codegen emits a call missing `iterable2` → CS7036 (a csLeak). The correct
+# behavior is a deliberate arg-count/type diagnostic (SPY0224-class). Class D (builtin overload
+# selection by explicit type args) × X1 — value-argument validation is skipped once the type-arg count
+# pins a multi-arity builtin overload.
+builtin_map::called::excess
