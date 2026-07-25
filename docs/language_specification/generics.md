@@ -79,6 +79,24 @@ result = convert("42", int.parse)  # T=str, U=int inferred
 result = convert[str](...)  # ERROR: must specify all or none
 ```
 
+**A generic function reference with explicit type arguments must be called immediately:**
+
+Unlike a bare function reference — which is a first-class value (see [function_types.md](function_types.md)) — a generic function reference *with explicit type arguments* (e.g. `identity[int]`) is not a value. It exists only as the callee of an immediate call. It cannot be assigned to a variable, passed as an argument, stored in a collection, or returned.
+
+```python
+# ✅ Called immediately (the only legal use)
+result = identity[int](42)
+result = (identity[int])(42)    # parentheses around the callee are fine
+
+# ❌ Used as a value
+f = identity[int]               # ERROR: a generic function reference must be called
+print(identity[int])            # ERROR: cannot pass it as an argument
+items = [identity[int]]         # ERROR: cannot store it in a collection
+return identity[int]            # ERROR: cannot return it
+```
+
+To pass a specific instantiation around as a value, wrap it in a lambda (`lambda x: identity[int](x)`) or reference the generic function without type arguments and let inference close it at each call site.
+
 *Implementation*
 - *✅ Native - `identity<int>(42)` in C#*
 - *Type arguments use `[]` in Sharpy, lowered to `<>` in C#*
