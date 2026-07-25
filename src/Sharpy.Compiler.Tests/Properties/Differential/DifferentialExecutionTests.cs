@@ -1,0 +1,1144 @@
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using CsCheck;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Properties.Generators;
+using Sharpy.Compiler.Tests.Properties.Generators.Typed;
+using Sharpy.TestInfrastructure.Integration;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace Sharpy.Compiler.Tests.Properties.Differential;
+
+/// <summary>
+/// Differential EXECUTION oracle vs CPython (the runtime-semantics counterpart to
+/// <c>CPythonDifferentialParseTests</c>, which is a parse-only oracle).
+///
+/// <para>Contract: for any program in the shared Sharpy∩Python <em>executable</em> subset, a
+/// Sharpy-compiled run produces byte-identical stdout to <c>python3</c> executing the same source
+/// (modulo a documented float-formatting tolerance), or the divergence is a filed issue / documented
+/// designed deviation captured in the reviewed allowlist — never silent. This closes the gap that let
+/// the #1063/#1066/#1070/#1072/#1073/#1085/#1098 class (stable sort, split/replace edges, negative
+/// indexing, popitem order, floor division, float repr, …) reach mainline until someone hand-ported a
+/// CPython test.</para>
+///
+/// <para>Entry-point bridge: Sharpy requires a <c>def main()</c> and auto-invokes it, and rejects
+/// module-level executable statements (SPY0340/SPY0403 — the <c>module-level-executable-statement</c> /
+/// <c>missing-main-function</c> designed deviations). CPython does the opposite: it runs top-level code
+/// and does not auto-call <c>main</c>. The two arms therefore share <b>byte-identical program text</b>
+/// (every def, annotation, and statement) and differ only in the invocation: the Python arm appends a
+/// single <c>main()</c> call so CPython drives the same entry point Sharpy auto-invokes. Nothing in the
+/// body is transformed.</para>
+///
+/// <para>Corpus (three arms, deterministically capped at <c>DIFF_EXEC_LIMIT</c> ≈ 60/run):
+/// (1) hand-picked programs targeting the historical divergence surface, each verified against
+/// <c>python3</c> by hand; (2) real single-file <c>.spy</c>+<c>.expected</c> fixtures (via
+/// <see cref="FixtureDiscoveryHelper"/>) whose top level is functions-only-with-<c>main</c> and which
+/// pass the shared-subset AST filter; (3) generated well-typed programs reusing
+/// <see cref="GenTyped"/>. The Sharpy arm runs each through the production
+/// <see cref="IntegrationTestBase.CompileAndExecute"/> path (a real <c>dotnet</c> subprocess) — this
+/// bounds corpus size. The Python arm batches the whole corpus through ONE <c>python3</c> that drives
+/// <c>build_tools/differential_exec/run_programs.py</c>.</para>
+///
+/// <para>Sweep discipline (Design Decision #10, mirrors <c>InteropConformanceTests</c>): one aggregated
+/// JSON report under <c>.claude/tmp/</c>, ratcheted against a reviewed allowlist. The test skips
+/// (no-op) when a suitable <c>python3</c> is absent; CI pins 3.12.</para>
+/// </summary>
+[Trait("Category", "GapDiscovery")]
+public class DifferentialExecutionTests : IntegrationTestBase
+{
+    private const int DefaultLimit = 60;
+
+    // Fixed CsCheck seed so the generated arm (and hence the whole default corpus) is deterministic
+    // run-to-run — a sweep whose inputs drift cannot be ratcheted.
+    private const string GeneratedSeed = "0000DifferentialExec";
+
+    // Sharpy execution is capped tighter than the 30 s base default: a functions-only program that
+    // needs longer is a perf outlier we would rather skip than let dominate the ≤4-minute budget.
+    private const int SharpyExecTimeoutMs = 12_000;
+
+    public DifferentialExecutionTests(ITestOutputHelper output) : base(output) { }
+
+    [Fact]
+    public void DifferentialExecution_SharedSubset_MatchesCPython()
+    {
+        var oracle = PythonExecOracle.TryLocate();
+        if (oracle is null)
+        {
+            Output.WriteLine("SKIP: python3 >= 3.12 and run_programs.py not both available.");
+            return;
+        }
+
+        var sw = Stopwatch.StartNew();
+        int limit = ReadIntEnv("DIFF_EXEC_LIMIT", DefaultLimit);
+        var programs = BuildCorpus(limit);
+        Assert.True(programs.Count > 0, "Differential-exec corpus is empty — corpus construction is broken.");
+
+        // --- Sharpy arm: production compile + execute, sequential (each spawns a dotnet subprocess). ---
+        var sharpy = new Dictionary<string, ArmOutcome>(StringComparer.Ordinal);
+        foreach (var p in programs)
+        {
+            var r = CompileAndExecute(p.Source, "diff_exec.spy", executionTimeoutMs: SharpyExecTimeoutMs);
+            sharpy[p.Key] = new ArmOutcome(
+                Ok: r.Success && !r.TimedOut,
+                Stdout: r.StandardOutput,
+                TimedOut: r.TimedOut);
+        }
+
+        // --- Python arm: one batch process. Append main() so CPython invokes Sharpy's auto-entry. ---
+        var requests = new List<PyRequest>(programs.Count);
+        for (int i = 0; i < programs.Count; i++)
+            requests.Add(new PyRequest(i, programs[i].Key, programs[i].Source + "\nmain()\n"));
+        var pythonById = oracle.RunBatch(requests);
+
+        // --- Compare + classify. ---
+        var allowlist = Allowlist.Load();
+        var results = new List<CaseResult>();
+        for (int i = 0; i < programs.Count; i++)
+        {
+            var p = programs[i];
+            var s = sharpy[p.Key];
+            pythonById.TryGetValue(i, out var py);
+
+            var (verdict, detail) = Classify(s, py);
+            results.Add(new CaseResult(p, s, py, verdict, detail, allowlist.Matches(p.Key)));
+        }
+
+        var divergences = results.Where(r => r.Verdict is Verdict.Divergent
+                                          or Verdict.SharpyOkPythonError
+                                          or Verdict.PythonOkSharpyError).ToList();
+        var offenders = divergences.Where(r => !r.Allowlisted).ToList();
+        var matches = results.Count(r => r.Verdict == Verdict.Match || r.Verdict == Verdict.BothError);
+        var skips = results.Where(r => r.Verdict == Verdict.Skip).ToList();
+
+        sw.Stop();
+        WriteReport(results, divergences, offenders, matches, skips, allowlist, sw.Elapsed);
+
+        Output.WriteLine(
+            $"Differential-exec: {results.Count} programs "
+            + $"({programs.Count(x => x.Key.StartsWith("handpicked", StringComparison.Ordinal))} handpicked, "
+            + $"{programs.Count(x => x.Key.StartsWith("fixture", StringComparison.Ordinal))} fixture, "
+            + $"{programs.Count(x => x.Key.StartsWith("generated", StringComparison.Ordinal))} generated). "
+            + $"Match={matches} Skip={skips.Count} Divergent={divergences.Count} "
+            + $"Non-allowlisted={offenders.Count}. Wall={sw.Elapsed.TotalSeconds:F1}s.");
+        foreach (var o in offenders.Take(40))
+            Output.WriteLine($"  DIVERGENCE [{o.Verdict}] {o.Program.Key}: {o.Detail}");
+
+        // Enumeration sanity — a corpus that shrank to nothing is itself a regression.
+        Assert.True(results.Count > 0, "No programs were compared.");
+
+        // Ratchet: the allowlist file's presence engages it. Any non-allowlisted divergence fails.
+        if (Allowlist.FileExists())
+        {
+            Assert.True(offenders.Count == 0,
+                $"Differential-execution oracle: {offenders.Count} non-allowlisted divergence(s) between "
+                + "Sharpy and CPython on shared-subset programs. Each is either a real runtime-semantics bug "
+                + "(fix the compiler / stdlib), a designed deviation (add an allowlist entry citing "
+                + "docs/deviations.yaml), or a harness/subset gap (tighten the filter). See "
+                + ".claude/tmp/differential-exec-report.json.\n"
+                + string.Join("\n", offenders.Take(30).Select(o => $"  {o.Program.Key} [{o.Verdict}] {o.Detail}")));
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------- //
+    // Corpus construction
+    // ----------------------------------------------------------------------------------------- //
+
+    private List<Program> BuildCorpus(int limit)
+    {
+        var handpicked = HandPicked();
+        var remaining = Math.Max(0, limit - handpicked.Count);
+
+        // Split the remaining budget ~2/3 fixtures (real, realistic code) : ~1/3 generated (fuzz).
+        var fixtureTarget = (remaining * 2) / 3;
+        var generatedTarget = remaining - fixtureTarget;
+
+        var fixtures = Fixtures(fixtureTarget);
+        // Any fixture budget the pool could not fill rolls over to the generated arm.
+        generatedTarget += Math.Max(0, fixtureTarget - fixtures.Count);
+        var generated = Generated(generatedTarget);
+
+        var corpus = new List<Program>(handpicked.Count + fixtures.Count + generated.Count);
+        corpus.AddRange(handpicked);
+        corpus.AddRange(fixtures);
+        corpus.AddRange(generated);
+        return corpus;
+    }
+
+    /// <summary>
+    /// Hand-authored programs probing the historical runtime-divergence surface. Each is a valid
+    /// Sharpy <c>def main()</c> program whose CPython behaviour (top-level body + trailing
+    /// <c>main()</c>) was verified against <c>python3 3.12</c> before inclusion. Some are DESIGNED
+    /// deviations (floor division / modulo on negatives — <c>integer-division-floor</c>) and are
+    /// expected to diverge; the seeded allowlist keeps the ratchet green while the report records them.
+    /// </summary>
+    private static List<Program> HandPicked()
+    {
+        var items = new (string Name, string Body)[]
+        {
+            ("sort_stability", """
+                data = [(1, "b"), (1, "a"), (0, "c"), (1, "d")]
+                data.sort(key=lambda p: p[0])
+                for x in data:
+                    print(x[0], x[1])
+                """),
+            ("sorted_stability_by_len", """
+                words: list[str] = ["bb", "aa", "cc", "a", "b"]
+                for w in sorted(words, key=len):
+                    print(w)
+                """),
+            ("split_default_whitespace", """
+                s: str = "  a  b   c  "
+                print(s.split())
+                print(len(s.split()))
+                """),
+            ("split_empty_sep_edges", """
+                print("a,b,,c,".split(","))
+                print("".split(","))
+                print(",".split(","))
+                """),
+            ("replace_count_and_empty", """
+                print("aaaa".replace("a", "b", 2))
+                print("abc".replace("", "-"))
+                """),
+            ("negative_index_and_slice", """
+                xs: list[int] = [10, 20, 30, 40]
+                print(xs[-1], xs[-2])
+                print(xs[-3:])
+                print(xs[:-1])
+                """),
+            ("int_floordiv_modulo_negatives", """
+                print(-7 // 2)
+                print(7 // -2)
+                print(-7 % 3)
+                print(7 % -3)
+                """),
+            ("float_repr_halves", """
+                print(0.1 + 0.2)
+                print(1.0)
+                print(3 / 2)
+                print(1 / 3)
+                print(2.5)
+                """),
+            ("string_multiplication", """
+                print("ab" * 3)
+                print("-" * 10)
+                print(3 * "xy")
+                """),
+            ("chained_comparison", """
+                x: int = 5
+                print(1 < x < 10)
+                print(10 < x < 20)
+                print(1 < x <= 5)
+                """),
+            ("dict_popitem_order", """
+                d: dict[str, int] = {"a": 1, "b": 2, "c": 3}
+                print(d.popitem())
+                print(d.popitem())
+                print(d)
+                """),
+            ("bool_none_printing", """
+                print(True, False, None)
+                print([True, None, False])
+                print(str(None))
+                """),
+            ("list_slice_step", """
+                xs: list[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                print(xs[::2])
+                print(xs[1::2])
+                print(xs[::-1])
+                print(xs[8:2:-2])
+                """),
+            ("enumerate_and_zip", """
+                for i, c in enumerate(["a", "b", "c"]):
+                    print(i, c)
+                print(list(zip([1, 2, 3], [4, 5])))
+                """),
+            ("comprehension_and_reductions", """
+                xs: list[int] = [1, 2, 3, 4, 5]
+                print([x * x for x in xs if x % 2 == 1])
+                print(sum(xs), min(xs), max(xs))
+                """),
+            ("str_join_and_membership", """
+                parts: list[str] = ["a", "b", "c"]
+                print(",".join(parts))
+                print("b" in parts)
+                print("ell" in "hello")
+                """),
+            ("true_division_types", """
+                print(7 / 2)
+                print(6 / 3)
+                print(1 / 4)
+                """),
+            ("sorted_reverse_and_items", """
+                xs: list[int] = [3, 1, 2]
+                print(sorted(xs, reverse=True))
+                d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+                print(sorted(d.items()))
+                """),
+            // Isolated probe for the #sorted-dict bug: sorted(dict) must iterate keys like Python.
+            // Sharpy currently raises SPY0908 (generated C# cannot convert Sharpy.Dict to
+            // IEnumerable<TKey>); allowlisted until fixed.
+            ("sorted_dict_keys", """
+                d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+                print(sorted(d))
+                """),
+            ("list_mutation_methods", """
+                xs: list[int] = [1, 2, 3]
+                xs.append(4)
+                xs.insert(0, 0)
+                xs.reverse()
+                print(xs)
+                print(xs.index(3), xs.count(1))
+                """),
+            ("str_query_methods", """
+                s: str = "Hello, World"
+                print(s.find("o"), s.rfind("o"))
+                print(s.startswith("Hello"), s.endswith("!"))
+                print(s.upper(), s.lower())
+                print(s.count("l"))
+                """),
+            ("range_variants", """
+                print(list(range(5)))
+                print(list(range(2, 8)))
+                print(list(range(0, 10, 3)))
+                print(list(range(10, 0, -2)))
+                """),
+            ("power_abs_divmod", """
+                print(abs(-5), abs(5))
+                print(2 ** 10)
+                print(divmod(17, 5))
+                """),
+        };
+
+        var list = new List<Program>(items.Length);
+        foreach (var (name, body) in items)
+            list.Add(new Program($"handpicked::{name}", WrapInMain(body)));
+        return list;
+    }
+
+    /// <summary>
+    /// Real single-file fixtures whose top level is functions-only with a <c>main</c> and whose whole
+    /// tree is in the shared executable subset. Subsampled deterministically (stable FNV hash of the
+    /// name) so a default run touches a spread of categories, not an alphabetical prefix.
+    /// </summary>
+    private static List<Program> Fixtures(int target)
+    {
+        if (target <= 0)
+            return new List<Program>();
+
+        var eligible = new List<Program>();
+        foreach (var fx in FixtureDiscoveryHelper.DiscoverFixtures())
+        {
+            if (fx.IsMultiFile || fx.ExpectedFile is null || fx.ErrorFile is not null
+                || fx.RuntimeErrorFile is not null || fx.Features.Count > 0)
+                continue;
+
+            string source;
+            try { source = File.ReadAllText(fx.SpyFilePath); }
+            catch { continue; }
+
+            Module module;
+            try
+            {
+                var parser = new Sharpy.Compiler.Parser.Parser(
+                    new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll());
+                module = parser.ParseModule();
+                if (parser.Diagnostics.HasErrors)
+                    continue;
+            }
+            catch { continue; }
+
+            if (!IsFunctionsOnlyWithMain(module))
+                continue;
+            if (!ExecSubsetFilter.IsInSharedSubset(module))
+                continue;
+
+            eligible.Add(new Program($"fixture::{fx.TestName}", source));
+        }
+
+        return eligible
+            .OrderBy(p => StableHash(p.Key))
+            .ThenBy(p => p.Key, StringComparer.Ordinal)
+            .Take(target)
+            .OrderBy(p => p.Key, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Well-typed generated programs (fuzz arm), reusing <see cref="GenTyped.ExpressionOfType"/> over a
+    /// fixed, optional-free environment so the outputs stay inside the shared subset: two
+    /// <c>print(expr)</c> statements over int / str / bool / list results with fuel 1 (shallow enough
+    /// that int arithmetic cannot overflow Sharpy's 32-bit <c>int</c> and masquerade as a divergence).
+    /// Each candidate must compile in Sharpy and pass the subset filter.
+    /// </summary>
+    private static List<Program> Generated(int target)
+    {
+        var results = new List<Program>();
+        if (target <= 0)
+            return results;
+
+        var env = TypeEnv.WithCollections;
+        var types = new[] { "int", "str", "bool", "list[int]", "list[str]" };
+        var intElem = GenLiterals.Integer.Select(x => (Expression)x);
+        var strElem = GenLiterals.SimpleString.Select(x => (Expression)x);
+
+        var gen =
+            from xv in GenLiterals.Integer
+            from yv in GenLiterals.Integer
+            from sv in GenLiterals.SimpleString
+            from flagv in GenLiterals.Boolean
+            from nums in intElem.Array[0, 3]
+            from words in strElem.Array[0, 3]
+            from t1 in Gen.OneOfConst(types)
+            from e1 in GenTyped.ExpressionOfType(env, t1, 1)
+            from t2 in Gen.OneOfConst(types)
+            from e2 in GenTyped.ExpressionOfType(env, t2, 1)
+            select BuildGeneratedMain(xv, yv, sv, flagv,
+                nums.ToImmutableArray(), words.ToImmutableArray(), e1, e2);
+
+        int idx = 0;
+        var seenSources = new HashSet<string>(StringComparer.Ordinal);
+        gen.Sample(module =>
+        {
+            if (results.Count >= target)
+                return;
+
+            string source;
+            try { source = Sharpy.Compiler.Pretty.Unparser.Unparse(module); }
+            catch { return; }
+            if (!seenSources.Add(source))
+                return;
+
+            // Gate 1: Sharpy accepts it (analysis-clean).
+            try
+            {
+                var analysis = new Sharpy.Compiler.Compiler().Analyze(source, "gen_diff.spy");
+                if (!analysis.Success)
+                    return;
+            }
+            catch { return; }
+
+            // Gate 2: whole tree is in the shared executable subset (reparse then filter).
+            try
+            {
+                var parser = new Sharpy.Compiler.Parser.Parser(
+                    new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll());
+                var reparsed = parser.ParseModule();
+                if (parser.Diagnostics.HasErrors || !ExecSubsetFilter.IsInSharedSubset(reparsed))
+                    return;
+            }
+            catch { return; }
+
+            results.Add(new Program($"generated::g{idx++:D4}", source));
+            // threads:1 keeps this collection loop single-threaded (results/seenSources are not
+            // concurrent); seed pins determinism.
+        }, seed: GeneratedSeed, iter: Math.Max(target * 12L, 96L), threads: 1);
+
+        return results;
+    }
+
+    // ----------------------------------------------------------------------------------------- //
+    // Program builders
+    // ----------------------------------------------------------------------------------------- //
+
+    /// <summary>Wraps a top-level-body snippet as <c>def main() -> None:</c> with 4-space indentation.</summary>
+    private static string WrapInMain(string body)
+    {
+        var sb = new StringBuilder("def main() -> None:\n");
+        foreach (var raw in body.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
+            sb.Append("    ").Append(raw).Append('\n');
+        return sb.ToString();
+    }
+
+    private static Module BuildGeneratedMain(
+        IntegerLiteral xv, IntegerLiteral yv, StringLiteral sv, BooleanLiteral flagv,
+        ImmutableArray<Expression> nums, ImmutableArray<Expression> words,
+        Expression print1, Expression print2)
+    {
+        var body = ImmutableArray.CreateBuilder<Statement>();
+        body.Add(Decl("x", Ann("int"), xv));
+        body.Add(Decl("y", Ann("int"), yv));
+        body.Add(Decl("s", Ann("str"), sv));
+        body.Add(Decl("flag", Ann("bool"), flagv));
+        body.Add(Decl("nums", ListAnn("int"), new ListLiteral { Elements = nums }));
+        body.Add(Decl("words", ListAnn("str"), new ListLiteral { Elements = words }));
+        body.Add(Print(print1));
+        body.Add(Print(print2));
+
+        return new Module
+        {
+            Body = ImmutableArray.Create<Statement>(
+                new FunctionDef { Name = "main", Body = body.ToImmutable() })
+        };
+    }
+
+    private static VariableDeclaration Decl(string name, TypeAnnotation type, Expression value) =>
+        new() { Name = name, Type = type, InitialValue = value };
+
+    private static ExpressionStatement Print(Expression arg) =>
+        new()
+        {
+            Expression = new FunctionCall
+            {
+                Function = new Identifier { Name = "print" },
+                Arguments = ImmutableArray.Create(arg)
+            }
+        };
+
+    private static TypeAnnotation Ann(string name) => new() { Name = name };
+
+    private static TypeAnnotation ListAnn(string element) =>
+        new() { Name = "list", TypeArguments = ImmutableArray.Create(new TypeAnnotation { Name = element }) };
+
+    // ----------------------------------------------------------------------------------------- //
+    // Classification + output comparison
+    // ----------------------------------------------------------------------------------------- //
+
+    private static (Verdict, string) Classify(ArmOutcome sharpy, PyResult? python)
+    {
+        if (python is null)
+            return (Verdict.Divergent, "no python verdict returned for this program");
+
+        // Not parseable as Python => a Sharpy-only annotation slipped past the node-level filter.
+        // Parse-level differences are the parse oracle's job, so treat as out-of-subset skip.
+        if (python.SyntaxError)
+            return (Verdict.Skip, "python could not parse the source (Sharpy-only syntax); out of subset");
+
+        if (sharpy.Ok && python.Ok)
+        {
+            return OutputComparer.Equivalent(sharpy.Stdout, python.Stdout)
+                ? (Verdict.Match, "")
+                : (Verdict.Divergent,
+                    $"stdout mismatch — sharpy={Quote(sharpy.Stdout)} python={Quote(python.Stdout)}");
+        }
+
+        if (!sharpy.Ok && !python.Ok)
+            return (Verdict.BothError, "both arms failed (accepted as agreement)");
+
+        if (sharpy.Ok && !python.Ok)
+        {
+            // A name CPython cannot resolve, while Sharpy ran, means the program used a Sharpy-only
+            // name (an interop/builtin type like `array`, or `Some`/`Ok`) — out of the shared subset,
+            // not a runtime divergence. Sharpy would have errored at compile time on a truly undefined
+            // name, so a successful Sharpy run guarantees the name is Sharpy-provided.
+            if (ReferencesNameMissingInPython(python.Stderr))
+                return (Verdict.Skip, $"python name not available (Sharpy-only): {FirstLine(python.Stderr)}");
+
+            return (Verdict.SharpyOkPythonError,
+                $"sharpy ran (stdout={Quote(sharpy.Stdout)}) but python failed"
+                + (python.TimedOut ? " (timeout)" : $": {FirstLine(python.Stderr)}"));
+        }
+
+        return (Verdict.PythonOkSharpyError,
+            $"python ran (stdout={Quote(python.Stdout)}) but sharpy failed"
+            + (sharpy.TimedOut ? " (timeout)" : ""));
+    }
+
+    /// <summary>
+    /// Line-wise stdout comparison with a float-tolerant fallback, ported from the dogfood
+    /// <c>_outputs_equivalent</c> comparator: exact match per line, else both-pure-number within
+    /// relative tolerance (decimal-point presence must agree so <c>22</c> ≠ <c>22.0</c>), else
+    /// embedded-number match where the non-numeric text is identical and every numeric token is close.
+    /// </summary>
+    private static class OutputComparer
+    {
+        private const double RelTol = 1e-9;
+        private static readonly Regex Number = new(@"-?\d+\.?\d*", RegexOptions.Compiled);
+        private static readonly Regex PureNumber = new(@"^-?\d+\.?\d*$", RegexOptions.Compiled);
+
+        public static bool Equivalent(string a, string b)
+        {
+            var aLines = Normalize(a);
+            var bLines = Normalize(b);
+            if (aLines.Length != bLines.Length)
+                return false;
+
+            for (int i = 0; i < aLines.Length; i++)
+            {
+                var x = aLines[i].Trim();
+                var y = bLines[i].Trim();
+                if (x == y)
+                    continue;
+
+                if (PureNumber.IsMatch(x) && PureNumber.IsMatch(y))
+                {
+                    if (NumbersClose(x, y))
+                        continue;
+                    return false;
+                }
+
+                var xNums = Number.Matches(x);
+                var yNums = Number.Matches(y);
+                if (xNums.Count > 0 && xNums.Count == yNums.Count)
+                {
+                    var xText = Number.Replace(x, "\0");
+                    var yText = Number.Replace(y, "\0");
+                    if (xText == yText)
+                    {
+                        bool allClose = true;
+                        for (int k = 0; k < xNums.Count; k++)
+                        {
+                            if (!NumbersClose(xNums[k].Value, yNums[k].Value))
+                            {
+                                allClose = false;
+                                break;
+                            }
+                        }
+                        if (allClose)
+                            continue;
+                    }
+                }
+                return false;
+            }
+            return true;
+        }
+
+            private static string[] Normalize(string output) =>
+            output.Replace("\r\n", "\n", StringComparison.Ordinal)
+                  .TrimEnd('\n')
+                  .Split('\n');
+
+        private static bool NumbersClose(string a, string b)
+        {
+            bool aDot = a.Contains('.', StringComparison.Ordinal);
+            bool bDot = b.Contains('.', StringComparison.Ordinal);
+            if (aDot != bDot)
+                return false;
+            if (!double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var av)
+                || !double.TryParse(b, NumberStyles.Float, CultureInfo.InvariantCulture, out var bv))
+                return false;
+            if (av == 0)
+                return Math.Abs(bv) <= RelTol;
+            return Math.Abs((av - bv) / av) <= RelTol;
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------- //
+    // Fixture eligibility + subset filter
+    // ----------------------------------------------------------------------------------------- //
+
+    /// <summary>
+    /// True when every top-level statement is a plain function definition, one is named <c>main</c>,
+    /// and no name is defined twice. This excludes module-level statics (the <c>global</c>-mutation
+    /// divergence class), classes (object-repr divergences), imports (stdlib semantics), decorated
+    /// defs, and function overloading (Sharpy resolves by parameter type; CPython's second <c>def</c>
+    /// simply shadows the first — a designed deviation, not a runtime bug) — leaving a program the
+    /// Python arm can drive by appending a single <c>main()</c> call.
+    /// </summary>
+    private static bool IsFunctionsOnlyWithMain(Module module)
+    {
+        if (module.Body.Length == 0)
+            return false;
+        bool hasMain = false;
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var stmt in module.Body)
+        {
+            if (stmt is not FunctionDef fn)
+                return false;
+            if (!names.Add(fn.Name))
+                return false; // overloaded / redefined name — CPython would shadow, not overload.
+            if (fn.Name == "main")
+                hasMain = true;
+        }
+        return hasMain;
+    }
+
+    /// <summary>
+    /// Closed-whitelist predicate: rejects any node whose runtime meaning is Sharpy-only or diverges
+    /// from CPython by design at a level the byte-identical-text comparison cannot reconcile — Sharpy-
+    /// only expression forms, type/struct/enum/interface/class definitions, imports, decorators, and
+    /// the divergence-prone compound statements (match/with/try/defer/yield). Annotation-level Sharpy-
+    /// only syntax (<c>T?</c>, <c>!E</c>) is not caught here; CPython's parser rejects it and the
+    /// harness records that as a skip. Adapted from the parse oracle's SubsetFilter.
+    /// </summary>
+    private sealed class ExecSubsetFilter : AstVisitor
+    {
+        private bool _ok = true;
+
+        public static bool IsInSharedSubset(Node node)
+        {
+            var f = new ExecSubsetFilter();
+            f.Visit(node);
+            return f._ok;
+        }
+
+        private void Reject() => _ok = false;
+
+        public override void Visit(Node node)
+        {
+            if (!_ok)
+                return;
+            base.Visit(node);
+        }
+
+        // Sharpy-only expression forms (no CPython analog / divergent runtime meaning).
+        public override void VisitMaybeExpression(MaybeExpression node) => Reject();
+        public override void VisitTryExpression(TryExpression node) => Reject();
+        public override void VisitQuestionMarkExpression(QuestionMarkExpression node) => Reject();
+        public override void VisitTypeCoercion(TypeCoercion node) => Reject();
+        public override void VisitTypeCheck(TypeCheck node) => Reject();
+        public override void VisitMatchExpression(MatchExpression node) => Reject();
+        public override void VisitAwaitExpression(AwaitExpression node) => Reject();
+        public override void VisitModifiedArgument(ModifiedArgument node) => Reject();
+        public override void VisitTStringLiteral(TStringLiteral node) => Reject();
+        public override void VisitStarExpression(StarExpression node) => Reject();
+        public override void VisitSpreadElement(SpreadElement node) => Reject();
+        public override void VisitDictSpreadComprehension(DictSpreadComprehension node) => Reject();
+        public override void VisitWalrusExpression(WalrusExpression node) => Reject();
+        // F-strings: Sharpy/CPython disagree on delimiter/escape micro-syntax; exclude wholesale.
+        public override void VisitFStringLiteral(FStringLiteral node) => Reject();
+
+        // Definitions whose Python behaviour is Sharpy-only or diverges (object repr, static state).
+        public override void VisitClassDef(ClassDef node) => Reject();
+        public override void VisitStructDef(StructDef node) => Reject();
+        public override void VisitInterfaceDef(InterfaceDef node) => Reject();
+        public override void VisitEnumDef(EnumDef node) => Reject();
+        public override void VisitUnionDef(UnionDef node) => Reject();
+        public override void VisitDelegateDef(DelegateDef node) => Reject();
+        public override void VisitEventDef(EventDef node) => Reject();
+        public override void VisitPropertyDef(PropertyDef node) => Reject();
+        public override void VisitTypeAlias(TypeAlias node) => Reject();
+        public override void VisitDecoratedStatement(DecoratedStatement node) => Reject();
+
+        // Imports pull in stdlib/interop whose semantics are compared elsewhere.
+        public override void VisitImportStatement(ImportStatement node) => Reject();
+        public override void VisitFromImportStatement(FromImportStatement node) => Reject();
+
+        // Divergence-prone / Sharpy-only compound statements.
+        public override void VisitMatchStatement(MatchStatement node) => Reject();
+        public override void VisitWithStatement(WithStatement node) => Reject();
+        public override void VisitDeferStatement(DeferStatement node) => Reject();
+        public override void VisitYieldStatement(YieldStatement node) => Reject();
+
+        // Shared nodes carrying a Sharpy-only flag.
+        public override void VisitIdentifier(Identifier node)
+        {
+            if (node.IsNameBacktickEscaped)
+                Reject();
+        }
+
+        public override void VisitMemberAccess(MemberAccess node)
+        {
+            if (node.IsNullConditional)
+            {
+                Reject();
+                return;
+            }
+            DefaultVisit(node);
+        }
+
+        public override void VisitBinaryOp(BinaryOp node)
+        {
+            if (node.Operator is BinaryOperator.NullCoalesce or BinaryOperator.PipeForward)
+            {
+                Reject();
+                return;
+            }
+            DefaultVisit(node);
+        }
+
+        public override void VisitForClause(ForClause node)
+        {
+            if (node.IsAsync)
+            {
+                Reject();
+                return;
+            }
+            DefaultVisit(node);
+        }
+
+        public override void VisitLambdaExpression(LambdaExpression node)
+        {
+            if (node.IsArrowSyntax)
+            {
+                Reject();
+                return;
+            }
+            DefaultVisit(node);
+        }
+
+        public override void VisitIntegerLiteral(IntegerLiteral node)
+        {
+            if (node.Suffix is not null)
+                Reject();
+        }
+
+        public override void VisitFloatLiteral(FloatLiteral node)
+        {
+            if (node.Suffix is not null)
+                Reject();
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------- //
+    // Python oracle process wrapper
+    // ----------------------------------------------------------------------------------------- //
+
+    private sealed class PythonExecOracle
+    {
+        private readonly string _pythonExe;
+        private readonly string _scriptPath;
+
+        private PythonExecOracle(string pythonExe, string scriptPath)
+        {
+            _pythonExe = pythonExe;
+            _scriptPath = scriptPath;
+        }
+
+        public static PythonExecOracle? TryLocate()
+        {
+            string? script = FindRunnerScript();
+            if (script is null)
+                return null;
+            foreach (var candidate in new[] { "python3", "python" })
+            {
+                if (HasSupportedVersion(candidate))
+                    return new PythonExecOracle(candidate, script);
+            }
+            return null;
+        }
+
+        private static string? FindRunnerScript()
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir is not null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "sharpy.sln")))
+                {
+                    var candidate = Path.Combine(
+                        dir.FullName, "build_tools", "differential_exec", "run_programs.py");
+                    return File.Exists(candidate) ? candidate : null;
+                }
+                dir = dir.Parent;
+            }
+            return null;
+        }
+
+        private static bool HasSupportedVersion(string exe)
+        {
+            try
+            {
+                using var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = exe,
+                    Arguments = "--version",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                });
+                if (proc is null)
+                    return false;
+                string outText = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd();
+                if (!proc.WaitForExit(10_000))
+                {
+                    try { proc.Kill(entireProcessTree: true); } catch { }
+                    return false;
+                }
+                var match = Regex.Match(outText, @"Python (\d+)\.(\d+)");
+                if (!match.Success)
+                    return false;
+                int major = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+                int minor = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+                return major > 3 || (major == 3 && minor >= 12);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public IReadOnlyDictionary<int, PyResult> RunBatch(IReadOnlyList<PyRequest> requests)
+        {
+            string batchPath = Path.Combine(Path.GetTempPath(), $"sharpy-diffexec-{Guid.NewGuid():N}.jsonl");
+            try
+            {
+                using (var writer = new StreamWriter(batchPath, append: false, new UTF8Encoding(false)))
+                {
+                    foreach (var r in requests)
+                        writer.WriteLine(JsonSerializer.Serialize(new { id = r.Id, source = r.Source }));
+                }
+                return ParseVerdicts(RunRunner(batchPath));
+            }
+            finally
+            {
+                try { File.Delete(batchPath); } catch { }
+            }
+        }
+
+        private string RunRunner(string batchPath)
+        {
+            using var proc = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = _pythonExe,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                },
+            };
+            proc.StartInfo.ArgumentList.Add(_scriptPath);
+            proc.StartInfo.ArgumentList.Add("--batch");
+            proc.StartInfo.ArgumentList.Add(batchPath);
+
+            var stdout = new StringBuilder();
+            var stderr = new StringBuilder();
+            proc.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
+            proc.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
+
+            proc.Start();
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
+
+            // Generous ceiling: each program has its own per-program timeout inside the runner.
+            if (!proc.WaitForExit(300_000))
+            {
+                try { proc.Kill(entireProcessTree: true); } catch { }
+                throw new InvalidOperationException("run_programs.py timed out.");
+            }
+            proc.WaitForExit();
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"run_programs.py exited {proc.ExitCode}: {stderr}");
+
+            return stdout.ToString();
+        }
+
+        private static IReadOnlyDictionary<int, PyResult> ParseVerdicts(string stdout)
+        {
+            var result = new Dictionary<int, PyResult>();
+            foreach (var line in stdout.Split('\n'))
+            {
+                var trimmed = line.Trim();
+                if (trimmed.Length == 0)
+                    continue;
+                using var doc = JsonDocument.Parse(trimmed);
+                var root = doc.RootElement;
+                int id = root.GetProperty("id").GetInt32();
+                result[id] = new PyResult(
+                    Ok: root.GetProperty("ok").GetBoolean(),
+                    Stdout: root.TryGetProperty("stdout", out var so) ? so.GetString() ?? "" : "",
+                    Stderr: root.TryGetProperty("stderr", out var se) ? se.GetString() ?? "" : "",
+                    TimedOut: root.TryGetProperty("timed_out", out var to) && to.GetBoolean(),
+                    SyntaxError: root.TryGetProperty("syntax_error", out var sy) && sy.GetBoolean());
+            }
+            return result;
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------- //
+    // Allowlist (module::key ratchet, mirroring the interop conformance allowlist)
+    // ----------------------------------------------------------------------------------------- //
+
+    private sealed class Allowlist
+    {
+        private readonly HashSet<string> _exact;
+        private readonly List<string> _wildcards;
+
+        private Allowlist(HashSet<string> exact, List<string> wildcards)
+        {
+            _exact = exact;
+            _wildcards = wildcards;
+        }
+
+        public bool Matches(string key)
+            => _exact.Contains(key) || _wildcards.Any(w => GlobMatch(key, w));
+
+        public int Count => _exact.Count + _wildcards.Count;
+
+        private static readonly Lazy<string?> PathLazy = new(FindPath);
+
+        public static bool FileExists() => PathLazy.Value != null && File.Exists(PathLazy.Value);
+
+        public static Allowlist Load()
+        {
+            var exact = new HashSet<string>(StringComparer.Ordinal);
+            var wildcards = new List<string>();
+            var path = PathLazy.Value;
+            if (path == null || !File.Exists(path))
+                return new Allowlist(exact, wildcards);
+
+            foreach (var raw in File.ReadAllLines(path))
+            {
+                var line = raw;
+                var hash = line.IndexOf('#', StringComparison.Ordinal);
+                if (hash >= 0)
+                    line = line.Substring(0, hash);
+                line = line.Trim();
+                if (line.Length == 0)
+                    continue;
+                if (line.Contains('*', StringComparison.Ordinal))
+                    wildcards.Add(line);
+                else
+                    exact.Add(line);
+            }
+            return new Allowlist(exact, wildcards);
+        }
+
+        private static string? FindPath()
+        {
+            var current = AppContext.BaseDirectory;
+            while (current != null)
+            {
+                var dir = Path.Combine(current, "src", "Sharpy.Compiler.Tests", "Conformance");
+                if (Directory.Exists(dir))
+                    return Path.Combine(dir, "differential-exec-allowlist.txt");
+                current = Directory.GetParent(current)?.FullName;
+            }
+            return null;
+        }
+
+        private static bool GlobMatch(string text, string pattern)
+        {
+            var parts = pattern.Split('*');
+            var pos = 0;
+            for (var i = 0; i < parts.Length; i++)
+            {
+                var part = parts[i];
+                if (part.Length == 0)
+                    continue;
+                if (i == 0)
+                {
+                    if (!text.StartsWith(part, StringComparison.Ordinal))
+                        return false;
+                    pos = part.Length;
+                }
+                else
+                {
+                    var idx = text.IndexOf(part, pos, StringComparison.Ordinal);
+                    if (idx < 0)
+                        return false;
+                    pos = idx + part.Length;
+                }
+            }
+            return pattern.EndsWith("*", StringComparison.Ordinal) || pos == text.Length;
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------- //
+    // Report I/O
+    // ----------------------------------------------------------------------------------------- //
+
+    private void WriteReport(
+        List<CaseResult> results, List<CaseResult> divergences, List<CaseResult> offenders,
+        int matches, List<CaseResult> skips, Allowlist allowlist, TimeSpan elapsed)
+    {
+        var reportDir = ReportDir();
+        Directory.CreateDirectory(reportDir);
+        var report = new
+        {
+            summary = new
+            {
+                programs = results.Count,
+                handpicked = results.Count(r => r.Program.Key.StartsWith("handpicked", StringComparison.Ordinal)),
+                fixture = results.Count(r => r.Program.Key.StartsWith("fixture", StringComparison.Ordinal)),
+                generated = results.Count(r => r.Program.Key.StartsWith("generated", StringComparison.Ordinal)),
+                matches,
+                skips = skips.Count,
+                divergences = divergences.Count,
+                nonAllowlistedDivergences = offenders.Count,
+                allowlistSize = allowlist.Count,
+                wallSeconds = Math.Round(elapsed.TotalSeconds, 1),
+            },
+            ratchetMode = Allowlist.FileExists(),
+            divergences = divergences.Select(r => new
+            {
+                key = r.Program.Key,
+                verdict = r.Verdict.ToString(),
+                allowlisted = r.Allowlisted,
+                detail = r.Detail,
+                sharpyOk = r.Sharpy.Ok,
+                sharpyStdout = r.Sharpy.Stdout,
+                pythonOk = r.Python?.Ok,
+                pythonStdout = r.Python?.Stdout,
+                pythonStderr = FirstLine(r.Python?.Stderr ?? ""),
+                source = r.Program.Source,
+            }),
+            skips = skips.Take(60).Select(r => new { key = r.Program.Key, detail = r.Detail }),
+        };
+        var path = Path.Combine(reportDir, "differential-exec-report.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
+        Output.WriteLine($"Report written to: {path}");
+    }
+
+    private static string ReportDir()
+        => Path.GetFullPath(Path.Combine(
+            Path.GetDirectoryName(typeof(DifferentialExecutionTests).Assembly.Location)!,
+            "..", "..", "..", "..", "..", ".claude", "tmp"));
+
+    // ----------------------------------------------------------------------------------------- //
+    // Small helpers + records
+    // ----------------------------------------------------------------------------------------- //
+
+    private static int ReadIntEnv(string name, int fallback)
+        => int.TryParse(Environment.GetEnvironmentVariable(name), out var v) && v > 0 ? v : fallback;
+
+    /// <summary>
+    /// True when CPython failed because it could not resolve a name/module — i.e. the program leans
+    /// on a Sharpy-only builtin/interop name (e.g. <c>array[int](...)</c>) with no CPython analog.
+    /// </summary>
+    private static bool ReferencesNameMissingInPython(string stderr)
+        => stderr.Contains("NameError", StringComparison.Ordinal)
+           || stderr.Contains("ModuleNotFoundError", StringComparison.Ordinal)
+           || stderr.Contains("ImportError", StringComparison.Ordinal);
+
+    /// <summary>Deterministic (process-independent) 32-bit FNV-1a hash for stable subsampling.</summary>
+    private static uint StableHash(string s)
+    {
+        unchecked
+        {
+            uint hash = 2166136261;
+            foreach (var c in s)
+            {
+                hash ^= c;
+                hash *= 16777619;
+            }
+            return hash;
+        }
+    }
+
+    private static string Quote(string s)
+    {
+        var trimmed = s.Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd('\n');
+        if (trimmed.Length > 200)
+            trimmed = trimmed.Substring(0, 200) + "…";
+        return "`" + trimmed.Replace("\n", "\\n", StringComparison.Ordinal) + "`";
+    }
+
+    private static string FirstLine(string s)
+    {
+        if (string.IsNullOrEmpty(s))
+            return "";
+        var nl = s.IndexOf('\n', StringComparison.Ordinal);
+        var line = nl >= 0 ? s.Substring(0, nl) : s;
+        return line.Length > 200 ? line.Substring(0, 200) + "…" : line;
+    }
+
+    private enum Verdict
+    {
+        Match,
+        BothError,
+        Skip,
+        Divergent,
+        SharpyOkPythonError,
+        PythonOkSharpyError,
+    }
+
+    private sealed record Program(string Key, string Source);
+
+    private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut);
+
+    private sealed record PyRequest(int Id, string Key, string Source);
+
+    private sealed record PyResult(bool Ok, string Stdout, string Stderr, bool TimedOut, bool SyntaxError);
+
+    private sealed record CaseResult(
+        Program Program, ArmOutcome Sharpy, PyResult? Python, Verdict Verdict, string Detail, bool Allowlisted);
+}

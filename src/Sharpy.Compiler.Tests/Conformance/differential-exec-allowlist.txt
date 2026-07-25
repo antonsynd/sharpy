@@ -1,0 +1,44 @@
+# Differential-execution oracle allowlist (DifferentialExecutionTests).
+#
+# Reviewed baseline of known Sharpy-vs-CPython stdout divergences found by the
+# differential EXECUTION oracle over the shared Sharpy∩Python executable subset.
+# Its presence puts the oracle in RATCHET mode: any divergence whose program
+# `arm::name` key is NOT matched here fails CI. Every entry is either a documented
+# DESIGNED deviation (cite docs/deviations.yaml) or a known bug tracked for a fix.
+# This file is reviewed, never auto-grown. When a deviation is retired or a bug is
+# fixed, delete its entry so the oracle re-asserts agreement.
+#
+# Format: one `arm::name` key per line (text after `#` is a comment). A line
+# containing `*` is a simple glob matched against the whole key.
+#
+# Baseline taken on branch `dev` (2026-07-25): 60 programs / 52 match / 5 skip /
+# 3 divergent (all allowlisted below). See .claude/tmp/differential-exec-report.json.
+
+# --- Designed deviation (Axiom 1: .NET semantics win) — PERMANENT ---
+
+# UTF-16 string length: `len("😀")` is 2 (UTF-16 code units) in Sharpy vs 1 (code point) in
+# CPython — the documented `string-indexing-utf16` / `utf16-string-length` deviation
+# (Axiom 1: .NET strings are UTF-16). Grapheme/codepoint helpers are the opt-in. Permanent.
+fixture::strings/string_utf16_len
+
+# --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
+
+# Modulo on negatives + stale docs. CONFIRMED at the CLI: `//` FLOORS in both signs
+# (-7//2=-4, 7//-2=-4, -7//-2=3, 7//2=3 — matches CPython and spec arithmetic_operators.md),
+# but `%` is C#'s TRUNCATED remainder (-7 % 3 = -1, 7 % -3 = 1) where CPython floors (2, -2).
+# The two disagree, so Sharpy's own divmod identity is broken: (-7//3)*3 + (-7%3) prints -10,
+# not -7. Compounding docs are stale: deviations.yaml `integer-division-floor` (~line 473) and
+# CLAUDE.md's axiom table both still claim `//` is TRUNCATING and point at `math.floor_div` as
+# the escape hatch — but `//` floors and `math.floor_div` does not exist (`import math;
+# math.floor_div(-7,2)` -> SPY0203 "Module 'math' has no member 'floor_div'"). Fix: floor `%`
+# to match `//`. Bug: #1153. Stale-docs companion (deviations.yaml `integer-division-floor` +
+# CLAUDE.md axiom table + nonexistent `math.floor_div`): #1155.
+handpicked::int_floordiv_modulo_negatives
+
+# sorted(dict) must iterate the dict's KEYS like Python (-> ['a','b','c']). Sharpy raises
+# SPY0908: internal error — generated C# fails to compile with CS1503 "cannot convert from
+# 'Sharpy.Dict<string, int>' to 'System.Collections.Generic.IEnumerable<string>'": no
+# key-projection lowering for a bare-dict `sorted()` receiver. sorted(d.items()) and
+# sorted(list, reverse=True) both work — only the bare-dict receiver is broken. Bug: #1154
+# (sibling of closed #1068, sorted over dict.values).
+handpicked::sorted_dict_keys
