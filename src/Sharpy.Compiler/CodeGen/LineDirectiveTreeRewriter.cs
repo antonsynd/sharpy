@@ -30,6 +30,12 @@ namespace Sharpy.Compiler.CodeGen;
 /// text is byte-identical to <see cref="LineDirectivePostProcessor.Process"/> — asserted here in Debug
 /// and pinned corpus-wide by <c>ReparseEquivalenceConformanceTests</c> (D4/D6).
 /// </para>
+/// <para>
+/// This type has <b>no production callers since #1126</b>: the directives-on seam was reverted to
+/// <c>ParseText</c> because the rewrite scales with directive count (2.9× at 446 edits). It is kept as
+/// the corpus-differential oracle subject and the benchmark arm (<c>LineDirectiveSeamBenchmarks</c>) —
+/// the falsifiable record justifying that seam choice for any future re-attempt.
+/// </para>
 /// </remarks>
 internal static class LineDirectiveTreeRewriter
 {

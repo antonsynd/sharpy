@@ -396,15 +396,16 @@ public class ReparseEquivalenceConformanceTests
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Seam pin (#1095, P5.2) reconciled with #1108 line-directive tree rewrite:
+    // Seam pin (#1095, P5.2), post-#1126 seam-choice revert:
     //
-    // The codegen seam hands the emitter's tree to Roslyn via CSharpSyntaxTree.Create (zero-parse) on
-    // BOTH branches. When EmitLineDirectives is off (e.g. the REPL) the emitter's exact tree flows
-    // through unchanged. When it is on (the default), #1108 applies the #line post-processing as a
-    // tree rewrite (LineDirectiveTreeRewriter) instead of the old ParseText round-trip, so the
-    // emitter's green nodes for untouched subtrees are preserved and re-rooted — a reparse would
-    // discard them. Green-node identity is the cheap observable separating Create (re-roots the SAME
-    // green tree) from ParseText(ToFullString()) (a fresh parse, fresh green nodes).
+    // The codegen seam has two branches. When EmitLineDirectives is off (e.g. the REPL) the emitter's
+    // exact tree flows to Roslyn via CSharpSyntaxTree.Create (zero-parse) unchanged. When it is on (the
+    // default), the #line post-processing runs on TEXT and the result is reparsed via
+    // CSharpSyntaxTree.ParseText — #1108 briefly applied it as a tree rewrite (LineDirectiveTreeRewriter)
+    // to keep this branch zero-parse, but that rewrite scaled with directive count (2.9× at 446 edits)
+    // and was reverted by #1126. Green-node identity is the cheap observable separating Create (re-roots
+    // the SAME green tree) from ParseText(ToFullString()) (a fresh parse, fresh green nodes): the off
+    // branch preserves identity, the on branch does not.
     // ---------------------------------------------------------------------------------------------
 
     [Fact]
@@ -429,12 +430,15 @@ public class ReparseEquivalenceConformanceTests
     }
 
     [Fact]
-    public void CodeGenSeam_WithLineDirectives_RewritesTreeWithoutReparse()
+    public void CodeGenSeam_WithLineDirectives_ReparsesProcessedText_ByDecision1126()
     {
-        // On the EmitLineDirectives-on path (the default), #1108 applies the #line post-processing as
-        // a tree rewrite and hands the rewritten unit to CSharpSyntaxTree.Create — NOT a ParseText of
-        // the post-processed text. This pins that seam so a future change cannot silently reintroduce
-        // the reparse (or drop the post-processing).
+        // On the EmitLineDirectives-on path (the default), the #line post-processing runs on TEXT and
+        // the seam reparses the result via CSharpSyntaxTree.ParseText — NOT a tree rewrite. #1108 briefly
+        // made this branch zero-parse via LineDirectiveTreeRewriter, but the rewrite scaled with directive
+        // count (LineDirectiveSeamBenchmarks: 2.9× at 446 edits; ReplaceTokens alone 4.3× the ParseText it
+        // avoids; crossover below ~80 edits) and was reverted by #1126. This pins the deliberate reparse
+        // so a future "optimization" cannot silently re-flip the seam to the rewrite without confronting
+        // that benchmark evidence.
         var (result, units) = CompileProjectFilesCapturing(
             new[] { ("main.spy", "def main() -> None:\n    print(42)\n") },
             entryPoint: "main.spy",
@@ -447,17 +451,19 @@ public class ReparseEquivalenceConformanceTests
             .Select(u => u.GeneratedSyntaxTree)
             .Single(t => t is not null)!;
 
-        // (a) No reparse: the rewrite re-roots the emitter's green tree, so a subtree it does not
-        // touch (the `42` argument — no #line trivia edited on or under it) keeps its exact green node.
-        // A ParseText would have produced an all-fresh tree where this identity fails.
+        // (a) Reparse by decision (#1126): the on branch ParseTexts the post-processed text, producing an
+        // all-fresh green tree, so a subtree the emitter built (the `42` argument) is NOT the same green
+        // node. The reverted #1108 tree rewrite would have re-rooted and preserved this identity.
         var emittedLiteral = emitted.DescendantTokens()
             .First(t => t.IsKind(SyntaxKind.NumericLiteralToken) && t.ValueText == "42");
         var compiledLiteral = generatedTree.GetRoot().DescendantTokens()
             .First(t => t.IsKind(SyntaxKind.NumericLiteralToken) && t.ValueText == "42");
-        compiledLiteral.IsIncrementallyIdenticalTo(emittedLiteral).Should().BeTrue(
-            "with #line post-processing applied as a tree rewrite, the seam re-roots the emitter's "
-            + "green tree via CSharpSyntaxTree.Create — a reparse would discard those nodes and "
-            + "silently reintroduce the #1095 double parse");
+        compiledLiteral.IsIncrementallyIdenticalTo(emittedLiteral).Should().BeFalse(
+            "the directives-on seam reparses the post-processed text via CSharpSyntaxTree.ParseText by "
+            + "decision (#1126: the tree rewrite regressed 2.9× at 446 edits, ReplaceTokens 4.3× the "
+            + "ParseText it avoids) — the fresh parse must NOT share the emitter's green nodes; if this "
+            + "identity holds again, someone re-flipped the seam to the rewrite and must re-confront the "
+            + "benchmark");
 
         // (b) The compiled tree's text is byte-identical to the text oracle, including #line hidden.
         generatedTree.ToString().Should().Be(
