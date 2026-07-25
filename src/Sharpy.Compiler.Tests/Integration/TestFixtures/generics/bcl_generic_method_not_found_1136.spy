@@ -1,0 +1,13 @@
+# #1136 acceptance: a NONEXISTENT member on a raw BCL type with explicit type args must
+# fall through exactly as before the reflection fallback was added — no wrong resolution,
+# no crash, and no spurious arity/type-argument error from the new path. Today that
+# fall-through still surfaces the SPY0908 internal-error net (CS1061 on the emitted member
+# access); a proper member-not-found diagnostic is tracked as #1141 — update this
+# expectation when it lands.
+from system.collections.generic import List
+
+def probe(lst: List[int]) -> None:
+    lst.no_such_method[str](1)
+
+def main() -> None:
+    pass

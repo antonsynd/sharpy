@@ -1,0 +1,7 @@
+# #1138 Arm B: an uncalled generic-function reference to a .NET-module member
+# (json.loads[int]) is SPY0335 — the same rule as the bare-identifier and instance-receiver
+# arms (Compiler.Tests generics/generic_function_reference_uncalled_1138).
+import json
+
+def main() -> None:
+    f = json.loads[int]

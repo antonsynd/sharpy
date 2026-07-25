@@ -212,4 +212,27 @@ def use() -> None:
         HasNotCalledError(diagnostics).Should().BeFalse(
             "outer(identity[int](5)) nests two legal calls — neither is a value use");
     }
+
+    // ── Exotic indirect-call forms error deliberately (plan Design Decision 2) ──
+
+    [Fact]
+    public void TernaryCallee_ErrorsSpy0335_NotCrash()
+    {
+        // (identity[int] if c else identity[int])(5): the ternary arms are checked as values, not as
+        // call callees — the callee marker points at the ternary node, not its arms. Erroring here is
+        // deliberate (the emitter has no lowering for a GenericFunctionType flowing through a ternary;
+        // before #1138 this shape was another SPY0908 internal error). The message tells the user to
+        // call directly.
+        var source = @"
+def identity[T](x: T) -> T:
+    return x
+
+def use(c: bool) -> None:
+    y = (identity[int] if c else identity[int])(5)
+";
+        var (_, _, _, diagnostics) = Analyze(source);
+
+        HasNotCalledError(diagnostics).Should().BeTrue(
+            "generic function references in ternary arms are value uses — a deliberate conservative error, not a crash");
+    }
 }

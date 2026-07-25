@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// The receiver is threaded through a <em>parameter</em> (not constructed) so the emitted C# is free of
 /// the separate, pre-existing BCL-generic construction/local-annotation qualification ambiguity that
 /// makes <c>new List&lt;int&gt;()</c> a CS0104 ambiguous reference between <c>Sharpy.List</c> and
-/// <c>System.Collections.Generic.List</c> (tracked as its own follow-up). In this form the whole program
+/// <c>System.Collections.Generic.List</c> (tracked as its own follow-up, #1139). In this form the whole program
 /// compiles and links (<c>Success</c> holds), so the assertion pins both the emission and that the
 /// generated C# is valid — including that the lambda → <c>Converter&lt;int,string&gt;</c> conversion binds.
 /// </para>
@@ -47,6 +47,37 @@ def main() -> None:
         Assert.NotNull(result.GeneratedCSharp);
         Assert.Contains("ConvertAll<string>", result.GeneratedCSharp);
         // The old silent value-indexing mis-emit (element access on a method group) must be gone.
+        Assert.DoesNotContain("ConvertAll[", result.GeneratedCSharp);
+    }
+
+    [Fact]
+    public void BclGenericInstanceMethod_RepeatedCalls_BothResolveViaMemo()
+    {
+        // Two call sites for the same (receiver type, member) pair: the first resolution reflects,
+        // the second must hit the per-checker (TypeSymbol, memberName) memo (the imported BCL
+        // TypeSymbol is instance-cached by CachedModuleDiscovery, so the key matches). Both sites
+        // must emit the proper generic call — this pins that memoized resolution is equivalent to
+        // fresh resolution, per the Batch D plan's memoization test requirement.
+        var result = CompileAndExecute(@"
+from system.collections.generic import List
+
+def first(lst: List[int]) -> int:
+    strs = lst.convert_all[str](lambda x: str(x))
+    return len(strs)
+
+def second(lst: List[int]) -> int:
+    more = lst.convert_all[str](lambda x: str(x))
+    return len(more)
+
+def main() -> None:
+    pass
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.NotNull(result.GeneratedCSharp);
+        var occurrences = System.Text.RegularExpressions.Regex.Matches(
+            result.GeneratedCSharp!, "ConvertAll<string>").Count;
+        Assert.Equal(2, occurrences);
         Assert.DoesNotContain("ConvertAll[", result.GeneratedCSharp);
     }
 }

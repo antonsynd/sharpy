@@ -1,0 +1,3 @@
+# Library module for the user-module explicit-type-args limitation fixture (#1142).
+def identity[T](x: T) -> T:
+    return x
