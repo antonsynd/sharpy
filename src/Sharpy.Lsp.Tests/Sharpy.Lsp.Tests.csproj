@@ -23,6 +23,8 @@
     <ProjectReference Include="..\Sharpy.Stdlib\Sharpy.Stdlib.csproj">
       <Aliases>SharpyStdlib</Aliases>
     </ProjectReference>
+    <!-- FrontEndParityTests reuses the canonical fixture corpus enumerator (FixtureDiscoveryHelper). -->
+    <ProjectReference Include="..\Sharpy.TestInfrastructure\Sharpy.TestInfrastructure.csproj" />
   </ItemGroup>
 
 </Project>

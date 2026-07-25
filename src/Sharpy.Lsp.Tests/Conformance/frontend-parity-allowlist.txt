@@ -1,0 +1,17 @@
+# Front-end diagnostic-parity allowlist (Class F — cross-entry-point drift)
+#
+# Reviewed baseline of KNOWN, triaged parity violations found by the front-end parity
+# sweep (FrontEndParityTests). Its mere presence puts the sweep in RATCHET mode: any
+# violation whose key is NOT matched here fails CI. Every entry must cite a GitHub issue
+# tracking the drift; when the drift is fixed, delete its entries.
+#
+# The sweep compares — for each fixture — the in-scope diagnostic-code multiset produced by
+# each front end against the CompilerApi.Analyze baseline, after the documented normalization
+# (see FrontEndParityTests.cs header). A key here suppresses one (pair::fixture) mismatch.
+#
+# Format: one `pair::fixture` key per line (text after `#` is a comment). A line containing
+# `*` is a simple glob matched against the whole key. `pair` is one of:
+#   compile::<fixture>   REPL::<fixture>   LSP::<fixture>   compile-project::<fixture>
+#
+# Comments-only (as shipped) means the ratchet holds at ZERO known violations: the sweep is
+# green only if every front end agrees with Analyze on every swept fixture.

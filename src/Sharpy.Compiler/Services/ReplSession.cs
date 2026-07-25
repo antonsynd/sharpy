@@ -326,40 +326,9 @@ public class ReplSession
         {
             // The REPL's replayed source becomes a synthetic project-of-one-file driven through
             // the unified ProjectCompiler (#1087) — no hand-rolled phase pipeline. The REPL keeps
-            // only its in-memory Roslyn emit + execute. EmitLineDirectives is off so the emitted
-            // C# carries no source-line mapping (it is compiled and run in memory). Feature gating
-            // (SPY0331), entry-point rules, and all analysis diagnostics come from ProjectCompiler.
-            var moduleRegistry = new ModuleRegistry(_logger);
-            moduleRegistry.LoadReference(SharpyCoreAssembly.Location);
-            var stdlibPath = Path.Combine(Path.GetDirectoryName(SharpyCoreAssembly.Location)!, "Sharpy.Stdlib.dll");
-            if (File.Exists(stdlibPath))
-                moduleRegistry.LoadReference(stdlibPath);
-            else
-                _logger.LogWarning("Sharpy.Stdlib.dll not found — stdlib modules will not be available.", 0, 0);
-
-            var config = new ProjectConfig
-            {
-                ProjectFilePath = ReplFileName,
-                ProjectDirectory = Directory.GetCurrentDirectory(),
-                // Empty root namespace keeps generated code in the global namespace, matching the
-                // single-file compile path (and what the REPL's own codegen produced before).
-                RootNamespace = string.Empty,
-                OutputType = "exe",
-                EntryPoint = ReplFileName,
-                SourceFiles = new List<string> { ReplFileName },
-                InMemorySources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    [ReplFileName] = source
-                },
-                EmitLineDirectives = false
-            };
-
-            var projectCompiler = new ProjectCompiler(
-                _logger, moduleRegistry,
-                warningsAsErrors: false, suppressedWarnings: null, maxErrors: 0,
-                incremental: false, _emitterFactory, _features);
-
-            var result = projectCompiler.Compile(config, cancellationToken, emitAssembly: false);
+            // only its in-memory Roslyn emit + execute. Feature gating (SPY0331), entry-point
+            // rules, and all analysis diagnostics come from ProjectCompiler.
+            var result = RunReplProjectCompiler(source, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
             var diagnostics = result.Diagnostics.GetAll();
@@ -414,6 +383,84 @@ public class ReplSession
                 Phase: CompilerPhase.Unknown);
             return CompilationOutcome.Failure(new[] { diag });
         }
+    }
+
+    /// <summary>
+    /// Builds the REPL's synthetic project-of-one-file and runs it through the unified
+    /// <see cref="ProjectCompiler"/> (analysis + code generation, no assembly emit). Shared by
+    /// <see cref="CompileAndExecute"/> — which then Roslyn-compiles and executes the generated C# —
+    /// and by <see cref="ProbeFrontEndDiagnostics"/>, the front-end diagnostic-parity harness seam,
+    /// so both observe the exact same REPL front-door pipeline (options, references, OutputType,
+    /// features) with no risk of the two drifting apart. EmitLineDirectives is off so the emitted
+    /// C# carries no source-line mapping (it is compiled and run in memory).
+    /// </summary>
+    private ProjectCompilationResult RunReplProjectCompiler(string source, CancellationToken cancellationToken)
+    {
+        var moduleRegistry = new ModuleRegistry(_logger);
+        moduleRegistry.LoadReference(SharpyCoreAssembly.Location);
+        var stdlibPath = Path.Combine(Path.GetDirectoryName(SharpyCoreAssembly.Location)!, "Sharpy.Stdlib.dll");
+        if (File.Exists(stdlibPath))
+            moduleRegistry.LoadReference(stdlibPath);
+        else
+            _logger.LogWarning("Sharpy.Stdlib.dll not found — stdlib modules will not be available.", 0, 0);
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = ReplFileName,
+            ProjectDirectory = Directory.GetCurrentDirectory(),
+            // Empty root namespace keeps generated code in the global namespace, matching the
+            // single-file compile path (and what the REPL's own codegen produced before).
+            RootNamespace = string.Empty,
+            OutputType = "exe",
+            EntryPoint = ReplFileName,
+            SourceFiles = new List<string> { ReplFileName },
+            InMemorySources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [ReplFileName] = source
+            },
+            EmitLineDirectives = false
+        };
+
+        var projectCompiler = new ProjectCompiler(
+            _logger, moduleRegistry,
+            warningsAsErrors: false, suppressedWarnings: null, maxErrors: 0,
+            incremental: false, _emitterFactory, _features);
+
+        return projectCompiler.Compile(config, cancellationToken, emitAssembly: false);
+    }
+
+    /// <summary>
+    /// Runs the REPL front door — the real <see cref="ClassifyInput"/> classification and, for
+    /// accepted inputs, the same <see cref="BuildFullSource"/> replay and
+    /// <see cref="RunReplProjectCompiler"/> pipeline that <see cref="EvaluateAsync"/> uses — but
+    /// stops after producing diagnostics: no Roslyn C# compile, no assembly load/execute. This is
+    /// the seam the cross-front-end diagnostic-parity sweep uses to compare the REPL's diagnostics
+    /// against the other entry points without executing arbitrary fixture code in-process. The
+    /// returned <see cref="ReplFrontEndProbe.Classification"/> lets the harness record-and-skip
+    /// inputs the REPL treats structurally differently (executable-statement wrapping in a
+    /// synthesized <c>main()</c>, pre-parse rejection) rather than mis-compare them.
+    /// </summary>
+    /// <remarks>
+    /// A fresh <see cref="ReplSession"/> has no accumulated history, so the replayed source is just
+    /// this input's contribution plus the synthesized empty <c>main()</c> — a single whole-module
+    /// submission. Session-wide <c>_features</c> flow through unchanged, so feature gating is
+    /// exercised identically to the executing path.
+    /// </remarks>
+    internal ReplFrontEndProbe ProbeFrontEndDiagnostics(string input, CancellationToken cancellationToken = default)
+    {
+        var classification = ClassifyInput(input, out var preParseDiagnostics);
+        if (preParseDiagnostics.Count > 0)
+            return new ReplFrontEndProbe(ReplInputClassification.PreParseError, false, preParseDiagnostics);
+
+        string? newModuleSnippet = classification.Kind == InputKind.ModuleLevel ? classification.Source : null;
+        string? newStatementSnippet = classification.Kind == InputKind.Statement ? classification.Source : null;
+        var fullSource = BuildFullSource(newModuleSnippet, newStatementSnippet);
+
+        var result = RunReplProjectCompiler(fullSource, cancellationToken);
+        var mapped = classification.Kind == InputKind.ModuleLevel
+            ? ReplInputClassification.ModuleLevel
+            : ReplInputClassification.Statement;
+        return new ReplFrontEndProbe(mapped, result.Success, result.Diagnostics.GetAll());
     }
 
     // internal (not private) so the SPY0908 no-CS-leak net can be exercised directly with
@@ -564,4 +611,32 @@ public class ReplSession
     {
         public static InputClassification Empty => new(InputKind.Statement, string.Empty);
     }
+
+    /// <summary>
+    /// How the REPL front door (<see cref="ClassifyInput"/>) classified a whole submission,
+    /// surfaced by <see cref="ProbeFrontEndDiagnostics"/> so the front-end parity sweep can decide
+    /// whether the REPL sees the same program the other entry points do.
+    /// </summary>
+    internal enum ReplInputClassification
+    {
+        /// <summary>Every statement is a module-level construct; compiled roughly as-is (plus the
+        /// synthesized empty <c>main()</c>). The only shape the parity sweep compares.</summary>
+        ModuleLevel,
+
+        /// <summary>Contains executable statements, which the REPL wraps in a synthesized
+        /// <c>main()</c> — a different program shape than the other front ends analyze.</summary>
+        Statement,
+
+        /// <summary>The REPL's own pre-parse (<see cref="ClassifyInput"/> via <c>ParseStatements</c>)
+        /// rejected the input before it reached the compiler.</summary>
+        PreParseError,
+    }
+
+    /// <summary>Result of <see cref="ProbeFrontEndDiagnostics"/>: the classification the REPL front
+    /// door assigned, whether the (non-executing) pipeline succeeded, and the diagnostics it
+    /// produced.</summary>
+    internal readonly record struct ReplFrontEndProbe(
+        ReplInputClassification Classification,
+        bool Success,
+        IReadOnlyList<CompilerDiagnostic> Diagnostics);
 }
