@@ -69,6 +69,14 @@ internal partial class TypeChecker
     // nor presupposes the very fact the test is checking (an isinstance operand cast).
     private Expression? _typeTestOperand;
 
+    // The callee expression of the FunctionCall currently being checked (`call.Function`). A
+    // generic function reference with explicit type args (`identity[int]`) is an internal carrier,
+    // legal *only* as the immediate callee of a call. CheckExpression errors (SPY0335) whenever a
+    // GenericFunctionType surfaces on any node that is not this callee, so uncalled references never
+    // escape into a value context (#1138). Save/restored around the callee check in CheckFunctionCall
+    // (mirrors the _typeTestOperand idiom); stored as a node reference so nested calls restore correctly.
+    private Expression? _currentCallCallee;
+
     // Track whether we're inside an except block (for bare raise validation)
     private bool _inExceptBlock = false;
 

@@ -82,8 +82,14 @@ internal partial class TypeChecker
         bool isNullConditionalCall = call.Function is MemberAccess { IsNullConditional: true };
         bool isOptionalNullConditional = false;
 
-        // Check the called expression type first
+        // Check the called expression type first. Mark the callee node so the CheckExpression choke
+        // point accepts a GenericFunctionType here (`identity[int](x)` is legal) while still erroring
+        // (SPY0335) if one surfaces on any other node (#1138). Save/restore mirrors _typeTestOperand
+        // so nested calls (`outer(identity[int](5))`) restore the enclosing callee correctly.
+        var savedCallCallee = _currentCallCallee;
+        _currentCallCallee = call.Function;
         var calleeType = CheckExpression(call.Function);
+        _currentCallCallee = savedCallCallee;
 
         // After checking the callee, determine if this is ?. on an Optional object
         if (isNullConditionalCall && call.Function is MemberAccess nullCondMa)

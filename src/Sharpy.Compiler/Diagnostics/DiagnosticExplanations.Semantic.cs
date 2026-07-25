@@ -106,6 +106,11 @@ public static partial class DiagnosticExplanations
             "x: int = 42\ny: int = x()  # int is not callable",
             "Ensure you are calling a function or method, not a value.");
 
+        Add(dict, DiagnosticCodes.Semantic.GenericFunctionReferenceNotCalled, "Generic function reference must be called", "Semantic",
+            "A generic function reference with explicit type arguments (e.g. identity[int]) is not a first-class value. It must be called immediately; it cannot be assigned, passed as an argument, stored in a collection, or returned.",
+            "f = identity[int]  # cannot be used as a value",
+            "Call it directly: `identity[int](value)`, or assign the result of a call.");
+
         Add(dict, DiagnosticCodes.Semantic.InvalidPipeTarget, "Invalid pipe target", "Semantic",
             "The right-hand side of a pipe operator (|>) is not a valid pipe target. The target must be a callable that accepts the piped value as its first argument.",
             "42 |> \"hello\"  # str is not a valid pipe target",

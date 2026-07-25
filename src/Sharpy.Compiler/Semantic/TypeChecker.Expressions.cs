@@ -77,6 +77,24 @@ internal partial class TypeChecker
             _ => HandleUnrecognizedExpression(expr)
         };
 
+        // #1138: A GenericFunctionType (identity[int]) is an internal carrier used to pass explicit
+        // type arguments from an IndexAccess to its enclosing FunctionCall — never a first-class value.
+        // It is legal only as the immediate callee of a call (`identity[int](x)`); CheckFunctionCall
+        // marks that node in _currentCallCallee. If one surfaces on any other node, the user tried to
+        // use it as a value (assign / pass / store / return); error here so it never escapes to codegen,
+        // where GenerateIndexAccess would emit `identity[int]` as C# element access (CS0021 → SPY0908).
+        // Substitute UnknownType and fall through to the error-recovery block below so the new error +
+        // Unknown result marks this node as error recovery, preserving downstream cascade suppression.
+        if (type is GenericFunctionType genericFnRef && !IsCurrentCallCallee(expr))
+        {
+            AddError(
+                $"a generic function reference must be called; '{genericFnRef.FunctionSymbol.Name}[...]' cannot be used as a value",
+                expr.LineStart, expr.ColumnStart,
+                code: DiagnosticCodes.Semantic.GenericFunctionReferenceNotCalled,
+                span: expr.Span);
+            type = SemanticType.Unknown;
+        }
+
         // Track error recovery: if the result is UnknownType and either new errors were
         // emitted or sub-expressions were marked as error recovery, mark this expression
         // as error recovery too. This enables transitive propagation — if MathUtil.square
@@ -91,6 +109,20 @@ internal partial class TypeChecker
         // Cache the result
         _semanticInfo.SetExpressionType(expr, type);
         return type;
+    }
+
+    /// <summary>
+    /// True when <paramref name="expr"/> is the immediate callee of the FunctionCall currently being
+    /// checked (see <c>_currentCallCallee</c>). Both nodes are compared through <see cref="UnwrapParenthesized"/>
+    /// because a parenthesized callee like <c>(identity[int])(5)</c> is legal and CheckExpression recurses
+    /// through <see cref="Parenthesized"/> wrappers — the guard must accept both the wrapper and the inner
+    /// node. Reference equality: AST records use identity comparison via SemanticInfo (#1138).
+    /// </summary>
+    private bool IsCurrentCallCallee(Expression expr)
+    {
+        if (_currentCallCallee == null)
+            return false;
+        return ReferenceEquals(UnwrapParenthesized(_currentCallCallee), UnwrapParenthesized(expr));
     }
 
     private SemanticType HandleUnrecognizedExpression(Expression expr)
