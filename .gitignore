@@ -18,6 +18,11 @@ mcp.json
 # MkDocs build output
 site/
 
+# BenchmarkDotNet output (the committed artifact is benchmarks/allocation-baseline.json;
+# raw run results feed `python -m build_tools.allocation_gate` locally/in CI only)
+BenchmarkDotNet.Artifacts/
+BenchmarkResults/
+
 node_modules/
 .serena/
 
