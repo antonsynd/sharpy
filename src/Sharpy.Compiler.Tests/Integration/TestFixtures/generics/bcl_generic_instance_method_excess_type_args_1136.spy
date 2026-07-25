@@ -1,0 +1,11 @@
+# #1136: too many explicit type arguments on a BCL generic instance method. List[T].ConvertAll<TOutput>
+# has one method type parameter; referencing it as convert_all[str, int] must be diagnosed at the
+# reference site (the same #1004-style wrong-count diagnostic the user-defined #1133 arm produces),
+# proving the reflection-resolved BCL method flows through the same arity validation as the other arms.
+from system.collections.generic import List
+
+def convert(lst: List[int]) -> None:
+    lst.convert_all[str, int](lambda x: str(x))
+
+def main() -> None:
+    pass

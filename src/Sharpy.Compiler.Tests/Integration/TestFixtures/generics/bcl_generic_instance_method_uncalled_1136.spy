@@ -1,0 +1,12 @@
+# #1136 x #1138: an uncalled BCL generic-method reference with explicit type args is not a value. The
+# reflection fallback resolves lst.convert_all[str] to a generic method, and the #1138 SPY0335 guard then
+# rejects using that reference as a value (here, as a print argument) instead of letting a
+# GenericFunctionType leak to codegen (the old CS0021 -> SPY0908). Confirms the Phase-1 guard covers the
+# new BCL resolution path, not just the bare/user-defined arms.
+from system.collections.generic import List
+
+def convert(lst: List[int]) -> None:
+    print(lst.convert_all[str])
+
+def main() -> None:
+    pass
