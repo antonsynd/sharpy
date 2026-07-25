@@ -671,8 +671,19 @@ internal partial class TypeChecker
     /// ordinary index-access path. A generic overload sitting behind a non-generic sibling is
     /// preferred (the first-by-name <see cref="FindMethodInHierarchy"/> result may be the
     /// non-generic one).
+    ///
+    /// <para>
+    /// When the eagerly-populated <c>Methods</c> scans miss and the owning type is a raw BCL type
+    /// (a <see cref="TypeSymbol"/> from <c>ModuleRegistry.CreateTypeSymbolFromClrType</c> with a
+    /// <see cref="TypeSymbol.ClrType"/> but no <c>Methods</c>), the generic method is resolved by
+    /// reflecting the owning CLR type (#1136). <paramref name="typeArgCount"/>, when known, selects
+    /// the arity-matching overload; the arm re-validates the count afterwards. The absence of this
+    /// fallback is exactly what made <c>lst.convert_all[str](...)</c> on an imported
+    /// <c>List[int]</c> fall through to value-indexing and silently mis-emit.
+    /// </para>
     /// </summary>
-    private FunctionSymbol? TryResolveGenericInstanceMethod(SemanticType ownerType, string memberName)
+    private FunctionSymbol? TryResolveGenericInstanceMethod(
+        SemanticType ownerType, string memberName, int? typeArgCount = null)
     {
         TypeSymbol? ownerSymbol = ownerType switch
         {
@@ -696,7 +707,84 @@ internal partial class TypeChecker
                 return generic;
         }
 
+        // Raw BCL fallback (#1136): the discovered TypeSymbol has a ClrType but empty Methods, so
+        // reflect the owning CLR type for a matching generic method definition.
+        if (ownerSymbol.ClrType != null)
+            return ResolveBclGenericInstanceMethod(ownerSymbol, ownerType, memberName, typeArgCount);
+
         return null;
+    }
+
+    /// <summary>
+    /// CLR-reflection fallback for <see cref="TryResolveGenericInstanceMethod"/> (#1136): materializes
+    /// a <see cref="FunctionSymbol"/> for a generic instance method of a raw BCL type whose members were
+    /// never eagerly discovered. Memoized per-compilation on <c>(ownerSymbol, memberName)</c> including
+    /// negative results; <see cref="TypeSymbol.Methods"/> is never mutated. Reflects on the constructed
+    /// receiver when available so class-level type parameters are already closed.
+    /// </summary>
+    private FunctionSymbol? ResolveBclGenericInstanceMethod(
+        TypeSymbol ownerSymbol, SemanticType ownerType, string memberName, int? typeArgCount)
+    {
+        var memoKey = (ownerSymbol, memberName);
+        if (_bclGenericMethodMemo.TryGetValue(memoKey, out var memoized))
+            return memoized;
+
+        // Prefer the constructed generic (e.g. List<int>) so class-level params are closed; fall back
+        // to the definition's ClrType (e.g. the open List<>) when construction is unavailable.
+        var reflectionType = TryGetClrType(ownerType) ?? ownerSymbol.ClrType!;
+        var candidates = Discovery.ClrTypeHelper.ResolveGenericInstanceMethods(reflectionType, memberName);
+
+        FunctionSymbol? resolved = null;
+        if (candidates.Length > 0)
+        {
+            // Prefer the overload whose generic arity matches the supplied type-arg count; otherwise
+            // take the first. Full parameter-based overload resolution is deliberately not attempted —
+            // the emitted C# carries explicit type args + the verbatim CLR name and Roslyn binds it.
+            var picked = typeArgCount is { } n
+                ? candidates.FirstOrDefault(m => m.GetGenericArguments().Length == n) ?? candidates[0]
+                : candidates[0];
+            resolved = BuildBclGenericMethodSymbol(picked, memberName);
+        }
+
+        _bclGenericMethodMemo[memoKey] = resolved;
+        return resolved;
+    }
+
+    /// <summary>
+    /// Builds a <see cref="FunctionSymbol"/> from a reflected generic-method definition
+    /// <paramref name="method"/> (#1136). The CLR name is carried verbatim in
+    /// <see cref="FunctionSymbol.ClrMethodName"/> (Axiom 1 — ground truth, not a re-mangle), the
+    /// generic parameters supply the arity the arm validates, and parameter/return CLR types map
+    /// through <see cref="Discovery.ClrTypeBridge"/> with an <c>object</c> fallback (conservative:
+    /// arguments are not re-validated against these imperfectly-mapped signatures). Type-parameter
+    /// constraints are intentionally not reconstructed — Roslyn enforces them on the emitted call.
+    /// </summary>
+    private FunctionSymbol BuildBclGenericMethodSymbol(System.Reflection.MethodInfo method, string memberName)
+    {
+        // MapClrTypeToSemanticType already collapses unrecognized generics (e.g. Converter<T,TOutput>)
+        // to SemanticType.Object, which is the conservative fallback we want.
+        SemanticType Map(Type t) => _bclGenericMethodBridge.MapClrTypeToSemanticType(t);
+
+        var typeParameters = method.GetGenericArguments()
+            .Select(t => new Parser.Ast.TypeParameterDef { Name = t.Name })
+            .ToList();
+
+        var parameters = method.GetParameters()
+            .Select(p => new ParameterSymbol { Name = p.Name ?? string.Empty, Type = Map(p.ParameterType) })
+            .ToList();
+
+        return new FunctionSymbol
+        {
+            Name = memberName,
+            Kind = SymbolKind.Function,
+            AccessLevel = AccessLevel.Public,
+            ClrMethodName = method.Name,
+            ClrMethod = method,
+            TypeParameters = typeParameters,
+            Parameters = parameters,
+            ReturnType = Map(method.ReturnType),
+            IsStatic = false
+        };
     }
 
     /// <summary>
@@ -989,11 +1077,17 @@ internal partial class TypeChecker
             // expression type is recorded for indexAccess.Object (the b.convert MemberAccess) —
             // mirroring the pattern above — so ProtocolValidator.ValidateIndexAccess stays quiet
             // for these nodes (#1133).
-            else if (ownerType is not UnknownType
-                && TryResolveGenericInstanceMethod(ownerType, memberAccessObj.Member) is { } instanceMethod)
+            else if (ownerType is not UnknownType)
             {
-                var typeArgs = TryResolveTypeArguments(indexAccess.Index);
-                if (typeArgs != null)
+                // Gate on the member resolving to a generic method BEFORE resolving the index as type
+                // arguments: TryResolveTypeArguments reports "Type 'x' not found" for a non-type index,
+                // so calling it on ordinary value-indexing (e.g. self.scores[subject]) would emit
+                // spurious errors. The arity that steers BCL overload selection (#1136) is read cheaply
+                // from the index shape (TupleLiteral element count) without resolving any types.
+                var typeArgCount = indexAccess.Index is TupleLiteral argTuple ? argTuple.Elements.Length : 1;
+                if (TryResolveGenericInstanceMethod(ownerType, memberAccessObj.Member, typeArgCount)
+                        is { } instanceMethod
+                    && TryResolveTypeArguments(indexAccess.Index) is { } typeArgs)
                 {
                     if (instanceMethod.TypeParameters.Count != typeArgs.Count)
                     {

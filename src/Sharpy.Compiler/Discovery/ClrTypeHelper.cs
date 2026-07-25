@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Reflection;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -53,6 +54,34 @@ internal static class ClrTypeHelper
 
         _clrMethodNameCache[(clrType, memberName)] = resolved;
         return resolved;
+    }
+
+    // Caches (CLR type, Sharpy member name) -> matching generic instance method definitions.
+    private static readonly ConcurrentDictionary<(Type, string), MethodInfo[]> _genericInstanceMethodCache = new();
+
+    /// <summary>
+    /// Returns the public instance generic-method <em>definitions</em> on <paramref name="clrType"/>
+    /// whose reverse-mangled Sharpy name equals <paramref name="memberName"/> (same matching rule as
+    /// <see cref="ResolveClrMethodName"/>). Used by the TypeChecker to resolve an explicit-type-argument
+    /// reference <c>recv.method[T]</c> on a raw BCL type whose members were never eagerly discovered into
+    /// its <see cref="TypeSymbol"/> (#1136). Reflection lives here (Discovery), never in the emitter
+    /// (#974); the caller materializes the pick into a <see cref="FunctionSymbol"/> the emitter reads.
+    /// Only generic-method <em>definitions</em> are returned (<c>IsGenericMethodDefinition</c>), since the
+    /// reference supplies its own explicit type arguments; empty when none match.
+    /// </summary>
+    internal static MethodInfo[] ResolveGenericInstanceMethods(Type clrType, string memberName)
+    {
+        if (_genericInstanceMethodCache.TryGetValue((clrType, memberName), out var cached))
+            return cached;
+
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+        var matches = clrType.GetMethods(flags)
+            .Where(m => m.IsGenericMethodDefinition
+                && NameMangler.ToSharpyName(m.Name, ReverseNameContext.Method) == memberName)
+            .ToArray();
+
+        _genericInstanceMethodCache[(clrType, memberName)] = matches;
+        return matches;
     }
 
     /// <summary>

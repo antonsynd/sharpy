@@ -77,6 +77,21 @@ internal partial class TypeChecker
     // (mirrors the _typeTestOperand idiom); stored as a node reference so nested calls restore correctly.
     private Expression? _currentCallCallee;
 
+    // Per-compilation memo for BCL generic instance methods resolved by CLR reflection fallback
+    // (TryResolveGenericInstanceMethod, #1136). Raw BCL TypeSymbols built by
+    // ModuleRegistry.CreateTypeSymbolFromClrType carry a ClrType but no Methods, so an explicit-
+    // type-argument reference like `lst.convert_all[str](...)` can only be resolved by reflecting the
+    // owning ClrType. Keyed on (owning TypeSymbol, Sharpy member name); a null value memoizes a
+    // negative result so repeated misses do not re-reflect. TypeSymbols from CreateTypeSymbolFromClrType
+    // are per-compilation, so this never mutates shared state (StaticStateConformance) and TypeSymbol.Methods
+    // is left untouched. Lazily reflects on the constructed receiver so class-level type params are closed.
+    private readonly Dictionary<(TypeSymbol, string), FunctionSymbol?> _bclGenericMethodMemo = new();
+
+    // Bridges reflected CLR parameter/return types to SemanticTypes when materializing a reflected BCL
+    // generic method (#1136). Conservative by design: anything unmappable collapses to object, since the
+    // emitted C# uses explicit type args + the verbatim CLR name and Roslyn performs the authoritative bind.
+    private readonly Discovery.ClrTypeBridge _bclGenericMethodBridge = new();
+
     // Track whether we're inside an except block (for bare raise validation)
     private bool _inExceptBlock = false;
 
