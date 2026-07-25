@@ -117,6 +117,13 @@ internal partial class RoslynEmitter : ICodeEmitter
     private readonly List<StatementSyntax> _hoistedStatements = new();
 
     /// <summary>
+    /// Pool of scratch statement buffers reused by <see cref="GenerateSuiteBlock"/> when
+    /// building a <c>BlockSyntax</c>. Instance-owned: the emitter is single-threaded per
+    /// compilation and the pooled list is always copied into the block before it is returned.
+    /// </summary>
+    private readonly Utilities.ScratchListPool<StatementSyntax> _statementListPool = new();
+
+    /// <summary>
     /// When true, walrus expressions emit inline assignment expressions (varName = value)
     /// instead of hoisted declarations. Used in while-loop conditions where the assignment
     /// must be re-evaluated on each iteration.

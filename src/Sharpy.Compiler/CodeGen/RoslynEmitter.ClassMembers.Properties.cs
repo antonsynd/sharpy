@@ -853,7 +853,7 @@ internal partial class RoslynEmitter
         _observerParamRewrite = (observer.ParamName, targetName);
         try
         {
-            return Block(GenerateSuite(observer.Body));
+            return GenerateSuiteBlock(observer.Body);
         }
         finally
         {

@@ -51,21 +51,60 @@ internal partial class RoslynEmitter
     /// </summary>
     private List<StatementSyntax> GenerateSuiteFrom(IReadOnlyList<Statement> statements, int start, Func<Statement, List<StatementSyntax>>? generator = null)
     {
+        // Presize to one output statement per input statement — the common case (walrus
+        // hoisting or a defer split can push it either way, but this eliminates the growth
+        // reallocations for the typical body). Capacity only; contents are unchanged.
+        var result = new List<StatementSyntax>(statements.Count - start);
+        FillSuite(result, statements, start, generator);
+        return result;
+    }
+
+    /// <summary>
+    /// Fill logic shared by <see cref="GenerateSuiteFrom"/> (allocating) and
+    /// <see cref="GenerateSuiteBlockFrom"/> (pooled): appends the emitted statements of
+    /// <paramref name="statements"/> from <paramref name="start"/> into <paramref name="into"/>,
+    /// splitting at the first <see cref="DeferStatement"/> into the scope-guard try/finally.
+    /// </summary>
+    private void FillSuite(List<StatementSyntax> into, IReadOnlyList<Statement> statements, int start, Func<Statement, List<StatementSyntax>>? generator = null)
+    {
         var emit = generator ?? GenerateBodyStatements;
-        var result = new List<StatementSyntax>();
         for (int i = start; i < statements.Count; i++)
         {
             if (statements[i] is DeferStatement defer)
             {
-                result.Add(GenerateScopeGuard(defer, statements, i, generator));
+                into.Add(GenerateScopeGuard(defer, statements, i, generator));
                 // The remainder of the suite was consumed into the try block above.
-                return result;
+                return;
             }
 
-            result.AddRange(emit(statements[i]));
+            into.AddRange(emit(statements[i]));
         }
+    }
 
-        return result;
+    /// <summary>
+    /// Pooled equivalent of <c>Block(GenerateSuite(body))</c>: builds the suite's statements in
+    /// a scratch buffer rented from <see cref="_statementListPool"/>, materializes the
+    /// <c>BlockSyntax</c> (which copies the statements), and returns the buffer. This is the hot
+    /// block-emission entry point — every function/method body and nested block routes through
+    /// it — so it avoids one throwaway list per block. Reentrant: nested blocks rent distinct
+    /// buffers under stack discipline (see <see cref="ScratchListPool{T}"/>).
+    /// </summary>
+    private BlockSyntax GenerateSuiteBlock(IEnumerable<Statement> body, Func<Statement, List<StatementSyntax>>? generator = null)
+    {
+        var statements = body as IReadOnlyList<Statement> ?? body.ToList();
+        return GenerateSuiteBlockFrom(statements, 0, generator);
+    }
+
+    /// <summary>
+    /// Pooled equivalent of <c>Block(GenerateSuiteFrom(statements, start, generator))</c>.
+    /// The rented buffer is copied into the block before its scope is disposed, so it is safe
+    /// to return to the pool immediately.
+    /// </summary>
+    private BlockSyntax GenerateSuiteBlockFrom(IReadOnlyList<Statement> statements, int start, Func<Statement, List<StatementSyntax>>? generator = null)
+    {
+        using var scope = _statementListPool.Rent(out var result);
+        FillSuite(result, statements, start, generator);
+        return Block(result);
     }
 
     /// <summary>
@@ -78,8 +117,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private StatementSyntax GenerateScopeGuard(DeferStatement defer, IReadOnlyList<Statement> statements, int deferIndex, Func<Statement, List<StatementSyntax>>? generator = null)
     {
-        var tryBlock = Block(GenerateSuiteFrom(statements, deferIndex + 1, generator));
-        var finallyBlock = Block(GenerateSuite(defer.Body));
+        var tryBlock = GenerateSuiteBlockFrom(statements, deferIndex + 1, generator);
+        var finallyBlock = GenerateSuiteBlock(defer.Body);
         var tryStmt = TryStatement(
             tryBlock,
             List<CatchClauseSyntax>(),
@@ -295,7 +334,7 @@ internal partial class RoslynEmitter
 
         // Generate body (recursive — supports nested-nested functions)
         var body = AttachLineDirectiveToBlock(
-            Block(GenerateSuite(func.Body)), func.LineStart);
+            GenerateSuiteBlock(func.Body), func.LineStart);
 
         var localFunc = LocalFunctionStatement(returnType, Identifier(mangledName))
             .WithParameterList(ParameterList(SeparatedList(parameters)))

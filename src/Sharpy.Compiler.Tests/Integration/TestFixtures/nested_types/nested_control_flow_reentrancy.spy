@@ -1,0 +1,27 @@
+# Deeply nested classes whose innermost method body nests control-flow blocks
+# (for / if / while / try). Every block routes through the pooled suite-block
+# emitter, so this exercises the scratch-list pool's rent/return stack discipline
+# reentrantly (nested classes -> method body -> nested blocks). Guards #1100 pass 1.
+class Outer:
+    @public
+    class Middle:
+        @public
+        class Inner:
+            def compute(self, n: int) -> int:
+                total: int = 0
+                for i in range(n):
+                    if i % 2 == 0:
+                        j: int = 0
+                        while j < i:
+                            total = total + j
+                            j = j + 1
+                    else:
+                        try:
+                            total = total + i
+                        except Exception:
+                            total = total - 1
+                return total
+
+def main():
+    inner: Outer.Middle.Inner = Outer.Middle.Inner()
+    print(inner.compute(5))

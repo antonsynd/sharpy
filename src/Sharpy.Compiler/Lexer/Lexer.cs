@@ -218,7 +218,11 @@ public partial class Lexer
     /// </summary>
     public List<Token> TokenizeAll()
     {
-        var tokens = new List<Token>();
+        // Presize from source length to avoid the log-n backing-array reallocations as the
+        // token list grows. ~1 token per 4 source chars is a conservative estimate for typical
+        // Sharpy source; a low estimate only costs the usual doubling, an over-estimate at most
+        // one oversized array. Capacity only — the token sequence is unchanged.
+        var tokens = new List<Token>(System.Math.Max(16, _source.Length / 4));
 
         while (true)
         {

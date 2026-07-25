@@ -349,7 +349,7 @@ internal partial class RoslynEmitter
         // branch from leaking into sibling branches (fixes #363).
         var preIfScope = SaveScope();
 
-        var thenBlock = Block(GenerateSuite(ifStmt.ThenBody));
+        var thenBlock = GenerateSuiteBlock(ifStmt.ThenBody);
 
         // Save scope after then-block so we can restore it after all branches.
         // Post-if code needs to see then-block's variable declarations for correct
@@ -377,7 +377,7 @@ internal partial class RoslynEmitter
             {
                 // Restore to pre-if scope so else doesn't see then-block variables (#363)
                 RestoreScope(preIfScope);
-                currentElse = Block(GenerateSuite(ifStmt.ElseBody));
+                currentElse = GenerateSuiteBlock(ifStmt.ElseBody);
             }
 
             // Process elif clauses in reverse order
@@ -388,7 +388,7 @@ internal partial class RoslynEmitter
 
                 var elif = ifStmt.ElifClauses[i];
                 var elifCondition = WrapTruthinessIfNeeded(GenerateExpression(elif.Test), elif.Test);
-                var elifBody = Block(GenerateSuite(elif.Body));
+                var elifBody = GenerateSuiteBlock(elif.Body);
 
                 var elifElseClause = currentElse != null ? ElseClause(currentElse) : null;
                 var elifStatement = IfStatement(elifCondition, elifBody, elifElseClause);
@@ -433,7 +433,7 @@ internal partial class RoslynEmitter
         // If there's no else clause, generate simple while loop
         if (whileStmt.ElseBody.IsEmpty)
         {
-            var simpleBody = Block(GenerateSuite(whileStmt.Body));
+            var simpleBody = GenerateSuiteBlock(whileStmt.Body);
             return WrapWithWalrusPreDeclarations(WhileStatement(condition, simpleBody));
         }
 
@@ -453,13 +453,13 @@ internal partial class RoslynEmitter
 
         // Transform the body to set flag to false before break
         var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
-        var bodyBlock = Block(GenerateSuite(transformedBody));
+        var bodyBlock = GenerateSuiteBlock(transformedBody);
 
         // while (condition) { transformedBody }
         statements.Add(WhileStatement(condition, bodyBlock));
 
         // if (_loopCompleted) { elseBody }
-        var elseBodyBlock = Block(GenerateSuite(whileStmt.ElseBody));
+        var elseBodyBlock = GenerateSuiteBlock(whileStmt.ElseBody);
         statements.Add(IfStatement(IdentifierName(flagName), elseBodyBlock));
 
         return WrapWithWalrusPreDeclarations(Block(statements));
@@ -521,7 +521,7 @@ internal partial class RoslynEmitter
         statements.Add(GenerateForEachCore(forStmt.Target, iterator, transformedBody, iteratorType, forStmt.IsAsync));
 
         // if (_loopCompleted) { elseBody }
-        var elseBodyBlock = Block(GenerateSuite(forStmt.ElseBody));
+        var elseBodyBlock = GenerateSuiteBlock(forStmt.ElseBody);
         statements.Add(IfStatement(IdentifierName(flagName), elseBodyBlock));
 
         return Block(statements);
@@ -572,7 +572,7 @@ internal partial class RoslynEmitter
             _variableVersions[loopVar] = 0;
 
             // Generate the body - assignments to loopVar will be updates, not declarations
-            var body = Block(GenerateSuite(bodyStatements));
+            var body = GenerateSuiteBlock(bodyStatements);
 
             ExpressionSyntax loopVarValue = IdentifierName(tempLoopVar);
 
@@ -634,7 +634,7 @@ internal partial class RoslynEmitter
                 }
 
                 // Now generate the body
-                var body = Block(GenerateSuite(bodyStatements));
+                var body = GenerateSuiteBlock(bodyStatements);
 
                 // Generate: foreach (var (x, y) in items)
                 var variables = identifiers
@@ -669,7 +669,7 @@ internal partial class RoslynEmitter
             GenerateRecursiveTupleUnpacking(tuple.Elements, tempLoopVar, unpackStatements);
 
             // Now generate the body — variables are already declared so references resolve correctly
-            var loopBody = Block(GenerateSuite(bodyStatements));
+            var loopBody = GenerateSuiteBlock(bodyStatements);
 
             // Prepend unpacking to body
             var combinedStatements = new List<StatementSyntax>(unpackStatements);
@@ -1343,7 +1343,7 @@ internal partial class RoslynEmitter
             return GenerateTryWithElse(tryStmt);
         }
 
-        var tryBlock = Block(GenerateSuite(tryStmt.Body));
+        var tryBlock = GenerateSuiteBlock(tryStmt.Body);
         var catchClauses = GenerateCatchClauses(tryStmt.Handlers);
         var finallyClause = GenerateFinallyClause(tryStmt.FinallyBody);
 
@@ -1375,7 +1375,7 @@ internal partial class RoslynEmitter
         var tryCatchFinally = TryStatement(tryBlock, List(catchClauses), finallyClause);
 
         // Generate: if (__trySucceeded) { else_body }
-        var elseBlock = Block(GenerateSuite(tryStmt.ElseBody));
+        var elseBlock = GenerateSuiteBlock(tryStmt.ElseBody);
         var elseIf = IfStatement(IdentifierName(flagName), elseBlock);
 
         // Return a block containing all statements: flag + try + else-if
@@ -1427,7 +1427,7 @@ internal partial class RoslynEmitter
                 {
                     foreach (var typeArg in handler.ExceptionType.TypeArguments)
                     {
-                        var catchBlock = Block(GenerateSuite(handler.Body));
+                        var catchBlock = GenerateSuiteBlock(handler.Body);
                         var declaration = CatchDeclaration(_typeMapper.MapType(typeArg));
                         result.Add(CatchClause(declaration, filterClause, catchBlock));
                     }
@@ -1458,7 +1458,7 @@ internal partial class RoslynEmitter
                         ? $"{baseName}_{_variableVersions[baseName]}"
                         : baseName;
 
-                    var catchBlock = Block(GenerateSuite(handler.Body));
+                    var catchBlock = GenerateSuiteBlock(handler.Body);
                     var declaration = CatchDeclaration(exceptionType, Identifier(exceptionVar));
 
                     // Restore previous version state after generating the catch body
@@ -1475,7 +1475,7 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    var catchBlock = Block(GenerateSuite(handler.Body));
+                    var catchBlock = GenerateSuiteBlock(handler.Body);
                     var declaration = CatchDeclaration(exceptionType);
                     result.Add(CatchClause(declaration, filterClause, catchBlock));
                 }
@@ -1483,7 +1483,7 @@ internal partial class RoslynEmitter
             else
             {
                 // Bare except — with filter we still need a declaration to attach the filter to
-                var catchBlock = Block(GenerateSuite(handler.Body));
+                var catchBlock = GenerateSuiteBlock(handler.Body);
                 if (filterClause != null)
                 {
                     var declaration = CatchDeclaration(IdentifierName("Exception"));
@@ -1731,7 +1731,7 @@ internal partial class RoslynEmitter
     {
         if (finallyBody.Length > 0)
         {
-            var finallyBlock = Block(GenerateSuite(finallyBody));
+            var finallyBlock = GenerateSuiteBlock(finallyBody);
             return FinallyClause(finallyBlock);
         }
         return null;
