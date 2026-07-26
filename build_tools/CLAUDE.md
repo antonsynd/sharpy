@@ -22,6 +22,11 @@ python -m build_tools build run --max-tasks 5      # Auto-builder
 | `sharpy_dogfood/` | Random code generation → compile → execute → bug reporting |
 | `shared/` | Backend abstraction (Claude/Copilot), rate limiting, model selection, logging |
 | `tests/` | pytest tests (`asyncio_mode = auto`) |
+| `cpython_oracle/` | CPython test-suite classifier + porting ledger for the golden oracle (#1030) |
+| `differential_parse/` | Batched CPython `ast.parse` oracle used by `CPythonDifferentialParseTests` (#1037) |
+| `differential_exec/` | Batched python3 executor used by `DifferentialExecutionTests` (stdout differential oracle) |
+| `allocation_gate.py` | BenchmarkDotNet allocation-baseline ratchet (compares runs to `benchmarks/allocation-baseline.json`) |
+| `generate_stdlib_docs.py` | Stdlib docs generator — `docs/stdlib` is generated, never hand-edit |
 | `generate_code_walkthroughs.py` | AI-powered C# documentation generator |
 | `cli.py` / `__main__.py` | Unified CLI entry point |
 

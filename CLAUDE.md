@@ -27,7 +27,7 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect lexer tok
 
 > **Prefer skills over raw commands:** Use `/build`, `/run-tests`, `/spy-emit`, `/spy-run`, `/quick-check` instead of raw `dotnet` commands. Skills handle logging, truncation, and temp file management (avoiding bash escaping issues with `#` and backticks in Sharpy source).
 
-> **CRITICAL — Serialized dotnet execution:** When multiple agents run in parallel, **NEVER** call `dotnet build` or `dotnet test` directly. Use the serialized wrapper `.claude/scripts/dotnet-serialized` which acquires an exclusive flock so only one dotnet process runs at a time. Concurrent `dotnet test` invocations each consume 5-10 GB RAM (Roslyn + 9600 tests); three in parallel will OOM and crash the system. The wrapper is a drop-in replacement — same args, same output, same exit code. Example: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer" --no-build`. This is **enforced** by a PreToolUse hook (`.claude/hooks/enforce-dotnet-serialized.sh`) that blocks raw `dotnet build`/`dotnet test` Bash commands.
+> **CRITICAL — Serialized dotnet execution:** When multiple agents run in parallel, **NEVER** call `dotnet build` or `dotnet test` directly. Use the serialized wrapper `.claude/scripts/dotnet-serialized` which acquires an exclusive flock so only one dotnet process runs at a time. Concurrent `dotnet test` invocations each consume 5-10 GB RAM (Roslyn + ~17,800 tests); three in parallel will OOM and crash the system. The wrapper is a drop-in replacement — same args, same output, same exit code. Example: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer" --no-build`. This is **enforced** by a PreToolUse hook (`.claude/hooks/enforce-dotnet-serialized.sh`) that blocks raw `dotnet build`/`dotnet test` Bash commands.
 
 > **Test output logs:** The serialized wrapper tees all stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (rotating deque of 3 slots). `.claude/tmp/dotnet-serialized-latest.log` symlinks to the most recent run. Agents should read these logs to filter/grep test output instead of re-running the full test suite (~8 min). The 3-slot rotation means an agent reading an older log won't be clobbered by a new run writing to a different slot.
 
@@ -72,7 +72,7 @@ The semantic phase runs multiple ordered passes. Understanding this is critical 
 
 **Pass 2 — Type Resolution** (`TypeResolver.cs`): Resolves type annotations on declarations to concrete types. Type inference provided by `TypeInferenceService` and `GenericTypeInferenceService`.
 
-**Pass 3 — Type Checking** (`TypeChecker.cs`, split into 11 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Access.Lambdas.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Patterns.cs`, `.Utilities.cs`): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`. Type narrowing (e.g., `if x is not None:` narrows `T?` → `T`): statement-level flow comes from CFG dataflow (`NarrowingFlowAnalysis`); expression-level scopes (ternary arms, `and`/`or` RHS) and the match-arm scope guard use `_narrowingContext` (`TypeNarrowingContext`). At every narrowed read the TypeChecker materializes a node-keyed `NarrowedReadLowering` in `SemanticInfo` (`.Unwrap()`/`.Value`/`!`/cast), which codegen applies verbatim — the emitter performs no narrowing flow re-derivation (#1081, #1080).
+**Pass 3 — Type Checking** (`TypeChecker.cs`, split into 14 partial files: `.cs`, `.Definitions.cs`, `.Definitions.Dataclass.cs`, `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Access.Calls.Construction.cs`, `.Expressions.Access.Calls.Overloads.cs`, `.Expressions.Access.Lambdas.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Patterns.cs`, `.Utilities.cs`): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`. Type narrowing (e.g., `if x is not None:` narrows `T?` → `T`): statement-level flow comes from CFG dataflow (`NarrowingFlowAnalysis`); expression-level scopes (ternary arms, `and`/`or` RHS) and the match-arm scope guard use `_narrowingContext` (`TypeNarrowingContext`). At every narrowed read the TypeChecker materializes a node-keyed `NarrowedReadLowering` in `SemanticInfo` (`.Unwrap()`/`.Value`/`!`/cast), which codegen applies verbatim — the emitter performs no narrowing flow re-derivation (#1081, #1080).
 
 **Key registries**: `OperatorRegistry`, `ProtocolRegistry`, `BuiltinRegistry`, `ModuleRegistry`, `PrimitiveCatalog` (source of truth for primitive types and CLR mappings).
 
@@ -164,6 +164,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 415**: `VarianceValidator` — Variance validation
 - **Order 420**: `UnusedVariableValidator` — Unused variable warnings
 - **Order 430**: `UnusedImportValidator` — Unused import warnings
+- **Order 435**: `MustUseValidator` — Unused must-use carrier warnings (Result/Optional, `@must_use`)
 - **Order 450**: `AccessValidator` — Private/protected member access
 - **Order 460**: `DunderInvocationValidator` — Direct dunder call warnings
 - **Order 480**: `InterfaceImplementationValidator` — Interface method implementation checks
@@ -226,7 +227,7 @@ When the three axioms conflict, precedence is: **Axiom 1 (.NET) > Axiom 3 (Types
 
 | Conflict | Resolution |
 |----------|------------|
-| Integer division (`//`) | Axiom 1 wins — provide `math.floor_div()` helper |
+| Integer division (`//`) | Resolved as **floor division** in spec + implementation (Python semantics, zero cost — see `arithmetic_operators.md`); integer `%` still truncates, divergence tracked in #1153, doc cleanup in #1155 |
 | String indexing (code points vs UTF-16) | Axiom 1 wins — use UTF-16 with helper methods |
 | `global`/`nonlocal` keywords | Axiom 1 wins — C# scoping rules apply |
 | Duck typing | Axiom 1+3 win — use explicit interfaces |
@@ -378,6 +379,7 @@ All `/spy-*` skills accept **inline source** or a file path. Inline source is wr
 | `/commit [message]` | Stage and commit changes with auto-generated message |
 | `/push [--close-issues N,N]` | Push current branch; optionally close GitHub issues |
 | `/close-issues [N,N]` | Close GitHub issues that have been implemented, with verification |
+| `/bump-version [--apply]` | Check (or bump) `SharpyVersion` in `Directory.Build.props` vs the last tag — run before release-destined pushes |
 
 ### Analysis & Planning
 
