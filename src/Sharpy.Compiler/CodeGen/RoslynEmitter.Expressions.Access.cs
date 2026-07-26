@@ -25,12 +25,13 @@ internal partial class RoslynEmitter
             return GenerateFunctoolsPartialCall(call);
         }
 
-        // A parenthesized generic-instantiation callee — (identity[int])(5) or (b.convert[int])(5) —
-        // wraps the IndexAccess in Parenthesized. The semantic phase already pinned the call target
-        // through the wrapper (CheckExpression recurses through Parenthesized), so unwrap here to let
-        // the generic-call detection below see the IndexAccess it would for the unparenthesized form.
-        // Without this the callee emits verbatim as C# element access on a method group (CS0021 →
-        // SPY0908). Purely structural — no type or lowering decision (#1138).
+        // A parenthesized callee — (foo)(5), (p.method)(5), (identity[int])(5) — wraps the inner
+        // expression in Parenthesized. The semantic phase already pinned the call target through the
+        // wrapper (CheckExpression recurses through Parenthesized), so unwrap once here and dispatch
+        // every callee-shape arm below on this unwrapped `callee`. Without the unwrap a parenthesized
+        // plain-identifier or member-access callee misses every proper arm and falls to the delegate
+        // fall-through, emitting (Foo)(5) — which C# re-parses as a cast (CS0246 → SPY0908). Purely
+        // structural — no type or lowering decision (#1138 for the generic arms, #1147 for the rest).
         var callee = call.Function;
         while (callee is Parenthesized parenCallee)
             callee = parenCallee.Expression;
@@ -70,7 +71,7 @@ internal partial class RoslynEmitter
                 return result;
         }
 
-        if (call.Function is Identifier funcName)
+        if (callee is Identifier funcName)
         {
             // Check if this is a builtin function call (e.g., int(), str(), print(), len(), etc.)
             var isBuiltinFunc = _context.IsBuiltinFunction(funcName.Name);
@@ -256,9 +257,11 @@ internal partial class RoslynEmitter
             // If the callee is a narrowed Optional delegate (e.g., `if cb is not None: cb(x)`),
             // generate through GenerateExpression so the recorded accessor (.Unwrap()/!) is applied
             // before invocation. A lowering on the callee node is exactly this narrowed-read signal.
+            // The narrowing fact is recorded on the inner node (CheckExpression recurses through
+            // Parenthesized), so look it up via the unwrapped `callee`, not the wrapped call.Function.
             ExpressionSyntax calleeExpr;
-            if (_context.SemanticInfo?.GetNarrowedReadLowering(call.Function) != null)
-                calleeExpr = GenerateExpression(call.Function);
+            if (_context.SemanticInfo?.GetNarrowedReadLowering(callee) != null)
+                calleeExpr = GenerateExpression(callee);
             else
                 calleeExpr = ParseQualifiedName(funcCSharpName);
             return InvocationExpression(calleeExpr)
@@ -266,7 +269,7 @@ internal partial class RoslynEmitter
         }
 
         // Handle method calls on objects: obj.method() or ClassName.static_method()
-        if (call.Function is MemberAccess memberAccess)
+        if (callee is MemberAccess memberAccess)
         {
             // Check for asyncio module calls: asyncio.gather() → Task.WhenAll(), asyncio.sleep() → Task.Delay()
             if (memberAccess.Object is Identifier asyncioId && asyncioId.Name == Shared.SyntheticModuleNames.Asyncio)
@@ -533,9 +536,9 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
-        // Fallback: arbitrary expression as call target
+        // Fallback: arbitrary expression as call target — dispatch on the top-level-unwrapped callee.
         // Handles: get_handler()("arg"), callbacks[0]("arg"), (lambda x: x)(42), chained calls, etc.
-        var callTarget = GenerateExpression(call.Function);
+        var callTarget = GenerateExpression(callee);
 
         // Lambdas need explicit delegate cast for invocation in C#: ((Func<int, int>)(x => x * 2))(21)
         // The lambda may be bare or wrapped in a Parenthesized AST node → ParenthesizedExpressionSyntax
@@ -545,12 +548,9 @@ internal partial class RoslynEmitter
 
         if (innerExprForCheck is SimpleLambdaExpressionSyntax or ParenthesizedLambdaExpressionSyntax)
         {
-            // Get the type of the lambda from semantic info (unwrap Parenthesized AST nodes)
-            var funcAstNode = call.Function;
-            while (funcAstNode is Parenthesized p)
-                funcAstNode = p.Expression;
-
-            var lambdaType = _context.SemanticInfo?.GetExpressionType(funcAstNode);
+            // Get the type of the lambda from semantic info. `callee` is already unwrapped of any
+            // Parenthesized wrappers, so the semantic fact keyed on the inner lambda node is reachable.
+            var lambdaType = _context.SemanticInfo?.GetExpressionType(callee);
             if (lambdaType is Semantic.FunctionType ft && !ft.HasUnresolvedTypes())
             {
                 var delegateType = _typeMapper.MapSemanticType(ft);
