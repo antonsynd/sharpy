@@ -160,6 +160,17 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, TypeCoercionLowering> _typeCoercionLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map builtin-call argument expressions to the iterable projection codegen must apply before
+    // passing them. Only present for a bare dict argument in a builtin's iterable position (sorted(d),
+    // list(d), max(d), zip(d, …), filter(f, d), …), where Python iterates the dict's KEYS but the C#
+    // generic-interface enumerable surface is IEnumerable<KeyValuePair<K,V>> — so the emitter must
+    // project the argument to d.Keys() (DictKeyView<K,V> : IEnumerable<K>). The TypeChecker decides
+    // which positions are iterable-of-keys (repo rule 2); the emitter applies verbatim, never
+    // re-inspecting types. Absent ⇒ pass the argument unchanged (e.g. `for k in d`, dict(d) copy,
+    // user-function dict params, sorted(d.keys())/(d.values()) views). Keyed by node identity (#1154).
+    private readonly ConcurrentDictionary<Expression, IterableProjectionKind> _iterableProjections =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map member-access expressions on CLR-backed receivers to the original CLR method name
     // (e.g. is_os_platform -> IsOSPlatform), resolved by reflection during type checking so codegen
     // never reflects (#974). Only present when a directly-imported CLR method's acronym casing
@@ -314,6 +325,26 @@ public class SemanticInfo : ISemanticQuery
     public TypeCoercionLowering? GetTypeCoercionLowering(Expression coercion)
     {
         return _typeCoercionLowerings.TryGetValue(coercion, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
+    /// Records that a builtin-call argument expression must be projected before it is passed (currently
+    /// only <see cref="IterableProjectionKind.DictKeys"/>: a bare dict in an iterable-of-keys position).
+    /// The TypeChecker sets this at the one builtin-call recording choke point; the emitter reads it in
+    /// its single argument-generation funnel and applies the projection verbatim (#1154).
+    /// </summary>
+    public void SetIterableProjection(Expression argument, IterableProjectionKind projection)
+    {
+        _iterableProjections[argument] = projection;
+    }
+
+    /// <summary>
+    /// Gets the iterable projection recorded for a builtin-call argument, or <c>null</c> when the
+    /// argument is passed unchanged (the common case — no projection).
+    /// </summary>
+    public IterableProjectionKind? GetIterableProjection(Expression argument)
+    {
+        return _iterableProjections.TryGetValue(argument, out var projection) ? projection : null;
     }
 
     /// <summary>
@@ -759,6 +790,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._typeCoercionLowerings)
             _typeCoercionLowerings.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._iterableProjections)
+            _iterableProjections.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._resolvedClrMemberNames)
             _resolvedClrMemberNames.TryAdd(kvp.Key, kvp.Value);
 
@@ -955,6 +989,23 @@ public enum TypeCoercionLoweringKind
 /// <see cref="TypeCoercionLoweringKind.NumericAlwaysFits"/>.
 /// </param>
 public sealed record TypeCoercionLowering(TypeCoercionLoweringKind Kind, string? SafeCastMethod = null);
+
+/// <summary>
+/// How codegen must project a builtin-call argument before passing it. The TypeChecker records this
+/// per argument node at the single builtin-call recording choke point so the emitter switches on the
+/// tag alone and never re-inspects operand types (#1154, Critical Rule 2 pattern (b)).
+/// </summary>
+public enum IterableProjectionKind
+{
+    /// <summary>
+    /// Bare dict in a builtin's iterable-of-keys position — project to <c>arg.Keys()</c>
+    /// (<c>DictKeyView&lt;K,V&gt; : IEnumerable&lt;K&gt;</c>). Python iterates a dict's keys, but the dict's
+    /// generic enumerable surface is <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c>, so an unprojected
+    /// dict either fails to compile (CS1503) or binds the builtin's element type to the wrong
+    /// <c>KeyValuePair</c> (silent-wrong iteration / runtime crash).
+    /// </summary>
+    DictKeys
+}
 
 public sealed record GeneratorBinding(TypeSymbol GeneratorType, Decorator Trigger);
 

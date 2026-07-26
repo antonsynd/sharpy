@@ -129,6 +129,12 @@ internal partial class TypeChecker
 
         if (call.Function is Identifier id)
         {
+            // Record where a bare dict flows into a builtin's iterable-of-keys position so codegen
+            // projects it to d.Keys() (#1154). One choke point for the whole ring — the emitter is a
+            // pure applier (repo rule 2). Runs before dispatch; harmless for builtins whose dispatch
+            // later rejects a bare dict (the marker is never read once compilation stops at semantic).
+            RecordDictKeysProjections(call, id);
+
             // Data-driven builtin function return type inference (len, hash, reversed, sorted, min, max)
             var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
                 id.Name, argTypes, _typeInference);
@@ -2043,6 +2049,88 @@ internal partial class TypeChecker
         argTypes.Add(lambdaType);
         argTypes.AddRange(iterableTypes);
         return true;
+    }
+
+    private static readonly int[] IterablePositionZero = { 0 };
+    private static readonly int[] IterablePositionOne = { 1 };
+
+    /// <summary>
+    /// Records an <see cref="IterableProjectionKind.DictKeys"/> marker on every bare-dict argument that
+    /// sits in a builtin call's iterable-of-keys position (#1154). This is the single recording choke
+    /// point for the whole dict-iteration ring: Python iterates a dict's keys, but a Sharpy dict's
+    /// generic enumerable surface is <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c>, so codegen must
+    /// project the argument to <c>d.Keys()</c>. The emitter reads the marker in its argument-generation
+    /// funnel and applies the projection verbatim — it never re-derives which positions are iterable
+    /// (repo rule 2). <c>for k in d</c> (duck-typed foreach) and the dict views
+    /// (<c>sorted(d.keys())</c>/<c>.values()</c>/<c>.items()</c>) are unaffected: the former never
+    /// reaches here, the latter carry a view type, not a bare dict.
+    /// </summary>
+    private void RecordDictKeysProjections(FunctionCall call, Identifier id)
+    {
+        var positions = GetBuiltinIterableKeyPositions(id.Name, call.Arguments.Length);
+        if (positions == null)
+            return;
+
+        // A user-defined function shadowing the builtin name takes over (Python scoping); its dict
+        // parameter is not projected. Builtin collection type names (list/set/tuple) are reserved, so
+        // a user shadow there is not a concern.
+        if (_symbolTable.Lookup(id.Name) is FunctionSymbol { CodeGenInfo: not null })
+            return;
+
+        foreach (var position in positions)
+        {
+            if (position >= call.Arguments.Length)
+                continue;
+            var argNode = call.Arguments[position];
+            if (_semanticInfo.GetExpressionType(argNode) is GenericType { Name: BuiltinNames.Dict } dictType
+                && dictType.TypeArguments.Count == 2)
+            {
+                _semanticInfo.SetIterableProjection(argNode, IterableProjectionKind.DictKeys);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns the positional argument indices a builtin treats as an iterable-of-keys (so a bare dict
+    /// there projects to its keys), or <c>null</c> if the builtin does not consume an iterable this way.
+    /// The one place that encodes the ring's position knowledge; <c>dict(d)</c> is deliberately absent
+    /// (it copies key/value pairs, not keys).
+    /// </summary>
+    private static IReadOnlyList<int>? GetBuiltinIterableKeyPositions(string name, int argCount)
+    {
+        switch (name)
+        {
+            // Single leading iterable (a trailing start=/default=/key= is a keyword arg or position 1).
+            case BuiltinNames.Sorted:
+            case BuiltinNames.List:
+            case BuiltinNames.Set:
+            case BuiltinNames.Tuple:
+            case BuiltinNames.Reversed:
+            case BuiltinNames.Enumerate:
+            case BuiltinNames.Sum:
+                return IterablePositionZero;
+
+            // min/max also have a value form (min(a, b, …)); only the single-positional iterable form
+            // iterates — two-or-more positional args compare values, not dict keys.
+            case BuiltinNames.Min:
+            case BuiltinNames.Max:
+                return argCount == 1 ? IterablePositionZero : null;
+
+            // zip(a, b, …): every positional argument is an iterable.
+            case BuiltinNames.Zip:
+                return argCount > 0 ? Enumerable.Range(0, argCount).ToArray() : null;
+
+            // map(f, a, b, …): the mapper is position 0; positions 1.. are iterables.
+            case BuiltinNames.Map:
+                return argCount >= 2 ? Enumerable.Range(1, argCount - 1).ToArray() : null;
+
+            // filter(pred, it): the iterable is position 1.
+            case BuiltinNames.Filter:
+                return argCount >= 2 ? IterablePositionOne : null;
+
+            default:
+                return null;
+        }
     }
 
     /// <summary>

@@ -107,6 +107,28 @@ public class SemanticInfoMergeConformanceTests
     }
 
     /// <summary>
+    /// An iterable-projection marker recorded on one SemanticInfo must survive
+    /// <see cref="SemanticInfo.MergeFrom"/> into another. Codegen reads the DictKeys projection from the
+    /// merged project-level SemanticInfo; if <c>_iterableProjections</c> were absent from
+    /// <c>MergeFrom</c>, a bare dict passed to a builtin iterable position in an imported module would
+    /// silently emit no <c>.Keys()</c> projection and mis-iterate as key/value pairs (#1154).
+    /// </summary>
+    [Fact]
+    public void MergeFrom_CarriesIterableProjections()
+    {
+        var perFile = new SemanticInfo();
+        var argNode = new Identifier { Name = "d" };
+        perFile.SetIterableProjection(argNode, IterableProjectionKind.DictKeys);
+
+        var project = new SemanticInfo();
+        project.MergeFrom(perFile);
+
+        var merged = project.GetIterableProjection(argNode);
+        merged.Should().Be(IterableProjectionKind.DictKeys,
+            "the iterable projection must survive the per-file → project merge");
+    }
+
+    /// <summary>
     /// Collects the names of private dictionary/set side-table fields declared in SemanticInfo.
     /// Matches <c>ConcurrentDictionary</c>/<c>Dictionary</c>/<c>HashSet</c> declarations (the field
     /// identifier follows the closing generic bracket on the same line).
