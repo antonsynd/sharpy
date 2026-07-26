@@ -231,7 +231,7 @@ public class ReplSession
         return new InputClassification(InputKind.Statement, input.TrimEnd());
     }
 
-    private static bool IsModuleLevelStatement(Statement stmt) => stmt switch
+    private static bool IsModuleLevelStatement(Statement stmt) => stmt.UnwrapDecorated() switch
     {
         FunctionDef => true,
         ClassDef => true,

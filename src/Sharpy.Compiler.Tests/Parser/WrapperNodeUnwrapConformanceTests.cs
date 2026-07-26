@@ -105,13 +105,6 @@ public class WrapperNodeUnwrapConformanceTests
         ["AstFingerprint.cs :: SignatureEquals"] =
             "#1150: decorated-import edits classified as NoChange -> LSP skips re-analysis (stale). Drain on fix.",
 
-        // #1151 (real latent bug — REPL). IsModuleLevelStatement returns false for a DecoratedStatement,
-        // so a `@suppress(...) import os` entered in the REPL is misclassified as an executable statement
-        // (line 218 `statements.All(IsModuleLevelStatement)`) and wrapped into main() instead of being
-        // registered at module level. Niche (REPL + @suppress-on-import). Drain this entry when #1151 is
-        // fixed (the switch will unwrap and this method becomes wrapper-aware).
-        ["ReplSession.cs :: IsModuleLevelStatement"] =
-            "#1151: REPL misclassifies a decorated import as executable. Drain on fix.",
     };
 
     [Fact]

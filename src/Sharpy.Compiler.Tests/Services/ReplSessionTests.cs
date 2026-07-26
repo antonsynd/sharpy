@@ -176,6 +176,75 @@ public class ReplSessionTests
     }
 
     // -------------------------------------------------------------------------
+    // Decorated-import classification (#1151): a statement-scoped @suppress wraps
+    // its target in a DecoratedStatement; IsModuleLevelStatement must classify by
+    // the inner statement so a decorated import joins module scope like its plain twin.
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task EvaluateAsync_SuppressDecoratedImport_ClassifiedModuleLevel()
+    {
+        var session = new ReplSession();
+
+        // `@suppress("SPY0452")` on `import math` wraps it in a DecoratedStatement. Before #1151
+        // IsModuleLevelStatement returned false for the wrapper, hoisting the import into main();
+        // now it unwraps and classifies as module-level, exactly like an undecorated import.
+        var importResult = await session.EvaluateAsync("@suppress(\"SPY0452\")\nimport math");
+        Assert.True(importResult.Success, FormatDiagnostics(importResult));
+
+        // Registered at module level: the import sits BEFORE the synthesized main(), not indented
+        // inside it.
+        var src = session.GetAccumulatedSource();
+        int importIdx = src.IndexOf("import math", StringComparison.Ordinal);
+        int mainIdx = src.IndexOf("def main", StringComparison.Ordinal);
+        Assert.True(importIdx >= 0 && mainIdx >= 0 && importIdx < mainIdx,
+            $"decorated import must sit at module level before main():\n{src}");
+
+        // And the module is genuinely usable at module scope afterward.
+        var useResult = await session.EvaluateAsync("math.sqrt(16.0)");
+        Assert.True(useResult.Success, FormatDiagnostics(useResult));
+        Assert.Equal("4.0" + Environment.NewLine, useResult.Output);
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_DecoratedImportMixedWithExpression_ClassifiedExecutable()
+    {
+        var session = new ReplSession();
+
+        // A submission mixing a (module-level) decorated import with an executable statement is
+        // classified executable overall — the `statements.All(IsModuleLevelStatement)` short-circuit
+        // on the non-module-level expression is unchanged by the unwrap.
+        var result = await session.EvaluateAsync("@suppress(\"SPY0452\")\nimport math\nprint(\"hi\")");
+        Assert.True(result.Success, FormatDiagnostics(result));
+        Assert.Equal("hi" + Environment.NewLine, result.Output);
+
+        // Hoisted into main() (indented), not registered at module level.
+        var src = session.GetAccumulatedSource();
+        int importIdx = src.IndexOf("import math", StringComparison.Ordinal);
+        int mainIdx = src.IndexOf("def main", StringComparison.Ordinal);
+        Assert.True(importIdx > mainIdx && mainIdx >= 0,
+            $"mixed submission must be hoisted into main():\n{src}");
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_DecoratedExecutableStatement_ClassifiedExecutable()
+    {
+        var session = new ReplSession();
+
+        // A decorated *executable* statement unwraps to an ExpressionStatement, which is not
+        // module-level, so it is still hoisted into main() — classification unchanged (#1151).
+        var result = await session.EvaluateAsync("@suppress(\"SPY0452\")\nprint(\"c\")");
+        Assert.True(result.Success, FormatDiagnostics(result));
+        Assert.Equal("c" + Environment.NewLine, result.Output);
+
+        var src = session.GetAccumulatedSource();
+        int stmtIdx = src.IndexOf("print(\"c\")", StringComparison.Ordinal);
+        int mainIdx = src.IndexOf("def main", StringComparison.Ordinal);
+        Assert.True(stmtIdx > mainIdx && mainIdx >= 0,
+            $"decorated executable statement must be hoisted into main():\n{src}");
+    }
+
+    // -------------------------------------------------------------------------
     // Experimental feature gating (#1045)
     // -------------------------------------------------------------------------
 
