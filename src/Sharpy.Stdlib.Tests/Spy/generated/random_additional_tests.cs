@@ -91,7 +91,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (50, 9) - (50, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                     Xunit.Assert.True(val < 10);
 #line (51, 9) - (51, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
-                    Xunit.Assert.Equal(0, val % 2);
+                    Xunit.Assert.Equal(0, global::Sharpy.Builtins.FloorMod(val, 2));
 #line (52, 9) - (52, 18) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                     i = i + 1;
 #line hidden
@@ -116,7 +116,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (61, 9) - (61, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                     Xunit.Assert.True(val <= 10);
 #line (62, 9) - (62, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
-                    Xunit.Assert.Equal(0, val % 2);
+                    Xunit.Assert.Equal(0, global::Sharpy.Builtins.FloorMod(val, 2));
 #line (63, 9) - (63, 18) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                     i = i + 1;
 #line hidden

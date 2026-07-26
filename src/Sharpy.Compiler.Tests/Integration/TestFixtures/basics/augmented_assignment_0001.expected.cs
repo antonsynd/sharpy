@@ -29,7 +29,7 @@ public static partial class AugmentedAssignment0001
 #line (15, 5) - (15, 24) 8 "augmented_assignment_0001.spy"
         global::Sharpy.Builtins.Print(CurrentTemp);
 #line (17, 5) - (17, 22) 8 "augmented_assignment_0001.spy"
-        CurrentTemp = CurrentTemp % 7;
+        CurrentTemp = global::Sharpy.Builtins.FloorMod(CurrentTemp, 7);
 #line (18, 5) - (18, 24) 8 "augmented_assignment_0001.spy"
         global::Sharpy.Builtins.Print(CurrentTemp);
 #line hidden

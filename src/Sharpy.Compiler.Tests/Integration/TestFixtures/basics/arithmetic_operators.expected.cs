@@ -15,7 +15,7 @@ public static partial class ArithmeticOperators
     public static int DiffResult = A - B;
     public static int ProdResult = A * B;
     public static int DivResult = (B == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(A) / B)));
-    public static int ModResult = A % B;
+    public static int ModResult = global::Sharpy.Builtins.FloorMod(A, B);
     public static void Main()
     {
 #line (13, 5) - (13, 22) 8 "arithmetic_operators.spy"

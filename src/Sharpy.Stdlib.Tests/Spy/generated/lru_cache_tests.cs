@@ -356,7 +356,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (167, 9) - (167, 36) 20 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
-                    int key = 6000 + (i % 32);
+                    int key = 6000 + (global::Sharpy.Builtins.FloorMod(i, 32));
 #line (168, 9) - (168, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                     int val = BoundedDouble(key);
 #line (169, 9) - (169, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"

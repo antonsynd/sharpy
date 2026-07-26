@@ -351,7 +351,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (152, 9) - (152, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     int d = random.Randint(0, 9);
 #line (153, 9) - (157, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
-                    if (d % 2 == 0)
+                    if (global::Sharpy.Builtins.FloorMod(d, 2) == 0)
 #line hidden
                     {
 #line (154, 13) - (154, 52) 24 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"

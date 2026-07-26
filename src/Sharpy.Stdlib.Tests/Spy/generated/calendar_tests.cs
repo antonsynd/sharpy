@@ -203,7 +203,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (103, 5) - (103, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal(1, days.GetItemUnchecked(6));
 #line (105, 5) - (105, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(days) % 7);
+                Xunit.Assert.Equal(0, global::Sharpy.Builtins.FloorMod(global::Sharpy.Builtins.Len(days), 7));
 #line hidden
                 Sharpy.List<int> __src_3 = days;
                 var __comp_2 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_3).Count);

@@ -105,7 +105,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (50, 9) - (50, 47) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
                     int val = random.Randrange(1, 10, 2);
 #line (51, 9) - (51, 70) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-                    Xunit.Assert.Equal(1, val % 2);
+                    Xunit.Assert.Equal(1, global::Sharpy.Builtins.FloorMod(val, 2));
 #line (52, 9) - (52, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
                     Xunit.Assert.True(val >= 1);
 #line (53, 9) - (53, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"

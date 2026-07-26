@@ -392,7 +392,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     6
                 };
 #line (131, 5) - (131, 86) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
-                Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.Filterfalse((int x) => x % 2 == 0, data));
+                Sharpy.List<int> result = new global::Sharpy.List<int>(itertools.Filterfalse((int x) => global::Sharpy.Builtins.FloorMod(x, 2) == 0, data));
 #line (132, 5) - (132, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_additional_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 1, 3, 5 }, result);
 #line hidden
