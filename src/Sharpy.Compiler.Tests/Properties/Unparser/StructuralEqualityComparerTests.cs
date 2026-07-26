@@ -229,4 +229,50 @@ public class StructuralEqualityComparerTests
         });
         Assert.True(Comparer.Equals(a, b));
     }
+
+    // A statement-scoped @suppress wraps its target in a DecoratedStatement (#1024); before #1152
+    // the comparer had no arm for it and fell to `_ => false`, reporting two structurally identical
+    // decorated statements as unequal.
+    private static DecoratedStatement DecoratedImport(string suppressCode, int line = 0) => new()
+    {
+        Decorators = ImmutableArray.Create(new Decorator
+        {
+            QualifiedParts = ImmutableArray.Create("suppress"),
+            Arguments = ImmutableArray.Create<Expression>(new StringLiteral { Value = suppressCode }),
+            LineStart = line
+        }),
+        Statement = new ImportStatement
+        {
+            Names = ImmutableArray.Create(new ImportAlias { Name = "os" }),
+            LineStart = line
+        },
+        LineStart = line
+    };
+
+    [Fact]
+    public void DecoratedStatement_IdenticalDecoratedImports_ReturnsTrue()
+    {
+        var a = DecoratedImport("SPY0452", line: 1);
+        var b = DecoratedImport("SPY0452", line: 9);
+        Assert.True(Comparer.Equals(a, b));
+    }
+
+    [Fact]
+    public void DecoratedStatement_DifferentDecoratorArguments_ReturnsFalse()
+    {
+        var a = DecoratedImport("SPY0452");
+        var b = DecoratedImport("SPY0460");
+        Assert.False(Comparer.Equals(a, b));
+    }
+
+    [Fact]
+    public void DecoratedStatement_VsUndecoratedImport_ReturnsFalse()
+    {
+        var decorated = DecoratedImport("SPY0452");
+        var plain = new ImportStatement
+        {
+            Names = ImmutableArray.Create(new ImportAlias { Name = "os" })
+        };
+        Assert.False(Comparer.Equals(decorated, plain));
+    }
 }

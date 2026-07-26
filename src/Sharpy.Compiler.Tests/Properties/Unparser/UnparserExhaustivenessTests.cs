@@ -9,6 +9,14 @@ namespace Sharpy.Compiler.Tests.Properties.Unparser;
 [Trait("Category", "RandomProperty")]
 public class UnparserExhaustivenessTests
 {
+    /// <summary>Prefix of the sentinel thrown by StructuralEqualityComparer's default arm (#1152).</summary>
+    private const string NoArmSentinel = "StructuralEqualityComparer: no arm for node type";
+
+    // NOTE: this fact compares each instance against ITSELF, so Equals short-circuits on the
+    // ReferenceEquals(x, y) fast path (StructuralEqualityComparer.cs) and NEVER reaches the switch.
+    // It therefore guards the fast path but is VACUOUS for arm coverage — every type "passes"
+    // without its arm ever executing. Arm coverage is enforced by
+    // AllConcreteNodeTypesHaveComparerArms below, which compares two DISTINCT instances (#1152).
     [Fact]
     public void AllConcreteNodeTypesAreCoveredByStructuralEqualityComparer()
     {
@@ -47,6 +55,58 @@ public class UnparserExhaustivenessTests
 
         Assert.True(identityFailures.Count == 0,
             $"StructuralEqualityComparer failed identity check for: {string.Join(", ", identityFailures)}");
+    }
+
+    /// <summary>
+    /// Mechanical arm-coverage guard: for each concrete Node type build TWO distinct default
+    /// instances and compare them, defeating the ReferenceEquals fast path so the switch actually
+    /// runs. A missing arm now surfaces as the loud sentinel (StructuralEqualityComparer's default
+    /// arm throws — #1152); any other outcome (an NRE from a degenerate <c>null!</c> member, or a
+    /// boolean result) proves the arm exists and executed. This is what the identity fact above
+    /// could not do.
+    /// </summary>
+    [Fact]
+    public void AllConcreteNodeTypesHaveComparerArms()
+    {
+        var nodeType = typeof(Node);
+        var assembly = nodeType.Assembly;
+
+        var concreteNodeTypes = assembly.GetTypes()
+            .Where(t => t.IsSubclassOf(nodeType) && !t.IsAbstract)
+            .OrderBy(t => t.Name)
+            .ToList();
+
+        Assert.True(concreteNodeTypes.Count > 0, "Should find at least one concrete Node type");
+
+        var comparer = StructuralEqualityComparer.Instance;
+        var missingArm = new List<string>();
+
+        foreach (var type in concreteNodeTypes)
+        {
+            // Two DISTINCT instances so ReferenceEquals(x, y) cannot hide a missing arm.
+            var a = CreateDefaultInstance(type);
+            var b = CreateDefaultInstance(type);
+            if (a == null || b == null)
+                continue;
+
+            try
+            {
+                // Result is irrelevant — we only care whether an arm existed to run.
+                _ = comparer.Equals(a, b);
+            }
+            catch (Exception ex) when (ex.Message.StartsWith(NoArmSentinel, StringComparison.Ordinal))
+            {
+                missingArm.Add(type.Name);
+            }
+            catch
+            {
+                // Any other exception proves the arm exists and executed — coverage satisfied.
+            }
+        }
+
+        Assert.True(missingArm.Count == 0,
+            $"StructuralEqualityComparer has no arm for: {string.Join(", ", missingArm)}. "
+            + "Add a switch arm in StructuralEqualityComparer.Equals for each listed node type.");
     }
 
     [Fact]

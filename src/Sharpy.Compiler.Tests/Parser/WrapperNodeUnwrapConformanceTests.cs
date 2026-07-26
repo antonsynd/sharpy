@@ -112,14 +112,6 @@ public class WrapperNodeUnwrapConformanceTests
         // fixed (the switch will unwrap and this method becomes wrapper-aware).
         ["ReplSession.cs :: IsModuleLevelStatement"] =
             "#1151: REPL misclassifies a decorated import as executable. Drain on fix.",
-
-        // #1152 (real gap — test infrastructure only). StructuralEqualityComparer.Equals has no
-        // DecoratedStatement arm and falls to `_ => false`, so two structurally-identical-but-distinct
-        // decorated statements compare unequal. Used only by unparse round-trip / property tests; would
-        // surface as a spurious idempotence failure if a generator ever emits a decorated statement.
-        // Drain this entry when #1152 is fixed (a DecoratedStatement arm makes this method wrapper-aware).
-        ["StructuralEqualityComparer.cs :: Equals"] =
-            "#1152: DecoratedStatement not handled -> `_ => false` (test-infra only). Drain on fix.",
     };
 
     [Fact]
