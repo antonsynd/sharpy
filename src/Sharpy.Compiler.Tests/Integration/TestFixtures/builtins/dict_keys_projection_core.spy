@@ -1,0 +1,10 @@
+# Test (#1154): a bare dict in a builtin's iterable position iterates its KEYS,
+# matching Python. sorted/list/max/min/set/reversed of a dict all project to keys.
+def main() -> None:
+    d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+    print(sorted(d))
+    print(list(d))
+    print(max(d))
+    print(min(d))
+    print(sorted(set(d)))
+    print(list(reversed(d)))

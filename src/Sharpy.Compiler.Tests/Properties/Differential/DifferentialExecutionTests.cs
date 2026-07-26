@@ -294,12 +294,23 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
                 print(sorted(d.items()))
                 """),
-            // Isolated probe for the #sorted-dict bug: sorted(dict) must iterate keys like Python.
-            // Sharpy currently raises SPY0908 (generated C# cannot convert Sharpy.Dict to
-            // IEnumerable<TKey>); allowlisted until fixed.
+            // Regression guard (#1154, fixed): sorted(dict) iterates the dict's keys like Python.
             ("sorted_dict_keys", """
                 d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
                 print(sorted(d))
+                """),
+            // Regression guard (#1154, fixed): the rest of the dict-iteration ring. list(d)/max(d)/
+            // min(d) needed execution cells — max/min compiled but crashed at runtime (KeyValuePair
+            // is not comparable), a shape invisible to compile-only sweeps. enumerate(d)/zip(d, …)
+            // are the silent-wrong cases: they compiled AND ran, iterating KeyValuePair pairs instead
+            // of keys, so only a stdout oracle catches a regression.
+            ("dict_iteration_keys_ring", """
+                d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+                print(list(d))
+                print(max(d))
+                print(min(d))
+                print(list(enumerate(d)))
+                print(list(zip(d, [10, 20, 30])))
                 """),
             ("list_mutation_methods", """
                 xs: list[int] = [1, 2, 3]

@@ -1,0 +1,13 @@
+# Regression (#1154): the keys-projection must NOT touch cases that already iterate
+# correctly. `for k in d` stays duck-typed foreach; the dict views (.keys()/.values()/
+# .items(), #1068) carry their own element type; and dict(d) copies pairs, not keys.
+def main() -> None:
+    d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+    for k in d:
+        print(k)
+    print(sorted(d.keys()))
+    print(sorted(d.values()))
+    print(sorted(d.items()))
+    d2: dict[str, int] = dict(d)
+    print(sorted(d2.keys()))
+    print(d2["a"])

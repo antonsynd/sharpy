@@ -1,0 +1,6 @@
+# Test (#1154): map()/filter() over a bare dict iterate its KEYS, matching Python.
+# The iterable argument (position 1) projects to keys; the callable (position 0) does not.
+def main() -> None:
+    d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+    print(list(map(lambda k: k.upper(), d)))
+    print(list(filter(lambda k: k != "a", d)))

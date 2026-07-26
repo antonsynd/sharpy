@@ -1,0 +1,9 @@
+# Regression (#1154): enumerate()/zip() over a bare dict previously compiled but
+# silently iterated KeyValuePair pairs instead of keys. They now iterate keys.
+def main() -> None:
+    d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+    xs: list[int] = [10, 20, 30]
+    for i, k in enumerate(d):
+        print(i, k)
+    for k, v in zip(d, xs):
+        print(k, v)
