@@ -145,6 +145,16 @@ internal partial class RoslynEmitter
                 var hasFloatOperand = IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right);
                 return GenerateFloorDivision(left, right, hasFloatOperand);
 
+            case BinaryOperator.Modulo:
+                // x % y → Python floored modulo (result sign = divisor sign) for numeric operands.
+                // Gate on both operands being int/long/float32/float64 (materialized semantic types):
+                // C#'s native `%` takes the sign of the dividend, which diverges from Python. User
+                // types with `__mod__` (→ operator %) and CLR `op_Modulus` types (e.g. decimal) MUST
+                // keep the native ModuloExpression map below — an ungated rewrite would break them.
+                if (IsFloorModOperand(binOp.Left) && IsFloorModOperand(binOp.Right))
+                    return GenerateFloorModulo(left, right);
+                break;
+
             case BinaryOperator.MatMul:
                 // x @ y → x.MatMul(y). C# has no `@` operator, so matrix multiplication
                 // (PEP 465) dispatches to the MatMul instance method that both user-defined

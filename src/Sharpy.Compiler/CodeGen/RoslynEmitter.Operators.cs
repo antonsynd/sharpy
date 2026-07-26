@@ -1040,6 +1040,53 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Checks whether an expression is a primitive numeric operand eligible for floored
+    /// modulo lowering (int/long/float32/float64). Gates the <c>%</c> rewrite so user
+    /// <c>__mod__</c> types and CLR <c>op_Modulus</c> types (e.g. decimal) keep the native
+    /// C# <c>%</c> operator. Reads the materialized semantic type; falls back to an AST
+    /// heuristic for bare literals when SemanticInfo is unavailable.
+    /// </summary>
+    private bool IsFloorModOperand(Expression expr)
+    {
+        var semanticType = GetExpressionSemanticType(expr);
+        if (semanticType != null)
+        {
+            return semanticType == SemanticType.Int
+                || semanticType == SemanticType.Long
+                || semanticType == SemanticType.Float32
+                || semanticType == SemanticType.Double
+                || semanticType == SemanticType.Float;
+        }
+
+        // Fallback for literals/compound expressions with no resolved type (decimal `m`
+        // literals are excluded so they keep the native `%` path).
+        return expr switch
+        {
+            IntegerLiteral => true,
+            FloatLiteral fl => fl.Suffix?.Equals("m", StringComparison.OrdinalIgnoreCase) != true,
+            UnaryOp unary => IsFloorModOperand(unary.Operand),
+            Parenthesized paren => IsFloorModOperand(paren.Expression),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Generates a floored-modulo call: <c>global::Sharpy.Builtins.FloorMod(left, right)</c>.
+    /// The Core helper carries the sign-of-divisor adjust and the ZeroDivisionError guard, so
+    /// no operand is spliced more than once (unlike an inline sign-adjust).
+    /// </summary>
+    private ExpressionSyntax GenerateFloorModulo(ExpressionSyntax left, ExpressionSyntax right)
+    {
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                IdentifierName("FloorMod")))
+            .AddArgumentListArguments(
+                Argument(left),
+                Argument(right));
+    }
+
+    /// <summary>
     /// Generates floor division expression with correct Python semantics.
     /// Floors toward negative infinity (not truncation toward zero).
     /// - Integer operands: (int)Math.Floor((double)a / b) → result is int32 (pragmatic for .NET)
