@@ -1123,6 +1123,25 @@ internal partial class RoslynEmitter
     /// For spread of a tuple type → expands to .Item1, .Item2, ... individual arguments.
     /// For spread of an iterable type → generates .ToArray() and passes as a single argument.
     /// </summary>
+    /// <summary>
+    /// Applies the iterable projection the TypeChecker recorded for a builtin-call argument (#1154).
+    /// The only projection today is <see cref="IterableProjectionKind.DictKeys"/>: a bare dict in a
+    /// builtin's iterable-of-keys position becomes <c>arg.Keys()</c> (<c>DictKeyView&lt;K,V&gt;</c>),
+    /// matching Python's key iteration. Absent marker ⇒ the argument passes through unchanged. The
+    /// emitter is a pure applier here — it switches on the recorded tag and never inspects types
+    /// (repo rule 2; the NarrowedReadLowering precedent).
+    /// </summary>
+    private ExpressionSyntax ApplyIterableProjection(Expression argNode, ExpressionSyntax generated)
+    {
+        if (_context.SemanticInfo?.GetIterableProjection(argNode) == IterableProjectionKind.DictKeys)
+        {
+            return InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    generated, IdentifierName("Keys")));
+        }
+        return generated;
+    }
+
     private IEnumerable<ArgumentSyntax> GeneratePositionalArguments(
         System.Collections.Immutable.ImmutableArray<Expression> arguments,
         FunctionSymbol? funcSymbol = null)
@@ -1234,6 +1253,7 @@ internal partial class RoslynEmitter
                 _targetTypeContext = null;
                 var generated = GenerateExpression(arg);
                 _targetTypeContext = previousTargetType;
+                generated = ApplyIterableProjection(arg, generated);
                 if (positionalParams != null && !sawSpread
                     && argIndex < positionalParams.Count
                     && !positionalParams[argIndex].IsVariadic
