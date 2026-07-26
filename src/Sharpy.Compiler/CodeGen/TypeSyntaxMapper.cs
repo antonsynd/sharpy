@@ -417,9 +417,23 @@ internal class TypeSyntaxMapper
     }
 
     /// <summary>
+    /// The single naming authority for a Sharpy type <em>reference</em> the RoslynEmitter emits at a
+    /// construction or generic-instantiation site. Delegates to <see cref="GetMappedTypeName"/> so every
+    /// emission position agrees on qualification: builtin collections keep their Sharpy wrapper name
+    /// (<c>list</c> → <c>Sharpy.List</c>), imported/cross-file types are fully qualified, and a
+    /// current-file user type keeps its short name (honoring <paramref name="isBacktickEscaped"/>).
+    /// Returns a name that may be dotted and/or <c>global::</c>-prefixed; feed it to
+    /// <see cref="QualifiedGenericName(string, TypeSyntax[])"/>, which splits the prefix and dots into the
+    /// correct <see cref="NameSyntax"/>. This is the seam #1139 routes the previously-hand-built
+    /// construction names through so they stop diverging from the (already-correct) annotation position.
+    /// </summary>
+    internal string GetTypeNameForReference(string sharpyName, bool isBacktickEscaped)
+        => GetMappedTypeName(sharpyName, isBacktickEscaped);
+
+    /// <summary>
     /// Maps a Sharpy type name to a C# type name
     /// </summary>
-    private string GetMappedTypeName(string sharpyTypeName)
+    private string GetMappedTypeName(string sharpyTypeName, bool isBacktickEscaped = false)
     {
         // Check if it's a built-in type. Name resolution (primitives + collections) is owned
         // by ClrTypeBridge — the single source for the Sharpy-name -> C# type-name mapping.
@@ -473,7 +487,7 @@ internal class TypeSyntaxMapper
 
             // Type is in current scope (user-defined in current file) - use simple name
             // This takes priority over builtin registry to allow shadowing
-            return NameCasing.ResolveType(sharpyTypeName, false);
+            return NameCasing.ResolveType(sharpyTypeName, isBacktickEscaped);
         }
 
         // Check if it's a known builtin from the registry (exception types, etc.)
@@ -500,7 +514,7 @@ internal class TypeSyntaxMapper
         }
 
         // User-defined types in current module keep their PascalCase name
-        return NameCasing.ResolveType(sharpyTypeName, false);
+        return NameCasing.ResolveType(sharpyTypeName, isBacktickEscaped);
     }
 
     /// <summary>
