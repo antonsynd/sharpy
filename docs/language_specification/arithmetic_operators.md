@@ -7,7 +7,7 @@
 | `*` | Multiplication | `*` |
 | `/` | Division* | `/` (with cast if necessary) |
 | `//` | Floor division** | `/` (with cast if necessary) |
-| `%` | Modulo | `%` |
+| `%` | Modulo*** | `Sharpy.Builtins.FloorMod` (integer/float); native `%` for other types |
 | `**` | Exponentiation | Integer: constant folding / checked integer power; float: `Math.Pow(x, y)` (see below) |
 
 ## Division Operator `/`
@@ -45,6 +45,47 @@ mathematical quotient (rounds toward negative infinity).
 7.0f // 2   # 3.0f (float32) - mixed: result is float32
 ```
 
+## Modulo Operator `%`
+
+The `%` operator returns the remainder of **floored** division. Following
+Python's semantics, the result takes the **sign of the divisor** (not the sign
+of the dividend, as C#'s native `%` would give). This keeps the language
+coherent with floored `//` and `divmod`: the identity
+`a == (a // b) * b + (a % b)` holds for all operands.
+
+The return type depends on the operands:
+
+| Operands | Result Type |
+|----------|-------------|
+| Any integer types | Same integer type (`int32`/`int64`) |
+| Any float type | Same float type |
+| Mixed integer and float | Float type of the float operand |
+
+**Examples:**
+```python
+7 % 3       # 1
+-7 % 3      # 2  (sign of divisor, not -1)
+7 % -3      # -2
+-7 % -3     # -1
+-7.5 % 2    # 0.5  (float64)
+7.5 % -2    # -0.5 (float64)
+7 % 2.0     # 1.0  (float64) - mixed: result is float64
+```
+
+**Divmod identity** — modulo and floor division agree with `divmod`:
+```python
+divmod(-7, 3)               # (-3, 2)
+(-7 // 3) * 3 + (-7 % 3)    # -7  (identity holds; would be -10 under truncation)
+```
+
+**Division by zero** raises `ZeroDivisionError` for both integers and floats
+(C#'s native `%` throws `DivideByZeroException` for integers and silently yields
+`NaN` for floats, so both are lowered through the runtime helper):
+```python
+7 % 0       # ZeroDivisionError: integer modulo by zero
+7.0 % 0.0   # ZeroDivisionError: float modulo
+```
+
 ## Exponentiation Operator `**`
 
 Sharpy integers are fixed-width (Axiom 1), so integer exponentiation never
@@ -65,6 +106,9 @@ integers, `Math.Pow()` for floats. See table above.*
 - *`/`: 🔄 Lowered to floating-point division. See table above.*
 - *`//`: 🔄 Lowered to `(int)Math.Floor((double)a / b)` for integers,
 `Math.Floor(a / b)` for floats.*
+- *`%`: 🔄 Lowered to `Sharpy.Builtins.FloorMod(a, b)` for integer/float operands
+(Python floored modulo, sign of divisor, `ZeroDivisionError` on zero); native `%`
+for decimal and user-defined `operator %` types.*
 
 ## Numeric Type Promotion
 
