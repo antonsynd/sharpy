@@ -1,0 +1,11 @@
+# #1147: a parenthesized member-access callee (p.method)(5) previously missed the member-access
+# dispatch arm (which tested the still-wrapped call.Function) and mis-emitted as a cast (SPY0908).
+# GenerateCall now dispatches on the unwrapped callee, so it emits a real p.Method(5) invocation.
+class Adder:
+    def method(self, x: int) -> int:
+        return x + 10
+
+
+def main() -> None:
+    p: Adder = Adder()
+    print((p.method)(5))

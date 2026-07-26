@@ -1,0 +1,11 @@
+# #1147: the narrowed-callee edge of the parenthesized-callee fix. After `if cb is not None`, a
+# parenthesized narrowed Optional-delegate callee (cb)(1) must apply the recorded narrowing accessor
+# (.Unwrap()) to the callee before invoking. The narrowing fact is recorded on the inner node, so the
+# lookup must consult the unwrapped callee — the wrapped call.Function would miss it. The sibling
+# non-optional delegate variable (plain)(3) exercises the plain-identifier delegate path.
+def main() -> None:
+    cb: ((int) -> int)? = lambda x: x * 2
+    if cb is not None:
+        print((cb)(1))
+    plain: (int) -> int = lambda z: z + 100
+    print((plain)(3))

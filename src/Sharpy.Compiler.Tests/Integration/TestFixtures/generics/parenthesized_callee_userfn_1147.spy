@@ -1,0 +1,12 @@
+# #1147: a parenthesized plain-identifier callee (foo)(5) — with NO explicit type args — previously
+# missed the identifier dispatch arm (which tested the still-wrapped call.Function) and fell through
+# to a verbatim (Foo)(5) emit, which C# re-parses as a cast (CS0246 -> SPY0908). GenerateCall now
+# dispatches on the top-level-unwrapped callee, so it emits a real invocation. The while-loop unwrap
+# also handles nested parens ((foo))(5).
+def foo(x: int) -> int:
+    return x + 1
+
+
+def main() -> None:
+    print((foo)(5))
+    print(((foo))(5))

@@ -39,32 +39,6 @@ usermod_pair::parenCalled::exact
 usermod_pair::ternaryCalled::exact
 
 # ─────────────────────────────────────────────────────────────────────────────
-# #1147 (OPEN, NEW) — a parenthesized method-group callee with NO explicit type args is emitted as a C#
-# CAST, not an invocation. `(identity)(5)` emits `(Identity)(5)`, which Roslyn parses as a cast to a
-# type `Identity` → CS0246/CS0118/CS0426 (a csLeak: clean Sharpy analysis, uncompilable C#). Root
-# cause: RoslynEmitter.GenerateCall (CodeGen/RoslynEmitter.Expressions.Access.cs:34-36) unwraps the
-# `Parenthesized` wrapper into a local `callee` for the generic-instantiation (IndexAccess) detection
-# only; the plain-identifier/member dispatch below (line 73 `call.Function is Identifier`, and the
-# member-access arm) still tests the ORIGINAL `call.Function`, so a parenthesized method group with no
-# `[T]` misses every proper arm and falls through to a verbatim `(Name)(args)` emit. This is the
-# sibling gap to the #1138 fix (which unwrapped only the `(f[int])(x)` IndexAccess shape); class X1
-# (semantics accepts, codegen emits uncompilable C#). A fix should retest the unwrapped `callee` for
-# the identifier/member arms (or unwrap once at the top of GenerateCall). Confirmed NOT generic-specific:
-# the two `nongeneric_*` cells below are a plain user fn `(foo)(5)` and a non-generic method
-# `(p.method)(5)`, both of which mis-emit the same way (CLI `run` reports SPY0908 wrapping CS0246/CS0118)
-# — the generics sweep merely surfaced a general parenthesized-callee defect.
-user_identity::parenCalled::none
-user_pair::parenCalled::none
-builtin_map::parenCalled::none
-shadow_map::parenCalled::none
-instance_convert::parenCalled::none
-instance_pick::parenCalled::none
-stdlib_json_loads::parenCalled::none
-bcl_convertall::parenCalled::none
-nongeneric_userfn::parenCalled::none
-nongeneric_instance::parenCalled::none
-
-# ─────────────────────────────────────────────────────────────────────────────
 # #1141 (OPEN) — a typo'd (nonexistent) member on a RAW BCL type WITH explicit type args is not
 # rejected at semantic time; it reaches codegen and emits `lst.NoSuchGeneric<...>(...)` → CS1061
 # "'List<int>' does not contain a definition for 'NoSuchGeneric'". User classes and modules correctly
