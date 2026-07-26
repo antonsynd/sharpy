@@ -1,0 +1,21 @@
+# A user class defining __mod__ keeps native operator % dispatch — the floored-%
+# lowering is gated to numeric operands and must NOT hijack user types. (#1153)
+class Wrap:
+    value: int
+
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def __mod__(self, other: Wrap) -> Wrap:
+        # Deliberately not a remainder — proves the user operator is called, not FloorMod.
+        return Wrap(self.value + other.value)
+
+
+def main() -> None:
+    a: Wrap = Wrap(10)
+    b: Wrap = Wrap(3)
+    c: Wrap = a % b
+    print(c.value)     # 13 (user __mod__), not a remainder
+
+    a %= Wrap(5)       # augmented %= also stays native
+    print(a.value)     # 15

@@ -1,0 +1,17 @@
+# Augmented %= floors just like binary % (sign of divisor). (#1153)
+def main() -> None:
+    x: int = -7
+    x %= 3
+    print(x)      # 2
+
+    y: int = 7
+    y %= -3
+    print(y)      # -2
+
+    z: float = -7.5
+    z %= 2.0
+    print(z)      # 0.5
+
+    w: int = 17
+    w %= 5
+    print(w)      # 2  (positive: unchanged from truncation)

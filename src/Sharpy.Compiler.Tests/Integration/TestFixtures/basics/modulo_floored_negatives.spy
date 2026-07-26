@@ -1,0 +1,14 @@
+# Modulo is floored: the result takes the sign of the divisor (Python semantics),
+# not the sign of the dividend (C#'s native %). See docs/language_specification/
+# arithmetic_operators.md "Modulo Operator %". Divmod identity must hold. (#1153)
+def main() -> None:
+    print(-7 % 3)     # 2  (sign of divisor)
+    print(7 % -3)     # -2
+    print(-7 % -3)    # -1
+    print(7 % 3)      # 1
+    print(-17 % 5)    # 3
+    print(17 % -5)    # -3
+    print(0 % 5)      # 0
+    # Divmod identity: a == (a // b) * b + (a % b)
+    print((-7 // 3) * 3 + (-7 % 3))   # -7  (would be -10 under truncation)
+    print(divmod(-7, 3))              # (-3, 2)

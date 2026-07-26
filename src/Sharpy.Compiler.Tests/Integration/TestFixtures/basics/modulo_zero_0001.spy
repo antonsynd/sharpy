@@ -1,0 +1,27 @@
+# Modulo by zero raises ZeroDivisionError, matching Python (C#'s native % throws
+# DivideByZeroException for ints and silently yields NaN for floats). (#1153)
+# Python: 10 % 0    -> ZeroDivisionError("integer modulo by zero")
+# Python: 10.0 % 0.0 -> ZeroDivisionError("float modulo")
+def main() -> None:
+    # Integer modulo by zero
+    try:
+        x: int = 10 % 0
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught int zero mod")
+
+    # Float modulo by zero
+    try:
+        y: float = 10.0 % 0.0
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught float zero mod")
+
+    # Augmented assignment: a %= 0
+    a: int = 42
+    try:
+        a %= 0
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught augmented zero mod")
+    print(a)

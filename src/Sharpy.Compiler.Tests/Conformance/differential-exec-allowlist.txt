@@ -23,18 +23,6 @@ fixture::strings/string_utf16_len
 
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
 
-# Modulo on negatives + stale docs. CONFIRMED at the CLI: `//` FLOORS in both signs
-# (-7//2=-4, 7//-2=-4, -7//-2=3, 7//2=3 — matches CPython and spec arithmetic_operators.md),
-# but `%` is C#'s TRUNCATED remainder (-7 % 3 = -1, 7 % -3 = 1) where CPython floors (2, -2).
-# The two disagree, so Sharpy's own divmod identity is broken: (-7//3)*3 + (-7%3) prints -10,
-# not -7. Compounding docs are stale: deviations.yaml `integer-division-floor` (~line 473) and
-# CLAUDE.md's axiom table both still claim `//` is TRUNCATING and point at `math.floor_div` as
-# the escape hatch — but `//` floors and `math.floor_div` does not exist (`import math;
-# math.floor_div(-7,2)` -> SPY0203 "Module 'math' has no member 'floor_div'"). Fix: floor `%`
-# to match `//`. Bug: #1153. Stale-docs companion (deviations.yaml `integer-division-floor` +
-# CLAUDE.md axiom table + nonexistent `math.floor_div`): #1155.
-handpicked::int_floordiv_modulo_negatives
-
 # sorted(dict) must iterate the dict's KEYS like Python (-> ['a','b','c']). Sharpy raises
 # SPY0908: internal error — generated C# fails to compile with CS1503 "cannot convert from
 # 'Sharpy.Dict<string, int>' to 'System.Collections.Generic.IEnumerable<string>'": no

@@ -1,0 +1,8 @@
+# Float modulo follows the same floored rule (result takes the sign of the
+# divisor), matching Python. (#1153)
+def main() -> None:
+    print(-7.5 % 2.0)    # 0.5
+    print(7.5 % -2.0)    # -0.5
+    print(-7.5 % -2.0)   # -1.5
+    print(7.5 % 2.0)     # 1.5
+    print(-1.0 % 3.0)    # 2.0

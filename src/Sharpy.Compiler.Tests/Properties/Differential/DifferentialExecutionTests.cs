@@ -217,6 +217,20 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 print(-7 % 3)
                 print(7 % -3)
                 """),
+            // Float % on negatives follows the same floored rule (sign of divisor). #1153.
+            ("float_modulo_negatives", """
+                print(-7.5 % 2.0)
+                print(7.5 % -2.0)
+                print(-7.5 % -2.0)
+                print(-1.0 % 3.0)
+                """),
+            // The divmod identity a == (a // b) * b + (a % b) holds once % floors. #1153.
+            ("divmod_modulo_identity", """
+                print((-7 // 3) * 3 + (-7 % 3))
+                print((7 // -3) * -3 + (7 % -3))
+                print(divmod(-7, 3))
+                print(-7 // 3, -7 % 3)
+                """),
             ("float_repr_halves", """
                 print(0.1 + 0.2)
                 print(1.0)
