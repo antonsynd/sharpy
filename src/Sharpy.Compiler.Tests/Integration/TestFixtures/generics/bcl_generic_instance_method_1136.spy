@@ -4,10 +4,11 @@
 # TryResolveGenericInstanceMethod now resolves it and convert() below emits lst.ConvertAll<string>(...),
 # which compiles, links, and runs here (the lambda -> Converter<int,string> conversion binds).
 #
-# The receiver is a *parameter*, not a `List[int]()` literal: constructing a raw BCL List still emits an
-# ambiguous `new List<int>()` (CS0104 vs Sharpy.List) — a separate pre-existing codegen gap tracked in
-# #1139 — so main() cannot call convert() yet. The ConvertAll<string> emission is additionally pinned by
-# BclGenericInstanceMethodCodeGenTests.
+# The receiver here is a *parameter* rather than a `List[int]()` literal. Constructing a raw BCL List
+# used to emit an ambiguous `new List<int>()` (CS0104 vs Sharpy.List) — that gap is now fixed (#1139),
+# so `List[int]()` construction runs; the end-to-end construction vehicle lives in
+# bcl_generic_construction_1139{,_aliased}. This fixture keeps the parameter form so both are covered.
+# The ConvertAll<string> emission is additionally pinned by BclGenericInstanceMethodCodeGenTests.
 from system.collections.generic import List
 
 def convert(lst: List[int]) -> int:

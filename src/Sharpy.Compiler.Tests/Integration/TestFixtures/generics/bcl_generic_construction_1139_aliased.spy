@@ -1,0 +1,14 @@
+# #1139: the module-aliased form. `import system.collections.generic as scg` then scg.List[int]()
+# used to emit a bare `new List<int>()` at BOTH the annotation and construction positions (with an
+# unused synthesized `using scg = System.Collections.Generic;`) → CS0104. Both positions now qualify
+# through the same naming seam as System.Collections.Generic.List<int> and agree, so it compiles and
+# runs.
+import system.collections.generic as scg
+
+
+def main() -> None:
+    xs: scg.List[int] = scg.List[int]()
+    xs.add(5)
+    xs.add(6)
+    print(xs.count)
+    print(xs[0])

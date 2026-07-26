@@ -1,0 +1,16 @@
+# #1139: constructing an imported raw-BCL generic type — List[int]() — used to emit a bare
+# `new List<int>()` (LHS annotation was already qualified, RHS was not), which collided with
+# Sharpy.List → CS0104 → SPY0908. The naming seam now qualifies the construction as
+# System.Collections.Generic.List<int>, matching the annotation, so it compiles, runs, and the
+# constructed list mutates (add) and reads (index / count) as a real BCL List.
+from system.collections.generic import List
+
+
+def main() -> None:
+    xs: List[int] = List[int]()
+    xs.add(10)
+    xs.add(20)
+    xs.add(30)
+    print(xs.count)
+    print(xs[0])
+    print(xs[2])
