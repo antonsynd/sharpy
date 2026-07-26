@@ -227,7 +227,7 @@ When the three axioms conflict, precedence is: **Axiom 1 (.NET) > Axiom 3 (Types
 
 | Conflict | Resolution |
 |----------|------------|
-| Integer division (`//`) | Resolved as **floor division** in spec + implementation (Python semantics, zero cost — see `arithmetic_operators.md`); integer `%` still truncates, divergence tracked in #1153, doc cleanup in #1155 |
+| Integer division (`//`) and modulo (`%`) | Both resolved as **floored** (Python semantics, sign of divisor, zero cost — see `arithmetic_operators.md`): `//` lowers to `Math.Floor`, `%` to `Sharpy.Builtins.FloorMod`. The divmod identity `a == (a // b) * b + (a % b)` holds (#1153); stale `math.floor_div` docs deleted (#1155) |
 | String indexing (code points vs UTF-16) | Axiom 1 wins — use UTF-16 with helper methods |
 | `global`/`nonlocal` keywords | Axiom 1 wins — C# scoping rules apply |
 | Duck typing | Axiom 1+3 win — use explicit interfaces |

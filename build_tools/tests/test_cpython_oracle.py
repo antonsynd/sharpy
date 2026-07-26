@@ -331,7 +331,8 @@ def test_small_power_not_flagged():
     assert _by_name(report, "test_small").category is Category.PORTABLE
 
 
-def test_floor_div_is_divergent():
+def test_floor_div_is_portable():
+    # `//` (and `%`) floor in Sharpy, matching CPython — no longer a divergence (#1153).
     report = _classify(
         """
         class T:
@@ -340,8 +341,8 @@ def test_floor_div_is_divergent():
         """
     )
     m = _by_name(report, "test_fd")
-    assert m.category is Category.DIVERGENT
-    assert any(r.deviation_id == "integer-division-floor" for r in m.reasons)
+    assert m.category is Category.PORTABLE
+    assert not any(r.deviation_id == "integer-division-floor" for r in m.reasons)
 
 
 def test_global_keyword_is_divergent():

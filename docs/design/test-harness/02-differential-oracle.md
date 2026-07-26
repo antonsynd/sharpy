@@ -221,11 +221,11 @@ The `PythonMatchesExpected` field is the hallucination detector's sharpest edge:
 Follows the existing sidecar convention (`.expected`, `.error`, `.warning`, `.skip`). Optional YAML next to the `.spy` file:
 
 ```yaml
-# arithmetic_floor_div.spy.oracle
+# emoji_length.spy.oracle
 status: deviation            # skip | deviation | normalize (default: automatic)
-deviations: [op-floordiv-truncation]   # ids from docs/deviations.yaml
+deviations: [string-indexing-utf16]    # ids from docs/deviations.yaml
 normalizers: [float-tolerance]         # extra normalizers for this fixture
-reason: "// truncates toward zero in Sharpy (Axiom 1); Python floors"
+reason: "len(\"😀\") is 2 (UTF-16 code units) in Sharpy vs 1 (code point) in Python (Axiom 1)"
 ```
 
 Precedence: `status: skip` > `.skip` file (already excluded from discovery) > automatic classification.

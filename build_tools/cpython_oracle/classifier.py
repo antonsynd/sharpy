@@ -79,7 +79,6 @@ BUILTIN_TYPES = frozenset(
 
 # AST-feature → docs/deviations.yaml id. These make the DIVERGENT bucket double as
 # a machine-checkable map onto the divergence ledger.
-DEVIATION_FLOOR_DIV = "integer-division-floor"
 DEVIATION_HUGE_INT = "int-overflow-checked"
 DEVIATION_GLOBAL_NONLOCAL = "global-nonlocal-keywords"
 DEVIATION_METACLASS = "no-metaclasses"
@@ -487,16 +486,8 @@ class _MethodVisitor(ast.NodeVisitor):
 
     # -- operators / statements --------------------------------------------- #
     def visit_BinOp(self, node: ast.BinOp) -> None:
-        if isinstance(node.op, ast.FloorDiv):
-            self._add(
-                Reason(
-                    code="floor-div",
-                    category=Category.DIVERGENT,
-                    detail="uses // (Sharpy truncates toward zero; Python floors)",
-                    line=node.lineno,
-                    deviation_id=DEVIATION_FLOOR_DIV,
-                )
-            )
+        # `//` and `%` both floor in Sharpy (sign of divisor), matching CPython —
+        # no divergence (#1153). Only integer overflow past int64 diverges here.
         if _exceeds_int64(node):
             self._add(
                 Reason(

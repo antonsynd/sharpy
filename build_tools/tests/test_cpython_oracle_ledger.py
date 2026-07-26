@@ -23,7 +23,7 @@ from build_tools.cpython_oracle import dual_run, ledger
 # --------------------------------------------------------------------------- #
 _DEVIATIONS = """
 deviations:
-  - id: integer-division-floor
+  - id: string-indexing-utf16
     code: null
     category: operators
     audience: python
@@ -72,7 +72,7 @@ def test_seeds_deviations_from_catalog(tmp_path: Path):
     (tmp_path / "ported").mkdir()
     data = _build(tmp_path)
     ids = [d["id"] for d in data["deviations"]]
-    assert ids == ["int-overflow-checked", "integer-division-floor"]  # sorted
+    assert ids == ["int-overflow-checked", "string-indexing-utf16"]  # sorted
     # Machine-relevant fields are projected; prose fields are dropped.
     entry = data["deviations"][0]
     assert set(entry) == {
@@ -91,7 +91,7 @@ def test_real_catalog_projects_all_entries():
     # Guards against the repo catalog drifting away from the ledger's projection.
     deviations = ledger.load_deviations()
     assert len(deviations) >= 50
-    assert "integer-division-floor" in ledger.deviation_ids(deviations)
+    assert "string-indexing-utf16" in ledger.deviation_ids(deviations)
 
 
 # --------------------------------------------------------------------------- #
@@ -169,7 +169,7 @@ def test_scans_expected_fail_cpython_annotation(tmp_path: Path):
         # oracle-ledger:
         #   kind: expected-fail-cpython
         #   test: test_trunc_div
-        #   deviation: integer-division-floor
+        #   deviation: string-indexing-utf16
         #   reason: encodes Sharpy's truncating // result, which CPython floors
 
         @test
@@ -180,7 +180,7 @@ def test_scans_expected_fail_cpython_annotation(tmp_path: Path):
     data = _build(tmp_path)
     entry = data["entries"][0]
     assert entry["kind"] == "expected-fail-cpython"
-    assert entry["deviation"] == "integer-division-floor"
+    assert entry["deviation"] == "string-indexing-utf16"
     assert entry["side"] == "cpython"  # defaulted from kind
 
 
@@ -232,7 +232,7 @@ def test_expected_fail_missing_test_is_rejected(tmp_path: Path):
         # oracle-ledger:
         #   kind: expected-fail-cpython
         #   test: test_absent
-        #   deviation: integer-division-floor
+        #   deviation: string-indexing-utf16
         #   reason: references a @test function that is not in the file
 
         @test
@@ -328,7 +328,7 @@ def test_covered_cpython_failure_is_excused(tmp_path: Path):
             "kind": "expected-fail-cpython",
             "module": "cpython_x_tests",
             "test": "test_a",
-            "deviation": "integer-division-floor",
+            "deviation": "string-indexing-utf16",
         }
     )
     results = {("cpython_x_tests", "test_a"): "fail"}
@@ -344,7 +344,7 @@ def test_stale_entry_fails_when_test_passes(tmp_path: Path):
             "kind": "expected-fail-cpython",
             "module": "cpython_x_tests",
             "test": "test_a",
-            "deviation": "integer-division-floor",
+            "deviation": "string-indexing-utf16",
         }
     )
     results = {("cpython_x_tests", "test_a"): "pass"}
@@ -411,7 +411,7 @@ def test_dual_run_ledger_excuses_expected_failure(tmp_path: Path):
             "kind": "expected-fail-cpython",
             "module": "cpython_ef_tests",
             "test": "test_diverges",
-            "deviation": "integer-division-floor",
+            "deviation": "string-indexing-utf16",
         },
     )
     code = dual_run.main([str(tmp_path / "ported"), "--ledger", str(led)])
@@ -449,7 +449,7 @@ def test_dual_run_ledger_flags_stale(tmp_path: Path):
             "kind": "expected-fail-cpython",
             "module": "cpython_st_tests",
             "test": "test_passes_now",
-            "deviation": "integer-division-floor",
+            "deviation": "string-indexing-utf16",
         },
     )
     code = dual_run.main([str(tmp_path / "ported"), "--ledger", str(led)])

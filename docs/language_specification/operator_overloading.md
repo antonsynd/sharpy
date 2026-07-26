@@ -137,7 +137,7 @@ class Vector:
 | `-x` | `__neg__` | `operator -` (unary) |
 | `+x` | `__pos__` | `operator +` (unary) |
 
-> **Note:** Sharpy uses `__div__` (not Python's `__truediv__`) because `//` floor division is not dispatched via a dunder method. Floor division uses `math.floor_div()` and exponentiation uses `math.pow()` — neither `__floordiv__` nor `__pow__` are supported as user-definable dunders. See [Dunder Methods](dunder_methods.md) for details.
+> **Note:** Sharpy uses `__div__` (not Python's `__truediv__`) because `//` floor division is not dispatched via a dunder method. `//` and `**` are native operators (floor division lowers to `Sharpy.Builtins.FloorMod`/`Math.Floor`, exponentiation to `Sharpy.Builtins.CheckedIntPow`/`Math.Pow`) — neither `__floordiv__` nor `__pow__` are supported as user-definable dunders. See [Dunder Methods](dunder_methods.md) for details.
 
 *Implementation: ✅ Native - Generates both dunder method and C# operator overload.*
 
