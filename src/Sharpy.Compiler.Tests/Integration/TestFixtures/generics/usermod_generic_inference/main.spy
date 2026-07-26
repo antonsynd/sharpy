@@ -1,0 +1,14 @@
+# #1142: a cross-module generic function must infer type parameters on a plain call exactly like a
+# bare same-file call, and also accept explicit type arguments. Covers plain / explicit / mixed.
+import mathlib
+
+def main() -> None:
+    # plain (inference)
+    print(mathlib.identity(5))
+    print(mathlib.pair(10, "x"))
+    # explicit type args
+    print(mathlib.identity[int](7))
+    print(mathlib.pair[int, str](20, "y"))
+    # mixed: inference feeding an explicit-args call, and a generic return type
+    print(mathlib.identity(mathlib.identity[int](9)))
+    print(mathlib.wrap("hi"))

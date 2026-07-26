@@ -227,10 +227,16 @@ internal class ModuleLoader
         {
             case FunctionDef functionDef:
                 var accessLevel = GetAccessLevel(functionDef.Name);
+                // Names of this function's own type parameters (T, U in identity[T]/pair[T, U]) so
+                // annotations naming them convert to TypeParameterType, enabling cross-module
+                // generic inference to unify them like a bare same-file call (#1142).
+                ISet<string>? funcTypeParamNames = functionDef.TypeParameters.Length > 0
+                    ? new HashSet<string>(functionDef.TypeParameters.Select(tp => tp.Name), StringComparer.Ordinal)
+                    : null;
                 var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
                 {
                     Name = p.Name,
-                    Type = ConvertTypeAnnotationToSemanticType(p.Type),
+                    Type = ConvertTypeAnnotationToSemanticType(p.Type, funcTypeParamNames),
                     HasDefault = p.DefaultValue != null,
                     DefaultValue = p.DefaultValue,
                     IsVariadic = p.IsVariadic,
@@ -245,7 +251,7 @@ internal class ModuleLoader
                     Kind = SymbolKind.Function,
                     Parameters = parameters,
                     ReturnType = functionDef.ReturnType != null
-                        ? ConvertTypeAnnotationToSemanticType(functionDef.ReturnType)
+                        ? ConvertTypeAnnotationToSemanticType(functionDef.ReturnType, funcTypeParamNames)
                         : SemanticType.Void,
                     // Module-level generic functions must export their type parameters, exactly as
                     // ExtractMethodSymbol does (:555) and the class/struct/interface sites do
@@ -570,6 +576,19 @@ internal class ModuleLoader
     /// Convert a type annotation to a semantic type.
     /// </summary>
     internal SemanticType ConvertTypeAnnotationToSemanticType(TypeAnnotation? typeAnnotation)
+        => ConvertTypeAnnotationToSemanticType(typeAnnotation, typeParameterNames: null);
+
+    /// <summary>
+    /// Convert a type annotation to a semantic type, resolving bare names that match one of
+    /// <paramref name="typeParameterNames"/> to a <see cref="TypeParameterType"/> rather than a
+    /// <see cref="UserDefinedType"/>. This mirrors <c>TypeResolver</c>'s <c>TypeParameterSymbol</c>
+    /// path so a module-level generic export (e.g. <c>def identity[T](x: T)</c>) carries genuine
+    /// type-parameter references in its parameter/return types. Without it, a plain call through
+    /// the module member (<c>mathlib.identity(5)</c>) cannot unify the parameter — inference sees
+    /// <c>UserDefinedType T</c>, not a type parameter — and reports SPY0237 (#1142).
+    /// </summary>
+    internal SemanticType ConvertTypeAnnotationToSemanticType(
+        TypeAnnotation? typeAnnotation, ISet<string>? typeParameterNames)
     {
         if (typeAnnotation == null)
             return SemanticType.Unknown;
@@ -591,14 +610,27 @@ internal class ModuleLoader
 
         if (baseType == null)
         {
-            baseType = new UserDefinedType { Name = typeAnnotation.Name };
+            // A bare name matching an enclosing declaration's type parameter (T in identity[T])
+            // is a type-parameter reference, not a user-defined type. Type-argument-bearing names
+            // (list[T]) fall through to the generic handling below, which threads the same set into
+            // the element conversions.
+            if (typeParameterNames != null
+                && typeAnnotation.TypeArguments.Length == 0
+                && typeParameterNames.Contains(typeAnnotation.Name))
+            {
+                baseType = new TypeParameterType { Name = typeAnnotation.Name };
+            }
+            else
+            {
+                baseType = new UserDefinedType { Name = typeAnnotation.Name };
+            }
         }
 
         // Handle generic type arguments (list[int], dict[str, int], etc.)
         if (typeAnnotation.TypeArguments.Length > 0)
         {
             var typeArgs = typeAnnotation.TypeArguments
-                .Select(ConvertTypeAnnotationToSemanticType)
+                .Select(a => ConvertTypeAnnotationToSemanticType(a, typeParameterNames))
                 .ToList();
 
             if (typeAnnotation.Name == BuiltinNames.Tuple)
@@ -628,7 +660,7 @@ internal class ModuleLoader
         // Handle T !E (Result type) syntax
         if (typeAnnotation.ErrorType != null)
         {
-            var errorType = ConvertTypeAnnotationToSemanticType(typeAnnotation.ErrorType);
+            var errorType = ConvertTypeAnnotationToSemanticType(typeAnnotation.ErrorType, typeParameterNames);
             baseType = new ResultType { OkType = baseType, ErrorType = errorType };
         }
 

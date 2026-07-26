@@ -1,0 +1,9 @@
+# Library module of generic functions exercised cross-module with and without explicit type args (#1142).
+def identity[T](x: T) -> T:
+    return x
+
+def pair[T, U](a: T, b: U) -> T:
+    return a
+
+def wrap[T](x: T) -> list[T]:
+    return [x]
