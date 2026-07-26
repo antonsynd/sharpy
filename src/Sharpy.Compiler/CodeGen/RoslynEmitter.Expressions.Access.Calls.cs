@@ -202,6 +202,17 @@ internal partial class RoslynEmitter
             return $"global::{fullName}";
         }
 
+        // A raw generic BCL type imported by namespace (e.g. system.collections.generic.List) carries
+        // a ClrType but neither DefiningModule nor DefiningFilePath, so without this it fell through to
+        // the bare short name below and collided with Sharpy.List → CS0104. Scoped to a generic ClrType
+        // to mirror the annotation-side scope (TypeSyntaxMapper) and leave non-generic CLR constructions
+        // — e.g. `raise Exception(...)`, already reachable via `using System;` — on their existing bare
+        // name so this fix does not broadly re-qualify them (#1139).
+        if (typeSymbol.ClrType is { IsGenericType: true })
+        {
+            return ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
+        }
+
         // Check if type is from a different file (cross-file reference)
         if (!string.IsNullOrEmpty(typeSymbol.DefiningFilePath) &&
             !string.IsNullOrEmpty(_context.SourceFilePath) &&

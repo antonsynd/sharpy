@@ -121,13 +121,29 @@ internal class TypeSyntaxMapper
             return MakeArrayType(elementType);
         }
 
+        // Builtin collections (list/dict/set/...) always resolve by name to their Sharpy wrapper via
+        // GetMappedTypeName, regardless of the CLR type backing their GenericDefinition symbol. Their
+        // GenericDefinition can be a raw BCL type (dict → System.Collections.Generic.Dictionary), so
+        // the symbol path below would wrongly qualify them as the raw BCL type — guard on the
+        // name-based mapping first so they keep the Sharpy surface (#1139).
         // Module-qualified / cross-file generic types (e.g. difflib.SequenceMatcher[str],
-        // geometry.Box[int]) must be fully qualified via their resolved definition symbol —
-        // the bare/dotted generic.Name alone does not carry enough information for the name
-        // lookup. Mirrors the non-generic GetMappedTypeNameFromSymbol path (#17/#881).
-        var baseTypeName = generic.GenericDefinition is { } genDef && RequiresQualifiedName(genDef)
-            ? GetMappedTypeNameFromSymbol(new UserDefinedType { Name = generic.Name, Symbol = genDef })
-            : GetMappedTypeName(generic.Name);
+        // geometry.Box[int], an aliased raw-BCL scg.List[int]) must be fully qualified via their
+        // resolved definition symbol — the bare/dotted generic.Name alone does not carry enough
+        // information for the name lookup. Mirrors the non-generic GetMappedTypeNameFromSymbol path
+        // (#17/#881).
+        string baseTypeName;
+        if (ClrTypeBridge.TryGetCSharpTypeName(generic.Name) != null)
+        {
+            baseTypeName = GetMappedTypeName(generic.Name);
+        }
+        else if (generic.GenericDefinition is { } genDef && RequiresQualifiedName(genDef))
+        {
+            baseTypeName = GetMappedTypeNameFromSymbol(new UserDefinedType { Name = generic.Name, Symbol = genDef });
+        }
+        else
+        {
+            baseTypeName = GetMappedTypeName(generic.Name);
+        }
         var typeArgs = generic.TypeArguments
             .Select(MapSemanticType)
             .ToArray();
@@ -143,6 +159,16 @@ internal class TypeSyntaxMapper
     private bool RequiresQualifiedName(TypeSymbol symbol)
     {
         if (!string.IsNullOrEmpty(symbol.DefiningModule))
+            return true;
+
+        // A raw generic BCL / external CLR type imported by namespace (e.g.
+        // system.collections.generic.List) must qualify via its ClrType full name; such symbols may
+        // carry neither DefiningModule nor DefiningFilePath (#1139). The ClrType must itself be generic:
+        // an interface Sharpy models via a non-generic CLR type (e.g. IEnumerable[T] whose genDef.ClrType
+        // is the non-generic System.Collections.IEnumerable) is unreliable here and stays on the
+        // name-based path. Sharpy-namespace CLR types are excluded (they keep name-based resolution).
+        if (symbol.ClrType is { IsGenericType: true } clrType
+            && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(clrType.Namespace))
             return true;
 
         return !string.IsNullOrEmpty(symbol.DefiningFilePath)
@@ -651,6 +677,20 @@ internal class TypeSyntaxMapper
             var codeGenInfo = _context.SemanticBinding.GetCodeGenInfo(udt.Symbol)
                 ?? udt.Symbol.CodeGenInfo;
             var originalName = codeGenInfo?.OriginalImportName ?? udt.Symbol.Name;
+
+            // A raw generic CLR type outside the Sharpy runtime namespace (imported by namespace) may
+            // carry neither DefiningFilePath nor DefiningModule; its correct C# name is always its
+            // ClrType full name. Route it through the authority so an aliased annotation (scg.List[int])
+            // qualifies exactly like the construction position (#1139). Guarded on a generic ClrType so
+            // an interface Sharpy models via a non-generic CLR type stays on the name path; Sharpy-namespace
+            // CLR types and builtin collections (whose GenericDefinition may be a raw BCL type, e.g.
+            // dict → System.Collections.Generic.Dictionary) keep their existing name-based resolution.
+            if (udt.Symbol.ClrType is { IsGenericType: true } clrType
+                && !ClrTypeBridge.SpecialCases.IsSharpyNamespace(clrType.Namespace)
+                && ClrTypeBridge.TryGetCSharpTypeName(udt.Name) == null)
+            {
+                return GetFullyQualifiedTypeName(udt.Symbol, originalName);
+            }
 
             // Check if type is from a different file (cross-file reference)
             if (!string.IsNullOrEmpty(udt.Symbol.DefiningFilePath) &&
