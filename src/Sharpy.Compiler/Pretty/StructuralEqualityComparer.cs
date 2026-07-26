@@ -42,6 +42,8 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             MemberAccess a => MemberAccessEquals(a, (MemberAccess)y),
             IndexAccess a => Equals(a.Object, ((IndexAccess)y).Object) && Equals(a.Index, ((IndexAccess)y).Index),
             SliceAccess a => SliceEquals(a, (SliceAccess)y),
+            MultiAxisAccess a => Equals(a.Object, ((MultiAxisAccess)y).Object) && NodesEqual(a.Dimensions, ((MultiAxisAccess)y).Dimensions),
+            SubscriptDimension a => SubscriptDimensionEquals(a, (SubscriptDimension)y),
             FunctionCall a => FunctionCallEquals(a, (FunctionCall)y),
             UnaryOp a => a.Operator == ((UnaryOp)y).Operator && Equals(a.Operand, ((UnaryOp)y).Operand),
             BinaryOp a => a.Operator == ((BinaryOp)y).Operator && Equals(a.Left, ((BinaryOp)y).Left) && Equals(a.Right, ((BinaryOp)y).Right),
@@ -55,12 +57,14 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             WalrusExpression a => a.Target == ((WalrusExpression)y).Target && Equals(a.Value, ((WalrusExpression)y).Value),
             TryExpression a => Equals(a.Operand, ((TryExpression)y).Operand) && TypeAnnotationsEqual(a.ExceptionTypes, ((TryExpression)y).ExceptionTypes),
             MaybeExpression a => Equals(a.Operand, ((MaybeExpression)y).Operand),
+            QuestionMarkExpression a => Equals(a.Operand, ((QuestionMarkExpression)y).Operand),
             StarExpression a => Equals(a.Operand, ((StarExpression)y).Operand),
             SpreadElement a => Equals(a.Value, ((SpreadElement)y).Value),
             ModifiedArgument a => ModifiedArgumentEquals(a, (ModifiedArgument)y),
             AwaitExpression a => Equals(a.Operand, ((AwaitExpression)y).Operand),
             MatchExpression a => MatchExprEquals(a, (MatchExpression)y),
             ExpressionStatement a => Equals(a.Expression, ((ExpressionStatement)y).Expression),
+            DecoratedStatement a => DecoratorsEqual(a.Decorators, ((DecoratedStatement)y).Decorators) && Equals(a.Statement, ((DecoratedStatement)y).Statement),
             Assignment a => AssignmentEquals(a, (Assignment)y),
             VariableDeclaration a => VarDeclEquals(a, (VariableDeclaration)y),
             AssertStatement a => Equals(a.Test, ((AssertStatement)y).Test) && NullableNodeEquals(a.Message, ((AssertStatement)y).Message),
@@ -106,7 +110,11 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             PropertyPatternField a => a.Name == ((PropertyPatternField)y).Name && Equals(a.Pattern, ((PropertyPatternField)y).Pattern),
             PropertyPattern a => PropertyPatternEquals(a, (PropertyPattern)y),
             PositionalPattern a => PositionalPatternEquals(a, (PositionalPattern)y),
-            _ => false
+            // A missing arm must fail loudly rather than silently report inequality (`_ => false`
+            // turned an uncovered node kind into a false-negative — #1152). Every concrete node kind
+            // has an arm above; anything reaching here is a newly added kind whose arm is absent.
+            _ => throw new InvalidOperationException(
+                $"StructuralEqualityComparer: no arm for node type {x.GetType().Name}")
         };
     }
 
@@ -167,6 +175,13 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
 
     private bool SliceEquals(SliceAccess a, SliceAccess b) =>
         Equals(a.Object, b.Object) && NullableNodeEquals(a.Start, b.Start) && NullableNodeEquals(a.Stop, b.Stop) && NullableNodeEquals(a.Step, b.Step);
+
+    private bool SubscriptDimensionEquals(SubscriptDimension a, SubscriptDimension b) =>
+        a.IsSlice == b.IsSlice
+        && NullableNodeEquals(a.Index, b.Index)
+        && NullableNodeEquals(a.Start, b.Start)
+        && NullableNodeEquals(a.Stop, b.Stop)
+        && NullableNodeEquals(a.Step, b.Step);
 
     private bool FunctionCallEquals(FunctionCall a, FunctionCall b)
     {
