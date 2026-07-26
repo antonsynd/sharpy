@@ -1,0 +1,8 @@
+# #1142/#1138: an explicit-type-args reference to a USER-module generic function used as a value
+# (not immediately called) is the same deliberate SPY0335 as every other callee kind — the
+# modeling fix (module exports keep their type parameters) makes the uncalled usermod form reach
+# the uniform uncalled-generic-reference guard instead of falling through to SPY0320.
+import mathlib
+
+def main() -> None:
+    f = mathlib.identity[int]

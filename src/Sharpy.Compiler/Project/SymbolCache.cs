@@ -184,6 +184,14 @@ internal record CachedSymbol
     public string? Variance { get; init; }
 
     /// <summary>
+    /// For FunctionSymbol and TypeSymbol: generic type parameters (e.g. T in def identity[T]).
+    /// Null when the symbol is non-generic. Round-tripping these preserves
+    /// <see cref="Semantic.Symbol.IsGeneric"/> across an incremental cache reload so a
+    /// cross-module generic export stays generic on reuse (#1142).
+    /// </summary>
+    public List<CachedTypeParameter>? TypeParameters { get; init; }
+
+    /// <summary>
     /// Documentation string (from source docstrings or XML docs)
     /// </summary>
     public string? Documentation { get; init; }
@@ -209,6 +217,36 @@ internal record CachedInterfaceEntry
     /// Null or empty if the interface has no type arguments.
     /// </summary>
     public List<string>? TypeArgs { get; init; }
+}
+
+/// <summary>
+/// Serializable representation of a generic type parameter (e.g. T in def identity[T]).
+/// Captures the fields the resolver and generic-inference paths consult after a cache reload:
+/// the name (used for substitution), variance, default type, and constraints (#1142).
+/// </summary>
+internal record CachedTypeParameter
+{
+    /// <summary>
+    /// Type parameter name (e.g. "T").
+    /// </summary>
+    public required string Name { get; init; }
+
+    /// <summary>
+    /// Variance annotation (None, Covariant, Contravariant). Omitted (null) when None.
+    /// </summary>
+    public string? Variance { get; init; }
+
+    /// <summary>
+    /// Serialized default-type TypeAnnotation (e.g. "int" for T = int). Null when no default.
+    /// </summary>
+    public string? DefaultType { get; init; }
+
+    /// <summary>
+    /// Constraint clauses. Each is a discriminated string: "type:&lt;annotation&gt;" for an
+    /// interface/type constraint, or a bare marker ("class", "struct", "new", "notnull").
+    /// Null or empty when the parameter is unconstrained.
+    /// </summary>
+    public List<string>? Constraints { get; init; }
 }
 
 /// <summary>

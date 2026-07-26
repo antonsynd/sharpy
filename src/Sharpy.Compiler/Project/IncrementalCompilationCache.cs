@@ -47,7 +47,8 @@ internal class IncrementalCompilationCache
     // v14: Added ClrMethodName to CachedCodeGenInfo for CLR name preservation (#705)
     // v15: Added IsModuleProperty/HasPropertyGetter/HasPropertySetter to VariableSymbol properties (#844)
     // v16: Added ExportedTypeIds/IsNetModule/NetNamespaceName to ModuleSymbol round-trip (#1105)
-    internal const int CurrentSchemaVersion = 16;
+    // v17: Added TypeParameters round-trip for FunctionSymbol/TypeSymbol so generic exports stay generic (#1142)
+    internal const int CurrentSchemaVersion = 17;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

@@ -1,10 +1,10 @@
-# #1142: explicit type arguments on a USER-module generic function are not yet resolved —
-# the member checks to a plain FunctionType, so the index access falls through to
-# value-indexing and errors SPY0320 ("does not support indexing"). This pins today's
-# behavior (an error, not a silent SPY0908 escape); update when #1142 lands. The .NET-module
-# arm (json.loads[int] -> SPY0335 when uncalled) works and is covered by the Stdlib.Tests
-# fixture json_loads_uncalled_reference.
+# #1142: explicit type arguments on a USER-module generic function now resolve — the module-level
+# export carries its type parameters (ModuleLoader), so `mathlib.identity[int]` is recognized as a
+# generic reference and `[...]` is type arguments, matching the .NET-module arm (json.loads[int]).
+# The uncalled form (f = mathlib.identity[int]) is covered separately by
+# usermod_generic_func_uncalled_reference_1142 (deliberate SPY0335).
 import mathlib
 
 def main() -> None:
-    f = mathlib.identity[int]
+    print(mathlib.identity[int](5))
+    print(mathlib.pair[int, str](1, "a"))

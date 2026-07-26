@@ -247,6 +247,11 @@ internal class ModuleLoader
                     ReturnType = functionDef.ReturnType != null
                         ? ConvertTypeAnnotationToSemanticType(functionDef.ReturnType)
                         : SemanticType.Void,
+                    // Module-level generic functions must export their type parameters, exactly as
+                    // ExtractMethodSymbol does (:555) and the class/struct/interface sites do
+                    // (:392/:461/:507). Without this a cross-module generic export reports
+                    // IsGeneric == false, defeating explicit-type-args resolution and inference (#1142).
+                    TypeParameters = functionDef.TypeParameters.ToList(),
                     AccessLevel = accessLevel,
                     DeclarationLine = functionDef.LineStart,
                     DeclarationColumn = functionDef.ColumnStart,

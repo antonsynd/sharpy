@@ -1,3 +1,6 @@
-# Library module for the user-module explicit-type-args limitation fixture (#1142).
+# Library module for the user-module explicit-type-args fixture (#1142).
 def identity[T](x: T) -> T:
     return x
+
+def pair[T, U](a: T, b: U) -> T:
+    return a

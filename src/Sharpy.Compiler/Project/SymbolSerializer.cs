@@ -135,7 +135,8 @@ internal static class SymbolSerializer
             IsReExport = ts.IsReExport,
             OriginalModule = ts.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(ts.CodeGenInfo),
-            Documentation = ts.Documentation
+            Documentation = ts.Documentation,
+            TypeParameters = SerializeTypeParameters(ts.TypeParameters)
         };
     }
 
@@ -164,7 +165,8 @@ internal static class SymbolSerializer
             IsReExport = fs.IsReExport,
             OriginalModule = fs.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(fs.CodeGenInfo),
-            Documentation = fs.Documentation
+            Documentation = fs.Documentation,
+            TypeParameters = SerializeTypeParameters(fs.TypeParameters)
         };
     }
 
@@ -292,6 +294,86 @@ internal static class SymbolSerializer
         };
     }
 
+    /// <summary>
+    /// Serializes a symbol's generic type parameters. Returns null for non-generic symbols so the
+    /// cache stays compact and older cache files (which lack the field) deserialize as non-generic.
+    /// </summary>
+    private static List<CachedTypeParameter>? SerializeTypeParameters(
+        IReadOnlyList<Parser.Ast.TypeParameterDef> typeParameters)
+    {
+        if (typeParameters.Count == 0)
+            return null;
+
+        return typeParameters.Select(tp => new CachedTypeParameter
+        {
+            Name = tp.Name,
+            Variance = tp.Variance != TypeParameterVariance.None ? tp.Variance.ToString() : null,
+            DefaultType = tp.DefaultType != null ? SerializeTypeAnnotation(tp.DefaultType) : null,
+            Constraints = tp.Constraints.IsDefaultOrEmpty
+                ? null
+                : tp.Constraints.Select(SerializeConstraint).ToList()
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Serializes a single constraint clause as a discriminated string. Interface/type constraints
+    /// carry their annotation ("type:&lt;annotation&gt;"); the flag constraints are bare markers.
+    /// </summary>
+    private static string SerializeConstraint(Parser.Ast.ConstraintClause constraint)
+    {
+        return constraint switch
+        {
+            Parser.Ast.TypeConstraint tc => "type:" + SerializeTypeAnnotation(tc.Type),
+            Parser.Ast.ClassConstraint => "class",
+            Parser.Ast.StructConstraint => "struct",
+            Parser.Ast.NewConstraint => "new",
+            Parser.Ast.NotnullConstraint => "notnull",
+            _ => throw new NotSupportedException(
+                $"Cannot serialize constraint clause of type {constraint.GetType().Name}")
+        };
+    }
+
+    /// <summary>
+    /// Deserializes cached generic type parameters back into AST <see cref="Parser.Ast.TypeParameterDef"/>
+    /// records. Returns an empty list for null (non-generic symbols and pre-schema-17 cache files).
+    /// </summary>
+    private static List<Parser.Ast.TypeParameterDef> DeserializeTypeParameters(
+        List<CachedTypeParameter>? cached)
+    {
+        if (cached == null || cached.Count == 0)
+            return new List<Parser.Ast.TypeParameterDef>();
+
+        return cached.Select(ctp => new Parser.Ast.TypeParameterDef
+        {
+            Name = ctp.Name,
+            Variance = ctp.Variance != null
+                ? Enum.Parse<TypeParameterVariance>(ctp.Variance)
+                : TypeParameterVariance.None,
+            DefaultType = ctp.DefaultType != null ? DeserializeTypeAnnotation(ctp.DefaultType) : null,
+            Constraints = ctp.Constraints != null && ctp.Constraints.Count > 0
+                ? ctp.Constraints.Select(DeserializeConstraint).ToImmutableArray()
+                : ImmutableArray<Parser.Ast.ConstraintClause>.Empty
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Deserializes a single discriminated constraint string back to a <see cref="Parser.Ast.ConstraintClause"/>.
+    /// </summary>
+    private static Parser.Ast.ConstraintClause DeserializeConstraint(string s)
+    {
+        if (s.StartsWith("type:", StringComparison.Ordinal))
+            return new Parser.Ast.TypeConstraint { Type = DeserializeTypeAnnotation(s["type:".Length..]) };
+
+        return s switch
+        {
+            "class" => new Parser.Ast.ClassConstraint(),
+            "struct" => new Parser.Ast.StructConstraint(),
+            "new" => new Parser.Ast.NewConstraint(),
+            "notnull" => new Parser.Ast.NotnullConstraint(),
+            _ => throw new NotSupportedException($"Cannot deserialize constraint clause '{s}'")
+        };
+    }
+
     private static CachedCodeGenInfo? SerializeCodeGenInfo(CodeGenInfo? cgi)
     {
         if (cgi == null)
@@ -378,7 +460,8 @@ internal static class SymbolSerializer
             NestedTypes = nestedTypes,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
+            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
+            TypeParameters = DeserializeTypeParameters(cached.TypeParameters)
         };
 
         symbol.Documentation = cached.Documentation;
@@ -422,7 +505,8 @@ internal static class SymbolSerializer
             IsGenerator = cached.IsGenerator,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
+            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
+            TypeParameters = DeserializeTypeParameters(cached.TypeParameters)
         };
         symbol.Documentation = cached.Documentation;
         return symbol;

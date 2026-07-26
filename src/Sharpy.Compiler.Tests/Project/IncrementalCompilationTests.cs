@@ -338,6 +338,120 @@ def main():
     }
 
     [Fact]
+    public void SymbolSerializer_RoundTrip_FunctionSymbol_PreservesTypeParameters()
+    {
+        // #1142: a generic function export must stay generic across an incremental cache reload.
+        // Before v17 the serializer dropped TypeParameters, so a cross-module `def identity[T]`
+        // deserialized as non-generic (IsGeneric == false), defeating explicit-type-args resolution
+        // and inference on the importing file's next (cache-served) build.
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "identity",
+            Kind = SymbolKind.Function,
+            AccessLevel = AccessLevel.Public,
+            DeclaringFilePath = "/test/genlib.spy",
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol { Name = "x", Type = new TypeParameterType { Name = "T" } }
+            },
+            ReturnType = new TypeParameterType { Name = "T" },
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef
+                {
+                    Name = "T",
+                    Constraints = ImmutableArray.Create<ConstraintClause>(
+                        new TypeConstraint { Type = new TypeAnnotation { Name = "IComparable" } })
+                }
+            }
+        };
+
+        var filePath = CreateTempFile("genlib.spy", "def identity[T](x: T) -> T:\n    return x");
+        var cached = SymbolSerializer.Serialize(funcSymbol, filePath);
+
+        Assert.NotNull(cached.TypeParameters);
+        Assert.Single(cached.TypeParameters!);
+        Assert.Equal("T", cached.TypeParameters![0].Name);
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as FunctionSymbol;
+
+        Assert.NotNull(restored);
+        Assert.True(restored!.IsGeneric, "Deserialized generic function must preserve IsGeneric=true");
+        Assert.Single(restored.TypeParameters);
+        Assert.Equal("T", restored.TypeParameters[0].Name);
+        // Constraints survive as an interface/type constraint on the type parameter.
+        Assert.Single(restored.TypeParameters[0].Constraints);
+        var restoredConstraint = Assert.IsType<TypeConstraint>(restored.TypeParameters[0].Constraints[0]);
+        Assert.Equal("IComparable", restoredConstraint.Type.Name);
+    }
+
+    [Fact]
+    public void SymbolSerializer_RoundTrip_TypeSymbol_PreservesTypeParameters()
+    {
+        // #1142: the serializer's TypeParameters omission was symbol-kind-wide — a generic class
+        // (class Box[T]) must also round-trip its type parameters, with variance and default type.
+        var typeSymbol = new TypeSymbol
+        {
+            Name = "Box",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef
+                {
+                    Name = "T",
+                    Variance = TypeParameterVariance.Covariant,
+                    DefaultType = new TypeAnnotation { Name = "int" }
+                }
+            }
+        };
+
+        var filePath = CreateTempFile("box.spy", "class Box[T]:\n    pass");
+        var cached = SymbolSerializer.Serialize(typeSymbol, filePath);
+
+        Assert.NotNull(cached.TypeParameters);
+        Assert.Single(cached.TypeParameters!);
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as TypeSymbol;
+
+        Assert.NotNull(restored);
+        Assert.True(restored!.IsGeneric, "Deserialized generic class must preserve IsGeneric=true");
+        Assert.Single(restored.TypeParameters);
+        Assert.Equal("T", restored.TypeParameters[0].Name);
+        Assert.Equal(TypeParameterVariance.Covariant, restored.TypeParameters[0].Variance);
+        Assert.NotNull(restored.TypeParameters[0].DefaultType);
+        Assert.Equal("int", restored.TypeParameters[0].DefaultType!.Name);
+    }
+
+    [Fact]
+    public void SymbolSerializer_RoundTrip_NonGenericFunction_TypeParametersNull()
+    {
+        // A non-generic function serializes no TypeParameters (compact cache) and stays non-generic.
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "plain",
+            Kind = SymbolKind.Function,
+            AccessLevel = AccessLevel.Public,
+            DeclaringFilePath = "/test/plain.spy",
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = BuiltinType.Int
+        };
+
+        var filePath = CreateTempFile("plain.spy", "def plain() -> int:\n    return 0");
+        var cached = SymbolSerializer.Serialize(funcSymbol, filePath);
+        Assert.Null(cached.TypeParameters);
+
+        var registry = new Dictionary<string, Symbol>();
+        var restored = SymbolSerializer.Deserialize(cached, registry) as FunctionSymbol;
+        Assert.NotNull(restored);
+        Assert.False(restored!.IsGeneric);
+        Assert.Empty(restored.TypeParameters);
+    }
+
+    [Fact]
     public void SymbolSerializer_RoundTrip_GeneratorFunction_PreservesIsGenerator()
     {
         var funcSymbol = new FunctionSymbol
@@ -1159,6 +1273,57 @@ def main():
         Assert.True(File.Exists(symbolCachePath));
         var json = File.ReadAllText(symbolCachePath);
         Assert.Contains("Point", json);
+    }
+
+    [Fact]
+    public void IncrementalMode_GenericFunctionExport_StaysGenericAcrossReload()
+    {
+        // #1142 incremental face: a file using a cross-module generic function must still resolve
+        // explicit type args AND inference on a build that serves the library's symbols from the
+        // cache. Build once (both files compiled, symbols cached); then edit only the entry file so
+        // it recompiles against the DESERIALIZED library symbols. If TypeParameters didn't round-trip
+        // (pre-v17), the reloaded `identity` would be non-generic and the second build would fail.
+        var libFile = CreateTempFile("genlib.spy", @"
+def identity[T](x: T) -> T:
+    return x
+");
+        var mainFile = CreateTempFile("main.spy", @"
+import genlib
+
+def main():
+    print(genlib.identity[int](5))
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, libFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        // First build populates the symbol cache (both files compiled).
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success, string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Edit only the entry file: genlib is unchanged, so its symbols are served from cache when
+        // main recompiles. A second explicit-type-args call proves the reloaded export is generic.
+        File.WriteAllText(mainFile, @"
+import genlib
+
+def main():
+    print(genlib.identity[int](5))
+    print(genlib.identity[str](""hi""))
+");
+
+        var result2 = compiler.CompileProject(config);
+        Assert.True(result2.Success,
+            "Second build must resolve the cache-reloaded generic export: " +
+            string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
     }
 
     [Fact]

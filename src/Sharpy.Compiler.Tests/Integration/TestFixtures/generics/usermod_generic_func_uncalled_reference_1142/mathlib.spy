@@ -1,0 +1,3 @@
+# Library module: a generic function whose uncalled reference must be a deliberate SPY0335 (#1142).
+def identity[T](x: T) -> T:
+    return x
