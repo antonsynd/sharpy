@@ -602,9 +602,13 @@ internal partial class RoslynEmitter
 
         if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
         {
-            // Generate: new GenericType<TypeArgs>(args)
-            var csharpGenericTypeName = ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(genericName.Name)
-                ?? NameCasing.ResolveType(genericName.Name, genericName.IsNameBacktickEscaped);
+            // Generate: new GenericType<TypeArgs>(args). Resolve the C# name through the single naming
+            // seam so this construction position agrees with the annotation position: a wrapper
+            // collection (list/dict/set) stays Sharpy.List; an imported/cross-file type is fully
+            // qualified (an imported raw-BCL List[int]() emits System.Collections.Generic.List<int>,
+            // not the bare List<int> that collided with Sharpy.List → CS0104); a current-file user
+            // type keeps its short name (#1139).
+            var csharpGenericTypeName = _typeMapper.GetTypeNameForReference(genericName.Name, genericName.IsNameBacktickEscaped);
             var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
 
             // Generate arguments (reorder for C# compliance if needed)
