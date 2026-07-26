@@ -57,10 +57,13 @@ jobs:
       with:
         dotnet-version: 10.0.x
     - name: Setup Python
-      # Required by the CPython differential-parse property tests
-      # (Sharpy.Compiler.Tests -> CPythonDifferentialParseTests, #1037), which
-      # oracle generated programs against `python3` ast.parse. Pinned to 3.12 so
-      # parse behavior is stable; the tests soft-skip if no suitable python is found.
+      # Required by BOTH CPython oracles: the differential-parse property tests
+      # (Sharpy.Compiler.Tests -> CPythonDifferentialParseTests, #1037), which oracle
+      # generated programs against `python3` ast.parse, AND the differential-execution
+      # sweep (DifferentialExecutionTests, #1156), which compares compiled-program stdout
+      # against `python3` running the same source. Pinned to 3.12 so behavior is stable.
+      # Both soft-skip if no suitable python is found — so removing this step would not
+      # fail CI, it would silently disarm the execution oracle's ratchet. Keep the pin.
       uses: actions/setup-python@v7
       with:
         python-version: '3.12'
@@ -85,6 +88,11 @@ jobs:
     - name: Test Compiler
       # The interop conformance sweep (#1034) is heavy (~1–2 min, thousands of in-process
       # compiles); it runs in its own dedicated step below so the main test pass stays fast.
+      # The newer gap-discovery sweeps run INLINE here by design: the generic-reference
+      # matrix (#1143, ~121 in-process compiles) and the CPython execution oracle (~60
+      # programs, needs the python step above) are light enough (~1 min combined) that a
+      # dedicated step isn't warranted. The front-end parity sweep (#1144) runs inline in
+      # the LSP step for the same reason. Split any of them out only if they grow heavy.
       run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance"
     - name: Test Stdlib
       run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
