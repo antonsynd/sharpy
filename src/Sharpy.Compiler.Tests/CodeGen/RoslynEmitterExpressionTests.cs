@@ -273,7 +273,6 @@ public class RoslynEmitterExpressionTests
     [InlineData(BinaryOperator.Subtract, "-")]
     [InlineData(BinaryOperator.Multiply, "*")]
     [InlineData(BinaryOperator.Divide, "/")]
-    [InlineData(BinaryOperator.Modulo, "%")]
     public void GenerateExpression_ArithmeticBinaryOp_GeneratesCorrectOperator(BinaryOperator op, string expectedOp)
     {
         // Arrange
@@ -291,6 +290,28 @@ public class RoslynEmitterExpressionTests
         result.ToString().Should().Contain(expectedOp);
         result.ToString().Should().Contain("5");
         result.ToString().Should().Contain("3");
+    }
+
+    [Fact]
+    public void GenerateExpression_Modulo_UsesFloorMod()
+    {
+        // Arrange - integer % lowers to Python floored modulo (sign of divisor), not C#'s
+        // truncated `%`. Numeric operands (here bare int literals) route to Builtins.FloorMod (#1153).
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.Modulo,
+            Left = new IntegerLiteral { Value = "5" },
+            Right = new IntegerLiteral { Value = "3" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("Sharpy.Builtins.FloorMod");
+        code.Should().Contain("5");
+        code.Should().Contain("3");
     }
 
     [Fact]
