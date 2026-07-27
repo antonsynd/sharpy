@@ -18,7 +18,7 @@
          keeps the CLI's compile surface free of the SQLitePCL API (stdlib is discovered at runtime).
          Keep Version in lock-step with Microsoft.Data.Sqlite in Sharpy.Stdlib.csproj — the
          SQLitePCLRaw bundle/core version-drift tripwire test guards this. -->
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.11" ExcludeAssets="compile" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.4" ExcludeAssets="compile" />
   </ItemGroup>
 
   <ItemGroup>
