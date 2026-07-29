@@ -21,6 +21,8 @@ internal static class RunCommand
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
         modPathOpt.Aliases.Add("-m");
         var argsOpt = new Option<string[]>("--args") { Description = "Arguments to pass to the program", AllowMultipleArgumentsPerToken = true };
+        var namespaceOpt = new Option<string?>("--namespace") { Description = "Wrap generated code in a namespace declaration" };
+        namespaceOpt.Aliases.Add("-n");
         var selfContainedOpt = new Option<bool>("--self-contained") { Description = "Publish as a self-contained executable (no .NET runtime required)" };
         var serverOpt = new Option<string?>("--server") { Description = "Compile via a keep-alive 'sharpyc server' on the given pipe (default pipe if no name); falls back to in-process if none is running", Arity = ArgumentArity.ZeroOrOne };
 
@@ -30,6 +32,7 @@ internal static class RunCommand
         command.Options.Add(projRefOpt);
         command.Options.Add(modPathOpt);
         command.Options.Add(argsOpt);
+        command.Options.Add(namespaceOpt);
         command.Options.Add(selfContainedOpt);
         command.Options.Add(serverOpt);
 
@@ -41,6 +44,7 @@ internal static class RunCommand
             var projectReference = parseResult.GetValue(projRefOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
             var progArgs = parseResult.GetValue(argsOpt) ?? Array.Empty<string>();
+            var namespaceName = parseResult.GetValue(namespaceOpt);
             var selfContained = parseResult.GetValue(selfContainedOpt);
             var logLevel = globals.ResolveLogLevel(parseResult);
             CliHelpers.ShowDiagnosticProvenance = parseResult.GetValue(globals.Verbose);
@@ -56,7 +60,7 @@ internal static class RunCommand
                 : null;
 
             var logger = CliHelpers.CreateLogger(logLevel, logFile);
-            return HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained, features, serverPipe);
+            return HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, selfContained, features, serverPipe, namespaceName);
         });
 
         root.Subcommands.Add(command);
@@ -77,9 +81,15 @@ internal static class RunCommand
         int? maxErrors = null,
         bool selfContained = false,
         string[]? features = null,
-        string? serverPipe = null)
+        string? serverPipe = null,
+        string? namespaceName = null)
     {
         if (!CliHelpers.ValidateInputFile(inputFile))
+        {
+            return 1;
+        }
+
+        if (!CliHelpers.ValidateNamespaceOption(namespaceName))
         {
             return 1;
         }
@@ -106,7 +116,7 @@ internal static class RunCommand
             // server answered → fall back so run always works (#1049).
             IReadOnlySet<string> usedAssemblyPaths;
             if (serverPipe != null
-                && TryServerCompileForRun(serverPipe, inputFile, outputPath, references, projectReferences, modulePaths, warnAsError, nowarn, maxErrors, features, out var serverExit, out var serverUsedPaths))
+                && TryServerCompileForRun(serverPipe, inputFile, outputPath, references, projectReferences, modulePaths, warnAsError, nowarn, maxErrors, features, namespaceName, out var serverExit, out var serverUsedPaths))
             {
                 if (serverExit != 0)
                 {
@@ -117,7 +127,7 @@ internal static class RunCommand
             }
             else
             {
-                var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features: features);
+                var compileResult = BuildCommand.CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput, warnAsError, nowarn, maxErrors, features: features, namespaceName: namespaceName);
                 if (compileResult == null)
                 {
                     return CliHelpers.LastFailureExitCode;
@@ -280,6 +290,7 @@ internal static class RunCommand
         string? nowarn,
         int? maxErrors,
         string[]? features,
+        string? namespaceName,
         out int exitCode,
         out IReadOnlySet<string> usedAssemblyPaths)
     {
@@ -296,6 +307,7 @@ internal static class RunCommand
             ProjectReferences = projectReferences,
             ModulePaths = modulePaths,
             Features = features ?? Array.Empty<string>(),
+            Namespace = namespaceName,
             Configuration = "Debug",
             WarnAsError = warnAsError,
             Nowarn = nowarn,

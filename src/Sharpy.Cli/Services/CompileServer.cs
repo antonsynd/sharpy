@@ -375,7 +375,8 @@ internal sealed class CompileServer
             nowarn: request.Nowarn,
             maxErrors: request.MaxErrors,
             configuration: request.Configuration,
-            features: request.Features);
+            features: request.Features,
+            namespaceName: request.Namespace);
 
         var exitCode = result == null ? CliHelpers.LastFailureExitCode : 0;
         return (exitCode, result?.ProjectMetrics, result?.UsedAssemblyPaths);

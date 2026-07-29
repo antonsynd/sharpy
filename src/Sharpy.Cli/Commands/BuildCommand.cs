@@ -115,7 +115,8 @@ internal static class BuildCommand
         string? nowarn = null,
         int? maxErrors = null,
         string configuration = "Debug",
-        string[]? features = null)
+        string[]? features = null,
+        string? namespaceName = null)
     {
         try
         {
@@ -155,6 +156,7 @@ internal static class BuildCommand
                 suppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
                 maxErrors: maxErrors ?? 0,
                 features: CliHelpers.ParseFeatures(features),
+                @namespace: namespaceName,
                 configuration: configuration,
                 assemblyName: assemblyName,
                 outputAssemblyPath: finalOutputPath);

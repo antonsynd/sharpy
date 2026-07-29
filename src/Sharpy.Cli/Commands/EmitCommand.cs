@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
@@ -15,10 +14,6 @@ namespace Sharpy.Cli.Commands;
 
 internal static class EmitCommand
 {
-    private static readonly Regex ValidNamespaceRegex = new(
-        @"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$",
-        RegexOptions.Compiled);
-
     internal static void Configure(RootCommand root, GlobalOptions globals)
     {
         var command = new Command("emit", "Emit compiler intermediate representations");
@@ -440,9 +435,8 @@ internal static class EmitCommand
     {
         try
         {
-            if (namespaceName != null && !ValidNamespaceRegex.IsMatch(namespaceName))
+            if (!CliHelpers.ValidateNamespaceOption(namespaceName))
             {
-                Console.Error.WriteLine($"Invalid namespace '{namespaceName}': must be a valid dotted identifier (e.g., 'Game.Scripts')");
                 return 1;
             }
 

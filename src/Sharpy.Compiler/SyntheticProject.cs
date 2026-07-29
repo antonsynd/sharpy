@@ -8,21 +8,35 @@ using Sharpy.Compiler.Text;
 namespace Sharpy.Compiler;
 
 /// <summary>
-/// Builds the synthetic in-memory <see cref="ProjectConfig"/> that turns a single-file
-/// compile into a project-of-one-file driven through <see cref="Project.ProjectCompiler"/>
-/// (#1038). This is the one place single-file inputs are lowered to the unified pipeline;
+/// Builds the synthetic in-memory <see cref="ProjectConfig"/> that turns an entry-file
+/// compile into a project driven through <see cref="Project.ProjectCompiler"/>
+/// (#1038). This is the one place entry-file inputs are lowered to the unified pipeline;
 /// both <see cref="CompilerApi"/> and the lower-level <see cref="Compiler"/> facade delegate
 /// here so there is exactly one code path from source to generated C#.
 /// </summary>
 internal static class SyntheticProject
 {
     /// <summary>
-    /// Builds the synthetic <see cref="ProjectConfig"/> for a single-file compile per
-    /// Design Decision 3 of the Wave 2 plan (#1038): <c>RootNamespace</c> defaults to empty
-    /// (preserving single-file global-namespace output), <c>ProjectRootPath</c> is the entry
+    /// The root namespace given to a multi-file entry-file compile (<c>sharpyc run main.spy</c>)
+    /// when the caller named none. A fixed constant rather than something derived from the entry
+    /// file or its directory, so it can never collide with a module-derived namespace segment —
+    /// a collision would make a module class shadow the namespace that holds its own types, which
+    /// is exactly the CS0426 this default exists to prevent (#1171). Applied only when the import
+    /// closure holds more than one file; single-file compiles keep the empty root namespace that
+    /// the #1038 contract pins.
+    /// </summary>
+    internal const string DefaultMultiFileRootNamespace = "SharpyApp";
+
+    /// <summary>
+    /// Builds the synthetic <see cref="ProjectConfig"/> for an entry-file compile per
+    /// Design Decision 3 of the Wave 2 plan (#1038): <c>ProjectRootPath</c> is the entry
     /// file's directory (aligning single-file module naming with project mode — the #940 fix),
     /// the entry file is the sole <c>EntryPoint</c>, incremental is off, and <c>SourceFiles</c>
-    /// is seeded by walking the local-import closure up front.
+    /// is seeded by walking the local-import closure up front. <c>RootNamespace</c> stays empty
+    /// for a single-file closure (preserving global-namespace output byte-for-byte) and defaults
+    /// to <see cref="DefaultMultiFileRootNamespace"/> once the closure spans more than one file,
+    /// because cross-module references are emitted as <c>Module.Type</c> — which only binds when
+    /// the modules live inside a namespace (#1171).
     /// </summary>
     /// <param name="source">The live source text of the entry file (used for its import scan).</param>
     /// <param name="entryFilePath">The full, on-disk path of the entry file.</param>
@@ -45,7 +59,7 @@ internal static class SyntheticProject
         if (string.IsNullOrEmpty(projectDirectory))
             projectDirectory = Directory.GetCurrentDirectory();
         var sourceFiles = DiscoverLocalImportClosure(
-            source, entryFilePath, options, preserveTrivia, logger, out var preParsedUnits);
+            source, entryFilePath, projectDirectory, options, preserveTrivia, logger, out var preParsedUnits);
 
         // Feed the entry file's source in-memory keyed by its verbatim path so the compiler
         // uses the caller-supplied text (matching the historical single-file contract) and
@@ -59,9 +73,14 @@ internal static class SyntheticProject
         {
             ProjectFilePath = entryFilePath,
             ProjectDirectory = projectDirectory,
-            // Empty root namespace keeps single-file output in the global namespace; the
-            // emit-csharp --namespace override flows through CompilerOptions.Namespace.
-            RootNamespace = options.Namespace ?? string.Empty,
+            // Empty root namespace keeps single-file output in the global namespace. A multi-file
+            // closure cannot: each module emits a static module class, and a cross-module reference
+            // is emitted as `Module.Type`, which binds to that class (no such member → CS0426)
+            // unless the modules sit inside a namespace. Hence a default root namespace as soon as
+            // the closure spans more than one file (#1171). A caller-supplied namespace (the
+            // `--namespace` option on emit/run) wins at either arity.
+            RootNamespace = options.Namespace
+                ?? (sourceFiles.Count > 1 ? DefaultMultiFileRootNamespace : string.Empty),
             OutputType = options.OutputType,
             TargetFramework = "net10.0",
             AssemblyName = options.AssemblyName,
@@ -139,6 +158,15 @@ internal static class SyntheticProject
     /// on-disk <c>.spy</c> sources become project source files. The entry file's live
     /// <paramref name="entrySource"/> is used for its own scan; imported files are read from disk.
     /// </summary>
+    /// <param name="projectDirectory">
+    /// The synthetic project's root (the entry file's directory), added as a module search path so a
+    /// dotted absolute import resolves from the project root and not only relative to the importing
+    /// file — the same rooting the project pipeline uses when it resolves imports against
+    /// <see cref="ProjectConfig.ProjectDirectory"/>. Without it a package's <c>__init__.spy</c>
+    /// re-exporting <c>from pkg.sub import …</c> would look for <c>pkg/pkg/sub.spy</c>, leave the
+    /// submodule out of the closure, and the reference to it would fail to bind in the emitted C#
+    /// (#1171).
+    /// </param>
     /// <remarks>
     /// Every file the walk visits is lexed and parsed to find its imports. Files whose parse was
     /// pristine (zero lexer/parser diagnostics) are handed forward in <paramref name="preParsed"/>
@@ -148,13 +176,16 @@ internal static class SyntheticProject
     /// produce authoritative diagnostics.
     /// </remarks>
     private static List<string> DiscoverLocalImportClosure(
-        string entrySource, string entryFilePath, CompilerOptions options, bool preserveTrivia,
-        ICompilerLogger logger, out Dictionary<string, PreParsedUnit> preParsed)
+        string entrySource, string entryFilePath, string projectDirectory, CompilerOptions options,
+        bool preserveTrivia, ICompilerLogger logger, out Dictionary<string, PreParsedUnit> preParsed)
     {
         var closure = new List<string>();
         preParsed = new Dictionary<string, PreParsedUnit>(StringComparer.OrdinalIgnoreCase);
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var resolver = new Semantic.ModuleResolver(logger, options.ModulePaths);
+        // Caller-supplied module paths keep priority; the project root is the fallback root, the
+        // same order the project pipeline ends up with (registry paths, then ProjectDirectory).
+        resolver.AddSearchPath(projectDirectory);
 
         // Use the entry path verbatim (do not canonicalize) so a virtual path like "test.spy"
         // stays intact for codegen and diagnostics; on-disk callers already pass a full path.

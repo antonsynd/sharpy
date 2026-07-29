@@ -1,6 +1,7 @@
 extern alias SharpyRT;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
@@ -472,6 +473,25 @@ internal static class CliHelpers
     }
 
     internal static FeatureFlags ParseFeatures(string[]? features) => FeatureFlags.None.Enable(features ?? Array.Empty<string>());
+
+    private static readonly Regex ValidNamespaceRegex = new(
+        @"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$",
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// Validates a <c>--namespace</c> value (a dotted C# identifier), writing the rejection message
+    /// to stderr when it fails. A null value means "not supplied" and is accepted. Shared by every
+    /// command that takes the option so they cannot disagree on what a namespace may look like.
+    /// </summary>
+    internal static bool ValidateNamespaceOption(string? namespaceName)
+    {
+        if (namespaceName == null || ValidNamespaceRegex.IsMatch(namespaceName))
+            return true;
+
+        Console.Error.WriteLine(
+            $"Invalid namespace '{namespaceName}': must be a valid dotted identifier (e.g., 'Game.Scripts')");
+        return false;
+    }
 
     internal static string StripLineDirectives(string csharpCode)
     {

@@ -61,6 +61,13 @@ internal sealed class CompileServerRequest
 
     public string[] Features { get; set; } = Array.Empty<string>();
 
+    /// <summary>
+    /// The <c>--namespace</c> override, if the client supplied one. Carried on the wire so a
+    /// server-side compile wraps the generated code in the same namespace an in-process compile
+    /// would; dropping it here would silently change the emitted output (#1171).
+    /// </summary>
+    public string? Namespace { get; set; }
+
     public string Configuration { get; set; } = "Debug";
 
     public bool WarnAsError { get; set; }
