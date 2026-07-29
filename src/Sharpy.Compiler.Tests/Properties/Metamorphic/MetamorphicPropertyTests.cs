@@ -13,17 +13,9 @@ namespace Sharpy.Compiler.Tests.Properties.Metamorphic;
 [Collection("HeavyCompilation")]
 public class MetamorphicPropertyTests : IntegrationTestBase
 {
-    private static readonly IAstTransform[] Transforms =
-    {
-        new CommentInsertionTransform(),
-        new PassInsertionTransform(),
-        new ParensWrapTransform(),
-        new DeadCodeAfterReturnTransform(),
-        new IfTrueWrapTransform(),
-        new SwapCommutativeTransform(),
-        new AlphaRenameTransform(),
-        new AddRedundantTypeAnnotationTransform()
-    };
+    // The transform registry lives in MetamorphicTransforms.All (shared with the corpus sweep, which
+    // covers all ~1,500 executing fixtures rather than these 12 samples). These facts keep the
+    // hand-picked programs as fast, per-transform smoke coverage.
 
     public MetamorphicPropertyTests(ITestOutputHelper output) : base(output) { }
 
@@ -38,9 +30,18 @@ public class MetamorphicPropertyTests : IntegrationTestBase
                 return;
 
             var transformed = transform.Apply(source);
-            var r2 = CompileAndExecuteWithGC(transformed);
-            if (!r2.Success)
+            if (transformed == source)
                 return;
+
+            var r2 = CompileAndExecuteWithGC(transformed);
+            // A compile break under a semantics-preserving transform is a VIOLATION, not a skip.
+            // This early return used to swallow exactly that: it is why ParensWrap never caught the
+            // #1147 cast mis-emit even on these 12 samples (#1157).
+            if (!r2.Success)
+                throw new Exception(
+                    $"{transform.Name}: the transformed program failed to compile.\n" +
+                    $"Errors: {string.Join("; ", r2.CompilationErrors.Take(3))}\n" +
+                    $"Transformed source:\n{transformed}");
 
             if (r1.StandardOutput != r2.StandardOutput)
                 throw new Exception(
@@ -61,9 +62,18 @@ public class MetamorphicPropertyTests : IntegrationTestBase
                 return;
 
             var transformed = transform.Apply(source);
-            var r2 = CompileAndExecuteWithGC(transformed);
-            if (!r2.Success)
+            if (transformed == source)
                 return;
+
+            var r2 = CompileAndExecuteWithGC(transformed);
+            // A compile break under a semantics-preserving transform is a VIOLATION, not a skip.
+            // This early return used to swallow exactly that: it is why ParensWrap never caught the
+            // #1147 cast mis-emit even on these 12 samples (#1157).
+            if (!r2.Success)
+                throw new Exception(
+                    $"{transform.Name}: the transformed program failed to compile.\n" +
+                    $"Errors: {string.Join("; ", r2.CompilationErrors.Take(3))}\n" +
+                    $"Transformed source:\n{transformed}");
 
             if (r1.StandardOutput != r2.StandardOutput)
                 throw new Exception(
@@ -118,9 +128,18 @@ public class MetamorphicPropertyTests : IntegrationTestBase
                 return;
 
             var transformed = transform.Apply(source);
-            var r2 = CompileAndExecuteWithGC(transformed);
-            if (!r2.Success)
+            if (transformed == source)
                 return;
+
+            var r2 = CompileAndExecuteWithGC(transformed);
+            // A compile break under a semantics-preserving transform is a VIOLATION, not a skip.
+            // This early return used to swallow exactly that: it is why ParensWrap never caught the
+            // #1147 cast mis-emit even on these 12 samples (#1157).
+            if (!r2.Success)
+                throw new Exception(
+                    $"{transform.Name}: the transformed program failed to compile.\n" +
+                    $"Errors: {string.Join("; ", r2.CompilationErrors.Take(3))}\n" +
+                    $"Transformed source:\n{transformed}");
 
             if (r1.StandardOutput != r2.StandardOutput)
                 throw new Exception(

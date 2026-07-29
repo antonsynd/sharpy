@@ -1,22 +1,34 @@
 namespace Sharpy.Compiler.Tests.Properties.Metamorphic.Transforms;
 
+/// <summary>
+/// Wraps each single-line <c>print(...)</c> statement in an <c>if True:</c> block. The guarded
+/// statement always executes, so output is unchanged and the surrounding block structure is
+/// preserved (the wrapper takes the statement's own indentation and the body is indented one level
+/// deeper).
+/// </summary>
 internal sealed class IfTrueWrapTransform : IAstTransform
 {
     public string Name => "IfTrueWrap";
 
     public string Apply(string source)
     {
-        var lines = source.Split('\n').ToList();
-        for (int i = lines.Count - 1; i >= 0; i--)
+        var masked = MaskedSource.Of(source);
+        var lines = masked.Lines.ToList();
+
+        for (int i = masked.Lines.Length - 1; i >= 0; i--)
         {
-            var trimmed = lines[i].TrimStart();
-            if (trimmed.StartsWith("print(", StringComparison.Ordinal))
-            {
-                var indent = lines[i].Length - trimmed.Length;
-                var spaces = new string(' ', indent);
-                lines[i] = $"{spaces}if True:\n{spaces}    {trimmed}";
-            }
+            if (!masked.StartsStatement(i) || masked.DepthAfterLine(i) != 0)
+                continue;
+
+            var code = masked.MaskedLines[i].TrimStart();
+            if (!code.StartsWith("print(", StringComparison.Ordinal))
+                continue;
+
+            var line = masked.Lines[i];
+            var indent = MaskedSource.Indent(line);
+            lines[i] = $"{indent}if True:\n{indent}    {line[indent.Length..]}";
         }
+
         return string.Join('\n', lines);
     }
 }
