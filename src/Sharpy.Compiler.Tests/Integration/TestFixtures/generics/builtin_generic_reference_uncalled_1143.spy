@@ -1,0 +1,9 @@
+# #1143: SPY0335 is the uniform answer for an uncalled generic reference, whatever the callee kind.
+# The bare-identifier and user-instance arms are pinned by generic_function_reference_uncalled_1138,
+# the BCL arm by bcl_generic_instance_method_uncalled_1136, the .NET-module arm by the Stdlib
+# json_loads_uncalled_reference fixture, and the user-module arm by
+# usermod_generic_func_uncalled_reference_1142. The BUILTIN arm is the one that had unit coverage
+# only: map[int, int] matches the two-type-parameter overload, so the #1004 arity check passes and
+# the reference resolves — leaving SPY0335 as the only thing between it and codegen.
+def main() -> None:
+    f = map[int, int]
