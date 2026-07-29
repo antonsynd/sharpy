@@ -48,14 +48,3 @@ usermod_pair::ternaryCalled::exact
 # not run the assembly-emit step, so the same defect surfaces one layer earlier as the raw CS1061 leak
 # — identical root cause, class X1/X2.)
 bcl_convertall::typoMember::exact
-
-# ─────────────────────────────────────────────────────────────────────────────
-# #1148 (OPEN, NEW) — an explicit-generic builtin call whose type-argument COUNT selects a real overload
-# but whose VALUE arguments don't match that overload is accepted by semantics and mis-emitted.
-# `map[int, int, int](_dbl, xs)` selects Map<T1,T2,TOut>(Func<T1,T2,TOut>, IEnumerable<T1>,
-# IEnumerable<T2>) (three type params) but is given a one-arg func and a single iterable; Sharpy
-# reports no diagnostic and codegen emits a call missing `iterable2` → CS7036 (a csLeak). The correct
-# behavior is a deliberate arg-count/type diagnostic (SPY0224-class). Class D (builtin overload
-# selection by explicit type args) × X1 — value-argument validation is skipped once the type-arg count
-# pins a multi-arity builtin overload.
-builtin_map::called::excess

@@ -1,0 +1,11 @@
+# #1148 positive twin of the two .error fixtures: the new value-argument validation must not reject
+# genuine calls. A real two-iterable call still compiles and runs, including with a lambda (a
+# callable parameter stays permissive — inference and Roslyn check that position), and the
+# single-iterable overload is unaffected. Output matches CPython:
+#   list(map(lambda a, b: a + b, [1, 2, 3], [10, 20, 30])) == [11, 22, 33]
+#   list(map(lambda a: a * 2, [1, 2, 3]))                  == [2, 4, 6]
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    ys: list[int] = [10, 20, 30]
+    print(list(map[int, int, int](lambda a, b: a + b, xs, ys)))
+    print(list(map[int, int](lambda a: a * 2, xs)))

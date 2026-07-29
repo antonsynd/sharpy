@@ -409,6 +409,13 @@ internal partial class TypeChecker
             // Record the resolved call target for codegen
             _semanticInfo.SetCallTarget(call, genericFuncType.FunctionSymbol);
 
+            // #1148: the explicit type arguments have already narrowed the overload set —
+            // map[int, int, int] leaves only Map<T1, T2, TOut>, which takes a two-argument function
+            // and TWO iterables. Nothing validated the value arguments against that narrowing, so a
+            // call whose type-argument count matched but whose value arguments did not was accepted
+            // here and emitted verbatim, surfacing as CS7036 out of Roslyn instead of a diagnostic.
+            ValidateSelectedGenericOverloadArguments(call, genericFuncType, argTypes, totalArgCount);
+
             // Substitute type parameters with type arguments in the return type
             var substitutedReturnType = SubstituteTypeParameters(
                 genericFuncType.FunctionSymbol.ReturnType,
@@ -418,6 +425,126 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Validates a generic call's VALUE arguments against the overloads its explicit type arguments
+    /// selected, with those type arguments substituted into the parameter types (#1148). Driven by
+    /// the <see cref="GenericReference"/> fact, so it covers every callee kind rather than
+    /// special-casing any one builtin.
+    ///
+    /// <para>The type-argument count narrows the overload set but does NOT always pin a single
+    /// overload: <c>itertools.islice[int]</c>, <c>itertools.repeat[int]</c> and <c>frozen_set[int]</c>
+    /// each have several same-generic-arity overloads differing only in their value parameters. The
+    /// call is therefore checked against all of them through the shared
+    /// <see cref="ResolveOverloadCore"/>, and only a call that NO candidate accepts is reported —
+    /// via <see cref="ReportOverloadError"/>, the same no-match reporting the non-generic overload
+    /// paths use (#1013).</para>
+    /// </summary>
+    private void ValidateSelectedGenericOverloadArguments(
+        FunctionCall call, GenericFunctionType genericFuncType,
+        List<SemanticType> argTypes, int totalArgCount)
+    {
+        var callee = UnwrapParenthesized(call.Function) as IndexAccess;
+        var reference = callee != null ? _semanticInfo.GetGenericReference(callee) : null;
+        var selected = reference?.SelectedOverload ?? genericFuncType.FunctionSymbol;
+
+        // Look overloads up by the SOURCE name — the registries are keyed by what was written
+        // (`islice`, `map`), which a discovered symbol's own Name need not match.
+        var calleeName = callee?.Object switch
+        {
+            MemberAccess memberAccess => memberAccess.Member,
+            Identifier identifier => identifier.Name,
+            _ => selected.Name
+        };
+
+        var candidates = CollectGenericOverloadCandidates(
+            reference, selected, calleeName, genericFuncType.TypeArguments.Count);
+
+        var (match, arityCandidates, isAmbiguous) = ResolveOverloadCore(new OverloadResolutionContext(
+            Candidates: candidates,
+            TotalArgCount: totalArgCount,
+            ArgTypes: argTypes,
+            SkipSelfParam: true,
+            TypeSubstitution: t => SubstituteTypeParameters(
+                t, selected.TypeParameters, genericFuncType.TypeArguments),
+            SkipUnknownTypes: true,
+            KeywordArgNames: ExtractKeywordArgNames(call),
+            Call: call));
+
+        // Ambiguity among same-generic-arity candidates is not this check's business: the explicit
+        // type arguments already pinned the overload codegen emits. Only "nothing accepts these
+        // value arguments" is the #1148 defect.
+        if (match != null || isAmbiguous)
+            return;
+
+        ReportOverloadError(calleeName, call, isAmbiguous: false, arityCandidates, totalArgCount);
+    }
+
+    /// <summary>
+    /// Collects the overloads a generic reference could be calling: every overload of the same
+    /// callee whose type-parameter count matches the supplied type arguments, plus the selected
+    /// overload itself. Kinds whose overload set is not enumerable here (BCL methods, which the
+    /// #1136 path resolves by reflection) fall back to the selected overload alone.
+    /// </summary>
+    private List<FunctionSymbol> CollectGenericOverloadCandidates(
+        GenericReference? reference, FunctionSymbol selected, string calleeName, int typeArgCount)
+    {
+        var overloads = reference?.Kind switch
+        {
+            GenericReferenceKind.Builtin => _symbolTable.BuiltinRegistry.GetFunctionOverloads(calleeName),
+            GenericReferenceKind.UserFunction => _symbolTable.LookupFunctionOverloads(calleeName),
+            GenericReferenceKind.ModuleFunction => LookupModuleFunctionOverloads(reference.ReceiverType, calleeName),
+            GenericReferenceKind.InstanceMethod => LookupInstanceMethodOverloads(reference.ReceiverType, calleeName),
+            _ => null,
+        };
+
+        var candidates = new List<FunctionSymbol> { selected };
+        if (overloads != null)
+        {
+            foreach (var overload in overloads)
+            {
+                if (overload.TypeParameters.Count == typeArgCount && !ReferenceEquals(overload, selected))
+                    candidates.Add(overload);
+            }
+        }
+
+        return candidates;
+    }
+
+    /// <summary>
+    /// The overload set an imported module exports under <paramref name="memberName"/>, trying the
+    /// PascalCase spelling as well for .NET modules (mirroring the member lookup in the resolver).
+    /// </summary>
+    private static List<FunctionSymbol>? LookupModuleFunctionOverloads(SemanticType? receiverType, string memberName)
+    {
+        if (receiverType is not ModuleType moduleType)
+            return null;
+        if (moduleType.Symbol.FunctionOverloads.TryGetValue(memberName, out var overloads))
+            return overloads;
+        return moduleType.Symbol.FunctionOverloads.TryGetValue(NameMangler.ToPascalCase(memberName), out var pascal)
+            ? pascal
+            : null;
+    }
+
+    /// <summary>
+    /// The overload set a receiver's type declares under <paramref name="memberName"/>.
+    /// </summary>
+    private List<FunctionSymbol>? LookupInstanceMethodOverloads(SemanticType? receiverType, string memberName)
+    {
+        if (receiverType == null)
+            return null;
+
+        var ownerSymbol = receiverType switch
+        {
+            UserDefinedType { Symbol: { } udtSymbol } => udtSymbol,
+            GenericType { GenericDefinition: { } genericDefinition } => genericDefinition,
+            _ => ResolveBuiltinTypeInfo(receiverType).TypeSymbol
+        };
+
+        return ownerSymbol != null && ownerSymbol.MethodOverloads.TryGetValue(memberName, out var overloads)
+            ? overloads
+            : null;
     }
 
     /// <summary>

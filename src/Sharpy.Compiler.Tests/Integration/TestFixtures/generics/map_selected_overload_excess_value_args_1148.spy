@@ -1,0 +1,12 @@
+# #1148, the mirror of map_selected_overload_deficient_value_args_1148: two type arguments leave only
+# the single-iterable Map<TIn, TOut>, so a second iterable is one value argument too many. The value
+# arguments are checked against the overloads the TYPE arguments leave, not against whichever
+# overload happened to be first by name.
+def _dbl(x: int) -> int:
+    return x * 2
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    ys: list[int] = [10, 20, 30]
+    _x = map[int, int](_dbl, xs, ys)

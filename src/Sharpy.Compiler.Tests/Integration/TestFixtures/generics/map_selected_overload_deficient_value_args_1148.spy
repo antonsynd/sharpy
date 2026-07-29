@@ -1,0 +1,12 @@
+# #1148: three type arguments leave only Map<T1, T2, TOut>, which takes a two-argument function and
+# TWO iterables. A one-argument function plus a single iterable used to pass semantic analysis
+# untouched (the type-argument COUNT matched an overload, and nothing re-checked the value arguments
+# against what that left), so codegen emitted a call missing iterable2 -> CS7036 out of Roslyn. The
+# value arguments are now checked against those overloads, making this a deliberate diagnostic.
+def _dbl(x: int) -> int:
+    return x * 2
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    _x = map[int, int, int](_dbl, xs)
