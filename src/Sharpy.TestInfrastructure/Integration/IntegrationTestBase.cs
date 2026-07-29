@@ -527,8 +527,6 @@ public abstract class IntegrationTestBase
 
     private ExecutionResult CompileAndExecuteProjectCore(string projectDir, string entryPointFile, int executionTimeoutMs, FeatureFlags features)
     {
-        string? runtimePath = null;
-
         try
         {
             var logger = new OutputTestLogger(Output);
@@ -598,7 +596,7 @@ public abstract class IntegrationTestBase
                     Success = false,
                     CompilationErrors = result.Diagnostics.GetErrors().Select(d => d.Message).ToList(),
                     CompilationWarnings = projectWarnings,
-                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                    GeneratedCSharp = FormatGeneratedProjectCSharp(result.GeneratedCSharpFiles),
                     RawDiagnostics = result.Diagnostics.GetAll().ToList()
                 };
             }
@@ -613,8 +611,164 @@ public abstract class IntegrationTestBase
             }
             Output.WriteLine("====================");
 
+            return EmitAndRunProjectAssembly(
+                result.GeneratedCSharpFiles.Values.ToList(),
+                FormatGeneratedProjectCSharp(result.GeneratedCSharpFiles),
+                projectWarnings,
+                executionTimeoutMs);
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = $"Unexpected error: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                errorMessage += $"\nInner Exception: {ex.InnerException.Message}";
+                errorMessage += $"\nStack Trace: {ex.InnerException.StackTrace}";
+            }
+
+            return new ExecutionResult
+            {
+                Success = false,
+                Exception = ex,
+                CompilationErrors = new List<string> { errorMessage }
+            };
+        }
+    }
+
+    /// <summary>
+    /// Compiles and executes a Sharpy program by its <em>entry file path</em> — the seam
+    /// <c>sharpyc run &lt;file&gt;</c> uses (<see cref="CompilerApi.CompileFile"/>), which discovers
+    /// the transitive closure of local <c>.spy</c> imports itself instead of being handed a source
+    /// list. No <c>RootNamespace</c> is supplied, so the namespace the compiler picks for a
+    /// multi-file closure is exercised as the CLI would experience it (#1171).
+    /// </summary>
+    /// <param name="entryFilePath">Full path to the entry <c>.spy</c> file on disk. Sibling
+    /// modules are read from disk relative to it, so the file must not be copied out of its
+    /// directory.</param>
+    /// <param name="executionTimeoutMs">Optional timeout in milliseconds for execution.</param>
+    /// <param name="features">Optional experimental feature flags enabled compilation-wide.</param>
+    protected ExecutionResult CompileAndExecuteEntryFile(
+        string entryFilePath, int executionTimeoutMs = 0, FeatureFlags? features = null)
+    {
+        try
+        {
+            return CompileAndExecuteEntryFileCore(entryFilePath, executionTimeoutMs, features ?? FeatureFlags.None);
+        }
+        finally
+        {
+            GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+            GC.WaitForPendingFinalizers();
+        }
+    }
+
+    private ExecutionResult CompileAndExecuteEntryFileCore(
+        string entryFilePath, int executionTimeoutMs, FeatureFlags features)
+    {
+        try
+        {
+            var logger = new OutputTestLogger(Output);
+
+            var defaultReferences = new List<string> { SharpyCoreReference.Location };
+            defaultReferences.AddRange(GetAdditionalReferenceAssemblyPaths());
+
+            var api = new CompilerApi(logger, defaultReferences.ToArray());
+            // Exempt from the CompilerOptionsFactory seam (#1144) for the same reason as
+            // CompileAndExecuteCore: this arm must state its own options shape so it keeps
+            // detecting drift in whatever the CLI surfaces decide. Deliberately no Namespace —
+            // the entry-file compile is what has to choose a workable one (#1171).
+            var options = new CompilerOptions
+            {
+                OutputType = "exe",
+                Features = features
+            };
+
+            var result = api.CompileFile(entryFilePath, options);
+
+            var rawDiagnostics = result.Diagnostics.ToList();
+            var compilationErrors = rawDiagnostics
+                .Where(d => d.Severity == CompilerDiagnosticSeverity.Error)
+                .Select(d => d.Message)
+                .ToList();
+
+            // Bucket severities exactly as CompileAndExecuteProjectCore does (Warning + Hint) so a
+            // `.warning` sidecar behaves identically through both arms; a difference between the
+            // arms is then a compiler difference, never a harness one.
+            var compilationWarnings = rawDiagnostics
+                .Where(d => d.Severity == CompilerDiagnosticSeverity.Warning
+                         || d.Severity == CompilerDiagnosticSeverity.Hint)
+                .Select(d => d.Message)
+                .ToList();
+
+            var generatedReport = FormatGeneratedProjectCSharp(result.GeneratedCSharpFiles);
+
+            Output.WriteLine("=== Generated C# ===");
+            Output.WriteLine(generatedReport);
+            Output.WriteLine("====================");
+
+            if (!result.Success || result.GeneratedCSharpFiles.Count == 0)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    CompilationErrors = compilationErrors,
+                    CompilationWarnings = compilationWarnings,
+                    GeneratedCSharp = result.GeneratedCSharpFiles.Count > 0 ? generatedReport : null,
+                    RawDiagnostics = rawDiagnostics
+                };
+            }
+
+            return EmitAndRunProjectAssembly(
+                result.GeneratedCSharpFiles.Values.ToList(),
+                generatedReport,
+                compilationWarnings,
+                executionTimeoutMs);
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = $"Unexpected error: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                errorMessage += $"\nInner Exception: {ex.InnerException.Message}";
+                errorMessage += $"\nStack Trace: {ex.InnerException.StackTrace}";
+            }
+
+            return new ExecutionResult
+            {
+                Success = false,
+                Exception = ex,
+                CompilationErrors = new List<string> { errorMessage }
+            };
+        }
+    }
+
+    /// <summary>
+    /// Renders a project's per-file generated C# into the single string the
+    /// <see cref="ExecutionResult.GeneratedCSharp"/> contract carries, ordered by file name so the
+    /// report is stable across filesystem enumeration order.
+    /// </summary>
+    private static string FormatGeneratedProjectCSharp(IReadOnlyDictionary<string, string> generatedFiles)
+        => string.Join("\n\n", generatedFiles.OrderBy(kvp => kvp.Key, StringComparer.Ordinal)
+            .Select(kvp => $"// {kvp.Key}\n{kvp.Value}"));
+
+    /// <summary>
+    /// Compiles generated C# for a whole project to an assembly and runs it out-of-process.
+    /// Shared by the project-path harness (<see cref="CompileAndExecuteProject"/>) and the
+    /// entry-file-path harness (<see cref="CompileAndExecuteEntryFile"/>) so both arms deploy and
+    /// execute through identical code — a behavioral difference between them is then attributable
+    /// to the compiler, not to the harness (#1171).
+    /// </summary>
+    private ExecutionResult EmitAndRunProjectAssembly(
+        IReadOnlyList<string> csharpSources,
+        string generatedCSharpReport,
+        List<string> compilationWarnings,
+        int executionTimeoutMs)
+    {
+        string? runtimePath;
+
+        try
+        {
             // Parse and compile the generated C#
-            var syntaxTrees = result.GeneratedCSharpFiles.Values
+            var syntaxTrees = csharpSources
                 .Select(code => CSharpSyntaxTree.ParseText(code))
                 .ToList();
 
@@ -646,7 +800,7 @@ public abstract class IntegrationTestBase
                 {
                     Success = false,
                     CompilationErrors = errors,
-                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}"))
+                    GeneratedCSharp = generatedCSharpReport
                 };
             }
 
@@ -746,7 +900,7 @@ public abstract class IntegrationTestBase
                         TimedOut = true,
                         StandardOutput = stdout.ToString(),
                         StandardError = stderr.ToString(),
-                        GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                        GeneratedCSharp = generatedCSharpReport,
                         CompilationErrors = new List<string> { $"Execution timed out after {timeout}ms" }
                     };
                 }
@@ -758,7 +912,7 @@ public abstract class IntegrationTestBase
                         Success = false,
                         StandardOutput = stdout.ToString(),
                         StandardError = stderr.ToString(),
-                        GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
+                        GeneratedCSharp = generatedCSharpReport,
                         CompilationErrors = new List<string> { $"Process exited with code {process.ExitCode}: {stderr}" }
                     };
                 }
@@ -768,8 +922,8 @@ public abstract class IntegrationTestBase
                     Success = true,
                     StandardOutput = stdout.ToString(),
                     StandardError = stderr.ToString(),
-                    GeneratedCSharp = string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kvp => kvp.Key).Select(kvp => $"// {kvp.Key}\n{kvp.Value}")),
-                    CompilationWarnings = projectWarnings
+                    GeneratedCSharp = generatedCSharpReport,
+                    CompilationWarnings = compilationWarnings
                 };
             }
             finally

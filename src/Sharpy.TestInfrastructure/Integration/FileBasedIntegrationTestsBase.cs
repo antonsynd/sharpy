@@ -52,15 +52,14 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
             }
             Output.WriteLine("====================");
 
-            var entryPointBaseName = Path.GetFileNameWithoutExtension(entryPointFile);
-            errorFilePath = Path.Combine(projectDir, $"{entryPointBaseName}.error");
-            expectedFilePath = Path.Combine(projectDir, $"{entryPointBaseName}.expected");
+            errorFilePath = MultiFileSidecar(projectDir, ".error");
+            expectedFilePath = MultiFileSidecar(projectDir, ".expected");
             sourceTextContent = File.ReadAllText(Path.Combine(projectDir, entryPointFile));
 
             // A `.features` sidecar next to the entry point enables experimental features
             // (e.g. matmul, defer) compilation-wide for the whole fixture project. Unknown
             // names throw loudly here rather than silently disabling the feature.
-            var projectFeatures = ReadFixtureFeatures(Path.Combine(projectDir, $"{entryPointBaseName}.features"));
+            var projectFeatures = ReadFixtureFeatures(MultiFileSidecar(projectDir, ".features"));
             result = CompileAndExecuteProject(projectDir, entryPointFile, features: projectFeatures);
         }
         else
@@ -81,11 +80,39 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
             result = CompileAndExecute(source, Path.GetFileName(spyFilePath), features: fileFeatures);
         }
 
-        var isErrorTest = File.Exists(errorFilePath);
-
         var runtimeErrorFilePath = isMultiFile
-            ? Path.Combine(path, $"{Path.GetFileNameWithoutExtension(FindEntryPoint(path))}.runtime-error")
+            ? MultiFileSidecar(path, ".runtime-error")
             : path.Replace(".spy", ".runtime-error", StringComparison.Ordinal);
+        var snapshotFilePath = isMultiFile
+            ? MultiFileSidecar(path, ".expected.cs")
+            : Path.ChangeExtension(path, ".expected.cs");
+
+        AssertFixtureOutcome(result, errorFilePath, expectedFilePath, runtimeErrorFilePath,
+            snapshotFilePath, sourceTextContent);
+    }
+
+    /// <summary>
+    /// Asserts a fixture's outcome against its sidecars: <c>.runtime-error</c> (compiles, then fails
+    /// at runtime), <c>.error</c> (compilation must fail, optionally at a stated
+    /// <c>@line:col</c>), else <c>.expected</c> stdout — plus the <c>.expected.cs</c> snapshot and
+    /// <c>.warning</c> checks. Every harness that drives fixtures shares this one method so the arms
+    /// cannot drift in what "passing" means (#1171); an arm differs only in how it compiles.
+    /// </summary>
+    /// <param name="verifyCSharpSnapshot">
+    /// When false, the <c>.expected.cs</c> comparison is skipped. Set by arms whose generated C# is
+    /// legitimately shaped differently from the snapshot's owning arm (e.g. a different root
+    /// namespace), where the snapshot would compare two different-by-design outputs.
+    /// </param>
+    protected void AssertFixtureOutcome(
+        ExecutionResult result,
+        string errorFilePath,
+        string expectedFilePath,
+        string runtimeErrorFilePath,
+        string snapshotFilePath,
+        string? sourceTextContent,
+        bool verifyCSharpSnapshot = true)
+    {
+        var isErrorTest = File.Exists(errorFilePath);
         var isRuntimeErrorTest = File.Exists(runtimeErrorFilePath);
 
         var warningFilePath = Path.ChangeExtension(errorFilePath, ".warning");
@@ -196,12 +223,8 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
         }
 
         // C# snapshot verification
-        if (!isErrorTest && result.Success && result.GeneratedCSharp != null)
+        if (verifyCSharpSnapshot && !isErrorTest && result.Success && result.GeneratedCSharp != null)
         {
-            var snapshotFilePath = isMultiFile
-                ? Path.Combine(path, $"{Path.GetFileNameWithoutExtension(FindEntryPoint(path))}.expected.cs")
-                : Path.ChangeExtension(path, ".expected.cs");
-
             var updateSnapshots = Environment.GetEnvironmentVariable("UPDATE_SNAPSHOTS") == "true";
 
             if (updateSnapshots && File.Exists(snapshotFilePath))
@@ -269,6 +292,16 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
         var names = FixtureDiscoveryHelper.ReadFeaturesFile(featuresFilePath);
         return names.Count == 0 ? FeatureFlags.None : FeatureFlags.None.Enable(names);
     }
+
+    /// <summary>
+    /// The path of a multi-file fixture's sidecar with the given extension — the entry point's base
+    /// name plus <paramref name="extension"/> inside <paramref name="projectDir"/> (e.g.
+    /// <c>main.expected</c>). One definition so every arm and every sidecar kind agree on where a
+    /// fixture's expectations live.
+    /// </summary>
+    public static string MultiFileSidecar(string projectDir, string extension)
+        => Path.Combine(projectDir,
+            Path.GetFileNameWithoutExtension(FindEntryPoint(projectDir)) + extension);
 
     /// <summary>
     /// The entry file of a multi-file fixture directory: <c>main.spy</c>, else a <c>.spy</c> named
