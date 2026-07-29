@@ -1,4 +1,3 @@
-using System.IO;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
@@ -177,150 +176,19 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Gets the fully qualified C# type name for a type, handling cross-file references.
+    /// Gets the fully qualified C# type name for a type named by a resolved symbol (construction,
+    /// isinstance, except clauses, module-qualified base names), handling cross-file references.
     /// Types are nested inside the module class, so cross-file references use
     /// Namespace.ModuleClass.TypeName.
+    /// <para>
+    /// Delegates to <see cref="TypeSyntaxMapper.GetTypeNameForConstruction"/>: the mapper owns type-name
+    /// qualification for every emission position. This used to be a second, textually independent copy
+    /// of that algorithm, and #1139's raw-BCL rule had to be added to both by hand — exactly the
+    /// hand-mirrored seam contract #1146 exists to eliminate.
+    /// </para>
     /// </summary>
     private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
-    {
-        // For Sharpy.Core CLR types (with [SharpyModuleType] attribute), use the actual CLR
-        // type name rather than deriving from DefiningModule, since the CLR namespace (Sharpy)
-        // differs from the module name (e.g., argparse -> Sharpy.ArgumentParser). The
-        // prefix-aware IsSharpyNamespace rule also covers sub-namespaces such as
-        // Sharpy.Generators so module types round-trip (#1090).
-        if (typeSymbol.ClrType != null && ClrTypeBridge.SpecialCases.IsSharpyNamespace(typeSymbol.ClrType.Namespace))
-        {
-            var fullName = ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
-            return $"global::{fullName}";
-        }
-
-        // All CLR types need global:: when inside a user namespace to avoid
-        // namespace prepending (e.g., Sharpy.System.Text.StringBuilder)
-        if (typeSymbol.ClrType != null && !string.IsNullOrEmpty(_context.ProjectNamespace))
-        {
-            var fullName = ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
-            return $"global::{fullName}";
-        }
-
-        // A raw generic BCL type imported by namespace (e.g. system.collections.generic.List) carries
-        // a ClrType but neither DefiningModule nor DefiningFilePath, so without this it fell through to
-        // the bare short name below and collided with Sharpy.List → CS0104. Scoped to a generic ClrType
-        // to mirror the annotation-side scope (TypeSyntaxMapper) and leave non-generic CLR constructions
-        // — e.g. `raise Exception(...)`, already reachable via `using System;` — on their existing bare
-        // name so this fix does not broadly re-qualify them (#1139).
-        if (typeSymbol.ClrType is { IsGenericType: true })
-        {
-            return ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
-        }
-
-        // Check if type is from a different file (cross-file reference)
-        if (!string.IsNullOrEmpty(typeSymbol.DefiningFilePath) &&
-            !string.IsNullOrEmpty(_context.SourceFilePath) &&
-            !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
-        {
-            var moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
-            var typeName = NameCasing.ResolveType(sharpyTypeName, isBacktickEscaped: false);
-
-            return BuildQualifiedTypeName(moduleNamespace, typeName);
-        }
-
-        // Check if type is from an external module (imported via DefiningModule)
-        if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
-        {
-            var moduleNamespace = ConvertModuleToNamespace(typeSymbol.DefiningModule);
-            var typeName = NameCasing.ResolveType(sharpyTypeName, isBacktickEscaped: false);
-
-            return BuildQualifiedTypeName(moduleNamespace, typeName);
-        }
-
-        // Type is in current file - use simple name
-        return NameCasing.ResolveType(sharpyTypeName, isBacktickEscaped: false);
-    }
-
-    /// <summary>
-    /// Builds a fully qualified type name, handling collision cases where the type IS
-    /// the module class (e.g., animal.spy defining class Animal).
-    /// </summary>
-    private string BuildQualifiedTypeName(string moduleNamespace, string typeName)
-    {
-        // Check for collision: when the module name matches the type name,
-        // the type IS the module class, not nested inside it.
-        var lastSegment = moduleNamespace.Contains('.', StringComparison.Ordinal)
-            ? moduleNamespace.Split('.').Last()
-            : moduleNamespace;
-
-        if (string.Equals(lastSegment, typeName, StringComparison.Ordinal))
-        {
-            // Type IS the module class — module path is the type path
-            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-            {
-                return $"{_context.ProjectNamespace}.{moduleNamespace}";
-            }
-            return moduleNamespace;
-        }
-
-        // Type is nested inside the module class
-        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
-        {
-            return $"{_context.ProjectNamespace}.{moduleNamespace}.{typeName}";
-        }
-        return $"{moduleNamespace}.{typeName}";
-    }
-
-    /// <summary>
-    /// Derives a module namespace from a file path, computing the full package path
-    /// relative to the project root.
-    /// E.g., for project root "/temp" and file "/temp/mypackage/submodule.spy" -> "Mypackage.Submodule"
-    /// </summary>
-    private string GetModuleNameFromFilePath(string filePath)
-    {
-        // If we have a project root, compute relative path for proper namespace
-        if (!string.IsNullOrEmpty(_context.ProjectRootPath))
-        {
-            var relativePath = Path.GetRelativePath(_context.ProjectRootPath, filePath);
-            var relativeDir = Path.GetDirectoryName(relativePath) ?? "";
-            var fileName = Path.GetFileNameWithoutExtension(filePath);
-
-            var namespaceParts = new List<string>();
-
-            // Add directory parts (package hierarchy)
-            if (!string.IsNullOrEmpty(relativeDir) && relativeDir != ".")
-            {
-                var dirParts = relativeDir.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                foreach (var part in dirParts)
-                {
-                    if (!string.IsNullOrEmpty(part) && part != ".")
-                    {
-                        namespaceParts.Add(NameCasing.ResolveType(part, isBacktickEscaped: false));
-                    }
-                }
-            }
-
-            // Add file name part (skip __init__ as it represents the package itself)
-            if (!string.Equals(fileName, DunderNames.Init, StringComparison.OrdinalIgnoreCase))
-            {
-                namespaceParts.Add(NameCasing.ResolveType(fileName, isBacktickEscaped: false));
-            }
-
-            if (namespaceParts.Count > 0)
-            {
-                return string.Join(".", namespaceParts);
-            }
-        }
-
-        // Fallback: just use file name
-        var fallbackFileName = Path.GetFileNameWithoutExtension(filePath);
-        return NameCasing.ResolveType(fallbackFileName, isBacktickEscaped: false);
-    }
-
-    /// <summary>
-    /// Converts a module path (e.g., "animal" or "lib.animal") to a C# namespace segment.
-    /// </summary>
-    private static string ConvertModuleToNamespace(string modulePath)
-    {
-        var parts = modulePath.Split('.');
-        return string.Join(".", parts.Select(NameMangler.ToNamespacePart));
-    }
+        => _typeMapper.GetTypeNameForConstruction(typeSymbol, sharpyTypeName);
 
     // ============================================================
     // Helper: Single-evaluation capture for complex expressions

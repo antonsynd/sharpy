@@ -443,7 +443,7 @@ internal class TypeSyntaxMapper
     }
 
     /// <summary>
-    /// The single naming authority for a Sharpy type <em>reference</em> the RoslynEmitter emits at a
+    /// The name-driven naming seam: resolves a Sharpy type <em>name</em> the RoslynEmitter emits at a
     /// construction or generic-instantiation site. Delegates to <see cref="GetMappedTypeName"/> so every
     /// emission position agrees on qualification: builtin collections keep their Sharpy wrapper name
     /// (<c>list</c> → <c>Sharpy.List</c>), imported/cross-file types are fully qualified, and a
@@ -452,9 +452,24 @@ internal class TypeSyntaxMapper
     /// <see cref="QualifiedGenericName(string, TypeSyntax[])"/>, which splits the prefix and dots into the
     /// correct <see cref="NameSyntax"/>. This is the seam #1139 routes the previously-hand-built
     /// construction names through so they stop diverging from the (already-correct) annotation position.
+    /// Its symbol-driven counterpart is <see cref="GetTypeNameForConstruction"/>; both bottom out in
+    /// <see cref="QualifyFromSymbol"/>, which owns the qualification rules.
     /// </summary>
     internal string GetTypeNameForReference(string sharpyName, bool isBacktickEscaped)
         => GetMappedTypeName(sharpyName, isBacktickEscaped);
+
+    /// <summary>
+    /// The symbol-driven naming seam for a <em>construction</em> position: the name the RoslynEmitter
+    /// emits where a resolved <see cref="TypeSymbol"/> — not a written annotation — names the type
+    /// (<c>X(...)</c>, <c>isinstance(x, X)</c>, <c>except mod.Error</c>, module-qualified base names).
+    /// Shares one implementation, <see cref="QualifyFromSymbol"/>, with the reference position so the
+    /// qualification rules (Sharpy runtime namespace, project namespace, raw generic BCL) live in
+    /// exactly one place and cannot be hand-mirrored back apart (#1139, contract #1146). The two
+    /// positions still differ in three branches, each marked "position-dependent" in
+    /// <see cref="QualifyFromSymbol"/> and <see cref="ToNamespaceSegment"/>.
+    /// </summary>
+    internal string GetTypeNameForConstruction(TypeSymbol typeSymbol, string sharpyTypeName)
+        => QualifyFromSymbol(typeSymbol, sharpyTypeName, NamePosition.Construction);
 
     /// <summary>
     /// Maps a Sharpy type name to a C# type name
@@ -544,23 +559,51 @@ internal class TypeSyntaxMapper
     }
 
     /// <summary>
-    /// Gets the fully qualified C# type name for a type from another file/module.
-    /// Types are nested inside the module class, so cross-file references use
-    /// Namespace.ModuleClass.TypeName.
+    /// Gets the fully qualified C# type name for a type from another file/module, as needed at a type
+    /// <em>reference</em> (annotation) position. Types are nested inside the module class, so cross-file
+    /// references use Namespace.ModuleClass.TypeName. Thin wrapper over the shared
+    /// <see cref="QualifyFromSymbol"/> algorithm; construction positions enter through
+    /// <see cref="GetTypeNameForConstruction"/>.
     /// </summary>
     private string GetFullyQualifiedTypeName(TypeSymbol typeSymbol, string sharpyTypeName)
+        => QualifyFromSymbol(typeSymbol, sharpyTypeName, NamePosition.Reference);
+
+    /// <summary>
+    /// Where a qualified name is being emitted. Only the branches marked "position-dependent" in
+    /// <see cref="QualifyFromSymbol"/> and <see cref="ToNamespaceSegment"/> read this; every other
+    /// rule is shared by both positions.
+    /// </summary>
+    private enum NamePosition
     {
-        if (typeSymbol.ClrType != null)
+        /// <summary>A written type reference: annotations, generic arguments, base lists.</summary>
+        Reference,
+
+        /// <summary>A symbol-driven emission site: construction, isinstance, except clauses.</summary>
+        Construction,
+    }
+
+    /// <summary>
+    /// The one algorithm that turns a resolved <see cref="TypeSymbol"/> into the C# name to emit.
+    /// Both naming seams bottom out here — the reference position via
+    /// <see cref="GetFullyQualifiedTypeName"/>, the construction position via
+    /// <see cref="GetTypeNameForConstruction"/> — so a change to the qualification rules applies to
+    /// both by construction rather than by hand-mirrored copies (#1139, contract #1146).
+    /// </summary>
+    private string QualifyFromSymbol(TypeSymbol typeSymbol, string sharpyTypeName, NamePosition position)
+    {
+        if (typeSymbol.ClrType is { } clrType)
         {
             // Strip CLR generic arity suffixes and convert nested type notation (+) to C# dot notation.
             // Type arguments are added separately by the caller via QualifiedGenericName.
-            var fullName = ClrNameHelper.ToCSharpQualifiedName(typeSymbol.ClrType.FullName!);
+            var fullName = ClrNameHelper.ToCSharpQualifiedName(clrType.FullName!);
 
             // Always use global:: for Sharpy namespace CLR types (including sub-namespaces
             // such as Sharpy.Generators) to avoid Sharpy.Sharpy.X when code is inside
             // namespace Sharpy. Uses the prefix-aware IsSharpyNamespace rule so module types
-            // like sharpy.generators.GeneratorOutput round-trip (#1090).
-            if (ClrTypeBridge.SpecialCases.IsSharpyNamespace(typeSymbol.ClrType.Namespace))
+            // like sharpy.generators.GeneratorOutput round-trip (#1090). Sharpy.Core CLR types
+            // carrying [SharpyModuleType] land here too: their CLR namespace (Sharpy) differs from
+            // the module name (argparse -> Sharpy.ArgumentParser), so the CLR name must win.
+            if (ClrTypeBridge.SpecialCases.IsSharpyNamespace(clrType.Namespace))
                 return $"global::{fullName}";
 
             // When inside a user-defined namespace, use global:: for all CLR types
@@ -569,32 +612,57 @@ internal class TypeSyntaxMapper
             if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                 return $"global::{fullName}";
 
-            return fullName;
+            // A raw generic BCL type imported by namespace (e.g. system.collections.generic.List)
+            // carries a ClrType but neither DefiningModule nor DefiningFilePath, so without this it
+            // fell through to the bare short name below and collided with Sharpy.List → CS0104 (#1139).
+            // Position-dependent: a reference position qualifies every remaining CLR type from its CLR
+            // name, while a construction position keeps non-generic CLR types on the name path below —
+            // `raise Exception(...)` stays `Exception`, already reachable via `using System;`, so the
+            // #1139 fix does not broadly re-qualify them.
+            if (position == NamePosition.Reference || clrType.IsGenericType)
+                return fullName;
         }
 
         string moduleNamespace;
 
-        if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
+        // Position-dependent: a construction position resolves a cross-file type from its defining file
+        // first, and falls through to the current-file short name when the type is not cross-file. A
+        // reference position prefers DefiningModule and is only reached once its caller (GetMappedTypeName /
+        // GetMappedTypeNameFromSymbol) has already decided the name must be qualified.
+        if (position == NamePosition.Construction
+            && !string.IsNullOrEmpty(typeSymbol.DefiningFilePath)
+            && !string.IsNullOrEmpty(_context.SourceFilePath)
+            && !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
+        {
+            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath, position);
+        }
+        else if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
         {
             // Use DefiningModule (e.g., "animal" from import)
             moduleNamespace = ConvertModuleToNamespace(typeSymbol.DefiningModule);
         }
-        else if (!string.IsNullOrEmpty(typeSymbol.DefiningFilePath))
+        else if (position == NamePosition.Reference && !string.IsNullOrEmpty(typeSymbol.DefiningFilePath))
         {
             // Derive module namespace from file path
-            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
+            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath, position);
         }
         else
         {
-            // Fallback - shouldn't happen
+            // Construction: type is in the current file. Reference: fallback that shouldn't happen.
             return NameCasing.ResolveType(sharpyTypeName, false);
         }
 
-        var typeName = NameCasing.ResolveType(sharpyTypeName, false);
+        return BuildQualifiedTypeName(moduleNamespace, NameCasing.ResolveType(sharpyTypeName, false));
+    }
 
-        // Check for collision: when the file/directory name (PascalCase) matches the type name,
-        // the type IS the module class (collision merge), not nested inside it.
-        // e.g., animal.spy with class Animal → type is Sharpy.Test.Animal, not Sharpy.Test.Animal.Animal
+    /// <summary>
+    /// Joins a module namespace and a resolved type name, handling the collision case where the
+    /// file/directory name matches the type name: the type IS the module class (collision merge), not
+    /// nested inside it. E.g., animal.spy with class Animal → Sharpy.Test.Animal, not
+    /// Sharpy.Test.Animal.Animal.
+    /// </summary>
+    private string BuildQualifiedTypeName(string moduleNamespace, string typeName)
+    {
         var lastSegment = moduleNamespace.Contains('.', StringComparison.Ordinal)
             ? moduleNamespace.Split('.').Last()
             : moduleNamespace;
@@ -622,7 +690,7 @@ internal class TypeSyntaxMapper
     /// relative to the project root.
     /// E.g., for project root "/temp" and file "/temp/mypackage/submodule.spy" -> "Mypackage.Submodule"
     /// </summary>
-    private string GetModuleNameFromFilePath(string filePath)
+    private string GetModuleNameFromFilePath(string filePath, NamePosition position)
     {
         // If we have a project root, compute relative path for proper namespace
         if (!string.IsNullOrEmpty(_context.ProjectRootPath))
@@ -641,7 +709,7 @@ internal class TypeSyntaxMapper
                 {
                     if (!string.IsNullOrEmpty(part) && part != ".")
                     {
-                        namespaceParts.Add(NameMangler.ToNamespacePart(part));
+                        namespaceParts.Add(ToNamespaceSegment(part, position));
                     }
                 }
             }
@@ -649,7 +717,7 @@ internal class TypeSyntaxMapper
             // Add file name part (skip __init__ as it represents the package itself)
             if (!string.Equals(fileName, DunderNames.Init, StringComparison.OrdinalIgnoreCase))
             {
-                namespaceParts.Add(NameMangler.ToNamespacePart(fileName));
+                namespaceParts.Add(ToNamespaceSegment(fileName, position));
             }
 
             if (namespaceParts.Count > 0)
@@ -660,8 +728,20 @@ internal class TypeSyntaxMapper
 
         // Fallback: just use file name
         var fallbackFileName = Path.GetFileNameWithoutExtension(filePath);
-        return NameMangler.ToNamespacePart(fallbackFileName);
+        return ToNamespaceSegment(fallbackFileName, position);
     }
+
+    /// <summary>
+    /// Casts one path segment to its C# namespace segment. Position-dependent: the reference position
+    /// applies the namespace acronym policy (<c>io</c> → <c>IO</c>), the construction position plain
+    /// PascalCase (<c>io</c> → <c>Io</c>). The two policies are preserved as they were when these paths
+    /// were separate implementations — unifying them would rename emitted namespaces for
+    /// acronym-named files, which is a behavior change, not a refactor.
+    /// </summary>
+    private static string ToNamespaceSegment(string segment, NamePosition position)
+        => position == NamePosition.Reference
+            ? NameMangler.ToNamespacePart(segment)
+            : NameCasing.ResolveType(segment, isBacktickEscaped: false);
 
     /// <summary>
     /// Maps a UserDefinedType to its fully qualified C# name, using the Symbol if available.
