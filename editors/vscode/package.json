@@ -6,7 +6,7 @@
   "publisher": "antonsynd",
   "license": "MIT OR Apache-2.0",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.91.0"
   },
   "icon": "icons/sharpy-icon.png",
   "categories": [
@@ -150,12 +150,12 @@
     "vsce:publish": "vsce publish --no-dependencies"
   },
   "dependencies": {
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^10.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@types/vscode": "^1.85.0",
-    "@vscode/vsce": "^3.2.0",
+    "@types/vscode": "^1.91.0",
+    "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.1",
     "typescript": "^5.3.0"
   }
