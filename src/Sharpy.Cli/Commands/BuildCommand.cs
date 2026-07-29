@@ -147,19 +147,17 @@ internal static class BuildCommand
             // CompilerApi lets the project pipeline emit the assembly itself using the very same
             // ProjectConfig it used for code generation — there is no longer a separate
             // AssemblyCompiler hand-off or SingleFileProjectConfig wrapper.
-            var compilerOptions = new CompilerOptions
-            {
-                OutputType = outputType,
-                References = references,
-                ModulePaths = modulePaths,
-                WarningsAsErrors = warnAsError,
-                SuppressedWarnings = CliHelpers.ParseNowarnCodes(nowarn),
-                MaxErrors = maxErrors ?? 0,
-                Features = CliHelpers.ParseFeatures(features),
-                Configuration = configuration,
-                AssemblyName = assemblyName,
-                OutputAssemblyPath = finalOutputPath
-            };
+            var compilerOptions = CompilerOptionsFactory.ForCli(
+                outputType: outputType,
+                references: references,
+                modulePaths: modulePaths,
+                warningsAsErrors: warnAsError,
+                suppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
+                maxErrors: maxErrors ?? 0,
+                features: CliHelpers.ParseFeatures(features),
+                configuration: configuration,
+                assemblyName: assemblyName,
+                outputAssemblyPath: finalOutputPath);
 
             var api = CliHelpers.CreateCompilerApi(logger);
             var result = api.Compile(source, compilerOptions, inputFile.FullName);

@@ -203,31 +203,24 @@ internal static class CompileCommand
             }
             Console.WriteLine();
 
-            var mergedSuppressed = new HashSet<string>(projectConfig.SuppressedWarnings);
-            mergedSuppressed.UnionWith(CliHelpers.ParseNowarnCodes(nowarn));
-
             var defaultReferences = CliHelpers.GetDefaultReferences();
-            var allReferences = defaultReferences
-                .Concat(projectConfig.References)
-                .Distinct()
-                .ToArray();
 
+            var compilerOptions = CompilerOptionsFactory.ForProject(
+                projectConfig,
+                defaultReferences: defaultReferences,
+                warningsAsErrors: warnAsError,
+                additionalSuppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
+                maxErrors: maxErrors ?? 0,
+                incremental: incremental,
+                features: CliHelpers.ParseFeatures(features));
+
+            // Inject CLI default references into ProjectConfig so AssemblyCompiler can resolve
+            // types from Sharpy.Core/Stdlib during Roslyn compilation.
             foreach (var defaultRef in defaultReferences)
             {
                 if (!projectConfig.References.Contains(defaultRef))
                     projectConfig.References.Add(defaultRef);
             }
-
-            var compilerOptions = new CompilerOptions
-            {
-                References = allReferences,
-                ModulePaths = projectConfig.ModulePaths.ToArray(),
-                WarningsAsErrors = warnAsError || projectConfig.WarningsAsErrors,
-                SuppressedWarnings = mergedSuppressed,
-                MaxErrors = maxErrors ?? 0,
-                Incremental = incremental,
-                Features = CliHelpers.ParseFeatures(features)
-            };
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
             var result = compiler.CompileProject(projectConfig);

@@ -332,15 +332,13 @@ internal static class EmitCommand
 
             if (includeCodegen)
             {
-                var compilerOptions = new CompilerOptions
-                {
-                    WarningsAsErrors = warnAsError,
-                    SuppressedWarnings = CliHelpers.ParseNowarnCodes(nowarn),
-                    MaxErrors = maxErrors ?? 0,
+                var compilerOptions = CompilerOptionsFactory.ForCli(
+                    warningsAsErrors: warnAsError,
+                    suppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
+                    maxErrors: maxErrors ?? 0,
                     // Thread --enable-feature so gated syntax is analyzed, not rejected (SPY0331),
                     // when inspecting codegen diagnostics (#1097).
-                    Features = CliHelpers.ParseFeatures(features)
-                };
+                    features: CliHelpers.ParseFeatures(features));
                 var result = api.Compile(source, compilerOptions, inputFile.FullName);
                 diagnostics = result.Diagnostics;
             }
@@ -451,20 +449,18 @@ internal static class EmitCommand
             var source = File.ReadAllText(inputFile.FullName);
             var sourceText = new SourceText(source, inputFile.FullName);
 
-            var compilerOptions = new CompilerOptions
-            {
-                OutputType = outputType,
-                References = references,
-                ModulePaths = modulePaths,
-                WarningsAsErrors = warnAsError,
-                SuppressedWarnings = CliHelpers.ParseNowarnCodes(nowarn),
-                MaxErrors = maxErrors ?? 0,
-                Namespace = namespaceName,
+            var compilerOptions = CompilerOptionsFactory.ForCli(
+                outputType: outputType,
+                references: references,
+                modulePaths: modulePaths,
+                warningsAsErrors: warnAsError,
+                suppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
+                maxErrors: maxErrors ?? 0,
                 // Thread --enable-feature so gated syntax (matmul, defer, …) and CodeGen behavioral
                 // flags emit under `emit csharp` instead of hitting SPY0331 (#1097); the other emit
                 // subcommands thread the same option below.
-                Features = CliHelpers.ParseFeatures(features)
-            };
+                features: CliHelpers.ParseFeatures(features),
+                @namespace: namespaceName);
             var api = CliHelpers.CreateCompilerApi(logger);
             var result = api.Compile(source, compilerOptions, inputFile.FullName);
 
