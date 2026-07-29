@@ -144,11 +144,11 @@ deviations:
 - id: failable-cast-operators
   category: operators
   audience: both
-  severity: hint
-  code: SPY0479
+  severity: none
+  code: null
   spec_ref: docs/language_specification/type_casting.md
-  existing_diagnostic: null
-  planned_diagnostic: SPY0479
+  existing_diagnostic: SPY0334
+  planned_diagnostic: null
 - id: float-is-double
   category: types
   audience: python
