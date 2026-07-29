@@ -18,7 +18,7 @@ public sealed class CompilerService
     {
         try
         {
-            var options = new CompilerOptions { OutputType = "library" };
+            var options = CompilerOptionsFactory.ForLibraryAnalysis();
             var result = Api.Compile(source, options, filePath: "playground.spy");
 
             var csharp = result.Success && result.GeneratedCSharp != null
