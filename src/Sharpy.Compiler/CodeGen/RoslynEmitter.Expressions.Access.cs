@@ -36,37 +36,28 @@ internal partial class RoslynEmitter
         while (callee is Parenthesized parenCallee)
             callee = parenCallee.Expression;
 
-        // Handle generic type/function instantiation: Box[int](42) or identity[int](42)
-        if (callee is IndexAccess indexAccess &&
-            indexAccess.Object is Identifier genericName)
+        // A generic reference — callee[T, ...] — lowers off the single GenericReference fact the
+        // semantic phase materialized on the callee node: Box[int](42), identity[int](42),
+        // json.loads[int](text), difflib.SequenceMatcher[str](...), recv.convert[int](x). The
+        // resolver already decided the callee kind, its target symbol and its type arguments, so
+        // this reads the kind and applies the matching emission body — no per-kind try-cascade and
+        // no symbol re-inspection (#1143, Critical Rule 2 pattern (b)). The fact is keyed on the
+        // IndexAccess the TypeChecker saw, which is the unwrapped `callee` above (#1147).
+        if (callee is IndexAccess genericReferenceAccess
+            && _context.SemanticInfo?.GetGenericReference(genericReferenceAccess) is { } genericReference)
         {
-            var result = GenerateGenericInstantiation(indexAccess, genericName, call);
+            var result = GenerateGenericReferenceCall(genericReferenceAccess, genericReference, call);
             if (result != null)
                 return result;
         }
 
-        // Handle generic nested type instantiation: Outer.Inner[int](42)
-        // and generic module function calls: json.loads[int](text)
+        // Generic nested type instantiation: Outer.Inner[int](42). A nested type reference is not one
+        // of the resolver's generic-reference kinds (its member-qualified arm covers module- and
+        // instance-qualified callees), so this shape carries no fact and keeps its own lookup.
         if (callee is IndexAccess nestedIndexAccess &&
             nestedIndexAccess.Object is MemberAccess nestedMemberAccess)
         {
             var result = GenerateNestedGenericInstantiation(nestedIndexAccess, nestedMemberAccess, call);
-            if (result != null)
-                return result;
-
-            result = GenerateModuleGenericFunctionCall(nestedIndexAccess, nestedMemberAccess, call);
-            if (result != null)
-                return result;
-
-            // Generic module-qualified type instantiation: difflib.SequenceMatcher[str](None, a, b)
-            result = GenerateModuleGenericTypeInstantiation(nestedIndexAccess, nestedMemberAccess, call);
-            if (result != null)
-                return result;
-
-            // Explicit type args on an instance generic-method call: recv.convert[int](x) →
-            // recv.Convert<int>(x). Runs after the module helpers (which handle a module/type
-            // receiver and return first), so only a value receiver reaches here (#1133).
-            result = GenerateInstanceGenericMethodCall(nestedIndexAccess, nestedMemberAccess, call);
             if (result != null)
                 return result;
         }
@@ -576,87 +567,147 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Handle generic type/function instantiation: Box[int](42) or identity[int](42).
-    /// Parsed as FunctionCall(Function: IndexAccess(Object: Box/identity, Index: int), Arguments: [42]).
-    /// Returns null if the symbol is neither a generic type nor a generic function.
+    /// Lowers a called generic reference — <c>callee[T, ...](args)</c> — by the
+    /// <see cref="GenericReferenceKind"/> the semantic phase resolved, dispatching to the emission
+    /// body for that kind. Which kind this is and which symbol it targets were decided by the
+    /// GenericReferenceResolver and are read here from the materialized
+    /// <see cref="GenericReference"/>; the bodies only build syntax, mapping the written type
+    /// arguments through the shared type mapper exactly as an annotation position does (#1143).
+    /// <para>Returns null when the reference's target does not denote something constructible or
+    /// callable in this position (e.g. a module-exported generic type that is neither a class nor a
+    /// struct), leaving the caller's remaining callee arms to run.</para>
     /// </summary>
-    private ExpressionSyntax? GenerateGenericInstantiation(
-        IndexAccess indexAccess, Identifier genericName, FunctionCall call)
+    private ExpressionSyntax? GenerateGenericReferenceCall(
+        IndexAccess indexAccess, GenericReference reference, FunctionCall call)
     {
-        // Handle array construction: array[T](size) -> new T[size]
-        if (genericName.Name == BuiltinNames.Array && call.Arguments.Length == 1)
+        switch (reference.Kind)
         {
-            var elementType = _typeMapper.MapTypeFromExpression(indexAccess.Index);
-            var sizeExpr = GenerateExpression(call.Arguments[0]);
-            return ArrayCreationExpression(
-                ArrayType(elementType)
-                    .AddRankSpecifiers(
-                        ArrayRankSpecifier(
-                            SingletonSeparatedList<ExpressionSyntax>(sizeExpr))));
+            case GenericReferenceKind.ArrayTypeRef:
+                return GenerateArrayConstruction(indexAccess, call);
+
+            case GenericReferenceKind.GenericTypeRef:
+                return indexAccess.Object is Identifier typeName
+                       && reference.TargetSymbol is TypeSymbol genericTypeSymbol
+                    ? GenerateGenericTypeInstantiation(indexAccess, typeName, genericTypeSymbol, call)
+                    : null;
+
+            case GenericReferenceKind.Builtin:
+            case GenericReferenceKind.UserFunction:
+                return indexAccess.Object is Identifier funcName
+                       && reference.TargetSymbol is FunctionSymbol genericFuncSymbol
+                    ? GenerateGenericFunctionInvocation(
+                        indexAccess, funcName, genericFuncSymbol,
+                        isBuiltin: reference.Kind == GenericReferenceKind.Builtin, call)
+                    : null;
+
+            case GenericReferenceKind.ModuleFunction:
+                return indexAccess.Object is MemberAccess moduleFuncAccess
+                       && reference.TargetSymbol is FunctionSymbol moduleFuncSymbol
+                    ? GenerateModuleGenericFunctionCall(indexAccess, moduleFuncAccess, moduleFuncSymbol, call)
+                    : null;
+
+            case GenericReferenceKind.ModuleType:
+                return indexAccess.Object is MemberAccess moduleTypeAccess
+                       && reference.TargetSymbol is TypeSymbol moduleTypeSymbol
+                    ? GenerateModuleGenericTypeInstantiation(indexAccess, moduleTypeAccess, moduleTypeSymbol, call)
+                    : null;
+
+            case GenericReferenceKind.InstanceMethod:
+            case GenericReferenceKind.BclInstanceMethod:
+                return indexAccess.Object is MemberAccess methodAccess
+                       && reference.TargetSymbol is FunctionSymbol methodSymbol
+                    ? GenerateInstanceGenericMethodCall(indexAccess, methodAccess, methodSymbol, call)
+                    : null;
+
+            default:
+                return null;
         }
+    }
 
-        var symbol = _context.LookupSymbol(genericName.Name);
+    /// <summary>
+    /// Array construction: <c>array[T](size)</c> → <c>new T[size]</c>. The array constructor takes
+    /// exactly one argument (the size), which semantic analysis enforces; a differently shaped call
+    /// falls through to the general call path rather than emitting an array creation.
+    /// </summary>
+    private ExpressionSyntax? GenerateArrayConstruction(IndexAccess indexAccess, FunctionCall call)
+    {
+        if (call.Arguments.Length != 1)
+            return null;
 
-        // Map the type argument(s)
+        var elementType = _typeMapper.MapTypeFromExpression(indexAccess.Index);
+        var sizeExpr = GenerateExpression(call.Arguments[0]);
+        return ArrayCreationExpression(
+            ArrayType(elementType)
+                .AddRankSpecifiers(
+                    ArrayRankSpecifier(
+                        SingletonSeparatedList<ExpressionSyntax>(sizeExpr))));
+    }
+
+    /// <summary>
+    /// Generic type instantiation through a bare type name: <c>Box[int](42)</c> →
+    /// <c>new Box&lt;int&gt;(42)</c>.
+    /// </summary>
+    private ExpressionSyntax GenerateGenericTypeInstantiation(
+        IndexAccess indexAccess, Identifier typeName, TypeSymbol genericTypeSymbol, FunctionCall call)
+    {
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
 
-        if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
+        // Resolve the C# name through the single naming seam so this construction position agrees
+        // with the annotation position: a wrapper collection (list/dict/set) stays Sharpy.List; an
+        // imported/cross-file type is fully qualified (an imported raw-BCL List[int]() emits
+        // System.Collections.Generic.List<int>, not the bare List<int> that collided with
+        // Sharpy.List → CS0104); a current-file user type keeps its short name (#1139).
+        var csharpGenericTypeName = _typeMapper.GetTypeNameForReference(typeName.Name, typeName.IsNameBacktickEscaped);
+        var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
+
+        // Generate arguments (reorder for C# compliance if needed)
+        var genericTypeCallTarget = ResolveConstructorForCall(genericTypeSymbol, call);
+        var allArgs = GenerateReorderedCallArguments(call, genericTypeCallTarget);
+
+        // DefaultDict: wrap type-reference arguments in factory lambdas.
+        // defaultdict[str, list[int]](list) → new DefaultDict<string, List<long>>(() => new List<long>())
+        // The DefaultDict constructor takes Func<TValue>, not a type reference.
+        if (string.Equals(typeName.Name, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase)
+            && call.Arguments.Length >= 1
+            && typeArgsSyntax.Length >= 2)
         {
-            // Generate: new GenericType<TypeArgs>(args). Resolve the C# name through the single naming
-            // seam so this construction position agrees with the annotation position: a wrapper
-            // collection (list/dict/set) stays Sharpy.List; an imported/cross-file type is fully
-            // qualified (an imported raw-BCL List[int]() emits System.Collections.Generic.List<int>,
-            // not the bare List<int> that collided with Sharpy.List → CS0104); a current-file user
-            // type keeps its short name (#1139).
-            var csharpGenericTypeName = _typeMapper.GetTypeNameForReference(genericName.Name, genericName.IsNameBacktickEscaped);
-            var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(csharpGenericTypeName, typeArgsSyntax);
+            allArgs = WrapDefaultDictFactoryArgs(call, allArgs, typeArgsSyntax[1]);
+        }
 
-            // Generate arguments (reorder for C# compliance if needed)
-            var genericTypeCallTarget = ResolveConstructorForCall(genericTypeSymbol, call);
-            var allArgs = GenerateReorderedCallArguments(call, genericTypeCallTarget);
+        return ObjectCreationExpression(genericTypeSyntax)
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+    }
 
-            // DefaultDict: wrap type-reference arguments in factory lambdas.
-            // defaultdict[str, list[int]](list) → new DefaultDict<string, List<long>>(() => new List<long>())
-            // The DefaultDict constructor takes Func<TValue>, not a type reference.
-            if (string.Equals(genericName.Name, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase)
-                && call.Arguments.Length >= 1
-                && typeArgsSyntax.Length >= 2)
-            {
-                allArgs = WrapDefaultDictFactoryArgs(call, allArgs, typeArgsSyntax[1]);
-            }
+    /// <summary>
+    /// Generic function call through a bare name: <c>identity[int](42)</c> →
+    /// <c>Identity&lt;int&gt;(42)</c>, or, for a registry builtin,
+    /// <c>global::Sharpy.Builtins.Map&lt;int, int&gt;(...)</c>. Whether the callee is a genuine
+    /// builtin or a user function shadowing a builtin name (<c>def map[T]</c>, #1003) is the
+    /// resolver's <see cref="GenericReferenceKind"/> decision, passed in as
+    /// <paramref name="isBuiltin"/>.
+    /// </summary>
+    private ExpressionSyntax GenerateGenericFunctionInvocation(
+        IndexAccess indexAccess, Identifier funcName, FunctionSymbol genericFuncSymbol,
+        bool isBuiltin, FunctionCall call)
+    {
+        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var genericFuncSyntax = GenericName(
+                NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped, GetClrMethodName(genericFuncSymbol)))
+            .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
-            return ObjectCreationExpression(genericTypeSyntax)
+        // Generate arguments (reorder for C# compliance if needed)
+        var allArgs = GenerateReorderedCallArguments(call, genericFuncSymbol);
+
+        if (isBuiltin)
+        {
+            var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
+            return InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, qualifiedBase, genericFuncSyntax))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
-        if (symbol is FunctionSymbol genericFuncSymbol && genericFuncSymbol.IsGeneric)
-        {
-            // Generate: GenericFunction<TypeArgs>(args)
-            var genericFuncSyntax = GenericName(NameCasing.ResolveMethod(genericName.Name, genericName.IsNameBacktickEscaped, GetClrMethodName(genericFuncSymbol)))
-                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
-
-            // Generate arguments (reorder for C# compliance if needed)
-            var allArgs = GenerateReorderedCallArguments(call, genericFuncSymbol);
-
-            // Builtin generic functions need qualification: global::Sharpy.Builtins.Map<T>(...)
-            // A user-defined generic that shadows a builtin name (def map[T]) is resolved by
-            // LookupSymbol to the user's FunctionSymbol, which has CodeGenInfo set by semantic
-            // analysis; registry builtins do not. Only qualify with Builtins. for a genuine
-            // builtin, mirroring the non-generic guard in GenerateCall (#1003).
-            if (_context.IsBuiltinFunction(genericName.Name)
-                && genericFuncSymbol.CodeGenInfo is null)
-            {
-                var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
-                return InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, qualifiedBase, genericFuncSyntax))
-                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-            }
-
-            return InvocationExpression(genericFuncSyntax)
-                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-        }
-
-        return null;
+        return InvocationExpression(genericFuncSyntax)
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
     }
 
     private ExpressionSyntax? GenerateNestedGenericInstantiation(
@@ -709,33 +760,17 @@ internal partial class RoslynEmitter
         return string.Join(".", parts);
     }
 
-    private ExpressionSyntax? GenerateModuleGenericFunctionCall(
-        IndexAccess indexAccess, MemberAccess memberAccess, FunctionCall call)
+    /// <summary>
+    /// Generic function call on an imported module: <c>json.loads[int](text)</c> →
+    /// <c>Json.Loads&lt;int&gt;(text)</c>. <paramref name="funcSymbol"/> is the exported function the
+    /// resolver bound the member to, so no export table is re-scanned here (#1143).
+    /// </summary>
+    private ExpressionSyntax GenerateModuleGenericFunctionCall(
+        IndexAccess indexAccess, MemberAccess memberAccess, FunctionSymbol funcSymbol, FunctionCall call)
     {
-        if (memberAccess.Object is not Identifier moduleId)
-            return null;
-
-        var moduleSymbol = _context.LookupSymbol(moduleId.Name) as ModuleSymbol;
-        if (moduleSymbol == null)
-            return null;
-
-        var memberName = memberAccess.Member;
-        if (!moduleSymbol.Exports.ContainsKey(memberName) && moduleSymbol.IsNetModule)
-        {
-            var pascalName = NameCasing.ResolveMethod(memberName, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
-            if (moduleSymbol.Exports.ContainsKey(pascalName))
-                memberName = pascalName;
-        }
-
-        if (!moduleSymbol.Exports.TryGetValue(memberName, out var exportedSymbol)
-            || exportedSymbol is not FunctionSymbol funcSymbol
-            || !funcSymbol.IsGeneric)
-        {
-            return null;
-        }
-
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
-        var genericMethodName = GenericName(NameCasing.ResolveMethod(memberName, memberAccess.IsMemberBacktickEscaped, GetClrMethodName(funcSymbol)))
+        var genericMethodName = GenericName(
+                NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, GetClrMethodName(funcSymbol)))
             .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
         var moduleExpr = GenerateExpression(memberAccess.Object);
@@ -749,20 +784,14 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Emits an instance generic-method call with explicit type arguments:
-    /// <c>recv.convert[int](x)</c> → <c>recv.Convert&lt;int&gt;(x)</c>. The semantic phase records
-    /// a <see cref="Semantic.GenericFunctionType"/> on the index-access node and pins the resolved
-    /// method as the call target (<c>CheckGenericInstantiation</c>), so this is a pure translator:
-    /// it reads the recorded call target and threads the receiver through a
-    /// <see cref="MemberAccessExpression"/> + <see cref="GenericName"/>. Returns null when the
-    /// call target is not a generic method — the sibling module-function / module-type / nested-type
-    /// helpers run first and return for those receivers, so only a value receiver reaches here (#1133).
+    /// <c>recv.convert[int](x)</c> → <c>recv.Convert&lt;int&gt;(x)</c> (#1133), including the raw-BCL
+    /// receivers the reflection path resolves (#1136). <paramref name="methodSymbol"/> is the method
+    /// the resolver bound, so this is a pure translator: it threads the receiver through a
+    /// <see cref="MemberAccessExpression"/> + <see cref="GenericName"/>.
     /// </summary>
-    private ExpressionSyntax? GenerateInstanceGenericMethodCall(
-        IndexAccess indexAccess, MemberAccess memberAccess, FunctionCall call)
+    private ExpressionSyntax GenerateInstanceGenericMethodCall(
+        IndexAccess indexAccess, MemberAccess memberAccess, FunctionSymbol methodSymbol, FunctionCall call)
     {
-        if (_context.SemanticInfo?.GetCallTarget(call) is not { IsGeneric: true } methodSymbol)
-            return null;
-
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
         var genericMethodName = GenericName(
                 NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, GetClrMethodName(methodSymbol)))
@@ -781,27 +810,26 @@ internal partial class RoslynEmitter
     /// Handles generic instantiation of a module-qualified type:
     /// <c>difflib.SequenceMatcher[str](None, a, b)</c> →
     /// <c>new global::...SequenceMatcher&lt;string&gt;(None, a, b)</c>.
-    /// Parsed as FunctionCall(Function: IndexAccess(Object: MemberAccess(module, Type), Index: T), Arguments).
-    /// Returns null if the member access does not denote a generic module-exported type.
+    /// <paramref name="typeSymbol"/> is the exported type the resolver bound the member to.
+    /// Returns null for an exported generic type that is not constructible (neither class nor
+    /// struct), leaving the call on the general path.
     /// </summary>
     private ExpressionSyntax? GenerateModuleGenericTypeInstantiation(
-        IndexAccess indexAccess, MemberAccess memberAccess, FunctionCall call)
+        IndexAccess indexAccess, MemberAccess memberAccess, TypeSymbol typeSymbol, FunctionCall call)
     {
-        var moduleType = TryResolveModuleExportedType(memberAccess);
-        if (moduleType is not { } mt || !mt.Symbol.IsGeneric
-            || (mt.Symbol.TypeKind != Semantic.TypeKind.Class
-                && mt.Symbol.TypeKind != Semantic.TypeKind.Struct))
+        if (typeSymbol.TypeKind != Semantic.TypeKind.Class
+            && typeSymbol.TypeKind != Semantic.TypeKind.Struct)
         {
             return null;
         }
 
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
-        var baseName = GetFullyQualifiedTypeName(mt.Symbol, mt.OriginalName);
+        var baseName = GetFullyQualifiedTypeName(typeSymbol, memberAccess.Member);
         var (dottedName, globalQualified) = NormalizeTypeName(baseName);
         var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(
             dottedName, globalQualified, typeArgsSyntax);
 
-        var ctorTarget = ResolveConstructorForCall(mt.Symbol, call);
+        var ctorTarget = ResolveConstructorForCall(typeSymbol, call);
         var allArgs = GenerateReorderedCallArguments(call, ctorTarget);
         return ObjectCreationExpression(genericTypeSyntax)
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
