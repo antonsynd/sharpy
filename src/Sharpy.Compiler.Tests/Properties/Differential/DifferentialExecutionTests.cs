@@ -173,7 +173,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
     /// Hand-authored programs probing the historical runtime-divergence surface. Each is a valid
     /// Sharpy <c>def main()</c> program whose CPython behaviour (top-level body + trailing
     /// <c>main()</c>) was verified against <c>python3 3.12</c> before inclusion. Some are DESIGNED
-    /// deviations (floor division / modulo on negatives — <c>integer-division-floor</c>) and are
+    /// deviations (UTF-16 string length/indexing — <c>string-indexing-utf16</c>) and are
     /// expected to diverge; the seeded allowlist keeps the ratchet green while the report records them.
     /// </summary>
     private static List<Program> HandPicked()
