@@ -4,7 +4,7 @@ description: Suggest and apply a semver version bump based on commits since the 
 argument-hint: "[--apply] [--major|--minor|--patch]"
 ---
 
-Analyze commits since the last git tag and suggest (or apply) the appropriate semver bump to `Directory.Build.props` and `editors/vscode/package.json`.
+Analyze commits since the last git tag and suggest (or apply) the appropriate semver bump to `Directory.Build.props`, `editors/vscode/package.json`, and `editors/vscode/CHANGELOG.md`.
 
 Only runs on the `dev` or `mainline` branch. Exits early on other branches.
 
@@ -87,10 +87,32 @@ Edit `Directory.Build.props`:
 Edit `editors/vscode/package.json`:
 - Replace `"version": "X.Y.Z"` with the new version
 
+Edit `editors/vscode/CHANGELOG.md` (**required** — a version bump without a changelog
+entry is a gate failure, not a warning):
+- Rename the `## [Unreleased]` heading to `## [X.Y.Z] - YYYY-MM-DD` using the new version
+  and today's date, then add a fresh empty `## [Unreleased]` section above it.
+- If there is no `## [Unreleased]` section, create the `## [X.Y.Z] - YYYY-MM-DD` entry from
+  the extension-facing commits since the last tag:
+  ```bash
+  git log --format="%h %ad %s" --date=short <last-tag>..HEAD -- editors/vscode/
+  ```
+  If none of those commits changed extension behavior, the entry reads
+  "No extension-facing changes; version bumped with the toolchain."
+  Never leave the version bumped with no entry at all.
+
 Report which files were updated and remind the user to commit the changes (suggest `/commit`).
+
+Print a checklist, marking a missing or unwritten changelog entry as **FAILED** — the bump
+is not complete until every line passes:
+```
+[ok]     Directory.Build.props     <SharpyVersion>0.9.0</SharpyVersion>
+[ok]     editors/vscode/package.json    "version": "0.9.0"
+[FAILED] editors/vscode/CHANGELOG.md    no [0.9.0] entry — write one before committing
+```
 
 ## Rules
 
 - Never apply a bump without `--apply`
+- Never leave `editors/vscode/CHANGELOG.md` without an entry for the new version — the marketplace listing renders it, so a bump with no entry ships a release users cannot read about
 - Never downgrade the version (if current > suggested, report the discrepancy and stop)
 - If already bumped past the suggestion (e.g., manual bump to a higher version), congratulate and stop
