@@ -152,6 +152,15 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, IndexAccessLowering> _indexAccessLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map a generic-reference index access (callee[T, ...]) to the normalized GenericReference fact the
+    // GenericReferenceResolver produced: the callee kind, its target symbol / receiver type, the
+    // resolved type arguments, and (for arity-selected builtins) the selected overload. This is the
+    // single lowering face for generic references — the emitter switches on Kind alone rather than
+    // re-deriving the callee shape per helper (Critical Rule 2 pattern (b); #1143). The parallel
+    // GenericFunctionType / GenericType expression-type recording stays as the type-system face.
+    private readonly ConcurrentDictionary<Expression, GenericReference> _genericReferences =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map safe-cast expressions (value to T? / value as? T) to the shape codegen must emit. Only present
     // when the source and stripped target are both plain numeric primitives (int/long/float32/double) —
     // the TypeChecker classifies widening/identity vs narrowing here so the emitter never inspects the
@@ -676,6 +685,26 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records the normalized <see cref="GenericReference"/> fact for a generic-reference index access
+    /// (<c>callee[T, ...]</c>), produced by the GenericReferenceResolver. The emitter reads this to
+    /// lower the reference by <see cref="GenericReference.Kind"/> without re-deriving the callee shape
+    /// (Critical Rule 2 pattern (b); #1143).
+    /// </summary>
+    public void SetGenericReference(Expression indexAccess, GenericReference reference)
+    {
+        _genericReferences[indexAccess] = reference;
+    }
+
+    /// <summary>
+    /// Gets the normalized <see cref="GenericReference"/> fact for an index access, or <c>null</c> when
+    /// the node is not a resolved generic reference (ordinary value indexing).
+    /// </summary>
+    public GenericReference? GetGenericReference(Expression indexAccess)
+    {
+        return _genericReferences.TryGetValue(indexAccess, out var reference) ? reference : null;
+    }
+
+    /// <summary>
     /// Records the original CLR method name resolved for a member access on a CLR-backed receiver,
     /// so codegen can preserve acronym casing without reflecting. Only set when a non-trivial CLR
     /// name was resolved.
@@ -786,6 +815,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._indexAccessLowerings)
             _indexAccessLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._genericReferences)
+            _genericReferences.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._typeCoercionLowerings)
             _typeCoercionLowerings.TryAdd(kvp.Key, kvp.Value);

@@ -129,6 +129,41 @@ public class SemanticInfoMergeConformanceTests
     }
 
     /// <summary>
+    /// A GenericReference fact recorded on one SemanticInfo must survive
+    /// <see cref="SemanticInfo.MergeFrom"/> into another. Codegen reads the generic-reference lowering
+    /// from the merged project-level SemanticInfo; if <c>_genericReferences</c> were absent from
+    /// <c>MergeFrom</c>, a generic reference (callee[T, ...]) in an imported module would silently lose
+    /// its resolved kind/target/type-args and mis-lower (#1143).
+    /// </summary>
+    [Fact]
+    public void MergeFrom_CarriesGenericReferences()
+    {
+        var perFile = new SemanticInfo();
+        var indexNode = new IndexAccess
+        {
+            Object = new Identifier { Name = "identity" },
+            Index = new Identifier { Name = "int" }
+        };
+        var target = new FunctionSymbol { Name = "identity", Kind = SymbolKind.Function };
+        perFile.SetGenericReference(indexNode, new GenericReference
+        {
+            Kind = GenericReferenceKind.UserFunction,
+            TargetSymbol = target,
+            TypeArgs = new[] { (SemanticType)BuiltinType.Int },
+            SelectedOverload = target,
+        });
+
+        var project = new SemanticInfo();
+        project.MergeFrom(perFile);
+
+        var merged = project.GetGenericReference(indexNode);
+        merged.Should().NotBeNull("the generic-reference fact must survive the per-file → project merge");
+        merged!.Kind.Should().Be(GenericReferenceKind.UserFunction);
+        merged.TargetSymbol.Should().BeSameAs(target);
+        merged.TypeArgs.Should().ContainSingle().Which.Should().Be(BuiltinType.Int);
+    }
+
+    /// <summary>
     /// Collects the names of private dictionary/set side-table fields declared in SemanticInfo.
     /// Matches <c>ConcurrentDictionary</c>/<c>Dictionary</c>/<c>HashSet</c> declarations (the field
     /// identifier follows the closing generic bracket on the same line).
