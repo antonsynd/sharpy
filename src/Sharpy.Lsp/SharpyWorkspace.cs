@@ -325,10 +325,12 @@ internal sealed class SharpyWorkspace : IDisposable
     private readonly CompilerApi _api;
     private readonly ILogger<SharpyWorkspace> _logger;
 
-    // Workspace-level compiler options passed to analysis. This is the seam through
-    // which experimental FeatureFlags reach LSP analysis; sourcing them from a
-    // workspace .spyproj is follow-up work (roadmap C1).
-    private readonly CompilerOptions _workspaceOptions = new() { OutputType = "library" };
+    // Workspace-level compiler options passed to analysis, built through the one options seam
+    // every entry point uses (#1144). This is the seam through which experimental FeatureFlags
+    // reach LSP analysis; sourcing them from a workspace .spyproj is follow-up work (#1149) —
+    // CompilerOptionsFactory.ForLsp already takes the ProjectConfig and workspace-configuration
+    // arguments that work will supply.
+    private readonly CompilerOptions _workspaceOptions = CompilerOptionsFactory.ForLsp();
 
     // Debounce timers per document
     private readonly ConcurrentDictionary<string, Timer> _debounceTimers = new();
