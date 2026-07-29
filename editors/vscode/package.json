@@ -88,6 +88,15 @@
           "default": true,
           "description": "Show hints about Python/C# behavioral differences in Sharpy code"
         },
+        "sharpy.features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "window",
+          "markdownDescription": "Experimental features to enable for in-editor analysis, the editor's counterpart of `sharpyc --enable-feature`. A workspace `.spyproj`'s `<Features>` is picked up automatically and cannot be disabled here; this setting only adds to it. Unknown names are reported in the Sharpy Language Server output channel."
+        },
         "sharpy.debug.dotnetPath": {
           "type": "string",
           "default": "dotnet",

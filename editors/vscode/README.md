@@ -25,6 +25,7 @@ The `sharpyc` CLI must be installed and available in your PATH, or configured vi
 | `sharpy.format.indentSize` | Number of spaces per indent level | `4` |
 | `sharpy.inlayHints.typeAnnotations` | Show inferred type annotations | `true` |
 | `sharpy.inlayHints.parameterNames` | Show parameter names at call sites | `true` |
+| `sharpy.features` | Experimental features to enable for in-editor analysis (the editor's `--enable-feature`). A workspace `.spyproj`'s `<Features>` applies automatically and is not disabled by this setting. | `[]` |
 
 ## Commands
 

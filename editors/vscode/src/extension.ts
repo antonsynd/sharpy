@@ -72,6 +72,12 @@ function createClient(context: ExtensionContext): LanguageClient {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: "file", language: "sharpy" }],
     synchronize: {
+      // Push the `sharpy` settings section to the server on startup and on every
+      // change. Without it the client sends didChangeConfiguration with null
+      // settings, so server-side settings — `sharpy.features`, which gates
+      // experimental syntax in analysis, and `sharpy.transitionHints.enabled` —
+      // never reached the server.
+      configurationSection: "sharpy",
       fileEvents: [
         workspace.createFileSystemWatcher("**/*.spy"),
         workspace.createFileSystemWatcher("**/*.spyproj"),
