@@ -3,7 +3,7 @@
 # position (#1173). Before the unification, a type annotation named the module
 # namespace via the acronym policy (DB, API.UI) while a `new` expression named
 # it via plain PascalCase (Db, Api.Ui), so annotating *and* constructing the
-# same cross-file type failed to compile with CS0246.
+# same cross-file type failed with CS0234: namespace 'Db' does not exist.
 from db import Record
 from api.ui import Widget
 

@@ -736,7 +736,8 @@ internal class TypeSyntaxMapper
     /// (a segment that is entirely an acronym upper-cases wholesale: <c>db</c> → <c>DB</c>, <c>api</c> →
     /// <c>API</c>; compounds like <c>db_models</c> stay <c>DbModels</c>). Position-independent: the two
     /// positions once applied different policies, so a class in <c>db.spy</c> qualified as
-    /// <c>DB.Record</c> in an annotation but <c>Db.Record</c> in a <c>new</c> expression → CS0246. The
+    /// <c>DB.Record</c> in an annotation but <c>Db.Record</c> in a <c>new</c> expression, and the
+    /// generated C# failed on the mis-cased segment (CS0234 — no namespace <c>Db</c> exists). The
     /// acronym policy wins in both (Axiom 1: .NET namespaces spell acronyms upper-case); the resulting
     /// namespace rename for acronym-pathed modules is an accepted breaking change (#1173).
     /// </summary>
