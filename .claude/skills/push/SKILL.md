@@ -58,6 +58,7 @@ Then run the matching regeneration checks (use `dangerouslyDisableSandbox` — t
 | `src/Sharpy.Stdlib/spy/` or `src/Sharpy.Compiler/` or `src/Sharpy.Core/` | `bash build_tools/check_spy_staleness.sh` |
 | `src/Sharpy.Stdlib.Tests/Spy/` or `src/Sharpy.Compiler/` or `src/Sharpy.Core/` | `bash build_tools/check_spy_tests_staleness.sh` |
 | `src/Sharpy.Core/` or `src/Sharpy.Stdlib/` (public API / doc comments) | `python3 -m build_tools stdlib generate --force` then `git status --short -- docs/stdlib` |
+| `docs/deviations.yaml` or `src/Sharpy.Stdlib.Tests/Spy/cpython/` | `python3 -m build_tools.cpython_oracle ledger --write` then `git status --short -- build_tools/cpython_oracle/ledger.yaml` (commit if dirty — the pytest gate `test_committed_ledger_is_up_to_date` and the dual-execute-oracle CI job both fail on a stale ledger) |
 
 - If a staleness check reports STALE/MISSING files: run the corresponding regeneration script (`build_tools/regenerate_spy_stdlib.sh` or `build_tools/regenerate_spy_tests.sh`), commit the regenerated files, and re-run the check.
 - If the docs generator leaves `docs/stdlib` dirty: commit the regenerated docs (`docs(stdlib): regenerate ...`). Never hand-edit generated docs or generated C#.
