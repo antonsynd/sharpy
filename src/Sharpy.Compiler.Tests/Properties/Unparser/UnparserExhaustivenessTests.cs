@@ -9,8 +9,9 @@ namespace Sharpy.Compiler.Tests.Properties.Unparser;
 [Trait("Category", "RandomProperty")]
 public class UnparserExhaustivenessTests
 {
-    /// <summary>Prefix of the sentinel thrown by StructuralEqualityComparer's default arm (#1152).</summary>
-    private const string NoArmSentinel = "StructuralEqualityComparer: no arm for node type";
+    /// <summary>Sentinel thrown by StructuralEqualityComparer's default arm (#1152) — bound to the
+    /// production constant so the message can never drift out from under the StartsWith match.</summary>
+    private const string NoArmSentinel = StructuralEqualityComparer.NoArmSentinel;
 
     // NOTE: this fact compares each instance against ITSELF, so Equals short-circuits on the
     // ReferenceEquals(x, y) fast path (StructuralEqualityComparer.cs) and NEVER reaches the switch.

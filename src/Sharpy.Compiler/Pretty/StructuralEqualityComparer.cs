@@ -7,6 +7,14 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
 {
     public static readonly StructuralEqualityComparer Instance = new();
 
+    /// <summary>
+    /// Prefix of the exception thrown by the default arm below. The arm-coverage guard
+    /// (UnparserExhaustivenessTests.AllConcreteNodeTypesHaveComparerArms) matches on this exact
+    /// prefix to distinguish "missing arm" from ordinary comparison exceptions — reference it,
+    /// never restate it, or the guard silently goes vacuous (#1152).
+    /// </summary>
+    public const string NoArmSentinel = "StructuralEqualityComparer: no arm for node type";
+
     public bool Equals(Node? x, Node? y)
     {
         if (ReferenceEquals(x, y))
@@ -114,7 +122,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             // turned an uncovered node kind into a false-negative — #1152). Every concrete node kind
             // has an arm above; anything reaching here is a newly added kind whose arm is absent.
             _ => throw new InvalidOperationException(
-                $"StructuralEqualityComparer: no arm for node type {x.GetType().Name}")
+                $"{NoArmSentinel} {x.GetType().Name}")
         };
     }
 
