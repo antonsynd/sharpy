@@ -466,7 +466,7 @@ internal class TypeSyntaxMapper
     /// qualification rules (Sharpy runtime namespace, project namespace, raw generic BCL) live in
     /// exactly one place and cannot be hand-mirrored back apart (#1139, contract #1146). The two
     /// positions still differ in three branches, each marked "position-dependent" in
-    /// <see cref="QualifyFromSymbol"/> and <see cref="ToNamespaceSegment"/>.
+    /// <see cref="QualifyFromSymbol"/>; segment casing is no longer among them (#1173).
     /// </summary>
     internal string GetTypeNameForConstruction(TypeSymbol typeSymbol, string sharpyTypeName)
         => QualifyFromSymbol(typeSymbol, sharpyTypeName, NamePosition.Construction);
@@ -570,8 +570,8 @@ internal class TypeSyntaxMapper
 
     /// <summary>
     /// Where a qualified name is being emitted. Only the branches marked "position-dependent" in
-    /// <see cref="QualifyFromSymbol"/> and <see cref="ToNamespaceSegment"/> read this; every other
-    /// rule is shared by both positions.
+    /// <see cref="QualifyFromSymbol"/> read this; every other rule — including path-derived namespace
+    /// segment casing (#1173) — is shared by both positions.
     /// </summary>
     private enum NamePosition
     {
@@ -634,7 +634,7 @@ internal class TypeSyntaxMapper
             && !string.IsNullOrEmpty(_context.SourceFilePath)
             && !string.Equals(typeSymbol.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase))
         {
-            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath, position);
+            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
         }
         else if (!string.IsNullOrEmpty(typeSymbol.DefiningModule))
         {
@@ -644,7 +644,7 @@ internal class TypeSyntaxMapper
         else if (position == NamePosition.Reference && !string.IsNullOrEmpty(typeSymbol.DefiningFilePath))
         {
             // Derive module namespace from file path
-            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath, position);
+            moduleNamespace = GetModuleNameFromFilePath(typeSymbol.DefiningFilePath);
         }
         else
         {
@@ -690,7 +690,7 @@ internal class TypeSyntaxMapper
     /// relative to the project root.
     /// E.g., for project root "/temp" and file "/temp/mypackage/submodule.spy" -> "Mypackage.Submodule"
     /// </summary>
-    private string GetModuleNameFromFilePath(string filePath, NamePosition position)
+    private string GetModuleNameFromFilePath(string filePath)
     {
         // If we have a project root, compute relative path for proper namespace
         if (!string.IsNullOrEmpty(_context.ProjectRootPath))
@@ -709,7 +709,7 @@ internal class TypeSyntaxMapper
                 {
                     if (!string.IsNullOrEmpty(part) && part != ".")
                     {
-                        namespaceParts.Add(ToNamespaceSegment(part, position));
+                        namespaceParts.Add(ToNamespaceSegment(part));
                     }
                 }
             }
@@ -717,7 +717,7 @@ internal class TypeSyntaxMapper
             // Add file name part (skip __init__ as it represents the package itself)
             if (!string.Equals(fileName, DunderNames.Init, StringComparison.OrdinalIgnoreCase))
             {
-                namespaceParts.Add(ToNamespaceSegment(fileName, position));
+                namespaceParts.Add(ToNamespaceSegment(fileName));
             }
 
             if (namespaceParts.Count > 0)
@@ -728,20 +728,20 @@ internal class TypeSyntaxMapper
 
         // Fallback: just use file name
         var fallbackFileName = Path.GetFileNameWithoutExtension(filePath);
-        return ToNamespaceSegment(fallbackFileName, position);
+        return ToNamespaceSegment(fallbackFileName);
     }
 
     /// <summary>
-    /// Casts one path segment to its C# namespace segment. Position-dependent: the reference position
-    /// applies the namespace acronym policy (<c>io</c> → <c>IO</c>), the construction position plain
-    /// PascalCase (<c>io</c> → <c>Io</c>). The two policies are preserved as they were when these paths
-    /// were separate implementations — unifying them would rename emitted namespaces for
-    /// acronym-named files, which is a behavior change, not a refactor.
+    /// Casts one path segment to its C# namespace segment, always under the namespace acronym policy
+    /// (a segment that is entirely an acronym upper-cases wholesale: <c>db</c> → <c>DB</c>, <c>api</c> →
+    /// <c>API</c>; compounds like <c>db_models</c> stay <c>DbModels</c>). Position-independent: the two
+    /// positions once applied different policies, so a class in <c>db.spy</c> qualified as
+    /// <c>DB.Record</c> in an annotation but <c>Db.Record</c> in a <c>new</c> expression → CS0246. The
+    /// acronym policy wins in both (Axiom 1: .NET namespaces spell acronyms upper-case); the resulting
+    /// namespace rename for acronym-pathed modules is an accepted breaking change (#1173).
     /// </summary>
-    private static string ToNamespaceSegment(string segment, NamePosition position)
-        => position == NamePosition.Reference
-            ? NameMangler.ToNamespacePart(segment)
-            : NameCasing.ResolveType(segment, isBacktickEscaped: false);
+    private static string ToNamespaceSegment(string segment)
+        => NameMangler.ToNamespacePart(segment);
 
     /// <summary>
     /// Maps a UserDefinedType to its fully qualified C# name, using the Symbol if available.
