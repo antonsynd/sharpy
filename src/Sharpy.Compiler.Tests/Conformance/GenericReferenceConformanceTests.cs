@@ -480,7 +480,7 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
 
         // No Sharpy errors: bind the generated C# through Roslyn. A silent mis-emit produces valid
         // Sharpy analysis but uncompilable C# (#1136's original failure mode before the SPY0908 net).
-        var generated = CollectGeneratedCSharp(result);
+        var generated = CollectGeneratedCSharpSources(result);
         var csErrors = BindGeneratedCSharp(csharpBase, generated);
         if (csErrors.Count > 0)
             return new CellResult(cell, OutcomeCsLeak, csErrors);
@@ -511,11 +511,23 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
         }
     }
 
-    private static string CollectGeneratedCSharp(CompileResult result)
+    /// <summary>
+    /// Collects the generated C# as one source string PER FILE. Multi-file cells (usermod imports)
+    /// produce a compilation unit per .spy file, each a complete unit with its own using directives;
+    /// they must bind as separate syntax trees. Concatenating them into one string put a file's
+    /// usings after the prior file's namespace → a spurious CS1529 that masqueraded as a csLeak once
+    /// the usermod inference cells started compiling (#1142/#1143).
+    /// </summary>
+    private static IReadOnlyList<string> CollectGeneratedCSharpSources(CompileResult result)
     {
         if (result.GeneratedCSharpFiles.Count > 0)
-            return string.Join("\n\n", result.GeneratedCSharpFiles.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => kv.Value));
-        return result.GeneratedCSharp ?? "";
+            return result.GeneratedCSharpFiles
+                .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                .Select(kv => kv.Value)
+                .ToList();
+        return result.GeneratedCSharp is { Length: > 0 } single
+            ? new[] { single }
+            : Array.Empty<string>();
     }
 
     // ---- execute-phase subset ----
@@ -597,12 +609,15 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }
 
-    private static List<string> BindGeneratedCSharp(CSharpCompilation baseCompilation, string generatedCSharp)
+    private static List<string> BindGeneratedCSharp(CSharpCompilation baseCompilation, IReadOnlyList<string> generatedSources)
     {
-        if (string.IsNullOrWhiteSpace(generatedCSharp))
+        var trees = generatedSources
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => CSharpSyntaxTree.ParseText(s))
+            .ToArray();
+        if (trees.Length == 0)
             return new List<string>();
-        var tree = CSharpSyntaxTree.ParseText(generatedCSharp);
-        var compilation = baseCompilation.AddSyntaxTrees(tree);
+        var compilation = baseCompilation.AddSyntaxTrees(trees);
         return compilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .Select(d => $"{d.Id}: {d.GetMessage()}")
