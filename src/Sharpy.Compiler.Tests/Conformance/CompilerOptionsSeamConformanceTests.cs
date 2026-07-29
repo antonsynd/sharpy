@@ -26,11 +26,20 @@ namespace Sharpy.Compiler.Tests.Conformance;
 ///     assigned by the factory core) and
 ///     <see cref="CompilerOptions_IsConstructedOnlyBySeam"/> (nobody else may build one).</item>
 ///   <item>The <see cref="CompilerOptions"/>→<see cref="ProjectConfig"/> mapping — the synthetic
-///     project-of-one-file conversion, exercised behaviorally by the front-end parity sweep.</item>
+///     project-of-one-file conversion, guarded by
+///     <see cref="BuildConfig_ReadsEverySettableCompilerOptionsMember"/> (a new member must be
+///     mapped onto the config or exempted because it reaches the compiler another way) and
+///     exercised behaviorally by the front-end parity sweep.</item>
 ///   <item>The flag set <see cref="ProjectCompiler"/> runs with — guarded by
 ///     <see cref="ProjectCompiler_TakesItsFlagsAsOneOptionsValue"/> and
 ///     <see cref="ProjectCompilerOptions_AreProducedOnlyByTheMerge"/>.</item>
 /// </list>
+/// </para>
+///
+/// <para>
+/// A fourth guard, <see cref="LspAnalysisInputs_CompareEverySettableCompilerOptionsMember"/>, covers
+/// the seam's one option-shaped consumer decision: which members the LSP compares to decide that a
+/// cached analysis is still valid.
 /// </para>
 ///
 /// <para>
@@ -45,7 +54,13 @@ public class CompilerOptionsSeamConformanceTests
 {
     private const string FactoryFile = "CompilerOptionsFactory.cs";
     private const string MergeFile = "ProjectOptionsMerge.cs";
+    private const string SyntheticProjectFile = "SyntheticProject.cs";
+    private const string WorkspaceFile = "SharpyWorkspace.cs";
     private const string FactoryCoreMethod = "Create";
+    private const string LspFactoryMethod = "ForLsp";
+    private const string BuildConfigMethod = "BuildConfig";
+    private const string MergeMethod = "Merge";
+    private const string AnalysisInputsMethod = "SameAnalysisInputs";
 
     /// <summary>
     /// Projects whose <see cref="CompilerOptions"/> construction is the product's own. Test projects
@@ -81,6 +96,79 @@ public class CompilerOptionsSeamConformanceTests
     };
 
     /// <summary>
+    /// Files allowed to produce a <see cref="ProjectCompilerOptions"/> value outside
+    /// <see cref="ProjectOptionsMerge"/> — by construction or by <c>with</c>-shaping a copy — with
+    /// the reason. Justification-only, on the same terms as <see cref="ConstructionAllowlist"/>: a
+    /// product entry point never belongs here, because a hand-shaped value is a second answer to
+    /// "how do option-level and project-level settings combine".
+    /// </summary>
+    private static readonly Dictionary<string, string> ShapingAllowlist = new(StringComparer.Ordinal)
+    {
+        ["IntegrationTestBase.cs"] =
+            "Baseline constructor (same rationale as its CompilerOptions exemption): the fixture "
+            + "harness shapes ProjectCompilerOptions.Default with the fixture's `.features` sidecar "
+            + "so it states a flag set independent of what any product surface decides. If it went "
+            + "through the merge it would agree with the surfaces by construction and stop detecting "
+            + "their drift.",
+    };
+
+    /// <summary>
+    /// <see cref="CompilerOptions"/> members that <c>SyntheticProject.BuildConfig</c> deliberately
+    /// does not map onto the synthetic <see cref="ProjectConfig"/>, each naming where it reaches the
+    /// compiler instead. Every one of these travels to <see cref="ProjectCompiler"/> inside the
+    /// <see cref="ProjectCompilerOptions"/> value <see cref="ProjectOptionsMerge"/> derives straight
+    /// from <see cref="CompilerOptions"/> — which
+    /// <see cref="BuildConfigExemptions_AreThreadedThroughTheMerge"/> verifies rather than takes on
+    /// trust, so an exemption cannot outlive the threading it claims.
+    /// </summary>
+    private static readonly Dictionary<string, string> BuildConfigExemptions = new(StringComparer.Ordinal)
+    {
+        ["MaxErrors"] =
+            "ProjectConfig has no counterpart; the limit reaches the compiler as "
+            + "ProjectCompilerOptions.MaxErrors via ProjectOptionsMerge.Merge.",
+
+        ["Incremental"] =
+            "The incremental cache is keyed on a real project's obj/ directory, so the "
+            + "project-of-one-file never uses it: SyntheticProject.Analyze calls "
+            + "ProjectOptionsMerge.Merge with incremental:false, and project mode gets the flag as "
+            + "ProjectCompilerOptions.Incremental from the same merge.",
+
+        ["Features"] =
+            "ProjectConfig.Features is the .spyproj's own <Features> list, which the merge widens "
+            + "the options with; the synthetic config has no independent list to contribute, so the "
+            + "option set reaches the compiler as ProjectCompilerOptions.Features via "
+            + "ProjectOptionsMerge.Merge. BuildConfig hands the whole options value to its "
+            + "import-closure scan, which lexes/parses with the same flags — that is a use of the "
+            + "features, not a mapping of them onto the config.",
+    };
+
+    /// <summary>
+    /// <see cref="CompilerOptions"/> members the LSP's <c>SameAnalysisInputs</c> deliberately does
+    /// not compare: <see cref="CompilerOptionsFactory.ForLsp"/> never decides them, so they hold the
+    /// same default in every options value the workspace can build and comparing them could only
+    /// ever be true. <see cref="LspAnalysisInputsExemptions_NameMembersForLspLeavesAtTheirDefault"/>
+    /// re-derives that claim from <see cref="FactoryFile"/> instead of trusting these comments, so
+    /// giving <c>ForLsp</c> a say over one of these members fails the guard until it is compared.
+    /// </summary>
+    private static readonly Dictionary<string, string> AnalysisInputsExemptions = new(StringComparer.Ordinal)
+    {
+        ["Incremental"] =
+            "ForLsp never enables it — in-editor analysis emits no assembly and has no obj/ cache.",
+
+        ["Namespace"] =
+            "ForLsp never sets it; the namespace override exists for `emit csharp --namespace`.",
+
+        ["Configuration"] =
+            "ForLsp never sets it; analysis does not depend on the Debug/Release build configuration.",
+
+        ["AssemblyName"] =
+            "ForLsp never sets it; in-editor analysis names no output assembly.",
+
+        ["OutputAssemblyPath"] =
+            "ForLsp never sets it; in-editor analysis emits no assembly to place.",
+    };
+
+    /// <summary>
     /// Every settable <see cref="CompilerOptions"/> member must be assigned by the factory core, or
     /// be named in <c>CompilerOptionsFactory.ExemptMembers</c> with a written reason. Adding a
     /// member without touching the factory fails here, which forces its author to decide the value
@@ -96,16 +184,7 @@ public class CompilerOptionsSeamConformanceTests
         assigned.Count.Should().BeGreaterThan(5,
             $"the scan must find {FactoryCoreMethod}'s object initializer in {FactoryFile}");
 
-        var settable = typeof(CompilerOptions)
-            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(p => p.CanWrite)
-            .Select(p => p.Name)
-            .ToList();
-
-        settable.Count.Should().BeGreaterThan(5,
-            "the reflection sweep must see the CompilerOptions surface");
-
-        var missing = settable
+        var missing = SettableCompilerOptionsMembers()
             .Where(name => !assigned.Contains(name))
             .Where(name => !CompilerOptionsFactory.ExemptMembers.ContainsKey(name))
             .ToList();
@@ -125,11 +204,7 @@ public class CompilerOptionsSeamConformanceTests
     [Fact]
     public void FactoryExemptions_NameRealMembersAndCarryReasons()
     {
-        var settable = typeof(CompilerOptions)
-            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(p => p.CanWrite)
-            .Select(p => p.Name)
-            .ToHashSet(StringComparer.Ordinal);
+        var settable = SettableCompilerOptionsMembers().ToHashSet(StringComparer.Ordinal);
 
         foreach (var (member, reason) in CompilerOptionsFactory.ExemptMembers)
         {
@@ -184,6 +259,72 @@ public class CompilerOptionsSeamConformanceTests
     }
 
     /// <summary>
+    /// Surface 2: every settable <see cref="CompilerOptions"/> member must be read by
+    /// <c>SyntheticProject.BuildConfig</c> — the one <see cref="CompilerOptions"/>→
+    /// <see cref="ProjectConfig"/> mapping — or be named in <see cref="BuildConfigExemptions"/> with
+    /// the place it reaches the compiler instead. Surfaces 1 and 3 already fail on an undecided
+    /// member; without this, a new member could pass both and still be dropped on the way into the
+    /// project-of-one-file every single-file compile and analyze runs through.
+    /// </summary>
+    [Fact]
+    public void BuildConfig_ReadsEverySettableCompilerOptionsMember()
+    {
+        var mapped = OptionMembersReadBy(
+            "Sharpy.Compiler", SyntheticProjectFile, BuildConfigMethod);
+
+        // Sanity: a scan that stopped finding the mapping would otherwise "pass" by finding nothing.
+        mapped.Count.Should().BeGreaterThan(5,
+            $"the scan must find {BuildConfigMethod}'s options reads in {SyntheticProjectFile}");
+
+        var missing = SettableCompilerOptionsMembers()
+            .Where(name => !mapped.Contains(name))
+            .Where(name => !BuildConfigExemptions.ContainsKey(name))
+            .ToList();
+
+        missing.Should().BeEmpty(
+            "every settable CompilerOptions member must be decided for surface 2 — either "
+            + $"{SyntheticProjectFile}'s {BuildConfigMethod} maps it onto the synthetic "
+            + "ProjectConfig, or it is exempt because it reaches ProjectCompiler through "
+            + "ProjectOptionsMerge instead. A member that is decided on neither is silently absent "
+            + "from every single-file compile and analyze, which is #1097's shape. Map it, or add it "
+            + $"to BuildConfigExemptions naming where it is threaded.\nUnmapped: "
+            + string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// A surface-2 exemption is a claim that the member reaches the compiler through
+    /// <see cref="ProjectOptionsMerge"/> instead. The claim is checked, not trusted: the member must
+    /// really be read by the merge, and must not also be mapped by <c>BuildConfig</c> (an exemption
+    /// that has been fixed is drained rather than left to rot).
+    /// </summary>
+    [Fact]
+    public void BuildConfigExemptions_AreThreadedThroughTheMerge()
+    {
+        var settable = SettableCompilerOptionsMembers().ToHashSet(StringComparer.Ordinal);
+        var mapped = OptionMembersReadBy("Sharpy.Compiler", SyntheticProjectFile, BuildConfigMethod);
+        var merged = OptionMembersReadBy("Sharpy.Compiler", MergeFile, MergeMethod);
+
+        merged.Should().NotBeEmpty(
+            $"the scan must find {MergeMethod}'s options reads in {MergeFile}");
+
+        foreach (var (member, reason) in BuildConfigExemptions)
+        {
+            settable.Should().Contain(member,
+                $"exemption '{member}' names a CompilerOptions member that no longer exists — delete it");
+            reason.Should().NotBeNullOrWhiteSpace($"exemption '{member}' must say why it is exempt");
+
+            merged.Should().Contain(member,
+                $"exemption '{member}' claims the member reaches the compiler through "
+                + $"{MergeFile}.{MergeMethod} instead of the config, but the merge never reads it — "
+                + "so nothing threads it and the exemption is hiding a dropped setting");
+
+            mapped.Should().NotContain(member,
+                $"exemption '{member}' is stale: {BuildConfigMethod} now maps the member onto the "
+                + "config, so delete the entry (drain on fix)");
+        }
+    }
+
+    /// <summary>
     /// <see cref="ProjectCompiler"/> must take its flags as one options value. They used to
     /// be five loose constructor parameters (<c>warningsAsErrors</c>, <c>suppressedWarnings</c>,
     /// <c>maxErrors</c>, <c>incremental</c>, <c>features</c>) that every call site re-threaded by
@@ -223,23 +364,41 @@ public class CompilerOptionsSeamConformanceTests
     /// A hand-built value elsewhere would be a second, unreviewed answer to "how do option-level and
     /// project-level settings combine" — which is what the merge exists to prevent.
     /// </summary>
+    /// <remarks>
+    /// <see cref="ProjectCompilerOptions"/> is a record struct, so <c>with</c>-shaping produces a
+    /// value just as surely as <c>new</c> does — <c>ProjectCompilerOptions.Default with { Features =
+    /// … }</c> is a bypass a <c>new</c>-only scan cannot see. One such site already existed
+    /// undetected in the fixture harness when this guard was written; the scan therefore matches
+    /// both forms.
+    /// </remarks>
     [Fact]
     public void ProjectCompilerOptions_AreProducedOnlyByTheMerge()
     {
         var sites = new List<string>();
+        var allowlistedHits = new HashSet<string>(StringComparer.Ordinal);
         var sawTheProducer = false;
 
         foreach (var (fileName, root) in EnumerateSyntaxTrees(
             text => text.Contains(nameof(ProjectCompilerOptions), StringComparison.Ordinal)))
         {
-            foreach (var node in root.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
+            foreach (var node in root.DescendantNodes())
             {
-                if (!NamesType(node.Type, nameof(ProjectCompilerOptions)))
+                var constructs = node is ObjectCreationExpressionSyntax creation
+                    && NamesType(creation.Type, nameof(ProjectCompilerOptions));
+                var shapes = node is WithExpressionSyntax with && ShapesProjectCompilerOptions(with);
+
+                if (!constructs && !shapes)
                     continue;
 
                 if (fileName == MergeFile)
                 {
-                    sawTheProducer = true;
+                    sawTheProducer |= constructs;
+                    continue;
+                }
+
+                if (ShapingAllowlist.ContainsKey(fileName))
+                {
+                    allowlistedHits.Add(fileName);
                     continue;
                 }
 
@@ -253,36 +412,156 @@ public class CompilerOptionsSeamConformanceTests
 
         sites.Should().BeEmpty(
             "ProjectCompilerOptions must come from ProjectOptionsMerge.Merge (or its Default), the "
-            + "one definition of how compiler-level and project-level settings combine.\nSites:\n"
+            + "one definition of how compiler-level and project-level settings combine. `Default "
+            + "with { … }` counts: it produces a value the merge never saw, so a setting the merge "
+            + "would have widened is simply absent. Call the merge — or, if the site really is a "
+            + "baseline, add its file to ShapingAllowlist with the reason.\nSites:\n"
             + string.Join("\n", sites));
+
+        // Sanity: the allowlist must still describe reality, or the scan has quietly stopped
+        // matching and this test is passing vacuously.
+        allowlistedHits.Should().BeEquivalentTo(ShapingAllowlist.Keys,
+            "every allowlisted file must still contain the production it was excused for — "
+            + "drain entries that no longer apply, and check the scan still matches if none do");
+    }
+
+    /// <summary>
+    /// The LSP decides a cached analysis is still valid by comparing options with
+    /// <c>SharpyWorkspace.SameAnalysisInputs</c>, which reads a hand-picked subset of
+    /// <see cref="CompilerOptions"/>. Nothing tied that subset to the options surface, so a new
+    /// member that <see cref="CompilerOptionsFactory.ForLsp"/> honors could change the analysis while
+    /// comparing equal — leaving the editor showing diagnostics from the old settings until the
+    /// buffer is edited. Every settable member must therefore be compared, or be named in
+    /// <see cref="AnalysisInputsExemptions"/>.
+    /// </summary>
+    [Fact]
+    public void LspAnalysisInputs_CompareEverySettableCompilerOptionsMember()
+    {
+        var compared = OptionMembersReadBy("Sharpy.Lsp", WorkspaceFile, AnalysisInputsMethod);
+
+        // Sanity: a scan that stopped finding the comparison would otherwise "pass" by finding
+        // nothing.
+        compared.Count.Should().BeGreaterThan(3,
+            $"the scan must find {AnalysisInputsMethod}'s option comparisons in {WorkspaceFile}");
+
+        var missing = SettableCompilerOptionsMembers()
+            .Where(name => !compared.Contains(name))
+            .Where(name => !AnalysisInputsExemptions.ContainsKey(name))
+            .ToList();
+
+        missing.Should().BeEmpty(
+            $"every settable CompilerOptions member must be compared by {WorkspaceFile}'s "
+            + $"{AnalysisInputsMethod}, or the LSP can rebuild its options, see 'nothing changed', "
+            + "and keep serving analyses produced under the previous settings. Compare it — or, if "
+            + "ForLsp genuinely cannot vary it, add it to AnalysisInputsExemptions with that "
+            + $"reason.\nUncompared: {string.Join(", ", missing)}");
+    }
+
+    /// <summary>
+    /// Each analysis-inputs exemption claims <see cref="CompilerOptionsFactory.ForLsp"/> leaves the
+    /// member at its default and so it can never differ between two workspace option sets. That
+    /// claim is re-derived from the factory source: the moment <c>ForLsp</c> gains a say over the
+    /// member, the exemption is false and the member must be compared.
+    /// </summary>
+    [Fact]
+    public void LspAnalysisInputsExemptions_NameMembersForLspLeavesAtTheirDefault()
+    {
+        var settable = SettableCompilerOptionsMembers().ToHashSet(StringComparer.Ordinal);
+        var decidedByForLsp = SpecAssignmentsIn(LspFactoryMethod);
+
+        decidedByForLsp.Should().NotBeEmpty(
+            $"the scan must find {LspFactoryMethod}'s CompilerOptionsSpec initializer in {FactoryFile}");
+
+        foreach (var (member, reason) in AnalysisInputsExemptions)
+        {
+            settable.Should().Contain(member,
+                $"exemption '{member}' names a CompilerOptions member that no longer exists — delete it");
+            reason.Should().NotBeNullOrWhiteSpace($"exemption '{member}' must say why it is exempt");
+
+            decidedByForLsp.Should().NotContain(member,
+                $"exemption '{member}' claims ForLsp leaves the member at its default, but ForLsp "
+                + "now assigns it — so two workspace option sets can differ in it. Compare it in "
+                + $"{AnalysisInputsMethod} and delete the exemption");
+        }
     }
 
     // --- Detection helpers ----------------------------------------------------------------------
+
+    /// <summary>The settable <see cref="CompilerOptions"/> surface every completeness guard is measured against.</summary>
+    private static List<string> SettableCompilerOptionsMembers()
+    {
+        var settable = typeof(CompilerOptions)
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(p => p.CanWrite)
+            .Select(p => p.Name)
+            .ToList();
+
+        settable.Count.Should().BeGreaterThan(5,
+            "the reflection sweep must see the CompilerOptions surface");
+
+        return settable;
+    }
 
     /// <summary>
     /// The member names assigned in the object initializer of the factory core, read from source so
     /// the guard sees what the code actually does rather than what a list claims.
     /// </summary>
-    private static HashSet<string> AssignmentsInFactoryCore()
-    {
-        var path = Path.Combine(FindSourceDir("Sharpy.Compiler"), FactoryFile);
-        File.Exists(path).Should().BeTrue($"the options seam must live at {path}");
+    private static HashSet<string> AssignmentsInFactoryCore() => SpecAssignmentsIn(FactoryCoreMethod);
 
-        var root = (CompilationUnitSyntax)CSharpSyntaxTree.ParseText(File.ReadAllText(path)).GetRoot();
-        var core = root.DescendantNodes().OfType<MethodDeclarationSyntax>()
-            .SingleOrDefault(m => m.Identifier.Text == FactoryCoreMethod
+    /// <summary>
+    /// The member names assigned in the object initializers inside one
+    /// <see cref="CompilerOptions"/>-returning factory method — the core's own
+    /// <see cref="CompilerOptions"/> initializer, or a per-surface method's
+    /// <c>CompilerOptionsSpec</c>, which is that surface's list of members it has a say over.
+    /// </summary>
+    private static HashSet<string> SpecAssignmentsIn(string methodName)
+    {
+        var root = ParseSourceFile("Sharpy.Compiler", FactoryFile);
+        var method = root.DescendantNodes().OfType<MethodDeclarationSyntax>()
+            .SingleOrDefault(m => m.Identifier.Text == methodName
                                   && m.ReturnType.ToString() == nameof(CompilerOptions));
 
-        core.Should().NotBeNull(
-            $"{FactoryFile} must have exactly one {FactoryCoreMethod} method returning "
-            + $"{nameof(CompilerOptions)} — the construction core the guard reads");
+        method.Should().NotBeNull(
+            $"{FactoryFile} must have exactly one {methodName} method returning "
+            + $"{nameof(CompilerOptions)} — the initializer the guard reads");
 
-        return core!.DescendantNodes()
+        return method!.DescendantNodes()
             .OfType<InitializerExpressionSyntax>()
             .SelectMany(init => init.Expressions.OfType<AssignmentExpressionSyntax>())
             .Select(a => a.Left)
             .OfType<IdentifierNameSyntax>()
             .Select(id => id.Identifier.Text)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// The <see cref="CompilerOptions"/> members one method reads off its options parameter(s),
+    /// read from source: every <c>&lt;optionsParam&gt;.Member</c> access inside the method body. The
+    /// receiver names are taken from the parameter list rather than assumed, so renaming a parameter
+    /// cannot quietly empty the scan.
+    /// </summary>
+    private static HashSet<string> OptionMembersReadBy(string project, string fileName, string methodName)
+    {
+        var root = ParseSourceFile(project, fileName);
+        var method = root.DescendantNodes().OfType<MethodDeclarationSyntax>()
+            .SingleOrDefault(m => m.Identifier.Text == methodName);
+
+        method.Should().NotBeNull(
+            $"{fileName} must have exactly one {methodName} method — the guard reads it");
+
+        var receivers = method!.ParameterList.Parameters
+            .Where(p => p.Type != null && NamesType(p.Type, nameof(CompilerOptions)))
+            .Select(p => p.Identifier.Text)
+            .ToHashSet(StringComparer.Ordinal);
+
+        receivers.Should().NotBeEmpty(
+            $"{methodName} must take its input as a {nameof(CompilerOptions)} parameter — the guard "
+            + "reads the members off it");
+
+        return method.DescendantNodes().OfType<MemberAccessExpressionSyntax>()
+            .Where(access => access.Expression is IdentifierNameSyntax id
+                             && receivers.Contains(id.Identifier.Text))
+            .Select(access => access.Name.Identifier.Text)
             .ToHashSet(StringComparer.Ordinal);
     }
 
@@ -299,6 +578,45 @@ public class CompilerOptionsSeamConformanceTests
             && NamesType(type, nameof(CompilerOptions)),
         _ => false,
     };
+
+    /// <summary>
+    /// True if a <c>with</c> expression produces a <see cref="ProjectCompilerOptions"/>: the
+    /// receiver either names the type (<c>ProjectCompilerOptions.Default with { … }</c>) or is a
+    /// local whose declaration or initializer does (<c>var o = ProjectCompilerOptions.Default; … o
+    /// with { … }</c>). A receiver whose type is only knowable from a method's return type is not
+    /// matched — this scan is syntactic, like the rest of the file, and would need a compilation to
+    /// go further.
+    /// </summary>
+    private static bool ShapesProjectCompilerOptions(WithExpressionSyntax with)
+    {
+        if (with.Expression.ToString().Contains(nameof(ProjectCompilerOptions), StringComparison.Ordinal))
+            return true;
+
+        if (with.Expression is not IdentifierNameSyntax receiver)
+            return false;
+
+        foreach (var ancestor in with.Ancestors())
+        {
+            foreach (var declarator in ancestor.DescendantNodes().OfType<VariableDeclaratorSyntax>())
+            {
+                if (declarator.Identifier.Text != receiver.Identifier.Text)
+                    continue;
+
+                if (declarator.Parent is VariableDeclarationSyntax declaration
+                    && NamesType(declaration.Type, nameof(ProjectCompilerOptions)))
+                    return true;
+
+                if (declarator.Initializer?.Value.ToString()
+                        .Contains(nameof(ProjectCompilerOptions), StringComparison.Ordinal) == true)
+                    return true;
+            }
+
+            if (ancestor is BaseTypeDeclarationSyntax)
+                break; // left the type without finding a declaration for the receiver
+        }
+
+        return false;
+    }
 
     /// <summary>The syntactic type a target-typed <c>new()</c> is being assigned into, if visible.</summary>
     private static TypeSyntax? DeclaredTypeOf(SyntaxNode implicitNew)
@@ -329,6 +647,27 @@ public class CompilerOptionsSeamConformanceTests
     };
 
     // --- File discovery -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Parses one named source file of a project, found wherever it sits in the tree — the guarded
+    /// seam files are spread across the project root and subdirectories, and moving one must not
+    /// silently empty a scan.
+    /// </summary>
+    private static CompilationUnitSyntax ParseSourceFile(string project, string fileName)
+    {
+        var dir = FindSourceDir(project);
+        var matches = Directory.Exists(dir)
+            ? Directory.GetFiles(dir, fileName, SearchOption.AllDirectories)
+                .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                            && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+                .ToList()
+            : new List<string>();
+
+        matches.Should().ContainSingle(
+            $"the guard reads {fileName} from {dir} — it must exist there exactly once");
+
+        return (CompilationUnitSyntax)CSharpSyntaxTree.ParseText(File.ReadAllText(matches[0])).GetRoot();
+    }
 
     private static IEnumerable<(string FileName, CompilationUnitSyntax Root)> EnumerateSyntaxTrees(
         Func<string, bool> preFilter)
