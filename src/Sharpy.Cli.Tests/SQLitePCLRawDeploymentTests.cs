@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Xml.Linq;
 using FluentAssertions;
 using Xunit;
 
@@ -58,6 +59,72 @@ public class SQLitePCLRawDeploymentTests
             $"the native e_sqlite3 runtime for host RID '{rid}' must be deployed next to sharpyc");
         Directory.GetFiles(nativeDir, "*e_sqlite3*").Should().NotBeEmpty(
             $"a native e_sqlite3 library must be deployed for host RID '{rid}'");
+    }
+
+    /// <summary>
+    /// #1176: three projects reference <c>SQLitePCLRaw.bundle_e_sqlite3</c> — the CLI (runtime assets),
+    /// the Stdlib monolith, and the per-module <c>Sharpy.Stdlib.Sqlite3</c> packaging project. Each pin
+    /// overrides the vulnerable version <c>Microsoft.Data.Sqlite</c> pulls transitively; a project that
+    /// drops or lags its pin silently reintroduces the NU1903 advisory in that project only, which is
+    /// easy to miss because the other two still build clean. This guard reads the version literals out
+    /// of the csproj XML directly, so it fires on the source of the drift rather than on a symptom.
+    /// </summary>
+    [Fact]
+    public void BundleVersionLiteralsAreInLockStepAcrossCsprojs()
+    {
+        const string CliProject = "src/Sharpy.Cli/Sharpy.Cli.csproj";
+        const string StdlibProject = "src/Sharpy.Stdlib/Sharpy.Stdlib.csproj";
+        const string Sqlite3Project = "src/Sharpy.Stdlib/modules/Sharpy.Stdlib.Sqlite3.csproj";
+
+        var cliVersion = BundleVersionIn(CliProject);
+        var stdlibVersion = BundleVersionIn(StdlibProject);
+        var sqlite3Version = BundleVersionIn(Sqlite3Project);
+
+        stdlibVersion.Should().Be(cliVersion,
+            $"the SQLitePCLRaw.bundle_e_sqlite3 pins must match across all three projects, but "
+            + $"{StdlibProject} pins {stdlibVersion} while {CliProject} pins {cliVersion} — "
+            + "re-sync the lagging one (#1176)");
+        sqlite3Version.Should().Be(cliVersion,
+            $"the SQLitePCLRaw.bundle_e_sqlite3 pins must match across all three projects, but "
+            + $"{Sqlite3Project} pins {sqlite3Version} while {CliProject} pins {cliVersion} — "
+            + "re-sync the lagging one (#1176)");
+    }
+
+    private static string BundleVersionIn(string relativePath)
+    {
+        var path = Path.Combine(RepoRoot(), relativePath.Replace('/', Path.DirectorySeparatorChar));
+        File.Exists(path).Should().BeTrue($"{relativePath} must exist to be checked for the bundle pin (#1176)");
+
+        var references = XDocument.Load(path)
+            .Descendants("PackageReference")
+            .Where(r => string.Equals(
+                (string?)r.Attribute("Include"), "SQLitePCLRaw.bundle_e_sqlite3", StringComparison.Ordinal))
+            .ToList();
+
+        // Absence is itself the drift: without an explicit pin the project resolves the vulnerable
+        // version Microsoft.Data.Sqlite pulls transitively (NU1903).
+        references.Should().ContainSingle(
+            $"{relativePath} must carry exactly one explicit SQLitePCLRaw.bundle_e_sqlite3 pin; "
+            + "a missing pin lets the vulnerable transitive version through (#1176)");
+
+        var reference = references[0];
+        var version = (string?)reference.Attribute("Version") ?? (string?)reference.Element("Version");
+        version.Should().NotBeNullOrWhiteSpace(
+            $"the SQLitePCLRaw.bundle_e_sqlite3 reference in {relativePath} must carry a Version literal (#1176)");
+        return version!.Trim();
+    }
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "sharpy.sln")))
+        {
+            dir = dir.Parent;
+        }
+
+        dir.Should().NotBeNull("the repository root (the directory containing sharpy.sln) must be locatable "
+            + $"by walking up from {AppContext.BaseDirectory}");
+        return dir!.FullName;
     }
 
     private static Version AssemblyVersionOf(string fileName)
