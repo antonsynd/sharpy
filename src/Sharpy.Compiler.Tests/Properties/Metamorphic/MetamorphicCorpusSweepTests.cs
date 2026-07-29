@@ -265,7 +265,9 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
 
     /// <summary>
     /// Single-file fixtures with an <c>.expected</c> sidecar and no <c>.error</c>/<c>.runtime-error</c>
-    /// sidecar — the valid, executing programs the transforms are defined on.
+    /// sidecar — the valid, executing programs the transforms are defined on. Used by the execution
+    /// half (<see cref="MetamorphicCorpusInvarianceTests"/>), which runs one program per pair and so
+    /// stays single-file; the compile-clean sweep itself covers multi-file fixtures too.
     /// </summary>
     internal static List<TestFixtureInfo> EligibleFixtures()
         => AllEligibleFixtures().Where(fx => !fx.IsMultiFile).ToList();
@@ -586,8 +588,14 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
         return changed;
     }
 
+    /// <summary>Fixture name → the file the transform rewrites (the entry file, for multi-file).</summary>
     private static readonly Lazy<IReadOnlyDictionary<string, string>> FixturePaths = new(
-        () => EligibleFixtures().ToDictionary(fx => fx.TestName, fx => fx.SpyFilePath, StringComparer.Ordinal));
+        () => AllEligibleFixtures().ToDictionary(
+            fx => fx.TestName,
+            fx => fx.IsMultiFile
+                ? Path.Combine(fx.SpyFilePath, FileBasedIntegrationTestsBase.FindEntryPoint(fx.SpyFilePath))
+                : fx.SpyFilePath,
+            StringComparer.Ordinal));
 
     private static string? Truncate(string? source)
     {
