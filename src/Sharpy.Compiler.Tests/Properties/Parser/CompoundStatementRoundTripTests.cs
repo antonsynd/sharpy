@@ -81,9 +81,9 @@ public class CompoundStatementRoundTripTests
         }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 100);
     }
 
-    // Cast round-trip axis (#1096): TypeCoercionExpr now always mixes the legacy `to`/`to?` forms
-    // with the graduated `as!`/`as?` forms, so the round trip exercises both spellings through
-    // unparse and reparse. Parsing was never gated (the retired failable_cast gate lived in
+    // Cast round-trip axis (#1096): TypeCoercionExpr emits the graduated `as!`/`as?` forms only —
+    // the legacy `to`/`to?` spelling is a parse error since its retirement (#1127) and left the
+    // generator pool with it. Parsing was never gated (the retired failable_cast gate lived in
     // semantic analysis), so no feature enablement is needed here.
     [Fact]
     public void LinearProgram_WithFailableCast_NeverCrashesParser()

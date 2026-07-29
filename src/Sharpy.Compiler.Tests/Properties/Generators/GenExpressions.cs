@@ -228,10 +228,10 @@ internal static class GenExpressions
             });
 
     public static Gen<TypeCoercion> TypeCoercionExpr(GenContext ctx) =>
-        // The primary `as!`/`as?` forms are graduated language surface (#1096), so they are always
-        // in the pool alongside the legacy `to`/`to?` forms — both must round-trip until `to`
-        // retirement (#1127). The `as` forms carry their failure mode on the operator, so their
-        // target is always written non-nullable.
+        // The `as!`/`as?` forms are graduated language surface (#1096) and the only cast spelling:
+        // the legacy `to`/`to?` forms retired as a parse error (#1127) and were dropped from the
+        // pool. The `as` forms carry their failure mode on the operator, so their target is always
+        // written non-nullable.
         Gen.Select(
             Expression(ctx),
             GenTypes.SimpleType,
