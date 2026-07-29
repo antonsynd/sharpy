@@ -94,6 +94,7 @@ internal sealed class LanguageService : IDisposable
         if (projectFilePath == null)
         {
             _logger.LogInformation("No .spyproj file found in {Root}", workspaceRoot);
+            _workspace.SetProjectConfig(null);
             Interlocked.Exchange(ref _state, StateReady);
             return false;
         }
@@ -108,6 +109,12 @@ internal sealed class LanguageService : IDisposable
 
             Volatile.Write(ref _workspaceRoot, workspaceRoot);
             Volatile.Write(ref _projectConfig, config);
+
+            // Single-file analysis of buffers outside the project (and of every buffer before
+            // indexing finishes) runs with the project's features and warning settings too, so a
+            // gated construct the project enables is not red-squiggled while the editor waits (#1149).
+            _workspace.SetProjectConfig(config);
+
             Interlocked.Exchange(ref _state, StateIndexing);
 
             var progress = _progressReporter != null
@@ -125,7 +132,7 @@ internal sealed class LanguageService : IDisposable
                     // unsaved edits, not just what is on disk (#1099).
                     var analysisConfig = WithOpenBuffers(config);
                     var result = await Task.Run(
-                        () => _api.AnalyzeProject(analysisConfig, cancellationToken: ct), ct).ConfigureAwait(false);
+                        () => _api.AnalyzeProject(analysisConfig, _workspace.Options, ct), ct).ConfigureAwait(false);
 
                     Volatile.Write(ref _projectAnalysis, result);
 
@@ -168,7 +175,11 @@ internal sealed class LanguageService : IDisposable
         }
         catch (Exception ex)
         {
+            // Includes an invalid <Features> name: ProjectFileParser.Load rejects unknown names, so
+            // the failure is reported here rather than silently analyzing without the project's
+            // configuration.
             _logger.LogError(ex, "Failed to initialize project from {Path}", projectFilePath);
+            _workspace.SetProjectConfig(null);
             Interlocked.Exchange(ref _state, StateReady); // Mark ready even on failure to avoid blocking handlers
             return false;
         }
@@ -410,8 +421,11 @@ internal sealed class LanguageService : IDisposable
             // last-saved bytes on disk (#1099). The cached _projectConfig is left untouched.
             var analysisConfig = WithOpenBuffers(config);
 
+            // The workspace options carry the editor's `sharpy.features` on top of the project's own
+            // <Features>/warning settings; AnalyzeProject re-merges the config, so project settings
+            // apply either way and the two LSP analysis paths cannot gate differently (#1149).
             var result = await Task.Run(
-                () => _api.AnalyzeProject(analysisConfig, cancellationToken: linkedToken), linkedToken).ConfigureAwait(false);
+                () => _api.AnalyzeProject(analysisConfig, _workspace.Options, linkedToken), linkedToken).ConfigureAwait(false);
 
             Volatile.Write(ref _projectAnalysis, result);
 
@@ -474,6 +488,26 @@ internal sealed class LanguageService : IDisposable
 
         _logger.LogInformation("Reloading project from {Root}", root);
         return await InitializeProjectAsync(root, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Applies the experimental features requested by LSP workspace configuration
+    /// (<c>sharpy.features</c>), the editor-side counterpart of <c>--enable-feature</c> (#1149).
+    /// Open documents are re-analyzed by the workspace; a loaded project is reloaded so its
+    /// per-file results are recomputed under the new options.
+    /// </summary>
+    /// <param name="features">Feature names from configuration; unknown names are reported and dropped.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>True if the options changed and analysis was rerun.</returns>
+    public async Task<bool> ApplyWorkspaceFeaturesAsync(IEnumerable<string>? features, CancellationToken ct = default)
+    {
+        if (!_workspace.SetConfiguredFeatures(features))
+            return false;
+
+        if (Volatile.Read(ref _projectConfig) != null)
+            await ReloadProjectAsync(ct).ConfigureAwait(false);
+
+        return true;
     }
 
     /// <summary>

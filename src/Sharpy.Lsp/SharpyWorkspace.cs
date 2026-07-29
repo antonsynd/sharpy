@@ -4,6 +4,7 @@ using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Lsp;
@@ -95,6 +96,26 @@ internal sealed class DocumentState : IDisposable
             Version = version;
             CachedAnalysis = null;
             CachedParseResult = null;
+            _analysisVersion++;
+        }
+    }
+
+    /// <summary>
+    /// Drops every cached analysis for this document so the next request re-analyzes it. Used when
+    /// the workspace's analysis options change (a <c>.spyproj</c> load or a <c>sharpy.features</c>
+    /// configuration change — #1149): results computed under the previous options are stale, and the
+    /// incremental fast paths must not reuse them either, so the fingerprint baselines go too.
+    /// Bumping the version means an analysis already in flight under the old options will not be
+    /// cached when it completes.
+    /// </summary>
+    public void InvalidateAnalysis()
+    {
+        lock (_stateLock)
+        {
+            CachedAnalysis = null;
+            CachedParseResult = null;
+            _previousAnalysis = null;
+            _previousParseResult = null;
             _analysisVersion++;
         }
     }
@@ -325,12 +346,16 @@ internal sealed class SharpyWorkspace : IDisposable
     private readonly CompilerApi _api;
     private readonly ILogger<SharpyWorkspace> _logger;
 
-    // Workspace-level compiler options passed to analysis, built through the one options seam
-    // every entry point uses (#1144). This is the seam through which experimental FeatureFlags
-    // reach LSP analysis; sourcing them from a workspace .spyproj is follow-up work (#1149) —
-    // CompilerOptionsFactory.ForLsp already takes the ProjectConfig and workspace-configuration
-    // arguments that work will supply.
-    private readonly CompilerOptions _workspaceOptions = CompilerOptionsFactory.ForLsp();
+    // Workspace-level compiler options passed to analysis, built through the one options seam every
+    // entry point uses (#1144) from the same two sources the CLI reads: the workspace's .spyproj
+    // (pushed in by LanguageService as it discovers or reloads it) and the editor's `sharpy.features`
+    // workspace configuration (#1149). Until #1149 this was a constant with no features, so gated
+    // syntax the CLI accepted under <Features>/--enable-feature red-squiggled SPY0331 in-editor.
+    // Written under _optionsLock, read on request threads.
+    private readonly object _optionsLock = new();
+    private ProjectConfig? _projectConfig;
+    private IReadOnlyList<string> _configuredFeatures = Array.Empty<string>();
+    private volatile CompilerOptions _workspaceOptions = CompilerOptionsFactory.ForLsp();
 
     // Debounce timers per document
     private readonly ConcurrentDictionary<string, Timer> _debounceTimers = new();
@@ -347,6 +372,96 @@ internal sealed class SharpyWorkspace : IDisposable
         _api = api;
         _logger = logger;
     }
+
+    /// <summary>
+    /// The options every analysis in this workspace runs with. Also handed to project-mode analysis
+    /// so both LSP paths gate features and apply warning configuration identically.
+    /// </summary>
+    public CompilerOptions Options => _workspaceOptions;
+
+    /// <summary>
+    /// Applies the workspace's <c>.spyproj</c> (or null when none was found or it failed to load).
+    /// Its <c>&lt;Features&gt;</c>, warning settings, references and module paths become the base of
+    /// the analysis options, with editor configuration layered over them.
+    /// </summary>
+    /// <returns>True if the resolved options changed (open documents were re-analyzed).</returns>
+    public bool SetProjectConfig(ProjectConfig? config)
+    {
+        lock (_optionsLock)
+        {
+            _projectConfig = config;
+            return RebuildOptions();
+        }
+    }
+
+    /// <summary>
+    /// Applies the experimental features requested by LSP workspace configuration
+    /// (<c>sharpy.features</c>). Unknown names are reported and dropped — never silently enabled or
+    /// silently ignored — mirroring how every other boundary validates against
+    /// <see cref="FeatureFlags.KnownFeatures"/>.
+    /// </summary>
+    /// <returns>True if the resolved options changed (open documents were re-analyzed).</returns>
+    public bool SetConfiguredFeatures(IEnumerable<string>? featureNames)
+    {
+        var known = new List<string>();
+        foreach (var name in featureNames ?? Enumerable.Empty<string>())
+        {
+            if (FeatureFlags.TryValidate(name, out var error))
+                known.Add(name);
+            else
+                _logger.LogError("Ignoring sharpy.features entry: {Error}", error);
+        }
+
+        lock (_optionsLock)
+        {
+            _configuredFeatures = known;
+            return RebuildOptions();
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the analysis options from the current sources and, when they actually changed,
+    /// invalidates every cached analysis and re-analyzes the open documents so the editor's
+    /// diagnostics match what the new options produce. Caller holds <see cref="_optionsLock"/>.
+    /// </summary>
+    private bool RebuildOptions()
+    {
+        var rebuilt = CompilerOptionsFactory.ForLsp(_projectConfig, FeatureFlags.None.Enable(_configuredFeatures));
+        if (SameAnalysisInputs(_workspaceOptions, rebuilt))
+            return false;
+
+        _workspaceOptions = rebuilt;
+        _logger.LogInformation(
+            "Workspace analysis options updated: features=[{Features}] warningsAsErrors={WarningsAsErrors} noWarn=[{NoWarn}]",
+            string.Join(", ", rebuilt.Features.EnabledFeatures),
+            rebuilt.WarningsAsErrors,
+            string.Join(", ", rebuilt.SuppressedWarnings.OrderBy(w => w, StringComparer.Ordinal)));
+
+        foreach (var kvp in _documents)
+        {
+            kvp.Value.InvalidateAnalysis();
+            ScheduleAnalysis(kvp.Key);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Whether two option sets would produce the same analysis. Only the members LSP analysis reads
+    /// are compared; <see cref="CompilerOptions"/> has no value equality of its own, and rebuilding
+    /// from an unchanged <c>.spyproj</c> must not throw away every cached analysis.
+    /// </summary>
+    private static bool SameAnalysisInputs(CompilerOptions a, CompilerOptions b)
+        => a.OutputType == b.OutputType
+            && a.WarningsAsErrors == b.WarningsAsErrors
+            && a.MaxErrors == b.MaxErrors
+            && a.SuppressedWarnings.SetEquals(b.SuppressedWarnings)
+            && a.Features.EnabledFeatures.SequenceEqual(b.Features.EnabledFeatures, StringComparer.Ordinal)
+            && SameSequence(a.References, b.References)
+            && SameSequence(a.ModulePaths, b.ModulePaths);
+
+    private static bool SameSequence(string[]? a, string[]? b)
+        => (a ?? Array.Empty<string>()).SequenceEqual(b ?? Array.Empty<string>(), StringComparer.Ordinal);
 
     public void OpenDocument(string uri, string text, int version)
     {

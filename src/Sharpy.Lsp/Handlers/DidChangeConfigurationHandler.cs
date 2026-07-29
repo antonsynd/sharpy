@@ -44,8 +44,16 @@ internal sealed class SharpyDidChangeConfigurationHandler : IDidChangeConfigurat
             _configuration.UpdateFrom(settings);
 
             _logger.LogInformation(
-                "Configuration updated: TransitionHintsEnabled={Enabled}",
-                _configuration.TransitionHintsEnabled);
+                "Configuration updated: TransitionHintsEnabled={Enabled}, Features=[{Features}]",
+                _configuration.TransitionHintsEnabled,
+                string.Join(", ", _configuration.Features));
+
+            // Features change what analysis produces (SPY0331 gating), not just how it is rendered,
+            // so this reanalyzes rather than republishing — the workspace re-runs open documents and
+            // a loaded project is reindexed before the republish loop below reads its results (#1149).
+            await _languageService
+                .ApplyWorkspaceFeaturesAsync(_configuration.Features, ct)
+                .ConfigureAwait(false);
 
             // Republish cached analysis results so the new filter is applied
             // without waiting for the next edit. This works because hint filtering
