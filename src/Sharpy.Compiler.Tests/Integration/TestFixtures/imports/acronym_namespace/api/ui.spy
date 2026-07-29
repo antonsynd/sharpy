@@ -1,0 +1,8 @@
+class Widget:
+    label: str
+
+    def __init__(self, label: str):
+        self.label = label
+
+    def render(self) -> str:
+        return f"[{self.label}]"

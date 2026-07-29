@@ -1,0 +1,8 @@
+class Record:
+    key: str
+
+    def __init__(self, key: str):
+        self.key = key
+
+    def describe(self) -> str:
+        return f"Record({self.key})"

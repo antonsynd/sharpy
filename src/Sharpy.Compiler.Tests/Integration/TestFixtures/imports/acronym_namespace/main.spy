@@ -1,0 +1,25 @@
+# A path segment that is entirely a .NET acronym (the file db.spy, the package
+# directory api/) must cast to the same C# namespace segment at every emission
+# position (#1173). Before the unification, a type annotation named the module
+# namespace via the acronym policy (DB, API.UI) while a `new` expression named
+# it via plain PascalCase (Db, Api.Ui), so annotating *and* constructing the
+# same cross-file type failed to compile with CS0246.
+from db import Record
+from api.ui import Widget
+
+# Parameter-type position.
+def combine(r: Record, w: Widget) -> str:
+    return r.describe() + " " + w.render()
+
+def main() -> None:
+    # Construction position.
+    made_record = Record("k")
+    made_widget = Widget("ok")
+
+    # Annotation position on the same two types.
+    annotated_record: Record = made_record
+    annotated_widget: Widget = made_widget
+
+    print(annotated_record.describe())
+    print(annotated_widget.render())
+    print(combine(annotated_record, annotated_widget))
