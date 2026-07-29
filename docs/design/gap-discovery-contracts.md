@@ -31,6 +31,7 @@ source-scan guards run in the regular suite.
 | Parallel-site replication gaps (#1105, #1106, #1135; #1124, #1125, #1150–#1152; #1065, #1075) | Mirrored facts are structural (one seam) or guarded by a completeness scan | `ModuleExportsMirrorConformanceTests`, `WrapperNodeUnwrapConformanceTests` — Roslyn source scans of the compiler + LSP | #1145 |
 | Un-lowerable accepted programs (#1000, #1009, #1067, #1068, #1095, #1110, #1122, #1138, #1139, #1141, #1153-adjacent) | Reproducible SPY0908/CS-leak ⇒ a semantic-time check is missing | The sweeps' csLeak/ice buckets + ILCompiles/CsClean property tests | #1146 |
 | CPython semantic divergence (#1063, #1066, #1070–#1073, #1085, #1098, #1153, #1154) | Shared-subset programs produce CPython-identical stdout, or the divergence is in `docs/deviations.yaml` | `DifferentialExecutionTests` — Sharpy binary vs batched `python3` over hand-picked probes + subset fixtures + generated programs | (oracle is the mechanism; #1030 corpus keeps growing) |
+| Emit fragility under semantics-preserving syntactic variation (#1147, #1167, #1168, #1169, #1170, #1171) | Rewriting a program into an equivalent form changes neither the diagnostics it produces nor what it prints | `MetamorphicCorpusSweepTests` — every executing fixture × 9 transforms (~14,600 cells, compile-clean + C# bind) and `MetamorphicCorpusInvarianceTests` — sampled execution, stdout vs the fixture's `.expected` | #1157 |
 
 Well-guarded classes needing no new mechanism: lambda-boundary parsing (differential parse oracle,
 #1037), unparser fidelity (round-trip property tests), CLR name round-trip (interop sweep + #1040),
@@ -46,7 +47,31 @@ deployment closure (`StandaloneDeploymentTests`).
   `FrontEndParityTests` cites an issue whose acceptance criterion is deleting the rule (#1149).
 - **Divergence is never silent**: differential-oracle mismatches become issues or
   `deviations.yaml` entries; the ledger must match shipped behavior (#1155 is the cautionary tale).
+- **Allowlists drain when their bug dies** (#1157): the metamorphic sweep fails on a *stale* entry —
+  an allowlisted cell that has started passing — so deleting the lines is part of landing the fix
+  rather than a follow-up nobody schedules. The other sweeps' allowlists should acquire the same
+  check as they are touched.
+
+### Metamorphic sweep — scope notes (#1157)
+
+- **Only valid programs.** The corpus is fixtures with an `.expected` sidecar. A transform is only
+  guaranteed semantics-preserving on a program that compiles; "does a rewrite preserve a *diagnostic*"
+  is a different property with a different contract (an error fixture's message, location and code
+  would all have to be re-derived under the rewrite), and mixing the two would make every cell's
+  verdict ambiguous. `.error`/`.warning`-only fixtures are therefore excluded, not skipped silently —
+  the eligibility rule is stated in the report's `scopeNotes`.
+- **Multi-file fixtures participate through their entry file only.** A transform has no defined
+  meaning across module boundaries; `main.spy` is rewritten and the whole project compiled around it.
+- **"No regression" is a per-transform delta contract, not equality.** `MetamorphicTransforms`
+  states which diagnostic codes each transform may introduce (dead-code-after-return ⇒ the
+  unreachable-code and unused-variable warnings; every other transform ⇒ none). A transform without
+  an entry throws rather than inheriting a permissive default.
+- **A transform that is not semantics-preserving on a shape must decline it**, returning the source
+  byte-identical (which the sweep records as `notApplicable`). Widening the allowlist to cover a
+  transform's own bug is the one thing this harness must never do — six such false violations were
+  fixed in the transforms during the first triage, not absorbed.
 
 ## Follow-ups
 
-CI/skill wiring for the new harnesses: #1156. Metamorphic transforms at corpus scale: #1157.
+CI/skill wiring for the new harnesses: #1156. Metamorphic transforms at corpus scale: #1157 (landed —
+harness, ratchet and wiring in place; the bugs its first run found are #1167–#1171).

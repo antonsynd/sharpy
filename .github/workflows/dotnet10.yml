@@ -93,7 +93,10 @@ jobs:
       # programs, needs the python step above) are light enough (~1 min combined) that a
       # dedicated step isn't warranted. The front-end parity sweep (#1144) runs inline in
       # the LSP step for the same reason. Split any of them out only if they grow heavy.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance"
+      # The metamorphic corpus sweep (#1157) IS heavy (~1.5 min, ~14,600 in-process compiles)
+      # and has its own step below; excluding it here also keeps its RandomProperty sibling
+      # (MetamorphicCorpusInvarianceTests, which spawns a dotnet subprocess per pair) out of CI.
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus"
     - name: Test Stdlib
       run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
     - name: Test LSP
@@ -103,6 +106,17 @@ jobs:
       # .claude/tmp/interop-conformance-report.json; becomes a ratchet once the reviewed
       # allowlist (src/Sharpy.Compiler.Tests/Conformance/interop-allowlist.txt) is present.
       run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance"
+    - name: Metamorphic corpus sweep (#1157)
+      # Every executing fixture x every semantics-preserving transform must still compile with
+      # no new diagnostic code (~14,600 cells, ~1.5 min). Emits
+      # .claude/tmp/metamorphic-corpus-report.json and ratchets against the reviewed allowlist
+      # (src/Sharpy.Compiler.Tests/Conformance/metamorphic-allowlist.txt), which also fails on
+      # STALE entries so a landed fix must drain its lines.
+      # Category=GapDiscovery deliberately selects the compile-clean sweep ONLY: the
+      # output-invariance sample is Category=RandomProperty, executes real programs in
+      # subprocesses, and draws a fresh sample per run — it belongs in /property-stress, not in a
+      # deterministic CI gate.
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~MetamorphicCorpus"
     - name: Verify .spy stdlib native compilation
       run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
     - name: Verify .spy stdlib C# staleness
