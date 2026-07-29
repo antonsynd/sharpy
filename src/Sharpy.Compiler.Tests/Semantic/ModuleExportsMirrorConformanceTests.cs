@@ -6,307 +6,386 @@ using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 using Xunit;
+// The scan uses Roslyn's syntax API; the behavioral checks use Sharpy's own symbol model, whose
+// SymbolKind/TypeKind names collide with Microsoft.CodeAnalysis'.
+using SymbolKind = Sharpy.Compiler.Semantic.SymbolKind;
+using TypeKind = Sharpy.Compiler.Semantic.TypeKind;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Conformance test enforcing that <c>ModuleSymbol.ExportedTypes</c> is mirrored everywhere
-/// <c>ModuleSymbol.Exports</c> is constructed, populated, merged, or serialized (the parallel-site
-/// completeness contract of #1145; Class G of the defect taxonomy — member history #1105/#1106/#1135).
+/// Conformance test for the module-exports seam: the value-position export lookup and the
+/// types-only lookup it must agree with are owned by <see cref="ModuleExports"/> and by nothing
+/// else (the parallel-site completeness contract of #1145; Class G of the defect taxonomy —
+/// member history #1105/#1106/#1135 plus a fourth checker site found while collapsing the seam).
 ///
 /// <para>
-/// <c>ExportedTypes</c> is a second dictionary added for #1092 so a value-position export cannot
-/// shadow a same-named type in annotation position (e.g. <c>sqlite3.Row</c> — both a type and the
-/// <c>row_factory</c> value). <c>ResolveQualifiedType</c> consults <c>ExportedTypes</c> BEFORE
-/// <c>Exports</c>, so any site that builds/merges/serializes <c>Exports</c> but forgets the mirror
-/// silently drops the type lookup. That gap was re-filed three times — the serializer round-trip
-/// (#1105), three lazy <c>new ModuleSymbol</c> sites (#1106), and <c>MergeModuleExports</c> (#1135) —
-/// each found by a different reviewer noticing a different parallel site, because nothing enforced
-/// the mirror. This test makes the omission mechanically impossible to reintroduce.
+/// The two lookups exist because a value-position export can share a name with a type
+/// (<c>sqlite3.Row</c> is both the <c>Row</c> type and the <c>row_factory</c> value), and
+/// <c>ResolveQualifiedType</c> consults the types-only lookup FIRST (#1092). While they were two
+/// independent dictionaries mirrored by convention, every new construction/merge/serialization
+/// site was a chance to populate one and forget the other — and four separate audits found four
+/// such sites. This test used to check that each site remembered the mirror. It now checks the
+/// stronger property that made those sites unforgettable: <b>only <see cref="ModuleExports"/> can
+/// write an export lookup at all</b>, so the mirror is a derivation rather than a discipline.
 /// </para>
 ///
 /// <para>
-/// The scan parses each <c>Sharpy.Compiler</c> source file with Roslyn (syntax only — no semantic
-/// model) and applies two checks:
+/// Two source scans over <c>Sharpy.Compiler</c> and <c>Sharpy.Lsp</c> (Roslyn syntax only, no
+/// semantic model), plus behavioral checks that the invariant actually holds through the real
+/// symbol types:
 /// </para>
 ///
 /// <list type="number">
 ///   <item><description>
-///     <b>Construction mirror</b> — every <c>new ModuleSymbol { ... }</c> object initializer that
-///     assigns <c>Exports</c> must also assign <c>ExportedTypes</c> in the same initializer.
+///     <b>Ownership</b> — outside <c>ModuleExports.cs</c>, no member named <c>Exports</c>/
+///     <c>ExportedSymbols</c>/<c>ExportedTypes</c> is a writable dictionary, and no single type
+///     declares a <c>Dictionary&lt;string, Symbol&gt;</c> together with a
+///     <c>Dictionary&lt;string, TypeSymbol&gt;</c> — the mirror pair, re-created.
 ///   </description></item>
 ///   <item><description>
-///     <b>Mutation / serialization mirror</b> — every method that mutates or serializes
-///     <c>.Exports</c> (indexer-set, <c>.Add</c>/<c>.TryAdd</c>, <c>.ToDictionary</c>, or a
-///     <c>.Exports = ...</c> member assignment) must reference <c>ExportedTypes</c> somewhere in the
-///     same method body.
+///     <b>No out-of-seam mutation</b> — outside <c>ModuleExports.cs</c>, no element-write to an
+///     export lookup, no mutating call on the read-only types view, and no cast that would reach
+///     the underlying dictionary through it.
 ///   </description></item>
 /// </list>
 ///
 /// <para>
-/// Genuinely-asymmetric sites (structural parent modules that only hold nested child modules in
-/// <c>Exports</c>; error-recovery placeholder population on a module that already failed to load)
-/// are listed in the two allowlists with a written justification. A new site that writes
-/// <c>Exports</c> without the mirror fails here and must either add <c>ExportedTypes</c> or
-/// self-justify. Mirrors the source-scan style of <c>SemanticInfoMergeConformanceTests</c> and
+/// Both scans carry justification-only allowlists. Mirrors the source-scan style of
+/// <c>SemanticInfoMergeConformanceTests</c>, <c>WrapperNodeUnwrapConformanceTests</c> and
 /// <c>EmitterPurityConformanceTests</c>.
 /// </para>
 /// </summary>
 public class ModuleExportsMirrorConformanceTests
 {
-    private const string ExportsMember = "Exports";
-    private const string MirrorMember = "ExportedTypes";
-    private const string ModuleSymbolType = "ModuleSymbol";
+    private const string SeamFile = "ModuleExports.cs";
 
-    /// <summary>
-    /// Member-access operations on <c>.Exports</c> that constitute a write or a serialization of the
-    /// value-export map (as opposed to a read like <c>TryGetValue</c>/<c>ContainsKey</c>/<c>Keys</c>).
-    /// A method performing any of these must also touch <c>ExportedTypes</c>.
-    /// </summary>
-    private static readonly HashSet<string> MutatingOrSerializingOps = new(StringComparer.Ordinal)
+    /// <summary>Member names that hold a module's exports at any layer.</summary>
+    private static readonly HashSet<string> ExportMembers = new(StringComparer.Ordinal)
     {
-        "Add", "TryAdd", "Remove", "Clear", "ToDictionary",
+        "Exports", "ExportedSymbols", "ExportedTypes",
+    };
+
+    /// <summary>The read-only types view; mutating it means reaching around the seam.</summary>
+    private static readonly HashSet<string> TypesViewMembers = new(StringComparer.Ordinal)
+    {
+        "ExportedTypes", "Types",
+    };
+
+    private static readonly HashSet<string> MutatingOps = new(StringComparer.Ordinal)
+    {
+        "Add", "TryAdd", "Remove", "Clear",
     };
 
     /// <summary>
-    /// Construction sites (<c>new ModuleSymbol</c> initializers) that assign <c>Exports</c> but
-    /// intentionally not <c>ExportedTypes</c>. Key = "<c>{fileName} :: new ModuleSymbol({Name = ...})</c>".
+    /// Types allowed to declare an export lookup as a raw dictionary, or to declare a
+    /// value-map/type-map pair of their own. Key = "<c>{fileName} :: {memberName}</c>".
     /// </summary>
-    private static readonly Dictionary<string, string> ConstructionAllowlist = new(StringComparer.Ordinal)
+    private static readonly Dictionary<string, string> OwnershipAllowlist = new(StringComparer.Ordinal)
     {
-        // Structural parent modules built for a dotted plain import ("import a.b.c"): the parent's
-        // Exports holds ONLY the single nested child ModuleSymbol; it exports no types of its own, so
-        // there is no type to mirror. The leaf module (built in the same loop, and NOT allowlisted)
-        // carries the real Exports+ExportedTypes pair.
-        ["ProjectCompiler.Phases.cs :: new ModuleSymbol(Name = parts[j])"] =
-            "Structural parent module for a dotted import — Exports holds only the nested child module; no own types.",
-        ["ImportResolver.ModuleLoading.cs :: new ModuleSymbol(Name = parts[j])"] =
-            "Structural parent module for a dotted import — Exports holds only the nested child module; no own types.",
-
-        // Error-recovery placeholder module for a module that failed to resolve. Its Exports holds
-        // synthesized placeholder symbols only (to suppress cascading errors); a diagnostic has
-        // already been emitted and ResolveQualifiedType falls back to Exports, so there is no real
-        // type to place in the mirror.
-        ["ImportResolver.Helpers.cs :: new ModuleSymbol(Name = moduleName)"] =
-            "Error-recovery placeholder module (empty/placeholder Exports); the module already failed to load.",
+        // (empty — ModuleExports owns both lookups)
     };
 
     /// <summary>
-    /// Methods that mutate/serialize <c>.Exports</c> but intentionally do not touch
-    /// <c>ExportedTypes</c>. Key = "<c>{fileName} :: {methodName}</c>".
+    /// Sites allowed to write an export lookup outside the seam.
+    /// Key = "<c>{fileName} :: {memberName}</c>".
     /// </summary>
     private static readonly Dictionary<string, string> MutationAllowlist = new(StringComparer.Ordinal)
     {
-        // Error-recovery branches populate errorRecoveryModule.Exports[name] with synthesized
-        // placeholder symbols so downstream type checking does not cascade after a failed import
-        // (namedtuple rejection, __future__ handling, missing symbols). The module already carries a
-        // diagnostic; the placeholders are values, not real types, and ResolveQualifiedType falls
-        // back to Exports — there is nothing to mirror into ExportedTypes.
-        ["ImportResolver.ModuleLoading.cs :: ResolveFromImport"] =
-            "Error-recovery placeholder population on a failed import; placeholders are values, not real types.",
+        // (empty — every writer goes through ModuleExports.Add / MergeFrom / RestoreFrom)
     };
 
     [Fact]
-    public void ModuleSymbolExports_ConstructionSites_MirrorExportedTypes()
+    public void ExportLookups_AreDeclaredOnlyByModuleExports()
     {
         var violations = new List<string>();
 
-        foreach (var (fileName, root) in EnumerateCompilerSyntaxTrees())
+        foreach (var (fileName, root) in EnumerateSyntaxTrees())
         {
-            foreach (var creation in root.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
+            if (fileName == SeamFile)
+                continue;
+
+            foreach (var type in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
-                if (!IsModuleSymbolCreation(creation) || creation.Initializer is null)
+                var members = DeclaredMembers(type).ToList();
+
+                // (a) An export lookup declared as a writable dictionary.
+                foreach (var (member, name, declaredType) in members)
+                {
+                    if (!ExportMembers.Contains(name) || !IsWritableDictionary(declaredType))
+                        continue;
+
+                    var key = $"{fileName} :: {name}";
+                    if (OwnershipAllowlist.ContainsKey(key))
+                        continue;
+
+                    var line = member.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                    violations.Add(
+                        $"{key}  [{fileName}:{line}] — declares an export lookup as `{declaredType}`.");
+                }
+
+                // (b) A value-map/type-map pair of its own: the mirror shape, re-created — including
+                // a types dictionary parked next to a ModuleExports, which is the same trap.
+                var valueMap = members.FirstOrDefault(m =>
+                    IsWritableDictionaryOf(m.Type, "Symbol") || m.Type == "ModuleExports");
+                var typeMap = members.FirstOrDefault(m => IsWritableDictionaryOf(m.Type, "TypeSymbol"));
+                if (valueMap.Member is null || typeMap.Member is null)
                     continue;
 
-                var assigned = AssignedMemberNames(creation.Initializer);
-                if (!assigned.Contains(ExportsMember))
-                    continue; // construction that does not set Exports here (populated later / not at all)
-                if (assigned.Contains(MirrorMember))
-                    continue; // mirrored — good
-
-                var key = $"{fileName} :: new ModuleSymbol({NameAssignmentText(creation.Initializer)})";
-                if (ConstructionAllowlist.ContainsKey(key))
+                var pairKey = $"{fileName} :: {type.Identifier.Text}";
+                if (OwnershipAllowlist.ContainsKey(pairKey))
                     continue;
 
-                var line = creation.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                var pairLine = typeMap.Member.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
                 violations.Add(
-                    $"{key}  [{fileName}:{line}] — assigns Exports but not ExportedTypes in the initializer.");
+                    $"{pairKey}  [{fileName}:{pairLine}] — declares both `{valueMap.Name}` and "
+                    + $"`{typeMap.Name}`, a value-map/type-map pair maintained by hand.");
             }
         }
 
         violations.Should().BeEmpty(
-            "every `new ModuleSymbol` that assigns Exports must also assign the ExportedTypes mirror in "
-            + "the same initializer, or the type-only lookup ResolveQualifiedType consults first is lost "
-            + "for that module (Class G / #1092/#1106). Add `ExportedTypes = ...` to the initializer, or "
-            + "add the printed key to ConstructionAllowlist with a written reason.\nViolations:\n"
+            "a module's exports live in ModuleExports, which keeps the value view and the types view "
+            + "in step by construction. A second raw dictionary re-creates the mirror-by-convention that "
+            + "#1105/#1106/#1135 kept breaking (Class G / #1145). Hold a ModuleExports instead, or add "
+            + "the printed key to OwnershipAllowlist with a written reason.\nViolations:\n"
             + string.Join("\n", violations));
     }
 
     [Fact]
-    public void ModuleSymbolExports_MutationAndSerializationSites_MirrorExportedTypes()
+    public void ExportLookups_AreMutatedOnlyThroughModuleExports()
     {
         var violations = new List<string>();
 
-        foreach (var (fileName, root) in EnumerateCompilerSyntaxTrees())
+        foreach (var (fileName, root) in EnumerateSyntaxTrees())
         {
-            foreach (var member in root.DescendantNodes().OfType<MemberDeclarationSyntax>())
+            if (fileName == SeamFile)
+                continue;
+
+            foreach (var node in root.DescendantNodes())
             {
-                var body = MethodLikeBody(member);
-                if (body is null)
+                var reason = OutOfSeamWrite(node);
+                if (reason is null)
                     continue;
 
-                if (!WritesOrSerializesExports(body, insideInitializer: false))
-                    continue;
-                if (ReferencesIdentifier(body, MirrorMember))
-                    continue; // method touches ExportedTypes somewhere — good
-
+                var member = node.FirstAncestorOrSelf<MemberDeclarationSyntax>(m =>
+                    m is MethodDeclarationSyntax or ConstructorDeclarationSyntax or PropertyDeclarationSyntax);
                 var key = $"{fileName} :: {MemberName(member)}";
                 if (MutationAllowlist.ContainsKey(key))
                     continue;
 
-                var line = member.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
-                violations.Add(
-                    $"{key}  [{fileName}:{line}] — mutates/serializes .Exports but never references ExportedTypes.");
+                var line = node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                violations.Add($"{key}  [{fileName}:{line}] — {reason}");
             }
         }
 
         violations.Should().BeEmpty(
-            "every method that mutates or serializes ModuleSymbol.Exports (indexer-set, Add/TryAdd, "
-            + "ToDictionary, or `.Exports = ...`) must also handle the ExportedTypes mirror, or a merge/"
-            + "populate/serialize path silently drops the type-only lookup (Class G / #1105/#1135). Handle "
-            + "ExportedTypes in the method, or add the printed key to MutationAllowlist with a written "
-            + "reason.\nViolations:\n" + string.Join("\n", violations));
+            "every write to a module's exports must go through ModuleExports (Add / MergeFrom, or "
+            + "RestoreFrom for the symbol cache), which files exported types in the types-only view "
+            + "automatically. Writing a lookup directly — or casting the read-only types view back to a "
+            + "mutable dictionary — is how the two views used to drift apart (Class G / #1145). Use the "
+            + "seam's API, or add the printed key to MutationAllowlist with a written reason.\nViolations:\n"
+            + string.Join("\n", violations));
     }
 
-    // --- Syntax helpers ---------------------------------------------------------------------
+    // --- Behavioral checks: the invariant the scans protect ----------------------------------
 
-    private static bool IsModuleSymbolCreation(ObjectCreationExpressionSyntax creation)
-        => creation.Type is IdentifierNameSyntax id && id.Identifier.Text == ModuleSymbolType;
-
-    /// <summary>Names of the members assigned by an object initializer (<c>Name = ...</c> ⇒ "Name").</summary>
-    private static HashSet<string> AssignedMemberNames(InitializerExpressionSyntax initializer)
+    [Fact]
+    public void ExportingAType_MakesItResolvableInAnnotationPosition()
     {
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var expr in initializer.Expressions)
-        {
-            if (expr is AssignmentExpressionSyntax { Left: IdentifierNameSyntax left })
-                names.Add(left.Identifier.Text);
-        }
-        return names;
+        var module = new ModuleSymbol { Name = "sqlite3", Kind = SymbolKind.Module };
+        var rowType = new TypeSymbol { Name = "Row", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+
+        module.Exports.Add("Row", rowType);
+        // A same-named value export must not take the type's place in annotation position (#1092).
+        module.Exports.Add("Row", new VariableSymbol { Name = "Row", Kind = SymbolKind.Variable });
+
+        module.Exports["Row"].Should().BeOfType<VariableSymbol>();
+        module.ExportedTypes.Should().ContainKey("Row");
+        module.TryGetExportedType("Row", out var resolved).Should().BeTrue();
+        resolved.Should().BeSameAs(rowType);
     }
 
-    /// <summary>Text of the initializer's <c>Name = ...</c> assignment, used to key a construction site.</summary>
-    private static string NameAssignmentText(InitializerExpressionSyntax initializer)
+    [Fact]
+    public void StagedModuleInfoExports_ReachTheModuleSymbolWithBothViews()
     {
-        foreach (var expr in initializer.Expressions)
+        // The pre-symbol staging layer holds the same unit, so the hand-off is one copy of both
+        // views — there is no second dictionary for a construction site to forget (#1106).
+        var moduleInfo = new ModuleInfo { Path = "sqlite3.spy" };
+        var rowType = new TypeSymbol { Name = "Row", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        moduleInfo.ExportedSymbols.Add("Row", rowType);
+        moduleInfo.ExportedSymbols.Add("Row", new VariableSymbol { Name = "Row", Kind = SymbolKind.Variable });
+
+        var module = new ModuleSymbol
         {
-            if (expr is AssignmentExpressionSyntax { Left: IdentifierNameSyntax { Identifier.Text: "Name" } } a)
-                return NormalizeWhitespace(a.ToString());
-        }
-        // Fallback: the sorted set of assigned members (deterministic) when there is no Name assignment.
-        return "members: " + string.Join(",", AssignedMemberNames(initializer).OrderBy(n => n, StringComparer.Ordinal));
-    }
-
-    /// <summary>
-    /// True if the block/expression writes or serializes a <c>.Exports</c> member: an indexer-set, an
-    /// <c>.Exports.Add/TryAdd/Remove/Clear/ToDictionary(...)</c> call, or a <c>.Exports = ...</c>
-    /// assignment that is not itself part of a <c>new ModuleSymbol</c> initializer.
-    /// </summary>
-    private static bool WritesOrSerializesExports(SyntaxNode body, bool insideInitializer)
-    {
-        foreach (var node in body.DescendantNodes())
-        {
-            switch (node)
-            {
-                // ms.Exports[key] = value
-                case AssignmentExpressionSyntax { Left: ElementAccessExpressionSyntax ea }
-                    when ExpressionTargetsMember(ea.Expression, ExportsMember):
-                    return true;
-
-                // ms.Exports = ... (member assignment outside an object initializer)
-                case AssignmentExpressionSyntax { Left: MemberAccessExpressionSyntax ma }
-                    when ma.Name.Identifier.Text == ExportsMember
-                         && ma.Parent is not InitializerExpressionSyntax:
-                    return true;
-
-                // ms.Exports.Add(...) / .ToDictionary(...) / etc.
-                case InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax call }
-                    when MutatingOrSerializingOps.Contains(call.Name.Identifier.Text)
-                         && ExpressionTargetsMember(call.Expression, ExportsMember):
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    /// <summary>True if <paramref name="expression"/> is (or ends in) a member/identifier named <paramref name="member"/>.</summary>
-    private static bool ExpressionTargetsMember(ExpressionSyntax expression, string member)
-        => expression switch
-        {
-            MemberAccessExpressionSyntax ma => ma.Name.Identifier.Text == member,
-            IdentifierNameSyntax id => id.Identifier.Text == member,
-            _ => false,
+            Name = "sqlite3",
+            Kind = SymbolKind.Module,
+            Exports = new ModuleExports(moduleInfo.ExportedSymbols)
         };
 
-    private static bool ReferencesIdentifier(SyntaxNode body, string identifier)
-        => body.DescendantNodes().OfType<IdentifierNameSyntax>()
-            .Any(id => id.Identifier.Text == identifier);
+        module.Exports["Row"].Should().BeOfType<VariableSymbol>();
+        module.TryGetExportedType("Row", out var resolved).Should().BeTrue();
+        resolved.Should().BeSameAs(rowType);
+    }
 
-    /// <summary>The body (block or expression) of a method/constructor/accessor/local function, else null.</summary>
-    private static SyntaxNode? MethodLikeBody(MemberDeclarationSyntax member)
-        => member switch
+    [Fact]
+    public void MergingModules_CarriesBothViews()
+    {
+        var target = new ModuleSymbol { Name = "sqlite3", Kind = SymbolKind.Module };
+        target.Exports.Add("Row", new VariableSymbol { Name = "Row", Kind = SymbolKind.Variable });
+
+        var source = new ModuleSymbol { Name = "sqlite3", Kind = SymbolKind.Module };
+        var rowType = new TypeSymbol { Name = "Row", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        source.Exports.Add("Row", rowType);
+
+        target.Exports.MergeFrom(source.Exports, firstImportWins: true);
+
+        target.Exports["Row"].Should().BeOfType<VariableSymbol>("first import wins in the value view");
+        target.TryGetExportedType("Row", out var resolved).Should().BeTrue();
+        resolved.Should().BeSameAs(rowType);
+    }
+
+    // --- Scan helpers ------------------------------------------------------------------------
+
+    /// <summary>
+    /// Property and field declarations of one type, as (declaration, member name, declared type
+    /// text). Members of nested types are attributed to the nested type, not the outer one.
+    /// </summary>
+    private static IEnumerable<(MemberDeclarationSyntax Member, string Name, string Type)> DeclaredMembers(
+        TypeDeclarationSyntax type)
+    {
+        foreach (var member in type.Members)
         {
-            MethodDeclarationSyntax m => (SyntaxNode?)m.Body ?? m.ExpressionBody,
-            ConstructorDeclarationSyntax c => (SyntaxNode?)c.Body ?? c.ExpressionBody,
+            switch (member)
+            {
+                case PropertyDeclarationSyntax property:
+                    yield return (property, property.Identifier.Text, Normalize(property.Type.ToString()));
+                    break;
+
+                case FieldDeclarationSyntax field:
+                    var fieldType = Normalize(field.Declaration.Type.ToString());
+                    foreach (var variable in field.Declaration.Variables)
+                        yield return (field, variable.Identifier.Text, fieldType);
+                    break;
+            }
+        }
+    }
+
+    private static bool IsWritableDictionary(string type)
+        => type.StartsWith("Dictionary<", StringComparison.Ordinal)
+           || type.StartsWith("IDictionary<", StringComparison.Ordinal)
+           || type.StartsWith("ConcurrentDictionary<", StringComparison.Ordinal);
+
+    /// <summary>True for a writable <c>…Dictionary&lt;string, {valueType}&gt;</c> (exactly that value type).</summary>
+    private static bool IsWritableDictionaryOf(string type, string valueType)
+        => IsWritableDictionary(type) && type.EndsWith($"<string,{valueType}>", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Describes how <paramref name="node"/> writes an export lookup from outside the seam, or null
+    /// if it does not.
+    /// </summary>
+    private static string? OutOfSeamWrite(SyntaxNode node)
+    {
+        switch (node)
+        {
+            // x.Exports[key] = value
+            case AssignmentExpressionSyntax { Left: ElementAccessExpressionSyntax element }
+                when TargetsMember(element.Expression, ExportMembers) is { } written:
+                return $"writes `{written}` through its indexer; use ModuleExports.Add.";
+
+            // x.ExportedTypes.Add(...) / ((IDictionary<…>)x.Exports.Types).Remove(...)
+            case InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax call }
+                when MutatingOps.Contains(call.Name.Identifier.Text)
+                     && TargetsMember(StripCast(call.Expression), TypesViewMembers) is { } mutated:
+                return $"calls {call.Name.Identifier.Text} on the read-only `{mutated}` view.";
+
+            // (Dictionary<string, TypeSymbol>)x.ExportedTypes — reaching around the read-only view
+            case CastExpressionSyntax cast
+                when IsDictionaryType(cast.Type) && TargetsMember(cast.Expression, ExportMembers) is { } cast2:
+                return $"casts `{cast2}` to a mutable dictionary.";
+
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>The member name if the expression is (or ends in) one of <paramref name="members"/>.</summary>
+    private static string? TargetsMember(ExpressionSyntax expression, HashSet<string> members)
+        => expression switch
+        {
+            MemberAccessExpressionSyntax ma when members.Contains(ma.Name.Identifier.Text)
+                => ma.Name.Identifier.Text,
+            IdentifierNameSyntax id when members.Contains(id.Identifier.Text)
+                => id.Identifier.Text,
             _ => null,
         };
 
-    private static string MemberName(MemberDeclarationSyntax member)
+    /// <summary>Unwraps a parenthesized cast so `((IDictionary&lt;…&gt;)x.Types).Add(…)` is seen.</summary>
+    private static ExpressionSyntax StripCast(ExpressionSyntax expression)
+        => expression switch
+        {
+            ParenthesizedExpressionSyntax p => StripCast(p.Expression),
+            CastExpressionSyntax c => StripCast(c.Expression),
+            _ => expression,
+        };
+
+    private static bool IsDictionaryType(TypeSyntax type)
+    {
+        var text = Normalize(type.ToString());
+        return text.StartsWith("Dictionary<", StringComparison.Ordinal)
+               || text.StartsWith("IDictionary<", StringComparison.Ordinal);
+    }
+
+    private static string MemberName(MemberDeclarationSyntax? member)
         => member switch
         {
             MethodDeclarationSyntax m => m.Identifier.Text,
             ConstructorDeclarationSyntax c => c.Identifier.Text,
+            PropertyDeclarationSyntax p => p.Identifier.Text,
+            null => "<file scope>",
             _ => member.GetType().Name,
         };
 
-    private static string NormalizeWhitespace(string s)
-        => string.Join(" ", s.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    private static string Normalize(string s) => s.Replace(" ", "", StringComparison.Ordinal);
 
     // --- File discovery ---------------------------------------------------------------------
 
-    private static IEnumerable<(string FileName, CompilationUnitSyntax Root)> EnumerateCompilerSyntaxTrees()
+    private static IEnumerable<(string FileName, CompilationUnitSyntax Root)> EnumerateSyntaxTrees()
     {
-        var dir = FindCompilerSourceDirectory();
-        foreach (var file in Directory.GetFiles(dir, "*.cs", SearchOption.AllDirectories))
+        foreach (var dir in new[] { FindSourceDir("Sharpy.Compiler"), FindSourceDir("Sharpy.Lsp") })
         {
-            // Skip generated/obj artifacts.
-            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-                continue;
+            foreach (var file in Directory.GetFiles(dir, "*.cs", SearchOption.AllDirectories))
+            {
+                if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                    || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+                    continue;
 
-            var text = File.ReadAllText(file);
-            // Cheap pre-filter: only files that mention the members can contain a relevant site.
-            if (!text.Contains(ExportsMember, StringComparison.Ordinal))
-                continue;
+                var text = File.ReadAllText(file);
+                // Cheap pre-filter: only files naming an export lookup can contain a relevant site.
+                if (!ExportMembers.Any(m => text.Contains(m, StringComparison.Ordinal))
+                    && !text.Contains("TypeSymbol>", StringComparison.Ordinal))
+                    continue;
 
-            var root = (CompilationUnitSyntax)CSharpSyntaxTree.ParseText(text).GetRoot();
-            yield return (Path.GetFileName(file), root);
+                var root = (CompilationUnitSyntax)CSharpSyntaxTree.ParseText(text).GetRoot();
+                yield return (Path.GetFileName(file), root);
+            }
         }
     }
 
-    private static string FindCompilerSourceDirectory()
+    private static string FindSourceDir(string project)
     {
         var current = AppContext.BaseDirectory;
         while (current != null)
         {
-            var path = Path.Combine(current, "src", "Sharpy.Compiler");
+            var path = Path.Combine(current, "src", project);
             if (Directory.Exists(path))
                 return path;
             current = Directory.GetParent(current)?.FullName;
         }
 
         return Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory, "..", "..", "..", "..", "Sharpy.Compiler"));
+            AppContext.BaseDirectory, "..", "..", "..", "..", project));
     }
 }
