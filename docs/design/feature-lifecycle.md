@@ -197,26 +197,35 @@ A behavioral flag differs from a syntax feature in three ways:
 
 ## Pilot features
 
-Four features pilot this lifecycle. All are `Parser`-scoped and all ship experimental.
+Four features piloted this lifecycle. All are `Parser`-scoped and all shipped experimental; three are
+still experimental, and `failable_cast` has since run the whole course to graduation and flag deletion
+(see below), so its row records history rather than a live flag.
 
-| Feature | Flag | Issue | Scope | Lowering |
-|---------|------|-------|-------|----------|
-| `@` matrix-multiplication operator | `matmul` | [#989](https://github.com/antonsynd/sharpy/issues/989) | `Parser` | dispatches to `__matmul__` / `__imatmul__` |
-| `defer` statement | `defer` | [#1023](https://github.com/antonsynd/sharpy/issues/1023) | `Parser` | scope-exit registration lowered to try/finally |
-| `as?` / `as!` failable casts | `failable_cast` | [#1029](https://github.com/antonsynd/sharpy/issues/1029) | `Parser` | identical to `to` / `to?` — `(T)value` or `is T … ? Optional<T>.Some(…) : default` |
-| `before_set` / `after_set` property observers | `property_observers` | [#416](https://github.com/antonsynd/sharpy/issues/416) | `Parser` | auto-property lowered to a backing field + expanded setter running the observers around every store |
+| Feature | Flag | Issue | Scope | Lowering | Status |
+|---------|------|-------|-------|----------|--------|
+| `@` matrix-multiplication operator | `matmul` | [#989](https://github.com/antonsynd/sharpy/issues/989) | `Parser` | dispatches to `__matmul__` / `__imatmul__` | experimental |
+| `defer` statement | `defer` | [#1023](https://github.com/antonsynd/sharpy/issues/1023) | `Parser` | scope-exit registration lowered to try/finally | experimental |
+| `as?` / `as!` failable casts | `failable_cast` | [#1029](https://github.com/antonsynd/sharpy/issues/1029) | `Parser` | `(T)value` or `is T … ? Optional<T>.Some(…) : default` | graduated (#1096), flag removed (#1128) |
+| `before_set` / `after_set` property observers | `property_observers` | [#416](https://github.com/antonsynd/sharpy/issues/416) | `Parser` | auto-property lowered to a backing field + expanded setter running the observers around every store | experimental |
 
-Each pilot registers its name in `KnownFeatures`, registers its gated construct (`@`/`@=`, the
+Each pilot registered its name in `KnownFeatures`, registered its gated construct (`@`/`@=`, the
 `defer` statement, the `as?`/`as!`-form `TypeCoercion`, and a `PropertyDef` carrying non-empty
-`before_set`/`after_set` observers respectively) in the feature-gate registry, and ships with the
+`before_set`/`after_set` observers respectively) in the feature-gate registry, and shipped with the
 dual-fixture pattern: an ungated `.error` fixture asserting `SPY0331` and a gated `.expected` fixture
 (via `.features`) exercising the enabled behaviour.
 
-`failable_cast` additionally pilots a **feature-conditional transition hint**: while the flag is
-enabled, a legacy `to`/`to?` cast emits `SPY0479` suggesting the `as!`/`as?` spelling (the hint is
-suppressed when the flag is off, so it never advises syntax the build would reject). Graduation of
-`failable_cast` — making `as?`/`as!` primary and retiring `to` — is deferred graduation work tracked in
-[#1096](https://github.com/antonsynd/sharpy/issues/1096).
+`failable_cast` **has completed the full lifecycle** and is the worked example of graduation. While the
+flag was live it piloted a *feature-conditional transition hint*: an enabled flag made a legacy
+`to`/`to?` cast emit `SPY0479` suggesting the `as!`/`as?` spelling, suppressed when the flag was off so
+it never advised syntax the build would reject. Then, in order:
+[#1096](https://github.com/antonsynd/sharpy/issues/1096) graduated it — `as?`/`as!` became
+unconditional, the gate was removed, and the name stayed in `KnownFeatures` as an `IsNoOp: true` entry
+so existing configurations kept compiling; [#1127](https://github.com/antonsynd/sharpy/issues/1127)
+retired `to`/`to?` as a parse error, which retired `SPY0479` with it (the code is reserved and never
+reused); and after the flag rode two releases as a no-op (v0.8.0, v0.9.0),
+[#1128](https://github.com/antonsynd/sharpy/issues/1128) deleted the entry, so `failable_cast` is once
+again an unknown feature name. The `IsNoOp` machinery it exercised stays in `FeatureInfo` for the next
+graduation. The table row above is retained as the historical record of what shipped experimental.
 
 ## Proposing a new feature — checklist
 

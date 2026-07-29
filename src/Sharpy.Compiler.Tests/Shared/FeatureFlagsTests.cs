@@ -62,7 +62,7 @@ public class FeatureFlagsTests
         Assert.Equal(
             new[]
             {
-                "__test_feature", "defer", "failable_cast", "matmul",
+                "__test_feature", "defer", "matmul",
                 "opt_comprehension_fusion", "opt_const_fold", "opt_stack_collections",
                 "property_observers",
             },
@@ -111,36 +111,36 @@ public class FeatureFlagsTests
     }
 
     [Fact]
-    public void FailableCast_IsMarkedNoOp_Graduated()
+    public void FailableCast_IsRemovedFromKnownFeatures()
     {
-        // #1096 graduated failable_cast: the gate is gone, but the name stays in KnownFeatures as a
-        // no-op so existing --enable-feature / <Features> / from __future__ import sites keep compiling.
-        var info = FeatureFlags.KnownFeatures["failable_cast"];
-        Assert.True(info.IsNoOp);
-        Assert.False(info.Hidden);
+        // #1096 graduated failable_cast to unconditional `as?`/`as!` syntax and left the name as a
+        // no-op for one release; #1128 completed the two-step retirement by deleting the entry. The
+        // flag is now an unknown name at every boundary — there is no syntax left for it to unlock.
+        Assert.False(FeatureFlags.KnownFeatures.ContainsKey("failable_cast"));
+
+        Assert.False(FeatureFlags.TryValidate("failable_cast", out var error));
+        Assert.NotNull(error);
+        Assert.Contains("failable_cast", error);
     }
 
     [Fact]
-    public void NoOpFeature_StillValidates_EnableFeatureAccepted()
+    public void DescribeFeatures_AnnotatesNoOpFeatures()
     {
-        // `--enable-feature failable_cast` (or <Features>failable_cast</Features>) must still succeed
-        // silently after graduation — a graduated flag is a known no-op, not an unknown name.
-        Assert.True(FeatureFlags.TryValidate("failable_cast", out var error));
-        Assert.Null(error);
+        // The user-visible listing marks graduated flags as safe to remove. No registered feature is
+        // mid-graduation right now (failable_cast was the last, removed in #1128), so the annotation
+        // is exercised against a synthetic set to keep the machinery covered for the next graduation.
+        var message = FeatureFlags.DescribeFeatures(new[]
+        {
+            new FeatureInfo("graduated_thing", "desc", FeatureScope.Parser, IsNoOp: true),
+            new FeatureInfo("live_thing", "desc", FeatureScope.Parser),
+            new FeatureInfo("__hidden_thing", "desc", FeatureScope.Semantic, Hidden: true, IsNoOp: true),
+        });
 
-        var flags = FeatureFlags.None.Enable("failable_cast");
-        Assert.True(flags.IsEnabled("failable_cast"));
-    }
+        Assert.Contains("graduated_thing (no-op — graduated, safe to remove)", message);
+        Assert.Contains("live_thing", message);
+        Assert.DoesNotContain("live_thing (no-op", message);
 
-    [Fact]
-    public void KnownFeatureListMessage_AnnotatesNoOpFeatures()
-    {
-        // The user-visible listing marks graduated flags as safe to remove.
-        var message = FeatureFlags.KnownFeatureListMessage();
-        Assert.Contains("failable_cast (no-op", message);
-
-        // Non-graduated features appear without the annotation.
-        Assert.Contains("defer", message);
-        Assert.DoesNotContain("defer (no-op", message);
+        // Hidden features stay hidden even when they are no-ops.
+        Assert.DoesNotContain("__hidden_thing", message);
     }
 }

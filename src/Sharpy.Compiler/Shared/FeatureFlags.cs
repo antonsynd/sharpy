@@ -97,7 +97,7 @@ public sealed class FeatureFlags
     /// The single source of truth for all known feature names. <c>__test_feature</c> (hidden
     /// from <c>--help</c>) exists so the enable-a-feature plumbing is testable end-to-end;
     /// real experimental features register here per docs/design/feature-lifecycle.md — the
-    /// parser/semantic <i>syntax</i> features (<c>matmul</c>, <c>defer</c>, <c>failable_cast</c>,
+    /// parser/semantic <i>syntax</i> features (<c>matmul</c>, <c>defer</c>,
     /// <c>property_observers</c>) and the CodeGen-scoped <i>behavioral</i> flags for the E3 IR
     /// optimization passes (<c>opt_const_fold</c>, <c>opt_comprehension_fusion</c>,
     /// <c>opt_stack_collections</c>; a disabled behavioral flag means its pass does not run).
@@ -127,18 +127,10 @@ public sealed class FeatureFlags
                 // Parser-scoped: `defer` is a new statement syntax. It is always parsed but its use
                 // is gated; a `from __future__ import` cannot unlock parser-scoped syntax.
                 FeatureScope.Parser),
-            ["failable_cast"] = new FeatureInfo(
-                "failable_cast",
-                "Graduated (#1096): the `as?` / `as!` failable-cast operators are now unconditional " +
-                "language surface. This flag is a no-op, retained for back-compat, and will be removed " +
-                "a release after graduation — delete it from your configuration. (`value as! T` throws " +
-                "InvalidCastException on failure and yields T; `value as? T` yields None on failure and " +
-                "yields T?; lowers identically to the `to` / `to?` operators.)",
-                // Parser-scoped: `as?`/`as!` are expression syntax, so a `from __future__ import` could
-                // never have unlocked them. The gate is gone now (graduated), but the scope is retained
-                // so a re-gating would still reject the future-import path.
-                FeatureScope.Parser,
-                IsNoOp: true),
+            // `failable_cast` graduated in #1096 and rode two releases (v0.8.0, v0.9.0) as a no-op; the
+            // name was deleted from this registry in #1128 per the two-step retirement in
+            // docs/design/feature-lifecycle.md. `--enable-feature failable_cast` is now an unknown-name
+            // error — the `as?`/`as!` operators are unconditional language surface and need no flag.
             ["property_observers"] = new FeatureInfo(
                 "property_observers",
                 "Experimental `before_set` / `after_set` property observers (#416). An auto-property " +
@@ -224,11 +216,18 @@ public sealed class FeatureFlags
     /// Returns a human-readable list of known, user-visible feature names for error
     /// messages, or a note that there are none.
     /// </summary>
-    public static string KnownFeatureListMessage()
+    public static string KnownFeatureListMessage() => DescribeFeatures(KnownFeatures.Values);
+
+    /// <summary>
+    /// Formats an arbitrary feature set for <see cref="KnownFeatureListMessage"/>. Split out so the
+    /// no-op annotation stays testable even when no registered feature is currently mid-graduation
+    /// (the registry holds no <see cref="FeatureInfo.IsNoOp"/> entry between graduations).
+    /// </summary>
+    internal static string DescribeFeatures(IEnumerable<FeatureInfo> features)
     {
         // No-op (graduated) features are annotated so the listing tells users the flag is safe to
         // delete — see FeatureInfo.IsNoOp and docs/design/feature-lifecycle.md.
-        var visible = KnownFeatures.Values
+        var visible = features
             .Where(f => !f.Hidden)
             .OrderBy(f => f.Name, StringComparer.Ordinal)
             .Select(f => f.IsNoOp ? $"{f.Name} (no-op — graduated, safe to remove)" : f.Name)

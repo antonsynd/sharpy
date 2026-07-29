@@ -446,29 +446,28 @@ deviations:
         last = t[-1]      # ERROR SPY0259: negative tuple index not allowed
         last = t[2]       # OK
 
-  - id: failable-cast-operators
-    code: SPY0479
-    category: operators
-    audience: both
-    severity: hint
-    python_behavior: "No cast operator; casting is via constructor calls (`int(x)`) or `typing.cast` (a no-op hint)."
-    sharpy_behavior: "Experimental `as?`/`as!` failable-cast operators (behind the `failable_cast` flag, #1029) move the failure mode onto the operator: `x as! T` throws, `x as? T` yields `T?`. The legacy `to`/`to?` operator still works; when `failable_cast` is enabled, a `to` cast emits SPY0479 suggesting the `as!`/`as?` spelling. A nullable target on `as?`/`as!` (`x as? T?`) is a hard error, SPY0334."
-    spec_ref: docs/language_specification/type_casting.md
-    existing_diagnostic: null
-    planned_diagnostic: SPY0479
-    example:
-      python: |
-        value = int(x)          # narrowing via constructor
-      sharpy: |
-        # --enable-feature=failable_cast
-        value = x as! int       # throws InvalidCastException on failure
-        maybe_value = x as? int # int? — None on failure
-        legacy = x to int       # still valid; emits SPY0479 hint under the flag
-
   # ============================================================
   # Other deviations (no current or planned diagnostic, or
   # covered by an existing diagnostic)
   # ============================================================
+
+  - id: failable-cast-operators
+    code: null
+    category: operators
+    audience: both
+    severity: none
+    python_behavior: "No cast operator; casting is via constructor calls (`int(x)`) or `typing.cast` (a no-op hint)."
+    sharpy_behavior: "The `as?`/`as!` failable-cast operators put the failure mode on the operator: `x as! T` throws, `x as? T` yields `T?`. They are unconditional language surface — graduated from the experimental `failable_cast` flag in #1096, and the flag name was deleted from the registry in #1128. The legacy `to`/`to?` spelling was retired in #1127 and is now a parse error, so the SPY0479 migration hint that once steered `to` toward `as` no longer exists (the code is reserved, never reused). A nullable target on `as?`/`as!` (`x as? T?`) is a hard error, SPY0334."
+    spec_ref: docs/language_specification/type_casting.md
+    existing_diagnostic: SPY0334
+    planned_diagnostic: null
+    example:
+      python: |
+        value = int(x)          # narrowing via constructor
+      sharpy: |
+        value = x as! int       # throws InvalidCastException on failure
+        maybe_value = x as? int # int? — None on failure
+        legacy = x to int       # ERROR: `to` was retired (#1127); use `as!`/`as?`
 
   - id: string-indexing-utf16
     code: null
