@@ -8,6 +8,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <!-- #1176: pin the provider bundle explicitly; the version Microsoft.Data.Sqlite pulls
+         transitively carries a known advisory (NU1903). Keep this literal in lock-step with
+         Sharpy.Cli.csproj and Sharpy.Stdlib.csproj — the three-way drift guard test enforces it. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.4" />
   </ItemGroup>
 
   <ItemGroup>
