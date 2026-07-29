@@ -48,17 +48,17 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// traited out of the fast suite. A reviewed allowlist
 /// (<c>Conformance/generic-reference-allowlist.txt</c>) makes it a <b>ratchet</b>: any cell whose
 /// outcome is <c>ice</c>/<c>subscriptMisfire</c>/<c>csLeak</c>/<c>wrongOutput</c>/<c>crash</c> and
-/// whose key is not allowlisted fails the build. The allowlist is seeded only with cells a real run
-/// confirms as known-open issues (#1141 BCL typo'd member; #1142 user-module generic fn → SPY0320;
+/// whose key is not allowlisted fails the build. The allowlist was seeded only with cells a real run
+/// confirmed as known-open issues (#1141 BCL typo'd member; #1142 user-module generic fn → SPY0320;
 /// #1147 parenthesized method-group callee → C# cast; #1148 builtin value-arg validation after
 /// type-arg selection). This is the systematic analog of <see cref="InteropConformanceTests"/> that
 /// the class-A analysis called out as the single clearest missing mechanism.
 /// </para>
 ///
-/// <para><b>Acceptance criterion (#1143).</b> As those issues are fixed, delete the corresponding
-/// allowlist lines; the generic-reference-unification work is complete when
-/// <c>generic-reference-allowlist.txt</c> reaches EMPTY (every cell resolves cleanly or emits a
-/// deliberate diagnostic). The ratchet then fails loudly if any regression reintroduces a gap.
+/// <para><b>Acceptance criterion (#1143) — MET.</b> Those issues are fixed and every allowlist line
+/// is drained: <c>generic-reference-allowlist.txt</c> is EMPTY (every cell resolves cleanly or emits
+/// a deliberate diagnostic). The file itself stays in place — its presence is what arms the ratchet —
+/// so any regression that reintroduces a gap now fails the suite loudly instead of being absorbed.
 /// </para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]

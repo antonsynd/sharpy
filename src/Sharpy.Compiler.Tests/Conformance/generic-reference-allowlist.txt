@@ -1,39 +1,26 @@
-# Generic-reference conformance allowlist (ratchet ledger).
+# Generic-reference conformance allowlist (ratchet ledger) — EMPTY.
 #
 # One `specimen::form::arity` cell key per line (see GenericReferenceConformanceTests). A cell whose
 # outcome is ice / subscriptMisfire / csLeak / wrongOutput / crash fails the ratchet UNLESS its key
-# appears here. `#` starts a comment; blank lines are ignored. Presence of this file switches the
-# sweep into ratchet mode; delete a line when the underlying bug is fixed (the sweep then fails loudly
-# if the cell still misbehaves, forcing the ledger to stay honest).
+# appears here. `#` starts a comment; blank lines are ignored.
 #
-# Every entry below is a CONFIRMED failing cell from the baseline run. Two are known-open issues
-# (#1142); the rest are NEW discoveries this sweep found (draft issues in the PR/handoff notes). No
-# cell is allowlisted speculatively — each was observed failing.
-
-# ─────────────────────────────────────────────────────────────────────────────
-# #1142 (OPEN) — explicit type arguments on a USER-MODULE generic function are unresolved.
-# `genlib.identity[int](5)` (and its uncalled/paren/ternary/passed/excess/deficient forms) resolve the
-# member to a plain FunctionType, so `[...]` falls through to value-indexing → SPY0320 "does not
-# support indexing" (the subscript-misfire signature). The .NET-module arm (json.loads[int]) works;
-# only the user-module (.spy import) arm is missing. This is the class-A face the sweep was built to
-# pin. (A related face — a plain no-type-args call `genlib.identity(5)` failing inference with SPY0220
-# — surfaces as a *deliberate* diagnostic, so it is a PASS here, not allowlisted, but is the same
-# root cause: user-module generic functions are not modeled with their type parameters.)
-usermod_identity::called::exact
-usermod_identity::called::excess
-usermod_identity::uncalledAssigned::exact
-usermod_identity::uncalledAssigned::excess
-usermod_identity::uncalledThenCalled::exact
-usermod_identity::passedAsArg::exact
-usermod_identity::parenCalled::exact
-usermod_identity::ternaryCalled::exact
-usermod_pair::called::exact
-usermod_pair::called::excess
-usermod_pair::called::deficient
-usermod_pair::uncalledAssigned::exact
-usermod_pair::uncalledAssigned::excess
-usermod_pair::uncalledAssigned::deficient
-usermod_pair::uncalledThenCalled::exact
-usermod_pair::passedAsArg::exact
-usermod_pair::parenCalled::exact
-usermod_pair::ternaryCalled::exact
+# THIS FILE IS DELIBERATELY EMPTY OF ENTRIES — that is the contract, not an oversight.
+#
+# The #1143 acceptance criterion is exactly this state: every one of the 121 cells in the matrix
+# either resolves cleanly (`ok`) or emits a deliberate Sharpy diagnostic (`deliberateDiagnostic`).
+# No cell is permitted to ICE, misfire into value-indexing, leak a raw CSxxxx Roslyn code, or print
+# the wrong result. The ledger drained to zero over #1142 (user-module generic exports keep their
+# type parameters), #1147 (parenthesized method-group callee), #1148 (value-arg validation against
+# the type-arg-narrowed overload set), and #1141 (BCL member-absence proof).
+#
+# DO NOT DELETE THIS FILE. Its mere presence — content notwithstanding — is what switches the sweep
+# into ratchet mode (see AllowlistFileExists). Deleting it would silently disarm the ratchet and let
+# a regression pass; an empty-but-present file makes any newly misbehaving cell fail the suite loudly.
+#
+# If you must add an entry:
+#   1. It MUST cite a filed GitHub issue explaining the specific defect the cell exposes.
+#   2. It MUST correspond to a cell a real run confirms failing — never allowlist speculatively.
+#   3. It is temporary. Delete the line in the same change that fixes the bug ("drain on fix"), so
+#      the ratchet re-arms on that cell and the ledger stays honest.
+# The steady state of this file is empty. Any growth is a regression in the contract, not a fact
+# about the code that can be left standing.
