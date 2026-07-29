@@ -270,7 +270,13 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
         return names.Count == 0 ? FeatureFlags.None : FeatureFlags.None.Enable(names);
     }
 
-    protected static string FindEntryPoint(string projectDir)
+    /// <summary>
+    /// The entry file of a multi-file fixture directory: <c>main.spy</c>, else a <c>.spy</c> named
+    /// after the directory, else the first <c>.spy</c> in name order. Public so harnesses that drive
+    /// multi-file fixtures without deriving from this class (e.g. the metamorphic corpus sweep) share
+    /// one definition of "the entry point" with the fixture runner.
+    /// </summary>
+    public static string FindEntryPoint(string projectDir)
     {
         var dirName = Path.GetFileName(projectDir);
 

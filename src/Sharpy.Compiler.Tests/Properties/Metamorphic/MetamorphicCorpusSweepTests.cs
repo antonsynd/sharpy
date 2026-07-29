@@ -5,6 +5,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
@@ -84,8 +87,13 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
 
         Parallel.ForEach(fixtures, new ParallelOptions { MaxDegreeOfParallelism = dop }, fixture =>
         {
-            var source = File.ReadAllText(fixture.SpyFilePath);
-            var fileName = Path.GetFileName(fixture.SpyFilePath);
+            // Multi-file fixtures are covered by transforming their ENTRY file only and compiling the
+            // whole project around it; a transform has no defined meaning across module boundaries.
+            var entryPath = fixture.IsMultiFile
+                ? Path.Combine(fixture.SpyFilePath, FileBasedIntegrationTestsBase.FindEntryPoint(fixture.SpyFilePath))
+                : fixture.SpyFilePath;
+            var source = File.ReadAllText(entryPath);
+            var fileName = Path.GetFileName(entryPath);
             var features = fixture.Features.Count == 0
                 ? FeatureFlags.None
                 : FeatureFlags.None.Enable(fixture.Features);
@@ -93,7 +101,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
             CompileOutcome baseline;
             try
             {
-                baseline = Compile(api, csharpBase, source, fileName, features);
+                baseline = Compile(api, csharpBase, fixture, source, fileName, features);
             }
             catch (Exception ex)
             {
@@ -173,6 +181,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
             {
                 fixturesEligible = fixtures.Count + droppedByLimit,
                 fixturesSwept = fixtures.Count,
+                multiFileFixturesSwept = fixtures.Count(f => f.IsMultiFile),
                 fixturesDroppedByLimit = droppedByLimit,
                 fixtureLimit = limit,
                 baselineNotCompiling = baselineFailures.Count,
@@ -194,7 +203,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
             ratchetMode = Allowlist.FileExists(),
             scopeNotes = new[]
             {
-                "Corpus: single-file fixtures with an .expected sidecar (valid executing programs), .features threaded exactly as FileBasedIntegrationTests threads them. Multi-file fixtures are out of scope (#1158); .error/.warning-only fixtures are excluded by design — transforms are only guaranteed semantics-preserving on valid programs.",
+                "Corpus: every fixture with an .expected sidecar (valid executing programs), .features threaded exactly as FileBasedIntegrationTests threads them. Multi-file fixtures participate through their ENTRY file only — the transform rewrites main.spy and the whole project is compiled around it; a transform has no defined meaning across module boundaries. .error/.warning-only fixtures are excluded by design — transforms are only guaranteed semantics-preserving on valid programs.",
                 "Cells compile in library-equivalent mode (no execution, no assembly emit); the output-invariance property lives in MetamorphicCorpusInvarianceTests (Category=RandomProperty).",
                 "Comparison is over ERROR+WARNING diagnostic codes. A code present in the transformed compile and absent from the baseline is a regression unless the transform's allowed-delta entry lists it.",
                 "Outcomes: ok; notApplicable (transform returned the source byte-identical); diagRegression (new diagnostic code, or the transformed program stopped compiling); ice (SPY09xx internal error); csLeak (Sharpy accepted the program but the generated C# fails to bind while the baseline's bound clean); crash (transform or compiler threw).",
@@ -259,9 +268,15 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
     /// sidecar — the valid, executing programs the transforms are defined on.
     /// </summary>
     internal static List<TestFixtureInfo> EligibleFixtures()
+        => AllEligibleFixtures().Where(fx => !fx.IsMultiFile).ToList();
+
+    /// <summary>
+    /// Every eligible fixture, single- and multi-file. Multi-file fixtures participate through their
+    /// entry file (see the sweep loop); the same <c>.expected</c>-and-no-<c>.error</c> rule applies.
+    /// </summary>
+    private static List<TestFixtureInfo> AllEligibleFixtures()
         => FixtureDiscoveryHelper.DiscoverFixtures()
-            .Where(fx => !fx.IsMultiFile
-                      && fx.ExpectedFile is not null
+            .Where(fx => fx.ExpectedFile is not null
                       && fx.ErrorFile is null
                       && fx.RuntimeErrorFile is null)
             .OrderBy(fx => fx.TestName, StringComparer.Ordinal)
@@ -275,7 +290,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
     /// </summary>
     private static (List<TestFixtureInfo> Fixtures, int Dropped, int Limit) SelectFixtures()
     {
-        var eligible = EligibleFixtures();
+        var eligible = AllEligibleFixtures();
         var limit = ReadIntEnv("METAMORPHIC_SWEEP_LIMIT", 0);
         if (limit <= 0 || eligible.Count <= limit)
             return (eligible, 0, 0);
@@ -301,7 +316,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
         CompileOutcome result;
         try
         {
-            result = Compile(api, csharpBase, transformed, fileName, features);
+            result = Compile(api, csharpBase, fixture, transformed, fileName, features);
         }
         catch (Exception ex)
         {
@@ -345,22 +360,39 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
     }
 
     /// <summary>
-    /// Compiles one source through the production single-file path (a real on-disk entry compiled as
-    /// a synthetic project-of-one-file, exactly like <see cref="IntegrationTestBase.CompileAndExecute"/>)
-    /// and then binds the generated C# through Roslyn. Binding is what makes a silent mis-emit
-    /// visible: the Sharpy phases accept the program, so only the C# compiler can object.
+    /// Compiles the fixture with <paramref name="source"/> standing in for its entry file, then binds
+    /// the generated C# through Roslyn. Binding is what makes a silent mis-emit visible: the Sharpy
+    /// phases accept the program, so only the C# compiler can object.
+    ///
+    /// <para>Single-file fixtures go through the production single-file path (a real on-disk entry
+    /// compiled as a synthetic project-of-one-file, exactly like
+    /// <see cref="IntegrationTestBase.CompileAndExecute"/>). Multi-file fixtures are copied whole to a
+    /// temp directory with the entry file replaced, then compiled through
+    /// <see cref="CompilerApi.CompileFile"/> so the local-import closure is walked the way a real
+    /// project compile walks it.</para>
     /// </summary>
     private static CompileOutcome Compile(
-        CompilerApi api, CSharpCompilation csharpBase, string source, string fileName, FeatureFlags features)
+        CompilerApi api, CSharpCompilation csharpBase, TestFixtureInfo fixture, string source,
+        string fileName, FeatureFlags features)
     {
         var dir = Path.Combine(Path.GetTempPath(), $"sharpy_metamorphic_{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
         CompileResult result;
         try
         {
-            var path = Path.Combine(dir, fileName);
-            File.WriteAllText(path, source);
-            result = api.Compile(source, new CompilerOptions { OutputType = "exe", Features = features }, path);
+            var options = new CompilerOptions { OutputType = "exe", Features = features };
+            if (fixture.IsMultiFile)
+            {
+                CopyDirectory(fixture.SpyFilePath, dir);
+                File.WriteAllText(Path.Combine(dir, fileName), source);
+                return CompileProject(csharpBase, dir, fileName, features);
+            }
+            else
+            {
+                var path = Path.Combine(dir, fileName);
+                File.WriteAllText(path, source);
+                result = api.Compile(source, options, path);
+            }
         }
         finally
         {
@@ -369,9 +401,19 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
             catch { /* best effort */ }
         }
 
-        var diagnostics = result.Diagnostics
-            .Where(d => d.Severity is CompilerDiagnosticSeverity.Error or CompilerDiagnosticSeverity.Warning)
-            .ToList();
+        return BuildOutcome(
+            csharpBase,
+            result.Success,
+            result.Diagnostics
+                .Where(d => d.Severity is CompilerDiagnosticSeverity.Error or CompilerDiagnosticSeverity.Warning)
+                .ToList(),
+            CollectGeneratedCSharpSources(result));
+    }
+
+    private static CompileOutcome BuildOutcome(
+        CSharpCompilation csharpBase, bool success,
+        IReadOnlyList<CompilerDiagnostic> diagnostics, IReadOnlyList<string> generatedCSharp)
+    {
         var codes = diagnostics
             .Select(d => d.Code)
             .Where(c => !string.IsNullOrEmpty(c))
@@ -384,11 +426,60 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
             .Take(6)
             .ToList();
 
-        var csErrors = result.Success
-            ? BindGeneratedCSharp(csharpBase, CollectGeneratedCSharpSources(result))
-            : new List<string>();
+        var csErrors = success ? BindGeneratedCSharp(csharpBase, generatedCSharp) : new List<string>();
+        return new CompileOutcome(success, codes, diagnostics, errors, csErrors);
+    }
 
-        return new CompileOutcome(result.Success, codes, diagnostics, errors, csErrors);
+    /// <summary>
+    /// Compiles a multi-file fixture through <see cref="ProjectCompiler"/> with the same
+    /// <c>RootNamespace</c> the fixture suite uses. Deliberately NOT the entry-file path
+    /// (<see cref="CompilerApi.CompileFile"/>): that path mis-emits imported class references for 36
+    /// of the 68 multi-file fixtures (#1171), which would cost their transform coverage until it is
+    /// fixed. Entry-point agreement is the front-end parity harness's contract (#1144), not this one's.
+    /// </summary>
+    private static CompileOutcome CompileProject(
+        CSharpCompilation csharpBase, string projectDir, string entryFile, FeatureFlags features)
+    {
+        var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .ToList();
+
+        var config = new ProjectConfig
+        {
+            ProjectDirectory = projectDir,
+            ProjectFilePath = Path.Combine(projectDir, "metamorphic.spyproj"),
+            RootNamespace = "Sharpy.Test",
+            OutputType = "exe",
+            EntryPoint = entryFile,
+            SourceFiles = sourceFiles,
+            Configuration = "Debug",
+            TargetFramework = "net10.0",
+        };
+
+        var registry = new ModuleRegistry(NullLogger.Instance);
+        registry.LoadReference(ResolveAssemblyPath("Sharpy.Core.dll"));
+        var compiler = new ProjectCompiler(
+            NullLogger.Instance, registry, ProjectCompilerOptions.Default with { Features = features });
+        var result = compiler.Compile(config);
+
+        var diagnostics = result.Diagnostics.GetAll()
+            .Where(d => d.Severity is CompilerDiagnosticSeverity.Error or CompilerDiagnosticSeverity.Warning)
+            .ToList();
+        var generated = result.GeneratedCSharpFiles
+            .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .Select(kv => kv.Value)
+            .ToList();
+
+        return BuildOutcome(csharpBase, result.Success, diagnostics, generated);
+    }
+
+    /// <summary>Copies a fixture's whole directory tree (its sibling modules and package folders).</summary>
+    private static void CopyDirectory(string sourceDir, string targetDir)
+    {
+        foreach (var directory in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
+            Directory.CreateDirectory(Path.Combine(targetDir, Path.GetRelativePath(sourceDir, directory)));
+        foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
+            File.Copy(file, Path.Combine(targetDir, Path.GetRelativePath(sourceDir, file)), overwrite: true);
     }
 
     private static IReadOnlyList<string> CollectGeneratedCSharpSources(CompileResult result)
