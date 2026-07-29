@@ -3,15 +3,15 @@
 - CPython source: Lib/test/test_dict.py
 - CPython version pin: 3.12
 - Test methods: 84
-- Portable: 34 (40.5%)
+- Portable: 36 (42.9%)
 
 ## Category counts
 
 | Category | Count | % |
 |---|---:|---:|
-| PORTABLE | 34 | 40.5% |
+| PORTABLE | 36 | 42.9% |
 | NEEDS-REWRITE | 30 | 35.7% |
-| DIVERGENT | 2 | 2.4% |
+| DIVERGENT | 0 | 0.0% |
 | DYNAMIC | 2 | 2.4% |
 | IMPL-DETAIL | 16 | 19.0% |
 
@@ -35,7 +35,7 @@
 | `DictTest.test_update` | NEEDS-REWRITE | `local-class` |
 | `DictTest.test_fromkeys` | NEEDS-REWRITE | `local-class` |
 | `DictTest.test_copy` | PORTABLE | — |
-| `DictTest.test_copy_fuzz` | DIVERGENT | `floor-div` (integer-division-floor) |
+| `DictTest.test_copy_fuzz` | PORTABLE | _generated-loop-unroll_ |
 | `DictTest.test_copy_maintains_tracking` | IMPL-DETAIL | `local-class`; `impl-detail-gc` |
 | `DictTest.test_copy_noncompact` | PORTABLE | — |
 | `DictTest.test_get` | PORTABLE | — |
@@ -63,7 +63,7 @@
 | `DictTest.test_bad_key` | DYNAMIC | `local-class`; `exec-eval`; `dynamic-namespace` |
 | `DictTest.test_resize1` | PORTABLE | — |
 | `DictTest.test_resize2` | NEEDS-REWRITE | `local-class` |
-| `DictTest.test_empty_presized_dict_in_freelist` | DIVERGENT | `floor-div` (integer-division-floor) |
+| `DictTest.test_empty_presized_dict_in_freelist` | PORTABLE | — |
 | `DictTest.test_container_iterator` | IMPL-DETAIL | `local-class`; `impl-detail-gc` |
 | `DictTest.test_string_keys_can_track_values` | PORTABLE | — |
 | `DictTest.test_track_literals` | IMPL-DETAIL | `impl-detail-decorator` |

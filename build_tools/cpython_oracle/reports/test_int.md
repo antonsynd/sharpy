@@ -3,15 +3,15 @@
 - CPython source: Lib/test/test_int.py
 - CPython version pin: 3.12
 - Test methods: 35
-- Portable: 13 (37.1%)
+- Portable: 15 (42.9%)
 
 ## Category counts
 
 | Category | Count | % |
 |---|---:|---:|
-| PORTABLE | 13 | 37.1% |
+| PORTABLE | 15 | 42.9% |
 | NEEDS-REWRITE | 9 | 25.7% |
-| DIVERGENT | 9 | 25.7% |
+| DIVERGENT | 7 | 20.0% |
 | DYNAMIC | 1 | 2.9% |
 | IMPL-DETAIL | 3 | 8.6% |
 
@@ -19,7 +19,7 @@
 
 | Method | Category | Reasons |
 |---|---|---|
-| `IntTestCases.test_basic` | DIVERGENT | `floor-div` (integer-division-floor) |
+| `IntTestCases.test_basic` | PORTABLE | _generated-loop_; _generated-loop-unroll_ |
 | `IntTestCases.test_invalid_signs` | PORTABLE | — |
 | `IntTestCases.test_unicode` | DIVERGENT | `huge-int` (int-overflow-checked) |
 | `IntTestCases.test_underscores` | DYNAMIC | `exec-eval` |
@@ -44,7 +44,7 @@
 | `IntStrDigitLimitsTests.test_denial_of_service_prevented_int_to_str` | NEEDS-REWRITE | `test-support` |
 | `IntStrDigitLimitsTests.test_denial_of_service_prevented_str_to_int` | NEEDS-REWRITE | `test-support` |
 | `IntStrDigitLimitsTests.test_power_of_two_bases_unlimited` | PORTABLE | _generated-loop-unroll_ |
-| `IntStrDigitLimitsTests.test_underscores_ignored` | DIVERGENT | `floor-div` (integer-division-floor) |
+| `IntStrDigitLimitsTests.test_underscores_ignored` | PORTABLE | — |
 | `IntStrDigitLimitsTests.test_sign_not_counted` | PORTABLE | — |
 | `IntStrDigitLimitsTests.test_int_from_other_bases` | PORTABLE | — |
 | `IntStrDigitLimitsTests.test_int_max_str_digits_is_per_interpreter` | NEEDS-REWRITE | `test-support` |
