@@ -26,10 +26,48 @@ internal sealed class LspConfiguration
     /// </summary>
     private volatile IReadOnlyList<string> _features = Array.Empty<string>();
 
+    /// <summary>
+    /// Backing store for <see cref="MaxNumberOfProblems"/>. A nullable int cannot be
+    /// <c>volatile</c>, so "no cap" is carried as a negative sentinel.
+    /// </summary>
+    private const int Uncapped = -1;
+
+    private volatile int _maxNumberOfProblems = Uncapped;
+
+    /// <summary>
+    /// When false, inferred-type inlay hints are not produced. Default: true.
+    /// </summary>
+    private volatile bool _inlayHintTypeAnnotations = true;
+
     public bool TransitionHintsEnabled
     {
         get => _transitionHintsEnabled;
         private set => _transitionHintsEnabled = value;
+    }
+
+    /// <summary>
+    /// The most diagnostics to publish for a single document (<c>sharpy.lsp.maxNumberOfProblems</c>),
+    /// or null for no cap. Zero is a real cap of zero, not "unlimited" — a negative value is what
+    /// means uncapped, since a user who writes a negative maximum cannot mean "show fewer than none".
+    /// </summary>
+    public int? MaxNumberOfProblems
+    {
+        get
+        {
+            var value = _maxNumberOfProblems;
+            return value < 0 ? null : value;
+        }
+        private set => _maxNumberOfProblems = value is { } v && v >= 0 ? v : Uncapped;
+    }
+
+    /// <summary>
+    /// Whether to produce inferred-type inlay hints (<c>sharpy.inlayHints.typeAnnotations</c>).
+    /// Default: true, matching the contributed setting's default.
+    /// </summary>
+    public bool InlayHintTypeAnnotations
+    {
+        get => _inlayHintTypeAnnotations;
+        private set => _inlayHintTypeAnnotations = value;
     }
 
     /// <summary>
@@ -76,6 +114,27 @@ internal sealed class LspConfiguration
         if (features is not null)
         {
             Features = ReadFeatureNames(features);
+        }
+
+        var maxProblems = root["lsp"]?["maxNumberOfProblems"];
+        if (maxProblems is not null)
+        {
+            // An explicit JSON null clears the cap; a non-numeric value is left alone rather than
+            // guessed at, so a malformed setting cannot silently hide diagnostics.
+            if (maxProblems.Type == Newtonsoft.Json.Linq.JTokenType.Null)
+                MaxNumberOfProblems = null;
+            else if (maxProblems.Type == Newtonsoft.Json.Linq.JTokenType.Integer)
+                MaxNumberOfProblems = maxProblems.ToObject<int>();
+        }
+
+        var inlayHints = root["inlayHints"];
+        if (inlayHints is not null)
+        {
+            var typeAnnotations = inlayHints["typeAnnotations"];
+            if (typeAnnotations is not null && typeAnnotations.Type == Newtonsoft.Json.Linq.JTokenType.Boolean)
+            {
+                InlayHintTypeAnnotations = typeAnnotations.ToObject<bool>();
+            }
         }
     }
 

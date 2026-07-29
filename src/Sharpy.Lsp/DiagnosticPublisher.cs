@@ -74,8 +74,56 @@ internal sealed class DiagnosticPublisher
             result.Add(ConvertDiagnostic(rerouted ?? diag, sourceText, rerouted != null ? diag : null));
         }
 
-        return result;
+        return ApplyProblemCap(result, configuration?.MaxNumberOfProblems);
     }
+
+    /// <summary>
+    /// Applies <c>sharpy.lsp.maxNumberOfProblems</c>. Returns <paramref name="diagnostics"/>
+    /// unchanged when there is no cap or the document is already under it.
+    /// </summary>
+    /// <remarks>
+    /// The dropped diagnostics are the <i>least severe</i> ones, not simply the last ones: the
+    /// compiler emits in phase order, and validators that produce hints (transition hints, order 56)
+    /// run well before validators that produce errors, so a positional truncation could hide every
+    /// error behind a wall of hints. Within one severity the compiler's order is kept, and the
+    /// surviving diagnostics are published in their original order, so a cap never reshuffles what
+    /// the editor already showed — it only takes from the bottom of the severity ladder.
+    /// </remarks>
+    internal static System.Collections.Generic.List<Diagnostic> ApplyProblemCap(
+        System.Collections.Generic.List<Diagnostic> diagnostics, int? maxNumberOfProblems)
+    {
+        if (maxNumberOfProblems is not { } cap || diagnostics.Count <= cap)
+            return diagnostics;
+
+        if (cap <= 0)
+            return new System.Collections.Generic.List<Diagnostic>();
+
+        var kept = diagnostics
+            .Select((diagnostic, index) => (diagnostic, index))
+            .OrderBy(entry => SeverityRank(entry.diagnostic.Severity))
+            .ThenBy(entry => entry.index)
+            .Take(cap)
+            .OrderBy(entry => entry.index)
+            .Select(entry => entry.diagnostic)
+            .ToList();
+
+        return kept;
+    }
+
+    /// <summary>
+    /// Orders severities most-severe-first for the problem cap. Diagnostics with no severity are
+    /// ranked with warnings — the LSP treats an absent severity as client's choice, and dropping
+    /// them ahead of hints would be a guess in the wrong direction.
+    /// </summary>
+    private static int SeverityRank(DiagnosticSeverity? severity) => severity switch
+    {
+        DiagnosticSeverity.Error => 0,
+        DiagnosticSeverity.Warning => 1,
+        null => 1,
+        DiagnosticSeverity.Information => 2,
+        DiagnosticSeverity.Hint => 3,
+        _ => 4,
+    };
 
     internal static Diagnostic ConvertDiagnostic(CompilerDiagnostic diag, SourceText? sourceText, CompilerDiagnostic? generatedOrigin = null)
     {

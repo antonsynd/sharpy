@@ -19,17 +19,20 @@ internal sealed class SharpyDidChangeConfigurationHandler : IDidChangeConfigurat
     private readonly LspConfiguration _configuration;
     private readonly LanguageService _languageService;
     private readonly DiagnosticPublisher _diagnosticPublisher;
+    private readonly ILanguageServerFacade _server;
     private readonly ILogger<SharpyDidChangeConfigurationHandler> _logger;
 
     public SharpyDidChangeConfigurationHandler(
         LspConfiguration configuration,
         LanguageService languageService,
         DiagnosticPublisher diagnosticPublisher,
+        ILanguageServerFacade server,
         ILogger<SharpyDidChangeConfigurationHandler> logger)
     {
         _configuration = configuration;
         _languageService = languageService;
         _diagnosticPublisher = diagnosticPublisher;
+        _server = server;
         _logger = logger;
     }
 
@@ -72,6 +75,8 @@ internal sealed class SharpyDidChangeConfigurationHandler : IDidChangeConfigurat
                     _diagnosticPublisher.PublishDiagnostics(fileUri, result, sourceText: null);
                 }
             }
+
+            RequestInlayHintRefresh();
         }
         catch (Exception ex)
         {
@@ -79,6 +84,24 @@ internal sealed class SharpyDidChangeConfigurationHandler : IDidChangeConfigurat
         }
 
         return Unit.Value;
+    }
+
+    /// <summary>
+    /// Asks the client to re-request inlay hints so a configuration change shows up without an
+    /// edit. Both settings that reach hints change them: <c>inlayHints.typeAnnotations</c> gates
+    /// the type hints directly, and <c>features</c> changes the inferred types they display.
+    /// Clients that did not declare <c>workspace.inlayHint.refreshSupport</c> are left alone —
+    /// their hints update on the next edit.
+    /// </summary>
+    private void RequestInlayHintRefresh()
+    {
+        var inlayHint = _server.ClientSettings?.Capabilities?.Workspace?.InlayHint;
+        if (inlayHint is not { IsSupported: true, Value.RefreshSupport: true })
+        {
+            return;
+        }
+
+        _server.Workspace.SendInlayHintRefresh(new InlayHintRefreshParams());
     }
 
     public void SetCapability(DidChangeConfigurationCapability capability, ClientCapabilities clientCapabilities)

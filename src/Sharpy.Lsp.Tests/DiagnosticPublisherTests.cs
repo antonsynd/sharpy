@@ -265,4 +265,95 @@ public class DiagnosticPublisherTests
 
         result.Should().HaveCount(1);
     }
+
+    // sharpy.lsp.maxNumberOfProblems (#1165) — contributed since the extension's first release,
+    // read by nobody until now.
+
+    private static CompilerDiagnostic[] MixedSeverityDiagnostics() =>
+    [
+        new("hint", CompilerDiagnosticSeverity.Hint, Line: 1, Column: 1, Code: "SPY0475"),
+        new("warning", CompilerDiagnosticSeverity.Warning, Line: 2, Column: 1, Code: "SPY0451"),
+        new("error one", CompilerDiagnosticSeverity.Error, Line: 3, Column: 1, Code: "SPY0201"),
+        new("error two", CompilerDiagnosticSeverity.Error, Line: 4, Column: 1, Code: "SPY0202"),
+    ];
+
+    private static LspConfiguration ConfigurationWithCap(string capJson)
+    {
+        var configuration = new LspConfiguration();
+        configuration.UpdateFrom(JToken.Parse("{\"lsp\":{\"maxNumberOfProblems\":" + capJson + "}}"));
+        return configuration;
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_NoCapConfigured_PublishesEverything()
+    {
+        var result = DiagnosticPublisher.ConvertDiagnostics(
+            MixedSeverityDiagnostics(), null, new LspConfiguration());
+
+        result.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_UnderCap_PublishesEverything()
+    {
+        var result = DiagnosticPublisher.ConvertDiagnostics(
+            MixedSeverityDiagnostics(), null, ConfigurationWithCap("10"));
+
+        result.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_OverCap_DropsTheLeastSevere()
+    {
+        // The compiler emits in phase order, and hint-producing validators run before
+        // error-producing ones — a positional truncation would hide the errors.
+        var result = DiagnosticPublisher.ConvertDiagnostics(
+            MixedSeverityDiagnostics(), null, ConfigurationWithCap("2"));
+
+        result.Should().HaveCount(2);
+        result.Select(d => d.Message).Should().Equal("error one", "error two");
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_OverCap_KeepsOriginalOrder()
+    {
+        var result = DiagnosticPublisher.ConvertDiagnostics(
+            MixedSeverityDiagnostics(), null, ConfigurationWithCap("3"));
+
+        result.Select(d => d.Message).Should().Equal(new[] { "warning", "error one", "error two" },
+            "the survivors keep the order the editor already showed them in");
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_ZeroCap_PublishesNothing()
+    {
+        var result = DiagnosticPublisher.ConvertDiagnostics(
+            MixedSeverityDiagnostics(), null, ConfigurationWithCap("0"));
+
+        result.Should().BeEmpty("zero is a real cap, not a spelling of unlimited");
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_NegativeCap_PublishesEverything()
+    {
+        var result = DiagnosticPublisher.ConvertDiagnostics(
+            MixedSeverityDiagnostics(), null, ConfigurationWithCap("-1"));
+
+        result.Should().HaveCount(4, "a negative maximum cannot mean 'show fewer than none'");
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_CapAppliesAfterTransitionHintFiltering()
+    {
+        // Filtering first means a suppressed hint does not consume a slot the user wanted
+        // spent on a real problem.
+        var configuration = new LspConfiguration();
+        configuration.UpdateFrom(JToken.Parse(
+            """{"transitionHints":{"enabled":false},"lsp":{"maxNumberOfProblems":2}}"""));
+
+        var result = DiagnosticPublisher.ConvertDiagnostics(
+            MixedSeverityDiagnostics(), null, configuration);
+
+        result.Select(d => d.Message).Should().Equal("error one", "error two");
+    }
 }

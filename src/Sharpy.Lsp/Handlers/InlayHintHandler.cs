@@ -15,10 +15,12 @@ namespace Sharpy.Lsp.Handlers;
 internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
 {
     private readonly LanguageService _languageService;
+    private readonly LspConfiguration _configuration;
 
-    public SharpyInlayHintHandler(LanguageService languageService)
+    public SharpyInlayHintHandler(LanguageService languageService, LspConfiguration configuration)
     {
         _languageService = languageService;
+        _configuration = configuration;
     }
 
     public override async Task<InlayHintContainer?> Handle(InlayHintParams request, CancellationToken ct)
@@ -32,7 +34,8 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
         var hints = new List<InlayHint>();
         var range = request.Range;
 
-        CollectInlayHints(analysis.Ast.Body, analysis, range, hints);
+        CollectInlayHints(analysis.Ast.Body, analysis, range, hints,
+            typeAnnotations: _configuration.InlayHintTypeAnnotations);
 
         return new InlayHintContainer(hints);
     }
@@ -43,11 +46,17 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
         return Task.FromResult(request);
     }
 
+    /// <param name="typeAnnotations">
+    /// Whether inferred-type hints are produced (<c>sharpy.inlayHints.typeAnnotations</c>).
+    /// Parameter-name hints are unaffected: they answer a different question and are gated
+    /// separately by the client's own inlay-hint toggle.
+    /// </param>
     private static void CollectInlayHints(
         IEnumerable<Statement> statements,
         Compiler.SemanticResult analysis,
         LspRange range,
-        List<InlayHint> hints)
+        List<InlayHint> hints,
+        bool typeAnnotations)
     {
         foreach (var rawStmt in statements)
         {
@@ -59,7 +68,7 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
             if (stmt is VariableDeclaration varDecl && varDecl.Type == null)
             {
                 var lspLine = System.Math.Max(0, varDecl.LineStart - 1);
-                if (lspLine >= range.Start.Line && lspLine <= range.End.Line)
+                if (typeAnnotations && lspLine >= range.Start.Line && lspLine <= range.End.Line)
                 {
                     var symbol = analysis.SymbolTable?.Lookup(varDecl.Name);
                     var inferredType = (symbol as VariableSymbol)?.Type;
@@ -99,44 +108,44 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
             switch (stmt)
             {
                 case FunctionDef funcDef:
-                    CollectInlayHints(funcDef.Body, analysis, range, hints);
+                    CollectInlayHints(funcDef.Body, analysis, range, hints, typeAnnotations);
                     break;
                 case ClassDef classDef:
-                    CollectInlayHints(classDef.Body, analysis, range, hints);
+                    CollectInlayHints(classDef.Body, analysis, range, hints, typeAnnotations);
                     break;
                 case StructDef structDef:
-                    CollectInlayHints(structDef.Body, analysis, range, hints);
+                    CollectInlayHints(structDef.Body, analysis, range, hints, typeAnnotations);
                     break;
                 case IfStatement ifStmt:
-                    CollectInlayHints(ifStmt.ThenBody, analysis, range, hints);
+                    CollectInlayHints(ifStmt.ThenBody, analysis, range, hints, typeAnnotations);
                     foreach (var elif in ifStmt.ElifClauses)
-                        CollectInlayHints(elif.Body, analysis, range, hints);
+                        CollectInlayHints(elif.Body, analysis, range, hints, typeAnnotations);
                     if (ifStmt.ElseBody.Length > 0)
-                        CollectInlayHints(ifStmt.ElseBody, analysis, range, hints);
+                        CollectInlayHints(ifStmt.ElseBody, analysis, range, hints, typeAnnotations);
                     break;
                 case WhileStatement whileStmt:
-                    CollectInlayHints(whileStmt.Body, analysis, range, hints);
+                    CollectInlayHints(whileStmt.Body, analysis, range, hints, typeAnnotations);
                     break;
                 case ForStatement forStmt:
-                    CollectInlayHints(forStmt.Body, analysis, range, hints);
+                    CollectInlayHints(forStmt.Body, analysis, range, hints, typeAnnotations);
                     if (forStmt.ElseBody.Length > 0)
-                        CollectInlayHints(forStmt.ElseBody, analysis, range, hints);
+                        CollectInlayHints(forStmt.ElseBody, analysis, range, hints, typeAnnotations);
                     break;
                 case TryStatement tryStmt:
-                    CollectInlayHints(tryStmt.Body, analysis, range, hints);
+                    CollectInlayHints(tryStmt.Body, analysis, range, hints, typeAnnotations);
                     foreach (var handler in tryStmt.Handlers)
-                        CollectInlayHints(handler.Body, analysis, range, hints);
+                        CollectInlayHints(handler.Body, analysis, range, hints, typeAnnotations);
                     if (tryStmt.ElseBody.Length > 0)
-                        CollectInlayHints(tryStmt.ElseBody, analysis, range, hints);
+                        CollectInlayHints(tryStmt.ElseBody, analysis, range, hints, typeAnnotations);
                     if (tryStmt.FinallyBody.Length > 0)
-                        CollectInlayHints(tryStmt.FinallyBody, analysis, range, hints);
+                        CollectInlayHints(tryStmt.FinallyBody, analysis, range, hints, typeAnnotations);
                     break;
                 case WithStatement withStmt:
-                    CollectInlayHints(withStmt.Body, analysis, range, hints);
+                    CollectInlayHints(withStmt.Body, analysis, range, hints, typeAnnotations);
                     break;
                 case MatchStatement matchStmt:
                     foreach (var matchCase in matchStmt.Cases)
-                        CollectInlayHints(matchCase.Body, analysis, range, hints);
+                        CollectInlayHints(matchCase.Body, analysis, range, hints, typeAnnotations);
                     break;
             }
         }

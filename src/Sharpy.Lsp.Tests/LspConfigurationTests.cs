@@ -122,6 +122,92 @@ public class LspConfigurationTests
         config.Features.Should().BeEmpty("removing the setting must disable the features it enabled");
     }
 
+    // sharpy.lsp.maxNumberOfProblems and sharpy.inlayHints.typeAnnotations (#1165).
+
+    [Fact]
+    public void Defaults_NoProblemCapAndTypeAnnotationsOn()
+    {
+        var config = new LspConfiguration();
+        config.MaxNumberOfProblems.Should().BeNull();
+        config.InlayHintTypeAnnotations.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateFrom_ReadsMaxNumberOfProblems()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"lsp":{"maxNumberOfProblems":100}}"""));
+        config.MaxNumberOfProblems.Should().Be(100);
+    }
+
+    [Fact]
+    public void UpdateFrom_ZeroMaxNumberOfProblemsIsARealCap()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"lsp":{"maxNumberOfProblems":0}}"""));
+        config.MaxNumberOfProblems.Should().Be(0);
+    }
+
+    [Fact]
+    public void UpdateFrom_NegativeMaxNumberOfProblemsMeansUncapped()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"lsp":{"maxNumberOfProblems":-5}}"""));
+        config.MaxNumberOfProblems.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateFrom_NullMaxNumberOfProblemsClearsTheCap()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"lsp":{"maxNumberOfProblems":10}}"""));
+
+        config.UpdateFrom(JToken.Parse("""{"lsp":{"maxNumberOfProblems":null}}"""));
+
+        config.MaxNumberOfProblems.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateFrom_NonNumericMaxNumberOfProblemsKeepsPrevious()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"lsp":{"maxNumberOfProblems":10}}"""));
+
+        config.UpdateFrom(JToken.Parse("""{"lsp":{"maxNumberOfProblems":"lots"}}"""));
+
+        config.MaxNumberOfProblems.Should().Be(10,
+            "a malformed value must not silently start hiding diagnostics");
+    }
+
+    [Fact]
+    public void UpdateFrom_ReadsInlayHintTypeAnnotations()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"inlayHints":{"typeAnnotations":false}}"""));
+        config.InlayHintTypeAnnotations.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UpdateFrom_InlayHintTypeAnnotationsRoundTrips()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"sharpy":{"inlayHints":{"typeAnnotations":false}}}"""));
+        config.InlayHintTypeAnnotations.Should().BeFalse();
+
+        config.UpdateFrom(JToken.Parse("""{"sharpy":{"inlayHints":{"typeAnnotations":true}}}"""));
+        config.InlayHintTypeAnnotations.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateFrom_UnrelatedInlayHintKeysAreIgnored()
+    {
+        // sharpy.inlayHints.parameterNames was dropped from the contribution (#1165); an old
+        // client still sending it must not disturb the setting next to it.
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"inlayHints":{"parameterNames":false}}"""));
+        config.InlayHintTypeAnnotations.Should().BeTrue();
+    }
+
     [Fact]
     public void UpdateFrom_MissingFeaturesKeepsPrevious()
     {
