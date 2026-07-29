@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18+)
+- [Node.js](https://nodejs.org/) (v20+, required by @vscode/vsce)
 - npm (comes with Node.js)
 
 ## Setup
