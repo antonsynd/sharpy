@@ -48,7 +48,9 @@ internal class IncrementalCompilationCache
     // v15: Added IsModuleProperty/HasPropertyGetter/HasPropertySetter to VariableSymbol properties (#844)
     // v16: Added ExportedTypeIds/IsNetModule/NetNamespaceName to ModuleSymbol round-trip (#1105)
     // v17: Added TypeParameters round-trip for FunctionSymbol/TypeSymbol so generic exports stay generic (#1142)
-    internal const int CurrentSchemaVersion = 17;
+    // v18: ModuleSymbol exports round-trip as one ModuleExports unit; the types-only view is now
+    //      derived from every export, so v17 caches record fewer type entries than a fresh compile (#1145)
+    internal const int CurrentSchemaVersion = 18;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

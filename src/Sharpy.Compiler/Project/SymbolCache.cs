@@ -140,14 +140,16 @@ internal record CachedSymbol
     public string? CanonicalModuleName { get; init; }
 
     /// <summary>
-    /// For ModuleSymbol: exports (symbol IDs)
+    /// For ModuleSymbol: the value-position view of <see cref="Semantic.ModuleExports"/> (symbol IDs).
+    /// Persisted together with <see cref="ExportedTypeIds"/> and restored as one unit.
     /// </summary>
     public Dictionary<string, string>? ExportIds { get; init; }
 
     /// <summary>
-    /// For ModuleSymbol: types-only exports (symbol IDs), mirrored from
-    /// <see cref="Semantic.ModuleSymbol.ExportedTypes"/> so a value-position export cannot
-    /// shadow a same-named type in annotation position after a cache round-trip (#1105/#1092).
+    /// For ModuleSymbol: the types-only view of <see cref="Semantic.ModuleExports"/> (symbol IDs).
+    /// It cannot be re-derived from <see cref="ExportIds"/> alone — a type shadowed there by a
+    /// same-named value survives only here — so both views are written and restored together, or a
+    /// cache round-trip loses annotation-position resolution (#1105/#1092/#1145).
     /// </summary>
     public Dictionary<string, string>? ExportedTypeIds { get; init; }
 

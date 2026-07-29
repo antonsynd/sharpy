@@ -1121,6 +1121,79 @@ def main():
         Assert.True(restoredSymbol.IsConstant);
     }
 
+    [Fact]
+    public void FileCache_RestoreSymbols_ModuleExports_SurvivesDiskRoundTripInBothViews()
+    {
+        // The --incremental path end to end: a module whose "Row" name is a type in annotation
+        // position and a value in value position is written to the symbol cache on disk, reloaded
+        // by a fresh cache instance, and must come back with BOTH views intact. Serializing or
+        // restoring one view without the other is the #1105 regression; ModuleExports round-trips
+        // as a unit (#1145).
+        var config = CreateTestConfig("import sqlite3");
+        var cache = new IncrementalCompilationCache(config, NullLogger.Instance);
+
+        var rowType = new TypeSymbol
+        {
+            Name = "Row",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            AccessLevel = AccessLevel.Public,
+            DefiningFilePath = config.SourceFiles[0]
+        };
+        var rowFactoryValue = new VariableSymbol
+        {
+            Name = "Row",
+            Kind = SymbolKind.Variable,
+            AccessLevel = AccessLevel.Public
+        };
+        var connect = new FunctionSymbol
+        {
+            Name = "connect",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = SemanticType.Void
+        };
+
+        var module = new ModuleSymbol
+        {
+            Name = "sqlite3",
+            Kind = SymbolKind.Module,
+            AccessLevel = AccessLevel.Public,
+            FilePath = config.SourceFiles[0],
+            IsNetModule = true,
+            NetNamespaceName = "Sqlite3"
+        };
+        module.Exports.Add("Row", rowType);
+        module.Exports.Add("Row", rowFactoryValue);
+        module.Exports.Add("connect", connect);
+
+        cache.SaveFileCache(
+            config.SourceFiles[0],
+            new List<Symbol> { module, rowType, rowFactoryValue, connect },
+            "generated",
+            new List<string>());
+        cache.SaveAllCaches();
+
+        var reloaded = new IncrementalCompilationCache(config, NullLogger.Instance);
+        reloaded.LoadAllCaches();
+
+        var registry = new Dictionary<string, Symbol>();
+        Assert.True(reloaded.RestoreSymbols(config.SourceFiles[0], registry));
+
+        var restoredModule = registry.Values.OfType<ModuleSymbol>().Single();
+
+        // Value view: the field still shadows the type.
+        Assert.IsType<VariableSymbol>(restoredModule.Exports["Row"]);
+        Assert.IsType<FunctionSymbol>(restoredModule.Exports["connect"]);
+
+        // Types view: the type is still there, and still resolvable in annotation position.
+        Assert.True(restoredModule.Exports.TryGetType("Row", out var restoredType));
+        Assert.Equal("Row", restoredType!.Name);
+        Assert.Equal(new[] { "Row" }, restoredModule.ExportedTypes.Keys);
+        Assert.True(restoredModule.TryGetExportedType("Row", out var viaExtension));
+        Assert.Same(restoredType, viaExtension);
+    }
+
     #endregion
 
     #region End-to-End Incremental Compilation Tests
