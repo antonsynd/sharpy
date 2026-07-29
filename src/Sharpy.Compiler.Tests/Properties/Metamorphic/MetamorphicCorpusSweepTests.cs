@@ -166,13 +166,20 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
                 .OrderBy(k => k, StringComparer.Ordinal)
                 .ToList();
 
+        // Key order everywhere in the report is ordinal, not first-completion: the cells are
+        // gathered from a Parallel.ForEach, so unordered GroupBy keys would make consecutive runs'
+        // JSON differ in dictionary order even with identical counts — and "two consecutive full
+        // runs produce identical reports" is the sweep's stated determinism contract.
         var byOutcome = results.GroupBy(r => r.Outcome)
+            .OrderBy(g => g.Key, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
         var byTransform = results.GroupBy(r => r.Transform)
             .OrderBy(g => g.Key, StringComparer.Ordinal)
             .ToDictionary(
                 g => g.Key,
-                g => g.GroupBy(r => r.Outcome).ToDictionary(x => x.Key, x => x.Count(), StringComparer.Ordinal),
+                g => g.GroupBy(r => r.Outcome)
+                    .OrderBy(x => x.Key, StringComparer.Ordinal)
+                    .ToDictionary(x => x.Key, x => x.Count(), StringComparer.Ordinal),
                 StringComparer.Ordinal);
 
         WriteReport(new
