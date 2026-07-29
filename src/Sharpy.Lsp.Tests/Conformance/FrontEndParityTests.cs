@@ -383,8 +383,10 @@ public class FrontEndParityTests
         foreach (var key in b.Keys.Union(o.Keys))
         {
             var delta = o.GetValueOrDefault(key) - b.GetValueOrDefault(key);
-            for (var i = 0; i < delta; i++) added.Add(key);
-            for (var i = 0; i < -delta; i++) removed.Add(key);
+            for (var i = 0; i < delta; i++)
+                added.Add(key);
+            for (var i = 0; i < -delta; i++)
+                removed.Add(key);
         }
         added.Sort(StringComparer.Ordinal);
         removed.Sort(StringComparer.Ordinal);

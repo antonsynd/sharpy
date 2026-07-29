@@ -507,7 +507,9 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
         }
         finally
         {
-            try { Directory.Delete(dir, recursive: true); } catch { /* best effort */ }
+            try
+            { Directory.Delete(dir, recursive: true); }
+            catch { /* best effort */ }
         }
     }
 
@@ -598,7 +600,8 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
             var fileName = Path.GetFileName(dll);
             if (!seen.Add(fileName))
                 continue;
-            try { refs.Add(MetadataReference.CreateFromFile(dll)); }
+            try
+            { refs.Add(MetadataReference.CreateFromFile(dll)); }
             catch { /* not a managed assembly */ }
         }
 

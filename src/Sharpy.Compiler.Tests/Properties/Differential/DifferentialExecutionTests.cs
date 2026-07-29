@@ -364,7 +364,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 continue;
 
             string source;
-            try { source = File.ReadAllText(fx.SpyFilePath); }
+            try
+            { source = File.ReadAllText(fx.SpyFilePath); }
             catch { continue; }
 
             Module module;
@@ -434,7 +435,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 return;
 
             string source;
-            try { source = Sharpy.Compiler.Pretty.Unparser.Unparse(module); }
+            try
+            { source = Sharpy.Compiler.Pretty.Unparser.Unparse(module); }
             catch { return; }
             if (!seenSources.Add(source))
                 return;
@@ -623,10 +625,10 @@ public class DifferentialExecutionTests : IntegrationTestBase
             return true;
         }
 
-            private static string[] Normalize(string output) =>
-            output.Replace("\r\n", "\n", StringComparison.Ordinal)
-                  .TrimEnd('\n')
-                  .Split('\n');
+        private static string[] Normalize(string output) =>
+        output.Replace("\r\n", "\n", StringComparison.Ordinal)
+              .TrimEnd('\n')
+              .Split('\n');
 
         private static bool NumbersClose(string a, string b)
         {
@@ -862,7 +864,9 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 string outText = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd();
                 if (!proc.WaitForExit(10_000))
                 {
-                    try { proc.Kill(entireProcessTree: true); } catch { }
+                    try
+                    { proc.Kill(entireProcessTree: true); }
+                    catch { }
                     return false;
                 }
                 var match = Regex.Match(outText, @"Python (\d+)\.(\d+)");
@@ -892,7 +896,9 @@ public class DifferentialExecutionTests : IntegrationTestBase
             }
             finally
             {
-                try { File.Delete(batchPath); } catch { }
+                try
+                { File.Delete(batchPath); }
+                catch { }
             }
         }
 
@@ -925,7 +931,9 @@ public class DifferentialExecutionTests : IntegrationTestBase
             // Generous ceiling: each program has its own per-program timeout inside the runner.
             if (!proc.WaitForExit(300_000))
             {
-                try { proc.Kill(entireProcessTree: true); } catch { }
+                try
+                { proc.Kill(entireProcessTree: true); }
+                catch { }
                 throw new InvalidOperationException("run_programs.py timed out.");
             }
             proc.WaitForExit();
