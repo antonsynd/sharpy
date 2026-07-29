@@ -82,7 +82,7 @@ IfTrueWrap::pattern_matching/match_expr_as_argument
 # The multi-file cells are the cross-module face of it: module-qualified constructors report
 # SPY0201 "not callable", cross-module overloads pick the wrong arm, and a module-qualified enum
 # member mis-emits to an SPY0908 (CS1061).
-# 173 cell(s).
+# 174 cell(s).
 ParensWrapCallee::algorithms/fizzbuzz
 ParensWrapCallee::algorithms/queue_class
 ParensWrapCallee::algorithms/word_frequency
@@ -100,6 +100,7 @@ ParensWrapCallee::builtin_type_float_as_function_ref
 ParensWrapCallee::builtin_type_long_as_function_ref
 ParensWrapCallee::builtin_type_str_as_function_ref
 ParensWrapCallee::builtins/builtin_phase1_comprehensive
+ParensWrapCallee::builtins/dict_keys_projection_comprehension
 ParensWrapCallee::builtins/dict_keys_projection_core
 ParensWrapCallee::builtins/dict_keys_projection_enumerate_zip
 ParensWrapCallee::builtins/dict_keys_projection_map_filter
