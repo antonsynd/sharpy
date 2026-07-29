@@ -1,0 +1,10 @@
+# Mixed int/float `%` widens to float and still floors (sign of divisor), matching
+# Python. Exercises C# overload resolution picking Sharpy.Builtins.FloorMod(double,
+# double) when only one operand is a float. (#1153)
+def main() -> None:
+    print(7 % 2.5)      # 2.0
+    print(-7 % 2.5)     # 0.5
+    print(7.5 % -2)     # -0.5
+    print(-7 % 2.0)     # 1.0
+    print(7 % -2.5)     # -0.5
+    print(-7.5 % 2)     # 0.5

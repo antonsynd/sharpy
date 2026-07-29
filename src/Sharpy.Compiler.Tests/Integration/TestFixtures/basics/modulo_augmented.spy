@@ -15,3 +15,7 @@ def main() -> None:
     w: int = 17
     w %= 5
     print(w)      # 2  (positive: unchanged from truncation)
+
+    v: long = -9000000000
+    v %= 7
+    print(v)      # 2  (long beyond int range, still floored)

@@ -1,0 +1,10 @@
+# Regression (#1154): comprehension iteration over a bare dict yields KEYS through
+# the duck-typed foreach path — no keys-projection is involved, since the projection
+# only rewrites a dict in a builtin's iterable position. List comprehensions, guarded
+# comprehensions, and dict comprehensions all see keys.
+def main() -> None:
+    d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+    print(sorted([k for k in d]))
+    print(sorted({k: d[k] for k in d}.items()))
+    print(sorted([k for k in d if d[k] > 1]))
+    print(sorted({k: d[k] * 2 for k in d}.items()))

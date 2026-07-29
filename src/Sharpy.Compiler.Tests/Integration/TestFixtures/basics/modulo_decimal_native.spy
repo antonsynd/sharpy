@@ -1,0 +1,14 @@
+# Decimal `%` deliberately keeps NATIVE C# semantics: truncated, sign of the
+# DIVIDEND. The floored-`%` lowering (#1153) is scoped to int/long/float operands
+# only, so decimal keeps its CLR op_Modulus — see docs/language_specification/
+# arithmetic_operators.md ("native `%` for decimal and user-defined `operator %`
+# types"). The values below intentionally differ from the int results.
+def main() -> None:
+    x: decimal = -7m
+    y: decimal = 3m
+    print(x % y)        # -1  (native; int -7 % 3 is 2)
+    print(7m % -3m)     # 1   (native; int 7 % -3 is -2)
+    print(-7m % -3m)    # -1
+    print(7m % 3m)      # 1
+    print(-17m % 5m)    # -2  (native; int -17 % 5 is 3)
+    print(-7 % 3)       # 2   (int contrast: floored, sign of divisor)
