@@ -51,7 +51,7 @@
           "type": "string",
           "default": "sharpyc",
           "scope": "machine",
-          "description": "Path to the sharpyc executable. If empty, uses 'sharpyc' from PATH."
+          "description": "Path to the sharpyc executable. If empty, uses 'sharpyc' from PATH. (client-side setting; not sent to the language server)"
         },
         "sharpy.trace.server": {
           "type": "string",
@@ -61,27 +61,17 @@
             "verbose"
           ],
           "default": "off",
-          "description": "Traces the communication between VS Code and the Sharpy language server."
+          "description": "Traces the communication between VS Code and the Sharpy language server. (client-side setting; not sent to the language server)"
         },
         "sharpy.lsp.maxNumberOfProblems": {
           "type": "number",
           "default": 100,
           "description": "Maximum number of problems to show."
         },
-        "sharpy.format.indentSize": {
-          "type": "number",
-          "default": 4,
-          "description": "Number of spaces per indent level."
-        },
         "sharpy.inlayHints.typeAnnotations": {
           "type": "boolean",
           "default": true,
           "description": "Show inferred type annotations."
-        },
-        "sharpy.inlayHints.parameterNames": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show parameter names at call sites."
         },
         "sharpy.transitionHints.enabled": {
           "type": "boolean",
@@ -101,7 +91,7 @@
           "type": "string",
           "default": "dotnet",
           "scope": "machine",
-          "description": "Path to the dotnet executable used for debugging."
+          "description": "Path to the dotnet executable used for debugging. (client-side setting; not sent to the language server)"
         }
       }
     },
