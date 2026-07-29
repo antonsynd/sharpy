@@ -477,6 +477,78 @@ float("-1.5")    # -1.5
 
 - `ValueError` -- Thrown when the string cannot be parsed
 
+### `floor_mod(x: int, y: int) -> int`
+
+Returns the remainder of Python's floored division of *x* by
+*y*. The result takes the sign of the divisor (matching Python's
+`%`), unlike C#'s native `%` which takes the sign of the dividend.
+This keeps the divmod identity `x == (x // y) * y + FloorMod(x, y)` coherent.
+
+**Parameters:**
+
+- `x` (int) -- The dividend
+- `y` (int) -- The divisor
+
+**Returns:** The floored-division remainder (sign of the divisor)
+
+```python
+FloorMod(-7, 3)   // 2  (not -1)
+FloorMod(7, -3)   // -2
+FloorMod(-7, -3)  // -1
+```
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `floor_mod(x: long, y: long) -> long`
+
+Returns the remainder of Python's floored division of *x* by
+*y*. The result takes the sign of the divisor.
+
+**Parameters:**
+
+- `x` (long) -- The dividend
+- `y` (long) -- The divisor
+
+**Returns:** The floored-division remainder (sign of the divisor)
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `floor_mod(x: float, y: float) -> float`
+
+Returns the remainder of Python's floored division of *x* by
+*y*. The result takes the sign of the divisor.
+
+**Parameters:**
+
+- `x` (float) -- The dividend
+- `y` (float) -- The divisor
+
+**Returns:** The floored-division remainder (sign of the divisor)
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `floor_mod(x: float32, y: float32) -> float32`
+
+Returns the remainder of Python's floored division of *x* by
+*y*. The result takes the sign of the divisor.
+
+**Parameters:**
+
+- `x` (float32) -- The dividend
+- `y` (float32) -- The divisor
+
+**Returns:** The floored-division remainder (sign of the divisor)
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
 ### `format(value: object | None, format_spec: str = "") -> str`
 
 Convert a value to a "formatted" representation, as controlled by format_spec.

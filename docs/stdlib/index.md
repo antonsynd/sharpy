@@ -4,7 +4,7 @@ Sharpy's standard library provides Python-familiar APIs backed by .NET implement
 
 ## Built-in Functions
 
-[Built-in functions](builtins.md) available without any import: `abs()`, `all()`, `any()`, `ascii()`, `bin()`, `bool()`, `breakpoint()`, `checked_int_pow()`, `chr()`, `double()`, `enumerate()`, `filter()`, `float()`, `format()`, `format_align()`, and 33 more.
+[Built-in functions](builtins.md) available without any import: `abs()`, `all()`, `any()`, `ascii()`, `bin()`, `bool()`, `breakpoint()`, `checked_int_pow()`, `chr()`, `double()`, `enumerate()`, `filter()`, `float()`, `floor_mod()`, `format()`, and 34 more.
 
 ## Core Types
 
