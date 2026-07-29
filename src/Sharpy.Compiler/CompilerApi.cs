@@ -82,7 +82,7 @@ public sealed class CompilerApi
         string? filePath = null,
         CancellationToken cancellationToken = default)
     {
-        var opts = options ?? new CompilerOptions();
+        var opts = options ?? CompilerOptionsFactory.Default();
         MergeDefaultReferences(opts);
 
         // #1038: a single-file compile is a synthetic project-of-one-file driven through
@@ -127,15 +127,13 @@ public sealed class CompilerApi
     {
         var config = SyntheticProject.BuildConfig(source, entryFilePath, options, _logger);
         var registry = BuildModuleRegistry(config);
+        // The synthetic config was built from these very options, so it has nothing independent to
+        // merge in; incremental is off because single-file compiles never use the project cache.
         var projectCompiler = new Project.ProjectCompiler(
             logger: _logger,
             moduleRegistry: registry,
-            warningsAsErrors: options.WarningsAsErrors,
-            suppressedWarnings: options.SuppressedWarnings,
-            maxErrors: options.MaxErrors,
-            incremental: false,
-            emitterFactory: _emitterFactory,
-            features: options.Features);
+            options: ProjectOptionsMerge.Merge(options, incremental: false),
+            emitterFactory: _emitterFactory);
 
         // Emit the assembly inside the project pipeline only when a concrete output path was
         // requested; otherwise stop after codegen so emit/analysis callers write nothing.
@@ -270,7 +268,7 @@ public sealed class CompilerApi
     /// <param name="cancellationToken">Cancellation token for cooperative cancellation.</param>
     /// <returns>A <see cref="SemanticResult"/> with the analysis outcome.</returns>
     public SemanticResult Analyze(string source, CancellationToken cancellationToken = default)
-        => Analyze(source, new CompilerOptions { OutputType = "library" }, cancellationToken);
+        => Analyze(source, CompilerOptionsFactory.ForLibraryAnalysis(), cancellationToken);
 
     /// <summary>
     /// Analyzes Sharpy source code with explicit compiler options (e.g. to supply
@@ -283,7 +281,7 @@ public sealed class CompilerApi
     /// <returns>A <see cref="SemanticResult"/> with the analysis outcome.</returns>
     public SemanticResult Analyze(string source, CompilerOptions options, CancellationToken cancellationToken = default)
     {
-        var opts = options ?? new CompilerOptions { OutputType = "library" };
+        var opts = options ?? CompilerOptionsFactory.ForLibraryAnalysis();
         MergeDefaultReferences(opts);
 
         // Single-file analyze is a synthetic project-of-one-file driven through the same
@@ -343,22 +341,17 @@ public sealed class CompilerApi
         CompilerOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var opts = options ?? new CompilerOptions();
+        var opts = options ?? CompilerOptionsFactory.Default();
 
         // Same option×project merge the compile path uses, so .spyproj analysis gates (SPY0331)
         // and warns identically to .spyproj compilation (#1109). Analysis never emits, so
         // incremental stays false and MaxErrors comes from the options only.
-        var merged = ProjectOptionsMerge.Merge(opts, config);
         var registry = BuildModuleRegistry(config);
         var compiler = new Project.ProjectCompiler(
             logger: _logger,
             moduleRegistry: registry,
-            warningsAsErrors: merged.WarningsAsErrors,
-            suppressedWarnings: merged.SuppressedWarnings,
-            maxErrors: opts.MaxErrors,
-            incremental: false,
-            emitterFactory: _emitterFactory,
-            features: merged.Features);
+            options: ProjectOptionsMerge.Merge(opts, config, incremental: false),
+            emitterFactory: _emitterFactory);
         return compiler.AnalyzeProject(config, cancellationToken);
     }
 

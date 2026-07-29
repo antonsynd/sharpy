@@ -51,7 +51,7 @@ public class Compiler
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = null;
         _emitterFactory = new RoslynEmitterFactory();
-        _options = new CompilerOptions();
+        _options = CompilerOptionsFactory.Default();
     }
 
     public Compiler(CompilerOptions options, ICompilerLogger? logger = null)
@@ -64,7 +64,7 @@ public class Compiler
     {
         _logger = logger ?? NullLogger.Instance;
         _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
-        _options = options ?? new CompilerOptions();
+        _options = options ?? CompilerOptionsFactory.Default();
         _moduleRegistry = new ModuleRegistry(_logger);
 
         // Add module search paths
@@ -112,7 +112,7 @@ public class Compiler
         // Merge project-level and compiler-level warning/error/feature settings. This is the
         // single shared definition of the merge (also used by CompilerApi.AnalyzeProject), so the
         // compile and analyze paths can never diverge (#1109). MaxErrors comes from options only.
-        var merged = ProjectOptionsMerge.Merge(_options, projectConfig);
+        var projectOptions = ProjectOptionsMerge.Merge(_options, projectConfig);
 
         // Resolve NuGet package references so their types are available during semantic analysis
         if (_moduleRegistry != null && projectConfig.PackageReferences.Count > 0)
@@ -128,9 +128,7 @@ public class Compiler
             _discoveryTime += discoveryStopwatch.Elapsed;
         }
 
-        var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
-            merged.WarningsAsErrors, merged.SuppressedWarnings, _options.MaxErrors, _options.Incremental,
-            _emitterFactory, merged.Features);
+        var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry, projectOptions, _emitterFactory);
         var projectResult = projectCompiler.Compile(projectConfig, cancellationToken);
 
         // Record module discovery (reference + NuGet loading) as a project-level phase,
@@ -239,9 +237,10 @@ public class Compiler
         var entryFilePath = File.Exists(filePath) ? Path.GetFullPath(filePath) : filePath;
 
         var config = SyntheticProject.BuildConfig(sourceCode, entryFilePath, _options, _logger);
+        // The synthetic config was built from these very options, so it has nothing independent to
+        // merge in; incremental is off because single-file compiles never use the project cache.
         var projectCompiler = new ProjectCompiler(_logger, _moduleRegistry,
-            _options.WarningsAsErrors, _options.SuppressedWarnings, _options.MaxErrors,
-            incremental: false, _emitterFactory, _options.Features);
+            ProjectOptionsMerge.Merge(_options, incremental: false), _emitterFactory);
 
         // Emit an assembly from inside the project pipeline only when a concrete output path was
         // requested; otherwise stop after codegen (single-file callers historically only produced

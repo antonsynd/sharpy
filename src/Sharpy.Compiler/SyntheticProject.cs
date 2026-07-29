@@ -85,9 +85,10 @@ internal static class SyntheticProject
     /// and applies the single-file analyze adaptations shared by
     /// <see cref="Compiler.Analyze(string, string, CancellationToken, bool)"/> and
     /// <see cref="CompilerApi.Analyze(string, CompilerOptions, CancellationToken)"/> (#1087):
-    /// the <see cref="ProjectCompiler"/> is constructed with the caller's full options
-    /// (WarningsAsErrors, SuppressedWarnings, MaxErrors, and Features are ctor args, not config
-    /// fields — dropping them would silently lose feature flags and SPY0331 gating in analyze
+    /// the <see cref="ProjectCompiler"/> is constructed from the caller's full options via
+    /// <see cref="Services.ProjectOptionsMerge.Merge"/> (WarningsAsErrors, SuppressedWarnings,
+    /// MaxErrors, and Features reach the compiler as its options value, not as config fields —
+    /// dropping them would silently lose feature flags and SPY0331 gating in analyze
     /// mode), the entry file's unit is located by path, and the shared symbol table is
     /// positioned at the entry file's module scope so bare <c>SymbolTable.Lookup</c> resolves
     /// module-level symbols (the project pipeline scopes them per module rather than in the
@@ -101,8 +102,7 @@ internal static class SyntheticProject
         CancellationToken cancellationToken)
     {
         var projectCompiler = new ProjectCompiler(logger, moduleRegistry,
-            options.WarningsAsErrors, options.SuppressedWarnings, options.MaxErrors,
-            incremental: false, emitterFactory, options.Features);
+            Services.ProjectOptionsMerge.Merge(options, incremental: false), emitterFactory);
 
         var analysis = projectCompiler.AnalyzeProject(config, cancellationToken);
 

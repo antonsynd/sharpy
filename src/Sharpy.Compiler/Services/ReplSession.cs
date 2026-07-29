@@ -404,27 +404,33 @@ public class ReplSession
         else
             _logger.LogWarning("Sharpy.Stdlib.dll not found — stdlib modules will not be available.", 0, 0);
 
+        // The REPL's option surface goes through the same seam as every other entry point (#1144);
+        // its bespoke in-memory config takes the shared fields from these options rather than
+        // hard-coding a second set of defaults.
+        var options = CompilerOptionsFactory.ForRepl(_features);
+
         var config = new ProjectConfig
         {
             ProjectFilePath = ReplFileName,
             ProjectDirectory = Directory.GetCurrentDirectory(),
             // Empty root namespace keeps generated code in the global namespace, matching the
             // single-file compile path (and what the REPL's own codegen produced before).
-            RootNamespace = string.Empty,
-            OutputType = "exe",
+            RootNamespace = options.Namespace ?? string.Empty,
+            OutputType = options.OutputType,
             EntryPoint = ReplFileName,
             SourceFiles = new List<string> { ReplFileName },
             InMemorySources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 [ReplFileName] = source
             },
+            WarningsAsErrors = options.WarningsAsErrors,
+            SuppressedWarnings = new HashSet<string>(options.SuppressedWarnings, StringComparer.OrdinalIgnoreCase),
             EmitLineDirectives = false
         };
 
         var projectCompiler = new ProjectCompiler(
             _logger, moduleRegistry,
-            warningsAsErrors: false, suppressedWarnings: null, maxErrors: 0,
-            incremental: false, _emitterFactory, _features);
+            ProjectOptionsMerge.Merge(options, config, incremental: false), _emitterFactory);
 
         return projectCompiler.Compile(config, cancellationToken, emitAssembly: false);
     }

@@ -46,6 +46,9 @@ public class LineDirectiveSeamBenchmarks
         var source = File.ReadAllText(Path.Combine(corpusDir, CorpusFile));
 
         var factory = new CapturingEmitterFactory();
+        // Exempt from the CompilerOptionsFactory seam (#1144) by design: this is a baseline
+        // constructor. The benchmark pins an exact options shape so its measurement stays
+        // comparable across releases, independent of what any entry surface decides today.
         var options = new CompilerOptions
         {
             References = new[] { Path.Combine(AppContext.BaseDirectory, "Sharpy.Core.dll") },

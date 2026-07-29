@@ -13,6 +13,7 @@ using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
 using Xunit.Abstractions;
 using static Sharpy.TestInfrastructure.TestHelpers;
@@ -208,6 +209,11 @@ public abstract class IntegrationTestBase
                 defaultReferences.AddRange(GetAdditionalReferenceAssemblyPaths());
 
                 var api = new CompilerApi(logger, defaultReferences.ToArray());
+                // Exempt from the CompilerOptionsFactory seam (#1144) by design: this is a
+                // baseline constructor. The harness must be able to state an arbitrary options
+                // shape independent of what any product entry surface currently decides —
+                // routing it through a per-surface factory method would make the fixture suite
+                // agree with the surfaces by construction and stop detecting their drift.
                 var options = new CompilerOptions
                 {
                     // Integration tests are executable programs, so the synthetic project's
@@ -572,7 +578,8 @@ public abstract class IntegrationTestBase
             // Compile the project. Experimental features (from a fixture's `.features`
             // sidecar) are enabled compilation-wide via the ProjectCompiler, matching how
             // `<Features>` in a .spyproj gates the whole project.
-            var projectCompiler = new ProjectCompiler(logger, moduleRegistry: moduleRegistry, features: features);
+            var projectCompiler = new ProjectCompiler(logger, moduleRegistry,
+                ProjectCompilerOptions.Default with { Features = features });
             var result = projectCompiler.Compile(projectConfig);
 
             // Collect warnings and hints from the project compilation. Hints are

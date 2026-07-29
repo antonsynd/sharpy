@@ -322,8 +322,8 @@ public class FrontEndParityTests
             var registry = BuildProjectRegistry(references, MakeConfig());
             var compiler = new ProjectCompiler(
                 Sharpy.Compiler.Logging.NullLogger.Instance, registry,
-                warningsAsErrors: false, suppressedWarnings: null, maxErrors: options.MaxErrors,
-                incremental: false, new RoslynEmitterFactory(), features);
+                ProjectCompilerOptions.Default with { MaxErrors = options.MaxErrors, Features = features },
+                new RoslynEmitterFactory());
             var result = compiler.Compile(MakeConfig(), CancellationToken.None, emitAssembly: false);
             comparisons.Add(Compare(EntryCompileProject, fixture.TestName,
                 Signature(baselineDiags), Signature(result.Diagnostics.GetAll())));

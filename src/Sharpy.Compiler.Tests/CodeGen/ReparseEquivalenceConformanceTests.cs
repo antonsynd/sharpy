@@ -6,6 +6,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
 using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Integration;
@@ -661,7 +662,7 @@ public class ReparseEquivalenceConformanceTests
             moduleRegistry.LoadReference(SharpyCoreReference.Location);
 
             var projectCompiler = new ProjectCompiler(
-                _logger, moduleRegistry, emitterFactory: factory, features: features);
+                _logger, moduleRegistry, ProjectCompilerOptions.Default with { Features = features }, factory);
             var result = projectCompiler.Compile(config, CancellationToken.None, emitAssembly: false);
             return (result.Success, factory.Captured);
         }
@@ -736,7 +737,7 @@ public class ReparseEquivalenceConformanceTests
             moduleRegistry.LoadReference(SharpyCoreReference.Location);
 
             var projectCompiler = new ProjectCompiler(
-                _logger, moduleRegistry, emitterFactory: factory, features: FeatureFlags.None);
+                _logger, moduleRegistry, ProjectCompilerOptions.Default, factory);
             var result = projectCompiler.Compile(config, CancellationToken.None, emitAssembly: false);
             return (result, factory.Captured);
         }

@@ -134,19 +134,34 @@ internal partial class ProjectCompiler
     private readonly Dictionary<string, HashSet<string>> _generatorDependencies =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Creates a compiler with the default flag set (no warnings-as-errors, nothing suppressed,
+    /// component-default error limits, no incremental cache, no experimental features).
+    /// </summary>
     public ProjectCompiler(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null,
-        bool warningsAsErrors = false, HashSet<string>? suppressedWarnings = null, int maxErrors = 0,
-        bool incremental = false, ICodeEmitterFactory? emitterFactory = null,
-        Shared.FeatureFlags? features = null)
+        ICodeEmitterFactory? emitterFactory = null)
+        : this(logger, moduleRegistry, ProjectCompilerOptions.Default, emitterFactory)
+    {
+    }
+
+    /// <summary>
+    /// Creates a compiler with an explicit flag set. <paramref name="options"/> comes from
+    /// <see cref="ProjectOptionsMerge.Merge"/> — the one place option-level and project-level
+    /// settings combine (#1144). The settings used to be five loose constructor parameters, which
+    /// every call site re-threaded by hand; that is how the LSP <c>.spyproj</c> path silently lost
+    /// warnings, max-errors, and feature flags (#1109).
+    /// </summary>
+    public ProjectCompiler(ICompilerLogger? logger, ModuleRegistry? moduleRegistry,
+        ProjectCompilerOptions options, ICodeEmitterFactory? emitterFactory = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
         _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
-        _warningsAsErrors = warningsAsErrors;
-        _suppressedWarnings = suppressedWarnings ?? new HashSet<string>();
-        _maxErrors = maxErrors;
-        _incremental = incremental;
-        _features = features ?? Shared.FeatureFlags.None;
+        _warningsAsErrors = options.WarningsAsErrors;
+        _suppressedWarnings = options.SuppressedWarnings ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        _maxErrors = options.MaxErrors;
+        _incremental = options.Incremental;
+        _features = options.Features ?? Shared.FeatureFlags.None;
     }
 
     /// <summary>
