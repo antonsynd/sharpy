@@ -471,16 +471,23 @@ public record ParameterSymbol
 public record ModuleSymbol : Symbol
 {
     public string FilePath { get; init; } = string.Empty;
-    public Dictionary<string, Symbol> Exports { get; init; } = new();
 
     /// <summary>
-    /// Exported types keyed by name, mirrored from <see cref="ModuleInfo.ExportedTypes"/> at
-    /// each construction site. Kept separate from <see cref="Exports"/> so a value-position
-    /// export that shares a name with a type does not shadow the type in annotation position
-    /// (e.g. <c>sqlite3.Row</c> — both the <c>Row</c> type and the <c>row_factory</c> value).
-    /// <c>ResolveQualifiedType</c> consults this first; value lookups keep using <see cref="Exports"/> (#1092).
+    /// The module's exports: the value-position lookup and the types-only lookup as one unit.
+    /// Reads go through this object (it is itself the value-position lookup); writes go through
+    /// <see cref="ModuleExports.Add"/> or <see cref="ModuleExports.MergeFrom"/>, which maintain
+    /// the types view automatically (#1145).
     /// </summary>
-    public Dictionary<string, TypeSymbol> ExportedTypes { get; init; } = new();
+    public ModuleExports Exports { get; init; } = new();
+
+    /// <summary>
+    /// Exported types keyed by name — a read-only view of <see cref="Exports"/>, kept separate
+    /// from the value-position lookup so an export that shares a name with a type does not shadow
+    /// the type in annotation position (e.g. <c>sqlite3.Row</c> — both the <c>Row</c> type and the
+    /// <c>row_factory</c> value). <c>ResolveQualifiedType</c> consults this first; value lookups
+    /// keep using <see cref="Exports"/> (#1092).
+    /// </summary>
+    public IReadOnlyDictionary<string, TypeSymbol> ExportedTypes => Exports.Types;
     public Dictionary<string, List<FunctionSymbol>> FunctionOverloads { get; init; } = new();
     public bool IsNetModule { get; init; } = false;
 

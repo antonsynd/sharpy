@@ -884,33 +884,35 @@ internal static class SymbolSerializer
                 ResolveTypeReferences(cached, ts, symbolRegistry);
             }
 
-            // Resolve ModuleSymbol exports
+            // Resolve ModuleSymbol exports. Both views are restored as one unit (#1105, #1145):
+            // the types-only view cannot be re-derived from the value view alone, because a type
+            // shadowed there by a same-named field (sqlite3.Row) only survives in the types view.
+            // A registry miss, or a types entry that resolves to something other than a
+            // TypeSymbol, means a corrupt cache entry — skipped silently, as before.
             if (symbol is ModuleSymbol ms)
             {
+                var exports = new List<KeyValuePair<string, Symbol>>();
+                var exportedTypes = new List<KeyValuePair<string, TypeSymbol>>();
+
                 if (cached.ExportIds != null)
                 {
                     foreach (var (name, exportId) in cached.ExportIds)
                     {
                         if (symbolRegistry.TryGetValue(exportId, out var exportSymbol))
-                        {
-                            ms.Exports[name] = exportSymbol;
-                        }
+                            exports.Add(new KeyValuePair<string, Symbol>(name, exportSymbol));
                     }
                 }
 
-                // Restore the types-only export lookup (#1105). A registry hit that is not a
-                // TypeSymbol indicates a corrupt cache entry — skip it silently, matching the
-                // tolerant style of the Exports restore above.
                 if (cached.ExportedTypeIds != null)
                 {
                     foreach (var (name, typeId) in cached.ExportedTypeIds)
                     {
                         if (symbolRegistry.TryGetValue(typeId, out var typeSymbol) && typeSymbol is TypeSymbol t)
-                        {
-                            ms.ExportedTypes[name] = t;
-                        }
+                            exportedTypes.Add(new KeyValuePair<string, TypeSymbol>(name, t));
                     }
                 }
+
+                ms.Exports.RestoreFrom(exports, exportedTypes);
             }
         }
     }

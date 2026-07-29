@@ -207,8 +207,7 @@ internal partial class ProjectCompiler
                                     Name = importAlias.AsName,
                                     Kind = SymbolKind.Module,
                                     FilePath = moduleInfo.Path,
-                                    Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
-                                    ExportedTypes = new Dictionary<string, TypeSymbol>(moduleInfo.ExportedTypes),
+                                    Exports = new ModuleExports(moduleInfo.ExportedSymbols),
                                     FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                                     IsNetModule = moduleInfo.IsNetModule,
                                     CanonicalModuleName = moduleInfo.CanonicalModuleName,
@@ -231,8 +230,7 @@ internal partial class ProjectCompiler
                                 Name = parts[^1], // Last part (e.g., "math")
                                 Kind = SymbolKind.Module,
                                 FilePath = moduleInfo.Path,
-                                Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
-                                ExportedTypes = new Dictionary<string, TypeSymbol>(moduleInfo.ExportedTypes),
+                                Exports = new ModuleExports(moduleInfo.ExportedSymbols),
                                 FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                                 IsNetModule = moduleInfo.IsNetModule,
                                 CanonicalModuleName = moduleInfo.CanonicalModuleName,
@@ -251,7 +249,7 @@ internal partial class ProjectCompiler
                                     Name = parts[j],
                                     Kind = SymbolKind.Module,
                                     FilePath = "", // Parent modules don't have their own file
-                                    Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } },
+                                    Exports = new ModuleExports { { currentModule.Name, currentModule } },
                                     // Only IsNetModule needed — parent is structural; NetNamespaceName/CSharpNamespace live on the leaf
                                     IsNetModule = moduleInfo.IsNetModule
                                 };
@@ -283,7 +281,9 @@ internal partial class ProjectCompiler
                             // Check SemanticBinding first, then fall back to AST property for backward compatibility
                             var reExportedSymbols = _projectModel!.SemanticBinding.GetReExportedSymbols(fromImport)
                                                     ?? fromImport.ReExportedSymbols;
-                            var symbolsToImport = reExportedSymbols ?? moduleInfo.ExportedSymbols;
+                            IReadOnlyDictionary<string, Symbol> symbolsToImport =
+                                (IReadOnlyDictionary<string, Symbol>?)reExportedSymbols
+                                ?? moduleInfo.ExportedSymbols;
 
                             // For project-internal from-imports of TYPE symbols, prefer the Phase 3
                             // original over the re-exported copy. This ensures all modules reference
@@ -516,48 +516,16 @@ internal partial class ProjectCompiler
     /// Merge exports from a source module into a target module.
     /// Used to combine nested module structures when the same root is imported multiple times.
     ///
-    /// Both the value-position <see cref="ModuleSymbol.Exports"/> map and the types-only
-    /// <see cref="ModuleSymbol.ExportedTypes"/> mirror are merged first-import-wins. The mirror
-    /// must not be dropped: annotation-position resolution
-    /// (<see cref="Shared.ModuleSymbolExtensions.ResolveQualifiedType"/>) consults
-    /// <see cref="Shared.ModuleSymbolExtensions.TryGetExportedType"/> BEFORE <c>Exports</c>, so
-    /// a merged root that lost its <c>ExportedTypes</c> would fail to resolve a type whose name is
-    /// also taken by a value-position export (e.g. <c>sqlite3.Row</c> — #1092, #1135). Nested
-    /// modules' own <c>ExportedTypes</c> are carried through by the recursive <c>Exports</c> branch,
-    /// so the mirror merge here is intentionally non-recursive (it holds <see cref="TypeSymbol"/>s only).
+    /// The merge rule (first import wins, recursing into nested modules present on both sides)
+    /// lives in <see cref="ModuleExports.MergeFrom"/>, which moves the value-position lookup and
+    /// the types-only lookup together — the mirror cannot be dropped here because there is no
+    /// second dictionary to forget (#1135, #1145).
     ///
     /// Internal (not private) so the merge seam can be unit-tested directly; static because it
     /// touches no instance state.
     /// </summary>
     internal static void MergeModuleExports(ModuleSymbol target, ModuleSymbol source)
-    {
-        foreach (var (name, symbol) in source.Exports)
-        {
-            if (target.Exports.TryGetValue(name, out var existing))
-            {
-                // If both are modules, merge recursively
-                if (existing is ModuleSymbol existingModule && symbol is ModuleSymbol sourceModule)
-                {
-                    MergeModuleExports(existingModule, sourceModule);
-                }
-                // Otherwise, the existing symbol takes precedence (first import wins)
-            }
-            else
-            {
-                target.Exports[name] = symbol;
-            }
-        }
-
-        // Mirror the types-only lookup the same first-import-wins way. Non-recursive: nested
-        // modules' ExportedTypes ride along on their ModuleSymbol via the Exports branch above.
-        foreach (var (name, typeSymbol) in source.ExportedTypes)
-        {
-            if (!target.ExportedTypes.ContainsKey(name))
-            {
-                target.ExportedTypes[name] = typeSymbol;
-            }
-        }
-    }
+        => target.Exports.MergeFrom(source.Exports, firstImportWins: true);
 
     /// <summary>
     /// After cycle filtering, compute all symbol names imported across cycle boundaries.

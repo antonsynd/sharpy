@@ -92,7 +92,7 @@ internal partial class ImportResolver
             Name = moduleName,
             Kind = SymbolKind.Module,
             FilePath = "<error-recovery>",
-            Exports = new Dictionary<string, Symbol>(),
+            Exports = new ModuleExports(),
             IsErrorRecovery = true,
             DeclarationLine = line,
             DeclarationColumn = column,

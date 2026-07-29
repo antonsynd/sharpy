@@ -66,8 +66,7 @@ internal partial class ImportResolver
                             Name = importAlias.AsName,
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
-                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
-                            ExportedTypes = new Dictionary<string, TypeSymbol>(moduleInfo.ExportedTypes),
+                            Exports = new ModuleExports(moduleInfo.ExportedSymbols),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
@@ -91,8 +90,7 @@ internal partial class ImportResolver
                             Name = parts[^1],
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
-                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols),
-                            ExportedTypes = new Dictionary<string, TypeSymbol>(moduleInfo.ExportedTypes),
+                            Exports = new ModuleExports(moduleInfo.ExportedSymbols),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
@@ -113,7 +111,7 @@ internal partial class ImportResolver
                                 Name = parts[j],
                                 Kind = SymbolKind.Module,
                                 FilePath = "",
-                                Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } },
+                                Exports = new ModuleExports { { currentModule.Name, currentModule } },
                                 IsErrorRecovery = moduleInfo.IsErrorRecovery,
                                 IsNetModule = moduleInfo.IsNetModule,
                                 NameDeclarationLine = importAlias.LineStart,
@@ -135,7 +133,9 @@ internal partial class ImportResolver
                 {
                     _logger.LogDebug($"  Module resolved: {moduleInfo.Path}");
                     _logger.LogDebug($"  Exported symbols: [{string.Join(", ", moduleInfo.ExportedSymbols.Keys)}]");
-                    var reExportedSymbols = _semanticBinding.GetReExportedSymbols(fromImport) ?? moduleInfo.ExportedSymbols;
+                    IReadOnlyDictionary<string, Symbol> reExportedSymbols =
+                        (IReadOnlyDictionary<string, Symbol>?)_semanticBinding.GetReExportedSymbols(fromImport)
+                        ?? moduleInfo.ExportedSymbols;
                     var sourceModule = moduleInfo.CanonicalModuleName ?? fromImport.Module;
 
                     if (fromImport.ImportAll)
@@ -370,8 +370,8 @@ internal partial class ImportResolver
                     foreach (var importAlias in fromImport.Names)
                     {
                         var targetName = importAlias.AsName ?? importAlias.Name;
-                        errorRecoveryModule.Exports[targetName] = CreateErrorRecoverySymbol(
-                            targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
+                        errorRecoveryModule.Exports.Add(targetName, CreateErrorRecoverySymbol(
+                            targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart));
                         _diagnostics.MarkAsRootCause(targetName);
                     }
                     return new ModuleInfo
@@ -409,8 +409,8 @@ internal partial class ImportResolver
                 foreach (var alias in fromImport.Names)
                 {
                     var targetName = alias.AsName ?? alias.Name;
-                    errorRecoveryModule.Exports[targetName] = CreateErrorRecoverySymbol(
-                        targetName, fromImport.Module, alias.LineStart, alias.ColumnStart);
+                    errorRecoveryModule.Exports.Add(targetName, CreateErrorRecoverySymbol(
+                        targetName, fromImport.Module, alias.LineStart, alias.ColumnStart));
                     _diagnostics.MarkAsRootCause(targetName);
 
                     if (!Shared.FeatureFlags.KnownFeatures.TryGetValue(alias.Name, out var info))
@@ -482,8 +482,8 @@ internal partial class ImportResolver
                 foreach (var importAlias in fromImport.Names)
                 {
                     var targetName = importAlias.AsName ?? importAlias.Name;
-                    errorRecoveryModule.Exports[targetName] = CreateErrorRecoverySymbol(
-                        targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
+                    errorRecoveryModule.Exports.Add(targetName, CreateErrorRecoverySymbol(
+                        targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart));
                     _diagnostics.MarkAsRootCause(targetName);
                 }
             }
@@ -526,8 +526,8 @@ internal partial class ImportResolver
                 foreach (var importAlias in fromImport.Names)
                 {
                     var targetName = importAlias.AsName ?? importAlias.Name;
-                    errorRecoveryModule.Exports[targetName] = CreateErrorRecoverySymbol(
-                        targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
+                    errorRecoveryModule.Exports.Add(targetName, CreateErrorRecoverySymbol(
+                        targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart));
                     _diagnostics.MarkAsRootCause(targetName);
                 }
             }
@@ -578,7 +578,7 @@ internal partial class ImportResolver
                         var targetName = importAlias.AsName ?? importAlias.Name;
                         var errorSymbol = CreateErrorRecoverySymbol(
                             targetName, fromImport.Module, importAlias.LineStart, importAlias.ColumnStart);
-                        errorRecoveryModule.Exports[targetName] = errorSymbol;
+                        errorRecoveryModule.Exports.Add(targetName, errorSymbol);
                         _logger.LogDebug($"[ImportResolver]   Created error recovery symbol: {targetName}");
 
                         // Also mark each imported symbol name as a root cause
@@ -856,7 +856,7 @@ internal partial class ImportResolver
         {
             Path = $".net:{moduleName}",
             Module = null!,
-            ExportedSymbols = new Dictionary<string, Symbol>(),
+            ExportedSymbols = new ModuleExports(),
             IsNetModule = true,
             CanonicalModuleName = moduleName,
             CSharpNamespace = _moduleRegistry.GetModuleCSharpNamespace(moduleName),
@@ -865,7 +865,7 @@ internal partial class ImportResolver
 
         foreach (var function in functions)
         {
-            moduleInfo.ExportedSymbols[function.Name] = function;
+            moduleInfo.ExportedSymbols.Add(function.Name, function);
 
             if (!moduleInfo.FunctionOverloads.TryGetValue(function.Name, out var overloadList))
             {
@@ -875,17 +875,14 @@ internal partial class ImportResolver
             overloadList.Add(function);
         }
 
+        // Exporting a TypeSymbol files it in the types-only lookup too, so the same-named field
+        // added below cannot shadow the type in annotation position (#1092).
         foreach (var type in types)
-        {
-            moduleInfo.ExportedSymbols[type.Name] = type;
-            // Also record in the types-only lookup so a same-named field (added below) can't
-            // shadow the type in annotation position — ResolveQualifiedType reads this (#1092).
-            moduleInfo.ExportedTypes[type.Name] = type;
-        }
+            moduleInfo.ExportedSymbols.Add(type.Name, type);
 
         foreach (var (fieldName, fieldType, isConst) in fields)
         {
-            moduleInfo.ExportedSymbols[fieldName] = new VariableSymbol
+            moduleInfo.ExportedSymbols.Add(fieldName, new VariableSymbol
             {
                 Name = fieldName,
                 Kind = SymbolKind.Variable,
@@ -895,7 +892,7 @@ internal partial class ImportResolver
                 AccessLevel = AccessLevel.Public,
                 NameDeclarationLine = null,
                 NameDeclarationColumn = null
-            };
+            });
         }
 
         _moduleLoader.CacheModule(cacheKey, moduleInfo);
@@ -918,24 +915,21 @@ internal partial class ImportResolver
         {
             Path = $".net:{moduleName}",
             Module = null!,
-            ExportedSymbols = new Dictionary<string, Symbol>(),
+            ExportedSymbols = new ModuleExports(),
             IsNetModule = true,
             NetNamespaceName = netNamespace
         };
 
         var types = _moduleRegistry!.GetNamespaceTypes(moduleName);
         foreach (var typeSymbol in types)
-        {
-            moduleInfo.ExportedSymbols[typeSymbol.Name] = typeSymbol;
-            moduleInfo.ExportedTypes[typeSymbol.Name] = typeSymbol;
-        }
+            moduleInfo.ExportedSymbols.Add(typeSymbol.Name, typeSymbol);
 
         if (_moduleRegistry.IsModuleLoaded(moduleName))
         {
             var functions = _moduleRegistry.GetModuleFunctions(moduleName);
             foreach (var function in functions)
             {
-                moduleInfo.ExportedSymbols[function.Name] = function;
+                moduleInfo.ExportedSymbols.Add(function.Name, function);
 
                 if (!moduleInfo.FunctionOverloads.TryGetValue(function.Name, out var overloadList))
                 {
@@ -992,11 +986,11 @@ internal partial class ImportResolver
 
         _logger.LogDebug($"Resolving synthetic module: {moduleName}");
 
-        var exports = new Dictionary<string, Symbol>();
+        var exports = new ModuleExports();
 
         // asyncio.gather(*tasks) -> Task.WhenAll(tasks)
         // Variadic, accepts Task arguments, returns Task (void result since WhenAll returns Task)
-        exports["gather"] = new FunctionSymbol
+        exports.Add("gather", new FunctionSymbol
         {
             Name = "gather",
             Kind = SymbolKind.Function,
@@ -1014,11 +1008,11 @@ internal partial class ImportResolver
             IsStatic = true,
             NameDeclarationLine = null,
             NameDeclarationColumn = null
-        };
+        });
 
         // asyncio.sleep(seconds) -> Task.Delay(TimeSpan.FromSeconds(seconds))
         // Accepts float (double), returns Task (void)
-        exports["sleep"] = new FunctionSymbol
+        exports.Add("sleep", new FunctionSymbol
         {
             Name = "sleep",
             Kind = SymbolKind.Function,
@@ -1035,7 +1029,7 @@ internal partial class ImportResolver
             IsStatic = true,
             NameDeclarationLine = null,
             NameDeclarationColumn = null
-        };
+        });
 
         var moduleInfo = new ModuleInfo
         {

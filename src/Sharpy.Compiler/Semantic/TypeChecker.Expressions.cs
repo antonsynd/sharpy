@@ -536,10 +536,7 @@ internal partial class TypeChecker
         };
 
         foreach (var typeSymbol in ModuleRegistry.GetNamespaceTypes(id.Name))
-        {
-            moduleSymbol.Exports[typeSymbol.Name] = typeSymbol;
-            moduleSymbol.ExportedTypes[typeSymbol.Name] = typeSymbol;
-        }
+            moduleSymbol.Exports.Add(typeSymbol.Name, typeSymbol);
 
         _symbolTable.TryDefine(moduleSymbol);
         _semanticInfo.SetIdentifierSymbol(id, moduleSymbol);

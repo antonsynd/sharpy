@@ -684,8 +684,10 @@ def main():
             IsNetModule = true,
             NetNamespaceName = "Sqlite3"
         };
-        module.Exports["Row"] = rowFactoryValue;   // value shadows in Exports
-        module.ExportedTypes["Row"] = rowType;      // type wins in annotation position
+        // Exporting the type then the same-named value reproduces the collision: the value takes
+        // the value-position lookup, the type stays reachable in annotation position.
+        module.Exports.Add("Row", rowType);
+        module.Exports.Add("Row", rowFactoryValue);
 
         var cached = SymbolSerializer.Serialize(module, modPath);
 

@@ -58,7 +58,7 @@ internal class PackageResolver
             {
                 Path = initPath,
                 Module = module,
-                ExportedSymbols = new Dictionary<string, Symbol>()
+                ExportedSymbols = new ModuleExports()
             };
 
             // Extract top-level symbols from __init__.spy
@@ -83,13 +83,13 @@ internal class PackageResolver
             Name = packageName,
             InitPath = initPath,
             Module = moduleInfo.Module,
-            ExportedSymbols = new Dictionary<string, Symbol>()
+            ExportedSymbols = new ModuleExports()
         };
 
         // 1. Add direct symbols defined in __init__.spy
         foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
         {
-            packageInfo.ExportedSymbols[name] = symbol;
+            packageInfo.ExportedSymbols.Add(name, symbol);
         }
 
         // 2. Extract re-exported symbols from import statements
@@ -142,7 +142,7 @@ internal class PackageResolver
                 // Only re-export if not already defined
                 if (!packageInfo.ExportedSymbols.ContainsKey(name))
                 {
-                    packageInfo.ExportedSymbols[name] = symbol;
+                    packageInfo.ExportedSymbols.Add(name, symbol);
                     _logger.LogDebug($"  Re-exporting {name} from {fromImport.Module}");
                 }
             }
@@ -158,7 +158,7 @@ internal class PackageResolver
                 if (importedModule.ExportedSymbols.TryGetValue(sourceName, out var symbol))
                 {
                     // Re-export with alias if specified
-                    packageInfo.ExportedSymbols[exportName] = symbol;
+                    packageInfo.ExportedSymbols.Add(exportName, symbol);
                     _logger.LogDebug($"  Re-exporting {sourceName} as {exportName} from {fromImport.Module}");
                 }
             }
@@ -196,7 +196,7 @@ internal class PackageResolver
                     NameDeclarationLine = functionDef.NameLineStart,
                     NameDeclarationColumn = functionDef.NameColumnStart
                 };
-                moduleInfo.ExportedSymbols[functionDef.Name] = funcSymbol;
+                moduleInfo.ExportedSymbols.Add(functionDef.Name, funcSymbol);
                 break;
 
             case ClassDef classDef:
@@ -212,7 +212,7 @@ internal class PackageResolver
                     NameDeclarationLine = classDef.NameLineStart,
                     NameDeclarationColumn = classDef.NameColumnStart
                 };
-                moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
+                moduleInfo.ExportedSymbols.Add(classDef.Name, classSymbol);
                 break;
 
             case StructDef structDef:
@@ -228,7 +228,7 @@ internal class PackageResolver
                     NameDeclarationLine = structDef.NameLineStart,
                     NameDeclarationColumn = structDef.NameColumnStart
                 };
-                moduleInfo.ExportedSymbols[structDef.Name] = structSymbol;
+                moduleInfo.ExportedSymbols.Add(structDef.Name, structSymbol);
                 break;
 
             case InterfaceDef interfaceDef:
@@ -244,7 +244,7 @@ internal class PackageResolver
                     NameDeclarationLine = interfaceDef.NameLineStart,
                     NameDeclarationColumn = interfaceDef.NameColumnStart
                 };
-                moduleInfo.ExportedSymbols[interfaceDef.Name] = interfaceSymbol;
+                moduleInfo.ExportedSymbols.Add(interfaceDef.Name, interfaceSymbol);
                 break;
 
             case EnumDef enumDef:
@@ -277,7 +277,7 @@ internal class PackageResolver
                         DeclarationSpan = member.Span
                     });
                 }
-                moduleInfo.ExportedSymbols[enumDef.Name] = enumSymbol;
+                moduleInfo.ExportedSymbols.Add(enumDef.Name, enumSymbol);
                 break;
 
             case VariableDeclaration varDecl when varDecl.IsConst:
@@ -293,7 +293,7 @@ internal class PackageResolver
                     NameDeclarationLine = varDecl.NameLineStart,
                     NameDeclarationColumn = varDecl.NameColumnStart
                 };
-                moduleInfo.ExportedSymbols[varDecl.Name] = constSymbol;
+                moduleInfo.ExportedSymbols.Add(varDecl.Name, constSymbol);
                 break;
         }
     }
@@ -340,7 +340,9 @@ internal class PackageInfo
     public Module Module { get; init; } = null!;
 
     /// <summary>
-    /// All symbols exported by this package (direct + re-exported)
+    /// All symbols exported by this package (direct + re-exported). Same
+    /// <see cref="ModuleExports"/> unit the module layers use, so a package's exported types stay
+    /// paired with its value exports here too (#1145).
     /// </summary>
-    public Dictionary<string, Symbol> ExportedSymbols { get; init; } = new();
+    public ModuleExports ExportedSymbols { get; init; } = new();
 }

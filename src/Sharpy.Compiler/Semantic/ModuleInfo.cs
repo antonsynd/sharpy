@@ -24,17 +24,23 @@ internal class ModuleInfo
 {
     public string Path { get; init; } = string.Empty;
     public Module Module { get; init; } = null!;
-    public Dictionary<string, Symbol> ExportedSymbols { get; init; } = new();
+    /// <summary>
+    /// The module's exports as loaded, before they become a <see cref="ModuleSymbol"/>. Same
+    /// <see cref="ModuleExports"/> unit the symbol layer uses, so the staging layer cannot desync
+    /// its two views either and the hand-off is a single copy of both (#1145).
+    /// </summary>
+    public ModuleExports ExportedSymbols { get; init; } = new();
 
     /// <summary>
-    /// Exported types keyed by name, kept separate from <see cref="ExportedSymbols"/> so a
-    /// value-position export (e.g. a static field) that shares a name with a type does not
-    /// shadow the type in annotation position. CPython's <c>sqlite3.Row</c> is both a type and
-    /// the <c>row_factory</c> value; Sharpy splits it into the <c>Row</c> type and the <c>Row</c>
-    /// factory field, which collide in <see cref="ExportedSymbols"/> (the field overwrites the
-    /// type). <c>ResolveQualifiedType</c> consults this lookup first so both uses coexist (#1092).
+    /// Exported types keyed by name — a read-only view of <see cref="ExportedSymbols"/>, kept
+    /// separate from the value-position lookup so an export (e.g. a static field) that shares a
+    /// name with a type does not shadow the type in annotation position. CPython's
+    /// <c>sqlite3.Row</c> is both a type and the <c>row_factory</c> value; Sharpy splits it into
+    /// the <c>Row</c> type and the <c>Row</c> factory field, which collide in the value view (the
+    /// field overwrites the type). <c>ResolveQualifiedType</c> consults this lookup first so both
+    /// uses coexist (#1092).
     /// </summary>
-    public Dictionary<string, TypeSymbol> ExportedTypes { get; init; } = new();
+    public IReadOnlyDictionary<string, TypeSymbol> ExportedTypes => ExportedSymbols.Types;
     public Dictionary<string, List<FunctionSymbol>> FunctionOverloads { get; init; } = new();
     public bool IsNetModule { get; init; } = false;
 

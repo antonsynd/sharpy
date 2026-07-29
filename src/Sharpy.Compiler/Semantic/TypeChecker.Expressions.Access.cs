@@ -1534,14 +1534,11 @@ internal partial class TypeChecker
 
                 // Add functions
                 foreach (var func in subModuleFunctions)
-                    subModule.Exports[func.Name] = func;
+                    subModule.Exports.Add(func.Name, func);
 
                 // Add types
                 foreach (var type in subModuleTypes)
-                {
-                    subModule.Exports[type.Name] = type;
-                    subModule.ExportedTypes[type.Name] = type;
-                }
+                    subModule.Exports.Add(type.Name, type);
 
                 // Add fields
                 foreach (var (fieldName, _, _) in subModuleFields)
@@ -1549,10 +1546,10 @@ internal partial class TypeChecker
                     {
                         var fieldSymbol = ModuleRegistry.CreateTypeSymbolFromClrType(fieldType);
                         if (fieldSymbol != null)
-                            subModule.Exports[fieldName] = fieldSymbol;
+                            subModule.Exports.Add(fieldName, fieldSymbol);
                     }
 
-                moduleSymbol.Exports[memberAccess.Member] = subModule;
+                moduleSymbol.Exports.Add(memberAccess.Member, subModule);
                 return new ModuleType { Symbol = subModule };
             }
         }
@@ -1578,12 +1575,9 @@ internal partial class TypeChecker
                     };
 
                     foreach (var typeSymbol in ModuleRegistry.GetNamespaceTypes(fullName))
-                    {
-                        subModule.Exports[typeSymbol.Name] = typeSymbol;
-                        subModule.ExportedTypes[typeSymbol.Name] = typeSymbol;
-                    }
+                        subModule.Exports.Add(typeSymbol.Name, typeSymbol);
 
-                    moduleSymbol.Exports[memberAccess.Member] = subModule;
+                    moduleSymbol.Exports.Add(memberAccess.Member, subModule);
                     return new ModuleType { Symbol = subModule };
                 }
             }
@@ -1597,8 +1591,7 @@ internal partial class TypeChecker
                 var typeSymbol = ModuleRegistry.CreateTypeSymbolFromClrType(clrType);
                 if (typeSymbol != null)
                 {
-                    moduleSymbol.Exports[memberAccess.Member] = typeSymbol;
-                    moduleSymbol.ExportedTypes[memberAccess.Member] = typeSymbol;
+                    moduleSymbol.Exports.Add(memberAccess.Member, typeSymbol);
                     return new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol };
                 }
             }

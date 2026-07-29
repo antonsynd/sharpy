@@ -35,12 +35,11 @@ public class ProjectCompilerMergeModuleExportsTests
         // TypeSymbol (as a value export) AND its types-only mirror entry.
         var existingValue = MakeVariable("Row");
         var target = MakeModule("sqlite3");
-        target.Exports["Row"] = existingValue;
+        target.Exports.Add("Row", existingValue);
 
         var rowType = MakeType("Row");
         var source = MakeModule("sqlite3");
-        source.Exports["Row"] = rowType;
-        source.ExportedTypes["Row"] = rowType;
+        source.Exports.Add("Row", rowType);
 
         ProjectCompiler.MergeModuleExports(target, source);
 
@@ -59,14 +58,14 @@ public class ProjectCompilerMergeModuleExportsTests
         var target = MakeModule("pkg");
         var existingValue = MakeVariable("existing");
         var existingType = MakeType("Existing");
-        target.Exports["existing"] = existingValue;
-        target.ExportedTypes["Existing"] = existingType;
+        target.Exports.Add("existing", existingValue);
+        target.Exports.Add("Existing", existingType);
 
         var newValue = MakeVariable("added");
         var newType = MakeType("Added");
         var source = MakeModule("pkg");
-        source.Exports["added"] = newValue;
-        source.ExportedTypes["Added"] = newType;
+        source.Exports.Add("added", newValue);
+        source.Exports.Add("Added", newType);
 
         ProjectCompiler.MergeModuleExports(target, source);
 
@@ -81,11 +80,11 @@ public class ProjectCompilerMergeModuleExportsTests
     {
         var target = MakeModule("pkg");
         var targetType = MakeType("Row");
-        target.ExportedTypes["Row"] = targetType;
+        target.Exports.Add("Row", targetType);
 
         var sourceType = MakeType("Row");
         var source = MakeModule("pkg");
-        source.ExportedTypes["Row"] = sourceType;
+        source.Exports.Add("Row", sourceType);
 
         ProjectCompiler.MergeModuleExports(target, source);
 
@@ -94,23 +93,24 @@ public class ProjectCompilerMergeModuleExportsTests
     }
 
     [Fact]
-    public void Merge_SourceExportedTypesEmpty_MergesExportsButSynthesizesNoMirrorEntries()
+    public void Merge_ValueExports_CarryTheirTypesWithoutSynthesizingOthers()
     {
-        // Degenerate case: the source carries exports (including a TypeSymbol in value position)
-        // but an empty types-only mirror. The merge must not synthesize ExportedTypes entries —
-        // mirror membership is decided at the construction sites (#1106), never by the merge.
+        // The shape this test used to guard — a TypeSymbol exported in value position with an
+        // empty types-only view — is no longer constructible: ModuleExports files a TypeSymbol in
+        // both views on export (#1145), so a merge cannot lose it and cannot invent entries for
+        // exports that are not types.
         var target = MakeModule("pkg");
         var valueOnly = MakeVariable("helper");
-        var typeInValuePositionOnly = MakeType("Row");
+        var rowType = MakeType("Row");
         var source = MakeModule("pkg");
-        source.Exports["helper"] = valueOnly;
-        source.Exports["Row"] = typeInValuePositionOnly;
+        source.Exports.Add("helper", valueOnly);
+        source.Exports.Add("Row", rowType);
 
         ProjectCompiler.MergeModuleExports(target, source);
 
         Assert.Same(valueOnly, target.Exports["helper"]);
-        Assert.Same(typeInValuePositionOnly, target.Exports["Row"]);
-        Assert.Empty(target.ExportedTypes);
+        Assert.Same(rowType, target.Exports["Row"]);
+        Assert.Equal(new[] { "Row" }, target.ExportedTypes.Keys);
     }
 
     [Fact]
@@ -121,13 +121,13 @@ public class ProjectCompilerMergeModuleExportsTests
         // Exports branch must merge into the existing nested module, carrying its mirror through.
         var target = MakeModule("lib");
         var targetNested = MakeModule("math");
-        target.Exports["math"] = targetNested;
+        target.Exports.Add("math", targetNested);
 
         var sourceNested = MakeModule("math");
         var vectorType = MakeType("Vector");
-        sourceNested.ExportedTypes["Vector"] = vectorType;
+        sourceNested.Exports.Add("Vector", vectorType);
         var source = MakeModule("lib");
-        source.Exports["math"] = sourceNested;
+        source.Exports.Add("math", sourceNested);
 
         ProjectCompiler.MergeModuleExports(target, source);
 

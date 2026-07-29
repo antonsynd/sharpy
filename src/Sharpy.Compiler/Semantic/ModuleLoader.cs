@@ -133,7 +133,7 @@ internal class ModuleLoader
             {
                 Path = modulePath,
                 Module = module,
-                ExportedSymbols = new Dictionary<string, Symbol>(),
+                ExportedSymbols = new ModuleExports(),
                 CanonicalModuleName = canonicalModuleName
             };
 
@@ -264,7 +264,7 @@ internal class ModuleLoader
                     NameDeclarationLine = functionDef.NameLineStart,
                     NameDeclarationColumn = functionDef.NameColumnStart
                 };
-                moduleInfo.ExportedSymbols[functionDef.Name] = funcSymbol;
+                moduleInfo.ExportedSymbols.Add(functionDef.Name, funcSymbol);
 
                 if (!moduleInfo.FunctionOverloads.TryGetValue(functionDef.Name, out var overloadList))
                 {
@@ -276,17 +276,17 @@ internal class ModuleLoader
 
             case ClassDef classDef:
                 var classSymbol = ExtractFullClassSymbol(classDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
-                moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
+                moduleInfo.ExportedSymbols.Add(classDef.Name, classSymbol);
                 break;
 
             case StructDef structDef:
                 var structSymbol = ExtractFullStructSymbol(structDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
-                moduleInfo.ExportedSymbols[structDef.Name] = structSymbol;
+                moduleInfo.ExportedSymbols.Add(structDef.Name, structSymbol);
                 break;
 
             case InterfaceDef interfaceDef:
                 var interfaceSymbol = ExtractFullInterfaceSymbol(interfaceDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
-                moduleInfo.ExportedSymbols[interfaceDef.Name] = interfaceSymbol;
+                moduleInfo.ExportedSymbols.Add(interfaceDef.Name, interfaceSymbol);
                 break;
 
             case EnumDef enumDef:
@@ -320,7 +320,7 @@ internal class ModuleLoader
                         DeclarationSpan = member.Span
                     });
                 }
-                moduleInfo.ExportedSymbols[enumDef.Name] = enumSymbol;
+                moduleInfo.ExportedSymbols.Add(enumDef.Name, enumSymbol);
                 break;
 
             case VariableDeclaration varDecl:
@@ -337,7 +337,7 @@ internal class ModuleLoader
                     NameDeclarationLine = varDecl.NameLineStart,
                     NameDeclarationColumn = varDecl.NameColumnStart
                 };
-                moduleInfo.ExportedSymbols[varDecl.Name] = varSymbol;
+                moduleInfo.ExportedSymbols.Add(varDecl.Name, varSymbol);
                 break;
 
             default:
@@ -767,7 +767,7 @@ internal class ModuleLoader
         {
             Path = modulePath,
             Module = module,
-            ExportedSymbols = new Dictionary<string, Symbol>(),
+            ExportedSymbols = new ModuleExports(),
             CanonicalModuleName = canonicalModuleName,
             IsStub = true,
             StubSourcePath = CurrentModulePath
@@ -779,15 +779,15 @@ internal class ModuleLoader
             {
                 case ClassDef classDef:
                     var classSymbol = ExtractFullClassSymbol(classDef, canonicalModuleName);
-                    moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
+                    moduleInfo.ExportedSymbols.Add(classDef.Name, classSymbol);
                     break;
                 case StructDef structDef:
                     var structSymbol = ExtractFullStructSymbol(structDef, canonicalModuleName);
-                    moduleInfo.ExportedSymbols[structDef.Name] = structSymbol;
+                    moduleInfo.ExportedSymbols.Add(structDef.Name, structSymbol);
                     break;
                 case InterfaceDef interfaceDef:
                     var interfaceSymbol = ExtractFullInterfaceSymbol(interfaceDef, canonicalModuleName);
-                    moduleInfo.ExportedSymbols[interfaceDef.Name] = interfaceSymbol;
+                    moduleInfo.ExportedSymbols.Add(interfaceDef.Name, interfaceSymbol);
                     break;
                 case EnumDef enumDef:
                     var enumAccessLevel = GetAccessLevel(enumDef.Name);
@@ -819,7 +819,7 @@ internal class ModuleLoader
                             DeclarationSpan = member.Span
                         });
                     }
-                    moduleInfo.ExportedSymbols[enumDef.Name] = enumSymbol;
+                    moduleInfo.ExportedSymbols.Add(enumDef.Name, enumSymbol);
                     break;
             }
         }

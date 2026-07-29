@@ -55,7 +55,7 @@ internal partial class ImportResolver
                 if (!name.StartsWith("_"))
                 {
                     var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
-                    moduleInfo.ExportedSymbols[name] = reExportSymbol;
+                    moduleInfo.ExportedSymbols.Add(name, reExportSymbol);
                     reExportedSymbols[name] = reExportSymbol;
                     _logger.LogDebug($"[ImportResolver]     Re-exporting (wildcard): {name}");
                 }
@@ -71,7 +71,7 @@ internal partial class ImportResolver
                 if (sourceModule.ExportedSymbols.TryGetValue(sourceName, out var symbol))
                 {
                     var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
-                    moduleInfo.ExportedSymbols[targetName] = reExportSymbol;
+                    moduleInfo.ExportedSymbols.Add(targetName, reExportSymbol);
                     reExportedSymbols[targetName] = reExportSymbol;
 
                     if (symbol is TypeSymbol typeSymbol)

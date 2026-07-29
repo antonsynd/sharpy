@@ -295,7 +295,7 @@ class Widget:
         var moduleInfo = new ModuleInfo
         {
             Path = "test_cache",
-            ExportedSymbols = new Dictionary<string, Symbol>(),
+            ExportedSymbols = new ModuleExports(),
             IsNetModule = true
         };
 
@@ -314,7 +314,7 @@ class Widget:
         var netModule = new ModuleInfo
         {
             Path = ".net:system",
-            ExportedSymbols = new Dictionary<string, Symbol>(),
+            ExportedSymbols = new ModuleExports(),
             IsNetModule = true
         };
         _loader.CacheModule(".net:system", netModule);
