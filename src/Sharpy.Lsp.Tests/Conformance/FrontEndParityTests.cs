@@ -77,15 +77,19 @@ namespace Sharpy.Lsp.Tests.Conformance;
 ///     synthesized <c>def main()</c>. A fixture that defines its own top-level <c>main</c> would
 ///     collide (duplicate definition), so such fixtures are record-and-skipped for the REPL. This is
 ///     an intrinsic property of the REPL's whole-module replay, not a pipeline bug.</description></item>
-///   <item><term>N5 — LSP feature skip</term><description><see cref="SharpyWorkspace"/> hardcodes its
-///     analysis options (<c>OutputType=library</c>, no features) and cannot yet source workspace
-///     features (roadmap C1, tracked by #1149; deleting this rule is that issue's acceptance
-///     criterion). So <c>.features</c> fixtures are record-and-skipped for the LSP pair; the compile
-///     and REPL pairs DO thread features, covering the #1097 surface.</description></item>
 /// </list>
-/// After N1–N5 no per-code allowlisting is expected: for eligible fixtures every front end should
+/// After N1–N4 no per-code allowlisting is expected: for eligible fixtures every front end should
 /// agree exactly. Residual divergences are real drift and either fail the ratchet or (pending
 /// triage) get one reviewed line in <c>frontend-parity-allowlist.txt</c>.
+/// </para>
+///
+/// <para>
+/// <b>Deleted rule.</b> N5 used to record-and-skip <c>.features</c> fixtures for the LSP pair,
+/// because <see cref="SharpyWorkspace"/> hardcoded its analysis options and could not source
+/// workspace features. Fixing that (#1149) made the skip unnecessary, and deleting it was the
+/// issue's acceptance criterion: the LSP now compares <c>.features</c> fixtures like every other
+/// entry point, so a future workspace that stops threading features fails this sweep instead of
+/// reaching a user as a red squiggle on code the CLI compiles.
 /// </para>
 ///
 /// <para>
@@ -231,28 +235,25 @@ public class FrontEndParityTests
             crashes.Add(new CrashRecord(fixture.TestName, EntryCompile, $"{ex.GetType().Name}: {ex.Message}"));
         }
 
-        // --- LSP (N5: skip .features fixtures; the workspace cannot source features) ---
-        if (fixture.Features.Count > 0)
+        // --- LSP (features threaded through the workspace's own configuration source, #1149) ---
+        try
         {
-            skips.Add(new SkipRecord(fixture.TestName, EntryLsp, "N5: LSP workspace cannot source features (roadmap C1, #1149)"));
+            using var workspace = new SharpyWorkspace(api, NullLogger<SharpyWorkspace>.Instance);
+            // The editor's equivalent of the `Features = features` the other entry points pass:
+            // `sharpy.features` workspace configuration, which the workspace resolves into its
+            // analysis options through the same CompilerOptionsFactory seam.
+            workspace.SetConfiguredFeatures(fixture.Features);
+            var uri = "file:///parity/" + Uri.EscapeDataString(fixture.TestName) + ".spy";
+            workspace.OpenDocument(uri, source, 1);
+            var lsp = await workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
+            if (lsp != null)
+                comparisons.Add(Compare(EntryLsp, fixture.TestName, baselineSig, Signature(lsp.Diagnostics)));
+            else
+                crashes.Add(new CrashRecord(fixture.TestName, EntryLsp, "GetAnalysisAsync returned null for an open document"));
         }
-        else
+        catch (Exception ex)
         {
-            try
-            {
-                using var workspace = new SharpyWorkspace(api, NullLogger<SharpyWorkspace>.Instance);
-                var uri = "file:///parity/" + Uri.EscapeDataString(fixture.TestName) + ".spy";
-                workspace.OpenDocument(uri, source, 1);
-                var lsp = await workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
-                if (lsp != null)
-                    comparisons.Add(Compare(EntryLsp, fixture.TestName, baselineSig, Signature(lsp.Diagnostics)));
-                else
-                    crashes.Add(new CrashRecord(fixture.TestName, EntryLsp, "GetAnalysisAsync returned null for an open document"));
-            }
-            catch (Exception ex)
-            {
-                crashes.Add(new CrashRecord(fixture.TestName, EntryLsp, $"{ex.GetType().Name}: {ex.Message}"));
-            }
+            crashes.Add(new CrashRecord(fixture.TestName, EntryLsp, $"{ex.GetType().Name}: {ex.Message}"));
         }
 
         // --- REPL (N3 classification skip, N4 main-collision skip) ---
@@ -544,7 +545,10 @@ public class FrontEndParityTests
                 "N2 (compile): invoke Compile with OutputType=library to match the Analyze baseline; SPY0403 (MissingMainFunction) is OutputType-driven, not pipeline drift.",
                 "N3 (REPL): compare only when ClassifyInput yields a module-level submission; wrapped-executable and pre-parse-rejected inputs are record-and-skipped.",
                 "N4 (REPL): skip fixtures that define a top-level main() (collide with the REPL's synthesized main()).",
-                "N5 (LSP): skip .features fixtures (SharpyWorkspace cannot source workspace features yet, roadmap C1, tracked by #1149).",
+            },
+            deletedRules = new[]
+            {
+                "N5 (LSP): skipped .features fixtures while SharpyWorkspace could not source workspace features. Deleted with #1149 — the LSP now compares .features fixtures like every other entry point.",
             },
             byEntryPoint,
             skipsByReason,

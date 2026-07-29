@@ -63,6 +63,42 @@ public class LspProjectFeatureGatingTests : IDisposable
     }
 
     [Fact]
+    public async Task ProjectWorkspace_FeatureEnabled_ReachesBuffersOutsideTheProject()
+    {
+        // A scratch buffer the .spyproj does not list falls back to single-file workspace analysis.
+        // Before #1149 that path had no features at all, so the same construct the project compiles
+        // was red-squiggled one file over.
+        WriteProject("<Features>defer</Features>", DeferMain);
+        await _service.InitializeProjectAsync(_tempDir);
+
+        var scratchUri = "file:///scratch/not-in-project.spy";
+        _workspace.OpenDocument(scratchUri, DeferMain, 1);
+        var analysis = await _service.GetAnalysisAsync(scratchUri);
+
+        analysis.Should().NotBeNull();
+        analysis!.Diagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled,
+            "the workspace .spyproj's <Features> must reach single-file analysis too");
+    }
+
+    [Fact]
+    public async Task ProjectWorkspace_ConfiguredFeature_ReachesProjectAnalysis()
+    {
+        // The editor enables a feature the .spyproj does not: workspace configuration widens the
+        // project's settings, it never narrows them, so project-file analysis stops gating too.
+        WriteProject(propertyGroupExtra: "", DeferMain);
+        await _service.InitializeProjectAsync(_tempDir);
+        (await GetMainFileDiagnosticsAsync()).Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled);
+
+        var applied = await _service.ApplyWorkspaceFeaturesAsync(new[] { "defer" });
+
+        applied.Should().BeTrue();
+        var diags = await GetMainFileDiagnosticsAsync();
+        diags.Should().NotContain(d => d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled,
+            "sharpy.features must reach the project path as well as the single-file path");
+    }
+
+    [Fact]
     public async Task ProjectWorkspace_WarningsAsErrors_PromotesPublishedSeverity()
     {
         WriteProject("<WarningsAsErrors>true</WarningsAsErrors>", UnusedVarMain);

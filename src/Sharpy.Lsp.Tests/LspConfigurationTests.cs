@@ -66,4 +66,71 @@ public class LspConfigurationTests
         config.UpdateFrom(JToken.Parse("""{"someOther":"setting"}"""));
         config.TransitionHintsEnabled.Should().BeTrue();
     }
+
+    // sharpy.features — the editor's counterpart of --enable-feature (#1149). Names are validated
+    // where they become compiler options (SharpyWorkspace.SetConfiguredFeatures), so parsing only
+    // has to extract them faithfully.
+
+    [Fact]
+    public void Defaults_FeaturesIsEmpty()
+    {
+        new LspConfiguration().Features.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UpdateFrom_ReadsFeatureArray()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"features":["defer","matmul"]}"""));
+        config.Features.Should().Equal("defer", "matmul");
+    }
+
+    [Fact]
+    public void UpdateFrom_ReadsSharpyNamespacedFeatures()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"sharpy":{"features":["defer"]}}"""));
+        config.Features.Should().Equal("defer");
+    }
+
+    [Fact]
+    public void UpdateFrom_AcceptsSeparatedString()
+    {
+        // A user who writes the setting the way <Features> is written in a .spyproj is understood
+        // rather than silently ignored.
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"features":"defer; matmul"}"""));
+        config.Features.Should().Equal("defer", "matmul");
+    }
+
+    [Fact]
+    public void UpdateFrom_IgnoresNonStringEntries()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"features":["defer",7,null]}"""));
+        config.Features.Should().Equal("defer");
+    }
+
+    [Fact]
+    public void UpdateFrom_EmptyFeatureArrayClearsFeatures()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"features":["defer"]}"""));
+
+        config.UpdateFrom(JToken.Parse("""{"features":[]}"""));
+
+        config.Features.Should().BeEmpty("removing the setting must disable the features it enabled");
+    }
+
+    [Fact]
+    public void UpdateFrom_MissingFeaturesKeepsPrevious()
+    {
+        var config = new LspConfiguration();
+        config.UpdateFrom(JToken.Parse("""{"features":["defer"]}"""));
+
+        config.UpdateFrom(JToken.Parse("""{"transitionHints":{"enabled":false}}"""));
+
+        config.Features.Should().Equal(new[] { "defer" },
+            "a settings payload that omits the section says nothing about it");
+    }
 }
