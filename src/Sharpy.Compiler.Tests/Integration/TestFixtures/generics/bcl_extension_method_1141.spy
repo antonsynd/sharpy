@@ -1,0 +1,17 @@
+# #1141 negative guard: proving a member ABSENT must not make the interop channel strict. Extension
+# methods reachable from the generated C# (`using System.Linq;` is always emitted) are real members of
+# a raw BCL receiver even though reflection finds nothing by that name on List<int> itself, so
+# first()/last()/count() must keep compiling and running. The absence proof consults the extension
+# surface of the receiver's assembly, Sharpy.Core, System.Linq, the core library, and every imported
+# .NET module before it claims a member does not exist — see bcl_generic_method_not_found_1136 for the
+# face that IS rejected.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst = List[int]()
+    lst.add(3)
+    lst.add(4)
+    print(lst.first())
+    print(lst.last())
+    print(lst.count())

@@ -87,6 +87,13 @@ internal partial class TypeChecker
     // is left untouched. Lazily reflects on the constructed receiver so class-level type params are closed.
     private readonly Dictionary<(TypeSymbol, string), FunctionSymbol?> _bclGenericMethodMemo = new();
 
+    // Companion memo for the BCL member-absence proof (#1141): when the reflection fallback above
+    // finds no generic method, this records whether reflection can affirmatively prove the member does
+    // not exist AT ALL on the receiver's ClrType (no member by any mangling candidate, no reachable
+    // extension method) together with the closest member name to suggest. Keyed identically to
+    // _bclGenericMethodMemo so both negative results are computed once per (type, member).
+    private readonly Dictionary<(TypeSymbol, string), (bool Absent, string? Suggestion)> _bclMemberAbsenceMemo = new();
+
     // Bridges reflected CLR parameter/return types to SemanticTypes when materializing a reflected BCL
     // generic method (#1136). Conservative by design: anything unmappable collapses to object, since the
     // emitted C# uses explicit type args + the verbatim CLR name and Roslyn performs the authoritative bind.

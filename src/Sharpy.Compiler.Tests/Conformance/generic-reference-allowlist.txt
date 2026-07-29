@@ -37,14 +37,3 @@ usermod_pair::uncalledThenCalled::exact
 usermod_pair::passedAsArg::exact
 usermod_pair::parenCalled::exact
 usermod_pair::ternaryCalled::exact
-
-# ─────────────────────────────────────────────────────────────────────────────
-# #1141 (OPEN) — a typo'd (nonexistent) member on a RAW BCL type WITH explicit type args is not
-# rejected at semantic time; it reaches codegen and emits `lst.NoSuchGeneric<...>(...)` → CS1061
-# "'List<int>' does not contain a definition for 'NoSuchGeneric'". User classes and modules correctly
-# reject the same shape with SPY0203 (member-not-found) — a deliberate diagnostic / PASS — so this is
-# specifically the BCL member-resolution path missing the pre-check. (The known fixture
-# bcl_generic_method_not_found_1136 pins the SPY0908-net face; this sweep's library compile path does
-# not run the assembly-emit step, so the same defect surfaces one layer earlier as the raw CS1061 leak
-# — identical root cause, class X1/X2.)
-bcl_convertall::typoMember::exact

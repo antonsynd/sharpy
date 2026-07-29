@@ -295,6 +295,30 @@ internal partial class TypeChecker
                     resultType = funcType;
                     return true;
                 }
+
+                // No generic method by that name — and when CLR reflection can PROVE the member does
+                // not exist on the receiver at all (no member under any mangling candidate, no reachable
+                // extension method), reject it here instead of letting the name-only interop channel
+                // emit `recv.NoSuchMember<...>(...)` and leak a CS1061 through the SPY0908 net (#1141,
+                // #1146). The proof is required, not assumed: anything inconclusive keeps the permissive
+                // fall-through. Type arguments must resolve too, so genuine value indexing of an unknown
+                // member (`arr.data[0]`) is untouched.
+                if (ClrReflectionProvesMemberAbsent(ownerType, memberAccessObj.Member, out var suggestion)
+                    && TryResolveTypeArguments(indexAccess.Index) != null)
+                {
+                    var message = $"Type '{ownerType.GetDisplayName()}' has no member '{memberAccessObj.Member}'";
+                    if (suggestion != null)
+                        message += $". Did you mean '{suggestion}'?";
+
+                    AddError(
+                        message,
+                        memberAccessObj.LineStart,
+                        memberAccessObj.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UndefinedMember,
+                        span: memberAccessObj.Span,
+                        data: SuggestionData(suggestion));
+                    return true;
+                }
             }
         }
 

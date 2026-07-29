@@ -34,6 +34,13 @@ internal class ModuleRegistry
     public DiagnosticBag Diagnostics => _diagnostics;
 
     /// <summary>
+    /// The assemblies loaded as module references so far. Consulted by the TypeChecker's BCL
+    /// member-absence proof (#1141) so an extension method shipped by an imported .NET module keeps
+    /// the member-reference channel permissive.
+    /// </summary>
+    public IEnumerable<Assembly> LoadedAssemblies => _loadedAssemblies.Values;
+
+    /// <summary>
     /// Get all configured module search paths.
     /// </summary>
     public IEnumerable<string> GetModulePaths() => _modulePaths.ToList();

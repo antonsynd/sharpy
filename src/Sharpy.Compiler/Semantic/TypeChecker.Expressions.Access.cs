@@ -1,7 +1,11 @@
+extern alias SharpyRT;
+
+using System.Reflection;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -685,12 +689,7 @@ internal partial class TypeChecker
     private FunctionSymbol? TryResolveGenericInstanceMethod(
         SemanticType ownerType, string memberName, int? typeArgCount = null)
     {
-        TypeSymbol? ownerSymbol = ownerType switch
-        {
-            UserDefinedType { Symbol: { } udtSym } => udtSym,
-            GenericType { GenericDefinition: { } genDef } => genDef,
-            _ => ResolveBuiltinTypeInfo(ownerType).TypeSymbol
-        };
+        var ownerSymbol = ResolveInstanceMemberOwnerSymbol(ownerType);
         if (ownerSymbol == null)
             return null;
 
@@ -785,6 +784,105 @@ internal partial class TypeChecker
             ReturnType = Map(method.ReturnType),
             IsStatic = false
         };
+    }
+
+    /// <summary>
+    /// The <see cref="TypeSymbol"/> whose members an instance-qualified reference on
+    /// <paramref name="ownerType"/> resolves against (user-defined class/struct, generic definition, or
+    /// the registered builtin/discovered symbol). Shared by the generic-method resolution above and the
+    /// member-absence proof below so both ask the same question of the same symbol.
+    /// </summary>
+    private TypeSymbol? ResolveInstanceMemberOwnerSymbol(SemanticType ownerType) => ownerType switch
+    {
+        UserDefinedType { Symbol: { } udtSym } => udtSym,
+        GenericType { GenericDefinition: { } genDef } => genDef,
+        _ => ResolveBuiltinTypeInfo(ownerType).TypeSymbol
+    };
+
+    /// <summary>
+    /// Whether reflection can affirmatively prove that <paramref name="memberName"/> does not exist on
+    /// <paramref name="ownerType"/> (#1141). True only when the receiver has a <see cref="TypeSymbol.ClrType"/>,
+    /// no discovered symbol member carries the name, no CLR member matches it under any mangling candidate
+    /// (verbatim, reverse-mangled, forward-mangled), and no extension method reachable from the emitted
+    /// compilation declares it. Anything short of that proof — no CLR type, inconclusive reflection, a
+    /// same-named non-generic member, an extension-method name match — returns false and leaves the
+    /// name-only interop channel exactly as permissive as before (Anton's rule). Memoized alongside the
+    /// #1136 negative-result memo, including the "did you mean" candidate.
+    /// </summary>
+    private bool ClrReflectionProvesMemberAbsent(
+        SemanticType ownerType, string memberName, out string? suggestion)
+    {
+        suggestion = null;
+
+        var ownerSymbol = ResolveInstanceMemberOwnerSymbol(ownerType);
+        if (ownerSymbol?.ClrType == null)
+            return false;
+
+        var memoKey = (ownerSymbol, memberName);
+        if (_bclMemberAbsenceMemo.TryGetValue(memoKey, out var memoized))
+        {
+            suggestion = memoized.Suggestion;
+            return memoized.Absent;
+        }
+
+        var absent = ProveClrMemberAbsent(ownerSymbol, ownerType, memberName, out suggestion);
+        _bclMemberAbsenceMemo[memoKey] = (absent, suggestion);
+        return absent;
+    }
+
+    private bool ProveClrMemberAbsent(
+        TypeSymbol ownerSymbol, SemanticType ownerType, string memberName, out string? suggestion)
+    {
+        suggestion = null;
+
+        // Discovered members on the symbol itself settle the question without reflecting: a name that
+        // was discovered exists, whatever the CLR surface says about mangling.
+        if (ownerSymbol.Methods.Any(m => m.Name == memberName)
+            || ownerSymbol.Properties.Any(p => p.Name == memberName)
+            || ownerSymbol.Fields.Any(f => f.Name == memberName))
+            return false;
+
+        // Reflect on the constructed receiver when available (List<int> rather than the open List<>),
+        // mirroring the #1136 fallback so both see the same member surface.
+        var reflectionType = TryGetClrType(ownerType) ?? ownerSymbol.ClrType!;
+        var clrNames = Discovery.ClrTypeHelper.GetMemberNameSurface(reflectionType);
+        if (clrNames == null)
+            return false; // reflection inconclusive — cannot prove absence
+
+        var pascalName = NameMangler.ToPascalCase(memberName);
+        if (clrNames.Contains(memberName) || clrNames.Contains(pascalName))
+            return false;
+
+        foreach (var assembly in EnumerateExtensionMethodAssemblies(reflectionType))
+        {
+            var extensionNames = Discovery.ClrTypeHelper.GetExtensionMethodNames(assembly);
+            if (extensionNames.Contains(memberName) || extensionNames.Contains(pascalName))
+                return false;
+        }
+
+        suggestion = EditDistance.FindClosestMatch(memberName, clrNames);
+        return true;
+    }
+
+    /// <summary>
+    /// The assemblies whose extension methods could bind to a member reference on
+    /// <paramref name="receiverClrType"/> in the emitted C#: the receiver's own assembly, Sharpy.Core
+    /// and System.Linq (whose namespaces every generated file imports), the core library, and every
+    /// .NET module the compilation imported. Consulted by the absence proof so a reachable extension
+    /// method keeps the reference permissive.
+    /// </summary>
+    private IEnumerable<Assembly> EnumerateExtensionMethodAssemblies(Type receiverClrType)
+    {
+        yield return receiverClrType.Assembly;
+        yield return typeof(SharpyRT::Sharpy.Builtins).Assembly;
+        yield return typeof(System.Linq.Enumerable).Assembly;
+        yield return typeof(object).Assembly;
+
+        if (ModuleRegistry != null)
+        {
+            foreach (var assembly in ModuleRegistry.LoadedAssemblies)
+                yield return assembly;
+        }
     }
 
     /// <summary>

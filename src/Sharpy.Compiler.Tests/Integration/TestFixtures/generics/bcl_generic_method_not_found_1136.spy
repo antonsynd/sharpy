@@ -1,9 +1,12 @@
-# #1136 acceptance: a NONEXISTENT member on a raw BCL type with explicit type args must
-# fall through exactly as before the reflection fallback was added — no wrong resolution,
-# no crash, and no spurious arity/type-argument error from the new path. Today that
-# fall-through still surfaces the SPY0908 internal-error net (CS1061 on the emitted member
-# access); a proper member-not-found diagnostic is tracked as #1141 — update this
-# expectation when it lands.
+# #1141: a typo'd (nonexistent) member on a raw BCL receiver with explicit type arguments is now
+# rejected at semantic time. CLR reflection PROVES the member absent — no member of that name exists
+# on List<int> under any mangling candidate, and no reachable extension method declares it — so the
+# reference gets the same member-not-found diagnostic (SPY0203) a user class or user module already
+# gives for the identical shape. Before #1141 it fell through the name-only interop channel, emitted
+# `lst.NoSuchMethod<string>(1)`, and surfaced as the SPY0908 internal-error net (CS1061) — the face
+# this fixture pinned under #1136, whose acceptance deliberately left the fall-through unchanged.
+#
+# Names reflection CANNOT disprove stay permissive: bcl_extension_method_1141 is the negative guard.
 from system.collections.generic import List
 
 def probe(lst: List[int]) -> None:

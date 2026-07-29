@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 
@@ -82,6 +85,110 @@ internal static class ClrTypeHelper
 
         _genericInstanceMethodCache[(clrType, memberName)] = matches;
         return matches;
+    }
+
+    // Caches CLR type -> every name a member reference on it could legitimately denote: each public
+    // member's verbatim CLR name plus its reverse-mangled Sharpy form. A null value memoizes a
+    // reflection failure (inconclusive), which callers must treat as "cannot prove absence".
+    private static readonly ConcurrentDictionary<Type, HashSet<string>?> _memberNameSurfaceCache = new();
+
+    /// <summary>
+    /// Returns every name a Sharpy member reference on <paramref name="clrType"/> could denote — each
+    /// public member's verbatim CLR name and its reverse-mangled Sharpy form (<c>ConvertAll</c> and
+    /// <c>convert_all</c>), across methods, properties, fields, events, and nested types, including
+    /// inherited and interface members. Returns <c>null</c> when reflection is inconclusive (type-load
+    /// failure), which the caller must treat as "member might exist".
+    ///
+    /// <para>
+    /// This is the affirmative half of the #1141 absence proof: a member name absent from this surface
+    /// (and from the extension-method surface, see <see cref="GetExtensionMethodNames"/>) provably does
+    /// not exist on the receiver, so the TypeChecker may reject it instead of letting the name-only
+    /// interop channel emit it and leak a CS1061. Reflection lives here (Discovery), never in the
+    /// emitter (#974). The set doubles as the candidate pool for a "did you mean" suggestion.
+    /// </para>
+    /// </summary>
+    internal static IReadOnlyCollection<string>? GetMemberNameSurface(Type clrType)
+    {
+        return _memberNameSurfaceCache.GetOrAdd(clrType, static t =>
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            try
+            {
+                CollectMemberNames(t, names);
+                // A receiver typed as an interface sees its inherited interface members, which
+                // GetMembers does not flatten; for class receivers this adds nothing new.
+                foreach (var iface in t.GetInterfaces())
+                    CollectMemberNames(iface, names);
+            }
+            catch (Exception ex) when (ex is ReflectionTypeLoadException or TypeLoadException
+                                          or FileNotFoundException or NotSupportedException)
+            {
+                return null;
+            }
+
+            return names;
+        });
+    }
+
+    private static void CollectMemberNames(Type type, HashSet<string> names)
+    {
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance
+            | BindingFlags.Static | BindingFlags.FlattenHierarchy;
+        foreach (var member in type.GetMembers(flags))
+        {
+            names.Add(member.Name);
+            var context = member is MethodBase ? ReverseNameContext.Method : ReverseNameContext.Property;
+            names.Add(NameMangler.ToSharpyName(member.Name, context));
+        }
+    }
+
+    // Caches assembly -> the verbatim and reverse-mangled names of every extension method it declares.
+    private static readonly ConcurrentDictionary<Assembly, HashSet<string>> _extensionMethodNameCache = new();
+
+    /// <summary>
+    /// Returns the verbatim and reverse-mangled names of every extension method declared in
+    /// <paramref name="assembly"/>. The receiver-compatibility question is deliberately not asked:
+    /// this is the permissive half of the #1141 absence proof — a name that any reachable extension
+    /// method could supply is never claimed absent, so the name-only interop channel keeps its
+    /// permissiveness (Anton's rule, #1141) and only names nothing can supply are rejected. Assemblies
+    /// that cannot be inspected contribute no names.
+    /// </summary>
+    internal static IReadOnlyCollection<string> GetExtensionMethodNames(Assembly assembly)
+    {
+        return _extensionMethodNameCache.GetOrAdd(assembly, static asm =>
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            Type[] types;
+            try
+            {
+                types = asm.GetExportedTypes();
+            }
+            catch (Exception ex) when (ex is ReflectionTypeLoadException or TypeLoadException
+                                          or FileNotFoundException or NotSupportedException)
+            {
+                return names;
+            }
+
+            foreach (var type in types)
+            {
+                // Extension methods live only in non-generic static classes, which the compiler marks
+                // with [Extension] at the class level — a cheap filter before enumerating methods.
+                if (!type.IsSealed || !type.IsAbstract || type.IsGenericTypeDefinition)
+                    continue;
+                if (!type.IsDefined(typeof(ExtensionAttribute), inherit: false))
+                    continue;
+
+                foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+                {
+                    if (!method.IsDefined(typeof(ExtensionAttribute), inherit: false))
+                        continue;
+                    names.Add(method.Name);
+                    names.Add(NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method));
+                }
+            }
+
+            return names;
+        });
     }
 
     /// <summary>
