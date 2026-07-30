@@ -1,0 +1,11 @@
+# Every decimal-with-float pair is SPY0222 (unsupported operator), in both operand
+# orders. Narrowing the promotion guard to let decimal mix with integers (#1188) must
+# not let it mix with floats: CPython's Decimal raises TypeError for `Decimal(7) + 1.5`.
+# `/` is listed too because it used to answer float64 for any non-decimal-pair and
+# reached codegen as CS0019/CS0266 -> SPY0908 instead of a real diagnostic.
+Type 'decimal' does not support operator '+' with operand of type 'float64' @7:11
+Type 'decimal' does not support operator '//' with operand of type 'float64' @8:11
+Type 'decimal' does not support operator '/' with operand of type 'float64' @9:11
+Type 'decimal' does not support operator '%' with operand of type 'float64' @10:11
+Type 'decimal' does not support operator '*' with operand of type 'float64' @11:11
+Type 'float64' does not support operator '-' with operand of type 'decimal' @12:11

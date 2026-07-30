@@ -1,0 +1,48 @@
+# Decimal mixes with INTEGER operands for every arithmetic operator, promoting to
+# decimal (#1188). `//` used to be rejected with SPY0222 while `+ - * / %` accepted
+# the same pair, because promotion refused every mixed-decimal pair and only `//`
+# had no CLR operator to fall back on. Values match CPython's Decimal, which mixes
+# with int the same way (`Decimal(7) // 3` is `Decimal('2')`); decimal `//` truncates
+# toward zero, so the mixed-sign rows differ from int `//` (see
+# floordiv_decimal_native.spy for the full sign matrix and #1174).
+def main() -> None:
+    # Both operand orders, decimal on either side.
+    print(7m // 3)          # 2
+    print(3 // 10m)         # 0
+
+    # Truncation toward zero, not flooring (int -7 // 3 would be -3).
+    print(-7m // 3)         # -2
+    print(7m // -3)         # -2
+    print(-7m // -3)        # 2
+    print(-17m // 5)        # -3
+
+    # Non-integral dividend: the quotient truncates, not the operands.
+    print(7.5m // 2)        # 3
+
+    # Through variables, and with an int64 operand.
+    d: decimal = 7m
+    n: int = 3
+    print(d // n)           # 2
+    big: long = 3L
+    print(d // big)         # 2
+
+    # Augmented //= with an int RHS takes the same routing as binary //.
+    z: decimal = -7m
+    z //= 2
+    print(z)                # -3
+
+    # The other arithmetic operators on the same operand pair — all decimal-typed.
+    print(7m % 3)           # 1
+    print(-7m % 3)          # -1  (native %, sign of dividend)
+    print(7m + 3)           # 10
+    print(3 - 7m)           # -4
+    print(3 * 7m)           # 21
+    print(10m / 4)          # 2.5
+
+    # A decimal-typed variable accepts each mixed result: the inferred type is
+    # decimal, not float64 (assigning a float64 to `decimal` would be SPY0220,
+    # and emitting decimal into a float64 slot was SPY0908).
+    q: decimal = 7m / 2
+    print(q)                # 3.5
+    r: decimal = 7m // 2
+    print(r)                # 3

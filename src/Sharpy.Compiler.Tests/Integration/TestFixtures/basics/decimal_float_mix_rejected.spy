@@ -1,0 +1,12 @@
+# Decimal mixes with integers (#1188) but NEVER with float32/float64 — the one
+# restriction the narrowed promotion guard preserves. CPython agrees: Decimal(7) + 1.5
+# raises TypeError. Each line below must be SPY0222, not SPY0908: emitting a native
+# decimal-with-double operator would be CS0019, and inferring float64 for a decimal
+# operand (the old `/` answer) was CS0266 — both surfaced as internal-error ICEs.
+def main() -> None:
+    print(7m + 1.5)
+    print(7m // 1.5)
+    print(7m / 1.5)
+    print(7m % 1.5)
+    print(7m * 1.5)
+    print(1.5 - 7m)
