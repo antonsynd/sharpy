@@ -12,6 +12,8 @@ namespace Sharpy
         /// Sharpy types (List, Set, Dict) override ToString() to produce
         /// Python-compatible repr output (e.g., "[1, 2, 3]", "{1, 2}", etc.).
         /// Strings are wrapped in single quotes, matching Python's repr().
+        /// Floats are formatted by <see cref="FormatFloat(double)"/> so whole values
+        /// keep their trailing <c>.0</c> (e.g., <c>-4.0</c>, not <c>-4</c>).
         /// </remarks>
         /// <param name="obj">The object to get the representation of</param>
         /// <returns>A printable string representation</returns>
@@ -32,6 +34,16 @@ namespace Sharpy
 
             if (obj is bool b)
                 return b ? "True" : "False";
+
+            // Boxed floats must route through the Python float formatter, otherwise
+            // .NET's default ToString() drops the trailing ".0" on whole values and
+            // every container element (list/set/dict/tuple all funnel through Repr)
+            // prints -4 where Python prints -4.0.
+            if (obj is double d)
+                return FormatFloat(d);
+
+            if (obj is float f)
+                return FormatFloat(f);
 
             // Handle ValueTuples (System.ValueTuple<...>)
             var type = obj.GetType();
