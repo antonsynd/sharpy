@@ -2069,8 +2069,23 @@ internal partial class TypeChecker
         var argTypes = new List<SemanticType>();
         // #1009: map(lambda, iter1, iter2, ...) needs the lambda's parameter types inferred
         // from the iterables' element types so an unannotated multi-iterable map closes its
-        // return type. Handle the whole positional list specially in that one case.
-        if (!TryCheckMapLambdaArguments(call, callee, argTypes))
+        // return type. Handle the whole positional list specially in that one case. It runs before
+        // the general deferral below, which would otherwise take over map and lose this path's
+        // element-type projection details.
+        if (TryCheckMapLambdaArguments(call, callee, argTypes))
+        {
+            // Positional list populated in source order; keyword arguments are checked below.
+        }
+        // #1161: a lambda argument whose parameter types arrive inward from generic-call unification
+        // must have its body checked AFTER the other arguments bind those type parameters — otherwise
+        // every fact the body records (read-node types, operator lowerings) is computed from a
+        // placeholder. Handles the whole argument list (positional and keyword) when it applies.
+        else if (TryCheckDeferredLambdaArguments(call, callee, earlyFuncSymbol, earlyParamOffset,
+                     out var deferredArgTypes, out var deferredKwargTypes))
+        {
+            return (deferredArgTypes, deferredKwargTypes);
+        }
+        else
         {
             for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
             {

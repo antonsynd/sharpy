@@ -130,6 +130,375 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// #1161: checks a generic call's arguments with its unannotated lambda arguments <em>deferred</em>
+    /// until the type parameters their parameter types depend on have been bound by the other
+    /// arguments.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A lambda sitting in a generic parameter slot — <c>filter(lambda x: x % 3 == 1, nums)</c> against
+    /// <c>Filter&lt;T&gt;(Func&lt;T,bool&gt;, IEnumerable&lt;T&gt;)</c> — cannot be typed when it is
+    /// reached in source order: <c>T</c> is still open, so <see cref="CheckLambda"/> declines the
+    /// unresolved expected type and the parameter falls back to <see cref="SemanticType.Unknown"/>.
+    /// Every fact recorded while checking the body is then computed from that placeholder: the read-node
+    /// types codegen reads, operator lowerings, overload selections. Checking the other arguments first
+    /// binds <c>T</c> from <c>nums</c>, so the body is checked ONCE, with final parameter types, and the
+    /// node-keyed facts materialize correctly (the emitter's floored-<c>%</c> operand gate is the
+    /// motivating reader — it is a pure applier and cannot recover the type itself).
+    /// </para>
+    /// <para>
+    /// Deliberately conservative: returns false — leaving the caller's normal argument loop to run
+    /// unchanged — unless a single unambiguous generic signature is in view AND some deferred lambda's
+    /// parameter types reference a type parameter that a non-deferred argument can bind. A genuinely
+    /// uninferrable lambda (type parameter only in lambda-parameter position) is therefore left on its
+    /// existing path and still reaches <see cref="TryReportUninferrableLambdaTypeArg"/> (SPY0237, #904).
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// True if this call's arguments were checked here, with <paramref name="argTypes"/> populated in
+    /// source order and <paramref name="kwargTypes"/> keyed by keyword name; false to let the caller's
+    /// normal argument loop run.
+    /// </returns>
+    private bool TryCheckDeferredLambdaArguments(
+        FunctionCall call, Expression callee, FunctionSymbol? earlyFuncSymbol, int earlyParamOffset,
+        out List<SemanticType> argTypes, out Dictionary<string, SemanticType> kwargTypes)
+    {
+        argTypes = null!;
+        kwargTypes = null!;
+
+        // A spread argument breaks the positional formal-to-actual alignment this pass relies on.
+        foreach (var arg in call.Arguments)
+        {
+            if (arg is SpreadElement)
+                return false;
+        }
+
+        var (signature, providesExpectedTypes) = ResolveDeferredLambdaSignature(call, callee, earlyFuncSymbol);
+        if (signature == null || !signature.IsGeneric)
+            return false;
+
+        // Bind each formal parameter slot to the argument node that fills it: positionally when the
+        // slot is within the positional list, otherwise by keyword name.
+        var formalByPosition = new SemanticType?[call.Arguments.Length];
+        var formalByKeyword = new Dictionary<string, SemanticType>();
+        foreach (var (formalIndex, parameter) in signature.Parameters.Select((p, i) => (i, p)))
+        {
+            int position = formalIndex - earlyParamOffset;
+            if (position >= 0 && position < call.Arguments.Length)
+            {
+                formalByPosition[position] = parameter.Type;
+            }
+            else if (call.KeywordArguments.Any(k => k.Name == parameter.Name))
+            {
+                formalByKeyword[parameter.Name] = parameter.Type;
+            }
+        }
+
+        // Candidate deferrals: an unannotated lambda whose formal type is a function type with type
+        // parameters in its parameter positions — exactly what CheckLambda cannot use yet.
+        var deferredPositions = new List<int>();
+        var deferredKeywords = new List<string>();
+        for (int position = 0; position < call.Arguments.Length; position++)
+        {
+            if (IsDeferrableLambdaArgument(call.Arguments[position], formalByPosition[position]))
+                deferredPositions.Add(position);
+        }
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (formalByKeyword.TryGetValue(kwarg.Name, out var keywordFormal)
+                && IsDeferrableLambdaArgument(kwarg.Value, keywordFormal))
+            {
+                deferredKeywords.Add(kwarg.Name);
+            }
+        }
+
+        if (deferredPositions.Count == 0 && deferredKeywords.Count == 0)
+            return false;
+
+        // Only defer when deferral can actually help: some deferred lambda's parameter types must
+        // reference a type parameter that a NON-deferred argument's formal type also references, so
+        // checking the others first genuinely binds it.
+        if (!AnyDeferredLambdaIsBindableByOtherArguments(
+                call, formalByPosition, formalByKeyword, deferredPositions, deferredKeywords))
+        {
+            return false;
+        }
+
+        // Phase 1 — check every non-deferred argument in source order, collecting the formal/actual
+        // pairs that can bind type parameters. Expected types are supplied only where the caller's
+        // normal loop would have supplied them, so nothing outside the deferred slots changes.
+        var positionTypes = new SemanticType?[call.Arguments.Length];
+        kwargTypes = new Dictionary<string, SemanticType>();
+        var formals = new List<SemanticType>();
+        var actuals = new List<SemanticType>();
+        var previousExpectedType = _expectedType;
+
+        for (int position = 0; position < call.Arguments.Length; position++)
+        {
+            if (deferredPositions.Contains(position))
+                continue;
+            if (providesExpectedTypes && formalByPosition[position] is { } positionalFormal)
+                _expectedType = positionalFormal is UnknownType ? null : positionalFormal;
+            var actual = CheckExpression(call.Arguments[position]);
+            _expectedType = previousExpectedType;
+            positionTypes[position] = actual;
+            if (formalByPosition[position] is { } formal)
+            {
+                formals.Add(formal);
+                actuals.Add(actual);
+            }
+        }
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (deferredKeywords.Contains(kwarg.Name))
+                continue;
+            if (providesExpectedTypes && formalByKeyword.TryGetValue(kwarg.Name, out var keywordFormal))
+                _expectedType = keywordFormal is UnknownType ? null : keywordFormal;
+            var actual = CheckExpression(kwarg.Value);
+            _expectedType = previousExpectedType;
+            kwargTypes[kwarg.Name] = actual;
+            if (formalByKeyword.TryGetValue(kwarg.Name, out var boundFormal))
+            {
+                formals.Add(boundFormal);
+                actuals.Add(actual);
+            }
+        }
+
+        var substitutions = _genericInference.UnifyTypes(formals, actuals)
+            ?? new Dictionary<string, SemanticType>();
+
+        // An iterable formal binds its type parameter to the ITERATION element type, which is not
+        // always the structural unification result: iterating a bare dict yields its keys (#1154),
+        // not its key/value pairs. Element-type inference is the same source the map path uses
+        // (#1009), and it wins over the structural binding for these slots.
+        for (int i = 0; i < formals.Count; i++)
+        {
+            if (formals[i] is GenericType { TypeArguments.Count: 1 } iterableFormal
+                && iterableFormal.TypeArguments[0] is TypeParameterType elementParam
+                && _typeInference.InferIterableElementType(actuals[i]) is { } elementType
+                && elementType is not UnknownType)
+            {
+                substitutions[elementParam.Name] = elementType;
+            }
+        }
+
+        // Phase 2 — check the deferred lambda bodies exactly once, with the substituted expected
+        // function type. A type parameter the other arguments could not bind stays unsubstituted, and
+        // CheckLambda declines it per position exactly as it does today.
+        foreach (var position in deferredPositions)
+        {
+            _expectedType = SubstituteExpectedLambdaType(formalByPosition[position]!, substitutions)
+                ?? previousExpectedType;
+            positionTypes[position] = CheckExpression(call.Arguments[position]);
+            _expectedType = previousExpectedType;
+        }
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (!deferredKeywords.Contains(kwarg.Name))
+                continue;
+            _expectedType = SubstituteExpectedLambdaType(formalByKeyword[kwarg.Name], substitutions)
+                ?? previousExpectedType;
+            kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
+            _expectedType = previousExpectedType;
+        }
+
+        argTypes = new List<SemanticType>(call.Arguments.Length);
+        for (int position = 0; position < call.Arguments.Length; position++)
+            argTypes.Add(positionTypes[position] ?? SemanticType.Unknown);
+        return true;
+    }
+
+    /// <summary>
+    /// True when <paramref name="argument"/> is a lambda with at least one unannotated parameter and
+    /// <paramref name="formal"/> is a function type whose parameter positions still contain type
+    /// parameters — the shape <see cref="CheckLambda"/> cannot consume until unification runs (#1161).
+    /// </summary>
+    private static bool IsDeferrableLambdaArgument(Expression argument, SemanticType? formal)
+    {
+        return UnwrapParenthesized(argument) is LambdaExpression lambda
+            && lambda.Parameters.Any(p => p.Type == null)
+            && formal is FunctionType formalFunc
+            && formalFunc.ParameterTypes.Any(ContainsTypeParameterType);
+    }
+
+    /// <summary>
+    /// True when at least one deferred lambda's parameter types reference a type parameter that a
+    /// non-deferred argument's formal type also references. Without this the deferral buys nothing:
+    /// no argument can bind the type parameter, so the lambda must keep its existing path (and its
+    /// existing SPY0237 report, #904).
+    /// </summary>
+    private static bool AnyDeferredLambdaIsBindableByOtherArguments(
+        FunctionCall call,
+        SemanticType?[] formalByPosition,
+        Dictionary<string, SemanticType> formalByKeyword,
+        List<int> deferredPositions,
+        List<string> deferredKeywords)
+    {
+        var binderFormals = new List<SemanticType>();
+        for (int position = 0; position < formalByPosition.Length; position++)
+        {
+            if (!deferredPositions.Contains(position) && formalByPosition[position] is { } formal)
+                binderFormals.Add(formal);
+        }
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (!deferredKeywords.Contains(kwarg.Name)
+                && formalByKeyword.TryGetValue(kwarg.Name, out var keywordFormal))
+            {
+                binderFormals.Add(keywordFormal);
+            }
+        }
+
+        if (binderFormals.Count == 0)
+            return false;
+
+        var deferredFormals = deferredPositions.Select(p => formalByPosition[p]!)
+            .Concat(deferredKeywords.Select(n => formalByKeyword[n]));
+        foreach (var deferredFormal in deferredFormals)
+        {
+            foreach (var name in CollectTypeParameterNames(((FunctionType)deferredFormal).ParameterTypes))
+            {
+                if (binderFormals.Any(f => ReferencesTypeParameterNamed(f, name)))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Collects the names of every type parameter referenced anywhere in <paramref name="types"/>.
+    /// </summary>
+    private static List<string> CollectTypeParameterNames(IEnumerable<SemanticType> types)
+    {
+        var names = new List<string>();
+        foreach (var type in types)
+            CollectTypeParameterNames(type, names);
+        return names;
+    }
+
+    private static void CollectTypeParameterNames(SemanticType type, List<string> names)
+    {
+        switch (type)
+        {
+            case TypeParameterType tp:
+                if (!names.Contains(tp.Name))
+                    names.Add(tp.Name);
+                break;
+            case ResultType rt:
+                CollectTypeParameterNames(rt.OkType, names);
+                CollectTypeParameterNames(rt.ErrorType, names);
+                break;
+            case OptionalType ot:
+                CollectTypeParameterNames(ot.UnderlyingType, names);
+                break;
+            case NullableType nt:
+                CollectTypeParameterNames(nt.UnderlyingType, names);
+                break;
+            case GenericType gt:
+                foreach (var arg in gt.TypeArguments)
+                    CollectTypeParameterNames(arg, names);
+                break;
+            case FunctionType ft:
+                foreach (var parameterType in ft.ParameterTypes)
+                    CollectTypeParameterNames(parameterType, names);
+                CollectTypeParameterNames(ft.ReturnType, names);
+                break;
+            case TupleType tt:
+                foreach (var element in tt.ElementTypes)
+                    CollectTypeParameterNames(element, names);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Applies <paramref name="substitutions"/> to a deferred lambda's formal function type and
+    /// normalizes each parameter position, so a discovery-collapsed <c>object</c> is not forced onto
+    /// the lambda parameter (see <see cref="NormalizeExpectedParamType"/>).
+    /// </summary>
+    private static SemanticType? SubstituteExpectedLambdaType(
+        SemanticType formal, Dictionary<string, SemanticType> substitutions)
+    {
+        if (GenericTypeInferenceService.SubstituteTypeParameters(formal, substitutions) is not FunctionType substituted)
+            return null;
+
+        return substituted with
+        {
+            ParameterTypes = substituted.ParameterTypes.Select(NormalizeExpectedParamType).ToList()
+        };
+    }
+
+    /// <summary>
+    /// Resolves the single unambiguous signature whose formal parameter types drive deferred lambda
+    /// checking (#1161), or null when no such signature is in view.
+    /// </summary>
+    /// <returns>
+    /// The signature, and whether its parameter types may also be used as expected types for the
+    /// non-deferred arguments (true only for the member-access path, which already does so today).
+    /// </returns>
+    private (FunctionSymbol? Signature, bool ProvidesExpectedTypes) ResolveDeferredLambdaSignature(
+        FunctionCall call, Expression callee, FunctionSymbol? earlyFuncSymbol)
+    {
+        // Member-access calls already resolve a receiver-substituted signature for exactly this
+        // purpose (#889) and already feed its parameter types in as expected types; reuse both.
+        if (earlyFuncSymbol != null)
+            return (earlyFuncSymbol, true);
+
+        if (callee is not Identifier id)
+            return (null, false);
+
+        // A user-defined or imported overload SET is resolved from the argument types later; choosing
+        // one of its members here would be a guess.
+        if (_symbolTable.LookupFunctionOverloads(id.Name) is { Count: > 1 })
+            return (null, false);
+
+        var symbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
+        var builtinOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+
+        List<FunctionSymbol> candidates;
+        if (builtinOverloads is { Count: > 0 } && (symbol == null || builtinOverloads.Contains(symbol)))
+            candidates = builtinOverloads.Where(c => AcceptsCallShape(c, call)).ToList();
+        else if (symbol != null)
+            candidates = new List<FunctionSymbol> { symbol };
+        else
+            return (null, false);
+
+        if (candidates.Count == 0)
+            return (null, false);
+        if (candidates.Count > 1 && !OverloadsAgreeOnParameterTypes(candidates, static t => t))
+            return (null, false);
+
+        return (candidates.OrderByDescending(c => c.Parameters.Count).First(), false);
+    }
+
+    /// <summary>
+    /// True when <paramref name="candidate"/> could accept this call's argument shape: the argument
+    /// count fits its parameter list and every keyword name matches a parameter. Type-based overload
+    /// resolution still runs later; this only narrows the candidate set enough to read formal
+    /// parameter types without guessing.
+    /// </summary>
+    private static bool AcceptsCallShape(FunctionSymbol candidate, FunctionCall call)
+    {
+        int supplied = call.Arguments.Length + call.KeywordArguments.Length;
+        bool hasVariadic = candidate.Parameters.Any(p => p.IsVariadic);
+        if (!hasVariadic && supplied > candidate.Parameters.Count)
+            return false;
+
+        int required = candidate.Parameters.Count(p => !p.HasDefault && !p.IsVariadic);
+        if (supplied < required)
+            return false;
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            if (!candidate.Parameters.Any(p => p.Name == kwarg.Name))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Try to infer Unknown lambda parameter types from the lambda body.
     /// Handles partial application lowering where the body is a FunctionCall,
     /// BinaryOp, UnaryOp, or ComparisonChain containing placeholder parameters.
