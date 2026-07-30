@@ -170,16 +170,19 @@ internal partial class TypeChecker
     /// </summary>
     private void InferParamTypesFromCall(FunctionCall call, Dictionary<string, int> unknownParams, List<SemanticType> paramTypes)
     {
-        // Resolve the function being called to get its parameter types
+        // Resolve the function being called to get its parameter types. Dispatched on the canonical
+        // (paren-stripped) callee so a placeholder under `(add)(5, _)` infers the same as `add(5, _)`
+        // (#1170).
         List<ParameterSymbol>? funcParams = null;
+        var callee = UnwrapParenthesized(call.Function);
 
-        if (call.Function is Identifier funcId)
+        if (callee is Identifier funcId)
         {
             var symbol = _symbolTable.Lookup(funcId.Name);
             if (symbol is FunctionSymbol fs)
                 funcParams = fs.Parameters;
         }
-        else if (call.Function is MemberAccess memberAccess)
+        else if (callee is MemberAccess memberAccess)
         {
             // For method calls like obj.method(_, y), resolve the method
             var objType = TryResolveExpressionType(memberAccess.Object);

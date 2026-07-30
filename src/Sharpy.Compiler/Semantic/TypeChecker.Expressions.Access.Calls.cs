@@ -13,6 +13,17 @@ internal partial class TypeChecker
 {
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
+        // The canonical callee (#1170). Redundant parentheses around a callee never change what a
+        // call denotes, so every shape dispatch in this method — construction detection, special
+        // forms, overload resolution, generic-reference resolution, argument binding — reads this
+        // instead of `call.Function`. Computed once here and threaded into the helpers so a new arm
+        // cannot reintroduce surface-syntax dispatch. The emitter unwraps the same way (#1147), so
+        // node-keyed facts recorded against `callee` are the ones codegen looks up.
+        //
+        // `call.Function` is still what gets CheckExpression'd (the wrapper node needs its own
+        // recorded type) and what diagnostics span (the parentheses are part of what the user wrote).
+        var callee = UnwrapParenthesized(call.Function);
+
         // Handle functools.partial(f, ...) — compatibility shim that desugars to a placeholder lambda
         if (FunctoolsPartialHelper.IsFunctoolsPartialCall(call, _symbolTable))
         {
@@ -20,12 +31,12 @@ internal partial class TypeChecker
         }
 
         // Handle None() — empty Optional constructor
-        var noneResult = CheckNoneConstruction(call);
+        var noneResult = CheckNoneConstruction(call, callee);
         if (noneResult != null)
             return noneResult;
 
         // Check for invalid tagged union constructor usage (wrong arity)
-        if (call.Function is Identifier taggedId && call.KeywordArguments.Length == 0
+        if (callee is Identifier taggedId && call.KeywordArguments.Length == 0
             && _symbolTable.BuiltinRegistry.IsTaggedUnionConstructor(taggedId.Name)
             && _symbolTable.Lookup(taggedId.Name) == null)
         {
@@ -52,7 +63,7 @@ internal partial class TypeChecker
         }
 
         // Check if this is a tagged union constructor shorthand (Some/Ok/Err)
-        if (call.Function is Identifier constructorId && call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
+        if (callee is Identifier constructorId && call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
         {
             var constructorResult = TryCheckTaggedUnionConstructor(constructorId, call);
             if (constructorResult != null)
@@ -60,16 +71,13 @@ internal partial class TypeChecker
         }
 
         // Detect IIFE: (lambda x: ...)(args) — check arguments first to infer lambda param types
-        var iifeLambda = call.Function is LambdaExpression directLambda ? directLambda
-            : call.Function is Parenthesized paren && paren.Expression is LambdaExpression innerLambda ? innerLambda
-            : null;
-        if (iifeLambda != null && call.KeywordArguments.Length == 0)
+        if (callee is LambdaExpression iifeLambda && call.KeywordArguments.Length == 0)
         {
             return CheckIifeLambdaCall(call, iifeLambda);
         }
 
         // type(None) has no Sharpy equivalent — NoneType is not a real type
-        if (call.Function is Identifier { Name: "type" } && call.Arguments.Length == 1
+        if (callee is Identifier { Name: "type" } && call.Arguments.Length == 1
             && call.Arguments[0] is NoneLiteral)
         {
             AddError("type(None) is not supported; NoneType has no Sharpy equivalent",
@@ -79,7 +87,7 @@ internal partial class TypeChecker
         }
 
         // Check if this is a null conditional method call (obj?.method())
-        bool isNullConditionalCall = call.Function is MemberAccess { IsNullConditional: true };
+        bool isNullConditionalCall = callee is MemberAccess { IsNullConditional: true };
         bool isOptionalNullConditional = false;
 
         // Check the called expression type first. Mark the callee node so the CheckExpression choke
@@ -92,28 +100,28 @@ internal partial class TypeChecker
         _currentCallCallee = savedCallCallee;
 
         // After checking the callee, determine if this is ?. on an Optional object
-        if (isNullConditionalCall && call.Function is MemberAccess nullCondMa)
+        if (isNullConditionalCall && callee is MemberAccess nullCondMa)
         {
             var objType = _semanticInfo.GetExpressionType(nullCondMa.Object);
             isOptionalNullConditional = objType is OptionalType;
         }
 
         // Validate event invoke restrictions and __init__() call tracking
-        var initEventResult = ValidateInitAndEventCalls(call);
+        var initEventResult = ValidateInitAndEventCalls(call, callee);
         if (initEventResult != null)
             return initEventResult;
 
         // Resolve function symbol early for constructor inference on arguments
-        var (earlyFuncSymbol, earlyParamOffset) = ResolveEarlyFunctionSymbol(call);
+        var (earlyFuncSymbol, earlyParamOffset) = ResolveEarlyFunctionSymbol(call, callee);
 
         // Check arguments and keyword arguments, collecting their types. isinstance's subject
         // reads the honest, un-narrowed value (see _typeTestOperand): a narrowing cast on the
         // operand would presuppose the very fact the test is checking.
         var calleeFunctionType = calleeType as FunctionType;
         var savedTypeTestOperand = _typeTestOperand;
-        if (call.Function is Identifier { Name: BuiltinNames.Isinstance } && call.Arguments.Length > 0)
+        if (callee is Identifier { Name: BuiltinNames.Isinstance } && call.Arguments.Length > 0)
             _typeTestOperand = UnwrapParenthesized(call.Arguments[0]);
-        var (argTypes, kwargTypes) = CheckCallArguments(call, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
+        var (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
         _typeTestOperand = savedTypeTestOperand;
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
@@ -123,11 +131,11 @@ internal partial class TypeChecker
         FunctionSymbol? funcSymbol = null;
 
         // Handle generic type/function instantiation: Box[int](42) or identity[int](42)
-        var genericResult = CheckGenericInstantiation(call, calleeType, argTypes, kwargTypes, totalArgCount);
+        var genericResult = CheckGenericInstantiation(call, callee, calleeType, argTypes, kwargTypes, totalArgCount);
         if (genericResult != null)
             return genericResult;
 
-        if (call.Function is Identifier id)
+        if (callee is Identifier id)
         {
             // Record where a bare dict flows into a builtin's iterable-of-keys position so codegen
             // projects it to d.Keys() (#1154). One choke point for the whole ring — the emitter is a
@@ -216,7 +224,7 @@ internal partial class TypeChecker
             }
         }
         // Handle union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0)
-        else if (call.Function is MemberAccess unionCaseAccess
+        else if (callee is MemberAccess unionCaseAccess
             && calleeType is UserDefinedType caseUdt
             && caseUdt.Symbol?.BaseType is { TypeKind: TypeKind.Union } unionBaseSymbol)
         {
@@ -224,7 +232,7 @@ internal partial class TypeChecker
         }
         // Handle member access function calls (e.g., module.function() or obj.method())
         // Skip super() calls - they're already validated by ValidateSuperMemberAccess
-        else if (call.Function is MemberAccess memberAccessCall && memberAccessCall.Object is not SuperExpression)
+        else if (callee is MemberAccess memberAccessCall && memberAccessCall.Object is not SuperExpression)
         {
             // Module-qualified constructor call (e.g., fractions.Fraction(1, 2)): resolve the
             // member to an exported TypeSymbol and route into the shared constructor-checking
@@ -307,11 +315,14 @@ internal partial class TypeChecker
     /// Handles generic type instantiation (Box[int](42)) and generic function calls (identity[int](42)).
     /// Returns null if the call is not a generic instantiation.
     /// </summary>
-    private SemanticType? CheckGenericInstantiation(FunctionCall call, SemanticType calleeType,
+    /// <param name="callee">The canonical (paren-stripped) callee — see the #1170 contract in
+    /// <see cref="AstHelper.UnwrapParenthesized"/>. <c>(Box[int])(42)</c> instantiates like
+    /// <c>Box[int](42)</c>.</param>
+    private SemanticType? CheckGenericInstantiation(FunctionCall call, Expression callee, SemanticType calleeType,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
         // Special handling for array construction: array[T](size) -> new T[size]
-        if (call.Function is IndexAccess arrayAccess &&
+        if (callee is IndexAccess arrayAccess &&
             arrayAccess.Object is Identifier arrayId &&
             arrayId.Name == BuiltinNames.Array)
         {
@@ -346,7 +357,7 @@ internal partial class TypeChecker
         // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int or TupleLiteral), Arguments: [...])
         // The object may be a bare identifier (Box) or a module-qualified member access
         // (difflib.SequenceMatcher), both of which can resolve to a generic TypeSymbol.
-        if (call.Function is IndexAccess indexAccess &&
+        if (callee is IndexAccess indexAccess &&
             TryResolveGenericTypeSymbolFromIndexObject(indexAccess.Object) is { IsGeneric: true } genericTypeSymbol)
         {
             // The "index" is actually type argument(s) - try to resolve them as types
@@ -414,7 +425,7 @@ internal partial class TypeChecker
             // and TWO iterables. Nothing validated the value arguments against that narrowing, so a
             // call whose type-argument count matched but whose value arguments did not was accepted
             // here and emitted verbatim, surfacing as CS7036 out of Roslyn instead of a diagnostic.
-            ValidateSelectedGenericOverloadArguments(call, genericFuncType, argTypes, totalArgCount);
+            ValidateSelectedGenericOverloadArguments(call, callee, genericFuncType, argTypes, totalArgCount);
 
             // Substitute type parameters with type arguments in the return type
             var substitutedReturnType = SubstituteTypeParameters(
@@ -442,10 +453,10 @@ internal partial class TypeChecker
     /// paths use (#1013).</para>
     /// </summary>
     private void ValidateSelectedGenericOverloadArguments(
-        FunctionCall call, GenericFunctionType genericFuncType,
+        FunctionCall call, Expression canonicalCallee, GenericFunctionType genericFuncType,
         List<SemanticType> argTypes, int totalArgCount)
     {
-        var callee = UnwrapParenthesized(call.Function) as IndexAccess;
+        var callee = canonicalCallee as IndexAccess;
         var reference = callee != null ? _semanticInfo.GetGenericReference(callee) : null;
         var selected = reference?.SelectedOverload ?? genericFuncType.FunctionSymbol;
 
@@ -2033,14 +2044,17 @@ internal partial class TypeChecker
     /// Sets _expectedType per-parameter when an early function symbol or callee FunctionType
     /// is available, enabling constructor inference (Some/None()/Ok/Err) in function arguments.
     /// </summary>
+    /// <param name="callee">The canonical (paren-stripped) callee — see the #1170 contract in
+    /// <see cref="AstHelper.UnwrapParenthesized"/>.</param>
     private (List<SemanticType> ArgTypes, Dictionary<string, SemanticType> KwargTypes) CheckCallArguments(
-        FunctionCall call, FunctionSymbol? earlyFuncSymbol, int earlyParamOffset, FunctionType? calleeFunctionType)
+        FunctionCall call, Expression callee, FunctionSymbol? earlyFuncSymbol, int earlyParamOffset,
+        FunctionType? calleeFunctionType)
     {
         var argTypes = new List<SemanticType>();
         // #1009: map(lambda, iter1, iter2, ...) needs the lambda's parameter types inferred
         // from the iterables' element types so an unannotated multi-iterable map closes its
         // return type. Handle the whole positional list specially in that one case.
-        if (!TryCheckMapLambdaArguments(call, argTypes))
+        if (!TryCheckMapLambdaArguments(call, callee, argTypes))
         {
             for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
             {
@@ -2118,11 +2132,11 @@ internal partial class TypeChecker
     /// True if this call was handled here (positional <paramref name="argTypes"/> populated in
     /// source order); false to let the caller's normal argument loop run.
     /// </returns>
-    private bool TryCheckMapLambdaArguments(FunctionCall call, List<SemanticType> argTypes)
+    private bool TryCheckMapLambdaArguments(FunctionCall call, Expression callee, List<SemanticType> argTypes)
     {
         // Bare `map(...)` call (an Identifier callee) with a lambda first argument and at least
         // one iterable. Method-form or aliased map() falls through to the normal loop.
-        if (call.Function is not Identifier mapId || mapId.Name != BuiltinNames.Map)
+        if (callee is not Identifier mapId || mapId.Name != BuiltinNames.Map)
             return false;
         if (call.Arguments.Length < 2 || call.Arguments[0] is not LambdaExpression)
             return false;
@@ -2265,16 +2279,18 @@ internal partial class TypeChecker
     /// For simple identifier calls (foo(Some(42))), looks up the function before
     /// checking arguments, allowing _expectedType to be set per-parameter.
     /// </summary>
+    /// <param name="callee">The canonical (paren-stripped) callee — see the #1170 contract in
+    /// <see cref="AstHelper.UnwrapParenthesized"/>.</param>
     /// <returns>The early-resolved function symbol and parameter offset (0 for functions, 1 for constructors skipping 'self').</returns>
-    private (FunctionSymbol? Symbol, int ParamOffset) ResolveEarlyFunctionSymbol(FunctionCall call)
+    private (FunctionSymbol? Symbol, int ParamOffset) ResolveEarlyFunctionSymbol(FunctionCall call, Expression callee)
     {
         // Method calls (obj.method(...)): resolve the method on the receiver type so lambda
         // arguments get their parameter types inferred from the receiver-substituted signature
         // (e.g. list[str].sort(key=lambda s: ...) → s: str). See #889.
-        if (call.Function is MemberAccess earlyMa && earlyMa.Object is not SuperExpression)
+        if (callee is MemberAccess earlyMa && earlyMa.Object is not SuperExpression)
             return ResolveEarlyMethodSymbol(call, earlyMa);
 
-        if (call.Function is not Identifier earlyId)
+        if (callee is not Identifier earlyId)
             return (null, 0);
 
         var earlySymbol = _symbolTable.Lookup(earlyId.Name);
@@ -2471,10 +2487,13 @@ internal partial class TypeChecker
     /// Returns a type if an early return is needed (e.g., event invoke violation),
     /// or null if the dispatcher should continue.
     /// </summary>
-    private SemanticType? ValidateInitAndEventCalls(FunctionCall call)
+    /// <param name="callee">The canonical (paren-stripped) callee — see the #1170 contract in
+    /// <see cref="AstHelper.UnwrapParenthesized"/>. <c>(self.__init__)(v)</c> is the same
+    /// initializer call as <c>self.__init__(v)</c>.</param>
+    private SemanticType? ValidateInitAndEventCalls(FunctionCall call, Expression callee)
     {
         // Check event raise restriction: events can only be invoked from within the declaring class
-        if (call.Function is MemberAccess invokeMA && invokeMA.Member == "invoke")
+        if (callee is MemberAccess invokeMA && invokeMA.Member == "invoke")
         {
             // The object of .invoke() might be an event access (e.g., self.on_click?.invoke(...))
             if (_semanticInfo.IsEventAccess(invokeMA.Object))
@@ -2498,7 +2517,7 @@ internal partial class TypeChecker
 
         // Track super().__init__() calls AFTER validation completes
         // (do this after CheckExpression so the validation doesn't see it as already called)
-        if (call.Function is MemberAccess ma && ma.Object is SuperExpression && ma.Member == DunderNames.Init)
+        if (callee is MemberAccess ma && ma.Object is SuperExpression && ma.Member == DunderNames.Init)
         {
             _superInitCalled = true;
 
@@ -2511,7 +2530,7 @@ internal partial class TypeChecker
         }
 
         // Validate self.__init__() is only called inside a constructor
-        if (call.Function is MemberAccess selfInitMa &&
+        if (callee is MemberAccess selfInitMa &&
             selfInitMa.Object is Identifier { Name: "self" } &&
             selfInitMa.Member == DunderNames.Init)
         {
@@ -2574,9 +2593,9 @@ internal partial class TypeChecker
     /// Handles None() — empty Optional constructor.
     /// Returns the result type if this is a None() call, or null if the dispatcher should continue.
     /// </summary>
-    private SemanticType? CheckNoneConstruction(FunctionCall call)
+    private SemanticType? CheckNoneConstruction(FunctionCall call, Expression callee)
     {
-        if (call.Function is not NoneLiteral || call.Arguments.Length != 0 || call.KeywordArguments.Length != 0)
+        if (callee is not NoneLiteral || call.Arguments.Length != 0 || call.KeywordArguments.Length != 0)
             return null;
 
         if (_expectedType is OptionalType)
@@ -2664,7 +2683,8 @@ internal partial class TypeChecker
         // Resolve the 'functools' module identifier so SemanticInfo records the binding;
         // LSP find-references and go-to-definition for 'functools' continues to work even
         // though we bypass the normal member-access resolution.
-        if (call.Function is MemberAccess memberAccess && memberAccess.Object is Identifier moduleId)
+        if (UnwrapParenthesized(call.Function) is MemberAccess memberAccess
+            && memberAccess.Object is Identifier moduleId)
         {
             _ = CheckExpression(moduleId);
         }

@@ -100,6 +100,31 @@ internal static class AstHelper
         };
     }
 
+    /// <summary>
+    /// Strips any <see cref="Parenthesized"/> wrappers, returning the inner expression. This is the
+    /// canonical normalization seam for callee-shape dispatch (#1170): redundant parentheses never
+    /// change what an expression denotes, so <c>(isinstance)(x, T)</c>, <c>(Shape.Circle)(r)</c>,
+    /// <c>(dict)()</c> and <c>(Token)("a")</c> must resolve — and narrow, and lower — exactly like
+    /// their unparenthesized forms.
+    ///
+    /// <para>Every site that decides <em>what a call means</em> from the callee's surface syntax must
+    /// dispatch on the result of this helper rather than on the raw <c>FunctionCall.Function</c>: the
+    /// call-typing arms in <c>TypeChecker.CheckFunctionCall</c>, special-form detection, the
+    /// callee-shape validators, and the emitter's <c>GenerateCall</c> (whose top-level unwrap #1147
+    /// established the contract on the codegen side). Normalization strips parentheses only — it never
+    /// looks through a call, an index, or any other expression, so <c>(get_fn())(x)</c> stays an
+    /// ordinary call through a callable value.</para>
+    ///
+    /// <para>Note this is about <em>callees</em>, not reads: narrowing deliberately keeps type-test
+    /// operands on the raw node (see the type-test-operand contract in <c>TypeChecker</c>).</para>
+    /// </summary>
+    public static Expression UnwrapParenthesized(Expression expr)
+    {
+        while (expr is Parenthesized paren)
+            expr = paren.Expression;
+        return expr;
+    }
+
     private static string? ExtractMemberAccessNarrowingKey(MemberAccess ma)
     {
         var objectKey = ExtractNarrowingKey(ma.Object);

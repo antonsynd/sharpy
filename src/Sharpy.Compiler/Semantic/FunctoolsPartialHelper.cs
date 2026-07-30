@@ -44,7 +44,11 @@ internal static class FunctoolsPartialHelper
         // for the Sharpy.Core functools module. The local identifier (e.g., 'functools'
         // or an alias from `import functools as f`) is looked up; the module's canonical
         // name is what we check against.
-        if (call.Function is not MemberAccess memberAccess)
+        //
+        // Matched against the canonical (paren-stripped) callee so `(functools.partial)(f, 1)`
+        // desugars like the direct form (#1170). Both the TypeChecker and the emitter call this
+        // predicate, so normalizing here keeps the two sides in step.
+        if (Shared.AstHelper.UnwrapParenthesized(call.Function) is not MemberAccess memberAccess)
         {
             return false;
         }

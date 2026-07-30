@@ -170,13 +170,11 @@ internal partial class TypeChecker
     private string? ExtractNarrowingKey(Expression expr) => AstHelper.ExtractNarrowingKey(expr);
 
     /// <summary>Strips any <see cref="Parenthesized"/> wrappers, returning the inner expression —
-    /// the node the read sites actually resolve (used to mark type-test operands).</summary>
-    private static Expression UnwrapParenthesized(Expression expr)
-    {
-        while (expr is Parenthesized paren)
-            expr = paren.Expression;
-        return expr;
-    }
+    /// the node the read sites actually resolve (used to mark type-test operands) and the canonical
+    /// callee every call-shape dispatch keys on. Delegates to the shared
+    /// <see cref="AstHelper.UnwrapParenthesized"/>, which documents the normalization contract
+    /// (#1170).</summary>
+    private static Expression UnwrapParenthesized(Expression expr) => AstHelper.UnwrapParenthesized(expr);
 
     /// <summary>
     /// Runs the statement-level narrowing dataflow analysis (#1042) over a function body's CFG.
