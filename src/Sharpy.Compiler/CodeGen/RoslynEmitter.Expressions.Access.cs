@@ -38,26 +38,17 @@ internal partial class RoslynEmitter
 
         // A generic reference — callee[T, ...] — lowers off the single GenericReference fact the
         // semantic phase materialized on the callee node: Box[int](42), identity[int](42),
-        // json.loads[int](text), difflib.SequenceMatcher[str](...), recv.convert[int](x). The
-        // resolver already decided the callee kind, its target symbol and its type arguments, so
-        // this reads the kind and applies the matching emission body — no per-kind try-cascade and
-        // no symbol re-inspection (#1143, Critical Rule 2 pattern (b)). The fact is keyed on the
-        // IndexAccess the TypeChecker saw, which is the unwrapped `callee` above (#1147).
+        // json.loads[int](text), difflib.SequenceMatcher[str](...), recv.convert[int](x),
+        // Outer.Inner[int](42). The resolver already decided the callee kind, its target symbol and
+        // its type arguments, so this reads the kind and applies the matching emission body — no
+        // per-kind try-cascade and no symbol re-inspection (#1143, #1164, Critical Rule 2 pattern
+        // (b)). Every generic-reference shape now arrives as a fact; a callee[T, ...] without one is
+        // ordinary value indexing and belongs to the arms below. The fact is keyed on the IndexAccess
+        // the TypeChecker saw, which is the unwrapped `callee` above (#1147).
         if (callee is IndexAccess genericReferenceAccess
             && _context.SemanticInfo?.GetGenericReference(genericReferenceAccess) is { } genericReference)
         {
             var result = GenerateGenericReferenceCall(genericReferenceAccess, genericReference, call);
-            if (result != null)
-                return result;
-        }
-
-        // Generic nested type instantiation: Outer.Inner[int](42). A nested type reference is not one
-        // of the resolver's generic-reference kinds (its member-qualified arm covers module- and
-        // instance-qualified callees), so this shape carries no fact and keeps its own lookup.
-        if (callee is IndexAccess nestedIndexAccess &&
-            nestedIndexAccess.Object is MemberAccess nestedMemberAccess)
-        {
-            var result = GenerateNestedGenericInstantiation(nestedIndexAccess, nestedMemberAccess, call);
             if (result != null)
                 return result;
         }
@@ -591,6 +582,12 @@ internal partial class RoslynEmitter
                     ? GenerateGenericTypeInstantiation(indexAccess, typeName, genericTypeSymbol, call)
                     : null;
 
+            case GenericReferenceKind.NestedTypeRef:
+                return indexAccess.Object is MemberAccess nestedTypeAccess
+                       && reference.TargetSymbol is TypeSymbol nestedTypeSymbol
+                    ? GenerateNestedGenericInstantiation(indexAccess, nestedTypeAccess, nestedTypeSymbol, call)
+                    : null;
+
             case GenericReferenceKind.Builtin:
             case GenericReferenceKind.UserFunction:
                 return indexAccess.Object is Identifier funcName
@@ -710,13 +707,15 @@ internal partial class RoslynEmitter
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
     }
 
-    private ExpressionSyntax? GenerateNestedGenericInstantiation(
-        IndexAccess indexAccess, MemberAccess memberAccess, FunctionCall call)
+    /// <summary>
+    /// Nested generic type instantiation: <c>Outer.Inner[int](42)</c> →
+    /// <c>new Outer.Inner&lt;int&gt;(42)</c>. <paramref name="nestedTypeSymbol"/> is the nested type the
+    /// resolver bound (<see cref="GenericReferenceKind.NestedTypeRef"/>, #1164), so no symbol-table
+    /// walk happens here: the outer qualifier is spelled from that symbol's declaring-type chain.
+    /// </summary>
+    private ExpressionSyntax GenerateNestedGenericInstantiation(
+        IndexAccess indexAccess, MemberAccess memberAccess, TypeSymbol nestedTypeSymbol, FunctionCall call)
     {
-        var nestedTypeSymbol = LookupNestedTypeFromMemberAccess(memberAccess);
-        if (nestedTypeSymbol == null || !nestedTypeSymbol.IsGeneric)
-            return null;
-
         var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
         var csharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
         var outerName = GetNestedTypeOuterPrefix(nestedTypeSymbol);
@@ -730,21 +729,6 @@ internal partial class RoslynEmitter
 
         return ObjectCreationExpression(qualifiedGenericName)
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-    }
-
-    private TypeSymbol? LookupNestedTypeFromMemberAccess(MemberAccess memberAccess)
-    {
-        if (memberAccess.Object is Identifier outerName)
-        {
-            var outerSymbol = _context.LookupSymbol(outerName.Name) as TypeSymbol;
-            return outerSymbol?.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member);
-        }
-        if (memberAccess.Object is MemberAccess innerAccess)
-        {
-            var parentType = LookupNestedTypeFromMemberAccess(innerAccess);
-            return parentType?.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member);
-        }
-        return null;
     }
 
     private static string GetNestedTypeOuterPrefix(TypeSymbol nestedType)
