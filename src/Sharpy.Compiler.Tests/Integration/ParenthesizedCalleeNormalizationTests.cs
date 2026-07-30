@@ -320,4 +320,87 @@ def main() -> None:
         Assert.False(result.Success);
         Assert.Contains(result.CompilationErrors, e => e.Contains("Mutable default value is not allowed"));
     }
+
+    [Fact]
+    public void ArityDivergentMethodReference_IsRejectedRatherThanBoundToAnArbitraryOverload()
+    {
+        // list.pop has a zero-argument and a one-argument overload. The reference used to bind
+        // whichever the lookup found first, so `g(0)` failed an arity check against a signature the
+        // user never chose (#1170).
+        var result = CompileAndExecute(@"
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    g = xs.pop
+    print(g(0))
+");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors,
+            e => e.Contains("overloads taking different numbers of arguments"));
+        // The rejection must not cascade into a bogus "'g' is not callable" at the use site.
+        Assert.DoesNotContain(result.CompilationErrors, e => e.Contains("is not callable"));
+    }
+
+    [Fact]
+    public void ArityDivergentBuiltinReference_IsRejected()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    a_set: set[int] = {3, 1, 2}
+    g = sorted
+    print(g(a_set))
+");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors,
+            e => e.Contains("overloads taking different numbers of arguments"));
+    }
+
+    [Fact]
+    public void AnnotatedTargetSelectsTheMatchingOverload()
+    {
+        // Target-typed selection: the annotation names exactly one candidate, so the reference binds
+        // it and the call through the binding behaves like Python's `g = xs.pop; g(0)`.
+        AssertOutput(@"
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    g: (int) -> int = xs.pop
+    print(g(0))
+    print(xs)
+", "1\n[2, 3]\n");
+    }
+
+    [Fact]
+    public void SingleOverloadMethodReference_BindsThatOverload()
+    {
+        AssertOutput(@"
+class Box:
+    n: int
+
+    def __init__(self, n: int):
+        self.n = n
+
+    def get(self) -> int:
+        return self.n
+
+def main() -> None:
+    g = Box(4).get
+    print(g())
+", "4\n");
+    }
+
+    [Fact]
+    public void ArityUniformOverloadSets_StayUsableAsFunctionReferences()
+    {
+        // The conversion families and single-argument builtins all have several overloads that differ
+        // only in parameter type. Whichever binds, calls through it pass the same arity check, so
+        // passing them as a key/map function remains supported.
+        AssertOutput(@"
+def main() -> None:
+    words: list[str] = [""ccc"", ""a"", ""bb""]
+    print(min(words, key=len))
+    nums: list[str] = [""3"", ""1"", ""2""]
+    print(list(map(int, nums)))
+", "a\n[3, 1, 2]\n");
+    }
 }

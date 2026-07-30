@@ -184,6 +184,15 @@ internal partial class TypeChecker
                     return SemanticType.Unknown;
                 }
 
+                // A binding whose initializer was already rejected has type Unknown; calling it is
+                // not a second, separate error. Without this the SPY0336 ambiguous-reference report
+                // for `g = xs.pop` is followed by a bogus "'g' is not callable" at every use (#1170).
+                if (calleeType is UnknownType)
+                {
+                    MarkExpressionAsErrorRecovery(call);
+                    return SemanticType.Unknown;
+                }
+
                 // Check if it's a variable with a FunctionType or delegate type - those are callable.
                 // Use calleeType (the narrowed type) so an Optional function type narrowed via
                 // `is not None` is recognized as callable.

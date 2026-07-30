@@ -352,7 +352,8 @@ public static class DiagnosticCodes
         public const string DeferControlFlowEscape = "SPY0333";     // Active — return/break/continue/yield escapes a deferred statement (would leave a finally block)
         public const string RedundantNullableCastTarget = "SPY0334"; // Active — nullable target on the as?/as! failable-cast operators (#1029); the operator owns the failure mode
         public const string GenericFunctionReferenceNotCalled = "SPY0335"; // Active — a generic function reference with explicit type args used as a value instead of being called (#1138)
-        // SPY0336-SPY0339: Reserved for future protocol/operator/defer diagnostics
+        public const string AmbiguousCallableReference = "SPY0336";  // Active — an overloaded function/method referenced as a value, with no target type to select an overload (#1170)
+        // SPY0337-SPY0339: Reserved for future protocol/operator/defer diagnostics
 
         #endregion
 

@@ -111,6 +111,13 @@ public static partial class DiagnosticExplanations
             "f = identity[int]  # cannot be used as a value",
             "Call it directly: `identity[int](value)`, or assign the result of a call.");
 
+        Add(dict, DiagnosticCodes.Semantic.AmbiguousCallableReference, "Ambiguous callable reference", "Semantic",
+            "A function or method whose overloads take different numbers of arguments was referenced as a value, and nothing at the reference site says which overload was meant. Sharpy will not pick one for you: binding an arbitrary overload makes every later call through the binding fail an arity check against a signature you never chose. Overload sets that all take the same number of arguments (int, str, len) are unaffected.",
+            "xs: list[int] = [1, 2, 3]\ng = xs.pop  # pop() and pop(index) both exist",
+            "Call it directly (`xs.pop(0)`), annotate the target so one overload is selected "
+            + "(`g: (int) -> int = xs.pop`), or wrap it in a lambda that pins the signature "
+            + "(`g = lambda i: xs.pop(i)`).");
+
         Add(dict, DiagnosticCodes.Semantic.InvalidPipeTarget, "Invalid pipe target", "Semantic",
             "The right-hand side of a pipe operator (|>) is not a valid pipe target. The target must be a callable that accepts the piped value as its first argument.",
             "42 |> \"hello\"  # str is not a valid pipe target",

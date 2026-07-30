@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 
@@ -309,4 +310,199 @@ internal partial class TypeChecker
 
         return hasStrictlyBetter;
     }
+
+    /// <summary>
+    /// The overload set a callable REFERENCE denotes, or null when the expression is not a reference
+    /// to a declared callable (a local of function type, a lambda, a delegate field). Covers the same
+    /// callee kinds the call path resolves — bare functions and builtins, instance and builtin-type
+    /// methods, and module-qualified functions — so <see cref="CheckReferencedCallableOverloads"/>
+    /// sees the real candidate set no matter how the callable was named (#1170).
+    /// </summary>
+    /// <returns>The overload set, plus the receiver's type-argument substitution — a method reached
+    /// through <c>list[int]</c> denotes signatures with <c>T</c> already replaced by <c>int</c>, which
+    /// is what a target type is compared against.</returns>
+    private (List<FunctionSymbol> Overloads, Func<SemanticType, SemanticType> Substitute)?
+        ResolveReferencedCallableOverloads(Expression reference)
+    {
+        static SemanticType Identity(SemanticType t) => t;
+
+        switch (reference)
+        {
+            case Identifier id:
+            {
+                // A local/parameter binding shadows the declaration: after `g = xs.pop`, `g` is a
+                // variable of function type, not a reference to an overload set.
+                if (_symbolTable.Lookup(id.Name) is VariableSymbol)
+                    return null;
+                var functionOverloads = _symbolTable.LookupFunctionOverloads(id.Name)
+                    ?? _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+                return functionOverloads == null ? null : (functionOverloads, Identity);
+            }
+
+            case MemberAccess memberAccess:
+            {
+                // The receiver's type was recorded when the member access was checked.
+                var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
+                if (receiverType == null)
+                    return null;
+
+                if (receiverType is ModuleType)
+                {
+                    var moduleOverloads = LookupModuleFunctionOverloads(receiverType, memberAccess.Member);
+                    return moduleOverloads == null ? null : (moduleOverloads, Identity);
+                }
+
+                var methodOverloads = LookupInstanceMethodOverloads(receiverType, memberAccess.Member);
+                if (methodOverloads == null)
+                    return null;
+
+                var (ownerSymbol, typeArgs) = ResolveBuiltinTypeInfo(receiverType);
+                ownerSymbol ??= receiverType switch
+                {
+                    UserDefinedType { Symbol: { } udtSymbol } => udtSymbol,
+                    GenericType { GenericDefinition: { } genericDefinition } => genericDefinition,
+                    _ => null
+                };
+                typeArgs ??= (receiverType as GenericType)?.TypeArguments;
+
+                if (ownerSymbol == null || typeArgs == null
+                    || ownerSymbol.TypeParameters.Count != typeArgs.Count)
+                {
+                    return (methodOverloads, Identity);
+                }
+
+                var typeParameters = ownerSymbol.TypeParameters;
+                return (methodOverloads, t => SubstituteTypeParameters(t, typeParameters, typeArgs));
+            }
+
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
+    /// Applies the value-position rule for a reference to an OVERLOADED callable (#1170).
+    ///
+    /// <para>The member/function lookups return whichever overload they find first, and that became
+    /// the binding's type. When the overloads accept DIFFERENT NUMBERS OF ARGUMENTS the pick decides
+    /// how many arguments the binding will accept, so an arbitrary one is silently wrong:
+    /// <c>g = xs.pop</c> bound the zero-argument <c>pop()</c>, and <c>g(0)</c> then failed an arity
+    /// check against an overload nobody chose. Such a reference is resolved from the target type when
+    /// there is one, and rejected (SPY0336) when there is not.</para>
+    ///
+    /// <para>An arity-uniform overload set — every candidate taking the same number of arguments — is
+    /// left alone. The conversion families (<c>int</c>, <c>str</c>, <c>float</c>) and single-argument
+    /// builtins like <c>len</c> are all of this shape, and passing them as a key/map function
+    /// (<c>map(int, xs)</c>, <c>min(xs, key=len)</c>) is established, working behavior: whichever
+    /// candidate binds, calls through the binding pass the same arity check. Only their parameter
+    /// types differ, and that is what ordinary assignability at the call site already reports.</para>
+    ///
+    /// <para>Only reached for references in VALUE position; the immediate callee of a call keeps its
+    /// placeholder type because the call path resolves the real overload against the arguments.</para>
+    /// </summary>
+    /// <returns>The type to bind: the selected overload's signature, or Unknown after reporting
+    /// SPY0336. Returns <paramref name="referencedType"/> unchanged when nothing is ambiguous.</returns>
+    private SemanticType CheckReferencedCallableOverloads(Expression reference, FunctionType referencedType)
+    {
+        if (ResolveReferencedCallableOverloads(reference) is not var (overloads, substitute)
+            || overloads.Count <= 1)
+        {
+            return referencedType;
+        }
+
+        // Distinct signatures only: an overload set can carry duplicate entries for the same
+        // signature (a discovered method registered under several spellings), and those are not an
+        // ambiguity the user can resolve.
+        var candidates = new List<(FunctionSymbol Symbol, FunctionType Signature)>();
+        foreach (var overload in overloads)
+        {
+            var signature = ReferenceSignatureOf(overload, substitute);
+            if (!candidates.Any(c => c.Signature.Equals(signature)))
+                candidates.Add((overload, signature));
+        }
+
+        if (candidates.Count <= 1 || !CandidateAritiesDiverge(candidates))
+            return referencedType;
+
+        // Target-typed selection: an annotated target, a parameter the reference is passed to, or a
+        // declared return type supplies the signature the user meant. `_expectedType` already carries
+        // it at every one of those positions.
+        if (_expectedType is FunctionType target)
+        {
+            var matching = candidates.Where(c => SignatureSatisfiesTarget(c.Signature, target)).ToList();
+            if (matching.Count == 1)
+                return matching[0].Signature;
+        }
+
+        var signatures = string.Join("\n  ", candidates.Select(c => $"{c.Symbol.Name}{c.Signature.GetDisplayName()}"));
+        AddError(
+            $"'{DescribeReference(reference)}' has {candidates.Count} overloads taking different numbers of "
+            + "arguments, so it cannot be used as a value without a target type to select one. Candidates:\n  "
+            + signatures,
+            reference.LineStart, reference.ColumnStart,
+            code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
+            span: reference.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Whether the candidates accept different numbers of arguments — the case where the choice of
+    /// overload changes what calls through the binding are legal. Each candidate's range is
+    /// [required, total] once optional parameters are accounted for.
+    /// </summary>
+    private static bool CandidateAritiesDiverge(
+        List<(FunctionSymbol Symbol, FunctionType Signature)> candidates)
+    {
+        static (int Required, int Total) ArityOf(FunctionType signature) =>
+            (signature.ParameterTypes.Count - signature.OptionalParameterCount,
+             signature.ParameterTypes.Count);
+
+        var first = ArityOf(candidates[0].Signature);
+        return candidates.Any(c => ArityOf(c.Signature) != first);
+    }
+
+    /// <summary>
+    /// The signature a reference to <paramref name="overload"/> denotes: its parameters and return
+    /// type, with a leading <c>self</c> dropped because the receiver is already bound at the
+    /// reference site (<c>xs.pop</c> denotes <c>(int) -&gt; int</c>, not <c>(list[int], int) -&gt; int</c>).
+    /// </summary>
+    private static FunctionType ReferenceSignatureOf(
+        FunctionSymbol overload, Func<SemanticType, SemanticType> substitute)
+    {
+        var selfOffset = overload.Parameters.Count > 0
+            && overload.Parameters[0].Name == PythonNames.Self
+            ? 1 : 0;
+        var parameters = overload.Parameters.Select(p => p with { Type = substitute(p.Type) }).ToList();
+        return FunctionType.FromParameters(
+            parameters, substitute(overload.ReturnType), skipLeading: selfOffset);
+    }
+
+    /// <summary>
+    /// Whether a candidate signature can be bound to a target function type: same arity (counting the
+    /// target's parameters against the candidate's required ones), every target parameter assignable
+    /// to the candidate's corresponding parameter (contravariant), and the candidate's return type
+    /// assignable to the target's (covariant).
+    /// </summary>
+    private static bool SignatureSatisfiesTarget(FunctionType candidate, FunctionType target)
+    {
+        var required = candidate.ParameterTypes.Count - candidate.OptionalParameterCount;
+        if (target.ParameterTypes.Count < required || target.ParameterTypes.Count > candidate.ParameterTypes.Count)
+            return false;
+
+        for (var i = 0; i < target.ParameterTypes.Count; i++)
+        {
+            if (!target.ParameterTypes[i].IsAssignableTo(candidate.ParameterTypes[i]))
+                return false;
+        }
+
+        return target.ReturnType is UnknownType || candidate.ReturnType.IsAssignableTo(target.ReturnType);
+    }
+
+    /// <summary>How to name a callable reference in a diagnostic.</summary>
+    private static string DescribeReference(Expression reference) => reference switch
+    {
+        Identifier id => id.Name,
+        MemberAccess memberAccess => memberAccess.Member,
+        _ => "reference"
+    };
 }
