@@ -68,6 +68,12 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>The floored-division remainder (sign of the divisor)</returns>
+        /// <remarks>
+        /// A zero remainder carries the divisor's sign, matching CPython's <c>float_mod</c>
+        /// (<c>-1.0 % 1.0</c> is <c>0.0</c>, <c>1.0 % -1.0</c> is <c>-0.0</c>). C#'s <c>%</c>
+        /// gives zero the dividend's sign instead, which is observable in printed output and
+        /// in downstream <c>copysign</c>/<c>atan2</c> use.
+        /// </remarks>
         /// <exception cref="ZeroDivisionError">Thrown when <paramref name="y"/> is zero</exception>
         public static double FloorMod(double x, double y)
         {
@@ -84,6 +90,15 @@ namespace Sharpy
                 r += y;
             }
 
+            // `r == 0.0` is true for both +0.0 and -0.0, so every zero remainder normalizes
+            // to the divisor-signed zero CPython produces. Math.CopySign does not exist on
+            // netstandard2.1, and the ternary is equivalent here: y is neither zero (guarded
+            // above) nor NaN (a NaN divisor makes r NaN, so this branch is unreachable).
+            if (r == 0.0)
+            {
+                return y < 0.0 ? -0.0 : 0.0;
+            }
+
             return r;
         }
 
@@ -94,6 +109,10 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>The floored-division remainder (sign of the divisor)</returns>
+        /// <remarks>
+        /// A zero remainder carries the divisor's sign, matching CPython's <c>float_mod</c>.
+        /// See the <see cref="FloorMod(double, double)"/> overload.
+        /// </remarks>
         /// <exception cref="ZeroDivisionError">Thrown when <paramref name="y"/> is zero</exception>
         public static float FloorMod(float x, float y)
         {
@@ -106,6 +125,11 @@ namespace Sharpy
             if (r != 0.0f && ((r < 0.0f) != (y < 0.0f)))
             {
                 r += y;
+            }
+
+            if (r == 0.0f)
+            {
+                return y < 0.0f ? -0.0f : 0.0f;
             }
 
             return r;
