@@ -112,6 +112,87 @@ public class TypeInferenceServiceTests
 
     #endregion
 
+    #region Decimal Mixed-Operand Promotion (#1188)
+
+    // Every arithmetic operator promotes decimal ⊗ integer to decimal, in both operand
+    // orders. `//` used to be the odd one out (SPY0222) because it has no CLR op_FloorDivide
+    // to fall back on when promotion refused the pair; the other operators were rescued by
+    // their CLR operator. Promotion now answers for all of them, so these also pin that the
+    // new path returns what the old CLR fallback did.
+    [Theory]
+    [InlineData(BinaryOperator.Add)]
+    [InlineData(BinaryOperator.Subtract)]
+    [InlineData(BinaryOperator.Multiply)]
+    [InlineData(BinaryOperator.Divide)]
+    [InlineData(BinaryOperator.FloorDivide)]
+    [InlineData(BinaryOperator.Modulo)]
+    public void InferBinaryOpType_DecimalWithInt_ReturnsDecimal(BinaryOperator op)
+    {
+        _service.InferBinaryOpType(op, SemanticType.Decimal, SemanticType.Int)
+            .Should().Be(SemanticType.Decimal);
+        _service.InferBinaryOpType(op, SemanticType.Int, SemanticType.Decimal)
+            .Should().Be(SemanticType.Decimal);
+    }
+
+    [Theory]
+    [InlineData(BinaryOperator.Add)]
+    [InlineData(BinaryOperator.Subtract)]
+    [InlineData(BinaryOperator.Multiply)]
+    [InlineData(BinaryOperator.Divide)]
+    [InlineData(BinaryOperator.FloorDivide)]
+    [InlineData(BinaryOperator.Modulo)]
+    public void InferBinaryOpType_DecimalWithLong_ReturnsDecimal(BinaryOperator op)
+    {
+        _service.InferBinaryOpType(op, SemanticType.Decimal, SemanticType.Long)
+            .Should().Be(SemanticType.Decimal);
+        _service.InferBinaryOpType(op, SemanticType.Long, SemanticType.Decimal)
+            .Should().Be(SemanticType.Decimal);
+    }
+
+    [Theory]
+    [InlineData(BinaryOperator.Add)]
+    [InlineData(BinaryOperator.Subtract)]
+    [InlineData(BinaryOperator.Multiply)]
+    [InlineData(BinaryOperator.Divide)]
+    [InlineData(BinaryOperator.FloorDivide)]
+    [InlineData(BinaryOperator.Modulo)]
+    public void InferBinaryOpType_DecimalWithDecimal_ReturnsDecimal(BinaryOperator op)
+    {
+        _service.InferBinaryOpType(op, SemanticType.Decimal, SemanticType.Decimal)
+            .Should().Be(SemanticType.Decimal);
+    }
+
+    // The surviving restriction: decimal never mixes with a float kind. `/` in particular
+    // must not fall back on its int/int -> float64 answer here — a float64 result for a
+    // decimal operand contradicts the emitted native decimal `/` and became SPY0908 (#1188).
+    [Theory]
+    [InlineData(BinaryOperator.Add)]
+    [InlineData(BinaryOperator.Subtract)]
+    [InlineData(BinaryOperator.Multiply)]
+    [InlineData(BinaryOperator.Divide)]
+    [InlineData(BinaryOperator.FloorDivide)]
+    [InlineData(BinaryOperator.Modulo)]
+    public void InferBinaryOpType_DecimalWithFloat_ReturnsNull(BinaryOperator op)
+    {
+        _service.InferBinaryOpType(op, SemanticType.Decimal, SemanticType.Double).Should().BeNull();
+        _service.InferBinaryOpType(op, SemanticType.Double, SemanticType.Decimal).Should().BeNull();
+        _service.InferBinaryOpType(op, SemanticType.Decimal, SemanticType.Float32).Should().BeNull();
+        _service.InferBinaryOpType(op, SemanticType.Float32, SemanticType.Decimal).Should().BeNull();
+    }
+
+    // Non-decimal division keeps its Python float64 answer — the `/` change is scoped to
+    // operand pairs that include a decimal.
+    [Fact]
+    public void InferBinaryOpType_NonDecimalDivision_StillReturnsDouble()
+    {
+        _service.InferBinaryOpType(BinaryOperator.Divide, SemanticType.Int, SemanticType.Long)
+            .Should().Be(SemanticType.Double);
+        _service.InferBinaryOpType(BinaryOperator.Divide, SemanticType.Float32, SemanticType.Float32)
+            .Should().Be(SemanticType.Double);
+    }
+
+    #endregion
+
     #region Comparison Operations
 
     [Fact]

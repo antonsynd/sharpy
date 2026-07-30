@@ -202,6 +202,69 @@ public class PrimitiveCatalogTests
         PrimitiveCatalog.GetPromotedType(decimalInfo, floatInfo).Should().BeNull();
     }
 
+    // Decimal mixes with every integer kind, promoting to decimal — CPython's Decimal rule
+    // (`Decimal(7) // 3` is `Decimal('2')`), and the spec's "decimal + any integer -> decimal"
+    // row. Both operand orders (#1188).
+    [Theory]
+    [InlineData("int")]
+    [InlineData("long")]
+    [InlineData("sbyte")]
+    [InlineData("short")]
+    [InlineData("byte")]
+    [InlineData("ushort")]
+    [InlineData("uint")]
+    [InlineData("ulong")]
+    [InlineData("int8")]
+    [InlineData("int16")]
+    [InlineData("int32")]
+    [InlineData("int64")]
+    [InlineData("uint8")]
+    [InlineData("uint16")]
+    [InlineData("uint32")]
+    [InlineData("uint64")]
+    public void GetPromotedType_DecimalWithIntegerKind_PromotesToDecimal(string integerName)
+    {
+        var decimalInfo = PrimitiveCatalog.GetByName("decimal")!;
+        var integerInfo = PrimitiveCatalog.GetByName(integerName)!;
+
+        PrimitiveCatalog.GetPromotedType(decimalInfo, integerInfo)!.SharpyName.Should().Be("decimal");
+        PrimitiveCatalog.GetPromotedType(integerInfo, decimalInfo)!.SharpyName.Should().Be("decimal");
+    }
+
+    // The one restriction that survives: decimal never mixes with a float kind, in either
+    // order — CPython raises TypeError for `Decimal(7) + 1.5`, Sharpy gives SPY0222 (#1188).
+    [Theory]
+    [InlineData("float")]
+    [InlineData("float32")]
+    [InlineData("float64")]
+    [InlineData("double")]
+    public void GetPromotedType_DecimalWithFloatKind_ReturnsNull(string floatName)
+    {
+        var decimalInfo = PrimitiveCatalog.GetByName("decimal")!;
+        var floatInfo = PrimitiveCatalog.GetByName(floatName)!;
+
+        PrimitiveCatalog.GetPromotedType(decimalInfo, floatInfo).Should().BeNull();
+        PrimitiveCatalog.GetPromotedType(floatInfo, decimalInfo).Should().BeNull();
+    }
+
+    [Fact]
+    public void GetPromotedType_DecimalWithDecimal_IsDecimal()
+    {
+        var decimalInfo = PrimitiveCatalog.GetByName("decimal")!;
+        PrimitiveCatalog.GetPromotedType(decimalInfo, decimalInfo)!.SharpyName.Should().Be("decimal");
+    }
+
+    [Fact]
+    public void GetPromotedType_SemanticType_DecimalAndInteger_IsDecimal()
+    {
+        PrimitiveCatalog.GetPromotedType(SemanticType.Decimal, SemanticType.Int)
+            .Should().Be(SemanticType.Decimal);
+        PrimitiveCatalog.GetPromotedType(SemanticType.Long, SemanticType.Decimal)
+            .Should().Be(SemanticType.Decimal);
+        PrimitiveCatalog.GetPromotedType(SemanticType.Decimal, SemanticType.Double)
+            .Should().BeNull();
+    }
+
     [Fact]
     public void GetPromotedType_ReturnsNullForNonNumericTypes()
     {
