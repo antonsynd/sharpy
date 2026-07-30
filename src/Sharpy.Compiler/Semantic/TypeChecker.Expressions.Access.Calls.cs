@@ -135,6 +135,12 @@ internal partial class TypeChecker
         MarkTypeReferenceArguments(call);
         MarkTypeFactoryArguments(call, callee);
 
+        // Record where a bare dict flows into an iterable-of-keys position so codegen projects it to
+        // d.Keys() (#1154) and the argument-binding sites accept it as iterable[K] (#1159). One choke
+        // point for the whole ring — the emitter is a pure applier (repo rule 2). Runs before every
+        // dispatch path, because each of them binds arguments and must see the same marker.
+        RecordDictKeysProjections(call, callee);
+
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
 
@@ -145,12 +151,6 @@ internal partial class TypeChecker
 
         if (callee is Identifier id)
         {
-            // Record where a bare dict flows into a builtin's iterable-of-keys position so codegen
-            // projects it to d.Keys() (#1154) and the argument-binding sites accept it as iterable[K]
-            // (#1159). One choke point for the whole ring — the emitter is a pure applier (repo rule
-            // 2). Runs before dispatch, because every dispatch path binds arguments against the marker.
-            RecordDictKeysProjections(call, id);
-
             // Data-driven builtin function return type inference (len, hash, reversed, sorted, min, max)
             var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
                 id.Name, argTypes, _typeInference);
@@ -2266,17 +2266,34 @@ internal partial class TypeChecker
     /// <para>The marker is also the gate on ACCEPTING a dict in these positions
     /// (<see cref="ProjectedArgumentType"/>), so recording runs before any dispatch — every consumer
     /// that binds arguments reads it.</para>
+    ///
+    /// <para>Two callee shapes carry iterable-of-keys positions: an identifier naming a builtin
+    /// (<c>sum(d)</c>) and a method on a receiver (<c>", ".join(d)</c>). Anything else records
+    /// nothing.</para>
     /// </summary>
-    private void RecordDictKeysProjections(FunctionCall call, Identifier id)
+    private void RecordDictKeysProjections(FunctionCall call, Expression callee)
     {
-        var positions = GetBuiltinIterableKeyPositions(id.Name, call.Arguments.Length);
-        if (positions == null)
-            return;
+        IReadOnlyList<int>? positions;
+        switch (callee)
+        {
+            case Identifier id:
+                positions = GetBuiltinIterableKeyPositions(id.Name, call.Arguments.Length);
+                // A user-defined function shadowing the builtin name takes over (Python scoping); its
+                // dict parameter is not projected. Builtin collection type names (list/set/tuple) are
+                // reserved, so a user shadow there is not a concern.
+                if (_symbolTable.Lookup(id.Name) is FunctionSymbol { CodeGenInfo: not null })
+                    return;
+                break;
 
-        // A user-defined function shadowing the builtin name takes over (Python scoping); its dict
-        // parameter is not projected. Builtin collection type names (list/set/tuple) are reserved, so
-        // a user shadow there is not a concern.
-        if (_symbolTable.Lookup(id.Name) is FunctionSymbol { CodeGenInfo: not null })
+            case MemberAccess memberAccess:
+                positions = GetMemberIterableKeyPositions(memberAccess, call.Arguments.Length);
+                break;
+
+            default:
+                return;
+        }
+
+        if (positions == null)
             return;
 
         foreach (var position in positions)
@@ -2310,6 +2327,8 @@ internal partial class TypeChecker
             case BuiltinNames.Reversed:
             case BuiltinNames.Enumerate:
             case BuiltinNames.Sum:
+            case BuiltinNames.Any:
+            case BuiltinNames.All:
                 return IterablePositionZero;
 
             // min/max also have a value form (min(a, b, …)); only the single-positional iterable form
@@ -2333,6 +2352,24 @@ internal partial class TypeChecker
             default:
                 return null;
         }
+    }
+
+    /// <summary>
+    /// Returns the positional argument indices a METHOD treats as an iterable-of-keys, or <c>null</c>
+    /// when the method does not consume an iterable this way — the member-call twin of
+    /// <see cref="GetBuiltinIterableKeyPositions"/> (#1159).
+    ///
+    /// <para>The one member of the ring today is <c>str.join(iterable)</c>: Python's
+    /// <c>", ".join(d)</c> joins the KEYS. The receiver type is checked, so a same-named
+    /// <c>join</c> on any other type (a user class, a stdlib module's path join) is untouched.</para>
+    /// </summary>
+    private IReadOnlyList<int>? GetMemberIterableKeyPositions(MemberAccess memberAccess, int argCount)
+    {
+        if (memberAccess.Member != BuiltinNames.Join || argCount != 1)
+            return null;
+
+        var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
+        return receiverType == SemanticType.Str ? IterablePositionZero : null;
     }
 
     /// <summary>

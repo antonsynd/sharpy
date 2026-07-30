@@ -28,6 +28,11 @@ internal static class BuiltinNames
     public const string Sum = "sum";
     public const string Min = "min";
     public const string Max = "max";
+    public const string Any = "any";
+    public const string All = "all";
+
+    // ---- String methods that consume an iterable ----
+    public const string Join = "join";
 
     // ---- I/O ----
     public const string Print = "print";
