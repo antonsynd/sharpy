@@ -403,4 +403,80 @@ def main() -> None:
     print(list(map(int, nums)))
 ", "a\n[3, 1, 2]\n");
     }
+
+    [Fact]
+    public void ParenthesizedIsinstance_NarrowsLikeTheDirectForm()
+    {
+        // #1168: the parenthesized special form used to bind a one-argument builtin descriptor
+        // (SPY0224 on every two-argument call). It must resolve AND narrow: the member access on the
+        // narrowed type below is what proves the narrowing reached codegen.
+        AssertOutput(@"
+class Circle:
+    r: int
+
+    def __init__(self, r: int) -> None:
+        self.r = r
+
+def describe(shape: object) -> str:
+    if (isinstance)(shape, Circle):
+        return ""circle "" + str(shape.r)
+    return ""unknown""
+
+def main() -> None:
+    print(describe(Circle(3)))
+", "circle 3\n");
+    }
+
+    [Fact]
+    public void IsinstanceInValuePosition_IsRejected()
+    {
+        // Call syntax only, like Ok/Some (SPY0230) and generic function references (SPY0335).
+        var result = CompileAndExecute(@"
+class Circle:
+    r: int
+
+    def __init__(self, r: int) -> None:
+        self.r = r
+
+def main() -> None:
+    g = isinstance
+    print(g(Circle(3), Circle))
+");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors,
+            e => e.Contains("'isinstance' must be called as a function"));
+    }
+
+    [Fact]
+    public void UnionVariantConstructorInValuePosition_IsRejected()
+    {
+        var result = CompileAndExecute(@"
+union Shape:
+    case Circle(r: float)
+    case Square(s: float)
+
+def main() -> None:
+    mk = Shape.Circle
+    print(""bound"")
+");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors,
+            e => e.Contains("union variant constructor 'Circle' must be called as a function"));
+    }
+
+    [Fact]
+    public void IsinstanceAgainstABuiltinTypeName_IsStillATypeArgument()
+    {
+        // The rejection is about VALUE positions. A type test's second argument names a type, and a
+        // builtin type name is also the receiver of its static members — neither is a value use.
+        AssertOutput(@"
+def main() -> None:
+    x: object = 5
+    print(isinstance(x, int))
+    result: int !ValueError = int.parse(""42"")
+    print(result.unwrap())
+", "True\n42\n");
+    }
 }

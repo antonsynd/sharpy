@@ -39,6 +39,34 @@ if isinstance(x, int) or isinstance(x, str):
   `is None` (see [#1079])
 - Narrowing only affects the scope of the conditional block
 
+## `isinstance` is call syntax, not a value
+
+`isinstance` is a compile-time narrowing construct rather than an ordinary function. It must be
+called; referencing it as a value is an error ([SPY0337]).
+
+```python
+if isinstance(shape, Circle):     # OK — narrows shape to Circle
+    print(shape.radius)
+
+if (isinstance)(shape, Circle):   # OK — parentheses around a callee change nothing,
+    print(shape.radius)           #      narrowing included
+
+g = isinstance                    # ERROR SPY0337 — no first-class value
+```
+
+Wrap it in a lambda to pass the test around; the lambda pins the type being tested, and its body is
+an ordinary narrowing call:
+
+```python
+is_circle = lambda v: isinstance(v, Circle)
+```
+
+Python allows `g = isinstance`, so this is a deliberate deviation — see
+[`docs/deviations.yaml`](../deviations.yaml), entry `call-syntax-only-forms-as-values`. Union variant
+constructors ([tagged unions](tagged_unions.md)) are call syntax only for the same reason and report
+the same diagnostic. The rejection is a floor, not a ceiling: it can be lifted without breaking
+existing code if these forms ever gain first-class values.
+
 ## Expression-level narrowing
 
 Narrowing is not limited to statement branches — it also applies within expressions whose evaluation
@@ -96,3 +124,4 @@ As with ternary arms, expression-level narrowing does not leak past the operand 
   arms, `and`/`or` right operands) is applied by the Sharpy type checker (#1080).*
 
 [#1079]: https://github.com/antonsynd/sharpy/issues/1079
+[SPY0337]: https://github.com/antonsynd/sharpy/issues/1168

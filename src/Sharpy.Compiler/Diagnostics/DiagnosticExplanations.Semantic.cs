@@ -111,6 +111,13 @@ public static partial class DiagnosticExplanations
             "f = identity[int]  # cannot be used as a value",
             "Call it directly: `identity[int](value)`, or assign the result of a call.");
 
+        Add(dict, DiagnosticCodes.Semantic.CallSyntaxOnlyReference, "Form must be called, not referenced", "Semantic",
+            "Some forms exist only as call syntax and have no first-class value: 'isinstance' is a compile-time narrowing construct rather than a function, and a union variant constructor (Shape.Circle) names a case rather than a callable. Referencing one as a value is rejected deliberately, like Ok/Some (SPY0230) and generic function references (SPY0335). Python permits `g = isinstance`; Sharpy does not — see docs/deviations.yaml. A bare builtin type constructor reference (`f = dict`) is the same shape and is tracked separately in #1182.",
+            "g = isinstance  # cannot be used as a value\nmk = Shape.Circle",
+            "Call the form directly (`isinstance(x, Circle)`, `Shape.Circle(5.0)`), "
+            + "or wrap it in a lambda to pass it around:\n  g = lambda v: isinstance(v, Circle)\n"
+            + "  mk = lambda r: Shape.Circle(r)");
+
         Add(dict, DiagnosticCodes.Semantic.AmbiguousCallableReference, "Ambiguous callable reference", "Semantic",
             "A function or method whose overloads take different numbers of arguments was referenced as a value, and nothing at the reference site says which overload was meant. Sharpy will not pick one for you: binding an arbitrary overload makes every later call through the binding fail an arity check against a signature you never chose. Overload sets that all take the same number of arguments (int, str, len) are unaffected.",
             "xs: list[int] = [1, 2, 3]\ng = xs.pop  # pop() and pop(index) both exist",

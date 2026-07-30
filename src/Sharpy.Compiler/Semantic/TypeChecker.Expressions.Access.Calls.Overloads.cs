@@ -318,6 +318,88 @@ internal partial class TypeChecker
     /// methods, and module-qualified functions — so <see cref="CheckReferencedCallableOverloads"/>
     /// sees the real candidate set no matter how the callable was named (#1170).
     /// </summary>
+    /// <summary>
+    /// The value-position rules for a callable reference (#1168, #1170), applied at one choke point in
+    /// <see cref="CheckExpression"/> for every reference that is not a call's own callee.
+    ///
+    /// <para>Two rules, in order: a form that exists only as call syntax is rejected outright
+    /// (SPY0337), and an overload set whose candidates take different numbers of arguments is resolved
+    /// from the target type or rejected (SPY0336). Everything else keeps the type it already had.</para>
+    /// </summary>
+    private SemanticType CheckValuePositionReference(Expression reference, SemanticType type)
+    {
+        if (CallSyntaxOnlyFormOf(reference, type) is { } callSyntaxOnlyForm)
+        {
+            AddError(
+                $"{callSyntaxOnlyForm.Description} must be called as a function; it cannot be used as a value. "
+                + $"Wrap it in a lambda to pass it around: {callSyntaxOnlyForm.LambdaEscape}",
+                reference.LineStart, reference.ColumnStart,
+                code: DiagnosticCodes.Semantic.CallSyntaxOnlyReference,
+                span: reference.Span);
+            return SemanticType.Unknown;
+        }
+
+        return type is FunctionType referencedFunctionType
+            ? CheckReferencedCallableOverloads(reference, referencedFunctionType)
+            : type;
+    }
+
+    /// <summary>
+    /// Recognises a reference to a form that Sharpy supports only as call syntax, describing it for
+    /// the diagnostic; null for anything usable as a value.
+    ///
+    /// <para>Two forms, each verified to have no working value-position behavior today:
+    /// <c>isinstance</c>, which is a compile-time narrowing construct rather than a function and binds
+    /// a signature no call through it can satisfy (#1168); and a union variant constructor
+    /// (<c>Shape.Circle</c>), whose reference binds the case type and fails at the use site with a bare
+    /// "not callable". Following the <c>Ok</c>/<c>Some</c> precedent (SPY0230) and #1138's SPY0335, the
+    /// rejection is deliberate and non-breaking to lift later if these gain first-class values.</para>
+    ///
+    /// <para>A bare builtin type constructor reference (<c>f = dict</c>) is the third form the design
+    /// called for and is NOT rejected here — see #1182. It emits broken C# today (CS0712 for the static
+    /// collection classes, CS0246 <c>__synth_T0</c> for the conversion families), but a builtin type
+    /// NAME appears in several legitimate non-value positions this choke point cannot tell apart from a
+    /// value: the receiver of a static member (<c>int.parse(s)</c>, <c>dict.fromkeys(ks)</c>), a type
+    /// argument (<c>isinstance(x, int)</c>) including inside a tuple of them, and a keyword argument
+    /// whose delegate target is not carried in <c>_expectedType</c> (<c>sorted(xs, key=int)</c>).
+    /// Rejecting on the reference alone broke all three.</para>
+    /// </summary>
+    private (string Description, string LambdaEscape)? CallSyntaxOnlyFormOf(
+        Expression reference, SemanticType type)
+    {
+        // A type test's type argument names a type; it is not a value use of that type.
+        if (ReferenceEquals(reference, _typeTestTypeArgument))
+            return null;
+
+        // A union variant constructor: Shape.Circle. Same shape the union-case construction arm in
+        // CheckFunctionCall matches, so the call form stays fully functional.
+        if (reference is MemberAccess variantAccess
+            && type is UserDefinedType { Symbol.BaseType: { TypeKind: TypeKind.Union } } )
+        {
+            return ($"union variant constructor '{variantAccess.Member}'",
+                $"lambda ...: {DescribeMemberPath(variantAccess)}(...)");
+        }
+
+        if (reference is not Identifier id)
+            return null;
+
+        // A user declaration shadowing the builtin name is an ordinary callable.
+        var symbol = _symbolTable.Lookup(id.Name);
+
+        if (id.Name == BuiltinNames.Isinstance && symbol is not FunctionSymbol { CodeGenInfo: not null })
+            return ("'isinstance'", $"lambda v: {BuiltinNames.Isinstance}(v, SomeType)");
+
+        return null;
+    }
+
+    /// <summary>Renders a member access back to source form for a diagnostic suggestion.</summary>
+    private static string DescribeMemberPath(MemberAccess memberAccess) => memberAccess.Object switch
+    {
+        Identifier objectId => $"{objectId.Name}.{memberAccess.Member}",
+        MemberAccess nested => $"{DescribeMemberPath(nested)}.{memberAccess.Member}",
+        _ => memberAccess.Member
+    };
+
     /// <returns>The overload set, plus the receiver's type-argument substitution — a method reached
     /// through <c>list[int]</c> denotes signatures with <c>T</c> already replaced by <c>int</c>, which
     /// is what a target type is compared against.</returns>

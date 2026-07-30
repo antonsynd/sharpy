@@ -69,6 +69,12 @@ internal partial class TypeChecker
     // nor presupposes the very fact the test is checking (an isinstance operand cast).
     private Expression? _typeTestOperand;
 
+    // The TYPE argument of the type test currently being checked (`T` in `isinstance(x, T)`). It names
+    // a type rather than denoting a value, so the value-position reference rules (SPY0337, #1170) skip
+    // exactly this node — otherwise a union-variant type test would be reported as a variant
+    // constructor used as a value. Save/restored alongside _typeTestOperand.
+    private Expression? _typeTestTypeArgument;
+
     // The callee expression of the FunctionCall currently being checked (`call.Function`). A
     // generic function reference with explicit type args (`identity[int]`) is an internal carrier,
     // legal *only* as the immediate callee of a call. CheckExpression errors (SPY0335) whenever a

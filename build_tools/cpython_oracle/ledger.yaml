@@ -61,6 +61,14 @@ deviations:
   spec_ref: docs/language_specification/dunder_invocation_rules.md
   existing_diagnostic: SPY0464
   planned_diagnostic: null
+- id: call-syntax-only-forms-as-values
+  category: types
+  audience: python
+  severity: error
+  code: SPY0337
+  spec_ref: docs/language_specification/type_narrowing.md
+  existing_diagnostic: SPY0337
+  planned_diagnostic: null
 - id: comparison-chaining
   category: operators
   audience: csharp

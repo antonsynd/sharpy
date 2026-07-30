@@ -163,9 +163,12 @@ internal static class NarrowingConditionInterpreter
             case BinaryOp { Operator: BinaryOperator.Equal, Right: NoneLiteral } eq when !onTrueBranch:
                 return RemoveNoneFact(eq.Left);
 
-            // then-branch of `isinstance(x, T)` narrows x to T.
-            case FunctionCall { Function: Identifier { Name: IsInstance } } call
-                when onTrueBranch && call.Arguments.Length >= 2:
+            // then-branch of `isinstance(x, T)` narrows x to T. Matched against the canonical
+            // (paren-stripped) callee so `(isinstance)(x, T)` narrows identically (#1170, #1168) —
+            // the callee shape is what selects the special form, and parentheses do not change it.
+            case FunctionCall call
+                when onTrueBranch && call.Arguments.Length >= 2
+                    && AstHelper.UnwrapParenthesized(call.Function) is Identifier { Name: IsInstance }:
                 return IsInstanceFact(call.Arguments[0], call.Arguments[1]);
 
             default:

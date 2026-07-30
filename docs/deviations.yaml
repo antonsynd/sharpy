@@ -151,6 +151,27 @@ deviations:
       sharpy: |
         d = dict[str, int]()  # explicit constructor required
 
+  - id: call-syntax-only-forms-as-values
+    code: SPY0337
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`isinstance` is an ordinary builtin function, so `g = isinstance; g(x, T)` works. A class referenced by name is a first-class callable object."
+    sharpy_behavior: "`isinstance` is a compile-time narrowing construct, and a union variant constructor (`Shape.Circle`) names a case rather than a callable. Both are call syntax only and are rejected in value position; wrap in a lambda to pass one around. Parenthesized calls of both forms work exactly like the direct forms, narrowing included."
+    spec_ref: docs/language_specification/type_narrowing.md
+    existing_diagnostic: SPY0337
+    planned_diagnostic: null
+    example:
+      python: |
+        g = isinstance
+        print(g(shape, Circle))
+      sharpy: |
+        g = isinstance          # ERROR SPY0337: must be called as a function
+        mk = Shape.Circle       # ERROR SPY0337: union variant constructor
+        g = lambda v: isinstance(v, Circle)   # OK — lambda pins the call
+        print(isinstance(shape, Circle))      # OK — direct call narrows
+        print((isinstance)(shape, Circle))    # OK — parentheses change nothing
+
   # ============================================================
   # Block / comprehension scoping (enhanced SPY0200)
   # ============================================================

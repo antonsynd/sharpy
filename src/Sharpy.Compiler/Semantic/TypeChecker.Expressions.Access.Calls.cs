@@ -119,10 +119,17 @@ internal partial class TypeChecker
         // operand would presuppose the very fact the test is checking.
         var calleeFunctionType = calleeType as FunctionType;
         var savedTypeTestOperand = _typeTestOperand;
+        var savedTypeTestTypeArgument = _typeTestTypeArgument;
         if (callee is Identifier { Name: BuiltinNames.Isinstance } && call.Arguments.Length > 0)
+        {
             _typeTestOperand = UnwrapParenthesized(call.Arguments[0]);
+            // The second argument names a type, not a value — see _typeTestTypeArgument.
+            if (call.Arguments.Length > 1)
+                _typeTestTypeArgument = UnwrapParenthesized(call.Arguments[1]);
+        }
         var (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
         _typeTestOperand = savedTypeTestOperand;
+        _typeTestTypeArgument = savedTypeTestTypeArgument;
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
         MarkTypeReferenceArguments(call);

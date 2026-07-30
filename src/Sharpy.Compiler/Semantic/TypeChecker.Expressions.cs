@@ -95,16 +95,13 @@ internal partial class TypeChecker
             type = SemanticType.Unknown;
         }
 
-        // #1170: a reference to an OVERLOADED callable in value position has no single signature.
-        // The member/function lookups above return whichever overload they find first, which used to
-        // become the binding's type — so `g = xs.pop` bound `pop()` and every `g(0)` through it then
-        // failed the arity check against an overload nobody chose. Resolve it from the target type
-        // when there is one, and reject it deliberately when there is not (same choke point and same
-        // "callee position is exempt" rule as the #1138 arm above, because the call path resolves the
-        // real overload against the arguments).
-        if (type is FunctionType referencedFunctionType && !IsCurrentCallCallee(expr))
+        // #1168, #1170: the value-position rules for callable references. A reference in callee
+        // position is exempt throughout — for the same reason as the #1138 arm above, the call path
+        // resolves the target against the arguments — and parentheses do not make a callee a value
+        // (IsCurrentCallCallee compares through them).
+        if (expr is Identifier or MemberAccess && !IsCurrentCallCallee(expr))
         {
-            type = CheckReferencedCallableOverloads(expr, referencedFunctionType);
+            type = CheckValuePositionReference(expr, type);
         }
 
         // Track error recovery: if the result is UnknownType and either new errors were
