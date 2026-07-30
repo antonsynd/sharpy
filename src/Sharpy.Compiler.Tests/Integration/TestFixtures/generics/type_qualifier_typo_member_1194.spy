@@ -1,0 +1,24 @@
+# #1194: an unknown member on a TYPE qualifier, written with explicit type arguments. This is the
+# #1141 class for the one receiver kind #1141's reflection proof cannot reach — a class-name
+# qualifier types as the intentional Unknown a TypeSymbol reference gets, so the instance-member
+# section (and with it the value-receiver absence proof) is skipped entirely and the name-only
+# interop channel emitted `Outer.NoSuchGeneric<string>(5)` — CS0117 behind SPY0908. For a
+# user-declared qualifier the symbol proves absence outright, so no reflection is involved.
+class Outer:
+    @public
+    class Inner[T]:
+        value: T
+
+        def __init__(self, value: T):
+            self.value = value
+
+
+def use() -> None:
+    near_miss = Outer.Innr[str](5)
+    print(near_miss)
+    unrelated = Outer.no_such_generic[str](5)
+    print(unrelated)
+
+
+def main() -> None:
+    pass

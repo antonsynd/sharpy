@@ -1,0 +1,2 @@
+Type 'Outer' has no member 'Innr'. Did you mean 'Inner'? @17:17
+Type 'Outer' has no member 'no_such_generic'
