@@ -1,0 +1,52 @@
+# #1193: a nested generic type constructed WITHOUT explicit type arguments gets the same constructor
+# inference the bare spelling has always had. `Outer.Inner(5)` used to emit `new Outer.Inner(5)`
+# (CS0305 behind SPY0908) because the construction path's member-access arm resolved only MODULE
+# qualifiers, so a type qualifier never reached inference at all. Covers one and two type parameters
+# and a three-level nesting chain, which follows from the same symbol-table walk.
+class Outer:
+    @public
+    class Inner[T]:
+        value: T
+
+        def __init__(self, value: T):
+            self.value = value
+
+        def __str__(self) -> str:
+            return f"i{self.value}"
+
+    @public
+    class Pair[K, V]:
+        key: K
+        value: V
+
+        def __init__(self, key: K, value: V):
+            self.key = key
+            self.value = value
+
+        def __str__(self) -> str:
+            return f"p{self.key}:{self.value}"
+
+
+class A:
+    @public
+    class B:
+        @public
+        class C[T]:
+            value: T
+
+            def __init__(self, value: T):
+                self.value = value
+
+            def __str__(self) -> str:
+                return f"c{self.value}"
+
+
+def main() -> None:
+    inferred = Outer.Inner(5)
+    print(inferred)
+    both = Outer.Pair(1, "a")
+    print(both)
+    deep = A.B.C(9)
+    print(deep)
+    explicit = Outer.Inner[int](6)
+    print(explicit)
