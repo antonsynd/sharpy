@@ -1,0 +1,59 @@
+# Decimal `//` deliberately keeps NATIVE C# semantics: the quotient is TRUNCATED
+# toward zero (decimal.Truncate(decimal.Divide(x, y))), not floored. The floored
+# `//` lowering (#1153) is scoped to int/long/float operands only — see
+# docs/language_specification/arithmetic_operators.md. This is also what CPython's
+# own Decimal.__floordiv__ does, so the native path is Python-conformant too:
+# truncation and flooring differ exactly in the mixed-sign cases below (#1174).
+def main() -> None:
+    # All four sign pairs. Only the mixed-sign pairs differ from int semantics.
+    print(7m // 3m)         # 2   (int 7 // 3 is also 2)
+    print(-7m // 3m)        # -2  (truncated; int -7 // 3 is -3)
+    print(7m // -3m)        # -2  (truncated; int 7 // -3 is -3)
+    print(-7m // -3m)       # 2   (int -7 // -3 is also 2)
+    print(-17m // 5m)       # -3  (truncated; int -17 // 5 is -4)
+
+    # Same through variables, not just literals.
+    x: decimal = -7m
+    y: decimal = 3m
+    print(x // y)           # -2
+
+    # Non-integral operands truncate the quotient, not the operands.
+    print(7.5m // 2m)       # 3   (7.5 / 2 == 3.75 -> 3)
+    print(-7.5m // 2m)      # -3  (-3.75 -> -3, toward zero)
+
+    # Augmented //= takes the same path as binary // (both signs).
+    z: decimal = -7m
+    z //= 2m
+    print(z)                # -3
+    w: decimal = 7m
+    w //= -2m
+    print(w)                # -3
+
+    # int contrast: floored, sign of divisor (unchanged by the decimal path).
+    print(-7 // 3)          # -3
+    print(7 // -3)          # -3
+    print(-17 // 5)         # -4
+
+    # Zero divisor raises ZeroDivisionError. CPython raises decimal.DivisionByZero,
+    # which is a ZeroDivisionError subclass, so `except ZeroDivisionError` catches
+    # both. A literal `0m` divisor must not become a C# compile error (CS0020).
+    try:
+        print(7m // 0m)
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught literal zero")
+
+    zero: decimal = 0m
+    try:
+        print(7m // zero)
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught variable zero")
+
+    a: decimal = 42m
+    try:
+        a //= 0m
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("caught augmented zero")
+    print(a)                # 42 (unchanged)

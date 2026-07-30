@@ -11,4 +11,7 @@ def main() -> None:
     print(-7m % -3m)    # -1
     print(7m % 3m)      # 1
     print(-17m % 5m)    # -2  (native; int -17 % 5 is 3)
+    # Decimal `//` is native too — truncated toward zero, so -7m // 3m is -2 where
+    # int -7 // 3 is -3 (#1174; full sign matrix in floordiv_decimal_native.spy).
+    print(x // y)       # -2
     print(-7 % 3)       # 2   (int contrast: floored, sign of divisor)
