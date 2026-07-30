@@ -2414,8 +2414,14 @@ internal partial class TypeChecker
             if (position >= call.Arguments.Length)
                 continue;
             var argNode = call.Arguments[position];
-            if (_semanticInfo.GetExpressionType(argNode) is GenericType { Name: BuiltinNames.Dict } dictType
-                && dictType.TypeArguments.Count == 2)
+            var argType = _semanticInfo.GetExpressionType(argNode);
+            // The gate IS the projection authority: recording exactly when GetProjectedDictKeysType
+            // answers keeps acceptance (ProjectedArgumentType reads the same method) and lowering in
+            // lockstep — the drift #1199 reported came from this gate matching a BARE dict while the
+            // authority unwrapped `dict[K,V] | None` too, so a nullable dict was accepted and never
+            // projected (CS1503). OptionalType is deliberately not unwrapped by that authority:
+            // Sharpy `T?` is the strict tagged union and must be narrowed first.
+            if (argType != null && _typeInference.GetProjectedDictKeysType(argType) != null)
             {
                 _semanticInfo.SetIterableProjection(argNode, IterableProjectionKind.DictKeys);
             }

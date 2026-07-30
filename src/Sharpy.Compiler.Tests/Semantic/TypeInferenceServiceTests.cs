@@ -449,6 +449,57 @@ public class TypeInferenceServiceTests
         result.Should().Be(SemanticType.Int);
     }
 
+    [Fact]
+    public void InferIterableElementType_NullableDict_ReturnsKeyType()
+    {
+        // #1199: `dict[K, V] | None` iterates as its underlying dict (null throws at runtime,
+        // Python-parity). The recorder gate relies on this unwrapping.
+        var nullableDict = new NullableType
+        {
+            UnderlyingType = new GenericType
+            {
+                Name = "dict",
+                TypeArguments = { SemanticType.Str, SemanticType.Int }
+            }
+        };
+        var result = _service.InferIterableElementType(nullableDict);
+        result.Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void GetProjectedDictKeysType_NullableDict_ReturnsListOfKeys()
+    {
+        // #1199: the projection authority answers for a nullable dict, so the recorder that
+        // gates on it marks one — acceptance and lowering cannot drift apart.
+        var nullableDict = new NullableType
+        {
+            UnderlyingType = new GenericType
+            {
+                Name = "dict",
+                TypeArguments = { SemanticType.Str, SemanticType.Int }
+            }
+        };
+        var result = _service.GetProjectedDictKeysType(nullableDict);
+        result.Should().Be(new GenericType { Name = "list", TypeArguments = { SemanticType.Str } });
+    }
+
+    [Fact]
+    public void GetProjectedDictKeysType_OptionalDict_ReturnsNull()
+    {
+        // #1199: Sharpy's `dict[K, V]?` is the strict tagged union — deliberately NOT unwrapped,
+        // so an Optional dict stays rejected in iterable positions until narrowed.
+        var optionalDict = new OptionalType
+        {
+            UnderlyingType = new GenericType
+            {
+                Name = "dict",
+                TypeArguments = { SemanticType.Str, SemanticType.Int }
+            }
+        };
+        _service.GetProjectedDictKeysType(optionalDict).Should().BeNull();
+        _service.InferIterableElementType(optionalDict).Should().NotBe(SemanticType.Str);
+    }
+
     #endregion
 
     #region Tuple Equality (#886)
