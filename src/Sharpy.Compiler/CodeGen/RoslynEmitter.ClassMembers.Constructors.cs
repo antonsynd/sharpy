@@ -71,9 +71,12 @@ internal partial class RoslynEmitter
         {
             // Matched against the canonical (paren-stripped) callee, as GenerateCall does (#1147,
             // #1170): `(self.__init__)(x)` is the same initializer call as `self.__init__(x)`, and
-            // missing it here would emit a `self.Constructor(...)` member invocation instead.
+            // missing it here would emit a `self.Constructor(...)` member invocation instead. The
+            // statement's own expression is stripped for the same reason (#1197): `(super().__init__())`
+            // is the same initializer call, and missing it here reports SPY0501 from the fallback arm
+            // in GenerateCall — an accepted program rejected purely for a redundant grouping.
             if (func.Body[i] is ExpressionStatement es &&
-                es.Expression is FunctionCall initCall &&
+                Shared.AstHelper.UnwrapParenthesized(es.Expression) is FunctionCall initCall &&
                 Shared.AstHelper.UnwrapParenthesized(initCall.Function) is MemberAccess ma &&
                 ma.Member == DunderNames.Init)
             {
