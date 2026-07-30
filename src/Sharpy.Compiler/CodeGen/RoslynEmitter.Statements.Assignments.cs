@@ -503,8 +503,8 @@ internal partial class RoslynEmitter
             AssignmentOperator.SlashAssign => GenerateTrueDivisionAugmented(left, right, targetAst, valueAst),
 
             // x //= y → floor division with Python semantics (toward negative infinity)
-            // Integer operands: (long)Math.Floor((double)x / y) → result is int64
-            // Float operands: Math.Floor(x / y) → result is float type
+            // Integer operands: (int)Math.Floor((double)x / y) → result is int32
+            // Float operands: Builtins.FloorDiv(x, y) → result is the operands' float type
             // Decimal operands: native truncating quotient — shares the binary `//` routing
             // wrapper so this site cannot miss an operand class the binary site handles.
             AssignmentOperator.DoubleSlashAssign =>

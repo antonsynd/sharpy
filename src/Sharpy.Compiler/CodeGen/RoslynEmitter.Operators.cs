@@ -1169,17 +1169,34 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generates floor division expression with correct Python semantics.
     /// Floors toward negative infinity (not truncation toward zero).
+    /// - Float operands: <c>global::Sharpy.Builtins.FloorDiv(a, b)</c> → result is the float
+    ///   type of the operands (the Core helper carries CPython's <c>float_floor_div</c>
+    ///   algorithm and the ZeroDivisionError guard)
     /// - Integer operands: (int)Math.Floor((double)a / b) → result is int32 (pragmatic for .NET)
-    /// - Float operands: Math.Floor((double)(a / b)) → result is double (cast to avoid CS0121 ambiguity)
     /// Note: Spec says integer floor division should return int64, but we return int32
     /// for .NET compatibility with most use cases (augmented assignment, common variables).
     /// </summary>
     private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)
     {
-        // global::System.Math.Floor((double)(left / right)) for both cases
+        if (hasFloatOperand)
+        {
+            // Math.Floor(a / b) is not CPython-equivalent: a / b can round up across an
+            // integer boundary, making 1.0 // 0.1 give 10.0 instead of 9.0 (#1185). The
+            // Core helper derives the quotient from the raw fmod remainder and carries the
+            // zero guard, so — as with GenerateFloorModulo — no operand is spliced twice.
+            return InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                    IdentifierName("FloorDiv")))
+                .AddArgumentListArguments(
+                    Argument(left),
+                    Argument(right));
+        }
+
+        // global::System.Math.Floor((double)((double)(left) / right))
         // Cast to double to avoid CS0121 ambiguity between Math.Floor(double) and Math.Floor(decimal)
         var divisionExpr = BinaryExpression(SyntaxKind.DivideExpression,
-            hasFloatOperand ? left : CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
+            CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
             right);
 
         // Cast division result to double to resolve Math.Floor overload ambiguity
@@ -1193,30 +1210,20 @@ internal partial class RoslynEmitter
                 IdentifierName("Floor")))
             .AddArgumentListArguments(Argument(castToDouble));
 
-        // For integer operands, cast to int (pragmatic .NET-first approach);
-        // for float operands, return as-is (double from Math.Floor)
-        var floorDivExpr = hasFloatOperand
-            ? floorCall
-            : (ExpressionSyntax)CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), floorCall);
-
-        // Guard against division by zero — Python raises ZeroDivisionError for both int and float
-        var zeroLiteral = hasFloatOperand
-            ? (ExpressionSyntax)LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0.0))
-            : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
-
-        var errorMessage = hasFloatOperand
-            ? "float floor division by zero"
-            : "integer division or modulo by zero";
+        // Cast to int (pragmatic .NET-first approach)
+        var floorDivExpr = CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), floorCall);
 
         var throwExpr = ThrowExpression(
             ObjectCreationExpression(ParseQualifiedTypeName("global::Sharpy.ZeroDivisionError"))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(errorMessage)))))));
+                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
+                        Literal("integer division or modulo by zero")))))));
 
         // right == 0 ? throw new ZeroDivisionError(...) : floorDivExpr
         return ParenthesizedExpression(
             ConditionalExpression(
-                BinaryExpression(SyntaxKind.EqualsExpression, right, zeroLiteral),
+                BinaryExpression(SyntaxKind.EqualsExpression, right,
+                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
                 throwExpr,
                 floorDivExpr));
     }
