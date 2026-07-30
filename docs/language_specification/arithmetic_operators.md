@@ -7,7 +7,7 @@
 | `*` | Multiplication | `*` |
 | `/` | Division* | `/` (with cast if necessary) |
 | `//` | Floor division** | `Math.Floor` (integer); `Sharpy.Builtins.FloorDiv` (float); `decimal.Truncate(decimal.Divide(x, y))` for decimal |
-| `%` | Modulo*** | `Sharpy.Builtins.FloorMod` (integer/float); native `%` for other types |
+| `%` | Modulo*** | `Sharpy.Builtins.FloorMod` (integer/float); `decimal.Remainder(x, y)` for decimal; native `%` for other types |
 | `**` | Exponentiation | Integer: constant folding / checked integer power; float: `Math.Pow(x, y)` (see below) |
 
 ## Division Operator `/`
@@ -36,7 +36,7 @@ operands:
 | Any float type | Same float type | Floored (toward negative infinity) |
 | Mixed integer and float | Float type of the float operand | Floored (toward negative infinity) |
 | Both `decimal` | `decimal` | **Truncated** (toward zero) — see below |
-| `decimal` + any integer | `decimal` | **Truncated** (toward zero) — not yet accepted, see [#1188](https://github.com/antonsynd/sharpy/issues/1188) |
+| `decimal` + any integer | `decimal` | **Truncated** (toward zero) — the integer is promoted to `decimal` |
 
 **Examples:**
 ```python
@@ -129,6 +129,7 @@ The return type depends on the operands:
 | Any float type | Same float type | Sign of the divisor (floored) |
 | Mixed integer and float | Float type of the float operand | Sign of the divisor (floored) |
 | Both `decimal` | `decimal` | **Sign of the dividend** (native `%`, truncated) |
+| `decimal` + any integer | `decimal` | **Sign of the dividend** (native `%`, truncated) |
 
 **Examples:**
 ```python
@@ -163,10 +164,28 @@ A zero float remainder carries the **divisor's** sign, matching CPython's
 7.0 % 0.0   # ZeroDivisionError: float modulo
 ```
 
-Decimal `%` by zero does not yet reach that surface — it escapes as a CLR
-`DivideByZeroException`, and a literal `0m` divisor fails to compile
-([#1189](https://github.com/antonsynd/sharpy/issues/1189)). Decimal `//` by zero
-does raise `ZeroDivisionError`.
+Decimal `%` by zero raises **`InvalidOperation`**, not `ZeroDivisionError`. This
+mirrors CPython, where `Decimal(7) % Decimal(0)` raises
+`decimal.InvalidOperation` — a *sibling* of `ZeroDivisionError`, not a subclass,
+so `except ZeroDivisionError` does not catch it in either language:
+
+```python
+7m % 0m     # InvalidOperation: decimal modulo by zero
+7m // 0m    # ZeroDivisionError: decimal floor division by zero
+```
+
+Decimal `//` by zero keeps `ZeroDivisionError` because CPython raises
+`decimal.DivisionByZero` there, which *is* a `ZeroDivisionError` subclass (see
+[Decimal floor division](#decimal-floor-division) above).
+
+`InvalidOperation` derives from `ArithmeticError`, so `except ArithmeticError`
+catches it alongside `ZeroDivisionError` and `OverflowError` — see the [exception
+hierarchy](exception_handling.md#exception-type-hierarchy). CPython interposes a
+`DecimalException` layer (`InvalidOperation` → `DecimalException` →
+`ArithmeticError`) that Sharpy deliberately omits: there is exactly one decimal
+exception and no `decimal` module namespace to anchor the layer, and both
+observable contracts (`except InvalidOperation`, `except ArithmeticError`) hold
+without it.
 
 ## Exponentiation Operator `**`
 
@@ -193,8 +212,11 @@ matching Python's `Decimal`); all three guard a zero divisor with
 `ZeroDivisionError`. `decimal.Divide` rather than `/` because a literal zero
 divisor through `/` is a C# compile error (CS0020).*
 - *`%`: 🔄 Lowered to `Sharpy.Builtins.FloorMod(a, b)` for integer/float operands
-(Python floored modulo, sign of divisor, `ZeroDivisionError` on zero); native `%`
-for decimal and user-defined `operator %` types.*
+(Python floored modulo, sign of divisor, `ZeroDivisionError` on zero); to
+`decimal.Remainder(a, b)` for decimal (native truncated remainder, sign of the
+dividend, `InvalidOperation` on zero — `decimal.Remainder` rather than `%` because
+a literal zero divisor through `%` is a C# compile error, CS0020); native `%` for
+user-defined `operator %` types.*
 
 ## Numeric Type Promotion
 

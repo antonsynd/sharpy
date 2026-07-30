@@ -12,8 +12,10 @@ Sharpy uses .NET's exception hierarchy directly:
 | `RuntimeError` | `Exception` | General runtime error |
 | `NotImplementedError` | `Exception` | Not yet implemented |
 | `AttributeError` | `Exception` | Attribute not found |
-| `ZeroDivisionError` | `Exception` | Division by zero |
-| `OverflowError` | `Exception` | Numeric overflow |
+| `ArithmeticError` | `Exception` | Base for arithmetic errors |
+| `ZeroDivisionError` | `ArithmeticError` | Division by zero |
+| `OverflowError` | `ArithmeticError` | Numeric overflow |
+| `InvalidOperation` | `ArithmeticError` | Undefined arithmetic (decimal `%` by zero) |
 | `LookupError` | `Exception` | Base for key/index errors |
 | `IndexError` | `Exception` | Index out of bounds |
 | `KeyError` | `Exception` | Dict key not found |
@@ -29,6 +31,32 @@ Sharpy uses .NET's exception hierarchy directly:
 | `SystemExit` | `Exception` | Program exit request |
 | `JSONDecodeError` | `ValueError` | Invalid JSON (in `json` module) |
 | `StatisticsError` | `Exception` | Statistics computation error (in `statistics` module) |
+
+### `ArithmeticError`
+
+`ZeroDivisionError`, `OverflowError` and `InvalidOperation` all derive from
+`ArithmeticError`, matching CPython, so `except ArithmeticError` catches all
+three:
+
+```python
+try:
+    print(7m % 0m)      # InvalidOperation
+except ArithmeticError:
+    print("arithmetic error")
+```
+
+`InvalidOperation` mirrors CPython's `decimal.InvalidOperation` and is raised by
+decimal `%` with a zero divisor (see [Arithmetic
+Operators](arithmetic_operators.md)). It is a **sibling** of
+`ZeroDivisionError`, not a subclass — `except ZeroDivisionError` does not catch
+it, exactly as in CPython. Decimal `//` by zero raises `ZeroDivisionError`
+instead, because CPython's `decimal.DivisionByZero` *is* a `ZeroDivisionError`.
+
+CPython interposes a `DecimalException` layer (`InvalidOperation` →
+`DecimalException` → `ArithmeticError`); Sharpy omits it deliberately, since
+there is exactly one decimal exception and no `decimal` module namespace to
+anchor the layer. Both observable contracts — `except InvalidOperation` and
+`except ArithmeticError` — hold without it.
 
 ## Sharpy Exception Classes
 
