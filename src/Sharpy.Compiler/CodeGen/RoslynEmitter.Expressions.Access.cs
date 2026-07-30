@@ -616,6 +616,14 @@ internal partial class RoslynEmitter
                     ? GenerateInstanceGenericMethodCall(indexAccess, methodAccess, methodSymbol, call)
                     : null;
 
+            case GenericReferenceKind.BclExtensionMethod:
+                return indexAccess.Object is MemberAccess extensionAccess
+                       && reference.ClrMemberName is { } extensionClrName
+                       && reference.LoweredTypeArgs is { Count: > 0 } extensionTypeArgs
+                    ? GenerateBclExtensionMethodCall(
+                        extensionAccess, extensionClrName, extensionTypeArgs, call)
+                    : null;
+
             default:
                 return null;
         }
@@ -786,6 +794,34 @@ internal partial class RoslynEmitter
             SyntaxKind.SimpleMemberAccessExpression, receiverExpr, genericMethodName);
 
         var allArgs = GenerateReorderedCallArguments(call, methodSymbol);
+        return InvocationExpression(qualifiedCall)
+            .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+    }
+
+    /// <summary>
+    /// Emits an extension-method call with explicit type arguments in instance-call syntax:
+    /// <c>lst.select[str](f)</c> → <c>lst.Select&lt;int, string&gt;(f)</c> (#1163). Both the CLR method
+    /// name and the COMPLETE type-argument vector come from the fact — the receiver-inferred arguments
+    /// are not written in the source and cannot be mapped from the index expression, which is why this
+    /// kind carries <see cref="GenericReference.LoweredTypeArgs"/>. C# binds the call to
+    /// <c>System.Linq.Enumerable</c> because <c>using System.Linq;</c> is always emitted, the same way
+    /// the no-type-args spelling <c>lst.first()</c> binds.
+    /// </summary>
+    private ExpressionSyntax GenerateBclExtensionMethodCall(
+        MemberAccess memberAccess, string clrMethodName,
+        IReadOnlyList<Semantic.SemanticType> loweredTypeArgs, FunctionCall call)
+    {
+        var typeArgsSyntax = loweredTypeArgs.Select(_typeMapper.MapSemanticType).ToArray();
+        var genericMethodName = GenericName(clrMethodName)
+            .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+
+        var receiverExpr = GenerateExpression(memberAccess.Object);
+        var qualifiedCall = MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression, receiverExpr, genericMethodName);
+
+        // An extension method has no discovered FunctionSymbol, so there is no parameter list to
+        // reorder against; the arguments are emitted in source order.
+        var allArgs = GenerateReorderedCallArguments(call, funcSymbol: null);
         return InvocationExpression(qualifiedCall)
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
     }

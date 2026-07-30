@@ -90,23 +90,29 @@ def main() -> None:
     }
 
     [Fact]
-    public void ExtensionPlausibleMember_WithExplicitTypeArgs_StaysPermissive()
+    public void ExtensionPlausibleMember_WithExplicitTypeArgs_ResolvesAndRuns()
     {
         // `Select` is a System.Linq extension method, not a member of List<int>: reflection cannot prove
-        // absence, so this reference must NOT be rejected as member-not-found. Whatever the downstream
-        // lowering does with an explicit-type-argument extension reference is a separate, pre-existing
-        // matter — the contract pinned here is that the absence proof declines.
+        // absence, so this reference must NOT be rejected as member-not-found. This case used to pin only
+        // that permissive fall-through, because the shape then failed downstream (CS0021 → SPY0908).
+        // Since #1163 it resolves for real — the resolver computes the whole C# type-argument vector
+        // (Select<int, string>, the element type inferred from the receiver) and the call runs — so the
+        // pin asserts resolution instead of mere survival. Same contract, stronger: the absence proof
+        // still declines, and now nothing downstream leaks.
         var result = CompileAndExecute(@"
 from system.collections.generic import List
 
-def probe(lst: List[int]) -> None:
-    strs = lst.select[str](lambda x: str(x))
-
 def main() -> None:
-    pass
+    lst = List[int]()
+    lst.add(3)
+    lst.add(4)
+    for s in lst.select[str](lambda x: str(x)):
+        print(s)
 ");
 
         Assert.Equal(0, CountDiagnostics(result, DiagnosticCodes.Semantic.UndefinedMember));
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("3\n4\n", result.StandardOutput.Replace("\r\n", "\n"));
     }
 
     [Fact]
