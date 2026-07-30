@@ -1150,6 +1150,38 @@ internal class TypeInferenceService
     }
 
     /// <summary>
+    /// The type a BARE dict has once the <see cref="IterableProjectionKind.DictKeys"/> projection is
+    /// applied — <c>list[K]</c>, the iterable-of-keys Python iteration yields (#1159). This is the one
+    /// rule that makes a dict acceptable where an iterable is expected: it delegates the element-type
+    /// question to <see cref="InferIterableElementType"/>, the same authority that already lets
+    /// <c>sorted(d)</c> through, so acceptance and iteration agree by construction. Returns null for
+    /// anything that is not a bare dict — a dict VIEW (<c>d.keys()</c>/<c>.values()</c>/<c>.items()</c>)
+    /// already carries its own element type and needs no re-interpretation.
+    /// </summary>
+    /// <remarks>
+    /// Callers must additionally establish that the argument really sits in an iterable-of-keys
+    /// position (the recorded projection marker) — this method answers only "what type would the
+    /// projection produce", never "may the projection be applied here".
+    /// </remarks>
+    public SemanticType? GetProjectedDictKeysType(SemanticType type)
+    {
+        if (UnwrapNullable(type) is not GenericType { Name: BuiltinNames.Dict } dict
+            || dict.TypeArguments.Count != 2)
+        {
+            return null;
+        }
+
+        if (InferIterableElementType(dict) is not { } keyType)
+            return null;
+
+        return new GenericType
+        {
+            Name = BuiltinNames.List,
+            TypeArguments = new List<SemanticType> { keyType }
+        };
+    }
+
+    /// <summary>
     /// Infers the element type produced by reversed() on a given type.
     /// Handles standard iterables (list, str, etc.) and user-defined types
     /// with __reversed__() protocol methods.

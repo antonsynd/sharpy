@@ -146,9 +146,9 @@ internal partial class TypeChecker
         if (callee is Identifier id)
         {
             // Record where a bare dict flows into a builtin's iterable-of-keys position so codegen
-            // projects it to d.Keys() (#1154). One choke point for the whole ring — the emitter is a
-            // pure applier (repo rule 2). Runs before dispatch; harmless for builtins whose dispatch
-            // later rejects a bare dict (the marker is never read once compilation stops at semantic).
+            // projects it to d.Keys() (#1154) and the argument-binding sites accept it as iterable[K]
+            // (#1159). One choke point for the whole ring — the emitter is a pure applier (repo rule
+            // 2). Runs before dispatch, because every dispatch path binds arguments against the marker.
             RecordDictKeysProjections(call, id);
 
             // Data-driven builtin function return type inference (len, hash, reversed, sorted, min, max)
@@ -1434,7 +1434,8 @@ internal partial class TypeChecker
             // Keyword arguments also carry type information for inference (e.g.
             // cmp_to_key(cmp=lambda a: int, b: int: ...)). Map them into their formal
             // parameter slots so the index-aligned inference can see them (#909).
-            var inferenceArgTypes = BuildInferenceArgumentTypes(funcSymbol, argTypes, kwargTypes);
+            var inferenceArgTypes = BuildInferenceArgumentTypes(
+                funcSymbol, ApplyProjectionsToArgumentTypes(call, argTypes), kwargTypes);
             var inferenceResult = _genericInference.InferTypeArguments(funcSymbol, inferenceArgTypes);
             if (inferenceResult.Success && inferenceResult.InferredTypes != null)
             {
@@ -1490,6 +1491,30 @@ internal partial class TypeChecker
     /// Stops at the first parameter slot with neither a positional nor a keyword argument, since
     /// the index alignment cannot represent a gap.
     /// </summary>
+    /// <summary>
+    /// The positional argument types generic inference should unify against: an argument carrying an
+    /// iterable projection contributes its PROJECTED type — the type codegen will actually pass
+    /// (#1159). Unification walks types with no argument nodes to consult, so the substitution happens
+    /// here, at the same argument-binding boundary <see cref="IsArgumentAssignable"/> applies the rule
+    /// for non-generic signatures. Without it <c>any(d)</c>/<c>all(d)</c> — whose only parameter is
+    /// <c>IEnumerable[T]</c> — bind nothing for <c>T</c> and fail SPY0237 even though the emitted
+    /// argument is <c>d.Keys()</c>.
+    /// Returns <paramref name="argTypes"/> itself when nothing is projected (the common case).
+    /// </summary>
+    private List<SemanticType> ApplyProjectionsToArgumentTypes(FunctionCall call, List<SemanticType> argTypes)
+    {
+        List<SemanticType>? substituted = null;
+        for (int i = 0; i < argTypes.Count; i++)
+        {
+            if (ProjectedArgumentType(ArgumentNodeAt(call, i), argTypes[i]) is not { } projected)
+                continue;
+            substituted ??= new List<SemanticType>(argTypes);
+            substituted[i] = projected;
+        }
+
+        return substituted ?? argTypes;
+    }
+
     private static List<SemanticType> BuildInferenceArgumentTypes(
         FunctionSymbol funcSymbol,
         List<SemanticType> argTypes,
@@ -1683,7 +1708,7 @@ internal partial class TypeChecker
                         break;
                     }
 
-                    if (!IsArgumentAssignable(argTypes[i], expected))
+                    if (!IsArgumentAssignable(argTypes[i], expected, ArgumentNodeAt(call, i)))
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{expected.GetDisplayName()}'",
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -1790,7 +1815,7 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                if (!IsArgumentAssignable(argTypes[i], param.Type))
+                if (!IsArgumentAssignable(argTypes[i], param.Type, ArgumentNodeAt(call, i)))
                 {
                     // PEP 675: string literals (and concatenations thereof) satisfy LiteralString
                     if (param.Type is LiteralStringType && i < call.Arguments.Length
@@ -2229,7 +2254,7 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Records an <see cref="IterableProjectionKind.DictKeys"/> marker on every bare-dict argument that
-    /// sits in a builtin call's iterable-of-keys position (#1154). This is the single recording choke
+    /// sits in a call's iterable-of-keys position (#1154, #1159). This is the single recording choke
     /// point for the whole dict-iteration ring: Python iterates a dict's keys, but a Sharpy dict's
     /// generic enumerable surface is <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c>, so codegen must
     /// project the argument to <c>d.Keys()</c>. The emitter reads the marker in its argument-generation
@@ -2237,6 +2262,10 @@ internal partial class TypeChecker
     /// (repo rule 2). <c>for k in d</c> (duck-typed foreach) and the dict views
     /// (<c>sorted(d.keys())</c>/<c>.values()</c>/<c>.items()</c>) are unaffected: the former never
     /// reaches here, the latter carry a view type, not a bare dict.
+    ///
+    /// <para>The marker is also the gate on ACCEPTING a dict in these positions
+    /// (<see cref="ProjectedArgumentType"/>), so recording runs before any dispatch — every consumer
+    /// that binds arguments reads it.</para>
     /// </summary>
     private void RecordDictKeysProjections(FunctionCall call, Identifier id)
     {

@@ -128,6 +128,7 @@ internal partial class TypeChecker
 
             for (int i = 0; i < context.ArgTypes.Count; i++)
             {
+                var argNode = ArgumentNodeAt(context.Call, i);
                 SemanticType expectedType;
                 var paramIdx = i + selfOffset;
                 if (paramIdx < overload.Parameters.Count && !overload.Parameters[paramIdx].IsVariadic)
@@ -164,7 +165,11 @@ internal partial class TypeChecker
                     // list[int] would wildcard-match a nested list[list[T]] (the inner
                     // int absorbed into T), tying two generic overloads (#957); the outer
                     // name check also keeps list[int] from matching array[T] (#954).
-                    if (!ArgMatchesGenericShape(context.ArgTypes[i], expectedType))
+                    // A projected argument (a bare dict in an iterable-of-keys position, #1159) is
+                    // shape-matched on the type codegen will pass as well as on its own.
+                    if (!ArgMatchesGenericShape(context.ArgTypes[i], expectedType)
+                        && !(ProjectedArgumentType(argNode, context.ArgTypes[i]) is { } projectedArg
+                             && ArgMatchesGenericShape(projectedArg, expectedType)))
                     {
                         typesMatch = false;
                         break;
@@ -172,7 +177,7 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                if (!IsArgumentAssignable(context.ArgTypes[i], expectedType))
+                if (!IsArgumentAssignable(context.ArgTypes[i], expectedType, argNode))
                 {
                     if (IsSystemTypeParameter(expectedType)
                         && context.Call != null
@@ -222,6 +227,15 @@ internal partial class TypeChecker
 
         return (matchingOverloads.Count == 1 ? matchingOverloads[0] : null, arityCandidates, false);
     }
+
+    /// <summary>
+    /// The AST node bound to positional argument <paramref name="index"/>, or null when the caller
+    /// supplied no call node (the dunder-overload path) or the index falls past the positional
+    /// arguments (a keyword-satisfied or variadic slot). Argument-binding assignability consults the
+    /// node for the projection an argument carries (<see cref="ProjectedArgumentType"/>, #1159).
+    /// </summary>
+    private static Expression? ArgumentNodeAt(FunctionCall? call, int index) =>
+        call != null && index < call.Arguments.Length ? call.Arguments[index] : null;
 
     /// <summary>
     /// Determines whether overload <paramref name="a"/> has strictly more specific parameter

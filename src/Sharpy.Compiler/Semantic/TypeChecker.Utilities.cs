@@ -410,15 +410,16 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Argument-binding assignability: standard <see cref="IsAssignable"/> plus the
-    /// list[T] → array[T] coercion for CLR T[] parameters (#959). This is scoped to the
-    /// CLR-interop boundary (function/keyword argument binding) on purpose — general
-    /// assignment keeps list[T] ↛ array[T] (Decision #2, #944), so e.g.
-    /// <c>arr: array[int] = lst</c> stays an error. The matching codegen .ToArray()
-    /// bridge lives in <c>RoslynEmitter.ApplyArrayBridge</c>; the two must agree on which
-    /// arguments are coercible.
+    /// Argument-binding assignability: standard <see cref="IsAssignable"/>, the
+    /// list[T] → array[T] coercion for CLR T[] parameters (#959), and the
+    /// dict[K,V] → iterable[K] acceptance for an argument codegen projects to its keys (#1159).
+    /// Both extensions are scoped to the argument-binding boundary on purpose — general
+    /// assignment keeps list[T] ↛ array[T] (Decision #2, #944) and dict ↛ list, so e.g.
+    /// <c>arr: array[int] = lst</c> stays an error. Each has a matching codegen bridge
+    /// (<c>RoslynEmitter.ApplyArrayBridge</c>, <c>RoslynEmitter.ApplyIterableProjection</c>); the
+    /// checker and the emitter must agree on which arguments are coercible.
     /// </summary>
-    private bool IsArgumentAssignable(SemanticType source, SemanticType target)
+    private bool IsArgumentAssignable(SemanticType source, SemanticType target, Expression? argument = null)
     {
         if (IsAssignable(source, target))
             return true;
@@ -439,7 +440,39 @@ internal partial class TypeChecker
             return true;
         }
 
+        // A bare dict in an iterable-of-keys position binds through its PROJECTED type — the
+        // list[K] codegen will actually pass (#1159). Re-entering this method (rather than
+        // IsAssignable) lets the projection compose with the array coercion above; it terminates
+        // because the projected type is a list, which ProjectedArgumentType never re-projects.
+        if (ProjectedArgumentType(argument, source) is { } projected)
+            return IsArgumentAssignable(projected, target, argument: null);
+
         return false;
+    }
+
+    /// <summary>
+    /// The type an argument expression has AFTER the iterable projection recorded for it, or null when
+    /// no projection applies — the single gate every argument-binding consumer shares (#1159).
+    ///
+    /// <para>Acceptance and lowering are one decision here on purpose. The projection marker is
+    /// recorded by <see cref="RecordDictKeysProjections"/> before any dispatch, exactly for the
+    /// iterable-of-keys positions the ring knows about (<see cref="GetBuiltinIterableKeyPositions"/>,
+    /// <see cref="GetMemberIterableKeyPositions"/>). Gating acceptance on that marker means a dict is
+    /// never type-accepted in a position the emitter would pass unprojected — which would compile to
+    /// C# passing <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c> where <c>IEnumerable&lt;K&gt;</c>
+    /// is required (CS1503). Adding a builtin/method to the position tables therefore grants
+    /// acceptance and lowering together; neither can drift ahead of the other.</para>
+    /// </summary>
+    private SemanticType? ProjectedArgumentType(Expression? argument, SemanticType argumentType)
+    {
+        if (argument == null)
+            return null;
+
+        return _semanticInfo.GetIterableProjection(argument) switch
+        {
+            IterableProjectionKind.DictKeys => _typeInference.GetProjectedDictKeysType(argumentType),
+            _ => null
+        };
     }
 
     /// <summary>
