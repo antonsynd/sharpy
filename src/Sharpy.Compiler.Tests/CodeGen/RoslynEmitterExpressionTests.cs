@@ -373,11 +373,13 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(expr);
 
-        // Assert - Float floor division should use System.Math.Floor but NOT cast to long
+        // Assert - Float floor division delegates to the Core helper, which carries CPython's
+        // float_floor_div algorithm and the zero guard (#1185). Math.Floor(a / b) is not
+        // equivalent: 1.0 // 0.1 would give 10.0 instead of 9.0.
         // 7.5 // 2.0 = 3.0 (float), not 3 (int)
         var code = result.ToString();
-        code.Should().Contain("System.Math.Floor");
-        code.Should().Contain("/");
+        code.Should().Contain("global::Sharpy.Builtins.FloorDiv");
+        code.Should().NotContain("System.Math.Floor");
         code.Should().NotContain("(long)");
         code.Should().NotContain("(int)");
     }
@@ -396,11 +398,11 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(expr);
 
-        // Assert - Mixed floor division should return float type
+        // Assert - Mixed floor division should return float type, via the same Core helper
         // 7 // 2.0 = 3.0 (float), not 3 (int)
         var code = result.ToString();
-        code.Should().Contain("System.Math.Floor");
-        code.Should().Contain("/");
+        code.Should().Contain("global::Sharpy.Builtins.FloorDiv");
+        code.Should().NotContain("System.Math.Floor");
         code.Should().NotContain("(long)");
         code.Should().NotContain("(int)");
     }
