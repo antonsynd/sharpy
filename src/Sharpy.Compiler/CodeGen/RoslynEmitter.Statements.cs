@@ -456,7 +456,12 @@ internal partial class RoslynEmitter
     /// </summary>
     private StatementSyntax GenerateExpressionStatement(ExpressionStatement exprStmt)
     {
-        var expr = exprStmt.Expression;
+        // Grouping is transparent at the statement seam: `(f())` must emit exactly what `f()` emits.
+        // The parens have to go, not just be seen through — C# rejects a parenthesized invocation as
+        // a statement (CS0201), and a parenthesized void call reaching the discard arm below is
+        // CS8209 (#1197). Unwrapping here also lines up the special cases underneath (the unittest
+        // rewrites, `None`, `...`) with their unparenthesized spellings.
+        var expr = AstHelper.UnwrapParenthesized(exprStmt.Expression);
 
         // Special case for @test functions: rewrite unittest.assert_almost_equal(...)
         // to Xunit.Assert.Equal(expected, actual, precision).
