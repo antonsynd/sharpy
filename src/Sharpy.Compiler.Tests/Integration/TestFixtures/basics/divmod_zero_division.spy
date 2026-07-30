@@ -22,8 +22,7 @@ def main() -> None:
     print(int(tiny[0]))
     print(tiny[1] > 0.0)
 
-    # Non-zero divisors are unchanged: floored quotient, sign-of-divisor remainder
+    # Non-zero divisors are unchanged: floored quotient, sign-of-divisor remainder.
+    # Printing the tuple whole also pins float-element repr (#1187).
     print(divmod(-7, 3))
-    fneg: tuple[float, float] = divmod(-7.5, 2.0)
-    print(fneg[0])
-    print(fneg[1])
+    print(divmod(-7.5, 2.0))

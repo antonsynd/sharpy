@@ -1,0 +1,35 @@
+# Float elements inside containers print Python's trailing ".0" (#1187).
+# Every container repr funnels through Builtins.Repr, which routes floats
+# through the Python float formatter instead of .NET's default ToString().
+def main() -> None:
+    nums: list[float] = [-4.0, 0.5, 2.0]
+    print(nums)
+
+    pair: tuple[float, float] = (-4.0, 0.5)
+    print(pair)
+
+    mapping: dict[str, float] = {"a": -4.0, "b": 0.5}
+    print(mapping)
+
+    keyed: dict[float, float] = {2.0: 3.0}
+    print(keyed)
+
+    nested: list[list[float]] = [[1.0, 2.0], [3.0]]
+    print(nested)
+
+    # A single element keeps the output independent of set iteration order
+    only: set[float] = {1.0}
+    print(only)
+
+    print(repr(-4.0))
+    print(repr(0.5))
+
+    # nan/inf keep Python's lowercase names inside containers.
+    # float("inf") is not accepted yet (#1203), so overflow produces it.
+    huge: float = 1e308
+    specials: list[float] = [float("nan"), huge * 10.0, -huge * 10.0]
+    print(specials)
+
+    # Scientific notation keeps Python's lowercase 'e' and signed exponent
+    big: list[float] = [1e300, 1e-07]
+    print(big)
