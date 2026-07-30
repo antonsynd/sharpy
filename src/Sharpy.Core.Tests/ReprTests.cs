@@ -86,4 +86,93 @@ public class Repr_Tests
         Builtins.Repr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
             .Should().Be("(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)");
     }
+
+    [Theory]
+    [InlineData(-4.0, "-4.0")]
+    [InlineData(0.0, "0.0")]
+    [InlineData(0.5, "0.5")]
+    [InlineData(1e300, "1e+300")]
+    [InlineData(double.NaN, "nan")]
+    [InlineData(double.PositiveInfinity, "inf")]
+    [InlineData(double.NegativeInfinity, "-inf")]
+    public void Repr_Double_UsesPythonFloatFormat(double value, string expected)
+    {
+        // Python: repr(-4.0) == '-4.0', repr(1e300) == '1e+300'
+        Builtins.Repr(value).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(-4.0f, "-4.0")]
+    [InlineData(0.5f, "0.5")]
+    [InlineData(float.NaN, "nan")]
+    [InlineData(float.PositiveInfinity, "inf")]
+    public void Repr_Float32_UsesPythonFloatFormat(float value, string expected)
+    {
+        Builtins.Repr(value).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Repr_ListOfWholeFloats_KeepsTrailingZero()
+    {
+        // Python: print([-4.0, 0.5]) == '[-4.0, 0.5]'
+        new List<double>(new[] { -4.0, 0.5 }).ToString().Should().Be("[-4.0, 0.5]");
+    }
+
+    [Fact]
+    public void Repr_TupleOfWholeFloats_KeepsTrailingZero()
+    {
+        // Python: print((-4.0, 0.5)) == '(-4.0, 0.5)'
+        Builtins.Repr((-4.0, 0.5)).Should().Be("(-4.0, 0.5)");
+    }
+
+    [Fact]
+    public void Repr_SetOfWholeFloat_KeepsTrailingZero()
+    {
+        // Single element keeps the assertion independent of set iteration order.
+        new Set<double>(new[] { 1.0 }).ToString().Should().Be("{1.0}");
+    }
+
+    [Fact]
+    public void Repr_DictWithFloatKeyAndValue_KeepsTrailingZero()
+    {
+        // Python: print({'a': -4.0}) == "{'a': -4.0}"
+        var byName = new Dict<string, double>();
+        byName["a"] = -4.0;
+        byName.ToString().Should().Be("{'a': -4.0}");
+
+        var byFloat = new Dict<double, double>();
+        byFloat[2.0] = 3.0;
+        byFloat.ToString().Should().Be("{2.0: 3.0}");
+    }
+
+    [Fact]
+    public void Repr_NestedListOfFloats_KeepsTrailingZero()
+    {
+        // Python: print([[1.0, 2.0], [3.0]]) == '[[1.0, 2.0], [3.0]]'
+        var outer = new List<List<double>>();
+        outer.Append(new List<double>(new[] { 1.0, 2.0 }));
+        outer.Append(new List<double>(new[] { 3.0 }));
+        outer.ToString().Should().Be("[[1.0, 2.0], [3.0]]");
+    }
+
+    [Fact]
+    public void Repr_ListWithNanAndInf_UsesPythonNames()
+    {
+        // Python: print([nan, inf, -inf]) == '[nan, inf, -inf]'
+        new List<double>(new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+            .ToString().Should().Be("[nan, inf, -inf]");
+    }
+
+    [Fact]
+    public void Repr_ListWithScientificNotation_UsesLowercaseE()
+    {
+        // Python: print([1e300, 1e-07]) == '[1e+300, 1e-07]'
+        new List<double>(new[] { 1e300 }).ToString().Should().Be("[1e+300]");
+    }
+
+    [Fact]
+    public void Repr_ListOfFloat32_KeepsTrailingZero()
+    {
+        new List<float>(new[] { -4.0f, 0.5f }).ToString().Should().Be("[-4.0, 0.5]");
+    }
 }
