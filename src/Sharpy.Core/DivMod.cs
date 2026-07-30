@@ -86,21 +86,9 @@ namespace Sharpy
 
             var remainder = FloorMod(x, y);
 
-            // Mirrors CPython's float_divmod: the quotient comes from the raw (sign-of-dividend)
-            // remainder, which keeps the division exact, then snaps to the nearest integral value.
-            // Math.Floor(x / y) is not equivalent -- divmod(1.0, 0.1) is (9.0, 0.1), not (10.0, 0.1).
-            var raw = x % y;
-            var div = (x - raw) / y;
-            if (raw != 0.0 && ((raw < 0.0) != (y < 0.0)))
-            {
-                div -= 1.0;
-            }
-
-            var quotient = System.Math.Floor(div);
-            if (div - quotient > 0.5)
-            {
-                quotient += 1.0;
-            }
+            // CPython implements float_floor_div as "float_divmod, take the first element",
+            // so the quotient has exactly one implementation here too.
+            var quotient = FloorDiv(x, y);
 
             return (quotient, remainder);
         }
@@ -122,18 +110,7 @@ namespace Sharpy
 
             var remainder = FloorMod(x, y);
 
-            var raw = x % y;
-            var div = (x - raw) / y;
-            if (raw != 0.0f && ((raw < 0.0f) != (y < 0.0f)))
-            {
-                div -= 1.0f;
-            }
-
-            var quotient = (float)System.Math.Floor(div);
-            if (div - quotient > 0.5f)
-            {
-                quotient += 1.0f;
-            }
+            var quotient = FloorDiv(x, y);
 
             return (quotient, remainder);
         }
