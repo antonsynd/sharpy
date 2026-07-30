@@ -6,7 +6,7 @@
 | `-` | Subtraction | `-` |
 | `*` | Multiplication | `*` |
 | `/` | Division* | `/` (with cast if necessary) |
-| `//` | Floor division** | `Math.Floor` (integer/float); `decimal.Truncate(decimal.Divide(x, y))` for decimal |
+| `//` | Floor division** | `Math.Floor` (integer); `Sharpy.Builtins.FloorDiv` (float); `decimal.Truncate(decimal.Divide(x, y))` for decimal |
 | `%` | Modulo*** | `Sharpy.Builtins.FloorMod` (integer/float); native `%` for other types |
 | `**` | Exponentiation | Integer: constant folding / checked integer power; float: `Math.Pow(x, y)` (see below) |
 
@@ -47,6 +47,26 @@ operands:
 7.0 // 2    # 3.0 (float64) - mixed: result is float64
 7.0f // 2   # 3.0f (float32) - mixed: result is float32
 ```
+
+### Float floor division is not `Math.Floor(a / b)`
+
+Float `//` lowers to `Sharpy.Builtins.FloorDiv`, which mirrors CPython's
+`float_floor_div`: it derives the quotient from the raw `fmod` remainder
+(`div = (a - fmod(a, b)) / b`, adjusted by one when the remainder's sign differs
+from the divisor's) rather than flooring the quotient directly. The two are not
+equivalent, because `a / b` can round up across an integer boundary:
+
+```python
+1.0 // 0.1   # 9.0  -- Math.Floor(1.0 / 0.1) would give 10.0
+7.5 // 0.1   # 74.0 -- Math.Floor(7.5 / 0.1) would give 75.0
+```
+
+This is also what makes the divmod identity below hold for floats, not just
+integers: `divmod` and `//` share the one implementation, exactly as CPython
+implements `float_floor_div` by taking `float_divmod`'s first element.
+
+A zero quotient carries the sign of the true quotient (`-0.0 // 1.0` is `-0.0`,
+`-0.5 // -1.0` is `0.0`), matching the same CPython routine.
 
 ### Decimal floor division
 
@@ -125,6 +145,14 @@ The return type depends on the operands:
 ```python
 divmod(-7, 3)               # (-3, 2)
 (-7 // 3) * 3 + (-7 % 3)    # -7  (identity holds; would be -10 under truncation)
+(1.0 // 0.1) * 0.1 + (1.0 % 0.1)   # 1.0 (holds for floats too -- see above)
+```
+
+A zero float remainder carries the **divisor's** sign, matching CPython's
+`float_mod` (C#'s native `%` gives it the dividend's sign):
+```python
+-1.0 % 1.0  # 0.0
+1.0 % -1.0  # -0.0
 ```
 
 **Division by zero** raises `ZeroDivisionError` for both integers and floats
@@ -159,7 +187,7 @@ silently saturates or loses precision:
 integers, `Math.Pow()` for floats. See table above.*
 - *`/`: 🔄 Lowered to floating-point division. See table above.*
 - *`//`: 🔄 Lowered to `(int)Math.Floor((double)a / b)` for integers,
-`Math.Floor(a / b)` for floats, and
+`Sharpy.Builtins.FloorDiv(a, b)` for floats, and
 `decimal.Truncate(decimal.Divide(a, b))` for decimal (truncated toward zero,
 matching Python's `Decimal`); all three guard a zero divisor with
 `ZeroDivisionError`. `decimal.Divide` rather than `/` because a literal zero
