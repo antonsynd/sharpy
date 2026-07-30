@@ -1,0 +1,12 @@
+# The inferred parameter type decides which operator lowering codegen applies:
+# with `s` inferred as str, `s * 2` is string repetition, not numeric multiply (#1161).
+def main() -> None:
+    words: list[str] = ["ab", "c", "xyz"]
+
+    print(list(map(lambda s: s * 2, words)))
+    print(list(map(lambda s: s + "!", words)))
+
+    # distinct keys, so the result does not depend on sort stability
+    print(sorted(words, key=lambda s: len(s) * 2))
+
+    print(list(filter(lambda s: len(s * 3) > 3, words)))

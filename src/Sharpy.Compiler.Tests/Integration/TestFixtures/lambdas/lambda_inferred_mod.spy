@@ -1,0 +1,34 @@
+# An inline lambda's parameter type arrives inward from generic-call unification
+# (T=int from the iterable), so the body must be checked with that final type for
+# the node-keyed floored-`%` lowering to fire (#1161). Native truncated `%` would
+# disagree with Python on every negative operand.
+def apply_all[T](f: (T) -> bool, items: list[T]) -> list[T]:
+    out: list[T] = []
+    for item in items:
+        if f(item):
+            out.append(item)
+    return out
+
+def main() -> None:
+    nums: list[int] = [-7, -6, -5, -4, 0, 5, 7]
+
+    # filter: T comes from the iterable, never from the lambda
+    print(list(filter(lambda x: x % 3 == 1, nums)))
+
+    # map: the remainder itself must be floored
+    print(list(map(lambda x: x % 3, nums)))
+
+    # floor division shares the same operand gate
+    print(list(map(lambda x: x // 3, nums)))
+
+    # sorted key (distinct keys, so the result does not depend on sort stability)
+    print(sorted([-7, -6, -5], key=lambda x: x % 3))
+
+    # nested lambda: the inner parameter is inferred through the outer one
+    print(list(filter(lambda x: (lambda y: y % 3)(x) == 1, nums)))
+
+    # a user-defined generic function has the same shape as the builtin
+    print(apply_all(lambda v: v % 3 == 1, nums))
+
+    # an explicitly annotated parameter stays on the already-correct path
+    print(list(filter(lambda x: int: x % 3 == 1, nums)))
