@@ -133,6 +133,7 @@ internal partial class TypeChecker
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
         MarkTypeReferenceArguments(call);
+        MarkTypeFactoryArguments(call, callee);
 
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
@@ -2909,6 +2910,38 @@ internal partial class TypeChecker
         {
             if (IsTypeNameExpression(kwarg.Value))
                 _semanticInfo.MarkTypeReference(kwarg.Value);
+        }
+    }
+
+    /// <summary>
+    /// Marks a <c>defaultdict(list)</c> / <c>defaultdict[str, list[int]](list)</c> first argument that
+    /// names a type used as a zero-argument factory callable. The DefaultDict constructor takes
+    /// <c>Func&lt;TValue&gt;</c>, so codegen wraps such an argument in <c>() =&gt; new TValue()</c> —
+    /// but WHETHER the argument is a factory name is a semantic question (the name may resolve as a
+    /// TypeSymbol, as a builtin collection function, or only through the wrapper-collection special
+    /// cases), so it is decided here and read as a fact by the emitter (#1175, Critical Rule 2).
+    /// </summary>
+    private void MarkTypeFactoryArguments(FunctionCall call, Expression callee)
+    {
+        if (call.Arguments.Length == 0 || call.Arguments[0] is not Identifier factoryName)
+            return;
+
+        // The callee names defaultdict either bare or with explicit type arguments.
+        var calleeName = callee switch
+        {
+            Identifier id => id.Name,
+            IndexAccess { Object: Identifier typeId } => typeId.Name,
+            _ => null,
+        };
+        if (!string.Equals(calleeName, BuiltinNames.DefaultDict, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (_symbolTable.Lookup(factoryName.Name) is TypeSymbol
+            || _semanticInfo.GetIdentifierSymbol(factoryName) is TypeSymbol
+            || Discovery.ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(factoryName.Name) != null
+            || _symbolTable.BuiltinRegistry.GetFunction(factoryName.Name) != null)
+        {
+            _semanticInfo.MarkTypeFactoryArgument(factoryName);
         }
     }
 

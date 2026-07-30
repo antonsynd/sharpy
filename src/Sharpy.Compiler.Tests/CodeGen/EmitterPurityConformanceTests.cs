@@ -1,4 +1,7 @@
 using FluentAssertions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
@@ -32,6 +35,17 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// banned tokens occur in <c>SyntaxFactory</c>-based construction, so no per-token allowlist is
 /// needed. Comments are stripped before scanning so a doc-comment that merely mentions a banned
 /// type by name (as historical context) is not a violation; only real code references are flagged.
+/// </para>
+///
+/// <para>
+/// A third ban is <b>method-scoped</b> rather than file-wide (#1175): within the generic-reference
+/// dispatch — <c>GenerateGenericReferenceCall</c> and every method in its file it transitively calls —
+/// <c>LookupSymbol</c> and <c>GetCallTarget</c> are banned, because that lowering must read the
+/// materialized <c>GenericReference</c> fact and nothing else. Those two are legitimate in the
+/// ordinary call arms of the same file, so the flat whole-file scan above cannot express the rule;
+/// the scoped guard walks the call graph with Roslyn instead (the
+/// <c>WrapperNodeUnwrapConformanceTests</c> idiom). See
+/// <see cref="GenericReferenceDispatch_LowersFromTheFact_WithoutCallTargetRederivation"/>.
 /// </para>
 /// </summary>
 public class EmitterPurityConformanceTests
@@ -82,6 +96,135 @@ public class EmitterPurityConformanceTests
             "survives the per-file → project merge codegen reads from).\nViolations:\n" +
             string.Join("\n", violations));
     }
+
+    // ---- scoped guard: the generic-reference dispatch (#1175) --------------------------------
+
+    /// <summary>The file holding the generic-reference dispatch and its per-kind emission bodies.</summary>
+    private const string DispatchFileName = "RoslynEmitter.Expressions.Access.cs";
+
+    /// <summary>The single entry point every <c>callee[T, ...]</c> lowering goes through (#1143).</summary>
+    private const string DispatchEntryMethod = "GenerateGenericReferenceCall";
+
+    /// <summary>
+    /// Call-target re-derivation the dispatch must never do: <c>LookupSymbol</c> re-resolves the callee
+    /// through the symbol table and <c>GetCallTarget</c> re-reads the call's bound symbol, both of which
+    /// the <c>GenericReference</c> fact already carries. Note these are legitimate elsewhere in the same
+    /// file (the ordinary call arms use them), which is exactly why this guard is method-scoped rather
+    /// than added to <see cref="BannedTokens"/>.
+    /// </summary>
+    private static readonly string[] CallTargetRederivationTokens = { "LookupSymbol", "GetCallTarget" };
+
+    /// <summary>
+    /// #1175: the generic-reference lowering must read the materialized <c>GenericReference</c> fact and
+    /// nothing else. #1143 collapsed a five-helper cascade that re-derived callee shape emitter-side and
+    /// #1164 removed the last fact-less arm, but nothing mechanically stopped a new arm — or a "small
+    /// fix" inside an existing one — from reaching back for the symbol table. This does.
+    ///
+    /// <para>Scope is the dispatch method plus every method in the same file it transitively calls
+    /// (the per-kind emission bodies and their same-class helpers), discovered syntactically with
+    /// Roslyn. Bodies only, so a doc comment naming a token is not a violation. There is deliberately
+    /// no exemption list: at the time of writing the scope is clean, and the correct response to a new
+    /// need for a lookup is to add a field to the fact.</para>
+    /// </summary>
+    [Fact]
+    public void GenericReferenceDispatch_LowersFromTheFact_WithoutCallTargetRederivation()
+    {
+        var dispatchFile = Path.Combine(FindCodeGenSourceDirectory(), DispatchFileName);
+        File.Exists(dispatchFile).Should().BeTrue(
+            $"the generic-reference dispatch is expected in {DispatchFileName}; if it moved, update this guard");
+
+        var root = (CompilationUnitSyntax)CSharpSyntaxTree.ParseText(File.ReadAllText(dispatchFile)).GetRoot();
+        var methodsByName = root.DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .GroupBy(m => m.Identifier.Text, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+
+        methodsByName.Should().ContainKey(DispatchEntryMethod,
+            $"{DispatchEntryMethod} is the generic-reference lowering seam this guard protects");
+
+        var scope = CollectTransitiveCallScope(methodsByName, DispatchEntryMethod);
+        scope.Count.Should().BeGreaterThan(1,
+            "the scope must reach the per-kind emission bodies, not just the dispatch switch — " +
+            "a scope of one means the call-graph walk stopped working and the guard is vacuous");
+
+        var violations = new List<string>();
+        foreach (var methodName in scope.OrderBy(n => n, StringComparer.Ordinal))
+        {
+            foreach (var method in methodsByName[methodName])
+            {
+                var body = (SyntaxNode?)method.Body ?? method.ExpressionBody;
+                if (body is null)
+                    continue;
+
+                foreach (var id in body.DescendantNodes().OfType<IdentifierNameSyntax>())
+                {
+                    var token = Array.Find(CallTargetRederivationTokens,
+                        t => string.Equals(id.Identifier.Text, t, StringComparison.Ordinal));
+                    if (token == null)
+                        continue;
+
+                    var line = id.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                    violations.Add($"{DispatchFileName}:{line} — {methodName} re-derives the call target via '{token}'");
+                }
+            }
+        }
+
+        violations.Should().BeEmpty(
+            "generic-reference lowering reads the materialized fact — extend the resolver, not the emitter. " +
+            $"Every method reachable from {DispatchEntryMethod} lowers a callee[T, ...] whose kind, target " +
+            "symbol, receiver type and type arguments the GenericReferenceResolver already decided and " +
+            "recorded in SemanticInfo (Critical Rule 2 pattern (b); #1143, #1164). If an emission body needs " +
+            "something it cannot read from the GenericReference, that is a MISSING FIELD ON THE FACT: add it " +
+            "in Semantic/GenericReferenceResolver.cs and record it there. Do not re-resolve the callee " +
+            "emitter-side — that is the cascade #1143 deleted, and it silently diverges from what semantic " +
+            "analysis decided.\nViolations:\n" + string.Join("\n", violations));
+    }
+
+    /// <summary>
+    /// The transitive set of same-file method names reachable from <paramref name="entry"/> through
+    /// unqualified (same-class) invocations — <c>Foo(...)</c>, <c>Foo&lt;T&gt;(...)</c> and
+    /// <c>this.Foo(...)</c>. Invocations on other receivers (<c>_typeMapper.MapType(...)</c>) are calls
+    /// out of scope, and names not declared in this file (Roslyn's static-imported
+    /// <c>SyntaxFactory</c> helpers) are simply absent from the method table.
+    /// </summary>
+    private static HashSet<string> CollectTransitiveCallScope(
+        Dictionary<string, List<MethodDeclarationSyntax>> methodsByName, string entry)
+    {
+        var scope = new HashSet<string>(StringComparer.Ordinal) { entry };
+        var queue = new Queue<string>();
+        queue.Enqueue(entry);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            foreach (var method in methodsByName[current])
+            {
+                var body = (SyntaxNode?)method.Body ?? method.ExpressionBody;
+                if (body is null)
+                    continue;
+
+                foreach (var invocation in body.DescendantNodes().OfType<InvocationExpressionSyntax>())
+                {
+                    var callee = CalleeName(invocation.Expression);
+                    if (callee == null || !methodsByName.ContainsKey(callee) || !scope.Add(callee))
+                        continue;
+                    queue.Enqueue(callee);
+                }
+            }
+        }
+
+        return scope;
+    }
+
+    /// <summary>The simple name of an unqualified or <c>this.</c>-qualified call, else null.</summary>
+    private static string? CalleeName(ExpressionSyntax invoked) => invoked switch
+    {
+        IdentifierNameSyntax id => id.Identifier.Text,
+        GenericNameSyntax generic => generic.Identifier.Text,
+        MemberAccessExpressionSyntax { Expression: ThisExpressionSyntax, Name: SimpleNameSyntax name } =>
+            name.Identifier.Text,
+        _ => null,
+    };
 
     /// <summary>
     /// Removes a single-line <c>//</c> comment from a line so that a banned type named only in a

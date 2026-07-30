@@ -86,6 +86,13 @@ public class SemanticInfo : ISemanticQuery
     // backed by CLR System.Type (e.g., assert_raises(zoneinfo.ZoneInfoNotFoundError)).
     private readonly ConcurrentDictionary<Expression, byte> _typeReferenceNodes = new(ReferenceEqualityComparer.Instance);
 
+    // Track arguments that name a type used as a zero-argument factory callable — Python's
+    // defaultdict(list) convention, where the argument is a type name, not a value. Whether an
+    // identifier denotes such a factory is a semantic question (it may resolve as a TypeSymbol, as a
+    // builtin collection function, or through the wrapper-collection special cases), so the answer is
+    // decided once here; codegen only wraps the marked argument in `() => new TValue()` (#1175).
+    private readonly ConcurrentDictionary<Expression, byte> _typeFactoryArguments = new(ReferenceEqualityComparer.Instance);
+
     // Map patterns to their resolved union case type symbols
     // Used when a PositionalPattern or MemberAccessPattern matches a union case
     private readonly ConcurrentDictionary<Pattern, TypeSymbol> _patternUnionCases =
@@ -512,6 +519,18 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public bool IsTypeReference(Expression expr) => _typeReferenceNodes.ContainsKey(expr);
 
+    /// <summary>
+    /// Marks a call argument as naming a type used as a zero-argument factory callable — the
+    /// <c>defaultdict(list)</c> convention. Codegen wraps a marked argument in
+    /// <c>() =&gt; new TValue()</c> rather than passing the name through (#1175).
+    /// </summary>
+    public void MarkTypeFactoryArgument(Expression expr) => _typeFactoryArguments.TryAdd(expr, 0);
+
+    /// <summary>
+    /// Returns true if the argument names a type used as a zero-argument factory callable.
+    /// </summary>
+    public bool IsTypeFactoryArgument(Expression expr) => _typeFactoryArguments.ContainsKey(expr);
+
     public void AddGeneratorBinding(Statement declaration, TypeSymbol generatorType, Decorator trigger)
     {
         var binding = new GeneratorBinding(generatorType, trigger);
@@ -791,6 +810,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._typeReferenceNodes)
             _typeReferenceNodes.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._typeFactoryArguments)
+            _typeFactoryArguments.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._patternUnionCases)
             _patternUnionCases.TryAdd(kvp.Key, kvp.Value);

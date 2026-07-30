@@ -1000,27 +1000,13 @@ internal partial class RoslynEmitter
         if (allArgs.Length == 0 || call.Arguments.Length == 0)
             return allArgs;
 
-        // Check if the first argument is a type reference used as a callable factory.
-        // In Python, defaultdict(list) passes the type `list` as a factory callable.
-        // We need to detect this and wrap it in a lambda: () => new ValueType()
+        // Whether the first argument is a type name used as a callable factory — Python's
+        // defaultdict(list) convention — was decided during type checking and materialized on the
+        // argument node (MarkTypeFactoryArguments): the name may resolve as a TypeSymbol, as a builtin
+        // collection function, or only through the wrapper-collection special cases, and choosing
+        // among those is a semantic decision, not a translation (#1175, Critical Rule 2).
         var firstArg = call.Arguments[0];
-        if (firstArg is not Identifier argId)
-            return allArgs;
-
-        // The DefaultDict constructor takes Func<TValue>. When the user writes
-        // defaultdict(list), defaultdict(int), etc., the argument is a type name used
-        // as a factory callable. Detect this by checking if the argument name is a known
-        // type constructor (builtin type or collection type). We check multiple resolution
-        // paths because 'list' can resolve as FunctionSymbol (builtin function), TypeSymbol,
-        // or both depending on context.
-        var argSymbol = _context.LookupSymbol(argId.Name);
-        var resolvedSymbol = _context.SemanticInfo?.GetIdentifierSymbol(argId);
-        var isTypeFactory = argSymbol is TypeSymbol
-            || resolvedSymbol is TypeSymbol
-            || ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(argId.Name) != null
-            || _context.IsBuiltinFunction(argId.Name);
-
-        if (!isTypeFactory)
+        if (_context.SemanticInfo?.IsTypeFactoryArgument(firstArg) != true)
             return allArgs;
 
         // Generate factory lambda: () => new ValueType()
