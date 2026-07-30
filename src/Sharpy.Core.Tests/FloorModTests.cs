@@ -129,4 +129,64 @@ public class FloorMod_Tests
         var (_, remainder) = Divmod(x, y);
         FloorMod(x, y).Should().BeApproximately(remainder, 1e-9);
     }
+
+    // #1186 — a zero remainder carries the DIVISOR's sign (CPython float_mod), where
+    // C#'s `%` gives it the dividend's sign. Asserted via IsNegative because
+    // -0.0 == 0.0 makes an equality assertion blind to the difference.
+    // Ground truth (python3): -1.0 % 1.0 -> 0.0, 1.0 % -1.0 -> -0.0,
+    //                          1.0 % 1.0 -> 0.0, -1.0 % -1.0 -> -0.0,
+    //                         -2.0 % 0.5 -> 0.0, 2.0 % -0.5 -> -0.0
+    [Theory]
+    [InlineData(-1.0, 1.0, false)]
+    [InlineData(1.0, -1.0, true)]
+    [InlineData(1.0, 1.0, false)]
+    [InlineData(-1.0, -1.0, true)]
+    [InlineData(-2.0, 0.5, false)]
+    [InlineData(2.0, -0.5, true)]
+    public void FloorMod_DoubleZeroRemainder_TakesDivisorSign(double x, double y, bool expectNegativeZero)
+    {
+        var r = FloorMod(x, y);
+
+        r.Should().Be(0.0);
+        double.IsNegative(r).Should().Be(expectNegativeZero);
+    }
+
+    [Theory]
+    [InlineData(-1.0f, 1.0f, false)]
+    [InlineData(1.0f, -1.0f, true)]
+    [InlineData(1.0f, 1.0f, false)]
+    [InlineData(-1.0f, -1.0f, true)]
+    [InlineData(-2.0f, 0.5f, false)]
+    [InlineData(2.0f, -0.5f, true)]
+    public void FloorMod_FloatZeroRemainder_TakesDivisorSign(float x, float y, bool expectNegativeZero)
+    {
+        var r = FloorMod(x, y);
+
+        r.Should().Be(0.0f);
+        float.IsNegative(r).Should().Be(expectNegativeZero);
+    }
+
+    // Divmod delegates its remainder to FloorMod, so it inherits the divisor-signed zero.
+    // Ground truth (python3): divmod(-1.0, 1.0) -> (-1.0, 0.0); divmod(1.0, -1.0) -> (-1.0, -0.0)
+    [Theory]
+    [InlineData(-1.0, 1.0, false)]
+    [InlineData(1.0, -1.0, true)]
+    public void Divmod_DoubleZeroRemainder_InheritsDivisorSign(double x, double y, bool expectNegativeZero)
+    {
+        var (_, remainder) = Divmod(x, y);
+
+        remainder.Should().Be(0.0);
+        double.IsNegative(remainder).Should().Be(expectNegativeZero);
+    }
+
+    [Theory]
+    [InlineData(-1.0f, 1.0f, false)]
+    [InlineData(1.0f, -1.0f, true)]
+    public void Divmod_FloatZeroRemainder_InheritsDivisorSign(float x, float y, bool expectNegativeZero)
+    {
+        var (_, remainder) = Divmod(x, y);
+
+        remainder.Should().Be(0.0f);
+        float.IsNegative(remainder).Should().Be(expectNegativeZero);
+    }
 }

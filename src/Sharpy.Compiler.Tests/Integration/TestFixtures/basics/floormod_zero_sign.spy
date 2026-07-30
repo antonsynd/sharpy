@@ -1,0 +1,31 @@
+# A zero remainder carries the DIVISOR's sign, matching CPython's float_mod (#1186).
+# C#'s `%` gives zero the dividend's sign instead, which is visible in printed output.
+def main() -> None:
+    a: float = -1.0
+    b: float = 1.0
+    print(a % b)
+
+    c: float = 1.0
+    d: float = -1.0
+    print(c % d)
+
+    e: float = -2.0
+    f: float = 0.5
+    print(e % f)
+
+    g: float = 2.0
+    h: float = -0.5
+    print(g % h)
+
+    # divmod delegates its remainder to the same helper, so it inherits the sign
+    print(divmod(a, b))
+    print(divmod(c, d))
+
+    # float32 takes the same path
+    s = 1.0f
+    t = -1.0f
+    print(s % t)
+
+    # Nonzero remainders are unaffected: still sign-of-divisor
+    print(-7.5 % 2.0)
+    print(7.5 % -2.0)
