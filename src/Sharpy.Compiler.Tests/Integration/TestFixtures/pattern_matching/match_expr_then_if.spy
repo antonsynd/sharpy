@@ -1,0 +1,14 @@
+# A statement immediately after a match-expression block is a statement, not a continuation
+# of the match expression's value (#1169, #1183).
+def main():
+    code: int = 2
+    v: int = match code:
+        case 1: 100
+        case _: 0
+    if True:
+        print(v)
+    w: int = match code:
+        case 2: 5
+        case _: 9
+    -w
+    print(w)

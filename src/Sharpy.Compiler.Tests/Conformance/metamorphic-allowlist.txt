@@ -17,14 +17,14 @@
 # ParensWrapCallee is now 1,633 ok / 5 notApplicable / 1 failing — and that one failure is the parser
 # bug below, not a callee. The shape matrix that keeps it fixed lives in
 # Integration/TestFixtures/indirect_callee/.
-
-# #1183 — parser: a match expression's last arm swallows a following statement that begins with `(`,
-# so the arm expression continues past its line instead of ending at it. Two transforms reach it on
-# the same fixture: ParensWrapCallee (SPY0201 "Expression of type 'str' is not callable") and
-# IfTrueWrap (SPY0104 "Expected Else, got Colon" — filed earlier as #1169, the same arm-termination
-# weakness under a different wrapper, to be checked together). NOT the #1170 indirect-callee class:
-# `(1 + 1)` after the match expression fails identically, and the failing node is the match
-# expression rather than a callee.
-# 2 cell(s).
-IfTrueWrap::pattern_matching/match_expr_as_argument
-ParensWrapCallee::pattern_matching/match_expr_as_argument
+#
+# Drained to EMPTY 2026-07-30 (batch P) — the last 2 entries deleted with the #1169 fix. Both cited
+# the same weakness: an expression continuation attaching across a match expression's DEDENT, so the
+# statement after the block was swallowed (IfTrueWrap read `if` as a ternary — #1169; ParensWrapCallee
+# read `(` as a call — #1183). One guard in the parser's continuation chain closed the class and both
+# cells pass. The shape matrix that keeps it fixed lives in
+# Parser/MatchExpressionBoundaryTests.cs and Integration/TestFixtures/pattern_matching/
+# match_expr_then_if.spy.
+#
+# The list is now empty: the compile-clean contract is fully enforced over every cell. Do not add an
+# entry without an issue reference, and delete it in the same change that fixes the issue.
