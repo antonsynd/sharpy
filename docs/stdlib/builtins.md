@@ -477,6 +477,57 @@ float("-1.5")    # -1.5
 
 - `ValueError` -- Thrown when the string cannot be parsed
 
+### `floor_div(x: float, y: float) -> float`
+
+Returns the floored quotient of *x* divided by
+*y*, matching CPython's `float_floor_div`.
+
+**Parameters:**
+
+- `x` (float) -- The dividend
+- `y` (float) -- The divisor
+
+**Returns:** The floored quotient
+
+```python
+FloorDiv(1.0, 0.1)   // 9.0  (not 10.0)
+FloorDiv(7.5, 0.1)   // 74.0 (not 75.0)
+FloorDiv(-1.0, 0.1)  // -10.0
+```
+
+!!! note
+    `Math.Floor(x / y)` is not equivalent: `x / y` can round up
+    across an integer boundary, so `1.0 // 0.1` would give `10.0` where
+    CPython gives `9.0`. Deriving the quotient from the raw `fmod`
+    remainder instead keeps the division exact.
+    
+    
+    This is the quotient half of `Divmod(double, double)` — CPython
+    implements `float_floor_div` by calling `float_divmod` and taking the
+    first element — so the two share this one implementation and the divmod identity
+    `x == (x // y) * y + (x % y)` established in #1153 holds for floats.
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `floor_div(x: float32, y: float32) -> float32`
+
+Returns the floored quotient of *x* divided by
+*y*, matching CPython's `float_floor_div`.
+See the `FloorDiv(double, double)` overload.
+
+**Parameters:**
+
+- `x` (float32) -- The dividend
+- `y` (float32) -- The divisor
+
+**Returns:** The floored quotient
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
 ### `floor_mod(x: int, y: int) -> int`
 
 Returns the remainder of Python's floored division of *x* by
@@ -529,6 +580,12 @@ Returns the remainder of Python's floored division of *x* by
 
 **Returns:** The floored-division remainder (sign of the divisor)
 
+!!! note
+    A zero remainder carries the divisor's sign, matching CPython's `float_mod`
+    (`-1.0 % 1.0` is `0.0`, `1.0 % -1.0` is `-0.0`). C#'s `%`
+    gives zero the dividend's sign instead, which is observable in printed output and
+    in downstream `copysign`/`atan2` use.
+
 **Raises:**
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
@@ -544,6 +601,10 @@ Returns the remainder of Python's floored division of *x* by
 - `y` (float32) -- The divisor
 
 **Returns:** The floored-division remainder (sign of the divisor)
+
+!!! note
+    A zero remainder carries the divisor's sign, matching CPython's `float_mod`.
+    See the `FloorMod(double, double)` overload.
 
 **Raises:**
 
@@ -1411,6 +1472,8 @@ repr(None)         # "None"
     Sharpy types (List, Set, Dict) override ToString() to produce
     Python-compatible repr output (e.g., "[1, 2, 3]", "{1, 2}", etc.).
     Strings are wrapped in single quotes, matching Python's repr().
+    Floats are formatted by `FormatFloat(double)` so whole values
+    keep their trailing `.0` (e.g., `-4.0`, not `-4`).
 
 ### `reversed(sequence: Iterable[T]) -> Iterator[T]`
 
