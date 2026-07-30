@@ -1,0 +1,17 @@
+# #1192: a wrong-arity TYPE reference is arity-checked at the same seam the function-shaped kinds
+# use, and reads exactly like the annotation position for the same declaration. Before this,
+# `Box[int, str](5)` emitted `new Box<int, string>(5)` and leaked CS0305 through the SPY0908 net.
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def use() -> None:
+    b = Box[int, str](5)
+    print(b)
+
+
+def main() -> None:
+    pass

@@ -1,0 +1,17 @@
+# #1192: a generic TYPE reference names a type, not a value. Uncalled, `Box[int]` used to reach
+# codegen as C# element access on a type name (CS0021/CS0119 behind SPY0908); it is now the
+# deliberate SPY0339, the type-side counterpart of SPY0335 for generic function references.
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def use() -> None:
+    b = Box[int]
+    print(b)
+
+
+def main() -> None:
+    pass

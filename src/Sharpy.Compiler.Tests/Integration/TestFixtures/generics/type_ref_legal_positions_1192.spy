@@ -1,0 +1,53 @@
+# #1192 positive control: every position where a generic TYPE reference is legal must stay legal
+# after the uncalled-reference rejection. Construction, parenthesized construction (the callee
+# exemption compares through parentheses), the nested spelling, a default-filled vector that the
+# resolver completes from PEP-696 defaults, and the ordinary GenericType-typed VALUES (list, dict)
+# that the fact-keyed arm must never touch.
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+    def __str__(self) -> str:
+        return f"b{self.value}"
+
+
+class Pair[K, V = str]:
+    key: K
+    value: V
+
+    def __init__(self, key: K, value: V):
+        self.key = key
+        self.value = value
+
+    def __str__(self) -> str:
+        return f"p{self.key}:{self.value}"
+
+
+class Outer:
+    @public
+    class Inner[T]:
+        value: T
+
+        def __init__(self, value: T):
+            self.value = value
+
+        def __str__(self) -> str:
+            return f"i{self.value}"
+
+
+def show(b: Box[int]) -> str:
+    return str(b)
+
+
+def main() -> None:
+    annotated: Box[int] = Box[int](5)
+    print(show(annotated))
+    print((Box[int])(6))
+    print(Outer.Inner[int](7))
+    print(Pair[int](8, "d"))
+    xs: list[int] = [1, 2, 3]
+    print(xs)
+    d: dict[str, int] = {"a": 1}
+    print(d)

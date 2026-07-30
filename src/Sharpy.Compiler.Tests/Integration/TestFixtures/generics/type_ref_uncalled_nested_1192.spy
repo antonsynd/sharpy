@@ -1,0 +1,20 @@
+# #1192: the nested spelling of the same rule. `Outer.Inner[int]` records a NestedTypeRef fact but
+# is type-checked on the value-indexing path, so the choke point keys off the recorded FACT rather
+# than the expression type — which is exactly what keeps ordinary GenericType-typed values (every
+# list and dict) unaffected while still catching this kind.
+class Outer:
+    @public
+    class Inner[T]:
+        value: T
+
+        def __init__(self, value: T):
+            self.value = value
+
+
+def use() -> None:
+    i = Outer.Inner[int]
+    print(i)
+
+
+def main() -> None:
+    pass

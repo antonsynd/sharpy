@@ -1,0 +1,21 @@
+# #1192: wrong arity on the nested spelling. The nested arm used to record its fact and decline
+# unconditionally; a rejected vector now reports as handled so no second, derived diagnostic (nor a
+# construction from the vector the resolver refused) follows on the same line.
+class Outer:
+    @public
+    class Pair[K, V]:
+        key: K
+        value: V
+
+        def __init__(self, key: K, value: V):
+            self.key = key
+            self.value = value
+
+
+def use() -> None:
+    p = Outer.Pair[int](1, "a")
+    print(p)
+
+
+def main() -> None:
+    pass
