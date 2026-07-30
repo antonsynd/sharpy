@@ -950,12 +950,15 @@ internal class TypeSyntaxMapper
             return MapType(annotation);
         }
 
-        // Handle nested generic types (e.g., Box[int] in Container[Box[int]])
+        // Handle nested generic types (e.g., Box[int] in Container[Box[int]], list[int] in
+        // identity[list[int]](...)). The element expressions keep their own arms — an Identifier, a
+        // deeper IndexAccess, or a module-qualified MemberAccess (#903) — but the OUTER name must be
+        // resolved by the same authority annotation positions use, or a collection spelled here emits
+        // a bare `List<int>`: CS0104, ambiguous between Sharpy.List<T> and the BCL's (#1184).
         if (expr is IndexAccess indexAccess && indexAccess.Object is Identifier nestedTypeName)
         {
             var typeArgs = MapTypeArgumentsFromExpression(indexAccess.Index);
-            return GenericName(NameCasing.ResolveType(nestedTypeName.Name, nestedTypeName.IsNameBacktickEscaped))
-                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
+            return MapGenericTypeName(nestedTypeName.Name, nestedTypeName.IsNameBacktickEscaped, typeArgs);
         }
 
         // Module-qualified type used as an expression (e.g. email.MessageError). The type
@@ -970,6 +973,25 @@ internal class TypeSyntaxMapper
 
         // For more complex expressions, fall back to object
         return PredefinedType(Token(SyntaxKind.ObjectKeyword));
+    }
+
+    /// <summary>
+    /// Builds the <see cref="TypeSyntax"/> for a generic type spelled <c>Name[args...]</c>, given its
+    /// already-mapped type arguments. This is the name-resolution half of <see cref="MapType"/>'s
+    /// generic-annotation handling, shared so an explicit type argument on a call
+    /// (<c>identity[list[int]](...)</c>) resolves through exactly the same authority as the annotation
+    /// position <c>xs: list[int]</c> — <see cref="GetTypeNameForReference"/>, which qualifies builtin
+    /// collections (<c>list</c> → <c>Sharpy.List</c>) and cross-file/imported types, and falls through
+    /// to plain casing for everything else. Emitting a bare <c>List&lt;int&gt;</c> here is CS0104,
+    /// ambiguous with <c>System.Collections.Generic.List&lt;T&gt;</c> (#1184, contract #1146).
+    /// <c>array[T]</c> keeps <see cref="MapType"/>'s array-annotation lowering to <c>T[]</c>.
+    /// </summary>
+    private TypeSyntax MapGenericTypeName(string sharpyTypeName, bool isBacktickEscaped, TypeSyntax[] typeArgs)
+    {
+        if (sharpyTypeName == BuiltinNames.Array && typeArgs.Length == 1)
+            return MakeArrayType(typeArgs[0]);
+
+        return QualifiedGenericName(GetTypeNameForReference(sharpyTypeName, isBacktickEscaped), typeArgs);
     }
 
     /// <summary>
