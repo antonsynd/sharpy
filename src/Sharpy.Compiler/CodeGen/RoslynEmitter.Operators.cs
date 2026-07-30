@@ -1097,6 +1097,74 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Single routing seam for <c>%</c> — used by both the binary-operator site and the
+    /// augmented <c>%=</c> site so neither can drift, mirroring
+    /// <see cref="GenerateFloorDivideValue"/>. Decimal operands take the guarded native
+    /// remainder; the floored-numeric allowlist keeps the floored
+    /// <see cref="GenerateFloorModulo"/> lowering. Returns null for every other operand
+    /// shape — user <c>__mod__</c> types (which map to <c>operator %</c>) and other CLR
+    /// <c>op_Modulus</c> types — so the caller falls through to the native
+    /// <c>ModuloExpression</c> map exactly as before.
+    /// </summary>
+    /// <param name="left">Generated C# expression for the left operand.</param>
+    /// <param name="right">Generated C# expression for the right operand.</param>
+    /// <param name="leftAst">Left operand AST (for type inference); may be null.</param>
+    /// <param name="rightAst">Right operand AST (for type inference); may be null.</param>
+    private ExpressionSyntax? GenerateModuloValue(ExpressionSyntax left, ExpressionSyntax right, Expression? leftAst, Expression? rightAst)
+    {
+        // Decimal is matched positively (as in GenerateFloorDivideValue) rather than as
+        // "not floored-eligible", so widened CLR integer types keep their existing routing.
+        if (IsDecimalOperand(leftAst) || IsDecimalOperand(rightAst))
+            return GenerateDecimalModulo(left, right);
+
+        if (leftAst != null && rightAst != null
+            && IsFlooredNumericOperand(leftAst) && IsFlooredNumericOperand(rightAst))
+            return GenerateFloorModulo(left, right);
+
+        return null;
+    }
+
+    /// <summary>
+    /// Generates decimal modulo: <c>global::System.Decimal.Remainder(left, right)</c>,
+    /// guarded by a zero-divisor throw. Decimal keeps the native truncating remainder (sign
+    /// of the dividend), which is both the spec's native-decimal policy and what CPython's
+    /// <c>Decimal.__mod__</c> does (<c>Decimal(-7) % 3</c> is <c>-1</c>, where int
+    /// <c>-7 % 3</c> is <c>2</c>) — so nonzero divisors are unchanged by this lowering.
+    /// A zero divisor raises <c>InvalidOperation</c>, NOT <c>ZeroDivisionError</c>: CPython
+    /// raises <c>decimal.InvalidOperation</c> here, which is a sibling of
+    /// <c>ZeroDivisionError</c> rather than a subclass (unlike decimal <c>//</c>, whose
+    /// <c>decimal.DivisionByZero</c> IS a <c>ZeroDivisionError</c>) (#1189).
+    /// <c>Decimal.Remainder</c> rather than the <c>%</c> operator for the same reason
+    /// <see cref="GenerateDecimalFloorDivision"/> uses <c>Decimal.Divide</c>: a literal zero
+    /// divisor (<c>7m % 0m</c>) through <c>%</c> is a compile-time C# error (CS0020,
+    /// "division by constant zero") even in the unreachable arm of the guard, which would
+    /// re-introduce SPY0908. The method call is exactly what <c>decimal.op_Modulus</c>
+    /// invokes, so the emitted value is identical for every nonzero divisor.
+    /// </summary>
+    private ExpressionSyntax GenerateDecimalModulo(ExpressionSyntax left, ExpressionSyntax right)
+    {
+        var remainderCall = InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("System", "Decimal"),
+                IdentifierName("Remainder")))
+            .AddArgumentListArguments(Argument(left), Argument(right));
+
+        var throwExpr = ThrowExpression(
+            ObjectCreationExpression(ParseQualifiedTypeName("global::Sharpy.InvalidOperation"))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
+                        Literal("decimal modulo by zero")))))));
+
+        // (right == 0m ? throw new InvalidOperation(...) : decimal.Remainder(left, right))
+        return ParenthesizedExpression(
+            ConditionalExpression(
+                BinaryExpression(SyntaxKind.EqualsExpression, right,
+                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0m))),
+                throwExpr,
+                remainderCall));
+    }
+
+    /// <summary>
     /// Single routing seam for <c>//</c> — used by both the binary-operator site and the
     /// augmented <c>//=</c> site so neither can drift. Decimal operands take the native
     /// truncating path; every other operand shape keeps the floored

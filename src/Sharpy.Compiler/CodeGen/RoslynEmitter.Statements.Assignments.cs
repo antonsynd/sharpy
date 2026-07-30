@@ -510,13 +510,14 @@ internal partial class RoslynEmitter
             AssignmentOperator.DoubleSlashAssign =>
                 GenerateFloorDivideValue(left, right, targetAst, valueAst),
 
-            // x %= y → Python floored modulo (sign of divisor), matching binary %, but only
-            // for numeric operands. User __mod__ types (operator %) and CLR op_Modulus types
-            // (e.g. decimal) fall through to the native `%=` (PercentAssign → ModuloExpression).
+            // x %= y → Python floored modulo (sign of divisor) for int/long/float operands, and
+            // the zero-guarded native remainder for decimal — both decided by the binary `%`
+            // routing wrapper this site shares, so it cannot miss an operand class the binary
+            // site handles. User __mod__ types (operator %) and other CLR op_Modulus types get
+            // null back and fall through to the native `%=` (PercentAssign → ModuloExpression).
             AssignmentOperator.PercentAssign
-                when targetAst != null && valueAst != null
-                     && IsFlooredNumericOperand(targetAst) && IsFlooredNumericOperand(valueAst) =>
-                GenerateFloorModulo(left, right),
+                when GenerateModuloValue(left, right, targetAst, valueAst) is { } moduloValue =>
+                moduloValue,
 
             // x ??= y → lowered null coalescing (Optional-aware)
             AssignmentOperator.NullCoalesceAssign =>

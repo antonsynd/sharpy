@@ -147,13 +147,16 @@ internal partial class RoslynEmitter
                 return GenerateFloorDivideValue(left, right, binOp.Left, binOp.Right);
 
             case BinaryOperator.Modulo:
-                // x % y → Python floored modulo (result sign = divisor sign) for numeric operands.
-                // Gate on both operands being int/long/float32/float64 (materialized semantic types):
-                // C#'s native `%` takes the sign of the dividend, which diverges from Python. User
-                // types with `__mod__` (→ operator %) and CLR `op_Modulus` types (e.g. decimal) MUST
-                // keep the native ModuloExpression map below — an ungated rewrite would break them.
-                if (IsFlooredNumericOperand(binOp.Left) && IsFlooredNumericOperand(binOp.Right))
-                    return GenerateFloorModulo(left, right);
+                // x % y → Python floored modulo (result sign = divisor sign) for int/long/
+                // float32/float64 operands: C#'s native `%` takes the sign of the dividend, which
+                // diverges from Python. Decimal keeps the native truncating remainder but routes
+                // through a zero-divisor guard (#1189). Both decisions live in the routing wrapper
+                // this site shares with the augmented `%=` site, so the two cannot drift. User
+                // types with `__mod__` (→ operator %) and other CLR `op_Modulus` types get null
+                // back and MUST keep the native ModuloExpression map below.
+                var moduloValue = GenerateModuloValue(left, right, binOp.Left, binOp.Right);
+                if (moduloValue != null)
+                    return moduloValue;
                 break;
 
             case BinaryOperator.MatMul:
