@@ -1336,7 +1336,9 @@ public partial class Parser
 
         Expect(TokenType.Colon);
         var result = ParseExpression();
-        ExpectNewline();
+        // A block-consuming result (a nested match expression) already consumed the arm's newline
+        // and its own Dedent, so the arm is terminated by that Dedent rather than a Newline (#1196).
+        ExpectStatementEnd();
         var endToken = Previous;
 
         return new MatchArm
