@@ -4,17 +4,19 @@
 # outcome is ice / subscriptMisfire / csLeak / wrongOutput / crash fails the ratchet UNLESS its key
 # appears here. `#` starts a comment; blank lines are ignored.
 #
-# The #1143 acceptance criterion — every cell either `ok` or `deliberateDiagnostic` — was met with a
-# ZERO-entry ledger over the 121 cells that existed then: it drained over #1142 (user-module generic
-# exports keep their type parameters), #1147 (parenthesized method-group callee), #1148 (value-arg
-# validation against the type-arg-narrowed overload set), and #1141 (BCL member-absence proof). Every
-# one of those 121 cells is still green, and no entry below belongs to them.
+# THIS FILE IS EMPTY, WHICH IS ITS STEADY STATE. Every cell of the matrix either resolves cleanly or
+# emits a deliberate diagnostic.
 #
-# The entries below arrived with NEW MEASUREMENT, not new breakage: #1164 added the first TYPE-
-# reference specimens (nested_outer_inner, nested_outer_pair), and their non-called forms expose three
-# pre-existing leak classes that no prior specimen probed. Each was confirmed by a real run, is
-# byte-for-byte the behavior that predates #1164, and cites its issue. Drain each block in the change
-# that fixes it.
+# It has drained twice. The #1143 acceptance criterion was met over the 121 cells that existed then,
+# via #1142 (user-module generic exports keep their type parameters), #1147 (parenthesized
+# method-group callee), #1148 (value-arg validation against the type-arg-narrowed overload set) and
+# #1141 (BCL member-absence proof). #1164 then added the first TYPE-reference specimens, whose
+# non-called forms measured three pre-existing leak classes no earlier specimen probed — #1192
+# (type references neither arity-checked nor rejected uncalled), #1193 (a nested generic constructed
+# without type args), #1194 (an unknown member on a type qualifier). Those twenty lines are gone
+# because the defects are fixed, class-level: the arity seam, the uncalled choke point and the
+# absence proof each cover every type-reference kind, and box_generic / usermod_slot were added to
+# the matrix to measure the two kinds that had no specimen of their own.
 #
 # DO NOT DELETE THIS FILE. Its mere presence — content notwithstanding — is what switches the sweep
 # into ratchet mode (see AllowlistFileExists). Deleting it would silently disarm the ratchet and let
@@ -25,40 +27,4 @@
 #   2. It MUST correspond to a cell a real run confirms failing — never allowlist speculatively.
 #   3. It is temporary. Delete the line in the same change that fixes the bug ("drain on fix"), so
 #      the ratchet re-arms on that cell and the ledger stays honest.
-# The steady state of this file is empty. Any growth is a regression in the contract, not a fact
-# about the code that can be left standing.
-
-# ── #1192 — generic TYPE references are neither arity-checked nor rejected uncalled ──
-# `_x = Outer.Inner[int]` emits `Outer.Inner[global::Sharpy.Builtins.Int]` (CS0021/CS0119) and
-# `Outer.Inner[int, str](5)` emits `new Outer.Inner<int, string>(5)` (CS0305). Reproduces identically
-# for a bare `Box[int]`, so the fix is class-level across GenericTypeRef / ModuleType / NestedTypeRef
-# and must respect PEP-696 type-parameter defaults.
-nested_outer_inner::uncalledAssigned::exact
-nested_outer_inner::uncalledAssigned::excess
-nested_outer_inner::uncalledThenCalled::exact
-nested_outer_inner::passedAsArg::exact
-nested_outer_inner::ternaryCalled::exact
-nested_outer_inner::called::excess
-nested_outer_pair::uncalledAssigned::exact
-nested_outer_pair::uncalledAssigned::excess
-nested_outer_pair::uncalledAssigned::deficient
-nested_outer_pair::uncalledThenCalled::exact
-nested_outer_pair::passedAsArg::exact
-nested_outer_pair::ternaryCalled::exact
-nested_outer_pair::called::excess
-nested_outer_pair::called::deficient
-
-# ── #1193 — a nested generic type constructed without explicit type args gets no inference ──
-# `Outer.Inner(5)` emits `new Outer.Inner(5)` (CS0305) where the bare spelling `Box(5)` infers
-# `new Box<int>(5)`: the construction path's member-access arm resolves only MODULE qualifiers.
-nested_outer_inner::called::none
-nested_outer_inner::parenCalled::none
-nested_outer_pair::called::none
-nested_outer_pair::parenCalled::none
-
-# ── #1194 — unknown member on a TYPE qualifier with explicit type args (the #1141 class) ──
-# `Outer.no_such_generic[str](5)` emits `Outer.NoSuchGeneric<string>(5)` (CS0117). #1141's
-# member-absence proof runs only for value receivers; a class-name qualifier types as the intentional
-# Unknown, so nothing proves absence — though for a user-declared type the symbol proves it outright.
-nested_outer_inner::typoMember::exact
-nested_outer_pair::typoMember::exact
+# Any growth is a regression in the contract, not a fact about the code that can be left standing.
