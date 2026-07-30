@@ -56,9 +56,18 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// </para>
 ///
 /// <para><b>Acceptance criterion (#1143) — MET.</b> Those issues are fixed and every allowlist line
-/// is drained: <c>generic-reference-allowlist.txt</c> is EMPTY (every cell resolves cleanly or emits
-/// a deliberate diagnostic). The file itself stays in place — its presence is what arms the ratchet —
+/// for them is drained (every one of the 121 cells that existed then resolves cleanly or emits a
+/// deliberate diagnostic). The file itself stays in place — its presence is what arms the ratchet —
 /// so any regression that reintroduces a gap now fails the suite loudly instead of being absorbed.
+/// </para>
+///
+/// <para><b>#1164 added the first TYPE-reference specimens</b> (<c>nested_outer_inner</c>,
+/// <c>nested_outer_pair</c>), pinning the <see cref="Semantic.GenericReferenceKind.NestedTypeRef"/>
+/// class whose lowering is now fact-driven. Their <b>called</b> forms are green end-to-end; their
+/// non-called forms measure three pre-existing leak classes no earlier specimen probed — uncalled and
+/// wrong-arity type references (#1192), a nested generic constructed without type args (#1193), and an
+/// unknown member on a type qualifier (#1194). Those cells are allowlisted against those issues, each
+/// verified byte-identical to the pre-#1164 behavior; they drain as the issues land.
 /// </para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
@@ -261,6 +270,27 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
             "        return f\"c{value}\"\n\n" +
             "    def pick[T, U](self, a: T, b: U) -> str:\n" +
             "        return \"p\"\n\n";
+        // Nested generic types (#1164). Their references are TYPE references — Outer.Inner[int](5)
+        // constructs — so the uncalled forms exercise a type reference used as a value, not a
+        // method group.
+        const string nestedInnerPrelude =
+            "class Outer:\n" +
+            "    @public\n" +
+            "    class Inner[T]:\n" +
+            "        value: T\n\n" +
+            "        def __init__(self, value: T):\n" +
+            "            self.value = value\n\n" +
+            "        def __str__(self) -> str:\n" +
+            "            return f\"i{self.value}\"\n\n";
+        const string nestedPairPrelude =
+            "class Outer:\n" +
+            "    @public\n" +
+            "    class Pair[K, V]:\n" +
+            "        key: K\n" +
+            "        value: V\n\n" +
+            "        def __init__(self, key: K, value: V):\n" +
+            "            self.key = key\n" +
+            "            self.value = value\n\n";
         const string identityDecl = "def identity[T](x: T) -> T:\n    return x\n\n";
         const string pairDecl = "def pair[T, U](a: T, b: U) -> T:\n    return a\n\n";
         const string shadowMapDecl = "def map[T](x: T) -> T:\n    return x\n\n";
@@ -336,7 +366,21 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
                 EnclosingParams: "lst: List[int]", Receiver: "lst.", Member: "convert_all",
                 ExactTypeArgs: new[] { "str" }, CallArgs: "lambda x: str(x)"),
 
-            // (7) user function shadowing a same-named builtin — def map[T] shadows builtin map (#1002/#1003).
+            // (7) nested generic type reference — Outer.Inner[T](v) (#1164), single and multi
+            // type-parameter. The kind whose lowering is driven by the NestedTypeRef fact; pinning it
+            // here is what keeps the class from regressing back to an emitter-side symbol walk.
+            new("nested_outer_inner", "nested-type", 1,
+                Imports: "", Prelude: nestedInnerPrelude, SiblingModuleName: null, SiblingModuleContent: null,
+                EnclosingParams: "", Receiver: "Outer.", Member: "Inner",
+                ExactTypeArgs: new[] { "int" }, CallArgs: "5",
+                Runnable: nestedInnerPrelude + "def main() -> None:\n    print(Outer.Inner[int](5))\n",
+                ExpectedOutput: "i5"),
+            new("nested_outer_pair", "nested-type", 2,
+                Imports: "", Prelude: nestedPairPrelude, SiblingModuleName: null, SiblingModuleContent: null,
+                EnclosingParams: "", Receiver: "Outer.", Member: "Pair",
+                ExactTypeArgs: new[] { "int", "str" }, CallArgs: "1, \"a\""),
+
+            // (8) user function shadowing a same-named builtin — def map[T] shadows builtin map (#1002/#1003).
             new("shadow_map", "shadow-builtin", 1,
                 Imports: "", Prelude: shadowMapDecl, SiblingModuleName: null, SiblingModuleContent: null,
                 EnclosingParams: "", Receiver: "", Member: "map",
