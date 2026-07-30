@@ -107,6 +107,16 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
     #region Precedence
 
+    /// <summary>
+    /// A bare starred form is not an operand at any precedence: the parser accepts <c>*x</c> and
+    /// the bare unpacking tuple <c>a, *b</c> only in a call argument, a collection element, an
+    /// unpacking target or a standalone expression — never after an operator, where a leading
+    /// <c>*</c> is read as multiplication (or, after <c>??</c>, silently turns the coalesce into
+    /// two postfix <c>?</c> and a multiply). Ranking these below every operator makes the operand
+    /// helpers parenthesize them into the spelling that survives a reparse (#1172).
+    /// </summary>
+    private const int PrecStarOperand = -1;
+
     private const int PrecWalrus = 0;
     private const int PrecTryMaybe = 1;
     private const int PrecConditional = 2;
@@ -143,8 +153,9 @@ internal sealed partial class UnparseVisitor : AstVisitor
             UnaryOp u => u.Operator == UnaryOperator.Not ? PrecNot : PrecUnaryPrefix,
             AwaitExpression => PrecAwait,
             QuestionMarkExpression => PrecPostfix,
-            StarExpression => PrecAtom,
-            SpreadElement => PrecAtom,
+            StarExpression => PrecStarOperand,
+            SpreadElement => PrecStarOperand,
+            TupleLiteral t when RendersAsBareTuple(t) => PrecStarOperand,
             LambdaExpression => PrecConditional,
             _ => PrecAtom
         };
@@ -191,15 +202,9 @@ internal sealed partial class UnparseVisitor : AstVisitor
             needsParens = childPrec < parentPrec || (childPrec == parentPrec && parentIsRightAssoc);
 
         if (needsParens)
-        {
-            _w.Write("(");
-            Visit(child);
-            _w.Write(")");
-        }
+            WriteParenthesized(child);
         else
-        {
             Visit(child);
-        }
     }
 
     private void VisitUnaryOperand(Expression operand, int unaryPrec)
@@ -212,15 +217,9 @@ internal sealed partial class UnparseVisitor : AstVisitor
 
         int childPrec = GetExpressionPrecedence(operand);
         if (childPrec < unaryPrec)
-        {
-            _w.Write("(");
-            Visit(operand);
-            _w.Write(")");
-        }
+            WriteParenthesized(operand);
         else
-        {
             Visit(operand);
-        }
     }
 
     private void VisitPostfixObject(Expression obj)
@@ -237,16 +236,40 @@ internal sealed partial class UnparseVisitor : AstVisitor
             || obj is StringLiteral or BytesLiteralExpression or FStringLiteral or TStringLiteral;
 
         if (needsParens)
-        {
-            _w.Write("(");
-            Visit(obj);
-            _w.Write(")");
-        }
+            WriteParenthesized(obj);
         else
-        {
             Visit(obj);
-        }
     }
+
+    /// <summary>
+    /// Writes <paramref name="inner"/> wrapped in parentheses, in the spelling that survives a
+    /// reparse. <c>(*x)</c> re-parses as a one-element tuple, whose own rendering carries a
+    /// trailing comma — so a single starred element must be written <c>(*x,)</c> for the output
+    /// to be a fixed point. Tuples that already supply their own commas need nothing (#1172).
+    /// </summary>
+    private void WriteParenthesized(Expression inner)
+    {
+        _w.Write("(");
+        Visit(inner);
+        if (NeedsTrailingCommaInParens(inner))
+            _w.Write(",");
+        _w.Write(")");
+    }
+
+    private static bool NeedsTrailingCommaInParens(Expression inner) => inner switch
+    {
+        StarExpression or SpreadElement => true,
+        TupleLiteral t => t.Elements.Length == 1 && RendersAsBareTuple(t),
+        _ => false
+    };
+
+    /// <summary>
+    /// True for a tuple that <see cref="VisitTupleLiteral"/> writes without its own parentheses —
+    /// the unpacking-target form <c>a, *b</c>. Such a tuple supplies no delimiters of its own, so
+    /// it is not self-contained in operand position.
+    /// </summary>
+    private static bool RendersAsBareTuple(TupleLiteral tuple) =>
+        tuple.Elements.Any(e => e is StarExpression);
 
     #endregion
 

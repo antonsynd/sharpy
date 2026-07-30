@@ -188,7 +188,10 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitTupleLiteral(TupleLiteral node)
     {
-        bool hasStarUnpack = node.Elements.Any(e => e is StarExpression);
+        // A tuple that unpacks is written bare — `first, *rest = items` is the only spelling
+        // the parser accepts for an unpacking target. In operand position the precedence table
+        // ranks it below every operator so the operand helpers parenthesize it instead (#1172).
+        bool hasStarUnpack = RendersAsBareTuple(node);
         if (!hasStarUnpack)
             _w.Write("(");
         for (int i = 0; i < node.Elements.Length; i++)
