@@ -6,7 +6,7 @@
 | `-` | Subtraction | `-` |
 | `*` | Multiplication | `*` |
 | `/` | Division* | `/` (with cast if necessary) |
-| `//` | Floor division** | `/` (with cast if necessary) |
+| `//` | Floor division** | `Math.Floor` (integer/float); `decimal.Truncate(decimal.Divide(x, y))` for decimal |
 | `%` | Modulo*** | `Sharpy.Builtins.FloorMod` (integer/float); native `%` for other types |
 | `**` | Exponentiation | Integer: constant folding / checked integer power; float: `Math.Pow(x, y)` (see below) |
 
@@ -24,16 +24,19 @@ The `/` operator always produces a floating-point result, following Python's sem
 
 ## Floor Division Operator `//`
 
-The return type depends on the operands:
+For integer and float operands, floor division returns the largest integer less
+than or equal to the mathematical quotient (rounds toward negative infinity).
+`decimal` truncates toward zero instead — see [Decimal floor
+division](#decimal-floor-division) below. The return type depends on the
+operands:
 
-Floor division returns the largest integer less than or equal to the
-mathematical quotient (rounds toward negative infinity).
-
-| Operands | Result Type |
-|----------|-------------|
-| Any integer types | `int32` |
-| Any float type | Same float type |
-| Mixed integer and float | Float type of the float operand |
+| Operands | Result Type | Rounding |
+|----------|-------------|----------|
+| Any integer types | `int32` | Floored (toward negative infinity) |
+| Any float type | Same float type | Floored (toward negative infinity) |
+| Mixed integer and float | Float type of the float operand | Floored (toward negative infinity) |
+| Both `decimal` | `decimal` | **Truncated** (toward zero) — see below |
+| `decimal` + any integer | `decimal` | **Truncated** (toward zero) — not yet accepted, see [#1188](https://github.com/antonsynd/sharpy/issues/1188) |
 
 **Examples:**
 ```python
@@ -45,21 +48,67 @@ mathematical quotient (rounds toward negative infinity).
 7.0f // 2   # 3.0f (float32) - mixed: result is float32
 ```
 
+### Decimal floor division
+
+`decimal` keeps the native CLR division and **truncates toward zero** instead of
+flooring, mirroring the same native-decimal policy as `%` (see below). This is
+not a divergence from Python: CPython's `Decimal.__floordiv__` truncates as
+well, so the native path satisfies Axiom 1 and Python conformance at once. Only
+the mixed-sign cases differ from integer `//`:
+
+```python
+7m // 3m     # 2   (same as int 7 // 3)
+-7m // 3m    # -2  (truncated; int -7 // 3 is -3)
+7m // -3m    # -2  (truncated; int 7 // -3 is -3)
+-7m // -3m   # 2   (same as int -7 // -3)
+-17m // 5m   # -3  (truncated; int -17 // 5 is -4)
+7.5m // 2m   # 3   (the quotient truncates, not the operands)
+```
+
+The divmod identity `a == (a // b) * b + (a % b)` documented below still holds
+for `decimal`, because `//` and `%` are consistently *both* native: a truncated
+quotient pairs with a remainder that takes the sign of the dividend, exactly as
+in Python's `Decimal`. What changes for decimal is which of the two consistent
+conventions applies, not whether the two operators agree:
+
+```python
+(-7m // 3m) * 3m + (-7m % 3m)   # -7  (-2 * 3 + -1)
+(-7 // 3) * 3 + (-7 % 3)        # -7  (-3 * 3 + 2, floored)
+```
+
+**Division by zero** raises `ZeroDivisionError`, as with every other Sharpy
+division. CPython raises `decimal.DivisionByZero`, which is a `ZeroDivisionError`
+subclass, so `except ZeroDivisionError` catches it in both languages:
+
+```python
+7m // 0m    # ZeroDivisionError: decimal floor division by zero
+```
+
+### User-defined types
+
+`//` is defined for numeric types only. Unlike `%` (`__mod__` → `operator %`),
+there is no `__floordiv__` dunder: C# has no `//` operator to map one onto, so a
+user-defined or CLR type used with `//` is rejected at compile time with
+**SPY0222** (`Type 'T' does not support operator '//' with operand of type 'U'`).
+Types that want integer-quotient semantics expose a named method instead.
+
 ## Modulo Operator `%`
 
-The `%` operator returns the remainder of **floored** division. Following
-Python's semantics, the result takes the **sign of the divisor** (not the sign
-of the dividend, as C#'s native `%` would give). This keeps the language
-coherent with floored `//` and `divmod`: the identity
-`a == (a // b) * b + (a % b)` holds for all operands.
+For integer and float operands, the `%` operator returns the remainder of
+**floored** division. Following Python's semantics, the result takes the **sign
+of the divisor** (not the sign of the dividend, as C#'s native `%` would give).
+This keeps the language coherent with floored `//` and `divmod`: the identity
+`a == (a // b) * b + (a % b)` holds for all operands — including `decimal`, where
+`//` and `%` are consistently both native/truncated.
 
 The return type depends on the operands:
 
-| Operands | Result Type |
-|----------|-------------|
-| Any integer types | Same integer type (`int32`/`int64`) |
-| Any float type | Same float type |
-| Mixed integer and float | Float type of the float operand |
+| Operands | Result Type | Remainder sign |
+|----------|-------------|----------------|
+| Any integer types | Same integer type (`int32`/`int64`) | Sign of the divisor (floored) |
+| Any float type | Same float type | Sign of the divisor (floored) |
+| Mixed integer and float | Float type of the float operand | Sign of the divisor (floored) |
+| Both `decimal` | `decimal` | **Sign of the dividend** (native `%`, truncated) |
 
 **Examples:**
 ```python
@@ -86,6 +135,11 @@ divmod(-7, 3)               # (-3, 2)
 7.0 % 0.0   # ZeroDivisionError: float modulo
 ```
 
+Decimal `%` by zero does not yet reach that surface — it escapes as a CLR
+`DivideByZeroException`, and a literal `0m` divisor fails to compile
+([#1189](https://github.com/antonsynd/sharpy/issues/1189)). Decimal `//` by zero
+does raise `ZeroDivisionError`.
+
 ## Exponentiation Operator `**`
 
 Sharpy integers are fixed-width (Axiom 1), so integer exponentiation never
@@ -105,7 +159,11 @@ silently saturates or loses precision:
 integers, `Math.Pow()` for floats. See table above.*
 - *`/`: 🔄 Lowered to floating-point division. See table above.*
 - *`//`: 🔄 Lowered to `(int)Math.Floor((double)a / b)` for integers,
-`Math.Floor(a / b)` for floats.*
+`Math.Floor(a / b)` for floats, and
+`decimal.Truncate(decimal.Divide(a, b))` for decimal (truncated toward zero,
+matching Python's `Decimal`); all three guard a zero divisor with
+`ZeroDivisionError`. `decimal.Divide` rather than `/` because a literal zero
+divisor through `/` is a C# compile error (CS0020).*
 - *`%`: 🔄 Lowered to `Sharpy.Builtins.FloorMod(a, b)` for integer/float operands
 (Python floored modulo, sign of divisor, `ZeroDivisionError` on zero); native `%`
 for decimal and user-defined `operator %` types.*
