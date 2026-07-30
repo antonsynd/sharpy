@@ -173,6 +173,9 @@ internal partial class TypeChecker
                 var typeArgs = TryResolveTypeArguments(indexAccess.Index);
                 if (typeArgs != null)
                 {
+                    if (!CheckGenericTypeReferenceArity(genericTypeSymbol, typeArgs, indexAccess))
+                        return true; // arity error emitted; handled
+
                     var genericType = new GenericType
                     {
                         Name = genericTypeSymbol.Name,
@@ -280,6 +283,9 @@ internal partial class TypeChecker
                         var typeArgs = TryResolveTypeArguments(indexAccess.Index);
                         if (typeArgs != null)
                         {
+                            if (!CheckGenericTypeReferenceArity(modTypeSymbol, typeArgs, indexAccess))
+                                return true; // arity error emitted; handled
+
                             var genericType = new GenericType
                             {
                                 Name = modTypeSymbol.Name,
@@ -380,7 +386,9 @@ internal partial class TypeChecker
             // the fact and then DECLINES, leaving the reference with exactly the type and diagnostics
             // it had before — the access itself is typed by the value-indexing path in
             // CheckIndexAccessCore and the enclosing construction by CheckCall, both untouched.
-            RecordNestedGenericTypeRef(indexAccess, memberAccessObj);
+            // The one shape it HANDLES is a wrong-arity vector (#1192), which has no fact to record.
+            if (RecordNestedGenericTypeRef(indexAccess, memberAccessObj))
+                return true;
         }
 
         return false;
@@ -496,16 +504,23 @@ internal partial class TypeChecker
     /// walk the emitter did at emit time before #1164. Gated exactly as that emitter arm was (a
     /// nested type that exists and is generic), so the fact is present for precisely the shapes the
     /// deleted arm lowered.
+    /// <para>Returns <c>true</c> only when the reference was REJECTED for wrong arity (#1192) —
+    /// the caller then reports the index access as handled, with the <see cref="SemanticType.Unknown"/>
+    /// every rejected reference gets. A recorded fact still returns <c>false</c>, keeping the
+    /// type-checking of the access itself on the pre-existing value-indexing path.</para>
     /// </summary>
-    private void RecordNestedGenericTypeRef(IndexAccess indexAccess, MemberAccess memberAccess)
+    private bool RecordNestedGenericTypeRef(IndexAccess indexAccess, MemberAccess memberAccess)
     {
         if (LookupNestedTypeSymbol(memberAccess) is not { IsGeneric: true } nestedTypeSymbol)
-            return;
+            return false;
 
         // Only once a generic nested type is proven is `[...]` known to be type arguments, so
         // resolving the index as types here cannot emit a spurious "type not found" (#1136 lesson).
         if (TryResolveTypeArguments(indexAccess.Index) is not { } typeArgs)
-            return;
+            return false;
+
+        if (!CheckGenericTypeReferenceArity(nestedTypeSymbol, typeArgs, indexAccess))
+            return true; // arity error emitted; handled
 
         _semanticInfo.SetGenericReference(indexAccess, new GenericReference
         {
@@ -513,6 +528,7 @@ internal partial class TypeChecker
             TargetSymbol = nestedTypeSymbol,
             TypeArgs = typeArgs,
         });
+        return false;
     }
 
     /// <summary>
@@ -540,6 +556,47 @@ internal partial class TypeChecker
 
         AddError(
             $"Generic function '{calleeName}' expects {expected} type argument(s) but got {actual}",
+            indexAccess.LineStart,
+            indexAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.WrongArgumentCount,
+            span: indexAccess.Span);
+        return false;
+    }
+
+    /// <summary>
+    /// The arity-check seam for generic TYPE references — <c>Box[int]</c>, <c>difflib.SequenceMatcher[str]</c>,
+    /// <c>Outer.Inner[int]</c> — the type-side counterpart of <see cref="CheckGenericReferenceArity"/>
+    /// (#1192). Unlike the function seam it is PEP-696 default-aware: a short vector fills its trailing
+    /// parameters from their declared defaults, and only an excess or unfillable vector is rejected.
+    /// Both the filling and the diagnostic mirror <c>TypeResolver.ResolveTypeAnnotation</c> exactly, so
+    /// <c>Box[int, str]</c> reads identically whether it is written as an annotation or as an expression.
+    /// <para><paramref name="typeArgs"/> is completed IN PLACE when defaults are filled: the caller's
+    /// recorded <see cref="GenericReference.TypeArgs"/> and <see cref="GenericType.TypeArguments"/> then
+    /// carry the whole vector, which is what the emitted C# type argument list is built from.</para>
+    /// </summary>
+    private bool CheckGenericTypeReferenceArity(
+        TypeSymbol typeSymbol, List<SemanticType> typeArgs, IndexAccess indexAccess)
+    {
+        var expected = typeSymbol.TypeParameters.Count;
+        if (typeArgs.Count == expected)
+            return true;
+
+        if (typeArgs.Count < expected)
+        {
+            for (int i = typeArgs.Count; i < expected; i++)
+            {
+                var typeParam = typeSymbol.TypeParameters[i];
+                if (typeParam.DefaultType == null)
+                    break;
+                typeArgs.Add(_typeResolver.ResolveTypeAnnotation(typeParam.DefaultType));
+            }
+
+            if (typeArgs.Count == expected)
+                return true;
+        }
+
+        AddError(
+            $"Type '{typeSymbol.Name}' expects {expected} type arguments but got {typeArgs.Count}",
             indexAccess.LineStart,
             indexAccess.ColumnStart,
             code: DiagnosticCodes.Semantic.WrongArgumentCount,

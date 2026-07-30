@@ -579,13 +579,13 @@ internal partial class RoslynEmitter
             case GenericReferenceKind.GenericTypeRef:
                 return indexAccess.Object is Identifier typeName
                        && reference.TargetSymbol is TypeSymbol genericTypeSymbol
-                    ? GenerateGenericTypeInstantiation(indexAccess, typeName, genericTypeSymbol, call)
+                    ? GenerateGenericTypeInstantiation(indexAccess, reference, typeName, genericTypeSymbol, call)
                     : null;
 
             case GenericReferenceKind.NestedTypeRef:
                 return indexAccess.Object is MemberAccess nestedTypeAccess
                        && reference.TargetSymbol is TypeSymbol nestedTypeSymbol
-                    ? GenerateNestedGenericInstantiation(indexAccess, nestedTypeAccess, nestedTypeSymbol, call)
+                    ? GenerateNestedGenericInstantiation(indexAccess, reference, nestedTypeAccess, nestedTypeSymbol, call)
                     : null;
 
             case GenericReferenceKind.Builtin:
@@ -606,7 +606,7 @@ internal partial class RoslynEmitter
             case GenericReferenceKind.ModuleType:
                 return indexAccess.Object is MemberAccess moduleTypeAccess
                        && reference.TargetSymbol is TypeSymbol moduleTypeSymbol
-                    ? GenerateModuleGenericTypeInstantiation(indexAccess, moduleTypeAccess, moduleTypeSymbol, call)
+                    ? GenerateModuleGenericTypeInstantiation(indexAccess, reference, moduleTypeAccess, moduleTypeSymbol, call)
                     : null;
 
             case GenericReferenceKind.InstanceMethod:
@@ -627,6 +627,28 @@ internal partial class RoslynEmitter
             default:
                 return null;
         }
+    }
+
+    /// <summary>
+    /// The C# type-argument list for a generic TYPE reference. The written arguments map through
+    /// <see cref="TypeSyntaxMapper.MapTypeArgumentsFromExpression"/>, the same authority an
+    /// annotation position uses, so a nested <c>list[int]</c> argument resolves identically in both.
+    /// Any trailing arguments the resolver filled from PEP-696 type-parameter defaults have no
+    /// written form at all (<c>Pair[int]</c> declaring <c>Pair[K, V = str]</c> emits
+    /// <c>Pair&lt;int, string&gt;</c>), so they are taken from the materialized
+    /// <see cref="GenericReference.TypeArgs"/> — the vector semantic analysis completed (#1192).
+    /// </summary>
+    private TypeSyntax[] MapTypeReferenceTypeArguments(IndexAccess indexAccess, GenericReference reference)
+    {
+        var written = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        if (reference.TypeArgs.Count <= written.Length)
+            return written;
+
+        var completed = new TypeSyntax[reference.TypeArgs.Count];
+        Array.Copy(written, completed, written.Length);
+        for (int i = written.Length; i < reference.TypeArgs.Count; i++)
+            completed[i] = _typeMapper.MapSemanticType(reference.TypeArgs[i]);
+        return completed;
     }
 
     /// <summary>
@@ -653,9 +675,10 @@ internal partial class RoslynEmitter
     /// <c>new Box&lt;int&gt;(42)</c>.
     /// </summary>
     private ExpressionSyntax GenerateGenericTypeInstantiation(
-        IndexAccess indexAccess, Identifier typeName, TypeSymbol genericTypeSymbol, FunctionCall call)
+        IndexAccess indexAccess, GenericReference reference, Identifier typeName,
+        TypeSymbol genericTypeSymbol, FunctionCall call)
     {
-        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var typeArgsSyntax = MapTypeReferenceTypeArguments(indexAccess, reference);
 
         // Resolve the C# name through the single naming seam so this construction position agrees
         // with the annotation position: a wrapper collection (list/dict/set) stays Sharpy.List; an
@@ -722,9 +745,10 @@ internal partial class RoslynEmitter
     /// walk happens here: the outer qualifier is spelled from that symbol's declaring-type chain.
     /// </summary>
     private ExpressionSyntax GenerateNestedGenericInstantiation(
-        IndexAccess indexAccess, MemberAccess memberAccess, TypeSymbol nestedTypeSymbol, FunctionCall call)
+        IndexAccess indexAccess, GenericReference reference, MemberAccess memberAccess,
+        TypeSymbol nestedTypeSymbol, FunctionCall call)
     {
-        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var typeArgsSyntax = MapTypeReferenceTypeArguments(indexAccess, reference);
         var csharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
         var outerName = GetNestedTypeOuterPrefix(nestedTypeSymbol);
         var qualifiedGenericName = QualifiedName(
@@ -835,7 +859,8 @@ internal partial class RoslynEmitter
     /// struct), leaving the call on the general path.
     /// </summary>
     private ExpressionSyntax? GenerateModuleGenericTypeInstantiation(
-        IndexAccess indexAccess, MemberAccess memberAccess, TypeSymbol typeSymbol, FunctionCall call)
+        IndexAccess indexAccess, GenericReference reference, MemberAccess memberAccess,
+        TypeSymbol typeSymbol, FunctionCall call)
     {
         if (typeSymbol.TypeKind != Semantic.TypeKind.Class
             && typeSymbol.TypeKind != Semantic.TypeKind.Struct)
@@ -843,7 +868,7 @@ internal partial class RoslynEmitter
             return null;
         }
 
-        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var typeArgsSyntax = MapTypeReferenceTypeArguments(indexAccess, reference);
         var baseName = GetFullyQualifiedTypeName(typeSymbol, memberAccess.Member);
         var (dottedName, globalQualified) = NormalizeTypeName(baseName);
         var genericTypeSyntax = TypeSyntaxMapper.QualifiedGenericName(

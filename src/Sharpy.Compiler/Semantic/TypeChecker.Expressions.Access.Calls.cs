@@ -377,8 +377,27 @@ internal partial class TypeChecker
         if (callee is IndexAccess indexAccess &&
             TryResolveGenericTypeSymbolFromIndexObject(indexAccess.Object) is { IsGeneric: true } genericTypeSymbol)
         {
-            // The "index" is actually type argument(s) - try to resolve them as types
-            var typeArgs = TryResolveTypeArguments(indexAccess.Index);
+            // The "index" is actually type argument(s). The generic-reference resolver already
+            // normalized this callee (CheckCall ran CheckExpression on it above) and owns the
+            // vector: it is the written one with any PEP-696 type-parameter defaults filled in, so
+            // `Pair[int]` where `Pair[K, V = str]` constructs a Pair[int, str] exactly as the
+            // annotation position resolves it (#1192).
+            var typeArgs = _semanticInfo.GetGenericReference(indexAccess) is
+                {
+                    Kind: GenericReferenceKind.GenericTypeRef
+                        or GenericReferenceKind.ModuleType
+                        or GenericReferenceKind.NestedTypeRef
+                } typeReference
+                ? typeReference.TypeArgs.ToList()
+                : TryResolveTypeArguments(indexAccess.Index);
+
+            // No fact and a vector that does not fit the declaration means the resolver REJECTED
+            // this reference and already reported the arity (#1192). Constructing from a vector it
+            // refused would stack a derived diagnostic on the same line, so fall through to the
+            // caller's Unknown/error-recovery tail.
+            if (typeArgs != null && typeArgs.Count != genericTypeSymbol.TypeParameters.Count)
+                return SemanticType.Unknown;
+
             if (typeArgs != null)
             {
                 // Validate constructor arguments against __init__ parameters (skip 'self').
