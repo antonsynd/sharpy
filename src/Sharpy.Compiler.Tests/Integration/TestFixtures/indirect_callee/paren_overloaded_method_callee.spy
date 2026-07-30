@@ -1,0 +1,25 @@
+# Shape 1 of #1170, parenthesized arm: a call through a parenthesized callee resolves the overload
+# that matches the ARGUMENTS. The wrapped form used to bind whichever overload the lookup found
+# first, so `(xs.pop)(0)` bound the zero-argument `pop()` and then rejected the call (SPY0224).
+class Greeter:
+    prefix: str
+
+    def __init__(self, prefix: str):
+        self.prefix = prefix
+
+    def greet(self) -> str:
+        return self.prefix
+
+    def greet(self, name: str) -> str:
+        return self.prefix + " " + name
+
+def main():
+    xs: list[int] = [1, 2, 3]
+    print((xs.pop)(0))
+    print(xs)
+    print((xs.pop)())
+    print(xs)
+
+    g = Greeter("hello")
+    print((g.greet)())
+    print((g.greet)("world"))

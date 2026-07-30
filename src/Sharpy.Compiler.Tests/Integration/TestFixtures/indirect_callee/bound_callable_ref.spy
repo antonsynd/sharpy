@@ -1,0 +1,44 @@
+# Shape 1 of #1170, bound arm: binding a callable to a name keeps a REAL overload. Before the fix
+# the reference took whichever overload the lookup found first, so `g = xs.pop; g(0)` failed an
+# arity check against a signature the user never chose.
+class Counter:
+    n: int
+
+    def __init__(self, n: int):
+        self.n = n
+
+    def get(self) -> int:
+        return self.n
+
+    def add(self) -> int:
+        return self.n + 1
+
+    def add(self, step: int) -> int:
+        return self.n + step
+
+def main():
+    c = Counter(4)
+
+    # A single-overload reference binds that overload.
+    only = c.get
+    print(only())
+
+    # An arity-divergent set binds the candidate the target type names — both directions.
+    step_one: () -> int = c.add
+    print(step_one())
+    step_by: (int) -> int = c.add
+    print(step_by(10))
+
+    # Same selection through a builtin's overload set. (A zero-argument target does NOT select
+    # `pop()` here: `pop(index)`'s parameter is optional, so both candidates accept zero
+    # arguments and the reference stays ambiguous — see indirect_callee/ambiguous_overload_ref.)
+    xs: list[int] = [1, 2, 3]
+    at: (int) -> int = xs.pop
+    print(at(0))
+    print(xs)
+
+    # Arity-uniform overload families need no target type: whichever candidate binds, every call
+    # through the binding faces the same arity check.
+    words: list[str] = ["ccc", "a", "bb"]
+    print(min(words, key=len))
+    print(list(map(int, ["3", "1", "2"])))

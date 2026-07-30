@@ -1,0 +1,13 @@
+# #1168: `isinstance` is a compile-time narrowing form, not a function value. An indirect reference
+# used to bind a one-argument builtin descriptor, so every two-argument call through it failed an
+# arity check (SPY0224) — a diagnostic about the call, pointing away from the real problem. The
+# reference itself is now the error, with the lambda escape hatch in the message.
+class Circle:
+    r: int
+
+    def __init__(self, r: int) -> None:
+        self.r = r
+
+def main() -> None:
+    check = isinstance
+    print(check(Circle(3), Circle))

@@ -1,0 +1,20 @@
+# Shape 3 of #1170: constructing an event-bearing class through a parenthesized callee. `(Box)()`
+# used to emit a C# cast, which left the event access on the wrong side of an assignment (CS0070).
+delegate Cb(v: int) -> None
+
+class Box:
+    event on_change: Cb
+
+    def __init__(self):
+        pass
+
+    def fire(self, v: int) -> None:
+        self.on_change?.invoke(v)
+
+def log(v: int) -> None:
+    print(v)
+
+def main():
+    b = (Box)()
+    b.on_change += log
+    b.fire(7)

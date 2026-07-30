@@ -1,0 +1,46 @@
+# Shape 5 of #1170: dunder immediate-call detection was syntactic, so parentheses around the callee
+# hid the fact that the dunder is invoked right here and SPY0429 rejected it as a capture. The three
+# lowerings below are all keyed on the callee: constructor delegation, a base-constructor call, and
+# an ordinary dunder invocation from inside another dunder.
+class Ordered:
+    value: int
+
+    def __init__(self, value: int, doubled: bool):
+        self.value = value * 2 if doubled else value
+
+    def __init__(self, value: int):
+        (self.__init__)(value, False)
+
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __hash__(self) -> int:
+        return self.value
+
+    def __lt__(self, other: Ordered) -> bool:
+        return self.value < other.value
+
+    def __gt__(self, other: Ordered) -> bool:
+        return self.value > other.value
+
+    def __le__(self, other: Ordered) -> bool:
+        return (self.__lt__)(other) or (self.__eq__)(other)
+
+    def __ge__(self, other: Ordered) -> bool:
+        return (self.__gt__)(other) or (self.__eq__)(other)
+
+class Tagged(Ordered):
+    tag: str
+
+    def __init__(self, value: int, tag: str):
+        (super().__init__)(value)
+        self.tag = tag
+
+def main():
+    print(Ordered(3).value)
+    print(Ordered(3, True).value)
+    print(Ordered(1) <= Ordered(2))
+    print(Ordered(2) <= Ordered(1))
+    print(Ordered(2) >= Ordered(1))
+    t = Tagged(5, "five")
+    print(t.value, t.tag)

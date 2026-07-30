@@ -1,0 +1,10 @@
+# Shape 6 of #1170, bound arm: a union variant constructor is call syntax only, like Ok/Some
+# (SPY0230). Bound to a name it used to bind the case type and fail at the use site with a bare
+# SPY0201 "not callable"; the reference is now rejected where the mistake is.
+union Shape:
+    case Circle(r: float)
+    case Square(s: float)
+
+def main() -> None:
+    make = Shape.Circle
+    print(make(5.0))

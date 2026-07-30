@@ -1,0 +1,9 @@
+# Shape 1 of #1170, the deliberate rejection: an overload set whose candidates take different
+# numbers of arguments cannot be referenced as a value without a target type to select one. The
+# reference used to bind whichever overload the lookup found first — `at = xs.pop` bound `pop()`,
+# and `at(0)` then failed an arity check against a signature nobody chose. Annotate the target
+# (`at: (int) -> int = xs.pop`) to pick a candidate; see indirect_callee/bound_callable_ref.
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    at = xs.pop
+    print(at(0))

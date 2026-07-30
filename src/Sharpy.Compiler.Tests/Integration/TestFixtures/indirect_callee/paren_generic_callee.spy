@@ -1,0 +1,32 @@
+# Shape 4 of #1170: a parenthesized generic callee keeps its type arguments. Wrapping used to drop
+# them, so the emitted C# named an unbound `T` (CS0246). Generic functions, generic constructors and
+# a method reached through a generic receiver are all the same shape.
+class Pair[T]:
+    first: T
+    second: T
+
+    def __init__(self, first: T, second: T):
+        self.first = first
+        self.second = second
+
+    def swapped(self) -> Pair[T]:
+        return (Pair[T])(self.second, self.first)
+
+def identity[T](x: T) -> T:
+    return x
+
+def wrap[T](value: T) -> Pair[T]:
+    return (Pair[T])(value, (identity[T])(value))
+
+def main():
+    print((identity[int])(5))
+    print((identity[str])("s"))
+
+    p = (Pair[int])(1, 2)
+    print(p.first, p.second)
+    q = (p.swapped)()
+    print(q.first, q.second)
+
+    words = (Pair[str])("a", "b")
+    print((words.swapped)().first)
+    print(wrap[int](3).second)

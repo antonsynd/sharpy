@@ -1,0 +1,22 @@
+# Shape 2 of #1170: a parenthesized BUILTIN callee. `(sorted)(a_set)` used to bind sorted's list
+# overload and report SPY0220; a parenthesized builtin type constructor emitted a C# cast over a
+# static class (CS0712) or lost its type arguments (CS0305).
+def main():
+    a_set: set[int] = {3, 1, 2}
+    print((sorted)(a_set))
+    print((len)(a_set))
+    print((max)(a_set))
+
+    d: dict[str, int] = (dict)()
+    d["k"] = 1
+    print(d["k"])
+
+    xs: list[int] = (list)()
+    xs.append(5)
+    print(xs)
+
+    s: set[int] = (set)()
+    s.add(9)
+    print(len(s))
+
+    print((str)(7) + "!")

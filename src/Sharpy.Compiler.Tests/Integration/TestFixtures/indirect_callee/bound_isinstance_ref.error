@@ -1,0 +1,2 @@
+'isinstance' must be called as a function; it cannot be used as a value @12:13
+lambda v: isinstance(v, SomeType)

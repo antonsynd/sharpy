@@ -1,0 +1,34 @@
+# #1168: a parenthesized `isinstance` is still the narrowing special form, not a one-argument
+# builtin descriptor (which is what the wrapped reference used to bind — SPY0224 on every
+# two-argument call). The member accesses below are what prove the narrowing reached codegen: they
+# only bind on the narrowed type.
+class Circle:
+    r: int
+
+    def __init__(self, r: int) -> None:
+        self.r = r
+
+class Square:
+    side: int
+
+    def __init__(self, side: int) -> None:
+        self.side = side
+
+def describe(shape: object) -> str:
+    if (isinstance)(shape, Circle):
+        return f"circle {shape.r}"
+    elif (isinstance)(shape, Square):
+        return f"square {shape.side}"
+    return "unknown"
+
+def area_or_zero(shape: object) -> int:
+    if not (isinstance)(shape, Square):
+        return 0
+    return shape.side * shape.side
+
+def main():
+    print(describe(Circle(3)))
+    print(describe(Square(4)))
+    print(describe("neither"))
+    print(area_or_zero(Square(5)))
+    print(area_or_zero(Circle(1)))

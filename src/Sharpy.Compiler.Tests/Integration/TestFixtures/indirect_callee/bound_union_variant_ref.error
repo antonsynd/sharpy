@@ -1,0 +1,2 @@
+union variant constructor 'Circle' must be called as a function; it cannot be used as a value @9:12
+lambda ...: Shape.Circle(...)

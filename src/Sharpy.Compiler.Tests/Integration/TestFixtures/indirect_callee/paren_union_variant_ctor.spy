@@ -1,0 +1,22 @@
+# Shape 6 of #1170, parenthesized arm: a union variant constructor stays a constructor through
+# parentheses. `(Shape.Circle)(5.0)` used to report SPY0201 "Expression of type 'Circle' is not
+# callable" because the wrapped callee was read as a value of the case type. The bound arm is
+# rejected on purpose — see indirect_callee/bound_union_variant_ref.
+union Shape:
+    case Circle(r: float)
+    case Square(s: float)
+    case Empty()
+
+def describe(sh: Shape) -> str:
+    match sh:
+        case Circle(r):
+            return f"circle {r}"
+        case Square(s):
+            return f"square {s}"
+        case Shape.Empty:
+            return "empty"
+
+def main():
+    print(describe((Shape.Circle)(5.0)))
+    print(describe((Shape.Square)(2.0)))
+    print(describe((Shape.Empty)()))
