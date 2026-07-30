@@ -79,6 +79,20 @@ internal partial class RoslynEmitter
         var xunitAssert = ParseQualifiedName("Xunit.Assert");
         var test = assert.Test;
 
+        // The @test assert rewrites below select a Xunit assertion from the shape of `test`, and
+        // several of them key on a CALL's callee. Those read this canonical (paren-stripped) callee so
+        // `assert (isinstance)(x, (int, str))` lowers exactly like the unparenthesized form (#1170) —
+        // it used to miss the tuple rewrite and fall through to a raw Builtins.Isinstance call with a
+        // tuple argument, which does not bind (CS1503). Only the pattern match is normalized; the call
+        // node itself stays intact, so the argument expressions keep their SemanticInfo identity.
+        var testCallee = test switch
+        {
+            FunctionCall directCall => Shared.AstHelper.UnwrapParenthesized(directCall.Function),
+            UnaryOp { Operator: UnaryOperator.Not, Operand: FunctionCall negatedCall }
+                => Shared.AstHelper.UnwrapParenthesized(negatedCall.Function),
+            _ => null
+        };
+
         // assert x == approx(y[, places=n | abs=d]) → tolerance/precision-based Xunit.Assert.Equal.
         // Checked ahead of the generic `==` pattern. abs (a double) selects
         // Assert.Equal(double, double, double tolerance); places (an int) selects
@@ -194,7 +208,7 @@ internal partial class RoslynEmitter
         }
 
         // assert isinstance(a, T) → Xunit.Assert.IsAssignableFrom<T>(a)
-        if (test is FunctionCall { Function: Identifier { Name: "isinstance" } } isinstCall
+        if (testCallee is Identifier { Name: "isinstance" } && test is FunctionCall isinstCall
             && isinstCall.Arguments.Length == 2
             && isinstCall.Arguments[1] is Identifier)
         {
@@ -209,7 +223,7 @@ internal partial class RoslynEmitter
         }
 
         // assert isinstance(a, (T1, T2, ...)) → Xunit.Assert.True(a is T1 || a is T2 || ...)
-        if (test is FunctionCall { Function: Identifier { Name: "isinstance" } } isinstTupleCall
+        if (testCallee is Identifier { Name: "isinstance" } && test is FunctionCall isinstTupleCall
             && isinstTupleCall.Arguments.Length == 2
             && isinstTupleCall.Arguments[1] is TupleLiteral typeTuple)
         {
@@ -229,7 +243,8 @@ internal partial class RoslynEmitter
         }
 
         // assert not isinstance(a, T) → Xunit.Assert.False(a is T)
-        if (test is UnaryOp { Operator: UnaryOperator.Not, Operand: FunctionCall { Function: Identifier { Name: "isinstance" } } negIsinstCall }
+        if (testCallee is Identifier { Name: "isinstance" }
+            && test is UnaryOp { Operator: UnaryOperator.Not, Operand: FunctionCall negIsinstCall }
             && negIsinstCall.Arguments.Length == 2)
         {
             var subject = GenerateExpression(negIsinstCall.Arguments[0]);
@@ -263,10 +278,8 @@ internal partial class RoslynEmitter
         // Type-gated: only when the receiver is typed `str` and there is exactly one
         // positional argument (no start/end slice args, no keyword args). User-defined
         // types with a startswith/endswith method fall through to the Assert.True fallback.
-        if (test is FunctionCall
-            {
-                Function: MemberAccess { Member: "startswith" or "endswith" } affixReceiver
-            } affixCall
+        if (testCallee is MemberAccess { Member: "startswith" or "endswith" } affixReceiver
+            && test is FunctionCall affixCall
             && affixCall.Arguments.Length == 1
             && affixCall.KeywordArguments.Length == 0)
         {
