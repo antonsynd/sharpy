@@ -1,0 +1,28 @@
+# Grouping is transparent at the expression-statement seam: `(f())` must emit exactly what `f()`
+# emits. A parenthesized void call used to reach the discard arm and emit `_ = (print(1));` (#1197).
+class Counter:
+    total: int = 0
+
+    def bump(self, by: int) -> None:
+        self.total = self.total + by
+
+
+def double(x: int) -> int:
+    return x * 2
+
+
+def main():
+    (print(1))
+    # Nested parens unwrap all the way down.
+    ((print(2)))
+    c: Counter = Counter()
+    # A parenthesized void method call on an object.
+    (c.bump(5))
+    print(c.total)
+    # A non-void call is a valid C# statement expression once unwrapped — no discard needed.
+    (double(3))
+    # A parenthesized non-call still takes the discard path.
+    (1 + 2)
+    # A parenthesized None is a no-op, like bare None.
+    (None)
+    print("done")
