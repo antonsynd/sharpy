@@ -1,0 +1,12 @@
+# #1195 symptom 2: with the closed signature materialized, a value argument that contradicts it is an
+# ordinary Sharpy type diagnostic naming the expected function type — the #1148 contract for the one
+# generic-reference kind that has no FunctionSymbol to validate against. Before this, the lambda was
+# inferred blind and the mismatch surfaced only out of Roslyn as CS0029 behind SPY0908.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst = List[int]()
+    lst.add(3)
+    for s in lst.select[str](lambda x: x):
+        print(s)

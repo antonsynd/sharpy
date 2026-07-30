@@ -1,0 +1,27 @@
+# #1195: the vector that makes an extension call spellable (#1163) also closes its SIGNATURE. The
+# reference used to be typed Unknown, so a wrapping call had nothing to wrap — `list(lst.select[str]
+# (...))` emitted an unparameterized Sharpy.List and leaked CS0305. Typing the reference from the
+# closed MethodInfo.ReturnType makes the wrapper, an annotated target, and a chained call all work.
+# The wrong-lambda half is next door in bcl_extension_arg_mismatch_1195.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst = List[int]()
+    lst.add(3)
+    lst.add(4)
+
+    # The issue's symptom 1: wrapping the call needs a Sharpy type for what is being wrapped.
+    print(list(lst.select[str](lambda x: str(x))))
+
+    # The closed return type is assignable to an explicit annotation.
+    doubled: list[int] = list(lst.select[int](lambda x: x * 2))
+    print(doubled)
+
+    # cast[int] closes to IEnumerable<int> even though its `this` parameter is the non-generic
+    # IEnumerable, so nothing about the return type is guessed from the written argument's position.
+    print(list(lst.cast[int]()))
+
+    # The iteration form the #1163 fixtures pin stays unchanged.
+    for s in lst.select[str](lambda x: str(x)):
+        print(s)
