@@ -213,8 +213,11 @@ public static class PrimitiveCatalog
         if (left.Kind == NumericKind.None || right.Kind == NumericKind.None)
             return null;
 
-        // Decimal doesn't mix with float/double
-        if ((left.Kind == NumericKind.Decimal) != (right.Kind == NumericKind.Decimal))
+        // Decimal mixes with integer kinds (promoting to decimal via the priority rule below)
+        // but never with float/double — the same restriction CPython's Decimal has, where
+        // `Decimal(7) // 3` is `Decimal('2')` but `Decimal(7) + 1.5` is a TypeError (#1188).
+        if ((left.Kind == NumericKind.Decimal && right.Kind == NumericKind.FloatingPoint) ||
+            (left.Kind == NumericKind.FloatingPoint && right.Kind == NumericKind.Decimal))
             return null;
 
         // Special case: mixing signed and unsigned integers of same size

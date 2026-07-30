@@ -303,9 +303,15 @@ internal class TypeInferenceService
                 BinaryOperator.FloorDivide or
                 BinaryOperator.Modulo => InferNumericResultType(left, right),
 
-                // Division: decimal/decimal => decimal, otherwise float64 (Python semantics)
-                BinaryOperator.Divide => PrimitiveCatalog.IsDecimal(left) && PrimitiveCatalog.IsDecimal(right)
-                    ? InferNumericResultType(left, right) ?? SemanticType.Decimal
+                // Division: any decimal operand defers to promotion, everything else is
+                // float64 (Python semantics). Promotion answers decimal for decimal ⊗ decimal
+                // and decimal ⊗ integer (the spec's "decimal + any integer -> decimal" row),
+                // and null for decimal ⊗ float — which falls through to SPY0222, the same
+                // rejection the other arithmetic operators give that pair. Returning float64
+                // for a decimal operand would contradict the emitted native decimal `/`
+                // (CS0266/CS0019 -> SPY0908) (#1188).
+                BinaryOperator.Divide => PrimitiveCatalog.IsDecimal(left) || PrimitiveCatalog.IsDecimal(right)
+                    ? InferNumericResultType(left, right)
                     : SemanticType.Double,
 
                 // Power: integer ** integer => Long, any float => Double
