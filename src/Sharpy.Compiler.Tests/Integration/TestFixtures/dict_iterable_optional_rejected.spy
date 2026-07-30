@@ -1,0 +1,13 @@
+# Test (#1199): an OPTIONAL dict (Sharpy `dict[K, V]?`, the strict tagged union) is NOT
+# accepted in an iterable-of-keys position — only the loose C#-interop nullable
+# (`dict[K, V] | None`) unwraps there, see dict_iterable_nullable.spy. An Optional must be
+# narrowed or unwrapped first; the element-type authority deliberately declines to unwrap it.
+def get(flag: bool) -> dict[int, str] | None:
+    if flag:
+        return {1: "a", 2: "b"}
+    return None
+
+
+def main() -> None:
+    od: dict[int, str]? = maybe get(True)
+    print(sum(od))

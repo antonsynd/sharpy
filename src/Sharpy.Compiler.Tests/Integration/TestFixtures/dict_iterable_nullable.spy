@@ -1,0 +1,35 @@
+# Test (#1199): a NULLABLE dict (dict[K, V] | None) projects to its keys in the iterable
+# positions exactly like a bare dict. The recorder's gate and the projection authority are
+# now the same predicate, so acceptance can no longer drift ahead of lowering (the CS1503
+# this fixture used to pin as a rejection). Expected output verified against python3.
+def get(flag: bool) -> dict[int, str] | None:
+    if flag:
+        return {1: "a", 2: "b"}
+    return None
+
+
+def get_str(flag: bool) -> dict[str, int] | None:
+    if flag:
+        return {"b": 1, "a": 2}
+    return None
+
+
+def main() -> None:
+    md = get(True)
+    print(sorted(md))
+    print(list(md))
+    print(sum(md))
+    print(any(md))
+    print(all(md))
+
+    # The str.join member reads the same marker.
+    print(", ".join(get_str(True)))
+
+    # A null dict throws where the projection reads it, mirroring Python raising on iteration
+    # of None (Sharpy throws NullReferenceException, Python raises TypeError; both are caught
+    # by a bare `except Exception`).
+    empty = get(False)
+    try:
+        print(sorted(empty))
+    except Exception:
+        print("caught")
