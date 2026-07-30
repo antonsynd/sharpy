@@ -156,9 +156,16 @@ public static partial class DiagnosticExplanations
             "Use regular member access for non-nullable types:\n  y = x.to_string()");
 
         Add(dict, DiagnosticCodes.Semantic.CannotInferGenericType, "Cannot infer generic type argument", "Semantic",
-            "The compiler cannot infer the type arguments for a generic type or function. Provide explicit type arguments.",
-            "items = []  # can't infer element type",
-            "Specify the type:\n  items: list[int] = []");
+            "The compiler cannot infer the type arguments for a generic type or function. Provide explicit type arguments.\n\n"
+            + "This is also reported for an extension method whose written type arguments do not determine the "
+            + "rest (#1163). An extension method's full type-argument vector includes the ones the receiver "
+            + "supplies: lst.select[str] on a list[int] means Select<int, str>. When the written arguments "
+            + "cannot be reconciled with the receiver — a contradicting argument, a count that does not add "
+            + "up, or two candidate methods that disagree — the vector cannot be computed.",
+            "items = []  # can't infer element type\nlst.where[str](lambda x: x > 1)  # receiver says int, not str",
+            "Specify the type:\n  items: list[int] = []\n"
+            + "For an extension method, write every type argument the method declares, or drop them all and "
+            + "let them be inferred from the arguments:\n  lst.where(lambda x: x > 1)");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidComprehension, "Invalid comprehension", "Semantic",
             "A list, set, or dict comprehension contains invalid syntax or type mismatches in its clauses.",

@@ -30,6 +30,16 @@ public enum GenericReferenceKind
     /// <summary>A generic instance method on a raw BCL receiver, e.g. <c>lst.convert_all[str]</c> (#1136).</summary>
     BclInstanceMethod,
 
+    /// <summary>
+    /// A generic extension method reached on a BCL/sequence receiver with explicit type arguments,
+    /// e.g. <c>lst.select[str]</c> → <c>lst.Select&lt;int, string&gt;</c> (#1163). Distinct from
+    /// <see cref="BclInstanceMethod"/> because the lowering differs: there is no discovered
+    /// <see cref="FunctionSymbol"/>, and the emitted type-argument vector is
+    /// <see cref="GenericReference.LoweredTypeArgs"/> (receiver-inferred arguments included), not the
+    /// written ones.
+    /// </summary>
+    BclExtensionMethod,
+
     /// <summary>A generic type reference, e.g. <c>Box[int]</c>.</summary>
     GenericTypeRef,
 
@@ -70,6 +80,22 @@ public sealed record GenericReference
     public required IReadOnlyList<SemanticType> TypeArgs { get; init; }
 
     /// <summary>
+    /// The complete type-argument vector to EMIT, when it differs from what was written. Only
+    /// <see cref="GenericReferenceKind.BclExtensionMethod"/> sets it: <c>lst.select[str]</c> writes one
+    /// argument but lowers to <c>Select&lt;int, string&gt;</c>, the element type having been inferred
+    /// from the receiver during resolution (#1163). <c>null</c> for every other kind, whose emitted
+    /// vector is exactly <see cref="TypeArgs"/>.
+    /// </summary>
+    public IReadOnlyList<SemanticType>? LoweredTypeArgs { get; init; }
+
+    /// <summary>
+    /// The CLR member name to emit, when the Sharpy spelling does not determine it by mangling alone.
+    /// Set for <see cref="GenericReferenceKind.BclExtensionMethod"/> (the reflected method's own name),
+    /// <c>null</c> otherwise.
+    /// </summary>
+    public string? ClrMemberName { get; init; }
+
+    /// <summary>
     /// For <see cref="GenericReferenceKind.Builtin"/>, the arity-selected overload (which may differ
     /// from the first-by-name symbol — #999); otherwise the resolved target itself. Consumers validate
     /// value arguments against this signature (#1148).
@@ -79,6 +105,13 @@ public sealed record GenericReference
 
 internal partial class TypeChecker
 {
+    /// <summary>
+    /// Maps the CLR type arguments that extension-method resolution infers back to Sharpy types for the
+    /// <see cref="GenericReference.LoweredTypeArgs"/> vector (#1163). Lazy: most compilations never
+    /// reach the extension-method arm.
+    /// </summary>
+    private readonly Lazy<Discovery.ClrTypeBridge> _clrTypeBridge = new(() => new Discovery.ClrTypeBridge());
+
     /// <summary>
     /// Single resolution step for a generic reference <c>callee[T, ...]</c>. Normalizes every callee
     /// kind (array/type/function, bare or module- or instance-qualified) into one
@@ -303,6 +336,18 @@ internal partial class TypeChecker
                     return true;
                 }
 
+                // lst.select[str](f) — an extension method on a sequence receiver, written with
+                // explicit type arguments (#1163). No instance method by that name exists (the arm
+                // above declined) and reflection cannot prove the member absent either, because the
+                // extension surface could supply it — which is exactly how the no-type-args spelling
+                // lst.first() compiles: nothing resolves it, the emitter writes lst.First() verbatim
+                // and C# infers everything. Written type arguments break that, because they are only
+                // PART of the C# vector (Select<TSource, TResult> also needs the element type), so the
+                // name-only channel emitted lst.Select[string](…) — CS0021 behind SPY0908. Resolving it
+                // here computes the whole vector, so codegen can spell the call.
+                if (TryResolveBclExtensionMethod(indexAccess, memberAccessObj, ownerType))
+                    return true;
+
                 // No generic method by that name — and when CLR reflection can PROVE the member does
                 // not exist on the receiver at all (no member under any mangling candidate, no reachable
                 // extension method), reject it here instead of letting the name-only interop channel
@@ -339,6 +384,109 @@ internal partial class TypeChecker
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Resolves <c>receiver.member[T, …]</c> as an extension method on the #1163 acceptance surface
+    /// (<c>System.Linq.Enumerable</c> over sequence receivers), recording a
+    /// <see cref="GenericReferenceKind.BclExtensionMethod"/> fact with the complete emitted
+    /// type-argument vector. Returns <c>true</c> when the reference IS such a call — resolved, or
+    /// rejected with a deliberate diagnostic — and <c>false</c> when it is not one at all (no member of
+    /// that name on the surface, or a receiver whose CLR type is unknown), leaving the existing
+    /// permissive interop channel and the #1141 absence proof to run unchanged.
+    /// </summary>
+    /// <remarks>
+    /// The reference type is <see cref="SemanticType.Unknown"/> — deliberately the same permissive
+    /// typing the no-type-args spelling has today (<c>x: int = lst.select(f)</c> reports nothing), so
+    /// the two spellings of one call agree. Typing the result from the closed CLR return type would be
+    /// strictly better for both, and belongs to a change that does both at once.
+    /// </remarks>
+    private bool TryResolveBclExtensionMethod(
+        IndexAccess indexAccess, MemberAccess memberAccess, SemanticType ownerType)
+    {
+        if (!Discovery.ClrExtensionMethodResolver.IsOnAcceptanceSurface(memberAccess.Member))
+            return false;
+
+        var receiverClrType = TryGetClrType(ownerType);
+        if (receiverClrType == null)
+            return false;
+
+        // Past this point the member IS on the acceptance surface, so `[...]` is type arguments and
+        // resolving them cannot misfire on a value subscript (the #1136 lesson).
+        if (TryResolveTypeArguments(indexAccess.Index) is not { } typeArgs)
+            return false;
+
+        var explicitClrArgs = new List<Type>(typeArgs.Count);
+        foreach (var typeArg in typeArgs)
+        {
+            var clrArg = TryGetClrType(typeArg);
+            if (clrArg == null)
+            {
+                // A written argument with no CLR form (an open type parameter, an unresolved name):
+                // nothing to compute a vector from.
+                ReportUncomputableExtensionTypeArgs(indexAccess, memberAccess, typeArgs);
+                return true;
+            }
+            explicitClrArgs.Add(clrArg);
+        }
+
+        var resolution = Discovery.ClrExtensionMethodResolver.TryResolveWithExplicitTypeArguments(
+            receiverClrType, memberAccess.Member, explicitClrArgs);
+        if (resolution == null)
+        {
+            ReportUncomputableExtensionTypeArgs(indexAccess, memberAccess, typeArgs);
+            return true;
+        }
+
+        var loweredTypeArgs = new List<SemanticType>(resolution.TypeArguments.Count);
+        foreach (var clrArg in resolution.TypeArguments)
+            loweredTypeArgs.Add(_clrTypeBridge.Value.MapClrTypeToSemanticType(clrArg));
+
+        // Uncalled is meaningless for this kind, exactly as for a generic function reference (#1138):
+        // the reference is a carrier for the type arguments of its call, not a value. Erroring here
+        // keeps `g = lst.select[str]` a deliberate diagnostic instead of element access on a method
+        // group (CS0021 → SPY0908) — the same contract the sibling kinds get from the CheckExpression
+        // choke point, which cannot see this kind because its type is Unknown.
+        if (!IsCurrentCallCallee(indexAccess))
+        {
+            AddError(
+                $"an extension method reference must be called; '{memberAccess.Member}[...]' cannot be used as a value",
+                indexAccess.LineStart,
+                indexAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.GenericFunctionReferenceNotCalled,
+                span: indexAccess.Span);
+            return true;
+        }
+
+        _semanticInfo.SetGenericReference(indexAccess, new GenericReference
+        {
+            Kind = GenericReferenceKind.BclExtensionMethod,
+            ReceiverType = ownerType,
+            TypeArgs = typeArgs,
+            LoweredTypeArgs = loweredTypeArgs,
+            ClrMemberName = resolution.ClrMethodName,
+        });
+        return true;
+    }
+
+    /// <summary>
+    /// The deliberate diagnostic for an extension-method reference on the acceptance surface whose
+    /// full type-argument vector cannot be computed — nothing by that name binds the receiver, the
+    /// counts do not add up, a written argument contradicts what the receiver determines, or two
+    /// candidates disagree. Reported instead of emitting a vector that cannot compile (#1146).
+    /// </summary>
+    private void ReportUncomputableExtensionTypeArgs(
+        IndexAccess indexAccess, MemberAccess memberAccess, IReadOnlyList<SemanticType> typeArgs)
+    {
+        var written = string.Join(", ", typeArgs.Select(t => t.GetDisplayName()));
+        AddError(
+            $"Cannot determine the type arguments of extension method '{memberAccess.Member}[{written}]' " +
+            "on this receiver. Write every type argument the method declares, or drop them and let them " +
+            "be inferred from the arguments.",
+            indexAccess.LineStart,
+            indexAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.CannotInferGenericType,
+            span: indexAccess.Span);
     }
 
     /// <summary>
