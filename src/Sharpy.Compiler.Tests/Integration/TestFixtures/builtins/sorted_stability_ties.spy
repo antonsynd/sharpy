@@ -1,0 +1,31 @@
+# sorted() is stable, and reverse=True preserves the order of equal elements
+# rather than flipping them (#1191). #1066 fixed list.sort but not sorted, so
+# the two surfaces disagreed. Introsort only misbehaves above its 16-element
+# cutoff, hence 20 elements.
+def main() -> None:
+    words: list[str] = [
+        "bb", "aa", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj",
+        "kk", "ll", "mm", "nn", "oo", "pp", "qq", "rr", "ss", "tt",
+    ]
+
+    # Every word has length 2, so the key ties across all 20 elements
+    print(sorted(words, key=lambda s: len(s)))
+
+    # reverse=True keeps equal elements in their ORIGINAL order
+    print(sorted(words, key=lambda s: len(s), reverse=True))
+
+    # list.sort agrees with sorted
+    copy: list[str] = list(words)
+    copy.sort(key=lambda s: len(s))
+    print(copy)
+
+    # Distinct tie groups: key = i // 10
+    nums: list[int] = [
+        11, 21, 12, 22, 13, 23, 14, 24, 15, 25,
+        16, 26, 17, 27, 18, 28, 19, 29, 10, 20,
+    ]
+    print(sorted(nums, key=lambda i: i // 10))
+    print(sorted(nums, key=lambda i: i // 10, reverse=True))
+
+    # sorted() leaves its input untouched
+    print(nums)
