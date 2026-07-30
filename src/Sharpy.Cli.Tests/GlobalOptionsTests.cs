@@ -211,6 +211,41 @@ public class GlobalOptionsTests
         result.GetValue(globals.EnableFeature).Should().Contain("__test_feature");
     }
 
+    /// <summary>
+    /// The regression case: <c>--enable-feature</c> used to allow multiple arguments per token, so a
+    /// single occurrence kept consuming following bare tokens and swallowed the positional input path
+    /// as a second feature name — <c>Unknown feature 'file.spy'</c> (#1179). Each occurrence now takes
+    /// exactly one value, in every spelling and either order.
+    /// </summary>
+    [Theory]
+    [InlineData("build --enable-feature=__test_feature a.spy")]
+    [InlineData("build --enable-feature __test_feature a.spy")]
+    [InlineData("build a.spy --enable-feature=__test_feature")]
+    [InlineData("build a.spy --enable-feature __test_feature")]
+    public void EnableFeature_LeavesThePositionalFileAlone(string commandLine)
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals(commandLine);
+
+        result.Errors.Should().BeEmpty();
+        result.GetValue(globals.EnableFeature).Should().BeEquivalentTo(new[] { "__test_feature" });
+
+        var input = result.CommandResult.Command.Arguments.Single();
+        result.GetResult(input)!.Tokens.Single().Value.Should().Be("a.spy");
+    }
+
+    [Fact]
+    public void EnableFeature_RepeatedOccurrencesCollectDistinctFeatures()
+    {
+        var (result, globals) = CliTestHarness.ParseWithGlobals(
+            "build --enable-feature=__test_feature --enable-feature=defer a.spy");
+
+        result.Errors.Should().BeEmpty();
+        result.GetValue(globals.EnableFeature).Should().BeEquivalentTo(new[] { "__test_feature", "defer" });
+
+        var input = result.CommandResult.Command.Arguments.Single();
+        result.GetResult(input)!.Tokens.Single().Value.Should().Be("a.spy");
+    }
+
     [Fact]
     public void EnableFeature_RejectsUnknownFeature()
     {
