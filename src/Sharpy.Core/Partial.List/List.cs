@@ -170,7 +170,11 @@ namespace Sharpy
         /// preserving the original order among comparer-equal elements
         /// (matching Python's <c>reverse=True</c> — not a sort-then-reverse).
         /// </summary>
-        private void StableSort(IComparer<T> comparer, bool reverse)
+        /// <remarks>
+        /// Also the engine for <see cref="Builtins.Sorted{T}(IEnumerable{T})"/>, so the two
+        /// surfaces cannot disagree about tie ordering (#1191).
+        /// </remarks>
+        internal void StableSort(IComparer<T> comparer, bool reverse)
         {
             int n = _list.Count;
             var src = new T[n];

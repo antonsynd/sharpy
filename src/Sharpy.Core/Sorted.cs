@@ -76,13 +76,13 @@ namespace Sharpy
                 throw TypeError.ArgNone("sorted", "iterable");
             }
 
-            var systemList = new System.Collections.Generic.List<T>(iterable);
-            systemList.Sort(comparer);
-            if (reverse)
-            {
-                systemList.Reverse();
-            }
-            return new List<T>(systemList);
+            // Python's sort is stable, and `reverse` sorts descending while PRESERVING the
+            // original order among equal elements — so it has to be handled inside the merge,
+            // not by reversing afterwards. List.StableSort is the same engine list.sort() uses,
+            // which is what keeps the two surfaces in agreement (#1191).
+            var result = new List<T>(iterable);
+            result.StableSort(comparer, reverse);
+            return result;
         }
     }
 }
