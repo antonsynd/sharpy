@@ -389,6 +389,15 @@ internal partial class TypeChecker
             // The one shape it HANDLES is a wrong-arity vector (#1192), which has no fact to record.
             if (RecordNestedGenericTypeRef(indexAccess, memberAccessObj))
                 return true;
+
+            // Outer.no_such_generic[str](5) — a member that does not exist on a TYPE qualifier.
+            // #1141's value-receiver proof above never runs for this receiver kind: a class-name
+            // qualifier types as the intentional Unknown a TypeSymbol reference gets, so the whole
+            // instance-member section is skipped and the name-only interop channel emitted
+            // Outer.NoSuchGeneric<string>(5) — CS0117 behind SPY0908 (#1194). Runs after the nested
+            // arm so an existing nested generic type is never second-guessed.
+            if (TypeQualifierProvesMemberAbsent(indexAccess, memberAccessObj))
+                return true;
         }
 
         return false;
@@ -530,6 +539,75 @@ internal partial class TypeChecker
         });
         return false;
     }
+
+    /// <summary>
+    /// Proves that a member written on a USER-DECLARED type qualifier does not exist — the #1141
+    /// contract for the one receiver kind #1141's reflection proof cannot reach (#1194). A user
+    /// declaration's own symbol settles the question outright: if the name is in none of its nested
+    /// types, methods, properties or fields, it is absent, no reflection needed. A CLR-backed
+    /// qualifier is left entirely to the reflection path (its member surface includes inherited and
+    /// extension members this symbol scan does not see), and so is anything inconclusive — the proof
+    /// must be of ABSENCE, never of "this shape is not handled here".
+    /// </summary>
+    /// <returns><c>true</c> when the reference was rejected with SPY0203.</returns>
+    private bool TypeQualifierProvesMemberAbsent(IndexAccess indexAccess, MemberAccess memberAccess)
+    {
+        if (LookupQualifierTypeSymbol(memberAccess.Object) is not { ClrType: null } qualifier)
+            return false;
+
+        var memberNames = TypeQualifierMemberNames(qualifier);
+        if (memberNames.Contains(memberAccess.Member))
+            return false;
+
+        // Only once the index resolves as type arguments is this a generic reference at all, so
+        // genuine value indexing through a type qualifier is untouched (the #1141 gate).
+        if (TryResolveTypeArguments(indexAccess.Index) == null)
+            return false;
+
+        var suggestion = Utilities.EditDistance.FindClosestMatch(memberAccess.Member, memberNames);
+        var message = $"Type '{qualifier.Name}' has no member '{memberAccess.Member}'";
+        if (suggestion != null)
+            message += $". Did you mean '{suggestion}'?";
+
+        AddError(
+            message,
+            memberAccess.LineStart,
+            memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.UndefinedMember,
+            span: memberAccess.Span,
+            data: SuggestionData(suggestion));
+        return true;
+    }
+
+    /// <summary>
+    /// The names a user-declared type exposes to a qualified reference: its nested types, methods,
+    /// properties and fields.
+    /// </summary>
+    private static HashSet<string> TypeQualifierMemberNames(TypeSymbol qualifier)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var nested in qualifier.NestedTypes)
+            names.Add(nested.Name);
+        foreach (var method in qualifier.Methods)
+            names.Add(method.Name);
+        foreach (var property in qualifier.Properties)
+            names.Add(property.Name);
+        foreach (var field in qualifier.Fields)
+            names.Add(field.Name);
+        return names;
+    }
+
+    /// <summary>
+    /// Resolves the qualifier of <c>Qualifier.member[...]</c> to the <see cref="TypeSymbol"/> it
+    /// names — <c>Outer</c> for <c>Outer.member</c>, <c>A.B</c> for <c>A.B.member</c> — or
+    /// <c>null</c> when it names something other than a type.
+    /// </summary>
+    private TypeSymbol? LookupQualifierTypeSymbol(Expression qualifier) => qualifier switch
+    {
+        Identifier id => _symbolTable.Lookup(id.Name) as TypeSymbol,
+        MemberAccess nested => LookupNestedTypeSymbol(nested),
+        _ => null,
+    };
 
     /// <summary>
     /// Resolves <c>Outer.Inner</c> / <c>A.B.C</c> to the nested <see cref="TypeSymbol"/> it names, or
