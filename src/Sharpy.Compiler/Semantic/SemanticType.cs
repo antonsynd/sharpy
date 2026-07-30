@@ -217,10 +217,20 @@ public sealed record GenericType : SemanticType
         return $"{Name}[{args}]";
     }
 
+    /// <summary>
+    /// Whether two generic types name the same declaration. The written name usually settles it, but
+    /// one declaration can have more than one legal spelling — a nested type is <c>Registry.Entry</c>
+    /// when qualified and <c>Entry</c> from inside its enclosing class — so a matching
+    /// <see cref="GenericDefinition"/> symbol is authoritative when both carry one (#1193).
+    /// </summary>
+    private bool NamesSameDeclarationAs(GenericType other)
+        => Name == other.Name
+           || (GenericDefinition != null && ReferenceEquals(GenericDefinition, other.GenericDefinition));
+
     public override bool IsAssignableTo(SemanticType other)
     {
         if (other is GenericType otherGeneric
-            && Name == otherGeneric.Name
+            && NamesSameDeclarationAs(otherGeneric)
             && TypeArguments.Count == otherGeneric.TypeArguments.Count)
         {
             // Check covariance/contravariance rules here in future

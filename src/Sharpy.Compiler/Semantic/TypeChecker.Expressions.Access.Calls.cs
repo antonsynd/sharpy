@@ -1181,10 +1181,17 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Resolves a member access whose object is an (possibly nested) imported module and whose
-    /// member is an exported <see cref="TypeSymbol"/> — e.g., <c>fractions.Fraction</c> or
-    /// <c>email.message.Message</c>. Applies a PascalCase fallback for .NET modules. Returns the
-    /// exported type symbol, or null when the object is not a module or the member is not a type.
+    /// Resolves a member access that NAMES a type, from either of the two qualifier kinds that can
+    /// name one: an (possibly nested) imported module whose member is an exported
+    /// <see cref="TypeSymbol"/> — <c>fractions.Fraction</c>, <c>email.message.Message</c>, with a
+    /// PascalCase fallback for .NET modules — or a TYPE whose member is a nested type,
+    /// <c>Outer.Inner</c> / <c>A.B.C</c>. Returns null when the qualifier is neither, or names no
+    /// such member.
+    /// <para>The nested arm is what gives <c>Outer.Inner(5)</c> the constructor type inference bare
+    /// <c>Box(5)</c> has always had: both callers route a resolved type symbol into the shared
+    /// constructor-checking path, and before this the member-access arm answered only for modules, so
+    /// a nested generic construction without explicit type arguments never reached inference at all
+    /// and emitted <c>new Outer.Inner(5)</c> — CS0305 (#1193).</para>
     /// </summary>
     private TypeSymbol? TryResolveTypeSymbolFromMemberAccess(MemberAccess memberAccess)
     {
@@ -1195,7 +1202,14 @@ internal partial class TypeChecker
         var objectType = _semanticInfo.GetExpressionType(memberAccess.Object)
             ?? CheckExpression(memberAccess.Object);
         if (objectType is not ModuleType moduleType)
-            return null;
+        {
+            // A TYPE qualifier: the same symbol-table walk the explicit-type-argument spelling
+            // (Outer.Inner[int]) already uses, so both spellings agree on what the member names.
+            // Accessibility is not filtered here for the same reason it is not there — the
+            // AccessValidator owns that report, and suppressing the symbol would degrade a precise
+            // "not accessible" into a bare "not callable".
+            return LookupNestedTypeSymbol(memberAccess);
+        }
 
         var moduleSymbol = moduleType.Symbol;
         var memberName = memberAccess.Member;

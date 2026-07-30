@@ -313,7 +313,10 @@ internal partial class RoslynEmitter
                 if (nestedSym != null && (nestedSym.TypeKind == Semantic.TypeKind.Class ||
                                           nestedSym.TypeKind == Semantic.TypeKind.Struct))
                 {
-                    var qualifiedName = BuildNestedTypeName(nestedSym);
+                    // C# has no generic constructor inference, so a nested generic construction
+                    // written without type arguments must spell the vector semantic analysis
+                    // inferred: Outer.Inner(5) -> new Outer.Inner<int>(5) (#1193).
+                    var qualifiedName = BuildNestedTypeName(nestedSym, ResolvedConstructionTypeArguments(call));
                     var nestedCallTarget = ResolveConstructorForCall(nestedSym, call);
                     var nestedAllArgs = GenerateReorderedCallArguments(call, nestedCallTarget);
 
@@ -928,15 +931,11 @@ internal partial class RoslynEmitter
         // Fallback: inferred type arguments from generic constructor inference.
         // C# does not support generic constructor inference, so we must always emit
         // explicit type arguments: Cell(42) -> new Cell<int>(42)
-        var inferredTypeArgs = _context.SemanticInfo?.GetInferredTypeArguments(call);
-        if (inferredTypeArgs is { Count: > 0 })
+        if (ResolvedConstructionTypeArguments(call) is { } typeArgsFromInference)
         {
-            var typeArgsSyntax = inferredTypeArgs
-                .Select(t => _typeMapper.MapSemanticType(t))
-                .ToArray();
             var (genericName, genericGlobal) = NormalizeTypeName(genericBaseName ?? baseCSharpName);
             return ObjectCreationExpression(
-                    TypeSyntaxMapper.QualifiedGenericName(genericName, genericGlobal, typeArgsSyntax))
+                    TypeSyntaxMapper.QualifiedGenericName(genericName, genericGlobal, typeArgsFromInference))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
@@ -947,6 +946,27 @@ internal partial class RoslynEmitter
             : ParseQualifiedName(dottedName);
         return ObjectCreationExpression(typeSyntax)
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+    }
+
+    /// <summary>
+    /// The type-argument vector a constructor call must spell, or null when the construction needs
+    /// none. C# has no generic constructor inference, so <c>Box(5)</c> and <c>Outer.Inner(5)</c> alike
+    /// have to emit what semantic analysis resolved: the call's own <see cref="GenericType"/>
+    /// expression type when it carries a complete one, else the inferred-type-arguments fact (#1193).
+    /// </summary>
+    private TypeSyntax[]? ResolvedConstructionTypeArguments(FunctionCall call)
+    {
+        if (_context.SemanticInfo?.GetExpressionType(call) is GenericType resolvedGeneric
+            && resolvedGeneric.TypeArguments.Count > 0
+            && resolvedGeneric.TypeArguments.All(t => t is not UnknownType))
+        {
+            return resolvedGeneric.TypeArguments.Select(t => _typeMapper.MapSemanticType(t)).ToArray();
+        }
+
+        var inferredTypeArgs = _context.SemanticInfo?.GetInferredTypeArguments(call);
+        return inferredTypeArgs is { Count: > 0 }
+            ? inferredTypeArgs.Select(t => _typeMapper.MapSemanticType(t)).ToArray()
+            : null;
     }
 
     /// <summary>
@@ -1910,7 +1930,7 @@ internal partial class RoslynEmitter
         return null;
     }
 
-    private NameSyntax BuildNestedTypeName(TypeSymbol nestedSym)
+    private NameSyntax BuildNestedTypeName(TypeSymbol nestedSym, TypeSyntax[]? typeArguments = null)
     {
         var parts = new List<string>();
         var current = nestedSym;
@@ -1921,10 +1941,18 @@ internal partial class RoslynEmitter
         }
         parts.Reverse();
 
-        NameSyntax result = IdentifierName(parts[0]);
+        // Only the innermost segment carries the type arguments — Outer.Inner<int>, never
+        // Outer<int>.Inner: the nested type declares them, its enclosing types do not.
+        SimpleNameSyntax Segment(int index) =>
+            index == parts.Count - 1 && typeArguments is { Length: > 0 }
+                ? GenericName(Identifier(parts[index]))
+                    .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArguments)))
+                : IdentifierName(parts[index]);
+
+        NameSyntax result = Segment(0);
         for (int i = 1; i < parts.Count; i++)
         {
-            result = QualifiedName(result, IdentifierName(parts[i]));
+            result = QualifiedName(result, (SimpleNameSyntax)Segment(i));
         }
         return result;
     }
