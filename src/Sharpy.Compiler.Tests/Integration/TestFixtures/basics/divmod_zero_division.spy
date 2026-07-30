@@ -1,0 +1,29 @@
+# divmod() by zero raises ZeroDivisionError with CPython's messages (#1158).
+# Python: divmod(10, 0)     -> ZeroDivisionError("integer division or modulo by zero")
+# Python: divmod(10.0, 0.0) -> ZeroDivisionError("float divmod()")
+# Python has no epsilon tolerance -- a tiny-but-nonzero divisor computes.
+def main() -> None:
+    # Integer divmod by zero
+    try:
+        print(divmod(10, 0))
+        print("ERROR: should not reach here")
+    except ZeroDivisionError as e:
+        print(e.message)
+
+    # Float divmod by zero carries a distinct CPython message
+    try:
+        print(divmod(10.0, 0.0))
+        print("ERROR: should not reach here")
+    except ZeroDivisionError as e:
+        print(e.message)
+
+    # A tiny-but-nonzero divisor computes (the deleted 1e-10 epsilon raised here)
+    tiny: tuple[float, float] = divmod(1e-9, 1e-11)
+    print(int(tiny[0]))
+    print(tiny[1] > 0.0)
+
+    # Non-zero divisors are unchanged: floored quotient, sign-of-divisor remainder
+    print(divmod(-7, 3))
+    fneg: tuple[float, float] = divmod(-7.5, 2.0)
+    print(fneg[0])
+    print(fneg[1])

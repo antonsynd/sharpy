@@ -1,0 +1,7 @@
+integer division or modulo by zero
+float divmod()
+100
+True
+(-3, 2)
+-4.0
+0.5
