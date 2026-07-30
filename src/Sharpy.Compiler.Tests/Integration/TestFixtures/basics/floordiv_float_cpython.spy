@@ -1,0 +1,38 @@
+# Float // matches CPython's float_floor_div bit for bit (#1185).
+# Math.Floor(x / y) is not equivalent: x / y can round up across an integer
+# boundary, which made 1.0 // 0.1 give 10.0 instead of 9.0.
+def main() -> None:
+    print(1.0 // 0.1)
+    print(7.5 // 0.1)
+
+    # Sign combinations
+    print(-1.0 // 0.1)
+    print(1.0 // -0.1)
+    print(-1.0 // -0.1)
+    print(-7.5 // 2.0)
+
+    # Augmented form routes through the same seam
+    x: float = 7.5
+    x //= 0.1
+    print(x)
+
+    # float32 takes the same path
+    s = 7.5f
+    t = 0.1f
+    print(s // t)
+
+    # The divmod identity #1153 established for integers now holds for floats
+    a: float = 1.0
+    b: float = 0.1
+    print(a == (a // b) * b + (a % b))
+
+    c: float = 7.5
+    print(c == (c // b) * b + (c % b))
+
+    # A zero quotient takes the sign of the true quotient
+    print(-0.5 // -1.0)
+    print(0.0 // -1.0)
+
+    # Integer // is unchanged
+    print(7 // 2)
+    print(-7 // 2)
