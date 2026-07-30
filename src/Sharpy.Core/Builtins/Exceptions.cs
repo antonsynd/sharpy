@@ -133,10 +133,61 @@ namespace Sharpy
     }
 
     /// <summary>
+    /// Base class for arithmetic errors. Equivalent to Python's <c>ArithmeticError</c>,
+    /// which parents <c>ZeroDivisionError</c>, <c>OverflowError</c>, and (via
+    /// <c>decimal.DecimalException</c>) <c>InvalidOperation</c>. Catching
+    /// <c>ArithmeticError</c> catches all three.
+    /// </summary>
+    public class ArithmeticError : Exception
+    {
+        /// <summary>Create an ArithmeticError with the specified message.</summary>
+        public ArithmeticError(string message) : base(message)
+        {
+        }
+
+        /// <summary>Create an ArithmeticError with the specified message and inner exception.</summary>
+        public ArithmeticError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Raised when an arithmetic operation is undefined for its operands — currently
+    /// decimal modulo by zero. Mirrors CPython's <c>decimal.InvalidOperation</c>, which
+    /// <c>Decimal(7) % Decimal(0)</c> raises (NOT <c>ZeroDivisionError</c>).
+    /// <para>
+    /// CPython's MRO inserts a <c>DecimalException</c> layer
+    /// (<c>InvalidOperation → DecimalException → ArithmeticError</c>); Sharpy deliberately
+    /// omits it: there is exactly one decimal exception and no <c>decimal</c> module
+    /// namespace to anchor the layer, so it would add surface without adding catchability.
+    /// Both observable CPython contracts — <c>except InvalidOperation</c> and
+    /// <c>except ArithmeticError</c> — hold without it.
+    /// </para>
+    /// <para>
+    /// Decimal floor division by zero raises <see cref="ZeroDivisionError"/> instead,
+    /// matching CPython's <c>decimal.DivisionByZero</c> (a <c>ZeroDivisionError</c>
+    /// subclass). <c>InvalidOperation</c> is deliberately NOT a <c>ZeroDivisionError</c>,
+    /// so <c>except ZeroDivisionError</c> does not catch decimal modulo by zero.
+    /// </para>
+    /// </summary>
+    public class InvalidOperation : ArithmeticError
+    {
+        /// <summary>Create an InvalidOperation with the specified message.</summary>
+        public InvalidOperation(string message) : base(message)
+        {
+        }
+
+        /// <summary>Create an InvalidOperation with the specified message and inner exception.</summary>
+        public InvalidOperation(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
     /// Raised when the second argument of a division or modulo operation is zero.
     /// Equivalent to Python's <c>ZeroDivisionError</c>.
     /// </summary>
-    public class ZeroDivisionError : Exception
+    public class ZeroDivisionError : ArithmeticError
     {
         /// <summary>Create a ZeroDivisionError with the specified message.</summary>
         public ZeroDivisionError(string message) : base(message)
@@ -153,7 +204,7 @@ namespace Sharpy
     /// Raised when the result of an arithmetic operation is too large to be represented.
     /// Equivalent to Python's <c>OverflowError</c>.
     /// </summary>
-    public class OverflowError : Exception
+    public class OverflowError : ArithmeticError
     {
         /// <summary>Create an OverflowError with the specified message.</summary>
         public OverflowError(string message) : base(message)
