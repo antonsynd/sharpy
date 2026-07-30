@@ -27,7 +27,11 @@ internal class GlobalOptions
         MaxErrors = new Option<int?>("--max-errors") { Description = "Maximum number of errors before stopping (default: 25 for parser, 100 for semantic)", Recursive = true };
         Verbose = new Option<bool>("--verbose") { Description = "Enable verbose output (raises --log-level to Info, printing per-phase timing). An explicit --log-level takes precedence.", Recursive = true };
         Verbose.Aliases.Add("-v");
-        EnableFeature = new Option<string[]>("--enable-feature") { Description = "Enable an experimental feature flag (repeatable)", Recursive = true, AllowMultipleArgumentsPerToken = true };
+        // One value per occurrence — multiple features are spelled as repeated flags, which is what
+        // "(repeatable)" has always meant. AllowMultipleArgumentsPerToken let a single occurrence keep
+        // consuming following bare tokens, so `run --enable-feature=defer file.spy` swallowed the
+        // positional input path as a second feature name (#1179).
+        EnableFeature = new Option<string[]>("--enable-feature") { Description = "Enable an experimental feature flag (repeatable)", Recursive = true };
         EnableFeature.Validators.Add(result =>
         {
             var values = result.GetValueOrDefault<string[]>() ?? System.Array.Empty<string>();
