@@ -167,6 +167,28 @@ Unpacking targets are automatically inferred from the source type:
 
 Nested tuple targets recurse into the corresponding element type and validate structure at each level.
 
+## Constructing Tuples: No `tuple(iterable)`
+
+A tuple's arity is part of its type — `tuple[int, str]` lowers to a .NET `ValueTuple` with exactly
+two fields. Python's `tuple(iterable)` produces a tuple as long as the iterable, which is a runtime
+property, so there is no type to give the result. The form is rejected (SPY0338):
+
+```python
+xs: list[int] = [1, 2, 3]
+t = tuple(xs)   # ❌ ERROR SPY0338: variable-length tuple(iterable) is not supported
+```
+
+Use `list(...)` when the length is a runtime value, or a tuple literal when the arity is known:
+
+```python
+xs: list[int] = [1, 2, 3]
+ys: list[int] = list(xs)                        # runtime length
+t: tuple[int, int, int] = (xs[0], xs[1], xs[2])  # known arity
+```
+
+If the argument is already a tuple, the conversion is redundant — drop the call. Tuple literals,
+explicitly parameterized construction, and every unpacking form above are unaffected.
+
 ## Error Cases
 
 | Scenario | Diagnostic |
@@ -174,6 +196,7 @@ Nested tuple targets recurse into the corresponding element type and validate st
 | Element count mismatch | SPY0239: Cannot unpack N values into M variables |
 | Unpacking a non-tuple type | SPY0239: Cannot unpack non-tuple type |
 | Multiple starred expressions | SPY0356: Only one starred expression allowed |
+| `tuple(iterable)` construction | SPY0338: variable-length `tuple(iterable)` is not supported |
 
 ## See Also
 

@@ -54,6 +54,14 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // tuple(iterable) is deliberately not modeled; say so instead of letting the generic
+        // "cannot infer type arguments" fall out of inference below (#1159).
+        if (typeSymbol.Name == BuiltinNames.Tuple
+            && ReportUnsupportedTupleFromIterable(call, argTypes) is { } tupleRejection)
+        {
+            return tupleRejection;
+        }
+
         // For generic types called without type arguments (e.g., set()),
         // infer type arguments from the expected type annotation if available,
         // otherwise emit a diagnostic for empty constructors or fall back to
@@ -144,5 +152,47 @@ internal partial class TypeChecker
 
         // Constructor call returns an instance of the type
         return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+    }
+
+    /// <summary>
+    /// Reports SPY0338 for <c>tuple(iterable)</c> — the single-iterable-argument form Python uses to
+    /// build a tuple as long as the iterable (#1159).
+    ///
+    /// <para>Not modeled by design: a Sharpy tuple's arity is part of its type (<c>tuple[int, str]</c>
+    /// lowers to a <c>ValueTuple</c>), while an iterable's length is only known at runtime, so the
+    /// result has no type to give it. Sharpy's answer is <c>list(...)</c> for a runtime-length sequence
+    /// and a tuple literal when the arity is known. Naming the limitation beats the
+    /// "cannot infer type arguments for 'tuple'" that inference produced, which read as a missing
+    /// annotation the user could supply.</para>
+    ///
+    /// <para>Scope: exactly this form. A tuple literal, an explicitly parameterized
+    /// <c>tuple[int, str](...)</c>, a multi-argument call, and the empty <c>tuple()</c> (SPY0227) all
+    /// take other paths. A single argument that is not iterable also keeps its existing diagnostic —
+    /// its problem is the argument, not the arity.</para>
+    /// </summary>
+    /// <returns>Unknown after reporting, or null when the call is not the iterable form.</returns>
+    private SemanticType? ReportUnsupportedTupleFromIterable(FunctionCall call, List<SemanticType> argTypes)
+    {
+        if (call.Arguments.Length != 1 || call.KeywordArguments.Length != 0 || argTypes.Count != 1)
+            return null;
+
+        var argType = argTypes[0];
+        if (argType is UnknownType || _typeInference.InferIterableElementType(argType) == null)
+            return null;
+
+        // An argument that is ALREADY a tuple has a statically known arity, so the arity is not what
+        // is missing and the advice is to drop the conversion rather than reach for a list.
+        var message = argType is TupleType
+            ? $"'tuple(...)' cannot convert an iterable to a tuple: a tuple's arity is part of its type. "
+                + $"The argument is already a '{argType.GetDisplayName()}' — drop the conversion."
+            : $"variable-length 'tuple(iterable)' is not supported: a tuple's arity is part of its type, "
+                + $"but the length of a '{argType.GetDisplayName()}' is not known until runtime. Use "
+                + $"'list(...)' for a runtime-length sequence, or a tuple literal when the arity is "
+                + $"known (e.g. '(a, b)').";
+
+        AddError(message, call.LineStart, call.ColumnStart,
+            code: DiagnosticCodes.Semantic.UnsupportedVariableArityTuple,
+            span: call.Span);
+        return SemanticType.Unknown;
     }
 }

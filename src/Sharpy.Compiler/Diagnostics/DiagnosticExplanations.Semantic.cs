@@ -125,6 +125,20 @@ public static partial class DiagnosticExplanations
             + "(`g: (int) -> int = xs.pop`), or wrap it in a lambda that pins the signature "
             + "(`g = lambda i: xs.pop(i)`).");
 
+        Add(dict, DiagnosticCodes.Semantic.UnsupportedVariableArityTuple,
+            "Variable-length tuple(iterable) is not supported", "Semantic",
+            "Python's tuple(iterable) builds a tuple as long as the iterable. A Sharpy tuple's arity is "
+            + "part of its type — tuple[int, str] lowers to a .NET ValueTuple with exactly two fields — "
+            + "so a value whose length is only known at runtime has no tuple type to be given (Axiom 1 "
+            + "over Axiom 2). This is a deliberate model limitation, not a missing annotation: no "
+            + "explicit type argument makes the form work. Only this single-iterable-argument form is "
+            + "rejected; tuple literals, explicitly parameterized construction, and tuple unpacking are "
+            + "unaffected. When the argument is already a tuple, the conversion is simply redundant.",
+            "def main() -> None:\n    xs: list[int] = [1, 2, 3]\n    t = tuple(xs)  # length of xs is a runtime value",
+            "Use list(...) when the length is a runtime value, or a tuple literal when the arity is "
+            + "known:\n  xs: list[int] = [1, 2, 3]\n  t: tuple[int, int, int] = (xs[0], xs[1], xs[2])\n"
+            + "If the argument is already a tuple, drop the tuple(...) call.");
+
         Add(dict, DiagnosticCodes.Semantic.InvalidPipeTarget, "Invalid pipe target", "Semantic",
             "The right-hand side of a pipe operator (|>) is not a valid pipe target. The target must be a callable that accepts the piped value as its first argument.",
             "42 |> \"hello\"  # str is not a valid pipe target",

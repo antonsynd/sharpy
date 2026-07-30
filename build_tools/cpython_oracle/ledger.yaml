@@ -365,6 +365,14 @@ deviations:
   spec_ref: docs/language_specification/builtin_functions.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: no-variable-arity-tuple-from-iterable
+  category: types
+  audience: python
+  severity: error
+  code: SPY0338
+  spec_ref: docs/language_specification/tuple_unpacking.md
+  existing_diagnostic: SPY0338
+  planned_diagnostic: null
 - id: optional-chaining-no-flatten
   category: operators
   audience: both

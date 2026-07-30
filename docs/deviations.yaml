@@ -721,6 +721,25 @@ deviations:
                 ...
         # Match expressions require exhaustiveness — SPY0416 / SPY0463
 
+  - id: no-variable-arity-tuple-from-iterable
+    code: SPY0338
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`tuple(iterable)` builds a tuple as long as the iterable; arity is a runtime property."
+    sharpy_behavior: "`tuple(iterable)` is rejected. A tuple's arity is part of its type (`tuple[int, str]` lowers to a .NET ValueTuple), so a runtime-length value has no tuple type. Use `list(...)` for a runtime-length sequence, or a tuple literal when the arity is known. Tuple literals, explicit `tuple[...]` type arguments, and tuple unpacking are unaffected."
+    spec_ref: docs/language_specification/tuple_unpacking.md
+    existing_diagnostic: SPY0338
+    planned_diagnostic: null
+    example:
+      python: |
+        xs = [1, 2, 3]
+        t = tuple(xs)     # (1, 2, 3)
+      sharpy: |
+        xs: list[int] = [1, 2, 3]
+        t = tuple(xs)     # ERROR SPY0338: variable-length tuple(iterable) is not supported
+        t2: tuple[int, int, int] = (xs[0], xs[1], xs[2])
+
   - id: no-namedtuple-runtime
     code: SPY0432
     category: stdlib
