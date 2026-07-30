@@ -1,0 +1,14 @@
+def classify(code: int, other: int) -> int:
+    return match code:
+        case 1: match other:
+            case 1: 7
+            case _: 8
+        case 2: 200
+        case _: 0
+
+
+def main():
+    print(classify(1, 1))
+    print(classify(1, 5))
+    print(classify(2, 1))
+    print(classify(9, 1))

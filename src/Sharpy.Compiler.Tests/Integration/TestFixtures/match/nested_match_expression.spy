@@ -1,0 +1,9 @@
+def main():
+    code: int = 2
+    other: int = 1
+    v: int = match code:
+        case 1: 100
+        case _: match other:
+            case 1: 7
+            case _: 8
+    print(v)

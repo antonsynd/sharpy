@@ -158,4 +158,66 @@ public class MatchExpressionBoundaryTests
         arms[1].Result.Should().BeOfType<BinaryOp>()
             .Which.Operator.Should().Be(BinaryOperator.Subtract);
     }
+
+    [Fact]
+    public void NestedMatchExpressionInLastArm_IsTheArmResult()
+    {
+        // The inner match consumes the arm's newline and its own DEDENT, so the arm is terminated
+        // by that DEDENT rather than a NEWLINE — the outer arm must accept it (#1196).
+        var module = Parse(
+            "code: int = 2\n"
+            + "other: int = 1\n"
+            + "v: int = match code:\n"
+            + "    case 1: 100\n"
+            + "    case _: match other:\n"
+            + "        case 1: 7\n"
+            + "        case _: 8\n");
+
+        var arms = module.Body[2].Should().BeOfType<VariableDeclaration>()
+            .Which.InitialValue.Should().BeOfType<MatchExpression>().Subject.Arms;
+
+        arms.Should().HaveCount(2);
+        arms[0].Result.Should().BeOfType<IntegerLiteral>();
+        arms[1].Result.Should().BeOfType<MatchExpression>()
+            .Which.Arms.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void NestedMatchExpressionInMiddleArm_LeavesFollowingArmsIntact()
+    {
+        var module = Parse(
+            "code: int = 2\n"
+            + "other: int = 1\n"
+            + "v: int = match code:\n"
+            + "    case 1: match other:\n"
+            + "        case 1: 7\n"
+            + "        case _: 8\n"
+            + "    case 2: 200\n"
+            + "    case _: 0\n");
+
+        var arms = module.Body[2].Should().BeOfType<VariableDeclaration>()
+            .Which.InitialValue.Should().BeOfType<MatchExpression>().Subject.Arms;
+
+        arms.Should().HaveCount(3, "the nested match must not swallow the following arms");
+        arms[0].Result.Should().BeOfType<MatchExpression>()
+            .Which.Arms.Should().HaveCount(2);
+        arms[1].Result.Should().BeOfType<IntegerLiteral>();
+        arms[2].Result.Should().BeOfType<IntegerLiteral>();
+    }
+
+    [Fact]
+    public void FlatArmMissingItsNewline_StillErrors()
+    {
+        // The added tolerance keys on a just-consumed DEDENT, so a genuinely run-together arm list
+        // must still be rejected.
+        var source = "v: int = match 1:\n"
+            + "    case 1: 5 case 2: 6\n";
+
+        var parser = new ParserNs.Parser(new LexerNs.Lexer(source).TokenizeAll());
+        parser.ParseModule();
+
+        parser.Diagnostics.GetErrors().Select(d => d.Message)
+            .Should().Contain(m => m.Contains("Expected end of statement"),
+                "`case 2` on the same line as the first arm's result is not a valid arm terminator");
+    }
 }
