@@ -111,7 +111,8 @@ public class MetamorphicHarnessTests
 
     /// <summary>
     /// <c>print(a, b)</c> prints two space-separated values; <c>print((a, b))</c> prints a tuple.
-    /// Wrapping here would change the program's OUTPUT, so the transform must decline.
+    /// Wrapping the ARGUMENT here would change the program's OUTPUT, so the transform must decline —
+    /// the statement itself is still wrappable, which is why this asserts on the argument position.
     /// </summary>
     [Theory]
     [InlineData("def main():\n    print(1, 2)\n")]
@@ -119,7 +120,50 @@ public class MetamorphicHarnessTests
     [InlineData("def main():\n    xs: list[int] = [1]\n    print(*xs)\n")]
     public void ParensWrap_DeclinesAnythingButOnePositionalArgument(string source)
     {
+        Assert.DoesNotContain("print((", new ParensWrapTransform().Apply(source), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The statement position is the #1197 site: a parenthesized void call as a statement used to
+    /// reach the emitter's discard arm and produce <c>_ = (print(1));</c>.
+    /// </summary>
+    [Fact]
+    public void ParensWrap_WrapsWholeExpressionStatements()
+    {
+        var result = new ParensWrapTransform().Apply(
+            "def main():\n    print(1)\n    obj.method(2)\n    helper()\n");
+
+        Assert.Contains("(print((1)))", result, StringComparison.Ordinal);
+        Assert.Contains("(obj.method(2))", result, StringComparison.Ordinal);
+        Assert.Contains("(helper())", result, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Wrapping is pure grouping only around a bare expression statement. An assignment, an
+    /// annotation, a bare tuple, a block header and every keyword-led form either change meaning or
+    /// stop parsing when wrapped; <c>...</c> is the body-less member marker, matched at the member
+    /// seam rather than the statement seam.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    x = f()\n")]
+    [InlineData("def main():\n    x: int = 1\n")]
+    [InlineData("def main():\n    x += 1\n")]
+    [InlineData("def main():\n    return f()\n")]
+    [InlineData("def main():\n    del xs\n")]
+    [InlineData("def main():\n    a, b = 1, 2\n")]
+    [InlineData("class C:\n    def m(self) -> int:\n        ...\n")]
+    [InlineData("@decorator\ndef main():\n    pass\n")]
+    public void ParensWrap_DeclinesNonExpressionStatements(string source)
+    {
         Assert.Equal(source, new ParensWrapTransform().Apply(source));
+    }
+
+    /// <summary>A trailing comment must stay outside the added parentheses.</summary>
+    [Fact]
+    public void ParensWrap_KeepsTrailingCommentsOutsideTheWrap()
+    {
+        var result = new ParensWrapTransform().Apply("def main():\n    helper()  # note\n");
+        Assert.Contains("(helper())  # note", result, StringComparison.Ordinal);
     }
 
     [Fact]
