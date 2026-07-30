@@ -101,6 +101,24 @@ public sealed record GenericReference
     /// value arguments against this signature (#1148).
     /// </summary>
     public FunctionSymbol? SelectedOverload { get; init; }
+
+    /// <summary>
+    /// The reference's result type once the type-argument vector closes it. Only
+    /// <see cref="GenericReferenceKind.BclExtensionMethod"/> sets it — no <see cref="FunctionSymbol"/>
+    /// exists for that kind, so the closed <c>MethodInfo</c>'s return type mapped back to a Sharpy
+    /// type IS the signature (#1195). It is the reference's expression type, which is what lets
+    /// <c>list(lst.select[str](f))</c> know what it is wrapping.
+    /// </summary>
+    public SemanticType? ClosedReturnType { get; init; }
+
+    /// <summary>
+    /// The closed method's VALUE parameter types, receiver (<c>this</c>) parameter dropped, in
+    /// declaration order — the expected types the call's arguments are checked against, so the lambda
+    /// in <c>lst.select[str](f)</c> is compared with <c>Func&lt;int, str&gt;</c> instead of reaching
+    /// Roslyn as CS0029 (#1195, the #1148 contract for this kind). Set alongside
+    /// <see cref="ClosedReturnType"/>.
+    /// </summary>
+    public IReadOnlyList<SemanticType>? ClosedParameterTypes { get; init; }
 }
 
 internal partial class TypeChecker
@@ -351,8 +369,11 @@ internal partial class TypeChecker
                 // PART of the C# vector (Select<TSource, TResult> also needs the element type), so the
                 // name-only channel emitted lst.Select[string](…) — CS0021 behind SPY0908. Resolving it
                 // here computes the whole vector, so codegen can spell the call.
-                if (TryResolveBclExtensionMethod(indexAccess, memberAccessObj, ownerType))
+                if (TryResolveBclExtensionMethod(indexAccess, memberAccessObj, ownerType, out var extensionType))
+                {
+                    resultType = extensionType;
                     return true;
+                }
 
                 // No generic method by that name — and when CLR reflection can PROVE the member does
                 // not exist on the receiver at all (no member under any mangling candidate, no reachable
@@ -413,14 +434,17 @@ internal partial class TypeChecker
     /// permissive interop channel and the #1141 absence proof to run unchanged.
     /// </summary>
     /// <remarks>
-    /// The reference type is <see cref="SemanticType.Unknown"/> — deliberately the same permissive
-    /// typing the no-type-args spelling has today (<c>x: int = lst.select(f)</c> reports nothing), so
-    /// the two spellings of one call agree. Typing the result from the closed CLR return type would be
-    /// strictly better for both, and belongs to a change that does both at once.
+    /// A resolved reference is typed from the CLOSED method's return type, and its value parameters
+    /// come along in the fact (#1195): the vector that makes the call spellable also makes its
+    /// signature knowable, so <c>list(lst.select[str](f))</c> knows what it wraps and the lambda is
+    /// checked against <c>Func&lt;int, str&gt;</c> rather than reaching Roslyn as CS0029.
     /// </remarks>
     private bool TryResolveBclExtensionMethod(
-        IndexAccess indexAccess, MemberAccess memberAccess, SemanticType ownerType)
+        IndexAccess indexAccess, MemberAccess memberAccess, SemanticType ownerType,
+        out SemanticType resultType)
     {
+        resultType = SemanticType.Unknown;
+
         if (!Discovery.ClrExtensionMethodResolver.IsOnAcceptanceSurface(memberAccess.Member))
             return false;
 
@@ -475,6 +499,16 @@ internal partial class TypeChecker
             return true;
         }
 
+        // The vector that makes the call spellable also closes its signature, so the reference is
+        // typed from the closed return type rather than left Unknown, and the value parameters (the
+        // `this` receiver dropped) travel in the fact for the call site to check against (#1195).
+        var closedParameters = resolution.ClosedMethod.GetParameters();
+        var closedParameterTypes = new List<SemanticType>(Math.Max(0, closedParameters.Length - 1));
+        for (int i = 1; i < closedParameters.Length; i++)
+            closedParameterTypes.Add(_clrTypeBridge.Value.MapClrTypeToSemanticType(closedParameters[i].ParameterType));
+
+        var closedReturnType = _clrTypeBridge.Value.MapClrTypeToSemanticType(resolution.ClosedMethod.ReturnType);
+
         _semanticInfo.SetGenericReference(indexAccess, new GenericReference
         {
             Kind = GenericReferenceKind.BclExtensionMethod,
@@ -482,7 +516,10 @@ internal partial class TypeChecker
             TypeArgs = typeArgs,
             LoweredTypeArgs = loweredTypeArgs,
             ClrMemberName = resolution.ClrMethodName,
+            ClosedReturnType = closedReturnType,
+            ClosedParameterTypes = closedParameterTypes,
         });
+        resultType = closedReturnType;
         return true;
     }
 

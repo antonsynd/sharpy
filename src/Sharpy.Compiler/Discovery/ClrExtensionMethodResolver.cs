@@ -45,10 +45,13 @@ namespace Sharpy.Compiler.Discovery;
 internal static class ClrExtensionMethodResolver
 {
     /// <summary>
-    /// A resolved extension-method reference: the CLR method name to emit and the complete closed
-    /// type-argument vector (receiver-inferred and written arguments, in declaration order).
+    /// A resolved extension-method reference: the CLR method name to emit, the complete closed
+    /// type-argument vector (receiver-inferred and written arguments, in declaration order), and the
+    /// closed <see cref="MethodInfo"/> itself, whose return and parameter types are the signature the
+    /// call is checked against once the vector is known (#1195).
     /// </summary>
-    internal sealed record Resolution(string ClrMethodName, IReadOnlyList<Type> TypeArguments);
+    internal sealed record Resolution(
+        string ClrMethodName, IReadOnlyList<Type> TypeArguments, MethodInfo ClosedMethod);
 
     /// <summary>The acceptance surface for #1163. Widening this is a deliberate, separate decision.</summary>
     private static readonly Type[] SurfaceTypes = { typeof(System.Linq.Enumerable) };
@@ -124,11 +127,11 @@ internal static class ClrExtensionMethodResolver
         Resolution? resolved = null;
         foreach (var candidate in candidates)
         {
-            var vector = TryCloseCandidate(candidate, receiverType, explicitTypeArgs);
-            if (vector == null)
+            var closed = TryCloseCandidate(candidate, receiverType, explicitTypeArgs);
+            if (closed == null)
                 continue;
 
-            var next = new Resolution(candidate.Name, vector);
+            var next = new Resolution(candidate.Name, closed.GetGenericArguments(), closed);
             if (resolved == null)
             {
                 resolved = next;
@@ -154,10 +157,11 @@ internal static class ClrExtensionMethodResolver
     /// Closes one candidate: binds its type parameters from the receiver, assigns the written
     /// arguments to whatever the receiver left unbound (or, when the written arguments cover every
     /// type parameter, positionally with the receiver binding as a consistency check), and verifies
-    /// the result against the method's constraints. Returns null when the candidate cannot account
-    /// for the written arguments.
+    /// the result against the method's constraints. Returns the CLOSED method — its generic arguments
+    /// are the vector, its return and parameter types the signature the call is checked against
+    /// (#1195) — or null when the candidate cannot account for the written arguments.
     /// </summary>
-    private static IReadOnlyList<Type>? TryCloseCandidate(
+    private static MethodInfo? TryCloseCandidate(
         MethodInfo candidate, Type receiverType, IReadOnlyList<Type> explicitTypeArgs)
     {
         var typeParams = candidate.GetGenericArguments();
@@ -202,14 +206,12 @@ internal static class ClrExtensionMethodResolver
         {
             // Rejects constraint violations (and any residual open type parameter) up front, so a
             // vector that cannot exist never reaches the emitter as valid-looking C#.
-            candidate.MakeGenericMethod(vector);
+            return candidate.MakeGenericMethod(vector);
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
         {
             return null;
         }
-
-        return vector;
     }
 
     /// <summary>
