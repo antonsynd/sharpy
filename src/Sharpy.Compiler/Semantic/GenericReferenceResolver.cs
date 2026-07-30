@@ -33,6 +33,9 @@ public enum GenericReferenceKind
     /// <summary>A generic type reference, e.g. <c>Box[int]</c>.</summary>
     GenericTypeRef,
 
+    /// <summary>A generic nested type reference, e.g. <c>Outer.Inner[int]</c> (#1164).</summary>
+    NestedTypeRef,
+
     /// <summary>An array type reference, e.g. <c>array[int]</c>.</summary>
     ArrayTypeRef,
 }
@@ -84,8 +87,12 @@ internal partial class TypeChecker
     /// per-arm code recorded before. Returns <c>true</c> when the index access IS a generic reference —
     /// either resolved cleanly (<paramref name="resultType"/> is the reference type) or rejected with a
     /// deliberate arity diagnostic (<paramref name="resultType"/> is <see cref="SemanticType.Unknown"/>).
-    /// Returns <c>false</c> for ordinary value indexing, having recorded nothing and emitted no
-    /// diagnostic, so <see cref="CheckIndexAccessCore"/> proceeds to the value-indexing path.
+    /// Returns <c>false</c> for ordinary value indexing, having emitted no diagnostic, so
+    /// <see cref="CheckIndexAccessCore"/> proceeds to the value-indexing path. One shape records a
+    /// fact and still returns <c>false</c>: a nested generic type reference
+    /// (<see cref="GenericReferenceKind.NestedTypeRef"/>, #1164) is materialized for codegen while
+    /// its type-checking stays on the pre-existing path — see
+    /// <see cref="RecordNestedGenericTypeRef"/>.
     /// </summary>
     /// <remarks>
     /// Because every cell here references a generic callable, <c>[...]</c> is always explicit type
@@ -320,10 +327,58 @@ internal partial class TypeChecker
                     return true;
                 }
             }
+
+            // Outer.Inner[int](42) — a nested generic type reference. Its qualifier is a TYPE, so
+            // CheckExpression above produced the intentional Unknown that a non-primitive TypeSymbol
+            // reference gets and none of the arms above apply. This arm only MATERIALIZES the callee
+            // shape the emitter used to re-derive with its own symbol-table walk (#1164): it records
+            // the fact and then DECLINES, leaving the reference with exactly the type and diagnostics
+            // it had before — the access itself is typed by the value-indexing path in
+            // CheckIndexAccessCore and the enclosing construction by CheckCall, both untouched.
+            RecordNestedGenericTypeRef(indexAccess, memberAccessObj);
         }
 
         return false;
     }
+
+    /// <summary>
+    /// Records the <see cref="GenericReferenceKind.NestedTypeRef"/> fact for a nested generic type
+    /// reference (<c>Outer.Inner[int]</c>, <c>A.B.C[int]</c>), resolving the nested
+    /// <see cref="TypeSymbol"/> by walking the member-access chain through the symbol table — the
+    /// walk the emitter did at emit time before #1164. Gated exactly as that emitter arm was (a
+    /// nested type that exists and is generic), so the fact is present for precisely the shapes the
+    /// deleted arm lowered.
+    /// </summary>
+    private void RecordNestedGenericTypeRef(IndexAccess indexAccess, MemberAccess memberAccess)
+    {
+        if (LookupNestedTypeSymbol(memberAccess) is not { IsGeneric: true } nestedTypeSymbol)
+            return;
+
+        // Only once a generic nested type is proven is `[...]` known to be type arguments, so
+        // resolving the index as types here cannot emit a spurious "type not found" (#1136 lesson).
+        if (TryResolveTypeArguments(indexAccess.Index) is not { } typeArgs)
+            return;
+
+        _semanticInfo.SetGenericReference(indexAccess, new GenericReference
+        {
+            Kind = GenericReferenceKind.NestedTypeRef,
+            TargetSymbol = nestedTypeSymbol,
+            TypeArgs = typeArgs,
+        });
+    }
+
+    /// <summary>
+    /// Resolves <c>Outer.Inner</c> / <c>A.B.C</c> to the nested <see cref="TypeSymbol"/> it names, or
+    /// <c>null</c> when the qualifier is not a type or declares no such nested type.
+    /// </summary>
+    private TypeSymbol? LookupNestedTypeSymbol(MemberAccess memberAccess) => memberAccess.Object switch
+    {
+        Identifier outer => (_symbolTable.Lookup(outer.Name) as TypeSymbol)
+            ?.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member),
+        MemberAccess inner => LookupNestedTypeSymbol(inner)
+            ?.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member),
+        _ => null,
+    };
 
     /// <summary>
     /// The single arity-check seam for generic references (#1004, generalized). Emits the deliberate
