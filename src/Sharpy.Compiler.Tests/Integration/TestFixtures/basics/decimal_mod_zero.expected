@@ -1,0 +1,12 @@
+decimal modulo by zero
+caught variable zero
+caught augmented zero
+42
+caught mixed int zero
+caught as ArithmeticError
+ZeroDivisionError did not catch; InvalidOperation did
+floordiv still ZeroDivisionError
+1
+-1
+1
+0

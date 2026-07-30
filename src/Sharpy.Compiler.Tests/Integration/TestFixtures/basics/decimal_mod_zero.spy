@@ -1,0 +1,79 @@
+# Decimal `%` by a zero divisor raises InvalidOperation (#1189), mirroring CPython:
+# `Decimal(7) % Decimal(0)` raises decimal.InvalidOperation, NOT ZeroDivisionError.
+# Sharpy's InvalidOperation sits directly under ArithmeticError (CPython interposes a
+# DecimalException layer that Sharpy deliberately omits), so it is a SIBLING of
+# ZeroDivisionError — the negative control below pins that.
+#
+# Before this, a literal `0m` divisor was a C# compile error (CS0020, surfaced as the
+# SPY0908 internal error) and a variable zero divisor escaped as a raw CLR
+# DivideByZeroException that no Sharpy handler could catch.
+#
+# Sharpy-only semantics: decimal literals have no CPython source form, so this fixture
+# is not eligible for differential execution against python3 — the values below were
+# derived from python3's `decimal` module by hand.
+def main() -> None:
+    # Literal zero divisor. The lowering calls decimal.Remainder rather than the `%`
+    # operator precisely so a constant zero cannot become CS0020 in the guarded arm.
+    try:
+        print(7m % 0m)
+        print("ERROR: should not reach here")
+    except InvalidOperation as e:
+        print(e.message)
+
+    # Variable zero divisor — the runtime-escape half of #1189.
+    zero: decimal = 0m
+    try:
+        print(7m % zero)
+        print("ERROR: should not reach here")
+    except InvalidOperation:
+        print("caught variable zero")
+
+    # Augmented %= shares the binary %'s routing wrapper.
+    a: decimal = 42m
+    try:
+        a %= 0m
+        print("ERROR: should not reach here")
+    except InvalidOperation:
+        print("caught augmented zero")
+    print(a)                # 42 (unchanged)
+
+    # Mixed decimal/int operands (#1188) reach the same guard.
+    izero: int = 0
+    try:
+        print(7m % izero)
+        print("ERROR: should not reach here")
+    except InvalidOperation:
+        print("caught mixed int zero")
+
+    # Hierarchy: InvalidOperation is an ArithmeticError, as in CPython.
+    try:
+        print(7m % 0m)
+        print("ERROR: should not reach here")
+    except ArithmeticError:
+        print("caught as ArithmeticError")
+
+    # Negative control: `except ZeroDivisionError` must NOT catch it. The inner handler
+    # is skipped and the outer InvalidOperation handler fires instead.
+    try:
+        try:
+            print(7m % 0m)
+            print("ERROR: should not reach here")
+        except ZeroDivisionError:
+            print("ERROR: ZeroDivisionError must not catch InvalidOperation")
+    except InvalidOperation:
+        print("ZeroDivisionError did not catch; InvalidOperation did")
+
+    # Decimal `//` by zero keeps ZeroDivisionError — CPython's decimal.DivisionByZero
+    # IS a ZeroDivisionError subclass, so that surface is already parity-correct.
+    try:
+        print(7m // 0m)
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("floordiv still ZeroDivisionError")
+
+    # Nonzero divisors are unchanged by the rewrite: native truncating remainder with
+    # the sign of the DIVIDEND (decimal.Remainder is exactly what op_Modulus invokes).
+    print(7m % 3)           # 1   (mixed int divisor)
+    print(-7m % 3m)         # -1  (int -7 % 3 is 2; decimal is native)
+    print(7m % -3m)         # 1
+    print(0m % 3m)          # 0   (zero DIVIDEND never trips the guard)
