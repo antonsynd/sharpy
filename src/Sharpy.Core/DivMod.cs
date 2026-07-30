@@ -1,4 +1,3 @@
-using System;
 namespace Sharpy
 {
     public static partial class Builtins
@@ -10,7 +9,7 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
-        /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
+        /// <exception cref="ZeroDivisionError">Thrown when <paramref name="y"/> is zero</exception>
         /// <example>
         /// <code>
         /// divmod(7, 2)     # (3, 1)
@@ -20,19 +19,22 @@ namespace Sharpy
         /// </example>
         public static (int, int) Divmod(int x, int y)
         {
+            // Guard before delegating so divmod's message wins over FloorMod's.
             if (y == 0)
             {
-                throw new DivideByZeroException("integer division or modulo by zero");
+                throw new ZeroDivisionError("integer division or modulo by zero");
             }
 
-            var quotient = x / y;
-            var remainder = x % y;
+            var remainder = FloorMod(x, y);
 
-            // Adjust for floored division: if remainder is non-zero and signs differ, adjust quotient and remainder
+            // C# `/` truncates toward zero while floored division rounds down, so the quotient
+            // drops by one exactly when the division is inexact and the operand signs differ.
+            // Computed from `x / y` rather than `(x - remainder) / y` because the latter
+            // overflows for dividends near int.MinValue.
+            var quotient = x / y;
             if (remainder != 0 && ((x < 0) != (y < 0)))
             {
                 quotient--;
-                remainder += y;
             }
 
             return (quotient, remainder);
@@ -45,22 +47,21 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
-        /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
+        /// <exception cref="ZeroDivisionError">Thrown when <paramref name="y"/> is zero</exception>
         public static (long, long) Divmod(long x, long y)
         {
+            // Guard before delegating so divmod's message wins over FloorMod's.
             if (y == 0)
             {
-                throw new DivideByZeroException("integer division or modulo by zero");
+                throw new ZeroDivisionError("integer division or modulo by zero");
             }
 
-            var quotient = x / y;
-            var remainder = x % y;
+            var remainder = FloorMod(x, y);
 
-            // Adjust for floored division: if remainder is non-zero and signs differ, adjust quotient and remainder
+            var quotient = x / y;
             if (remainder != 0 && ((x < 0) != (y < 0)))
             {
                 quotient--;
-                remainder += y;
             }
 
             return (quotient, remainder);
@@ -73,17 +74,34 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
-        /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
+        /// <exception cref="ZeroDivisionError">Thrown when <paramref name="y"/> is zero</exception>
         public static (double, double) Divmod(double x, double y)
         {
-            const double epsilon = 1e-10;
-            if (System.Math.Abs(y) < epsilon)
+            // Python raises only for an exact zero divisor -- a tiny-but-nonzero divisor computes.
+            // The guard runs before delegating so divmod's message wins over FloorMod's.
+            if (y == 0.0)
             {
-                throw new DivideByZeroException("float division or modulo by zero");
+                throw new ZeroDivisionError("float divmod()");
             }
 
-            var quotient = System.Math.Floor(x / y);
-            var remainder = x - quotient * y;
+            var remainder = FloorMod(x, y);
+
+            // Mirrors CPython's float_divmod: the quotient comes from the raw (sign-of-dividend)
+            // remainder, which keeps the division exact, then snaps to the nearest integral value.
+            // Math.Floor(x / y) is not equivalent -- divmod(1.0, 0.1) is (9.0, 0.1), not (10.0, 0.1).
+            var raw = x % y;
+            var div = (x - raw) / y;
+            if (raw != 0.0 && ((raw < 0.0) != (y < 0.0)))
+            {
+                div -= 1.0;
+            }
+
+            var quotient = System.Math.Floor(div);
+            if (div - quotient > 0.5)
+            {
+                quotient += 1.0;
+            }
+
             return (quotient, remainder);
         }
 
@@ -94,17 +112,29 @@ namespace Sharpy
         /// <param name="x">The dividend</param>
         /// <param name="y">The divisor</param>
         /// <returns>A tuple of (quotient, remainder)</returns>
-        /// <exception cref="DivideByZeroException">Thrown when <paramref name="y"/> is zero</exception>
+        /// <exception cref="ZeroDivisionError">Thrown when <paramref name="y"/> is zero</exception>
         public static (float, float) Divmod(float x, float y)
         {
-            const float epsilon = 1e-7f;
-            if (System.Math.Abs(y) < epsilon)
+            if (y == 0.0f)
             {
-                throw new DivideByZeroException("float division or modulo by zero");
+                throw new ZeroDivisionError("float divmod()");
             }
 
-            var quotient = (float)System.Math.Floor(x / y);
-            var remainder = x - quotient * y;
+            var remainder = FloorMod(x, y);
+
+            var raw = x % y;
+            var div = (x - raw) / y;
+            if (raw != 0.0f && ((raw < 0.0f) != (y < 0.0f)))
+            {
+                div -= 1.0f;
+            }
+
+            var quotient = (float)System.Math.Floor(div);
+            if (div - quotient > 0.5f)
+            {
+                quotient += 1.0f;
+            }
+
             return (quotient, remainder);
         }
     }
