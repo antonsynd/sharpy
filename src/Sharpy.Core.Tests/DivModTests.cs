@@ -78,6 +78,7 @@ public class Divmod_Tests
     [Theory]
     [InlineData(1e-11)]
     [InlineData(-1e-11)]
+    [InlineData(1e-300)]
     [InlineData(double.Epsilon)]
     public void Divmod_TinyNonZeroDivisor_Computes(double y)
     {
