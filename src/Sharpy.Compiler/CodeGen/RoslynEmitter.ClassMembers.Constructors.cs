@@ -69,9 +69,12 @@ internal partial class RoslynEmitter
 
         for (int i = 0; i < func.Body.Length; i++)
         {
+            // Matched against the canonical (paren-stripped) callee, as GenerateCall does (#1147,
+            // #1170): `(self.__init__)(x)` is the same initializer call as `self.__init__(x)`, and
+            // missing it here would emit a `self.Constructor(...)` member invocation instead.
             if (func.Body[i] is ExpressionStatement es &&
                 es.Expression is FunctionCall initCall &&
-                initCall.Function is MemberAccess ma &&
+                Shared.AstHelper.UnwrapParenthesized(initCall.Function) is MemberAccess ma &&
                 ma.Member == DunderNames.Init)
             {
                 if (ma.Object is SuperExpression)

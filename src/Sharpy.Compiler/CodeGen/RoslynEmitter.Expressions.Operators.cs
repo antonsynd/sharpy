@@ -482,6 +482,11 @@ internal partial class RoslynEmitter
     {
         var left = GenerateExpression(leftExpr);
 
+        // A pipe target is a callee, so it unwraps like one — the same purely structural
+        // normalization GenerateCall applies (#1147, #1170). Without it a parenthesized target
+        // reaches GenerateExpression and emits `(Double)(...)`, which C# re-parses as a cast.
+        rightExpr = Shared.AstHelper.UnwrapParenthesized(rightExpr);
+
         // Case 1: Right side is already a function call - prepend left to its arguments
         // x |> f(y, z) → f(x, y, z)
         if (rightExpr is FunctionCall funcCall)
@@ -491,7 +496,8 @@ internal partial class RoslynEmitter
 
             // Resolve the callee's FunctionSymbol for parameter reordering
             var pipeFuncSymbol = _context.SemanticInfo?.GetCallTarget(funcCall);
-            if (pipeFuncSymbol == null && funcCall.Function is Identifier pipeFuncId)
+            if (pipeFuncSymbol == null
+                && Shared.AstHelper.UnwrapParenthesized(funcCall.Function) is Identifier pipeFuncId)
                 pipeFuncSymbol = _context.LookupSymbol(pipeFuncId.Name) as FunctionSymbol;
 
             // Delegate to shared call-site reordering with the piped value prepended
@@ -543,6 +549,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GeneratePipeCallTarget(Expression expr)
     {
+        expr = Shared.AstHelper.UnwrapParenthesized(expr);
+
         if (expr is Identifier funcName)
         {
             // User-defined functions shadow builtins (Python scoping rules)

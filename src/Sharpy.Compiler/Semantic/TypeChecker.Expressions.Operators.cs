@@ -327,9 +327,16 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // The pipe target is a callee, so it normalizes like one: `x |> (f)` and `x |> (f)(y)`
+        // resolve exactly as their unparenthesized forms (#1170). Without this a parenthesized
+        // target missed the symbol-resolution arms below and fell through to "whatever the
+        // expression evaluates to" — which silently reinterpreted `x |> (double)` as a conversion
+        // to the `double` primitive instead of a call to a user function named `double`.
+        var target = UnwrapParenthesized(binOp.Right);
+
         // Case 1: x |> f(y, z) - right side is already a function call
         // We need to re-validate with x prepended to arguments
-        if (binOp.Right is FunctionCall funcCall)
+        if (target is FunctionCall funcCall)
         {
             return CheckPipeForwardWithFunctionCall(leftType, funcCall, binOp);
         }
@@ -338,7 +345,7 @@ internal partial class TypeChecker
         // Pre-check: if right side is an identifier that resolves to a TypeSymbol, emit the
         // constructor-pipe error immediately. CheckExpression returns UnknownType for non-primitive
         // TypeSymbols, which would hide this case behind a silent early return.
-        if (binOp.Right is Identifier preId)
+        if (target is Identifier preId)
         {
             var preSymbol = _symbolTable.Lookup(preId.Name);
             if (preSymbol is TypeSymbol)
@@ -381,7 +388,7 @@ internal partial class TypeChecker
         }
 
         // If right side is an identifier, look up the function symbol
-        if (binOp.Right is Identifier id)
+        if (target is Identifier id)
         {
             var symbol = _symbolTable.Lookup(id.Name);
 
@@ -449,7 +456,8 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType CheckPipeForwardWithFunctionCall(SemanticType pipedType, FunctionCall call, BinaryOp binOp)
     {
-        // Get the function being called
+        // Get the function being called, dispatching on the canonical (paren-stripped) callee (#1170)
+        var callee = UnwrapParenthesized(call.Function);
         var calleeType = CheckExpression(call.Function);
 
         // Collect existing argument types
@@ -474,7 +482,7 @@ internal partial class TypeChecker
         var totalArgCount = allArgTypes.Count + kwargTypes.Count;
 
         // Try to resolve the function symbol for better validation
-        if (call.Function is Identifier id)
+        if (callee is Identifier id)
         {
             var symbol = _symbolTable.Lookup(id.Name);
 

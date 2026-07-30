@@ -246,14 +246,10 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             // Set literal {1, 2, 3}
             SetLiteral => true,
 
-            // Function call to set() - set constructor
-            FunctionCall call when call.Function is Identifier id && id.Name == BuiltinNames.Set => true,
-
-            // Function call to list() - list constructor
-            FunctionCall call when call.Function is Identifier id && id.Name == BuiltinNames.List => true,
-
-            // Function call to dict() - dict constructor
-            FunctionCall call when call.Function is Identifier id && id.Name == BuiltinNames.Dict => true,
+            // Function call to set()/list()/dict() - collection constructors. Matched against the
+            // canonical (paren-stripped) callee so `(list)()` is as mutable as `list()` (#1170).
+            FunctionCall call when AstHelper.UnwrapParenthesized(call.Function)
+                is Identifier { Name: BuiltinNames.Set or BuiltinNames.List or BuiltinNames.Dict } => true,
 
             // Parenthesized expression - check inner expression
             Parenthesized paren => IsMutableDefault(paren.Expression),
@@ -304,13 +300,14 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             // Identifiers referencing const declarations are compile-time constants
             Identifier id => IsConstReference(id),
 
-            // None() is a compile-time constant (empty Optional)
-            FunctionCall call when call.Function is NoneLiteral
+            // None() is a compile-time constant (empty Optional). Matched against the canonical
+            // (paren-stripped) callee, like every other callee-shape test (#1170).
+            FunctionCall call when AstHelper.UnwrapParenthesized(call.Function) is NoneLiteral
                 && call.Arguments.Length == 0
                 => true,
 
             // Some(const), Ok(const), Err(const) are compile-time constants
-            FunctionCall call when call.Function is Identifier fid
+            FunctionCall call when AstHelper.UnwrapParenthesized(call.Function) is Identifier fid
                 && fid.Name is "Some" or "Ok" or "Err"
                 && call.Arguments.Length == 1
                 => IsCompileTimeConstant(call.Arguments[0]),

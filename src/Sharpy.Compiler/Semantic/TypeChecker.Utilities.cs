@@ -764,7 +764,7 @@ internal partial class TypeChecker
     {
         return target switch
         {
-            FunctionCall call => call.Function is Identifier id ? $"function call '{id.Name}()'" : "function call result",
+            FunctionCall call => UnwrapParenthesized(call.Function) is Identifier id ? $"function call '{id.Name}()'" : "function call result",
             IntegerLiteral => "integer literal",
             FloatLiteral => "float literal",
             StringLiteral => "string literal",

@@ -207,7 +207,7 @@ internal class ProtocolValidator : ValidatingAstWalker
     private void ValidateFunctionCall(FunctionCall call)
     {
         // Check for len() calls
-        if (call.Function is Identifier id && id.Name == "len" && call.Arguments.Length == 1)
+        if (AstHelper.UnwrapParenthesized(call.Function) is Identifier id && id.Name == "len" && call.Arguments.Length == 1)
         {
             var argType = Context.SemanticInfo.GetExpressionType(call.Arguments[0]);
             if (argType == null || argType is UnknownType)

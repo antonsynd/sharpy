@@ -37,7 +37,11 @@ internal class DunderInvocationValidator : ValidatingAstWalker
 
     public override void VisitFunctionCall(FunctionCall node)
     {
-        if (node.Function is MemberAccess memberAccess
+        // Matched against the canonical (paren-stripped) callee: `(self.__len__)()` is an immediate
+        // call, so the parentheses must not turn it into a capture (#1170). Skipping the base
+        // traversal below means the wrapper is never visited, so VisitMemberAccess — which reports
+        // the capture — never sees an immediate call target either way.
+        if (AstHelper.UnwrapParenthesized(node.Function) is MemberAccess memberAccess
             && DunderDetector.IsDunderMethod(memberAccess.Member)
             && !DunderDetector.IsDunderProperty(memberAccess.Member))
         {

@@ -149,7 +149,7 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     /// </summary>
     private bool IsBuiltinLenCall(FunctionCall call)
     {
-        if (call.Function is not Identifier id || id.Name != "len")
+        if (AstHelper.UnwrapParenthesized(call.Function) is not Identifier id || id.Name != "len")
             return false;
 
         var target = Context.SemanticInfo.GetCallTarget(call);
@@ -252,7 +252,7 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
         // because the call typically fails to resolve a target (no overload accepts
         // a tuple), so SemanticInfo.GetCallTarget would return null and a strict
         // builtin-resolution check would suppress the hint exactly when it's needed.
-        if (node.Function is not Identifier id || id.Name != BuiltinNames.Isinstance)
+        if (AstHelper.UnwrapParenthesized(node.Function) is not Identifier id || id.Name != BuiltinNames.Isinstance)
             return;
 
         // Skip if the user has shadowed `isinstance` with their own non-builtin

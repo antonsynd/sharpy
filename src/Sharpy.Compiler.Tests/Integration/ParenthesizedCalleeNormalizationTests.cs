@@ -174,4 +174,150 @@ def main() -> None:
     print(add_five(3))
 ", "8\n");
     }
+
+    [Fact]
+    public void ParenthesizedDunderCallee_IsStillAnImmediateCall()
+    {
+        // SPY0429 rejects capturing a dunder reference; the parentheses used to hide the fact that
+        // this one is invoked immediately.
+        AssertOutput(@"
+class Ordered:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __hash__(self) -> int:
+        return self.value
+
+    def __lt__(self, other: Ordered) -> bool:
+        return self.value < other.value
+
+    def __gt__(self, other: Ordered) -> bool:
+        return self.value > other.value
+
+    def __le__(self, other: Ordered) -> bool:
+        return (self.__lt__)(other) or (self.__eq__)(other)
+
+    def __ge__(self, other: Ordered) -> bool:
+        return (self.__gt__)(other) or (self.__eq__)(other)
+
+def main():
+    print(Ordered(1) <= Ordered(2))
+    print(Ordered(2) <= Ordered(1))
+", "True\nFalse\n");
+    }
+
+    [Fact]
+    public void CapturedDunderReference_IsStillRejected()
+    {
+        // The negative half of the contract: normalization must not weaken SPY0429 for a genuine
+        // capture.
+        var result = CompileAndExecute(@"
+class Box:
+    n: int
+
+    def __init__(self, n: int):
+        self.n = n
+
+    def __len__(self) -> int:
+        return self.n
+
+    def bad(self) -> int:
+        f = self.__len__
+        return f()
+
+def main() -> None:
+    print(Box(4).bad())
+");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors, e => e.Contains("Cannot capture dunder method reference"));
+    }
+
+    [Fact]
+    public void ParenthesizedSelfInitCallee_LowersToConstructorDelegation()
+    {
+        AssertOutput(@"
+class Point:
+    x: int
+    y: int
+    z: int
+
+    def __init__(self, x: int, y: int, z: int):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def __init__(self, x: int, y: int):
+        (self.__init__)(x, y, 0)
+
+def main():
+    p = Point(4, 5)
+    print(p.x, p.y, p.z)
+", "4 5 0\n");
+    }
+
+    [Fact]
+    public void ParenthesizedSuperInitCallee_LowersToBaseConstructorCall()
+    {
+        AssertOutput(@"
+class Base:
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+class Derived(Base):
+    w: int
+
+    def __init__(self, v: int):
+        (super().__init__)(v)
+        self.w = v * 2
+
+def main() -> None:
+    d = Derived(3)
+    print(d.v)
+    print(d.w)
+", "3\n6\n");
+    }
+
+    [Fact]
+    public void ParenthesizedPipeTarget_ResolvesTheUserFunction()
+    {
+        // A pipe target is a callee too. `(triple)` used to be read as whatever the parenthesized
+        // expression evaluated to, so a target sharing a name with a primitive silently became a
+        // conversion; `(double)()` emitted a C# cast.
+        AssertOutput(@"
+def triple(x: int) -> int:
+    return x * 3
+
+def add_one(x: int) -> int:
+    return x + 1
+
+def main():
+    print(5 |> (triple))
+    print(5 |> (triple)() |> (add_one)())
+", "15\n16\n");
+    }
+
+    [Fact]
+    public void ParenthesizedMutableDefault_IsStillRejected()
+    {
+        // Callee-shape dispatch in the validators normalizes too: `(list)()` is as mutable a
+        // default as `list()`.
+        var result = CompileAndExecute(@"
+def f(items: list[int] = (list)()) -> int:
+    return len(items)
+
+def main() -> None:
+    print(f())
+");
+
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors, e => e.Contains("Mutable default value is not allowed"));
+    }
 }

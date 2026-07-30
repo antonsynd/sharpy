@@ -741,7 +741,7 @@ internal partial class TypeChecker
     private bool RangeYieldsNonNegativeInts(Expression iterator)
     {
         if (iterator is not FunctionCall call
-            || call.Function is not Identifier { Name: BuiltinNames.Range }
+            || UnwrapParenthesized(call.Function) is not Identifier { Name: BuiltinNames.Range }
             || !call.KeywordArguments.IsEmpty
             || !ResolvesToBuiltinRange())
         {
@@ -1252,7 +1252,7 @@ internal partial class TypeChecker
 
     private static bool IsAssertRaisesExpression(Expression expr)
     {
-        return expr is FunctionCall call && call.Function switch
+        return expr is FunctionCall call && UnwrapParenthesized(call.Function) switch
         {
             Identifier { Name: "assert_raises" } => true,
             MemberAccess { Member: "assert_raises" } => true,
