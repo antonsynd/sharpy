@@ -83,6 +83,13 @@ internal partial class TypeChecker
     // (mirrors the _typeTestOperand idiom); stored as a node reference so nested calls restore correctly.
     private Expression? _currentCallCallee;
 
+    // The qualifier expression of the MemberAccess currently being checked (`memberAccess.Object`).
+    // A generic TYPE reference is legal there — `Box[int].of(42)`, `Comparer[int].create(f)` name the
+    // type a static member is reached through, they do not use it as a value — so the SPY0339
+    // uncalled-type-reference rule skips exactly this node (#1192). Save/restored around the qualifier
+    // check in CheckMemberAccessCore, mirroring the _currentCallCallee idiom.
+    private Expression? _currentMemberAccessQualifier;
+
     // Per-compilation memo for BCL generic instance methods resolved by CLR reflection fallback
     // (TryResolveGenericInstanceMethod, #1136). Raw BCL TypeSymbols built by
     // ModuleRegistry.CreateTypeSymbolFromClrType carry a ClrType but no Methods, so an explicit-

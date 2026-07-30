@@ -59,7 +59,12 @@ internal partial class TypeChecker
             return ValidateSuperMemberAccess(memberAccess, superExpr);
         }
 
+        // Mark the qualifier so the CheckExpression choke point accepts a generic TYPE reference here:
+        // `Box[int].of(42)` names the type a static member is reached through (#1192).
+        var savedMemberAccessQualifier = _currentMemberAccessQualifier;
+        _currentMemberAccessQualifier = memberAccess.Object;
         var objectType = CheckExpression(memberAccess.Object);
+        _currentMemberAccessQualifier = savedMemberAccessQualifier;
 
         // Materialize the original CLR method name for CLR-backed receivers so codegen preserves
         // acronym casing (is_os_platform -> IsOSPlatform) without reflecting (#974).

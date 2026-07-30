@@ -111,6 +111,19 @@ public static partial class DiagnosticExplanations
             "f = identity[int]  # cannot be used as a value",
             "Call it directly: `identity[int](value)`, or assign the result of a call.");
 
+        Add(dict, DiagnosticCodes.Semantic.GenericTypeReferenceNotConstructed,
+            "Generic type reference must be constructed", "Semantic",
+            "A generic type reference with explicit type arguments (e.g. Box[int], Outer.Inner[str]) names a "
+            + "TYPE. Sharpy accepts it where a type is expected — an annotation, a type argument, a type "
+            + "test — and as the thing being constructed, Box[int](5). It has no value form today: nothing "
+            + "carries it, so assigning, passing, storing or returning one has no meaning and used to reach "
+            + "codegen as C# element access on a type name. This is the type-side counterpart of the generic "
+            + "function reference rule (SPY0335).",
+            "b = Box[int]  # names a type; there is nothing to bind\nprint(Outer.Inner[str])",
+            "Construct it (`b = Box[int](5)`), or write it where a type is expected:\n"
+            + "  b: Box[int] = Box[int](5)\n"
+            + "To pass construction around, wrap it in a lambda: `make = lambda v: Box[int](v)`");
+
         Add(dict, DiagnosticCodes.Semantic.CallSyntaxOnlyReference, "Form must be called, not referenced", "Semantic",
             "Some forms exist only as call syntax and have no first-class value: 'isinstance' is a compile-time narrowing construct rather than a function, and a union variant constructor (Shape.Circle) names a case rather than a callable. Referencing one as a value is rejected deliberately, like Ok/Some (SPY0230) and generic function references (SPY0335). Python permits `g = isinstance`; Sharpy does not — see docs/deviations.yaml. A bare builtin type constructor reference (`f = dict`) is the same shape and is tracked separately in #1182.",
             "g = isinstance  # cannot be used as a value\nmk = Shape.Circle",

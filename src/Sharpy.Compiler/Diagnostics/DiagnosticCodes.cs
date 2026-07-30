@@ -355,7 +355,7 @@ public static class DiagnosticCodes
         public const string AmbiguousCallableReference = "SPY0336";  // Active — an overloaded function/method referenced as a value, with no target type to select an overload (#1170)
         public const string CallSyntaxOnlyReference = "SPY0337";     // Active — a call-syntax-only form (isinstance, a union variant, a builtin type constructor) referenced as a value (#1168, #1170)
         public const string UnsupportedVariableArityTuple = "SPY0338"; // Active — tuple(iterable): a tuple's arity is part of its type, so a runtime-length iterable has no tuple type (#1159)
-        // SPY0339: Reserved for future protocol/operator/defer diagnostics
+        public const string GenericTypeReferenceNotConstructed = "SPY0339"; // Active — a generic type reference with explicit type args used as a value instead of being constructed (#1192)
 
         #endregion
 

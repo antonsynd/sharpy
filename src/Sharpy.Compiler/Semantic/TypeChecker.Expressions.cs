@@ -95,6 +95,34 @@ internal partial class TypeChecker
             type = SemanticType.Unknown;
         }
 
+        // #1192: the type-side counterpart. A generic TYPE reference (Box[int], difflib.Matcher[str],
+        // Outer.Inner[int]) names a type: legal as the thing being constructed, as a type argument, or
+        // in a type test — never as a value. Uncalled it reached codegen as C# element access on a type
+        // name (CS0021/CS0119 behind SPY0908). The test is the RECORDED GenericReference fact, never
+        // `type is GenericType`: every list and dict value has a GenericType expression type and must
+        // stay untouched. NestedTypeRef is caught here too, even though its expression typing stays on
+        // the value-indexing path, because the fact is recorded either way.
+        if (expr is IndexAccess typeReferenceAccess
+            && _semanticInfo.GetGenericReference(typeReferenceAccess) is
+            {
+                Kind: GenericReferenceKind.GenericTypeRef
+                    or GenericReferenceKind.ModuleType
+                    or GenericReferenceKind.NestedTypeRef
+            } typeReference
+            && !IsCurrentCallCallee(expr)
+            && !IsCurrentMemberAccessQualifier(expr)
+            && !_semanticInfo.IsTypeReference(expr)
+            && !ReferenceEquals(UnwrapParenthesized(expr), _typeTestTypeArgument))
+        {
+            AddError(
+                $"a generic type reference must be constructed; '{DescribeTypeReference(typeReference)}[...]' "
+                + "cannot be used as a value",
+                expr.LineStart, expr.ColumnStart,
+                code: DiagnosticCodes.Semantic.GenericTypeReferenceNotConstructed,
+                span: expr.Span);
+            type = SemanticType.Unknown;
+        }
+
         // #1168, #1170: the value-position rules for callable references. A reference in callee
         // position is exempt throughout — for the same reason as the #1138 arm above, the call path
         // resolves the target against the arguments — and parentheses do not make a callee a value
@@ -133,6 +161,24 @@ internal partial class TypeChecker
             return false;
         return ReferenceEquals(UnwrapParenthesized(_currentCallCallee), UnwrapParenthesized(expr));
     }
+
+    /// <summary>
+    /// True when <paramref name="expr"/> is the qualifier of the MemberAccess currently being checked
+    /// (see <c>_currentMemberAccessQualifier</c>). A generic type reference is legal there —
+    /// <c>Box[int].of(42)</c> names the type a static member is reached through, rather than using it
+    /// as a value (#1192). Compared through parentheses for the same reason
+    /// <see cref="IsCurrentCallCallee"/> is.
+    /// </summary>
+    private bool IsCurrentMemberAccessQualifier(Expression expr)
+    {
+        if (_currentMemberAccessQualifier == null)
+            return false;
+        return ReferenceEquals(UnwrapParenthesized(_currentMemberAccessQualifier), UnwrapParenthesized(expr));
+    }
+
+    /// <summary>The type's name as written, for the #1192 uncalled-type-reference diagnostic.</summary>
+    private static string DescribeTypeReference(GenericReference reference)
+        => reference.TargetSymbol?.Name ?? "type";
 
     private SemanticType HandleUnrecognizedExpression(Expression expr)
     {
