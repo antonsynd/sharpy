@@ -7,6 +7,8 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-30
+
 ### Changed
 - Migrated to `vscode-languageclient` 10. The minimum supported VS Code version rises to 1.91, which the new client requires (#1178)
 - `sharpy.lsp.maxNumberOfProblems` and `sharpy.inlayHints.typeAnnotations` are now honored by the language server. Both had been contributed since 0.1.0 but were read by nothing (#1165)
