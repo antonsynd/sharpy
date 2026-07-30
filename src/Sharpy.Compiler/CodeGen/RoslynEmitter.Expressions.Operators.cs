@@ -142,8 +142,9 @@ internal partial class RoslynEmitter
                 // x // y → floor division with Python semantics (toward negative infinity)
                 // Integer operands: (long)Math.Floor((double)x / y) → result is int64
                 // Float operands: Math.Floor(x / y) → result is float type
-                var hasFloatOperand = IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right);
-                return GenerateFloorDivision(left, right, hasFloatOperand);
+                // Decimal operands: native truncating quotient (routed inside the wrapper,
+                // which both this site and the augmented `//=` site share).
+                return GenerateFloorDivideValue(left, right, binOp.Left, binOp.Right);
 
             case BinaryOperator.Modulo:
                 // x % y → Python floored modulo (result sign = divisor sign) for numeric operands.
@@ -151,7 +152,7 @@ internal partial class RoslynEmitter
                 // C#'s native `%` takes the sign of the dividend, which diverges from Python. User
                 // types with `__mod__` (→ operator %) and CLR `op_Modulus` types (e.g. decimal) MUST
                 // keep the native ModuloExpression map below — an ungated rewrite would break them.
-                if (IsFloorModOperand(binOp.Left) && IsFloorModOperand(binOp.Right))
+                if (IsFlooredNumericOperand(binOp.Left) && IsFlooredNumericOperand(binOp.Right))
                     return GenerateFloorModulo(left, right);
                 break;
 

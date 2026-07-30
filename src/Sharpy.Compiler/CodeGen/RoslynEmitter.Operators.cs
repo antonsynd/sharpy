@@ -996,10 +996,18 @@ internal partial class RoslynEmitter
         return expr switch
         {
             FloatLiteral fl => fl.Suffix?.Equals("m", StringComparison.OrdinalIgnoreCase) == true,
+            UnaryOp unary => IsDecimalExpression(unary.Operand),
             Parenthesized paren => IsDecimalExpression(paren.Expression),
             _ => false
         };
     }
+
+    /// <summary>
+    /// Null-tolerant <see cref="IsDecimalExpression"/> for call sites whose operand AST is
+    /// optional (augmented assignment passes nullable target/value expressions).
+    /// </summary>
+    private bool IsDecimalOperand(Expression? expr)
+        => expr != null && IsDecimalExpression(expr);
 
     /// <summary>
     /// Checks if an expression evaluates to a floating-point type.
@@ -1040,13 +1048,15 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks whether an expression is a primitive numeric operand eligible for floored
-    /// modulo lowering (int/long/float32/float64). Gates the <c>%</c> rewrite so user
-    /// <c>__mod__</c> types and CLR <c>op_Modulus</c> types (e.g. decimal) keep the native
-    /// C# <c>%</c> operator. Reads the materialized semantic type; falls back to an AST
-    /// heuristic for bare literals when SemanticInfo is unavailable.
+    /// Checks whether an expression is a primitive numeric operand eligible for the floored
+    /// lowerings shared by <c>%</c> and <c>//</c> (int/long/float32/float64). Gates the
+    /// <c>%</c> rewrite so user <c>__mod__</c> types and CLR <c>op_Modulus</c> types (e.g.
+    /// decimal) keep the native C# <c>%</c> operator, and names the same allowlist for
+    /// floor division (see <see cref="GenerateFloorDivideValue"/>). Reads the materialized
+    /// semantic type; falls back to an AST heuristic for bare literals when SemanticInfo is
+    /// unavailable.
     /// </summary>
-    private bool IsFloorModOperand(Expression expr)
+    private bool IsFlooredNumericOperand(Expression expr)
     {
         var semanticType = GetExpressionSemanticType(expr);
         if (semanticType != null)
@@ -1064,8 +1074,8 @@ internal partial class RoslynEmitter
         {
             IntegerLiteral => true,
             FloatLiteral fl => fl.Suffix?.Equals("m", StringComparison.OrdinalIgnoreCase) != true,
-            UnaryOp unary => IsFloorModOperand(unary.Operand),
-            Parenthesized paren => IsFloorModOperand(paren.Expression),
+            UnaryOp unary => IsFlooredNumericOperand(unary.Operand),
+            Parenthesized paren => IsFlooredNumericOperand(paren.Expression),
             _ => false
         };
     }
@@ -1084,6 +1094,76 @@ internal partial class RoslynEmitter
             .AddArgumentListArguments(
                 Argument(left),
                 Argument(right));
+    }
+
+    /// <summary>
+    /// Single routing seam for <c>//</c> — used by both the binary-operator site and the
+    /// augmented <c>//=</c> site so neither can drift. Decimal operands take the native
+    /// truncating path; every other operand shape keeps the floored
+    /// <see cref="GenerateFloorDivision"/> lowering.
+    /// </summary>
+    /// <param name="left">Generated C# expression for the left operand.</param>
+    /// <param name="right">Generated C# expression for the right operand.</param>
+    /// <param name="leftAst">Left operand AST (for type inference); may be null.</param>
+    /// <param name="rightAst">Right operand AST (for type inference); may be null.</param>
+    private ExpressionSyntax GenerateFloorDivideValue(ExpressionSyntax left, ExpressionSyntax right, Expression? leftAst, Expression? rightAst)
+    {
+        // Operand routing mirrors `%` (#1174): the floored lowering below covers the
+        // floored-numeric allowlist (see IsFlooredNumericOperand — int/long/float32/float64),
+        // and `decimal` sits outside it, keeping the native CLR division. Decimal is matched
+        // positively rather than as "not eligible" so that widened CLR integers (byte, uint,
+        // ...) keep their existing Math.Floor emission, and so a future allowlist change can
+        // never re-route decimal into Math.Floor's `(double)` cast (CS0019 → SPY0908).
+        if (IsDecimalOperand(leftAst) || IsDecimalOperand(rightAst))
+            return GenerateDecimalFloorDivision(left, right);
+
+        var hasFloatOperand = (leftAst != null && IsFloatExpression(leftAst))
+            || (rightAst != null && IsFloatExpression(rightAst));
+
+        return GenerateFloorDivision(left, right, hasFloatOperand);
+    }
+
+    /// <summary>
+    /// Generates decimal floor division:
+    /// <c>global::System.Decimal.Truncate(global::System.Decimal.Divide(left, right))</c>,
+    /// guarded by a zero-divisor throw. Decimal keeps the native CLR division and truncates
+    /// toward zero instead of flooring — which is both the spec's native-decimal policy and
+    /// what CPython's <c>Decimal.__floordiv__</c> does (<c>Decimal(-7) // Decimal(3)</c> is
+    /// <c>-2</c>, where int <c>-7 // 3</c> is <c>-3</c>). CPython raises
+    /// <c>decimal.DivisionByZero</c> (a <c>ZeroDivisionError</c> subclass) for a zero divisor,
+    /// so the Sharpy surface uses <c>ZeroDivisionError</c> like every other division.
+    /// <c>Decimal.Divide</c> rather than the <c>/</c> operator: a literal zero divisor
+    /// (<c>7m // 0m</c>) is a compile-time C# error through <c>/</c> (CS0020, "division by
+    /// constant zero") even in the unreachable arm of the guard, which would re-introduce
+    /// SPY0908. The method call is exactly what <c>decimal.op_Division</c> invokes.
+    /// </summary>
+    private ExpressionSyntax GenerateDecimalFloorDivision(ExpressionSyntax left, ExpressionSyntax right)
+    {
+        var divideCall = InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("System", "Decimal"),
+                IdentifierName("Divide")))
+            .AddArgumentListArguments(Argument(left), Argument(right));
+
+        var truncateCall = InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("System", "Decimal"),
+                IdentifierName("Truncate")))
+            .AddArgumentListArguments(Argument(divideCall));
+
+        var throwExpr = ThrowExpression(
+            ObjectCreationExpression(ParseQualifiedTypeName("global::Sharpy.ZeroDivisionError"))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
+                        Literal("decimal floor division by zero")))))));
+
+        // (right == 0m ? throw new ZeroDivisionError(...) : decimal.Truncate(left / right))
+        return ParenthesizedExpression(
+            ConditionalExpression(
+                BinaryExpression(SyntaxKind.EqualsExpression, right,
+                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0m))),
+                throwExpr,
+                truncateCall));
     }
 
     /// <summary>
