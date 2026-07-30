@@ -1,0 +1,37 @@
+# An explicit type argument on a generic call must qualify exactly like an annotation position:
+# `identity[list[int]]` emits Sharpy.List<int>, not a bare List<int> — which is CS0104, ambiguous
+# with System.Collections.Generic.List<T> (#1184). Implicit inference always worked; only the
+# explicit spelling took the unqualified path.
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def identity[T](x: T) -> T:
+    return x
+
+
+def first[T](xs: list[T]) -> T:
+    # A type-parameter element, not a concrete type — same emission path.
+    return identity[list[T]](xs)[0]
+
+
+def main():
+    xs: list[int] = identity[list[int]]([1, 2])
+    print(xs[0])
+    print(xs[1])
+    d: dict[str, int] = identity[dict[str, int]]({"a": 10, "b": 20})
+    print(d["a"])
+    print(d["b"])
+    s: set[int] = identity[set[int]]({3})
+    print(len(s))
+    # User-defined generic control: emission unchanged by the fix.
+    b: Box[int] = identity[Box[int]](Box[int](7))
+    print(b.value)
+    print(first[int]([9, 8]))
+    # A nested collection element recurses through the same arm.
+    nested: list[list[int]] = identity[list[list[int]]]([[1], [2, 3]])
+    print(len(nested))
+    print(nested[1][1])
