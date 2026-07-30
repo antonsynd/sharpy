@@ -1,0 +1,30 @@
+# Test (#1159): a bare dict is accepted where an iterable-of-keys is expected, completing
+# the #1154 ring. sum/any/all/str.join see the KEYS — the values are never consulted.
+# Expected output verified against python3.
+def main() -> None:
+    n: dict[int, str] = {1: "a", 2: "b", 3: "c"}
+    d: dict[str, int] = {"b": 1, "a": 2, "c": 3}
+
+    # sum over int keys, with and without a start value.
+    print(sum(n))
+    print(sum(n, 10))
+
+    # Float keys promote the sum, as in Python.
+    f: dict[float, str] = {1.5: "a", 2.5: "b"}
+    print(sum(f))
+
+    # any/all test the truthiness of the KEYS; a falsy key makes both False even though
+    # every value is a non-empty string.
+    print(any(n))
+    print(all(n))
+    falsy: dict[int, str] = {0: "x"}
+    print(any(falsy))
+    print(all(falsy))
+    mixed: dict[int, str] = {0: "x", 1: "y"}
+    print(any(mixed))
+    print(all(mixed))
+
+    # join over str keys, in insertion order (not sorted).
+    print(", ".join(d))
+    print("-".join(d))
+    print(", ".join(sorted(d)))

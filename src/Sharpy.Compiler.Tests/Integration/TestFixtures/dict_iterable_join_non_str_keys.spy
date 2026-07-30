@@ -1,0 +1,6 @@
+# Test (#1159): the dict-as-iterable acceptance is iterable[K]-shaped, not a blanket pass.
+# str.join needs iterable[str]; a dict with int keys projects to iterable[int], which still
+# fails the ordinary (invariant) parameter check.
+def main() -> None:
+    n: dict[int, str] = {1: "x", 2: "y"}
+    print(", ".join(n))

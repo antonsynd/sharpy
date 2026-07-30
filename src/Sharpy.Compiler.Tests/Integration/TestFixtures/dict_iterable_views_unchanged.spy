@@ -1,0 +1,12 @@
+# Regression (#1159): the dict-as-iterable acceptance must not disturb the dict VIEWS. A
+# view carries its own element type (#1068) and is not a bare dict, so it gets no keys
+# projection — sorted(d.keys())/.values()/.items() keep working exactly as before.
+# (sum/join over a view is a separate, wider gap: see #1198.)
+# Expected output verified against python3.
+def main() -> None:
+    d: dict[str, int] = {"b": 2, "a": 1, "c": 3}
+    print(sorted(d.keys()))
+    print(sorted(d.values()))
+    print(sorted(d.items()))
+    # A bare dict in the same position projects to keys; the view above does not need to.
+    print(sorted(d))

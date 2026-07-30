@@ -1,0 +1,11 @@
+# Test (#1159): the empty-dict edge of dict-as-iterable acceptance. sum({}) is 0,
+# any({}) is False, all({}) is vacuously True, and joining no keys is the empty string.
+# Expected output verified against python3.
+def main() -> None:
+    ei: dict[int, str] = {}
+    es: dict[str, int] = {}
+    print(sum(ei))
+    print(any(ei))
+    print(all(ei))
+    # Bracketed so the empty result is visible in the expected output.
+    print("[" + ", ".join(es) + "]")

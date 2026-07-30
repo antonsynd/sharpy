@@ -1,0 +1,6 @@
+# Test (#1159): tuple(iterable) is the one ring member that is deliberately NOT made to
+# work — a tuple's arity is part of its type, so a runtime-length dict has no tuple type.
+# SPY0338 names the limitation instead of the old "cannot infer type arguments" advice.
+def main() -> None:
+    d: dict[str, int] = {"b": 1, "a": 2}
+    print(tuple(d))

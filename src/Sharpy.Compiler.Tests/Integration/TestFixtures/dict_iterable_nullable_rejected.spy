@@ -1,0 +1,13 @@
+# Test (#1159 / #1199): a NULLABLE dict is not accepted in an iterable-of-keys position.
+# The projection marker's dict-type gate matches a bare dict only, and acceptance is gated
+# on that marker, so `dict[K, V]?` is rejected rather than accepted-and-mislowered — which
+# is what the ten pre-existing #1154 members do today (SPY0908/CS1503, filed as #1199).
+# This fixture pins the current boundary; it must be updated when #1199 lands.
+def get(flag: bool) -> dict[int, str] | None:
+    if flag:
+        return {1: "a", 2: "b"}
+    return None
+
+def main() -> None:
+    md = get(True)
+    print(sum(md))
