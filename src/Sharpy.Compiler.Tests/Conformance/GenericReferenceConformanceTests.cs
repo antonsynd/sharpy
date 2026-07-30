@@ -70,11 +70,17 @@ namespace Sharpy.Compiler.Tests.Conformance;
 ///
 /// <para><b>#1164 added the first TYPE-reference specimens</b> (<c>nested_outer_inner</c>,
 /// <c>nested_outer_pair</c>), pinning the <see cref="Semantic.GenericReferenceKind.NestedTypeRef"/>
-/// class whose lowering is now fact-driven. Their <b>called</b> forms are green end-to-end; their
-/// non-called forms measure three pre-existing leak classes no earlier specimen probed — uncalled and
-/// wrong-arity type references (#1192), a nested generic constructed without type args (#1193), and an
-/// unknown member on a type qualifier (#1194). Those cells are allowlisted against those issues, each
-/// verified byte-identical to the pre-#1164 behavior; they drain as the issues land.
+/// class whose lowering is fact-driven. Their non-called forms measured three pre-existing leak
+/// classes no earlier specimen probed — uncalled and wrong-arity type references (#1192), a nested
+/// generic constructed without type args (#1193), and an unknown member on a type qualifier (#1194).
+/// All three are fixed and every one of their twenty allowlist lines is drained.
+/// </para>
+///
+/// <para><b>The type-reference axis is now complete</b> (#1145): <c>box_generic</c> pins
+/// <see cref="Semantic.GenericReferenceKind.GenericTypeRef"/> and <c>usermod_slot</c> pins
+/// <see cref="Semantic.GenericReferenceKind.ModuleType"/>, joining the nested specimens so all three
+/// kinds are measured rather than one standing in for the class. They arrived green — no allowlist
+/// lines — which is what "the fix was class-level" means here.
 /// </para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
@@ -298,6 +304,15 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
             "        def __init__(self, key: K, value: V):\n" +
             "            self.key = key\n" +
             "            self.value = value\n\n";
+        // A BARE generic type (#1192). The nested specimens below pin NestedTypeRef; this pins
+        // GenericTypeRef, the kind every `Box[int]` in the wild actually is.
+        const string boxGenericPrelude =
+            "class Box[T]:\n" +
+            "    value: T\n\n" +
+            "    def __init__(self, value: T):\n" +
+            "        self.value = value\n\n" +
+            "    def __str__(self) -> str:\n" +
+            "        return f\"b{self.value}\"\n\n";
         const string identityDecl = "def identity[T](x: T) -> T:\n    return x\n\n";
         const string pairDecl = "def pair[T, U](a: T, b: U) -> T:\n    return a\n\n";
         const string shadowMapDecl = "def map[T](x: T) -> T:\n    return x\n\n";
@@ -403,6 +418,36 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
             new("nested_outer_pair", "nested-type", 2,
                 Imports: "", Prelude: nestedPairPrelude, SiblingModuleName: null, SiblingModuleContent: null,
                 EnclosingParams: "", Receiver: "Outer.", Member: "Pair",
+                ExactTypeArgs: new[] { "int", "str" }, CallArgs: "1, \"a\""),
+
+            // (7b) bare generic TYPE reference — Box[T](v) (#1192, completeness #1145). The kind every
+            // ordinary generic class reference is; without it the type-reference axis was measured
+            // only through the nested spelling.
+            new("box_generic", "type-ref", 1,
+                Imports: "", Prelude: boxGenericPrelude, SiblingModuleName: null, SiblingModuleContent: null,
+                EnclosingParams: "", Receiver: "", Member: "Box",
+                ExactTypeArgs: new[] { "int" }, CallArgs: "5",
+                Runnable: boxGenericPrelude + "def main() -> None:\n    print(Box[int](5))\n",
+                ExpectedOutput: "b5"),
+
+            // (7c) module-qualified generic TYPE reference — genlib.Slot[K, V](k, v) (#1192,
+            // completeness #1145). The third and last type-reference kind, and the only one whose
+            // qualifier is a module, so its arity arm is exercised on a two-parameter declaration
+            // (giving the deficient cells something to reject).
+            new("usermod_slot", "module-type-ref", 2,
+                Imports: "import genlib\n", Prelude: "", SiblingModuleName: "genlib",
+                SiblingModuleContent:
+                    "class Slot[K, V]:\n" +
+                    "    key: K\n" +
+                    "    value: V\n\n" +
+                    "    def __init__(self, key: K, value: V):\n" +
+                    "        self.key = key\n" +
+                    "        self.value = value\n",
+                // Its `called::none` cell is a deliberate SPY0237 rather than `ok`: module-qualified
+                // construction does not infer type arguments, though the from-import spelling of the
+                // same declaration does. Filed as #1208 — a recorded inference gap, not a designed
+                // rejection, and not an allowlist entry (the contract is satisfied either way).
+                EnclosingParams: "", Receiver: "genlib.", Member: "Slot",
                 ExactTypeArgs: new[] { "int", "str" }, CallArgs: "1, \"a\""),
 
             // (8) user function shadowing a same-named builtin — def map[T] shadows builtin map (#1002/#1003).
