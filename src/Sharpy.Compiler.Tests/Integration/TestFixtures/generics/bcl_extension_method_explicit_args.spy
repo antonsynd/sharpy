@@ -1,0 +1,27 @@
+# #1163: a System.Linq extension method on a BCL receiver, written with EXPLICIT type arguments. The
+# written argument is only part of the C# vector — Select<TSource, TResult> also needs the element
+# type — so this shape used to emit `lst.Select[string](...)` and leak CS0021 through SPY0908. The
+# resolver now infers the leading arguments from the receiver and records the whole vector, so this
+# lowers to lst.Select<int, string>(...). The no-type-args spelling of the same surface stays green
+# next door in bcl_extension_method_1141.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst = List[int]()
+    lst.add(3)
+    lst.add(4)
+
+    # select[str]: one written argument, TSource inferred from the receiver.
+    for s in lst.select[str](lambda x: str(x)):
+        print(s)
+
+    # cast[int]: Cast<TResult>'s `this` parameter is the NON-generic IEnumerable, so nothing leads and
+    # the written argument is the whole vector — the shape a "receiver arguments come first" rule
+    # would have got wrong.
+    for c in lst.cast[int]():
+        print(c)
+
+    # select[int, str]: every type parameter written out, including the one the receiver determines.
+    for t in lst.select[int, str](lambda x: str(x * 2)):
+        print(t)

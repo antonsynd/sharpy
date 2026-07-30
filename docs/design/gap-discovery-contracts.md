@@ -26,7 +26,7 @@ source-scan guards run in the regular suite.
 
 | Class (issues) | Violated contract | Standing harness | Umbrella |
 |---|---|---|---|
-| Explicit generic type args per callee kind (#1002–#1004, #1133, #1136, #1138, #1141, #1142, #1147, #1148) | `callee[T,...]` resolves identically for every callee kind, called or uncalled | `GenericReferenceConformanceTests` — 146-cell matrix: 8 callee kinds × 6 usage forms × 4 arities + typo/probe axes, executed subset | #1143 |
+| Explicit generic type args per callee kind (#1002–#1004, #1133, #1136, #1138, #1141, #1142, #1147, #1148) | `callee[T,...]` resolves identically for every callee kind, called or uncalled | `GenericReferenceConformanceTests` — 158-cell matrix: 9 callee kinds × 6 usage forms × 4 arities + typo/probe axes, executed subset | #1143 |
 | Front-end drift (#1059, #1061, #1097, #1109, #1140) | Same source + options ⇒ same diagnostic multiset from Analyze/Compile/REPL/LSP | `FrontEndParityTests` — fixture corpus × 4 entry points, documented normalization rules, each citing its tracking issue | #1144 |
 | Parallel-site replication gaps (#1105, #1106, #1135; #1124, #1125, #1150–#1152; #1065, #1075) | Mirrored facts are structural (one seam) or guarded by a completeness scan | `ModuleExportsMirrorConformanceTests`, `WrapperNodeUnwrapConformanceTests` — Roslyn source scans of the compiler + LSP | #1145 |
 | Un-lowerable accepted programs (#1000, #1009, #1067, #1068, #1095, #1110, #1122, #1138, #1139, #1141, #1153-adjacent) | Reproducible SPY0908/CS-leak ⇒ a semantic-time check is missing | The sweeps' csLeak/ice buckets + ILCompiles/CsClean property tests | #1146 |

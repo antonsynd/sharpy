@@ -1,0 +1,11 @@
+# #1163 negative: a written type argument that contradicts what the receiver determines. Where<TSource>
+# takes its only type parameter from the receiver (list[int] means TSource = int), so `where[str]` can
+# never close — and must say so instead of emitting Where<string> for Roslyn to reject (#1146).
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst = List[int]()
+    lst.add(3)
+    for v in lst.where[str](lambda x: x > 1):
+        print(v)

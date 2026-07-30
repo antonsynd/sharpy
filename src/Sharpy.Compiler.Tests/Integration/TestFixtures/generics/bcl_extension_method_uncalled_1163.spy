@@ -1,0 +1,9 @@
+# #1163 negative: an extension-method reference with explicit type arguments is a carrier for its
+# call's type arguments, not a value — the same contract #1138 gives every other generic reference.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst = List[int]()
+    g = lst.select[str]
+    print(g)

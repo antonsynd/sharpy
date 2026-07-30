@@ -61,6 +61,13 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// so any regression that reintroduces a gap now fails the suite loudly instead of being absorbed.
 /// </para>
 ///
+/// <para><b>#1163 added the extension-method kind</b> (<c>bcl_extension_explicit</c>): an explicit
+/// type argument on a <c>System.Linq</c> extension method, whose C# vector includes arguments inferred
+/// from the receiver (<c>lst.select[str]</c> → <c>Select&lt;int, string&gt;</c>). All twelve of its
+/// cells are green — resolved, or a deliberate SPY0237/SPY0335/SPY0203 — so the kind adds no allowlist
+/// lines.
+/// </para>
+///
 /// <para><b>#1164 added the first TYPE-reference specimens</b> (<c>nested_outer_inner</c>,
 /// <c>nested_outer_pair</c>), pinning the <see cref="Semantic.GenericReferenceKind.NestedTypeRef"/>
 /// class whose lowering is now fact-driven. Their <b>called</b> forms are green end-to-end; their
@@ -365,6 +372,24 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
                 SiblingModuleName: null, SiblingModuleContent: null,
                 EnclosingParams: "lst: List[int]", Receiver: "lst.", Member: "convert_all",
                 ExactTypeArgs: new[] { "str" }, CallArgs: "lambda x: str(x)"),
+
+            // (6b) BCL extension method with explicit type args — List[int].select[str] lowering to
+            // Enumerable.Select<int, string> (#1163). Its written type argument is only PART of the C#
+            // vector, which is what distinguishes this kind from bcl_convertall above.
+            new("bcl_extension_explicit", "bcl-extension", 1,
+                Imports: "from system.collections.generic import List\n", Prelude: "",
+                SiblingModuleName: null, SiblingModuleContent: null,
+                EnclosingParams: "lst: List[int]", Receiver: "lst.", Member: "select",
+                ExactTypeArgs: new[] { "str" }, CallArgs: "lambda x: str(x)",
+                Runnable:
+                    "from system.collections.generic import List\n\n" +
+                    "def main() -> None:\n" +
+                    "    lst = List[int]()\n" +
+                    "    lst.add(3)\n" +
+                    "    lst.add(4)\n" +
+                    "    for s in lst.select[str](lambda x: str(x)):\n" +
+                    "        print(s)\n",
+                ExpectedOutput: "3\n4"),
 
             // (7) nested generic type reference — Outer.Inner[T](v) (#1164), single and multi
             // type-parameter. The kind whose lowering is driven by the NestedTypeRef fact; pinning it
