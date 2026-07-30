@@ -374,7 +374,7 @@ internal partial class TypeChecker
         // A union variant constructor: Shape.Circle. Same shape the union-case construction arm in
         // CheckFunctionCall matches, so the call form stays fully functional.
         if (reference is MemberAccess variantAccess
-            && type is UserDefinedType { Symbol.BaseType: { TypeKind: TypeKind.Union } } )
+            && type is UserDefinedType { Symbol.BaseType: { TypeKind: TypeKind.Union } })
         {
             return ($"union variant constructor '{variantAccess.Member}'",
                 $"lambda ...: {DescribeMemberPath(variantAccess)}(...)");
@@ -411,51 +411,51 @@ internal partial class TypeChecker
         switch (reference)
         {
             case Identifier id:
-            {
-                // A local/parameter binding shadows the declaration: after `g = xs.pop`, `g` is a
-                // variable of function type, not a reference to an overload set.
-                if (_symbolTable.Lookup(id.Name) is VariableSymbol)
-                    return null;
-                var functionOverloads = _symbolTable.LookupFunctionOverloads(id.Name)
-                    ?? _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-                return functionOverloads == null ? null : (functionOverloads, Identity);
-            }
+                {
+                    // A local/parameter binding shadows the declaration: after `g = xs.pop`, `g` is a
+                    // variable of function type, not a reference to an overload set.
+                    if (_symbolTable.Lookup(id.Name) is VariableSymbol)
+                        return null;
+                    var functionOverloads = _symbolTable.LookupFunctionOverloads(id.Name)
+                        ?? _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+                    return functionOverloads == null ? null : (functionOverloads, Identity);
+                }
 
             case MemberAccess memberAccess:
-            {
-                // The receiver's type was recorded when the member access was checked.
-                var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
-                if (receiverType == null)
-                    return null;
-
-                if (receiverType is ModuleType)
                 {
-                    var moduleOverloads = LookupModuleFunctionOverloads(receiverType, memberAccess.Member);
-                    return moduleOverloads == null ? null : (moduleOverloads, Identity);
+                    // The receiver's type was recorded when the member access was checked.
+                    var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
+                    if (receiverType == null)
+                        return null;
+
+                    if (receiverType is ModuleType)
+                    {
+                        var moduleOverloads = LookupModuleFunctionOverloads(receiverType, memberAccess.Member);
+                        return moduleOverloads == null ? null : (moduleOverloads, Identity);
+                    }
+
+                    var methodOverloads = LookupInstanceMethodOverloads(receiverType, memberAccess.Member);
+                    if (methodOverloads == null)
+                        return null;
+
+                    var (ownerSymbol, typeArgs) = ResolveBuiltinTypeInfo(receiverType);
+                    ownerSymbol ??= receiverType switch
+                    {
+                        UserDefinedType { Symbol: { } udtSymbol } => udtSymbol,
+                        GenericType { GenericDefinition: { } genericDefinition } => genericDefinition,
+                        _ => null
+                    };
+                    typeArgs ??= (receiverType as GenericType)?.TypeArguments;
+
+                    if (ownerSymbol == null || typeArgs == null
+                        || ownerSymbol.TypeParameters.Count != typeArgs.Count)
+                    {
+                        return (methodOverloads, Identity);
+                    }
+
+                    var typeParameters = ownerSymbol.TypeParameters;
+                    return (methodOverloads, t => SubstituteTypeParameters(t, typeParameters, typeArgs));
                 }
-
-                var methodOverloads = LookupInstanceMethodOverloads(receiverType, memberAccess.Member);
-                if (methodOverloads == null)
-                    return null;
-
-                var (ownerSymbol, typeArgs) = ResolveBuiltinTypeInfo(receiverType);
-                ownerSymbol ??= receiverType switch
-                {
-                    UserDefinedType { Symbol: { } udtSymbol } => udtSymbol,
-                    GenericType { GenericDefinition: { } genericDefinition } => genericDefinition,
-                    _ => null
-                };
-                typeArgs ??= (receiverType as GenericType)?.TypeArguments;
-
-                if (ownerSymbol == null || typeArgs == null
-                    || ownerSymbol.TypeParameters.Count != typeArgs.Count)
-                {
-                    return (methodOverloads, Identity);
-                }
-
-                var typeParameters = ownerSymbol.TypeParameters;
-                return (methodOverloads, t => SubstituteTypeParameters(t, typeParameters, typeArgs));
-            }
 
             default:
                 return null;

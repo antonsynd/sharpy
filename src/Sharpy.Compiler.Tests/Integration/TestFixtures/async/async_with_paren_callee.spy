@@ -1,0 +1,26 @@
+# The async twin of context_managers/with_paren_callee: a parenthesized callee in an
+# `async with` head must resolve the __aenter__/__aexit__ protocol (#1167).
+import asyncio
+
+class AsyncToken:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    async def __aenter__(self) -> AsyncToken:
+        await asyncio.sleep(0.01)
+        print(f"acquire {self.name}")
+        return self
+
+    async def __aexit__(self):
+        print(f"release {self.name}")
+
+async def use() -> str:
+    async with (AsyncToken)("a") as t:
+        print(f"using {t.name}")
+        return t.name
+
+async def main():
+    name = await use()
+    print(f"done {name}")

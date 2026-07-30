@@ -1,0 +1,28 @@
+# A parenthesized callee in a `with` head resolves the __enter__/__exit__ protocol,
+# exactly like the unparenthesized form (#1167). Before the fix the head's call typing
+# returned Unknown, the context-manager kind fell back to Disposable, and the emitter
+# produced a plain `using` over a type with no IDisposable (SPY0908/CS1674).
+class Token:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __enter__(self) -> Token:
+        print(f"acquire {self.name}")
+        return self
+
+    def __exit__(self):
+        print(f"release {self.name}")
+
+def main():
+    with (Token)("a") as t:
+        print(f"using {t.name}")
+
+    # The head expression itself was already unwrapped; both forms must agree.
+    with (Token("b")) as u:
+        print(f"using {u.name}")
+
+    # Multiple items, and a nested head.
+    with (Token)("c") as c, (Token)("d") as d:
+        print(f"using {c.name} and {d.name}")
