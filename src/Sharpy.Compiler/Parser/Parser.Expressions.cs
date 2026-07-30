@@ -76,6 +76,19 @@ public partial class Parser
         }
     }
 
+    /// <summary>
+    /// True when an infix or postfix continuation may attach to the expression just parsed.
+    /// A DEDENT closes a block, and the only expression form that consumes one is a match
+    /// expression (<see cref="ParseMatchExpression"/>); the moment it returns, the next token
+    /// starts the following statement and belongs to no expression. Every continuation check in
+    /// the precedence chain — and the postfix loop — consults this, so a statement beginning
+    /// with <c>if</c>, <c>-</c>, <c>(</c>, <c>[</c> or <c>not</c> is not read as a ternary,
+    /// operand, call, index or comparison against the match expression's value (#1169, #1183).
+    /// Any other expression leaves a non-DEDENT token in <see cref="Previous"/>, so this is a
+    /// no-op everywhere else.
+    /// </summary>
+    private bool CanContinueExpressionHere() => Previous.Type != TokenType.Dedent;
+
     private Expression ParseExpression()
     {
         if (++_recursionDepth > MaxRecursionDepth)
@@ -246,7 +259,7 @@ public partial class Parser
         // expr if test else expr
         var expr = ParseNullCoalesce();
 
-        if (Current.Type == TokenType.If)
+        if (CanContinueExpressionHere() && Current.Type == TokenType.If)
         {
             Advance();
             var test = ParseNullCoalesce();
@@ -277,6 +290,9 @@ public partial class Parser
 
         while (Current.Type == TokenType.Question && Peek().Type == TokenType.Question)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             Advance(); // first ?
@@ -307,6 +323,9 @@ public partial class Parser
 
         while (Current.Type == TokenType.Or)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             Advance();
@@ -336,6 +355,9 @@ public partial class Parser
 
         while (Current.Type == TokenType.And)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             Advance();
@@ -393,7 +415,8 @@ public partial class Parser
         // otherwise a trailing comparison operator (`x is Int == y`, `x is Int is Str`) is left
         // unconsumed and mis-associates onto an enclosing expression, truncating the chain
         // inside lambda bodies and conditional branches (#1064).
-        if (Current.Type == TokenType.Is && Peek(1).Type == TokenType.Identifier)
+        if (CanContinueExpressionHere()
+            && Current.Type == TokenType.Is && Peek(1).Type == TokenType.Identifier)
         {
             var nextTokenValue = Peek(1).Value;
             // Check if it's a type name (starts with uppercase or is a known primitive type)
@@ -428,6 +451,9 @@ public partial class Parser
 
         while (IsComparisonOperator(Current.Type))
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             var op = Current.Type;
@@ -531,6 +557,9 @@ public partial class Parser
 
         while (Current.Type == TokenType.PipeForward)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             Advance();
@@ -574,6 +603,9 @@ public partial class Parser
             while (true)
             {
                 if (!CheckLoopProgress())
+                    break;
+
+                if (!CanContinueExpressionHere())
                     break;
 
                 if (Current.Type == TokenType.As)
@@ -651,6 +683,9 @@ public partial class Parser
 
         while (Current.Type == TokenType.Pipe)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             Advance();
@@ -680,6 +715,9 @@ public partial class Parser
 
         while (Current.Type == TokenType.Caret)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             Advance();
@@ -709,6 +747,9 @@ public partial class Parser
 
         while (Current.Type == TokenType.Ampersand)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             Advance();
@@ -738,6 +779,9 @@ public partial class Parser
 
         while (Current.Type == TokenType.LeftShift || Current.Type == TokenType.RightShift)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             var op = Current.Type == TokenType.LeftShift ? BinaryOperator.LeftShift : BinaryOperator.RightShift;
@@ -768,6 +812,9 @@ public partial class Parser
 
         while (Current.Type == TokenType.Plus || Current.Type == TokenType.Minus)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             var op = Current.Type == TokenType.Plus ? BinaryOperator.Add : BinaryOperator.Subtract;
@@ -800,6 +847,9 @@ public partial class Parser
                Current.Type == TokenType.DoubleSlash || Current.Type == TokenType.Percent ||
                Current.Type == TokenType.At)
         {
+            if (!CanContinueExpressionHere())
+                break;
+
             var opLine = Current.Line;
             var opCol = Current.Column;
             var op = Current.Type switch
@@ -895,7 +945,7 @@ public partial class Parser
     {
         var left = ParsePostfix();
 
-        if (Current.Type == TokenType.DoubleStar)
+        if (CanContinueExpressionHere() && Current.Type == TokenType.DoubleStar)
         {
             var opLine = Current.Line;
             var opCol = Current.Column;
@@ -937,6 +987,9 @@ public partial class Parser
             while (true)
             {
                 if (!CheckLoopProgress())
+                    break;
+
+                if (!CanContinueExpressionHere())
                     break;
 
                 if (Current.Type == TokenType.Dot || Current.Type == TokenType.NullConditional)
