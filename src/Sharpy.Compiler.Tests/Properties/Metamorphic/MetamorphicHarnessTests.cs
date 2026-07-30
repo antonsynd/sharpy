@@ -178,6 +178,56 @@ public class MetamorphicHarnessTests
         Assert.Equal(source, new SwapCommutativeTransform().Apply(source));
     }
 
+    /// <summary>
+    /// A literal claimed by a tighter-binding operator is not an operand of the <c>+</c>, so swapping
+    /// it changes the value — the swap is only commutative when both literals are the whole operands
+    /// (#1190). Each case below evaluates differently after a naive literal swap: <c>2 + 3 * 4</c>
+    /// would become 11 instead of 14, <c>8 / 2 + 3</c> would become 4.66… instead of 7,
+    /// <c>a - 2 + 3</c> would flip to <c>a - 1</c>, and <c>2 ** 3 + 4</c> would become 19 instead of
+    /// 12.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    print(2 + 3 * 4)\n")]
+    [InlineData("def main():\n    print(2 * 3 + 4)\n")]
+    [InlineData("def main():\n    print(8 / 2 + 3)\n")]
+    [InlineData("def main():\n    print(5 // 2 + 6)\n")]
+    [InlineData("def main():\n    print(7 % 2 + 3)\n")]
+    [InlineData("def main():\n    print(2 ** 3 + 4)\n")]
+    [InlineData("def main():\n    print(1 + 2 ** 3)\n")]
+    [InlineData("def main():\n    a: int = 9\n    print(a - 2 + 3)\n")]
+    [InlineData("def main():\n    print(-2 + 3)\n")]
+    public void SwapCommutative_DeclinesLiteralsOwnedByATighterOperator(string source)
+    {
+        Assert.Equal(source, new SwapCommutativeTransform().Apply(source));
+    }
+
+    /// <summary>
+    /// The exact expression from <c>basics/arithmetic_operators_0015</c> that made
+    /// <see cref="MetamorphicCorpusInvarianceTests"/> fail intermittently (#1190): two matches fired,
+    /// neither on an operand pair of its <c>+</c>, turning 14 into 13. Pinned here because the
+    /// invariance test only samples 25 of thousands of pairs and cannot be relied on to catch a
+    /// regression of this transform.
+    /// </summary>
+    [Fact]
+    public void SwapCommutative_DeclinesTheMixedPrecedenceCorpusExpression()
+    {
+        const string source = "def main():\n    precedence = 2 + 3 * 4 - 5 // 2 + 6 % 4\n    print(precedence)\n";
+        Assert.Equal(source, new SwapCommutativeTransform().Apply(source));
+    }
+
+    /// <summary>
+    /// Addition is associative, so a neighbouring <c>+</c> is not a hazard and must stay applicable —
+    /// the precedence guards are not allowed to decline the whole corpus.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    x: int = 5\n    print(x + 1 + 2)\n", "x + 2 + 1")]
+    [InlineData("def main():\n    print(1 + 2 - 3)\n", "2 + 1 - 3")]
+    [InlineData("def main():\n    print((1 + 2) * 3)\n", "(2 + 1) * 3")]
+    public void SwapCommutative_StillSwapsWhenTheLiteralsAreTheWholeOperands(string source, string expected)
+    {
+        Assert.Contains(expected, new SwapCommutativeTransform().Apply(source), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void CommentInsertion_InsertsIntoBlockBodiesOnly()
     {
