@@ -117,7 +117,7 @@ internal partial class TypeChecker
         // Check arguments and keyword arguments, collecting their types. isinstance's subject
         // reads the honest, un-narrowed value (see _typeTestOperand): a narrowing cast on the
         // operand would presuppose the very fact the test is checking.
-        var calleeFunctionType = calleeType as FunctionType;
+        var calleeFunctionType = calleeType as FunctionType ?? ClosedExtensionSignature(callee);
         var savedTypeTestOperand = _typeTestOperand;
         var savedTypeTestTypeArgument = _typeTestTypeArgument;
         if (callee is Identifier { Name: BuiltinNames.Isinstance } && call.Arguments.Length > 0)
@@ -449,6 +449,22 @@ internal partial class TypeChecker
             }
         }
 
+        // lst.select[str](f) — an extension method whose closed signature semantic analysis
+        // materialized (#1195). No FunctionSymbol exists for this kind, so nothing below can bind it:
+        // the closed CLR signature IS the contract. The call's type is the closed return type (which
+        // is what lets `list(lst.select[str](f))` know what it wraps), and its value arguments are
+        // checked against the closed parameter types (the #1148 contract for this kind).
+        if (callee is IndexAccess extensionAccess
+            && _semanticInfo.GetGenericReference(extensionAccess) is
+            {
+                Kind: GenericReferenceKind.BclExtensionMethod,
+                ClosedReturnType: { } closedReturnType
+            } extensionReference)
+        {
+            ValidateClosedExtensionArguments(call, extensionAccess, extensionReference, argTypes);
+            return closedReturnType;
+        }
+
         // Handle generic function call: identity[int](42)
         // The calleeType will be GenericFunctionType from CheckIndexAccess
         if (calleeType is GenericFunctionType genericFuncType)
@@ -472,6 +488,70 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Validates the value arguments of an extension call against its CLOSED signature (#1195) — the
+    /// <see cref="GenericReferenceKind.BclExtensionMethod"/> counterpart of
+    /// <see cref="ValidateSelectedGenericOverloadArguments"/>, which cannot serve this kind because
+    /// no <see cref="FunctionSymbol"/> exists for it.
+    ///
+    /// <para>Scope is deliberately narrow. ARITY is left to C#: the acceptance surface ships
+    /// same-name overloads whose value parameters differ (<c>Select</c>'s plain and index-taking
+    /// selectors close to the same type-argument vector, which the resolver treats as one
+    /// resolution), so a count that does not match THIS closed candidate need not be wrong. Only an
+    /// argument that is definitely of the wrong type is reported, and an argument whose own type is
+    /// unknown — a bare lambda with no expected type — is skipped rather than guessed at.</para>
+    /// </summary>
+    /// <summary>
+    /// The closed signature of an extension-method callee, shaped as a <see cref="FunctionType"/> so
+    /// its value arguments receive expected types through the ordinary argument-checking seam: the
+    /// lambda in <c>lst.select[str](f)</c> is checked against <c>Func[int, str]</c> instead of being
+    /// inferred blind and only failing at the C# layer (#1195). Null for every other callee.
+    /// </summary>
+    private FunctionType? ClosedExtensionSignature(Expression callee)
+        => callee is IndexAccess extensionCallee
+           && _semanticInfo.GetGenericReference(extensionCallee) is
+           {
+               Kind: GenericReferenceKind.BclExtensionMethod,
+               ClosedReturnType: { } returnType,
+               ClosedParameterTypes: { } parameterTypes,
+           }
+            ? new FunctionType { ParameterTypes = parameterTypes.ToList(), ReturnType = returnType }
+            : null;
+
+    private void ValidateClosedExtensionArguments(
+        FunctionCall call, IndexAccess callee, GenericReference reference, List<SemanticType> argTypes)
+    {
+        if (reference.ClosedParameterTypes is not { } expectedTypes
+            || call.KeywordArguments.Length > 0
+            || argTypes.Count != expectedTypes.Count)
+        {
+            return;
+        }
+
+        var memberName = (callee.Object as MemberAccess)?.Member ?? reference.ClrMemberName ?? "extension method";
+
+        for (int i = 0; i < argTypes.Count; i++)
+        {
+            if (argTypes[i] is UnknownType || expectedTypes[i] is UnknownType
+                || argTypes[i] is FunctionType { } argFn && argFn.HasUnresolvedTypes()
+                || expectedTypes[i] is FunctionType { } expectedFn && expectedFn.HasUnresolvedTypes())
+            {
+                continue;
+            }
+
+            if (IsAssignable(argTypes[i], expectedTypes[i]))
+                continue;
+
+            AddError(
+                $"Argument {i + 1} of '{memberName}[...]' expects '{expectedTypes[i].GetDisplayName()}' "
+                + $"but got '{argTypes[i].GetDisplayName()}'",
+                call.Arguments[i].LineStart,
+                call.Arguments[i].ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: call.Arguments[i].Span);
+        }
     }
 
     /// <summary>
