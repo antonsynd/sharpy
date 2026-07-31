@@ -29,20 +29,25 @@ internal partial class TypeChecker
         }
 
         // The operand of an `is (not) None` test reads the honest, un-narrowed value: mark it so
-        // the read sites skip narrowing for that node (see _typeTestOperand). Restored immediately
+        // the read sites skip narrowing for that node (see _typeTestOperand). The scope ends right
         // after the operand checks — the suppression must not leak into sibling expressions.
-        var savedTypeTestOperand = _typeTestOperand;
+        // When this is NOT a type test the scope pushes the field's CURRENT value, so an enclosing
+        // operand survives rather than being cleared for the duration of these operands.
+        var typeTestOperand = _typeTestOperand;
         if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
         {
             if (binOp.Right is NoneLiteral)
-                _typeTestOperand = UnwrapParenthesized(binOp.Left);
+                typeTestOperand = UnwrapParenthesized(binOp.Left);
             else if (binOp.Left is NoneLiteral)
-                _typeTestOperand = UnwrapParenthesized(binOp.Right);
+                typeTestOperand = UnwrapParenthesized(binOp.Right);
         }
 
-        var leftType = CheckExpression(binOp.Left);
-        var rightType = CheckExpression(binOp.Right);
-        _typeTestOperand = savedTypeTestOperand;
+        SemanticType leftType, rightType;
+        using (ScopedValue.Push(ref _typeTestOperand, typeTestOperand))
+        {
+            leftType = CheckExpression(binOp.Left);
+            rightType = CheckExpression(binOp.Right);
+        }
 
         // If either operand is Unknown, return Unknown to avoid cascading errors
         if (leftType is UnknownType || rightType is UnknownType)
