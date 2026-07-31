@@ -34,15 +34,20 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// single <c>main()</c> call so CPython drives the same entry point Sharpy auto-invokes. Nothing in the
 /// body is transformed.</para>
 ///
-/// <para>Corpus (three arms, deterministically capped at <c>DIFF_EXEC_LIMIT</c> ≈ 60/run):
-/// (1) hand-picked programs targeting the historical divergence surface, each verified against
-/// <c>python3</c> by hand; (2) real single-file <c>.spy</c>+<c>.expected</c> fixtures (via
-/// <see cref="FixtureDiscoveryHelper"/>) whose top level is functions-only-with-<c>main</c> and which
-/// pass the shared-subset AST filter; (3) generated well-typed programs reusing
-/// <see cref="GenTyped"/>. The Sharpy arm runs each through the production
-/// <see cref="IntegrationTestBase.CompileAndExecute"/> path (a real <c>dotnet</c> subprocess) — this
-/// bounds corpus size. The Python arm batches the whole corpus through ONE <c>python3</c> that drives
+/// <para>Corpus (three arms): (1) hand-picked programs targeting the historical divergence surface,
+/// each verified against <c>python3</c> by hand; (2) <b>every</b> eligible single-file
+/// <c>.spy</c>+<c>.expected</c> fixture (via <see cref="FixtureDiscoveryHelper"/>) whose top level is
+/// functions-only-with-<c>main</c> and which passes the shared-subset AST filter; (3) generated
+/// well-typed programs reusing <see cref="GenTyped"/>. The Sharpy arm runs each through the
+/// production <see cref="IntegrationTestBase.CompileAndExecute"/> path. The Python arm batches the
+/// whole corpus through ONE <c>python3</c> that drives
 /// <c>build_tools/differential_exec/run_programs.py</c>.</para>
+///
+/// <para>Coverage is the contract, not a sample (#1202): the fixture arm exhausts its eligible pool
+/// on every run, every fixture kept out of that pool is counted under an attributable shape id, and
+/// the report states pool size / cells run / coverage % so a run that is narrower than the contract
+/// says so in its own output. <c>DIFF_EXEC_LIMIT=&lt;n&gt;</c> requests a labelled subsample for fast
+/// local iteration.</para>
 ///
 /// <para>Sweep discipline (Design Decision #10, mirrors <c>InteropConformanceTests</c>): one aggregated
 /// JSON report under <c>.claude/tmp/</c>, ratcheted against a reviewed allowlist. The test skips
@@ -51,14 +56,39 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 [Trait("Category", "GapDiscovery")]
 public class DifferentialExecutionTests : IntegrationTestBase
 {
-    private const int DefaultLimit = 60;
+    /// <summary>
+    /// Default program cap: none. The fixture arm sweeps the ENTIRE eligible pool every run.
+    ///
+    /// <para>Until #1202 the default was a 60-program budget whose fixture share was 22 of ~550
+    /// eligible. The stable-hash selection guaranteed a deterministic <em>spread</em> but never
+    /// <em>coverage</em>: a fixture could stay unsampled indefinitely while its category looked
+    /// covered, and the allowlist — the thing that makes a divergence "reviewed" rather than
+    /// "silent" — was calibrated to 4% of the corpus without saying so anywhere. Exhausting the
+    /// pool exposed 32 non-allowlisted divergences that had been invisible in CI. Sample rotation
+    /// was considered and rejected for the same reason: the allowlist should mean what it says.</para>
+    ///
+    /// <para>Measured cost of the honest default on the reference machine (post-#1202 exclusions:
+    /// 527 fixtures + 26 hand-picked + 12 generated = 565 cells): <b>~46 s</b> wall — well inside the
+    /// ~5 min the coverage decision budgeted for, because the AST exclusions removed two cells that
+    /// each burned a 5 s <c>python3</c> pdb timeout and because the fuzz arm no longer inherits the
+    /// fixture arm's unfilled budget. Set <c>DIFF_EXEC_LIMIT=&lt;n&gt;</c> for a fast local subsample —
+    /// the report labels such a run and states its coverage.</para>
+    /// </summary>
+    private const int FullPool = 0;
+
+    /// <summary>
+    /// Generated-arm size when the fixture arm is running the full pool. Deliberately the same 12
+    /// programs the old 60-program budget produced, so #1202's flip changes exactly one variable
+    /// (fixture reach); how large the fuzz arm should be is an independent question.
+    /// </summary>
+    private const int FullPoolGeneratedTarget = 12;
 
     // Fixed CsCheck seed so the generated arm (and hence the whole default corpus) is deterministic
     // run-to-run — a sweep whose inputs drift cannot be ratcheted.
     private const string GeneratedSeed = "0000DifferentialExec";
 
     // Sharpy execution is capped tighter than the 30 s base default: a functions-only program that
-    // needs longer is a perf outlier we would rather skip than let dominate the ≤4-minute budget.
+    // needs longer is a perf outlier we would rather skip than let dominate the wall.
     private const int SharpyExecTimeoutMs = 12_000;
 
     public DifferentialExecutionTests(ITestOutputHelper output) : base(output) { }
@@ -74,7 +104,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         }
 
         var sw = Stopwatch.StartNew();
-        int limit = ReadIntEnv("DIFF_EXEC_LIMIT", DefaultLimit);
+        int limit = ReadIntEnv("DIFF_EXEC_LIMIT", FullPool);
         var corpus = BuildCorpus(limit);
         var programs = corpus.Programs;
         var pool = corpus.FixturePool;
@@ -159,17 +189,28 @@ public class DifferentialExecutionTests : IntegrationTestBase
     private Corpus BuildCorpus(int limit)
     {
         var handpicked = HandPicked();
-        var remaining = Math.Max(0, limit - handpicked.Count);
 
-        // Split the remaining budget ~2/3 fixtures (real, realistic code) : ~1/3 generated (fuzz).
+        // Default: the fixture arm takes every eligible fixture, the fuzz arm its fixed budget.
+        if (limit <= FullPool)
+        {
+            var full = Fixtures(int.MaxValue);
+            return Compose(handpicked, full, Generated(FullPoolGeneratedTarget));
+        }
+
+        // DIFF_EXEC_LIMIT=<n>: a subsample for fast local iteration. Split the remaining budget
+        // ~2/3 fixtures (real, realistic code) : ~1/3 generated (fuzz).
+        var remaining = Math.Max(0, limit - handpicked.Count);
         var fixtureTarget = (remaining * 2) / 3;
         var generatedTarget = remaining - fixtureTarget;
 
         var pool = Fixtures(fixtureTarget);
         // Any fixture budget the pool could not fill rolls over to the generated arm.
         generatedTarget += Math.Max(0, fixtureTarget - pool.Selected.Count);
-        var generated = Generated(generatedTarget);
+        return Compose(handpicked, pool, Generated(generatedTarget));
+    }
 
+    private static Corpus Compose(List<Program> handpicked, FixturePool pool, List<Program> generated)
+    {
         var programs = new List<Program>(handpicked.Count + pool.Selected.Count + generated.Count);
         programs.AddRange(handpicked);
         programs.AddRange(pool.Selected);
