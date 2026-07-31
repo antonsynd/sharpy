@@ -2,6 +2,13 @@
 # Each call through it resolves exactly like a call of the builtin itself — same overload selection,
 # same expected-type-driven type-argument inference — and the binding itself emits no C#, because a
 # constructor reference has no runtime value (the C# method-group model).
+def shadowed() -> int:
+    # A local variable named after a builtin shadows it, and stays an ordinary variable: the
+    # constructor-reference rules short-circuit on the VariableSymbol.
+    dict = 5
+    return dict + 1
+
+
 def main():
     f = int
     print(f("3"))
@@ -32,3 +39,17 @@ def main():
 
     fl = float
     print(fl("2.5"))
+
+    # An alias bound inside a loop body, re-bound on every iteration.
+    total: int = 0
+    for raw in ["1", "2", "3"]:
+        parse = int
+        total = total + parse(raw)
+    print(total)
+
+    # And inside a nested block scope.
+    if True:
+        render = str
+        print(render(7))
+
+    print(shadowed())

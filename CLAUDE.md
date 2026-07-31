@@ -123,6 +123,7 @@ SemanticType (abstract)
 ├── OptionalType      — T? as safe tagged union (UnderlyingType)
 ├── FunctionType      — Lambdas/delegates (ParameterTypes + ReturnType)
 ├── GenericFunctionType — Generic functions with type parameters
+├── ConstructorReferenceType — Bare builtin type reference as a value (`f = int`) — Sharpy's method group
 ├── TupleType         — tuple[int, str] (ElementTypes)
 ├── ModuleType        — Imported modules as namespaces
 ├── TypeParameterType — Generic type parameters (T in class Box[T])
