@@ -280,6 +280,35 @@ public sealed class CompilerApi
     /// <param name="cancellationToken">Cancellation token for cooperative cancellation.</param>
     /// <returns>A <see cref="SemanticResult"/> with the analysis outcome.</returns>
     public SemanticResult Analyze(string source, CompilerOptions options, CancellationToken cancellationToken = default)
+        => Analyze(source, options, stageMetrics: null, cancellationToken);
+
+    /// <summary>
+    /// Analyzes source with explicit options while attributing the call's wall time to the
+    /// per-call pipeline stages it runs through (see <see cref="AnalysisStageNames"/>).
+    /// </summary>
+    /// <remarks>
+    /// The attribution seam for the LSP change→publish latency baseline (#1140). Since #1087 a
+    /// single-file analyze is a synthetic project driven through <c>ProjectCompiler</c>, so each
+    /// call rebuilds whole-project scaffolding — a module registry, a project model, a shared
+    /// symbol table — that the recorded baseline reports only as one aggregate number. Passing a
+    /// <see cref="CompilationMetrics"/> here breaks that number apart.
+    /// <para>
+    /// Attribution is opt-in and this path runs per keystroke, so <paramref name="stageMetrics"/>
+    /// must be null unless someone is reading the result: with null, every bracket collapses to a
+    /// null check and nothing is allocated. <paramref name="cancellationToken"/> deliberately has
+    /// no default value — giving it one would make <c>Analyze(source, options)</c> ambiguous
+    /// against the overload above.
+    /// </para>
+    /// </remarks>
+    /// <param name="source">The Sharpy source code to analyze.</param>
+    /// <param name="options">Compiler options for this analysis.</param>
+    /// <param name="stageMetrics">
+    /// Collects a phase per pipeline stage, or null to run uninstrumented.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token for cooperative cancellation.</param>
+    /// <returns>A <see cref="SemanticResult"/> with the analysis outcome.</returns>
+    public SemanticResult Analyze(string source, CompilerOptions options,
+        CompilationMetrics? stageMetrics, CancellationToken cancellationToken)
     {
         var opts = options ?? CompilerOptionsFactory.ForLibraryAnalysis();
         MergeDefaultReferences(opts);
@@ -293,20 +322,33 @@ public sealed class CompilerApi
         // from the caller's options (the no-options overload keeps its "library" default so LSP
         // analysis gains no entry-point/missing-main diagnostics).
         const string entryPath = "<source>";
-        var config = SyntheticProject.BuildConfig(source, entryPath, opts, _logger,
-            preserveTrivia: true, nullifyEntryFilePath: true);
-        var registry = BuildModuleRegistry(config);
+        ProjectConfig config;
+        using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.SyntheticProjectSetup))
+        {
+            config = SyntheticProject.BuildConfig(source, entryPath, opts, _logger,
+                preserveTrivia: true, nullifyEntryFilePath: true);
+        }
+
+        ModuleRegistry? registry;
+        using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.ModuleRegistry))
+        {
+            registry = BuildModuleRegistry(config);
+        }
 
         // SyntheticProject.Analyze constructs the ProjectCompiler with the caller's full
         // options (WarningsAsErrors, SuppressedWarnings, MaxErrors, Features), locates the
         // entry unit, and positions the shared symbol table at the entry file's module scope
         // so bare SymbolTable.Lookup resolves module-level symbols.
         var result = SyntheticProject.Analyze(config, opts, _logger, registry,
-            _emitterFactory, cancellationToken);
+            _emitterFactory, cancellationToken, stageMetrics);
         var analysis = result.Analysis;
-        var entryResult = result.EntryUnit != null
-            ? analysis.GetFileResult(result.EntryUnit.FilePath)
-            : null;
+        Project.FileAnalysisResult? entryResult;
+        using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.EntryFileResult))
+        {
+            entryResult = result.EntryUnit != null
+                ? analysis.GetFileResult(result.EntryUnit.FilePath)
+                : null;
+        }
 
         return new SemanticResult
         {

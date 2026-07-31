@@ -131,7 +131,13 @@ internal sealed class DocumentState : IDisposable
         }
     }
 
-    public async Task<SemanticResult> GetOrRunAnalysisAsync(CompilerApi api, CompilerOptions options, CancellationToken ct)
+    /// <param name="stageMetrics">
+    /// Optional per-call stage attribution (#1140), forwarded to <see cref="CompilerApi.Analyze"/>.
+    /// Collects nothing on the incremental fast paths below, which never reach the compiler call —
+    /// an empty breakdown is the honest report that no full analysis ran.
+    /// </param>
+    public async Task<SemanticResult> GetOrRunAnalysisAsync(CompilerApi api, CompilerOptions options,
+        CancellationToken ct, CompilationMetrics? stageMetrics = null)
     {
         lock (_stateLock)
         {
@@ -213,7 +219,7 @@ internal sealed class DocumentState : IDisposable
             }
 
             var result = await Task.Run(
-                () => api.Analyze(text, options, scope.Token),
+                () => api.Analyze(text, options, stageMetrics, scope.Token),
                 scope.Token
             ).ConfigureAwait(false);
 
@@ -504,11 +510,19 @@ internal sealed class SharpyWorkspace : IDisposable
         }
     }
 
-    public async Task<SemanticResult?> GetAnalysisAsync(string uri, CancellationToken ct = default)
+    /// <param name="uri">The document to analyze.</param>
+    /// <param name="ct">Cancellation token for cooperative cancellation.</param>
+    /// <param name="stageMetrics">
+    /// Optional per-call stage attribution (#1140). Null on every production request except when
+    /// debug logging is on; see <see cref="FireAndForgetAnalysis"/>.
+    /// </param>
+    public async Task<SemanticResult?> GetAnalysisAsync(string uri, CancellationToken ct = default,
+        CompilationMetrics? stageMetrics = null)
     {
         if (_documents.TryGetValue(uri, out var state))
         {
-            return await state.GetOrRunAnalysisAsync(_api, _workspaceOptions, ct).ConfigureAwait(false);
+            return await state.GetOrRunAnalysisAsync(_api, _workspaceOptions, ct, stageMetrics)
+                .ConfigureAwait(false);
         }
         return null;
     }
@@ -567,11 +581,20 @@ internal sealed class SharpyWorkspace : IDisposable
     {
         try
         {
+            // Per-stage attribution (#1140) is opt-in because it allocates a metrics object and
+            // brackets every pipeline stage — on the very path whose latency is being measured.
+            // The server's minimum level is Information (Program.cs), so this stays null on every
+            // keystroke unless someone turns debug logging on to investigate.
+            var stageMetrics = _logger.IsEnabled(LogLevel.Debug)
+                ? new CompilationMetrics(fileName: uri)
+                : null;
+
             // Measure change→publish wall time for the single-file path: analysis plus the
             // DocumentAnalyzed handler that publishes diagnostics. Recorded so the LSP
             // incremental-frontend work (#1099) starts from data, not intuition.
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            var result = await GetAnalysisAsync(uri).ConfigureAwait(false);
+            var result = await GetAnalysisAsync(uri, CancellationToken.None, stageMetrics)
+                .ConfigureAwait(false);
             if (result != null)
             {
                 var handler = DocumentAnalyzed;
@@ -584,6 +607,16 @@ internal sealed class SharpyWorkspace : IDisposable
                     AnalysisLatencyLog.SingleFilePath,
                     affectedFiles: 1,
                     stopwatch.Elapsed.TotalMilliseconds));
+
+                // Empty when an incremental fast path served the edit without a compiler call —
+                // there are no stages to attribute, and claiming otherwise would be a lie.
+                if (stageMetrics is { Phases.Count: > 0 })
+                {
+                    _logger.LogDebug("{StageLine}", AnalysisLatencyLog.FormatStages(
+                        AnalysisLatencyLog.SingleFilePath,
+                        stageMetrics.Phases,
+                        stopwatch.Elapsed.TotalMilliseconds));
+                }
             }
         }
         catch (OperationCanceledException)

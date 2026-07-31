@@ -115,15 +115,20 @@ internal static class SyntheticProject
     /// entering a scope here is safe; it is skipped on parse failure, when no module scope
     /// exists — there are no symbols to find anyway.
     /// </summary>
+    /// <param name="stageMetrics">
+    /// Optional per-call stage attribution for the LSP latency baseline (#1140), threaded into
+    /// <see cref="ProjectCompiler.AnalyzeProject"/>. Null (the default) runs uninstrumented.
+    /// </param>
     public static SyntheticAnalysis Analyze(
         ProjectConfig config, CompilerOptions options, ICompilerLogger logger,
         ModuleRegistry? moduleRegistry, ICodeEmitterFactory? emitterFactory,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Diagnostics.CompilationMetrics? stageMetrics = null)
     {
         var projectCompiler = new ProjectCompiler(logger, moduleRegistry,
             Services.ProjectOptionsMerge.Merge(options, incremental: false), emitterFactory);
 
-        var analysis = projectCompiler.AnalyzeProject(config, cancellationToken);
+        var analysis = projectCompiler.AnalyzeProject(config, cancellationToken, stageMetrics);
 
         // Pick the entry file's unit out of the project model (the closure may also contain
         // imported local .spy files). Match by path the same way MapProjectResult does.

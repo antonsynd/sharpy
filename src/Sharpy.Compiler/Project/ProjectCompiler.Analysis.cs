@@ -17,53 +17,87 @@ internal partial class ProjectCompiler
     /// Each call creates fresh internal state (symbol table, semantic info, etc.),
     /// so this method can be called on a fresh <see cref="ProjectCompiler"/> instance.
     /// </remarks>
-    public ProjectAnalysisResult AnalyzeProject(ProjectConfig config, CancellationToken ct = default)
+    /// <param name="config">The project configuration.</param>
+    /// <param name="ct">Cancellation token for cooperative cancellation.</param>
+    /// <param name="stageMetrics">
+    /// Optional per-call stage attribution (#1140). Non-null only when a caller is reading the
+    /// breakdown — this method is the LSP's per-keystroke path, so with null every bracket below
+    /// is a null check and nothing extra is allocated.
+    /// </param>
+    public ProjectAnalysisResult AnalyzeProject(ProjectConfig config, CancellationToken ct = default,
+        CompilationMetrics? stageMetrics = null)
     {
         _logger.LogInfo($"Starting project analysis: {config.RootNamespace}");
         _cancellationToken = ct;
 
-        _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings);
-        _projectMetricsBacking = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
-        _projectModel = new ProjectModel(config);
+        using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.ProjectSetup))
+        {
+            _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings);
+            _projectMetricsBacking = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
+            _projectModel = new ProjectModel(config);
+        }
 
         try
         {
             // Phase 1: Parse all source files
-            if (!ParseAllFiles(config, ct))
+            using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.ProjectParse))
             {
-                return CreateAnalysisResult(success: false);
+                if (!ParseAllFiles(config, ct))
+                {
+                    return CreateAnalysisResult(success: false);
+                }
             }
             ct.ThrowIfCancellationRequested();
 
             // Phase 2: Initialize shared symbol table and semantic info
-            InitializeSharedState();
-            ct.ThrowIfCancellationRequested();
-
-            // Phase 3: Collect type declarations from all files (first pass - type shells only)
-            CollectTypeDeclarations(config, ct);
-            CompilerInvariants.AssertPostNameResolution(SymbolTable, _diagnostics);
-            ct.ThrowIfCancellationRequested();
-
-            // Phase 4: Resolve imports and build dependency information
-            if (!ResolveImports(config, ct))
+            using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.SharedStateInit))
             {
-                return CreateAnalysisResult(success: false);
+                InitializeSharedState();
             }
             ct.ThrowIfCancellationRequested();
 
-            // Phase 4b: Resolve inheritance (now that imports are resolved)
-            ResolveInheritanceRelationships(ct);
-            CompilerInvariants.AssertPostInheritance(SymbolTable, _diagnostics);
+            // Phase 3: Collect type declarations from all files (first pass - type shells only)
+            using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.TypeDeclarations))
+            {
+                CollectTypeDeclarations(config, ct);
+                CompilerInvariants.AssertPostNameResolution(SymbolTable, _diagnostics);
+            }
             ct.ThrowIfCancellationRequested();
 
-            // Phase 4c: Auto-import transitive base types and resolve imported inheritance
-            var compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel.SemanticBinding, _logger);
-            compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
+            // Phase 4: Resolve imports and build dependency information
+            using (MetricsStage.Begin(stageMetrics, CompilerPhaseNames.ImportResolution))
+            {
+                if (!ResolveImports(config, ct))
+                {
+                    return CreateAnalysisResult(success: false);
+                }
+            }
+            ct.ThrowIfCancellationRequested();
+
+            // Phase 4b/4c: Resolve inheritance (now that imports are resolved), then auto-import
+            // transitive base types and resolve imported inheritance.
+            FileCompilationPipeline compilationPipeline;
+            using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.InheritanceResolution))
+            {
+                ResolveInheritanceRelationships(ct);
+                CompilerInvariants.AssertPostInheritance(SymbolTable, _diagnostics);
+                ct.ThrowIfCancellationRequested();
+
+                compilationPipeline = new FileCompilationPipeline(SymbolTable, SemanticInfo, _projectModel!.SemanticBinding, _logger);
+                compilationPipeline.ResolveImportedInheritanceAndMaterialize(ImportResolver);
+            }
             ct.ThrowIfCancellationRequested();
 
             // Phase 5: Perform semantic analysis on all files
-            var semanticSuccess = PerformSemanticAnalysis(compilationPipeline, config, ct);
-            compilationPipeline.MaterializeTypeInfo();
+            bool semanticSuccess;
+            using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.SemanticAnalysis))
+            {
+                semanticSuccess = PerformSemanticAnalysis(compilationPipeline, config, ct);
+            }
+            using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.Materialization))
+            {
+                compilationPipeline.MaterializeTypeInfo();
+            }
             ct.ThrowIfCancellationRequested();
 
             // Stop here - no codegen (Phase 6) or assembly compilation (Phase 7)

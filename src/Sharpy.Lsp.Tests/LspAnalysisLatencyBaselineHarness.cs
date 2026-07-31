@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Diagnostics;
 using Xunit;
 using Xunit.Abstractions;
 using IOPath = System.IO.Path;
@@ -46,11 +47,19 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
         Directory.CreateDirectory(_tempDir);
     }
 
+    /// <summary>
+    /// The historical row, kept byte-identical for continuity with the number recorded in
+    /// <c>benchmarks/BASELINE.md</c> — <b>including its input's parse error</b>. See
+    /// <see cref="MediumFileSource"/>: the source stops at phase 1, so this row has never timed a
+    /// full analysis. Do not "fix" the input here; the corrected input is
+    /// <see cref="ValidMediumFileSource"/> and has rows of its own below.
+    /// </summary>
     [Fact]
     [Trait("Category", "Benchmark")]
     public async Task Measure_single_file_full_analysis_latency()
     {
-        await MeasureSingleFileAsync(_api, "single-file full analysis (no references)");
+        await MeasureSingleFileAsync(_api, "single-file, parse-truncated input (no references)",
+            MediumFileSource(), expectSuccess: false);
     }
 
     /// <summary>
@@ -71,12 +80,102 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
     public async Task Measure_single_file_full_analysis_latency_with_default_references()
     {
         var api = CreateApi(withDefaultReferences: true);
-        await MeasureSingleFileAsync(api, "single-file full analysis (server default references)");
+        await MeasureSingleFileAsync(api, "single-file, parse-truncated input (server default references)",
+            MediumFileSource(), expectSuccess: false);
     }
 
-    private async Task MeasureSingleFileAsync(CompilerApi api, string label)
+    /// <summary>
+    /// The row the historical one was always meant to be: an input that actually reaches the end of
+    /// the pipeline, so the number covers name resolution, imports, inheritance, type checking and
+    /// validation rather than stopping at the parser (#1140).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Benchmark")]
+    public async Task Measure_single_file_full_analysis_latency_valid_input()
     {
-        var source = MediumFileSource();
+        await MeasureSingleFileAsync(_api, "single-file full analysis (no references)",
+            ValidMediumFileSource(), expectSuccess: true);
+    }
+
+    /// <summary>
+    /// A full analysis of a valid input through the server's real default references — the only one
+    /// of the four single-file rows that measures what the LSP actually does on a keystroke.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Benchmark")]
+    public async Task Measure_single_file_full_analysis_latency_valid_input_with_default_references()
+    {
+        var api = CreateApi(withDefaultReferences: true);
+        await MeasureSingleFileAsync(api, "single-file full analysis (server default references)",
+            ValidMediumFileSource(), expectSuccess: true);
+    }
+
+    /// <summary>
+    /// Breaks the default-references row apart into the per-call pipeline stages a single-file
+    /// analysis runs through (#1140), so the row's total can be attributed rather than guessed at.
+    /// Wall time and stage breakdown come from the <em>same</em> call, so the residual between them
+    /// is real workspace overhead (the analysis task hop, the semaphores, the parse-result
+    /// projection) and not a comparison across two different measurements.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Benchmark")]
+    public async Task Measure_single_file_analysis_stage_attribution()
+    {
+        var api = CreateApi(withDefaultReferences: true);
+        var source = ValidMediumFileSource();
+        using var workspace = new SharpyWorkspace(api, NullLogger<SharpyWorkspace>.Instance);
+
+        var wall = new SCG.List<double>();
+        var stageTotals = new SCG.List<double>();
+        var stageSamples = new SCG.Dictionary<string, SCG.List<double>>(StringComparer.Ordinal);
+        var stageOrder = new SCG.List<string>();
+
+        for (var i = 0; i < Warmups + TimedRuns; i++)
+        {
+            var uri = $"file:///stages_{i}.spy";
+            workspace.OpenDocument(uri, source, 1);
+
+            var metrics = new CompilationMetrics(fileName: uri);
+            var sw = Stopwatch.StartNew();
+            var result = await workspace.GetAnalysisAsync(uri, default, metrics);
+            sw.Stop();
+
+            Assert.NotNull(result);
+            AssertAnalysisOutcome(result, expectSuccess: true);
+            if (i >= Warmups)
+            {
+                wall.Add(sw.Elapsed.TotalMilliseconds);
+                double total = 0;
+                foreach (var phase in metrics.Phases)
+                {
+                    if (!stageSamples.TryGetValue(phase.Name, out var samples))
+                    {
+                        samples = new SCG.List<double>();
+                        stageSamples[phase.Name] = samples;
+                        stageOrder.Add(phase.Name);
+                    }
+                    samples.Add(phase.Duration.TotalMilliseconds);
+                    total += phase.Duration.TotalMilliseconds;
+                }
+                stageTotals.Add(total);
+            }
+            workspace.CloseDocument(uri);
+        }
+
+        Report("single-file stage attribution (server default references)", LineCount(source), wall);
+        _output.WriteLine(string.Create(CultureInfo.InvariantCulture,
+            $"[LSP stages] stage-sum median={Median(stageTotals):F2}ms vs wall median={Median(wall):F2}ms"));
+        foreach (var name in stageOrder)
+        {
+            var median = Median(stageSamples[name]);
+            var share = Median(wall) > 0 ? median / Median(wall) * 100 : 0;
+            _output.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                $"[LSP stages]   {name}: median={median:F2}ms ({share:F0}% of wall)"));
+        }
+    }
+
+    private async Task MeasureSingleFileAsync(CompilerApi api, string label, string source, bool expectSuccess)
+    {
         using var workspace = new SharpyWorkspace(api, NullLogger<SharpyWorkspace>.Instance);
 
         var samples = new SCG.List<double>();
@@ -92,12 +191,40 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
             sw.Stop();
 
             Assert.NotNull(result);
+            AssertAnalysisOutcome(result, expectSuccess);
             if (i >= Warmups)
                 samples.Add(sw.Elapsed.TotalMilliseconds);
             workspace.CloseDocument(uri);
         }
 
         Report(label, LineCount(source), samples);
+    }
+
+    /// <summary>
+    /// Pins how far down the pipeline a row's input actually gets. This is a correctness assertion,
+    /// never a timing one, so it keeps the harness's never-fail-on-machine-speed contract.
+    /// </summary>
+    /// <remarks>
+    /// It matters in both directions. A row labelled "full analysis" whose input stops at the
+    /// parser is measuring a third of the pipeline under a name that claims all of it — the defect
+    /// that made every previously recorded single-file number an underestimate. And the
+    /// parse-truncated rows are only comparable to the recorded baseline for as long as their input
+    /// keeps failing the same way, so silently repairing it would break the continuity it exists
+    /// to provide.
+    /// </remarks>
+    private static void AssertAnalysisOutcome(SemanticResult result, bool expectSuccess)
+    {
+        if (expectSuccess)
+        {
+            Assert.True(result.Success,
+                "This row is supposed to time a complete analysis, but the input did not analyze cleanly: "
+                + string.Join(" | ", result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code} {d.Message}")));
+        }
+        else
+        {
+            Assert.Contains(result.Diagnostics,
+                d => d.Code == DiagnosticCodes.Parser.InvalidTypeAnnotationTarget);
+        }
     }
 
     /// <summary>
@@ -201,6 +328,14 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
 
     private readonly CapturingLogger<LanguageService> _serviceLogger = new();
 
+    /// <summary>Median of a sample set, leaving the caller's list order untouched.</summary>
+    private static double Median(SCG.List<double> samples)
+    {
+        var sorted = new SCG.List<double>(samples);
+        sorted.Sort();
+        return sorted[sorted.Count / 2];
+    }
+
     private void Report(string label, int lines, SCG.List<double> samples)
     {
         samples.Sort();
@@ -233,6 +368,22 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
             File.WriteAllText(IOPath.Combine(_tempDir, name), content);
     }
 
+    /// <summary>
+    /// The input every previously recorded single-file number was measured against.
+    /// </summary>
+    /// <remarks>
+    /// <b>It does not parse.</b> <c>Grid.__init__</c> annotates assignments to attributes
+    /// (<c>self.width: int = width</c>), which Sharpy rejects with SPY0107 — a type annotation
+    /// targets a bare identifier, and fields are declared at class level the way <c>Point</c> does
+    /// it here. <c>ProjectCompiler.ParseAllFiles</c> therefore returns false and
+    /// <c>AnalyzeProject</c> returns after phase 1, so name resolution, import resolution,
+    /// inheritance, type checking and validation never run. Every number recorded from this input
+    /// times a lexer, a parser, and an early return under a label that says "full analysis" (#1140).
+    /// <para>
+    /// Kept verbatim so the historical rows stay comparable to what is already written down.
+    /// <see cref="ValidMediumFileSource"/> is the corrected input; new rows use that.
+    /// </para>
+    /// </remarks>
     private static string MediumFileSource()
     {
         // ~130 lines: classes, methods, comprehensions, control flow — a representative edit target.
@@ -253,6 +404,63 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
             "    def __init__(self, width: int, height: int):",
             "        self.width: int = width",
             "        self.height: int = height",
+            "",
+            "    def cells(self) -> list[Point]:",
+            "        result: list[Point] = []",
+            "        for gx in range(self.width):",
+            "            for gy in range(self.height):",
+            "                result.append(Point(gx, gy))",
+            "        return result",
+            "",
+        };
+        for (var i = 0; i < 20; i++)
+        {
+            lines.Add($"def compute_{i}(values: list[int]) -> int:");
+            lines.Add("    total: int = 0");
+            lines.Add("    for v in values:");
+            lines.Add("        if v % 2 == 0:");
+            lines.Add("            total = total + v");
+            lines.Add("        else:");
+            lines.Add("            total = total - v");
+            lines.Add($"    doubled: list[int] = [n * 2 for n in values if n > {i}]");
+            lines.Add("    return total + len(doubled)");
+            lines.Add("");
+        }
+        lines.Add("def main():");
+        lines.Add("    grid: Grid = Grid(8, 8)");
+        lines.Add("    pts: list[Point] = grid.cells()");
+        lines.Add("    print(len(pts))");
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>
+    /// <see cref="MediumFileSource"/> with its two SPY0107 lines corrected, so analysis runs to
+    /// completion. Same shape and roughly the same size — classes, methods, comprehensions,
+    /// control flow — and the only change is that <c>Grid</c> declares its fields at class level
+    /// and assigns them unannotated in <c>__init__</c>, exactly as <c>Point</c> already did.
+    /// </summary>
+    private static string ValidMediumFileSource()
+    {
+        var lines = new SCG.List<string>
+        {
+            "class Point:",
+            "    x: int = 0",
+            "    y: int = 0",
+            "",
+            "    def __init__(self, x: int, y: int):",
+            "        self.x = x",
+            "        self.y = y",
+            "",
+            "    def manhattan(self, other: Point) -> int:",
+            "        return abs(self.x - other.x) + abs(self.y - other.y)",
+            "",
+            "class Grid:",
+            "    width: int = 0",
+            "    height: int = 0",
+            "",
+            "    def __init__(self, width: int, height: int):",
+            "        self.width = width",
+            "        self.height = height",
             "",
             "    def cells(self) -> list[Point]:",
             "        result: list[Point] = []",
