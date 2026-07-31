@@ -60,6 +60,8 @@ def main() -> None:
     print(", ".join(d))
 
     # --- nullable dict (same, via the underlying dict) ---
+    # str.join cell omitted here (int keys); the nullable-dict join cell is
+    # pinned in dict_iterable_nullable.spy over a dict[str, int] | None.
     print(sorted(md))
     print(list(md))
     print(sum(md))

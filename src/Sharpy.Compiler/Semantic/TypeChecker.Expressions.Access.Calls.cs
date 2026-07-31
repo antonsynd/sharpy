@@ -2584,6 +2584,10 @@ internal partial class TypeChecker
     /// <c>IEnumerable&lt;element&gt;</c> — the question "will the emitted argument bind?", answered
     /// where CLR inspection belongs (semantic analysis, never the emitter). Returns false whenever
     /// either side has no resolvable CLR type, so acceptance is never granted on a guess.
+    /// Reflection here is the established checker-side pattern (<see cref="TryGetClrType"/> and
+    /// its 10+ existing uses across TypeChecker/TypeInferenceService); CLAUDE.md's
+    /// "CLR inspection belongs to Discovery" rule constrains the EMITTER, which only ever reads
+    /// the materialized <see cref="IterableArgumentProjection"/> fact this method helps produce.
     /// </summary>
     private bool EnumeratesAsInClr(SemanticType source, SemanticType element)
     {

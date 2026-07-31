@@ -1,0 +1,17 @@
+# Sources defined in another module — the iterable-position facts for calls in
+# main.spy are recorded against main.spy's nodes, but the argument TYPES flow
+# from these imported signatures (#1198/#1199 cross-module path).
+def get_dict() -> dict[int, str]:
+    return {2: "b", 1: "a"}
+
+
+def get_nullable() -> dict[int, str] | None:
+    return {4: "d", 3: "c"}
+
+
+def get_tuple() -> tuple[int, int, int]:
+    return (3, 1, 2)
+
+
+def get_set() -> set[int]:
+    return {5, 6}

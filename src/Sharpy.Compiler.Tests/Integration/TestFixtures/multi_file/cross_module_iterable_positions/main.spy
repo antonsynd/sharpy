@@ -1,0 +1,15 @@
+# End-to-end pin for the #1198/#1199 ring across a module boundary: imported
+# return types feed the iterable-position classifier, and the node-keyed
+# IterableArgumentProjection facts survive the per-file -> project merge
+# (the #1038/MergeFrom loss class, here exercised end-to-end rather than only
+# by SemanticInfoMergeConformanceTests).
+from lib import get_dict, get_nullable, get_set, get_tuple
+
+
+def main() -> None:
+    print(sorted(get_dict()))
+    print(sum(get_dict()))
+    print(sorted(get_nullable()))
+    print(sorted(get_tuple()))
+    print(sum(get_tuple()))
+    print(sorted(get_set()))

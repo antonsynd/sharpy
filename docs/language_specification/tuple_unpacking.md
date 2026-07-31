@@ -189,6 +189,13 @@ t: tuple[int, int, int] = (xs[0], xs[1], xs[2])  # known arity
 If the argument is already a tuple, the conversion is redundant — drop the call. Tuple literals,
 explicitly parameterized construction, and every unpacking form above are unaffected.
 
+> **Deliberate CPython divergence (Axiom 1/3 over Axiom 2):** explicitly parameterized
+> construction converts elements to the written element types —
+> `tuple[float, str]((1, "a"))` is `(1.0, 'a')`. CPython's `tuple[float, str]` is a bare
+> `types.GenericAlias` whose call ignores the parameters and would keep `1` an `int`.
+> Sharpy treats the written annotation as the type authority, so the element widens
+> exactly as `x: float = 1` does (#1200; pinned in `ParameterizedTupleConversionTests`).
+
 ## Error Cases
 
 | Scenario | Diagnostic |
