@@ -315,6 +315,55 @@ public class RoslynEmitterExpressionTests
     }
 
     [Fact]
+    public void GenerateExpression_Modulo_DecimalOperands_UsesGuardedDecimalRemainder()
+    {
+        // Arrange - decimal % keeps native truncating semantics but must route through the
+        // guarded Decimal.Remainder method form: the % operator on a literal 0m divisor is
+        // CS0020 at C# compile time even in the unreachable guard arm, and an unguarded
+        // divisor would escape as a raw CLR DivideByZeroException instead of the catchable
+        // Sharpy InvalidOperation that mirrors CPython decimal.InvalidOperation (#1189).
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.Modulo,
+            Left = new FloatLiteral { Value = "7", Suffix = "m" },
+            Right = new FloatLiteral { Value = "3", Suffix = "m" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("global::System.Decimal.Remainder");
+        code.Should().Contain("global::Sharpy.InvalidOperation");
+        code.Should().Contain("decimal modulo by zero");
+        code.Should().NotContain("FloorMod");
+    }
+
+    [Fact]
+    public void GenerateExpression_Modulo_MixedDecimalInt_UsesGuardedDecimalRemainder()
+    {
+        // Arrange - one decimal operand is enough to select the decimal path (#1188 promotion:
+        // decimal mixes with integer kinds); the int operand implicit-converts to decimal
+        // inside both the guard comparison and the Remainder call.
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.Modulo,
+            Left = new FloatLiteral { Value = "7", Suffix = "m" },
+            Right = new IntegerLiteral { Value = "3" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("global::System.Decimal.Remainder");
+        code.Should().Contain("global::Sharpy.InvalidOperation");
+        code.Should().NotContain("FloorMod");
+    }
+
+    [Fact]
     public void GenerateExpression_PowerOperator_GeneratesMathPow()
     {
         // Arrange
