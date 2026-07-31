@@ -405,6 +405,97 @@ reparse) stays roadmap, so a structural edit still re-runs a full whole-project 
 | project full reanalysis | 6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`) | 0.9 ms | 0.6 ms | 1.4 ms |
 | project no-change edit skip | 6-file project, comment/whitespace edit to `stats.spy` (fast path returns without reanalysis) | 0.0 ms ‡ | 0.0 ms | 0.0 ms |
 
+### Correction (2026-07-31): the single-file row above measured neither a full analysis nor the server's configuration
+
+> **Recorded:** 2026-07-31 (#1140 measurement phase) · Apple M4 Max (14 cores), macOS 26.6 · .NET 10.0.302
+> **Harness:** same class; warm in-process medians of 15 timed runs after 3 warmups.
+
+Quantifying #1140 turned up two defects in how the single-file row was produced. Both make the
+2.3 ms figure an **underestimate of what the LSP actually does per keystroke**, and together they
+invalidate the ~0.4 ms residual that footnote † attributes to #1087's unified pipeline.
+
+1. **The input does not parse.** The 227-line source annotates assignments to attributes
+   (`self.width: int = width`), which Sharpy rejects with SPY0107 — annotations target bare
+   identifiers, and fields are declared at class level. `ProjectCompiler.ParseAllFiles` therefore
+   returns false and `AnalyzeProject` returns after phase 1, so **name resolution, import
+   resolution, inheritance, type checking and validation never ran**. Every number in the table
+   above, and every number in the #1137 bisect table on #1140, timed a lexer, a parser, and an early
+   return.
+2. **The harness loads no references.** It built `new CompilerApi()`, and
+   `CompilerApi.BuildModuleRegistry` returns null before constructing a registry when there are no
+   references at all. The real server passes `Sharpy.Core.dll` and `Sharpy.Stdlib.dll`
+   (`Sharpy.Lsp/Program.cs:49-56`), so reference loading cost the harness exactly zero and the
+   server something on every call.
+
+All four combinations, so the effect of each defect is separable:
+
+| Input | References | median | min | max |
+|-------|-----------|-------:|----:|----:|
+| parse-truncated (227 lines, historical) | none — *the row above* | 2.6 ms | 2.6 ms | 3.1 ms |
+| parse-truncated (227 lines, historical) | server defaults | 7.6 ms | 6.4 ms | 10.6 ms |
+| valid (230 lines, analyzes cleanly) | none | 9.2 ms | 7.7 ms | 11.0 ms |
+| **valid (230 lines) — what the server actually runs** | **server defaults** | **14.4 ms** | **12.5 ms** | **22.7 ms** |
+
+The corrected figure is **~6× the recorded 2.3 ms**. Reference loading alone accounts for ~5 ms of
+the difference — more than ten times the ~0.4 ms residual footnote † blames, and roughly twice the
+entire number that row has been reporting.
+
+#### Per-stage attribution of the corrected row
+
+Emitted by the opt-in `CompilationMetrics` breakdown (`AnalysisStageNames`), collected on the same
+call whose wall time is reported, so the two are directly comparable:
+
+| Stage | median | share |
+|-------|-------:|------:|
+| Semantic Analysis | 6.25 ms | 40% |
+| Module Registry | 4.00 ms | 26% |
+| Shared State Init (`BuiltinRegistry` + `SymbolTable`) | 2.74 ms | 18% |
+| Synthetic Project Setup (import-closure walk + entry pre-parse) | 1.00 ms | 7% |
+| Project Parse | 0.51 ms | 3% |
+| Type Declarations | 0.31 ms | 2% |
+| Entry File Result | 0.11 ms | 1% |
+| Inheritance Resolution | 0.04 ms | 0% |
+| Materialization | 0.02 ms | 0% |
+| Import Resolution | 0.01 ms | 0% |
+| Project Setup (`ProjectModel` + diagnostic bag) | 0.00 ms | 0% |
+| **stage sum** | **15.16 ms** | — |
+| *(wall for the same call)* | *15.43 ms* | — |
+
+The stages account for 98.3% of wall; the ~0.27 ms remainder is workspace overhead outside the
+compiler call (the analysis task hop, the per-document semaphores, the parse-result projection).
+
+Two of these stages are **pure per-call rebuild of state that does not change between keystrokes**,
+totalling 6.74 ms — 44% of the row, and more than the actual type-checking work:
+
+- **Module Registry (4.00 ms)** — a fresh `ModuleRegistry` per call SHA-256s `Sharpy.Core.dll` and
+  `Sharpy.Stdlib.dll` (`AssemblyIdentity.FromAssembly` → `ComputeFileHash`) and re-runs
+  `CachedModuleDiscovery`'s three-pass `TypeSymbol` materialization over all 60 stdlib modules.
+  The deserialized `OverloadIndex` itself is already shared process-wide via
+  `OverloadIndexCache.s_inMemoryIndices` (#1049); the hashing and the per-instance symbol
+  materialization are not.
+- **Shared State Init (2.74 ms)** — `new BuiltinRegistry()` + `new SymbolTable()` per call. (Not
+  separated further; the split between the two is unmeasured.)
+
+By contrast the whole-project scaffolding #1087 introduced — Project Setup, Project Parse, Type
+Declarations, Import Resolution, Inheritance Resolution, Materialization, Entry File Result — sums
+to **0.99 ms, 6% of the row**.
+
+#### Real edit session (confirmation)
+
+`LspEditSessionTraceHarness` drives the built server over stdio with 35 structural edits:
+
+| Measurement | median | min | max |
+|-------------|-------:|----:|----:|
+| change→publish, client-observed | 333.2 ms | 316.5 ms | 347.2 ms |
+| …minus the 300 ms debounce (analysis + publish) | 33.2 ms | 16.5 ms | 47.2 ms |
+
+**A single edit's user-visible latency is dominated by the 300 ms debounce, not by analysis.** The
+analysis-and-publish remainder is the same order as the in-process row, roughly 2× it, the
+difference being publication and JSON-RPC that the in-process harness does not cover. This is a
+scripted client, not a human in an editor: it does not reproduce VS Code's interleaved
+hover/completion/semantic-token requests contending for the same analysis, its real incremental
+change ranges, or human keystroke timing.
+
 † The 2026-07-15 → 07-24 doubling of this row (1.7 ms → ~3.8 ms median) was bisected under
 [#1137](https://github.com/antonsynd/sharpy/issues/1137) to a **single commit** — `c8e9e5276`
 ("single-file Analyze routes through ProjectCompiler.AnalyzeProject", #1087), which routed
@@ -412,9 +503,16 @@ single-file analysis through the whole-project pipeline: +1.3 ms median / +1.1 m
 commit (`763d66adf` 1.9 ms → `c8e9e5276` 3.2 ms), and nothing after it moved the floor
 (narrowing/batches held ~3.1 ms). The fix in this batch removed the redundant fresh-document
 standalone parse — waste that predated the drift — recovering median 3.1 → 2.3 ms and floor
-2.8 → 2.1 ms (same-HEAD before/after). The residual ~0.4 ms floor over the pre-drift 1.7 ms is the
-unified pipeline's structural per-call overhead, tracked in
-[#1140](https://github.com/antonsynd/sharpy/issues/1140) on the #1099 incremental-frontend workstream.
+2.8 → 2.1 ms (same-HEAD before/after). The residual ~0.4 ms floor over the pre-drift 1.7 ms was
+attributed to the unified pipeline's structural per-call overhead, tracked in
+[#1140](https://github.com/antonsynd/sharpy/issues/1140) on the #1099 incremental-frontend
+workstream. **That attribution is superseded — see the 2026-07-31 correction below.** The
+measurement it rests on used an input that stops at the parser and a configuration with no
+references, so it never observed either the semantic pipeline or reference loading; per-stage
+attribution puts the structural scaffolding at ~1 ms against ~4 ms of per-call registry rebuild.
+The *relative* bisect deltas in the table above remain valid — every row was measured the same way,
+so the +1.3 ms step at `c8e9e5276` is real — but they measure a step in the parse-and-return path,
+not in a full analysis.
 
 ‡ Sub-0.1 ms: the fast path only parses the edited buffer and runs `AstFingerprint.Classify` against
 the last-analyzed AST, then returns without touching the project. Only edits that classify as
@@ -423,10 +521,24 @@ prove equal (list literals, comprehensions, class-member bodies, …), so files 
 (e.g. `main.spy`) fall through to a full reanalysis even on a whitespace-only edit — `stats.spy`
 stays within the provable subset and is the row's subject for that reason.
 
-Caveats: warm (post-JIT) medians on a fast machine and small representative inputs; on a full
-reanalysis the project path rebuilds a fresh `Compiler` + `ModuleRegistry` per change
-(`CompilerApi.cs:288/:314`) and re-analyzes the whole project, so the cost grows with project size,
-not just the edited file. Refresh with the harness command in its class doc comment.
+Caveats: warm (post-JIT) medians on a fast machine and small representative inputs.
+
+**Which rows include reference loading, and which do not.** Every row builds its `ModuleRegistry`
+through `CompilerApi.BuildModuleRegistry`, which returns null — no registry, no `LoadReference`
+call — when the API has no default references *and* the project config names none. So:
+
+- The **three original rows** and the two **"no references"** rows in the correction above carry
+  **zero** reference-loading cost. They are not the configuration the server runs.
+- The two **"server defaults"** rows carry it, because they pass the same `Sharpy.Core.dll` +
+  `Sharpy.Stdlib.dll` list `Sharpy.Lsp/Program.cs:49-56` computes at startup.
+- The **project rows** carry it only when the loaded `.spyproj` names references; the synthetic
+  project the harness writes names none, so those rows do not.
+
+That distinction was previously flagged only as an unquantified note on the project row. It is now
+measured: ~5 ms of a 14.4 ms single-file analysis, i.e. **the largest single item in the row after
+type checking itself**. On a full project reanalysis the project path additionally rebuilds a fresh
+`Compiler` + `ModuleRegistry` per change (`CompilerApi.cs:339-355`) and re-analyzes the whole
+project, so its cost grows with project size, not just the edited file.
 
 ### To refresh the LSP latency baseline
 
@@ -434,7 +546,12 @@ not just the edited file. Refresh with the harness command in its class doc comm
 .claude/scripts/dotnet-serialized test \
   --filter "FullyQualifiedName~LspAnalysisLatencyBaselineHarness" \
   --logger "console;verbosity=detailed"
-# Transcribe the "[LSP latency] …" lines into the table above.
+# Transcribe the "[LSP latency] …" and "[LSP stages] …" lines into the tables above.
+
+# The real-session trace (spawns the built server; run after a build):
+.claude/scripts/dotnet-serialized test \
+  --filter "FullyQualifiedName~LspEditSessionTraceHarness" \
+  --logger "console;verbosity=detailed"
 ```
 
 ## Updating Baselines
