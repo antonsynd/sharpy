@@ -1,0 +1,14 @@
+# Test (#1198): the ring's position tables are the ONLY thing that grants iterable acceptance, so
+# the widening stays scoped (Axiom 3). A user-declared list[int] parameter and ordinary assignment
+# keep rejecting a set, and a heterogeneous tuple is rejected in an int-iterable position rather
+# than mis-lowered into a badly typed array.
+def take(xs: list[int]) -> int:
+    return len(xs)
+
+
+def main() -> None:
+    s: set[int] = {1, 2}
+    print(take(s))
+    lst: list[int] = s
+    print(sum((1, "a")))
+    print(len(lst))

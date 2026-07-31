@@ -1,0 +1,89 @@
+# Test (#1198, #1199): the iteration ring's whole acceptance x lowering surface — every iterable
+# SOURCE against every ring CONSUMER. #1154 -> #1159 -> #1198/#1199 was four rounds of member-wise
+# leaks (a source accepted by one consumer and rejected, or accepted-and-mis-lowered, by the next),
+# so the surface is pinned once here rather than one cell at a time.
+#
+# Sources:   set, tuple, dict (keys), nullable dict, d.keys(), d.values()
+# Consumers: sorted, list, sum, any, all, min, max, str.join
+#
+# Deliberate exclusions:
+#   - `list(set)` alone is not printed: set iteration order is unspecified, so it is wrapped in
+#     sorted() where the source is a set.
+#   - `str` sources are excluded: System.String is IEnumerable<char>, not IEnumerable<string>, so
+#     they are a separate defect class (#1209) and stay rejected here.
+#   - `tuple(...)` as a consumer stays SPY0338 (variable-arity), see dict_iterable_tuple_unsupported.
+# Integer/string typed throughout to stay independent of float formatting.
+# Expected output verified against python3.
+def get_nullable(flag: bool) -> dict[int, str] | None:
+    if flag:
+        return {3: "x", 1: "y"}
+    return None
+
+
+def main() -> None:
+    s: set[int] = {3, 1, 2}
+    si: set[str] = {"b", "a"}
+    t: tuple[int, int, int] = (3, 1, 2)
+    ts: tuple[str, str] = ("a", "b")
+    d: dict[str, int] = {"b": 2, "a": 1}
+    n: dict[int, str] = {3: "x", 1: "y"}
+    md = get_nullable(True)
+
+    # --- set ---
+    print(sorted(s))
+    print(sorted(list(s)))
+    print(sum(s))
+    print(any(s))
+    print(all(s))
+    print(min(s))
+    print(max(s))
+    print(", ".join(sorted(si)))
+
+    # --- tuple ---
+    print(sorted(t))
+    print(list(t))
+    print(sum(t))
+    print(any(t))
+    print(all(t))
+    print(min(t))
+    print(max(t))
+    print(", ".join(ts))
+
+    # --- dict (iterates its keys) ---
+    print(sorted(n))
+    print(list(n))
+    print(sum(n))
+    print(any(n))
+    print(all(n))
+    print(min(n))
+    print(max(n))
+    print(", ".join(d))
+
+    # --- nullable dict (same, via the underlying dict) ---
+    print(sorted(md))
+    print(list(md))
+    print(sum(md))
+    print(any(md))
+    print(all(md))
+    print(min(md))
+    print(max(md))
+
+    # --- d.keys() view ---
+    print(sorted(n.keys()))
+    print(list(n.keys()))
+    print(sum(n.keys()))
+    print(any(n.keys()))
+    print(all(n.keys()))
+    print(min(n.keys()))
+    print(max(n.keys()))
+    print(", ".join(d.keys()))
+
+    # --- d.values() view ---
+    print(sorted(d.values()))
+    print(list(d.values()))
+    print(sum(d.values()))
+    print(any(d.values()))
+    print(all(d.values()))
+    print(min(d.values()))
+    print(max(d.values()))
+    print(", ".join(n.values()))

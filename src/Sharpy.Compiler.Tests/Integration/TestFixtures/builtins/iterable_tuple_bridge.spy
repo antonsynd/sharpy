@@ -1,0 +1,27 @@
+# Test (#1198): a tuple in an iterable position is bridged to a typed array. System.ValueTuple
+# implements no IEnumerable<T>, so before the bridge the checker accepted these and codegen could
+# not lower them — sorted(t)/min(t)/max(t) were CS1503/CS0411 internal errors.
+#
+# The `calls` list is the single-evaluation pin: splicing .Item1..ItemN off a call expression would
+# invoke make_tuple() once per element, so the operand is bound to a temp first.
+# Expected output verified against python3.
+calls: list[int] = []
+
+
+def make_tuple() -> tuple[int, int, int]:
+    calls.append(1)
+    return (3, 1, 2)
+
+
+def main() -> None:
+    print(sorted((3, 1)))
+    print(sum(make_tuple()))
+    print(len(calls))
+    single: tuple[int] = (7,)
+    print(sum(single))
+    print(list((1, 2, 3)))
+    print(min((3, 1, 2)))
+    print(max((3, 1, 2)))
+    print(any((0, 1)))
+    print(all((0, 1)))
+    print(", ".join(("a", "b")))
