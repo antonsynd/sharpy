@@ -1,4 +1,11 @@
 <Project>
+  <!-- Chain to the repo-root props. MSBuild stops at the first Directory.Build.props it finds
+       walking up from a project, so without this import the packaging projects here inherit
+       none of the repo-wide settings: they were versioned 1.0.0 instead of SharpyVersion, had
+       an empty AssemblyVersion, and built with TreatWarningsAsErrors off (#1181). The import
+       is first so anything set below still wins for these projects. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
   <PropertyGroup>
     <BaseIntermediateOutputPath>obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
