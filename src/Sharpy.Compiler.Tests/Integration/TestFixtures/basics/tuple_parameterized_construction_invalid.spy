@@ -1,0 +1,13 @@
+# Test (#1200): parameterized tuple conversion rejects what it cannot mean, with deliberate
+# diagnostics instead of the CS7036 leak and the SPY0220-against-itself it used to produce. Bare
+# `tuple(t)` keeps its own SPY0338 (#1159): its problem is the missing arity, not the elements.
+def main() -> None:
+    bad = tuple[int, str]((1, 2, 3))
+    print(bad)
+    t: tuple[int, str] = (1, "a")
+    also_bad = tuple(t)
+    print(also_bad)
+    arity = tuple[int, str]((1, "a"), (2, "b"))
+    print(arity)
+    value = tuple[int, str]
+    print(value)

@@ -1,0 +1,26 @@
+# Test (#1200): an explicitly parameterized tuple type applied to a tuple. `tuple[int, str]` is a
+# TupleType — the same spelling the annotation position produces — so the annotated form no longer
+# reports the self-contradictory "cannot assign 'tuple[int, str]' to 'tuple[int, str]'", and the
+# unannotated form emits the argument itself instead of a ValueTuple constructor call taking one
+# tuple argument (CS7036).
+# Expected output verified against python3.
+def pair() -> tuple[int, str]:
+    return (5, "z")
+
+
+def main() -> None:
+    annotated: tuple[int, str] = tuple[int, str]((1, "a"))
+    print(annotated)
+
+    inferred = tuple[int, str]((1, "a"))
+    print(inferred)
+
+    # The argument may be any expression of the right tuple type, not just a literal.
+    converted = tuple[int, str](pair())
+    print(converted)
+    print(converted[0])
+    print(converted[1])
+
+    # A one-element tuple type is spelled the same way.
+    single = tuple[int]((9,))
+    print(single)
