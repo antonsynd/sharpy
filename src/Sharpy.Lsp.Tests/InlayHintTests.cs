@@ -40,6 +40,12 @@ public class InlayHintTests : IDisposable
         return await _handler.Handle(request, CancellationToken.None);
     }
 
+    private static IReadOnlyList<InlayHint> TypeHints(InlayHintContainer? hints)
+    {
+        hints.Should().NotBeNull("the handler must produce a hint container for a well-formed document");
+        return hints!.Where(h => h.Kind == InlayHintKind.Type).ToList();
+    }
+
     [Fact]
     public async Task ModuleLevelInferredVariable_ShowsTypeHintAsync()
     {
@@ -47,15 +53,83 @@ public class InlayHintTests : IDisposable
         var source = "x = 42\ndef main():\n    print(x)";
         var hints = await GetHintsAsync(source);
 
-        // The handler may return null if SemanticQuery is unavailable
-        if (hints is not null)
-        {
-            var typeHints = hints.Where(h => h.Kind == InlayHintKind.Type).ToList();
-            if (typeHints.Any())
-            {
-                typeHints.Should().Contain(h => h.Label.String!.Contains("int"));
-            }
-        }
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int");
+        // Immediately after the name `x` on line 1, so the hint reads `x: int = 42`.
+        typeHints[0].Position.Should().Be(new Position(0, 1));
+    }
+
+    [Fact]
+    public async Task FunctionLocalInferredVariable_ShowsTypeHintAsync()
+    {
+        // The pre-#1180 handler resolved the name through the module-scope symbol table,
+        // which could never see a function-local binding.
+        var source = "def main():\n    local = \"x\"\n    print(local)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": str");
+        typeHints[0].Position.Should().Be(new Position(1, 9));
+    }
+
+    [Fact]
+    public async Task Reassignment_ShowsOnlyOneTypeHintAsync()
+    {
+        // The declaring binding is worth annotating; every later rebinding is noise.
+        var source = "x = 42\nx = 43\ndef main():\n    print(x)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Position.Should().Be(new Position(0, 1));
+    }
+
+    [Fact]
+    public async Task ShadowedName_HintsAtEachDeclaringBindingAsync()
+    {
+        // A nested scope's binding is a different symbol with a different type; both declare.
+        var source = "x = 42\ndef main():\n    x = \"hello\"\n    print(x)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().HaveCount(2);
+        typeHints.Should().ContainSingle(h => h.Position == new Position(0, 1))
+            .Which.Label.String.Should().Be(": int");
+        typeHints.Should().ContainSingle(h => h.Position == new Position(2, 5))
+            .Which.Label.String.Should().Be(": str");
+    }
+
+    [Fact]
+    public async Task AssignmentToParameter_ShowsNoTypeHintAsync()
+    {
+        // The parameter is the declaring binding; assigning to it is a rebinding.
+        var source = "def main(count: int) -> None:\n    count = 5\n    print(count)";
+        var hints = await GetHintsAsync(source);
+
+        TypeHints(hints).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AssignmentRightHandSide_ShowsParameterHintsAsync()
+    {
+        // `Assignment.Value` was never fed to the call-hint walk, so a call bound to a
+        // variable got no parameter names.
+        var source = "def compute(value: int) -> int:\n    return value\n\ndef main():\n    total = compute(1)\n    print(total)";
+        var hints = await GetHintsAsync(source);
+
+        hints.Should().NotBeNull();
+        hints!.Where(h => h.Kind == InlayHintKind.Parameter).Should()
+            .Contain(h => h.Label.String!.Contains("value:"));
+    }
+
+    [Fact]
+    public async Task PlainAssignmentHints_DisabledByConfiguration_AreNotProduced()
+    {
+        _configuration.UpdateFrom(JToken.Parse("""{"inlayHints":{"typeAnnotations":false}}"""));
+
+        var source = "x = 42\ndef main():\n    print(x)";
+        var hints = await GetHintsAsync(source);
+
+        TypeHints(hints).Should().BeEmpty();
     }
 
     [Fact]
@@ -115,12 +189,9 @@ public class InlayHintTests : IDisposable
         var source = "def main():\n    pass";
         var hints = await GetHintsAsync(source);
 
-        if (hints is not null)
-        {
-            // No variables without type annotations, no function calls with arguments
-            hints.Should().BeEmpty();
-        }
-        // null is acceptable if SemanticQuery is not available
+        // No variables without type annotations, no function calls with arguments
+        hints.Should().NotBeNull();
+        hints!.Should().BeEmpty();
     }
 
     // sharpy.inlayHints.typeAnnotations (#1165) — contributed since the extension's first release,
@@ -129,16 +200,19 @@ public class InlayHintTests : IDisposable
     [Fact]
     public async Task TypeAnnotationHints_DisabledByConfiguration_AreNotProduced()
     {
-        // A const with no annotation is what actually reaches the type-hint path: a plain `x = 42`
-        // parses as an Assignment (no VariableDeclaration node), and an annotated declaration has
-        // the type the hint would show. That coverage gap is #1180; this test pins the gate, which
-        // is what #1165 asked for, on the shape that does produce a hint today.
+        // An unannotated const is the one VariableDeclaration shape that reaches the type-hint
+        // path (an annotated declaration already shows the type the hint would carry), so it
+        // pins the #1165 gate on the declaration arm — plain assignments are covered by
+        // PlainAssignmentHints_DisabledByConfiguration_AreNotProduced.
         var source = "const TOTAL = 42\ndef main():\n    print(TOTAL)";
 
         var enabled = await GetHintsAsync(source);
-        enabled.Should().NotBeNull();
-        enabled!.Where(h => h.Kind == InlayHintKind.Type).Should().NotBeEmpty(
-            "the disabled assertion below is only meaningful if this source produces a type hint");
+        var enabledTypeHints = TypeHints(enabled);
+        enabledTypeHints.Should().ContainSingle(
+            "the disabled assertion below is only meaningful if this source produces a type hint")
+            .Which.Label.String.Should().Be(": int");
+        // After the name `TOTAL`, not after the `const` keyword: `const TOTAL: int = 42`.
+        enabledTypeHints[0].Position.Should().Be(new Position(0, 11));
 
         _configuration.UpdateFrom(JToken.Parse("""{"inlayHints":{"typeAnnotations":false}}"""));
         _workspace.CloseDocument("file:///test.spy");
