@@ -48,25 +48,38 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
     }
 
     /// <summary>
-    /// The names already bound in one lexical scope. A binding gets an inferred-type hint only
-    /// the first time its name is bound in the scope: later assignments to the same name are
-    /// rebindings, and a hint on each of them is noise. A function, class or struct body starts
-    /// a fresh scope (so a name shadowed in a nested scope hints again at its own binding);
-    /// if/while/for/try/with/match bodies share the enclosing scope.
+    /// The names already bound on one control-flow path of a lexical scope. A binding gets an
+    /// inferred-type hint only the first time its name is bound on its path: later assignments
+    /// to the same name are rebindings, and a hint on each of them is noise. A function, class
+    /// or struct body starts a fresh scope (so a name shadowed in a nested scope hints again at
+    /// its own binding); while/for/with bodies share the enclosing scope; mutually-exclusive
+    /// branches (if/elif/else, except handlers, match cases) each work on a <see cref="Fork"/>
+    /// and are merged back with <see cref="MergeFrom"/> — each branch's first binding hints,
+    /// and code after the construct treats a name bound in any branch as already bound.
     /// </summary>
     private sealed class BindingScope
     {
-        private readonly HashSet<string> _bound = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _bound;
+
+        public BindingScope() => _bound = new(StringComparer.Ordinal);
+
+        private BindingScope(HashSet<string> bound) => _bound = bound;
 
         /// <summary>Records <paramref name="name"/> as bound; true if this is its first binding.</summary>
         public bool TryDeclare(string name) => _bound.Add(name);
 
         /// <summary>
         /// Records a binding that never carries a hint itself (parameter, loop target,
-        /// <c>with … as</c>, <c>except … as</c>) so a later assignment to the same name is
-        /// correctly treated as a rebinding.
+        /// <c>with … as</c>, <c>except … as</c>, match-pattern capture) so a later assignment
+        /// to the same name is correctly treated as a rebinding.
         /// </summary>
         public void MarkBound(string name) => _bound.Add(name);
+
+        /// <summary>A copy for one branch of a mutually-exclusive construct.</summary>
+        public BindingScope Fork() => new(new HashSet<string>(_bound, StringComparer.Ordinal));
+
+        /// <summary>Folds a branch's bindings back in: bound in any branch is bound after it.</summary>
+        public void MergeFrom(BindingScope branch) => _bound.UnionWith(branch._bound);
     }
 
     /// <param name="typeAnnotations">
@@ -78,9 +91,9 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
     /// <remarks>
     /// Inferred-type hints cover single-identifier bindings — an unannotated declaration and a
     /// plain <c>x = value</c> assignment (#1180). Explicit non-goals: tuple-unpacking targets,
-    /// <c>for</c>-loop targets and walrus bindings, each of which is its own question about where
-    /// the hint belongs; they are recorded as bound so they do not turn a later assignment into a
-    /// spurious declaration, but they produce no hint.
+    /// <c>for</c>-loop targets, walrus bindings and match-pattern captures, each of which is its
+    /// own question about where the hint belongs; they are recorded as bound so they do not turn
+    /// a later assignment into a spurious declaration, but they produce no hint.
     /// </remarks>
     private static void CollectInlayHints(
         IEnumerable<Statement> statements,
@@ -167,12 +180,27 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                     CollectInlayHints(structDef.Body, analysis, range, hints, typeAnnotations, new BindingScope());
                     break;
                 case IfStatement ifStmt:
-                    CollectInlayHints(ifStmt.ThenBody, analysis, range, hints, typeAnnotations, scope);
-                    foreach (var elif in ifStmt.ElifClauses)
-                        CollectInlayHints(elif.Body, analysis, range, hints, typeAnnotations, scope);
-                    if (ifStmt.ElseBody.Length > 0)
-                        CollectInlayHints(ifStmt.ElseBody, analysis, range, hints, typeAnnotations, scope);
-                    break;
+                    {
+                        // Mutually-exclusive branches: each is its own control-flow path, so a
+                        // name bound in one branch still declares (and hints) in a sibling.
+                        var branchScopes = new List<BindingScope> { scope.Fork() };
+                        CollectInlayHints(ifStmt.ThenBody, analysis, range, hints, typeAnnotations, branchScopes[0]);
+                        foreach (var elif in ifStmt.ElifClauses)
+                        {
+                            var elifScope = scope.Fork();
+                            branchScopes.Add(elifScope);
+                            CollectInlayHints(elif.Body, analysis, range, hints, typeAnnotations, elifScope);
+                        }
+                        if (ifStmt.ElseBody.Length > 0)
+                        {
+                            var elseScope = scope.Fork();
+                            branchScopes.Add(elseScope);
+                            CollectInlayHints(ifStmt.ElseBody, analysis, range, hints, typeAnnotations, elseScope);
+                        }
+                        foreach (var branch in branchScopes)
+                            scope.MergeFrom(branch);
+                        break;
+                    }
                 case WhileStatement whileStmt:
                     CollectInlayHints(whileStmt.Body, analysis, range, hints, typeAnnotations, scope);
                     break;
@@ -183,18 +211,30 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                         CollectInlayHints(forStmt.ElseBody, analysis, range, hints, typeAnnotations, scope);
                     break;
                 case TryStatement tryStmt:
-                    CollectInlayHints(tryStmt.Body, analysis, range, hints, typeAnnotations, scope);
-                    foreach (var handler in tryStmt.Handlers)
                     {
-                        if (handler.Name != null)
-                            scope.MarkBound(handler.Name);
-                        CollectInlayHints(handler.Body, analysis, range, hints, typeAnnotations, scope);
+                        // The try body and each except handler are alternative paths; the else
+                        // block runs only after the try body completes, so it continues the try
+                        // body's fork. finally runs on every path and sees the merged scope.
+                        var tryScope = scope.Fork();
+                        CollectInlayHints(tryStmt.Body, analysis, range, hints, typeAnnotations, tryScope);
+                        var handlerScopes = new List<BindingScope>();
+                        foreach (var handler in tryStmt.Handlers)
+                        {
+                            var handlerScope = scope.Fork();
+                            handlerScopes.Add(handlerScope);
+                            if (handler.Name != null)
+                                handlerScope.MarkBound(handler.Name);
+                            CollectInlayHints(handler.Body, analysis, range, hints, typeAnnotations, handlerScope);
+                        }
+                        if (tryStmt.ElseBody.Length > 0)
+                            CollectInlayHints(tryStmt.ElseBody, analysis, range, hints, typeAnnotations, tryScope);
+                        scope.MergeFrom(tryScope);
+                        foreach (var handlerScope in handlerScopes)
+                            scope.MergeFrom(handlerScope);
+                        if (tryStmt.FinallyBody.Length > 0)
+                            CollectInlayHints(tryStmt.FinallyBody, analysis, range, hints, typeAnnotations, scope);
+                        break;
                     }
-                    if (tryStmt.ElseBody.Length > 0)
-                        CollectInlayHints(tryStmt.ElseBody, analysis, range, hints, typeAnnotations, scope);
-                    if (tryStmt.FinallyBody.Length > 0)
-                        CollectInlayHints(tryStmt.FinallyBody, analysis, range, hints, typeAnnotations, scope);
-                    break;
                 case WithStatement withStmt:
                     foreach (var item in withStmt.Items)
                     {
@@ -204,9 +244,21 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                     CollectInlayHints(withStmt.Body, analysis, range, hints, typeAnnotations, scope);
                     break;
                 case MatchStatement matchStmt:
-                    foreach (var matchCase in matchStmt.Cases)
-                        CollectInlayHints(matchCase.Body, analysis, range, hints, typeAnnotations, scope);
-                    break;
+                    {
+                        // Sibling cases are alternative paths; a case's pattern captures are
+                        // bindings, so an assignment to one inside the body is a rebinding.
+                        var caseScopes = new List<BindingScope>();
+                        foreach (var matchCase in matchStmt.Cases)
+                        {
+                            var caseScope = scope.Fork();
+                            caseScopes.Add(caseScope);
+                            MarkPatternBound(matchCase.Pattern, caseScope);
+                            CollectInlayHints(matchCase.Body, analysis, range, hints, typeAnnotations, caseScope);
+                        }
+                        foreach (var caseScope in caseScopes)
+                            scope.MergeFrom(caseScope);
+                        break;
+                    }
             }
         }
     }
@@ -228,6 +280,58 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                 break;
             case StarExpression star:
                 MarkTargetBound(star.Operand, scope);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Records the names a match pattern captures (<c>case x:</c>, <c>case Point(x=px):</c>,
+    /// <c>case [head, *rest]:</c>, …). Like loop targets, captures produce no hint themselves,
+    /// but a later assignment to a captured name is a rebinding.
+    /// </summary>
+    private static void MarkPatternBound(Pattern pattern, BindingScope scope)
+    {
+        switch (pattern)
+        {
+            case BindingPattern binding:
+                scope.MarkBound(binding.Name.Name);
+                break;
+            case TypePattern { BindingName: { } bindingName }:
+                scope.MarkBound(bindingName.Name);
+                break;
+            case StarPattern { Capture: { } capture }:
+                MarkPatternBound(capture, scope);
+                break;
+            case TuplePattern tuple:
+                foreach (var element in tuple.Elements)
+                    MarkPatternBound(element, scope);
+                break;
+            case ListPattern list:
+                foreach (var element in list.Elements)
+                    MarkPatternBound(element, scope);
+                break;
+            case PositionalPattern positional:
+                foreach (var element in positional.Elements)
+                    MarkPatternBound(element, scope);
+                break;
+            case PropertyPattern property:
+                foreach (var field in property.Fields)
+                    MarkPatternBound(field.Pattern, scope);
+                break;
+            case UnionCasePattern unionCase:
+                foreach (var field in unionCase.FieldPatterns)
+                    MarkPatternBound(field, scope);
+                break;
+            case OrPattern orPattern:
+                foreach (var alternative in orPattern.Alternatives)
+                    MarkPatternBound(alternative, scope);
+                break;
+            case AndPattern andPattern:
+                MarkPatternBound(andPattern.Left, scope);
+                MarkPatternBound(andPattern.Right, scope);
+                break;
+            case GuardPattern guard:
+                MarkPatternBound(guard.Inner, scope);
                 break;
         }
     }

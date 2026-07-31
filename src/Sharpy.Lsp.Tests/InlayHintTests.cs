@@ -99,6 +99,73 @@ public class InlayHintTests : IDisposable
     }
 
     [Fact]
+    public async Task IfElseBranches_EachDeclaringAssignment_GetsOwnHintAsync()
+    {
+        // Mutually-exclusive branches are separate control-flow paths: each branch's first
+        // binding declares (and hints) on its own path, and after the construct the name
+        // counts as bound in either branch, so `x = 3` is a rebinding.
+        var source = "def main(cond: bool) -> None:\n    if cond:\n        x = 1\n    else:\n        x = 2\n    x = 3\n    print(x)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().HaveCount(2);
+        typeHints.Should().ContainSingle(h => h.Position == new Position(2, 9))
+            .Which.Label.String.Should().Be(": int");
+        typeHints.Should().ContainSingle(h => h.Position == new Position(4, 9))
+            .Which.Label.String.Should().Be(": int");
+    }
+
+    [Fact]
+    public async Task SiblingMatchCases_EachDeclaringAssignment_GetsOwnHintAsync()
+    {
+        // Sibling case bodies are alternative paths, exactly like if/else branches.
+        var source = "def main(v: int) -> None:\n    match v:\n        case 0:\n            y = 1\n        case _:\n            y = 2\n    print(v)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().HaveCount(2);
+        typeHints.Should().ContainSingle(h => h.Position == new Position(3, 13));
+        typeHints.Should().ContainSingle(h => h.Position == new Position(5, 13));
+    }
+
+    [Fact]
+    public async Task MatchCaptureRebinding_ShowsNoTypeHintAsync()
+    {
+        // A capture pattern binds the name; assigning to it inside the case body is a
+        // rebinding, not a declaration. The `ok` binding proves the document analyzed.
+        var source = "def main(v: int) -> int:\n    match v:\n        case 0:\n            return 0\n        case x:\n            x = x + 1\n            ok = x\n            return ok\n    return 0";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Position.Should().Be(new Position(6, 14));
+    }
+
+    [Fact]
+    public async Task ForLoopTarget_LaterAssignment_ShowsNoTypeHintAsync()
+    {
+        // The loop target is the declaring binding (no hint by design, it has no `=` to sit
+        // beside); a later assignment to the same name is a rebinding. The `ok` binding
+        // proves the document analyzed.
+        var source = "def main() -> None:\n    for i in [1, 2]:\n        print(i)\n    i = 5\n    ok = i\n    print(ok)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Position.Should().Be(new Position(4, 6));
+    }
+
+    [Fact]
+    public async Task ExceptAsTarget_LaterAssignment_ShowsNoTypeHintAsync()
+    {
+        // `except … as e` is the declaring binding for e; assigning to it in the handler
+        // body is a rebinding. The `ok` binding proves the document analyzed.
+        var source = "def main() -> None:\n    try:\n        print(1)\n    except Exception as e:\n        e = e\n        print(e)\n    ok = 2\n    print(ok)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Position.Should().Be(new Position(6, 6));
+    }
+
+    [Fact]
     public async Task AssignmentToParameter_ShowsNoTypeHintAsync()
     {
         // The parameter is the declaring binding; assigning to it is a rebinding.
