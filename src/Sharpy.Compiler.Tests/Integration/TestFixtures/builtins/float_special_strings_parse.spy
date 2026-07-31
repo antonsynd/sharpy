@@ -1,0 +1,27 @@
+# The second string-to-float seam: float.parse (#1203).
+# Separate from float_special_strings.spy because the `!ValueError` result
+# annotation is Sharpy-only, which would put the whole file out of the
+# differential-execution oracle's shared subset.
+def show(s: str):
+    r: float !ValueError = float.parse(s)
+    if r.is_ok:
+        print(r.unwrap())
+    else:
+        print(r.unwrap_err())
+
+def main():
+    show("inf")
+    show("-inf")
+    show("+inf")
+    show("INF")
+    show("Infinity")
+    show("infinity")
+    show("INFINITY")
+    show("-Infinity")
+    show("  inf  ")
+    show("nan")
+    show("-nan")
+
+    # Not CPython spellings -- acceptance must not widen.
+    show("in f")
+    show("infinit")

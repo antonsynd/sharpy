@@ -1,0 +1,28 @@
+# float(str) accepts CPython's special-value spellings (#1203).
+# Kept to the shared Sharpy-Python subset so the differential-execution
+# oracle can compare this output against python3 directly.
+def main():
+    # Abbreviated forms -- the only spellings that were rejected before #1203.
+    print(float("inf"))
+    print(float("-inf"))
+    print(float("+inf"))
+    print(float("INF"))
+    print(float("Inf"))
+
+    # Full spellings -- regression pins; these already parsed.
+    print(float("Infinity"))
+    print(float("infinity"))
+    print(float("INFINITY"))
+    print(float("-Infinity"))
+
+    # Surrounding whitespace is trimmed before the spelling is matched.
+    print(float("  inf  "))
+
+    # nan discards the sign: CPython gives nan for "-nan", not -nan.
+    print(float("nan"))
+    print(float("-nan"))
+    print(float("NAN"))
+
+    # Ordinary numbers still route to the numeric parser.
+    print(float("1e5"))
+    print(float("-2.5"))

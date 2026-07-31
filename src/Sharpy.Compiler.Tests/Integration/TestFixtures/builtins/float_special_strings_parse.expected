@@ -1,0 +1,13 @@
+inf
+-inf
+inf
+inf
+inf
+inf
+inf
+-inf
+inf
+nan
+nan
+Sharpy.ValueError: could not convert string to float: 'in f'
+Sharpy.ValueError: could not convert string to float: 'infinit'
