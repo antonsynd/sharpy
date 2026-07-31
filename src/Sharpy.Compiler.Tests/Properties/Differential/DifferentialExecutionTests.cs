@@ -50,8 +50,15 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// local iteration.</para>
 ///
 /// <para>Sweep discipline (Design Decision #10, mirrors <c>InteropConformanceTests</c>): one aggregated
-/// JSON report under <c>.claude/tmp/</c>, ratcheted against a reviewed allowlist. The test skips
-/// (no-op) when a suitable <c>python3</c> is absent; CI pins 3.12.</para>
+/// JSON report under <c>.claude/tmp/</c>, ratcheted against a reviewed allowlist. Drain-on-fix is
+/// enforced on full-pool runs (mirroring the metamorphic sweep): an allowlisted cell that no longer
+/// diverges fails the run until its entry is deleted. The test skips (no-op) when a suitable
+/// <c>python3</c> is absent; CI pins 3.12.</para>
+///
+/// <para>Classification is deliberately stderr-blind for Sharpy-ok/CPython-fail cases beyond the
+/// missing-name heuristic: every attributable Sharpy-only form is excluded up front at the AST level
+/// (the narrow stderr attribution #1202 sketched turned out unnecessary — the AST rules caught every
+/// attributable cell), so an unattributed CPython runtime failure is always a red divergence.</para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
 public class DifferentialExecutionTests : IntegrationTestBase
@@ -147,8 +154,19 @@ public class DifferentialExecutionTests : IntegrationTestBase
         var matches = results.Count(r => r.Verdict == Verdict.Match || r.Verdict == Verdict.BothError);
         var skips = results.Where(r => r.Verdict == Verdict.Skip).ToList();
 
+        // Drain-on-fix enforcement (mirrors the metamorphic sweep): an allowlisted cell that no
+        // longer diverges is a line the fixing change forgot to delete. Surfacing it as a failure
+        // keeps the list trending to empty. Only meaningful over a full-pool run — a subsample has
+        // not attempted every allowlisted cell — and only for exact keys (globs cover open sets).
+        var stale = limit <= FullPool
+            ? allowlist.ExactKeys
+                .Except(divergences.Select(d => d.Program.Key), StringComparer.Ordinal)
+                .OrderBy(k => k, StringComparer.Ordinal)
+                .ToList()
+            : new List<string>();
+
         sw.Stop();
-        WriteReport(results, divergences, offenders, matches, skips, allowlist, pool, limit, sw.Elapsed);
+        WriteReport(results, divergences, offenders, matches, skips, stale, allowlist, pool, limit, sw.Elapsed);
 
         var coverage = FixtureCoveragePercent(pool);
         Output.WriteLine(
@@ -158,7 +176,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
             + $"{programs.Count(x => x.Key.StartsWith("fixture", StringComparison.Ordinal))} fixture, "
             + $"{programs.Count(x => x.Key.StartsWith("generated", StringComparison.Ordinal))} generated). "
             + $"Match={matches} Skip={skips.Count} Divergent={divergences.Count} "
-            + $"Non-allowlisted={offenders.Count}. Wall={sw.Elapsed.TotalSeconds:F1}s.");
+            + $"Non-allowlisted={offenders.Count} Stale-allowlisted={stale.Count}. "
+            + $"Wall={sw.Elapsed.TotalSeconds:F1}s.");
         Output.WriteLine(
             $"Fixture coverage: {pool.Selected.Count}/{pool.Eligible} eligible run ({coverage:F1}%) "
             + $"of {pool.Discovered} discovered fixtures."
@@ -186,6 +205,12 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 + "docs/deviations.yaml), or a harness/subset gap (tighten the filter). See "
                 + ".claude/tmp/differential-exec-report.json.\n"
                 + string.Join("\n", offenders.Take(30).Select(o => $"  {o.Program.Key} [{o.Verdict}] {o.Detail}")));
+
+            Assert.True(stale.Count == 0,
+                $"Differential-execution oracle: {stale.Count} allowlist entr(ies) no longer diverge. "
+                + "Whatever fixed them must also delete the entries (drain-on-fix) so the list trends "
+                + "to empty instead of accumulating lines nobody revisits:\n"
+                + string.Join("\n", stale.Take(40).Select(k => $"  {k}")));
         }
     }
 
@@ -805,6 +830,14 @@ public class DifferentialExecutionTests : IntegrationTestBase
         /// generic aliases (<c>list[int]()</c>, <c>dict[str, int]()</c>) really do construct, and
         /// indexing a container of callables (<c>funcs[i](5)</c>, <c>pair[0](9)</c>) is ordinary
         /// Python — excluding either would drop programs CPython can legitimately run.
+        ///
+        /// <para>Known scope limit: these rules (and <see cref="_exceptAliases"/>, which is
+        /// module-wide rather than per-function) key off BARE NAMES, not resolved bindings. A future
+        /// fixture that binds a local variable named <c>map</c>/<c>array</c>/… to a subscriptable
+        /// value and then does <c>map[0](5)</c> would be silently excluded from the pool — a quiet
+        /// loss of coverage (visible in the exclusion counts), never a hidden divergence. Acceptable
+        /// while the fixture corpus is curated; make the rules binding-aware if such a fixture ever
+        /// lands.</para>
         /// </summary>
         private static readonly HashSet<string> NonSubscriptableInCPython =
             new(StringComparer.Ordinal) { "map", "zip", "filter", "array", "frozendict" };
@@ -1214,6 +1247,9 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
         public int Count => _exact.Count + _wildcards.Count;
 
+        /// <summary>The exact (non-glob) keys, for stale-entry detection.</summary>
+        public IReadOnlyCollection<string> ExactKeys => _exact;
+
         private static readonly Lazy<string?> PathLazy = new(FindPath);
 
         public static bool FileExists() => PathLazy.Value != null && File.Exists(PathLazy.Value);
@@ -1289,8 +1325,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
     private void WriteReport(
         List<CaseResult> results, List<CaseResult> divergences, List<CaseResult> offenders,
-        int matches, List<CaseResult> skips, Allowlist allowlist, FixturePool pool, int limit,
-        TimeSpan elapsed)
+        int matches, List<CaseResult> skips, List<string> stale, Allowlist allowlist,
+        FixturePool pool, int limit, TimeSpan elapsed)
     {
         var reportDir = ReportDir();
         Directory.CreateDirectory(reportDir);
@@ -1307,8 +1343,10 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 divergences = divergences.Count,
                 nonAllowlistedDivergences = offenders.Count,
                 allowlistSize = allowlist.Count,
+                staleAllowlistEntries = stale.Count,
                 wallSeconds = Math.Round(elapsed.TotalSeconds, 1),
             },
+            staleAllowlistEntries = stale,
             // The run states its own scope (#1202). Before this, a report could show zero
             // divergences while silently covering 4% of the fixture corpus, so the allowlist's
             // guarantee was narrower than the contract it is supposed to enforce.
