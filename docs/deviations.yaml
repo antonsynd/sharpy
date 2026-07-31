@@ -1099,18 +1099,20 @@ deviations:
     category: semantics
     audience: python
     severity: none
-    python_behavior: "Python `int` is arbitrary precision; no overflow."
-    sharpy_behavior: "`int` maps to `System.Int32` (32-bit). Overflow follows .NET semantics (wraps under default unchecked context). Use `long` for 64-bit, or `bigint` (if available) for arbitrary precision."
+    python_behavior: "Python `int` is arbitrary precision; no overflow. `2 ** 40` is exact."
+    sharpy_behavior: "`int` maps to `System.Int32` (32-bit). `+`/`-`/`*` follow .NET semantics and wrap under the default unchecked context. `**` is the exception: non-constant integer exponentiation routes through `Sharpy.Builtins.CheckedIntPow` (#905) so it stays exact and raises `OverflowError` instead of silently saturating through a lossy `Math.Pow` round-trip. Use `long` for 64-bit."
     spec_ref: docs/language_specification/primitive_types.md
     existing_diagnostic: null
     planned_diagnostic: null
     example:
       python: |
-        2 ** 100      # huge int, exact
+        2 ** 40             # 1099511627776, exact
+        2147483647 + 1      # 2147483648, exact
       sharpy: |
-        # int is 32-bit — this overflows.
-        # Use 'long' or arbitrary-precision helpers.
-        x: long = 1 << 62
+        # int is 32-bit.
+        print(2147483647 + 1)   # -2147483648 (wraps)
+        print(power(2, 40))     # raises OverflowError (checked)
+        x: long = 1 << 62       # use 'long' for 64-bit
 
   - id: float-is-double
     code: null
@@ -1128,6 +1130,58 @@ deviations:
       sharpy: |
         x: float = 1.0       # 64-bit
         y: float32 = 1.0f    # 32-bit
+
+  - id: numeric-widening-in-typed-context
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "A container holds the objects put into it. `{\"a\": 5, \"b\": 2.5}` keeps the `int` 5, and `print(d[\"a\"])` prints `5`."
+    sharpy_behavior: "A contextual type (annotation or declared return type) closes the element type, so an `int` element of a `dict[str, float]` / `list[float]` is widened to `double` at compile time and prints as `5.0`. There is no runtime int-in-a-float-slot: the alternative is an `object`/union element type, which forfeits static typing. Axiom precedence: types (3) > Python (2)."
+    spec_ref: docs/language_specification/collection_types.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        d = {"a": 5, "b": 2.5}
+        print(d["a"])        # 5
+      sharpy: |
+        d: dict[str, float] = {"a": 5, "b": 2.5}
+        print(d["a"])        # 5.0
+
+  - id: min-max-mixed-numeric-promotion
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`min`/`max` return the winning element unchanged, so `min(2, 3.0)` is the `int` 2."
+    sharpy_behavior: "The variadic value form of `min`/`max` promotes mixed-numeric arguments to a common numeric type (#1014), so `min(2, 3.0)` is `2.0` (float64) and the result composes with arithmetic and annotations. Returning the unpromoted element would require an `object`/union return type. This matches Sharpy's binary numeric operators (`2 + 0.0 == 2.0`). Axiom precedence: types (3) > Python (2)."
+    spec_ref: docs/language_specification/builtin_functions.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        print(min(2, 3.0))   # 2
+      sharpy: |
+        print(min(2, 3.0))   # 2.0
+
+  - id: ellipsis-body-raises
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "`...` is an ordinary expression statement (the `Ellipsis` singleton). A function whose whole body is `...` runs fine and returns `None`."
+    sharpy_behavior: "`...` as a concrete function or method body lowers to `throw new NotImplementedException()`. Returning `None` from a body annotated `-> int` is not expressible, so the placeholder must fail loudly. In an abstract method or a body-less interface member it is a no-op instead. Axiom precedence: .NET (1) and types (3) > Python (2)."
+    spec_ref: docs/language_specification/ellipsis_literal.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        def todo() -> int: ...
+        print(todo())        # None
+      sharpy: |
+        def todo() -> int: ...
+        print(todo())        # raises NotImplementedError
 
   - id: super-requires-class-context
     code: SPY0284

@@ -4,23 +4,74 @@
 # differential EXECUTION oracle over the shared Sharpy∩Python executable subset.
 # Its presence puts the oracle in RATCHET mode: any divergence whose program
 # `arm::name` key is NOT matched here fails CI. Every entry is either a documented
-# DESIGNED deviation (cite docs/deviations.yaml) or a known bug tracked for a fix.
-# This file is reviewed, never auto-grown. When a deviation is retired or a bug is
-# fixed, delete its entry so the oracle re-asserts agreement.
+# DESIGNED deviation (cite a docs/deviations.yaml id) or a known bug tracked for a
+# fix (cite its issue number). There are no uncited entries. This file is reviewed,
+# never auto-grown. When a deviation is retired or a bug is fixed, delete its entry
+# so the oracle re-asserts agreement.
 #
 # Format: one `arm::name` key per line (text after `#` is a comment). A line
 # containing `*` is a simple glob matched against the whole key.
 #
-# Baseline taken on branch `dev` (2026-07-25): 60 programs / 52 match / 5 skip /
-# 3 divergent (all allowlisted below). See .claude/tmp/differential-exec-report.json.
+# Baseline RE-DERIVED against the FULL eligible pool on branch `dev` (2026-07-31,
+# #1202), after the sixth remediation round landed: 565 programs / 424 match /
+# 130 skip / 11 divergent (all 11 allowlisted below) / 527 of 527 eligible fixtures
+# = 100% coverage. The previous baseline was taken at a 60-program budget that
+# reached 22 of 527 eligible fixtures (4%), which is why 10 of the 11 entries below
+# are new: the divergences were always there, just never sampled. See
+# .claude/tmp/differential-exec-report.json.
 
 # --- Designed deviation (Axiom 1: .NET semantics win) — PERMANENT ---
 
-# UTF-16 string length: `len("😀")` is 2 (UTF-16 code units) in Sharpy vs 1 (code point) in
-# CPython — the documented `string-indexing-utf16` / `utf16-string-length` deviation
-# (Axiom 1: .NET strings are UTF-16). Grapheme/codepoint helpers are the opt-in. Permanent.
+# UTF-16 string length and indexing: a .NET string is a UTF-16 code-unit sequence, so
+# len("😀") is 2 where CPython (code points) says 1, s[1] is a valid lone surrogate
+# where CPython raises IndexError, and escape/normalisation counts follow suit.
+# Grapheme/code-point helpers are the opt-in. All four cells are ONE deviation —
+# the pre-#1202 allowlist carried only the first because the other three were never
+# sampled. deviations.yaml: utf16-string-length, string-indexing-utf16. Permanent.
 fixture::strings/string_utf16_len
+fixture::strings/string_utf16_indexing
+fixture::transition/transition_utf16_len
+fixture::string_astral_escape
+
+# 32-bit `int`: `+`/`-`/`*` wrap under .NET's unchecked context and `**` routes
+# through the checked CheckedIntPow helper (#905), so `2 ** 40` raises OverflowError
+# where CPython's arbitrary-precision int returns 1099511627776. `long` is the 64-bit
+# opt-in. deviations.yaml: int-overflow-checked. Permanent.
+fixture::integer_power_runtime_checked
+
+# `is` lowers to reference equality, so comparing two boxed value-type operands is
+# always False where CPython's small-int cache makes `1 is 1` True. The compiler
+# already warns at the use site (SPY0465, asserted by this fixture's .warning
+# sidecar), so the deviation is diagnosed rather than silent.
+# deviations.yaml: identity-with-value-types. Permanent.
+fixture::warnings/is_value_type_warning
+
+# --- Designed deviation (Axiom 3: type safety wins over Python) — PERMANENT ---
+
+# A contextual type closes a collection's element type, so an `int` element of a
+# `dict[str, float]` / `list[float]` is widened to double at compile time and prints
+# as `5.0` where CPython keeps the int and prints `5`. The alternative is an
+# object/union element type, which forfeits static typing.
+# deviations.yaml: numeric-widening-in-typed-context. Permanent.
+fixture::collections/dict_literal_assignment
+fixture::collections/dict_literal_return_type
+fixture::collections/list_literal_return_type
+
+# The variadic value form of min()/max() promotes mixed-numeric arguments to a common
+# numeric type (#1014), so min(2, 3.0) is 2.0 where CPython returns the unpromoted
+# int 2. Matches Sharpy's binary numeric operators (2 + 0.0 == 2.0); the fixture's own
+# header marks it a deliberate divergence.
+# deviations.yaml: min-max-mixed-numeric-promotion. Permanent.
+fixture::builtins/min_max_mixed_numeric
+
+# `...` as a CONCRETE function body lowers to `throw new NotImplementedException()`,
+# so the program reports caught exceptions where CPython — for which `...` is just an
+# expression statement — returns None. A body annotated `-> int` cannot return None.
+# deviations.yaml: ellipsis-body-raises. Permanent.
+fixture::basics/ellipsis_concrete_method
 
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
 
-# (empty — all filed defects drained; the oracle re-asserts agreement on every cell above)
+# (empty — the full-pool re-derivation found no undesigned divergence. Every cell
+# above is a registered deviation with a deviations.yaml id; a cell that stops
+# diverging must have its entry deleted so the oracle re-asserts agreement.)
