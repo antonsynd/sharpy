@@ -136,8 +136,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
             var s = sharpy[p.Key];
             pythonById.TryGetValue(i, out var py);
 
-            var (verdict, detail) = Classify(s, py);
-            results.Add(new CaseResult(p, s, py, verdict, detail, allowlist.Matches(p.Key)));
+            var c = Classify(s, py);
+            results.Add(new CaseResult(p, s, py, c.Verdict, c.Detail, c.SkipClass, allowlist.Matches(p.Key)));
         }
 
         var divergences = results.Where(r => r.Verdict is Verdict.Divergent
@@ -148,21 +148,28 @@ public class DifferentialExecutionTests : IntegrationTestBase
         var skips = results.Where(r => r.Verdict == Verdict.Skip).ToList();
 
         sw.Stop();
-        WriteReport(results, divergences, offenders, matches, skips, allowlist, pool, sw.Elapsed);
+        WriteReport(results, divergences, offenders, matches, skips, allowlist, pool, limit, sw.Elapsed);
 
+        var coverage = FixtureCoveragePercent(pool);
         Output.WriteLine(
-            $"Differential-exec: {results.Count} programs "
+            $"Differential-exec [{(limit <= FullPool ? "full-pool" : $"SUBSAMPLE DIFF_EXEC_LIMIT={limit}")}]: "
+            + $"{results.Count} programs "
             + $"({programs.Count(x => x.Key.StartsWith("handpicked", StringComparison.Ordinal))} handpicked, "
             + $"{programs.Count(x => x.Key.StartsWith("fixture", StringComparison.Ordinal))} fixture, "
             + $"{programs.Count(x => x.Key.StartsWith("generated", StringComparison.Ordinal))} generated). "
             + $"Match={matches} Skip={skips.Count} Divergent={divergences.Count} "
             + $"Non-allowlisted={offenders.Count}. Wall={sw.Elapsed.TotalSeconds:F1}s.");
         Output.WriteLine(
-            $"Fixture pool: {pool.Selected.Count}/{pool.Eligible} eligible run "
-            + $"({(pool.Eligible == 0 ? 0 : 100.0 * pool.Selected.Count / pool.Eligible):F1}% coverage) "
-            + $"out of {pool.Discovered} discovered fixtures.");
+            $"Fixture coverage: {pool.Selected.Count}/{pool.Eligible} eligible run ({coverage:F1}%) "
+            + $"of {pool.Discovered} discovered fixtures."
+            + (coverage < 100.0
+                ? "  *** PARTIAL RUN — the allowlist's guarantee is scoped to these cells, not the corpus. ***"
+                : ""));
         foreach (var kv in pool.Exclusions.Where(kv => kv.Key.StartsWith("sharpy-only-call:", StringComparison.Ordinal)))
             Output.WriteLine($"  excluded (CPython cannot execute) {kv.Key}: {kv.Value}");
+        foreach (var g in skips.GroupBy(r => r.SkipClass.Length == 0 ? "unclassified" : r.SkipClass,
+                                        StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal))
+            Output.WriteLine($"  skipped at classify time ({g.Key}): {g.Count()}");
         foreach (var o in offenders.Take(40))
             Output.WriteLine($"  DIVERGENCE [{o.Verdict}] {o.Program.Key}: {o.Detail}");
 
@@ -620,26 +627,27 @@ public class DifferentialExecutionTests : IntegrationTestBase
     // Classification + output comparison
     // ----------------------------------------------------------------------------------------- //
 
-    private static (Verdict, string) Classify(ArmOutcome sharpy, PyResult? python)
+    private static Classification Classify(ArmOutcome sharpy, PyResult? python)
     {
         if (python is null)
-            return (Verdict.Divergent, "no python verdict returned for this program");
+            return new(Verdict.Divergent, "no python verdict returned for this program");
 
         // Not parseable as Python => a Sharpy-only annotation slipped past the node-level filter.
         // Parse-level differences are the parse oracle's job, so treat as out-of-subset skip.
         if (python.SyntaxError)
-            return (Verdict.Skip, "python could not parse the source (Sharpy-only syntax); out of subset");
+            return new(Verdict.Skip, "python could not parse the source (Sharpy-only syntax); out of subset",
+                SkipClass: "out-of-subset-syntax");
 
         if (sharpy.Ok && python.Ok)
         {
             return OutputComparer.Equivalent(sharpy.Stdout, python.Stdout)
-                ? (Verdict.Match, "")
-                : (Verdict.Divergent,
+                ? new(Verdict.Match, "")
+                : new(Verdict.Divergent,
                     $"stdout mismatch — sharpy={Quote(sharpy.Stdout)} python={Quote(python.Stdout)}");
         }
 
         if (!sharpy.Ok && !python.Ok)
-            return (Verdict.BothError, "both arms failed (accepted as agreement)");
+            return new(Verdict.BothError, "both arms failed (accepted as agreement)");
 
         if (sharpy.Ok && !python.Ok)
         {
@@ -648,14 +656,15 @@ public class DifferentialExecutionTests : IntegrationTestBase
             // not a runtime divergence. Sharpy would have errored at compile time on a truly undefined
             // name, so a successful Sharpy run guarantees the name is Sharpy-provided.
             if (ReferencesNameMissingInPython(python.Stderr))
-                return (Verdict.Skip, $"python name not available (Sharpy-only): {FirstLine(python.Stderr)}");
+                return new(Verdict.Skip, $"python name not available (Sharpy-only): {FirstLine(python.Stderr)}",
+                    SkipClass: "name-missing-in-python");
 
-            return (Verdict.SharpyOkPythonError,
+            return new(Verdict.SharpyOkPythonError,
                 $"sharpy ran (stdout={Quote(sharpy.Stdout)}) but python failed"
                 + (python.TimedOut ? " (timeout)" : $": {FirstLine(python.Stderr)}"));
         }
 
-        return (Verdict.PythonOkSharpyError,
+        return new(Verdict.PythonOkSharpyError,
             $"python ran (stdout={Quote(python.Stdout)}) but sharpy failed"
             + (sharpy.TimedOut ? " (timeout)" : ""));
     }
@@ -1280,7 +1289,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
     private void WriteReport(
         List<CaseResult> results, List<CaseResult> divergences, List<CaseResult> offenders,
-        int matches, List<CaseResult> skips, Allowlist allowlist, FixturePool pool, TimeSpan elapsed)
+        int matches, List<CaseResult> skips, Allowlist allowlist, FixturePool pool, int limit,
+        TimeSpan elapsed)
     {
         var reportDir = ReportDir();
         Directory.CreateDirectory(reportDir);
@@ -1298,6 +1308,22 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 nonAllowlistedDivergences = offenders.Count,
                 allowlistSize = allowlist.Count,
                 wallSeconds = Math.Round(elapsed.TotalSeconds, 1),
+            },
+            // The run states its own scope (#1202). Before this, a report could show zero
+            // divergences while silently covering 4% of the fixture corpus, so the allowlist's
+            // guarantee was narrower than the contract it is supposed to enforce.
+            coverage = new
+            {
+                mode = limit <= FullPool ? "full-pool" : $"subsample (DIFF_EXEC_LIMIT={limit})",
+                fixturesDiscovered = pool.Discovered,
+                fixturesEligible = pool.Eligible,
+                fixturesRun = pool.Selected.Count,
+                fixtureCoveragePercent = FixtureCoveragePercent(pool),
+                fixtureExclusionsByShape = pool.Exclusions,
+                skipsByClass = skips
+                    .GroupBy(r => r.SkipClass.Length == 0 ? "unclassified" : r.SkipClass, StringComparer.Ordinal)
+                    .OrderBy(g => g.Key, StringComparer.Ordinal)
+                    .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal),
             },
             ratchetMode = Allowlist.FileExists(),
             // Which fixtures CPython cannot execute, named so the attribution is auditable (#1202).
@@ -1321,6 +1347,9 @@ public class DifferentialExecutionTests : IntegrationTestBase
         File.WriteAllText(path, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
         Output.WriteLine($"Report written to: {path}");
     }
+
+    private static double FixtureCoveragePercent(FixturePool pool)
+        => pool.Eligible == 0 ? 100.0 : Math.Round(100.0 * pool.Selected.Count / pool.Eligible, 1);
 
     private static string ReportDir()
         => Path.GetFullPath(Path.Combine(
@@ -1405,6 +1434,9 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
     private sealed record PyResult(bool Ok, string Stdout, string Stderr, bool TimedOut, bool SyntaxError);
 
+    private sealed record Classification(Verdict Verdict, string Detail, string SkipClass = "");
+
     private sealed record CaseResult(
-        Program Program, ArmOutcome Sharpy, PyResult? Python, Verdict Verdict, string Detail, bool Allowlisted);
+        Program Program, ArmOutcome Sharpy, PyResult? Python, Verdict Verdict, string Detail,
+        string SkipClass, bool Allowlisted);
 }
