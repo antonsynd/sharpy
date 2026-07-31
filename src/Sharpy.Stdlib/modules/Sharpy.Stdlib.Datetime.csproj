@@ -10,6 +10,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sharpy.Stdlib.Zoneinfo" />
+    <!-- TomlConverter reaches for the internal System.DateTime/TimeSpan constructors and
+         accessors when mapping TOML date/time values. -->
+    <InternalsVisibleTo Include="Sharpy.Stdlib.Toml" />
     <InternalsVisibleTo Include="Sharpy.Stdlib.Tests" />
   </ItemGroup>
 

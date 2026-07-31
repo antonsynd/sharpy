@@ -9,6 +9,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- TomlConverter maps TOML date/time values onto Date/Time/DateTime/Timedelta/Timezone,
+         which live in the datetime module. -->
+    <ProjectReference Include="Sharpy.Stdlib.Datetime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="../Toml/**/*.cs" />
   </ItemGroup>
 
