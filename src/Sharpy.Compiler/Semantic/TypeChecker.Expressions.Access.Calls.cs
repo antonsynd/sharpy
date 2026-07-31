@@ -435,11 +435,11 @@ internal partial class TypeChecker
             // `Pair[int]` where `Pair[K, V = str]` constructs a Pair[int, str] exactly as the
             // annotation position resolves it (#1192).
             var typeArgs = _semanticInfo.GetGenericReference(indexAccess) is
-                {
-                    Kind: GenericReferenceKind.GenericTypeRef
+            {
+                Kind: GenericReferenceKind.GenericTypeRef
                         or GenericReferenceKind.ModuleType
                         or GenericReferenceKind.NestedTypeRef
-                } typeReference
+            } typeReference
                 ? typeReference.TypeArgs.ToList()
                 : TryResolveTypeArguments(indexAccess.Index);
 
