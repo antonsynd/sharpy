@@ -61,10 +61,9 @@ internal partial class TypeChecker
 
         // Mark the qualifier so the CheckExpression choke point accepts a generic TYPE reference here:
         // `Box[int].of(42)` names the type a static member is reached through (#1192).
-        var savedMemberAccessQualifier = _currentMemberAccessQualifier;
-        _currentMemberAccessQualifier = memberAccess.Object;
-        var objectType = CheckExpression(memberAccess.Object);
-        _currentMemberAccessQualifier = savedMemberAccessQualifier;
+        SemanticType objectType;
+        using (ScopedValue.Push(ref _currentMemberAccessQualifier, memberAccess.Object))
+            objectType = CheckExpression(memberAccess.Object);
 
         // Materialize the original CLR method name for CLR-backed receivers so codegen preserves
         // acronym casing (is_os_platform -> IsOSPlatform) without reflecting (#974).
@@ -1030,10 +1029,9 @@ internal partial class TypeChecker
             return genericReferenceType;
 
         var objectType = CheckExpression(indexAccess.Object);
-        var savedIndexArguments = _currentIndexArguments;
-        _currentIndexArguments = IndexArgumentSetOf(indexAccess.Index);
-        var indexType = CheckExpression(indexAccess.Index);
-        _currentIndexArguments = savedIndexArguments;
+        SemanticType indexType;
+        using (ScopedValue.Push(ref _currentIndexArguments, IndexArgumentSetOf(indexAccess.Index)))
+            indexType = CheckExpression(indexAccess.Index);
 
         // Materialize the codegen lowering strategy for this access so the emitter switches on the
         // tag alone (and never reflects over CLR indexers or re-inspects operand types).
