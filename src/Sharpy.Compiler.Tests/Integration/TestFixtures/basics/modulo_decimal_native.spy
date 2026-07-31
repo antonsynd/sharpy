@@ -1,8 +1,9 @@
-# Decimal `%` deliberately keeps NATIVE C# semantics: truncated, sign of the
+# Decimal `%` deliberately keeps NATIVE truncating semantics: sign of the
 # DIVIDEND. The floored-`%` lowering (#1153) is scoped to int/long/float operands
-# only, so decimal keeps its CLR op_Modulus — see docs/language_specification/
-# arithmetic_operators.md ("native `%` for decimal and user-defined `operator %`
-# types"). The values below intentionally differ from the int results.
+# only; decimal lowers to guarded decimal.Remainder(a, b) — value-identical to
+# CLR op_Modulus for every nonzero divisor (#1189) — see
+# docs/language_specification/arithmetic_operators.md. The values below
+# intentionally differ from the int results.
 def main() -> None:
     x: decimal = -7m
     y: decimal = 3m

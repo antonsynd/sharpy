@@ -589,7 +589,7 @@ ALLOWED_FEATURES_SECTION = """\
 - **Try/finally**: `try: ... finally: ...`
 - **Try/except/else/finally**: Full exception handling pattern
 - **Raise**: `raise ValueError("message")`
-- **Available exception types**: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ZeroDivisionError`, `OverflowError`, `Exception`
+- **Available exception types**: `ValueError`, `TypeError`, `KeyError`, `IndexError`, `RuntimeError`, `NotImplementedError`, `AttributeError`, `ArithmeticError`, `ZeroDivisionError`, `OverflowError`, `InvalidOperation`, `Exception`
 - **Custom exceptions**: `class MyError(Exception): pass` (no message constructor). To accept messages: `class MyError(Exception):` with `def __init__(self, message: str): super().__init__(message)`
 
 #### Lambda Expressions (0.1.14)
