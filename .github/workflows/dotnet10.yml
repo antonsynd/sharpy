@@ -88,15 +88,16 @@ jobs:
     - name: Test Compiler
       # The interop conformance sweep (#1034) is heavy (~1–2 min, thousands of in-process
       # compiles); it runs in its own dedicated step below so the main test pass stays fast.
-      # The newer gap-discovery sweeps run INLINE here by design: the generic-reference
-      # matrix (#1143, ~121 in-process compiles) and the CPython execution oracle (~60
-      # programs, needs the python step above) are light enough (~1 min combined) that a
-      # dedicated step isn't warranted. The front-end parity sweep (#1144) runs inline in
-      # the LSP step for the same reason. Split any of them out only if they grow heavy.
+      # The generic-reference matrix (#1143, ~158 in-process compiles) still runs INLINE here:
+      # it is light enough that a dedicated step isn't warranted. The front-end parity sweep
+      # (#1144) runs inline in the LSP step for the same reason. Split any of them out only if
+      # they grow heavy.
       # The metamorphic corpus sweep (#1157) IS heavy (~1.5 min, ~14,600 in-process compiles)
       # and has its own step below; excluding it here also keeps its RandomProperty sibling
       # (MetamorphicCorpusInvarianceTests, which spawns a dotnet subprocess per pair) out of CI.
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus"
+      # The CPython execution oracle likewise earned its own step when #1202 took it from a
+      # 60-program sample to the full ~565-cell pool.
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution"
     - name: Test Stdlib
       run: dotnet test src/Sharpy.Stdlib.Tests --no-build --verbosity normal --filter "Category!=Benchmark"
     - name: Test LSP
@@ -117,6 +118,17 @@ jobs:
       # subprocesses, and draws a fresh sample per run — it belongs in /property-stress, not in a
       # deterministic CI gate.
       run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~MetamorphicCorpus"
+    - name: CPython differential execution oracle (#1202)
+      # Sharpy-compiled stdout vs batched `python3` over the shared executable subset. Since
+      # #1202 the fixture arm sweeps its ENTIRE eligible pool every run (565 cells, ~46 s on a
+      # dev machine) rather than a 60-program sample that reached 4% of it, which is what moved
+      # it out of the main Compiler step. Emits .claude/tmp/differential-exec-report.json —
+      # including the run's own coverage % — and ratchets against the reviewed allowlist
+      # (src/Sharpy.Compiler.Tests/Conformance/differential-exec-allowlist.txt), where every
+      # entry cites a docs/deviations.yaml id or an issue number.
+      # Needs the python step above; the test soft-skips (green) without a suitable python3, so
+      # a missing report means the oracle did not run, not that it agreed.
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~DifferentialExecution"
     - name: Verify .spy stdlib native compilation
       run: dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj
     - name: Verify .spy stdlib C# staleness
