@@ -1,0 +1,5 @@
+# Tier-1 pinning with a WRONG-SHAPE annotation is a deliberate SPY0342 naming
+# the candidate overloads — never SPY0220 self-talk, never a CS0246 leak (#1182).
+def main() -> None:
+    g: (str, str) -> int = int
+    print(g("1", "2"))

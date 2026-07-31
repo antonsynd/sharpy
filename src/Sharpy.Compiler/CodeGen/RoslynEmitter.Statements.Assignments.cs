@@ -24,6 +24,20 @@ internal partial class RoslynEmitter
             return EmptyStatement();
         }
 
+        // A ConstructorReferenceType value that was NOT elided above should be unreachable:
+        // tier 1 replaces the carrier with the pinned FunctionType, tier 2 is the elision,
+        // and tier 3 rejected everything else (SPY0342). Fail loudly rather than letting the
+        // generic identifier fallback emit a method group into a non-delegate C# type (#1182).
+        if (_context.SemanticInfo?.GetExpressionType(assign.Value) is ConstructorReferenceType crt)
+        {
+            _context.AddError(
+                $"Internal: constructor reference to '{crt.Name}' reached code generation in a non-elidable binding. This is a compiler bug — please report it.",
+                DiagnosticCodes.CodeGen.EmitError,
+                assign.LineStart,
+                assign.ColumnStart);
+            return EmptyStatement();
+        }
+
         // Check if this is an assignment of a lambda with default parameters to a simple
         // identifier (first declaration). Emit as a local function instead of a delegate
         // variable, because C# delegates / Func<> don't support optional parameters.

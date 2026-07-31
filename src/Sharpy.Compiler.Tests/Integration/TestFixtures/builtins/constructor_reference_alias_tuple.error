@@ -1,0 +1,1 @@
+'tuple(...)' cannot convert an iterable to a tuple: a tuple's arity is part of its type. The argument is already a 'tuple[int, int]' — drop the conversion. @5:12

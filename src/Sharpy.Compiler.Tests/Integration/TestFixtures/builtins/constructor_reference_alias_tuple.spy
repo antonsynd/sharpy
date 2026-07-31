@@ -1,0 +1,6 @@
+# The tuple family has no pin shape, so an alias call lands on #1159's SPY0338
+# guidance instead of the old CS0119 leak — the deliberate outcome (#1182).
+def main() -> None:
+    t = tuple
+    pair = t((1, 2))
+    print(pair)

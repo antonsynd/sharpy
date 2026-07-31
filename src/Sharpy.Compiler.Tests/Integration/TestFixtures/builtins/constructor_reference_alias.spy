@@ -53,3 +53,10 @@ def main():
         print(render(7))
 
     print(shadowed())
+
+    # Spread through an alias call lowers exactly like the direct spelling —
+    # the alias-call emitter shares the positional-argument pipeline
+    # (/verify-implementation finding: a hand-rolled arm sent *t to SPY0518).
+    spread_src: tuple[str] = ("8",)
+    conv = int
+    print(conv(*spread_src))

@@ -296,8 +296,11 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateConstructorReferenceCall(
         FunctionCall call, ConstructorReferenceLowering lowering)
     {
-        var arguments = ArgumentList(SeparatedList(
-            call.Arguments.Select(argument => Argument(GenerateExpression(argument)))));
+        // Route through the shared positional-argument pipeline so spread elements and
+        // iterable projections lower exactly as they do for the direct spelling —
+        // a hand-rolled Select over GenerateExpression would send *t to the
+        // SPY0518 not-supported fallback (#1182 verification finding).
+        var arguments = ArgumentList(SeparatedList(GeneratePositionalArguments(call.Arguments)));
 
         return lowering.Family == ConstructorReferenceFamily.Conversion
             ? InvocationExpression(
