@@ -579,6 +579,9 @@ internal partial class RoslynEmitter
             case GenericReferenceKind.ArrayTypeRef:
                 return GenerateArrayConstruction(indexAccess, call);
 
+            case GenericReferenceKind.TupleTypeRef:
+                return GenerateTupleConversion(call);
+
             case GenericReferenceKind.GenericTypeRef:
                 return indexAccess.Object is Identifier typeName
                        && reference.TargetSymbol is TypeSymbol genericTypeSymbol
@@ -671,6 +674,28 @@ internal partial class RoslynEmitter
                 .AddRankSpecifiers(
                     ArrayRankSpecifier(
                         SingletonSeparatedList<ExpressionSyntax>(sizeExpr))));
+    }
+
+    /// <summary>
+    /// Tuple conversion: <c>tuple[int, str](t)</c> → <c>((ValueTuple&lt;int, string&gt;)(t))</c>
+    /// (#1200). A tuple's arity is part of its type, so the semantic phase resolved this to a
+    /// conversion whose argument is already assignable to the written tuple type — the value needs no
+    /// rebuilding, and emitting a <c>ValueTuple</c> constructor around it produced CS7036 (one tuple
+    /// argument where the constructor wants one argument per member). The cast is what makes the C#
+    /// type equal the type the checker gave the expression when the two differ element-wise
+    /// (<c>tuple[float, str]((1, "a"))</c>), the same way an annotated <c>x: float = 1</c> emits a
+    /// real double; C# tuple conversions apply element-wise, so it is a no-op when they match. A
+    /// differently shaped call cannot reach here: the checker rejects any arity but one.
+    /// </summary>
+    private ExpressionSyntax? GenerateTupleConversion(FunctionCall call)
+    {
+        if (call.Arguments.Length != 1)
+            return null;
+
+        var argument = ParenthesizedExpression(GenerateExpression(call.Arguments[0]));
+        return GetExpressionSemanticType(call) is Semantic.TupleType tupleTarget
+            ? ParenthesizedExpression(CastExpression(_typeMapper.MapSemanticType(tupleTarget), argument))
+            : argument;
     }
 
     /// <summary>
