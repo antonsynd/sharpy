@@ -19,18 +19,27 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
-        var savedAliasReference = _constructorAliasCallee;
-        _constructorAliasCallee = null;
-        var result = CheckFunctionCallCore(call);
-
-        if (_constructorAliasCallee is { } alias && result is not UnknownType)
+        // This scope is NOT a context push like the others — the field is an out-parameter smuggled
+        // through a field. CheckFunctionCallCore WRITES _constructorAliasCallee deep inside its
+        // callee-substitution arm, and this wrapper READS IT BACK to record the emission shape. The
+        // read must therefore happen INSIDE the scope, before the restore; do not "simplify" this
+        // into a plain context push.
+        // Follow-up (not here): turning the channel into a real return value would be a genuine
+        // improvement, but it changes CheckFunctionCallCore's signature, which puts it out of scope
+        // for a no-behavior-change refactor (#1218).
+        SemanticType result;
+        using (ScopedValue.Push(ref _constructorAliasCallee, null))
         {
-            _semanticInfo.SetConstructorReferenceLowering(call,
-                new ConstructorReferenceLowering(
-                    alias.Family, alias.Name, result, call.Arguments.Length));
+            result = CheckFunctionCallCore(call);
+
+            if (_constructorAliasCallee is { } alias && result is not UnknownType)
+            {
+                _semanticInfo.SetConstructorReferenceLowering(call,
+                    new ConstructorReferenceLowering(
+                        alias.Family, alias.Name, result, call.Arguments.Length));
+            }
         }
 
-        _constructorAliasCallee = savedAliasReference;
         return result;
     }
 
@@ -115,12 +124,11 @@ internal partial class TypeChecker
 
         // Check the called expression type first. Mark the callee node so the CheckExpression choke
         // point accepts a GenericFunctionType here (`identity[int](x)` is legal) while still erroring
-        // (SPY0335) if one surfaces on any other node (#1138). Save/restore mirrors _typeTestOperand
-        // so nested calls (`outer(identity[int](5))`) restore the enclosing callee correctly.
-        var savedCallCallee = _currentCallCallee;
-        _currentCallCallee = call.Function;
-        var calleeType = CheckExpression(call.Function);
-        _currentCallCallee = savedCallCallee;
+        // (SPY0335) if one surfaces on any other node (#1138). The scope restores on every exit path,
+        // so nested calls (`outer(identity[int](5))`) recover the enclosing callee correctly.
+        SemanticType calleeType;
+        using (ScopedValue.Push(ref _currentCallCallee, call.Function))
+            calleeType = CheckExpression(call.Function);
 
         // #1182: a call through a builtin constructor alias (`f = int; f("3")`, `f = dict; f()`).
         // The alias denotes the builtin, so the call resolves by dispatching on the BUILTIN'S NAME
@@ -165,23 +173,25 @@ internal partial class TypeChecker
         // reads the honest, un-narrowed value (see _typeTestOperand): a narrowing cast on the
         // operand would presuppose the very fact the test is checking.
         var calleeFunctionType = calleeType as FunctionType ?? ClosedExtensionSignature(callee);
-        var savedTypeTestOperand = _typeTestOperand;
-        var savedTypeTestTypeArgument = _typeTestTypeArgument;
-        if (callee is Identifier { Name: BuiltinNames.Isinstance } && call.Arguments.Length > 0)
-        {
-            _typeTestOperand = UnwrapParenthesized(call.Arguments[0]);
-            // The second argument names a type, not a value — see _typeTestTypeArgument.
-            if (call.Arguments.Length > 1)
-                _typeTestTypeArgument = UnwrapParenthesized(call.Arguments[1]);
-        }
+        // Not a type test: each scope pushes the field's CURRENT value, so an enclosing type test's
+        // operand and type argument survive rather than being cleared for this call's arguments. The
+        // type-argument scope carries the conjunction — the second argument only names a type when
+        // there IS a second argument.
+        var isTypeTest = callee is Identifier { Name: BuiltinNames.Isinstance } && call.Arguments.Length > 0;
+        List<SemanticType> argTypes;
+        Dictionary<string, SemanticType> kwargTypes;
         // The direct-argument set covers every internal argument path CheckCallArguments takes, so the
         // constructor-reference rules see the same exemption regardless of which one runs (#1182).
-        var savedCallArguments = _currentCallArguments;
-        _currentCallArguments = DirectArgumentSetOf(call);
-        var (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
-        _currentCallArguments = savedCallArguments;
-        _typeTestOperand = savedTypeTestOperand;
-        _typeTestTypeArgument = savedTypeTestTypeArgument;
+        using (ScopedValue.Push(ref _typeTestOperand,
+                   isTypeTest ? UnwrapParenthesized(call.Arguments[0]) : _typeTestOperand))
+        using (ScopedValue.Push(ref _typeTestTypeArgument,
+                   isTypeTest && call.Arguments.Length > 1
+                       ? UnwrapParenthesized(call.Arguments[1])
+                       : _typeTestTypeArgument))
+        using (ScopedValue.Push(ref _currentCallArguments, DirectArgumentSetOf(call)))
+        {
+            (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
+        }
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
         MarkTypeReferenceArguments(call);
