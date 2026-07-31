@@ -128,10 +128,9 @@ internal partial class TypeChecker
                 var parentType = GetVariableType(parentVarSym);
                 _expectedType = parentType is UnknownType ? null : parentType;
             }
-            var savedBindingValue2 = _currentBindingValue;
-            _currentBindingValue = assignment.Value;
-            var inferredType = CheckExpression(assignment.Value);
-            _currentBindingValue = savedBindingValue2;
+            SemanticType inferredType;
+            using (ScopedValue.Push(ref _currentBindingValue, assignment.Value))
+                inferredType = CheckExpression(assignment.Value);
             _expectedType = previousExpectedType2;
 
             // Create a new variable symbol with the inferred type (or redefine existing)
@@ -237,10 +236,9 @@ internal partial class TypeChecker
         // Set expected type for constructor inference (Some/None()/Ok/Err)
         var previousExpectedType = _expectedType;
         _expectedType = assignmentTargetType is UnknownType ? null : assignmentTargetType;
-        var savedBindingValue = _currentBindingValue;
-        _currentBindingValue = assignment.Value;
-        var valueType = CheckExpression(assignment.Value);
-        _currentBindingValue = savedBindingValue;
+        SemanticType valueType;
+        using (ScopedValue.Push(ref _currentBindingValue, assignment.Value))
+            valueType = CheckExpression(assignment.Value);
         _expectedType = previousExpectedType;
 
         // Handle augmented assignment operators (+=, -=, *=, /=, //=, %=, **=, &=, |=, ^=, <<=, >>=)
@@ -307,10 +305,9 @@ internal partial class TypeChecker
             // Set expected type for constructor inference (Some/None()/Ok/Err)
             var previousExpectedType = _expectedType;
             _expectedType = declaredType is UnknownType ? null : declaredType;
-            var savedBindingValue = _currentBindingValue;
-            _currentBindingValue = varDecl.InitialValue;
-            var initType = CheckExpression(varDecl.InitialValue);
-            _currentBindingValue = savedBindingValue;
+            SemanticType initType;
+            using (ScopedValue.Push(ref _currentBindingValue, varDecl.InitialValue))
+                initType = CheckExpression(varDecl.InitialValue);
             _expectedType = previousExpectedType;
 
             // Handle type inference for 'auto'
