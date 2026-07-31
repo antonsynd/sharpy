@@ -118,4 +118,98 @@ public class SpecialFloatParseTests
         DoubleParse.TryParseSpecialFloat(s, out var value).Should().BeFalse();
         value.Should().Be(0.0);
     }
+
+    // --- Both conversion seams, and their agreement ------------------------------------------
+
+    [Theory]
+    [InlineData("inf", double.PositiveInfinity)]
+    [InlineData("-inf", double.NegativeInfinity)]
+    [InlineData("+inf", double.PositiveInfinity)]
+    [InlineData("INF", double.PositiveInfinity)]
+    [InlineData("Infinity", double.PositiveInfinity)]
+    [InlineData("infinity", double.PositiveInfinity)]
+    [InlineData("INFINITY", double.PositiveInfinity)]
+    [InlineData("-Infinity", double.NegativeInfinity)]
+    [InlineData("  inf  ", double.PositiveInfinity)]
+    [InlineData("  -infinity ", double.NegativeInfinity)]
+    public void Double_FromString_SpecialInfinity_MatchesCPython(string s, double expected)
+    {
+        Builtins.Double(s).Should().Be(expected);
+        // float() is a one-line delegate to Double(), so there is one seam here, not two.
+        Builtins.Float(s).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("nan")]
+    [InlineData("NAN")]
+    [InlineData("-nan")]
+    [InlineData("  nan  ")]
+    public void Double_FromString_Nan_MatchesCPython(string s)
+    {
+        double.IsNaN(Builtins.Double(s)).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("inf", double.PositiveInfinity)]
+    [InlineData("-inf", double.NegativeInfinity)]
+    [InlineData("+inf", double.PositiveInfinity)]
+    [InlineData("Infinity", double.PositiveInfinity)]
+    [InlineData("infinity", double.PositiveInfinity)]
+    [InlineData("INFINITY", double.PositiveInfinity)]
+    [InlineData("  inf  ", double.PositiveInfinity)]
+    public void DoubleParse_Parse_SpecialInfinity_MatchesCPython(string s, double expected)
+    {
+        var result = DoubleParse.Parse(s);
+        result.IsOk.Should().BeTrue();
+        result.Unwrap().Should().Be(expected);
+    }
+
+    [Fact]
+    public void DoubleParse_Parse_Nan_ReturnsOkNan()
+    {
+        var result = DoubleParse.Parse("-nan");
+        result.IsOk.Should().BeTrue();
+        double.IsNaN(result.Unwrap()).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("in f")]
+    [InlineData("infinit")]
+    [InlineData("nano")]
+    public void BothSeams_StillRejectNonCPythonSpellings_WithTheUnchangedMessage(string s)
+    {
+        var thrown = Assert.Throws<ValueError>(() => Builtins.Double(s));
+        thrown.Message.Should().Be($"could not convert string to float: '{s}'");
+
+        var result = DoubleParse.Parse(s);
+        result.IsErr.Should().BeTrue();
+        result.UnwrapErr().Message.Should().Be($"could not convert string to float: '{s}'");
+    }
+
+    [Theory]
+    [InlineData("inf")]
+    [InlineData("-inf")]
+    [InlineData("+inf")]
+    [InlineData("Infinity")]
+    [InlineData("infinity")]
+    [InlineData("INFINITY")]
+    [InlineData("  inf  ")]
+    [InlineData("in f")]
+    [InlineData("3.14")]
+    [InlineData("1e5")]
+    [InlineData("")]
+    public void TheTwoSeamsAgree_OnAcceptanceAndOnValue(string s)
+    {
+        // The point of the shared predicate: float(s) and float.parse(s) cannot drift.
+        var parseResult = DoubleParse.Parse(s);
+
+        if (parseResult.IsOk)
+        {
+            Builtins.Double(s).Should().Be(parseResult.Unwrap());
+        }
+        else
+        {
+            Assert.Throws<ValueError>(() => Builtins.Double(s));
+        }
+    }
 }

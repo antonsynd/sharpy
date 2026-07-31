@@ -22,6 +22,14 @@ namespace Sharpy
 
             s = s.Trim();
 
+            // CPython's special spellings first, so this seam and Builtins.Double(string) accept
+            // exactly the same set (#1203). Trimming above is what makes "  inf  " work.
+            if (TryParseSpecialFloat(s, out double special))
+            {
+                return Result<double, ValueError>.Ok(special);
+            }
+
+            // NumberStyles.Float already includes AllowExponent; both seams pass this same value.
             if (double.TryParse(s, NumberStyles.Float,
                 CultureInfo.InvariantCulture, out double result))
             {

@@ -69,7 +69,15 @@ namespace Sharpy
 
             s = s.Trim();
 
-            if (!double.TryParse(s, NumberStyles.Float | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out double result))
+            // CPython's special spellings first, so this seam and DoubleParse.Parse accept exactly
+            // the same set (#1203). Trimming above is what makes "  inf  " work.
+            if (DoubleParse.TryParseSpecialFloat(s, out double special))
+            {
+                return special;
+            }
+
+            // NumberStyles.Float already includes AllowExponent; both seams pass this same value.
+            if (!double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double result))
             {
                 throw new ValueError($"could not convert string to float: '{s}'");
             }
