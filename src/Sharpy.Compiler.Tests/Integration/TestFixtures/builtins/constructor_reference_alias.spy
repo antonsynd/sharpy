@@ -1,0 +1,34 @@
+# #1182 tier 2: a binding with no signature available becomes a call-only ALIAS of the builtin.
+# Each call through it resolves exactly like a call of the builtin itself — same overload selection,
+# same expected-type-driven type-argument inference — and the binding itself emits no C#, because a
+# constructor reference has no runtime value (the C# method-group model).
+def main():
+    f = int
+    print(f("3"))
+
+    # Reassignment re-aliases: each call site binds its own reaching binding.
+    f = str
+    print(f(5))
+
+    d_maker = dict
+    d: dict[str, int] = d_maker()
+    d["k"] = 1
+    print(d)
+
+    l_maker = list
+    xs: list[int] = l_maker()
+    xs.append(9)
+    xs.append(4)
+    print(xs)
+
+    s_maker = set
+    s: set[str] = s_maker()
+    s.add("a")
+    print(s)
+
+    # A parenthesized callee is still a callee.
+    p = int
+    print((p)("11"))
+
+    fl = float
+    print(fl("2.5"))

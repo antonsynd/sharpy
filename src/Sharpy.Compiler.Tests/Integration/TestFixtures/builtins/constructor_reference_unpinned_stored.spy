@@ -1,0 +1,6 @@
+# #1182 tier 3: a constructor reference stored in a collection has no signature and no way to
+# acquire one — the list element position supplies no target type. Deliberate diagnostic naming the
+# missing signature, not SPY0908 behind broken C#.
+def main():
+    xs = [int, str]
+    print(xs)

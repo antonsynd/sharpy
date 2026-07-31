@@ -1,0 +1,55 @@
+# #1182 tier 1: a bare builtin type name used as a value is a CONSTRUCTOR REFERENCE — Sharpy's
+# method group. Wherever a signature is available it pins to it: an annotated target, a declared
+# return type, or a parameter it is passed to. The conversion families emit the Builtins.X method
+# group; the collection families emit a constructor lambda.
+def make_parser() -> (str) -> int:
+    return int
+
+
+def apply(fn: (str) -> int, s: str) -> int:
+    return fn(s)
+
+
+def main():
+    # Annotated target, conversion family.
+    g: (str) -> int = int
+    print(g("42"))
+
+    # Annotated target, collection families — the empty constructor.
+    h: () -> dict[str, int] = dict
+    d = h()
+    d["a"] = 1
+    print(d)
+
+    mk: () -> list[int] = list
+    ys = mk()
+    ys.append(3)
+    print(ys)
+
+    ms: () -> set[int] = set
+    s = ms()
+    s.add(7)
+    print(s)
+
+    # bool is a conversion family member like int and str.
+    b: (int) -> bool = bool
+    print(b(0))
+    print(b(5))
+
+    # Return position: the declared return type supplies the signature.
+    p = make_parser()
+    print(p("7"))
+
+    # Argument position: the parameter type supplies the signature.
+    print(apply(int, "5"))
+
+    # An alias passed as an argument pins there too — it behaves exactly like the name it aliases.
+    f = int
+    xs: list[str] = ["3", "1", "2"]
+    print(list(map(f, xs)))
+    print(apply(f, "6"))
+
+    # The collection copy constructor.
+    src: list[int] = [1, 2, 3]
+    copy_maker: (list[int]) -> list[int] = list
+    print(copy_maker(src))

@@ -1,0 +1,47 @@
+# #1182 regression tripwire. Every position where a builtin type NAME already worked before the
+# constructor-reference rules, gathered in one fixture so a regression fails loudly here rather than
+# scattered across the corpus. These are the exact positions that made the SPY0337 extension
+# over-fire and get reverted (#1170), so the value-position rules must keep skipping all of them:
+# a direct call argument (positional and keyword), a static-member receiver, a type-test type
+# argument, and a generic type argument.
+#
+# Python's defaultdict(list) factory convention (#1175) belongs to the same family but needs the
+# stdlib, which this harness does not load; it is pinned by
+# Sharpy.Stdlib.Tests/Integration/TestFixtures/stdlib_collections_defaultdict.spy.
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main():
+    xs: list[str] = ["3", "1", "2"]
+
+    # Direct positional argument to a generic builtin.
+    print(list(map(int, xs)))
+
+    # Keyword argument whose delegate target is not carried in the expected type.
+    print(sorted(xs, key=int))
+
+    # Static-member receiver: the name qualifies a member, it is not a value.
+    parsed: int !ValueError = int.parse("7")
+    print(parsed.unwrap())
+
+    fk = dict.fromkeys(["a", "b"], 0)
+    print(fk)
+
+    # Type-test type argument.
+    x: object = 5
+    print(isinstance(x, int))
+
+    # Generic type argument, in both the value-indexing and construction spellings.
+    b: Box[int] = Box[int](4)
+    print(b.value)
+
+    # The other conversion families in the same argument positions.
+    print(list(map(str, [1, 2])))
+    print(list(filter(bool, [0, 1, 0, 2])))
+
+    # Nested: the argument of an inner call is still a direct argument.
+    print(list(map(int, xs)))

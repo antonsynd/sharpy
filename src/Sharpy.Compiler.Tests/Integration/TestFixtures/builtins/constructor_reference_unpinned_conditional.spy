@@ -1,0 +1,7 @@
+# #1182 tier 3: a conditional is not an alias — neither arm is the binding's value, so neither can
+# be resolved per call site, and the ternary has no target type to pin against. The reference is
+# rejected with the annotate/lambda guidance rather than leaking a synthetic signature into C#.
+def main():
+    c: bool = True
+    f = int if c else str
+    print(f("3"))
