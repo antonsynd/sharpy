@@ -135,11 +135,12 @@ internal partial class TypeChecker
         MarkTypeReferenceArguments(call);
         MarkTypeFactoryArguments(call, callee);
 
-        // Record where a bare dict flows into an iterable-of-keys position so codegen projects it to
-        // d.Keys() (#1154) and the argument-binding sites accept it as iterable[K] (#1159). One choke
+        // Record how each argument in an iterable position binds there, so codegen projects it
+        // (d.Keys() for a dict, a typed array for a tuple, unchanged otherwise) and the
+        // argument-binding sites accept it as iterable[element] (#1154, #1159, #1198). One choke
         // point for the whole ring — the emitter is a pure applier (repo rule 2). Runs before every
-        // dispatch path, because each of them binds arguments and must see the same marker.
-        RecordDictKeysProjections(call, callee);
+        // dispatch path, because each of them binds arguments and must see the same marks.
+        RecordIterableArgumentMarks(call, callee);
 
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
@@ -1619,7 +1620,7 @@ internal partial class TypeChecker
         List<SemanticType>? substituted = null;
         for (int i = 0; i < argTypes.Count; i++)
         {
-            if (ProjectedArgumentType(ArgumentNodeAt(call, i), argTypes[i]) is not { } projected)
+            if (ProjectedArgumentType(ArgumentNodeAt(call, i)) is not { } projected)
                 continue;
             substituted ??= new List<SemanticType>(argTypes);
             substituted[i] = projected;
@@ -2366,25 +2367,28 @@ internal partial class TypeChecker
     private static readonly int[] IterablePositionOne = { 1 };
 
     /// <summary>
-    /// Records an <see cref="IterableProjectionKind.DictKeys"/> marker on every bare-dict argument that
-    /// sits in a call's iterable-of-keys position (#1154, #1159). This is the single recording choke
-    /// point for the whole dict-iteration ring: Python iterates a dict's keys, but a Sharpy dict's
-    /// generic enumerable surface is <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c>, so codegen must
-    /// project the argument to <c>d.Keys()</c>. The emitter reads the marker in its argument-generation
-    /// funnel and applies the projection verbatim — it never re-derives which positions are iterable
-    /// (repo rule 2). <c>for k in d</c> (duck-typed foreach) and the dict views
-    /// (<c>sorted(d.keys())</c>/<c>.values()</c>/<c>.items()</c>) are unaffected: the former never
-    /// reaches here, the latter carry a view type, not a bare dict.
+    /// Records how each argument sitting in a call's ITERABLE position binds there — its element type
+    /// and the projection codegen must apply — for every iterable source, not just dicts (#1154,
+    /// #1159, #1198, #1199). This is the single recording choke point for the whole iteration ring.
+    /// The emitter reads the mark in its argument-generation funnel and applies the projection
+    /// verbatim; it never re-derives which positions are iterable or what a source iterates as
+    /// (repo rule 2).
     ///
-    /// <para>The marker is also the gate on ACCEPTING a dict in these positions
+    /// <para>The mark is also the gate on ACCEPTING a non-<c>list</c> iterable in these positions
     /// (<see cref="ProjectedArgumentType"/>), so recording runs before any dispatch — every consumer
-    /// that binds arguments reads it.</para>
+    /// that binds arguments reads it. Recording only sources that
+    /// <see cref="ClassifyIterableArgument"/> can also lower is what keeps acceptance and lowering
+    /// one decision.</para>
     ///
-    /// <para>Two callee shapes carry iterable-of-keys positions: an identifier naming a builtin
-    /// (<c>sum(d)</c>) and a method on a receiver (<c>", ".join(d)</c>). Anything else records
+    /// <para>The position tables are the only thing that grants this acceptance, which keeps it
+    /// scoped: a user-declared <c>def f(xs: list[int])</c> parameter and ordinary assignment stay
+    /// strict (Axiom 3). <c>for k in d</c> (duck-typed foreach) never reaches here at all.</para>
+    ///
+    /// <para>Two callee shapes carry iterable positions: an identifier naming a builtin
+    /// (<c>sum(s)</c>) and a method on a receiver (<c>", ".join(s)</c>). Anything else records
     /// nothing.</para>
     /// </summary>
-    private void RecordDictKeysProjections(FunctionCall call, Expression callee)
+    private void RecordIterableArgumentMarks(FunctionCall call, Expression callee)
     {
         IReadOnlyList<int>? positions;
         switch (callee)
@@ -2415,16 +2419,84 @@ internal partial class TypeChecker
                 continue;
             var argNode = call.Arguments[position];
             var argType = _semanticInfo.GetExpressionType(argNode);
-            // The gate IS the projection authority: recording exactly when GetProjectedDictKeysType
-            // answers keeps acceptance (ProjectedArgumentType reads the same method) and lowering in
-            // lockstep — the drift #1199 reported came from this gate matching a BARE dict while the
-            // authority unwrapped `dict[K,V] | None` too, so a nullable dict was accepted and never
-            // projected (CS1503). OptionalType is deliberately not unwrapped by that authority:
-            // Sharpy `T?` is the strict tagged union and must be narrowed first.
-            if (argType != null && _typeInference.GetProjectedDictKeysType(argType) != null)
+            if (argType != null && ClassifyIterableArgument(argType) is { } projection)
+                _semanticInfo.SetIterableProjection(argNode, projection);
+        }
+    }
+
+    /// <summary>
+    /// Decides how an argument type binds in an iterable position: the element type it iterates as
+    /// and the projection that makes its C# form an <c>IEnumerable&lt;element&gt;</c> — or
+    /// <c>null</c> when the ring does not accept this source there (#1198).
+    ///
+    /// <para>The two halves are one decision on purpose. Every arm below either needs no lowering
+    /// (the source really is an <c>IEnumerable&lt;element&gt;</c>, proven by CLR inspection rather
+    /// than assumed) or names the lowering that makes it one. A source with no arm is left unmarked
+    /// and stays rejected, which is a deliberate semantic diagnostic rather than the CS1503/CS0411
+    /// internal errors that acceptance-without-lowering produced (#1198, #1199).</para>
+    /// </summary>
+    private IterableArgumentProjection? ClassifyIterableArgument(SemanticType argType)
+    {
+        // A dict (bare, or `| None` — the C#-interop nullable, whose null throws at .Keys() like
+        // Python raises on iterating None) iterates its KEYS: project to d.Keys(). Sharpy's strict
+        // `dict[K, V]?` is deliberately not unwrapped by that authority and gets no mark.
+        if (_typeInference.GetProjectedDictKeysType(argType)
+            is GenericType { TypeArguments.Count: 1 } projectedKeys)
+        {
+            return new IterableArgumentProjection(
+                IterableProjectionKind.DictKeys, projectedKeys.TypeArguments[0]);
+        }
+
+        // System.ValueTuple implements no IEnumerable<T>, so a tuple needs the typed-array bridge.
+        // Arity is static, so the spread is always well-formed; requiring one element type keeps the
+        // array well-typed (a heterogeneous tuple gets no mark and is rejected, not mis-lowered).
+        if (argType is TupleType tuple && tuple.ElementTypes.Count > 0)
+        {
+            var tupleElement = tuple.ElementTypes[0];
+            foreach (var elementType in tuple.ElementTypes)
             {
-                _semanticInfo.SetIterableProjection(argNode, IterableProjectionKind.DictKeys);
+                if (!elementType.Equals(tupleElement))
+                    return null;
             }
+
+            return new IterableArgumentProjection(
+                IterableProjectionKind.TupleToArray, tupleElement, tuple.ElementTypes.Count);
+        }
+
+        // Everything else must prove it already presents as IEnumerable<element> in C# — list, set,
+        // frozenset, the dict views, range/iterators, CLR-backed collections. `str` is excluded by
+        // exactly this check (System.String is IEnumerable<char>, not IEnumerable<string>), which is
+        // why it stays rejected rather than being accepted into an ICE (#1209).
+        if (_typeInference.InferIterableElementType(argType) is { } inferredElement
+            && EnumeratesAsInClr(argType, inferredElement))
+        {
+            return new IterableArgumentProjection(IterableProjectionKind.Direct, inferredElement);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether the C# form of <paramref name="source"/> is assignable to
+    /// <c>IEnumerable&lt;element&gt;</c> — the question "will the emitted argument bind?", answered
+    /// where CLR inspection belongs (semantic analysis, never the emitter). Returns false whenever
+    /// either side has no resolvable CLR type, so acceptance is never granted on a guess.
+    /// </summary>
+    private bool EnumeratesAsInClr(SemanticType source, SemanticType element)
+    {
+        var sourceClr = TryGetClrType(source);
+        var elementClr = TryGetClrType(element);
+        if (sourceClr == null || elementClr == null)
+            return false;
+
+        try
+        {
+            return typeof(IEnumerable<>).MakeGenericType(elementClr).IsAssignableFrom(sourceClr);
+        }
+        catch (ArgumentException)
+        {
+            // MakeGenericType rejects pointer/byref/open element types; treat as "cannot prove".
+            return false;
         }
     }
 

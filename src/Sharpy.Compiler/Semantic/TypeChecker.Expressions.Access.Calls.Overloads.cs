@@ -165,10 +165,10 @@ internal partial class TypeChecker
                     // list[int] would wildcard-match a nested list[list[T]] (the inner
                     // int absorbed into T), tying two generic overloads (#957); the outer
                     // name check also keeps list[int] from matching array[T] (#954).
-                    // A projected argument (a bare dict in an iterable-of-keys position, #1159) is
+                    // A projected argument (one in an iterable position, #1159, #1198) is
                     // shape-matched on the type codegen will pass as well as on its own.
                     if (!ArgMatchesGenericShape(context.ArgTypes[i], expectedType)
-                        && !(ProjectedArgumentType(argNode, context.ArgTypes[i]) is { } projectedArg
+                        && !(ProjectedArgumentType(argNode) is { } projectedArg
                              && ArgMatchesGenericShape(projectedArg, expectedType)))
                     {
                         typesMatch = false;

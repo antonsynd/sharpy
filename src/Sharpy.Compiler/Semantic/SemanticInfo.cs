@@ -176,15 +176,16 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, TypeCoercionLowering> _typeCoercionLowerings =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map builtin-call argument expressions to the iterable projection codegen must apply before
-    // passing them. Only present for a bare dict argument in a builtin's iterable position (sorted(d),
-    // list(d), max(d), zip(d, …), filter(f, d), …), where Python iterates the dict's KEYS but the C#
-    // generic-interface enumerable surface is IEnumerable<KeyValuePair<K,V>> — so the emitter must
-    // project the argument to d.Keys() (DictKeyView<K,V> : IEnumerable<K>). The TypeChecker decides
-    // which positions are iterable-of-keys (repo rule 2); the emitter applies verbatim, never
-    // re-inspecting types. Absent ⇒ pass the argument unchanged (e.g. `for k in d`, dict(d) copy,
-    // user-function dict params, sorted(d.keys())/(d.values()) views). Keyed by node identity (#1154).
-    private readonly ConcurrentDictionary<Expression, IterableProjectionKind> _iterableProjections =
+    // Map builtin-call argument expressions sitting in an ITERABLE position to how that argument
+    // binds there: the element type it iterates as, plus the projection codegen must apply before
+    // passing it (sorted(x), list(x), max(x), zip(x, …), filter(f, x), ", ".join(x), …). Present only
+    // for arguments the TypeChecker decided are acceptable as an iterable in that position, which is
+    // also what makes them acceptable — one record carries both halves so acceptance can never drift
+    // ahead of lowering (#1154, #1159, #1198, #1199). The emitter switches on the tag and never
+    // re-inspects types (repo rule 2). Absent ⇒ not an iterable position, or a source the ring does
+    // not accept there (e.g. `for k in d`, dict(d) copy, user-function params). Keyed by node
+    // identity.
+    private readonly ConcurrentDictionary<Expression, IterableArgumentProjection> _iterableProjections =
         new(ReferenceEqualityComparer.Instance);
 
     // Map member-access expressions on CLR-backed receivers to the original CLR method name
@@ -344,21 +345,21 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
-    /// Records that a builtin-call argument expression must be projected before it is passed (currently
-    /// only <see cref="IterableProjectionKind.DictKeys"/>: a bare dict in an iterable-of-keys position).
-    /// The TypeChecker sets this at the one builtin-call recording choke point; the emitter reads it in
-    /// its single argument-generation funnel and applies the projection verbatim (#1154).
+    /// Records how a builtin-call argument binds in an iterable position: its element type and the
+    /// projection codegen must apply before passing it. The TypeChecker sets this at the one
+    /// builtin-call recording choke point; the emitter reads it in its single argument-generation
+    /// funnel and applies the projection verbatim (#1154, #1198).
     /// </summary>
-    public void SetIterableProjection(Expression argument, IterableProjectionKind projection)
+    public void SetIterableProjection(Expression argument, IterableArgumentProjection projection)
     {
         _iterableProjections[argument] = projection;
     }
 
     /// <summary>
-    /// Gets the iterable projection recorded for a builtin-call argument, or <c>null</c> when the
-    /// argument is passed unchanged (the common case — no projection).
+    /// Gets the iterable-argument binding recorded for a builtin-call argument, or <c>null</c> when
+    /// the argument does not sit in an iterable position the ring accepts.
     /// </summary>
-    public IterableProjectionKind? GetIterableProjection(Expression argument)
+    public IterableArgumentProjection? GetIterableProjection(Expression argument)
     {
         return _iterableProjections.TryGetValue(argument, out var projection) ? projection : null;
     }
@@ -1052,14 +1053,55 @@ public sealed record TypeCoercionLowering(TypeCoercionLoweringKind Kind, string?
 public enum IterableProjectionKind
 {
     /// <summary>
-    /// Bare dict in a builtin's iterable-of-keys position — project to <c>arg.Keys()</c>
-    /// (<c>DictKeyView&lt;K,V&gt; : IEnumerable&lt;K&gt;</c>). Python iterates a dict's keys, but the dict's
-    /// generic enumerable surface is <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c>, so an unprojected
-    /// dict either fails to compile (CS1503) or binds the builtin's element type to the wrong
-    /// <c>KeyValuePair</c> (silent-wrong iteration / runtime crash).
+    /// The source already presents itself as <c>IEnumerable&lt;element&gt;</c> in C# (a list, set,
+    /// frozenset, dict view, range/iterator, or any CLR-backed type implementing the interface) —
+    /// pass it unchanged. The mark still matters: it is what makes the argument ACCEPTABLE as an
+    /// iterable in this position (#1198), and the position tables are the only thing that grants it,
+    /// so a user-declared <c>list[int]</c> parameter stays strict.
     /// </summary>
-    DictKeys
+    Direct,
+
+    /// <summary>
+    /// Bare (or <c>| None</c>-wrapped) dict in a builtin's iterable-of-keys position — project to
+    /// <c>arg.Keys()</c> (<c>DictKeyView&lt;K,V&gt; : IEnumerable&lt;K&gt;</c>). Python iterates a dict's
+    /// keys, but the dict's generic enumerable surface is
+    /// <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c>, so an unprojected dict either fails to compile
+    /// (CS1503) or binds the builtin's element type to the wrong <c>KeyValuePair</c> (silent-wrong
+    /// iteration / runtime crash).
+    /// </summary>
+    DictKeys,
+
+    /// <summary>
+    /// Tuple in an iterable position — spread to a typed array,
+    /// <c>new element[] { t.Item1, …, t.ItemN }</c>. <c>System.ValueTuple</c> implements no
+    /// <c>IEnumerable&lt;T&gt;</c> at all, so an unprojected tuple that the checker accepts cannot be
+    /// lowered (CS1503/CS0411) — the drift #1198's planning found in <c>sorted(t)</c>,
+    /// <c>min(t)</c>, <c>max(t)</c>. Recorded only when every element type unifies, so the array is
+    /// always well-typed.
+    /// </summary>
+    TupleToArray
 }
+
+/// <summary>
+/// How an argument in a builtin's iterable position binds there: the element type it iterates as and
+/// the projection codegen applies to make the C# argument an <c>IEnumerable&lt;element&gt;</c>
+/// (#1198). Acceptance and lowering are one record on purpose — the TypeChecker records it only for
+/// sources it will also lower, so neither half can drift ahead of the other.
+/// </summary>
+/// <param name="Kind">The projection the emitter applies verbatim.</param>
+/// <param name="ElementType">
+/// The element type the source iterates as — <c>list[ElementType]</c> is the type the argument binds
+/// through in the checker, and the array element type for
+/// <see cref="IterableProjectionKind.TupleToArray"/>.
+/// </param>
+/// <param name="TupleArity">
+/// For <see cref="IterableProjectionKind.TupleToArray"/>, the number of <c>.ItemN</c> members to
+/// spread; 0 otherwise.
+/// </param>
+public sealed record IterableArgumentProjection(
+    IterableProjectionKind Kind,
+    SemanticType ElementType,
+    int TupleArity = 0);
 
 public sealed record GeneratorBinding(TypeSymbol GeneratorType, Decorator Trigger);
 

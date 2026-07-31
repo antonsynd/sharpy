@@ -992,22 +992,75 @@ internal partial class RoslynEmitter
     /// For spread of an iterable type → generates .ToArray() and passes as a single argument.
     /// </summary>
     /// <summary>
-    /// Applies the iterable projection the TypeChecker recorded for a builtin-call argument (#1154).
-    /// The only projection today is <see cref="IterableProjectionKind.DictKeys"/>: a bare dict in a
-    /// builtin's iterable-of-keys position becomes <c>arg.Keys()</c> (<c>DictKeyView&lt;K,V&gt;</c>),
-    /// matching Python's key iteration. Absent marker ⇒ the argument passes through unchanged. The
-    /// emitter is a pure applier here — it switches on the recorded tag and never inspects types
-    /// (repo rule 2; the NarrowedReadLowering precedent).
+    /// Applies the iterable projection the TypeChecker recorded for a builtin-call argument (#1154,
+    /// #1198): <see cref="IterableProjectionKind.DictKeys"/> becomes <c>arg.Keys()</c>
+    /// (<c>DictKeyView&lt;K,V&gt;</c>, matching Python's key iteration),
+    /// <see cref="IterableProjectionKind.TupleToArray"/> becomes a typed array of the tuple's
+    /// members, and <see cref="IterableProjectionKind.Direct"/> passes through (the source already
+    /// implements <c>IEnumerable&lt;element&gt;</c>). Absent mark ⇒ unchanged. The emitter is a pure
+    /// applier here — it switches on the recorded tag and never inspects types (repo rule 2; the
+    /// NarrowedReadLowering precedent).
     /// </summary>
     private ExpressionSyntax ApplyIterableProjection(Expression argNode, ExpressionSyntax generated)
     {
-        if (_context.SemanticInfo?.GetIterableProjection(argNode) == IterableProjectionKind.DictKeys)
+        if (_context.SemanticInfo?.GetIterableProjection(argNode) is not { } projection)
+            return generated;
+
+        switch (projection.Kind)
         {
-            return InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    generated, IdentifierName("Keys")));
+            case IterableProjectionKind.DictKeys:
+                return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        generated, IdentifierName("Keys")));
+
+            case IterableProjectionKind.TupleToArray:
+                return GenerateTupleElementArray(projection, generated);
+
+            default:
+                return generated;
         }
-        return generated;
+    }
+
+    /// <summary>
+    /// Spreads a tuple argument into <c>new element[] { t.Item1, …, t.ItemN }</c> so it can bind an
+    /// <c>IEnumerable&lt;element&gt;</c> parameter — <c>System.ValueTuple</c> implements none (#1198).
+    /// The element type and arity come from the recorded mark; the emitter chooses nothing.
+    ///
+    /// <para>The operand is evaluated exactly ONCE: anything but a plain identifier is hoisted into a
+    /// temp local first, because splicing <c>.Item1…ItemN</c> off the raw expression would evaluate
+    /// <c>sum(make_tuple())</c>'s call N times (the same "no operand spliced twice" rule
+    /// <see cref="GenerateFloorModulo"/> documents).</para>
+    /// </summary>
+    private ExpressionSyntax GenerateTupleElementArray(
+        IterableArgumentProjection projection, ExpressionSyntax generated)
+    {
+        var operand = generated;
+        if (operand is not IdentifierNameSyntax)
+        {
+            var tempName = GenerateTempVarName("tuple_iter");
+            _hoistedStatements.Add(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(tempName))
+                            .WithInitializer(EqualsValueClause(generated))))));
+            operand = IdentifierName(tempName);
+        }
+
+        var members = new List<ExpressionSyntax>();
+        for (int i = 1; i <= projection.TupleArity; i++)
+        {
+            members.Add(MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression, operand, IdentifierName($"Item{i}")));
+        }
+
+        return ArrayCreationExpression(
+                ArrayType(_typeMapper.MapSemanticType(projection.ElementType))
+                    .WithRankSpecifiers(SingletonList(
+                        ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
+                            OmittedArraySizeExpression())))))
+            .WithInitializer(InitializerExpression(
+                SyntaxKind.ArrayInitializerExpression,
+                SeparatedList(members)));
     }
 
     private IEnumerable<ArgumentSyntax> GeneratePositionalArguments(

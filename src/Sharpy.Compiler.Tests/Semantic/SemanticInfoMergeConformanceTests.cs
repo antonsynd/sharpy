@@ -107,25 +107,33 @@ public class SemanticInfoMergeConformanceTests
     }
 
     /// <summary>
-    /// An iterable-projection marker recorded on one SemanticInfo must survive
-    /// <see cref="SemanticInfo.MergeFrom"/> into another. Codegen reads the DictKeys projection from the
+    /// An iterable-argument mark recorded on one SemanticInfo must survive
+    /// <see cref="SemanticInfo.MergeFrom"/> into another. Codegen reads the projection from the
     /// merged project-level SemanticInfo; if <c>_iterableProjections</c> were absent from
     /// <c>MergeFrom</c>, a bare dict passed to a builtin iterable position in an imported module would
-    /// silently emit no <c>.Keys()</c> projection and mis-iterate as key/value pairs (#1154).
+    /// silently emit no <c>.Keys()</c> projection and mis-iterate as key/value pairs (#1154), and a
+    /// tuple there would lose its typed-array bridge (#1198).
     /// </summary>
     [Fact]
     public void MergeFrom_CarriesIterableProjections()
     {
         var perFile = new SemanticInfo();
         var argNode = new Identifier { Name = "d" };
-        perFile.SetIterableProjection(argNode, IterableProjectionKind.DictKeys);
+        perFile.SetIterableProjection(argNode,
+            new IterableArgumentProjection(IterableProjectionKind.DictKeys, SemanticType.Str));
+        var tupleArgNode = new Identifier { Name = "t" };
+        perFile.SetIterableProjection(tupleArgNode,
+            new IterableArgumentProjection(IterableProjectionKind.TupleToArray, SemanticType.Int, 2));
 
         var project = new SemanticInfo();
         project.MergeFrom(perFile);
 
         var merged = project.GetIterableProjection(argNode);
-        merged.Should().Be(IterableProjectionKind.DictKeys,
+        merged.Should().Be(new IterableArgumentProjection(IterableProjectionKind.DictKeys, SemanticType.Str),
             "the iterable projection must survive the per-file → project merge");
+        project.GetIterableProjection(tupleArgNode).Should().Be(
+            new IterableArgumentProjection(IterableProjectionKind.TupleToArray, SemanticType.Int, 2),
+            "the tuple bridge's element type and arity must survive the merge too");
     }
 
     /// <summary>

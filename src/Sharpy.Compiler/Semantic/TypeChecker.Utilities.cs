@@ -440,38 +440,42 @@ internal partial class TypeChecker
             return true;
         }
 
-        // A bare dict in an iterable-of-keys position binds through its PROJECTED type — the
-        // list[K] codegen will actually pass (#1159). Re-entering this method (rather than
+        // An argument in an iterable position binds through its PROJECTED type — the list[element]
+        // codegen will actually pass (#1159, #1198). Re-entering this method (rather than
         // IsAssignable) lets the projection compose with the array coercion above; it terminates
-        // because the projected type is a list, which ProjectedArgumentType never re-projects.
-        if (ProjectedArgumentType(argument, source) is { } projected)
+        // because the recursive call passes no argument node, so nothing is re-projected.
+        if (ProjectedArgumentType(argument) is { } projected)
             return IsArgumentAssignable(projected, target, argument: null);
 
         return false;
     }
 
     /// <summary>
-    /// The type an argument expression has AFTER the iterable projection recorded for it, or null when
-    /// no projection applies — the single gate every argument-binding consumer shares (#1159).
+    /// The type an argument expression binds through in an iterable position — <c>list[element]</c>,
+    /// with <c>element</c> whatever the recorded mark says the source iterates as — or null when the
+    /// argument carries no mark. The single gate every argument-binding consumer shares (#1159, #1198).
     ///
-    /// <para>Acceptance and lowering are one decision here on purpose. The projection marker is
-    /// recorded by <see cref="RecordDictKeysProjections"/> before any dispatch, exactly for the
-    /// iterable-of-keys positions the ring knows about (<see cref="GetBuiltinIterableKeyPositions"/>,
-    /// <see cref="GetMemberIterableKeyPositions"/>). Gating acceptance on that marker means a dict is
-    /// never type-accepted in a position the emitter would pass unprojected — which would compile to
-    /// C# passing <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c> where <c>IEnumerable&lt;K&gt;</c>
-    /// is required (CS1503). Adding a builtin/method to the position tables therefore grants
-    /// acceptance and lowering together; neither can drift ahead of the other.</para>
+    /// <para>Acceptance and lowering are one decision here on purpose. The mark is recorded by
+    /// <see cref="RecordIterableArgumentMarks"/> before any dispatch, exactly for the iterable
+    /// positions the ring knows about (<see cref="GetBuiltinIterableKeyPositions"/>,
+    /// <see cref="GetMemberIterableKeyPositions"/>) and only for sources the emitter can also lower
+    /// (<see cref="ClassifyIterableArgument"/>). Gating acceptance on that mark means a source is
+    /// never type-accepted in a position the emitter would pass unusable — a dict passed unprojected
+    /// compiles to C# handing <c>IEnumerable&lt;KeyValuePair&lt;K,V&gt;&gt;</c> where
+    /// <c>IEnumerable&lt;K&gt;</c> is required (CS1503), and a tuple passed unbridged has no
+    /// <c>IEnumerable&lt;T&gt;</c> at all (CS1503/CS0411). Adding a builtin/method to the position
+    /// tables therefore grants acceptance and lowering together; neither can drift ahead of the
+    /// other.</para>
     /// </summary>
-    private SemanticType? ProjectedArgumentType(Expression? argument, SemanticType argumentType)
+    private SemanticType? ProjectedArgumentType(Expression? argument)
     {
-        if (argument == null)
+        if (argument == null || _semanticInfo.GetIterableProjection(argument) is not { } projection)
             return null;
 
-        return _semanticInfo.GetIterableProjection(argument) switch
+        return new GenericType
         {
-            IterableProjectionKind.DictKeys => _typeInference.GetProjectedDictKeysType(argumentType),
-            _ => null
+            Name = BuiltinNames.List,
+            TypeArguments = new List<SemanticType> { projection.ElementType }
         };
     }
 
