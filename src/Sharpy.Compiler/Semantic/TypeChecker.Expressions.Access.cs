@@ -1030,7 +1030,10 @@ internal partial class TypeChecker
             return genericReferenceType;
 
         var objectType = CheckExpression(indexAccess.Object);
+        var savedIndexArguments = _currentIndexArguments;
+        _currentIndexArguments = IndexArgumentSetOf(indexAccess.Index);
         var indexType = CheckExpression(indexAccess.Index);
+        _currentIndexArguments = savedIndexArguments;
 
         // Materialize the codegen lowering strategy for this access so the emitter switches on the
         // tag alone (and never reflects over CLR indexers or re-inspects operand types).

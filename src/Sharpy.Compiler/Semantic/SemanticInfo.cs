@@ -176,6 +176,17 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, TypeCoercionLowering> _typeCoercionLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map a bare builtin type-constructor reference used as a value (int, str, dict, list) to the C#
+    // shape codegen must emit for it and the signature the TypeChecker pinned it to — the conversion
+    // families' Builtins.X method group, or the collection families' constructor lambda (#1182).
+    // Present only where a signature was available (an annotated target, a declared return type, a
+    // parameter): an unpinned reference is rejected (SPY0342) and a reference bound to a
+    // call-only alias emits the direct builtin call at each call site instead, so neither reaches
+    // codegen through this dictionary. The emitter switches on the recorded Family and never
+    // inspects the builtin (Critical Rule 2 pattern (b)). Keyed by node identity.
+    private readonly ConcurrentDictionary<Expression, ConstructorReferenceLowering> _constructorReferenceLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map builtin-call argument expressions sitting in an ITERABLE position to how that argument
     // binds there: the element type it iterates as, plus the projection codegen must apply before
     // passing it (sorted(x), list(x), max(x), zip(x, …), filter(f, x), ", ".join(x), …). Present only
@@ -342,6 +353,25 @@ public class SemanticInfo : ISemanticQuery
     public TypeCoercionLowering? GetTypeCoercionLowering(Expression coercion)
     {
         return _typeCoercionLowerings.TryGetValue(coercion, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
+    /// Records the emission shape for a builtin constructor reference the TypeChecker pinned to a
+    /// concrete signature (<c>g: (str) -&gt; int = int</c>). Set only where a signature was available;
+    /// the emitter applies the recorded family verbatim and never inspects the builtin (#1182).
+    /// </summary>
+    public void SetConstructorReferenceLowering(Expression reference, ConstructorReferenceLowering lowering)
+    {
+        _constructorReferenceLowerings[reference] = lowering;
+    }
+
+    /// <summary>
+    /// Gets the pinned-constructor-reference lowering for an expression, or <c>null</c> when the node
+    /// is not a pinned builtin constructor reference.
+    /// </summary>
+    public ConstructorReferenceLowering? GetConstructorReferenceLowering(Expression reference)
+    {
+        return _constructorReferenceLowerings.TryGetValue(reference, out var lowering) ? lowering : null;
     }
 
     /// <summary>
@@ -841,6 +871,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._genericReferences)
             _genericReferences.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._constructorReferenceLowerings)
+            _constructorReferenceLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._typeCoercionLowerings)
             _typeCoercionLowerings.TryAdd(kvp.Key, kvp.Value);

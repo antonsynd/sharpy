@@ -127,7 +127,12 @@ internal partial class TypeChecker
             if (call.Arguments.Length > 1)
                 _typeTestTypeArgument = UnwrapParenthesized(call.Arguments[1]);
         }
+        // The direct-argument set covers every internal argument path CheckCallArguments takes, so the
+        // constructor-reference rules see the same exemption regardless of which one runs (#1182).
+        var savedCallArguments = _currentCallArguments;
+        _currentCallArguments = DirectArgumentSetOf(call);
         var (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
+        _currentCallArguments = savedCallArguments;
         _typeTestOperand = savedTypeTestOperand;
         _typeTestTypeArgument = savedTypeTestTypeArgument;
         var totalArgCount = argTypes.Count + kwargTypes.Count;
@@ -3204,6 +3209,28 @@ internal partial class TypeChecker
             ReturnType = targetSymbol.ReturnType,
             OptionalParameterCount = optionalCount,
         };
+    }
+
+    /// <summary>
+    /// The call's direct argument expressions, unwrapped through parentheses, for
+    /// <c>_currentCallArguments</c>. Spread values count: <c>f(*args)</c> passes the spread operand
+    /// itself into the argument position (#1182).
+    /// </summary>
+    private static HashSet<Expression> DirectArgumentSetOf(FunctionCall call)
+    {
+        var arguments = new HashSet<Expression>(ReferenceEqualityComparer.Instance);
+        foreach (var argument in call.Arguments)
+        {
+            var unwrapped = UnwrapParenthesized(argument);
+            arguments.Add(unwrapped);
+            if (unwrapped is SpreadElement spread)
+                arguments.Add(UnwrapParenthesized(spread.Value));
+        }
+
+        foreach (var keywordArgument in call.KeywordArguments)
+            arguments.Add(UnwrapParenthesized(keywordArgument.Value));
+
+        return arguments;
     }
 
     private void MarkTypeReferenceArguments(FunctionCall call)

@@ -90,6 +90,34 @@ internal partial class TypeChecker
     // check in CheckMemberAccessCore, mirroring the _currentCallCallee idiom.
     private Expression? _currentMemberAccessQualifier;
 
+    // The direct argument expressions (positional and keyword, unwrapped through parentheses) of the
+    // FunctionCall currently having its arguments checked. A builtin type NAME in one of these
+    // positions is established, working behavior — map(int, xs), sorted(xs, key=int),
+    // defaultdict(list), isinstance(x, int) — because a C# target type exists there and the legacy
+    // synthesized-signature typing feeds generic inference. The constructor-reference rules skip
+    // exactly those nodes so #1182 cannot over-fire on them (the failure mode that reverted the
+    // SPY0337 extension, #1170). Set once around the whole argument-checking block in
+    // CheckFunctionCall so every internal argument path is covered; save/restored for nested calls.
+    private HashSet<Expression>? _currentCallArguments;
+
+    // The index expression of the IndexAccess currently being checked, and the elements of a
+    // multi-argument index (`Outer.Inner[int]`, `Dict[str, int]`). Some type references reach the
+    // value-indexing path rather than the generic-reference resolver — the nested spelling does —
+    // and their index names a TYPE ARGUMENT there, never a value. A builtin type name is only ever a
+    // type argument in an index position (nothing in Sharpy is indexed BY a type), so the
+    // constructor-reference rules skip exactly these nodes (#1182, #1192). Save/restored around the
+    // index check, mirroring the _currentCallCallee idiom.
+    private HashSet<Expression>? _currentIndexArguments;
+
+    // The value expression of the binding currently being checked — an assignment's right-hand side
+    // or a variable declaration's initializer. A builtin constructor reference with no signature
+    // available becomes a call-only ALIAS exactly here (`f = int`, `f = dict`); the same reference in
+    // any other value position has nothing to bind it to and is rejected (SPY0342, #1182). Returns
+    // are deliberately absent: a declared return type reaches the pinning rule through _expectedType,
+    // and an unpinnable one is an escape, not an alias. Save/restored around the value check,
+    // mirroring the _currentCallCallee idiom.
+    private Expression? _currentBindingValue;
+
     // Per-compilation memo for BCL generic instance methods resolved by CLR reflection fallback
     // (TryResolveGenericInstanceMethod, #1136). Raw BCL TypeSymbols built by
     // ModuleRegistry.CreateTypeSymbolFromClrType carry a ClrType but no Methods, so an explicit-

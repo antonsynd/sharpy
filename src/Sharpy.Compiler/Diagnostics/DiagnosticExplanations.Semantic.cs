@@ -124,8 +124,29 @@ public static partial class DiagnosticExplanations
             + "  b: Box[int] = Box[int](5)\n"
             + "To pass construction around, wrap it in a lambda: `make = lambda v: Box[int](v)`");
 
+        Add(dict, DiagnosticCodes.Semantic.UnpinnedConstructorReference,
+            "Constructor reference has no single signature", "Semantic",
+            "A bare builtin type name used as a value (`f = int`, `f = dict`) is a CONSTRUCTOR "
+            + "REFERENCE — Sharpy's equivalent of a C# method group. It is a legitimate value, but "
+            + "like a method group it has no natural type of its own: `int`, `str`, `float` and "
+            + "`bool` each name an overload set, and `list`, `dict` and `set` are generic, so nothing "
+            + "in the reference itself says which signature was meant. Sharpy accepts one wherever a "
+            + "signature is available — an annotated target, a declared return type, a parameter it "
+            + "is passed to — and wherever the binding is only ever called, which resolves per call "
+            + "site like the builtin itself. This diagnostic means neither was true at the reference, "
+            + "so there is no signature to give it. Related: SPY0336 (an overloaded callable "
+            + "referenced with no target type) and SPY0339 (a generic type reference used as a value).",
+            "xs = [int, str]  # nothing here says which int(...) signature was meant\n"
+            + "def pick() -> object:\n    return dict",
+            "Annotate the target with a function type so one signature is selected:\n"
+            + "  g: (str) -> int = int\n"
+            + "  make: () -> dict[str, int] = dict\n"
+            + "Or call it directly (`int(\"42\")`), bind it to a name you only ever call "
+            + "(`f = int` then `f(\"42\")`), or wrap it in a lambda to fix the signature yourself "
+            + "(`g = lambda s: int(s)`).");
+
         Add(dict, DiagnosticCodes.Semantic.CallSyntaxOnlyReference, "Form must be called, not referenced", "Semantic",
-            "Some forms exist only as call syntax and have no first-class value: 'isinstance' is a compile-time narrowing construct rather than a function, and a union variant constructor (Shape.Circle) names a case rather than a callable. Referencing one as a value is rejected deliberately, like Ok/Some (SPY0230) and generic function references (SPY0335). Python permits `g = isinstance`; Sharpy does not — see docs/deviations.yaml. A bare builtin type constructor reference (`f = dict`) is the same shape and is tracked separately in #1182.",
+            "Some forms exist only as call syntax and have no first-class value: 'isinstance' is a compile-time narrowing construct rather than a function, and a union variant constructor (Shape.Circle) names a case rather than a callable. Referencing one as a value is rejected deliberately, like Ok/Some (SPY0230) and generic function references (SPY0335). Python permits `g = isinstance`; Sharpy does not — see docs/deviations.yaml. A bare builtin type constructor reference (`f = dict`) looks similar but is NOT rejected: it is a value with no natural type, handled by the constructor-reference rules (SPY0342).",
             "g = isinstance  # cannot be used as a value\nmk = Shape.Circle",
             "Call the form directly (`isinstance(x, Circle)`, `Shape.Circle(5.0)`), "
             + "or wrap it in a lambda to pass it around:\n  g = lambda v: isinstance(v, Circle)\n"

@@ -356,6 +356,7 @@ public static class DiagnosticCodes
         public const string CallSyntaxOnlyReference = "SPY0337";     // Active — a call-syntax-only form (isinstance, a union variant, a builtin type constructor) referenced as a value (#1168, #1170)
         public const string UnsupportedVariableArityTuple = "SPY0338"; // Active — tuple(iterable): a tuple's arity is part of its type, so a runtime-length iterable has no tuple type (#1159)
         public const string GenericTypeReferenceNotConstructed = "SPY0339"; // Active — a generic type reference with explicit type args used as a value instead of being constructed (#1192)
+        // The value-position reference family (SPY0335-SPY0339) is full; it continues at SPY0342 below.
 
         #endregion
 
@@ -363,7 +364,17 @@ public static class DiagnosticCodes
 
         public const string ModuleLevelExecutableStatement = "SPY0340"; // Active
         public const string ModuleLevelNoTypeAnnotation = "SPY0341"; // Active
-        // SPY0342-SPY0349: Reserved for future module-level diagnostics
+        // SPY0343-SPY0349: Reserved for future module-level diagnostics (SPY0342 is the
+        // value-position reference family's overflow slot — see the region below)
+
+        #endregion
+
+        #region Value-position reference overflow (SPY0342)
+
+        // Overflow for the value-position reference family, whose SPY0335-SPY0339 band is full. Kept
+        // adjacent to that band rather than appended at the end of the semantic range so the family
+        // stays readable; the module-level reserve above shrinks by one slot to pay for it.
+        public const string UnpinnedConstructorReference = "SPY0342"; // Active — a builtin type constructor reference used as a value with no signature available to pin it to (#1182)
 
         #endregion
 

@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
@@ -336,9 +337,11 @@ internal partial class TypeChecker
     /// The value-position rules for a callable reference (#1168, #1170), applied at one choke point in
     /// <see cref="CheckExpression"/> for every reference that is not a call's own callee.
     ///
-    /// <para>Two rules, in order: a form that exists only as call syntax is rejected outright
-    /// (SPY0337), and an overload set whose candidates take different numbers of arguments is resolved
-    /// from the target type or rejected (SPY0336). Everything else keeps the type it already had.</para>
+    /// <para>Three rules, in order: a form that exists only as call syntax is rejected outright
+    /// (SPY0337); a builtin type constructor reference is pinned to a signature, bound as a
+    /// call-only alias, or rejected (SPY0342, #1182); and an overload set whose candidates take
+    /// different numbers of arguments is resolved from the target type or rejected (SPY0336).
+    /// Everything else keeps the type it already had.</para>
     /// </summary>
     private SemanticType CheckValuePositionReference(Expression reference, SemanticType type)
     {
@@ -353,9 +356,285 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        if (CheckConstructorReference(reference, type) is { } constructorReferenceType)
+            return constructorReferenceType;
+
         return type is FunctionType referencedFunctionType
             ? CheckReferencedCallableOverloads(reference, referencedFunctionType)
             : type;
+    }
+
+    /// <summary>
+    /// The value-position rule for a bare builtin type-constructor reference (<c>f = int</c>,
+    /// <c>f = dict</c>) — Sharpy's method group (#1182). Three tiers, in order:
+    ///
+    /// <list type="number">
+    /// <item><description>An expected function type supplies a signature: the reference binds that
+    /// signature and records a <see cref="ConstructorReferenceLowering"/> for codegen.</description></item>
+    /// <item><description>A binding with no signature anywhere becomes a call-only ALIAS carrying
+    /// <see cref="ConstructorReferenceType"/>; each call through it resolves like a call of the
+    /// builtin itself.</description></item>
+    /// <item><description>Anything else has no signature and no way to acquire one: SPY0342.</description></item>
+    /// </list>
+    ///
+    /// <para>A builtin type NAME written in one of the established non-value positions is left with
+    /// the type it has today (see <see cref="IsConstructorReferenceValueUse"/>) — those positions
+    /// already work, and rejecting or re-typing on the reference alone is what broke them last time
+    /// (#1170). A read whose type is already the carrier is always a value use, because nothing but
+    /// this rule produces one.</para>
+    /// </summary>
+    /// <returns>The type to bind, or <c>null</c> when the reference is not a builtin constructor
+    /// reference in a position this rule governs, so the caller's remaining rules apply.</returns>
+    private SemanticType? CheckConstructorReference(Expression reference, SemanticType type)
+    {
+        if (BuiltinConstructorReferenceOf(reference, type) is not { } constructorReference)
+            return null;
+
+        if (type is not ConstructorReferenceType && !IsConstructorReferenceValueUse(reference))
+            return null;
+
+        // Tier 1. A target type with unresolved type parameters — a generic parameter such as map's
+        // `(T) -> R` — supplies no signature; it is not a failure to match one.
+        if (_expectedType is FunctionType target && !ContainsTypeParameter(target))
+        {
+            if (TryPinConstructorReference(reference, constructorReference, target))
+                return target;
+
+            AddError(
+                $"builtin type '{constructorReference.Name}' has no constructor signature matching "
+                + $"'{target.GetDisplayName()}'. {ConstructorReferenceShapes(constructorReference)}",
+                reference.LineStart, reference.ColumnStart,
+                code: DiagnosticCodes.Semantic.UnpinnedConstructorReference,
+                span: reference.Span);
+            return SemanticType.Unknown;
+        }
+
+        // Tier 2. `f = int` / `f = dict`: nothing says which signature was meant, so the name aliases
+        // the builtin and every call through it is resolved at its own call site.
+        if (_expectedType == null && _currentBindingValue != null
+            && ReferenceEquals(UnwrapParenthesized(_currentBindingValue), UnwrapParenthesized(reference)))
+        {
+            return constructorReference;
+        }
+
+        // An alias read in a call argument whose parameter type is generic (`map(f, xs)`) binds the
+        // same synthesized signature the builtin NAME binds there, so an alias behaves in argument
+        // positions exactly like the name it aliases.
+        if (type is ConstructorReferenceType && IsDirectCallArgument(reference)
+            && constructorReference.Family == ConstructorReferenceFamily.Conversion)
+        {
+            return SynthesizePrimitiveFunctionType(constructorReference.Symbol);
+        }
+
+        // Tier 3.
+        AddError(
+            $"cannot infer a single callable signature for builtin type '{constructorReference.Name}': "
+            + $"{ConstructorReferenceAmbiguityReason(constructorReference)}, and this position supplies "
+            + "no signature to select one. Annotate the target with a function type "
+            + $"({ConstructorReferenceAnnotationExample(constructorReference)}), bind it to a name you "
+            + "only ever call, or wrap the construction in a lambda.",
+            reference.LineStart, reference.ColumnStart,
+            code: DiagnosticCodes.Semantic.UnpinnedConstructorReference,
+            span: reference.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// The builtin constructor reference an expression denotes, or null when it is not one. A read
+    /// already typed as the carrier denotes itself; a bare identifier denotes one when it resolves
+    /// to a builtin type symbol of a family with an emittable construction shape. A user declaration
+    /// shadowing the name resolves to its own symbol and is an ordinary reference.
+    /// </summary>
+    private ConstructorReferenceType? BuiltinConstructorReferenceOf(Expression reference, SemanticType type)
+    {
+        if (type is ConstructorReferenceType carrier)
+            return carrier;
+
+        if (reference is not Identifier id
+            || _symbolTable.Lookup(id.Name) is not TypeSymbol typeSymbol
+            || !ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name)))
+        {
+            return null;
+        }
+
+        return ConstructorReferenceFamilyOf(typeSymbol) is not { } family
+            ? null
+            : new ConstructorReferenceType { Name = id.Name, Symbol = typeSymbol, Family = family };
+    }
+
+    /// <summary>
+    /// Which construction shape a builtin type emits as, or null for a builtin type that is not a
+    /// constructor reference at all (<c>object</c>, <c>bytes</c>, the view and iterator types): those
+    /// keep the behavior they have today rather than acquiring a new diagnostic.
+    /// </summary>
+    private ConstructorReferenceFamily? ConstructorReferenceFamilyOf(TypeSymbol typeSymbol)
+    {
+        // Exactly the set whose reference synthesizes a signature today (SynthesizePrimitiveFunctionType):
+        // a primitive backed by a Sharpy.Builtins overload set.
+        if (PrimitiveCatalog.IsPrimitive(typeSymbol.Name)
+            && _symbolTable.BuiltinRegistry.GetFunctionOverloads(typeSymbol.Name) is { Count: > 0 })
+        {
+            return ConstructorReferenceFamily.Conversion;
+        }
+
+        return typeSymbol.Name switch
+        {
+            BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set or BuiltinNames.Tuple =>
+                ConstructorReferenceFamily.Collection,
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Whether a builtin type NAME at this reference is being used as a value. False for the
+    /// positions where a type name legitimately appears and already works — the receiver of a static
+    /// member (<c>int.parse(s)</c>, <c>dict.fromkeys(ks)</c>), a type test's type argument including
+    /// the tuple spelling, a node recorded elsewhere as naming a type, and a direct call argument
+    /// (<c>map(int, xs)</c>, <c>sorted(xs, key=int)</c>, <c>defaultdict(list)</c>), where a C# target
+    /// type exists and the established typing must not change (#1170).
+    /// </summary>
+    private bool IsConstructorReferenceValueUse(Expression reference)
+        => !IsCurrentMemberAccessQualifier(reference)
+            && !IsTypeTestTypeArgument(reference)
+            && !IsCurrentIndexArgument(reference)
+            && !_semanticInfo.IsTypeReference(reference)
+            && !IsDirectCallArgument(reference);
+
+    /// <summary>
+    /// Whether the reference is a type argument of the index currently being checked
+    /// (<c>Outer.Inner[int]</c>). See <c>_currentIndexArguments</c>.
+    /// </summary>
+    private bool IsCurrentIndexArgument(Expression reference)
+        => _currentIndexArguments?.Contains(UnwrapParenthesized(reference)) == true;
+
+    /// <summary>
+    /// The index expression plus, for a multi-argument index, each of its elements, for
+    /// <c>_currentIndexArguments</c>.
+    /// </summary>
+    private static HashSet<Expression> IndexArgumentSetOf(Expression index)
+    {
+        var arguments = new HashSet<Expression>(ReferenceEqualityComparer.Instance);
+        var unwrapped = UnwrapParenthesized(index);
+        arguments.Add(unwrapped);
+        if (unwrapped is TupleLiteral indexTuple)
+        {
+            foreach (var element in indexTuple.Elements)
+                arguments.Add(UnwrapParenthesized(element));
+        }
+
+        return arguments;
+    }
+
+    /// <summary>
+    /// Whether the reference names a type being tested for: the type argument of the enclosing type
+    /// test, or one element of the tuple spelling <c>isinstance(x, (int, str))</c>.
+    /// </summary>
+    private bool IsTypeTestTypeArgument(Expression reference)
+    {
+        if (_typeTestTypeArgument == null)
+            return false;
+
+        var unwrapped = UnwrapParenthesized(reference);
+        if (ReferenceEquals(_typeTestTypeArgument, unwrapped))
+            return true;
+
+        return _typeTestTypeArgument is TupleLiteral typeTuple
+            && typeTuple.Elements.Any(element => ReferenceEquals(UnwrapParenthesized(element), unwrapped));
+    }
+
+    /// <summary>Whether the reference is a direct argument of the call currently being checked.</summary>
+    private bool IsDirectCallArgument(Expression reference)
+        => _currentCallArguments?.Contains(UnwrapParenthesized(reference)) == true;
+
+    /// <summary>
+    /// Pins a constructor reference to <paramref name="target"/> when the builtin can construct that
+    /// signature, recording the lowering codegen applies. The pinned Sharpy type is the target itself:
+    /// the declared C# delegate type is what the user wrote, and the emitted method group or
+    /// constructor lambda is converted to it.
+    /// </summary>
+    private bool TryPinConstructorReference(
+        Expression reference, ConstructorReferenceType constructorReference, FunctionType target)
+    {
+        var pinnable = constructorReference.Family == ConstructorReferenceFamily.Conversion
+            ? ConversionSignatureSatisfies(constructorReference, target)
+            : CollectionSignatureSatisfies(constructorReference, target);
+
+        if (!pinnable)
+            return false;
+
+        _semanticInfo.SetConstructorReferenceLowering(reference,
+            new ConstructorReferenceLowering(constructorReference.Family, constructorReference.Name, target));
+        return true;
+    }
+
+    /// <summary>
+    /// Whether one of the builtin's conversion overloads can be bound to <paramref name="target"/>.
+    /// The emitted C# is the <c>Sharpy.Builtins.X</c> method group, so this asks the same question
+    /// C#'s method-group conversion will ask of it.
+    /// </summary>
+    private bool ConversionSignatureSatisfies(ConstructorReferenceType constructorReference, FunctionType target)
+    {
+        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(constructorReference.Name);
+        return overloads != null
+            && overloads.Any(overload =>
+                SignatureSatisfiesTarget(ReferenceSignatureOf(overload, t => t), target));
+    }
+
+    /// <summary>
+    /// Whether the collection builtin can construct <paramref name="target"/>. Two shapes are
+    /// emittable: the empty constructor (<c>() -&gt; list[int]</c>) and the copy constructor over the
+    /// same collection type (<c>(list[int]) -&gt; list[int]</c>). Anything else — a conversion from a
+    /// different iterable, or <c>tuple</c>, whose arity is part of its type (#1159) — has no single
+    /// constructor to emit and falls through to the alias or the diagnostic.
+    /// </summary>
+    private static bool CollectionSignatureSatisfies(ConstructorReferenceType constructorReference, FunctionType target)
+    {
+        if (target.ReturnType is not GenericType constructed
+            || !string.Equals(constructed.Name, constructorReference.Name, StringComparison.Ordinal)
+            || ContainsTypeParameter(constructed))
+        {
+            return false;
+        }
+
+        return target.ParameterTypes.Count switch
+        {
+            0 => true,
+            1 => target.ParameterTypes[0].Equals(constructed),
+            _ => false
+        };
+    }
+
+    /// <summary>Why a constructor reference has no single signature, for the SPY0342 message.</summary>
+    private static string ConstructorReferenceAmbiguityReason(ConstructorReferenceType constructorReference)
+        => constructorReference.Family == ConstructorReferenceFamily.Conversion
+            ? $"'{constructorReference.Name}' names an overload set"
+            : $"'{constructorReference.Name}' is generic, so its type arguments are unknown here";
+
+    /// <summary>An annotation that would pin this reference, for the SPY0342 message.</summary>
+    private static string ConstructorReferenceAnnotationExample(ConstructorReferenceType constructorReference)
+        => constructorReference.Family == ConstructorReferenceFamily.Conversion
+            ? $"f: (str) -> {constructorReference.Name} = {constructorReference.Name}"
+            : $"f: () -> {constructorReference.Name}[...] = {constructorReference.Name}";
+
+    /// <summary>The construction shapes a builtin offers, for the no-matching-signature message.</summary>
+    private string ConstructorReferenceShapes(ConstructorReferenceType constructorReference)
+    {
+        if (constructorReference.Family == ConstructorReferenceFamily.Collection)
+        {
+            return $"'{constructorReference.Name}' can be pinned to its empty constructor "
+                + $"(() -> {constructorReference.Name}[...]) or its copy constructor "
+                + $"({constructorReference.Name}[...] -> {constructorReference.Name}[...]).";
+        }
+
+        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(constructorReference.Name);
+        if (overloads == null || overloads.Count == 0)
+            return string.Empty;
+
+        var signatures = overloads
+            .Select(overload => ReferenceSignatureOf(overload, t => t).GetDisplayName())
+            .Distinct()
+            .ToList();
+        return "Candidates:\n  " + string.Join("\n  ", signatures);
     }
 
     /// <summary>
@@ -369,14 +648,15 @@ internal partial class TypeChecker
     /// "not callable". Following the <c>Ok</c>/<c>Some</c> precedent (SPY0230) and #1138's SPY0335, the
     /// rejection is deliberate and non-breaking to lift later if these gain first-class values.</para>
     ///
-    /// <para>A bare builtin type constructor reference (<c>f = dict</c>) is the third form the design
-    /// called for and is NOT rejected here — see #1182. It emits broken C# today (CS0712 for the static
-    /// collection classes, CS0246 <c>__synth_T0</c> for the conversion families), but a builtin type
-    /// NAME appears in several legitimate non-value positions this choke point cannot tell apart from a
-    /// value: the receiver of a static member (<c>int.parse(s)</c>, <c>dict.fromkeys(ks)</c>), a type
-    /// argument (<c>isinstance(x, int)</c>) including inside a tuple of them, and a keyword argument
-    /// whose delegate target is not carried in <c>_expectedType</c> (<c>sorted(xs, key=int)</c>).
-    /// Rejecting on the reference alone broke all three.</para>
+    /// <para>A bare builtin type constructor reference (<c>f = dict</c>) is NOT one of these forms and
+    /// is not rejected here: it is a value with no natural type, governed by
+    /// <see cref="CheckConstructorReference"/> (#1182). That rule cannot key off the reference alone
+    /// either, because a builtin type NAME appears in several legitimate non-value positions this
+    /// choke point cannot tell apart from a value: the receiver of a static member
+    /// (<c>int.parse(s)</c>, <c>dict.fromkeys(ks)</c>), a type argument (<c>isinstance(x, int)</c>)
+    /// including inside a tuple of them, and a keyword argument whose delegate target is not carried
+    /// in <c>_expectedType</c> (<c>sorted(xs, key=int)</c>). Rejecting on the reference alone broke
+    /// all three (#1170), so the position is what decides.</para>
     /// </summary>
     private (string Description, string LambdaEscape)? CallSyntaxOnlyFormOf(
         Expression reference, SemanticType type)

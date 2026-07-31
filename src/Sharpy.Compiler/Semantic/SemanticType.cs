@@ -873,6 +873,37 @@ public sealed record GenericFunctionType : SemanticType
 }
 
 /// <summary>
+/// A bare builtin type-constructor reference used as a value (<c>f = int</c>, <c>f = dict</c>) —
+/// the Sharpy analogue of a C# method group's "no natural type" (#1182).
+///
+/// <para>A builtin type name in value position denotes construction, not one callable:
+/// <c>int</c> is an overload set, and <c>dict</c>/<c>list</c>/<c>set</c> have unbound type
+/// arguments, so no single signature follows from the reference alone. This carrier holds the
+/// reference until a context supplies one, exactly as C# holds a method group. Pinned against an
+/// expected function type it becomes that concrete <see cref="FunctionType"/>; bound to a variable
+/// that is only ever called, each call resolves like a call of the builtin itself; anywhere else it
+/// is rejected (SPY0342).</para>
+///
+/// <para>Internal plumbing on the <see cref="GenericFunctionType"/> precedent (#1138): it is never
+/// a first-class value, and it never reaches code generation as a declared type.</para>
+/// </summary>
+public sealed record ConstructorReferenceType : SemanticType
+{
+    /// <summary>The builtin type name as written: <c>int</c>, <c>str</c>, <c>dict</c>, <c>list</c>.</summary>
+    public string Name { get; init; } = string.Empty;
+
+    /// <summary>The builtin type symbol the name resolved to.</summary>
+    public TypeSymbol Symbol { get; init; } = null!;
+
+    /// <summary>Which C# shape a pinned reference emits as.</summary>
+    public ConstructorReferenceFamily Family { get; init; }
+
+    public override string GetDisplayName() => $"constructor reference to '{Name}'";
+
+    public override TypeSymbol? DeclaringSymbol => Symbol;
+}
+
+/// <summary>
 /// Represents a tagged union type (v0.2.x feature).
 /// Example: Result[T, E] with cases Ok(T) and Err(E)
 ///
