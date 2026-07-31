@@ -75,7 +75,9 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
         var sw = Stopwatch.StartNew();
         int limit = ReadIntEnv("DIFF_EXEC_LIMIT", DefaultLimit);
-        var programs = BuildCorpus(limit);
+        var corpus = BuildCorpus(limit);
+        var programs = corpus.Programs;
+        var pool = corpus.FixturePool;
         Assert.True(programs.Count > 0, "Differential-exec corpus is empty — corpus construction is broken.");
 
         // --- Sharpy arm: production compile + execute, sequential (each spawns a dotnet subprocess). ---
@@ -116,7 +118,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         var skips = results.Where(r => r.Verdict == Verdict.Skip).ToList();
 
         sw.Stop();
-        WriteReport(results, divergences, offenders, matches, skips, allowlist, sw.Elapsed);
+        WriteReport(results, divergences, offenders, matches, skips, allowlist, pool, sw.Elapsed);
 
         Output.WriteLine(
             $"Differential-exec: {results.Count} programs "
@@ -125,6 +127,12 @@ public class DifferentialExecutionTests : IntegrationTestBase
             + $"{programs.Count(x => x.Key.StartsWith("generated", StringComparison.Ordinal))} generated). "
             + $"Match={matches} Skip={skips.Count} Divergent={divergences.Count} "
             + $"Non-allowlisted={offenders.Count}. Wall={sw.Elapsed.TotalSeconds:F1}s.");
+        Output.WriteLine(
+            $"Fixture pool: {pool.Selected.Count}/{pool.Eligible} eligible run "
+            + $"({(pool.Eligible == 0 ? 0 : 100.0 * pool.Selected.Count / pool.Eligible):F1}% coverage) "
+            + $"out of {pool.Discovered} discovered fixtures.");
+        foreach (var kv in pool.Exclusions.Where(kv => kv.Key.StartsWith("sharpy-only-call:", StringComparison.Ordinal)))
+            Output.WriteLine($"  excluded (CPython cannot execute) {kv.Key}: {kv.Value}");
         foreach (var o in offenders.Take(40))
             Output.WriteLine($"  DIVERGENCE [{o.Verdict}] {o.Program.Key}: {o.Detail}");
 
@@ -148,7 +156,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
     // Corpus construction
     // ----------------------------------------------------------------------------------------- //
 
-    private List<Program> BuildCorpus(int limit)
+    private Corpus BuildCorpus(int limit)
     {
         var handpicked = HandPicked();
         var remaining = Math.Max(0, limit - handpicked.Count);
@@ -157,16 +165,16 @@ public class DifferentialExecutionTests : IntegrationTestBase
         var fixtureTarget = (remaining * 2) / 3;
         var generatedTarget = remaining - fixtureTarget;
 
-        var fixtures = Fixtures(fixtureTarget);
+        var pool = Fixtures(fixtureTarget);
         // Any fixture budget the pool could not fill rolls over to the generated arm.
-        generatedTarget += Math.Max(0, fixtureTarget - fixtures.Count);
+        generatedTarget += Math.Max(0, fixtureTarget - pool.Selected.Count);
         var generated = Generated(generatedTarget);
 
-        var corpus = new List<Program>(handpicked.Count + fixtures.Count + generated.Count);
-        corpus.AddRange(handpicked);
-        corpus.AddRange(fixtures);
-        corpus.AddRange(generated);
-        return corpus;
+        var programs = new List<Program>(handpicked.Count + pool.Selected.Count + generated.Count);
+        programs.AddRange(handpicked);
+        programs.AddRange(pool.Selected);
+        programs.AddRange(generated);
+        return new Corpus(programs, pool);
     }
 
     /// <summary>
@@ -348,25 +356,51 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
     /// <summary>
     /// Real single-file fixtures whose top level is functions-only with a <c>main</c> and whose whole
-    /// tree is in the shared executable subset. Subsampled deterministically (stable FNV hash of the
-    /// name) so a default run touches a spread of categories, not an alphabetical prefix.
+    /// tree is in the shared executable subset. Every fixture the walk rejects is counted under an
+    /// attributable shape id (#1202) so the report can state the size of the eligible pool and why
+    /// the rest is out, instead of silently shrinking the denominator. When <paramref name="target"/>
+    /// is below the pool size the selection is a deterministic subsample (stable FNV hash of the
+    /// name) that touches a spread of categories rather than an alphabetical prefix.
     /// </summary>
-    private static List<Program> Fixtures(int target)
+    private static FixturePool Fixtures(int target)
     {
-        if (target <= 0)
-            return new List<Program>();
-
         var eligible = new List<Program>();
+        var exclusions = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        // The attributable Sharpy-only CALL forms are listed by name, not just counted: a reviewer
+        // must be able to check that no rule fired on a program CPython could legitimately have run
+        // (the failure mode a blanket "CPython errored ⇒ skip" would have institutionalised).
+        var callFormExclusions = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+        int discovered = 0;
+
+        void Exclude(string shape, string? name = null)
+        {
+            exclusions[shape] = exclusions.TryGetValue(shape, out var n) ? n + 1 : 1;
+            if (name is not null && shape.StartsWith("sharpy-only-call:", StringComparison.Ordinal))
+            {
+                if (!callFormExclusions.TryGetValue(shape, out var names))
+                    callFormExclusions[shape] = names = new List<string>();
+                names.Add(name);
+            }
+        }
+
         foreach (var fx in FixtureDiscoveryHelper.DiscoverFixtures())
         {
+            discovered++;
             if (fx.IsMultiFile || fx.ExpectedFile is null || fx.ErrorFile is not null
                 || fx.RuntimeErrorFile is not null || fx.Features.Count > 0)
+            {
+                Exclude("not-a-single-file-stdout-fixture");
                 continue;
+            }
 
             string source;
             try
             { source = File.ReadAllText(fx.SpyFilePath); }
-            catch { continue; }
+            catch
+            {
+                Exclude("unreadable");
+                continue;
+            }
 
             Module module;
             try
@@ -375,24 +409,43 @@ public class DifferentialExecutionTests : IntegrationTestBase
                     new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll());
                 module = parser.ParseModule();
                 if (parser.Diagnostics.HasErrors)
+                {
+                    Exclude("parse-errors");
                     continue;
+                }
             }
-            catch { continue; }
+            catch
+            {
+                Exclude("parse-errors");
+                continue;
+            }
 
             if (!IsFunctionsOnlyWithMain(module))
+            {
+                Exclude("not-functions-only-with-main");
                 continue;
-            if (!ExecSubsetFilter.IsInSharedSubset(module))
+            }
+
+            var shape = ExecSubsetFilter.RejectionShape(module);
+            if (shape is not null)
+            {
+                Exclude(shape, fx.TestName);
                 continue;
+            }
 
             eligible.Add(new Program($"fixture::{fx.TestName}", source));
         }
 
-        return eligible
-            .OrderBy(p => StableHash(p.Key))
-            .ThenBy(p => p.Key, StringComparer.Ordinal)
-            .Take(target)
-            .OrderBy(p => p.Key, StringComparer.Ordinal)
-            .ToList();
+        var selected = target <= 0
+            ? new List<Program>()
+            : eligible
+                .OrderBy(p => StableHash(p.Key))
+                .ThenBy(p => p.Key, StringComparer.Ordinal)
+                .Take(target)
+                .OrderBy(p => p.Key, StringComparer.Ordinal)
+                .ToList();
+
+        return new FixturePool(selected, eligible.Count, discovered, exclusions, callFormExclusions);
     }
 
     /// <summary>
@@ -682,80 +735,178 @@ public class DifferentialExecutionTests : IntegrationTestBase
     /// the divergence-prone compound statements (match/with/try/defer/yield). Annotation-level Sharpy-
     /// only syntax (<c>T?</c>, <c>!E</c>) is not caught here; CPython's parser rejects it and the
     /// harness records that as a skip. Adapted from the parse oracle's SubsetFilter.
+    ///
+    /// <para>Rejections carry a short shape id so the report can attribute every excluded fixture
+    /// (#1202). The <c>sharpy-only-call:*</c> family covers forms CPython rejects at RUNTIME rather
+    /// than at parse time — those slip past both the SyntaxError skip and the NameError heuristic in
+    /// <see cref="Classify"/>, so before #1202 they surfaced as bogus semantic divergences. Each such
+    /// rule must be attributable to a specific construct CPython cannot execute; a blanket
+    /// "CPython failed ⇒ ignore" is expressly not allowed, because that would hide the real case
+    /// where Sharpy accepts a program CPython legitimately rejects.</para>
     /// </summary>
     private sealed class ExecSubsetFilter : AstVisitor
     {
-        private bool _ok = true;
+        /// <summary>
+        /// Non-<c>def</c> callees that a Sharpy program may subscript with explicit type arguments
+        /// and CPython provably cannot. <c>map</c>/<c>zip</c>/<c>filter</c> exist in CPython but
+        /// implement no <c>__class_getitem__</c> (<c>TypeError: type 'map' is not subscriptable</c>);
+        /// <c>array</c>/<c>frozendict</c> are Sharpy-only names CPython resolves to nothing at all.
+        /// The list is deliberately evidence-backed rather than "any subscripted callee": PEP-585
+        /// generic aliases (<c>list[int]()</c>, <c>dict[str, int]()</c>) really do construct, and
+        /// indexing a container of callables (<c>funcs[i](5)</c>, <c>pair[0](9)</c>) is ordinary
+        /// Python — excluding either would drop programs CPython can legitimately run.
+        /// </summary>
+        private static readonly HashSet<string> NonSubscriptableInCPython =
+            new(StringComparer.Ordinal) { "map", "zip", "filter", "array", "frozendict" };
 
-        public static bool IsInSharedSubset(Node node)
+        private string? _rejection;
+        private readonly HashSet<string> _exceptAliases = new(StringComparer.Ordinal);
+        private HashSet<string> _declaredFunctions = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// <c>null</c> when the whole tree is in the shared executable subset; otherwise the shape id
+        /// of the first construct that took it out.
+        /// </summary>
+        public static string? RejectionShape(Node node)
         {
-            var f = new ExecSubsetFilter();
+            var f = new ExecSubsetFilter { _declaredFunctions = FunctionNameCollector.Collect(node) };
             f.Visit(node);
-            return f._ok;
+            return f._rejection;
         }
 
-        private void Reject() => _ok = false;
+        public static bool IsInSharedSubset(Node node) => RejectionShape(node) is null;
+
+        private void Reject(string shape) => _rejection ??= shape;
+
+        private void Reject(Node node) => Reject("sharpy-only-node:" + node.GetType().Name);
 
         public override void Visit(Node node)
         {
-            if (!_ok)
+            if (_rejection is not null)
                 return;
             base.Visit(node);
         }
 
         // Sharpy-only expression forms (no CPython analog / divergent runtime meaning).
-        public override void VisitMaybeExpression(MaybeExpression node) => Reject();
-        public override void VisitTryExpression(TryExpression node) => Reject();
-        public override void VisitQuestionMarkExpression(QuestionMarkExpression node) => Reject();
-        public override void VisitTypeCoercion(TypeCoercion node) => Reject();
-        public override void VisitTypeCheck(TypeCheck node) => Reject();
-        public override void VisitMatchExpression(MatchExpression node) => Reject();
-        public override void VisitAwaitExpression(AwaitExpression node) => Reject();
-        public override void VisitModifiedArgument(ModifiedArgument node) => Reject();
-        public override void VisitTStringLiteral(TStringLiteral node) => Reject();
-        public override void VisitStarExpression(StarExpression node) => Reject();
-        public override void VisitSpreadElement(SpreadElement node) => Reject();
-        public override void VisitDictSpreadComprehension(DictSpreadComprehension node) => Reject();
-        public override void VisitWalrusExpression(WalrusExpression node) => Reject();
+        public override void VisitMaybeExpression(MaybeExpression node) => Reject(node);
+        public override void VisitTryExpression(TryExpression node) => Reject(node);
+        public override void VisitQuestionMarkExpression(QuestionMarkExpression node) => Reject(node);
+        public override void VisitTypeCoercion(TypeCoercion node) => Reject(node);
+        public override void VisitTypeCheck(TypeCheck node) => Reject(node);
+        public override void VisitMatchExpression(MatchExpression node) => Reject(node);
+        public override void VisitAwaitExpression(AwaitExpression node) => Reject(node);
+        public override void VisitModifiedArgument(ModifiedArgument node) => Reject(node);
+        public override void VisitTStringLiteral(TStringLiteral node) => Reject(node);
+        public override void VisitStarExpression(StarExpression node) => Reject(node);
+        public override void VisitSpreadElement(SpreadElement node) => Reject(node);
+        public override void VisitDictSpreadComprehension(DictSpreadComprehension node) => Reject(node);
+        public override void VisitWalrusExpression(WalrusExpression node) => Reject(node);
         // F-strings: Sharpy/CPython disagree on delimiter/escape micro-syntax; exclude wholesale.
-        public override void VisitFStringLiteral(FStringLiteral node) => Reject();
+        public override void VisitFStringLiteral(FStringLiteral node) => Reject(node);
 
         // Definitions whose Python behaviour is Sharpy-only or diverges (object repr, static state).
-        public override void VisitClassDef(ClassDef node) => Reject();
-        public override void VisitStructDef(StructDef node) => Reject();
-        public override void VisitInterfaceDef(InterfaceDef node) => Reject();
-        public override void VisitEnumDef(EnumDef node) => Reject();
-        public override void VisitUnionDef(UnionDef node) => Reject();
-        public override void VisitDelegateDef(DelegateDef node) => Reject();
-        public override void VisitEventDef(EventDef node) => Reject();
-        public override void VisitPropertyDef(PropertyDef node) => Reject();
-        public override void VisitTypeAlias(TypeAlias node) => Reject();
-        public override void VisitDecoratedStatement(DecoratedStatement node) => Reject();
+        public override void VisitClassDef(ClassDef node) => Reject(node);
+        public override void VisitStructDef(StructDef node) => Reject(node);
+        public override void VisitInterfaceDef(InterfaceDef node) => Reject(node);
+        public override void VisitEnumDef(EnumDef node) => Reject(node);
+        public override void VisitUnionDef(UnionDef node) => Reject(node);
+        public override void VisitDelegateDef(DelegateDef node) => Reject(node);
+        public override void VisitEventDef(EventDef node) => Reject(node);
+        public override void VisitPropertyDef(PropertyDef node) => Reject(node);
+        public override void VisitTypeAlias(TypeAlias node) => Reject(node);
+        public override void VisitDecoratedStatement(DecoratedStatement node) => Reject(node);
 
         // Imports pull in stdlib/interop whose semantics are compared elsewhere.
-        public override void VisitImportStatement(ImportStatement node) => Reject();
-        public override void VisitFromImportStatement(FromImportStatement node) => Reject();
+        public override void VisitImportStatement(ImportStatement node) => Reject(node);
+        public override void VisitFromImportStatement(FromImportStatement node) => Reject(node);
 
         // Divergence-prone / Sharpy-only compound statements.
-        public override void VisitMatchStatement(MatchStatement node) => Reject();
-        public override void VisitWithStatement(WithStatement node) => Reject();
-        public override void VisitDeferStatement(DeferStatement node) => Reject();
-        public override void VisitYieldStatement(YieldStatement node) => Reject();
+        public override void VisitMatchStatement(MatchStatement node) => Reject(node);
+        public override void VisitWithStatement(WithStatement node) => Reject(node);
+        public override void VisitDeferStatement(DeferStatement node) => Reject(node);
+        public override void VisitYieldStatement(YieldStatement node) => Reject(node);
 
         // Shared nodes carrying a Sharpy-only flag.
         public override void VisitIdentifier(Identifier node)
         {
             if (node.IsNameBacktickEscaped)
-                Reject();
+                Reject("sharpy-only-syntax:backtick-escaped-name");
         }
 
         public override void VisitMemberAccess(MemberAccess node)
         {
             if (node.IsNullConditional)
             {
-                Reject();
+                Reject("sharpy-only-syntax:null-conditional-member");
                 return;
             }
+
+            // `except E as e: print(e.message)`. Sharpy surfaces .NET's Exception.Message as a
+            // property (Axiom 1); CPython 3 removed BaseException.message, so the program dies with
+            // an AttributeError instead of producing comparable stdout.
+            if (node.Member == "message"
+                && Unwrap(node.Object) is Identifier target
+                && _exceptAliases.Contains(target.Name))
+            {
+                Reject("sharpy-only-call:exception-message-member");
+                return;
+            }
+
+            DefaultVisit(node);
+        }
+
+        public override void VisitTryStatement(TryStatement node)
+        {
+            foreach (var handler in node.Handlers)
+            {
+                if (!string.IsNullOrEmpty(handler.Name))
+                    _exceptAliases.Add(handler.Name);
+            }
+            DefaultVisit(node);
+        }
+
+        public override void VisitFunctionCall(FunctionCall node)
+        {
+            var callee = Unwrap(node.Function);
+
+            // `identity[int](42)`, `map[int, int](f, xs)`, `(identity[int])(6)` — explicit type
+            // arguments on a callee CPython cannot subscript: a name this module declares with
+            // `def` (CPython functions never implement __class_getitem__, so the call dies with
+            // "'function' object is not subscriptable"), or one of the names above.
+            if (callee is IndexAccess indexed
+                && Unwrap(indexed.Object) is Identifier subscripted
+                && (_declaredFunctions.Contains(subscripted.Name)
+                    || NonSubscriptableInCPython.Contains(subscripted.Name)))
+            {
+                Reject("sharpy-only-call:explicit-type-arguments");
+                return;
+            }
+
+            if (callee is Identifier name)
+            {
+                // CPython's breakpoint() enters pdb and reads stdin; there is no batch analog.
+                if (name.Name == "breakpoint")
+                {
+                    Reject("sharpy-only-call:breakpoint");
+                    return;
+                }
+
+                // Sharpy's map() accepts strict=; CPython's map() takes no keyword arguments at all
+                // (zip(..., strict=True) IS valid CPython >= 3.10 and stays eligible).
+                if (name.Name == "map" && node.KeywordArguments.Any(k => k.Name == "strict"))
+                {
+                    Reject("sharpy-only-call:map-strict-keyword");
+                    return;
+                }
+            }
+
+            // Sharpy accepts the sort key positionally; CPython's list.sort() is keyword-only.
+            if (callee is MemberAccess method && method.Member == "sort" && node.Arguments.Length > 0)
+            {
+                Reject("sharpy-only-call:sort-positional-key");
+                return;
+            }
+
             DefaultVisit(node);
         }
 
@@ -763,7 +914,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         {
             if (node.Operator is BinaryOperator.NullCoalesce or BinaryOperator.PipeForward)
             {
-                Reject();
+                Reject("sharpy-only-syntax:" + node.Operator);
                 return;
             }
             DefaultVisit(node);
@@ -773,7 +924,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         {
             if (node.IsAsync)
             {
-                Reject();
+                Reject("sharpy-only-syntax:async-for-clause");
                 return;
             }
             DefaultVisit(node);
@@ -783,7 +934,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         {
             if (node.IsArrowSyntax)
             {
-                Reject();
+                Reject("sharpy-only-syntax:arrow-lambda");
                 return;
             }
             DefaultVisit(node);
@@ -792,13 +943,40 @@ public class DifferentialExecutionTests : IntegrationTestBase
         public override void VisitIntegerLiteral(IntegerLiteral node)
         {
             if (node.Suffix is not null)
-                Reject();
+                Reject("sharpy-only-syntax:integer-literal-suffix");
         }
 
         public override void VisitFloatLiteral(FloatLiteral node)
         {
             if (node.Suffix is not null)
-                Reject();
+                Reject("sharpy-only-syntax:float-literal-suffix");
+        }
+
+        private static Expression Unwrap(Expression expression)
+        {
+            while (expression is Parenthesized parenthesized)
+                expression = parenthesized.Expression;
+            return expression;
+        }
+
+        /// <summary>Every <c>def</c> name in the tree, so a subscripted callee can be told apart
+        /// from an indexed container of callables.</summary>
+        private sealed class FunctionNameCollector : AstVisitor
+        {
+            private readonly HashSet<string> _names = new(StringComparer.Ordinal);
+
+            public static HashSet<string> Collect(Node node)
+            {
+                var c = new FunctionNameCollector();
+                c.Visit(node);
+                return c._names;
+            }
+
+            public override void VisitFunctionDef(FunctionDef node)
+            {
+                _names.Add(node.Name);
+                DefaultVisit(node);
+            }
         }
     }
 
@@ -1061,7 +1239,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
     private void WriteReport(
         List<CaseResult> results, List<CaseResult> divergences, List<CaseResult> offenders,
-        int matches, List<CaseResult> skips, Allowlist allowlist, TimeSpan elapsed)
+        int matches, List<CaseResult> skips, Allowlist allowlist, FixturePool pool, TimeSpan elapsed)
     {
         var reportDir = ReportDir();
         Directory.CreateDirectory(reportDir);
@@ -1081,6 +1259,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 wallSeconds = Math.Round(elapsed.TotalSeconds, 1),
             },
             ratchetMode = Allowlist.FileExists(),
+            // Which fixtures CPython cannot execute, named so the attribution is auditable (#1202).
+            sharpyOnlyCallFormExclusions = pool.CallFormExclusions,
             divergences = divergences.Select(r => new
             {
                 key = r.Program.Key,
@@ -1165,6 +1345,18 @@ public class DifferentialExecutionTests : IntegrationTestBase
     }
 
     private sealed record Program(string Key, string Source);
+
+    /// <summary>
+    /// The fixture arm's own coverage statement: how many fixtures the discovery walk saw, how many
+    /// survived every eligibility gate, how many of those this run actually executed, and — per
+    /// attributable shape id — why the rest were excluded (#1202).
+    /// </summary>
+    private sealed record FixturePool(
+        List<Program> Selected, int Eligible, int Discovered,
+        IReadOnlyDictionary<string, int> Exclusions,
+        IReadOnlyDictionary<string, List<string>> CallFormExclusions);
+
+    private sealed record Corpus(List<Program> Programs, FixturePool FixturePool);
 
     private sealed record ArmOutcome(bool Ok, string Stdout, bool TimedOut);
 
