@@ -18,6 +18,12 @@ internal partial class RoslynEmitter
 {
     private StatementSyntax GenerateAssignment(Assignment assign)
     {
+        if (IsConstructorAliasBinding(assign.Target, assign.Value)
+            && assign.Operator == AssignmentOperator.Assign)
+        {
+            return EmptyStatement();
+        }
+
         // Check if this is an assignment of a lambda with default parameters to a simple
         // identifier (first declaration). Emit as a local function instead of a delegate
         // variable, because C# delegates / Func<> don't support optional parameters.
@@ -586,8 +592,26 @@ internal partial class RoslynEmitter
         return BinaryExpression(SyntaxKind.DivideExpression, left, right);
     }
 
+    /// <summary>
+    /// Whether a binding aliases a builtin constructor (<c>f = int</c>, <c>f = dict</c>) and so emits
+    /// no C# at all (#1182). A constructor reference is Sharpy's method group: it has no runtime
+    /// value to store, and every call through the alias emits the direct builtin form the semantic
+    /// phase recorded on the call node. The name cannot survive anywhere else — an unpinned
+    /// constructor reference in any other position is rejected (SPY0342) — so nothing dangles.
+    /// </summary>
+    private bool IsConstructorAliasBinding(Expression? target, Expression? value)
+        => target is Identifier
+            && value != null
+            && _context.SemanticInfo?.GetExpressionType(value) is ConstructorReferenceType;
+
     private StatementSyntax GenerateVariableDeclaration(VariableDeclaration varDecl)
     {
+        if (varDecl.InitialValue != null
+            && _context.SemanticInfo?.GetExpressionType(varDecl.InitialValue) is ConstructorReferenceType)
+        {
+            return EmptyStatement();
+        }
+
         // Track const variables by their original Sharpy name for consistent reference resolution
         if (varDecl.IsConst)
         {

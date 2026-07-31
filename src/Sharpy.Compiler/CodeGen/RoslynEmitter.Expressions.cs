@@ -272,8 +272,8 @@ internal partial class RoslynEmitter
                 NameCasing.ResolveMethod(lowering.Name, name.IsNameBacktickEscaped));
         }
 
-        var constructed = _typeMapper.MapSemanticType(lowering.Signature.ReturnType);
-        if (lowering.Signature.ParameterTypes.Count == 0)
+        var constructed = _typeMapper.MapSemanticType(lowering.ConstructedType);
+        if (lowering.ParameterCount == 0)
         {
             return ParenthesizedLambdaExpression(
                 ParameterList(),
@@ -285,6 +285,27 @@ internal partial class RoslynEmitter
             Parameter(EscapedIdentifier(sourceName)),
             ObjectCreationExpression(constructed).WithArgumentList(
                 ArgumentList(SingletonSeparatedList(Argument(EscapedIdentifierName(sourceName))))));
+    }
+
+    /// <summary>
+    /// Emits a call made through a builtin constructor alias (#1182). Semantic analysis resolved the
+    /// call as a call of the builtin itself and recorded which builtin and what it constructs, so
+    /// this emits the same shape the direct spelling emits: <c>Builtins.Int("3")</c> for the
+    /// conversion families, <c>new Dict&lt;string, int&gt;()</c> for the collection families.
+    /// </summary>
+    private ExpressionSyntax GenerateConstructorReferenceCall(
+        FunctionCall call, ConstructorReferenceLowering lowering)
+    {
+        var arguments = ArgumentList(SeparatedList(
+            call.Arguments.Select(argument => Argument(GenerateExpression(argument)))));
+
+        return lowering.Family == ConstructorReferenceFamily.Conversion
+            ? InvocationExpression(
+                MakeGlobalQualifiedName("Sharpy", "Builtins",
+                    NameCasing.ResolveMethod(lowering.Name, isBacktickEscaped: false)),
+                arguments)
+            : ObjectCreationExpression(_typeMapper.MapSemanticType(lowering.ConstructedType))
+                .WithArgumentList(arguments);
     }
 
     /// <summary>
