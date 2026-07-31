@@ -439,7 +439,7 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
     /// control flow — and the only change is that <c>Grid</c> declares its fields at class level
     /// and assigns them unannotated in <c>__init__</c>, exactly as <c>Point</c> already did.
     /// </summary>
-    private static string ValidMediumFileSource()
+    internal static string ValidMediumFileSource()
     {
         var lines = new SCG.List<string>
         {

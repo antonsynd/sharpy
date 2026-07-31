@@ -212,12 +212,22 @@ public sealed class LspTestClient : IAsyncDisposable
     /// <summary>
     /// Waits for a notification with the given method to arrive.
     /// </summary>
+    /// <param name="method">The notification method to wait for.</param>
+    /// <param name="timeout">How long to wait before throwing. Defaults to 30s.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <param name="pollInterval">
+    /// How often the arrival queue is checked, 50ms by default. It bounds how precisely arrival can
+    /// be timed, so a caller measuring latency should pass something well under what it is trying to
+    /// measure — at the default, anything faster than 50ms is indistinguishable from zero (#1140).
+    /// </param>
     public async Task<JsonNode> WaitForNotificationAsync(
         string method,
         TimeSpan? timeout = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        TimeSpan? pollInterval = null)
     {
         var deadline = timeout ?? DefaultTimeout;
+        var poll = pollInterval ?? TimeSpan.FromMilliseconds(50);
         var queue = _notifications.GetOrAdd(method, _ => new ConcurrentQueue<JsonNode>());
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -232,7 +242,7 @@ public sealed class LspTestClient : IAsyncDisposable
 
             try
             {
-                await Task.Delay(50, timeoutCts.Token);
+                await Task.Delay(poll, timeoutCts.Token);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
