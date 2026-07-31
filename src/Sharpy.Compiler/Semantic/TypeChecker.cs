@@ -100,6 +100,12 @@ internal partial class TypeChecker
     // CheckFunctionCall so every internal argument path is covered; save/restored for nested calls.
     private HashSet<Expression>? _currentCallArguments;
 
+    // The builtin constructor reference the call currently being checked went through, when its
+    // callee was an ALIAS (`f = int; f("3")`). Set by the callee substitution in
+    // CheckFunctionCallCore and read by the CheckFunctionCall wrapper, which records the emission
+    // shape once the call's result type — what a collection alias constructs — is known (#1182).
+    private ConstructorReferenceType? _constructorAliasCallee;
+
     // The index expression of the IndexAccess currently being checked, and the elements of a
     // multi-argument index (`Outer.Inner[int]`, `Dict[str, int]`). Some type references reach the
     // value-indexing path rather than the generic-reference resolver — the nested spelling does —

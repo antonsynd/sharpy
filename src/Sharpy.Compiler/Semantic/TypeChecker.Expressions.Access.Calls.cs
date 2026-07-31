@@ -11,7 +11,30 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 internal partial class TypeChecker
 {
+    /// <summary>
+    /// Checks a call and, when it went through a builtin constructor ALIAS (<c>f = int; f("3")</c>),
+    /// records the shape codegen must emit (#1182). The recording happens here rather than inside the
+    /// dispatch because the constructed type — what the collection families emit
+    /// <c>new T(args)</c> for — is the call's own result, known only once resolution finishes.
+    /// </summary>
     private SemanticType CheckFunctionCall(FunctionCall call)
+    {
+        var savedAliasReference = _constructorAliasCallee;
+        _constructorAliasCallee = null;
+        var result = CheckFunctionCallCore(call);
+
+        if (_constructorAliasCallee is { } alias && result is not UnknownType)
+        {
+            _semanticInfo.SetConstructorReferenceLowering(call,
+                new ConstructorReferenceLowering(
+                    alias.Family, alias.Name, result, call.Arguments.Length));
+        }
+
+        _constructorAliasCallee = savedAliasReference;
+        return result;
+    }
+
+    private SemanticType CheckFunctionCallCore(FunctionCall call)
     {
         // The canonical callee (#1170). Redundant parentheses around a callee never change what a
         // call denotes, so every shape dispatch in this method — construction detection, special
@@ -98,6 +121,30 @@ internal partial class TypeChecker
         _currentCallCallee = call.Function;
         var calleeType = CheckExpression(call.Function);
         _currentCallCallee = savedCallCallee;
+
+        // #1182: a call through a builtin constructor alias (`f = int; f("3")`, `f = dict; f()`).
+        // The alias denotes the builtin, so the call resolves by dispatching on the BUILTIN'S NAME
+        // through the paths the direct spelling takes — same overload selection, same
+        // expected-type-driven type-argument inference, same diagnostics. The substituted callee is
+        // synthetic (it is not in the tree) and carries the alias's position so diagnostics still
+        // point at what the user wrote; every use below it is name- and shape-based.
+        if (calleeType is ConstructorReferenceType aliasReference && callee is Identifier aliasIdentifier)
+        {
+            _constructorAliasCallee = aliasReference;
+            callee = new Identifier
+            {
+                Name = aliasReference.Name,
+                LineStart = aliasIdentifier.LineStart,
+                ColumnStart = aliasIdentifier.ColumnStart,
+                LineEnd = aliasIdentifier.LineEnd,
+                ColumnEnd = aliasIdentifier.ColumnEnd,
+                Span = aliasIdentifier.Span
+            };
+            _semanticInfo.SetIdentifierSymbol((Identifier)callee, aliasReference.Symbol);
+            calleeType = aliasReference.Family == ConstructorReferenceFamily.Conversion
+                ? SynthesizePrimitiveFunctionType(aliasReference.Symbol)
+                : SemanticType.Unknown;
+        }
 
         // After checking the callee, determine if this is ?. on an Optional object
         if (isNullConditionalCall && callee is MemberAccess nullCondMa)

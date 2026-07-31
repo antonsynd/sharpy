@@ -390,15 +390,23 @@ internal partial class TypeChecker
         if (BuiltinConstructorReferenceOf(reference, type) is not { } constructorReference)
             return null;
 
-        if (type is not ConstructorReferenceType && !IsConstructorReferenceValueUse(reference))
-            return null;
+        // A read already typed as the carrier is always a value use; nothing but this rule makes one.
+        var isValueUse = type is ConstructorReferenceType || IsConstructorReferenceValueUse(reference);
 
         // Tier 1. A target type with unresolved type parameters — a generic parameter such as map's
         // `(T) -> R` — supplies no signature; it is not a failure to match one.
+        //
+        // Pinning runs even in the non-value positions, where it can only widen what binds: a
+        // reference that pins works where the legacy synthesized signature was rejected
+        // (`apply(int, "5")` for `apply(fn: (str) -> int, …)`), and one that does not pin falls back
+        // to the typing that position has today rather than acquiring a diagnostic.
         if (_expectedType is FunctionType target && !ContainsTypeParameter(target))
         {
             if (TryPinConstructorReference(reference, constructorReference, target))
                 return target;
+
+            if (!isValueUse)
+                return null;
 
             AddError(
                 $"builtin type '{constructorReference.Name}' has no constructor signature matching "
@@ -409,9 +417,15 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        if (!isValueUse)
+            return null;
+
         // Tier 2. `f = int` / `f = dict`: nothing says which signature was meant, so the name aliases
-        // the builtin and every call through it is resolved at its own call site.
-        if (_expectedType == null && _currentBindingValue != null
+        // the builtin and every call through it is resolved at its own call site. A binding whose
+        // target already holds an alias is a RE-alias (`f = int; …; f = str`) — its expected type is
+        // the previous carrier, which supplies no signature either.
+        if (_expectedType is null or ConstructorReferenceType
+            && _currentBindingValue != null
             && ReferenceEquals(UnwrapParenthesized(_currentBindingValue), UnwrapParenthesized(reference)))
         {
             return constructorReference;
@@ -419,11 +433,17 @@ internal partial class TypeChecker
 
         // An alias read in a call argument whose parameter type is generic (`map(f, xs)`) binds the
         // same synthesized signature the builtin NAME binds there, so an alias behaves in argument
-        // positions exactly like the name it aliases.
+        // positions exactly like the name it aliases. The read still needs a lowering: the alias
+        // BINDING emits nothing, so the read must emit the builtin's method group, not the name.
         if (type is ConstructorReferenceType && IsDirectCallArgument(reference)
-            && constructorReference.Family == ConstructorReferenceFamily.Conversion)
+            && constructorReference.Family == ConstructorReferenceFamily.Conversion
+            && SynthesizePrimitiveFunctionType(constructorReference.Symbol) is FunctionType synthesized)
         {
-            return SynthesizePrimitiveFunctionType(constructorReference.Symbol);
+            _semanticInfo.SetConstructorReferenceLowering(reference,
+                new ConstructorReferenceLowering(
+                    ConstructorReferenceFamily.Conversion, constructorReference.Name,
+                    synthesized.ReturnType, synthesized.ParameterTypes.Count));
+            return synthesized;
         }
 
         // Tier 3.
@@ -563,7 +583,9 @@ internal partial class TypeChecker
             return false;
 
         _semanticInfo.SetConstructorReferenceLowering(reference,
-            new ConstructorReferenceLowering(constructorReference.Family, constructorReference.Name, target));
+            new ConstructorReferenceLowering(
+                constructorReference.Family, constructorReference.Name,
+                target.ReturnType, target.ParameterTypes.Count));
         return true;
     }
 
