@@ -114,5 +114,51 @@ namespace Sharpy
 
             return (quotient, remainder);
         }
+
+        /// <summary>
+        /// Return the quotient and remainder of dividing x by y, using
+        /// <b>truncating</b> division semantics where the remainder has the same sign as the
+        /// <b>dividend</b>.
+        /// </summary>
+        /// <remarks>
+        /// <para><b>This overload deliberately differs from every sibling above, which are floored.</b>
+        /// It is not an inconsistency to tidy up. CPython's <c>Decimal.__divmod__</c> truncates —
+        /// <c>divmod(Decimal(-7), Decimal(3))</c> is <c>(-2, -1)</c>, not the <c>(-3, 2)</c> that
+        /// <c>divmod(-7, 3)</c> gives — so matching the int/float siblings here would break parity
+        /// rather than restore it. Sharpy's floored <c>//</c>/<c>%</c> resolution (#1153) is scoped to
+        /// int/long/float operands; decimal <c>//</c> (#1174) and <c>%</c> (#1189) are already native
+        /// and truncating, and this overload agrees with them.</para>
+        /// <para><b>Zero divisor raises <see cref="InvalidOperation"/>, not
+        /// <see cref="ZeroDivisionError"/></b> — also deliberate, also CPython. In CPython
+        /// <c>divmod(Decimal(7), Decimal(0))</c> and <c>Decimal(7) % Decimal(0)</c> both raise
+        /// <c>InvalidOperation</c> while <c>Decimal(7) // Decimal(0)</c> raises <c>DivisionByZero</c>
+        /// (a <c>ZeroDivisionError</c> subclass). <c>divmod</c> follows the <c>%</c> side even though
+        /// its quotient half alone would follow the other. The two must not be unified.</para>
+        /// <para>The divmod identity <c>x == q * y + r</c> holds for all four sign combinations.</para>
+        /// </remarks>
+        /// <param name="x">The dividend</param>
+        /// <param name="y">The divisor</param>
+        /// <returns>A tuple of (quotient, remainder)</returns>
+        /// <exception cref="InvalidOperation">Thrown when <paramref name="y"/> is zero</exception>
+        /// <example>
+        /// <code>
+        /// divmod(7m, 3m)     # (2, 1)
+        /// divmod(-7m, 3m)    # (-2, -1)   -- int divmod(-7, 3) is (-3, 2)
+        /// divmod(7m, -3m)    # (-2, 1)
+        /// divmod(-7m, -3m)   # (2, -1)
+        /// </code>
+        /// </example>
+        public static (decimal, decimal) Divmod(decimal x, decimal y)
+        {
+            if (y == 0m)
+            {
+                throw new InvalidOperation("decimal divmod by zero");
+            }
+
+            // decimal.Remainder is exactly what op_Modulus invokes, so this half is the same value
+            // decimal `%` produces; decimal.Truncate(decimal.Divide(..)) is what decimal `//` lowers
+            // to. divmod is the pair, not a third policy.
+            return (decimal.Truncate(decimal.Divide(x, y)), decimal.Remainder(x, y));
+        }
     }
 }
