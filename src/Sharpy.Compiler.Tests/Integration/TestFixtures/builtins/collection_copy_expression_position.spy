@@ -1,0 +1,32 @@
+# Test (#1201): collection copy constructors infer their type arguments from the ARGUMENT, so they
+# work in expression position where there is no annotation to read. `dict(d)` used to emit a bare
+# `Sharpy.Dict` with no type arguments (CS0305) because a dict's element type is only its key type —
+# the pairs-of-2-tuples arm could not answer for a dict-to-dict copy.
+# Expected output verified against python3.
+def main() -> None:
+    d: dict[str, int] = {"b": 2, "a": 1}
+    xs: list[int] = [3, 1, 2]
+    s: set[int] = {3, 1, 2}
+    t: tuple[int, int] = (3, 1)
+
+    # The issue repro: no annotated target anywhere.
+    print(sorted(dict(d).keys()))
+    print(sorted(dict(d).values()))
+    print(sorted(dict(d.items()).keys()))
+
+    # The audited siblings: list()/set() copies over every iterable source, inline.
+    print(sorted(list(xs)))
+    print(sorted(list(s)))
+    print(sorted(list(t)))
+    print(sorted(list(d)))
+    print(sorted(list(d.keys())))
+    print(sorted(list(d.values())))
+    print(len(set(xs)))
+    print(len(set(d)))
+    print(len(set(t)))
+
+    # A copy is a copy: mutating it leaves the source alone.
+    copy = dict(d)
+    copy["c"] = 3
+    print(sorted(copy.keys()))
+    print(sorted(d.keys()))
