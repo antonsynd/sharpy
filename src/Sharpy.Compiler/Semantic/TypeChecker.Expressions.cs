@@ -96,18 +96,21 @@ internal partial class TypeChecker
         }
 
         // #1192: the type-side counterpart. A generic TYPE reference (Box[int], difflib.Matcher[str],
-        // Outer.Inner[int]) names a type: legal as the thing being constructed, as a type argument, or
-        // in a type test — never as a value. Uncalled it reached codegen as C# element access on a type
-        // name (CS0021/CS0119 behind SPY0908). The test is the RECORDED GenericReference fact, never
-        // `type is GenericType`: every list and dict value has a GenericType expression type and must
-        // stay untouched. NestedTypeRef is caught here too, even though its expression typing stays on
-        // the value-indexing path, because the fact is recorded either way.
+        // Outer.Inner[int], tuple[int, str]) names a type: legal as the thing being constructed, as a
+        // type argument, or in a type test — never as a value. Uncalled it reached codegen as C#
+        // element access on a type name (CS0021/CS0119 behind SPY0908). The test is the RECORDED
+        // GenericReference fact, never `type is GenericType`: every list and dict value has a
+        // GenericType expression type and must stay untouched. NestedTypeRef is caught here too, even
+        // though its expression typing stays on the value-indexing path, because the fact is recorded
+        // either way; TupleTypeRef joins them because it is a type reference in every sense but its
+        // spelling (#1200).
         if (expr is IndexAccess typeReferenceAccess
             && _semanticInfo.GetGenericReference(typeReferenceAccess) is
             {
                 Kind: GenericReferenceKind.GenericTypeRef
                     or GenericReferenceKind.ModuleType
                     or GenericReferenceKind.NestedTypeRef
+                    or GenericReferenceKind.TupleTypeRef
             } typeReference
             && !IsCurrentCallCallee(expr)
             && !IsCurrentMemberAccessQualifier(expr)

@@ -48,6 +48,15 @@ public enum GenericReferenceKind
 
     /// <summary>An array type reference, e.g. <c>array[int]</c>.</summary>
     ArrayTypeRef,
+
+    /// <summary>
+    /// A tuple type reference, e.g. <c>tuple[int, str]</c> (#1200). Distinct from
+    /// <see cref="GenericTypeRef"/> because a tuple's arity is part of its type: the written vector is
+    /// the ELEMENT list, not arguments to a fixed-arity declaration, so the reference types as a
+    /// <see cref="TupleType"/> — the one spelling the annotation position also produces — and calling
+    /// it converts a tuple rather than invoking a constructor.
+    /// </summary>
+    TupleTypeRef,
 }
 
 /// <summary>
@@ -180,6 +189,28 @@ internal partial class TypeChecker
                     resultType = arrayType;
                     return true;
                 }
+            }
+
+            // tuple[int, str] -> TupleType. A tuple's arity is part of its type, so the written vector
+            // is the element list rather than arguments to a fixed-arity declaration — checking it
+            // against the `tuple` symbol's single declared parameter rejected every multi-element
+            // spelling (SPY0224), and typing it as GenericType("tuple", …) made it unequal to the
+            // identical annotation, which is the self-contradictory SPY0220 of #1200. One TupleType
+            // spelling everywhere, exactly as TypeResolver produces for the annotation.
+            if (typeId.Name == BuiltinNames.Tuple
+                && _symbolTable.Lookup(typeId.Name) is TypeSymbol tupleSymbol
+                && TryResolveTypeArguments(indexAccess.Index) is { Count: > 0 } tupleElementTypes)
+            {
+                var tupleType = new TupleType { ElementTypes = tupleElementTypes };
+                _semanticInfo.SetExpressionType(indexAccess, tupleType);
+                _semanticInfo.SetGenericReference(indexAccess, new GenericReference
+                {
+                    Kind = GenericReferenceKind.TupleTypeRef,
+                    TargetSymbol = tupleSymbol,
+                    TypeArgs = tupleElementTypes,
+                });
+                resultType = tupleType;
+                return true;
             }
 
             var symbol = _symbolTable.Lookup(typeId.Name);

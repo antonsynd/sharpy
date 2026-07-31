@@ -330,6 +330,46 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Checks <c>tuple[int, str](t)</c> — an explicitly spelled tuple type applied to a tuple (#1200).
+    /// This is a CONVERSION, not a construction: a tuple's arity is part of its type, so there is
+    /// nothing to build from separate arguments and the result is simply the written
+    /// <see cref="TupleType"/>. Codegen emits the argument itself (identity), which is why the
+    /// argument must already be assignable to that type.
+    /// </summary>
+    /// <remarks>
+    /// The bare <c>tuple(iterable)</c> form is a different question — the arity is missing, not the
+    /// element types — and keeps its SPY0338
+    /// (<see cref="ReportUnsupportedTupleFromIterable"/>).
+    /// </remarks>
+    private SemanticType CheckParameterizedTupleConversion(
+        FunctionCall call, TupleType targetType, List<SemanticType> argTypes)
+    {
+        if (call.Arguments.Length != 1 || call.KeywordArguments.Length != 0)
+        {
+            AddError(
+                $"'{targetType.GetDisplayName()}(...)' expects exactly 1 argument (the tuple to "
+                    + $"convert) but got {call.Arguments.Length + call.KeywordArguments.Length}",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: call.Span);
+            return targetType;
+        }
+
+        var argType = argTypes.Count > 0 ? argTypes[0] : SemanticType.Unknown;
+        if (argType is not UnknownType && !IsAssignable(argType, targetType))
+        {
+            AddError(
+                $"Cannot convert argument of type '{argType.GetDisplayName()}' to "
+                    + $"'{targetType.GetDisplayName()}'",
+                call.Arguments[0].LineStart, call.Arguments[0].ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: call.Arguments[0].Span);
+        }
+
+        return targetType;
+    }
+
+    /// <summary>
     /// Handles generic type instantiation (Box[int](42)) and generic function calls (identity[int](42)).
     /// Returns null if the call is not a generic instantiation.
     /// </summary>
@@ -369,6 +409,17 @@ internal partial class TypeChecker
                     TypeArguments = arrayTypeArgs
                 };
             }
+        }
+
+        // tuple[int, str]((1, "a")): converting a tuple to an explicitly spelled tuple type. Handled
+        // before the generic arm because a tuple is not constructed from arguments — its arity is
+        // part of its type, so the call is an identity conversion whose result is the written
+        // TupleType (#1200). The resolver already typed the callee as that TupleType.
+        if (callee is IndexAccess tupleAccess
+            && tupleAccess.Object is Identifier { Name: BuiltinNames.Tuple }
+            && _semanticInfo.GetExpressionType(tupleAccess) is TupleType targetTupleType)
+        {
+            return CheckParameterizedTupleConversion(call, targetTupleType, argTypes);
         }
 
         // Special handling for generic type instantiation: Box[int](42) or Pair[int, str](1, "a")
