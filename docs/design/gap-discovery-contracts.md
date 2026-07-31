@@ -30,7 +30,7 @@ source-scan guards run in the regular suite.
 | Front-end drift (#1059, #1061, #1097, #1109, #1140) | Same source + options ⇒ same diagnostic multiset from Analyze/Compile/REPL/LSP | `FrontEndParityTests` — fixture corpus × 4 entry points, documented normalization rules, each citing its tracking issue | #1144 |
 | Parallel-site replication gaps (#1105, #1106, #1135; #1124, #1125, #1150–#1152; #1065, #1075) | Mirrored facts are structural (one seam) or guarded by a completeness scan | `ModuleExportsMirrorConformanceTests`, `WrapperNodeUnwrapConformanceTests` — Roslyn source scans of the compiler + LSP | #1145 |
 | Un-lowerable accepted programs (#1000, #1009, #1067, #1068, #1095, #1110, #1122, #1138, #1139, #1141, #1153-adjacent) | Reproducible SPY0908/CS-leak ⇒ a semantic-time check is missing | The sweeps' csLeak/ice buckets + ILCompiles/CsClean property tests | #1146 |
-| CPython semantic divergence (#1063, #1066, #1070–#1073, #1085, #1098, #1153, #1154) | Shared-subset programs produce CPython-identical stdout, or the divergence is in `docs/deviations.yaml` | `DifferentialExecutionTests` — Sharpy binary vs batched `python3` over hand-picked probes + subset fixtures + generated programs | (oracle is the mechanism; #1030 corpus keeps growing) |
+| CPython semantic divergence (#1063, #1066, #1070–#1073, #1085, #1098, #1153, #1154, #1202) | Shared-subset programs produce CPython-identical stdout, or the divergence is in `docs/deviations.yaml` | `DifferentialExecutionTests` — Sharpy binary vs batched `python3` over hand-picked probes + **every eligible** subset fixture + generated programs; full-pool enforced since 2026-07-31 (#1202), report states its own coverage | (oracle is the mechanism; #1030 corpus keeps growing) |
 | Emit fragility under semantics-preserving syntactic variation (#1147, #1167, #1168, #1169, #1170, #1171) | Rewriting a program into an equivalent form changes neither the diagnostics it produces nor what it prints | `MetamorphicCorpusSweepTests` — every executing fixture × 9 transforms (~14,600 cells, compile-clean + C# bind) and `MetamorphicCorpusInvarianceTests` — sampled execution, stdout vs the fixture's `.expected` | #1157 |
 
 Well-guarded classes needing no new mechanism: lambda-boundary parsing (differential parse oracle,
@@ -47,6 +47,14 @@ deployment closure (`StandaloneDeploymentTests`).
   `FrontEndParityTests` cites an issue whose acceptance criterion is deleting the rule (#1149).
 - **Divergence is never silent**: differential-oracle mismatches become issues or
   `deviations.yaml` entries; the ledger must match shipped behavior (#1155 is the cautionary tale).
+- **A sweep states its own coverage** (#1202): the differential-exec allowlist once held a single
+  entry for a deviation that manifested in four corpus cells, because the default budget sampled
+  22 of 527 eligible fixtures and nothing in the harness or the report said so — the allowlist's
+  guarantee was silently 4% of the contract. A sweep now runs its whole eligible pool by default,
+  reports pool size / cells run / coverage %, and attributes every fixture it keeps out of the pool
+  to a named shape. A cell CPython cannot run is excluded by an attributable AST rule, never by a
+  blanket "CPython errored ⇒ skip" — the blanket rule would also hide the case that matters most,
+  a program CPython legitimately rejects and Sharpy accepts.
 - **Allowlists drain when their bug dies** (#1157): the metamorphic sweep fails on a *stale* entry —
   an allowlisted cell that has started passing — so deleting the lines is part of landing the fix
   rather than a follow-up nobody schedules. The other sweeps' allowlists should acquire the same
