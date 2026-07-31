@@ -180,6 +180,58 @@ handlers: list[(Event) -> None] = []
 transforms: dict[str, (int) -> int] = {}
 ```
 
+## Constructor References
+
+A bare builtin type name used as a value — `f = int`, `f = dict` — is a **constructor reference**. It is a legitimate value, but like a C# *method group* it has no natural type of its own: `int`, `str`, `float` and `bool` each name an overload set, and `list`, `dict` and `set` are generic, so nothing in the reference itself says which signature was meant. Sharpy therefore takes the signature from the context, in one of three ways.
+
+**1. Pinned against an expected function type.** Wherever a signature is available — an annotated target, a declared return type, or the parameter it is passed to — the reference binds that signature:
+
+```python
+g: (str) -> int = int
+print(g("42"))                       # 42
+
+h: () -> dict[str, int] = dict
+d = h()
+d["a"] = 1
+
+def make_parser() -> (str) -> int:
+    return int                       # the declared return type pins it
+
+def apply(fn: (str) -> int, s: str) -> int:
+    return fn(s)
+
+print(apply(int, "5"))               # the parameter type pins it
+```
+
+The collection families pin to their empty constructor (`() -> list[int]`) or their copy constructor (`(list[int]) -> list[int]`).
+
+**2. A call-only alias.** A binding with no signature available aliases the builtin, and each call through it resolves exactly like a call of the builtin itself — Python's factory-alias pattern:
+
+```python
+f = int
+print(f("3"))                        # 3
+
+d_maker = dict
+d: dict[str, int] = d_maker()        # the annotated target infers K and V, as dict() would
+```
+
+Reassigning re-aliases, and each call site binds its own reaching binding. The alias itself has no runtime representation: it emits no C#, exactly as a C# method group is not a value until it is converted.
+
+**3. Otherwise, an error (SPY0342).** A reference that is neither pinned nor a call-only alias has no signature and no way to acquire one, so it is refused with guidance rather than compiled into something arbitrary:
+
+```python
+xs = [int, str]                      # SPY0342 — a list element supplies no target type
+f = int if c else str                # SPY0342 — a conditional is not an alias
+```
+
+Annotate the target, call the builtin directly, or wrap it in a lambda that fixes the signature yourself (`g = lambda s: int(s)`).
+
+Writing a builtin type name where it names a **type** rather than a value is unaffected: a static-member receiver (`int.parse(s)`, `dict.fromkeys(ks)`), a type-test type argument (`isinstance(x, int)`), and a type argument (`Box[int]`) are all type positions, not constructor references.
+
+*Implementation*
+- *✅ Native — the conversion families emit the `Sharpy.Builtins.X` method group, so C#'s own method-group conversion binds the overload against the pinned delegate type; the collection families emit a constructor lambda.*
+- *⚠️ Builtin types only. The same semantics for user classes (`f = MyClass; f()`) are not implemented — see [#1211](https://github.com/antonsynd/sharpy/issues/1211). A generic user type reference used as a value is refused with SPY0339 until then.*
+
 ## C# Mapping
 
 Function types map to C# delegate types:
