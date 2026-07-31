@@ -32,7 +32,10 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
     private const int Warmups = 3;
     private const int TimedRuns = 15;
 
-    private readonly CompilerApi _api = new();
+    // The historical rows: no default references, so CompilerApi.BuildModuleRegistry short-circuits
+    // to null and reference loading costs exactly zero. Kept as-is for continuity with the numbers
+    // already recorded in benchmarks/BASELINE.md.
+    private readonly CompilerApi _api = CreateApi(withDefaultReferences: false);
     private readonly ITestOutputHelper _output;
     private readonly string _tempDir;
 
@@ -47,8 +50,34 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
     [Trait("Category", "Benchmark")]
     public async Task Measure_single_file_full_analysis_latency()
     {
+        await MeasureSingleFileAsync(_api, "single-file full analysis (no references)");
+    }
+
+    /// <summary>
+    /// The same single-file analysis, driven through a <see cref="CompilerApi"/> carrying the
+    /// default references the real server passes (<c>Program.cs:49-56</c>): <c>Sharpy.Core.dll</c>
+    /// plus <c>Sharpy.Stdlib.dll</c> when present next to it.
+    /// </summary>
+    /// <remarks>
+    /// The no-reference row above measures a configuration the server never runs. With no default
+    /// references and no project references, <c>CompilerApi.BuildModuleRegistry</c> returns null
+    /// before constructing a <c>ModuleRegistry</c> or issuing a single <c>LoadReference</c> call —
+    /// so reference loading costs that row exactly zero while costing the server something on every
+    /// keystroke. The delta between the two rows is that per-call cost, which the recorded baseline
+    /// has never separated from "the unified pipeline's structural per-call overhead" (#1140).
+    /// </remarks>
+    [Fact]
+    [Trait("Category", "Benchmark")]
+    public async Task Measure_single_file_full_analysis_latency_with_default_references()
+    {
+        var api = CreateApi(withDefaultReferences: true);
+        await MeasureSingleFileAsync(api, "single-file full analysis (server default references)");
+    }
+
+    private async Task MeasureSingleFileAsync(CompilerApi api, string label)
+    {
         var source = MediumFileSource();
-        using var workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
+        using var workspace = new SharpyWorkspace(api, NullLogger<SharpyWorkspace>.Instance);
 
         var samples = new SCG.List<double>();
         for (var i = 0; i < Warmups + TimedRuns; i++)
@@ -68,7 +97,34 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
             workspace.CloseDocument(uri);
         }
 
-        Report("single-file full analysis", LineCount(source), samples);
+        Report(label, LineCount(source), samples);
+    }
+
+    /// <summary>
+    /// Builds the harness's compiler API in one of the two configurations under comparison:
+    /// no default references (the historical rows), or the server's own default references.
+    /// </summary>
+    private static CompilerApi CreateApi(bool withDefaultReferences)
+        => withDefaultReferences ? new CompilerApi(null, ServerDefaultReferences()) : new CompilerApi();
+
+    /// <summary>
+    /// Reproduces the default reference list <c>Sharpy.Lsp.Program</c> computes at startup:
+    /// <c>Sharpy.Core.dll</c>, plus <c>Sharpy.Stdlib.dll</c> when it sits next to it. Both ship into
+    /// this test project's output directory, so no copy step is needed. Missing DLLs fail loudly —
+    /// silently measuring the no-reference configuration under the default-references label would
+    /// make the whole comparison a lie. (This asserts on file layout, never on timings.)
+    /// </summary>
+    private static string[] ServerDefaultReferences()
+    {
+        var baseDir = AppContext.BaseDirectory;
+        var corePath = IOPath.Combine(baseDir, "Sharpy.Core.dll");
+        Assert.True(File.Exists(corePath), $"Sharpy.Core.dll not found next to the test assembly: {corePath}");
+
+        var refs = new SCG.List<string> { corePath };
+        var stdlibPath = IOPath.Combine(baseDir, "Sharpy.Stdlib.dll");
+        Assert.True(File.Exists(stdlibPath), $"Sharpy.Stdlib.dll not found next to the test assembly: {stdlibPath}");
+        refs.Add(stdlibPath);
+        return refs.ToArray();
     }
 
     [Fact]
