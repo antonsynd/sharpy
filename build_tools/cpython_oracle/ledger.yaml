@@ -117,6 +117,14 @@ deviations:
   spec_ref: docs/language_specification/dunder_invocation_rules.md
   existing_diagnostic: SPY0427
   planned_diagnostic: null
+- id: ellipsis-body-raises
+  category: semantics
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/ellipsis_literal.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: empty-list-shorthand
   category: syntax
   audience: python
@@ -245,6 +253,14 @@ deviations:
   spec_ref: docs/language_specification/match_statement.md
   existing_diagnostic: SPY0468
   planned_diagnostic: null
+- id: min-max-mixed-numeric-promotion
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/builtin_functions.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: missing-main-function
   category: semantics
   audience: python
@@ -372,6 +388,14 @@ deviations:
   code: SPY0338
   spec_ref: docs/language_specification/tuple_unpacking.md
   existing_diagnostic: SPY0338
+  planned_diagnostic: null
+- id: numeric-widening-in-typed-context
+  category: types
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/collection_types.md
+  existing_diagnostic: null
   planned_diagnostic: null
 - id: optional-chaining-no-flatten
   category: operators
