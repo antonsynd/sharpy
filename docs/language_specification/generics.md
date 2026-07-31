@@ -24,6 +24,17 @@ str_box = Box[str]("hello")
 *Implementation*
 - *✅ Native - `class Box<T>`*
 
+A generic type reference must be **constructed** (or used where a type is
+expected — an annotation, or a type argument like `isinstance(x, Box[int])`'s
+second operand). Uncalled, it is not a value: `b = Box[int]` is rejected with
+SPY0339. It has no value form today; user-class constructor references are
+tracked by #1211, and the corresponding *builtin* references (`f = int`) are
+already legal under the constructor-reference rules — see
+[Function Types](function_types.md#constructor-references). Wrong-arity
+references (`Box[int, str]` on a one-parameter class) are rejected with the
+same diagnostic annotation positions use, after PEP-696 trailing defaults are
+filled (`Pair[int]` with `class Pair[K, V = str]` constructs `Pair<int, string>`).
+
 ## Generic Functions
 
 ```python
