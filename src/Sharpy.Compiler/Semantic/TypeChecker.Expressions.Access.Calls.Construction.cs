@@ -99,10 +99,24 @@ internal partial class TypeChecker
                             typeArgs = new List<SemanticType> { elementType };
                         }
                         else if (typeSymbol.Name == BuiltinNames.Dict
-                                 && typeSymbol.TypeParameters.Count == 2
-                                 && elementType is TupleType tt && tt.ElementTypes.Count == 2)
+                                 && typeSymbol.TypeParameters.Count == 2)
                         {
-                            typeArgs = new List<SemanticType> { tt.ElementTypes[0], tt.ElementTypes[1] };
+                            // dict(d) COPIES a dict, so K and V come from the argument itself — its
+                            // element type is only the key (Python iterates keys), which is why the
+                            // pairs arm below cannot answer for it. Without this the expression
+                            // position had no annotation to fall back on and emitted a bare
+                            // `Sharpy.Dict` (CS0305, #1201); the annotated form worked only because
+                            // _expectedType supplied the arguments.
+                            if (argType is GenericType { Name: BuiltinNames.Dict } sourceDict
+                                && sourceDict.TypeArguments.Count == 2)
+                            {
+                                typeArgs = new List<SemanticType>(sourceDict.TypeArguments);
+                            }
+                            else if (elementType is TupleType tt && tt.ElementTypes.Count == 2)
+                            {
+                                // dict(pairs): an iterable of 2-tuples, K/V from the tuple.
+                                typeArgs = new List<SemanticType> { tt.ElementTypes[0], tt.ElementTypes[1] };
+                            }
                         }
                     }
                 }
