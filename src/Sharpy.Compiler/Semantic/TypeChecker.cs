@@ -67,27 +67,37 @@ internal partial class TypeChecker
     // sites skip narrowing for exactly this node, so a redundant re-test of an already-narrowed
     // value neither acquires an accessor (which would degenerate to `x.Value != null` — CS0472)
     // nor presupposes the very fact the test is checking (an isinstance operand cast).
+    //
+    // The two sites that set this are CONDITIONAL: when the expression is not a type test they push
+    // the field's current value, so an enclosing operand survives rather than being cleared. That is
+    // a SAFETY PROPERTY, not an observable behavior, and no test can currently distinguish it —
+    // the three read sites either freeze their ReferenceEquals decision before descending into
+    // subexpressions (CheckMemberAccess, CheckIndexAccess) or are leaves (the identifier read), and a
+    // scope restores the enclosing value on exit either way, so a divergence could only be observed
+    // by a node that is its own descendant. If that read-before-descend ordering ever changes, the
+    // conditional becomes load-bearing and nothing in the suite will tell you (#1218).
     private Expression? _typeTestOperand;
 
     // The TYPE argument of the type test currently being checked (`T` in `isinstance(x, T)`). It names
     // a type rather than denoting a value, so the value-position reference rules (SPY0337, #1170) skip
     // exactly this node — otherwise a union-variant type test would be reported as a variant
-    // constructor used as a value. Save/restored alongside _typeTestOperand.
+    // constructor used as a value. Scoped alongside _typeTestOperand, with the conjunction: the second
+    // argument only names a type when there IS a second argument.
     private Expression? _typeTestTypeArgument;
 
     // The callee expression of the FunctionCall currently being checked (`call.Function`). A
     // generic function reference with explicit type args (`identity[int]`) is an internal carrier,
     // legal *only* as the immediate callee of a call. CheckExpression errors (SPY0335) whenever a
     // GenericFunctionType surfaces on any node that is not this callee, so uncalled references never
-    // escape into a value context (#1138). Save/restored around the callee check in CheckFunctionCall
-    // (mirrors the _typeTestOperand idiom); stored as a node reference so nested calls restore correctly.
+    // escape into a value context (#1138). Scoped around the callee check via ScopedValue.Push (see
+    // Semantic/ScopedValue.cs, #1218); stored as a node reference so nested calls restore correctly.
     private Expression? _currentCallCallee;
 
     // The qualifier expression of the MemberAccess currently being checked (`memberAccess.Object`).
     // A generic TYPE reference is legal there — `Box[int].of(42)`, `Comparer[int].create(f)` name the
     // type a static member is reached through, they do not use it as a value — so the SPY0339
-    // uncalled-type-reference rule skips exactly this node (#1192). Save/restored around the qualifier
-    // check in CheckMemberAccessCore, mirroring the _currentCallCallee idiom.
+    // uncalled-type-reference rule skips exactly this node (#1192). Scoped around the qualifier check
+    // in CheckMemberAccessCore via ScopedValue.Push (see Semantic/ScopedValue.cs, #1218).
     private Expression? _currentMemberAccessQualifier;
 
     // The direct argument expressions (positional and keyword, unwrapped through parentheses) of the
@@ -96,14 +106,18 @@ internal partial class TypeChecker
     // defaultdict(list), isinstance(x, int) — because a C# target type exists there and the legacy
     // synthesized-signature typing feeds generic inference. The constructor-reference rules skip
     // exactly those nodes so #1182 cannot over-fire on them (the failure mode that reverted the
-    // SPY0337 extension, #1170). Set once around the whole argument-checking block in
-    // CheckFunctionCall so every internal argument path is covered; save/restored for nested calls.
+    // SPY0337 extension, #1170). Scoped once around the whole argument-checking block in
+    // CheckFunctionCall via ScopedValue.Push (see Semantic/ScopedValue.cs, #1218), so every internal
+    // argument path is covered and nested calls restore the enclosing set.
     private HashSet<Expression>? _currentCallArguments;
 
     // The builtin constructor reference the call currently being checked went through, when its
     // callee was an ALIAS (`f = int; f("3")`). Set by the callee substitution in
     // CheckFunctionCallCore and read by the CheckFunctionCall wrapper, which records the emission
     // shape once the call's result type — what a collection alias constructs — is known (#1182).
+    // Unlike the other trackers this is a RESULT CHANNEL, not a context: it carries a value OUT of
+    // the core method rather than providing one to it, so its scope must read it back before the
+    // restore. See the comment at the CheckFunctionCall scope (#1218).
     private ConstructorReferenceType? _constructorAliasCallee;
 
     // The index expression of the IndexAccess currently being checked, and the elements of a
@@ -111,8 +125,8 @@ internal partial class TypeChecker
     // value-indexing path rather than the generic-reference resolver — the nested spelling does —
     // and their index names a TYPE ARGUMENT there, never a value. A builtin type name is only ever a
     // type argument in an index position (nothing in Sharpy is indexed BY a type), so the
-    // constructor-reference rules skip exactly these nodes (#1182, #1192). Save/restored around the
-    // index check, mirroring the _currentCallCallee idiom.
+    // constructor-reference rules skip exactly these nodes (#1182, #1192). Scoped around the index
+    // check via ScopedValue.Push (see Semantic/ScopedValue.cs, #1218).
     private HashSet<Expression>? _currentIndexArguments;
 
     // The value expression of the binding currently being checked — an assignment's right-hand side
@@ -120,8 +134,8 @@ internal partial class TypeChecker
     // available becomes a call-only ALIAS exactly here (`f = int`, `f = dict`); the same reference in
     // any other value position has nothing to bind it to and is rejected (SPY0342, #1182). Returns
     // are deliberately absent: a declared return type reaches the pinning rule through _expectedType,
-    // and an unpinnable one is an escape, not an alias. Save/restored around the value check,
-    // mirroring the _currentCallCallee idiom.
+    // and an unpinnable one is an escape, not an alias. Scoped around the value check via
+    // ScopedValue.Push (see Semantic/ScopedValue.cs, #1218).
     private Expression? _currentBindingValue;
 
     // Per-compilation memo for BCL generic instance methods resolved by CLR reflection fallback
