@@ -243,6 +243,15 @@ class Slot[K, V = str]:
     def __init__(self, key: K, value: V):
         self.key = key
         self.value = value
+
+
+class PairBox[A, B]:
+    first: A
+    second: B
+
+    def __init__(self, first: A, second: B):
+        self.first = first
+        self.second = second
 ");
         helper.AddSourceFile("main.spy", "import genlib\n\n" + mainBody);
         helper.CreateProjectFile();
@@ -282,6 +291,16 @@ def use() -> None:
 def use() -> None:
     s = genlib.Slot[int](1, ""a"")
 ").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ModuleQualifiedTypeReference_DeficientArityWithoutDefaults_ReportsWrongTypeArgumentCount()
+    {
+        ModuleQualifiedArityErrors(@"
+def use() -> None:
+    p = genlib.PairBox[int](1, ""a"")
+").Should().ContainSingle()
+            .Which.Should().Be("Type 'PairBox' expects 2 type arguments but got 1");
     }
 
     // ── annotation-position parity ──
