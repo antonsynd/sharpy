@@ -181,6 +181,11 @@ internal partial class RoslynEmitter
             return IdentifierName(rewrite.Target);
         }
 
+        // A builtin type name the TypeChecker pinned to a concrete signature (#1182). The recorded
+        // fact decides the shape and supplies the types; nothing is re-derived here.
+        if (_context.SemanticInfo?.GetConstructorReferenceLowering(name) is { } constructorReference)
+            return GenerateConstructorReference(name, constructorReference);
+
         // Builtin function references (e.g., key=len, map(int, items)) need full qualification.
         // Shadowing check: if the semantic analysis resolved this identifier to a VariableSymbol,
         // it's a local variable shadowing the builtin — skip the builtin emission path.
@@ -245,6 +250,41 @@ internal partial class RoslynEmitter
         // Apply the narrowed-read accessor the TypeChecker recorded for this identifier node, if any
         // (Optional → .Unwrap(), value-nullable → .Value, reference-nullable → !, isinstance → cast).
         return ApplyNarrowedReadLowering(name, expr);
+    }
+
+    /// <summary>
+    /// Emits a builtin constructor reference that semantic analysis pinned to a concrete signature
+    /// (#1182). A pure application of the recorded fact: the family selects the shape, the pinned
+    /// signature supplies the types.
+    ///
+    /// <para>The conversion families emit the <c>Sharpy.Builtins.X</c> method group, so C#'s own
+    /// method-group conversion binds the overload against the pinned delegate type. The collection
+    /// families have no such overload set, so they emit a constructor lambda:
+    /// <c>() =&gt; new Dict&lt;string, int&gt;()</c> for the empty constructor, and
+    /// <c>xs =&gt; new List&lt;int&gt;(xs)</c> for the copy constructor.</para>
+    /// </summary>
+    private ExpressionSyntax GenerateConstructorReference(
+        Identifier name, ConstructorReferenceLowering lowering)
+    {
+        if (lowering.Family == ConstructorReferenceFamily.Conversion)
+        {
+            return MakeGlobalQualifiedName("Sharpy", "Builtins",
+                NameCasing.ResolveMethod(lowering.Name, name.IsNameBacktickEscaped));
+        }
+
+        var constructed = _typeMapper.MapSemanticType(lowering.Signature.ReturnType);
+        if (lowering.Signature.ParameterTypes.Count == 0)
+        {
+            return ParenthesizedLambdaExpression(
+                ParameterList(),
+                ObjectCreationExpression(constructed).WithArgumentList(ArgumentList()));
+        }
+
+        var sourceName = $"__ctor_source_{_tempVarCounter++}";
+        return SimpleLambdaExpression(
+            Parameter(EscapedIdentifier(sourceName)),
+            ObjectCreationExpression(constructed).WithArgumentList(
+                ArgumentList(SingletonSeparatedList(Argument(EscapedIdentifierName(sourceName))))));
     }
 
     /// <summary>
