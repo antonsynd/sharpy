@@ -328,7 +328,7 @@ deviations:
     audience: python
     severity: none
     python_behavior: "`len(s)` returns the number of Unicode code points; indexing yields a single-character string per code point."
-    sharpy_behavior: "`len(s)` returns the number of UTF-16 code units (matching .NET `string.Length`); indexing yields a single UTF-16 code unit. Surrogate pairs count as 2."
+    sharpy_behavior: "`len(s)` returns the number of UTF-16 code units (matching .NET `string.Length`); indexing yields a single UTF-16 code unit. Surrogate pairs count as 2. Axiom precedence: .NET (1) > Python (2)."
     spec_ref: docs/language_specification/string_type.md
     existing_diagnostic: null
     planned_diagnostic: SPY0470
@@ -496,7 +496,7 @@ deviations:
     audience: python
     severity: none
     python_behavior: "`s[i]` indexes by Unicode code point."
-    sharpy_behavior: "`s[i]` indexes by UTF-16 code unit; multi-code-unit characters require surrogate-pair handling."
+    sharpy_behavior: "`s[i]` indexes by UTF-16 code unit; multi-code-unit characters require surrogate-pair handling. Axiom precedence: .NET (1) > Python (2)."
     spec_ref: docs/language_specification/string_type.md
     existing_diagnostic: null
     planned_diagnostic: SPY0470
@@ -787,7 +787,7 @@ deviations:
     audience: python
     severity: warning
     python_behavior: "`is`/`is not` compare object identity. For small ints and interned strings the result is unspecified-but-often-True."
-    sharpy_behavior: "`is`/`is not` lower to reference equality. Using them on value types (struct, primitives) is a warning — they always compare boxed identity."
+    sharpy_behavior: "`is`/`is not` lower to reference equality. Using them on value types (struct, primitives) is a warning — they always compare boxed identity. Axiom precedence: .NET (1) > Python (2)."
     spec_ref: docs/language_specification/identity_operators.md
     existing_diagnostic: SPY0465
     planned_diagnostic: null
@@ -1100,7 +1100,7 @@ deviations:
     audience: python
     severity: none
     python_behavior: "Python `int` is arbitrary precision; no overflow. `2 ** 40` is exact."
-    sharpy_behavior: "`int` maps to `System.Int32` (32-bit). `+`/`-`/`*` follow .NET semantics and wrap under the default unchecked context. `**` is the exception: non-constant integer exponentiation routes through `Sharpy.Builtins.CheckedIntPow` (#905) so it stays exact and raises `OverflowError` instead of silently saturating through a lossy `Math.Pow` round-trip. Use `long` for 64-bit."
+    sharpy_behavior: "`int` maps to `System.Int32` (32-bit). `+`/`-`/`*` follow .NET semantics and wrap under the default unchecked context. `**` is the exception: non-constant integer exponentiation routes through `Sharpy.Builtins.CheckedIntPow` (#905) so it stays exact and raises `OverflowError` instead of silently saturating through a lossy `Math.Pow` round-trip. Use `long` for 64-bit. Axiom precedence: .NET (1) > Python (2)."
     spec_ref: docs/language_specification/primitive_types.md
     existing_diagnostic: null
     planned_diagnostic: null
