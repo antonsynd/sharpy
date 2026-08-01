@@ -62,6 +62,15 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, NarrowedReadLowering> _narrowedReadLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map the TYPE OPERAND node of an `isinstance(x, T)` call to the type test codegen must emit.
+    // Keyed on the operand expression (`call.Arguments[1]`, the same node an IsType narrowing fact
+    // retains) so the emitter and both narrowing resolvers read ONE decided type and none of them
+    // re-derives what the operand's syntax denotes (#1207, #1213, Critical Rule 2 pattern (b)).
+    // Absent ⇒ the operand is not a classified type test: either the callee is a shadowed
+    // `isinstance`, or the shape is one the classifier left to the ordinary runtime-call path.
+    private readonly ConcurrentDictionary<Expression, TypeTestLowering> _typeTestLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map generic function calls to their inferred type arguments
     // Used by codegen to emit explicit type arguments in generated C#
     private readonly ConcurrentDictionary<FunctionCall, List<SemanticType>> _inferredTypeArguments =
@@ -356,6 +365,28 @@ public class SemanticInfo : ISemanticQuery
     public NarrowedReadLowering? GetNarrowedReadLowering(Expression expr)
     {
         return _narrowedReadLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
+    /// Records the type test codegen must emit for an <c>isinstance</c> type operand. Set by the
+    /// TypeChecker's type-operand classifier, which is the single authority on what the operand
+    /// denotes; the emitter switches on <see cref="TypeTestLowering.Kind"/> and the narrowing
+    /// resolvers read <see cref="TypeTestLowering.TestType"/>, so the emitted test and the narrowed
+    /// type agree by construction (#1207, #1213).
+    /// </summary>
+    public void SetTypeTestLowering(Expression typeOperand, TypeTestLowering lowering)
+    {
+        _typeTestLowerings[typeOperand] = lowering;
+    }
+
+    /// <summary>
+    /// Gets the type test recorded for an <c>isinstance</c> type operand, or <c>null</c> when the
+    /// operand was not classified as one (shadowed <c>isinstance</c>, or a shape the classifier
+    /// leaves to the ordinary runtime-call path).
+    /// </summary>
+    public TypeTestLowering? GetTypeTestLowering(Expression typeOperand)
+    {
+        return _typeTestLowerings.TryGetValue(typeOperand, out var lowering) ? lowering : null;
     }
 
     /// <summary>
@@ -852,6 +883,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._narrowedReadLowerings)
             _narrowedReadLowerings.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._typeTestLowerings)
+            _typeTestLowerings.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._inferredTypeArguments)
             _inferredTypeArguments.TryAdd(kvp.Key, kvp.Value);
 
@@ -1064,6 +1098,47 @@ public enum NarrowedReadKind
 /// routes builtin collections through the non-generic-interface rule, #912); <c>null</c> for all other kinds.
 /// </param>
 public sealed record NarrowedReadLowering(NarrowedReadKind Kind, SemanticType? CastTarget = null);
+
+/// <summary>
+/// How codegen emits the type test for a classified <c>isinstance</c> type operand. The TypeChecker's
+/// classifier decides which applies, so the emitter switches on the tag alone and never inspects the
+/// operand expression's shape (#1207, #1213, Critical Rule 2 pattern (b)).
+/// </summary>
+public enum TypeTestLoweringKind
+{
+    /// <summary>
+    /// The operand denotes exactly one closed type. Emit <c>expr is T</c> against
+    /// <see cref="TypeTestLowering.TestType"/>.
+    /// </summary>
+    ClosedType,
+
+    /// <summary>
+    /// The operand named an unparameterized builtin collection (<c>list</c>/<c>set</c>/<c>dict</c>),
+    /// whose element types the test cannot know. Emit the test against the non-generic
+    /// <c>Sharpy.IList</c>/<c>ISet</c>/<c>IDict</c> protocol interface — implemented by every closed
+    /// instantiation via boxing adapters — rather than against the default-argument instantiation
+    /// carried in <see cref="TypeTestLowering.TestType"/>, which would only match that one
+    /// instantiation (#912). The parameterized spelling <c>list[int]</c> is
+    /// <see cref="ClosedType"/>: it names the instantiation, so the test can be exact.
+    /// </summary>
+    ErasedBuiltinCollection
+}
+
+/// <summary>
+/// The type test codegen must emit for an <c>isinstance</c> type operand, materialized per operand
+/// node by the TypeChecker's classifier (#1207, #1213). Node-keyed <see cref="SemanticInfo"/> record
+/// (Critical Rule 2 pattern (b)).
+/// <para>
+/// The classifier is the single authority on what the operand denotes: shapes it cannot lower to one
+/// closed type are rejected at semantic time (SPY0344, SPY0345), so no un-lowerable operand reaches
+/// codegen. <see cref="TestType"/> is also what the narrowing resolvers narrow to, which is what makes
+/// the emitted test and the narrowed type agree by construction rather than by two parallel
+/// derivations.
+/// </para>
+/// </summary>
+/// <param name="Kind">Which emission shape to apply.</param>
+/// <param name="TestType">The resolved closed type the operand denotes — also the narrowing target.</param>
+public sealed record TypeTestLowering(TypeTestLoweringKind Kind, SemanticType TestType);
 
 /// <summary>
 /// The emission shape codegen applies for a safe cast (<c>value to T?</c> / <c>value as? T</c>) whose

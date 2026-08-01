@@ -99,4 +99,13 @@ internal static class BuiltinNames
     public const string DictItemsView = "DictItemsView";
     public const string DictKeyView = "DictKeyView";
     public const string DictValuesView = "DictValuesView";
+
+    /// <summary>
+    /// True for the three generic builtin collections (<c>list</c>, <c>set</c>, <c>dict</c>) that have
+    /// a non-generic Sharpy protocol interface (<c>IList</c>/<c>ISet</c>/<c>IDict</c>) behind them.
+    /// Written without type arguments they name no single runtime type, so a type test against them
+    /// erases to that interface rather than to one instantiation (#912).
+    /// </summary>
+    public static bool IsErasableCollection(string name) =>
+        name is List or Set or Dict;
 }

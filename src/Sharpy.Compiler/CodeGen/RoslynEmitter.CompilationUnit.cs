@@ -655,10 +655,10 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Returns true if the decorator is one of the test framework decorators
     /// (@test, @test.parametrize, @test.skip, @test.skip_if, @test.fixture). Bracket
-    /// attributes (@[...]) are excluded.
+    /// attributes (@[...]) are excluded. Delegates to <see cref="DecoratorNames.IsTestDecorator"/>,
+    /// which the TypeChecker reads too, so "is this a test function" has one answer (#1213).
     /// </summary>
-    internal static bool IsTestDecorator(Decorator d)
-        => !d.IsBracketAttribute && DecoratorNames.KnownTestDecorators.Contains(d.Name);
+    internal static bool IsTestDecorator(Decorator d) => DecoratorNames.IsTestDecorator(d);
 
     /// <summary>
     /// Returns true if the module contains any function or class method decorated with @test

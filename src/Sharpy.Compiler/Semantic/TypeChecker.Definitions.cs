@@ -275,10 +275,17 @@ internal partial class TypeChecker
         _narrowingFlow = ComputeNarrowingFlow(functionDef);
         _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
 
-        // Check function body
-        foreach (var statement in functionDef.Body)
+        // Check function body. A @test-decorated body's `assert` statements are rewritten wholesale
+        // into xUnit assertions by the emitter, so the type-test classifier steps aside inside them
+        // (see _testAssertTest). Nested functions inherit the flag, mirroring how the emitter's
+        // _isInTestFunction propagates through nested generation.
+        using (ScopedValue.Push(ref _inTestFunction,
+                   _inTestFunction || functionDef.Decorators.Any(DecoratorNames.IsTestDecorator)))
         {
-            CheckStatement(statement);
+            foreach (var statement in functionDef.Body)
+            {
+                CheckStatement(statement);
+            }
         }
 
         _narrowingFlow = previousFlow;

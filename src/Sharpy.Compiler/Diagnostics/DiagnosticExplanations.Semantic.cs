@@ -145,6 +145,38 @@ public static partial class DiagnosticExplanations
             + "(`f = int` then `f(\"42\")`), or wrap it in a lambda to fix the signature yourself "
             + "(`g = lambda s: int(s)`).");
 
+        Add(dict, DiagnosticCodes.Semantic.MultiTypeTypeTest,
+            "isinstance takes a single type", "Semantic",
+            "Python's isinstance(x, (A, B)) tests against a tuple of types. Sharpy keeps the form "
+            + "single-typed on purpose: a successful check narrows the value to one concrete type for "
+            + "the rest of the branch, and a tuple has no single type to narrow to — Sharpy has no "
+            + "usable union type to narrow to either, so a multi-type test would return a correct "
+            + "boolean and then silently fail to narrow at the very next line. A type test that "
+            + "compiles but cannot narrow is worse than a clean refusal, so this is an error rather "
+            + "than a hint (Axiom 3 over Axiom 2 — see docs/deviations.yaml). The @test assertion "
+            + "form (`assert isinstance(x, (A, B))` inside a @test function) is unaffected: it lowers "
+            + "to an xUnit assertion that only needs the boolean.",
+            "x: object = 5\nif isinstance(x, (int, str)):  # no single type to narrow to\n    ...",
+            "Combine single-typed checks with `or` when you only need the boolean:\n"
+            + "  if isinstance(x, int) or isinstance(x, str): ...\n"
+            + "To narrow, test one type at a time (`if isinstance(x, int): ... elif isinstance(x, str): ...`), "
+            + "or model the alternatives as a tagged union and use `match`.");
+
+        Add(dict, DiagnosticCodes.Semantic.OpenGenericTypeTest,
+            "Type test needs a closed generic type", "Semantic",
+            "A generic type name on its own — `Box` for `class Box[T]` — does not name a type that can "
+            + "be tested for. .NET reifies generics, so `Box<int>` and `Box<str>` are different runtime "
+            + "types and there is no single 'Box' to check against; and a successful test would have to "
+            + "narrow the value to `Box[T]` for an unknown T, which is not spellable. Sharpy fills the "
+            + "type arguments in for you when the value's own static type determines them (testing a "
+            + "`Box[int]` against `Box` checks `Box[int]`), and rejects the test when nothing does. "
+            + "Python accepts the open form because its generics are erased; Sharpy diverges here "
+            + "deliberately (Axiom 1 and Axiom 3 over Axiom 2 — see docs/deviations.yaml).",
+            "x: object = Box[int](5)\nif isinstance(x, Box):  # which Box?\n    ...",
+            "Name the closed type: `isinstance(x, Box[int])`. If the value could hold any "
+            + "parameterization, test against a non-generic base class or interface that all of them "
+            + "share, or model the cases as a tagged union and use `match`.");
+
         Add(dict, DiagnosticCodes.Semantic.CallSyntaxOnlyReference, "Form must be called, not referenced", "Semantic",
             "Some forms exist only as call syntax and have no first-class value: 'isinstance' is a compile-time narrowing construct rather than a function, and a union variant constructor (Shape.Circle) names a case rather than a callable. Referencing one as a value is rejected deliberately, like Ok/Some (SPY0230) and generic function references (SPY0335). Python permits `g = isinstance`; Sharpy does not — see docs/deviations.yaml. A bare builtin type constructor reference (`f = dict`) looks similar but is NOT rejected: it is a value with no natural type, handled by the constructor-reference rules (SPY0342).",
             "g = isinstance  # cannot be used as a value\nmk = Shape.Circle",

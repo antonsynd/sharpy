@@ -637,12 +637,15 @@ public static partial class DiagnosticExplanations
             "No action needed — async comprehensions are supported inside 'async def' functions.");
 
         Add(dict, DiagnosticCodes.Validation.SingleIsinstanceTypeHint,
-            "isinstance() takes exactly one type argument",
+            "isinstance() takes exactly one type argument (retired — see SPY0344)",
             "Validation",
             "Unlike Python, Sharpy's isinstance() accepts only a single type, not a tuple of types. This keeps the " +
             "result type narrowing precise (the value is narrowed to that one type) and avoids tuple-shaped " +
-            "argument quirks. Compose multiple checks with `or`.",
-            "if isinstance(x, (int, str)):  # not supported\n    ...",
+            "argument quirks. Compose multiple checks with `or`. This was a HINT, so compilation continued and " +
+            "the tuple form went on to fail inside the generated C# as a compiler ICE (SPY0908). The rejection is " +
+            "now a semantic-time error carrying this same guidance — SPY0344, emitted by the isinstance " +
+            "type-operand classifier (#1213). The code is retained as a retired, reserved number and is never reused.",
+            "if isinstance(x, (int, str)):  # SPY0344 — not supported\n    ...",
             "Combine type checks with `or`: `if isinstance(x, int) or isinstance(x, str): ...`");
 
         Add(dict, DiagnosticCodes.Validation.NegativeTupleIndexHint,

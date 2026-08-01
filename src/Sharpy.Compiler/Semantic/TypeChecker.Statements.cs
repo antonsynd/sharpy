@@ -1349,7 +1349,12 @@ internal partial class TypeChecker
 
     private void CheckAssert(AssertStatement assertStmt)
     {
-        var testType = CheckExpression(assertStmt.Test);
+        // Inside a @test function the emitter rewrites the whole assert into an xUnit assertion
+        // rather than lowering its test as an ordinary expression, so the type-test classifier
+        // steps aside for exactly this expression (see _testAssertTest).
+        using (ScopedValue.Push(ref _testAssertTest, _inTestFunction ? assertStmt.Test : null))
+            CheckExpression(assertStmt.Test);
+
         if (assertStmt.Message != null)
         {
             CheckExpression(assertStmt.Message);

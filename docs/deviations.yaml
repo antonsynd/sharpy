@@ -430,15 +430,15 @@ deviations:
         results: list[int] = [x async for x in source()]
 
   - id: isinstance-single-type
-    code: null
+    code: SPY0344
     category: stdlib
     audience: python
-    severity: none
+    severity: error
     python_behavior: "`isinstance(x, (A, B))` checks against a tuple of types."
-    sharpy_behavior: "`isinstance()` accepts a single type only. Combine multiple checks with explicit `or`, or use a tagged union / pattern matching."
+    sharpy_behavior: "`isinstance()` accepts a single type only, so a successful check narrows to one concrete type. A tuple has nothing to narrow to (Sharpy has no usable union type), and a test that compiles but cannot narrow is worse than a clean refusal — so this is an error, not a hint. Combine multiple checks with explicit `or`, or use a tagged union / pattern matching. Inside a `@test` function, `assert isinstance(x, (A, B))` is unaffected: it lowers to an xUnit assertion that only needs the boolean."
     spec_ref: docs/language_specification/builtin_functions.md
-    existing_diagnostic: null
-    planned_diagnostic: SPY0475
+    existing_diagnostic: SPY0344
+    planned_diagnostic: null
     example:
       python: |
         if isinstance(x, (int, str)):
@@ -447,6 +447,24 @@ deviations:
         if isinstance(x, int) or isinstance(x, str):
             ...
         # Note: 'or' does not narrow — see type_narrowing.md
+
+  - id: isinstance-open-generic
+    code: SPY0345
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`isinstance(b, Box)` accepts a bare generic class (generics are erased at runtime), and `isinstance(b, Box[int])` raises TypeError."
+    sharpy_behavior: "Reversed, because .NET reifies generics. A bare generic name is accepted only when the subject's own static type determines the type arguments (a `Box[int]` tested against `Box` tests `Box[int]`); otherwise it is rejected, because there is no single runtime `Box` and a successful test could not narrow to a spellable type. The closed spelling `isinstance(x, Box[int])` is the supported form and does narrow."
+    spec_ref: docs/language_specification/builtin_functions.md
+    existing_diagnostic: SPY0345
+    planned_diagnostic: null
+    example:
+      python: |
+        if isinstance(x, Box):        # any parameterization
+            ...
+      sharpy: |
+        if isinstance(x, Box[int]):   # names the runtime type; narrows to Box[int]
+            ...
 
   - id: no-negative-tuple-indexing
     code: SPY0259

@@ -194,6 +194,12 @@ internal partial class TypeChecker
         }
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
+        // Decide what an `isinstance` TYPE OPERAND denotes, once, here. Runs after argument checking
+        // because the accepted cases need the subject's static type (to fill a bare generic's vector)
+        // and the module-qualified operand's recorded type. Rejects every shape that cannot lower to
+        // one closed type, so none reaches codegen (#1207, #1213).
+        ClassifyTypeTestOperand(call, callee, argTypes);
+
         MarkTypeReferenceArguments(call);
         MarkTypeFactoryArguments(call, callee);
 
@@ -390,6 +396,283 @@ internal partial class TypeChecker
         }
         return SemanticType.Unknown;
     }
+
+    // ============================================================
+    // isinstance type-operand classification (#1207, #1213)
+    // ============================================================
+
+    /// <summary>
+    /// Decides what the TYPE OPERAND of an <c>isinstance(x, T)</c> call denotes, and records the
+    /// resulting type test on the operand node for codegen and for narrowing to read.
+    /// <para>
+    /// This is the single authority on the question. Before it existed, nothing classified the operand
+    /// during semantic analysis: any shape the checker tolerated reached the emitter, which re-derived
+    /// the C# type from the operand's syntax and produced raw Roslyn errors for the shapes it could not
+    /// spell — an open generic (<c>Box</c> → <c>typeof(Box&lt;T&gt;)</c>, CS0305, #1207) and a tuple of
+    /// types (CS1503/CS0119, #1213), both surfacing as SPY0908. Un-lowerable shapes must be
+    /// semantic-time diagnostics (#1146), so those two are now errors here and never reach codegen.
+    /// </para>
+    /// <para>
+    /// The governing rule for what to accept is narrowing, not expressiveness: <b>a type test that
+    /// compiles but cannot narrow is worse than a clean refusal.</b> That is why the tuple form stays
+    /// rejected even though <c>Sharpy.Builtins.Isinstance(object, params Type[])</c> exists and would
+    /// return a correct boolean — no narrowing fact is produced for a tuple operand and Sharpy has no
+    /// usable union type to narrow to, so the binding would silently fail on the next line. It is also
+    /// why the open generic is rejected rather than lowered to a <c>GetGenericTypeDefinition()</c>
+    /// runtime check: a successful test would narrow to <c>Box[T]</c> for an unknown T, which is not
+    /// spellable.
+    /// </para>
+    /// <para>
+    /// Shapes this method does not recognise are left unrecorded, and the ordinary call path lowers
+    /// them exactly as before — classification adds decisions, it does not remove fallbacks.
+    /// </para>
+    /// </summary>
+    private void ClassifyTypeTestOperand(FunctionCall call, Expression callee, List<SemanticType> argTypes)
+    {
+        if (callee is not Identifier { Name: BuiltinNames.Isinstance } isinstanceId)
+            return;
+        if (call.Arguments.Length != 2 || call.KeywordArguments.Length != 0)
+            return;
+
+        // Shadowing guard, carried over from the hint this classifier's tuple diagnostic replaces
+        // (TransitionWarningValidator.CheckIsinstanceSingleType). A user-defined `isinstance` — their
+        // own function or a variable — is an ordinary call whose second argument is an ordinary value.
+        // Builtins are seeded into the global scope, so the name always resolves; identity against the
+        // registry's own overloads is what separates the builtin from a shadow.
+        var resolvedCallee = _symbolTable.Lookup(isinstanceId.Name);
+        var builtinIsinstance = _symbolTable.BuiltinRegistry.GetFunctionOverloads(BuiltinNames.Isinstance);
+        if (resolvedCallee is not FunctionSymbol calleeFunction
+            || builtinIsinstance == null
+            || !builtinIsinstance.Contains(calleeFunction))
+        {
+            return;
+        }
+
+        // A @test-decorated function's `assert` is not an ordinary expression: the emitter rewrites
+        // the whole statement into an xUnit assertion (RoslynEmitter.GenerateTestAssert), pre-empting
+        // the call lowering this classifier feeds, and that rewrite carries its own isinstance forms —
+        // including the multi-type tuple spelling rejected below, which it lowers to
+        // `a is T1 || a is T2` for a boolean nobody narrows through. Rejecting there would break a form
+        // that path handles correctly. The rewrite is a special-purpose test lowering, not a precedent
+        // for general expression lowering, and this batch deliberately does not generalize it; its own
+        // un-lowerable shapes belong to the sibling type-operand sweep.
+        if (IsTestAssertTypeTest(call))
+            return;
+
+        var operandNode = call.Arguments[1];
+        var typeOperand = UnwrapParenthesized(operandNode);
+        var subjectType = argTypes.Count > 0 ? argTypes[0] : null;
+
+        // The tuple spelling — Python's OR-of-types. Rejected by design; see the class-level rationale.
+        if (typeOperand is TupleLiteral tuple)
+        {
+            var typeNames = string.Join(", ", tuple.Elements.Select(DescribeTypeOperand));
+            AddError(
+                $"isinstance() in Sharpy accepts only a single type argument, but a tuple of "
+                    + $"{tuple.Elements.Length} types ({typeNames}) was passed. "
+                    + "Unlike Python's `isinstance(x, (A, B))`, Sharpy keeps the form single-typed "
+                    + "so that successful checks narrow to one concrete type. "
+                    + "Combine multiple checks with `or` (e.g., "
+                    + "`isinstance(x, A) or isinstance(x, B)`), or use a tagged union with `match`.",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.MultiTypeTypeTest,
+                span: call.Span);
+            return;
+        }
+
+        // A bare name is the only shape that can be an OPEN generic, so it is the only one that needs
+        // the vector-filling rule; every other shape either names its type arguments or has none.
+        if (typeOperand is Identifier typeId)
+        {
+            ClassifyBareTypeNameOperand(call, operandNode, typeId, subjectType);
+            return;
+        }
+
+        if (ResolveTypeTestOperandType(typeOperand) is { } resolved)
+            _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, resolved));
+    }
+
+    /// <summary>
+    /// Classifies a bare type NAME operand (<c>isinstance(x, Dog)</c>, <c>isinstance(x, list)</c>,
+    /// <c>isinstance(x, Box)</c>). Three outcomes: a primitive or non-generic type is a closed test;
+    /// an unparameterized builtin collection is a type-erased test against its protocol interface
+    /// (#912); a generic type name gets its vector filled from the subject's own static type, and is
+    /// rejected (SPY0345) when nothing determines it.
+    /// </summary>
+    private void ClassifyBareTypeNameOperand(
+        FunctionCall call, Expression operandNode, Identifier typeId, SemanticType? subjectType)
+    {
+        if (ResolveBuiltinPrimitiveTypeName(typeId.Name) is { } primitive)
+        {
+            _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, primitive));
+            return;
+        }
+
+        if (_symbolTable.Lookup(typeId.Name) is not TypeSymbol typeSymbol)
+            return;
+
+        // list/set/dict written without type arguments: the test cannot know the element types, so it
+        // erases to the non-generic protocol interface. BuildIsInstanceNarrowedType is what narrowing
+        // resolves the same operand to, and it fills default `object` arguments so member access on the
+        // narrowed value still resolves — the two answers stay the same object here by construction.
+        if (typeSymbol.IsGeneric && BuiltinNames.IsErasableCollection(typeSymbol.Name))
+        {
+            _semanticInfo.SetTypeTestLowering(operandNode,
+                new TypeTestLowering(TypeTestLoweringKind.ErasedBuiltinCollection, BuildIsInstanceNarrowedType(typeSymbol)));
+            return;
+        }
+
+        if (!typeSymbol.IsGeneric)
+        {
+            _semanticInfo.SetTypeTestLowering(operandNode,
+                new TypeTestLowering(TypeTestLoweringKind.ClosedType, BuildIsInstanceNarrowedType(typeSymbol)));
+            return;
+        }
+
+        // A generic user type named without its arguments. .NET reifies generics, so `Box` alone names
+        // no runtime type; fill the vector from the subject's own static type when it determines one.
+        if (FillTypeArgumentsFromSubject(typeSymbol, subjectType) is { } closedGeneric)
+        {
+            _semanticInfo.SetTypeTestLowering(operandNode,
+                new TypeTestLowering(TypeTestLoweringKind.ClosedType, closedGeneric));
+            return;
+        }
+
+        var suggestion = string.Join(", ", typeSymbol.TypeParameters.Select(_ => "..."));
+        AddError(
+            $"'{typeId.Name}' is a generic type, so it does not name a single type to test against, "
+                + $"and nothing at this call determines its type arguments. "
+                + $"Write the closed spelling — for example `{BuiltinNames.Isinstance}(..., {typeId.Name}[{suggestion}])` — "
+                + "or test against a non-generic base type. Unlike Python, Sharpy's generics are real "
+                + "runtime types, and a successful open test could not narrow to a type you can write.",
+            typeId.LineStart, typeId.ColumnStart,
+            code: DiagnosticCodes.Semantic.OpenGenericTypeTest,
+            span: typeId.Span ?? call.Span);
+    }
+
+    /// <summary>
+    /// Fills a generic type's argument vector from the type test's SUBJECT — <c>isinstance(b, Box)</c>
+    /// where <c>b: Box[int]</c> tests <c>Box[int]</c>. Only the subject's own instantiation is
+    /// consulted (through Optional/nullable wrappers): walking a base chain would need argument
+    /// substitution per level, and the rejection message names a spelling that always works, so a
+    /// subject typed by a generic BASE class gets an actionable error rather than a guess.
+    /// </summary>
+    private static GenericType? FillTypeArgumentsFromSubject(TypeSymbol typeSymbol, SemanticType? subjectType)
+    {
+        var subject = subjectType switch
+        {
+            OptionalType optional => optional.UnderlyingType,
+            NullableType nullable => nullable.UnderlyingType,
+            _ => subjectType
+        };
+
+        return subject is GenericType generic
+            && generic.TypeArguments.Count == typeSymbol.TypeParameters.Count
+            && (ReferenceEquals(generic.GenericDefinition, typeSymbol) || generic.Name == typeSymbol.Name)
+                ? generic
+                : null;
+    }
+
+    /// <summary>
+    /// Resolves a type-operand expression that already names its type arguments (or has none):
+    /// a module-qualified name (<c>isinstance(x, mod.Type)</c>, #903) or a closed generic spelling
+    /// (<c>isinstance(x, Box[int])</c>). Returns null for anything that does not denote a type, which
+    /// leaves the call on the ordinary path it took before classification existed.
+    /// </summary>
+    private SemanticType? ResolveTypeTestOperandType(Expression typeOperand)
+    {
+        switch (UnwrapParenthesized(typeOperand))
+        {
+            case Identifier typeId:
+                return ResolveBuiltinPrimitiveTypeName(typeId.Name)
+                    ?? (_symbolTable.Lookup(typeId.Name) is TypeSymbol { IsGeneric: false } typeSymbol
+                        ? new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name }
+                        : null);
+
+            // A module-qualified type reads the type the checker already recorded for the expression.
+            case MemberAccess memberAccess:
+                return _semanticInfo.GetExpressionType(memberAccess) as UserDefinedType;
+
+            // `Box[int]` / `dict[str, int]` — the base name plus an argument list, which is a single
+            // element or a TupleLiteral of them.
+            case IndexAccess { Object: Identifier baseName } indexAccess:
+                {
+                    if (_symbolTable.Lookup(baseName.Name) is not TypeSymbol { IsGeneric: true } genericDefinition)
+                        return null;
+
+                    var argumentNodes = UnwrapParenthesized(indexAccess.Index) is TupleLiteral argumentTuple
+                        ? (IReadOnlyList<Expression>)argumentTuple.Elements
+                        : new[] { indexAccess.Index };
+                    if (argumentNodes.Count != genericDefinition.TypeParameters.Count)
+                        return null;
+
+                    var typeArguments = new List<SemanticType>(argumentNodes.Count);
+                    foreach (var argumentNode in argumentNodes)
+                    {
+                        if (ResolveTypeTestOperandType(argumentNode) is not { } argument)
+                            return null;
+                        typeArguments.Add(argument);
+                    }
+
+                    return new GenericType
+                    {
+                        Name = genericDefinition.Name,
+                        TypeArguments = typeArguments,
+                        GenericDefinition = genericDefinition
+                    };
+                }
+
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
+    /// Maps a builtin primitive type NAME to its singleton, or null when the name is not one.
+    /// Shared by every arm of the classifier so <c>int</c> means the same thing bare, module-qualified,
+    /// and as a type argument.
+    /// </summary>
+    private static SemanticType? ResolveBuiltinPrimitiveTypeName(string name) => name switch
+    {
+        BuiltinNames.Int => SemanticType.Int,
+        BuiltinNames.Long => SemanticType.Long,
+        BuiltinNames.Float => SemanticType.Float,
+        BuiltinNames.Float32 => SemanticType.Float32,
+        BuiltinNames.Decimal => SemanticType.Decimal,
+        BuiltinNames.Double => SemanticType.Double,
+        BuiltinNames.Bool => SemanticType.Bool,
+        BuiltinNames.Str => SemanticType.Str,
+        _ => null
+    };
+
+    /// <summary>
+    /// True when <paramref name="call"/> is the test expression of an <c>assert</c> inside a
+    /// <c>@test</c>-decorated function (directly, parenthesized, or under <c>not</c>) — the statement
+    /// the emitter rewrites into an xUnit assertion instead of lowering as an expression.
+    /// </summary>
+    private bool IsTestAssertTypeTest(FunctionCall call)
+    {
+        if (_testAssertTest == null)
+            return false;
+
+        var test = UnwrapParenthesized(_testAssertTest);
+        if (test is UnaryOp { Operator: UnaryOperator.Not } negated)
+            test = UnwrapParenthesized(negated.Operand);
+
+        return ReferenceEquals(test, call);
+    }
+
+    /// <summary>
+    /// Best-effort textual rendering of a type-position expression for the multi-type diagnostic.
+    /// Falls back to a placeholder when the expression is not a simple name.
+    /// </summary>
+    private static string DescribeTypeOperand(Expression expr) => expr switch
+    {
+        Identifier id => id.Name,
+        MemberAccess ma => $"{DescribeTypeOperand(ma.Object)}.{ma.Member}",
+        IndexAccess ia => $"{DescribeTypeOperand(ia.Object)}[...]",
+        _ => "<type>"
+    };
 
     /// <summary>
     /// Checks <c>tuple[int, str](t)</c> — an explicitly spelled tuple type applied to a tuple (#1200).
@@ -1145,10 +1428,10 @@ internal partial class TypeChecker
             return matchingOverload.ReturnType;
         }
 
-        // isinstance must always type to bool even when no overload matched,
-        // so that invalid-form diagnostics (SPY0475 tuple form, "requires 1 type
-        // arguments" parameterized form) surface from TransitionWarningValidator,
-        // Roslyn, and TypeResolver respectively — not a premature SPY0224.
+        // isinstance must always type to bool even when no overload matched. No overload accepts a
+        // tuple or a bare generic name, and the diagnostic for those shapes belongs to the type-operand
+        // classifier (SPY0344/SPY0345, #1207/#1213) — a premature SPY0224 here would report the
+        // symptom instead.
         if (id.Name == BuiltinNames.Isinstance)
             return SemanticType.Bool;
 

@@ -22,8 +22,6 @@ namespace Sharpy.Compiler.Semantic.Validation;
 ///         heterogeneous tuple.</item>
 ///   <item>SPY0473 — <c>@classmethod</c> decorator usage — not supported in Sharpy;
 ///         use <c>@static</c> with explicit type parameters or a factory method.</item>
-///   <item>SPY0475 — <c>isinstance(x, (T1, T2))</c> tuple-of-types form
-///         (Sharpy accepts only a single type argument).</item>
 ///   <item>SPY0476 — negative tuple index literal (<c>t[-1]</c>) — Sharpy tuples
 ///         do not support negative indexing; use the positive index instead.</item>
 ///   <item>SPY0477 — <c>@static</c> on a class/struct/interface method that already
@@ -83,7 +81,6 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     public override void VisitFunctionCall(FunctionCall node)
     {
         CheckUtf16StringLength(node);
-        CheckIsinstanceSingleType(node);
         base.VisitFunctionCall(node);
     }
 
@@ -239,61 +236,6 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
             node.LineStart, node.ColumnStart,
             code: DiagnosticCodes.Validation.StructValueSemanticsHint,
             span: node.Span);
-    }
-
-    // ──────────────────────────────────────────────────────────────────────
-    // SPY0475 — isinstance(x, (T1, T2)) tuple-of-types form
-    // ──────────────────────────────────────────────────────────────────────
-
-    private void CheckIsinstanceSingleType(FunctionCall node)
-    {
-        // Pattern: isinstance(<expr>, (T1, T2[, ...])).
-        // We match by syntax (Identifier "isinstance" + TupleLiteral as second arg)
-        // because the call typically fails to resolve a target (no overload accepts
-        // a tuple), so SemanticInfo.GetCallTarget would return null and a strict
-        // builtin-resolution check would suppress the hint exactly when it's needed.
-        if (AstHelper.UnwrapParenthesized(node.Function) is not Identifier id || id.Name != BuiltinNames.Isinstance)
-            return;
-
-        // Skip if the user has shadowed `isinstance` with their own non-builtin
-        // value — the resolved identifier symbol would be a VariableSymbol then.
-        var resolvedSymbol = Context.SemanticInfo.GetIdentifierSymbol(id);
-        if (resolvedSymbol is VariableSymbol)
-            return;
-
-        if (node.Arguments.Length < 2)
-            return;
-
-        if (node.Arguments[1] is not TupleLiteral tuple)
-            return;
-
-        var typeNames = string.Join(", ", tuple.Elements.Select(DescribeTypeArg));
-
-        AddHint(
-            $"isinstance() in Sharpy accepts only a single type argument, but a tuple of "
-                + $"{tuple.Elements.Length} types ({typeNames}) was passed. "
-                + "Unlike Python's `isinstance(x, (A, B))`, Sharpy keeps the form single-typed "
-                + "so that successful checks narrow to one concrete type. "
-                + "Combine multiple checks with `or` (e.g., "
-                + "`isinstance(x, A) or isinstance(x, B)`), or use a tagged union with `match`.",
-            node.LineStart, node.ColumnStart,
-            code: DiagnosticCodes.Validation.SingleIsinstanceTypeHint,
-            span: node.Span);
-    }
-
-    /// <summary>
-    /// Best-effort textual rendering of a type-position expression inside the
-    /// rejected <c>isinstance</c> tuple literal. Falls back to a placeholder
-    /// when the expression isn't a simple identifier or member access.
-    /// </summary>
-    private static string DescribeTypeArg(Expression expr)
-    {
-        return expr switch
-        {
-            Identifier id => id.Name,
-            MemberAccess ma => $"{DescribeTypeArg(ma.Object)}.{ma.Member}",
-            _ => "?",
-        };
     }
 
     // ──────────────────────────────────────────────────────────────────────

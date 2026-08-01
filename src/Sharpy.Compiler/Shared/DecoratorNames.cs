@@ -80,4 +80,13 @@ internal static class DecoratorNames
         TestSkipIf,
         TestFixture,
     }.ToImmutableHashSet();
+
+    /// <summary>
+    /// Returns true when the decorator registers its function as a test entry point
+    /// (<c>@test</c>, <c>@test.parametrize</c>, <c>@test.skip</c>, <c>@test.skip_if</c>,
+    /// <c>@test.fixture</c>). Bracket attributes (<c>@[...]</c>) are excluded. Shared by the
+    /// TypeChecker and the emitter so both agree on what a test function is.
+    /// </summary>
+    public static bool IsTestDecorator(Parser.Ast.Decorator decorator)
+        => !decorator.IsBracketAttribute && KnownTestDecorators.Contains(decorator.Name);
 }

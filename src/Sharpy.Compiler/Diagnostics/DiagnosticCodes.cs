@@ -364,8 +364,9 @@ public static class DiagnosticCodes
 
         public const string ModuleLevelExecutableStatement = "SPY0340"; // Active
         public const string ModuleLevelNoTypeAnnotation = "SPY0341"; // Active
-        // SPY0343-SPY0349: Reserved for future module-level diagnostics (SPY0342 is the
-        // value-position reference family's overflow slot — see the region below)
+        // SPY0343, SPY0346-SPY0349: Reserved for future module-level diagnostics (SPY0342 is the
+        // value-position reference family's overflow slot and SPY0344-SPY0345 the type-test family —
+        // see the regions below)
 
         #endregion
 
@@ -375,6 +376,18 @@ public static class DiagnosticCodes
         // adjacent to that band rather than appended at the end of the semantic range so the family
         // stays readable; the module-level reserve above shrinks by one slot to pay for it.
         public const string UnpinnedConstructorReference = "SPY0342"; // Active — a builtin type constructor reference used as a value with no signature available to pin it to (#1182)
+
+        #endregion
+
+        #region Type-test operands (SPY0344-SPY0345)
+
+        // The isinstance type-operand classifier's rejections. Both say the same thing in two shapes:
+        // a type test must name ONE closed type, because a test that compiles but cannot narrow is
+        // worse than a clean refusal (#1207, #1213). Borrowed from the module-level reserve above,
+        // which the semantic range's exhaustion left as the only contiguous space; SPY0343 stays
+        // reserved.
+        public const string MultiTypeTypeTest = "SPY0344";          // Active — isinstance against a tuple of types; Sharpy keeps the form single-typed so a successful check narrows (#1213)
+        public const string OpenGenericTypeTest = "SPY0345";        // Active — isinstance against a bare generic type name whose type arguments the operand does not determine (#1207)
 
         #endregion
 
@@ -592,7 +605,7 @@ public static class DiagnosticCodes
         public const string HomogeneousVariadicHint = "SPY0472";      // Active (emitted by TransitionWarningValidator)
         public const string NoClassmethodHint = "SPY0473";            // Active (emitted by TransitionWarningValidator)
         public const string NoAsyncComprehensionHint = "SPY0474";     // Retired (#998 — async comprehensions implemented); reserved, never reused
-        public const string SingleIsinstanceTypeHint = "SPY0475";     // Active
+        public const string SingleIsinstanceTypeHint = "SPY0475";     // Retired — superseded by SPY0344 (#1213): the rejection is a semantic-time error, not a hint, so the tuple form never reaches codegen
         public const string NegativeTupleIndexHint = "SPY0476";       // Active (emitted by TransitionWarningValidator)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
         // SPY0478: Reserved for future transition diagnostics
