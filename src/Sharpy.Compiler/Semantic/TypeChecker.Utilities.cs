@@ -262,45 +262,27 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Resolves the target type of an <c>IsType</c> narrowing fact (from <c>isinstance(x, T)</c>).
-    /// Mirrors the isinstance leaf of <see cref="ExtractNarrowedTypes"/>: builtin primitive names map
-    /// to their singletons, bare type names resolve via the symbol table through
-    /// <see cref="BuildIsInstanceNarrowedType"/>, and module-qualified names read the already
-    /// type-checked expression's <see cref="UserDefinedType"/>.
+    /// Resolves the target type of an <c>IsType</c> narrowing fact (from <c>isinstance(x, T)</c>) —
+    /// the read-side resolution, and, through the isinstance leaf of
+    /// <see cref="ExtractNarrowedTypes"/>, the condition-side one too.
+    /// <para>
+    /// Both read the type the TypeChecker's type-operand classifier recorded on this very operand
+    /// node, which is also the type codegen emits the <c>is</c> test against. Narrowing and the
+    /// emitted test therefore agree by construction rather than by two parallel derivations of the
+    /// same expression — the divergence that let #1207 produce a narrowing fact for <c>Box</c> (no
+    /// type arguments) while the emitter spelled the unspellable <c>Box&lt;T&gt;</c>.
+    /// </para>
+    /// <para>
+    /// Returns null when the operand was not classified as a type test, which is exactly when codegen
+    /// emits no type test either: nothing narrows on the strength of a check that was not made. Facts
+    /// themselves stay symbolic and keyed textually (see <c>NarrowingFact</c>), so this resolution is
+    /// the only place a <c>SemanticType</c> enters the picture, and fact equality — the property that
+    /// lets two <c>isinstance(x, T)</c> checks survive an intersection join at a CFG merge — is
+    /// untouched.
+    /// </para>
     /// </summary>
-    private SemanticType? ResolveIsTypeFactType(Expression typeExpression)
-    {
-        if (typeExpression is Identifier typeId)
-        {
-            var builtinType = typeId.Name switch
-            {
-                BuiltinNames.Int => SemanticType.Int,
-                BuiltinNames.Long => SemanticType.Long,
-                BuiltinNames.Float => SemanticType.Float,
-                BuiltinNames.Float32 => SemanticType.Float32,
-                BuiltinNames.Decimal => SemanticType.Decimal,
-                BuiltinNames.Double => SemanticType.Double,
-                BuiltinNames.Bool => SemanticType.Bool,
-                BuiltinNames.Str => SemanticType.Str,
-                _ => (SemanticType?)null
-            };
-
-            if (builtinType != null)
-                return builtinType;
-
-            return _symbolTable.Lookup(typeId.Name) is TypeSymbol typeSymbol
-                ? BuildIsInstanceNarrowedType(typeSymbol)
-                : null;
-        }
-
-        if (typeExpression is MemberAccess memberAccess
-            && _semanticInfo.GetExpressionType(memberAccess) is UserDefinedType qualified)
-        {
-            return qualified;
-        }
-
-        return null;
-    }
+    private SemanticType? ResolveIsTypeFactType(Expression typeExpression) =>
+        _semanticInfo.GetTypeTestLowering(typeExpression)?.TestType;
 
     /// <summary>
     /// Returns true if the given type contains any <see cref="TypeParameterType"/>

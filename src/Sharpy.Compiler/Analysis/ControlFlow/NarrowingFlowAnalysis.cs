@@ -195,15 +195,50 @@ internal static class NarrowingConditionInterpreter
 
     /// <summary>
     /// Produces a stable textual descriptor for an <c>isinstance</c> type argument, used as the
-    /// fact's equality key. Handles bare type names and module-qualified names
-    /// (<c>isinstance(x, mod.Type)</c>); returns null for shapes we cannot key.
+    /// fact's equality key. Handles bare type names, module-qualified names
+    /// (<c>isinstance(x, mod.Type)</c>) and the closed generic spelling
+    /// (<c>isinstance(x, Box[int])</c>, <c>isinstance(x, dict[str, int])</c>); returns null for
+    /// shapes we cannot key.
+    /// <para>
+    /// This is a KEYING function, not a type resolution: it stays purely textual so that two checks
+    /// against the same written type at different source locations produce equal facts and survive
+    /// the intersection join at a CFG merge point. Resolution happens later, in the TypeChecker,
+    /// against the type the type-operand classifier recorded.
+    /// </para>
     /// </summary>
     private static string? DescribeTypeExpression(Expression typeExpression) => typeExpression switch
     {
+        Parenthesized paren => DescribeTypeExpression(paren.Expression),
         Identifier id => id.Name,
         MemberAccess ma when DescribeTypeExpression(ma.Object) is { } objKey => $"{objKey}.{ma.Member}",
+        // `Box[int]` — the base name plus its written type arguments. Without this the closed generic
+        // spelling would lower as a type test (the classifier accepts it) and narrow nothing, which is
+        // the compiles-but-cannot-narrow outcome the type-test rules exist to prevent (#1207).
+        IndexAccess { Object: { } baseName } index
+            when DescribeTypeExpression(baseName) is { } baseKey
+                && DescribeTypeArgumentList(index.Index) is { } argsKey => $"{baseKey}[{argsKey}]",
         _ => null
     };
+
+    /// <summary>
+    /// Describes a generic argument list — a single type expression, or the <c>TupleLiteral</c> a
+    /// multi-argument index parses to. Returns null when any element is unkeyable, so a partially
+    /// describable list never produces a key two different types could share.
+    /// </summary>
+    private static string? DescribeTypeArgumentList(Expression index)
+    {
+        if (index is not TupleLiteral elements)
+            return DescribeTypeExpression(index);
+
+        var keys = new List<string>(elements.Elements.Length);
+        foreach (var element in elements.Elements)
+        {
+            if (DescribeTypeExpression(element) is not { } key)
+                return null;
+            keys.Add(key);
+        }
+        return string.Join(", ", keys);
+    }
 }
 
 /// <summary>

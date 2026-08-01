@@ -77,38 +77,25 @@ internal partial class RoslynEmitter
                 return GenerateAsyncioCall(funcName.Name, call);
             }
 
-            // isinstance(expr, Type) → expr is Type
-            // Must intercept BEFORE argument evaluation because the second argument
-            // is a type identifier, not a value expression.
+            // isinstance(expr, T) → expr is T, against the type the semantic phase decided the
+            // operand denotes. Must intercept BEFORE argument evaluation because the second argument
+            // names a type, not a value.
+            //
+            // WHAT THE OPERAND DENOTES IS NOT DECIDED HERE (Critical Rule 2). This arm used to read
+            // the operand expression's shape and map it by name — `MapType(new TypeAnnotation { Name
+            // = typeId.Name })` — which is how a bare generic became the unspellable `Box<T>`
+            // (CS0305 → SPY0908, #1207) and a tuple of type names became a tuple of method groups
+            // (CS1503, #1213). The TypeChecker's type-operand classifier now resolves the operand
+            // once and rejects at semantic time every shape that has no single closed type, so an
+            // un-lowerable operand never arrives here and this arm only applies what it was given.
+            // An operand with no recorded lowering is not a type test at all (a shadowed
+            // `isinstance`, a `System.Type` value) and falls through to the ordinary call below.
             if (funcName.Name == BuiltinFunctionNames.IsInstance
                 && call.Arguments.Length == 2
-                && call.Arguments[1] is Identifier typeId)
+                && _context.SemanticInfo?.GetTypeTestLowering(call.Arguments[1]) is { } typeTest)
             {
                 var value = GenerateExpression(call.Arguments[0]);
-                // Builtin collections (list/dict/set) cannot be type-tested against their
-                // closed generic form (e.g. `is Sharpy.List<object>`), which only matches that
-                // exact instantiation and, for the unparameterized name, fails to compile
-                // (CS0305). Test against the non-generic Sharpy.IList/IDict/ISet protocol
-                // interface instead — implemented by every instantiation via boxing adapters,
-                // mirroring `case list()`/`dict()` pattern lowering (#912).
-                var checkType = TryMapBuiltinCollectionToNonGenericInterface(typeId.Name)
-                    ?? _typeMapper.MapType(new TypeAnnotation { Name = typeId.Name });
-                return BinaryExpression(SyntaxKind.IsExpression, value, checkType);
-            }
-
-            // isinstance(expr, module.Type) → expr is global::...Type (#903)
-            // A module-qualified type argument is a MemberAccess that resolves to an
-            // exported TypeSymbol; emit a type test against its fully-qualified name
-            // rather than letting it fall through to the value-expression path (CS0119).
-            if (funcName.Name == BuiltinFunctionNames.IsInstance
-                && call.Arguments.Length == 2
-                && call.Arguments[1] is MemberAccess typeMemberAccess
-                && TryResolveModuleExportedType(typeMemberAccess) is { } isInstanceTypeRef)
-            {
-                var value = GenerateExpression(call.Arguments[0]);
-                var checkType = BuildTypeNameFromFqn(
-                    GetFullyQualifiedTypeName(isInstanceTypeRef.Symbol, isInstanceTypeRef.OriginalName));
-                return BinaryExpression(SyntaxKind.IsExpression, value, checkType);
+                return BinaryExpression(SyntaxKind.IsExpression, value, MapTypeTestTarget(typeTest));
             }
 
             // Check if this is a type instantiation (calling a class or struct constructor)
@@ -1046,6 +1033,30 @@ internal partial class RoslynEmitter
             BuiltinNames.Set => MakeGlobalQualifiedName("Sharpy", "ISet"),
             _ => null
         };
+
+    /// <summary>
+    /// Renders a classified <c>isinstance</c> type test as the C# type the <c>is</c> operator tests
+    /// against. Pure translation of a decision already made: the kind selects the shape and the
+    /// resolved type supplies the name (#1207, #1213).
+    /// </summary>
+    private TypeSyntax MapTypeTestTarget(TypeTestLowering typeTest)
+    {
+        if (typeTest.Kind == TypeTestLoweringKind.ErasedBuiltinCollection
+            && typeTest.TestType is GenericType erasedCollection
+            && TryMapBuiltinCollectionToNonGenericInterface(erasedCollection.Name) is { } protocolInterface)
+        {
+            return protocolInterface;
+        }
+
+        // A user/CLR type reaches its name through the construction position — the same position the
+        // module-qualified arm used before classification (#903) and the one TypeSyntaxMapper documents
+        // for isinstance and except clauses. Going through MapSemanticType instead would take the
+        // reference position and re-qualify non-generic CLR types differently (#1139).
+        if (typeTest.TestType is UserDefinedType { Symbol: { } typeSymbol } userDefined)
+            return BuildTypeNameFromFqn(GetFullyQualifiedTypeName(typeSymbol, userDefined.Name));
+
+        return _typeMapper.MapSemanticType(typeTest.TestType);
+    }
 
     /// <summary>
     /// Resolves a member access of the form <c>module.TypeName</c> (or nested
