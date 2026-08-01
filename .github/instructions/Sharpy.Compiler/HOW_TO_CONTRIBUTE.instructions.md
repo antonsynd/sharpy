@@ -70,6 +70,59 @@ return MethodDeclaration(returnType, Identifier("MyMethod"))
 $"public {returnType} MyMethod() {{ }}"
 ```
 
+**A lowering evaluates each operand expression exactly once.**
+
+An operand arrives as an `ExpressionSyntax` the emitter did not build and cannot inspect for
+side effects. Splicing it into two positions of the emitted tree — classically a guard and the
+guarded value — makes `x % f()` call `f()` twice. Nothing in the fixture suite catches this by
+accident, because fixtures overwhelmingly use side-effect-free operands and a doubly-evaluated
+operand then produces identical output.
+
+```csharp
+// ❌ The divisor is spliced twice — `x % f()` calls f() twice (#1216)
+return ParenthesizedExpression(ConditionalExpression(
+    BinaryExpression(SyntaxKind.EqualsExpression, right, Literal(0m)),
+    ThrowExpression(...),
+    InvocationExpression(...).AddArgumentListArguments(Argument(left), Argument(right))));
+
+// ✅ The guard lives in the Core helper; each operand is spliced once
+return InvocationExpression(
+    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+        MakeGlobalQualifiedName("Sharpy", "Builtins"), IdentifierName("DecimalMod")))
+    .AddArgumentListArguments(Argument(left), Argument(right));
+```
+
+Three remedies, in order of preference:
+
+1. **Move the guard into a `Sharpy.Core` helper.** Inside the helper the operands are runtime
+   parameters, so the guard costs nothing at the emission site. This is what
+   `Builtins.FloorMod`, `FloorDiv`, `DecimalMod` and `DecimalFloorDiv` are for. It also
+   dissolves the CS0020 workaround — "division by *constant* zero" cannot arise from a
+   parameter, so a helper may use plain `/` and `%` where the emitter had to use
+   `Decimal.Divide`/`Decimal.Remainder`.
+2. **Capture with `EnsureSingleEvaluation`** (`RoslynEmitter.Expressions.Access.Calls.cs`),
+   which binds the value with an inline `is var __temp` pattern when the AST operand is not
+   side-effect-free. Used by the binary `??` lowering and the optional-member-access chain.
+3. **Hoist into a temp local** via `_hoistedStatements`, as `GenerateTupleElementArray` does
+   when it needs `.Item1…ItemN` off one operand.
+
+Two traps:
+
+- **Gating on `IsSideEffectFree` is not a remedy.** It degrades the lowering (a different,
+  weaker lowering is chosen for a side-effecting operand), so two spellings of one operation
+  get different runtime behavior — and it is easy to gate the wrong operand. The `**`
+  checked-power path at `RoslynEmitter.Expressions.Operators.cs:90` does both, and is a defect,
+  not a sanctioned exception: it gates only `binOp.Right` while regenerating `binOp.Left`
+  unguarded (#1228). Do not copy it.
+- **Do not call `GenerateExpression` twice on the same AST node** to get a "fresh" node for a
+  second position. `GenerateExpression` is not pure — it can push into `_hoistedStatements`,
+  and hoisted statements run unconditionally, so the second call duplicates a side effect even
+  when the two use sites are mutually exclusive ternary arms (#1228). Reuse or capture the
+  already-generated syntax instead.
+
+Known open violations, all filed: #1226 (integer `//`), #1227 (augmented-assignment targets),
+#1228 (`**`).
+
 ## Semantic Analysis Pipeline
 
 Six-stage architecture (order matters):
