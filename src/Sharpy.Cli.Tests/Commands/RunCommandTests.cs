@@ -108,6 +108,19 @@ public class RunCommandTests
     }
 
     /// <summary>
+    /// The file to run belongs on sharpyc's side of the separator. Everything after <c>--</c> is
+    /// the program's, including a token that looks like a source path, so the command is left
+    /// without its positional and says so rather than guessing.
+    /// </summary>
+    [Fact]
+    public void DoubleDash_BeforeTheInputFile_LeavesTheCommandWithoutItsPositional()
+    {
+        var result = CliTestHarness.Parse("run -- main.spy alpha");
+
+        result.Errors.Should().NotBeEmpty();
+    }
+
+    /// <summary>
     /// Compiler options keep working on the near side of the separator.
     /// </summary>
     [Fact]

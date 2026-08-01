@@ -18,7 +18,9 @@ internal static class RunCommand
     internal static Command Configure(RootCommand root, GlobalOptions globals, IReadOnlyList<string>? programArguments = null)
     {
         var afterDoubleDash = programArguments ?? Array.Empty<string>();
-        var command = new Command("run", "Compile and execute a Sharpy source file");
+        var command = new Command(
+            "run",
+            "Compile and execute a Sharpy source file (arguments after a bare '--' are passed to it)");
 
         var inputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file to run" };
         var outputOpt = new Option<FileInfo?>("--output") { Description = "Output file path (temporary if not specified)" };

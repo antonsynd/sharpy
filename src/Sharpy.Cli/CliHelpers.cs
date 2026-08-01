@@ -412,9 +412,16 @@ internal static class CliHelpers
             return true;
         }
 
+        // A misspelled command resolves to whatever the parser could match, so complaining about
+        // '--' here would bury the real error. Let the parse errors be reported first.
+        if (parseResult.Errors.Count > 0)
+        {
+            return true;
+        }
+
         Console.Error.WriteLine(
-            "Error: '--' passes the following arguments to the program being run, which only "
-            + $"'sharpyc run' does; '{parseResult.CommandResult.Command.Name}' cannot accept them.");
+            $"Error: '{parseResult.CommandResult.Command.Name}' does not execute anything, so it "
+            + "cannot accept the arguments after '--'. Only 'sharpyc run' can.");
         return false;
     }
 
