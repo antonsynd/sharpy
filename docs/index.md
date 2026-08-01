@@ -47,9 +47,32 @@ dotnet tool install -g sharpyc
 # Compile and run
 sharpyc run hello.spy
 
+# Pass arguments to your program: everything after `--` goes to it
+sharpyc run hello.spy -- alpha beta
+
 # Inspect generated C#
 sharpyc emit csharp hello.spy
 ```
+
+!!! warning "CLI change: options take one value per occurrence"
+
+    `--reference`, `--project-reference`, `--module-path` and `--args` each take **one value per
+    occurrence** and repeat to collect:
+
+    ```bash
+    sharpyc build app.spy --reference a.dll --reference b.dll
+    ```
+
+    The multi-value spellings `--reference a.dll b.dll` and `--args a b c` **no longer work**. A
+    single occurrence used to keep consuming the bare tokens that followed it, which meant it also
+    swallowed the file you were compiling — `sharpyc run --module-path src file.spy` bound
+    `file.spy` to `--module-path` and then failed with "Required argument missing".
+
+    Program arguments now have a conventional spelling: everything after a bare `--` is passed to
+    the program being run, as with `dotnet run --` and `cargo run --`. Tokens after `--` are never
+    read as compiler options, so `sharpyc run app.spy -- --verbose` passes `--verbose` to your
+    program. `--args` is **deprecated** in favour of it; `--args a --args b` still works, but
+    `--args a b c` does not.
 
 ## Features
 
