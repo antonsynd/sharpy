@@ -315,13 +315,15 @@ public class RoslynEmitterExpressionTests
     }
 
     [Fact]
-    public void GenerateExpression_Modulo_DecimalOperands_UsesGuardedDecimalRemainder()
+    public void GenerateExpression_Modulo_DecimalOperands_UsesDecimalModHelper()
     {
-        // Arrange - decimal % keeps native truncating semantics but must route through the
-        // guarded Decimal.Remainder method form: the % operator on a literal 0m divisor is
-        // CS0020 at C# compile time even in the unreachable guard arm, and an unguarded
-        // divisor would escape as a raw CLR DivideByZeroException instead of the catchable
-        // Sharpy InvalidOperation that mirrors CPython decimal.InvalidOperation (#1189).
+        // Arrange - decimal % keeps native truncating semantics and routes through the Core
+        // helper Builtins.DecimalMod, which owns the zero guard (the InvalidOperation that
+        // mirrors CPython decimal.InvalidOperation, #1189). The guard used to be an emitted
+        // ternary that spliced the divisor twice, so a side-effecting divisor ran twice
+        // (#1216); the invocation form splices each operand exactly once. The CS0020 dodge
+        // that forced Decimal.Remainder into the emitter does not apply inside the helper,
+        // whose operands are runtime parameters rather than constants.
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.Modulo,
@@ -334,18 +336,21 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("global::System.Decimal.Remainder");
-        code.Should().Contain("global::Sharpy.InvalidOperation");
-        code.Should().Contain("decimal modulo by zero");
+        code.Should().Contain("global::Sharpy.Builtins.DecimalMod");
+        code.Should().NotContain("global::System.Decimal.Remainder");
+        code.Should().NotContain("global::Sharpy.InvalidOperation");
+        code.Should().NotContain("decimal modulo by zero");
         code.Should().NotContain("FloorMod");
+        // Single evaluation: the divisor appears once in the emitted expression.
+        CountOccurrences(code, "3m").Should().Be(1);
     }
 
     [Fact]
-    public void GenerateExpression_Modulo_MixedDecimalInt_UsesGuardedDecimalRemainder()
+    public void GenerateExpression_Modulo_MixedDecimalInt_UsesDecimalModHelper()
     {
         // Arrange - one decimal operand is enough to select the decimal path (#1188 promotion:
-        // decimal mixes with integer kinds); the int operand implicit-converts to decimal
-        // inside both the guard comparison and the Remainder call.
+        // decimal mixes with integer kinds); the int operand implicit-converts to decimal at
+        // the helper's parameter.
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.Modulo,
@@ -358,9 +363,72 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("global::System.Decimal.Remainder");
-        code.Should().Contain("global::Sharpy.InvalidOperation");
+        code.Should().Contain("global::Sharpy.Builtins.DecimalMod");
+        code.Should().NotContain("global::System.Decimal.Remainder");
         code.Should().NotContain("FloorMod");
+    }
+
+    [Fact]
+    public void GenerateExpression_FloorDivide_DecimalOperands_UsesDecimalFloorDivHelper()
+    {
+        // Arrange - the `//` counterpart of the two `%` tests above (#1174 introduced the
+        // decimal arm; #1216 moved its guard into Core). Decimal `//` truncates toward zero
+        // rather than flooring, and its zero divisor raises ZeroDivisionError — deliberately
+        // NOT the InvalidOperation that `%` raises (#1189). Both facts now live in
+        // Builtins.DecimalFloorDiv, so the emitted form is a single invocation.
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.FloorDivide,
+            Left = new FloatLiteral { Value = "7", Suffix = "m" },
+            Right = new FloatLiteral { Value = "3", Suffix = "m" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("global::Sharpy.Builtins.DecimalFloorDiv");
+        code.Should().NotContain("global::System.Decimal.Divide");
+        code.Should().NotContain("global::System.Decimal.Truncate");
+        code.Should().NotContain("global::Sharpy.ZeroDivisionError");
+        code.Should().NotContain("System.Math.Floor");
+        // Single evaluation: the divisor appears once in the emitted expression.
+        CountOccurrences(code, "3m").Should().Be(1);
+    }
+
+    [Fact]
+    public void GenerateExpression_FloorDivide_MixedDecimalInt_UsesDecimalFloorDivHelper()
+    {
+        // Arrange - a single decimal operand selects the decimal arm for `//` too (#1188).
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.FloorDivide,
+            Left = new FloatLiteral { Value = "7", Suffix = "m" },
+            Right = new IntegerLiteral { Value = "3" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("global::Sharpy.Builtins.DecimalFloorDiv");
+        code.Should().NotContain("global::System.Decimal.Divide");
+        code.Should().NotContain("System.Math.Floor");
+    }
+
+    private static int CountOccurrences(string haystack, string needle)
+    {
+        var count = 0;
+        var index = haystack.IndexOf(needle, System.StringComparison.Ordinal);
+        while (index >= 0)
+        {
+            count++;
+            index = haystack.IndexOf(needle, index + needle.Length, System.StringComparison.Ordinal);
+        }
+
+        return count;
     }
 
     [Fact]
