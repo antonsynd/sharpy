@@ -116,9 +116,13 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
 
                 if (typeAnnotations && varDecl.Type == null && isDeclaring)
                 {
+                    // Keyed on the declaration node, like the Assignment arm below is keyed on
+                    // its target identifier. The name-and-position scan this replaced searched
+                    // reference-populated collections and module scope, so a function-local
+                    // binding nothing reads — `const LIMIT = 42` and no more — resolved to
+                    // nothing and showed no type (#1222).
                     AddInferredTypeHint(
-                        analysis.SemanticQuery!.FindSymbolByDeclaration(
-                            varDecl.Name, varDecl.LineStart, varDecl.ColumnStart),
+                        analysis.SemanticQuery!.GetDeclarationSymbol(varDecl),
                         varDecl.Name, varDecl.NameLineStart, varDecl.NameColumnStart, range, hints);
                 }
 
