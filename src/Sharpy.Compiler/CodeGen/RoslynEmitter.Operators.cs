@@ -1125,43 +1125,36 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates decimal modulo: <c>global::System.Decimal.Remainder(left, right)</c>,
-    /// guarded by a zero-divisor throw. Decimal keeps the native truncating remainder (sign
-    /// of the dividend), which is both the spec's native-decimal policy and what CPython's
-    /// <c>Decimal.__mod__</c> does (<c>Decimal(-7) % 3</c> is <c>-1</c>, where int
-    /// <c>-7 % 3</c> is <c>2</c>) — so nonzero divisors are unchanged by this lowering.
-    /// A zero divisor raises <c>InvalidOperation</c>, NOT <c>ZeroDivisionError</c>: CPython
-    /// raises <c>decimal.InvalidOperation</c> here, which is a sibling of
-    /// <c>ZeroDivisionError</c> rather than a subclass (unlike decimal <c>//</c>, whose
-    /// <c>decimal.DivisionByZero</c> IS a <c>ZeroDivisionError</c>) (#1189).
-    /// <c>Decimal.Remainder</c> rather than the <c>%</c> operator for the same reason
-    /// <see cref="GenerateDecimalFloorDivision"/> uses <c>Decimal.Divide</c>: a literal zero
-    /// divisor (<c>7m % 0m</c>) through <c>%</c> is a compile-time C# error (CS0020,
-    /// "division by constant zero") even in the unreachable arm of the guard, which would
-    /// re-introduce SPY0908. The method call is exactly what <c>decimal.op_Modulus</c>
-    /// invokes, so the emitted value is identical for every nonzero divisor.
+    /// Generates decimal modulo: <c>global::Sharpy.Builtins.DecimalMod(left, right)</c>.
+    /// Decimal keeps the native truncating remainder (sign of the dividend), which is both the
+    /// spec's native-decimal policy and what CPython's <c>Decimal.__mod__</c> does
+    /// (<c>Decimal(-7) % 3</c> is <c>-1</c>, where int <c>-7 % 3</c> is <c>2</c>). A zero
+    /// divisor raises <c>InvalidOperation</c>, NOT <c>ZeroDivisionError</c>: CPython raises
+    /// <c>decimal.InvalidOperation</c> here, which is a sibling of <c>ZeroDivisionError</c>
+    /// rather than a subclass (unlike decimal <c>//</c>, whose <c>decimal.DivisionByZero</c>
+    /// IS a <c>ZeroDivisionError</c>) (#1189).
+    /// <para>
+    /// The zero guard lives inside the Core helper, exactly as with
+    /// <see cref="GenerateFloorModulo"/>, so each operand is spliced ONCE and a
+    /// side-effecting divisor is evaluated once (#1216). This replaced a guarded ternary
+    /// that spliced <paramref name="right"/> twice; that shape also needed
+    /// <c>Decimal.Remainder</c> instead of <c>%</c>, because a literal zero divisor
+    /// (<c>7m % 0m</c>) through <c>%</c> is a compile-time C# error (CS0020, "division by
+    /// <b>constant</b> zero") even in the unreachable guard arm, which would re-introduce
+    /// SPY0908. That rationale is obsolete here — the helper's operands are runtime
+    /// parameters, never constants, so no literal zero reaches an operator. Do not restore
+    /// the ternary.
+    /// </para>
     /// </summary>
     private ExpressionSyntax GenerateDecimalModulo(ExpressionSyntax left, ExpressionSyntax right)
     {
-        var remainderCall = InvocationExpression(
+        return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                MakeGlobalQualifiedName("System", "Decimal"),
-                IdentifierName("Remainder")))
-            .AddArgumentListArguments(Argument(left), Argument(right));
-
-        var throwExpr = ThrowExpression(
-            ObjectCreationExpression(ParseQualifiedTypeName("global::Sharpy.InvalidOperation"))
-                .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
-                        Literal("decimal modulo by zero")))))));
-
-        // (right == 0m ? throw new InvalidOperation(...) : decimal.Remainder(left, right))
-        return ParenthesizedExpression(
-            ConditionalExpression(
-                BinaryExpression(SyntaxKind.EqualsExpression, right,
-                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0m))),
-                throwExpr,
-                remainderCall));
+                MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                IdentifierName("DecimalMod")))
+            .AddArgumentListArguments(
+                Argument(left),
+                Argument(right));
     }
 
     /// <summary>
@@ -1193,45 +1186,34 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates decimal floor division:
-    /// <c>global::System.Decimal.Truncate(global::System.Decimal.Divide(left, right))</c>,
-    /// guarded by a zero-divisor throw. Decimal keeps the native CLR division and truncates
-    /// toward zero instead of flooring — which is both the spec's native-decimal policy and
-    /// what CPython's <c>Decimal.__floordiv__</c> does (<c>Decimal(-7) // Decimal(3)</c> is
-    /// <c>-2</c>, where int <c>-7 // 3</c> is <c>-3</c>). CPython raises
-    /// <c>decimal.DivisionByZero</c> (a <c>ZeroDivisionError</c> subclass) for a zero divisor,
-    /// so the Sharpy surface uses <c>ZeroDivisionError</c> like every other division.
-    /// <c>Decimal.Divide</c> rather than the <c>/</c> operator: a literal zero divisor
-    /// (<c>7m // 0m</c>) is a compile-time C# error through <c>/</c> (CS0020, "division by
-    /// constant zero") even in the unreachable arm of the guard, which would re-introduce
-    /// SPY0908. The method call is exactly what <c>decimal.op_Division</c> invokes.
+    /// <c>global::Sharpy.Builtins.DecimalFloorDiv(left, right)</c>. Decimal keeps the native
+    /// CLR division and truncates toward zero instead of flooring — which is both the spec's
+    /// native-decimal policy and what CPython's <c>Decimal.__floordiv__</c> does
+    /// (<c>Decimal(-7) // Decimal(3)</c> is <c>-2</c>, where int <c>-7 // 3</c> is <c>-3</c>).
+    /// CPython raises <c>decimal.DivisionByZero</c> (a <c>ZeroDivisionError</c> subclass) for
+    /// a zero divisor, so the Sharpy surface uses <c>ZeroDivisionError</c> like every other
+    /// division.
+    /// <para>
+    /// The zero guard lives inside the Core helper, exactly as with
+    /// <see cref="GenerateFloorDivision"/>'s float arm, so each operand is spliced ONCE and a
+    /// side-effecting divisor is evaluated once (#1216). This replaced a guarded ternary that
+    /// spliced <paramref name="right"/> twice; that shape also needed <c>Decimal.Divide</c>
+    /// instead of <c>/</c>, because a literal zero divisor (<c>7m // 0m</c>) through <c>/</c>
+    /// is a compile-time C# error (CS0020, "division by <b>constant</b> zero") even in the
+    /// unreachable guard arm, which would re-introduce SPY0908. That rationale is obsolete
+    /// here — the helper's operands are runtime parameters, never constants, so no literal
+    /// zero reaches an operator. Do not restore the ternary.
+    /// </para>
     /// </summary>
     private ExpressionSyntax GenerateDecimalFloorDivision(ExpressionSyntax left, ExpressionSyntax right)
     {
-        var divideCall = InvocationExpression(
+        return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                MakeGlobalQualifiedName("System", "Decimal"),
-                IdentifierName("Divide")))
-            .AddArgumentListArguments(Argument(left), Argument(right));
-
-        var truncateCall = InvocationExpression(
-            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                MakeGlobalQualifiedName("System", "Decimal"),
-                IdentifierName("Truncate")))
-            .AddArgumentListArguments(Argument(divideCall));
-
-        var throwExpr = ThrowExpression(
-            ObjectCreationExpression(ParseQualifiedTypeName("global::Sharpy.ZeroDivisionError"))
-                .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
-                        Literal("decimal floor division by zero")))))));
-
-        // (right == 0m ? throw new ZeroDivisionError(...) : decimal.Truncate(left / right))
-        return ParenthesizedExpression(
-            ConditionalExpression(
-                BinaryExpression(SyntaxKind.EqualsExpression, right,
-                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0m))),
-                throwExpr,
-                truncateCall));
+                MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                IdentifierName("DecimalFloorDiv")))
+            .AddArgumentListArguments(
+                Argument(left),
+                Argument(right));
     }
 
     /// <summary>
