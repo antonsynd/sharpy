@@ -47,7 +47,9 @@ public class FloatFormattingAuthorityTests
     /// <summary>
     /// A file exempted from one rule, with the reason it is a different job. Every exemption is
     /// checked for staleness: if the file stops matching, the entry must be deleted rather than
-    /// left to over-cover future code (drain-on-fix).
+    /// left to over-cover future code (drain-on-fix). An exemption that defers a known divergence
+    /// rather than describing a permanently different job cites its issue, so nothing is parked
+    /// here anonymously.
     /// </summary>
     private sealed record Exemption(string File, string Reason);
 
@@ -66,15 +68,15 @@ public class FloatFormattingAuthorityTests
     private static readonly Exemption[] GeneralFloatFormatExemptions =
     {
         new(AuthorityFile, "the authority itself"),
-        new("JsonSerializer.cs", "JSON wire format: its own number grammar, and NaN/Infinity are an error rather than a spelling"),
-        new("YamlRoundtrip.cs", "YAML wire format: NaN/Infinity are spelled .nan/.inf/-.inf"),
+        new("JsonSerializer.cs", "#1229 — JSON wire format: its own number grammar, and NaN/Infinity are an error rather than a spelling"),
+        new("YamlRoundtrip.cs", "#1229 — YAML wire format: NaN/Infinity are spelled .nan/.inf/-.inf"),
     };
 
     private static readonly Exemption[] PythonDotZeroExemptions =
     {
         new(AuthorityFile, "the authority itself"),
-        new("JsonSerializer.cs", "keeps a whole value reloading as a float, not an int"),
-        new("YamlRoundtrip.cs", "keeps a whole value reloading as a float, not an int"),
+        new("JsonSerializer.cs", "#1229 — keeps a whole value reloading as a float, not an int"),
+        new("YamlRoundtrip.cs", "#1229 — keeps a whole value reloading as a float, not an int"),
     };
 
     private static readonly Exemption[] FormatFloatDeclarationExemptions =
