@@ -1,0 +1,53 @@
+# #1216 — decimal `//` and `%` used to lower to a guarded ternary that spliced the DIVISOR
+# expression twice: `(d == 0m ? throw ... : decimal.Remainder(x, d))`. A side-effecting
+# divisor therefore ran twice. The zero guards now live in Sharpy.Core
+# (Builtins.DecimalFloorDiv / Builtins.DecimalMod) and each operand is spliced exactly once.
+#
+# The running counter is the actual pin: a doubly-evaluated divisor makes every subsequent
+# "call N" line shift, so this fixture fails loudly rather than subtly.
+#
+# Sharpy-only semantics: decimal literals have no CPython source form, so this fixture is
+# not eligible for differential execution against python3.
+calls: list[int] = [0]
+
+def divisor(tag: str) -> decimal:
+    calls[0] = calls[0] + 1
+    print("call " + str(calls[0]) + ": " + tag)
+    return 3m
+
+def int_divisor(tag: str) -> int:
+    calls[0] = calls[0] + 1
+    print("call " + str(calls[0]) + ": " + tag)
+    return 3
+
+def dividend(tag: str) -> decimal:
+    calls[0] = calls[0] + 1
+    print("call " + str(calls[0]) + ": " + tag)
+    return 7m
+
+def main() -> None:
+    # Binary `//` and `%`: one divisor call each.
+    print(7m // divisor("floordiv"))
+    print(7m % divisor("mod"))
+
+    # The dividend is spliced once too (it always was — pinned so it stays that way).
+    print(dividend("floordiv-dividend") // 2m)
+    print(dividend("mod-dividend") % 2m)
+
+    # Both operands side-effecting: exactly two calls, left before right.
+    print(dividend("both-dividend") // divisor("both-divisor"))
+
+    # Mixed decimal/int (#1188) takes the same lowering, so the int divisor runs once.
+    print(7m // int_divisor("mixed-floordiv"))
+    print(7m % int_divisor("mixed-mod"))
+
+    # Augmented `//=` / `%=` share the binary routing seam.
+    z: decimal = 7m
+    z //= divisor("augmented-floordiv")
+    print(z)
+    w: decimal = 7m
+    w %= divisor("augmented-mod")
+    print(w)
+
+    # Total call count: 10 if each operand is evaluated once, more if any is spliced twice.
+    print("total calls: " + str(calls[0]))

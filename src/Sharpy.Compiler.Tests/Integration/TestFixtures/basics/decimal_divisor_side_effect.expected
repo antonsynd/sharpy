@@ -1,0 +1,20 @@
+call 1: floordiv
+2
+call 2: mod
+1
+call 3: floordiv-dividend
+3
+call 4: mod-dividend
+1
+call 5: both-dividend
+call 6: both-divisor
+2
+call 7: mixed-floordiv
+2
+call 8: mixed-mod
+1
+call 9: augmented-floordiv
+2
+call 10: augmented-mod
+1
+total calls: 10
