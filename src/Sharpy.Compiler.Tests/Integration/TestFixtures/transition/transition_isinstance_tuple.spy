@@ -1,9 +1,11 @@
-# SPY0475: isinstance() in Sharpy accepts only a single type argument.
+# SPY0344: isinstance() in Sharpy accepts only a single type argument.
 # Passing a tuple of types — the legal Python 3 spelling for OR-of-types —
-# fires the SPY0475 hint advising the user to combine checks with `or`.
-# The program also fails to compile at the C# layer because tuple literals
-# of types are not valid C#, so this is both an error fixture and a hint
-# fixture (.warning verifies the advisory message is also surfaced).
+# is rejected at semantic time. The restriction is load-bearing, not stylistic:
+# a successful check narrows to one concrete type, and a tuple has nothing to
+# narrow to. Lowering it would emit a correct boolean and then silently fail to
+# narrow at the next line, so the form is refused instead.
+# This diagnostic replaces the retired SPY0475 hint, which let compilation
+# continue into a generated-C# failure (SPY0908).
 
 class Animal:
     name: str = ""

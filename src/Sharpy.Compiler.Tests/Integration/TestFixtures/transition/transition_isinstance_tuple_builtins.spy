@@ -1,0 +1,10 @@
+# SPY0344 for the builtin-type spelling of the tuple form (#1213's own repro).
+# The user-class fixture next to this one leaked CS0119; this spelling leaked
+# CS1503 ("cannot convert from '(method group, method group)' to System.Type"),
+# because the builtin type names reached codegen as builtin-function references.
+# Same defect, two C# faces — both are now one semantic-time diagnostic.
+
+def main() -> None:
+    x: object = 5
+    if isinstance(x, (int, str)):
+        print("tuple ok")

@@ -1,0 +1,17 @@
+# A parameterized builtin collection in type-test position. CPython rejects this
+# outright ("isinstance() argument 2 cannot be a parameterized generic") because
+# its generics are erased; .NET reifies them, so list[int] names a real runtime
+# type and the test can be exact (Axiom 1). The bare name `list` still erases to
+# the non-generic protocol interface — it cannot know the element type (#912).
+#
+# This fixture previously pinned a raw Roslyn message ("requires 1 type
+# arguments") as an expected error, which is what #1146 forbids.
+
+def main():
+    x: list[int] = [1, 2, 3]
+    print(isinstance(x, list[int]))
+    print(isinstance(x, list))
+
+    y: object = ["a", "b"]
+    print(isinstance(y, list[int]))
+    print(isinstance(y, list[str]))

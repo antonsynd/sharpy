@@ -1,1 +1,1 @@
-is a type, which is not valid in the given context
+isinstance() in Sharpy accepts only a single type argument, but a tuple of 2 types (Dog, Cat) was passed @21:8

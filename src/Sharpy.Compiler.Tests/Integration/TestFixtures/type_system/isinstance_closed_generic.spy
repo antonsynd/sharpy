@@ -1,0 +1,26 @@
+# #1207: the closed spelling the open-generic rejection recommends. It has to
+# work, or that diagnostic names a remedy that does not. Before this it parsed
+# to an index access and was emitted as C# element access on a type name
+# (Box[Builtins.Int]) -> CS0305, and produced no narrowing fact at all.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+
+def main() -> None:
+    b: object = Box[str]("hello")
+    if isinstance(b, Box[str]):
+        print(b.get())
+    else:
+        print("no match")
+
+    if isinstance(b, Box[int]):
+        print("wrong parameterization matched")
+    else:
+        print("Box[int] does not match a Box[str]")

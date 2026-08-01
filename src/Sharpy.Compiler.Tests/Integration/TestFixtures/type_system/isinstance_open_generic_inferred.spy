@@ -1,0 +1,19 @@
+# #1207: a bare generic name names no runtime type on its own, but the subject's
+# own static type determines the vector, so the test is against Box[int] and the
+# narrowing has a real target. This used to emit typeof(Box<T>) -> CS0305/SPY0908.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+
+def main() -> None:
+    b: Box[int] = Box[int](5)
+    print(isinstance(b, Box))
+    if isinstance(b, Box):
+        print(b.get())

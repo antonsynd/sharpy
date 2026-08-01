@@ -1,0 +1,16 @@
+# #1207: nothing at this call determines Box's type arguments, so the test is
+# refused rather than lowered. A GetGenericTypeDefinition() runtime check would
+# compile and then narrow to Box[T] for an unknown T, which is not spellable —
+# a type test that compiles but cannot narrow is worse than a clean refusal.
+# The message names the closed spelling, which works (isinstance_closed_generic).
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main() -> None:
+    x: object = Box[int](5)
+    print(isinstance(x, Box))
