@@ -239,8 +239,8 @@ public class InlayHintTests : IDisposable
         // The issue's repro: nothing reads LIMIT, so the old name-and-position scan had no
         // reference to find it by and no module-scope entry to fall back on.
         // The trailing newline is load-bearing: an indented `const` as the last line of a file
-        // that does not end in one fails to parse outright (SPY0102), which is a parser bug of
-        // its own and nothing to do with hints. Editors keep the newline.
+        // that does not end in one fails to parse outright (SPY0102) — a parser bug of its own
+        // (#1233), nothing to do with hints. Editors keep the newline.
         var source = "def main() -> None:\n    const LIMIT = 42\n";
         var hints = await GetHintsAsync(source);
 

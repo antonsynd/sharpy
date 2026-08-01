@@ -80,7 +80,8 @@ public interface ISemanticQuery
     /// <para>
     /// Prefer <see cref="GetDeclarationSymbol"/> for a <c>VariableDeclaration</c>: this is a
     /// name-and-position scan over reference-populated collections plus module scope, so it
-    /// cannot see a function-local binding that nothing reads (#1222).
+    /// cannot see a function-local binding that nothing reads (#1222). <c>RenameHandler</c> still
+    /// resolves declaration sites through here and has that hole (#1232).
     /// </para>
     /// </summary>
     Symbol? FindSymbolByDeclaration(string name, int line, int column);
