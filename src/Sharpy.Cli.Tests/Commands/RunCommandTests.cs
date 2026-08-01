@@ -61,10 +61,16 @@ public class RunCommandTests
         result.GetValue<bool>("--self-contained").Should().BeFalse();
     }
 
+    /// <summary>
+    /// References collect across repeated occurrences, and the short alias participates. This used
+    /// to be spelled <c>--reference a.dll b.dll -r c.dll</c>, where <c>b.dll</c> reached the option
+    /// only because <c>AllowMultipleArgumentsPerToken</c> let one occurrence keep eating bare
+    /// tokens — the same greediness that swallowed positional input paths (#1215, #1179).
+    /// </summary>
     [Fact]
     public void Parses_MultipleReferences()
     {
-        var result = CliTestHarness.Parse("run main.spy --reference a.dll b.dll -r c.dll");
+        var result = CliTestHarness.Parse("run main.spy --reference a.dll --reference b.dll -r c.dll");
 
         result.Errors.Should().BeEmpty();
         result.GetValue<string[]>("--reference").Should().Contain(new[] { "a.dll", "b.dll", "c.dll" });

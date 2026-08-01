@@ -14,11 +14,12 @@ internal static class RunCommand
         var inputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file to run" };
         var outputOpt = new Option<FileInfo?>("--output") { Description = "Output file path (temporary if not specified)" };
         outputOpt.Aliases.Add("-o");
-        var refOpt = new Option<string[]>("--reference") { Description = "Add .NET assembly references", AllowMultipleArgumentsPerToken = true };
+        // One value per occurrence — repeat the flag to collect more (#1179, #1215).
+        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
         refOpt.Aliases.Add("-r");
-        var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add .NET project references", AllowMultipleArgumentsPerToken = true };
+        var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add a .NET project reference (repeatable)" };
         projRefOpt.Aliases.Add("-p");
-        var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
+        var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
         var argsOpt = new Option<string[]>("--args") { Description = "Arguments to pass to the program", AllowMultipleArgumentsPerToken = true };
         var namespaceOpt = new Option<string?>("--namespace") { Description = "Wrap generated code in a namespace declaration" };

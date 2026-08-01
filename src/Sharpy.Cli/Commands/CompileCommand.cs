@@ -25,11 +25,12 @@ internal static class CompileCommand
         configOpt.Aliases.Add("-c");
         var typeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (ignored for .spyproj)" };
         typeOpt.Aliases.Add("-t");
-        var refOpt = new Option<string[]>("--reference") { Description = "Add .NET assembly references", AllowMultipleArgumentsPerToken = true };
+        // One value per occurrence — repeat the flag to collect more (#1179, #1215).
+        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
         refOpt.Aliases.Add("-r");
-        var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add .NET project references", AllowMultipleArgumentsPerToken = true };
+        var projRefOpt = new Option<string[]>("--project-reference") { Description = "Add a .NET project reference (repeatable)" };
         projRefOpt.Aliases.Add("-p");
-        var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
+        var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
         var selfContainedOpt = new Option<bool>("--self-contained") { Description = "Produce a self-contained executable (no .NET runtime required)" };
         var noDepsOpt = new Option<bool>("--no-deps") { Description = "Skip copying runtime dependencies alongside the output" };

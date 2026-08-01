@@ -70,9 +70,10 @@ internal static class EmitCommand
         var inputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
         var outputOpt = new Option<FileInfo?>("--output") { Description = "Output file path" };
         outputOpt.Aliases.Add("-o");
-        var refOpt = new Option<string[]>("--reference") { Description = "Add .NET assembly references", AllowMultipleArgumentsPerToken = true };
+        // One value per occurrence — repeat the flag to collect more (#1179, #1215).
+        var refOpt = new Option<string[]>("--reference") { Description = "Add a .NET assembly reference (repeatable)" };
         refOpt.Aliases.Add("-r");
-        var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
+        var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
         var lineDirectivesOpt = new Option<bool>("--show-line-directives") { Description = "Include #line directives for source mapping (default: stripped for clean output)" };
         var typeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (default: exe)" };
