@@ -25,7 +25,8 @@ def main() -> None:
     print(repr(0.5))
 
     # nan/inf keep Python's lowercase names inside containers.
-    # float("inf") is not accepted yet (#1203), so overflow produces it.
+    # float("inf") parses since #1203; the overflow spelling stays because it
+    # pins the other producer of inf (overflow), which nothing else covers.
     huge: float = 1e308
     specials: list[float] = [float("nan"), huge * 10.0, -huge * 10.0]
     print(specials)
