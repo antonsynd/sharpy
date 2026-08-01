@@ -46,6 +46,12 @@ public class InlayHintTests : IDisposable
         return hints!.Where(h => h.Kind == InlayHintKind.Type).ToList();
     }
 
+    private static IReadOnlyList<InlayHint> ParameterHints(InlayHintContainer? hints)
+    {
+        hints.Should().NotBeNull("the handler must produce a hint container for a well-formed document");
+        return hints!.Where(h => h.Kind == InlayHintKind.Parameter).ToList();
+    }
+
     [Fact]
     public async Task ModuleLevelInferredVariable_ShowsTypeHintAsync()
     {
@@ -221,6 +227,177 @@ public class InlayHintTests : IDisposable
         var paramHints = hints!.Where(h => h.Kind == InlayHintKind.Parameter).ToList();
         paramHints.Should().Contain(h => h.Label.String!.Contains("name:"));
         paramHints.Should().Contain(h => h.Label.String!.Contains("count:"));
+    }
+
+    // #1223 — the call walker enumerated nine of the AST's forty-one expression types by hand,
+    // so a call written in any other form produced no parameter hints at all. Each test below is
+    // a form that produced nothing before the walker was handed to AstVisitor; the two the issue
+    // reported come first.
+
+    [Fact]
+    public async Task CallInsideListComprehension_ShowsParameterHintsAsync()
+    {
+        var source = """
+            def double(value: int) -> int:
+                return value
+
+            def main() -> None:
+                xs = [double(x) for x in [1, 2]]
+                print(xs)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        ParameterHints(hints).Should().ContainSingle(h => h.Label.String == "value:")
+            .Which.Position.Should().Be(new Position(4, 17));
+    }
+
+    [Fact]
+    public async Task CallInsideLambdaBody_ShowsParameterHintsAsync()
+    {
+        var source = """
+            def double(value: int) -> int:
+                return value
+
+            def main() -> None:
+                xs: list[int] = [3, 1, 2]
+                xs.sort(lambda s: double(s))
+                print(xs)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        ParameterHints(hints).Should().ContainSingle(h => h.Label.String == "value:")
+            .Which.Position.Should().Be(new Position(5, 29));
+    }
+
+    [Fact]
+    public async Task CallInsideParentheses_ShowsParameterHintsAsync()
+    {
+        // Grouping is transparent to traversal, so `(f(x))` hints exactly like `f(x)`.
+        var source = """
+            def double(value: int) -> int:
+                return value
+
+            def main() -> None:
+                n = (double(1))
+                print(n)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        ParameterHints(hints).Should().ContainSingle(h => h.Label.String == "value:")
+            .Which.Position.Should().Be(new Position(4, 16));
+    }
+
+    [Fact]
+    public async Task CallInsideDictLiteralValue_ShowsParameterHintsAsync()
+    {
+        // List and tuple literals were handled while their dict and set siblings were not — the
+        // tell that the walker's list was grown by whoever hit a missing case.
+        var source = """
+            def double(value: int) -> int:
+                return value
+
+            def main() -> None:
+                d = {1: double(2)}
+                print(d)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        ParameterHints(hints).Should().ContainSingle(h => h.Label.String == "value:")
+            .Which.Position.Should().Be(new Position(4, 19));
+    }
+
+    [Fact]
+    public async Task CallInsideFStringHole_ShowsParameterHintsAsync()
+    {
+        var source = """
+            def double(value: int) -> int:
+                return value
+
+            def main() -> None:
+                s = f"{double(3)}"
+                print(s)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        ParameterHints(hints).Should().ContainSingle(h => h.Label.String == "value:")
+            .Which.Position.Should().Be(new Position(4, 18));
+    }
+
+    [Fact]
+    public async Task AwaitedCall_ShowsParameterHintsAsync()
+    {
+        var source = """
+            async def double(value: int) -> int:
+                return value
+
+            async def main() -> None:
+                n = await double(4)
+                print(n)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        ParameterHints(hints).Should().ContainSingle(h => h.Label.String == "value:")
+            .Which.Position.Should().Be(new Position(4, 21));
+    }
+
+    [Fact]
+    public async Task CallsInsideSliceBounds_ShowParameterHintsAsync()
+    {
+        var source = """
+            def double(value: int) -> int:
+                return value
+
+            def main() -> None:
+                xs = [1, 2, 3]
+                part = xs[double(0):double(1)]
+                print(part)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        // Both bounds are calls, and each gets its own hint.
+        ParameterHints(hints).Where(h => h.Label.String == "value:")
+            .Select(h => h.Position)
+            .Should().BeEquivalentTo([new Position(5, 21), new Position(5, 31)]);
+    }
+
+    [Fact]
+    public async Task CallInsideComparisonChain_ShowsParameterHintsAsync()
+    {
+        var source = """
+            def double(value: int) -> int:
+                return value
+
+            def main() -> None:
+                flag = 0 < double(5) < 9
+                print(flag)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        ParameterHints(hints).Should().ContainSingle(h => h.Label.String == "value:")
+            .Which.Position.Should().Be(new Position(4, 22));
+    }
+
+    [Fact]
+    public async Task CallInsideKeywordArgumentValue_ShowsParameterHintsAsync()
+    {
+        // The gap the node-type framing hides: FunctionCall was a handled type, but the arm
+        // recursed into Arguments and Function only — never KeywordArguments — so a call in a
+        // keyword-argument value was as invisible as one inside a comprehension.
+        var source = """
+            def double(value: int) -> int:
+                return value
+
+            def outer(target: int) -> int:
+                return target
+
+            def main() -> None:
+                n = outer(target=double(6))
+                print(n)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        ParameterHints(hints).Should().ContainSingle(h => h.Label.String == "value:")
+            .Which.Position.Should().Be(new Position(7, 28));
     }
 
     [Fact]
