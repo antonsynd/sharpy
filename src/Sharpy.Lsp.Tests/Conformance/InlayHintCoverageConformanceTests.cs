@@ -47,10 +47,10 @@ namespace Sharpy.Lsp.Tests.Conformance;
 public sealed class InlayHintCoverageConformanceTests : IDisposable
 {
     /// <summary>
-    /// The only <c>Expression</c> types exempt from a coverage case: their
-    /// <c>GetChildNodes()</c> is empty, so no call can be nested inside them. The claim is not
-    /// taken on trust — <see cref="AllowlistedLeaves_ReallyHaveNoChildren"/> constructs each one
-    /// and checks it.
+    /// <c>Expression</c> types exempt from a coverage case because their <c>GetChildNodes()</c>
+    /// is empty, so no call can be nested inside them. The claim is not taken on trust —
+    /// <see cref="EveryExemption_IsJustified_AndEveryLeafReallyHasNoChildren"/> constructs each
+    /// one and checks it.
     /// </summary>
     private static readonly Dictionary<string, string> Leaves = new(StringComparer.Ordinal)
     {
@@ -350,7 +350,7 @@ public sealed class InlayHintCoverageConformanceTests : IDisposable
     }
 
     [Fact]
-    public void AllowlistedLeaves_ReallyHaveNoChildren()
+    public void EveryExemption_IsJustified_AndEveryLeafReallyHasNoChildren()
     {
         foreach (var (name, justification) in UnreachableFromWalkedPositions)
         {
