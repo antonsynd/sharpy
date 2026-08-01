@@ -1,0 +1,86 @@
+# divmod() accepts decimal operands (#1205). Before this it was SPY0354, even
+# though `//` (#1174) and `%` (#1189) both took decimal.
+#
+# The decimal overload TRUNCATES where the int/float overloads FLOOR, and its
+# zero divisor raises InvalidOperation where theirs raise ZeroDivisionError.
+# Both are CPython-matching, not oversights -- see the pins at the bottom.
+#
+# Sharpy-only semantics: decimal literals have no CPython source form, so this
+# fixture is not eligible for differential execution against python3 -- the
+# values below were derived from python3's `decimal` module by hand
+# (verified 2026-07-31).
+def show(pair: tuple[decimal, decimal]) -> None:
+    print(pair[0])
+    print(pair[1])
+
+def main() -> None:
+    # All four sign combinations. Truncated quotient; remainder takes the sign
+    # of the DIVIDEND (int divmod(-7, 3) would be (-3, 2), not (-2, -1)).
+    show(divmod(7m, 3m))        # (2, 1)
+    show(divmod(-7m, 3m))       # (-2, -1)
+    show(divmod(7m, -3m))       # (-2, 1)
+    show(divmod(-7m, -3m))      # (2, -1)
+    show(divmod(-17m, 5m))      # (-3, -2)
+
+    # Non-integral operands truncate the quotient, not the operands.
+    show(divmod(7.5m, 2m))      # (3, 1.5)
+
+    # Mixed decimal/int, both operand orders (#1188 taught the OPERATOR path;
+    # this pins the BUILTIN-CALL path, which turns out to widen int -> decimal
+    # on its own -- no (decimal,int)/(int,decimal) overloads were needed).
+    show(divmod(-7m, 3))        # (-2, -1)
+    show(divmod(7, 3m))         # (2, 1)
+
+    # ...and the mixed results are decimal-typed, not int- or float-typed: these
+    # annotated bindings (and show's tuple[decimal, decimal] parameter above)
+    # would be SPY0220 otherwise, which is what makes the widening claim a pin
+    # rather than a coincidence of equal values.
+    m1: tuple[decimal, decimal] = divmod(-7m, 3)
+    m2: tuple[decimal, decimal] = divmod(7, 3m)
+    print(m1[0] + m2[0])        # 0
+
+    # Through variables, not just literals.
+    x: decimal = -7m
+    y: decimal = 3m
+    show(divmod(x, y))          # (-2, -1)
+
+    # The divmod identity x == q * y + r holds for every sign combination.
+    p1: tuple[decimal, decimal] = divmod(-7m, 3m)
+    print(p1[0] * 3m + p1[1])   # -7
+    p2: tuple[decimal, decimal] = divmod(7m, -3m)
+    print(p2[0] * -3m + p2[1])  # 7
+
+    # divmod agrees with the // and % it is the pair of.
+    print(p1[0] == -7m // 3m)   # True
+    print(p1[1] == -7m % 3m)    # True
+
+    # Zero divisor raises InvalidOperation -- the `%` side, NOT ZeroDivisionError.
+    try:
+        show(divmod(7m, 0m))
+        print("ERROR: should not reach here")
+    except InvalidOperation as e:
+        print(e.message)
+
+    # Negative control: `except ZeroDivisionError` must NOT catch it. The two are
+    # siblings under ArithmeticError.
+    try:
+        try:
+            show(divmod(7m, 0m))
+            print("ERROR: should not reach here")
+        except ZeroDivisionError:
+            print("ERROR: ZeroDivisionError must not catch InvalidOperation")
+    except InvalidOperation:
+        print("ZeroDivisionError did not catch; InvalidOperation did")
+
+    # The asymmetry the issue flags, pinned in one place: decimal `//` by zero
+    # stays ZeroDivisionError (CPython's decimal.DivisionByZero IS a
+    # ZeroDivisionError subclass) while divmod by zero is InvalidOperation.
+    # These must not be unified.
+    try:
+        print(7m // 0m)
+        print("ERROR: should not reach here")
+    except ZeroDivisionError:
+        print("floordiv by zero is still ZeroDivisionError")
+
+    # A zero DIVIDEND never trips the guard.
+    show(divmod(0m, 3m))        # (0, 0)
