@@ -118,13 +118,20 @@ namespace Sharpy
         private const int DoubleMaxPositionalDecpt = 16;
 
         /// <summary>
+        /// Largest <c>decpt</c> that still renders positionally for a <see cref="float"/>.
+        /// See <see cref="FormatFloat(float)"/> for why this is 9 and not 16.
+        /// </summary>
+        private const int SingleMaxPositionalDecpt = 9;
+
+        /// <summary>
         /// Format a floating-point value with Python-compatible representation.
         /// NaN, Infinity, and -Infinity use Python's lowercase forms.
         /// Whole-number values get a trailing <c>.0</c>.
         /// </summary>
         /// <remarks>
         /// This is the single authority for Python-style float formatting; every other
-        /// float-rendering site delegates here.
+        /// float-rendering site delegates here (guarded by
+        /// <c>FloatFormattingAuthorityTests</c>).
         /// <para>
         /// The digits come from .NET's shortest-round-trip formatter (<c>"R"</c>), which is
         /// correct, but the positional-vs-exponential <em>layout</em> is Sharpy's own decision,
@@ -163,8 +170,26 @@ namespace Sharpy
         /// <summary>
         /// Format a <see cref="float"/> value with Python-compatible representation.
         /// Overload to avoid float→double widening precision issues.
-        /// NOTE: Keep in sync with <see cref="FormatFloat(double)"/> overload.
         /// </summary>
+        /// <remarks>
+        /// Shares <see cref="RenderShortestRoundTrip"/> with <see cref="FormatFloat(double)"/>
+        /// — the two overloads share a renderer, not a threshold.
+        /// <para>
+        /// The single switches to exponential at <c>decpt &gt; 9</c>, not the double's 16.
+        /// That is a deliberate Sharpy decision rather than CPython parity, because CPython
+        /// has no <c>float32</c> and therefore has no answer to copy. The derivation mirrors
+        /// CPython's: its 16 tracks the ≤17 significant digits a double's shortest
+        /// round-trip form can need, so positional layout never pads with digits the type
+        /// does not carry; a single needs ≤9, so 9 is its analogue. Using the double's 16
+        /// here would spread float32 output positionally across <c>[1e9, 1e16)</c> — e.g.
+        /// <c>1.5e15f</c> would print as <c>1500000000000000.0</c>, sixteen digits for a
+        /// type carrying about seven (Axiom 3).
+        /// </para>
+        /// <para>
+        /// 9 is also .NET's own single threshold, so float32 output is byte-identical to
+        /// what it was before this renderer existed.
+        /// </para>
+        /// </remarks>
         public static string FormatFloat(float value)
         {
             if (float.IsNaN(value))
@@ -182,16 +207,9 @@ namespace Sharpy
                 return "-inf";
             }
 
-            var s = value.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-
-            // If already contains a decimal point or scientific notation, return as-is
-            if (s.IndexOf('.') >= 0 || s.IndexOf('E') >= 0 || s.IndexOf('e') >= 0)
-            {
-                // Python uses lowercase 'e' in scientific notation (Axiom 2)
-                return s.Replace('E', 'e');
-            }
-
-            return s + ".0";
+            return RenderShortestRoundTrip(
+                value.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+                SingleMaxPositionalDecpt);
         }
 
         /// <summary>

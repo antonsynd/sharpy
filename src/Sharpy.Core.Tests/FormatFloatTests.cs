@@ -4,8 +4,10 @@ using Xunit;
 namespace Sharpy.Core.Tests;
 
 /// <summary>
-/// Layout rules for <see cref="Builtins.FormatFloat(double)"/>. Every expectation below was
-/// produced by <c>python3 -c "print(repr(v))"</c> on 2026-07-31.
+/// Layout rules for <see cref="Builtins.FormatFloat(double)"/> / <see cref="Builtins.FormatFloat(float)"/>.
+/// Every double expectation below was produced by <c>python3 -c "print(repr(v))"</c> on 2026-07-31;
+/// the float expectations are Sharpy's own decision (CPython has no float32) and are pinned as
+/// byte-identical to what the pre-#1204 formatter produced.
 /// </summary>
 public class FormatFloatTests
 {
@@ -48,7 +50,9 @@ public class FormatFloatTests
     public void FormatFloat_NegativeZero_KeepsTheSign()
     {
         Builtins.FormatFloat(-0.0).Should().Be("-0.0");
+        Builtins.FormatFloat(-0.0f).Should().Be("-0.0");
         Builtins.FormatFloat(0.0).Should().Be("0.0");
+        Builtins.FormatFloat(0.0f).Should().Be("0.0");
     }
 
     [Theory]
@@ -58,6 +62,50 @@ public class FormatFloatTests
     public void FormatFloat_Double_SpecialValues_UsePythonSpellings(double value, string expected)
     {
         Builtins.FormatFloat(value).Should().Be(expected);
+    }
+
+    /// <summary>
+    /// The float overload shares the renderer but not the threshold: it switches to
+    /// exponential at decpt > 9, so float32 output is byte-identical to the pre-#1204
+    /// formatter. Using the double's 16 here would move every one of the [1e9, 1e16)
+    /// rows below into positional form.
+    /// </summary>
+    [Theory]
+    [InlineData(3.14f, "3.14")]
+    [InlineData(2.0f, "2.0")]
+    [InlineData(0.5f, "0.5")]
+    [InlineData(0.0f, "0.0")]
+    [InlineData(1e8f, "100000000.0")]   // decpt == 9, the last positional decade
+    [InlineData(1e9f, "1e+09")]         // decpt == 10, exponential
+    [InlineData(9.99e14f, "9.99e+14")]
+    [InlineData(1.5e15f, "1.5e+15")]
+    [InlineData(1e-5f, "1e-05")]
+    [InlineData(0.0001f, "0.0001")]
+    public void FormatFloat_Single_KeepsItsOwnThreshold(float value, string expected)
+    {
+        Builtins.FormatFloat(value).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(float.NaN, "nan")]
+    [InlineData(float.PositiveInfinity, "inf")]
+    [InlineData(float.NegativeInfinity, "-inf")]
+    public void FormatFloat_Single_SpecialValues_UsePythonSpellings(float value, string expected)
+    {
+        Builtins.FormatFloat(value).Should().Be(expected);
+    }
+
+    /// <summary>
+    /// The single must not be widened to double before formatting: the two types have
+    /// different shortest-round-trip digits for the same stored value.
+    /// </summary>
+    [Fact]
+    public void FormatFloat_Single_DoesNotWidenToDouble()
+    {
+        const float value = 0.1f;
+
+        Builtins.FormatFloat(value).Should().Be("0.1");
+        Builtins.FormatFloat((double)value).Should().Be("0.10000000149011612");
     }
 
     /// <summary>
