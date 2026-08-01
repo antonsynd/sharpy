@@ -378,8 +378,7 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
     }
 
     /// <summary>
-    /// Recursively walks an expression tree to find FunctionCall nodes
-    /// and add parameter name hints for each.
+    /// Adds parameter-name hints for every call anywhere inside an expression tree.
     /// </summary>
     private static void CollectCallHintsFromExpression(
         Expression expr,
@@ -387,80 +386,45 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
         LspRange range,
         List<InlayHint> hints)
     {
-        if (expr is FunctionCall call)
+        new CallHintCollector(analysis, range, hints).Visit(expr);
+    }
+
+    /// <summary>
+    /// Finds the calls in an expression tree. It overrides one method — every other node type
+    /// reaches its children through <see cref="AstVisitor.DefaultVisit"/>, which walks
+    /// <c>GetChildNodes()</c>.
+    /// <para>
+    /// This deliberately owns no list of expression forms. The walker it replaced was a chain of
+    /// <c>if (expr is X)</c> arms covering nine of the AST's forty-one expression types, so
+    /// comprehensions, lambdas, dict/set literals, f-strings, slices, comparison chains, await and
+    /// sixteen other forms silently produced no hints, as did a call in a keyword argument even
+    /// though <c>FunctionCall</c> was on the list (#1223). Any hand-maintained enumeration —
+    /// including a <c>switch</c> over every node — falls behind the AST again on the next node
+    /// added; deferring to the traversal authority cannot. <c>Parenthesized</c> in particular
+    /// needs no unwrapping here: its child is yielded like any other, so <c>(f(x))</c> hints
+    /// exactly like <c>f(x)</c>.
+    /// </para>
+    /// </summary>
+    private sealed class CallHintCollector : AstVisitor
+    {
+        private readonly Compiler.SemanticResult _analysis;
+        private readonly LspRange _range;
+        private readonly List<InlayHint> _hints;
+
+        public CallHintCollector(Compiler.SemanticResult analysis, LspRange range, List<InlayHint> hints)
         {
-            AddParameterHints(call, analysis, range, hints);
-            // Recurse into arguments (they may contain nested calls)
-            foreach (var arg in call.Arguments)
-                CollectCallHintsFromExpression(arg, analysis, range, hints);
-            // Recurse into the function expression itself (e.g., obj.method())
-            CollectCallHintsFromExpression(call.Function, analysis, range, hints);
-            return;
+            _analysis = analysis;
+            _range = range;
+            _hints = hints;
         }
 
-        if (expr is BinaryOp binExpr)
+        public override void VisitFunctionCall(FunctionCall node)
         {
-            CollectCallHintsFromExpression(binExpr.Left, analysis, range, hints);
-            CollectCallHintsFromExpression(binExpr.Right, analysis, range, hints);
-            return;
-        }
+            AddParameterHints(node, _analysis, _range, _hints);
 
-        if (expr is UnaryOp unaryExpr)
-        {
-            CollectCallHintsFromExpression(unaryExpr.Operand, analysis, range, hints);
-            return;
-        }
-
-        if (expr is MemberAccess memberAccess)
-        {
-            CollectCallHintsFromExpression(memberAccess.Object, analysis, range, hints);
-            return;
-        }
-
-        if (expr is IndexAccess indexExpr)
-        {
-            CollectCallHintsFromExpression(indexExpr.Object, analysis, range, hints);
-            CollectCallHintsFromExpression(indexExpr.Index, analysis, range, hints);
-            return;
-        }
-
-        if (expr is MultiAxisAccess multiAxisExpr)
-        {
-            CollectCallHintsFromExpression(multiAxisExpr.Object, analysis, range, hints);
-            foreach (var dim in multiAxisExpr.Dimensions)
-            {
-                if (dim.Index != null)
-                    CollectCallHintsFromExpression(dim.Index, analysis, range, hints);
-                if (dim.Start != null)
-                    CollectCallHintsFromExpression(dim.Start, analysis, range, hints);
-                if (dim.Stop != null)
-                    CollectCallHintsFromExpression(dim.Stop, analysis, range, hints);
-                if (dim.Step != null)
-                    CollectCallHintsFromExpression(dim.Step, analysis, range, hints);
-            }
-            return;
-        }
-
-        if (expr is ConditionalExpression condExpr)
-        {
-            CollectCallHintsFromExpression(condExpr.Test, analysis, range, hints);
-            CollectCallHintsFromExpression(condExpr.ThenValue, analysis, range, hints);
-            CollectCallHintsFromExpression(condExpr.ElseValue, analysis, range, hints);
-            return;
-        }
-
-        if (expr is TupleLiteral tupleExpr)
-        {
-            foreach (var element in tupleExpr.Elements)
-                CollectCallHintsFromExpression(element, analysis, range, hints);
-            return;
-        }
-
-        if (expr is ListLiteral listExpr)
-        {
-            foreach (var element in listExpr.Elements)
-                CollectCallHintsFromExpression(element, analysis, range, hints);
-            return;
+            // Keep descending: the callee, the positional arguments and the keyword-argument
+            // values can all hold further calls.
+            base.VisitFunctionCall(node);
         }
     }
 
