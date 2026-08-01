@@ -366,6 +366,7 @@ internal partial class TypeChecker
                 // Module-level const was already created by NameResolver
                 // Update its type now that we've resolved it
                 SemanticBinding.SetVariableType(existingConst, declaredType);
+                _semanticInfo.SetDeclarationSymbol(varDecl, existingConst);
                 return;
             }
 
@@ -385,6 +386,7 @@ internal partial class TypeChecker
             };
             _symbolTable.Define(constSymbol);
             SemanticBinding.SetVariableType(constSymbol, declaredType);
+            _semanticInfo.SetDeclarationSymbol(varDecl, constSymbol);
             return;
         }
 
@@ -421,6 +423,7 @@ internal partial class TypeChecker
         };
         _symbolTable.Define(newSymbol);
         SemanticBinding.SetVariableType(newSymbol, declaredType);
+        _semanticInfo.SetDeclarationSymbol(varDecl, newSymbol);
 
         // A local declared with an explicit list[T] annotation emits as a concrete Sharpy.List<T>
         // (the annotation forces that C# type), so it is eligible for the non-negative index fast

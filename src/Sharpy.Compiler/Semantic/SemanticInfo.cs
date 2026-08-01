@@ -34,6 +34,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Identifier, Symbol> _identifierSymbols =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map variable declarations to the symbol they bind, recorded where the checker binds it.
+    // Distinct from _identifierSymbols, which is populated at *references*: a declaration nobody
+    // reads has no identifier to key on, and before this table the only way to resolve one was a
+    // name-and-position scan that could not see a function-local binding at all (#1222).
+    private readonly ConcurrentDictionary<VariableDeclaration, Symbol> _declarationSymbols =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map function calls to resolved function symbols
     private readonly ConcurrentDictionary<FunctionCall, FunctionSymbol> _callTargets =
         new(ReferenceEqualityComparer.Instance);
@@ -276,6 +283,21 @@ public class SemanticInfo : ISemanticQuery
     public Symbol? GetIdentifierSymbol(Identifier id)
     {
         return _identifierSymbols.TryGetValue(id, out var symbol) ? symbol : null;
+    }
+
+    /// <summary>
+    /// Records the symbol a variable declaration binds. Called where the checker creates or
+    /// updates that symbol, so the binding is known whether or not anything reads the variable.
+    /// </summary>
+    public void SetDeclarationSymbol(VariableDeclaration declaration, Symbol symbol)
+    {
+        _declarationSymbols[declaration] = symbol;
+    }
+
+    /// <inheritdoc/>
+    public Symbol? GetDeclarationSymbol(VariableDeclaration declaration)
+    {
+        return _declarationSymbols.TryGetValue(declaration, out var symbol) ? symbol : null;
     }
 
     public void SetCallTarget(FunctionCall call, FunctionSymbol target)
@@ -814,6 +836,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._identifierSymbols)
             _identifierSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._declarationSymbols)
+            _declarationSymbols.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._callTargets)
             _callTargets.TryAdd(kvp.Key, kvp.Value);

@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using FluentAssertions;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Semantic;
@@ -169,6 +170,89 @@ public class SemanticInfoMergeConformanceTests
         merged!.Kind.Should().Be(GenericReferenceKind.UserFunction);
         merged.TargetSymbol.Should().BeSameAs(target);
         merged.TypeArgs.Should().ContainSingle().Which.Should().Be(BuiltinType.Int);
+    }
+
+    /// <summary>
+    /// A declaration→symbol binding recorded on one SemanticInfo must survive
+    /// <see cref="SemanticInfo.MergeFrom"/> into another. The LSP reads a file's semantic model
+    /// through <c>ProjectAnalysisResult.GetFileResult</c>, which falls back to the merged
+    /// project-level instance; if <c>_declarationSymbols</c> were absent from <c>MergeFrom</c>,
+    /// an unannotated declaration would resolve to no symbol there and silently show no inferred
+    /// type (#1222).
+    /// </summary>
+    [Fact]
+    public void MergeFrom_CarriesDeclarationSymbols()
+    {
+        var perFile = new SemanticInfo();
+        var declaration = new VariableDeclaration { Name = "LIMIT", IsConst = true };
+        var symbol = new VariableSymbol { Name = "LIMIT", Kind = SymbolKind.Variable, IsConstant = true };
+        perFile.SetDeclarationSymbol(declaration, symbol);
+
+        var project = new SemanticInfo();
+        project.MergeFrom(perFile);
+
+        project.GetDeclarationSymbol(declaration).Should().BeSameAs(symbol,
+            "the declaration→symbol binding must survive the per-file → project merge");
+    }
+
+    /// <summary>
+    /// The same property through a real multi-file compile rather than two hand-built instances:
+    /// the merged project SemanticInfo must answer for a declaration in a file that is not the
+    /// entry point, and for one nothing references.
+    /// </summary>
+    [Fact]
+    public void ProjectAnalysis_MergesDeclarationSymbolsFromEveryFile()
+    {
+        using var helper = new ProjectCompilationHelper();
+        helper.WithRootNamespace("DeclarationSymbolMerge")
+            .AddSourceFile("lib.spy", """
+                def helper() -> int:
+                    const UNREFERENCED = 7
+                    total = 41
+                    return total
+                """)
+            .AddSourceFile("main.spy", """
+                from lib import helper
+
+                def main() -> None:
+                    print(helper())
+                """)
+            .CreateProjectFile();
+
+        var config = ProjectFileParser.Load(
+            Path.Combine(helper.ProjectDirectory, "DeclarationSymbolMerge.spyproj"));
+        var analysis = new CompilerApi().AnalyzeProject(config);
+
+        var libPath = helper.SourceFiles.Single(p => Path.GetFileName(p) == "lib.spy");
+        var libAst = analysis.GetFileResult(libPath)?.Ast;
+        libAst.Should().NotBeNull("the project analysis must have parsed lib.spy");
+
+        var declaration = FindDeclaration(libAst!, "UNREFERENCED");
+        declaration.Should().NotBeNull("lib.spy declares an unreferenced const");
+
+        var merged = analysis.ProjectModel.SemanticInfo;
+        merged.Should().NotBeNull("project analysis builds a merged SemanticInfo");
+
+        var symbol = merged!.GetDeclarationSymbol(declaration!);
+        symbol.Should().BeOfType<VariableSymbol>(
+            "the merged project SemanticInfo must carry the binding for a declaration in a "
+            + "non-entry file, even one nothing references")
+            .Which.Type.Should().Be(BuiltinType.Int);
+    }
+
+    private static VariableDeclaration? FindDeclaration(Node root, string name)
+    {
+        if (root is VariableDeclaration declaration && declaration.Name == name)
+            return declaration;
+
+        foreach (var child in root.GetChildNodes())
+        {
+            var found = FindDeclaration(child, name);
+            if (found != null)
+                return found;
+        }
+
+        return null;
     }
 
     /// <summary>

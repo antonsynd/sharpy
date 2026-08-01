@@ -77,8 +77,21 @@ public interface ISemanticQuery
     /// Finds a symbol by matching its name and declaration position.
     /// Used by rename/references handlers when the cursor is on a declaration node
     /// (e.g., VariableDeclaration, FunctionDef) rather than an Identifier reference.
+    /// <para>
+    /// Prefer <see cref="GetDeclarationSymbol"/> for a <c>VariableDeclaration</c>: this is a
+    /// name-and-position scan over reference-populated collections plus module scope, so it
+    /// cannot see a function-local binding that nothing reads (#1222).
+    /// </para>
     /// </summary>
     Symbol? FindSymbolByDeclaration(string name, int line, int column);
+
+    /// <summary>
+    /// Gets the symbol a variable declaration binds, keyed on the declaration node itself.
+    /// Recorded where the checker binds the declaration, so it answers for a binding nothing
+    /// references — which the name-and-position scan in <see cref="FindSymbolByDeclaration"/>
+    /// cannot do for a function-local one.
+    /// </summary>
+    Symbol? GetDeclarationSymbol(Parser.Ast.VariableDeclaration declaration);
 
     /// <summary>
     /// Returns true if the given statement was produced by a source generator
