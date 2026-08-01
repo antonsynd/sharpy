@@ -1,0 +1,26 @@
+# Test the positional/exponential boundaries of float repr (#1204).
+# CPython switches to exponential when decpt > 16 or decpt <= -4, writing a value
+# as 0.d1...dn * 10^decpt. .NET stays positional one decade longer (decpt <= 17),
+# which used to leak through as 1e16 printing as "10000000000000000.0".
+# Every expected line below was produced by python3.
+
+def main():
+    # Upper boundary: the last positional decade, then the band that used to diverge.
+    print(9.99e15)
+    print(1e16)
+    print(1.5e16)
+    print(1e17)
+
+    # A computed value in the band, so constant folding cannot be the whole story.
+    print(2e16 + 8.0)
+
+    # Lower boundary: decpt <= -4 switches, and the exponent is at least two digits.
+    print(0.0001)
+    print(1e-5)
+    print(1e-7)
+
+    # Unchanged territory, pinned so the rewrite cannot move it.
+    print(1e15)
+    print(0.1 + 0.2)
+    print(-0.0)
+    print(1.7976931348623157e308)

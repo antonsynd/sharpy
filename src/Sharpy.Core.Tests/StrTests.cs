@@ -134,28 +134,22 @@ public class StrTests
     [Fact]
     public void Str_Double_NegativeZero_FormatsWithMinusSign()
     {
-        // Python: str(-0.0) == "-0.0"
-        // .NET "R" format for -0.0 produces "0" (no minus sign, no decimal),
-        // then FormatFloat appends ".0" -> "0.0" (not "-0.0").
-        // This documents the known divergence from Python.
-        var result = Builtins.Str(-0.0);
-        // .NET does not distinguish -0.0 in ToString("R"), so we get "0.0"
-        // Python produces "-0.0". This is a known Axiom 1 (.NET) > Axiom 2 (Python) trade-off.
-        result.Should().BeOneOf("-0.0", "0.0");
+        // Python: str(-0.0) == "-0.0". .NET's "R" reports the sign bit as a leading '-'
+        // on a zero significand ("-0"), and FormatFloat preserves it.
+        Builtins.Str(-0.0).Should().Be("-0.0");
     }
 
     [Theory]
     [InlineData(1e15, "1000000000000000.0")]
-    [InlineData(1e16, "10000000000000000.0")]  // .NET "R" format still uses fixed notation at 1e16; Python uses "1e+16"
+    [InlineData(1e16, "1e+16")]
     [InlineData(1e20, "1e+20")]
     [InlineData(1e308, "1e+308")]
     public void Str_Double_LargeValues_FormatsConsistently(double value, string expected)
     {
-        // Large floats near or beyond the scientific notation boundary.
-        // Python: str(1e15) == "1000000000000000.0", str(1e16) == "1e+16"
-        // .NET "R" keeps fixed notation longer (1e16 -> "10000000000000000"),
-        // FormatFloat appends ".0" when no decimal/exponent present.
-        // FormatFloat now normalizes to lowercase 'e' to match Python (1e+20).
+        // Large floats near or beyond the scientific notation boundary. Verified against
+        // python3: str(1e15) == "1000000000000000.0", str(1e16) == "1e+16".
+        // 1e16 used to print as "10000000000000000.0" because the layout was .NET's
+        // (positional through decpt <= 17) rather than CPython's (decpt <= 16) — #1204.
         Builtins.Str(value).Should().Be(expected);
     }
 
@@ -167,8 +161,8 @@ public class StrTests
     [InlineData(1e-16, "1e-16")]
     public void Str_Double_SmallValues_FormatsConsistently(double value, string expected)
     {
-        // Very small floats that may trigger scientific notation.
-        // FormatFloat now normalizes to lowercase 'e' to match Python.
+        // Very small floats that trigger scientific notation (decpt <= -4), lowercase 'e'
+        // with a two-digit minimum exponent, as Python does.
         Builtins.Str(value).Should().Be(expected);
     }
 
