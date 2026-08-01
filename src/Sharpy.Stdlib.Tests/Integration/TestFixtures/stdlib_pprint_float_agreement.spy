@@ -1,0 +1,41 @@
+# pprint must agree with print/repr byte for byte.
+#
+# Float formatting has exactly one authority (Builtins.FormatFloat). pprint used
+# to keep a private copy that never lowercased .NET's 'E', so pprint(1e20) printed
+# "1E+20" where print(1e20) prints "1e+20", and it widened float32 to double before
+# formatting, which changes the shortest-round-trip digits (#1204).
+import pprint
+
+def show(value: float):
+    printed: str = str(value)
+    pretty: str = pprint.pformat(value)
+    print(printed)
+    print(pretty)
+    print(printed == pretty)
+
+def main():
+    # The exponential threshold band and the E-vs-e case.
+    show(1e16)
+    show(1e20)
+
+    # Ordinary values, whole values, and the sign of zero.
+    show(0.1 + 0.2)
+    show(5.0)
+    show(-0.0)
+
+    # Special values: pprint spells them Python's way too.
+    show(float("nan"))
+    show(float("inf"))
+    show(float("-inf"))
+
+    # float32 keeps its own digits: widening 0.1f to double would print
+    # 0.10000000149011612 on the pprint side only.
+    small = 0.1f
+    print(str(small))
+    print(pprint.pformat(small))
+    print(str(small) == pprint.pformat(small))
+
+    big = 1e9f
+    print(str(big))
+    print(pprint.pformat(big))
+    print(str(big) == pprint.pformat(big))

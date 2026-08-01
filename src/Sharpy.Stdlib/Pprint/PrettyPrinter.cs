@@ -178,15 +178,18 @@ namespace Sharpy
                 return;
             }
 
+            // Float formatting has exactly one authority (Builtins.FormatFloat), so pprint
+            // cannot drift from print/repr. The float overload is called on the single
+            // directly: widening to double would change its shortest-round-trip digits.
             if (obj is float f)
             {
-                sb.Append(FormatFloat(f));
+                sb.Append(Builtins.FormatFloat(f));
                 return;
             }
 
             if (obj is double d)
             {
-                sb.Append(FormatFloat(d));
+                sb.Append(Builtins.FormatFloat(d));
                 return;
             }
 
@@ -522,23 +525,6 @@ namespace Sharpy
             }
             return string.Compare(a.ToString(), b.ToString(), StringComparison.Ordinal);
         }
-
-        private static string FormatFloat(double d)
-        {
-            if (double.IsPositiveInfinity(d))
-                return "inf";
-            if (double.IsNegativeInfinity(d))
-                return "-inf";
-            if (double.IsNaN(d))
-                return "nan";
-
-            string result = d.ToString("G");
-            if (!result.Contains('.') && !result.Contains('E') && !result.Contains('e'))
-                result += ".0";
-            return result;
-        }
-
-        private static string FormatFloat(float f) => FormatFloat((double)f);
 
         private static string GetTypeName(object obj)
         {
