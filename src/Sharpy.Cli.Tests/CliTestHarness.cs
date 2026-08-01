@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using Sharpy.Cli;
 using Sharpy.Cli.Commands;
 
@@ -22,7 +23,12 @@ internal static class CliTestHarness
     /// Builds a fresh root command with all commands and global options configured,
     /// mirroring <c>Program.Main</c>.
     /// </summary>
-    internal static (RootCommand Root, GlobalOptions Globals) BuildRoot()
+    /// <param name="programArguments">
+    /// Tokens that followed a bare <c>--</c>, as <c>Program.Main</c> hands them to
+    /// <see cref="RunCommand.Configure"/> (#1215).
+    /// </param>
+    internal static (RootCommand Root, GlobalOptions Globals, Command Run) BuildRoot(
+        IReadOnlyList<string>? programArguments = null)
     {
         var root = new RootCommand("sharpyc - Sharpy Compiler");
         var globals = new GlobalOptions();
@@ -30,7 +36,7 @@ internal static class CliTestHarness
 
         BuildCommand.Configure(root, globals);
         CompileCommand.Configure(root, globals);
-        RunCommand.Configure(root, globals);
+        var run = RunCommand.Configure(root, globals, programArguments);
         ProjectCommand.Configure(root, globals);
         EmitCommand.Configure(root, globals);
         CacheCommand.Configure(root, globals);
@@ -38,15 +44,25 @@ internal static class CliTestHarness
         LspCommand.Configure(root, globals);
         ReplCommand.Configure(root, globals);
         FormatCommand.Configure(root, globals);
+        ServerCommand.Configure(root, globals);
 
-        return (root, globals);
+        return (root, globals, run);
     }
+
+    /// <summary>
+    /// Tokenizes a command line the way <c>Command.Parse(string)</c> does, then applies the same
+    /// <c>--</c> split <c>Program.Main</c> applies to its raw argument vector, so tests exercise the
+    /// real entry-point pipeline rather than a shortcut through it (#1215).
+    /// </summary>
+    internal static (string[] CompilerArguments, string[] ProgramArguments) SplitCommandLine(string commandLine)
+        => CliHelpers.SplitAtDoubleDash(CommandLineParser.SplitCommandLine(commandLine).ToArray());
 
     /// <summary>Parses a command line without invoking any action.</summary>
     internal static ParseResult Parse(string commandLine)
     {
-        var (root, _) = BuildRoot();
-        return root.Parse(commandLine);
+        var (compilerArguments, programArguments) = SplitCommandLine(commandLine);
+        var (root, _, _) = BuildRoot(programArguments);
+        return root.Parse(compilerArguments);
     }
 
     /// <summary>
@@ -55,8 +71,9 @@ internal static class CliTestHarness
     /// </summary>
     internal static (ParseResult Result, GlobalOptions Globals) ParseWithGlobals(string commandLine)
     {
-        var (root, globals) = BuildRoot();
-        return (root.Parse(commandLine), globals);
+        var (compilerArguments, programArguments) = SplitCommandLine(commandLine);
+        var (root, globals, _) = BuildRoot(programArguments);
+        return (root.Parse(compilerArguments), globals);
     }
 
     /// <summary>
@@ -75,8 +92,14 @@ internal static class CliTestHarness
                 Console.SetOut(outWriter);
                 Console.SetError(errWriter);
 
-                var (root, _) = BuildRoot();
-                var parseResult = root.Parse(commandLine);
+                var (compilerArguments, programArguments) = SplitCommandLine(commandLine);
+                var (root, _, run) = BuildRoot(programArguments);
+                var parseResult = root.Parse(compilerArguments);
+                if (!CliHelpers.ValidateProgramArgumentPlacement(parseResult, run, programArguments))
+                {
+                    return new CliInvocation(
+                        CliHelpers.ExitCompileError, outWriter.ToString(), errWriter.ToString(), parseResult);
+                }
 #pragma warning disable CS0618 // ParseResult.Invoke is obsolete in System.CommandLine 2.x; matches production Program.cs usage
                 var exitCode = parseResult.Invoke();
 #pragma warning restore CS0618

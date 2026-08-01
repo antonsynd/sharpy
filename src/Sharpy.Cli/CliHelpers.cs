@@ -356,6 +356,68 @@ internal static class CliHelpers
         return true;
     }
 
+    /// <summary>
+    /// Splits a raw argument vector at the first bare <c>--</c>: everything before it is sharpyc's
+    /// own command line, everything after it is the argument vector of the program being run
+    /// (<c>sharpyc run prog.spy -- a b c</c>, #1215). The separator itself is dropped; a second
+    /// <c>--</c> is not a separator and reaches the program verbatim, matching <c>dotnet run --</c>
+    /// and <c>cargo run --</c>.
+    /// <para>
+    /// The split happens before parsing so tokens after <c>--</c> can never be read as sharpyc
+    /// options, and so the parser stays strict about everything before it — an unknown option is
+    /// still a parse error rather than something quietly forwarded to the program.
+    /// </para>
+    /// </summary>
+    internal static (string[] CompilerArguments, string[] ProgramArguments) SplitAtDoubleDash(
+        IReadOnlyList<string> arguments)
+    {
+        for (var i = 0; i < arguments.Count; i++)
+        {
+            if (arguments[i] != "--")
+            {
+                continue;
+            }
+
+            var compilerArguments = new string[i];
+            for (var j = 0; j < i; j++)
+            {
+                compilerArguments[j] = arguments[j];
+            }
+
+            var programArguments = new string[arguments.Count - i - 1];
+            for (var j = i + 1; j < arguments.Count; j++)
+            {
+                programArguments[j - i - 1] = arguments[j];
+            }
+
+            return (compilerArguments, programArguments);
+        }
+
+        return (arguments.ToArray(), Array.Empty<string>());
+    }
+
+    /// <summary>
+    /// A program argument vector only means something to <c>sharpyc run</c>, which is the only
+    /// command that executes anything. Tokens after <c>--</c> on any other command used to be a
+    /// parse error ("Unrecognized command or argument"), so rejecting them here keeps that contract
+    /// instead of silently discarding them (#1215). Returns <c>false</c> after writing the message.
+    /// </summary>
+    internal static bool ValidateProgramArgumentPlacement(
+        System.CommandLine.ParseResult parseResult,
+        System.CommandLine.Command runCommand,
+        IReadOnlyList<string> programArguments)
+    {
+        if (programArguments.Count == 0 || ReferenceEquals(parseResult.CommandResult.Command, runCommand))
+        {
+            return true;
+        }
+
+        Console.Error.WriteLine(
+            "Error: '--' passes the following arguments to the program being run, which only "
+            + $"'sharpyc run' does; '{parseResult.CommandResult.Command.Name}' cannot accept them.");
+        return false;
+    }
+
     internal static void RenderDiagnostic(CompilerDiagnostic diagnostic, SourceText? sourceText, TextWriter writer)
     {
         writer.WriteLine(Renderer.Render(diagnostic, sourceText, ShowDiagnosticProvenance));

@@ -14,6 +14,10 @@ class Program
             return 0;
         }
 
+        // Everything after a bare `--` belongs to the program being run, not to sharpyc, so it is
+        // split off before parsing and never reaches the option grammar (#1215).
+        var (compilerArguments, programArguments) = CliHelpers.SplitAtDoubleDash(args);
+
         var rootCommand = new RootCommand("sharpyc - Sharpy Compiler");
 
         var globals = new GlobalOptions();
@@ -21,7 +25,7 @@ class Program
 
         BuildCommand.Configure(rootCommand, globals);
         CompileCommand.Configure(rootCommand, globals);
-        RunCommand.Configure(rootCommand, globals);
+        var runCommand = RunCommand.Configure(rootCommand, globals, programArguments);
         ProjectCommand.Configure(rootCommand, globals);
         EmitCommand.Configure(rootCommand, globals);
         CacheCommand.Configure(rootCommand, globals);
@@ -31,6 +35,12 @@ class Program
         FormatCommand.Configure(rootCommand, globals);
         ServerCommand.Configure(rootCommand, globals);
 
-        return rootCommand.Parse(args).Invoke();
+        var parseResult = rootCommand.Parse(compilerArguments);
+        if (!CliHelpers.ValidateProgramArgumentPlacement(parseResult, runCommand, programArguments))
+        {
+            return CliHelpers.ExitCompileError;
+        }
+
+        return parseResult.Invoke();
     }
 }

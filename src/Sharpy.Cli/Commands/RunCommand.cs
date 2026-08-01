@@ -7,8 +7,17 @@ namespace Sharpy.Cli.Commands;
 
 internal static class RunCommand
 {
-    internal static void Configure(RootCommand root, GlobalOptions globals)
+    /// <summary>
+    /// Configures the <c>run</c> command and returns it, so the caller can tell a <c>run</c>
+    /// invocation from any other when deciding what to do with a program argument vector (#1215).
+    /// </summary>
+    /// <param name="programArguments">
+    /// The tokens that followed a bare <c>--</c> on the command line, already split off by
+    /// <see cref="CliHelpers.SplitAtDoubleDash"/> so the parser never sees them.
+    /// </param>
+    internal static Command Configure(RootCommand root, GlobalOptions globals, IReadOnlyList<string>? programArguments = null)
     {
+        var afterDoubleDash = programArguments ?? Array.Empty<string>();
         var command = new Command("run", "Compile and execute a Sharpy source file");
 
         var inputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file to run" };
@@ -21,7 +30,15 @@ internal static class RunCommand
         projRefOpt.Aliases.Add("-p");
         var modPathOpt = new Option<string[]>("--module-path") { Description = "Additional path to search for modules (repeatable)" };
         modPathOpt.Aliases.Add("-m");
-        var argsOpt = new Option<string[]>("--args") { Description = "Arguments to pass to the program", AllowMultipleArgumentsPerToken = true };
+        // Deprecated in favour of `--` (#1215). Non-greedy like every other option, which means the
+        // multi-token spelling `--args a b c` stops working — it was only ever held together by
+        // AllowMultipleArgumentsPerToken, the same greediness that swallowed positional input paths.
+        var argsOpt = new Option<string[]>("--args")
+        {
+            Description = "Deprecated: pass program arguments after a bare '--' instead. "
+                + "Takes one value per occurrence (repeatable), so '--args a b c' no longer works — "
+                + "spell it '-- a b c', or '--args a --args b --args c'."
+        };
         var namespaceOpt = new Option<string?>("--namespace") { Description = "Wrap generated code in a namespace declaration" };
         namespaceOpt.Aliases.Add("-n");
         var selfContainedOpt = new Option<bool>("--self-contained") { Description = "Publish as a self-contained executable (no .NET runtime required)" };
@@ -44,7 +61,7 @@ internal static class RunCommand
             var reference = parseResult.GetValue(refOpt) ?? Array.Empty<string>();
             var projectReference = parseResult.GetValue(projRefOpt) ?? Array.Empty<string>();
             var modulePath = parseResult.GetValue(modPathOpt) ?? Array.Empty<string>();
-            var progArgs = parseResult.GetValue(argsOpt) ?? Array.Empty<string>();
+            var progArgs = CombineProgramArguments(parseResult.GetValue(argsOpt), afterDoubleDash);
             var namespaceName = parseResult.GetValue(namespaceOpt);
             var selfContained = parseResult.GetValue(selfContainedOpt);
             var logLevel = globals.ResolveLogLevel(parseResult);
@@ -65,6 +82,30 @@ internal static class RunCommand
         });
 
         root.Subcommands.Add(command);
+        return command;
+    }
+
+    /// <summary>
+    /// The program's argument vector: values given to the deprecated <c>--args</c> option first, in
+    /// the order they were written, then everything after the <c>--</c> separator (#1215). Both
+    /// channels are honoured so a script that has not migrated yet keeps working alongside <c>--</c>.
+    /// </summary>
+    internal static string[] CombineProgramArguments(string[]? argsOption, IReadOnlyList<string> afterDoubleDash)
+    {
+        var fromOption = argsOption ?? Array.Empty<string>();
+        if (afterDoubleDash.Count == 0)
+        {
+            return fromOption;
+        }
+
+        var combined = new string[fromOption.Length + afterDoubleDash.Count];
+        fromOption.CopyTo(combined, 0);
+        for (var i = 0; i < afterDoubleDash.Count; i++)
+        {
+            combined[fromOption.Length + i] = afterDoubleDash[i];
+        }
+
+        return combined;
     }
 
     static int HandleRunCommand(
