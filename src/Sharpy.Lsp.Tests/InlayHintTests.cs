@@ -229,6 +229,99 @@ public class InlayHintTests : IDisposable
         paramHints.Should().Contain(h => h.Label.String!.Contains("count:"));
     }
 
+    // #1222 — the declaration arm resolved its symbol by scanning names and positions across
+    // reference-populated collections and module scope, so a function-local binding nothing reads
+    // matched nothing. It now resolves by declaration-node identity, like the assignment arm.
+
+    [Fact]
+    public async Task UnreferencedLocalConst_ShowsTypeHintAsync()
+    {
+        // The issue's repro: nothing reads LIMIT, so the old name-and-position scan had no
+        // reference to find it by and no module-scope entry to fall back on.
+        // The trailing newline is load-bearing: an indented `const` as the last line of a file
+        // that does not end in one fails to parse outright (SPY0102), which is a parser bug of
+        // its own and nothing to do with hints. Editors keep the newline.
+        var source = "def main() -> None:\n    const LIMIT = 42\n";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int");
+        // After the name `LIMIT`, so the hint reads `const LIMIT: int = 42`.
+        typeHints[0].Position.Should().Be(new Position(1, 15));
+    }
+
+    [Fact]
+    public async Task ReferencedLocalConst_StillShowsTypeHintAsync()
+    {
+        // The shape the old scan's first fallback did cover — the regression risk in swapping
+        // the lookup out.
+        var source = """
+            def main() -> None:
+                const LIMIT = 42
+                print(LIMIT)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int");
+        typeHints[0].Position.Should().Be(new Position(1, 15));
+    }
+
+    [Fact]
+    public async Task UnreferencedModuleLevelConst_StillShowsTypeHintAsync()
+    {
+        // Module scope was the old scan's third fallback; NameResolver creates the symbol before
+        // type checking, so the declaration arm must keep resolving it.
+        var source = """
+            const LIMIT = 42
+
+            def main() -> None:
+                pass
+            """;
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int");
+        typeHints[0].Position.Should().Be(new Position(0, 11));
+    }
+
+    [Fact]
+    public async Task AnnotatedLocalConst_ShowsNoTypeHintAsync()
+    {
+        // The declaration already states its type; a hint would just repeat it.
+        var source = """
+            def main() -> None:
+                const LIMIT: int = 42
+                print(LIMIT)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        TypeHints(hints).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task LocalConstShadowingAModuleConst_HintsAtEachDeclarationAsync()
+    {
+        // Two symbols share the name, and the position gate is what keeps each hint on its own
+        // declaration: resolving by node identity must not let the module symbol answer for the
+        // local declaration or vice versa.
+        var source = """
+            const LIMIT = 42
+
+            def main() -> None:
+                const LIMIT = "wide"
+                print(LIMIT)
+            """;
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().HaveCount(2);
+        typeHints.Should().ContainSingle(h => h.Position == new Position(0, 11))
+            .Which.Label.String.Should().Be(": int");
+        typeHints.Should().ContainSingle(h => h.Position == new Position(3, 15))
+            .Which.Label.String.Should().Be(": str");
+    }
+
     // #1223 — the call walker enumerated nine of the AST's forty-one expression types by hand,
     // so a call written in any other form produced no parameter hints at all. Each test below is
     // a form that produced nothing before the walker was handed to AstVisitor; the two the issue
