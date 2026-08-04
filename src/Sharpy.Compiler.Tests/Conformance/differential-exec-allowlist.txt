@@ -39,6 +39,15 @@ fixture::string_astral_escape
 # opt-in. deviations.yaml: int-overflow-checked. Permanent.
 fixture::integer_power_runtime_checked
 
+# A parameterized generic is a legal `isinstance` type operand because .NET reifies
+# generics — `isinstance(x, list[int])` names a real runtime type and narrows to it.
+# CPython erases generics and refuses the same spelling outright ("isinstance()
+# argument 2 cannot be a parameterized generic"), so the fixture runs to completion
+# here and raises TypeError there. The reversal is exact: the bare form CPython
+# accepts is the one Sharpy rejects (SPY0345). Verified against python3 2026-08-04.
+# deviations.yaml: isinstance-open-generic. Permanent.
+fixture::type_system/isinstance_parameterized_collection
+
 # `is` lowers to reference equality, so comparing two boxed value-type operands is
 # always False where CPython's small-int cache makes `1 is 1` True. The compiler
 # already warns at the use site (SPY0465, asserted by this fixture's .warning
