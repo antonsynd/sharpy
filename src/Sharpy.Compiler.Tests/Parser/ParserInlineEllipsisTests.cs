@@ -278,6 +278,97 @@ class Container:
             .Which.Expression.Should().BeOfType<EllipsisLiteral>();
     }
 
+    /// <summary>
+    /// Regression guard for the Span distinction the ellipsis-stub authority preserves (#1214).
+    /// <c>BodylessSyntaxValidator</c> tells deprecated body-less declaration syntax (a
+    /// parser-synthesized ellipsis, null Span) apart from a user-written stub (non-null Span). A
+    /// parenthesized <c>(...)</c> is user-written, so unwrapping the grouping must land on a
+    /// non-null-Span node — otherwise routing that validator through the shared unwrap would start
+    /// warning on explicit stubs.
+    /// </summary>
+    [Fact]
+    public void ParseClassDef_ParenthesizedEllipsisBody_KeepsNonNullSpan()
+    {
+        var source = @"
+class Marker:
+    (...)
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+
+        var stmt = classDef.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var paren = stmt.Expression.Should().BeOfType<Parenthesized>().Subject;
+        var ellipsis = paren.Expression.Should().BeOfType<EllipsisLiteral>().Subject;
+        ellipsis.Span.Should().NotBeNull("an explicitly written (...) is not body-less syntax");
+    }
+
+    [Fact]
+    public void ParseInterfaceDef_ParenthesizedEllipsisStub_KeepsNonNullSpan()
+    {
+        var source = @"
+interface Greeter:
+    def greet(self, name: str) -> str:
+        (...)
+";
+        var module = Parse(source);
+        var interfaceDef = module.Body[0].Should().BeOfType<InterfaceDef>().Subject;
+
+        var func = interfaceDef.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.Body.Should().HaveCount(1);
+        var stmt = func.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var paren = stmt.Expression.Should().BeOfType<Parenthesized>().Subject;
+        var ellipsis = paren.Expression.Should().BeOfType<EllipsisLiteral>().Subject;
+        ellipsis.Span.Should().NotBeNull("an explicitly written (...) is not body-less syntax");
+    }
+
+    /// <summary>
+    /// The ellipsis-stub authority unwraps grouping on the expression side only — <c>pass</c> is a
+    /// statement, so there is no parenthesized form of it to recognize (#1214).
+    /// </summary>
+    [Fact]
+    public void ParseClassDef_ParenthesizedPass_IsNotParseable()
+    {
+        var source = @"
+class Marker:
+    (pass)
+";
+        var lexer = new LexerNs.Lexer(source);
+        var parser = new ParserNs.Parser(lexer.TokenizeAll());
+        parser.ParseModule();
+
+        parser.Diagnostics.GetErrors().Should().NotBeEmpty(
+            "'pass' is a statement keyword, so '(pass)' is not an expression");
+    }
+
+    [Fact]
+    public void ParseFunctionDef_ExplicitEllipsis_HasNonNullSpan_BodylessHasNull()
+    {
+        var explicitSource = @"
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float: ...
+";
+        var bodylessSource = @"
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float
+";
+
+        var explicitFunc = (Parse(explicitSource).Body[0] as ClassDef)!.Body[0]
+            .Should().BeOfType<FunctionDef>().Subject;
+        var explicitEllipsis = (explicitFunc.Body[0] as ExpressionStatement)!.Expression
+            .Should().BeOfType<EllipsisLiteral>().Subject;
+        explicitEllipsis.Span.Should().NotBeNull();
+
+        var bodylessFunc = (Parse(bodylessSource).Body[0] as ClassDef)!.Body[0]
+            .Should().BeOfType<FunctionDef>().Subject;
+        var bodylessEllipsis = (bodylessFunc.Body[0] as ExpressionStatement)!.Expression
+            .Should().BeOfType<EllipsisLiteral>().Subject;
+        bodylessEllipsis.Span.Should().BeNull("the parser synthesizes this body — SPY0464 keys on it");
+    }
+
     [Fact]
     public void ParseFunctionDef_BodylessAbstract_WithMultipleTypeParameters()
     {

@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Sharpy.Compiler.Parser.Ast;
 
@@ -123,6 +125,67 @@ internal static class AstHelper
         while (expr is Parenthesized paren)
             expr = paren.Expression;
         return expr;
+    }
+
+    /// <summary>
+    /// The single stub-detection authority (#1214): recognizes a statement that is an ellipsis stub
+    /// body (<c>...</c>) and hands back the underlying <see cref="EllipsisLiteral"/>.
+    ///
+    /// <para>Grouping is transparent, so the ellipsis is looked up through any
+    /// <see cref="Parenthesized"/> wrappers via <see cref="UnwrapParenthesized"/> — <c>(...)</c> and
+    /// <c>((...))</c> are the same stub as <c>...</c>. Before #1214 the class-member and
+    /// declaration seams pattern-matched the raw expression, so a parenthesized ellipsis was neither
+    /// a stub to the checker (wrong SPY0266 on an interface method) nor to the emitter (SPY0510 +
+    /// SPY0908 in a class body), while the statement seam had already been unwrapped by #1197.</para>
+    ///
+    /// <para>This returns the <em>node</em> rather than a bare <c>bool</c> on purpose: span-sensitive
+    /// callers keep their distinctions without re-implementing the unwrap.
+    /// <c>BodylessSyntaxValidator</c> tells body-less declaration syntax (a parser-synthesized
+    /// ellipsis, <c>Span is null</c>) apart from a user-written <c>...</c> or <c>(...)</c>
+    /// (<c>Span</c> non-null) by testing the returned node's <see cref="Node.Span"/>. A boolean-only
+    /// helper would force that validator to keep a private duplicate of the unwrap — exactly the
+    /// drift this authority removes.</para>
+    /// </summary>
+    public static bool TryGetEllipsisStub(Statement stmt, [MaybeNullWhen(false)] out EllipsisLiteral ellipsis)
+    {
+        if (stmt is ExpressionStatement exprStmt
+            && UnwrapParenthesized(exprStmt.Expression) is EllipsisLiteral literal)
+        {
+            ellipsis = literal;
+            return true;
+        }
+
+        ellipsis = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Whole-body convenience over <see cref="TryGetEllipsisStub"/>: true when <paramref name="body"/>
+    /// is a single ellipsis-stub statement. Ellipsis-only — for the seams that accept <c>pass</c> as
+    /// an equally valid stub body, use <see cref="IsAbstractStubBody"/>.
+    /// </summary>
+    public static bool IsEllipsisStubBody(ImmutableArray<Statement> body)
+    {
+        return body.Length == 1 && TryGetEllipsisStub(body[0], out _);
+    }
+
+    /// <summary>
+    /// True when <paramref name="body"/> is a single stub statement — an ellipsis (<c>...</c>,
+    /// including parenthesized forms) <em>or</em> a <see cref="PassStatement"/>.
+    ///
+    /// <para>This is the shape the abstract-member seams actually test (abstract/interface methods,
+    /// function-style property and event stubs): a stub written <c>pass</c> is as abstract as one
+    /// written <c>...</c>, so routing those seams through the ellipsis-only wrapper would silently
+    /// stop recognizing them. Note <c>(pass)</c> is not a thing — <c>pass</c> is a statement, not an
+    /// expression, so there is nothing to unwrap on that side.</para>
+    ///
+    /// <para>An empty body is deliberately <em>not</em> a stub here; the one site that also accepts
+    /// <c>Body.Length == 0</c> keeps that disjunct at its own call site.</para>
+    /// </summary>
+    public static bool IsAbstractStubBody(ImmutableArray<Statement> body)
+    {
+        return body.Length == 1
+            && (body[0] is PassStatement || TryGetEllipsisStub(body[0], out _));
     }
 
     private static string? ExtractMemberAccessNarrowingKey(MemberAccess ma)

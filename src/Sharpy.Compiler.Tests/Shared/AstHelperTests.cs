@@ -1,5 +1,7 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
+using Sharpy.Compiler.Text;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Shared;
@@ -172,6 +174,159 @@ public class AstHelperTests
             Right = new IntegerLiteral { Value = "2" }
         };
         Assert.True(AstHelper.ContainsWalrusExpression(expr));
+    }
+
+    #endregion
+
+    #region Ellipsis stub detection (#1214)
+
+    private static ExpressionStatement Stmt(Expression expr) => new() { Expression = expr };
+
+    private static Expression Paren(Expression inner) => new Parenthesized { Expression = inner };
+
+    private static ImmutableArray<Statement> Body(params Statement[] statements) =>
+        ImmutableArray.Create(statements);
+
+    [Fact]
+    public void TryGetEllipsisStub_ReturnsNode_ForBareEllipsis()
+    {
+        var literal = new EllipsisLiteral();
+        Assert.True(AstHelper.TryGetEllipsisStub(Stmt(literal), out var found));
+        Assert.Same(literal, found);
+    }
+
+    [Fact]
+    public void TryGetEllipsisStub_ReturnsInnerNode_ForParenthesizedEllipsis()
+    {
+        var literal = new EllipsisLiteral();
+        Assert.True(AstHelper.TryGetEllipsisStub(Stmt(Paren(literal)), out var found));
+        Assert.Same(literal, found);
+    }
+
+    [Fact]
+    public void TryGetEllipsisStub_ReturnsInnerNode_ForDoubleParenthesizedEllipsis()
+    {
+        var literal = new EllipsisLiteral();
+        Assert.True(AstHelper.TryGetEllipsisStub(Stmt(Paren(Paren(literal))), out var found));
+        Assert.Same(literal, found);
+    }
+
+    [Fact]
+    public void TryGetEllipsisStub_PreservesSpan_ThroughParentheses()
+    {
+        // The Span distinction is what BodylessSyntaxValidator keys on: a parser-synthesized
+        // body-less ellipsis has a null Span, a user-written one does not. Unwrapping must not
+        // erase it (#1214, D1).
+        var spanned = new EllipsisLiteral { Span = new TextSpan(7, 3) };
+        Assert.True(AstHelper.TryGetEllipsisStub(Stmt(Paren(spanned)), out var found));
+        Assert.NotNull(found.Span);
+        Assert.Equal(new TextSpan(7, 3), found.Span!.Value);
+
+        var synthesized = new EllipsisLiteral();
+        Assert.True(AstHelper.TryGetEllipsisStub(Stmt(synthesized), out var synthesizedFound));
+        Assert.Null(synthesizedFound.Span);
+    }
+
+    [Fact]
+    public void TryGetEllipsisStub_ReturnsFalse_ForPassStatement()
+    {
+        Assert.False(AstHelper.TryGetEllipsisStub(new PassStatement(), out var found));
+        Assert.Null(found);
+    }
+
+    [Fact]
+    public void TryGetEllipsisStub_ReturnsFalse_ForNonEllipsisExpression()
+    {
+        Assert.False(AstHelper.TryGetEllipsisStub(Stmt(new IntegerLiteral { Value = "1" }), out _));
+        Assert.False(AstHelper.TryGetEllipsisStub(Stmt(Paren(new Identifier { Name = "x" })), out _));
+    }
+
+    [Fact]
+    public void TryGetEllipsisStub_ReturnsFalse_ForNonExpressionStatement()
+    {
+        Assert.False(AstHelper.TryGetEllipsisStub(new ReturnStatement(), out _));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IsEllipsisStubBody_ReturnsTrue_ForSingleEllipsis(bool parenthesized)
+    {
+        Expression expr = new EllipsisLiteral();
+        if (parenthesized)
+            expr = Paren(expr);
+
+        Assert.True(AstHelper.IsEllipsisStubBody(Body(Stmt(expr))));
+    }
+
+    [Fact]
+    public void IsEllipsisStubBody_ReturnsFalse_ForPassBody()
+    {
+        Assert.False(AstHelper.IsEllipsisStubBody(Body(new PassStatement())));
+    }
+
+    [Fact]
+    public void IsEllipsisStubBody_ReturnsFalse_ForEmptyBody()
+    {
+        Assert.False(AstHelper.IsEllipsisStubBody(ImmutableArray<Statement>.Empty));
+    }
+
+    [Fact]
+    public void IsEllipsisStubBody_ReturnsFalse_ForMultiStatementBody()
+    {
+        Assert.False(AstHelper.IsEllipsisStubBody(
+            Body(Stmt(new EllipsisLiteral()), Stmt(new EllipsisLiteral()))));
+    }
+
+    [Fact]
+    public void IsEllipsisStubBody_ReturnsFalse_ForRealBody()
+    {
+        Assert.False(AstHelper.IsEllipsisStubBody(Body(new ReturnStatement())));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IsAbstractStubBody_ReturnsTrue_ForSingleEllipsis(bool parenthesized)
+    {
+        Expression expr = new EllipsisLiteral();
+        if (parenthesized)
+            expr = Paren(expr);
+
+        Assert.True(AstHelper.IsAbstractStubBody(Body(Stmt(expr))));
+    }
+
+    [Fact]
+    public void IsAbstractStubBody_ReturnsTrue_ForDoubleParenthesizedEllipsis()
+    {
+        Assert.True(AstHelper.IsAbstractStubBody(Body(Stmt(Paren(Paren(new EllipsisLiteral()))))));
+    }
+
+    [Fact]
+    public void IsAbstractStubBody_ReturnsTrue_ForPassBody()
+    {
+        // `pass` is a co-equal stub body at the abstract-member seams; the ellipsis-only wrapper
+        // must not be used there or `pass` stubs silently stop being recognized (#1214).
+        Assert.True(AstHelper.IsAbstractStubBody(Body(new PassStatement())));
+    }
+
+    [Fact]
+    public void IsAbstractStubBody_ReturnsFalse_ForEmptyBody()
+    {
+        // The one site that also accepts an empty body keeps that disjunct at its own call site.
+        Assert.False(AstHelper.IsAbstractStubBody(ImmutableArray<Statement>.Empty));
+    }
+
+    [Fact]
+    public void IsAbstractStubBody_ReturnsFalse_ForMultiStatementBody()
+    {
+        Assert.False(AstHelper.IsAbstractStubBody(Body(new PassStatement(), new PassStatement())));
+    }
+
+    [Fact]
+    public void IsAbstractStubBody_ReturnsFalse_ForRealBody()
+    {
+        Assert.False(AstHelper.IsAbstractStubBody(Body(new ReturnStatement())));
     }
 
     #endregion
