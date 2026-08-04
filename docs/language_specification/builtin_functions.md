@@ -116,6 +116,11 @@ if isinstance(value, IDrawable):
 
 Unlike Python's `isinstance()` which accepts a tuple of types, Sharpy's `isinstance()` only accepts a single type argument. Sharpy does not have union types.
 
+The restriction is load-bearing rather than stylistic: a successful check narrows the value to one
+concrete type for the rest of the branch, and a tuple has nothing to narrow to. A multi-type test
+would return a correct boolean and then silently fail to narrow at the very next line, so it is
+refused instead (SPY0344).
+
 ```python
 # ✅ Valid - single type
 if isinstance(x, int):
@@ -125,7 +130,7 @@ if isinstance(x, IDrawable):
     pass
 
 # ❌ Invalid - multiple types not supported
-if isinstance(x, (int, str)):      # ERROR: isinstance() takes exactly one type argument
+if isinstance(x, (int, str)):      # SPY0344: isinstance() takes exactly one type argument
     pass
 
 if isinstance(x, int | str):       # ERROR: union types not supported
@@ -141,24 +146,43 @@ if isinstance(x, int) or isinstance(x, str):
     pass
 ```
 
-**Generic Type Limitation:**
+**Generic Types:**
 
-Due to .NET type erasure for generics at runtime, `isinstance()` cannot check generic type arguments:
+.NET *reifies* generics — `List<int>` and `List<str>` are distinct runtime types — so a generic type
+must be named with its type arguments to name something testable. This is the reverse of Python,
+where generics are erased: CPython accepts the open form `isinstance(x, Box)` and rejects
+`isinstance(x, Box[int])`, and Sharpy does the opposite.
 
 ```python
-# ✅ Valid - checks if x is any List<T>
-if isinstance(x, list):
-    pass  # x could be list[int], list[str], etc.
-
-# ❌ Compile error - cannot check generic type arguments at runtime
-if isinstance(x, list[int]):       # ERROR: Cannot check generic type arguments at runtime
+# ✅ Valid - the closed spelling names a runtime type, and narrows to it
+if isinstance(x, Box[int]):
     pass
 
-if isinstance(x, dict[str, int]):  # ERROR: Cannot check generic type arguments at runtime
+if isinstance(x, dict[str, int]):
+    pass
+
+# ✅ Valid - the bare name is accepted when the value's own static type fills the vector
+b: Box[int] = Box[int](5)
+if isinstance(b, Box):             # tests Box[int]
+    pass
+
+# ❌ SPY0345 - nothing here determines Box's type arguments
+y: object = make_box()
+if isinstance(y, Box):
     pass
 ```
 
-This limitation matches C#'s `is` operator behavior. At runtime, `List<int>` and `List<str>` are both just `List<T>`—the generic type argument is erased.
+An unparameterized builtin collection is the one exception: `list`, `set` and `dict` written without
+type arguments test against their non-generic protocol interface (`Sharpy.IList`/`ISet`/`IDict`),
+which every instantiation implements, so the check succeeds for any element type.
+
+```python
+# ✅ Valid - matches any list[T]
+if isinstance(x, list):
+    pass  # x could be list[int], list[str], etc.
+```
+
+This matches C#'s `is` operator: `x is Box<int>` is exact, and `x is Box` does not compile.
 
 **Type Narrowing:**
 
