@@ -99,10 +99,23 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
     private const string OutcomeCrash = "crash";
     private const string OutcomeNotAttempted = "notAttempted";
 
+    /// <summary>
+    /// A cell the specimen declares MUST succeed, which diagnosed instead. Distinct from
+    /// <see cref="OutcomeDeliberate"/>, which means "this diagnoses, and that is by design".
+    ///
+    /// <para>Without this distinction a cell that ought to compile but merely reports an error
+    /// passes the ratchet silently — which is what happened to #1208 for a whole round: the
+    /// specimen carried a footnote explaining that its module-qualified construction failed to
+    /// infer, and the matrix had nowhere to put that fact, so the gap sat green. A recorded gap is
+    /// not the same as a designed rejection, and the matrix now says which one a cell is.</para>
+    /// </summary>
+    private const string OutcomeExpectedOkButDiagnosed = "expectedOkButDiagnosed";
+
     // Buckets that fail the ratchet (a contract violation), vs. ok/deliberate which are passes.
     private static readonly HashSet<string> FailingOutcomes = new(StringComparer.Ordinal)
     {
         OutcomeIce, OutcomeSubscriptMisfire, OutcomeCsLeak, OutcomeWrongOutput, OutcomeCrash,
+        OutcomeExpectedOkButDiagnosed,
     };
 
     // ---- usage forms ----
@@ -246,13 +259,22 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
         string[] ExactTypeArgs,
         string CallArgs,
         string? Runnable = null,
-        string? ExpectedOutput = null);
+        string? ExpectedOutput = null,
+        string[]? MustSucceed = null);
 
     private sealed record Cell(Specimen Specimen, string Form, string Arity, string Source)
     {
         public string CalleeKind => Specimen.CalleeKind;
         public bool MultiFile => Specimen.SiblingModuleName != null;
         public string Key => $"{Specimen.Id}::{Form}::{Arity}";
+
+        /// <summary>
+        /// True when the specimen declares this <c>form::arity</c> pair as one that must COMPILE,
+        /// not merely "diagnose by design". Declared per specimen as <c>"form::arity"</c> strings
+        /// so the assertion lives next to the declaration it is about.
+        /// </summary>
+        public bool MustSucceed =>
+            Specimen.MustSucceed?.Contains($"{Form}::{Arity}", StringComparer.Ordinal) == true;
     }
 
     private sealed record CellResult(Cell Cell, string Outcome, IReadOnlyList<string> Diagnostics, string? Detail = null)
@@ -443,12 +465,13 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
                     "    def __init__(self, key: K, value: V):\n" +
                     "        self.key = key\n" +
                     "        self.value = value\n",
-                // Its `called::none` cell is a deliberate SPY0237 rather than `ok`: module-qualified
-                // construction does not infer type arguments, though the from-import spelling of the
-                // same declaration does. Filed as #1208 — a recorded inference gap, not a designed
-                // rejection, and not an allowlist entry (the contract is satisfied either way).
                 EnclosingParams: "", Receiver: "genlib.", Member: "Slot",
-                ExactTypeArgs: new[] { "int", "str" }, CallArgs: "1, \"a\""),
+                ExactTypeArgs: new[] { "int", "str" }, CallArgs: "1, \"a\"",
+                // Module-qualified construction with no explicit type arguments must INFER them,
+                // exactly as the from-import spelling of the same declaration does. It reported
+                // SPY0237 until #1208; both no-bracket forms exercise that gap, so both are pinned
+                // — pinning only `called::none` would leave `(genlib.Slot)(1, "a")` unguarded.
+                MustSucceed: new[] { "called::none", "parenCalled::none" }),
 
             // (8) user function shadowing a same-named builtin — def map[T] shadows builtin map (#1002/#1003).
             new("shadow_map", "shadow-builtin", 1,
@@ -590,7 +613,11 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
         if (errors.Any(e => IsRawCsCode(e.Code)))
             return new CellResult(cell, OutcomeCsLeak, diagStrings);
         if (errors.Count > 0)
-            return new CellResult(cell, OutcomeDeliberate, diagStrings);
+        {
+            return new CellResult(
+                cell, cell.MustSucceed ? OutcomeExpectedOkButDiagnosed : OutcomeDeliberate,
+                diagStrings);
+        }
 
         // No Sharpy errors: bind the generated C# through Roslyn. A silent mis-emit produces valid
         // Sharpy analysis but uncompilable C# (#1136's original failure mode before the SPY0908 net).
