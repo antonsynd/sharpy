@@ -1,0 +1,45 @@
+# #1206 D2 guard: where staged inference CANNOT close the type-argument vector, the call must stay
+# exactly as permissive as it was before the batch. This is the constraint the whole batch lives or
+# dies on — #1206 is a leak to close, not an acceptance surface to narrow — so every line below is a
+# call the staging deliberately DECLINES, and every one of them still compiles and runs.
+#
+# A decline records no fact and reports nothing. It is not an error path; it is the path back to the
+# pre-#1206 behavior, where the emitter writes the member call verbatim and C# infers the vector.
+from system.collections.generic import List
+
+
+def double(v: int) -> int:
+    return v * 2
+
+
+def main():
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(5)
+    lst.add(1)
+
+    # DECLINED: unrepresentable return type. OrderBy returns IOrderedEnumerable<TSource>, which the
+    # CLR-to-Sharpy bridge has no mapping for, so it collapses to `object`. Recording `object` would
+    # be strictly worse than recording nothing — `object` misinforms everything downstream, while no
+    # fact leaves the call permissive and lets C# infer, which is what makes this loop work.
+    for x in lst.order_by(lambda v: v):
+        print(x)
+
+    # DECLINED: ambiguous overload. A non-lambda argument fits BOTH of Select's selectors (the plain
+    # one and the index-taking one), and they hand the argument different expected types, so no
+    # single answer exists. Guessing would be worse than declining.
+    for y in lst.select(double):
+        print(y)
+
+    # DECLINED: candidates disagree. `max`/`min` with a selector are eleven candidates on the
+    # acceptance surface — one leaves its result type open, ten close it to a specific numeric type.
+    # That is a genuine disagreement rather than two overloads that became indistinguishable.
+    print(lst.max(lambda v: v))
+    print(lst.min(lambda v: v))
+
+    # Receivers that pass all four call-site gates and are stopped only by the resolver itself — an
+    # `int`, a StringBuilder, an `int?` — cannot appear here, because they do not compile either
+    # before or after the batch. They are pinned instead by
+    # ClrExtensionMethodResolverTests.DecliningReceivers_ProduceNothingAtAll, which is the level the
+    # property actually lives at: the gates are a pre-filter, and TryBindThisParameter failing to
+    # reach IEnumerable<T> is the real filter.

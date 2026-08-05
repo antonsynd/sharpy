@@ -1,0 +1,46 @@
+# #1206: four names the D3a collision survey turned up that the plan did not have — `to_list`,
+# `to_dictionary`, `to_hash_set` and `union`. (`join` is the fifth and lives in
+# bcl_extension_collision_guards_1206, next to the other `str` rows.) Each is BOTH a generic
+# Enumerable extension and a real instance member on some Sharpy collection, so each one splits by
+# receiver, and the split is the point:
+#
+#   - on a Sharpy receiver the builtin arm gives the callee a real type, so gate 1 rejects and the
+#     INSTANCE member binds;
+#   - on a raw CLR receiver the callee is Unknown and no instance member of that name exists, so the
+#     staged path runs and the call gains a Sharpy type it never had.
+#
+# Both halves must hold. A slip in the first silently changes what a Sharpy program means; a slip in
+# the second puts back the #1206 leak.
+from system.collections.generic import List
+
+
+def main():
+    # --- raw CLR receiver: no such instance member, so these stage ---
+    # List<T> declares neither ToList nor ToHashSet, so nothing is being displaced here. Before the
+    # batch these calls had no Sharpy type at all and could not be wrapped.
+    clr: List[int] = List[int]()
+    clr.add(3)
+    clr.add(4)
+    print(list(clr.to_list()))
+    print(list(clr.to_hash_set()))
+
+    # --- Sharpy receivers: the instance member wins ---
+    # `union` is a set operation, so Sharpy's set has it and Sharpy's list does not. That makes the
+    # two receivers take opposite paths for one name, which is the cleanest demonstration in the
+    # fixture: the set call is an instance method, the list call is a staged extension.
+    s: set[int] = {1, 2}
+    print(len(s.union({3})))
+    print(len(s.to_hash_set()))
+
+    xs: list[int] = [1, 2]
+    ys: list[int] = [2, 3]
+    print(list(xs.union(ys)))
+    print(len(xs.to_list()))
+
+    d: dict[str, int] = {"a": 1}
+    print(len(d.to_dictionary()))
+
+    # Note for anyone extending this file: printing a staged sequence WITHOUT wrapping it in list()
+    # shows the .NET iterator's ToString rather than a Python repr. That is not a #1206 regression —
+    # it reads identically on the pre-batch compiler — but it is why every row above wraps. See the
+    # note in bcl_extension_staged_1206 for the boundary this belongs to.

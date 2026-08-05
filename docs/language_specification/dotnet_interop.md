@@ -47,15 +47,92 @@ This mapping applies to method names, property names, and static members. The co
 
 ## Extension Methods
 
-.NET extension methods work naturally:
+`System.Linq.Enumerable`'s extension methods are available on any sequence, under their
+`snake_case` names. No import is needed — `using System.Linq;` is always emitted:
 
 ```python
-from system.linq import Enumerable
-
-numbers = [1, 2, 3, 4, 5]
-evens = numbers.where(lambda x: x % 2 == 0)
-doubled = numbers.select(lambda x: x * 2)
+def main():
+    numbers = [1, 2, 3, 4, 5]
+    print(list(numbers.where(lambda x: x % 2 == 0)))   # [2, 4]
+    print(list(numbers.select(lambda x: x * 2)))       # [2, 4, 6, 8, 10]
 ```
+
+### Type arguments are inferred
+
+The type arguments are inferred from the receiver and the arguments, so the call has a Sharpy type
+and can be used wherever that type is expected — wrapped, annotated, or chained:
+
+```python
+from system.collections.generic import List
+
+
+def main():
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(4)
+
+    print(list(lst.select(lambda x: str(x))))                        # ['3', '4']
+    print(list(lst.select(lambda x: x * 2).where(lambda y: y > 6)))   # [8]
+```
+
+Inference proceeds in stages: the receiver fixes what it determines, each lambda is then checked
+with those types in place, and its return type fixes the rest. Three stages is the deepest any
+method on the surface needs.
+
+Write the type arguments explicitly when inference cannot reach them — `cast` and `of_type` are the
+two whose result is determined by nothing else:
+
+```python
+from system.collections.generic import List
+
+
+def main():
+    lst: List[int] = List[int]()
+    lst.add(3)
+    print(list(lst.cast[int]()))   # [3]
+```
+
+### An instance member always wins
+
+A name that exists as an instance member on the receiver resolves to that member, never to the
+extension method — C#'s own rule. Several names are on both surfaces, and they mean different
+things:
+
+```python
+def main():
+    xs: list[int] = [1, 2, 3]
+    xs.reverse()          # list.reverse() — in place, returns None
+    print(xs)             # [3, 2, 1]
+    print(xs.count(2))    # list.count(value) — occurrences, not length
+    print("-".join(["a", "b"]))   # str.join, not Enumerable.Join
+```
+
+`reverse`, `count`, `index`, `contains`, `append`, `to_list`, `to_dictionary`, `to_hash_set`,
+`union` and `join` all fall in this class. Which one binds depends on the receiver: a Sharpy `list`
+has `reverse`, a raw `system.collections.generic.List` has `Reverse`, and both keep their own
+meaning.
+
+### Where inference cannot close, nothing changes
+
+A call whose type arguments cannot be determined is left exactly as it was: no type is recorded, no
+diagnostic is reported, and the emitted C# infers the vector itself. This is the normal outcome for
+an ambiguous overload, for a result type Sharpy cannot represent (`order_by` returns
+`IOrderedEnumerable<T>`), and for a receiver that is not a sequence:
+
+```python
+from system.collections.generic import List
+
+
+def main():
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(1)
+    for x in lst.order_by(lambda v: v):   # no Sharpy type, still iterates
+        print(x)
+```
+
+Such a call cannot be wrapped or annotated, because there is no type to wrap. Only the explicit
+spelling recovers that.
 
 ## Overloaded Method Imports
 

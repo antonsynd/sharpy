@@ -28,3 +28,21 @@ def main():
     # TResult. The measured partition found exactly six such shapes on the whole Enumerable surface —
     # SelectMany (2 overloads), GroupBy (3) and AggregateBy (1) — and nothing needing four.
     print(list(lst.select_many(lambda x: [x, x], lambda a, b: str(a + b))))
+
+    # TWO BOUNDARIES A READER MEETS RIGHT HERE, both measured against the pre-batch compiler and
+    # both unchanged by it — neither is a #1206 regression, and neither is fixed by #1206 either.
+    #
+    # 1. #1252. The select_many above works because its first lambda returns a SHARPY list. Return a
+    #    raw `system.collections.generic.List[int]` from it instead and the call does not close:
+    #    `IEnumerable<T>` maps to Sharpy `list`, so the formal is `Func[int, list[TCollection]]`, and
+    #    unification will not match `list[TCollection]` against `List[int]` — different generic name.
+    #    Staging then declines, the call stays permissive, and the wrapping `list(...)` leaks CS0305
+    #    exactly as it did before the batch. Widening unification to bridge CLR sequence types is
+    #    deliberately out of scope: it is the single unifier every generic call depends on.
+    #
+    # 2. #1251. Printing a staged sequence without wrapping it — `print(lst.select(f))` — shows the
+    #    .NET iterator's ToString, not a Python repr, because the emitted expression is still an
+    #    `IEnumerable<T>` even though the checker now types it `list[str]`. Pre-batch the checker had
+    #    no opinion at all, so nothing changed; what DID change is the diagnosis, since the type is
+    #    now known and only the emitter's materialization is missing. That is why every line above
+    #    wraps in list().
