@@ -253,7 +253,7 @@ internal partial class TypeChecker
                     var resolvedFuncSymbol = SelectArityMatchingOverload(
                         typeId.Name, typeArgs.Count, genericFuncSymbol);
                     if (!CheckGenericReferenceArity(
-                            typeId.Name, resolvedFuncSymbol.TypeParameters.Count, typeArgs.Count, indexAccess))
+                            typeId.Name, resolvedFuncSymbol.TypeParameters, typeArgs, indexAccess))
                         return true; // arity error emitted; handled
 
                     var funcType = new GenericFunctionType
@@ -301,8 +301,8 @@ internal partial class TypeChecker
                         if (typeArgs != null)
                         {
                             if (!CheckGenericReferenceArity(
-                                    memberAccessObj.Member, modFuncSymbol.TypeParameters.Count,
-                                    typeArgs.Count, indexAccess))
+                                    memberAccessObj.Member, modFuncSymbol.TypeParameters,
+                                    typeArgs, indexAccess))
                                 return true;
 
                             var funcType = new GenericFunctionType
@@ -366,8 +366,8 @@ internal partial class TypeChecker
                     && TryResolveTypeArguments(indexAccess.Index) is { } typeArgs)
                 {
                     if (!CheckGenericReferenceArity(
-                            memberAccessObj.Member, instanceMethod.TypeParameters.Count,
-                            typeArgs.Count, indexAccess))
+                            memberAccessObj.Member, instanceMethod.TypeParameters,
+                            typeArgs, indexAccess))
                         return true;
 
                     var funcType = new GenericFunctionType
@@ -691,17 +691,47 @@ internal partial class TypeChecker
     };
 
     /// <summary>
-    /// The single arity-check seam for generic references (#1004, generalized). Emits the deliberate
-    /// wrong-type-argument-count diagnostic (SPY0224) with the exact wording the per-arm checks used
-    /// and returns <c>false</c>; returns <c>true</c> when the counts match.
+    /// The single arity-check seam for generic FUNCTION references (#1004, generalized). Fills a
+    /// short vector's trailing PEP-696 defaults through the shared
+    /// <see cref="FillTrailingTypeArgumentDefaults"/>, then emits the deliberate
+    /// wrong-type-argument-count diagnostic (SPY0224) and returns <c>false</c> only if the vector is
+    /// still incomplete or is excessive.
+    ///
+    /// <para>Function type parameters carry declared defaults exactly as type parameters do —
+    /// <c>ValidateTypeParameterDefaultOrdering</c> runs for functionDef alongside
+    /// classDef/structDef/interfaceDef — so <c>def pair[K, V = str]</c> then <c>pair[int]</c> must
+    /// fill, just as <c>Pair[int]</c> does. It did not until #1219; the type seam had been
+    /// default-aware since #1192 and this one was a strict count check.</para>
+    ///
+    /// <para><b>Ordering:</b> both callers that pre-select a symbol do so on the UNFILLED count and
+    /// must keep doing so. <c>SelectArityMatchingOverload</c> picks among multi-arity builtin
+    /// overloads (<c>map[int, int]</c> vs <c>map[int, int, int]</c>) and
+    /// <c>TryResolveGenericInstanceMethod</c> steers BCL overload selection from the index shape;
+    /// filling defaults first would change which overload a deficient vector selects. A defaulted
+    /// USER declaration has one overload, so filling after the selection is well-defined for the
+    /// case this seam is about.</para>
+    ///
+    /// <para><paramref name="typeArgs"/> is completed IN PLACE, matching the type seam: the caller
+    /// builds its <see cref="GenericFunctionType.TypeArguments"/> from this same list, so a fill
+    /// computed into a copy would never reach the emitted C#.</para>
     /// </summary>
-    private bool CheckGenericReferenceArity(string calleeName, int expected, int actual, IndexAccess indexAccess)
+    private bool CheckGenericReferenceArity(
+        string calleeName, IReadOnlyList<TypeParameterDef> typeParameters,
+        List<SemanticType> typeArgs, IndexAccess indexAccess)
     {
-        if (expected == actual)
+        var expected = typeParameters.Count;
+        if (typeArgs.Count == expected)
             return true;
 
+        if (typeArgs.Count < expected)
+        {
+            FillTrailingTypeArgumentDefaults(typeParameters, typeArgs);
+            if (typeArgs.Count == expected)
+                return true;
+        }
+
         AddError(
-            $"Generic function '{calleeName}' expects {expected} type argument(s) but got {actual}",
+            $"Generic function '{calleeName}' expects {expected} type argument(s) but got {typeArgs.Count}",
             indexAccess.LineStart,
             indexAccess.ColumnStart,
             code: DiagnosticCodes.Semantic.WrongArgumentCount,
@@ -710,10 +740,30 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Completes a short type-argument vector from its parameters' declared PEP-696 defaults, in
+    /// place, stopping at the first parameter without one (defaults are trailing-only, enforced by
+    /// <c>ValidateTypeParameterDefaultOrdering</c>). The one answer to "what does a short vector
+    /// mean?", shared by the function and type seams (#1219) — the two keep their own diagnostic
+    /// wording, which is user-visible and pinned, but not their own notion of completeness.
+    /// </summary>
+    private void FillTrailingTypeArgumentDefaults(
+        IReadOnlyList<TypeParameterDef> typeParameters, List<SemanticType> typeArgs)
+    {
+        for (int i = typeArgs.Count; i < typeParameters.Count; i++)
+        {
+            var typeParam = typeParameters[i];
+            if (typeParam.DefaultType == null)
+                break;
+            typeArgs.Add(_typeResolver.ResolveTypeAnnotation(typeParam.DefaultType));
+        }
+    }
+
+    /// <summary>
     /// The arity-check seam for generic TYPE references — <c>Box[int]</c>, <c>difflib.SequenceMatcher[str]</c>,
     /// <c>Outer.Inner[int]</c> — the type-side counterpart of <see cref="CheckGenericReferenceArity"/>
-    /// (#1192). Unlike the function seam it is PEP-696 default-aware: a short vector fills its trailing
-    /// parameters from their declared defaults, and only an excess or unfillable vector is rejected.
+    /// (#1192). PEP-696 default-aware: a short vector fills its trailing parameters from their
+    /// declared defaults through the shared <see cref="FillTrailingTypeArgumentDefaults"/>, and only
+    /// an excess or unfillable vector is rejected. The function seam does the same since #1219.
     /// Both the filling and the diagnostic mirror <c>TypeResolver.ResolveTypeAnnotation</c> exactly, so
     /// <c>Box[int, str]</c> reads identically whether it is written as an annotation or as an expression.
     /// <para><paramref name="typeArgs"/> is completed IN PLACE when defaults are filled: the caller's
@@ -729,14 +779,7 @@ internal partial class TypeChecker
 
         if (typeArgs.Count < expected)
         {
-            for (int i = typeArgs.Count; i < expected; i++)
-            {
-                var typeParam = typeSymbol.TypeParameters[i];
-                if (typeParam.DefaultType == null)
-                    break;
-                typeArgs.Add(_typeResolver.ResolveTypeAnnotation(typeParam.DefaultType));
-            }
-
+            FillTrailingTypeArgumentDefaults(typeSymbol.TypeParameters, typeArgs);
             if (typeArgs.Count == expected)
                 return true;
         }

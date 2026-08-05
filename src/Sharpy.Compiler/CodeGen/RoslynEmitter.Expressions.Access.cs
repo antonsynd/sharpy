@@ -605,14 +605,14 @@ internal partial class RoslynEmitter
                 return indexAccess.Object is Identifier funcName
                        && reference.TargetSymbol is FunctionSymbol genericFuncSymbol
                     ? GenerateGenericFunctionInvocation(
-                        indexAccess, funcName, genericFuncSymbol,
+                        indexAccess, reference, funcName, genericFuncSymbol,
                         isBuiltin: reference.Kind == GenericReferenceKind.Builtin, call)
                     : null;
 
             case GenericReferenceKind.ModuleFunction:
                 return indexAccess.Object is MemberAccess moduleFuncAccess
                        && reference.TargetSymbol is FunctionSymbol moduleFuncSymbol
-                    ? GenerateModuleGenericFunctionCall(indexAccess, moduleFuncAccess, moduleFuncSymbol, call)
+                    ? GenerateModuleGenericFunctionCall(indexAccess, reference, moduleFuncAccess, moduleFuncSymbol, call)
                     : null;
 
             case GenericReferenceKind.ModuleType:
@@ -625,7 +625,7 @@ internal partial class RoslynEmitter
             case GenericReferenceKind.BclInstanceMethod:
                 return indexAccess.Object is MemberAccess methodAccess
                        && reference.TargetSymbol is FunctionSymbol methodSymbol
-                    ? GenerateInstanceGenericMethodCall(indexAccess, methodAccess, methodSymbol, call)
+                    ? GenerateInstanceGenericMethodCall(indexAccess, reference, methodAccess, methodSymbol, call)
                     : null;
 
             case GenericReferenceKind.BclExtensionMethod:
@@ -642,13 +642,19 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// The C# type-argument list for a generic TYPE reference. The written arguments map through
-    /// <see cref="TypeSyntaxMapper.MapTypeArgumentsFromExpression"/>, the same authority an
-    /// annotation position uses, so a nested <c>list[int]</c> argument resolves identically in both.
-    /// Any trailing arguments the resolver filled from PEP-696 type-parameter defaults have no
+    /// The C# type-argument list for a generic reference — type OR function. The written arguments
+    /// map through <see cref="TypeSyntaxMapper.MapTypeArgumentsFromExpression"/>, the same authority
+    /// an annotation position uses, so a nested <c>list[int]</c> argument resolves identically in
+    /// both. Any trailing arguments the resolver filled from PEP-696 type-parameter defaults have no
     /// written form at all (<c>Pair[int]</c> declaring <c>Pair[K, V = str]</c> emits
     /// <c>Pair&lt;int, string&gt;</c>), so they are taken from the materialized
     /// <see cref="GenericReference.TypeArgs"/> — the vector semantic analysis completed (#1192).
+    ///
+    /// <para>The function-shaped emissions mapped the written index alone until #1219, which is why
+    /// the checker's default fill was invisible to them: it completed the vector in place and on the
+    /// recorded fact, and the emitter re-derived from the AST instead of applying it. Reading the
+    /// materialized vector here is the repo-rule-2 shape — the emitter applies, it does not
+    /// re-derive.</para>
     /// </summary>
     private TypeSyntax[] MapTypeReferenceTypeArguments(IndexAccess indexAccess, GenericReference reference)
     {
@@ -749,10 +755,10 @@ internal partial class RoslynEmitter
     /// <paramref name="isBuiltin"/>.
     /// </summary>
     private ExpressionSyntax GenerateGenericFunctionInvocation(
-        IndexAccess indexAccess, Identifier funcName, FunctionSymbol genericFuncSymbol,
-        bool isBuiltin, FunctionCall call)
+        IndexAccess indexAccess, GenericReference reference, Identifier funcName,
+        FunctionSymbol genericFuncSymbol, bool isBuiltin, FunctionCall call)
     {
-        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var typeArgsSyntax = MapTypeReferenceTypeArguments(indexAccess, reference);
         var genericFuncSyntax = GenericName(
                 NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped, GetClrMethodName(genericFuncSymbol)))
             .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
@@ -816,9 +822,10 @@ internal partial class RoslynEmitter
     /// resolver bound the member to, so no export table is re-scanned here (#1143).
     /// </summary>
     private ExpressionSyntax GenerateModuleGenericFunctionCall(
-        IndexAccess indexAccess, MemberAccess memberAccess, FunctionSymbol funcSymbol, FunctionCall call)
+        IndexAccess indexAccess, GenericReference reference, MemberAccess memberAccess,
+        FunctionSymbol funcSymbol, FunctionCall call)
     {
-        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var typeArgsSyntax = MapTypeReferenceTypeArguments(indexAccess, reference);
         var genericMethodName = GenericName(
                 NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, GetClrMethodName(funcSymbol)))
             .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
@@ -840,9 +847,10 @@ internal partial class RoslynEmitter
     /// <see cref="MemberAccessExpression"/> + <see cref="GenericName"/>.
     /// </summary>
     private ExpressionSyntax GenerateInstanceGenericMethodCall(
-        IndexAccess indexAccess, MemberAccess memberAccess, FunctionSymbol methodSymbol, FunctionCall call)
+        IndexAccess indexAccess, GenericReference reference, MemberAccess memberAccess,
+        FunctionSymbol methodSymbol, FunctionCall call)
     {
-        var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+        var typeArgsSyntax = MapTypeReferenceTypeArguments(indexAccess, reference);
         var genericMethodName = GenericName(
                 NameCasing.ResolveMethod(memberAccess.Member, memberAccess.IsMemberBacktickEscaped, GetClrMethodName(methodSymbol)))
             .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
