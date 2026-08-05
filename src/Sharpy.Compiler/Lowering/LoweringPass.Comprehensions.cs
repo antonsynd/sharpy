@@ -95,7 +95,8 @@ internal sealed partial class LoweringPass
         GenericType g => g.Name is BuiltinNames.List
             or BuiltinNames.Set
             or BuiltinNames.Dict
-            or BuiltinNames.FrozenDict,
+            or BuiltinNames.FrozenDict
+            or BuiltinNames.FrozenSet,
         BuiltinType b => b.Name == "RangeIterator",
         _ => false,
     };

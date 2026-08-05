@@ -1,0 +1,18 @@
+# Test (#1209): the StrToList projection binds its operand exactly once. Splicing the string
+# expression into Builtins.ListFromStr more than once would re-evaluate a side-effecting source,
+# so the `calls` list pins single evaluation — the same pin iterable_tuple_bridge.spy carries for
+# the TupleToArray projection (#1216's invariant).
+# Expected output verified against python3.
+calls: list[int] = []
+
+
+def make_str() -> str:
+    calls.append(1)
+    return "cba"
+
+
+def main() -> None:
+    print(sorted(make_str()))
+    print(len(calls))
+    print("-".join(make_str()))
+    print(len(calls))
