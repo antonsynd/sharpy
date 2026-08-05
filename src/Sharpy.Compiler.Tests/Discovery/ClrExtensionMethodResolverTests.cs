@@ -256,6 +256,110 @@ public class ClrExtensionMethodResolverTests
     }
 
     // ---------------------------------------------------------------
+    // Value arguments carry their open type parameter through to the semantic side
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public void OpenParameterInsideAValueArgument_SurvivesTheMappingStructurally()
+    {
+        // Phase 1 is not "bind the receiver, then assign". Type parameters that a NON-LAMBDA argument
+        // determines sit inside a constructed formal — Join's IEnumerable<TInner>, ExceptBy's
+        // IEnumerable<TKey> — and are recovered by unifying that formal against the argument's actual
+        // type. This entry point does not unify (UnifyTypes already does, on the semantic side); its
+        // job is to hand over a formal that STILL CARRIES the open parameter in position, so unifying
+        // it is possible at all. Collapsing IEnumerable<TInner> to list[unknown] or object would make
+        // Join, GroupJoin, Zip, ExceptBy and IntersectBy silently un-inferable.
+        var join = Resolve("join", Shape.Value, Shape.Lambda(1), Shape.Lambda(1), Shape.Lambda(2))!;
+        var mapped = new ClrTypeBridge().MapClrTypeToSemanticType(join.ParameterTypes[0]);
+
+        var sequence = Assert.IsType<GenericType>(mapped);
+        Assert.Equal("list", sequence.Name);
+        Assert.Equal("TInner", Assert.IsType<TypeParameterType>(Assert.Single(sequence.TypeArguments)).Name);
+    }
+
+    [Fact]
+    public void BareTypeParameterValueArgument_MapsToTheTypeParameterItself()
+    {
+        // Aggregate's seed is a bare TAccumulate: the actual argument's type IS the binding.
+        var aggregate = Resolve("aggregate", Shape.Value, Shape.Lambda(2))!;
+
+        Assert.Equal(new[] { "TAccumulate" }, aggregate.OpenTypeParameterNames);
+        Assert.Equal("TAccumulate", Assert.IsType<TypeParameterType>(
+            new ClrTypeBridge().MapClrTypeToSemanticType(aggregate.ParameterTypes[0])).Name);
+    }
+
+    [Theory]
+    [InlineData("IComparer")]
+    [InlineData("IEqualityComparer")]
+    public void ComparerValueArguments_KeepTheirOpenParameterToo(string expectedName)
+    {
+        // The comparer-taking overloads are the other constructed value-argument family. ClrTypeBridge
+        // preserves both interfaces rather than falling through to its unknown-generic -> object
+        // fallback, so TKey survives here as well.
+        var member = expectedName == "IComparer" ? "max_by" : "distinct_by";
+        var partial = Resolve(member, Shape.Lambda(1), Shape.Value)!;
+        var mapped = new ClrTypeBridge().MapClrTypeToSemanticType(partial.ParameterTypes[1]);
+
+        var comparer = Assert.IsType<GenericType>(mapped);
+        Assert.Equal(expectedName, comparer.Name);
+        Assert.Equal("TKey", Assert.IsType<TypeParameterType>(Assert.Single(comparer.TypeArguments)).Name);
+    }
+
+    // ---------------------------------------------------------------
+    // Declining is inert, not partial
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public void DecliningReceivers_ProduceNothingAtAll()
+    {
+        // These three pass every one of the call-site gates and are stopped only here, by
+        // TryBindThisParameter failing to reach IEnumerable<T>. The record-nothing path is therefore
+        // load-bearing and heavily travelled: it must yield no candidate at all, not a half-bound one.
+        foreach (var receiver in new[]
+        {
+            typeof(int),
+            typeof(System.Text.StringBuilder),
+            typeof(SharpyRT::Sharpy.Optional<int>),
+        })
+        {
+            Assert.Null(ClrExtensionMethodResolver.TryResolveFromReceiver(
+                receiver, "select", new[] { Shape.Lambda(1) }));
+            Assert.Null(ClrExtensionMethodResolver.TryResolveFromReceiver(
+                receiver, "first", Array.Empty<Shape>()));
+        }
+    }
+
+    [Fact]
+    public void CompletionNeverYieldsAHalfFilledVector()
+    {
+        // Every path out of completion is either a fully closed method or null. A Resolution carrying a
+        // residual type parameter would reach the emitter as valid-looking C# and leak at compile time.
+        var selectMany = Resolve("select_many", Shape.Lambda(1), Shape.Lambda(2))!;
+
+        Assert.Null(ClrExtensionMethodResolver.TryCompleteFromInferredTypeArguments(
+            selectMany, new Dictionary<string, Type> { ["TCollection"] = typeof(string) }));
+
+        var complete = ClrExtensionMethodResolver.TryCompleteFromInferredTypeArguments(
+            selectMany,
+            new Dictionary<string, Type> { ["TCollection"] = typeof(string), ["TResult"] = typeof(int) });
+        Assert.NotNull(complete);
+        Assert.All(complete!.TypeArguments, t => Assert.False(t.ContainsGenericParameters));
+    }
+
+    [Fact]
+    public void ResolvingIsSideEffectFree()
+    {
+        // Nothing is recorded anywhere by asking; the shared ancestor cache is a pure memo.
+        var first = Resolve("select", Shape.Lambda(1))!;
+        var second = Resolve("select", Shape.Lambda(1))!;
+
+        Assert.Equal(first.ClrMethodName, second.ClrMethodName);
+        Assert.Equal(first.OpenTypeParameterNames, second.OpenTypeParameterNames);
+        Assert.Equal(first.ParameterTypes, second.ParameterTypes);
+        Assert.Equal(first.ReturnType, second.ReturnType);
+    }
+
+    // ---------------------------------------------------------------
     // Array `this` parameters (.NET 10 added Enumerable.Reverse<TSource>(this TSource[]))
     // ---------------------------------------------------------------
 
