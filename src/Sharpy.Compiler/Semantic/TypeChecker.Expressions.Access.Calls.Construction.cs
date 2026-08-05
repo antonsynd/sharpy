@@ -62,6 +62,13 @@ internal partial class TypeChecker
             return tupleRejection;
         }
 
+        // Keyword arguments to a builtin collection constructor are decided here, before generic
+        // inference, because inference has no arm for them: they fall to the UnknownType fallback
+        // below and the emitter turns `dict[?, ?]` into the static-class-as-value shape
+        // (CS0712/CS0723, #1220).
+        if (ClassifyBuiltinKeywordConstruction(call, typeSymbol, kwargTypes) is { } keywordResult)
+            return keywordResult;
+
         // For generic types called without type arguments (e.g., set()),
         // infer type arguments from the expected type annotation if available,
         // otherwise emit a diagnostic for empty constructors or fall back to
@@ -189,6 +196,74 @@ internal partial class TypeChecker
     /// its problem is the argument, not the arity.</para>
     /// </summary>
     /// <returns>Unknown after reporting, or null when the call is not the iterable form.</returns>
+    /// <summary>
+    /// Decides what keyword arguments mean at a builtin collection constructor, or returns null when
+    /// the call has none / the type is not one of them (#1220).
+    ///
+    /// <para><c>dict(a=1, b=2)</c> is the one CPython supports: the keyword NAMES are the keys, so
+    /// <c>K</c> is <c>str</c> by construction (a kwarg name is identifier-shaped) and <c>V</c>
+    /// unifies the value types through the same <see cref="FindLeastCommonAncestor"/> the equivalent
+    /// dict LITERAL uses. That is the pin for mixed values: <c>dict(a=1, b="x")</c> gives
+    /// <c>dict[str, object]</c> because <c>{"a": 1, "b": "x"}</c> already does, and the two spellings
+    /// of one construct must not disagree. (CPython is dynamically typed and has no static answer to
+    /// borrow here — this is an Axiom 3 choice, made by consistency with the sibling form.)</para>
+    ///
+    /// <para>Every other builtin collection takes no keyword arguments in CPython
+    /// (<c>list()/set()/tuple()</c> all raise TypeError), and <c>dict(mapping, **kwargs)</c> — which
+    /// CPython does allow — is a merge Sharpy does not model. Both are refused deliberately rather
+    /// than left to fall through inference: today every one of these shapes is an SPY0908, so a named
+    /// diagnostic is strictly better (#1146).</para>
+    /// </summary>
+    private SemanticType? ClassifyBuiltinKeywordConstruction(
+        FunctionCall call, TypeSymbol typeSymbol, Dictionary<string, SemanticType> kwargTypes)
+    {
+        if (call.KeywordArguments.Length == 0 || !IsBuiltinCollectionTypeName(typeSymbol.Name))
+            return null;
+
+        if (typeSymbol.Name != BuiltinNames.Dict)
+        {
+            AddError(
+                $"'{typeSymbol.Name}(...)' takes no keyword arguments. "
+                + $"Pass the elements positionally (e.g. '{typeSymbol.Name}([...])').",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.UnknownKeywordArgument, span: call.Span);
+            return SemanticType.Unknown;
+        }
+
+        if (call.Arguments.Length > 0)
+        {
+            AddError(
+                "'dict(mapping, key=value)' is not supported: Sharpy does not model merging a "
+                + "mapping with keyword arguments. Build the dict and then assign the extra keys.",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.UnknownKeywordArgument, span: call.Span);
+            return SemanticType.Unknown;
+        }
+
+        var valueTypes = new List<SemanticType>();
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            valueTypes.Add(kwargTypes.TryGetValue(kwarg.Name, out var recorded)
+                ? recorded
+                : CheckExpression(kwarg.Value));
+        }
+
+        return new GenericType
+        {
+            Name = BuiltinNames.Dict,
+            TypeArguments = new List<SemanticType> { SemanticType.Str, FindLeastCommonAncestor(valueTypes) }
+        };
+    }
+
+    /// <summary>
+    /// The registered builtin collection type names — the bounded set the keyword-argument audit
+    /// covers (#1220). A user-defined generic is not in scope: its keyword arguments are validated
+    /// against its own <c>__init__</c>.
+    /// </summary>
+    private static bool IsBuiltinCollectionTypeName(string name)
+        => name is BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set or BuiltinNames.Tuple
+            or BuiltinNames.FrozenSet or BuiltinNames.FrozenDict or BuiltinNames.DefaultDict;
+
     private SemanticType? ReportUnsupportedTupleFromIterable(FunctionCall call, List<SemanticType> argTypes)
     {
         if (call.Arguments.Length != 1 || call.KeywordArguments.Length != 0 || argTypes.Count != 1)
