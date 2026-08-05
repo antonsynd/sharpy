@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
@@ -386,7 +387,7 @@ internal class ModuleLoader
         {
             if (stmt is FunctionDef method)
             {
-                var methodSymbol = ExtractMethodSymbol(method);
+                var methodSymbol = ExtractMethodSymbol(method, classDef.TypeParameters);
                 methods.Add(methodSymbol);
                 if (method.Name == DunderNames.Init)
                     ctors.Add(methodSymbol);
@@ -456,7 +457,7 @@ internal class ModuleLoader
         {
             if (stmt is FunctionDef method)
             {
-                var methodSymbol = ExtractMethodSymbol(method);
+                var methodSymbol = ExtractMethodSymbol(method, structDef.TypeParameters);
                 methods.Add(methodSymbol);
                 if (method.Name == DunderNames.Init)
                     ctors.Add(methodSymbol);
@@ -495,7 +496,7 @@ internal class ModuleLoader
         {
             if (stmt is FunctionDef method)
             {
-                var methodSymbol = ExtractMethodSymbol(method);
+                var methodSymbol = ExtractMethodSymbol(method, interfaceDef.TypeParameters);
                 if (!methodSymbol.IsAbstract)
                 {
                     if (AstHelper.IsEllipsisStubBody(method.Body))
@@ -527,9 +528,48 @@ internal class ModuleLoader
     /// <summary>
     /// Extract method symbol with parameter and return type information.
     /// </summary>
-    internal FunctionSymbol ExtractMethodSymbol(FunctionDef method)
+    /// <summary>
+    /// The set of type-parameter names in scope for a method's annotations: the enclosing
+    /// declaration's parameters unioned with the method's own. Returns null when there are none, so
+    /// the non-generic path allocates nothing and behaves exactly as before (#1208).
+    /// </summary>
+    private static ISet<string>? CollectTypeParameterNames(
+        ImmutableArray<TypeParameterDef> enclosing, ImmutableArray<TypeParameterDef> own)
+    {
+        bool hasEnclosing = !enclosing.IsDefaultOrEmpty;
+        bool hasOwn = !own.IsDefaultOrEmpty;
+        if (!hasEnclosing && !hasOwn)
+            return null;
+
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        if (hasEnclosing)
+        {
+            foreach (var tp in enclosing)
+                names.Add(tp.Name);
+        }
+
+        if (hasOwn)
+        {
+            foreach (var tp in own)
+                names.Add(tp.Name);
+        }
+
+        return names;
+    }
+
+    internal FunctionSymbol ExtractMethodSymbol(
+        FunctionDef method, ImmutableArray<TypeParameterDef> enclosingTypeParameters = default)
     {
         var accessLevel = GetAccessLevel(method.Name);
+
+        // The type-parameter names in scope for this method's annotations: the declaring
+        // class/struct/interface's, UNIONED with the method's own. Without them
+        // ConvertTypeAnnotationToSemanticType turns `key: K` into a UserDefinedType named "K"
+        // rather than a TypeParameterType, so cross-module inference has nothing to unify and
+        // `genlib.Slot(1, "a")` reports SPY0237 where the from-import spelling infers (#1208).
+        // Module-level functions have threaded their own names since #1142 (:233); methods
+        // threaded NEITHER set until now.
+        var typeParamNames = CollectTypeParameterNames(enclosingTypeParameters, method.TypeParameters);
 
         bool hasSelfParameter = method.Parameters.Any(p =>
             string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
@@ -540,7 +580,7 @@ internal class ModuleLoader
         var parameters = method.Parameters.Select(p => new ParameterSymbol
         {
             Name = p.Name,
-            Type = ConvertTypeAnnotationToSemanticType(p.Type),
+            Type = ConvertTypeAnnotationToSemanticType(p.Type, typeParamNames),
             HasDefault = p.DefaultValue != null,
             DefaultValue = p.DefaultValue,
             IsVariadic = p.IsVariadic,
@@ -555,7 +595,7 @@ internal class ModuleLoader
             Kind = SymbolKind.Function,
             Parameters = parameters,
             ReturnType = method.ReturnType != null
-                ? ConvertTypeAnnotationToSemanticType(method.ReturnType)
+                ? ConvertTypeAnnotationToSemanticType(method.ReturnType, typeParamNames)
                 : SemanticType.Void,
             IsStatic = isStatic,
             IsAbstract = method.Decorators.Any(d => d.Name == DecoratorNames.Abstract),
