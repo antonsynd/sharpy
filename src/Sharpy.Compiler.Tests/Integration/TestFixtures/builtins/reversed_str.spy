@@ -1,0 +1,10 @@
+# Test (#1209 regression): reversed() over a str keeps its dedicated raw-string lowering
+# (StringHelpers.Reversed). The StrToList projection generalization briefly wrapped the operand in
+# ListFromStr first, emitting StringHelpers.Reversed(List<string>) — CS1503 behind SPY0908. The
+# mark is now deliberately withheld for reversed, and this fixture pins both spellings.
+# Expected output verified against python3.
+def main() -> None:
+    s: str = "cba"
+    for ch in reversed(s):
+        print(ch)
+    print(list(reversed("ab")))

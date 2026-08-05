@@ -2864,8 +2864,22 @@ internal partial class TypeChecker
                 continue;
             var argNode = call.Arguments[position];
             var argType = _semanticInfo.GetExpressionType(argNode);
-            if (argType != null && ClassifyIterableArgument(argType) is { } projection)
-                _semanticInfo.SetIterableProjection(argNode, projection);
+            if (argType == null || ClassifyIterableArgument(argType) is not { } projection)
+                continue;
+
+            // reversed(s) has a dedicated lowering — StringHelpers.Reversed(string) — that consumes
+            // the RAW string lazily, with no list materialization. Recording StrToList here would
+            // make the positional-argument funnel wrap the operand in ListFromStr before that arm
+            // reads it, emitting StringHelpers.Reversed(List<string>) — CS1503 behind SPY0908. A
+            // recorded fact the emitter does not apply is worse than no fact, so the mark is
+            // deliberately withheld for exactly this callee (#1209).
+            if (projection.Kind == IterableProjectionKind.StrToList
+                && callee is Identifier { Name: BuiltinNames.Reversed })
+            {
+                continue;
+            }
+
+            _semanticInfo.SetIterableProjection(argNode, projection);
         }
     }
 
