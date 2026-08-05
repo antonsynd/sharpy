@@ -1,0 +1,19 @@
+# A function-style interface property stub written `(...)` is the same stub as `...` (#1214).
+interface Named:
+    property get name(self) -> str:
+        (...)
+
+
+class Animal(Named):
+    _n: str
+
+    def __init__(self, n: str):
+        self._n = n
+
+    property get name(self) -> str:
+        return self._n
+
+
+def main():
+    a: Named = Animal("Max")
+    print(a.name)

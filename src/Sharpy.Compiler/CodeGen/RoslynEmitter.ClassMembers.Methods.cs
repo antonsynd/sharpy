@@ -239,8 +239,7 @@ internal partial class RoslynEmitter
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
         bool hasAbstractDecorator = func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = func.Body.Length == 1
-            && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(func.Body);
 
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
@@ -380,8 +379,7 @@ internal partial class RoslynEmitter
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
         bool hasAbstractDecorator = func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = func.Body.Length == 1
-            && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(func.Body);
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
@@ -438,8 +436,7 @@ internal partial class RoslynEmitter
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
         bool hasAbstractDecorator = func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = func.Body.Length == 1
-            && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(func.Body);
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
@@ -650,9 +647,7 @@ internal partial class RoslynEmitter
             .WithParameterList(ParameterList(SeparatedList(parameters)));
 
         // Check if this is an abstract method (body is single ellipsis or pass)
-        bool isAbstract = func.Body.Length == 1 &&
-            (func.Body[0] is PassStatement ||
-             (func.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
+        bool isAbstract = AstHelper.IsAbstractStubBody(func.Body);
 
         if (isAbstract)
         {

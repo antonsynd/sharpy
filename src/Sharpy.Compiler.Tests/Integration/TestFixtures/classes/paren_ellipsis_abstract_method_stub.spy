@@ -1,0 +1,32 @@
+# An @abstract method stub written `(...)` is the same stub as `...` (#1214): the checker must
+# not report "must have '...' as its body" and the emitter must still emit `abstract`.
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float:
+        (...)
+
+    @abstract
+    def name(self) -> str:
+        ((...))
+
+
+class Square(Shape):
+    _side: float
+
+    def __init__(self, side: float):
+        self._side = side
+
+    @override
+    def area(self) -> float:
+        return self._side * self._side
+
+    @override
+    def name(self) -> str:
+        return "square"
+
+
+def main():
+    s: Shape = Square(3.0)
+    print(s.name())
+    print(s.area())

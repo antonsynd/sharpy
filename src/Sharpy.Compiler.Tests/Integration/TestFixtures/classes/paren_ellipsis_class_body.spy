@@ -1,0 +1,35 @@
+# Grouping is transparent at the class-body seam: `(...)` is the same stub as `...` (#1214).
+# A parenthesized ellipsis in a class body used to fall through the emitter's member switch
+# and produce SPY0510 + SPY0908, while a bare `...` in the same position compiled.
+class Marker:
+    (...)
+
+
+class NestedParens:
+    ((...))
+
+
+interface Tag:
+    (...)
+
+
+class Tagged(Tag):
+    (...)
+
+
+def describe_marker(m: Marker) -> str:
+    return "marker"
+
+
+def describe_nested(n: NestedParens) -> str:
+    return "nested"
+
+
+def describe_tag(t: Tag) -> str:
+    return "tag"
+
+
+def main():
+    print(describe_marker(Marker()))
+    print(describe_nested(NestedParens()))
+    print(describe_tag(Tagged()))

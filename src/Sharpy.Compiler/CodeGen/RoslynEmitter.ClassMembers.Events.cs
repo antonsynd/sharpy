@@ -145,8 +145,7 @@ internal partial class RoslynEmitter
 
             var accessor = AccessorDeclaration(accessorKind);
 
-            bool hasEllipsisBody = eventDef.Body.Length == 1
-                && eventDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+            bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(eventDef.Body);
             bool isAbstract = eventDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
                 || (_isInAbstractClass && hasEllipsisBody);
 

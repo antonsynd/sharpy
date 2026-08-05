@@ -188,7 +188,7 @@ internal partial class RoslynEmitter
                     // Ignore pass in class body
                     break;
 
-                case ExpressionStatement exprStmt when exprStmt.Expression is EllipsisLiteral:
+                case ExpressionStatement exprStmt when AstHelper.TryGetEllipsisStub(exprStmt, out _):
                     // Ignore ellipsis in class body
                     break;
 
@@ -361,7 +361,7 @@ internal partial class RoslynEmitter
                     // Ignore pass in interface body
                     break;
 
-                case ExpressionStatement exprStmt when exprStmt.Expression is EllipsisLiteral:
+                case ExpressionStatement exprStmt when AstHelper.TryGetEllipsisStub(exprStmt, out _):
                     // Ignore ellipsis in interface body
                     break;
 

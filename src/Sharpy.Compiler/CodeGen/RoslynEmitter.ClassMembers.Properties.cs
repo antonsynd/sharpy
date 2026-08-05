@@ -130,8 +130,7 @@ internal partial class RoslynEmitter
 
         // Check if abstract
         bool hasAbstractDecorator = primaryFunc.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = primaryFunc.Body.Length == 1
-            && primaryFunc.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(primaryFunc.Body);
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
@@ -544,8 +543,7 @@ internal partial class RoslynEmitter
 
             var accessor = AccessorDeclaration(accessorKind);
 
-            bool hasEllipsisBody = prop.Body.Length == 1
-                && prop.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+            bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(prop.Body);
             bool isAbstract = prop.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
                 || (_isInAbstractClass && hasEllipsisBody);
 
@@ -899,8 +897,7 @@ internal partial class RoslynEmitter
 
         // Check if this is an abstract property (body is single ellipsis)
         bool hasAbstractDecorator = propDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = propDef.Body.Length == 1
-            && propDef.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
+        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(propDef.Body);
         bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
 
         // Apply modifiers from decorators
@@ -1019,9 +1016,7 @@ internal partial class RoslynEmitter
         if (propDef.IsFunctionStyle)
         {
             // Function-style interface property: single accessor based on kind
-            bool isAbstract = propDef.Body.Length == 1 &&
-                (propDef.Body[0] is PassStatement ||
-                 (propDef.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
+            bool isAbstract = AstHelper.IsAbstractStubBody(propDef.Body);
 
             SyntaxKind accessorKind;
             switch (propDef.Accessor)
