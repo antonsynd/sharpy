@@ -387,7 +387,7 @@ internal partial class TypeChecker
     /// reference in a position this rule governs, so the caller's remaining rules apply.</returns>
     private SemanticType? CheckConstructorReference(Expression reference, SemanticType type)
     {
-        if (BuiltinConstructorReferenceOf(reference, type) is not { } constructorReference)
+        if (ConstructorReferenceOf(reference, type) is not { } constructorReference)
             return null;
 
         // A read already typed as the carrier is always a value use; nothing but this rule makes one.
@@ -460,27 +460,51 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The builtin constructor reference an expression denotes, or null when it is not one. A read
-    /// already typed as the carrier denotes itself; a bare identifier denotes one when it resolves
-    /// to a builtin type symbol of a family with an emittable construction shape. A user declaration
-    /// shadowing the name resolves to its own symbol and is an ordinary reference.
+    /// The constructor reference an expression denotes, or null when it is not one. A read already
+    /// typed as the carrier denotes itself; a bare identifier denotes one when it resolves to a type
+    /// symbol with an emittable construction shape — a builtin of a recognized family, or a user
+    /// class/struct (#1211).
+    ///
+    /// <para>Shadowing is preserved by construction: <c>_symbolTable.Lookup</c> returns the user
+    /// declaration's own symbol, and the registry-identity test is what decides WHICH family rule
+    /// applies. A user class named <c>int</c> is therefore its own UserType reference pinning
+    /// against its own constructors — never the builtin's conversion overload set.</para>
     /// </summary>
-    private ConstructorReferenceType? BuiltinConstructorReferenceOf(Expression reference, SemanticType type)
+    private ConstructorReferenceType? ConstructorReferenceOf(Expression reference, SemanticType type)
     {
         if (type is ConstructorReferenceType carrier)
             return carrier;
 
-        if (reference is not Identifier id
-            || _symbolTable.Lookup(id.Name) is not TypeSymbol typeSymbol
-            || !ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name)))
-        {
+        if (reference is not Identifier id || _symbolTable.Lookup(id.Name) is not TypeSymbol typeSymbol)
             return null;
-        }
 
-        return ConstructorReferenceFamilyOf(typeSymbol) is not { } family
+        var family = ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name))
+            ? ConstructorReferenceFamilyOf(typeSymbol)
+            : UserConstructorReferenceFamilyOf(typeSymbol);
+
+        return family is not { } resolved
             ? null
-            : new ConstructorReferenceType { Name = id.Name, Symbol = typeSymbol, Family = family };
+            : new ConstructorReferenceType { Name = id.Name, Symbol = typeSymbol, Family = resolved };
     }
+
+    /// <summary>
+    /// Whether a user-declared type is constructible as a reference, and so which family it takes
+    /// (#1211). Only <c>Class</c> and <c>Struct</c> qualify, and only when not abstract.
+    ///
+    /// <para>Deliberately NOT gated on having a declared constructor: <c>TypeSymbol.Constructors</c>
+    /// is populated only from a declared <c>__init__</c> or dataclass synthesis, so a plain
+    /// <c>class Point: x: int = 0</c> has none — and that is #1211's own repro. A class with no
+    /// declared constructor offers exactly the zero-argument shape.</para>
+    ///
+    /// <para>Interfaces, enums, unions, delegates and abstract classes return null and keep the
+    /// typing they have today rather than acquiring a new diagnostic — the same posture
+    /// <see cref="ConstructorReferenceFamilyOf"/> takes for <c>object</c>/<c>bytes</c>/the view
+    /// types.</para>
+    /// </summary>
+    private static ConstructorReferenceFamily? UserConstructorReferenceFamilyOf(TypeSymbol typeSymbol)
+        => typeSymbol.TypeKind is TypeKind.Class or TypeKind.Struct && !typeSymbol.IsAbstract
+            ? ConstructorReferenceFamily.UserType
+            : null;
 
     /// <summary>
     /// Which construction shape a builtin type emits as, or null for a builtin type that is not a
