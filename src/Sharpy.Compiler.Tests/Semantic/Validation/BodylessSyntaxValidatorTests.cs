@@ -66,6 +66,31 @@ class Animal:
         Assert.DoesNotContain(warnings, w => w.Message.Contains("Body-less method declaration"));
     }
 
+    /// <summary>
+    /// The stub-detection authority unwraps grouping but returns the node, so this validator keeps
+    /// its Span test (#1214): an explicitly written <c>(...)</c> is user syntax, not the deprecated
+    /// body-less form, and must not be warned about.
+    /// </summary>
+    [Theory]
+    [InlineData("(...)")]
+    [InlineData("((...))")]
+    public void ExplicitParenthesizedEllipsisBody_NoWarning(string body)
+    {
+        var code = $@"
+@abstract
+class Animal:
+    @abstract
+    def speak(self) -> str:
+        {body}
+";
+        var (module, context) = Parse(code);
+        var validator = new BodylessSyntaxValidator();
+        validator.Validate(module, context);
+
+        var warnings = context.Diagnostics.GetWarnings();
+        Assert.DoesNotContain(warnings, w => w.Message.Contains("Body-less method declaration"));
+    }
+
     [Fact]
     public void NormalMethodWithBody_NoWarning()
     {

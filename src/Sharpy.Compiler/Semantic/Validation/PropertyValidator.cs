@@ -236,9 +236,7 @@ internal class PropertyValidator : SemanticValidatorBase
         if (!isAbstract || !propDef.IsFunctionStyle)
             return;
 
-        bool isEllipsisBody = propDef.Body.Length == 1
-            && (propDef.Body[0] is PassStatement
-                || (propDef.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
+        bool isEllipsisBody = AstHelper.IsAbstractStubBody(propDef.Body);
 
         if (!isEllipsisBody)
         {

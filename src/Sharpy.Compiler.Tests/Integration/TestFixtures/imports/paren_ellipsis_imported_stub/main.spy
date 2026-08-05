@@ -1,0 +1,19 @@
+from shapes import Greeter, GreeterBase
+
+
+class Polite(GreeterBase):
+    @override
+    def salutation(self) -> str:
+        return "dear"
+
+    # `greet` is inherited from GreeterBase as abstract because the imported interface's
+    # `(...)` body was classified as a stub across the module boundary — so @override is
+    # required here, exactly as it would be for a `...` body.
+    @override
+    def greet(self, name: str) -> str:
+        return self.salutation() + " " + name
+
+
+def main():
+    g: Greeter = Polite()
+    print(g.greet("ada"))

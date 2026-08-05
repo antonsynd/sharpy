@@ -51,7 +51,7 @@ internal class UnusedVariableValidator : ValidatingAstWalker
         // Skip abstract methods and stub bodies
         if (func.Decorators.Any(d => d.Name == DecoratorNames.Abstract))
             return;
-        if (func.Body.Length == 1 && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral })
+        if (AstHelper.IsEllipsisStubBody(func.Body))
             return;
 
         var defined = new Dictionary<string, VariableInfo>();

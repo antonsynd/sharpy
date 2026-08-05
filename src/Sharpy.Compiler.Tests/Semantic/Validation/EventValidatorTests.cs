@@ -1,4 +1,5 @@
 using Xunit;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -85,6 +86,65 @@ class Publisher:
         Assert.True(context.Diagnostics.HasErrors);
         Assert.Contains(context.Diagnostics.GetErrors(),
             e => e.Message.Contains("conflicts with a method"));
+    }
+
+    /// <summary>
+    /// Grouping is transparent at the stub seam (#1214): an abstract event body written
+    /// <c>(...)</c> is the same stub as <c>...</c>, so SPY0423 must not fire. There is no
+    /// end-to-end fixture for this shape — a function-style abstract event emits uncompilable
+    /// C# for both spellings alike, which is a separate pre-existing defect — so the validator
+    /// is asserted directly.
+    /// </summary>
+    [Theory]
+    [InlineData("(...)")]
+    [InlineData("((...))")]
+    [InlineData("...")]
+    [InlineData("pass")]
+    public void AbstractEventWithStubBody_NoError(string body)
+    {
+        var code = $@"
+delegate MyHandler(sender: object, data: str) -> None
+
+@abstract
+class Publisher:
+    @abstract
+    event add on_change(self, handler: MyHandler):
+        {body}
+
+    @abstract
+    event remove on_change(self, handler: MyHandler):
+        {body}
+";
+        var (module, context) = Parse(code);
+        var validator = new EventValidator();
+        validator.Validate(module, context);
+
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(),
+            e => e.Code == DiagnosticCodes.Validation.AbstractEventWithBody);
+    }
+
+    [Fact]
+    public void AbstractEventWithRealBody_StillEmitsError()
+    {
+        var code = @"
+delegate MyHandler(sender: object, data: str) -> None
+
+@abstract
+class Publisher:
+    @abstract
+    event add on_change(self, handler: MyHandler):
+        print(""not a stub"")
+
+    @abstract
+    event remove on_change(self, handler: MyHandler):
+        print(""not a stub"")
+";
+        var (module, context) = Parse(code);
+        var validator = new EventValidator();
+        validator.Validate(module, context);
+
+        Assert.Contains(context.Diagnostics.GetErrors(),
+            e => e.Code == DiagnosticCodes.Validation.AbstractEventWithBody);
     }
 
     [Fact]

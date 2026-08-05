@@ -92,7 +92,7 @@ internal class ControlFlowValidator : ValidatingAstWalker
             return;
 
         // Skip stub bodies (ellipsis only)
-        if (func.Body.Length == 1 && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral })
+        if (AstHelper.IsEllipsisStubBody(func.Body))
             return;
 
         // Build CFG (shared cache; pruning by exhaustive matches is this validator's concern only)

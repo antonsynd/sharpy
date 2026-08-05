@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
@@ -65,13 +66,17 @@ internal class BodylessSyntaxValidator : ValidatingAstWalker
     /// Detects if a FunctionDef has a synthesized ellipsis body (created by the parser
     /// for body-less declarations). Synthesized ellipses have a null Span, while
     /// explicit "..." written by the user have a non-null Span.
+    ///
+    /// <para>Stub detection itself goes through the shared authority (#1214), which returns the
+    /// node precisely so this Span test survives — an explicit <c>(...)</c> is user-written syntax
+    /// and must not be reported as deprecated body-less syntax.</para>
     /// </summary>
     private static bool IsSynthesizedEllipsisBody(FunctionDef node)
     {
         if (node.Body.Length != 1)
             return false;
 
-        return node.Body[0] is ExpressionStatement { Expression: EllipsisLiteral ellipsis }
+        return AstHelper.TryGetEllipsisStub(node.Body[0], out var ellipsis)
                && ellipsis.Span is null;
     }
 }

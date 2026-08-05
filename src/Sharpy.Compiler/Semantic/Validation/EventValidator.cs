@@ -182,9 +182,7 @@ internal class EventValidator : SemanticValidatorBase
         if (!isAbstract || !eventDef.IsFunctionStyle)
             return;
 
-        bool isEllipsisBody = eventDef.Body.Length == 1
-            && (eventDef.Body[0] is PassStatement
-                || (eventDef.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
+        bool isEllipsisBody = AstHelper.IsAbstractStubBody(eventDef.Body);
 
         if (!isEllipsisBody)
         {

@@ -183,6 +183,33 @@ class Foo:
         Assert.Empty(abstractErrors);
     }
 
+    /// <summary>
+    /// Grouping is transparent at the stub seam (#1214), and <c>pass</c> is a co-equal stub body
+    /// this validator has always accepted — routing it through an ellipsis-only helper would
+    /// silently start rejecting it.
+    /// </summary>
+    [Theory]
+    [InlineData("(...)")]
+    [InlineData("((...))")]
+    [InlineData("pass")]
+    public void AbstractPropertyWithStubBody_NoError(string body)
+    {
+        var code = $@"
+@abstract
+class Foo:
+    @abstract
+    property get name(self) -> str:
+        {body}
+";
+        var (module, context) = Parse(code);
+
+        var validator = new PropertyValidator();
+        validator.Validate(module, context);
+
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(),
+            e => e.Code == DiagnosticCodes.Validation.AbstractPropertyMustHaveEllipsisBody);
+    }
+
     // ===========================
     // SPY0410: Final with abstract or virtual
     // ===========================

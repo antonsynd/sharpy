@@ -1,0 +1,12 @@
+# The stub bodies live in an imported module, so ModuleLoader and NameResolver — not just the
+# entry file's TypeChecker — must classify `(...)` as a stub (#1214).
+interface Greeter:
+    def greet(self, name: str) -> str:
+        (...)
+
+
+@abstract
+class GreeterBase(Greeter):
+    @abstract
+    def salutation(self) -> str:
+        (...)

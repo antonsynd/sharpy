@@ -67,6 +67,31 @@ def foo() -> int:
         Assert.False(context.Diagnostics.HasErrors);
     }
 
+    /// <summary>
+    /// A stub body is skipped before the CFG is built, and grouping is transparent at that seam
+    /// (#1214): an interface method whose body is <c>(...)</c> must not draw SPY0266, exactly as
+    /// <c>...</c> does not.
+    /// </summary>
+    [Theory]
+    [InlineData("...")]
+    [InlineData("(...)")]
+    [InlineData("((...))")]
+    public void InterfaceMethod_StubBody_NoMissingReturnError(string body)
+    {
+        var code = $@"
+interface Greeter:
+    def greet(self, name: str) -> str:
+        {body}
+";
+        var (module, context) = Parse(code);
+
+        var validator = new ControlFlowValidator();
+        validator.Validate(module, context);
+
+        Assert.DoesNotContain(context.Diagnostics.GetErrors(),
+            e => e.Message.Contains("must return a value"));
+    }
+
     [Fact]
     public void IfWithoutElse_MissingReturn_ReportsError()
     {
