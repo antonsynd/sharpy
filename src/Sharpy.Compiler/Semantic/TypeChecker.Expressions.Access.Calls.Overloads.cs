@@ -409,7 +409,7 @@ internal partial class TypeChecker
                 return null;
 
             AddError(
-                $"builtin type '{constructorReference.Name}' has no constructor signature matching "
+                $"{ConstructorReferenceSubject(constructorReference)} has no constructor signature matching "
                 + $"'{target.GetDisplayName()}'. {ConstructorReferenceShapes(constructorReference)}",
                 reference.LineStart, reference.ColumnStart,
                 code: DiagnosticCodes.Semantic.UnpinnedConstructorReference,
@@ -448,7 +448,7 @@ internal partial class TypeChecker
 
         // Tier 3.
         AddError(
-            $"cannot infer a single callable signature for builtin type '{constructorReference.Name}': "
+            $"cannot infer a single callable signature for {ConstructorReferenceSubject(constructorReference)}: "
             + $"{ConstructorReferenceAmbiguityReason(constructorReference)}, and this position supplies "
             + "no signature to select one. Annotate the target with a function type "
             + $"({ConstructorReferenceAnnotationExample(constructorReference)}), bind it to a name you "
@@ -688,19 +688,42 @@ internal partial class TypeChecker
         };
     }
 
+    /// <summary>
+    /// How a SPY0342 message names the thing being referenced. The builtin families keep the
+    /// wording they have always had — three <c>.error</c> fixtures pin it verbatim
+    /// (<c>constructor_reference_wrong_shape</c>, <c>_unpinned_stored</c>, <c>_unpinned_conditional</c>)
+    /// — and only the user families gain new wording (#1211).
+    /// </summary>
+    private static string ConstructorReferenceSubject(ConstructorReferenceType constructorReference)
+        => constructorReference.Family == ConstructorReferenceFamily.UserType
+            ? $"{(constructorReference.Symbol.TypeKind == TypeKind.Struct ? "struct" : "class")} "
+                + $"'{constructorReference.Name}'"
+            : $"builtin type '{constructorReference.Name}'";
+
     /// <summary>Why a constructor reference has no single signature, for the SPY0342 message.</summary>
-    private static string ConstructorReferenceAmbiguityReason(ConstructorReferenceType constructorReference)
-        => constructorReference.Family == ConstructorReferenceFamily.Conversion
-            ? $"'{constructorReference.Name}' names an overload set"
-            : $"'{constructorReference.Name}' is generic, so its type arguments are unknown here";
+    private string ConstructorReferenceAmbiguityReason(ConstructorReferenceType constructorReference)
+        => constructorReference.Family switch
+        {
+            ConstructorReferenceFamily.Conversion => $"'{constructorReference.Name}' names an overload set",
+            ConstructorReferenceFamily.UserType =>
+                ResolveInitializerConstructorCandidates(constructorReference.Symbol) is { Count: > 1 } overloads
+                    ? $"'{constructorReference.Name}' declares {overloads.Count} constructor overloads"
+                    : "a constructor reference has no runtime value of its own",
+            _ => $"'{constructorReference.Name}' is generic, so its type arguments are unknown here",
+        };
 
     /// <summary>An annotation that would pin this reference, for the SPY0342 message.</summary>
-    private static string ConstructorReferenceAnnotationExample(ConstructorReferenceType constructorReference)
-        => constructorReference.Family == ConstructorReferenceFamily.Conversion
-            ? $"f: (str) -> {constructorReference.Name} = {constructorReference.Name}"
-            : $"f: () -> {constructorReference.Name}[...] = {constructorReference.Name}";
+    private string ConstructorReferenceAnnotationExample(ConstructorReferenceType constructorReference)
+        => constructorReference.Family switch
+        {
+            ConstructorReferenceFamily.Conversion =>
+                $"f: (str) -> {constructorReference.Name} = {constructorReference.Name}",
+            ConstructorReferenceFamily.UserType =>
+                $"f: {UserTypeShapeOf(constructorReference).GetDisplayName()} = {constructorReference.Name}",
+            _ => $"f: () -> {constructorReference.Name}[...] = {constructorReference.Name}",
+        };
 
-    /// <summary>The construction shapes a builtin offers, for the no-matching-signature message.</summary>
+    /// <summary>The construction shapes a type offers, for the no-matching-signature message.</summary>
     private string ConstructorReferenceShapes(ConstructorReferenceType constructorReference)
     {
         if (constructorReference.Family == ConstructorReferenceFamily.Collection)
@@ -708,6 +731,15 @@ internal partial class TypeChecker
             return $"'{constructorReference.Name}' can be pinned to its empty constructor "
                 + $"(() -> {constructorReference.Name}[...]) or its copy constructor "
                 + $"({constructorReference.Name}[...] -> {constructorReference.Name}[...]).";
+        }
+
+        if (constructorReference.Family == ConstructorReferenceFamily.UserType)
+        {
+            var shapes = UserTypeConstructorShapes(constructorReference)
+                .Select(shape => shape.GetDisplayName())
+                .Distinct()
+                .ToList();
+            return "Candidates:\n  " + string.Join("\n  ", shapes);
         }
 
         var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(constructorReference.Name);
@@ -720,6 +752,32 @@ internal partial class TypeChecker
             .ToList();
         return "Candidates:\n  " + string.Join("\n  ", signatures);
     }
+
+    /// <summary>
+    /// The signatures a user class or struct can be pinned to (#1211): one per declared constructor,
+    /// each returning the class itself rather than <c>__init__</c>'s None. A class with no declared
+    /// constructor offers exactly the zero-argument shape — the same rule
+    /// <see cref="UserTypeSignatureSatisfies"/> applies, so the message can never advertise a shape
+    /// that would not actually pin.
+    /// </summary>
+    private IEnumerable<FunctionType> UserTypeConstructorShapes(ConstructorReferenceType constructorReference)
+    {
+        var constructed = new UserDefinedType
+        {
+            Name = constructorReference.Name,
+            Symbol = constructorReference.Symbol,
+        };
+
+        var candidates = ResolveInitializerConstructorCandidates(constructorReference.Symbol);
+        return candidates.Count == 0
+            ? new[] { FunctionType.FromParameters(new List<ParameterSymbol>(), constructed) }
+            : candidates.Select(constructor =>
+                ReferenceSignatureOf(constructor, t => t) with { ReturnType = constructed });
+    }
+
+    /// <summary>The first shape a user type offers, for the SPY0342 annotation suggestion.</summary>
+    private FunctionType UserTypeShapeOf(ConstructorReferenceType constructorReference)
+        => UserTypeConstructorShapes(constructorReference).First();
 
     /// <summary>
     /// Recognises a reference to a form that Sharpy supports only as call syntax, describing it for
