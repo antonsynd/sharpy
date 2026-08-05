@@ -7,6 +7,11 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-05
+
+### Changed
+- No extension-package changes; version bumped in lockstep with the toolchain. Toolchain-side, the bundled language server gained the round-7 fixes visible in-editor: parameter-name inlay hints now appear for calls inside comprehensions and lambdas (#1223), and unreferenced function-local consts get their inferred-type inlay hint (#1222).
+
 ## [0.10.0] - 2026-07-30
 
 ### Changed
