@@ -1,0 +1,10 @@
+# The same binding seam inside a method body (#1212).
+class Runner:
+    def go(self) -> int:
+        g = lambda s: len(s) + 100
+        return g("abcd")
+
+
+def main():
+    r: Runner = Runner()
+    print(r.go())

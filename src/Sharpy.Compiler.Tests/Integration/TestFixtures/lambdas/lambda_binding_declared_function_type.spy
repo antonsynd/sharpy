@@ -1,0 +1,9 @@
+# The other remedy: the target's declared function type flows into the lambda as the expected
+# type, so its parameters resolve and nothing is refused (#1212).
+def main():
+    g: (str) -> int = lambda s: len(s) + 100
+    print(g("abcd"))
+
+    # Reassigning a variable that already has a function type takes its types from the variable.
+    g = lambda s: len(s) * 2
+    print(g("abcd"))

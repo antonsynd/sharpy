@@ -1,0 +1,6 @@
+# A lambda bound to a name gives its parameter no type, nothing is annotated, and the binding
+# supplies no expected type — `len(s)` accepts every sized type, so `s` is genuinely unknown.
+# This used to emit `var g = s => ...`, which C# rejects with CS8917 behind SPY0908 (#1212).
+def main():
+    g = lambda s: len(s) + 100
+    print(g("abcd"))

@@ -1,0 +1,20 @@
+# A lambda in argument position takes its parameter types from the parameter it is passed to, so
+# it never reaches the binding seam and is never refused (#1212).
+def apply_all[T](f: (T) -> bool, items: list[T]) -> list[T]:
+    out: list[T] = []
+    for item in items:
+        if f(item):
+            out.append(item)
+    return out
+
+
+def main():
+    xs: list[int] = [3, 1, 2]
+    print(sorted(xs, key=lambda v: -v))
+    print(list(map(lambda v: v + 1, xs)))
+    print(list(filter(lambda v: v > 1, xs)))
+    print(apply_all(lambda v: v > 1, xs))
+
+    # A lambda bound to a name and then passed on is a binding, so it needs its annotation.
+    keyed = lambda v: int: -v
+    print(sorted(xs, key=keyed))

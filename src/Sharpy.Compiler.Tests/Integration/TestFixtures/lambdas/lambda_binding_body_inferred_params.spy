@@ -1,0 +1,22 @@
+# Unannotated lambda bindings whose parameter types the body pins must keep compiling — the
+# SPY0343 refusal only covers what body inference could not resolve (#1212).
+def add(a: int, b: int) -> int:
+    return a + b
+
+
+def main():
+    # BinaryOp with a bare-identifier operand
+    twice = lambda x: x * 2
+    print(twice(21))
+
+    # Comparison chain
+    in_range = lambda v: 10 <= v and v <= 50
+    print(in_range(25))
+
+    # Operator section with a literal operand to pin the placeholder
+    triple = (_ * 3)
+    print(triple(4))
+
+    # Partial application against a known signature
+    add_five = add(5, _)
+    print(add_five(3))

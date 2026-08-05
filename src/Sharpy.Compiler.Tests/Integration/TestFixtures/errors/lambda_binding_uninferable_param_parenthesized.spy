@@ -1,0 +1,4 @@
+# Grouping is transparent at the binding seam too: `(lambda ...)` is refused identically (#1212).
+def main():
+    g = (lambda s: len(s) + 100)
+    print(g("abcd"))

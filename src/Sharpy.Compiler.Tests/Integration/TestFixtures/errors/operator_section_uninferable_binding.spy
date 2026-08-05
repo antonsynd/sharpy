@@ -1,0 +1,6 @@
+# An operator section lowers to a lambda whose parameters the user never wrote, so the refusal
+# must not tell them to annotate `__placeholder_0`. Both operands are placeholders here, so body
+# inference has nothing to pin either type to (#1212).
+def main():
+    f = (_ + _)
+    print(f(1, 2))

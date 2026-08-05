@@ -1,0 +1,4 @@
+# The one-keystroke remedy for SPY0343: annotate the parameter (#1212).
+def main():
+    g = lambda s: str: len(s) + 100
+    print(g("abcd"))
