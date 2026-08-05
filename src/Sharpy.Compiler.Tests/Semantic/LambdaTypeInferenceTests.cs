@@ -159,6 +159,56 @@ def main():
 
     #endregion
 
+    #region Cascade non-regression (#1212 — SPY0343 keys on parameter unknowns only)
+
+    /// <summary>
+    /// A zero-parameter lambda whose body errors leaves the return type Unknown, so
+    /// FunctionType.HasUnresolvedTypes() is true — but there is no parameter to annotate, and the
+    /// body's own error is already reported. SPY0343 must key on parameter-position unknowns only.
+    /// The .error fixture harness matches by substring and cannot catch an added code, so the
+    /// diagnostic set is asserted programmatically here.
+    /// </summary>
+    [Fact]
+    public void Lambda_ZeroParameters_ErroringBody_DoesNotAlsoDrawSpy0343()
+    {
+        var source = @"
+def main():
+    f = lambda: ""a"" - 1
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        var errors = typeChecker.Diagnostics.GetErrors();
+        errors.Should().NotBeEmpty("the body's operator error still reports");
+        errors.Should().NotContain(
+            e => e.Code == DiagnosticCodes.Semantic.UnresolvedLambdaParameterType,
+            "a lambda with no parameters has nothing SPY0343 could ask the user to annotate");
+    }
+
+    /// <summary>
+    /// An annotated parameter whose annotation fails to resolve is its own error; a SPY0343 on top
+    /// would tell the user to annotate a parameter they already annotated.
+    /// </summary>
+    [Fact]
+    public void Lambda_AnnotatedButUnresolvableParameter_DoesNotAlsoDrawSpy0343()
+    {
+        var source = @"
+def main():
+    f = lambda x: list[int | str]: x
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        // The "Free unions … not supported" error itself is reported by annotation resolution,
+        // outside this harness's checker bag; errors/lambda_free_union_param.spy pins it
+        // end-to-end. This test pins only the cascade half: no SPY0343 on top.
+        typeChecker.Diagnostics.GetErrors().Should().NotContain(
+            e => e.Code == DiagnosticCodes.Semantic.UnresolvedLambdaParameterType,
+            "the parameter is annotated in source; only inference-left unknowns are this defect");
+    }
+
+    #endregion
+
     #region Return Value Context
 
     [Fact]

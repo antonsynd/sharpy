@@ -1,0 +1,26 @@
+# `pass` is a co-equal stub body beside `...`/`(...)` at the stub-CLASSIFICATION seams (#1214):
+# routing them through the shared authority (IsAbstractStubBody) must not silently narrow them to
+# ellipsis-only. The end-to-end pinnable shape is the None-returning interface stub — the emitter
+# must classify the `pass` body as a stub and emit a bodyless interface member. Value-returning
+# `pass` stubs are rejected by must-return (SPY0266) and @abstract bodies require `...` (SPY0247),
+# both deliberate and pre-existing; the event seam waits on #1239.
+interface Logger:
+    def log(self, message: str) -> None:
+        pass
+
+    def flush(self) -> None:
+        pass
+
+
+class ConsoleLogger(Logger):
+    def log(self, message: str) -> None:
+        print("log: " + message)
+
+    def flush(self) -> None:
+        print("flushed")
+
+
+def main():
+    lg: Logger = ConsoleLogger()
+    lg.log("hello")
+    lg.flush()
