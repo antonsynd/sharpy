@@ -132,12 +132,9 @@ internal partial class NameResolver
         // 2. Is in an @abstract class AND has ellipsis body (implicit abstract), OR
         // 3. Is in an interface AND has ellipsis or pass body (implicit abstract)
         bool hasAbstractDecorator = method.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = method.Body.Length == 1
-            && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
-        bool hasPassBody = method.Body.Length == 1
-            && method.Body[0] is PassStatement;
+        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(method.Body);
         bool isInterfaceAbstract = owningType.TypeKind == TypeKind.Interface
-            && (hasEllipsisBody || hasPassBody);
+            && AstHelper.IsAbstractStubBody(method.Body);
 
         bool isAbstract = hasAbstractDecorator || (owningType.IsAbstract && hasEllipsisBody) || isInterfaceAbstract;
         bool isVirtual = method.Decorators.Any(d => d.Name == DecoratorNames.Virtual);

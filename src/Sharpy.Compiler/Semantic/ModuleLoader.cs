@@ -498,9 +498,7 @@ internal class ModuleLoader
                 var methodSymbol = ExtractMethodSymbol(method);
                 if (!methodSymbol.IsAbstract)
                 {
-                    bool hasEllipsisBody = method.Body.Length == 1
-                        && method.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
-                    if (hasEllipsisBody)
+                    if (AstHelper.IsEllipsisStubBody(method.Body))
                     {
                         methodSymbol = methodSymbol with { IsAbstract = true };
                     }

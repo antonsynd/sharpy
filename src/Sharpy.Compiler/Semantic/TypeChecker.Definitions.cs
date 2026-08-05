@@ -489,9 +489,7 @@ internal partial class TypeChecker
         // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)
         bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
         bool isInAbstractClass = _currentClass?.IsAbstract == true;
-        bool hasEllipsisBody = functionDef.Body.Length == 1
-            && functionDef.Body[0] is ExpressionStatement exprStmt
-            && exprStmt.Expression is EllipsisLiteral;
+        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(functionDef.Body);
 
         bool isAbstractMethod = hasAbstractDecorator || (isInAbstractClass && hasEllipsisBody);
 
@@ -1936,10 +1934,7 @@ internal partial class TypeChecker
 
         // Skip abstract properties and body-less declarations (single ellipsis
         // or pass) — there is no body to check
-        bool isAbstractBody = propDef.Body.Length == 0 ||
-            (propDef.Body.Length == 1 &&
-                (propDef.Body[0] is PassStatement ||
-                 (propDef.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral)));
+        bool isAbstractBody = propDef.Body.Length == 0 || AstHelper.IsAbstractStubBody(propDef.Body);
         if ((propSymbol?.IsAbstract ?? false) || isAbstractBody)
             return;
 
@@ -2208,9 +2203,7 @@ internal partial class TypeChecker
     /// </summary>
     private static bool IsAbstractBody(FunctionDef func)
     {
-        return func.Body.Length == 1 &&
-            (func.Body[0] is PassStatement ||
-             (func.Body[0] is ExpressionStatement es && es.Expression is EllipsisLiteral));
+        return AstHelper.IsAbstractStubBody(func.Body);
     }
 
     private static bool ContainsYield(System.Collections.Immutable.ImmutableArray<Statement> statements)
