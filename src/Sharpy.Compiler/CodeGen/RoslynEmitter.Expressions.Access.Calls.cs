@@ -1016,6 +1016,13 @@ internal partial class RoslynEmitter
             case IterableProjectionKind.TupleToArray:
                 return GenerateTupleElementArray(projection, generated);
 
+            case IterableProjectionKind.StrToList:
+                // Builtins.ListFromStr(s) -> List<string> of one-character strings. The operand is
+                // spliced once, so `sorted(make_str())` calls make_str once.
+                return InvocationExpression(
+                    MakeGlobalQualifiedName("Sharpy", "Builtins", "ListFromStr"))
+                    .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(generated))));
+
             default:
                 return generated;
         }

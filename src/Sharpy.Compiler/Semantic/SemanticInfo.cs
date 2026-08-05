@@ -1212,7 +1212,20 @@ public enum IterableProjectionKind
     /// <c>min(t)</c>, <c>max(t)</c>. Recorded only when every element type unifies, so the array is
     /// always well-typed.
     /// </summary>
-    TupleToArray
+    TupleToArray,
+
+    /// <summary>
+    /// <c>str</c> in a builtin's iterable position — project to
+    /// <c>Builtins.ListFromStr(arg)</c>, whose <c>List&lt;string&gt;</c> iterates one-character
+    /// STRINGS as Python does. <c>System.String</c> is <c>IEnumerable&lt;char&gt;</c>, not
+    /// <c>IEnumerable&lt;string&gt;</c>, so an unprojected str either fails to compile
+    /// (<c>sorted(s)</c>, <c>set(s)</c> — CS1503) or binds C#'s <c>T</c> to <c>char</c> while Sharpy
+    /// types the element <c>str</c> (<c>enumerate(s)</c>, <c>min(s)</c>, <c>max(s)</c>). The second
+    /// is the worse half: it compiles, and <c>print</c> accepts both, so the divergence only
+    /// surfaces when something distinguishes them — <c>min(s).upper()</c> is CS1503 and
+    /// <c>len(min(s))</c> is CS1061 (#1209).
+    /// </summary>
+    StrToList
 }
 
 /// <summary>

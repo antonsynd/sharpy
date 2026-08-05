@@ -934,21 +934,12 @@ internal partial class RoslynEmitter
         if (exprType is GenericType resolvedGeneric && resolvedGeneric.TypeArguments.Count > 0
             && resolvedGeneric.TypeArguments.All(t => t is not UnknownType))
         {
-            // list("abc") -> global::Sharpy.Builtins.ListFromStr("abc"), a list of 1-char strings,
-            // matching Python's list(str). The resolved type is list[str], but emitting
-            // new Sharpy.List<string>("abc") is CS1503 because C# binds string to
-            // IEnumerable<char>, not IEnumerable<string> (#1067). Only a genuine string argument
-            // triggers this; list(some_list_of_str) keeps the normal constructor path.
-            if (resolvedGeneric.Name == BuiltinNames.List
-                && call.Arguments.Length == 1
-                && GetExpressionSemanticType(call.Arguments[0]) == SemanticType.Str)
-            {
-                return InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            MakeGlobalQualifiedName("Sharpy", "Builtins"),
-                            IdentifierName("ListFromStr")))
-                    .AddArgumentListArguments(Argument(allArgs[0].Expression));
-            }
+            // NOTE: list("abc") used to be special-cased here (#1067), emitting ListFromStr
+            // directly. The iterable-projection ring now records StrToList for every `str` in a
+            // builtin iterable position — `list` among them — and the argument arrives already
+            // projected, so the ordinary constructor path below emits
+            // new Sharpy.List<string>(Builtins.ListFromStr("abc")). Keeping the old arm as well
+            // double-projected it into ListFromStr(ListFromStr(s)) (CS1503, #1209).
 
             var typeArgsSyntax = resolvedGeneric.TypeArguments
                 .Select(t => _typeMapper.MapSemanticType(t))

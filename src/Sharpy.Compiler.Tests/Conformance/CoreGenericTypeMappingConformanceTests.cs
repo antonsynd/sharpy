@@ -52,10 +52,11 @@ public class CoreGenericTypeMappingConformanceTests
         // A protocol interface, never a return type — grep confirms its only appearances are the
         // `__reversed__` contract a user class implements and the PARAMETER of
         // Builtins.Reversed<T>(IReverseEnumerable<T>). Its degradation is therefore latent rather
-        // than reachable through a mapped return. Found by this guard during #1210; the emitter
-        // already carries an explicit cast at the reversed() call site to disambiguate the two
-        // Reversed overloads, which is the workaround this degradation makes necessary.
-        ["IReverseEnumerable"] = "Protocol interface: parameter/implement-only, never a mapped CLR return. Found by this guard during #1210.",
+        // than reachable through a mapped return. Found by this guard during #1210 and filed as
+        // #1242; the emitter already carries an explicit cast at the reversed() call site to
+        // disambiguate the two Reversed overloads, which is the workaround this degradation makes
+        // necessary — #1242 tracks checking whether that cast can go once the mapping is fixed.
+        ["IReverseEnumerable"] = "Protocol interface: parameter/implement-only, never a mapped CLR return (#1242).",
     };
 
     [Fact]

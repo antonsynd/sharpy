@@ -2861,10 +2861,17 @@ internal partial class TypeChecker
                 IterableProjectionKind.TupleToArray, tupleElement, tuple.ElementTypes.Count);
         }
 
+        // `str` cannot prove itself below — System.String is IEnumerable<char>, not
+        // IEnumerable<string> — but Python iterates a string as one-character STRINGS, and
+        // Builtins.ListFromStr is exactly that bridge (list(s) has always used it). Kept here, next
+        // to the proof it fails, because that is where the question is asked (#1209).
+        if (argType == SemanticType.Str)
+        {
+            return new IterableArgumentProjection(IterableProjectionKind.StrToList, SemanticType.Str);
+        }
+
         // Everything else must prove it already presents as IEnumerable<element> in C# — list, set,
-        // frozenset, the dict views, range/iterators, CLR-backed collections. `str` is excluded by
-        // exactly this check (System.String is IEnumerable<char>, not IEnumerable<string>), which is
-        // why it stays rejected rather than being accepted into an ICE (#1209).
+        // frozenset, the dict views, range/iterators, CLR-backed collections.
         if (_typeInference.InferIterableElementType(argType) is { } inferredElement
             && EnumeratesAsInClr(argType, inferredElement))
         {
