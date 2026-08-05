@@ -1,5 +1,6 @@
 using Xunit;
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -120,11 +121,17 @@ def main():
 
     #region No Context (Unknown Parameters)
 
+    /// <summary>
+    /// A lambda bound under `auto` has no context to take its parameter types from, and `x` alone
+    /// pins nothing, so the parameter type stays Unknown. Sharpy is statically typed — there is no
+    /// runtime inference to fall back on — and the emitter would produce `var f = x => x`, which C#
+    /// rejects with CS8917 behind SPY0908. So this is refused at semantic time instead (#1212).
+    /// This test previously asserted the opposite, on the premise that `auto` accepts Unknown
+    /// parameters; that premise is what #1212 overturned.
+    /// </summary>
     [Fact]
-    public void Lambda_WithAutoType_HasUnknownParameters()
+    public void Lambda_WithAutoType_UninferableParameters_IsRefused()
     {
-        // Lambda without type context - parameters should be Unknown
-        // This is acceptable when used with auto type (runtime inference)
         var source = @"
 def main():
     f: auto = lambda x: x
@@ -132,7 +139,21 @@ def main():
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        // Should not error - auto type accepts Unknown parameters
+        typeChecker.Diagnostics.GetErrors()
+            .Should().Contain(e => e.Code == DiagnosticCodes.Semantic.UnresolvedLambdaParameterType);
+    }
+
+    [Fact]
+    public void Lambda_WithAutoType_AnnotatedParameter_NoError()
+    {
+        // The one-keystroke remedy the diagnostic names.
+        var source = @"
+def main():
+    f: auto = lambda x: int: x
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
         typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 

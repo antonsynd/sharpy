@@ -1,5 +1,6 @@
 using Xunit;
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -239,9 +240,11 @@ y: bool = 10 > 5
     [Fact]
     public void ChecksLambdaExpressions()
     {
-        // Don't wrap - we need to inspect the AST structure directly
+        // Don't wrap - we need to inspect the AST structure directly.
+        // The parameters are annotated: `auto` supplies no expected type, so an unannotated
+        // lambda bound here is refused with SPY0343 instead (#1212, see the test below).
         var source = @"
-add: auto = lambda a, b: a + b
+add: auto = lambda a: int, b: int: a + b
 ";
         var (module, _, semanticInfo, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
@@ -253,6 +256,26 @@ add: auto = lambda a, b: a + b
         var varDecl = (VariableDeclaration)module.Body[0];
         var inferredType = semanticInfo.GetTypeAnnotation(varDecl.Type!);
         inferredType.Should().BeOfType<SemFunctionType>();
+    }
+
+    /// <summary>
+    /// The same binding with unannotated parameters is refused (#1212). `a + b` gives inference
+    /// nothing to work from — both operands are the parameters themselves — and `auto` supplies no
+    /// expected type, so the recorded FunctionType keeps UnknownType parameters. Before SPY0343
+    /// this was accepted here and then emitted as `var add = (a, b) => a + b`, which C# rejects
+    /// with CS8917 behind SPY0908.
+    /// </summary>
+    [Fact]
+    public void RefusesLambdaBindingWithUninferableParameters()
+    {
+        var source = @"
+add: auto = lambda a, b: a + b
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors()
+            .Should().Contain(e => e.Code == DiagnosticCodes.Semantic.UnresolvedLambdaParameterType);
     }
 
     [Fact]

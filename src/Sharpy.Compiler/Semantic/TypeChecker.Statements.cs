@@ -132,6 +132,7 @@ internal partial class TypeChecker
             using (ScopedValue.Push(ref _currentBindingValue, assignment.Value))
                 inferredType = CheckExpression(assignment.Value);
             _expectedType = previousExpectedType2;
+            inferredType = CheckLambdaBindingInferable(assignment.Value, inferredType);
 
             // Create a new variable symbol with the inferred type (or redefine existing)
             var newSymbol = new VariableSymbol
@@ -296,6 +297,78 @@ internal partial class TypeChecker
         }
     }
 
+    /// <summary>
+    /// Refuses a lambda bound to a name when inference could not fill in its unannotated parameter
+    /// types and the binding supplied no expected type to take them from (#1212). Returns the type
+    /// to bind: <paramref name="inferred"/> when the binding is fine, or
+    /// <see cref="SemanticType.Unknown"/> after reporting, so downstream reads of the target do not
+    /// cascade secondary errors.
+    ///
+    /// <para>Without this the emitter falls back to <c>var</c> — the recorded
+    /// <see cref="FunctionType"/> is unusable because it contains <see cref="UnknownType"/> — and
+    /// C# rejects the result with CS8917 ("the delegate type could not be inferred") behind
+    /// SPY0908. Per #1146 an accepted shape must either compile or be refused at semantic time;
+    /// there is no principled type to infer here (<c>len(s)</c> admits every sized type), so this
+    /// refuses and names the remedy.</para>
+    ///
+    /// <para>Its reach is deliberately narrow. Both binding seams set <c>_expectedType</c> from the
+    /// target before checking the value, so every binding that <em>can</em> type the lambda already
+    /// does; <c>TryInferLambdaParamTypesFromBody</c> has already resolved the body shapes it can
+    /// (<c>lambda x: x * 2</c>, <c>lambda x: f(x)</c>); a parameter the user annotated is excluded
+    /// even when the annotation failed to resolve, since that error is already reported; a
+    /// return-type-only unresolution is not this diagnostic, so an erroring body is left to report
+    /// itself; and lambdas in argument position never reach here at all.</para>
+    /// </summary>
+    private SemanticType CheckLambdaBindingInferable(Expression? value, SemanticType inferred)
+    {
+        if (value == null
+            || UnwrapParenthesized(value) is not LambdaExpression lambda
+            || inferred is not FunctionType functionType)
+        {
+            return inferred;
+        }
+
+        var unresolved = new List<Parameter>();
+        for (int i = 0; i < lambda.Parameters.Length && i < functionType.ParameterTypes.Count; i++)
+        {
+            if (lambda.Parameters[i].Type == null && functionType.ParameterTypes[i] is UnknownType)
+                unresolved.Add(lambda.Parameters[i]);
+        }
+
+        if (unresolved.Count == 0)
+            return inferred;
+
+        // Operator sections and partial application lower to a lambda whose parameters the user
+        // never wrote and cannot annotate, so the remedy has to be a different one.
+        bool isSynthesized = unresolved.Any(p =>
+            p.Name.StartsWith(SynthesizedPlaceholderPrefix, StringComparison.Ordinal));
+
+        var message = isSynthesized
+            ? "Cannot infer the parameter types of this operator section. Annotate the target with a "
+              + "function type (for example 'f: (int, int) -> int = (_ + _)'), or write a lambda "
+              + "with annotated parameters instead."
+            : $"Cannot infer {DescribeUnresolvedParameters(unresolved)} of this lambda. Annotate "
+              + $"{(unresolved.Count == 1 ? "it" : "them")} (for example 'lambda "
+              + $"{unresolved[0].Name}: str: ...'), or annotate the target with a function type.";
+
+        AddError(message, lambda.LineStart, lambda.ColumnStart,
+            code: DiagnosticCodes.Semantic.UnresolvedLambdaParameterType,
+            span: lambda.Span);
+
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>Prefix the parser gives operator-section and partial-application parameters.</summary>
+    private const string SynthesizedPlaceholderPrefix = "__placeholder_";
+
+    private static string DescribeUnresolvedParameters(List<Parameter> unresolved)
+    {
+        var names = string.Join(", ", unresolved.Select(p => $"'{p.Name}'"));
+        return unresolved.Count == 1
+            ? $"the type of parameter {names}"
+            : $"the types of parameters {names}";
+    }
+
     private void CheckVariableDeclaration(VariableDeclaration varDecl)
     {
         var declaredType = _typeResolver.ResolveTypeAnnotation(varDecl.Type);
@@ -309,6 +382,12 @@ internal partial class TypeChecker
             using (ScopedValue.Push(ref _currentBindingValue, varDecl.InitialValue))
                 initType = CheckExpression(varDecl.InitialValue);
             _expectedType = previousExpectedType;
+
+            // Only on the 'auto' path: a declared annotation that cannot type the lambda already
+            // reports its own mismatch below, and telling the user to annotate a parameter on top
+            // of that would be noise (#1212).
+            if (declaredType is UnknownType)
+                initType = CheckLambdaBindingInferable(varDecl.InitialValue, initType);
 
             // Handle type inference for 'auto'
             if (declaredType is UnknownType)
