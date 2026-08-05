@@ -88,6 +88,8 @@ internal class ClrTypeBridge
                 ["DefaultDict"] = CSharpTypeNames.SharpyDefaultDict,
                 [BuiltinNames.FrozenDict] = CSharpTypeNames.SharpyFrozenDict,
                 ["FrozenDict"] = CSharpTypeNames.SharpyFrozenDict,
+                [BuiltinNames.FrozenSet] = CSharpTypeNames.SharpyFrozenSet,
+                ["FrozenSet"] = CSharpTypeNames.SharpyFrozenSet,
             }.ToImmutableDictionary();
 
         /// <summary>

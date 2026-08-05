@@ -93,7 +93,7 @@ internal partial class TypeChecker
                     var elementType = _typeInference.InferIterableElementType(argType);
                     if (elementType != null && elementType != SemanticType.Unknown)
                     {
-                        if (typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set
+                        if (typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set or BuiltinNames.FrozenSet
                             && typeSymbol.TypeParameters.Count == 1)
                         {
                             typeArgs = new List<SemanticType> { elementType };
@@ -138,6 +138,10 @@ internal partial class TypeChecker
             // a diagnostic for user-defined generic types.
             if (typeArgs == null)
             {
+                // frozenset is deliberately NOT in this set (#1210): degrading to frozenset[?] would
+                // hand the emitter an unresolved generic, which is the shape that produced the
+                // reported `object` typing in the first place. A failed inference there is a loud
+                // SPY0237 instead.
                 if (typeSymbol.Name is BuiltinNames.List or BuiltinNames.Set or BuiltinNames.Dict)
                 {
                     typeArgs = Enumerable.Range(0, typeSymbol.TypeParameters.Count)

@@ -1,0 +1,28 @@
+# frozenset is a registered builtin collection type (#1210). Before that it was reachable only as
+# a discovered static factory spelled `frozen_set`, whose FrozenSet<T> return type was not in the
+# CLR-return whitelist — so the result typed as `object` and len()/iteration/membership were all
+# rejected.
+def main():
+    xs: list[int] = [3, 1, 2, 3]
+    fs = frozenset(xs)
+    print(len(fs))
+    print(3 in fs)
+
+    total: int = 0
+    for v in fs:
+        total = total + v
+    print(total)
+
+    # str elements infer just as well
+    names: list[str] = ["b", "a", "b"]
+    fn = frozenset(names)
+    print(len(fn))
+    print("a" in fn)
+
+    # The explicit type-argument spelling is a construction, not a generic function call.
+    empty = frozenset[int]()
+    print(len(empty))
+
+    # An annotated target supplies the type arguments for the empty constructor.
+    annotated: frozenset[int] = frozenset()
+    print(len(annotated))

@@ -1,0 +1,5 @@
+# An empty frozenset() with no annotation cannot infer its element type — the same deliberate
+# refusal set() gives, rather than a silent degradation to frozenset[?] (#1210).
+def main():
+    fs = frozenset()
+    print(len(fs))
