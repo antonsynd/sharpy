@@ -182,7 +182,7 @@ transforms: dict[str, (int) -> int] = {}
 
 ## Constructor References
 
-A bare builtin type name used as a value — `f = int`, `f = dict` — is a **constructor reference**. It is a legitimate value, but like a C# *method group* it has no natural type of its own: `int`, `str`, `float` and `bool` each name an overload set, and `list`, `dict` and `set` are generic, so nothing in the reference itself says which signature was meant. Sharpy therefore takes the signature from the context, in one of three ways.
+A bare type name used as a value — `f = int`, `f = dict`, `f = MyClass` — is a **constructor reference**. It is a legitimate value, but like a C# *method group* it has no natural type of its own: `int`, `str`, `float` and `bool` each name an overload set; `list`, `dict` and `set` are generic; and a user class may declare several constructors. Nothing in the reference itself says which signature was meant, so Sharpy takes the signature from the context, in one of three ways.
 
 **1. Pinned against an expected function type.** Wherever a signature is available — an annotated target, a declared return type, or the parameter it is passed to — the reference binds that signature:
 
@@ -205,7 +205,37 @@ print(apply(int, "5"))               # the parameter type pins it
 
 The collection families pin to their empty constructor (`() -> list[int]`) or their copy constructor (`(list[int]) -> list[int]`).
 
-**2. A call-only alias.** A binding with no signature available aliases the builtin, and each call through it resolves exactly like a call of the builtin itself — Python's factory-alias pattern:
+A user class or struct pins against its **declared constructors**:
+
+```python
+class Point:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+mk: (int) -> Point = Point
+print(mk(7).x)                       # 7
+
+print(list(map(Point, [1, 2, 3])))   # the class name as a factory, like map(int, xs)
+```
+
+A class with no declared `__init__` offers exactly the zero-argument shape, and a **generic** class takes its type arguments from the target exactly as the collections do — from the target, never from the reference:
+
+```python
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+mb: (int) -> Box[int] = Box         # the BARE name; the target supplies T
+print(mb(3).value)                  # 3
+```
+
+Writing the type arguments on the reference instead (`f = Box[int]`) is a *type* reference, not a value, and is refused with SPY0339.
+
+**2. A call-only alias.** A binding with no signature available aliases the type, and each call through it resolves exactly like a call of the type itself — Python's factory-alias pattern:
 
 ```python
 f = int
@@ -213,6 +243,9 @@ print(f("3"))                        # 3
 
 d_maker = dict
 d: dict[str, int] = d_maker()        # the annotated target infers K and V, as dict() would
+
+p_maker = Point
+p = p_maker(5)                       # a user class aliases the same way
 ```
 
 Reassigning re-aliases, and each call site binds its own reaching binding. The alias itself has no runtime representation: it emits no C#, exactly as a C# method group is not a value until it is converted.
@@ -224,13 +257,15 @@ xs = [int, str]                      # SPY0342 — a list element supplies no ta
 f = int if c else str                # SPY0342 — a conditional is not an alias
 ```
 
-Annotate the target, call the builtin directly, or wrap it in a lambda that fixes the signature yourself (`g = lambda s: int(s)`).
+Annotate the target, call the type directly, or wrap it in a lambda that fixes the signature yourself (`g = lambda s: int(s)`).
 
-Writing a builtin type name where it names a **type** rather than a value is unaffected: a static-member receiver (`int.parse(s)`, `dict.fromkeys(ks)`), a type-test type argument (`isinstance(x, int)`), and a type argument (`Box[int]`) are all type positions, not constructor references.
+Writing a type name where it names a **type** rather than a value is unaffected, for builtin and user names alike: a static-member receiver (`int.parse(s)`, `dict.fromkeys(ks)`, `Point.of(v)`), a type-test type argument (`isinstance(x, int)`, `isinstance(x, Point)`), and a type argument (`Box[int]`, `Box[Point]`) are all type positions, not constructor references.
 
 *Implementation*
-- *✅ Native — the conversion families emit the `Sharpy.Builtins.X` method group, so C#'s own method-group conversion binds the overload against the pinned delegate type; the collection families emit a constructor lambda.*
-- *⚠️ Builtin types only. The same semantics for user classes (`f = MyClass; f()`) are not implemented — see [#1211](https://github.com/antonsynd/sharpy/issues/1211). A generic user type reference used as a value is refused with SPY0339 until then.*
+- *✅ Native — the conversion families emit the `Sharpy.Builtins.X` method group, so C#'s own method-group conversion binds the overload against the pinned delegate type; the collection and user-type families emit a constructor lambda at a reference and `new T(args)` at an alias call.*
+- *✅ User classes and structs ([#1211](https://github.com/antonsynd/sharpy/issues/1211)), pinning against their declared constructors, including generic classes whose type arguments come from the target. Interfaces, enums, unions and abstract classes are not constructible and are not constructor references.*
+- *⚠️ A generic type reference that carries its own type arguments (`f = Box[int]`) is a type reference, not a value, and stays refused with SPY0339.*
+- *⚠️ A user class with several constructor overloads passed as a direct call argument that does not pin still reaches SPY0908 rather than a deliberate diagnostic — see [#1249](https://github.com/antonsynd/sharpy/issues/1249).*
 
 ## C# Mapping
 
