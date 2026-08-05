@@ -37,9 +37,23 @@ def main():
     print(lst.max(lambda v: v))
     print(lst.min(lambda v: v))
 
-    # Receivers that pass all four call-site gates and are stopped only by the resolver itself — an
-    # `int`, a StringBuilder, an `int?` — cannot appear here, because they do not compile either
-    # before or after the batch. They are pinned instead by
-    # ClrExtensionMethodResolverTests.DecliningReceivers_ProduceNothingAtAll, which is the level the
-    # property actually lives at: the gates are a pre-filter, and TryBindThisParameter failing to
-    # reach IEnumerable<T> is the real filter.
+    # Two more families of decline belong to this fixture's subject but cannot be lines in it,
+    # because they do not compile BEFORE the batch either. A fixture could only assert a
+    # pre-existing failure, so each is pinned at the level its property actually lives at and
+    # recorded here so the absence does not read as an oversight. Both were measured against a
+    # pre-#1206 worktree, and both are byte-identical before and after.
+    #
+    # 1. `cast()` and `of_type()` written WITHOUT type arguments. Their result type is determined by
+    #    nothing — the `this` parameter is the non-generic IEnumerable, so the receiver says nothing
+    #    about it and no argument mentions it. They are the only two such methods on the whole
+    #    acceptance surface. Staging declines, C# then cannot infer either, and both spellings leak
+    #    the same CS0411 they always have. The explicit `cast[int]()` form is the one that works, and
+    #    it is pinned in bcl_extension_closed_signature_1195. The decline itself is pinned in
+    #    ClrExtensionMethodResolverTests.CastAndOfType_NeverClose_TheirResultIsDeterminedByNothing.
+    #
+    # 2. Receivers that pass all four call-site gates and are stopped only by the resolver — an
+    #    `int`, a StringBuilder, an `int?`. Each has a CLR type, each carries a name on the
+    #    acceptance surface, and none of them is a sequence, so TryBindThisParameter never reaches
+    #    IEnumerable<T>. That is the shape of the whole design: the gates are a cheap pre-filter and
+    #    the resolver is the real filter. Pinned in
+    #    ClrExtensionMethodResolverTests.DecliningReceivers_ProduceNothingAtAll.
