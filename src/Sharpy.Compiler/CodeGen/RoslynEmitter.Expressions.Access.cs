@@ -162,6 +162,19 @@ internal partial class RoslynEmitter
                     ?? NameCasing.ResolveType(funcName.Name, funcName.IsNameBacktickEscaped);
 
                 var exprType = _context.SemanticInfo?.GetExpressionType(call);
+
+                // dict(a=1, b=2): the keyword NAMES are the keys, so this is the
+                // collection-initializer form of the equivalent dict literal, not a C#
+                // named-argument call. Passing them through the argument list is CS1739 (#1220).
+                // The dict[str, V] this reads was resolved by the TypeChecker.
+                if (call.KeywordArguments.Length > 0 && call.Arguments.Length == 0
+                    && exprType is GenericType { Name: BuiltinNames.Dict } keywordDictType
+                    && keywordDictType.TypeArguments.Count == 2
+                    && keywordDictType.TypeArguments.All(t => t is not UnknownType))
+                {
+                    return GenerateKeywordDictConstruction(call, keywordDictType);
+                }
+
                 var hasResolvedGenericArgs = exprType is GenericType resolvedGeneric
                     && resolvedGeneric.TypeArguments.Count > 0
                     && resolvedGeneric.TypeArguments.All(t => t is not UnknownType);

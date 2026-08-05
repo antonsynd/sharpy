@@ -143,6 +143,34 @@ internal partial class RoslynEmitter
                 SeparatedList<ExpressionSyntax>(initializers)));
     }
 
+    /// <summary>
+    /// Emits <c>dict(a=1, b=2)</c> as the collection-initializer form its equivalent literal
+    /// <c>{"a": 1, "b": 2}</c> uses (#1220) — the keyword names become string-literal keys. Applies
+    /// the <c>dict[str, V]</c> the TypeChecker resolved; it derives nothing.
+    /// </summary>
+    private ExpressionSyntax GenerateKeywordDictConstruction(FunctionCall call, GenericType dictType)
+    {
+        var keyType = _typeMapper.MapSemanticType(dictType.TypeArguments[0]);
+        var valueType = _typeMapper.MapSemanticType(dictType.TypeArguments[1]);
+        var csharpDictType = TypeSyntaxMapper.QualifiedGenericName(
+            CSharpTypeNames.SharpyDict, keyType, valueType);
+
+        var initializers = call.KeywordArguments.Select(kwarg =>
+            InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
+                SeparatedList(new[]
+                {
+                    (ExpressionSyntax)LiteralExpression(
+                        SyntaxKind.StringLiteralExpression, Literal(kwarg.Name)),
+                    GenerateExpression(kwarg.Value)
+                })));
+
+        return ObjectCreationExpression(csharpDictType)
+            .WithArgumentList(ArgumentList())
+            .WithInitializer(InitializerExpression(
+                SyntaxKind.CollectionInitializerExpression,
+                SeparatedList<ExpressionSyntax>(initializers)));
+    }
+
     private ExpressionSyntax GenerateSetLiteral(SetLiteral set)
     {
         // new Sharpy.Set<T> { elem1, elem2, elem3 }

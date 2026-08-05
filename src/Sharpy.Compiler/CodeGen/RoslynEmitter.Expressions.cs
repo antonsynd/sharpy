@@ -296,6 +296,30 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateConstructorReferenceCall(
         FunctionCall call, ConstructorReferenceLowering lowering)
     {
+        // dict(a=1, b=2) reached through an alias is the same construct as the direct spelling and
+        // needs the same collection-initializer lowering. The positional pipeline below carries no
+        // keyword arguments, so without this the kwargs were dropped and `f = dict; f(c=3)` silently
+        // produced an EMPTY dict — worse than the CS error it replaced (#1220).
+        if (call.KeywordArguments.Length > 0 && call.Arguments.Length == 0
+            && lowering.ConstructedType is GenericType { Name: BuiltinNames.Dict } aliasDictType
+            && aliasDictType.TypeArguments.Count == 2
+            && aliasDictType.TypeArguments.All(t => t is not UnknownType))
+        {
+            return GenerateKeywordDictConstruction(call, aliasDictType);
+        }
+
+        // Loud guard for every other keyword argument reaching this seam: the pipeline below would
+        // drop it silently. Semantic analysis refuses the shapes it knows about, so anything here is
+        // a carrier the two halves disagree about — report it rather than emit wrong data.
+        if (call.KeywordArguments.Length > 0)
+        {
+            return EmitNotImplementedExpression(
+                $"Keyword arguments are not supported when calling '{lowering.Name}' through a "
+                + "constructor reference",
+                DiagnosticCodes.CodeGen.UnsupportedExpressionType,
+                call.LineStart, call.ColumnStart);
+        }
+
         // Route through the shared positional-argument pipeline so spread elements and
         // iterable projections lower exactly as they do for the direct spelling —
         // a hand-rolled Select over GenerateExpression would send *t to the
