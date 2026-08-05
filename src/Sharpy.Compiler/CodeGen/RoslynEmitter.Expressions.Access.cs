@@ -597,7 +597,7 @@ internal partial class RoslynEmitter
             case GenericReferenceKind.NestedTypeRef:
                 return indexAccess.Object is MemberAccess nestedTypeAccess
                        && reference.TargetSymbol is TypeSymbol nestedTypeSymbol
-                    ? GenerateNestedGenericInstantiation(indexAccess, reference, nestedTypeAccess, nestedTypeSymbol, call)
+                    ? GenerateNestedGenericInstantiation(indexAccess, reference, nestedTypeSymbol, call)
                     : null;
 
             case GenericReferenceKind.Builtin:
@@ -782,38 +782,27 @@ internal partial class RoslynEmitter
     /// Nested generic type instantiation: <c>Outer.Inner[int](42)</c> →
     /// <c>new Outer.Inner&lt;int&gt;(42)</c>. <paramref name="nestedTypeSymbol"/> is the nested type the
     /// resolver bound (<see cref="GenericReferenceKind.NestedTypeRef"/>, #1164), so no symbol-table
-    /// walk happens here: the outer qualifier is spelled from that symbol's declaring-type chain.
+    /// walk happens here: the whole qualified name is spelled from that symbol's declaring-type
+    /// chain by <see cref="BuildNestedTypeName"/>, the same builder the no-type-argument spelling
+    /// uses (#1217).
+    /// <para>Note the innermost segment's source changed with that unification: it is now the
+    /// SYMBOL's name rather than <c>memberAccess.Member</c>'s source spelling. They agree for
+    /// ordinary names, and for a backtick-escaped one the symbol is the CORRECT source — see
+    /// <see cref="BuildNestedTypeName"/>, which explains why the old verbatim spelling was
+    /// CS0426.</para>
     /// </summary>
     private ExpressionSyntax GenerateNestedGenericInstantiation(
-        IndexAccess indexAccess, GenericReference reference, MemberAccess memberAccess,
+        IndexAccess indexAccess, GenericReference reference,
         TypeSymbol nestedTypeSymbol, FunctionCall call)
     {
         var typeArgsSyntax = MapTypeReferenceTypeArguments(indexAccess, reference);
-        var csharpName = NameCasing.ResolveType(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
-        var outerName = GetNestedTypeOuterPrefix(nestedTypeSymbol);
-        var qualifiedGenericName = QualifiedName(
-            ParseQualifiedName(outerName),
-            GenericName(csharpName)
-                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax))));
+        var qualifiedGenericName = BuildNestedTypeName(nestedTypeSymbol, typeArgsSyntax);
 
         var constructorTarget = ResolveConstructorForCall(nestedTypeSymbol, call);
         var allArgs = GenerateReorderedCallArguments(call, constructorTarget);
 
         return ObjectCreationExpression(qualifiedGenericName)
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
-    }
-
-    private static string GetNestedTypeOuterPrefix(TypeSymbol nestedType)
-    {
-        var parts = new List<string>();
-        var declaring = nestedType.DeclaringType;
-        while (declaring != null)
-        {
-            parts.Add(NameCasing.ResolveType(declaring.Name, isBacktickEscaped: false));
-            declaring = declaring.DeclaringType;
-        }
-        parts.Reverse();
-        return string.Join(".", parts);
     }
 
     /// <summary>
@@ -1984,6 +1973,26 @@ internal partial class RoslynEmitter
         return null;
     }
 
+    /// <summary>
+    /// The single builder for a nested type's qualified C# name: <c>Outer.Inner</c>, with type
+    /// arguments on the innermost segment only — <c>Outer.Inner&lt;int&gt;</c>, never
+    /// <c>Outer&lt;int&gt;.Inner</c>, since the nested type declares them and its enclosing types do
+    /// not. Both construction spellings use it (#1217); the second builder it replaced joined
+    /// segments into a string and round-tripped them through <c>ParseQualifiedName</c>.
+    ///
+    /// <para>Every segment is cased from the SYMBOL, deliberately, including a backtick-escaped one.
+    /// The replaced builder passed the source's <c>IsMemberBacktickEscaped</c> through for the
+    /// innermost segment, emitting such a name verbatim — but the DECLARATION side PascalCases it
+    /// regardless (<c>class `data`</c> declares <c>Data</c>), so the verbatim reference named a type
+    /// that does not exist and failed CS0426. Casing from the symbol is what makes the reference
+    /// agree with the declaration (#1217).</para>
+    ///
+    /// <para>The keyword escaping the issue reported as divergent was already identical in both
+    /// builders: <c>NameMangler.Transform(x, NameContext.Type)</c> and
+    /// <c>NameCasing.ResolveType(x, isBacktickEscaped: false)</c> both PascalCase and then escape,
+    /// and PascalCasing a lowercase keyword (<c>class</c> → <c>Class</c>) removes the collision
+    /// before escaping is consulted.</para>
+    /// </summary>
     private NameSyntax BuildNestedTypeName(TypeSymbol nestedSym, TypeSyntax[]? typeArguments = null)
     {
         var parts = new List<string>();
