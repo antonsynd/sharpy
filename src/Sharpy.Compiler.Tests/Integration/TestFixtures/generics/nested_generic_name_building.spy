@@ -1,0 +1,55 @@
+# One builder spells the qualified C# name for both nested-construction spellings — with type
+# arguments (Outer.Inner[int](...)) and without (Outer.Inner(...)) — after #1217 replaced the second
+# builder, which joined segments into a string and round-tripped them through ParseQualifiedName.
+#
+# The keyword-colliding outer name is a PIN, not a regression test: it compiled correctly under both
+# builders already, because each PascalCases before escaping and `class` becomes `Class` before a
+# collision can arise.
+#
+# The backtick-escaped nested class IS a regression test, in the opposite direction from what the
+# plan expected: the replaced builder emitted such a member VERBATIM at the reference while the
+# declaration PascalCases it, so `Holder.`data`[int](7)` named a type that does not exist and failed
+# CS0426. Casing every segment from the symbol is what makes the two agree.
+class `class`:
+    @public
+    class Inner[T]:
+        value: T
+
+        def __init__(self, value: T):
+            self.value = value
+
+        def get(self) -> T:
+            return self.value
+
+    @public
+    class Plain:
+        tag: str
+
+        def __init__(self, tag: str):
+            self.tag = tag
+
+
+class Holder:
+    @public
+    class `data`[T]:
+        value: T
+
+        def __init__(self, value: T):
+            self.value = value
+
+        def get(self) -> T:
+            return self.value
+
+
+def main() -> None:
+    # Both spellings under a keyword-colliding outer class.
+    a = `class`.Inner[int](42)
+    print(a.get())
+    b = `class`.Plain("plain")
+    print(b.tag)
+
+    # A backtick-escaped nested class, under both spellings. The generic one was CS0426 before.
+    c = Holder.`data`[int](7)
+    print(c.get())
+    d = Holder.`data`(9)
+    print(d.get())
