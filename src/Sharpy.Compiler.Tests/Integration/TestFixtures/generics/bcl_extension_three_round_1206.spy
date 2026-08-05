@@ -1,0 +1,43 @@
+# Test (#1206): the three-round staged shapes at FIXTURE level — group_by and join. SelectMany is
+# pinned next door in bcl_extension_staged_1206; before this file the other three-round shapes ran
+# only in the resolver unit tests, so a defect in the deferral pass's phase-2 re-substitution
+# (FoldCheckedArgumentIntoSubstitutions) that the resolver cannot see had no end-to-end pin.
+#
+# join's inner sequence is a SHARPY list deliberately: a CLR List[int] argument against the closed
+# `list[int]` formal draws SPY0220 — the #1252-family mapping asymmetry on the value-argument side,
+# recorded as #1260 (pre-AF the same shape was an SPY0908/CS0305 leak, so it is a conversion, not a
+# regression).
+# Expected output verified against the LINQ semantics (groups in first-appearance key order; join
+# matches only o == i).
+from system.collections.generic import List
+
+
+def track(seen: list[int], x: int) -> int:
+    seen.append(x)
+    return x % 2
+
+
+def main() -> None:
+    xs = List[int]()
+    xs.add(1)
+    xs.add(2)
+    xs.add(3)
+    xs.add(4)
+
+    # GroupBy<TSource, TKey>: TKey closes from the lambda's return under the staged path. The
+    # tracking list doubles as the single-evaluation proof: four elements, four calls — a staged
+    # lambda body runs once per element, never twice (D6).
+    seen: list[int] = []
+    groups = xs.group_by(lambda x: track(seen, x))
+    for g in groups:
+        print(g.key)
+    print(len(seen))
+
+    # Join<TOuter, TInner, TKey, TResult>: TInner from an argument, TKey from lambda returns,
+    # TResult from the result selector — the full three-round ordering.
+    outer = List[int]()
+    outer.add(1)
+    outer.add(2)
+    inner = [2, 3]
+    joined = list(outer.join(inner, lambda o: o, lambda i: i, lambda o, i: str(o + i)))
+    print(joined)

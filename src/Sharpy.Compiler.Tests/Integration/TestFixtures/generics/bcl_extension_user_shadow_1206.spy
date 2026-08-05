@@ -1,0 +1,21 @@
+# Test (#1206): a USER class declaring a method named like a BCL extension (`select`) keeps its own
+# instance semantics. The staged path cannot even be reached here — gate 2 (TryGetClrType) returns
+# null for a user type — but this fixture pins the user-visible contract rather than the gate: a
+# name the acceptance surface knows about still binds to the receiver's own member first.
+class Basket:
+    items: list[int]
+
+    def __init__(self):
+        self.items = [1, 2, 3]
+
+    def select(self, n: int) -> int:
+        return self.items[n]
+
+    def where(self) -> str:
+        return "here"
+
+
+def main() -> None:
+    b = Basket()
+    print(b.select(1))
+    print(b.where())
