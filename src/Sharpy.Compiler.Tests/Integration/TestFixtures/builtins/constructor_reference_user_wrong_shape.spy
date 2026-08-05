@@ -1,0 +1,14 @@
+# Test (#1211): SPY0342 for a USER class names the class as a class and lists its DECLARED
+# constructor signatures — never the "builtin type" wording, which stays verbatim for builtins
+# (pinned next door by constructor_reference_wrong_shape.error). This is the user-class half of that
+# pair; only the builtin half had an .error pin when the wording was split.
+class Point:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+
+def main():
+    g: (str, str) -> Point = Point
+    print(g)

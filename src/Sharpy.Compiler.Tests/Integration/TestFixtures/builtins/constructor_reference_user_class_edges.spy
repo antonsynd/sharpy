@@ -1,0 +1,61 @@
+# Test (#1211): the edge cases around user-class constructor references that the main fixture
+# (constructor_reference_user_class) does not carry — overload SELECTION, the base-chain walk,
+# builtin-name shadowing, and a spread argument through an alias call. All outputs verified by
+# execution before pinning.
+class Multi:
+    v: str
+
+    def __init__(self, a: int):
+        self.v = f"int:{a}"
+
+    def __init__(self, a: str, b: str):
+        self.v = f"str:{a}{b}"
+
+
+class Base:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+
+class Derived(Base):
+    def tag(self) -> str:
+        return f"D{self.x}"
+
+
+# A user class shadowing a builtin FUNCTION name resolves to its own symbol through the
+# constructor-reference paths. A class shadowing a builtin TYPE name (`class str:`) is accepted by
+# the checker but betrayed by the name-keyed type mapping at emission — the #1241 family — so only
+# the function-name half is pinnable today.
+class map:
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+
+def main():
+    # Pinning SELECTS among declared __init__ overloads; each annotation picks its own.
+    m1: (int) -> Multi = Multi
+    print(m1(7).v)
+
+    m2: (str, str) -> Multi = Multi
+    print(m2("a", "b").v)
+
+    # A constructor declared only on the BASE class: the candidate walk supplies the shape both to
+    # a pinned reference and to an alias call.
+    d: (int) -> Derived = Derived
+    print(d(5).tag())
+
+    f = Derived
+    print(f(9).tag())
+
+    # The shadowing class constructs itself, not the builtin.
+    m = map
+    print(m(11).v)
+
+    # A spread argument through an alias call rides the shared positional pipeline.
+    g = Base
+    t = (21,)
+    print(g(*t).x)

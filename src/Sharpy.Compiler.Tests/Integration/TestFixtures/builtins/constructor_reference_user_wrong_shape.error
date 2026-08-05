@@ -1,0 +1,2 @@
+class 'Point' has no constructor signature matching '(str, str) -> Point'. Candidates: @13:30
+(int) -> Point
