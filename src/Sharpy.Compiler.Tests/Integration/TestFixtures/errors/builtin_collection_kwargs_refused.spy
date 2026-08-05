@@ -1,0 +1,5 @@
+# list()/set()/tuple() take no keyword arguments in CPython either — a deliberate refusal rather
+# than the SPY0908 these produced before (#1220).
+def main():
+    xs = list(a=1)
+    print(len(xs))

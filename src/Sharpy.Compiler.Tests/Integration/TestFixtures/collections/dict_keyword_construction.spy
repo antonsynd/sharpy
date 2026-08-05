@@ -1,0 +1,20 @@
+# dict(a=1, b=2) is CPython's keyword-argument dict constructor: the kwarg NAMES are the keys.
+# The construction path had no arm for keyword arguments, so inference fell through to dict[?, ?]
+# and the emitter turned that into the static-class-as-value shape (CS0712/CS0723, #1220).
+def main():
+    d = dict(a=1, b=2)
+    print(d)
+    print(len(d))
+    print(d["a"])
+
+    # Mixed value types unify exactly as the equivalent literal {"a": 1, "b": "x"} does — the two
+    # spellings of one construct must not disagree.
+    mixed = dict(a=1, b="x")
+    print(len(mixed))
+
+    # The alias spelling is the same construct and must lower identically. It silently produced an
+    # EMPTY dict until the constructor-reference path learned to carry keyword arguments.
+    alias = dict
+    aliased = alias(c=3, d=4)
+    print(aliased)
+    print(aliased["d"])

@@ -1,0 +1,6 @@
+# CPython allows dict(mapping, **kwargs); Sharpy does not model the merge, so it is refused
+# deliberately rather than falling through to an SPY0908 (#1220).
+def main():
+    src: dict[str, int] = {"x": 9}
+    d = dict(src, a=1)
+    print(len(d))
