@@ -43,9 +43,12 @@ public class ClrExtensionMethodResolverTests
 
     private static string Render(Type t)
     {
-        if (t.IsGenericParameter) return t.Name;
-        if (t.IsArray) return Render(t.GetElementType()!) + "[]";
-        if (!t.IsGenericType) return t.Name;
+        if (t.IsGenericParameter)
+            return t.Name;
+        if (t.IsArray)
+            return Render(t.GetElementType()!) + "[]";
+        if (!t.IsGenericType)
+            return t.Name;
         return global::Sharpy.Compiler.Shared.ClrNameHelper.StripArity(t.Name)
             + "<" + string.Join(",", t.GetGenericArguments().Select(Render)) + ">";
     }
