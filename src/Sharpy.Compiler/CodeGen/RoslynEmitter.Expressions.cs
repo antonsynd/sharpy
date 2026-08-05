@@ -273,18 +273,33 @@ internal partial class RoslynEmitter
         }
 
         var constructed = _typeMapper.MapSemanticType(lowering.ConstructedType);
-        if (lowering.ParameterCount == 0)
+
+        // One generated parameter per constructor parameter, forwarded positionally. The arity was
+        // hardcoded to 0 and 1 before #1211 — and a ParameterCount >= 2 fell into the arity-1 branch
+        // and emitted a ONE-parameter lambda, latent wrong output that was unreachable only because
+        // CollectionSignatureSatisfies refuses arity >= 2. User classes routinely take two or more,
+        // so the arm is general now and the guard is what will be relaxed.
+        var sourceNames = new string[lowering.ParameterCount];
+        for (int i = 0; i < sourceNames.Length; i++)
+            sourceNames[i] = $"__ctor_source_{_tempVarCounter++}";
+
+        var construction = ObjectCreationExpression(constructed).WithArgumentList(
+            ArgumentList(SeparatedList(
+                sourceNames.Select(n => Argument(EscapedIdentifierName(n))))));
+
+        // Arity 1 keeps the SimpleLambdaExpression form deliberately: a uniform parenthesized lambda
+        // would emit `(x) => …` where every existing emission is `x => …` — semantically identical,
+        // but it would move the snapshot for no reason.
+        if (sourceNames.Length == 1)
         {
-            return ParenthesizedLambdaExpression(
-                ParameterList(),
-                ObjectCreationExpression(constructed).WithArgumentList(ArgumentList()));
+            return SimpleLambdaExpression(
+                Parameter(EscapedIdentifier(sourceNames[0])), construction);
         }
 
-        var sourceName = $"__ctor_source_{_tempVarCounter++}";
-        return SimpleLambdaExpression(
-            Parameter(EscapedIdentifier(sourceName)),
-            ObjectCreationExpression(constructed).WithArgumentList(
-                ArgumentList(SingletonSeparatedList(Argument(EscapedIdentifierName(sourceName))))));
+        return ParenthesizedLambdaExpression(
+            ParameterList(SeparatedList(
+                sourceNames.Select(n => Parameter(EscapedIdentifier(n))))),
+            construction);
     }
 
     /// <summary>
