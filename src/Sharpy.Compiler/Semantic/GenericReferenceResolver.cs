@@ -281,7 +281,17 @@ internal partial class TypeChecker
         //     difflib.SequenceMatcher[str], recv.convert[int], lst.convert_all[str] ---
         if (indexAccess.Object is MemberAccess memberAccessObj)
         {
-            var ownerType = CheckExpression(memberAccessObj.Object);
+            // The thing being checked is a member-access QUALIFIER, and must be marked as one for
+            // the duration — exactly as CheckMemberAccessCore does at its own qualifier check.
+            // Without the marker the value-position choke point sees a bare type name in what looks
+            // like a value position and rejects it: SPY0339 for a generic type reference, and — once
+            // user classes became constructor references (#1211) — SPY0342 for the plain class
+            // qualifier of a nested type (`Outer.Inner[int](6)`). Both are the #1170 over-fire class,
+            // and the qualifier tracker is what the rules read to avoid it.
+            SemanticType ownerType;
+            using (ScopedValue.Push(ref _currentMemberAccessQualifier, memberAccessObj.Object))
+                ownerType = CheckExpression(memberAccessObj.Object);
+
             if (ownerType is ModuleType modType)
             {
                 var memName = memberAccessObj.Member;
