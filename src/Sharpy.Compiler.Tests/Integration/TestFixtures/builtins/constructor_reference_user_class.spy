@@ -1,0 +1,112 @@
+# #1211: the positions where a USER class or struct name IS a value. The tripwire next door pins the
+# positions where a type name is NOT a value; this is the other side of that boundary, and it is new
+# capability rather than protected behavior — every row below either failed to compile or emitted
+# broken C# before #1211.
+#
+# Three pinning rules, one per family: the conversion families match a Sharpy.Builtins overload set,
+# the collection families a known generic shape, and a user type its own DECLARED constructors. The
+# emitter arms are shared with the collection families (a constructor lambda at a reference,
+# `new T(args)` at an alias call), which is why nothing here needed a new emitter shape.
+class Origin:
+    tag: str = "o"
+
+
+class Point:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def __str__(self) -> str:
+        return f"P{self.x}"
+
+
+class Vec:
+    a: int
+    b: int
+
+    def __init__(self, a: int, b: int):
+        self.a = a
+        self.b = b
+
+    def __str__(self) -> str:
+        return f"V{self.a},{self.b}"
+
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+struct Pair:
+    @final
+    lo: int
+
+    @final
+    hi: int
+
+    def __init__(self, lo: int, hi: int):
+        self.lo = lo
+        self.hi = hi
+
+    def __str__(self) -> str:
+        return f"({self.lo},{self.hi})"
+
+
+def apply(fn: (int) -> Point, v: int) -> Point:
+    return fn(v)
+
+
+def build(vs: list[int], make: (int) -> Point) -> list[Point]:
+    out: list[Point] = []
+    for v in vs:
+        out.append(make(v))
+    return out
+
+
+def main():
+    # Tier 1, annotated target: one declared constructor.
+    mk: (int) -> Point = Point
+    print(mk(7))
+
+    # A class with NO declared __init__ offers exactly the zero-argument shape. This is #1211's own
+    # repro, and the reason the recognition gate is not "has at least one declared constructor".
+    mo: () -> Origin = Origin
+    print(mo().tag)
+
+    # Two constructor parameters — the arity the pinned-reference emitter arm could not express
+    # before it was generalized, because list/dict/set only ever pin at 0 or 1.
+    mv: (int, int) -> Vec = Vec
+    print(mv(3, 4))
+
+    # A struct is constructible and pins the same way.
+    mp: (int, int) -> Pair = Pair
+    print(mp(1, 9))
+
+    # A GENERIC class takes its type arguments from the target, exactly as `mk: () -> list[int] = list`
+    # does — from the target, never from the reference. `f = Box[int]` stays SPY0339.
+    mb: (int) -> Box[int] = Box
+    print(mb(3).value)
+
+    # Tier 1 through a declared parameter type rather than an annotation.
+    print(apply(Point, 5))
+
+    # Tier 2: a call-only alias, and a re-alias.
+    f = Point
+    print(f(6))
+
+    f2 = Vec
+    print(f2(1, 2))
+
+    # A direct call argument with a GENERIC parameter type: the class name as a factory, exactly as
+    # `map(int, xs)` has always worked. Emitted broken C# (CS0119 behind SPY0908) before #1211.
+    ns: list[int] = [3, 1, 2]
+    print(list(map(Point, ns)))
+
+    # And an ALIAS in that same position, which must behave exactly like the name it aliases.
+    print(list(map(f, ns)))
+
+    # A keyword argument.
+    print(build(ns, make=Point))
