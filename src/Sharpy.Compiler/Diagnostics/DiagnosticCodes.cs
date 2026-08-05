@@ -615,7 +615,7 @@ public static class DiagnosticCodes
         public const string HomogeneousVariadicHint = "SPY0472";      // Active (emitted by TransitionWarningValidator)
         public const string NoClassmethodHint = "SPY0473";            // Active (emitted by TransitionWarningValidator)
         public const string NoAsyncComprehensionHint = "SPY0474";     // Retired (#998 — async comprehensions implemented); reserved, never reused
-        public const string SingleIsinstanceTypeHint = "SPY0475";     // Retired — superseded by SPY0344 (#1213): the rejection is a semantic-time error, not a hint, so the tuple form never reaches codegen
+        public const string SingleIsinstanceTypeHint = "SPY0475";     // Retired — superseded by SPY0344 (#1213): the rejection is a semantic-time error, not a hint, so the tuple form never reaches codegen; reserved, never reused
         public const string NegativeTupleIndexHint = "SPY0476";       // Active (emitted by TransitionWarningValidator)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
         // SPY0478: Reserved for future transition diagnostics

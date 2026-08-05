@@ -176,11 +176,11 @@ public class DiagnosticPublisherTests
     [Fact]
     public void GetDiagnosticTags_DoesNotTagInformationalHints()
     {
-        // SPY0475 is informational about behavioral differences, not redundant code.
+        // SPY0476 is informational about behavioral differences, not redundant code.
         var diag = new CompilerDiagnostic(
-            Message: "isinstance with single type",
+            Message: "negative tuple index",
             Severity: CompilerDiagnosticSeverity.Hint,
-            Code: DiagnosticCodes.Validation.SingleIsinstanceTypeHint);
+            Code: DiagnosticCodes.Validation.NegativeTupleIndexHint);
 
         var tags = DiagnosticPublisher.GetDiagnosticTags(diag);
 
@@ -223,7 +223,7 @@ public class DiagnosticPublisherTests
         {
             new CompilerDiagnostic("err1", CompilerDiagnosticSeverity.Error, Line: 1, Column: 1, Code: "SPY0100"),
             new CompilerDiagnostic("warn1", CompilerDiagnosticSeverity.Warning, Line: 2, Column: 1, Code: "SPY0450"),
-            new CompilerDiagnostic("hint1", CompilerDiagnosticSeverity.Hint, Line: 3, Column: 1, Code: "SPY0475"),
+            new CompilerDiagnostic("hint1", CompilerDiagnosticSeverity.Hint, Line: 3, Column: 1, Code: "SPY0476"),
             new CompilerDiagnostic("hint2", CompilerDiagnosticSeverity.Hint, Line: 4, Column: 1, Code: "SPY0477"),
         };
 
@@ -240,7 +240,7 @@ public class DiagnosticPublisherTests
 
         var diagnostics = new[]
         {
-            new CompilerDiagnostic("hint1", CompilerDiagnosticSeverity.Hint, Line: 1, Column: 1, Code: "SPY0475"),
+            new CompilerDiagnostic("hint1", CompilerDiagnosticSeverity.Hint, Line: 1, Column: 1, Code: "SPY0476"),
             new CompilerDiagnostic("hint2", CompilerDiagnosticSeverity.Hint, Line: 2, Column: 1, Code: "SPY0477"),
         };
 
@@ -271,7 +271,7 @@ public class DiagnosticPublisherTests
 
     private static CompilerDiagnostic[] MixedSeverityDiagnostics() =>
     [
-        new("hint", CompilerDiagnosticSeverity.Hint, Line: 1, Column: 1, Code: "SPY0475"),
+        new("hint", CompilerDiagnosticSeverity.Hint, Line: 1, Column: 1, Code: "SPY0476"),
         new("warning", CompilerDiagnosticSeverity.Warning, Line: 2, Column: 1, Code: "SPY0451"),
         new("error one", CompilerDiagnosticSeverity.Error, Line: 3, Column: 1, Code: "SPY0201"),
         new("error two", CompilerDiagnosticSeverity.Error, Line: 4, Column: 1, Code: "SPY0202"),
