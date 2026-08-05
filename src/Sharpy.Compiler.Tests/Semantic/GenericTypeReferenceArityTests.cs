@@ -338,4 +338,132 @@ def use(p: Pair[int]) -> None:
 
         ArityErrors(diagnostics).Should().BeEmpty();
     }
+
+    // ===========================
+    // #1219 — the FUNCTION seam is PEP-696 default-aware too
+    //
+    // The type seam has filled trailing defaults since #1192; the function seam was a strict count
+    // check, so `def pair[K, V = str]` then `pair[int](...)` was rejected where `Pair[int](...)`
+    // filled. Both now share one fill routine and keep their own (user-visible, pinned) wording.
+    // ===========================
+
+    private const string DefaultedPairFunctionDecl = @"
+def pair_fn[K, V = str](k: K, v: V) -> str:
+    return ""paired""
+";
+
+    [Fact]
+    public void FunctionReference_DeficientArityWithDefault_FillsAndReportsNoError()
+    {
+        var diagnostics = Analyze(DefaultedPairFunctionDecl + @"
+def use() -> None:
+    p = pair_fn[int](1, ""a"")
+");
+
+        ArityErrors(diagnostics).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FunctionReference_ExactArity_ReportsNoError()
+    {
+        var diagnostics = Analyze(DefaultedPairFunctionDecl + @"
+def use() -> None:
+    p = pair_fn[int, str](1, ""a"")
+");
+
+        ArityErrors(diagnostics).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FunctionReference_ExcessArity_KeepsItsOwnWording()
+    {
+        // The two seams deliberately do NOT share a diagnostic string: "type argument(s)" with the
+        // parenthesized plural here, "type arguments" on the type side. Sharing the fill routine
+        // must not collapse the messages.
+        var diagnostics = Analyze(DefaultedPairFunctionDecl + @"
+def use() -> None:
+    p = pair_fn[int, str, bool](1, ""a"")
+");
+
+        ArityErrors(diagnostics).Should().ContainSingle()
+            .Which.Should().Be("Generic function 'pair_fn' expects 2 type argument(s) but got 3");
+    }
+
+    [Fact]
+    public void FunctionReference_DeficientArityWithoutDefaults_StillReportsWrongCount()
+    {
+        var diagnostics = Analyze(@"
+def plain_fn[K, V](k: K, v: V) -> str:
+    return ""plain""
+
+def use() -> None:
+    p = plain_fn[int](1, ""a"")
+");
+
+        ArityErrors(diagnostics).Should().ContainSingle()
+            .Which.Should().Be("Generic function 'plain_fn' expects 2 type argument(s) but got 1");
+    }
+
+    [Fact]
+    public void FunctionReference_AllDefaulted_EmptyVectorIsUnaffected()
+    {
+        // An all-defaulted function called with no brackets never reaches the arity seam at all —
+        // ordinary inference types it. Pinned so the fill cannot start claiming this case.
+        var diagnostics = Analyze(@"
+def all_def_fn[A = int, B = str](a: A, b: B) -> str:
+    return ""alldef""
+
+def use() -> None:
+    p = all_def_fn(3, ""c"")
+");
+
+        ArityErrors(diagnostics).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FunctionReference_UncalledWithFilledDefault_IsAValuePositionErrorNotAnArityError()
+    {
+        // #1219's own example. After the fix `f = pair_fn[int]` stops being an SPY0224 arity error
+        // and becomes SPY0335 — a generic function reference must be called. That is the correct
+        // outcome: the arity rejection was the bug, the value-position rule is not.
+        var diagnostics = Analyze(DefaultedPairFunctionDecl + @"
+def use() -> None:
+    f = pair_fn[int]
+");
+
+        ArityErrors(diagnostics).Should().BeEmpty();
+        diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.Semantic.GenericFunctionReferenceNotCalled);
+    }
+
+    [Fact]
+    public void BothSeams_SelfReferentialDefault_FailIdentically()
+    {
+        // `V = K` does not resolve on EITHER seam — ResolveTypeAnnotation has no type-parameter
+        // scope for a default. Pre-existing on the type side (#1192) and now shared rather than
+        // hidden behind the function seam's arity rejection. Pinned as a matched pair so a future
+        // fix moves both together.
+        var functionDiagnostics = Analyze(@"
+def dup_fn[K, V = K](k: K, v: V) -> str:
+    return ""dup""
+
+def use() -> None:
+    p = dup_fn[int](1, 2)
+");
+        var typeDiagnostics = Analyze(@"
+class Dup[K, V = K]:
+    a: K
+    b: V
+
+    def __init__(self, a: K, b: V):
+        self.a = a
+        self.b = b
+
+def use() -> None:
+    d = Dup[int](1, 2)
+");
+
+        functionDiagnostics.GetErrors().Should().Contain(d => d.Code == DiagnosticCodes.Semantic.UndefinedType);
+        typeDiagnostics.GetErrors().Should().Contain(d => d.Code == DiagnosticCodes.Semantic.UndefinedType);
+    }
 }

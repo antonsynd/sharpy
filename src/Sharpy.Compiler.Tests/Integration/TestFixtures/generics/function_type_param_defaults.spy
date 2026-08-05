@@ -1,0 +1,32 @@
+# PEP-696 defaults on a generic FUNCTION reference. The type seam has filled trailing defaults since
+# #1192; the function seam was a strict count check, so `pair[int](...)` was rejected where
+# `Pair[int](...)` filled — the same declaration shape resolving differently depending on whether it
+# was written as a function or a type (#1219).
+def make_pair[K, V = str](k: K, v: V) -> str:
+    return "paired"
+
+
+def all_def[A = int, B = str](a: A, b: B) -> str:
+    return "alldef"
+
+
+class Pair[K, V = str]:
+    key: K
+    value: V
+
+    def __init__(self, key: K, value: V):
+        self.key = key
+        self.value = value
+
+
+def main() -> None:
+    # Deficient vector: V fills from its `str` default, and the FILLED vector is what reaches the
+    # emitted C# — a fill computed and discarded would emit Pair<int> and fail CS0305.
+    print(make_pair[int](1, "a"))
+    print(make_pair[int, str](2, "b"))
+    print(all_def(3, "c"))
+
+    # The type side, unchanged, for the symmetry the fix is about.
+    p = Pair[int](4, "d")
+    print(p.key)
+    print(p.value)
