@@ -246,6 +246,9 @@ d: dict[str, int] = d_maker()        # the annotated target infers K and V, as d
 
 p_maker = Point
 p = p_maker(5)                       # a user class aliases the same way
+
+b_maker = Box
+b = b_maker(9)                       # a generic class too; the call infers Box[int]
 ```
 
 Reassigning re-aliases, and each call site binds its own reaching binding. The alias itself has no runtime representation: it emits no C#, exactly as a C# method group is not a value until it is converted.
