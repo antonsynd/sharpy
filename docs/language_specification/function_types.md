@@ -253,6 +253,17 @@ b = b_maker(9)                       # a generic class too; the call infers Box[
 
 Reassigning re-aliases, and each call site binds its own reaching binding. The alias itself has no runtime representation: it emits no C#, exactly as a C# method group is not a value until it is converted.
 
+Because the alias has no runtime value, it is resolved where it is **read**, against the binding reaching that read at compile time — not when the call runs. A closure that captures an alias is therefore fixed to the binding in effect where its body was checked, and rebinding the name afterwards does not change it. This is a deliberate divergence from Python, where the closure would re-read the name at call time:
+
+```python
+f = float
+g: (str) -> float = lambda s: f(s)   # pinned to float, here
+f = int
+print(g("42"))                       # 42.0 in Sharpy; Python prints 42
+```
+
+There is nothing to capture and nothing a later rebinding could update, so late binding is not available at any reasonable cost — Axiom 1 over Axiom 2. Catalogued in [`docs/deviations.yaml`](../deviations.yaml) as `constructor-alias-eager-capture`.
+
 **3. Otherwise, an error (SPY0342).** A reference that is neither pinned nor a call-only alias has no signature and no way to acquire one, so it is refused with guidance rather than compiled into something arbitrary:
 
 ```python
@@ -269,6 +280,7 @@ Writing a type name where it names a **type** rather than a value is unaffected,
 - *✅ User classes and structs ([#1211](https://github.com/antonsynd/sharpy/issues/1211)), pinning against their declared constructors, including generic classes whose type arguments come from the target. Interfaces, enums, unions and abstract classes are not constructible and are not constructor references.*
 - *⚠️ A generic type reference that carries its own type arguments (`f = Box[int]`) is a type reference, not a value, and stays refused with SPY0339.*
 - *⚠️ A user class with several constructor overloads passed as a direct call argument that does not pin still reaches SPY0908 rather than a deliberate diagnostic — see [#1249](https://github.com/antonsynd/sharpy/issues/1249).*
+- *⚠️ An alias rebound inside a conditional resolves against the binding that reached the `if`, silently constructing the wrong type — see [#1248](https://github.com/antonsynd/sharpy/issues/1248). Straight-line rebinding is correct. This is a defect, not the deliberate divergence above.*
 
 ## C# Mapping
 

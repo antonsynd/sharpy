@@ -1218,3 +1218,25 @@ deviations:
         class B(A):
             def __init__(self) -> None:
                 super().__init__()   # OK
+
+  - id: constructor-alias-eager-capture
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "A name bound to a class or builtin type is an ordinary runtime value. A closure that reads it looks it up when the closure is CALLED, so rebinding the name before the call changes what the closure constructs (late binding)."
+    sharpy_behavior: "A constructor alias is resolved where it is READ, against the binding reaching that read at type-check time. A closure capturing an alias is fixed to the binding in effect where its body was checked, and a later rebinding does not affect it. The alias has no runtime value at all — it emits no C#, exactly as a C# method group is not a value until converted — so there is nothing to capture and nothing a rebinding could update. Axiom 1 (.NET) over Axiom 2 (Python)."
+    spec_ref: docs/language_specification/function_types.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        f = float
+        g = lambda s: f(s)
+        f = int
+        print(g('42'))       # 42 — g reads f at call time
+      sharpy: |
+        f = float
+        g: (str) -> float = lambda s: f(s)   # a bare lambda is SPY0343 (#1212)
+        f = int
+        print(g("42"))       # 42.0 — g was pinned to float where it was checked
