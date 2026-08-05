@@ -394,8 +394,8 @@ public static class DiagnosticCodes
         // The isinstance type-operand classifier's rejections. Both say the same thing in two shapes:
         // a type test must name ONE closed type, because a test that compiles but cannot narrow is
         // worse than a clean refusal (#1207, #1213). Borrowed from the module-level reserve above,
-        // which the semantic range's exhaustion left as the only contiguous space; SPY0343 stays
-        // reserved.
+        // which the semantic range's exhaustion left as the only contiguous space. (SPY0343 was
+        // reserved when this was written; the inference-overflow region above has since taken it.)
         public const string MultiTypeTypeTest = "SPY0344";          // Active — isinstance against a tuple of types; Sharpy keeps the form single-typed so a successful check narrows (#1213)
         public const string OpenGenericTypeTest = "SPY0345";        // Active — isinstance against a bare generic type name whose type arguments the operand does not determine (#1207)
 
