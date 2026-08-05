@@ -36,23 +36,28 @@ public enum ConstructorReferenceFamily
 ///
 /// <para>Recorded against two kinds of node, for the two ways a constructor reference reaches
 /// codegen. On a REFERENCE node it describes a reference pinned to an expected function type: the
-/// conversion families emit the <c>Builtins.X</c> method group, the collection families a
-/// constructor lambda of <see cref="ParameterCount"/> parameters. On a CALL node it describes a call
-/// through a constructor ALIAS, which semantic analysis resolved exactly as a call of the builtin:
-/// the conversion families emit <c>Builtins.X(args)</c>, the collection families
-/// <c>new ConstructedType(args)</c>. One record because it is one decision — which builtin, in which
-/// shape — and one dictionary so nothing node-keyed can miss the per-file merge.</para>
+/// conversion family emits the <c>Builtins.X</c> method group, the collection and user-type families
+/// a constructor lambda of <see cref="ParameterCount"/> parameters. On a CALL node it describes a
+/// call through a constructor ALIAS, which semantic analysis resolved exactly as a call of the type
+/// itself: the conversion family emits <c>Builtins.X(args)</c>, the collection and user-type
+/// families <c>new ConstructedType(args)</c>. One record because it is one decision — which type, in
+/// which shape — and one dictionary so nothing node-keyed can miss the per-file merge.</para>
 ///
-/// <para>The emitter switches on the recorded values and never inspects the builtin or re-derives
+/// <para>Three families, two emitter shapes: <c>UserType</c> is classified apart from
+/// <c>Collection</c> because the PINNING rules differ (declared constructors versus a known generic
+/// shape), while the emission coincides. Do not collapse them on the strength of the emitter.</para>
+///
+/// <para>The emitter switches on the recorded values and never inspects the type or re-derives
 /// which shape applies (Critical Rule 2, pattern (b)). A reference with no recorded lowering never
 /// reaches code generation: it was rejected (SPY0342), or it is an alias BINDING, which emits
 /// nothing at all.</para>
 /// </summary>
-/// <param name="Family">Conversion (method group / direct call) or Collection (constructor lambda /
-/// object creation).</param>
+/// <param name="Family">Conversion (method group / direct call), or Collection or UserType
+/// (constructor lambda / object creation — the two share the emitter arms).</param>
 /// <param name="Name">The type name as written, e.g. <c>int</c>, <c>dict</c>, or a user class.</param>
 /// <param name="ConstructedType">What the reference constructs: the pinned signature's return type
-/// at a reference, the call's result type at an alias call. Read only by the collection families.</param>
+/// at a reference, the call's result type at an alias call. Read by the collection and user-type
+/// families; the conversion family emits a method group and needs none of it.</param>
 /// <param name="ParameterCount">How many parameters the emitted form takes — the pinned signature's
 /// arity at a reference, the argument count at an alias call.
 /// <para>Read only on REFERENCE lowerings, by <c>RoslynEmitter.GenerateConstructorReference</c>,
