@@ -3,14 +3,16 @@
 # leaks (a source accepted by one consumer and rejected, or accepted-and-mis-lowered, by the next),
 # so the surface is pinned once here rather than one cell at a time.
 #
-# Sources:   set, tuple, dict (keys), nullable dict, d.keys(), d.values()
-# Consumers: sorted, list, sum, any, all, min, max, str.join
+# Sources:   set, tuple, dict (keys), nullable dict, d.keys(), d.values(), str
+# Consumers: sorted, list, sum, any, all, min, max, str.join, set, enumerate
 #
 # Deliberate exclusions:
 #   - `list(set)` alone is not printed: set iteration order is unspecified, so it is wrapped in
 #     sorted() where the source is a set.
-#   - `str` sources are excluded: System.String is IEnumerable<char>, not IEnumerable<string>, so
-#     they are a separate defect class (#1209) and stay rejected here.
+#   - `sum(str)` is omitted: CPython raises TypeError there, so Sharpy refuses it too (SPY0354).
+#     Every other consumer takes a `str` source since #1209 — System.String is IEnumerable<char>
+#     rather than IEnumerable<string>, so the ring projects it through Builtins.ListFromStr to
+#     iterate one-character STRINGS as Python does.
 #   - `tuple(...)` as a consumer stays SPY0338 (variable-arity), see dict_iterable_tuple_unsupported.
 # Integer/string typed throughout to stay independent of float formatting.
 # Expected output verified against python3.
@@ -28,6 +30,7 @@ def main() -> None:
     d: dict[str, int] = {"b": 2, "a": 1}
     n: dict[int, str] = {3: "x", 1: "y"}
     md = get_nullable(True)
+    cs: str = "cba"
 
     # --- set ---
     print(sorted(s))
@@ -89,3 +92,31 @@ def main() -> None:
     print(min(d.values()))
     print(max(d.values()))
     print(", ".join(n.values()))
+
+    # --- str (projected to a list of one-character strings, #1209) ---
+    print(sorted(cs))
+    print(list(cs))
+    print(any(cs))
+    print(all(cs))
+    print(min(cs))
+    print(max(cs))
+    print(", ".join(cs))
+
+    # --- set(...) and enumerate(...) as consumers ---
+    # Both were ICEs for a `str` source and neither was covered by this matrix before (#1209).
+    # set iteration order is unspecified, so every set(...) cell is wrapped in sorted().
+    print(sorted(set(cs)))
+    for i, ch in enumerate(cs):
+        print(i)
+        print(ch)
+
+    print(sorted(set(t)))
+    for j, v in enumerate(t):
+        print(j)
+        print(v)
+
+    # An empty string is iterable and empty in every position, exactly as in CPython.
+    empty: str = ""
+    print(any(empty))
+    print(all(empty))
+    print(sorted(empty))
