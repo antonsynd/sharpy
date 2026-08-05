@@ -27,6 +27,20 @@ public class FrozenSetTests
         fs.Contains(3).Should().BeTrue();
     }
 
+    /// <summary>
+    /// `len(fs)` in Sharpy emits `Builtins.Len(fs)`, and `Builtins.Len` has no overload for
+    /// `IReadOnlyCollection<T>` — only ICollection, ISized, List, Dict, string and ITuple. Without
+    /// ISized on FrozenSet the emitted C# fails to bind with CS1503 (#1210). This test is the
+    /// C#-boundary guard for that: it must compile, which is the whole assertion.
+    /// </summary>
+    [Fact]
+    public void FrozenSet_BindsBuiltinsLen_ViaISized()
+    {
+        ISized fs = new FrozenSet<int>(new[] { 3, 1, 2 });
+        Builtins.Len(fs).Should().Be(3);
+        Builtins.Len(new FrozenSet<string>(new[] { "a", "b" })).Should().Be(2);
+    }
+
     [Fact]
     public void FrozenSet_FromNull_ThrowsTypeError()
     {

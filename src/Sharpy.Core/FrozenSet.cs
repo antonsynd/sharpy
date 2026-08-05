@@ -13,7 +13,7 @@ namespace Sharpy
     /// Backed by ImmutableHashSet{T} for .NET Standard 2.1 / Unity compatibility.
     /// Does NOT use System.Collections.Frozen (requires .NET 8+) or IReadOnlySet{T} (requires .NET 5+).
     /// </remarks>
-    public sealed class FrozenSet<T> : IReadOnlyCollection<T>, IEquatable<FrozenSet<T>>
+    public sealed class FrozenSet<T> : IReadOnlyCollection<T>, IEquatable<FrozenSet<T>>, ISized
     {
         private readonly ImmutableHashSet<T> _set;
 
