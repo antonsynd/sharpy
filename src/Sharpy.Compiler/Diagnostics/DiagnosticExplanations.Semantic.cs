@@ -115,14 +115,21 @@ public static partial class DiagnosticExplanations
             "Generic type reference must be constructed", "Semantic",
             "A generic type reference with explicit type arguments (e.g. Box[int], Outer.Inner[str]) names a "
             + "TYPE. Sharpy accepts it where a type is expected — an annotation, a type argument, a type "
-            + "test — and as the thing being constructed, Box[int](5). It has no value form today: nothing "
-            + "carries it, so assigning, passing, storing or returning one has no meaning and used to reach "
-            + "codegen as C# element access on a type name. This is the type-side counterpart of the generic "
-            + "function reference rule (SPY0335).",
+            + "test — and as the thing being constructed, Box[int](5). The PARAMETERIZED spelling has no "
+            + "value form: nothing carries the written type arguments, so assigning, passing, storing or "
+            + "returning one has no meaning and used to reach codegen as C# element access on a type name. "
+            + "This is the type-side counterpart of the generic function reference rule (SPY0335).\n\n"
+            + "The BARE class name is a different thing and IS a value (#1211): it is a constructor "
+            + "reference, and like the builtin collections it takes its type arguments from the target "
+            + "rather than from the reference — which is why `make: (int) -> Box[int] = Box` binds where "
+            + "`make = Box[int]` cannot.",
             "b = Box[int]  # names a type; there is nothing to bind\nprint(Outer.Inner[str])",
             "Construct it (`b = Box[int](5)`), or write it where a type is expected:\n"
             + "  b: Box[int] = Box[int](5)\n"
-            + "To pass construction around, wrap it in a lambda: `make = lambda v: Box[int](v)`");
+            + "To pass construction around, bind the bare class name against a function type, which\n"
+            + "supplies the type arguments:\n"
+            + "  make: (int) -> Box[int] = Box\n"
+            + "or wrap it in a lambda: `make = lambda v: Box[int](v)`");
 
         Add(dict, DiagnosticCodes.Semantic.UnpinnedConstructorReference,
             "Constructor reference has no single signature", "Semantic",
