@@ -44,7 +44,8 @@ class Circle(IDrawable):
 - All methods are implicitly abstract unless they have a body that is not `...` (ellipsis).
 - **Abstract method syntaxes:**
   1. **Inline ellipsis** (preferred): `def method(self) -> T: ...` — Colon + ellipsis on same line
-  2. **Block ellipsis**: Colon, newline, indent, then `...`
+  2. **Block ellipsis**: Colon, newline, indent, then `...` — parenthesized as `(...)` means the
+     same thing, since grouping is transparent (see [Ellipsis Literal](ellipsis_literal.md))
   3. **Body-less** (**deprecated**, SPY0464 warning): `def method(self) -> T` — No colon, no body
 - **Body conventions:** `...` = abstract (no implementation), `pass` = concrete empty body (default implementation)
 - Methods with an actual body (even just a `pass` statement) become the default implementation.
