@@ -530,9 +530,6 @@ internal class ModuleLoader
     }
 
     /// <summary>
-    /// Extract method symbol with parameter and return type information.
-    /// </summary>
-    /// <summary>
     /// The set of type-parameter names in scope for a method's annotations: the enclosing
     /// declaration's parameters unioned with the method's own. Returns null when there are none, so
     /// the non-generic path allocates nothing and behaves exactly as before (#1208).
@@ -561,6 +558,9 @@ internal class ModuleLoader
         return names;
     }
 
+    /// <summary>
+    /// Extract method symbol with parameter and return type information.
+    /// </summary>
     internal FunctionSymbol ExtractMethodSymbol(
         FunctionDef method, ImmutableArray<TypeParameterDef> enclosingTypeParameters = default)
     {

@@ -1,0 +1,13 @@
+# A generic export reached through a nested package path. The declaration mirrors
+# module_qualified_generic_construction's genlib.Slot; what this fixture varies is the QUALIFIER
+# depth, not the declaration shape.
+class Slot[K, V]:
+    key: K
+    value: V
+
+    def __init__(self, key: K, value: V):
+        self.key = key
+        self.value = value
+
+    def describe(self) -> str:
+        return "slot"

@@ -1,0 +1,25 @@
+# Test (#1208 edge case): module-qualified generic construction through a NESTED package path.
+# `pkg.sub` resolves member-access-by-member-access, each hop returning a ModuleType, so
+# TryResolveTypeSymbolFromMemberAccess must cover the nested case, not just one level — the plan
+# called this edge out explicitly. Single-level coverage lives in
+# module_qualified_generic_construction/.
+import pkg.sub
+from pkg.sub import Slot
+
+
+def main() -> None:
+    # Inferred type arguments through the two-hop qualifier — SPY0237 before #1208.
+    a = pkg.sub.Slot(1, "a")
+    print(a.key)
+    print(a.value)
+    print(a.describe())
+
+    # Explicit type arguments on the same spelling kept working throughout; pinned.
+    b = pkg.sub.Slot[int, str](2, "b")
+    print(b.key)
+    print(b.value)
+
+    # The dotted from-import spelling of the same declaration.
+    c = Slot(3, "c")
+    print(c.key)
+    print(c.value)
