@@ -14,15 +14,25 @@ namespace Sharpy.Compiler.Discovery;
 /// <see cref="System.Linq.Enumerable"/> over sequence receivers.
 ///
 /// <para>
-/// The no-type-args spelling (<c>lst.first()</c>) needs nothing from this class: nothing resolves it
-/// semantically at all. Semantic analysis merely declines to prove the member absent (the permissive
-/// half of #1141, <see cref="ClrTypeHelper.GetExtensionMethodNames"/>), the emitter writes
-/// <c>lst.First()</c> verbatim through the name-only interop channel, and C# overload resolution does
+/// The no-type-args spelling (<c>lst.first()</c>) used to need nothing from this class: nothing resolved
+/// it semantically at all. Semantic analysis merely declined to prove the member absent (the permissive
+/// half of #1141, <see cref="ClrTypeHelper.GetExtensionMethodNames"/>), the emitter wrote
+/// <c>lst.First()</c> verbatim through the name-only interop channel, and C# overload resolution did
 /// the real work because <c>using System.Linq;</c> is always emitted. That works precisely because C#
 /// can infer every type argument. Add explicit ones and the same channel emits
 /// <c>lst.Select[string](…)</c> — element access on a method group, CS0021 behind SPY0908 — because the
 /// written arguments are only PART of the C# type-argument vector: <c>Select&lt;TSource, TResult&gt;</c>
 /// needs the element type too, and nothing was computing it.
+/// </para>
+///
+/// <para>
+/// It works only while the call is the whole expression, though: with no Sharpy type for what it
+/// returns, <c>list(lst.select(f))</c> has nothing to wrap and emits an unparameterized
+/// <c>Sharpy.List</c> — CS0305 behind SPY0908 (#1206). So the no-type-args spelling now resolves too,
+/// through <see cref="TryResolveFromReceiver"/>, which closes what the receiver determines and reports
+/// the rest open for the semantic side to infer from the arguments, and
+/// <see cref="TryCompleteFromInferredTypeArguments"/>, which takes the answer back. Where that cannot
+/// close the vector, nothing is recorded and the call stays exactly as permissive as it was.
 /// </para>
 ///
 /// <para>
@@ -154,6 +164,243 @@ internal static class ClrExtensionMethodResolver
            && !a.TypeArguments.Where((t, i) => t != b.TypeArguments[i]).Any();
 
     /// <summary>
+    /// What the caller WROTE at an argument position, before any of it is type-checked: a lambda with a
+    /// known parameter count, or anything else. That is enough to pick between <c>Enumerable</c>'s
+    /// same-arity overloads — <c>Select</c>'s plain and index-taking selectors differ only in the
+    /// selector's arity — without checking an argument the staged path has not reached yet (#1206).
+    /// </summary>
+    internal readonly record struct ExtensionArgumentShape(bool IsLambda, int LambdaParameterCount)
+    {
+        /// <summary>Anything that is not a written lambda, including a variable holding one.</summary>
+        internal static ExtensionArgumentShape Value => new(false, 0);
+
+        internal static ExtensionArgumentShape Lambda(int parameterCount) => new(true, parameterCount);
+    }
+
+    /// <summary>
+    /// A candidate closed as far as the RECEIVER determines it, with every type parameter the receiver
+    /// leaves unbound still open (#1206). This is the state
+    /// <see cref="TryResolveWithExplicitTypeArguments"/> has no representation for: it goes straight to a
+    /// closed <see cref="MethodInfo"/> and hard-fails on any residual type parameter, because the written
+    /// <c>[...]</c> supplied the rest. With nothing written, the rest comes from the ARGUMENTS, which are
+    /// checked later and on the semantic side — so this record is what the two halves meet on.
+    ///
+    /// <para>
+    /// <see cref="ParameterTypes"/> and <see cref="ReturnType"/> carry the receiver's bindings substituted
+    /// in and the open parameters left as CLR generic parameters, so
+    /// <see cref="ClrTypeBridge.MapClrTypeToSemanticType"/> renders them as
+    /// <c>TypeParameterType</c> (never <c>Unknown</c>, never <c>object</c>) — the shape the deferral pass
+    /// and <c>CheckLambda</c>'s guard both require.
+    /// </para>
+    /// </summary>
+    internal sealed record PartialResolution(
+        string ClrMethodName,
+        MethodInfo OpenMethod,
+        IReadOnlyList<Type> ParameterTypes,
+        Type ReturnType,
+        IReadOnlyList<string> OpenTypeParameterNames,
+        IReadOnlyDictionary<Type, Type> ReceiverBindings);
+
+    /// <summary>
+    /// Resolves <paramref name="memberName"/> on <paramref name="receiverType"/> with NO written type
+    /// arguments, binding only what the receiver determines and reporting the rest as open — or
+    /// <c>null</c> when no single candidate accounts for the written argument shapes (nothing by that
+    /// name binds the receiver, the counts do not add up, a written lambda's arity fits no candidate, or
+    /// two candidates disagree on the resulting signature).
+    ///
+    /// <para>
+    /// Binding is deliberately RECEIVER-ONLY. Type parameters that an argument determines
+    /// (<c>Join</c>'s <c>TInner</c> from its <c>IEnumerable&lt;TInner&gt;</c> argument, <c>Aggregate</c>'s
+    /// <c>TAccumulate</c> from its seed) are closed on the semantic side by
+    /// <c>GenericTypeInferenceService.UnifyTypes</c>, which already runs over these formals in the
+    /// deferred-lambda pass. Unifying a second time here, against CLR types, would be a parallel
+    /// implementation of the same rule (#1145) — so this returns them open and
+    /// <see cref="TryCompleteFromInferredTypeArguments"/> takes them back once inference has run.
+    /// </para>
+    ///
+    /// <para>
+    /// This says nothing about precedence: an instance member of the same name beats every extension
+    /// method, and proving that is the CALLER's job (#1206 D3a). This entry point closes
+    /// <c>reverse</c>/<c>append</c>/<c>count</c>/<c>contains</c> as readily as <c>select</c>.
+    /// </para>
+    /// </summary>
+    internal static PartialResolution? TryResolveFromReceiver(
+        Type receiverType, string memberName, IReadOnlyList<ExtensionArgumentShape> argumentShapes)
+    {
+        if (!_byName.Value.TryGetValue(memberName, out var candidates))
+            return null;
+
+        PartialResolution? resolved = null;
+        foreach (var candidate in candidates)
+        {
+            var next = TryBindCandidateFromReceiver(candidate, receiverType, argumentShapes);
+            if (next == null)
+                continue;
+
+            if (resolved == null)
+            {
+                resolved = next;
+                continue;
+            }
+
+            // Same name, same substituted signature and same open set is not ambiguity — it is two
+            // overloads that became indistinguishable once the receiver bound them. A genuine
+            // disagreement is un-computable and stays on the permissive channel.
+            if (!SamePartialResolution(resolved, next))
+                return null;
+        }
+
+        return resolved;
+    }
+
+    /// <summary>
+    /// Completes a <see cref="PartialResolution"/> once inference has supplied a CLR type for every open
+    /// type parameter, returning the same <see cref="Resolution"/> shape the explicit path produces — or
+    /// null when an open parameter is still missing, still open, or the closed vector violates a
+    /// constraint.
+    /// </summary>
+    internal static Resolution? TryCompleteFromInferredTypeArguments(
+        PartialResolution partial, IReadOnlyDictionary<string, Type> inferredOpenTypeArguments)
+    {
+        var typeParams = partial.OpenMethod.GetGenericArguments();
+        var vector = new Type[typeParams.Length];
+        for (int i = 0; i < typeParams.Length; i++)
+        {
+            if (partial.ReceiverBindings.TryGetValue(typeParams[i], out var fromReceiver))
+            {
+                vector[i] = fromReceiver;
+                continue;
+            }
+
+            if (!inferredOpenTypeArguments.TryGetValue(typeParams[i].Name, out var inferred)
+                || inferred == null || inferred.ContainsGenericParameters)
+            {
+                return null;
+            }
+            vector[i] = inferred;
+        }
+
+        try
+        {
+            // Rejects constraint violations up front, exactly as the explicit path does, so a vector that
+            // cannot exist never reaches the emitter as valid-looking C#.
+            var closed = partial.OpenMethod.MakeGenericMethod(vector);
+            return new Resolution(partial.ClrMethodName, closed.GetGenericArguments(), closed);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    private static PartialResolution? TryBindCandidateFromReceiver(
+        MethodInfo candidate, Type receiverType, IReadOnlyList<ExtensionArgumentShape> argumentShapes)
+    {
+        var parameters = candidate.GetParameters();
+        // The receiver is not in the argument list, so the written arguments face parameters 1..n.
+        if (parameters.Length - 1 != argumentShapes.Count)
+            return null;
+
+        var bindings = new Dictionary<Type, Type>();
+        if (!TryBindThisParameter(parameters[0].ParameterType, receiverType, bindings))
+            return null;
+
+        var formals = new Type[argumentShapes.Count];
+        for (int i = 0; i < argumentShapes.Count; i++)
+        {
+            var formal = SubstituteBindings(parameters[i + 1].ParameterType, bindings);
+            if (!ShapeFits(argumentShapes[i], formal))
+                return null;
+            formals[i] = formal;
+        }
+
+        var open = candidate.GetGenericArguments()
+            .Where(tp => !bindings.ContainsKey(tp))
+            .Select(tp => tp.Name)
+            .ToList();
+
+        return new PartialResolution(
+            candidate.Name,
+            candidate,
+            formals,
+            SubstituteBindings(candidate.ReturnType, bindings),
+            open,
+            bindings);
+    }
+
+    private static bool SamePartialResolution(PartialResolution a, PartialResolution b)
+        => string.Equals(a.ClrMethodName, b.ClrMethodName, StringComparison.Ordinal)
+           && a.ReturnType == b.ReturnType
+           && a.ParameterTypes.Count == b.ParameterTypes.Count
+           && !a.ParameterTypes.Where((t, i) => t != b.ParameterTypes[i]).Any()
+           && a.OpenTypeParameterNames.Count == b.OpenTypeParameterNames.Count
+           && !a.OpenTypeParameterNames
+                .Where((n, i) => !string.Equals(n, b.OpenTypeParameterNames[i], StringComparison.Ordinal))
+                .Any();
+
+    /// <summary>
+    /// Whether a written argument's shape can face <paramref name="formal"/>. Only a written lambda
+    /// constrains anything, and only by arity: a lambda of N parameters needs a delegate formal of N
+    /// parameters. Anything else is accepted, so a variable holding a function still matches — and when
+    /// that leaves two overloads standing, <see cref="SamePartialResolution"/> declines rather than guesses.
+    /// </summary>
+    private static bool ShapeFits(ExtensionArgumentShape shape, Type formal)
+        => !shape.IsLambda
+           || DelegateParameterCount(formal) is int arity && arity == shape.LambdaParameterCount;
+
+    private static int? DelegateParameterCount(Type formal)
+    {
+        if (formal == typeof(Action))
+            return 0;
+        if (!formal.IsGenericType)
+            return null;
+
+        var name = formal.GetGenericTypeDefinition().FullName ?? string.Empty;
+        if (name.StartsWith("System.Linq.Expressions.Expression`", StringComparison.Ordinal))
+            return DelegateParameterCount(formal.GetGenericArguments()[0]);
+        if (name.StartsWith("System.Func`", StringComparison.Ordinal))
+            return formal.GetGenericArguments().Length - 1;
+        if (name.StartsWith("System.Action`", StringComparison.Ordinal))
+            return formal.GetGenericArguments().Length;
+        return null;
+    }
+
+    /// <summary>
+    /// Rewrites <paramref name="type"/> with <paramref name="bindings"/> applied, leaving unbound type
+    /// parameters in place. <c>MakeGenericType</c> accepts a generic parameter as an argument, so
+    /// <c>Func&lt;TSource, TResult&gt;</c> with <c>TSource = int</c> becomes the open constructed
+    /// <c>Func&lt;int, TResult&gt;</c> rather than failing or collapsing.
+    /// </summary>
+    private static Type SubstituteBindings(Type type, IReadOnlyDictionary<Type, Type> bindings)
+    {
+        if (type.IsGenericParameter)
+            return bindings.TryGetValue(type, out var bound) ? bound : type;
+
+        if (type.IsByRef)
+            return SubstituteBindings(type.GetElementType()!, bindings).MakeByRefType();
+
+        if (type.IsArray)
+        {
+            var element = SubstituteBindings(type.GetElementType()!, bindings);
+            return type.GetArrayRank() == 1 ? element.MakeArrayType() : element.MakeArrayType(type.GetArrayRank());
+        }
+
+        if (!type.IsGenericType)
+            return type;
+
+        var arguments = type.GetGenericArguments();
+        var substituted = new Type[arguments.Length];
+        bool changed = false;
+        for (int i = 0; i < arguments.Length; i++)
+        {
+            substituted[i] = SubstituteBindings(arguments[i], bindings);
+            changed |= substituted[i] != arguments[i];
+        }
+
+        return changed ? type.GetGenericTypeDefinition().MakeGenericType(substituted) : type;
+    }
+
+    /// <summary>
     /// Closes one candidate: binds its type parameters from the receiver, assigns the written
     /// arguments to whatever the receiver left unbound (or, when the written arguments cover every
     /// type parameter, positionally with the receiver binding as a consistency check), and verifies
@@ -227,6 +474,27 @@ internal static class ClrExtensionMethodResolver
         if (thisParameter.IsGenericParameter)
         {
             bindings[thisParameter] = receiverType;
+            return true;
+        }
+
+        // An ARRAY `this` parameter binds only against an array receiver. .NET 10 added
+        // Enumerable.Reverse<TSource>(this TSource[]) beside the IEnumerable<TSource> one; without this
+        // arm an array parameter falls into the non-generic early-out below, "succeeds" having bound
+        // nothing, and leaves TSource open for a List<int> receiver it can never accept — which made
+        // `lst.reverse[str]()` resolve to Reverse<string> and `lst.reverse()` ambiguous.
+        if (thisParameter.IsArray)
+        {
+            if (!receiverType.IsArray || receiverType.GetArrayRank() != thisParameter.GetArrayRank())
+                return false;
+
+            var parameterElement = thisParameter.GetElementType()!;
+            var receiverElement = receiverType.GetElementType()!;
+            if (!parameterElement.IsGenericParameter)
+                return parameterElement == receiverElement;
+
+            if (bindings.TryGetValue(parameterElement, out var boundElement) && boundElement != receiverElement)
+                return false;
+            bindings[parameterElement] = receiverElement;
             return true;
         }
 
