@@ -129,10 +129,12 @@ internal sealed class ParensWrapTransform : IAstTransform
         if (statement.Length == 0 || statement[0] == '@' || statement.EndsWith('\\'))
             return false;
 
-        // `...` is the body-less/abstract-member marker, matched at the member seam rather than the
-        // statement seam — `(...)` is a different question from `(f())` and is not this class.
-        if (statement == "...")
-            return false;
+        // A bare `...` on its own line IS wrappable: grouping is transparent at the stub seams too,
+        // so `(...)` denotes the same stub as `...` at every one of them (#1214). This used to be
+        // excluded on the theory that the member seam was a different question from `(f())` — which
+        // is exactly why the sweep did not catch #1214, where the member seams pattern-matched the
+        // raw expression and diverged. `def f(): ...` one-liners are untouched either way, since
+        // NonExpressionStatementHeads already excludes def/class/interface/property/event.
 
         if (NonExpressionStatementHeads.Contains(FirstWord(statement)))
             return false;

@@ -141,8 +141,7 @@ public class MetamorphicHarnessTests
     /// <summary>
     /// Wrapping is pure grouping only around a bare expression statement. An assignment, an
     /// annotation, a bare tuple, a block header and every keyword-led form either change meaning or
-    /// stop parsing when wrapped; <c>...</c> is the body-less member marker, matched at the member
-    /// seam rather than the statement seam.
+    /// stop parsing when wrapped.
     /// </summary>
     [Theory]
     [InlineData("def main():\n    x = f()\n")]
@@ -151,10 +150,36 @@ public class MetamorphicHarnessTests
     [InlineData("def main():\n    return f()\n")]
     [InlineData("def main():\n    del xs\n")]
     [InlineData("def main():\n    a, b = 1, 2\n")]
-    [InlineData("class C:\n    def m(self) -> int:\n        ...\n")]
     [InlineData("@decorator\ndef main():\n    pass\n")]
     public void ParensWrap_DeclinesNonExpressionStatements(string source)
     {
+        Assert.Equal(source, new ParensWrapTransform().Apply(source));
+    }
+
+    /// <summary>
+    /// A bare <c>...</c> on its own line is wrappable: grouping is transparent at the stub seams
+    /// too, so <c>(...)</c> denotes the same stub as <c>...</c> (#1214). This case was excluded
+    /// until the member seams were routed through the shared stub authority, which is precisely
+    /// why the sweep did not catch #1214 on its own.
+    /// </summary>
+    [Theory]
+    [InlineData("class C:\n    def m(self) -> int:\n        ...\n", "class C:\n    def m(self) -> int:\n        (...)\n")]
+    [InlineData("interface I:\n    def m(self) -> int:\n        ...\n", "interface I:\n    def m(self) -> int:\n        (...)\n")]
+    [InlineData("class Marker:\n    ...\n", "class Marker:\n    (...)\n")]
+    public void ParensWrap_WrapsEllipsisStubBodies(string source, string expected)
+    {
+        Assert.Equal(expected, new ParensWrapTransform().Apply(source));
+    }
+
+    /// <summary>
+    /// A one-line <c>def f(): ...</c> is untouched — the statement head excludes it — which matters
+    /// because a one-line parenthesized stub does not parse (the parser's inline fast path fires
+    /// only on a bare ellipsis token).
+    /// </summary>
+    [Fact]
+    public void ParensWrap_LeavesInlineEllipsisDefinitionsAlone()
+    {
+        const string source = "class C:\n    def m(self) -> int: ...\n";
         Assert.Equal(source, new ParensWrapTransform().Apply(source));
     }
 
