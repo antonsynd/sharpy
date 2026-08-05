@@ -889,10 +889,14 @@ public sealed record GenericFunctionType : SemanticType
 /// </summary>
 public sealed record ConstructorReferenceType : SemanticType
 {
-    /// <summary>The builtin type name as written: <c>int</c>, <c>str</c>, <c>dict</c>, <c>list</c>.</summary>
+    /// <summary>
+    /// The type name as written: a builtin (<c>int</c>, <c>str</c>, <c>dict</c>, <c>list</c>) or a
+    /// user class/struct (#1211).
+    /// </summary>
     public string Name { get; init; } = string.Empty;
 
-    /// <summary>The builtin type symbol the name resolved to.</summary>
+    /// <summary>The type symbol the name resolved to — the builtin registry's instance, or the user
+    /// declaration's own symbol when the name is a user class or struct.</summary>
     public TypeSymbol Symbol { get; init; } = null!;
 
     /// <summary>Which C# shape a pinned reference emits as.</summary>

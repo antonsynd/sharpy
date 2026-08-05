@@ -599,9 +599,12 @@ internal partial class TypeChecker
     private bool TryPinConstructorReference(
         Expression reference, ConstructorReferenceType constructorReference, FunctionType target)
     {
-        var pinnable = constructorReference.Family == ConstructorReferenceFamily.Conversion
-            ? ConversionSignatureSatisfies(constructorReference, target)
-            : CollectionSignatureSatisfies(constructorReference, target);
+        var pinnable = constructorReference.Family switch
+        {
+            ConstructorReferenceFamily.Conversion => ConversionSignatureSatisfies(constructorReference, target),
+            ConstructorReferenceFamily.UserType => UserTypeSignatureSatisfies(constructorReference, target),
+            _ => CollectionSignatureSatisfies(constructorReference, target),
+        };
 
         if (!pinnable)
             return false;
@@ -624,6 +627,41 @@ internal partial class TypeChecker
         return overloads != null
             && overloads.Any(overload =>
                 SignatureSatisfiesTarget(ReferenceSignatureOf(overload, t => t), target));
+    }
+
+    /// <summary>
+    /// Whether one of the user class's DECLARED constructor overloads can be bound to
+    /// <paramref name="target"/> (#1211). The rule is the class's own constructors, which is why
+    /// this is a third family rather than a generalized collection: the conversion families match a
+    /// <c>Sharpy.Builtins</c> overload set and the collection families a known generic shape.
+    ///
+    /// <para>Candidates come from <see cref="ResolveInitializerConstructorCandidates"/>, the same
+    /// walk ordinary construction uses, so a constructor inherited from a base class is found the
+    /// same way. An empty candidate list is not "no shapes" — a class with no declared
+    /// <c>__init__</c> offers exactly the zero-argument one.</para>
+    ///
+    /// <para>The target's return type must be this very class. A signature returning something else
+    /// is not a construction of it, however well the parameters line up.</para>
+    /// </summary>
+    private bool UserTypeSignatureSatisfies(ConstructorReferenceType constructorReference, FunctionType target)
+    {
+        var typeSymbol = constructorReference.Symbol;
+        if (target.ReturnType is not UserDefinedType returned
+            || !ReferenceEquals(returned.Symbol, typeSymbol))
+        {
+            return false;
+        }
+
+        var candidates = ResolveInitializerConstructorCandidates(typeSymbol);
+        if (candidates.Count == 0)
+            return target.ParameterTypes.Count == 0;
+
+        // __init__ returns None; the SHAPE a reference pins to returns the constructed class, so the
+        // candidate's return type is replaced before the comparison.
+        return candidates.Any(constructor =>
+            SignatureSatisfiesTarget(
+                ReferenceSignatureOf(constructor, t => t) with { ReturnType = target.ReturnType },
+                target));
     }
 
     /// <summary>
