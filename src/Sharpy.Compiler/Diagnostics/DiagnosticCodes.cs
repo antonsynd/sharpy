@@ -364,9 +364,9 @@ public static class DiagnosticCodes
 
         public const string ModuleLevelExecutableStatement = "SPY0340"; // Active
         public const string ModuleLevelNoTypeAnnotation = "SPY0341"; // Active
-        // SPY0343, SPY0346-SPY0349: Reserved for future module-level diagnostics (SPY0342 is the
-        // value-position reference family's overflow slot and SPY0344-SPY0345 the type-test family —
-        // see the regions below)
+        // SPY0346-SPY0349: Reserved for future module-level diagnostics (SPY0342 is the
+        // value-position reference family's overflow slot, SPY0343 the inference family's, and
+        // SPY0344-SPY0345 the type-test family — see the regions below)
 
         #endregion
 
@@ -376,6 +376,16 @@ public static class DiagnosticCodes
         // adjacent to that band rather than appended at the end of the semantic range so the family
         // stays readable; the module-level reserve above shrinks by one slot to pay for it.
         public const string UnpinnedConstructorReference = "SPY0342"; // Active — a builtin type constructor reference used as a value with no signature available to pin it to (#1182)
+
+        #endregion
+
+        #region Inference overflow (SPY0343)
+
+        // Overflow for the inference family — CannotInferType (SPY0227) and CannotInferGenericType
+        // (SPY0237) — whose SPY0220-SPY0274 type-error sub-band has no free slot. Borrowed from the
+        // module-level reserve above, following the SPY0342 precedent; declared here rather than
+        // beside SPY0227 because this file is ordered by ascending region.
+        public const string UnresolvedLambdaParameterType = "SPY0343"; // Active — a lambda bound to a name whose unannotated parameter types could not be inferred, and the binding supplies no expected type (#1212)
 
         #endregion
 

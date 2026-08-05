@@ -145,6 +145,25 @@ public static partial class DiagnosticExplanations
             + "(`f = int` then `f(\"42\")`), or wrap it in a lambda to fix the signature yourself "
             + "(`g = lambda s: int(s)`).");
 
+        Add(dict, DiagnosticCodes.Semantic.UnresolvedLambdaParameterType,
+            "Lambda parameter type cannot be inferred", "Semantic",
+            "A lambda bound directly to a name gives its parameters no types, none of them are "
+            + "annotated, and the binding supplies no expected type to take them from. Sharpy infers "
+            + "lambda parameter types from the context that consumes the lambda — an annotated "
+            + "target, a variable that already has a function type, the parameter it is passed to — "
+            + "and, failing that, from bodies whose shape pins a parameter (`lambda x: x * 2`, "
+            + "`lambda x: f(x)`). When none of those apply the parameter type is genuinely unknown: "
+            + "`len(s)` accepts every sized type, so nothing in `lambda s: len(s) + 100` says whether "
+            + "`s` is a str, a list, or a dict. Sharpy refuses rather than guessing, because the "
+            + "alternative is emitting C# that cannot compile. Related: SPY0227 (a value whose type "
+            + "cannot be inferred) and SPY0237 (a generic type argument that cannot be inferred).",
+            "g = lambda s: len(s) + 100  # nothing here says what 's' is",
+            "Annotate the parameter:\n  g = lambda s: str: len(s) + 100\n"
+            + "Or give the target a function type, which flows into the lambda:\n"
+            + "  g: (str) -> int = lambda s: len(s) + 100\n"
+            + "Lambdas passed directly as arguments are unaffected — the parameter they are passed "
+            + "to supplies the types.");
+
         Add(dict, DiagnosticCodes.Semantic.MultiTypeTypeTest,
             "isinstance takes a single type", "Semantic",
             "Python's isinstance(x, (A, B)) tests against a tuple of types. Sharpy keeps the form "
