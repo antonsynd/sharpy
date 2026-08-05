@@ -1,9 +1,21 @@
-# #1182 regression tripwire. Every position where a builtin type NAME already worked before the
+# #1182 regression tripwire. Every position where a type NAME already worked before the
 # constructor-reference rules, gathered in one fixture so a regression fails loudly here rather than
 # scattered across the corpus. These are the exact positions that made the SPY0337 extension
 # over-fire and get reverted (#1170), so the value-position rules must keep skipping all of them:
 # a direct call argument (positional and keyword), a static-member receiver, a type-test type
 # argument, and a generic type argument.
+#
+# #1211 extended the rules from builtin type names to USER CLASSES. That is the change most likely
+# to reintroduce the over-fire, because a class name reaches these positions far more often than a
+# builtin type name does, so each position below is pinned for both.
+#
+# Two deliberate absences, each measured rather than assumed:
+#   - No user-class row in the direct-call-argument position. `map(Point, xs)` did not work before
+#     #1211 either (SPY0908 at 14da6dcc9), so it is new capability, not something to guard against
+#     regressing; it belongs with the change that adds it.
+#   - No tuple type-test row (`isinstance(x, (A, B))`). Sharpy refuses that spelling outright with
+#     SPY0344 so that a successful check narrows to one concrete type (#1207), so there is no
+#     working behavior to protect.
 #
 # Python's defaultdict(list) factory convention (#1175) belongs to the same family but needs the
 # stdlib, which this harness does not load; it is pinned by
@@ -13,6 +25,25 @@ class Box[T]:
 
     def __init__(self, value: T):
         self.value = value
+
+
+class Point:
+    x: int = 0
+
+    # No `self`, so this is a static member reached through the class name.
+    def of(v: int) -> Point:
+        p = Point()
+        p.x = v
+        return p
+
+
+class Outer:
+    @public
+    class Inner[T]:
+        v: T
+
+        def __init__(self, v: T):
+            self.v = v
 
 
 def main():
@@ -45,3 +76,25 @@ def main():
 
     # Nested: the argument of an inner call is still a direct argument.
     print(list(map(int, xs)))
+
+    # --- #1211: the same positions, named by a USER CLASS. ---
+
+    # Static-member receiver: the class name qualifies a member, it is not a value.
+    print(Point.of(5).x)
+
+    # Type-test type argument.
+    o: object = Point()
+    print(isinstance(o, Point))
+
+    # Generic type argument carrying a NON-GENERIC user class. The Box[int] line above only
+    # exercises a builtin type argument; this is the shape the user-class rules put at risk.
+    bp: Box[Point] = Box[Point](Point())
+    print(bp.value.x)
+
+    # A GENERIC qualifier, which is NOT the same position as the static-member receiver above: the
+    # qualifier of a nested generic type is checked on its own path (TryResolveGenericReference),
+    # and that path was not marking the qualifier as a qualifier. #1211 made `Outer.Inner[int](6)`
+    # fail with SPY0342 until it was fixed at the tracker, and nothing here caught it because every
+    # qualifier row was non-generic. Both a builtin and a user class as the type argument.
+    print(Outer.Inner[int](6).v)
+    print(Outer.Inner[Point](Point()).v.x)
