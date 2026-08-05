@@ -255,9 +255,13 @@ internal class ModuleLoader
                         ? ConvertTypeAnnotationToSemanticType(functionDef.ReturnType, funcTypeParamNames)
                         : SemanticType.Void,
                     // Module-level generic functions must export their type parameters, exactly as
-                    // ExtractMethodSymbol does (:555) and the class/struct/interface sites do
-                    // (:392/:461/:507). Without this a cross-module generic export reports
-                    // IsGeneric == false, defeating explicit-type-args resolution and inference (#1142).
+                    // ExtractMethodSymbol and the class/struct/interface extractions do. Without
+                    // this a cross-module generic export reports IsGeneric == false, defeating
+                    // explicit-type-args resolution and inference (#1142). Note this is the SYMBOL's
+                    // TypeParameters list, which is a different thing from the type-parameter NAMES
+                    // threaded into ConvertTypeAnnotationToSemanticType just above — a symbol can
+                    // carry the first and still convert `key: K` to a UserDefinedType without the
+                    // second, which is precisely what #1208 was.
                     TypeParameters = functionDef.TypeParameters.ToList(),
                     AccessLevel = accessLevel,
                     DeclarationLine = functionDef.LineStart,
