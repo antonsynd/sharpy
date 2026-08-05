@@ -111,7 +111,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (79, 5) - (79, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 var ex = new global::Sharpy.CalledProcessError(1, new Sharpy.List<string>() { "false" });
 #line (80, 5) - (80, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.True(ex is global::Sharpy.SubprocessError);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.SubprocessError>(ex);
 #line (81, 5) - (81, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<Exception>(ex);
 #line hidden
@@ -159,7 +159,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (104, 5) - (104, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 var ex = new global::Sharpy.TimeoutExpired(new Sharpy.List<string>() { "sleep" }, 5.0d);
 #line (105, 5) - (105, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.True(ex is global::Sharpy.SubprocessError);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.SubprocessError>(ex);
 #line hidden
             }
 

@@ -619,11 +619,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestErrorHierarchy()
             {
 #line (250, 5) - (250, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.True(new global::Sharpy.ReadError("test") is global::Sharpy.TarError);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>(new global::Sharpy.ReadError("test"));
 #line (251, 5) - (251, 75) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.True(new global::Sharpy.CompressionError("test") is global::Sharpy.TarError);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>(new global::Sharpy.CompressionError("test"));
 #line (252, 5) - (252, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.True(new global::Sharpy.ExtractError("test") is global::Sharpy.TarError);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>(new global::Sharpy.ExtractError("test"));
 #line (253, 5) - (253, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.IsAssignableFrom<Exception>(new global::Sharpy.TarError("test"));
 #line hidden

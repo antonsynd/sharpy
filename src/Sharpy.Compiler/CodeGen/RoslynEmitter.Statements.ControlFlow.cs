@@ -208,13 +208,23 @@ internal partial class RoslynEmitter
         }
 
         // assert isinstance(a, T) → Xunit.Assert.IsAssignableFrom<T>(a)
+        //
+        // The type operand is ANY type expression, not just a bare name: `zoneinfo.ZoneInfo` is a
+        // MemberAccess and `Box[int]` an IndexAccess, and MapTypeFromExpression has arms for both
+        // (#903, #1184). Guarding this arm on `is Identifier` — which its two siblings below do not do —
+        // sent every qualified spelling to the generic Assert.True fall-through, where the call emitted
+        // verbatim as `Builtins.Isinstance(a, T)` with a bare type name where Isinstance takes a
+        // `Type`: CS0119, and only ever visible by regenerating the spy-test C# (#1254). Tuples are
+        // excluded so the tuple arm below still claims them; that spelling is now refused at semantic
+        // time (SPY0344, #1213), so the exclusion is belt-and-braces rather than live.
         if (testCallee is Identifier { Name: "isinstance" } && test is FunctionCall isinstCall
             && isinstCall.Arguments.Length == 2
-            && isinstCall.Arguments[1] is Identifier)
+            && isinstCall.Arguments[1] is not TupleLiteral)
         {
-            var typeIdent = (Identifier)isinstCall.Arguments[1];
-            var typeSyntax = TryMapBuiltinCollectionToNonGenericInterface(typeIdent.Name)
-                ?? _typeMapper.MapTypeFromExpression(isinstCall.Arguments[1]);
+            var typeOperand = isinstCall.Arguments[1];
+            var typeSyntax = (typeOperand is Identifier typeIdent
+                ? TryMapBuiltinCollectionToNonGenericInterface(typeIdent.Name)
+                : null) ?? _typeMapper.MapTypeFromExpression(typeOperand);
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert,
                     GenericName(Identifier("IsAssignableFrom"))

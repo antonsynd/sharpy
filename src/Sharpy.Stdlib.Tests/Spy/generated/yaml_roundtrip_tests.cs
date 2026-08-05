@@ -121,7 +121,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (61, 13) - (61, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         Xunit.Assert.IsAssignableFrom<string>(m["version"]);
 #line (62, 13) - (62, 51) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                        Xunit.Assert.True(@operator.Eq(((string)m["version"]!), "3"));
+                        Xunit.Assert.True(@operator.Eq(m["version"], "3"));
 #line hidden
                         break;
                     default:

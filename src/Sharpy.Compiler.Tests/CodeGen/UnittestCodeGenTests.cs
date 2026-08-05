@@ -164,6 +164,39 @@ def main():
     }
 
     [Fact]
+    public void AssertRewrite_Isinstance_QualifiedTypeOperand_GeneratesXunitAssertIsAssignableFrom()
+    {
+        // The type operand is any TYPE EXPRESSION, not just a bare name. A module-qualified spelling
+        // is a MemberAccess and a generic one an IndexAccess, and both have arms in
+        // MapTypeFromExpression (#903, #1184). While this arm guarded on `is Identifier` — which its
+        // tuple and negated siblings never did — every qualified spelling fell through to the generic
+        // Assert.True path and emitted `Builtins.Isinstance(a, T)` with a bare type name where
+        // Isinstance takes a `Type`: CS0119 (#1254).
+        //
+        // That was invisible to every fixture here, because no compiler fixture writes a qualified
+        // operand inside a @test function — the shape lives in the spy stdlib tests, so it only
+        // surfaced when their generated C# was regenerated and would not compile.
+        // A nested type name is a MemberAccess by the same parse as a module-qualified one, and needs
+        // no stdlib reference, so it pins the same seam this harness can actually compile.
+        var source = @"
+class Outer:
+    class Inner:
+        v: int = 1
+
+@test
+def test_isinstance_qualified():
+    x: object = Outer.Inner()
+    assert isinstance(x, Outer.Inner)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<");
+        code.Should().NotContain("Builtins.Isinstance");
+    }
+
+    [Fact]
     public void AssertRewrite_Not_GeneratesXunitAssertFalse()
     {
         var source = @"

@@ -254,7 +254,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (126, 5) - (126, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 var dt = new global::Sharpy.DateTime(2026, 6, 15, 12, 0, tzinfo: zone);
 #line (127, 5) - (127, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(dt.Tzinfo is global::Sharpy.ZoneInfo);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.ZoneInfo>(dt.Tzinfo);
 #line hidden
             }
 

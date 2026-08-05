@@ -109,7 +109,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (65, 5) - (65, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 var error = result.UnwrapErr();
 #line (66, 5) - (66, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
-                Xunit.Assert.True(error is global::Sharpy.YAMLError);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.YAMLError>(error);
 #line hidden
             }
 

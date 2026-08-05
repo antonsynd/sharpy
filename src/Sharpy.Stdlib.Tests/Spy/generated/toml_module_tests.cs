@@ -441,7 +441,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (207, 5) - (207, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["dt"];
 #line (208, 5) - (208, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(value is global::Sharpy.DateTime);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>(value);
 #line (209, 5) - (216, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 if (value is global::Sharpy.DateTime)
 #line hidden
@@ -468,7 +468,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (219, 5) - (219, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["dt"];
 #line (220, 5) - (220, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(value is global::Sharpy.DateTime);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>(value);
 #line hidden
             }
 
@@ -480,7 +480,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (225, 5) - (225, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["d"];
 #line (226, 5) - (226, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(value is global::Sharpy.Date);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.Date>(value);
 #line (227, 5) - (232, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 if (value is global::Sharpy.Date)
 #line hidden
@@ -503,7 +503,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (235, 5) - (235, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var value = result["t"];
 #line (236, 5) - (236, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(value is global::Sharpy.Time);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.Time>(value);
 #line (237, 5) - (243, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 if (value is global::Sharpy.Time)
 #line hidden
