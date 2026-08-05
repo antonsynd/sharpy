@@ -417,6 +417,31 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // A user class in a direct call argument binds its single constructor shape, so
+        // `map(Point, xs)` and `sorted(xs, key=Point)` work exactly as `map(int, xs)` does (#1211).
+        // Runs BEFORE the value-use guard because it must cover the bare NAME too, which that guard
+        // sends back to the position's existing typing — and for a user class that typing is a bare
+        // type name in an argument slot, which reached codegen as `Point` where a delegate was
+        // expected (CS0119 behind SPY0908). The builtin families have a legacy synthesized signature
+        // for this position; a user class had nothing, so this is the arm that gives it one.
+        //
+        // Only an UNAMBIGUOUS shape binds. Several constructor overloads supply no more of an answer
+        // here than an overload set does, so they fall through to the alias or SPY0342 rather than
+        // silently picking the first. The other non-value positions are excluded exactly as
+        // IsConstructorReferenceValueUse excludes them — a type test's type argument
+        // (`isinstance(x, Point)`) is a direct call argument too, and re-typing it is the #1170
+        // over-fire this whole rule is built to avoid.
+        if (constructorReference.Family == ConstructorReferenceFamily.UserType
+            && IsConstructorReferenceCallArgument(reference)
+            && SingleUserTypeShapeOf(constructorReference) is { } argumentShape)
+        {
+            _semanticInfo.SetConstructorReferenceLowering(reference,
+                new ConstructorReferenceLowering(
+                    ConstructorReferenceFamily.UserType, constructorReference.Name,
+                    argumentShape.ReturnType, argumentShape.ParameterTypes.Count));
+            return argumentShape;
+        }
+
         if (!isValueUse)
             return null;
 
@@ -645,14 +670,10 @@ internal partial class TypeChecker
     /// </summary>
     private bool UserTypeSignatureSatisfies(ConstructorReferenceType constructorReference, FunctionType target)
     {
-        var typeSymbol = constructorReference.Symbol;
-        if (target.ReturnType is not UserDefinedType returned
-            || !ReferenceEquals(returned.Symbol, typeSymbol))
-        {
+        if (UserTypeConstructionSubstitutionOf(constructorReference, target.ReturnType) is not { } substitute)
             return false;
-        }
 
-        var candidates = ResolveInitializerConstructorCandidates(typeSymbol);
+        var candidates = ResolveInitializerConstructorCandidates(constructorReference.Symbol);
         if (candidates.Count == 0)
             return target.ParameterTypes.Count == 0;
 
@@ -660,8 +681,43 @@ internal partial class TypeChecker
         // candidate's return type is replaced before the comparison.
         return candidates.Any(constructor =>
             SignatureSatisfiesTarget(
-                ReferenceSignatureOf(constructor, t => t) with { ReturnType = target.ReturnType },
+                ReferenceSignatureOf(constructor, substitute) with { ReturnType = target.ReturnType },
                 target));
+    }
+
+    /// <summary>
+    /// The type-parameter substitution under which <paramref name="returnType"/> is a construction
+    /// of this class, or null when it is not one at all (#1211).
+    ///
+    /// <para>A non-generic class needs no substitution: the return type is the class itself. A
+    /// GENERIC class takes its type arguments from the target, exactly as the collection families
+    /// do — <c>mk: () -&gt; list[int] = list</c> has always pinned the bare <c>list</c> from the
+    /// target's arguments, and <c>mb: (int) -&gt; Box[int] = Box</c> is the same shape one axiom
+    /// down. Without this, a generic class's constructors are compared with <c>T</c> unsubstituted
+    /// and never match.</para>
+    ///
+    /// <para>Identity is by symbol. Only when the target carries no generic definition — an
+    /// annotation-produced type need not — does the name decide, which is as precise as that type
+    /// allows.</para>
+    /// </summary>
+    private Func<SemanticType, SemanticType>? UserTypeConstructionSubstitutionOf(
+        ConstructorReferenceType constructorReference, SemanticType returnType)
+    {
+        var typeSymbol = constructorReference.Symbol;
+
+        if (returnType is UserDefinedType returned && ReferenceEquals(returned.Symbol, typeSymbol))
+            return static t => t;
+
+        if (returnType is GenericType generic
+            && typeSymbol.TypeParameters.Count == generic.TypeArguments.Count
+            && (generic.GenericDefinition is null
+                ? string.Equals(generic.Name, typeSymbol.Name, StringComparison.Ordinal)
+                : ReferenceEquals(generic.GenericDefinition, typeSymbol)))
+        {
+            return t => SubstituteTypeParameters(t, typeSymbol.TypeParameters, generic.TypeArguments);
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -778,6 +834,40 @@ internal partial class TypeChecker
     /// <summary>The first shape a user type offers, for the SPY0342 annotation suggestion.</summary>
     private FunctionType UserTypeShapeOf(ConstructorReferenceType constructorReference)
         => UserTypeConstructorShapes(constructorReference).First();
+
+    /// <summary>
+    /// The one shape a user type offers, or null when it offers several or none it can commit to
+    /// (#1211). Used only for the direct-call-argument position, which supplies no target type.
+    ///
+    /// <para>Two ways to have no single shape. Several declared constructors are no more of an
+    /// answer here than an overload set is, so they do not bind. And a GENERIC class cannot bind
+    /// either: its type arguments come from the target everywhere else, and this position has none,
+    /// so the shape would carry <c>T</c> unsubstituted and reach codegen as a generic type name
+    /// without arguments (CS0305). Both fall back to the position's existing typing — see #1249 for
+    /// the residual SPY0908 that fallback still produces.</para>
+    /// </summary>
+    private FunctionType? SingleUserTypeShapeOf(ConstructorReferenceType constructorReference)
+    {
+        if (constructorReference.Symbol.TypeParameters.Count > 0)
+            return null;
+
+        var shapes = UserTypeConstructorShapes(constructorReference).Take(2).ToList();
+        return shapes.Count == 1 ? shapes[0] : null;
+    }
+
+    /// <summary>
+    /// Whether the reference is a direct call argument AND is in no OTHER non-value position — the
+    /// one relaxation of <see cref="IsConstructorReferenceValueUse"/>. The remaining exclusions are
+    /// repeated verbatim rather than approximated: a type test's type argument is a direct call
+    /// argument too, and so is a type name recorded elsewhere, and re-typing either is the #1170
+    /// over-fire.
+    /// </summary>
+    private bool IsConstructorReferenceCallArgument(Expression reference)
+        => IsDirectCallArgument(reference)
+            && !IsCurrentMemberAccessQualifier(reference)
+            && !IsTypeTestTypeArgument(reference)
+            && !IsCurrentIndexArgument(reference)
+            && !_semanticInfo.IsTypeReference(reference);
 
     /// <summary>
     /// Recognises a reference to a form that Sharpy supports only as call syntax, describing it for
