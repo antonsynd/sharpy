@@ -1,0 +1,28 @@
+import genlib
+from genlib import Slot
+
+
+def main() -> None:
+    # The from-import spelling always inferred — it resolves through the project-wide symbol table.
+    a = Slot(1, "a")
+    print(a.key)
+    print(a.value)
+
+    # The module-qualified spelling of the SAME declaration was SPY0237 before #1208.
+    b = genlib.Slot(2, "b")
+    print(b.key)
+    print(b.value)
+    print(b.describe())
+
+    # Explicit type arguments on the module spelling kept working throughout; pinned so the fix
+    # cannot disturb them.
+    c = genlib.Slot[int, str](3, "c")
+    print(c.key)
+
+    # A method-level type parameter on an exported generic class.
+    print(b.echo("echoed"))
+
+    # An exported generic struct takes the same extraction path.
+    p = genlib.Pair(4, "d")
+    print(p.first)
+    print(p.second)

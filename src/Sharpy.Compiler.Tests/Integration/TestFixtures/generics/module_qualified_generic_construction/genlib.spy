@@ -1,0 +1,27 @@
+# The exported generic declarations. Their method annotations name the enclosing declaration's type
+# parameters, which ModuleLoader.ExtractMethodSymbol has to convert to TypeParameterType — not to a
+# UserDefinedType that happens to be spelled "K" — or cross-module inference has nothing to unify
+# (#1208).
+class Slot[K, V]:
+    key: K
+    value: V
+
+    def __init__(self, key: K, value: V):
+        self.key = key
+        self.value = value
+
+    def describe(self) -> str:
+        return "slot"
+
+    # A method-level type parameter, which was equally un-threaded before #1208.
+    def echo[U](self, u: U) -> U:
+        return u
+
+
+struct Pair[A, B]:
+    first: A
+    second: B
+
+    def __init__(self, first: A, second: B):
+        self.first = first
+        self.second = second
