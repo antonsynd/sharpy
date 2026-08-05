@@ -300,6 +300,98 @@ chr(97)     # "a"
 
 - `ValueError` -- Thrown when i is out of range
 
+### `decimal_floor_div(x: decimal, y: decimal) -> decimal`
+
+Returns the truncated quotient of *x* divided by
+*y*, matching CPython's `Decimal.__floordiv__`.
+
+**Parameters:**
+
+- `x` (decimal) -- The dividend
+- `y` (decimal) -- The divisor
+
+**Returns:** The quotient truncated toward zero
+
+```python
+DecimalFloorDiv(7m, 3m)    // 2
+DecimalFloorDiv(-7m, 3m)   // -2  (truncated; int -7 // 3 is -3)
+DecimalFloorDiv(7m, -3m)   // -2
+DecimalFloorDiv(-7m, -3m)  // 2
+```
+
+!!! note
+    Decimal `//` deliberately does NOT floor: the quotient truncates toward zero,
+    so `Decimal(-7) // Decimal(3)` is `-2` where int `-7 // 3` is
+    `-3`. That is both the spec's native-decimal policy and CPython's own decimal
+    behavior (#1174), which is why this is not an overload of
+    `FloorDiv(double, double)` — it computes a different function.
+    
+    
+    The zero guard lives here, not in the emitted C#, so the `//` lowering splices
+    each operand expression exactly once and a side-effecting divisor runs once
+    (#1216) — the same reason `FloorDiv(double, double)` and
+    `FloorMod(double, double)` own their guards.
+    
+    
+    The emitter previously used `Decimal.Divide` rather than `/` because a
+    literal zero divisor (`7m // 0m`) through `/` is a compile-time C# error
+    (CS0020, "division by constant zero") even in the unreachable arm of a
+    guarding ternary. That workaround does not apply inside this helper — *x* and *y* are runtime parameters, never constants — so
+    plain `/` is used here and the workaround must not be restored.
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `decimal_mod(x: decimal, y: decimal) -> decimal`
+
+Returns the native truncating remainder of *x* divided by
+*y*, matching CPython's `Decimal.__mod__`.
+
+**Parameters:**
+
+- `x` (decimal) -- The dividend
+- `y` (decimal) -- The divisor
+
+**Returns:** The truncating remainder (sign of the dividend)
+
+```python
+DecimalMod(7m, 3m)    // 1
+DecimalMod(-7m, 3m)   // -1  (sign of dividend; int -7 % 3 is 2)
+DecimalMod(7m, -3m)   // 1
+DecimalMod(-7m, -3m)  // -1
+```
+
+!!! note
+    The result takes the sign of the DIVIDEND, so `Decimal(-7) % Decimal(3)` is
+    `-1` where int `-7 % 3` is `2`. Decimal sits outside the floored-`%`
+    allowlist by design (#1153, #1189), which is why this is not an overload of
+    `FloorMod(double, double)` — it computes a different function.
+    
+    
+    A zero divisor raises `InvalidOperation`, NOT
+    `ZeroDivisionError`: CPython raises `decimal.InvalidOperation`
+    here, a sibling of `ZeroDivisionError` rather than a subclass — unlike decimal
+    `//`, whose `decimal.DivisionByZero` IS a `ZeroDivisionError`. The
+    asymmetry with `DecimalFloorDiv` is deliberate; do not unify them.
+    
+    
+    The zero guard lives here, not in the emitted C#, so the `%` lowering splices
+    each operand expression exactly once and a side-effecting divisor runs once
+    (#1216) — the same reason `FloorMod(double, double)` owns its guard.
+    
+    
+    The emitter previously used `Decimal.Remainder` rather than `%` because a
+    literal zero divisor (`7m % 0m`) through `%` is a compile-time C# error
+    (CS0020, "division by constant zero") even in the unreachable arm of a
+    guarding ternary. That workaround does not apply inside this helper — *x* and *y* are runtime parameters, never constants — so
+    plain `%` is used here and the workaround must not be restored. It is the same
+    operation either way: `decimal.op_Modulus` invokes `Decimal.Remainder`.
+
+**Raises:**
+
+- `InvalidOperation` -- Thrown when *y* is zero
+
 ### `double(b: bool) -> float`
 
 Convert bool to double. True becomes 1.0, False becomes 0.0.
@@ -627,14 +719,6 @@ format(42, "d")        # "42"
 format(3.14, ".1f")    # "3.1"
 format(255, "x")       # "ff"
 ```
-
-### `frozen_set(items): Iterable[T] = > new(items) -> FrozenSet[T]`
-
-Return a new frozenset object, optionally with elements taken from iterable.
-
-### `frozen_set()) -> FrozenSet[T]`
-
-Return a new empty frozenset object.
 
 ### `hash(obj: object) -> int`
 
@@ -1702,13 +1786,45 @@ Formats with Python-compatible trailing `.0` for whole numbers.
 Format a floating-point value with Python-compatible representation.
 NaN, Infinity, and -Infinity use Python's lowercase forms.
 Whole-number values get a trailing `.0`.
-NOTE: Keep in sync with `FormatFloat(float)` overload.
+
+!!! note
+    This is the single authority for Python-style float formatting; every other
+    float-rendering site delegates here (guarded by
+    `FloatFormattingAuthorityTests`).
+    
+    The digits come from .NET's shortest-round-trip formatter (`"R"`), which is
+    correct, but the positional-vs-exponential layout is Sharpy's own decision,
+    ported from CPython's `format_float_short`: writing a value as
+    `0.d1…dn × 10^decpt`, render positionally when `-4 &lt; decpt &lt;= 16`
+    and exponentially otherwise. .NET stays positional one decade longer
+    (`decpt &lt;= 17`), which is the `[1e16, 1e17)` divergence band of #1204.
+    
+    
+    Re-rendering from the digits, rather than patching the one divergent band, keeps
+    the layout policy here instead of inheriting whatever a future runtime picks.
 
 ### `format_float(value: float32) -> str`
 
 Format a `float` value with Python-compatible representation.
 Overload to avoid float→double widening precision issues.
-NOTE: Keep in sync with `FormatFloat(double)` overload.
+
+!!! note
+    Shares `RenderShortestRoundTrip` with `FormatFloat(double)`
+    — the two overloads share a renderer, not a threshold.
+    
+    The single switches to exponential at `decpt &gt; 9`, not the double's 16.
+    That is a deliberate Sharpy decision rather than CPython parity, because CPython
+    has no `float32` and therefore has no answer to copy. The derivation mirrors
+    CPython's: its 16 tracks the ≤17 significant digits a double's shortest
+    round-trip form can need, so positional layout never pads with digits the type
+    does not carry; a single needs ≤9, so 9 is its analogue. Using the double's 16
+    here would spread float32 output positionally across `[1e9, 1e16)` — e.g.
+    `1.5e15f` would print as `1500000000000000.0`, sixteen digits for a
+    type carrying about seven (Axiom 3).
+    
+    
+    9 is also .NET's own single threshold, so float32 output is byte-identical to
+    what it was before this renderer existed.
 
 ### `str(b: bool) -> str`
 

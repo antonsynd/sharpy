@@ -958,8 +958,10 @@ internal partial class TypeChecker
     /// special-casing any one builtin.
     ///
     /// <para>The type-argument count narrows the overload set but does NOT always pin a single
-    /// overload: <c>itertools.islice[int]</c>, <c>itertools.repeat[int]</c> and <c>frozen_set[int]</c>
-    /// each have several same-generic-arity overloads differing only in their value parameters. The
+    /// overload: <c>itertools.islice[int]</c> and <c>itertools.repeat[int]</c> each have several
+    /// same-generic-arity overloads differing only in their value parameters. (<c>frozen_set[int]</c>
+    /// was a third example until #1210 retired that spelling — <c>frozenset</c> is a registered
+    /// collection type now, so <c>frozenset[int]()</c> is a construction, not a generic call.) The
     /// call is therefore checked against all of them through the shared
     /// <see cref="ResolveOverloadCore"/>, and only a call that NO candidate accepts is reported —
     /// via <see cref="ReportOverloadError"/>, the same no-match reporting the non-generic overload

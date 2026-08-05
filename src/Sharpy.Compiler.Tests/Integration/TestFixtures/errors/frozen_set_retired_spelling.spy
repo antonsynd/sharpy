@@ -1,0 +1,7 @@
+# `frozen_set` was never a decision — it was the reverse-mangled name of the discovered
+# Builtins.FrozenSet<T> factory. CPython spells it `frozenset`, which is now a registered
+# collection type, and BuiltinNames has no other underscored spelling (#1210).
+def main():
+    xs: list[int] = [3, 1, 2]
+    fs = frozen_set(xs)
+    print(len(fs))

@@ -171,6 +171,17 @@ internal class BuiltinRegistry
             if (function.IsGeneric && _types.ContainsKey(function.Name))
                 continue;
 
+            // Same rule, one step further: CPython spells its collection names as single words
+            // (frozenset, defaultdict, frozendict), while reverse-mangling a PascalCase CLR name
+            // inserts underscores. Builtins.FrozenSet<T> therefore arrived as `frozen_set`, which
+            // does not collide by name with the registered `frozenset` — so both spellings resolved
+            // and the discovered one returned an un-mapped FrozenSet<T> that degraded to `object`
+            // (#1210). A discovered generic whose name differs from a registered type only by
+            // underscores IS that type's constructor; the registered type wins.
+            if (function.IsGeneric
+                && _types.ContainsKey(function.Name.Replace("_", string.Empty, StringComparison.Ordinal)))
+                continue;
+
             if (!_functions.ContainsKey(function.Name))
             {
                 _functions[function.Name] = new List<FunctionSymbol>();
