@@ -1,0 +1,43 @@
+# #1206 D3a regression guard. Staged extension inference registers Enumerable's whole generic surface
+# under both CLR and snake_case names, so names that ALSO exist as instance members are the batch's
+# real risk: if the staging ever wins one of these, the call silently changes meaning. Every line
+# below worked before #1206 and must keep working; this fixture exists to fail loudly if precedence
+# ever moves to the wrong layer.
+#
+# Two different gates do the work, and which one fires depends on the receiver:
+#   - a Sharpy receiver is rejected by gate 1 — the builtin arm gives the callee a real type, so the
+#     staged path is never reached;
+#   - a CLR receiver reaches the seam with an Unknown callee (the discovered TypeSymbol for a raw BCL
+#     type carries ZERO members) and is rejected by gate 4's reflective name-surface check alone.
+from system.collections.generic import List
+
+
+def main():
+    # --- CLR receiver: gate 4 ---
+    # List<T>.Reverse() mutates IN PLACE and returns nothing. Enumerable.Reverse() returns a new
+    # sequence and leaves the receiver alone. Printing the first element after the call is what
+    # distinguishes them: 5 means the instance method bound, 3 means the extension hijacked it.
+    clr: List[int] = List[int]()
+    clr.add(3)
+    clr.add(4)
+    clr.add(5)
+    clr.reverse()
+    print(clr[0])
+    print(clr.count)
+    print(clr.contains(3))
+
+    # --- Sharpy receiver: gate 1 ---
+    xs: list[int] = [1, 2]
+    xs.append(9)
+    print(len(xs))
+    print(xs.count(9))
+    print(xs.index(2))
+    xs.reverse()
+    print(xs)
+
+    # `str` is inside the blast radius and deserves a row rather than an argument: `join` is on the
+    # acceptance surface AND is a mainline Python idiom, so a precedence slip here would be loud.
+    parts: list[str] = ["a", "b", "c"]
+    print("-".join(parts))
+    print("banana".count("a"))
+    print("banana".index("n"))

@@ -1,0 +1,30 @@
+# #1206: an extension call with NO type arguments written. Before staged inference nothing resolved
+# these at all — the call's type was Unknown and the emitter wrote it blind — so every line below is
+# new capability, not protected behavior. The explicit `select[str](f)` spelling (#1195) is pinned by
+# bcl_extension_closed_signature_1195; this is its no-type-args twin, and both record the same fact,
+# differing only in the node it is keyed on.
+from system.collections.generic import List
+
+
+def main():
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(4)
+    lst.add(5)
+
+    # One stage: TSource comes from the receiver, TResult from the lambda's return.
+    print(list(lst.select(lambda x: str(x))))
+
+    # A predicate closes from the receiver alone — no open parameter to recover.
+    print(list(lst.where(lambda x: x > 3)))
+
+    # CHAINED. The first call's recorded type (a Sharpy list) becomes the second's receiver, so the
+    # staging has to run twice over its own output. `where` is not a Sharpy list method and is absent
+    # from Sharpy.List<T>'s CLR surface, so gate 4 passes and the second call stages too.
+    print(list(lst.select(lambda x: x * 2).where(lambda y: y > 6)))
+
+    # THREE STAGES. TCollection is recovered structurally from `list[TCollection]` against the first
+    # lambda's `list[int]` return, and only then does the second lambda become checkable, yielding
+    # TResult. The measured partition found exactly six such shapes on the whole Enumerable surface —
+    # SelectMany (2 overloads), GroupBy (3) and AggregateBy (1) — and nothing needing four.
+    print(list(lst.select_many(lambda x: [x, x], lambda a, b: str(a + b))))

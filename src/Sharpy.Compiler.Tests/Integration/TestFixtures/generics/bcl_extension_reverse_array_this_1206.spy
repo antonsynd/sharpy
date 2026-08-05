@@ -1,0 +1,16 @@
+# #1206: `Reverse` is the only array-receiver method on the acceptance surface. .NET 10 added
+# Enumerable.Reverse<TSource>(this TSource[]) beside the IEnumerable<TSource> one, and an array `this`
+# parameter used to fall into TryBindThisParameter's non-generic early-out — "succeeding" while
+# binding nothing. That left TSource open for a List<int> receiver the overload can never accept, so
+# this exact spelling resolved to Reverse<string> after the sequence overload had correctly refused.
+#
+# This pins the corrected behavior on the SHIPPED explicit path (#1195), not the staged one: an
+# un-computable type-argument vector must stay un-computable and say so. `lst.reverse[int]()` is the
+# spelling that works.
+from system.collections.generic import List
+
+
+def main():
+    lst: List[int] = List[int]()
+    lst.add(3)
+    print(list(lst.reverse[str]()))
