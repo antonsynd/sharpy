@@ -286,27 +286,75 @@ internal partial class TypeChecker
         // Phase 2 — check the deferred lambda bodies exactly once, with the substituted expected
         // function type. A type parameter the other arguments could not bind stays unsubstituted, and
         // CheckLambda declines it per position exactly as it does today.
+        //
+        // Each checked lambda is folded back into `substitutions` before the next position is checked,
+        // because a deferred lambda's parameter types can depend on an EARLIER deferred lambda's return
+        // type. That is what the three-stage shapes need: SelectMany's second selector takes the
+        // TCollection its first selector's `list[TCollection]` return binds, and GroupBy's result
+        // selector takes the TKey and TElement its first two bind. In all six measured three-stage
+        // shapes on the acceptance surface, the dependent lambda is written AFTER the one it depends
+        // on — dependency order is source order — so one pass in source order is enough and no
+        // reordering exists to get wrong.
         foreach (var position in deferredPositions)
         {
-            _expectedType = SubstituteExpectedLambdaType(formalByPosition[position]!, substitutions)
-                ?? previousExpectedType;
-            positionTypes[position] = CheckExpression(call.Arguments[position]);
-            _expectedType = previousExpectedType;
+            var formal = formalByPosition[position]!;
+            SemanticType checkedType;
+            using (ScopedValue.Push(ref _expectedType,
+                       SubstituteExpectedLambdaType(formal, substitutions) ?? previousExpectedType))
+            {
+                checkedType = CheckExpression(call.Arguments[position]);
+            }
+            positionTypes[position] = checkedType;
+            FoldCheckedArgumentIntoSubstitutions(formal, checkedType, substitutions);
         }
         foreach (var kwarg in call.KeywordArguments)
         {
             if (!deferredKeywords.Contains(kwarg.Name))
                 continue;
-            _expectedType = SubstituteExpectedLambdaType(formalByKeyword[kwarg.Name], substitutions)
-                ?? previousExpectedType;
-            kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
-            _expectedType = previousExpectedType;
+
+            var keywordFormal = formalByKeyword[kwarg.Name];
+            SemanticType checkedType;
+            using (ScopedValue.Push(ref _expectedType,
+                       SubstituteExpectedLambdaType(keywordFormal, substitutions) ?? previousExpectedType))
+            {
+                checkedType = CheckExpression(kwarg.Value);
+            }
+            kwargTypes[kwarg.Name] = checkedType;
+            FoldCheckedArgumentIntoSubstitutions(keywordFormal, checkedType, substitutions);
         }
 
         argTypes = new List<SemanticType>(call.Arguments.Length);
         for (int position = 0; position < call.Arguments.Length; position++)
             argTypes.Add(positionTypes[position] ?? SemanticType.Unknown);
         return true;
+    }
+
+    /// <summary>
+    /// Folds a just-checked argument's actual type back into <paramref name="substitutions"/>, so a
+    /// later deferred lambda sees the type parameters this one bound.
+    ///
+    /// <para>
+    /// Deliberately additive: a name phase 1 already bound is left alone. Phase 1's binding comes from
+    /// unifying every non-deferred argument at once and is authoritative; letting a later lambda
+    /// overwrite it would change what the existing single-deferral callers infer (#1161). With one
+    /// deferred argument there is no later position, so those callers see no change at all.
+    /// </para>
+    /// </summary>
+    private void FoldCheckedArgumentIntoSubstitutions(
+        SemanticType formal, SemanticType actual, Dictionary<string, SemanticType> substitutions)
+    {
+        if (actual is UnknownType)
+            return;
+
+        var folded = _genericInference.UnifyTypes(new[] { formal }, new[] { actual });
+        if (folded == null)
+            return;
+
+        foreach (var (name, type) in folded)
+        {
+            if (type is not UnknownType && !substitutions.ContainsKey(name))
+                substitutions[name] = type;
+        }
     }
 
     /// <summary>

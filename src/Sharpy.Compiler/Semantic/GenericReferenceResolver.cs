@@ -543,6 +543,28 @@ internal partial class TypeChecker
         // The vector that makes the call spellable also closes its signature, so the reference is
         // typed from the closed return type rather than left Unknown, and the value parameters (the
         // `this` receiver dropped) travel in the fact for the call site to check against (#1195).
+        resultType = RecordBclExtensionMethodFact(indexAccess, ownerType, typeArgs, loweredTypeArgs, resolution);
+        return true;
+    }
+
+    /// <summary>
+    /// Builds and records the one <see cref="GenericReferenceKind.BclExtensionMethod"/> fact, returning
+    /// the closed return type that types the reference. Shared by the explicit spelling
+    /// (<c>lst.select[str](f)</c>, keyed on its <c>IndexAccess</c>) and the staged no-type-args spelling
+    /// (<c>lst.select(f)</c>, keyed on its <c>MemberAccess</c>) so the two cannot drift into producing
+    /// differently-shaped facts for the same call (#1145).
+    /// </summary>
+    /// <param name="writtenTypeArgs">
+    /// What the SOURCE wrote, which is empty for the staged spelling. The complete vector always travels
+    /// in <see cref="GenericReference.LoweredTypeArgs"/>.
+    /// </param>
+    private SemanticType RecordBclExtensionMethodFact(
+        Expression key,
+        SemanticType ownerType,
+        IReadOnlyList<SemanticType> writtenTypeArgs,
+        IReadOnlyList<SemanticType> loweredTypeArgs,
+        Discovery.ClrExtensionMethodResolver.Resolution resolution)
+    {
         var closedParameters = resolution.ClosedMethod.GetParameters();
         var closedParameterTypes = new List<SemanticType>(Math.Max(0, closedParameters.Length - 1));
         for (int i = 1; i < closedParameters.Length; i++)
@@ -550,18 +572,233 @@ internal partial class TypeChecker
 
         var closedReturnType = _clrTypeBridge.Value.MapClrTypeToSemanticType(resolution.ClosedMethod.ReturnType);
 
-        _semanticInfo.SetGenericReference(indexAccess, new GenericReference
+        _semanticInfo.SetGenericReference(key, new GenericReference
         {
             Kind = GenericReferenceKind.BclExtensionMethod,
             ReceiverType = ownerType,
-            TypeArgs = typeArgs,
+            TypeArgs = writtenTypeArgs,
             LoweredTypeArgs = loweredTypeArgs,
             ClrMemberName = resolution.ClrMethodName,
             ClosedReturnType = closedReturnType,
             ClosedParameterTypes = closedParameterTypes,
         });
-        resultType = closedReturnType;
-        return true;
+        return closedReturnType;
+    }
+
+    /// <summary>
+    /// A no-type-args extension call whose receiver-determined type parameters are bound and whose
+    /// remaining ones are waiting on the arguments (#1206). Held across the argument-checking seam by
+    /// <c>CheckCall</c>: opened by <see cref="TryBeginStagedExtensionCall"/> before the arguments are
+    /// checked, closed by <see cref="CompleteStagedExtensionCall"/> after.
+    /// </summary>
+    private sealed record StagedExtensionCall(
+        MemberAccess Callee,
+        SemanticType ReceiverType,
+        Discovery.ClrExtensionMethodResolver.PartialResolution Partial,
+        FunctionSymbol Signature);
+
+    /// <summary>
+    /// Opens the staged path for <c>lst.select(f)</c> — an extension call written with NO type
+    /// arguments, which nothing resolves today: the callee types Unknown, the emitter writes the member
+    /// call verbatim, and C# infers everything. That works only while the call is the whole expression;
+    /// wrap it and there is no Sharpy type to wrap, so <c>list(lst.select(f))</c> emits an
+    /// unparameterized <c>Sharpy.List</c> and leaks CS0305 (#1206).
+    ///
+    /// <para>
+    /// Returns the staged call when all five conditions hold, or null to leave the call EXACTLY as
+    /// permissive as it is today — no fact, no diagnostic, nothing recorded anywhere (D2). The
+    /// conditions together are a proof that ordinary member resolution already failed to bind the name,
+    /// which is C#'s own rule and the ordering the explicit path gets for free by running after
+    /// <c>TryResolveGenericInstanceMethod</c> declined:
+    /// </para>
+    ///
+    /// <list type="number">
+    /// <item>the callee is a <see cref="MemberAccess"/> that checked to <c>Unknown</c> on a receiver
+    /// whose own type is known — <c>CheckMemberAccessCore</c>'s deliberate interop fall-through;</item>
+    /// <item>the member name is on the #1163 acceptance surface;</item>
+    /// <item>the receiver maps to a CLR type;</item>
+    /// <item>reflection proves no instance member of that name could bind
+    /// (<see cref="NoClrInstanceMemberCouldBind"/>) — the load-bearing one, see its remarks;</item>
+    /// <item>a single candidate accounts for the written argument shapes.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// The gates are tested cheapest-first (name lookup before reflection) as a performance choice on
+    /// the checker's hot path; it is their CONJUNCTION that is the contract, not their order.
+    /// </para>
+    /// </summary>
+    private StagedExtensionCall? TryBeginStagedExtensionCall(
+        FunctionCall call, Expression callee, SemanticType calleeType)
+    {
+        // 1. An Unknown callee on a typed receiver. Weaker than "member resolution failed" on its own —
+        //    two upstream arms reach Unknown while the instance member genuinely exists — which is why
+        //    gate 4 below, not this one, is what excludes the collision set.
+        if (calleeType is not UnknownType || callee is not MemberAccess memberAccess)
+            return null;
+
+        var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
+        if (receiverType is null or UnknownType)
+            return null;
+
+        // 2. The acceptance surface. A dictionary lookup, so it runs before anything reflective.
+        if (!Discovery.ClrExtensionMethodResolver.IsOnAcceptanceSurface(memberAccess.Member))
+            return null;
+
+        // 3. A receiver with a CLR form — the same filter that guards the explicit path.
+        var receiverClrType = TryGetClrType(receiverType);
+        if (receiverClrType == null)
+            return null;
+
+        // 4. Instance members beat extension methods.
+        if (!NoClrInstanceMemberCouldBind(receiverType, memberAccess.Member))
+            return null;
+
+        // Keyword arguments have no name correspondence to a CLR extension method's parameters, and a
+        // spread breaks the positional formal-to-actual alignment the staging relies on.
+        if (call.KeywordArguments.Length > 0)
+            return null;
+
+        var shapes = new Discovery.ClrExtensionMethodResolver.ExtensionArgumentShape[call.Arguments.Length];
+        for (int i = 0; i < call.Arguments.Length; i++)
+        {
+            if (call.Arguments[i] is SpreadElement)
+                return null;
+
+            shapes[i] = UnwrapParenthesized(call.Arguments[i]) is LambdaExpression lambda
+                ? Discovery.ClrExtensionMethodResolver.ExtensionArgumentShape.Lambda(lambda.Parameters.Length)
+                : Discovery.ClrExtensionMethodResolver.ExtensionArgumentShape.Value;
+        }
+
+        // 5. One candidate, closed as far as the receiver goes.
+        var partial = Discovery.ClrExtensionMethodResolver.TryResolveFromReceiver(
+            receiverClrType, memberAccess.Member, shapes);
+        if (partial == null)
+            return null;
+
+        return new StagedExtensionCall(
+            memberAccess, receiverType, partial,
+            BuildStagedExtensionSymbol(memberAccess.Member, partial));
+    }
+
+    /// <summary>
+    /// The ephemeral generic <see cref="FunctionSymbol"/> the staged call is checked through: the
+    /// receiver-bound candidate's post-<c>this</c> parameters and return type, with the type parameters
+    /// the receiver did not determine still open.
+    ///
+    /// <para>
+    /// Follows the #1136 <c>BuildBclGenericMethodSymbol</c> precedent — CLR method name carried
+    /// verbatim, types mapped through <see cref="Discovery.ClrTypeBridge"/>, and deliberately NOT
+    /// registered in the symbol table. It is consumed only by
+    /// <c>TryCheckDeferredLambdaArguments</c>/<c>CheckCallArguments</c> through the existing
+    /// <c>earlyFuncSymbol</c> channel, which returns it directly without a symbol-table lookup.
+    /// </para>
+    ///
+    /// <para>
+    /// The <c>this</c> parameter is dropped because the receiver is not in the argument list, so the
+    /// formal-to-actual offset stays 0. Open type parameters survive as <c>TypeParameterType</c> (never
+    /// <c>Unknown</c>, never <c>object</c>), which is what makes an unannotated lambda argument
+    /// deferrable and what <c>SubstituteExpectedLambdaType</c> later fills in.
+    /// </para>
+    /// </summary>
+    private FunctionSymbol BuildStagedExtensionSymbol(
+        string memberName, Discovery.ClrExtensionMethodResolver.PartialResolution partial)
+    {
+        var clrParameters = partial.OpenMethod.GetParameters();
+        var parameters = new List<ParameterSymbol>(partial.ParameterTypes.Count);
+        for (int i = 0; i < partial.ParameterTypes.Count; i++)
+        {
+            parameters.Add(new ParameterSymbol
+            {
+                Name = clrParameters[i + 1].Name ?? $"arg{i}",
+                Type = _clrTypeBridge.Value.MapClrTypeToSemanticType(partial.ParameterTypes[i])
+            });
+        }
+
+        return new FunctionSymbol
+        {
+            Name = memberName,
+            Kind = SymbolKind.Function,
+            AccessLevel = AccessLevel.Public,
+            ClrMethodName = partial.ClrMethodName,
+            ClrMethod = partial.OpenMethod,
+            TypeParameters = partial.OpenTypeParameterNames
+                .Select(name => new Parser.Ast.TypeParameterDef { Name = name })
+                .ToList(),
+            Parameters = parameters,
+            ReturnType = _clrTypeBridge.Value.MapClrTypeToSemanticType(partial.ReturnType),
+            IsStatic = false
+        };
+    }
+
+    /// <summary>
+    /// Closes a staged call once its arguments have been checked: unifies the synthesized formals
+    /// against the actual argument types to bind the still-open type parameters, completes the CLR
+    /// vector, and records the <see cref="GenericReferenceKind.BclExtensionMethod"/> fact keyed on the
+    /// <see cref="MemberAccess"/> callee (#1206).
+    ///
+    /// <para>
+    /// Every failure path records NOTHING and reports nothing — a type parameter no argument bound, a
+    /// binding with no CLR form, a constraint violation — leaving the call on the permissive channel
+    /// exactly as it is today. That is the batch's hardest constraint: this closes a #1146 leak, it does
+    /// not narrow an acceptance surface. In particular the explicit path's "cannot determine the type
+    /// arguments" diagnostic is unreachable from here, because nothing was written to be wrong about.
+    /// </para>
+    ///
+    /// <para>
+    /// Binding runs through <c>GenericTypeInferenceService.UnifyTypes</c>, the same engine the deferred
+    /// lambda pass uses, so a structural formal closes structurally: <c>SelectMany</c>'s
+    /// <c>Func[int, list[TCollection]]</c> recovers <c>TCollection</c> from the lambda's actual return
+    /// type rather than needing a second unifier (#1145).
+    /// </para>
+    /// </summary>
+    private void CompleteStagedExtensionCall(StagedExtensionCall staged, List<SemanticType> argTypes)
+    {
+        var parameters = staged.Signature.Parameters;
+        var pairs = Math.Min(parameters.Count, argTypes.Count);
+        var formals = new List<SemanticType>(pairs);
+        var actuals = new List<SemanticType>(pairs);
+        for (int i = 0; i < pairs; i++)
+        {
+            formals.Add(parameters[i].Type);
+            actuals.Add(argTypes[i]);
+        }
+
+        var substitutions = _genericInference.UnifyTypes(formals, actuals);
+
+        var inferred = new Dictionary<string, Type>(StringComparer.Ordinal);
+        foreach (var openName in staged.Partial.OpenTypeParameterNames)
+        {
+            if (substitutions == null
+                || !substitutions.TryGetValue(openName, out var bound)
+                || bound is UnknownType
+                || TryGetClrType(bound) is not { } boundClrType)
+            {
+                return;
+            }
+            inferred[openName] = boundClrType;
+        }
+
+        var resolution = Discovery.ClrExtensionMethodResolver.TryCompleteFromInferredTypeArguments(
+            staged.Partial, inferred);
+        if (resolution == null)
+            return;
+
+        // A return type that maps to `object` means the bridge could not represent the real one —
+        // OrderBy's IOrderedEnumerable<TSource> is the case on this surface. Recording it would type the
+        // call `object`, which is strictly WORSE than the Unknown it has today: Unknown stays permissive
+        // and lets C# infer, `object` actively misinforms everything downstream. So record nothing, the
+        // same call the builtin and discovered-member arms already make for an object-collapsed return.
+        // The explicit spelling's existing behavior is deliberately untouched — it is shipped, and D2
+        // constrains only what this new path does.
+        if (IsObjectType(_clrTypeBridge.Value.MapClrTypeToSemanticType(resolution.ClosedMethod.ReturnType)))
+            return;
+
+        var loweredTypeArgs = new List<SemanticType>(resolution.TypeArguments.Count);
+        foreach (var clrArg in resolution.TypeArguments)
+            loweredTypeArgs.Add(_clrTypeBridge.Value.MapClrTypeToSemanticType(clrArg));
+
+        RecordBclExtensionMethodFact(
+            staged.Callee, staged.ReceiverType, Array.Empty<SemanticType>(), loweredTypeArgs, resolution);
     }
 
     /// <summary>

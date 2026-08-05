@@ -169,6 +169,17 @@ internal partial class TypeChecker
         // Resolve function symbol early for constructor inference on arguments
         var (earlyFuncSymbol, earlyParamOffset) = ResolveEarlyFunctionSymbol(call, callee);
 
+        // #1206: `lst.select(f)` — an extension call with NO type arguments written, which nothing
+        // resolves today. Bind what the receiver determines and feed the partially-closed signature
+        // into the SAME early-symbol channel member calls already use, so the lambda gets its expected
+        // type from the existing machinery rather than a second staging loop. `earlyFuncSymbol` is null
+        // here by construction: ResolveEarlyFunctionSymbol found no such member on the receiver, which
+        // is most of why this call reached the seam at all. Returns null — changing nothing — unless
+        // all five gates hold; see TryBeginStagedExtensionCall.
+        var stagedExtensionCall = TryBeginStagedExtensionCall(call, callee, calleeType);
+        if (stagedExtensionCall != null)
+            earlyFuncSymbol = stagedExtensionCall.Signature;
+
         // Check arguments and keyword arguments, collecting their types. isinstance's subject
         // reads the honest, un-narrowed value (see _typeTestOperand): a narrowing cast on the
         // operand would presuppose the very fact the test is checking.
@@ -192,6 +203,14 @@ internal partial class TypeChecker
         {
             (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
         }
+
+        // The arguments are checked, so the type parameters the receiver left open are now knowable:
+        // close the vector and record the fact the call's type is read from (#1206). Records nothing on
+        // any failure, leaving the call exactly as permissive as it is today. Runs here, before the
+        // call's result type is computed, because that is what reads the fact.
+        if (stagedExtensionCall != null)
+            CompleteStagedExtensionCall(stagedExtensionCall, argTypes);
+
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
         // Decide what an `isinstance` TYPE OPERAND denotes, once, here. Runs after argument checking
@@ -846,19 +865,22 @@ internal partial class TypeChecker
             }
         }
 
-        // lst.select[str](f) — an extension method whose closed signature semantic analysis
-        // materialized (#1195). No FunctionSymbol exists for this kind, so nothing below can bind it:
-        // the closed CLR signature IS the contract. The call's type is the closed return type (which
-        // is what lets `list(lst.select[str](f))` know what it wraps), and its value arguments are
-        // checked against the closed parameter types (the #1148 contract for this kind).
-        if (callee is IndexAccess extensionAccess
-            && _semanticInfo.GetGenericReference(extensionAccess) is
+        // lst.select[str](f), and since #1206 lst.select(f) too — an extension method whose closed
+        // signature semantic analysis materialized (#1195). No FunctionSymbol exists for this kind, so
+        // nothing below can bind it: the closed CLR signature IS the contract. The call's type is the
+        // closed return type (which is what lets `list(lst.select(f))` know what it wraps), and its
+        // value arguments are checked against the closed parameter types (the #1148 contract for this
+        // kind). Both callee shapes are accepted here because both spellings record the same fact,
+        // differing only in the node it is keyed on: the written `[...]` for the explicit spelling, the
+        // member access itself for the staged one.
+        if (IsClosedExtensionCallee(callee)
+            && _semanticInfo.GetGenericReference(callee) is
             {
                 Kind: GenericReferenceKind.BclExtensionMethod,
                 ClosedReturnType: { } closedReturnType
             } extensionReference)
         {
-            ValidateClosedExtensionArguments(call, extensionAccess, extensionReference, argTypes);
+            ValidateClosedExtensionArguments(call, callee, extensionReference, argTypes);
             return closedReturnType;
         }
 
@@ -894,8 +916,8 @@ internal partial class TypeChecker
     /// inferred blind and only failing at the C# layer (#1195). Null for every other callee.
     /// </summary>
     private FunctionType? ClosedExtensionSignature(Expression callee)
-        => callee is IndexAccess extensionCallee
-           && _semanticInfo.GetGenericReference(extensionCallee) is
+        => IsClosedExtensionCallee(callee)
+           && _semanticInfo.GetGenericReference(callee) is
            {
                Kind: GenericReferenceKind.BclExtensionMethod,
                ClosedReturnType: { } returnType,
@@ -903,6 +925,21 @@ internal partial class TypeChecker
            }
             ? new FunctionType { ParameterTypes = parameterTypes.ToList(), ReturnType = returnType }
             : null;
+
+    /// <summary>
+    /// The two callee shapes a <see cref="GenericReferenceKind.BclExtensionMethod"/> fact can be keyed
+    /// on: the <c>IndexAccess</c> of the explicit spelling <c>lst.select[str](f)</c> (#1195) and the
+    /// <c>MemberAccess</c> of the staged no-type-args spelling <c>lst.select(f)</c> (#1206).
+    ///
+    /// <para>
+    /// A shape test rather than a bare lookup because <see cref="SemanticInfo.GetGenericReference"/> is
+    /// keyed on <c>Expression</c> and every other reference kind is recorded on an <c>IndexAccess</c>;
+    /// naming the two admissible shapes keeps a future kind from silently acquiring an extension
+    /// call's contract by being passed to one of these readers.
+    /// </para>
+    /// </summary>
+    private static bool IsClosedExtensionCallee(Expression callee)
+        => callee is IndexAccess or MemberAccess;
 
     /// <summary>
     /// Validates the value arguments of an extension call against its CLOSED signature (#1195) — the
@@ -918,7 +955,7 @@ internal partial class TypeChecker
     /// unknown — a bare lambda with no expected type — is skipped rather than guessed at.</para>
     /// </summary>
     private void ValidateClosedExtensionArguments(
-        FunctionCall call, IndexAccess callee, GenericReference reference, List<SemanticType> argTypes)
+        FunctionCall call, Expression callee, GenericReference reference, List<SemanticType> argTypes)
     {
         if (reference.ClosedParameterTypes is not { } expectedTypes
             || call.KeywordArguments.Length > 0
@@ -927,7 +964,15 @@ internal partial class TypeChecker
             return;
         }
 
-        var memberName = (callee.Object as MemberAccess)?.Member ?? reference.ClrMemberName ?? "extension method";
+        // The member name sits one level in for the explicit spelling (`lst.select[str]` — the callee is
+        // the IndexAccess) and IS the callee for the staged one (`lst.select`).
+        var writtenName = callee switch
+        {
+            IndexAccess explicitCallee => (explicitCallee.Object as MemberAccess)?.Member,
+            MemberAccess stagedCallee => stagedCallee.Member,
+            _ => null
+        };
+        var memberName = writtenName ?? reference.ClrMemberName ?? "extension method";
 
         for (int i = 0; i < argTypes.Count; i++)
         {
@@ -941,8 +986,10 @@ internal partial class TypeChecker
             if (IsAssignable(argTypes[i], expectedTypes[i]))
                 continue;
 
+            // Quote what the user actually wrote: `select[...]` only when they wrote type arguments.
+            var written = callee is IndexAccess ? $"{memberName}[...]" : memberName;
             AddError(
-                $"Argument {i + 1} of '{memberName}[...]' expects '{expectedTypes[i].GetDisplayName()}' "
+                $"Argument {i + 1} of '{written}' expects '{expectedTypes[i].GetDisplayName()}' "
                 + $"but got '{argTypes[i].GetDisplayName()}'",
                 call.Arguments[i].LineStart,
                 call.Arguments[i].ColumnStart,

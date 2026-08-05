@@ -839,33 +839,85 @@ internal partial class TypeChecker
     {
         suggestion = null;
 
-        // Discovered members on the symbol itself settle the question without reflecting: a name that
-        // was discovered exists, whatever the CLR surface says about mangling.
-        if (ownerSymbol.Methods.Any(m => m.Name == memberName)
-            || ownerSymbol.Properties.Any(p => p.Name == memberName)
-            || ownerSymbol.Fields.Any(f => f.Name == memberName))
+        if (ClrInstanceMemberMayExist(ownerSymbol, ownerType, memberName, out var reflectionType, out var clrNames))
             return false;
-
-        // Reflect on the constructed receiver when available (List<int> rather than the open List<>),
-        // mirroring the #1136 fallback so both see the same member surface.
-        var reflectionType = TryGetClrType(ownerType) ?? ownerSymbol.ClrType!;
-        var clrNames = Discovery.ClrTypeHelper.GetMemberNameSurface(reflectionType);
-        if (clrNames == null)
-            return false; // reflection inconclusive — cannot prove absence
 
         var pascalName = NameMangler.ToPascalCase(memberName);
-        if (clrNames.Contains(memberName) || clrNames.Contains(pascalName))
-            return false;
-
-        foreach (var assembly in EnumerateExtensionMethodAssemblies(reflectionType))
+        foreach (var assembly in EnumerateExtensionMethodAssemblies(reflectionType!))
         {
             var extensionNames = Discovery.ClrTypeHelper.GetExtensionMethodNames(assembly);
             if (extensionNames.Contains(memberName) || extensionNames.Contains(pascalName))
                 return false;
         }
 
-        suggestion = EditDistance.FindClosestMatch(memberName, clrNames);
+        suggestion = EditDistance.FindClosestMatch(memberName, clrNames!);
         return true;
+    }
+
+    /// <summary>
+    /// Whether an INSTANCE member named <paramref name="memberName"/> may exist on
+    /// <paramref name="ownerType"/>: a discovered member on the symbol carries the name, the reflected
+    /// CLR surface carries it under some mangling candidate, or reflection could not answer. False only
+    /// when reflection SUCCEEDED and found nothing — the affirmative half of the #1141 absence proof,
+    /// minus its extension-method clause.
+    ///
+    /// <para>
+    /// Shared by <see cref="ProveClrMemberAbsent"/> and by the staged extension-call gate (#1206), which
+    /// needs the instance-member half WITHOUT the extension clause: that clause exists to keep the
+    /// permissive channel open when an extension method might bind, and binding an extension method is
+    /// exactly what the staged path is about to attempt — with System.Linq enumerated, every name on the
+    /// acceptance surface would be "found" and the fix could never run.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>The reflected name-surface check below is load-bearing and unredundant.</b> Measured on the
+    /// receivers this matters for — <c>List</c>, <c>Dictionary</c>, <c>HashSet</c>, <c>StringBuilder</c>
+    /// imported from a .NET namespace — the discovered <see cref="TypeSymbol"/> carries ZERO methods,
+    /// properties and fields, so the first check cannot fire for them at all and every member name
+    /// reaches this one. It alone is what keeps <c>lst.reverse()</c>, <c>lst.count()</c>,
+    /// <c>lst.contains(x)</c> and <c>lst.to_array()</c> bound to their instance members instead of being
+    /// re-typed as <c>Enumerable</c> extension calls. Weakening it has no second line of defence.
+    /// </para>
+    /// </summary>
+    private bool ClrInstanceMemberMayExist(
+        TypeSymbol ownerSymbol, SemanticType ownerType, string memberName,
+        out Type? reflectionType, out IReadOnlyCollection<string>? clrNames)
+    {
+        reflectionType = null;
+        clrNames = null;
+
+        // Discovered members on the symbol itself settle the question without reflecting: a name that
+        // was discovered exists, whatever the CLR surface says about mangling.
+        if (ownerSymbol.Methods.Any(m => m.Name == memberName)
+            || ownerSymbol.Properties.Any(p => p.Name == memberName)
+            || ownerSymbol.Fields.Any(f => f.Name == memberName))
+            return true;
+
+        // Reflect on the constructed receiver when available (List<int> rather than the open List<>),
+        // mirroring the #1136 fallback so both see the same member surface.
+        reflectionType = TryGetClrType(ownerType) ?? ownerSymbol.ClrType!;
+        clrNames = Discovery.ClrTypeHelper.GetMemberNameSurface(reflectionType);
+        if (clrNames == null)
+            return true; // reflection inconclusive — cannot rule an instance member out
+
+        return clrNames.Contains(memberName)
+            || clrNames.Contains(NameMangler.ToPascalCase(memberName));
+    }
+
+    /// <summary>
+    /// Gate 4 of the staged extension-call seam (#1206): reflection affirmatively shows that NO instance
+    /// member of that name could bind on the receiver, so an extension method is the only thing the name
+    /// can mean. Anything short of that proof — no CLR type on the owner, inconclusive reflection, a
+    /// same-named member of any kind — returns false and leaves the call on the permissive channel,
+    /// which is the safe direction (D2).
+    /// </summary>
+    private bool NoClrInstanceMemberCouldBind(SemanticType receiverType, string memberName)
+    {
+        var ownerSymbol = ResolveInstanceMemberOwnerSymbol(receiverType);
+        if (ownerSymbol?.ClrType == null)
+            return false;
+
+        return !ClrInstanceMemberMayExist(ownerSymbol, receiverType, memberName, out _, out _);
     }
 
     /// <summary>
