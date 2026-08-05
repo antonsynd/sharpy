@@ -85,6 +85,14 @@ deviations:
   spec_ref: docs/language_specification/comprehensions.md
   existing_diagnostic: SPY0200
   planned_diagnostic: null
+- id: constructor-alias-eager-capture
+  category: semantics
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/function_types.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: dataclass-field-ordering
   category: syntax
   audience: python
@@ -229,14 +237,22 @@ deviations:
   spec_ref: docs/language_specification/primitive_types.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: isinstance-open-generic
+  category: types
+  audience: python
+  severity: error
+  code: SPY0345
+  spec_ref: docs/language_specification/builtin_functions.md
+  existing_diagnostic: SPY0345
+  planned_diagnostic: null
 - id: isinstance-single-type
   category: stdlib
   audience: python
-  severity: none
-  code: null
+  severity: error
+  code: SPY0344
   spec_ref: docs/language_specification/builtin_functions.md
-  existing_diagnostic: null
-  planned_diagnostic: SPY0475
+  existing_diagnostic: SPY0344
+  planned_diagnostic: null
 - id: late-bound-default-self-reference
   category: semantics
   audience: python
