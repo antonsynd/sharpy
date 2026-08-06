@@ -395,18 +395,9 @@ public partial class Parser
         var startTime = System.Diagnostics.Stopwatch.StartNew();
 
         var statements = new List<Statement>();
-        string? docString = null;
 
         // Skip leading newlines
         SkipNewlines();
-
-        // Check for module docstring
-        if (Current.Type == TokenType.String)
-        {
-            docString = Current.Value;
-            Advance();
-            SkipNewlines();
-        }
 
         _lastLoopPosition = -1;
         while (!IsAtEnd)
@@ -443,6 +434,8 @@ public partial class Parser
             }
             SkipNewlines();
         }
+
+        var docString = TakeDocString(statements);
 
         _logger.LogInfo($"Module parsing completed in {startTime.ElapsedMilliseconds}ms, {statements.Count} statements");
 

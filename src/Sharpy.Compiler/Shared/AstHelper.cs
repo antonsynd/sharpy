@@ -160,6 +160,44 @@ internal static class AstHelper
     }
 
     /// <summary>
+    /// The single docstring-classification authority (#1247): decides whether a suite's already-parsed
+    /// leading statement is a docstring, and hands back its text.
+    ///
+    /// <para>The rule is CPython's, measured on python3 3.12.13: a docstring is <em>an expression
+    /// statement whose expression is a string constant</em>. It is a property of the parsed statement,
+    /// not of the leading token — which is exactly what the token peeks this replaced got wrong. They
+    /// consumed a leading <c>String</c> token before any statement was parsed, so <c>"world" - False</c>
+    /// became a docstring plus a dangling <c>-False</c> (a silently wrong AST that parsed fine), and
+    /// <c>"a".upper()</c> became a parse error at the orphaned <c>.</c>. Both now parse as the single
+    /// expression statement CPython produces.</para>
+    ///
+    /// <para>Grouping is transparent, per <see cref="UnwrapParenthesized"/> and the #1197 rule:
+    /// <c>("doc")</c> is the same docstring as <c>"doc"</c>, matching CPython (whose AST has no paren
+    /// node). Raw strings count — <c>r"doc"</c> is a <c>str</c> constant to CPython and is a
+    /// <see cref="StringLiteral"/> here. F-strings, t-strings and byte strings do not: CPython gives
+    /// <c>JoinedStr</c>/<c>Constant(bytes)</c> rather than a string constant, and each is its own AST
+    /// record here, so they fall through without a special case.</para>
+    ///
+    /// <para>Implicit concatenation (<c>"a" "b"</c>, which CPython joins to <c>'ab'</c> before the
+    /// docstring rule ever sees it) is not a Sharpy expression at all — adjacent string literals are a
+    /// parse error in every position. This helper therefore never sees a concatenation to join; the
+    /// leading-token peeks used to accept the form in this one position only, yielding docstring
+    /// <c>'a'</c> plus a stray <c>"b"</c> statement.</para>
+    /// </summary>
+    public static bool TryGetDocString(Statement stmt, [MaybeNullWhen(false)] out string docString)
+    {
+        if (stmt is ExpressionStatement exprStmt
+            && UnwrapParenthesized(exprStmt.Expression) is StringLiteral literal)
+        {
+            docString = literal.Value;
+            return true;
+        }
+
+        docString = null;
+        return false;
+    }
+
+    /// <summary>
     /// Whole-body convenience over <see cref="TryGetEllipsisStub"/>: true when <paramref name="body"/>
     /// is a single ellipsis-stub statement. Ellipsis-only — for the seams that accept <c>pass</c> as
     /// an equally valid stub body, use <see cref="IsAbstractStubBody"/>.

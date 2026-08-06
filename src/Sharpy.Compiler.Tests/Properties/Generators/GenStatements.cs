@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using CsCheck;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Tests.Properties.Generators;
 
@@ -96,9 +97,13 @@ internal static class GenStatements
             StructDefStmt(ctx).Select(x => (Statement)x),
             InterfaceDefStmt(ctx).Select(x => (Statement)x));
 
+    // A bare string expression statement is excluded because it is not round-trippable: leading a
+    // suite it reparses as that suite's docstring, so unparse(parse(unparse(ast))) moves it out of
+    // the body. Grouping is stripped before the test for the same reason — since #1247 the docstring
+    // rule looks through parentheses exactly as CPython does, so ("x") is as much a docstring as "x".
     public static Gen<ExpressionStatement> ExprStmt(GenContext ctx) =>
         GenExpressions.Expression(ctx)
-            .Where(e => e is not StringLiteral and not NoneLiteral)
+            .Where(e => AstHelper.UnwrapParenthesized(e) is not StringLiteral and not NoneLiteral)
             .Select(e => new ExpressionStatement { Expression = e });
 
     public static Gen<VariableDeclaration> VarDecl(GenContext ctx) =>

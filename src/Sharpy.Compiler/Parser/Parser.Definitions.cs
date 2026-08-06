@@ -264,6 +264,68 @@ public partial class Parser
         return new InlineStubBody(ImmutableArray.Create<Statement>(statement), endToken);
     }
 
+    /// <summary>
+    /// Lifts a suite's docstring out of its already-parsed body: when the first statement classifies
+    /// as a docstring under <see cref="AstHelper.TryGetDocString"/>, it is removed from
+    /// <paramref name="body"/> and its text returned; otherwise the body is untouched and the result
+    /// is <c>null</c>. Call it on every statement-list suite — module, function, class, struct,
+    /// interface.
+    ///
+    /// <para>Deciding <em>after</em> the statement is parsed is the whole point (#1247): the leading
+    /// string of <c>"world" - False</c> is only that expression's left operand, and no amount of
+    /// token lookahead makes that visible without parsing it. The dropped statement is never observed
+    /// downstream — the resulting AST is exactly the one the peeks produced for a true docstring, so
+    /// nothing keyed on body position or node identity changes.</para>
+    /// </summary>
+    private static string? TakeDocString(List<Statement> body)
+    {
+        if (body.Count == 0 || !AstHelper.TryGetDocString(body[0], out var docString))
+            return null;
+
+        body.RemoveAt(0);
+        return docString;
+    }
+
+    /// <summary>
+    /// The <see cref="TakeDocString"/> counterpart for suites whose bodies are <em>not</em> statement
+    /// lists — <c>enum</c> and <c>union</c>, whose members are their own productions. There is no
+    /// parsed first statement to classify, so one is built here from a leading expression and handed
+    /// to the same <see cref="AstHelper.TryGetDocString"/> authority.
+    ///
+    /// <para>The token gate is not a docstring test — it only asks whether a docstring could begin
+    /// here at all. Anything that turns out not to be one (<c>"a" - False</c>, <c>(x)</c>) is rewound
+    /// wholly unconsumed, so the member loop reports the same "Expected identifier" it always did.
+    /// This mirrors <see cref="TryParseInlineStubBody"/>, which resolves the same
+    /// classify-then-rewind shape for stubs.</para>
+    /// </summary>
+    private string? TryParseSuiteDocString()
+    {
+        if (Current.Type is not (TokenType.String or TokenType.RawString or TokenType.LeftParen))
+            return null;
+
+        var savedPosition = _position;
+        var expression = ParseExpression();
+        var statement = new ExpressionStatement
+        {
+            Expression = expression,
+            LineStart = expression.LineStart,
+            ColumnStart = expression.ColumnStart,
+            LineEnd = expression.LineEnd,
+            ColumnEnd = expression.ColumnEnd,
+            Span = expression.Span
+        };
+
+        if (!AstHelper.TryGetDocString(statement, out var docString))
+        {
+            _position = savedPosition;
+            return null;
+        }
+
+        ExpectStatementEnd();
+        SkipNewlines();
+        return docString;
+    }
+
     private FunctionDef ParseAsyncFunctionDef()
     {
         var asyncToken = Current;
@@ -370,18 +432,9 @@ public partial class Parser
 
         ExpectNewline();
 
-        string? docString = null;
         Expect(TokenType.Indent);
-
-        // Check for docstring
-        if (Current.Type == TokenType.String)
-        {
-            docString = Current.Value;
-            Advance();
-            SkipNewlines();
-        }
-
         var body = ParseBlock();
+        var docString = TakeDocString(body);
         Expect(TokenType.Dedent);
         var endToken = Previous;
 
@@ -501,18 +554,9 @@ public partial class Parser
         Expect(TokenType.Colon);
         ExpectNewline();
 
-        string? docString = null;
         Expect(TokenType.Indent);
-
-        // Check for docstring
-        if (Current.Type == TokenType.String)
-        {
-            docString = Current.Value;
-            Advance();
-            SkipNewlines();
-        }
-
         var body = ParseBlock();
+        var docString = TakeDocString(body);
         Expect(TokenType.Dedent);
         var endToken = Previous;
 
@@ -578,18 +622,9 @@ public partial class Parser
         Expect(TokenType.Colon);
         ExpectNewline();
 
-        string? docString = null;
         Expect(TokenType.Indent);
-
-        // Check for docstring
-        if (Current.Type == TokenType.String)
-        {
-            docString = Current.Value;
-            Advance();
-            SkipNewlines();
-        }
-
         var body = ParseBlock();
+        var docString = TakeDocString(body);
         Expect(TokenType.Dedent);
         var endToken = Previous;
 
@@ -655,16 +690,7 @@ public partial class Parser
         Expect(TokenType.Colon);
         ExpectNewline();
 
-        string? docString = null;
         Expect(TokenType.Indent);
-
-        // Check for docstring
-        if (Current.Type == TokenType.String)
-        {
-            docString = Current.Value;
-            Advance();
-            SkipNewlines();
-        }
 
         // Set interface parsing flag so ParseFunctionDef knows to allow bodyless methods
         _parsingInterface = true;
@@ -677,6 +703,7 @@ public partial class Parser
         {
             _parsingInterface = false;
         }
+        var docString = TakeDocString(body);
         Expect(TokenType.Dedent);
         var endToken = Previous;
 
@@ -841,16 +868,8 @@ public partial class Parser
         Expect(TokenType.Colon);
         ExpectNewline();
 
-        string? docString = null;
         Expect(TokenType.Indent);
-
-        // Check for docstring
-        if (Current.Type == TokenType.String)
-        {
-            docString = Current.Value;
-            Advance();
-            SkipNewlines();
-        }
+        var docString = TryParseSuiteDocString();
 
         var members = new List<EnumMember>();
 
@@ -958,16 +977,8 @@ public partial class Parser
         Expect(TokenType.Colon);
         ExpectNewline();
 
-        string? docString = null;
         Expect(TokenType.Indent);
-
-        // Check for docstring
-        if (Current.Type == TokenType.String)
-        {
-            docString = Current.Value;
-            Advance();
-            SkipNewlines();
-        }
+        var docString = TryParseSuiteDocString();
 
         var cases = new List<UnionCaseDef>();
         var body = new List<Statement>();
