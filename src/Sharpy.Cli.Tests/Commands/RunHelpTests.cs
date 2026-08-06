@@ -43,6 +43,25 @@ public class RunHelpTests
     }
 
     /// <summary>
+    /// The decoration hangs off the help option's action, not off a literal <c>--help</c> token, so
+    /// every spelling of asking for help gets the same page. Asserted rather than assumed: fixing
+    /// one spelling of help and missing the other four would look identical from the <c>--help</c>
+    /// tests alone.
+    /// </summary>
+    [Theory]
+    [InlineData("-h")]
+    [InlineData("-?")]
+    [InlineData("/h")]
+    [InlineData("/?")]
+    public void RunHelp_EveryAlias_RendersTheSameDecoratedPage(string alias)
+    {
+        var viaLongForm = CliTestHarness.Invoke("run --help").StdOut;
+        viaLongForm.Should().Contain(RunHelpAction.UsageSuffix);
+
+        CliTestHarness.Invoke($"run {alias}").StdOut.Should().Be(viaLongForm);
+    }
+
+    /// <summary>
     /// <c>run</c>'s input argument is required, so <c>run --help</c> parses with an error and only
     /// renders help because the help action clears it. The decorating action has to keep forwarding
     /// that (and <c>Terminating</c>) to the action it wraps, or asking for help would start
