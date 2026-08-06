@@ -1,0 +1,30 @@
+# An import used ONLY in a type-parameter constraint or PEP-696 default is used. Nothing
+# walked those positions, so both spellings below drew a false
+# `warning[SPY0452]: Imported name ... is never used` — the BARE name too, which is what
+# distinguishes this from the dotted-name reduction fixed alongside it: that one was a
+# missing reduction, this one is a missing traversal.
+#
+# `Shape` appears only as a constraint and `shapes` only as a default, so neither import has
+# any other use to keep it counted. The explicit `widest[Shape]` sidesteps an unrelated
+# pre-existing gap: inferring a type argument against a user-class constraint reports
+# "Inferred type 'Shape' does not satisfy constraint 'Shape'" (#1289).
+
+import shapes
+from shapes import Shape
+
+
+def widest[T: Shape](a: T) -> int:
+    return a.sides
+
+
+class Box[T = shapes.Shape]:
+    item: T?
+
+    def __init__(self):
+        self.item = None
+
+
+def main() -> None:
+    print(widest[Shape](Shape(4)))
+    b: Box[Shape] = Box[Shape]()
+    print(b.item is None)

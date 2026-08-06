@@ -91,6 +91,7 @@ internal class UnusedImportValidator : ValidatingAstWalker
         }
         if (node.ReturnType != null)
             CollectReferencesFromTypeAnnotation(node.ReturnType, _referencedNames);
+        CollectReferencesFromTypeParameters(node.TypeParameters);
         base.VisitFunctionDef(node);
     }
 
@@ -100,6 +101,7 @@ internal class UnusedImportValidator : ValidatingAstWalker
             _referencedNames.Add(decorator.Name);
         foreach (var baseType in node.BaseClasses)
             CollectReferencesFromTypeAnnotation(baseType, _referencedNames);
+        CollectReferencesFromTypeParameters(node.TypeParameters);
         base.VisitClassDef(node);
     }
 
@@ -109,6 +111,7 @@ internal class UnusedImportValidator : ValidatingAstWalker
             _referencedNames.Add(decorator.Name);
         foreach (var baseType in node.BaseClasses)
             CollectReferencesFromTypeAnnotation(baseType, _referencedNames);
+        CollectReferencesFromTypeParameters(node.TypeParameters);
         base.VisitStructDef(node);
     }
 
@@ -116,7 +119,32 @@ internal class UnusedImportValidator : ValidatingAstWalker
     {
         foreach (var baseIface in node.BaseInterfaces)
             CollectReferencesFromTypeAnnotation(baseIface, _referencedNames);
+        CollectReferencesFromTypeParameters(node.TypeParameters);
         base.VisitInterfaceDef(node);
+    }
+
+    /// <summary>
+    /// A type parameter's constraints and its PEP-696 default are type annotations like any other,
+    /// but nothing walked them, so an import used ONLY in one of those positions was reported unused
+    /// — <c>def widest[T: Shape](a: T)</c> and <c>class Box[T = Shape]</c> both warned. Unlike the
+    /// dotted-name reduction in <see cref="CollectReferencesFromTypeAnnotation"/> this is a missing
+    /// traversal, not a missing reduction: the BARE spelling was affected too, which is what a
+    /// neutral control showed and what makes it a separate defect rather than the same one.
+    /// </summary>
+    private void CollectReferencesFromTypeParameters(
+        System.Collections.Immutable.ImmutableArray<TypeParameterDef> typeParameters)
+    {
+        foreach (var typeParam in typeParameters)
+        {
+            foreach (var constraint in typeParam.Constraints)
+            {
+                if (constraint is TypeConstraint typeConstraint)
+                    CollectReferencesFromTypeAnnotation(typeConstraint.Type, _referencedNames);
+            }
+
+            if (typeParam.DefaultType != null)
+                CollectReferencesFromTypeAnnotation(typeParam.DefaultType, _referencedNames);
+        }
     }
 
     public override void VisitVariableDeclaration(VariableDeclaration node)

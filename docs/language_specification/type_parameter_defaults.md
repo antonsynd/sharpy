@@ -105,6 +105,14 @@ class Outer[T]:
         ...
 ```
 
+The enclosing-scope restriction is **deliberate and could be lifted**. It is not a consequence of
+how defaults are represented: at `Outer[int]().make[str](...)` the enclosing `T` does have a value,
+so supplying it would be well-defined. It is refused because a default is read where the declaration
+is instantiated, and taking the enclosing binding into account there would make a parameter list's
+meaning depend on its receiver. PEP 696 excludes it for the same reason. A future change that wants
+it need only thread the receiver's binding into default resolution; nothing in the current design
+prevents it.
+
 The same rules apply to generic functions:
 
 ```python
