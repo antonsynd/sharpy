@@ -381,9 +381,8 @@ public static class DiagnosticCodes
         // here under the same precedent. Reserved, not yet declared: a code is declared together with
         // its DiagnosticExplanations entry, because AllDiagnosticCodes_HaveExplanations reflects over
         // every declared const with no exemption list.
-        //   SPY0346: RESERVED — NonConstructibleTypeReference (#1250, batch B). An interface, enum or
-        //            abstract class name used as a value. Value-position reference family (SPY0335-
-        //            SPY0339 full, overflow already at SPY0342).
+        //   SPY0346: TAKEN — NonConstructibleTypeReference (#1250, batch B), declared in the
+        //            value-position reference overflow region below.
         //   SPY0347: RESERVED — type-parameter default forward reference (#1245, batch E). A default
         //            that names a parameter declared after it. Belongs with SPY0395-SPY0396, which is
         //            boxed in by SPY0394 and SPY0397. NOTE: pick a name distinct from SPY0395
@@ -405,8 +404,18 @@ public static class DiagnosticCodes
         // adjacent to that band rather than appended at the end of the semantic range so the family
         // stays readable; the module-level reserve above shrinks by one slot to pay for it.
         public const string UnpinnedConstructorReference = "SPY0342"; // Active — a builtin type constructor reference used as a value with no signature available to pin it to (#1182)
-        // SPY0346 is RESERVED as this family's second overflow slot — NonConstructibleTypeReference
-        // (#1250): an interface/enum/abstract class name used as a value. See the module-level region.
+
+        // The family's second overflow slot, borrowed from the module-level reserve above under the
+        // same precedent as SPY0342. Sibling rather than a flavor of SPY0342: that code means "this
+        // position supplies no signature to select", which presumes a signature exists; this one
+        // means there is no construction to refer to at all, so no position could ever pin it.
+        //
+        // Scoped to the kinds that genuinely have no construction — measured under `run`, not
+        // assumed, because SPY0908 never appears under `emit diagnostics` (#1250). An interface,
+        // enum, union, delegate and abstract class have none. object/bytes/decimal/frozenset/
+        // frozendict/Iterator/the view types DO construct, so they are not this code's business
+        // even though a REFERENCE to any of them leaks the same SPY0908; that gap is #1272.
+        public const string NonConstructibleTypeReference = "SPY0346"; // Active — an interface, enum, union, delegate or abstract class name used as a value, where no construction exists to refer to (#1250)
 
         #endregion
 

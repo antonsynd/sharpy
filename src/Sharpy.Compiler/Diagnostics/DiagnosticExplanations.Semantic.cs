@@ -157,6 +157,34 @@ public static partial class DiagnosticExplanations
             + "(`f = int` then `f(\"42\")`), or wrap it in a lambda to fix the signature yourself "
             + "(`g = lambda s: int(s)`).");
 
+        Add(dict, DiagnosticCodes.Semantic.NonConstructibleTypeReference,
+            "Type cannot be constructed, so its name is not a value", "Semantic",
+            "A bare type name used as a value is a CONSTRUCTOR REFERENCE — it stands for the "
+            + "construction of that type. An interface, an enum, a union type name, a delegate type "
+            + "and an abstract class have no construction, so there is nothing for the name to refer "
+            + "to. (A Sharpy delegate is a named function TYPE: you assign a compatible function or "
+            + "lambda to it, `cb: Cb = handler`; there is no `Cb(handler)` spelling.) This is a "
+            + "different failure from SPY0342: that one means the position supplies no signature to "
+            + "select among the ones the type offers, which presumes the type offers some; here no "
+            + "position could ever pin the name, because the type is not constructible at all. "
+            + "Only VALUE positions are affected. The same names go on working everywhere a type "
+            + "name belongs — annotations (`x: IShape`), type tests (`isinstance(x, IShape)`), type "
+            + "arguments (`list[IShape]`), and enum member access (`Color.RED`). A union VARIANT "
+            + "(`Shape.Circle`) is call syntax rather than a value and draws SPY0337 instead. "
+            + "Related: SPY0342 (a constructor reference with no signature to pin) and SPY0280 "
+            + "(constructing an abstract class or a union type name directly).",
+            "interface IShape:\n    def area(self) -> float: ...\n\n"
+            + "enum Color:\n    RED = 1\n\n"
+            + "def main():\n"
+            + "    f = IShape   # an interface has no constructor\n"
+            + "    g = Color    # an enum has no constructor",
+            "Name a concrete implementing type, whose constructor IS a value:\n"
+            + "  f: (float) -> Circle = Circle\n"
+            + "Or wrap the construction you actually mean in a lambda:\n"
+            + "  g: () -> IShape = lambda: Circle(1.0)\n"
+            + "For an enum, a member is the value you want, not the type:\n"
+            + "  c: Color = Color.RED");
+
         Add(dict, DiagnosticCodes.Semantic.UnresolvedLambdaParameterType,
             "Lambda parameter type cannot be inferred", "Semantic",
             "A lambda bound directly to a name gives its parameters no types, none of them are "
