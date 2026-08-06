@@ -1,0 +1,40 @@
+# The inline twin of paren_ellipsis_abstract_method_stub: `(...)` written on the declaration line
+# is the same stub as `...` there too (#1238). Before the three inline fast paths were folded into
+# one classifying helper, this was a parse error — "Expected newline, got LeftParen" — even though
+# the block spelling had been accepted since #1214.
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float: (...)
+
+    @abstract
+    def name(self) -> str: ((...))
+
+    @abstract
+    def sides(self) -> int: ...
+
+
+class Square(Shape):
+    _side: float
+
+    def __init__(self, side: float):
+        self._side = side
+
+    @override
+    def area(self) -> float:
+        return self._side * self._side
+
+    @override
+    def name(self) -> str:
+        return "square"
+
+    @override
+    def sides(self) -> int:
+        return 4
+
+
+def main():
+    s: Shape = Square(3.0)
+    print(s.name())
+    print(s.area())
+    print(s.sides())

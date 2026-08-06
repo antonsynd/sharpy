@@ -1,0 +1,21 @@
+# The inline twin of paren_ellipsis_interface_method_stub (#1238). An interface method stub
+# written `(...)` on the declaration line must be a stub, not a real body — a real body would draw
+# SPY0266 ("must return a value in all code paths").
+interface Greeter:
+    def greet(self, name: str) -> str: (...)
+
+    def farewell(self, name: str) -> str: ((...))
+
+
+class Hello(Greeter):
+    def greet(self, name: str) -> str:
+        return "hello " + name
+
+    def farewell(self, name: str) -> str:
+        return "bye " + name
+
+
+def main():
+    g: Greeter = Hello()
+    print(g.greet("world"))
+    print(g.farewell("world"))

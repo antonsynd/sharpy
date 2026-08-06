@@ -1,0 +1,22 @@
+# The inline twin of paren_ellipsis_abstract_property_stub (#1238). PropertyValidator must not
+# report SPY0409 "must have '...' (ellipsis) body" for the grouped inline spelling.
+@abstract
+class Shape:
+    @abstract
+    property get area(self) -> float: (...)
+
+
+class Circle(Shape):
+    _radius: float
+
+    def __init__(self, radius: float):
+        self._radius = radius
+
+    @override
+    property get area(self) -> float:
+        return 3.0 * self._radius * self._radius
+
+
+def main():
+    c: Shape = Circle(2.0)
+    print(c.area)

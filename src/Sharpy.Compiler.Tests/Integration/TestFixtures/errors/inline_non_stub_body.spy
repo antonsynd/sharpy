@@ -1,0 +1,9 @@
+# The inline declaration position accepts a stub body and nothing else. Folding the three inline
+# fast paths into one classifying helper (#1238) widened it to every grouped spelling of `...` and
+# to nothing more: a real expression on the declaration line is still rejected where it always was,
+# at the first token after the `:`.
+def f() -> int: 1 + 1
+
+
+def main():
+    print(f())

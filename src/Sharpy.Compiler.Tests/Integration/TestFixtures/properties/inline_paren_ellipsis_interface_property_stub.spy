@@ -1,0 +1,26 @@
+# The inline twin of paren_ellipsis_interface_property_stub (#1238). The property fast path
+# carried its own copy of the ellipsis-token guard, so it had the same blind spot as the function
+# one and had to be folded into the same helper rather than widened separately.
+interface Named:
+    property get name(self) -> str: (...)
+
+    property get label(self) -> str: ((...))
+
+
+class Animal(Named):
+    _n: str
+
+    def __init__(self, n: str):
+        self._n = n
+
+    property get name(self) -> str:
+        return self._n
+
+    property get label(self) -> str:
+        return "animal " + self._n
+
+
+def main():
+    a: Named = Animal("Max")
+    print(a.name)
+    print(a.label)
