@@ -101,7 +101,7 @@ internal partial class RoslynEmitter
         var propertyGroups = new Dictionary<string, List<PropertyDef>>();
 
         // Collect all EventDef nodes, grouped by name for combining add/remove accessors
-        var eventGroups = new Dictionary<string, List<EventDef>>();
+        var eventGroups = GroupEventsByName(body);
 
         // Track which dunder methods are present for complementary operator generation
         var dunders = new HashSet<string>();
@@ -170,14 +170,9 @@ internal partial class RoslynEmitter
                     group.Add(propDef);
                     break;
 
-                case EventDef eventDef:
-                    // Collect for grouped generation (add+remove combine into one C# event)
-                    if (!eventGroups.TryGetValue(eventDef.Name, out var eventGroup))
-                    {
-                        eventGroup = new List<EventDef>();
-                        eventGroups[eventDef.Name] = eventGroup;
-                    }
-                    eventGroup.Add(eventDef);
+                case EventDef:
+                    // Already grouped by GroupEventsByName; emitted below so an add+remove
+                    // pair combines into one C# event
                     break;
 
                 case VariableDeclaration _:
@@ -331,9 +326,37 @@ internal partial class RoslynEmitter
         return members;
     }
 
+    /// <summary>
+    /// Groups the <see cref="EventDef"/> members of a type body by event name, in declaration order.
+    /// A function-style <c>add</c>/<c>remove</c> pair shares one name and lowers to a single C# event,
+    /// so every member path — class and interface alike — emits one member per group. This is the only
+    /// event grouping: a second implementation is how the two paths drift apart (the interface path had
+    /// none, so a pair emitted twice — CS0102, #1239).
+    /// </summary>
+    private static Dictionary<string, List<EventDef>> GroupEventsByName(IReadOnlyList<Statement> body)
+    {
+        var eventGroups = new Dictionary<string, List<EventDef>>();
+
+        foreach (var stmt in body)
+        {
+            if (stmt is not EventDef eventDef)
+                continue;
+
+            if (!eventGroups.TryGetValue(eventDef.Name, out var eventGroup))
+            {
+                eventGroup = new List<EventDef>();
+                eventGroups[eventDef.Name] = eventGroup;
+            }
+            eventGroup.Add(eventDef);
+        }
+
+        return eventGroups;
+    }
+
     private List<MemberDeclarationSyntax> GenerateInterfaceMembers(IReadOnlyList<Statement> body)
     {
         var members = new List<MemberDeclarationSyntax>();
+        var eventGroups = GroupEventsByName(body);
 
         foreach (var stmt in body)
         {
@@ -349,7 +372,13 @@ internal partial class RoslynEmitter
                     break;
 
                 case EventDef eventDef:
-                    members.Add(GenerateInterfaceEvent(eventDef));
+                    // One C# event per group: the add and remove halves share a name, so only the
+                    // first accessor emits — at its declaration position — and the rest are skipped
+                    var eventGroup = eventGroups[eventDef.Name];
+                    if (ReferenceEquals(eventGroup[0], eventDef))
+                    {
+                        members.Add(GenerateInterfaceEvent(eventGroup));
+                    }
                     break;
 
                 case VariableDeclaration varDecl:

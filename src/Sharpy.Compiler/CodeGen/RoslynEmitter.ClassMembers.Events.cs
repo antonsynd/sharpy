@@ -230,13 +230,15 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates a C# event declaration for an interface event.
-    /// Interface events are abstract (semicolon-only accessors).
+    /// Generates a C# event declaration from a group of interface EventDef nodes sharing one name —
+    /// an auto-event on its own, or a function-style <c>add</c>/<c>remove</c> pair. Interface events
+    /// are always abstract and carry no accessors, so the whole group lowers to one declaration.
     /// <c>event property_changed: EventHandler[PropertyChangedEventArgs]</c>
     /// → <c>event EventHandler&lt;PropertyChangedEventArgs&gt; PropertyChanged;</c>
     /// </summary>
-    private MemberDeclarationSyntax GenerateInterfaceEvent(EventDef eventDef)
+    private MemberDeclarationSyntax GenerateInterfaceEvent(List<EventDef> eventGroup)
     {
+        var eventDef = eventGroup[0];
         var eventName = NameCasing.ResolveMethod(eventDef.Name, eventDef.IsNameBacktickEscaped);
 
         TypeSyntax eventType;
