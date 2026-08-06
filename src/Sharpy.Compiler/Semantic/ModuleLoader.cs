@@ -501,9 +501,16 @@ internal class ModuleLoader
             if (stmt is FunctionDef method)
             {
                 var methodSymbol = ExtractMethodSymbol(method, interfaceDef.TypeParameters);
+                // Interface members accept `...`, `(...)` AND `pass` as stub bodies — the same rule
+                // NameResolver.ResolveMethodDeclaration applies same-file (NameResolver.Members.cs:137).
+                // This site used the ellipsis-only predicate, so one declaration classified two ways
+                // depending on which side of an import it sat (#1258). The predicate is keyed to the
+                // OWNING TYPE KIND, not to the site: this method is interface-specific, so it takes
+                // the interface rule; abstract-CLASS members keep requiring an ellipsis body
+                // (IsEllipsisStubBody) and must not be switched to this predicate.
                 if (!methodSymbol.IsAbstract)
                 {
-                    if (AstHelper.IsEllipsisStubBody(method.Body))
+                    if (AstHelper.IsAbstractStubBody(method.Body))
                     {
                         methodSymbol = methodSymbol with { IsAbstract = true };
                     }
