@@ -1,0 +1,13 @@
+# The last line of this file has no trailing newline, on purpose: that missing byte
+# IS the test (#1233). The lexer ends such a file with `Dedent, Eof`, and a `const`
+# that terminated with the mid-construct terminator threw SPY0102 on that Dedent —
+# nulling the AST, so every LSP feature on the file went dark at once. If anything
+# ever appends the byte back, this fixture silently stops testing its own premise;
+# UnterminatedFinalLineParserTests asserts the same shapes at byte level in-process,
+# and NoTrailingNewlineFixtureTests asserts this file's last byte directly.
+def main() -> None:
+    print(Config.LIMIT)
+
+
+class Config:
+    const LIMIT: int = 42
