@@ -1,0 +1,1 @@
+Type 'str' does not support operator '-' with operand of type 'bool' @7:5

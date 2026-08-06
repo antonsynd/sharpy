@@ -1,0 +1,6 @@
+# A method call on a string literal, as a body's first statement. The leading-token
+# peek swallowed `"abc"` and then choked on the orphaned `.` with SPY0100 — the same
+# defect as #1247, one token later.
+def main() -> None:
+    "abc".upper()
+    print("ok")

@@ -1,0 +1,7 @@
+# The #1247 repro: the leading string is the LEFT OPERAND of `-`, not a docstring.
+# Before the fix the parser claimed `"world"` as main's docstring and left `-False`
+# behind as a second statement, so this operator was never type-checked at all and
+# the program compiled. CPython raises TypeError here at runtime; Sharpy reports the
+# same mismatch statically.
+def main() -> None:
+    "world" - False

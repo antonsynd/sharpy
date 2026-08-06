@@ -1,0 +1,44 @@
+"""Module docstring."""
+
+
+interface Greeter:
+    """Interface docstring."""
+
+    def greet(self) -> str: ...
+
+
+struct Point:
+    """Struct docstring."""
+
+    x: int
+    y: int
+
+
+enum Color:
+    """Enum docstring."""
+
+    RED = 1
+    GREEN = 2
+
+
+class Counter(Greeter):
+    """Class docstring."""
+
+    value: int
+
+    def __init__(self) -> None:
+        """Constructor docstring."""
+        self.value = 0
+
+    def greet(self) -> str:
+        """Method docstring."""
+        return "hello"
+
+
+def main() -> None:
+    """Entry point docstring."""
+    c: Counter = Counter()
+    print(c.greet())
+    p: Point = Point(1, 2)
+    print(p.x + p.y)
+    print(Color.GREEN)

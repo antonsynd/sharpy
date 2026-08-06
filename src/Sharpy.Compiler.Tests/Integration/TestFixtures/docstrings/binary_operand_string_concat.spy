@@ -1,0 +1,5 @@
+# The silent-meaning-change shape the issue calls out: a body starting `"a" + suffix`.
+# Pre-fix this parsed as docstring `"count: "` plus a statement `+ str(3)`.
+def main() -> None:
+    "count: " + str(3)
+    print("done")

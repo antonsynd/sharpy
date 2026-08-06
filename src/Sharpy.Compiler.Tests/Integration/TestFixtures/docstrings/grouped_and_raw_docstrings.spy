@@ -1,0 +1,13 @@
+# Parentheses are transparent and raw strings are string constants, so both forms are
+# docstrings to CPython. The token peek could see neither: it tested one token type and
+# could not look through a `(`, so each spelling was left in the body as a statement.
+class Greeter:
+    ("Grouped docstring.")
+
+    def greet(self) -> str:
+        r"Raw docstring."
+        return "hi"
+
+
+def main() -> None:
+    print(Greeter().greet())

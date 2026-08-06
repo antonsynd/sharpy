@@ -179,6 +179,16 @@ internal sealed class MaskedSource
             if (c == '"' || c == '\'')
             {
                 var quote = c;
+
+                // The prefix letters of r"x" / b"x" / f"x" / t"x" / rb"x" belong to the literal
+                // token, so they must be masked too — the scan reaches the quote with them already
+                // copied through, and leaving them visible makes a bare prefixed-string statement
+                // look like a bare identifier followed by a string. ParensWrapTransform then wraps
+                // what it takes to be the whole statement and emits `(r)"x"`: two adjacent
+                // expressions, SPY0103, a transform that no longer preserves semantics.
+                for (int p = i - PrefixLength(source, i); p < i; p++)
+                    buffer[p] = ' ';
+
                 var isTriple = i + 2 < source.Length && source[i + 1] == quote && source[i + 2] == quote;
                 var delimiterLength = isTriple ? 3 : 1;
                 for (int k = 0; k < delimiterLength; k++)
@@ -219,4 +229,26 @@ internal sealed class MaskedSource
         }
         return new string(buffer);
     }
+
+    /// <summary>
+    /// Length of the string-prefix run immediately before the quote at <paramref name="quoteIndex"/>
+    /// (0, 1 or 2 characters). A run counts only when it is a whole word — the <c>r</c> of
+    /// <c>expr"x"</c> would be part of an identifier, not a prefix — and only for the letters the
+    /// language actually uses as prefixes, in either case: <c>r b f u t</c> and the two-letter
+    /// combinations built from them (<c>rb</c>, <c>br</c>, <c>fr</c>, <c>rf</c>).
+    /// </summary>
+    private static int PrefixLength(string source, int quoteIndex)
+    {
+        var length = 0;
+        while (length < 2 && quoteIndex - length - 1 >= 0 && IsPrefixLetter(source[quoteIndex - length - 1]))
+            length++;
+
+        var before = quoteIndex - length - 1;
+        if (before >= 0 && (char.IsLetterOrDigit(source[before]) || source[before] == '_'))
+            return 0;
+
+        return length;
+    }
+
+    private static bool IsPrefixLetter(char c) => char.ToLowerInvariant(c) is 'r' or 'b' or 'f' or 'u' or 't';
 }
