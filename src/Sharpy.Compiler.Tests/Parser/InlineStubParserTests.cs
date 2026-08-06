@@ -162,39 +162,49 @@ public class InlineStubParserTests
     /// <c>6eeb329f2</c> — before the three token guards were folded into one classifying helper.
     /// The fold parses ahead only when an inline body could begin at all, and rewinds when what it
     /// parsed is not a stub, so each of these still reports at the first token after the <c>:</c>.
+    ///
+    /// <para>Every row but one reports from the <em>caller's</em> block-header terminator, reached
+    /// after the helper rewinds, and that terminator is still <c>ExpectNewline</c> — a block header
+    /// genuinely requires an indented suite to follow. "stray close" is the exception: there the stub
+    /// <em>is</em> recognized and the helper's own terminator runs. #1233 converted that terminator to
+    /// the statement-final contract (an inline stub is the last thing on its line, so
+    /// <c>def m(self) -> int: ...</c> as the final line of a file with no trailing newline must
+    /// parse), which renames its diagnostic from SPY0102 to SPY0103. Same input, same rejection, same
+    /// position — only the terminator's identity changed, which is why the expected code is per-row
+    /// rather than a constant.</para>
     /// </summary>
-    public static TheoryData<string, string, string, int, int> NonStubInlineBodies => new()
+    public static TheoryData<string, string, string, string, int, int> NonStubInlineBodies => new()
     {
-        // source                                          message tail          line col
-        { "1 + 1",       "def f(): 1 + 1\n",               "got Integer",         1, 10 },
-        { "pass",        "def f() -> str: pass\n",         "got Pass",            1, 17 },
-        { "return",      "def f() -> int: return 1\n",     "got Return",          1, 17 },
-        { "call",        "def f(): g()\n",                 "got Identifier",      1, 10 },
-        { "group",       "def f() -> str: (1 + 2)\n",      "got LeftParen",       1, 17 },
-        { "empty group", "def f() -> str: ()\n",           "got LeftParen",       1, 17 },
-        { "two groups",  "def f() -> str: (...) (...)\n",  "got LeftParen",       1, 17 },
-        { "stray close", "def f() -> str: ...)\n",         "got RightParen",      1, 20 },
+        // source                                          code                              message tail          line col
+        { "1 + 1",       "def f(): 1 + 1\n",               DiagnosticCodes.Parser.ExpectedNewline,        "newline, got Integer",         1, 10 },
+        { "pass",        "def f() -> str: pass\n",         DiagnosticCodes.Parser.ExpectedNewline,        "newline, got Pass",            1, 17 },
+        { "return",      "def f() -> int: return 1\n",     DiagnosticCodes.Parser.ExpectedNewline,        "newline, got Return",          1, 17 },
+        { "call",        "def f(): g()\n",                 DiagnosticCodes.Parser.ExpectedNewline,        "newline, got Identifier",      1, 10 },
+        { "group",       "def f() -> str: (1 + 2)\n",      DiagnosticCodes.Parser.ExpectedNewline,        "newline, got LeftParen",       1, 17 },
+        { "empty group", "def f() -> str: ()\n",           DiagnosticCodes.Parser.ExpectedNewline,        "newline, got LeftParen",       1, 17 },
+        { "two groups",  "def f() -> str: (...) (...)\n",  DiagnosticCodes.Parser.ExpectedNewline,        "newline, got LeftParen",       1, 17 },
+        { "stray close", "def f() -> str: ...)\n",         DiagnosticCodes.Parser.ExpectedEndOfStatement, "end of statement, got RightParen", 1, 20 },
         {
             "property return",
             "class C:\n    property get x(self) -> int: return 1\n",
-            "got Return", 2, 34
+            DiagnosticCodes.Parser.ExpectedNewline, "newline, got Return", 2, 34
         },
         {
             "property expression",
             "class C:\n    property get x(self) -> int: 1 + 1\n",
-            "got Integer", 2, 34
+            DiagnosticCodes.Parser.ExpectedNewline, "newline, got Integer", 2, 34
         },
         {
             "event call",
             "delegate H() -> None\n\nclass C:\n    event add on_a(self, handler: H): print(\"x\")\n",
-            "got Identifier", 4, 39
+            DiagnosticCodes.Parser.ExpectedNewline, "newline, got Identifier", 4, 39
         },
     };
 
     [Theory]
     [MemberData(nameof(NonStubInlineBodies))]
     public void NonStubInlineBody_KeepsItsPreFoldDiagnostic(
-        string label, string source, string messageTail, int line, int column)
+        string label, string source, string code, string messageTail, int line, int column)
     {
         var errors = ParseErrors(source);
 
@@ -203,8 +213,8 @@ public class InlineStubParserTests
         errors.Should().NotBeEmpty($"`{label}` must still be rejected");
 
         var first = errors[0];
-        first.Code.Should().Be(DiagnosticCodes.Parser.ExpectedNewline);
-        first.Message.Should().Be($"Expected newline, {messageTail}");
+        first.Code.Should().Be(code);
+        first.Message.Should().Be($"Expected {messageTail}");
         (first.Line, first.Column).Should().Be((line, column),
             $"`{label}` reported at {line}:{column} before the fast paths were folded together");
     }

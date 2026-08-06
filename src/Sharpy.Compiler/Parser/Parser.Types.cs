@@ -612,6 +612,23 @@ public partial class Parser
         return IsKeywordToken(Current.Type) && Peek().Type == TokenType.Dot;
     }
 
+    /// <summary>
+    /// The <em>mid-construct</em> line terminator: a newline that something is required to follow.
+    /// Use it only where the production is incomplete without more input on a later line — after a
+    /// block header's <c>:</c> (an <c>Indent</c> must follow) and after a decorator (its target must
+    /// follow). In those positions a <c>Dedent</c> or EOF genuinely is an error, which is exactly
+    /// what this reports and <see cref="ExpectStatementEnd"/> would not.
+    ///
+    /// <para>Do <em>not</em> use it to end a statement. It tolerates EOF but not <c>Dedent</c>, so a
+    /// statement production that ends here parses everywhere except as the last line of an indented
+    /// block in a file with no trailing newline — where the token stream is <c>Dedent, EOF</c> and
+    /// the <c>Dedent</c> throws SPY0102. That was #1233, and it was never only <c>const</c>: the same
+    /// narrow contract sat on <c>raise</c>, <c>assert</c>, <c>import</c>, <c>from ... import</c>,
+    /// enum members, union cases, type aliases, inline stubs and every body-less declaration form.
+    /// A statement production also gets the post-<c>Dedent</c> case wrong — <c>const Y = match x:
+    /// ...</c> failed at any position in the file, trailing newline or not, because the block-consuming
+    /// expression had already eaten the newline.</para>
+    /// </summary>
     private void ExpectNewline()
     {
         if (Current.Type == TokenType.Newline)
@@ -620,6 +637,9 @@ public partial class Parser
             throw ReportError($"Expected newline, got {Current.Type}", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedNewline, span: CurrentSpan);
     }
 
+    /// <summary>
+    /// The statement-final terminator, and the one every statement production must use.
+    /// </summary>
     private void ExpectStatementEnd()
     {
         // Simple statements can end with:

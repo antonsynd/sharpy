@@ -218,7 +218,7 @@ public partial class Parser
     /// <c>property get p(self) -> int: ...</c>, <c>event add e(self, h: H): ...</c>. Call it
     /// immediately after the declaration's <c>:</c>. Returns <c>null</c> without consuming anything
     /// when what follows is not a stub, so the caller falls through to its ordinary
-    /// <c>ExpectNewline()</c> + indented-block path exactly as before.
+    /// newline + indented-block path exactly as before.
     ///
     /// <para>Those three forms used to carry three independently written
     /// <c>Current.Type == TokenType.Ellipsis</c> guards, which is why <c>(...)</c> — the same stub
@@ -260,7 +260,7 @@ public partial class Parser
         }
 
         var endToken = Previous;
-        ExpectNewline();
+        ExpectStatementEnd();
         return new InlineStubBody(ImmutableArray.Create<Statement>(statement), endToken);
     }
 
@@ -472,7 +472,7 @@ public partial class Parser
         int startColumn,
         Token startToken)
     {
-        ExpectNewline();
+        ExpectStatementEnd();
 
         var ellipsisExpr = new EllipsisLiteral
         {
@@ -889,7 +889,7 @@ public partial class Parser
                 if (Current.Type == TokenType.Pass)
                 {
                     Advance();
-                    ExpectNewline();
+                    ExpectStatementEnd();
                     SkipNewlines();
                     continue;
                 }
@@ -920,7 +920,7 @@ public partial class Parser
                     ColumnEnd = memberEndColumn,
                     Span = GetSpanFromTokens(memberStartToken, memberEndToken)
                 });
-                ExpectNewline();
+                ExpectStatementEnd();
             }
             catch (ParserAbortException)
             {
@@ -999,7 +999,7 @@ public partial class Parser
                 if (Current.Type == TokenType.Pass)
                 {
                     Advance();
-                    ExpectNewline();
+                    ExpectStatementEnd();
                     SkipNewlines();
                     continue;
                 }
@@ -1088,7 +1088,7 @@ public partial class Parser
                     Span = GetSpanFromTokens(caseStartToken, caseEndToken)
                 });
 
-                ExpectNewline();
+                ExpectStatementEnd();
             }
             catch (ParserAbortException)
             {
@@ -1239,7 +1239,7 @@ public partial class Parser
         }
 
         var endToken = Previous;
-        ExpectNewline();
+        ExpectStatementEnd();
 
         return new TypeAlias
         {
@@ -1318,7 +1318,7 @@ public partial class Parser
             if (_parsingInterface && Current.Type != TokenType.Colon)
             {
                 // Interface property without explicit body - synthesize ellipsis body
-                ExpectNewline();
+                ExpectStatementEnd();
 
                 var ellipsisExpr = new EllipsisLiteral
                 {
@@ -1565,7 +1565,7 @@ public partial class Parser
             // For interface events, the colon and body are optional.
             if (_parsingInterface && Current.Type != TokenType.Colon)
             {
-                ExpectNewline();
+                ExpectStatementEnd();
 
                 var ellipsisExpr = new EllipsisLiteral
                 {
@@ -1695,7 +1695,7 @@ public partial class Parser
         Expect(TokenType.Assign);
         var value = ParseExpression();
         var endToken = Previous;
-        ExpectNewline();
+        ExpectStatementEnd();
 
         return new VariableDeclaration
         {

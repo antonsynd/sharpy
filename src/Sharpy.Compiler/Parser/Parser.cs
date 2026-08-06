@@ -880,6 +880,8 @@ public partial class Parser
                     ColumnEnd = decoratorEndToken.Column + decoratorEndToken.Value.Length,
                     Span = GetSpanFromTokens(decoratorStartToken, decoratorEndToken)
                 });
+                // Mid-construct, not statement-final: a decorator is a prefix, so the statement it
+                // decorates must still follow. Dedent or EOF here is a decorator with no target.
                 ExpectNewline();
                 continue;
             }
@@ -928,6 +930,7 @@ public partial class Parser
                     Span = GetSpanFromTokens(decoratorStartToken, decoratorEndToken)
                 });
             }
+            // Mid-construct: see the bracket-attribute arm above — the decorated statement follows.
             ExpectNewline();
         }
 

@@ -721,7 +721,11 @@ public partial class Parser
         Expression? exception = null;
         Expression? cause = null;
 
-        if (Current.Type != TokenType.Newline && !IsAtEnd)
+        // A bare `raise` (re-raise) is terminated by a Dedent as well as by a Newline or EOF — the
+        // same three-way guard ParseReturnStatement uses. Without the Dedent arm, `raise` as the
+        // last line of a block in a file with no trailing newline tried to parse the Dedent as an
+        // exception expression, so converting the terminator below would not have been enough.
+        if (Current.Type != TokenType.Newline && Current.Type != TokenType.Dedent && !IsAtEnd)
         {
             exception = ParseExpression();
 
@@ -741,7 +745,7 @@ public partial class Parser
             }
         }
 
-        ExpectNewline();
+        ExpectStatementEnd();
 
         // Determine the span end based on what was parsed
         var endSpan = cause?.Span ?? exception?.Span ?? GetSpanFromToken(raiseToken);
@@ -774,7 +778,7 @@ public partial class Parser
             message = ParseExpression();
         }
 
-        ExpectNewline();
+        ExpectStatementEnd();
 
         var endSpan = message?.Span ?? test.Span;
 
@@ -896,7 +900,7 @@ public partial class Parser
         } while (true);
 
         var endToken = Previous;
-        ExpectNewline();
+        ExpectStatementEnd();
 
         return new ImportStatement
         {
@@ -969,7 +973,7 @@ public partial class Parser
         }
 
         var endToken = Previous;
-        ExpectNewline();
+        ExpectStatementEnd();
 
         return new FromImportStatement
         {
