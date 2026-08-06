@@ -1,0 +1,17 @@
+from lib import Logger
+
+
+class ConsoleLogger(Logger):
+    @override
+    def log(self, message: str) -> None:
+        print("log: " + message)
+
+    @override
+    def flush(self) -> None:
+        print("flushed")
+
+
+def main():
+    lg: Logger = ConsoleLogger()
+    lg.log("hello")
+    lg.flush()

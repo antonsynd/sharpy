@@ -1,0 +1,18 @@
+# The cross-module twin of `classes/pass_stub_abstract_members.spy`: `pass` is a co-equal stub body
+# beside `...`/`(...)` for INTERFACE members (#1214), and one declaration must not classify two ways
+# depending on which side of an import it sits (#1258). Value-returning `pass` stubs are rejected by
+# must-return (SPY0266), so — like the same-file pin — the pinnable shape is None-returning.
+#
+# What this fixture pins is the END-TO-END behavior: a `pass`-bodied imported interface is
+# implementable and callable through the interface. It does NOT pin
+# ModuleLoader.ExtractFullInterfaceSymbol's classification, which was measured (2026-08-06, by
+# disabling that marking outright) to be shadowed in every front end: since #1087 the entry file's
+# local-import closure is lowered into a synthetic project and NameResolver resolves every unit, so
+# the imported symbols come from NameResolver (#1267). `Semantic/StubClassificationTableTests` is
+# the guard that fails when the two classifications disagree.
+interface Logger:
+    def log(self, message: str) -> None:
+        pass
+
+    def flush(self) -> None:
+        pass

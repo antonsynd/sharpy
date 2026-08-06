@@ -6,9 +6,14 @@ class Polite(GreeterBase):
     def salutation(self) -> str:
         return "dear"
 
-    # `greet` is inherited from GreeterBase as abstract because the imported interface's
-    # `(...)` body was classified as a stub across the module boundary — so @override is
-    # required here, exactly as it would be for a `...` body.
+    # `greet` is inherited from GreeterBase as abstract because the `(...)` body in the imported
+    # module is classified as a stub — so @override is required here, exactly as it would be for a
+    # `...` body. NOTE: the classification comes from NameResolver, not from ModuleLoader's
+    # cross-module symbol extraction. Measured 2026-08-06 (#1258): disabling
+    # ModuleLoader.ExtractFullInterfaceSymbol's stub marking outright leaves this fixture green,
+    # because since #1087 the entry file's local-import closure is lowered into a synthetic project
+    # and every unit is name-resolved (#1267). The ModuleLoader seam is pinned by
+    # `Semantic/StubClassificationTableTests`, not here.
     @override
     def greet(self, name: str) -> str:
         return self.salutation() + " " + name
