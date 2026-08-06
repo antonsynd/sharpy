@@ -65,12 +65,7 @@ internal partial class RoslynEmitter
         var eventType = isAbstract ? delegateType : nullableType;
 
         // EventFieldDeclaration: public event EventHandler? OnClick;
-        var declaration = VariableDeclaration(eventType)
-            .WithVariables(SingletonSeparatedList(
-                VariableDeclarator(Identifier(eventName))));
-
-        var eventField = EventFieldDeclaration(declaration)
-            .WithModifiers(modifiers);
+        var eventField = BuildEventFieldDeclaration(eventType, eventName, modifiers);
 
         // Add C# attributes from unknown decorators
         var eventAttributes = GenerateAttributeListsFromDecorators(eventDef.Decorators);
@@ -80,6 +75,34 @@ internal partial class RoslynEmitter
         }
 
         return eventField;
+    }
+
+    /// <summary>
+    /// Builds the bare C# event field declaration shape — <c>&lt;modifiers&gt; event T Name;</c> — with
+    /// no accessor list. Shared by auto-events and by abstract function-style events, which C# forbids
+    /// from using accessor syntax at all (CS8712).
+    /// </summary>
+    private static EventFieldDeclarationSyntax BuildEventFieldDeclaration(
+        TypeSyntax eventType, string eventName, SyntaxTokenList modifiers)
+    {
+        var declaration = VariableDeclaration(eventType)
+            .WithVariables(SingletonSeparatedList(
+                VariableDeclarator(Identifier(eventName))));
+
+        return EventFieldDeclaration(declaration).WithModifiers(modifiers);
+    }
+
+    /// <summary>
+    /// True when a function-style event accessor is abstract: it carries <c>@abstract</c>, or it sits
+    /// in an abstract class with an ellipsis body (implicit abstract). The implicit arm uses
+    /// <see cref="AstHelper.IsEllipsisStubBody"/> — the abstract-class rule, matching
+    /// <c>NameResolver</c>/<c>TypeChecker</c>, under which a <c>pass</c> body is a concrete empty
+    /// implementation rather than a stub.
+    /// </summary>
+    private bool IsAbstractEventAccessor(EventDef eventDef)
+    {
+        return eventDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
+            || (_isInAbstractClass && AstHelper.IsEllipsisStubBody(eventDef.Body));
     }
 
     /// <summary>
@@ -116,6 +139,29 @@ internal partial class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
         }
 
+        // Add C# attributes from unknown decorators
+        var funcEventAttributes = GenerateAttributeListsFromDecorators(first.Decorators);
+
+        // C# forbids accessor syntax on an abstract event (CS8712): when every accessor in the pair
+        // is abstract and every body is a stub — so there is no implementation to drop — the pair
+        // lowers to the bare declaration form instead of an accessor list.
+        // "Body is a stub" is AstHelper.IsAbstractStubBody, the same predicate EventValidator uses
+        // to accept an @abstract event body, so every body the validator admits is lowerable here.
+        if (eventGroup.All(IsAbstractEventAccessor)
+            && eventGroup.All(e => AstHelper.IsAbstractStubBody(e.Body)))
+        {
+            if (!modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
+            {
+                modifiers = modifiers.Add(Token(SyntaxKind.AbstractKeyword));
+            }
+            modifiers = ResolveModifierConflicts(modifiers);
+
+            var abstractEvent = BuildEventFieldDeclaration(eventType, eventName, modifiers);
+            return funcEventAttributes.Count > 0
+                ? abstractEvent.WithAttributeLists(funcEventAttributes)
+                : abstractEvent;
+        }
+
         // Determine event-level access modifier (widest access)
         var eventAccess = GetWidestAccessModifier(modifiers);
 
@@ -145,11 +191,7 @@ internal partial class RoslynEmitter
 
             var accessor = AccessorDeclaration(accessorKind);
 
-            bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(eventDef.Body);
-            bool isAbstract = eventDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
-                || (_isInAbstractClass && hasEllipsisBody);
-
-            if (isAbstract)
+            if (IsAbstractEventAccessor(eventDef))
             {
                 accessor = accessor.WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
             }
@@ -179,8 +221,6 @@ internal partial class RoslynEmitter
             .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(List(accessors)));
 
-        // Add C# attributes from unknown decorators
-        var funcEventAttributes = GenerateAttributeListsFromDecorators(first.Decorators);
         if (funcEventAttributes.Count > 0)
         {
             eventDecl = eventDecl.WithAttributeLists(funcEventAttributes);
@@ -214,12 +254,8 @@ internal partial class RoslynEmitter
                 : PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
-        // Interface events are always abstract event field declarations
-        var declaration = VariableDeclaration(eventType)
-            .WithVariables(SingletonSeparatedList(
-                VariableDeclarator(Identifier(eventName))));
-
-        return EventFieldDeclaration(declaration)
-            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        // Interface events are always abstract event field declarations, and an interface permits
+        // no modifiers on them
+        return BuildEventFieldDeclaration(eventType, eventName, TokenList());
     }
 }
