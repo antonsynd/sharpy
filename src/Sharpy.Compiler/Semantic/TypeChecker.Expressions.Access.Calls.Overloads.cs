@@ -710,14 +710,20 @@ internal partial class TypeChecker
     /// every unpinned reference draws SPY0342 — would be true of user classes and builtin families
     /// and quietly false of seven builtin types.</para>
     ///
-    /// <para>Gated on value uses ONLY — NOT on the direct call-argument position, which is the one
-    /// difference from <see cref="RefuseNonConstructibleReference"/>. An exception type is a builtin
-    /// with no family, and naming one in a call argument is established working behavior:
-    /// <c>self.assertRaises(ValueError, ...)</c>. Extending the refusal there broke ten shipped
-    /// unittest tests, which is the #1170 over-fire again. The distinction is real rather than
-    /// convenient: for a non-constructible USER kind that position has no working behavior to
-    /// protect (it leaks), while for these it does. <c>map(bytes, xs)</c> therefore still leaks, and
-    /// stays under #1272's open half.</para>
+    /// <para><b>The gate rule, for both refusals: refuse where the position leaks, preserve where it
+    /// works.</b> That is why this one is gated on value uses ONLY while
+    /// <see cref="RefuseNonConstructibleReference"/> also covers the direct call-argument position.
+    /// The two gates are the same test applied to different facts, not an inconsistency to
+    /// "fix": for a non-constructible USER kind the call-argument position has no working behavior
+    /// to protect — it leaks — while for these builtins it does.</para>
+    ///
+    /// <para>What it protects there is narrower than it looks, and worth naming so the next reader
+    /// does not widen this gate on a wrong premise. An ordinary call argument naming one of these
+    /// types still leaks: <c>takes(ValueError)</c> for <c>def takes(t: object)</c> produces CS0119
+    /// behind SPY0908 today, and so does <c>map(bytes, xs)</c> — both stay under #1272's open half.
+    /// The position that WORKS is <c>with assert_raises(ValueError):</c>, a special form whose
+    /// argument the emitter lowers to a TYPE ARGUMENT of <c>Xunit.Assert.Throws</c> rather than to a
+    /// value. Refusing here broke ten shipped unittest tests — the #1170 over-fire again.</para>
     ///
     /// <para>The untouched positions were measured working: <c>x: object = 5</c>,
     /// <c>isinstance(x, object)</c>, <c>list[object]</c>, <c>dict[str, object]</c>, and annotated

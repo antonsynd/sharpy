@@ -19,12 +19,27 @@
 #
 # Python's defaultdict(list) factory convention (#1175) belongs to the same family but needs the
 # stdlib, which this harness does not load; it is pinned by
-# Sharpy.Stdlib.Tests/Integration/TestFixtures/stdlib_collections_defaultdict.spy.
+# Sharpy.Stdlib.Tests/Integration/TestFixtures/stdlib_collections_defaultdict.spy. So does
+# `with assert_raises(ValueError):` — a special form whose argument the emitter lowers to a TYPE
+# ARGUMENT of Xunit.Assert.Throws, which is why an exception type name is legitimate there and not
+# in an ordinary call argument (`takes(ValueError)` still leaks, #1272). It is pinned by the
+# unittest fixtures under Sharpy.Stdlib.Tests, which is what caught the #1272 over-fire.
+#
+# Rows below the builtin/user-class pairs were added by MEASUREMENT, not by anticipation: each one
+# was discovered by a refusal breaking it. The two enum-iteration spellings cost five shipped
+# fixtures and the metamorphic sweep when the #1250 refusal first landed (they read as a value use
+# to every predicate the rule had). A position that has cost real breakage belongs here, where it
+# fails in seconds, rather than only in the corpus, where it fails in sixteen minutes.
 class Box[T]:
     value: T
 
     def __init__(self, value: T):
         self.value = value
+
+
+enum Suit:
+    HEARTS = 1
+    SPADES = 2
 
 
 class Point:
@@ -98,3 +113,15 @@ def main():
     # qualifier row was non-generic. Both a builtin and a user class as the type argument.
     print(Outer.Inner[int](6).v)
     print(Outer.Inner[Point](Point()).v.x)
+
+    # --- Positions discovered by breaking them. ---
+
+    # An ENUM name is a legitimate ITERABLE: it denotes the member set. Both spellings rescue the
+    # name into a UserDefinedType right after CheckExpression returns Unknown for it, so the name is
+    # a use of the TYPE, not of a value — but it reads as a value use to IsConstructorReferenceValueUse
+    # and to IsConstructorReferenceCallArgument alike, which is what made it the #1170 over-fire in
+    # its enum flavor (#1250).
+    for suit in Suit:
+        print(suit.name)
+
+    print([suit.name for suit in Suit])
