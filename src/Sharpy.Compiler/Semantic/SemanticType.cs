@@ -879,10 +879,17 @@ public sealed record GenericFunctionType : SemanticType
 /// <para>A builtin type name in value position denotes construction, not one callable:
 /// <c>int</c> is an overload set, and <c>dict</c>/<c>list</c>/<c>set</c> have unbound type
 /// arguments, so no single signature follows from the reference alone. This carrier holds the
-/// reference until a context supplies one, exactly as C# holds a method group. Pinned against an
-/// expected function type it becomes that concrete <see cref="FunctionType"/>; bound to a variable
-/// that is only ever called, each call resolves like a call of the builtin itself; anywhere else it
+/// classification while <c>CheckConstructorReference</c> decides what to do with it. Pinned against
+/// an expected function type it becomes that concrete <see cref="FunctionType"/>; anywhere else it
 /// is rejected (SPY0342).</para>
+///
+/// <para><b>NO BINDING EVER CARRIES THIS TYPE.</b> Until #1248 a third option existed — a name that
+/// was only ever called became a call-only ALIAS that KEPT the carrier, and each call through it
+/// resolved like a call of the builtin itself. That alias is retired: it was untyped by design, had
+/// no runtime representation, emitted no C#, and was resolved where it was read rather than where it
+/// was written. The carrier is now purely transient, living inside one method; a callee or a
+/// variable typed as one is a checker bug, which <c>CheckFunctionCall</c> asserts and the emitter's
+/// unreachable-carrier guard enforces.</para>
 ///
 /// <para>Internal plumbing on the <see cref="GenericFunctionType"/> precedent (#1138): it is never
 /// a first-class value, and it never reaches code generation as a declared type.</para>

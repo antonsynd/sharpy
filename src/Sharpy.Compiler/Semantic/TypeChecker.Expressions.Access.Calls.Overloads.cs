@@ -371,16 +371,23 @@ internal partial class TypeChecker
     /// <list type="number">
     /// <item><description>An expected function type supplies a signature: the reference binds that
     /// signature and records a <see cref="ConstructorReferenceLowering"/> for codegen.</description></item>
-    /// <item><description>A binding with no signature anywhere becomes a call-only ALIAS carrying
-    /// <see cref="ConstructorReferenceType"/>; each call through it resolves like a call of the
-    /// builtin itself.</description></item>
     /// <item><description>Anything else has no signature and no way to acquire one: SPY0342.</description></item>
     /// </list>
     ///
-    /// <para>Ahead of all three, a name that resolves to a type with no construction at all — a
-    /// user-declared interface, enum, union or abstract class — is refused outright (SPY0346,
-    /// #1250). That is not tier 3 with a different message: tier 3 means this position supplies no
-    /// signature to select among the ones the type offers, which presumes it offers some.</para>
+    /// <para>There used to be a middle tier: a binding with no signature anywhere became a call-only
+    /// ALIAS carrying <see cref="ConstructorReferenceType"/>, resolved at each call site. It is
+    /// retired (#1248). It was untyped by design — it had no runtime representation, emitted no C#,
+    /// and was resolved where it was READ rather than where it was written, which is a compile-time
+    /// macro impersonating a value; with overloaded constructors, which signature was meant was
+    /// unknowable until each call. C# has no constructor values at all, and Java's <c>Point::new</c>
+    /// is legal only in target-typed positions — which is tier 1. NO BINDING CARRIES THE CARRIER
+    /// ANY MORE; a callee typed as one is a checker bug.</para>
+    ///
+    /// <para>Ahead of both, a name that resolves to a type with no construction at all — a
+    /// user-declared interface, enum, union, delegate or abstract class — is refused outright
+    /// (SPY0346, #1250). That is not tier 2 with a different message: tier 2 means this position
+    /// supplies no signature to select among the ones the type offers, which presumes it offers
+    /// some.</para>
     ///
     /// <para>A builtin type NAME written in one of the established non-value positions is left with
     /// the type it has today (see <see cref="IsConstructorReferenceValueUse"/>) — those positions
@@ -404,8 +411,7 @@ internal partial class TypeChecker
                 : null;
         }
 
-        // A read already typed as the carrier is always a value use; nothing but this rule makes one.
-        var isValueUse = type is ConstructorReferenceType || IsConstructorReferenceValueUse(reference);
+        var isValueUse = IsConstructorReferenceValueUse(reference);
 
         // Tier 1. A target type with unresolved type parameters — a generic parameter such as map's
         // `(T) -> R` — supplies no signature; it is not a failure to match one.
@@ -420,7 +426,7 @@ internal partial class TypeChecker
                 return target;
 
             if (!isValueUse)
-                return null;
+                return RefuseUnpinnedCallArgument(reference, constructorReference, target);
 
             AddError(
                 $"{ConstructorReferenceSubject(constructorReference)} has no constructor signature matching "
@@ -440,8 +446,8 @@ internal partial class TypeChecker
         // for this position; a user class had nothing, so this is the arm that gives it one.
         //
         // Only an UNAMBIGUOUS shape binds. Several constructor overloads supply no more of an answer
-        // here than an overload set does, so they fall through to the alias or SPY0342 rather than
-        // silently picking the first. The other non-value positions are excluded exactly as
+        // here than an overload set does, so they fall through to the deliberate refusal below rather
+        // than silently picking the first. The other non-value positions are excluded exactly as
         // IsConstructorReferenceValueUse excludes them — a type test's type argument
         // (`isinstance(x, Point)`) is a direct call argument too, and re-typing it is the #1170
         // over-fire this whole rule is built to avoid.
@@ -457,41 +463,75 @@ internal partial class TypeChecker
         }
 
         if (!isValueUse)
-            return null;
+            return RefuseUnpinnedCallArgument(reference, constructorReference, target: null);
 
-        // Tier 2. `f = int` / `f = dict`: nothing says which signature was meant, so the name aliases
-        // the builtin and every call through it is resolved at its own call site. A binding whose
-        // target already holds an alias is a RE-alias (`f = int; …; f = str`) — its expected type is
-        // the previous carrier, which supplies no signature either.
-        if (_expectedType is null or ConstructorReferenceType
-            && _currentBindingValue != null
-            && ReferenceEquals(UnwrapParenthesized(_currentBindingValue), UnwrapParenthesized(reference)))
-        {
-            return constructorReference;
-        }
-
-        // An alias read in a call argument whose parameter type is generic (`map(f, xs)`) binds the
-        // same synthesized signature the builtin NAME binds there, so an alias behaves in argument
-        // positions exactly like the name it aliases. The read still needs a lowering: the alias
-        // BINDING emits nothing, so the read must emit the builtin's method group, not the name.
-        if (type is ConstructorReferenceType && IsDirectCallArgument(reference)
-            && constructorReference.Family == ConstructorReferenceFamily.Conversion
-            && SynthesizePrimitiveFunctionType(constructorReference.Symbol) is FunctionType synthesized)
-        {
-            _semanticInfo.SetConstructorReferenceLowering(reference,
-                new ConstructorReferenceLowering(
-                    ConstructorReferenceFamily.Conversion, constructorReference.Name,
-                    synthesized.ReturnType, synthesized.ParameterTypes.Count));
-            return synthesized;
-        }
-
-        // Tier 3.
+        // Tier 2. Nothing here says which signature was meant, and unlike before there is no third
+        // option: the call-only alias is retired (#1248).
         AddError(
             $"cannot infer a single callable signature for {ConstructorReferenceSubject(constructorReference)}: "
             + $"{ConstructorReferenceAmbiguityReason(constructorReference)}, and this position supplies "
             + "no signature to select one. Annotate the target with a function type "
-            + $"({ConstructorReferenceAnnotationExample(constructorReference)}), bind it to a name you "
-            + "only ever call, or wrap the construction in a lambda.",
+            + $"({ConstructorReferenceAnnotationExample(constructorReference)}), call the type directly, "
+            + "or wrap the construction in a lambda.",
+            reference.LineStart, reference.ColumnStart,
+            code: DiagnosticCodes.Semantic.UnpinnedConstructorReference,
+            span: reference.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Refuses a constructor reference in a direct call argument that could not be pinned (#1249),
+    /// or returns null to leave the position the typing it has today.
+    ///
+    /// <para>Only the <c>UserType</c> family refuses. The <c>Conversion</c> and <c>Collection</c>
+    /// families keep the legacy fallback deliberately: their fallback is a synthesized signature
+    /// that WORKS, and it is what makes <c>map(int, xs)</c> and <c>sorted(xs, key=str)</c> compile.
+    /// A user class had no such fallback — the bare name reached codegen in an argument slot and
+    /// produced CS0119 behind SPY0908 — so there is nothing to preserve and everything to refuse.
+    /// </para>
+    ///
+    /// <para>Gated on <see cref="IsConstructorReferenceCallArgument"/>, which repeats every
+    /// non-value exclusion verbatim, so a type test's type argument and a static-member receiver are
+    /// still skipped (#1170).</para>
+    ///
+    /// <para>Three reasons, and which one applies is decided by what was missing, not by how many
+    /// constructors the class declares. Several overloads are NOT by themselves a failure: with a
+    /// concrete target, tier 1 selects among them and <c>build(xs, make=Many)</c> pins. They only
+    /// fail where no target exists at all, which is this position.</para>
+    /// </summary>
+    private SemanticType? RefuseUnpinnedCallArgument(
+        Expression reference, ConstructorReferenceType constructorReference, FunctionType? target)
+    {
+        if (constructorReference.Family != ConstructorReferenceFamily.UserType
+            || !IsConstructorReferenceCallArgument(reference))
+        {
+            return null;
+        }
+
+        var subject = ConstructorReferenceSubject(constructorReference);
+        string reason;
+        if (target is { } concreteTarget)
+        {
+            reason = $"has no constructor signature matching '{concreteTarget.GetDisplayName()}'. "
+                + ConstructorReferenceShapes(constructorReference);
+        }
+        else if (constructorReference.Symbol.TypeParameters.Count > 0)
+        {
+            reason = "is generic, and its type arguments cannot be determined from this position: "
+                + "a constructor reference takes them from the target, and this argument's parameter "
+                + "type supplies none. Annotate the parameter with a concrete function type "
+                + $"({ConstructorReferenceAnnotationExample(constructorReference)}), or wrap the "
+                + "construction in a lambda.";
+        }
+        else
+        {
+            reason = "declares several constructors, and this position supplies no signature to "
+                + $"select one. {ConstructorReferenceShapes(constructorReference)}\n"
+                + "Annotate the parameter with a concrete function type, or wrap the construction "
+                + "in a lambda.";
+        }
+
+        AddError($"{subject} {reason}",
             reference.LineStart, reference.ColumnStart,
             code: DiagnosticCodes.Semantic.UnpinnedConstructorReference,
             span: reference.Span);
@@ -968,13 +1008,20 @@ internal partial class TypeChecker
             _ => $"'{constructorReference.Name}' is generic, so its type arguments are unknown here",
         };
 
-    /// <summary>An annotation that would pin this reference, for the SPY0342 message.</summary>
+    /// <summary>
+    /// An annotation that would pin this reference, for the SPY0342 message.
+    ///
+    /// <para>A GENERIC user class gets the placeholder spelling rather than its own shape: that
+    /// shape carries the class's type PARAMETERS, and printing <c>f: (T) -> Box = Box</c> would
+    /// suggest something that cannot compile — the parameters have to be substituted by whoever
+    /// writes the annotation, which is the whole reason this position could not pin.</para>
+    /// </summary>
     private string ConstructorReferenceAnnotationExample(ConstructorReferenceType constructorReference)
         => constructorReference.Family switch
         {
             ConstructorReferenceFamily.Conversion =>
                 $"f: (str) -> {constructorReference.Name} = {constructorReference.Name}",
-            ConstructorReferenceFamily.UserType =>
+            ConstructorReferenceFamily.UserType when constructorReference.Symbol.TypeParameters.Count == 0 =>
                 $"f: {UserTypeShapeOf(constructorReference).GetDisplayName()} = {constructorReference.Name}",
             _ => $"f: () -> {constructorReference.Name}[...] = {constructorReference.Name}",
         };
