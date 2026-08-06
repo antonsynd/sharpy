@@ -208,12 +208,35 @@ public class RunCommandTests
         result.GetValue<string[]>("--module-path").Should().Contain("mods");
     }
 
+    /// <summary>
+    /// #1215's load-bearing invariant, and the reason #1231 could only touch help rendering: the
+    /// separator is split off before parsing precisely so the parser can stay strict about what
+    /// comes before it. A typo must not be quietly forwarded to the program.
+    /// </summary>
     [Fact]
     public void Rejects_UnknownOption()
     {
         var result = CliTestHarness.Parse("run main.spy --does-not-exist");
 
         result.Errors.Should().NotBeEmpty();
+    }
+
+    /// <summary>
+    /// The same invariant at invocation level, which is where #1231's help decoration lives: a parse
+    /// error renders help through the most proximate help option's action, so the decorated action
+    /// has to leave the failure — exit code, message, and the program never starting — intact.
+    /// </summary>
+    [Fact]
+    public void Run_UnknownOption_FailsInsteadOfForwardingItToTheProgram()
+    {
+        using var ws = new TempWorkspace();
+        var spy = ws.WriteSpy("def main() -> None:\n    print(\"hi\")\n");
+
+        var invocation = CliTestHarness.Invoke($"run \"{spy}\" --does-not-exist");
+
+        invocation.ExitCode.Should().NotBe(0);
+        invocation.StdErr.Should().Contain("--does-not-exist");
+        invocation.StdOut.Should().NotContain("=== Running Program ===");
     }
 
     // ---- Invocation-level error/success tests ----
@@ -246,6 +269,10 @@ public class RunCommandTests
     /// End-to-end proof that the separator reaches the executed program, not just the parser: the
     /// program exits with the number of arguments it received (#1215). The child process writes to
     /// the real console rather than the captured writers, so its exit code is the observable.
+    /// <para>
+    /// #1231 documents this spelling in <c>run --help</c>; this is the test that keeps the
+    /// documented behaviour true.
+    /// </para>
     /// </summary>
     [Fact]
     public void Run_ArgumentsAfterDoubleDash_ReachTheProgram()
