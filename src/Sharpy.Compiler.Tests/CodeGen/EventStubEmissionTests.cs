@@ -35,6 +35,11 @@ public class EventStubEmissionTests
     private const string InterfaceStubFixture = "event_interface_stub_pair_0001.spy";
     private const string InterfaceStubParenFixture = "event_interface_stub_pair_paren_ellipsis_0001.spy";
 
+    private const string AbstractStubInlineFixture = "event_abstract_stub_inline_0001.spy";
+    private const string AbstractStubInlineParenFixture = "event_abstract_stub_inline_paren_ellipsis_0001.spy";
+    private const string InterfaceStubInlineFixture = "event_interface_stub_pair_inline_0001.spy";
+    private const string InterfaceStubInlineParenFixture = "event_interface_stub_pair_inline_paren_ellipsis_0001.spy";
+
     [Fact]
     public void AbstractEventStub_EmitsBareAbstractEventDeclaration_NotAccessorSyntax()
     {
@@ -89,6 +94,43 @@ public class EventStubEmissionTests
     [Fact]
     public void InterfaceEventStubPair_BothSpellings_EmitIdenticalCSharp()
         => AssertSpellingTwinsEmitIdenticalCSharp(InterfaceStubFixture, InterfaceStubParenFixture);
+
+    /// <summary>
+    /// All four ways of writing the same event stub — block or inline position, <c>...</c> or
+    /// <c>(...)</c> — must emit the same C#. The inline position only began parsing at all in #1238,
+    /// so this is where that parser change meets #1239's lowering; neither batch's own fixtures cover
+    /// the combination, and the inline interface pair is the shape that was still emitting CS0102
+    /// after the parser fix landed and before the grouping fix did.
+    /// </summary>
+    [Theory]
+    [InlineData(AbstractStubFixture, AbstractStubParenFixture, AbstractStubInlineFixture, AbstractStubInlineParenFixture)]
+    [InlineData(InterfaceStubFixture, InterfaceStubParenFixture, InterfaceStubInlineFixture, InterfaceStubInlineParenFixture)]
+    public void EventStub_BlockAndInlinePositions_AllSpellingsEmitIdenticalCSharp(
+        string blockPlain, string blockParen, string inlinePlain, string inlineParen)
+    {
+        var sources = new[] { blockPlain, blockParen, inlinePlain, inlineParen }
+            .Select(f => (Fixture: f, Source: ReadFixture(f)))
+            .ToList();
+
+        // Guard the arrangement: four fixtures that were secretly the same text, or that all used one
+        // spelling, would compare equal without testing anything.
+        sources.Select(s => s.Source).Distinct().Should().HaveCount(4,
+            "the four fixtures must differ in source for their agreeing on one emission to mean anything");
+        sources.Where(s => s.Source.Contains("(...)")).Should().HaveCount(2,
+            "exactly the two parenthesized twins carry the (...) spelling");
+        sources.Where(s => s.Source.Contains("): ...")).Should().HaveCount(1,
+            "exactly the inline plain-ellipsis twin writes a stub body on the declaration line");
+
+        var emitted = sources.Select(s => (s.Fixture, Code: Emit(s.Source))).ToList();
+        emitted[0].Code.Should().Contain("OnAction",
+            "an emission that dropped the event entirely would compare equal for the wrong reason");
+
+        foreach (var (fixture, code) in emitted.Skip(1))
+        {
+            code.Should().Be(emitted[0].Code,
+                $"{fixture} writes the same stub as {blockPlain}, only spelled differently");
+        }
+    }
 
     /// <summary>
     /// #1214's contract at the event seam: <c>(...)</c> is the same stub as <c>...</c>, so the two
