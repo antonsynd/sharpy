@@ -1,19 +1,31 @@
 using System.Globalization;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Sharpy.Compiler.Diagnostics;
 
 namespace Sharpy.Lsp;
 
 /// <summary>
-/// Formats a single, stable "analysis latency" log line for the two LSP change→publish paths:
-/// single-file debounced analysis (<see cref="SharpyWorkspace"/>) and full project reanalysis
-/// (<see cref="LanguageService.OnDocumentChangedAsync"/>). Centralizing the shape keeps both call
-/// sites identical and gives the recorded LSP latency baseline a greppable marker.
+/// Formats and emits a single, stable "analysis latency" log line for the two LSP change→publish
+/// paths: single-file debounced analysis (<see cref="SharpyWorkspace"/>) and full project
+/// reanalysis (<see cref="LanguageService.OnDocumentChangedAsync"/>). Centralizing the shape keeps
+/// both call sites identical and gives the recorded LSP latency baseline a greppable marker.
 /// </summary>
 /// <remarks>
+/// <para>
 /// This is the D1 "measure first" principle applied to the LSP: the incremental-frontend work
-/// (#1099) starts from recorded numbers rather than intuition. The formatter is pure so the
+/// (#1099) starts from recorded numbers rather than intuition. The formatters are pure so the
 /// log shape can be asserted without intercepting the logger.
+/// </para>
+/// <para>
+/// Emit through <see cref="LogLatency"/>/<see cref="LogStages"/> rather than passing a formatter
+/// result to a logging call: a formatter result is an ordinary argument, so it is built before the
+/// logging call decides whether anything wants it — and until a level is asked for, nothing is
+/// even attached (#1225). The emitters check first, which is what keeps the instrumentation free
+/// when unobserved (#1140). <c>AnalysisLatencyLogCallSiteTests</c> enforces that no production call
+/// site reaches a formatter directly, so a call site added later inherits the check instead of
+/// quietly reintroducing the cost.
+/// </para>
 /// </remarks>
 internal static class AnalysisLatencyLog
 {
@@ -71,5 +83,37 @@ internal static class AnalysisLatencyLog
 
         sb.Append(CultureInfo.InvariantCulture, $"] stagesTotalMs={total:F1}");
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Emits the latency line, building it only when something will consume it. Every production
+    /// latency call site goes through here — see the class remarks for why an unguarded
+    /// <see cref="Format"/> argument is not equivalent.
+    /// </summary>
+    public static void LogLatency(ILogger logger, string path, int affectedFiles, double elapsedMs)
+    {
+        if (!logger.IsEnabled(LogLevel.Information))
+            return;
+
+        logger.LogInformation("{LatencyLine}", Format(path, affectedFiles, elapsedMs));
+    }
+
+    /// <summary>
+    /// Emits the per-stage attribution line (#1140), building it only when something will consume
+    /// it.
+    /// </summary>
+    /// <remarks>
+    /// Whether there are stages to report stays the caller's decision: an edit an incremental fast
+    /// path served never reached the compiler, so it has no stages, and its breakdown must stay
+    /// absent rather than become an empty one. That distinction is what makes served-from-cache
+    /// distinguishable from analysed in a trace, so it is deliberately not folded in here.
+    /// </remarks>
+    public static void LogStages(
+        ILogger logger, string path, IReadOnlyList<PhaseMetric> stages, double elapsedMs)
+    {
+        if (!logger.IsEnabled(LogLevel.Debug))
+            return;
+
+        logger.LogDebug("{StageLine}", FormatStages(path, stages, elapsedMs));
     }
 }

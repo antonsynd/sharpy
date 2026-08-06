@@ -390,10 +390,11 @@ internal sealed class LanguageService : IDisposable
                 skipWatch.Stop();
                 // affectedFiles=0 marks the skip: a full reanalysis of a changed file always
                 // touches at least the file itself, so this value is unique to the fast path.
-                _logger.LogInformation("{LatencyLine}", AnalysisLatencyLog.Format(
+                AnalysisLatencyLog.LogLatency(
+                    _logger,
                     AnalysisLatencyLog.ProjectPath,
                     affectedFiles: 0,
-                    skipWatch.Elapsed.TotalMilliseconds));
+                    skipWatch.Elapsed.TotalMilliseconds);
                 return Array.Empty<string>();
             }
         }
@@ -448,10 +449,11 @@ internal sealed class LanguageService : IDisposable
             }
 
             stopwatch.Stop();
-            _logger.LogInformation("{LatencyLine}", AnalysisLatencyLog.Format(
+            AnalysisLatencyLog.LogLatency(
+                _logger,
                 AnalysisLatencyLog.ProjectPath,
                 affectedFiles: updatedUris.Count,
-                stopwatch.Elapsed.TotalMilliseconds));
+                stopwatch.Elapsed.TotalMilliseconds);
 
             return updatedUris;
         }

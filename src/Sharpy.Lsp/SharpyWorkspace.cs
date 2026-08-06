@@ -604,19 +604,21 @@ internal sealed class SharpyWorkspace : IDisposable
                     await handler(uri, result).ConfigureAwait(false);
                 }
                 stopwatch.Stop();
-                _logger.LogInformation("{LatencyLine}", AnalysisLatencyLog.Format(
+                AnalysisLatencyLog.LogLatency(
+                    _logger,
                     AnalysisLatencyLog.SingleFilePath,
                     affectedFiles: 1,
-                    stopwatch.Elapsed.TotalMilliseconds));
+                    stopwatch.Elapsed.TotalMilliseconds);
 
                 // Empty when an incremental fast path served the edit without a compiler call —
                 // there are no stages to attribute, and claiming otherwise would be a lie.
                 if (stageMetrics is { Phases.Count: > 0 })
                 {
-                    _logger.LogDebug("{StageLine}", AnalysisLatencyLog.FormatStages(
+                    AnalysisLatencyLog.LogStages(
+                        _logger,
                         AnalysisLatencyLog.SingleFilePath,
                         stageMetrics.Phases,
-                        stopwatch.Elapsed.TotalMilliseconds));
+                        stopwatch.Elapsed.TotalMilliseconds);
                 }
             }
         }
