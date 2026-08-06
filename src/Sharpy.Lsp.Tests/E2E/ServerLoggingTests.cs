@@ -26,14 +26,26 @@ public class ServerLoggingTests
     private const string Source = "def main() -> int:\n    return 1\n";
 
     [Fact]
-    public async Task Default_startup_writes_no_debug_output()
+    public async Task Default_startup_attaches_no_log_destination()
     {
         await using var client = LspTestClient.Start(_output);
         await client.InitializeAsync();
         await AnalyseAsync(client);
 
+        // The strong assertion is about the *Information*-level latency line, not the Debug stage
+        // line: the analysis that just ran logs one, so if any provider were attached — say a
+        // refactor that registered one unconditionally — it would appear here. Its absence is what
+        // proves an unconfigured server still routes nothing, which is what keeps the per-keystroke
+        // instrumentation free when unobserved (#1140).
+        client.StandardErrorLines.Should().NotContain(l => l.Contains(AnalysisLatencyLog.Marker),
+            "an unconfigured server attaches no log destination");
+        client.LogMessages.Should().NotContain(l => l.Contains(AnalysisLatencyLog.Marker));
+
         client.StandardErrorLines.Should().NotContain(l => l.Contains(AnalysisLatencyLog.StagesMarker));
         client.LogMessages.Should().NotContain(l => l.Contains(AnalysisLatencyLog.StagesMarker));
+
+        client.StandardErrorLines.Should().BeEmpty(
+            "a server nobody configured writes nothing at all");
 
         await ShutdownAsync(client);
     }
@@ -53,6 +65,10 @@ public class ServerLoggingTests
             l => l.Contains(AnalysisLatencyLog.StagesMarker),
             "the per-stage attribution (#1140) exists to be read on a running server, which is "
             + "the configuration it diagnoses (#1225)");
+
+        // The contrast with Default_startup_attaches_no_log_destination: with a destination
+        // attached, the Information-level latency line reaches standard error too.
+        client.StandardErrorLines.Should().Contain(l => l.Contains(AnalysisLatencyLog.Marker));
 
         await ShutdownAsync(client);
     }
