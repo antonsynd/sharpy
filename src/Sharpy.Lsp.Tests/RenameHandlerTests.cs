@@ -24,7 +24,8 @@ public class RenameHandlerTests : IDisposable
     {
         _workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         _languageService = new LanguageService(_workspace, _api, NullLogger<LanguageService>.Instance);
-        _handler = new SharpyRenameHandler(_workspace, _languageService, _api);
+        _handler = new SharpyRenameHandler(
+            _workspace, _languageService, _api, NullLogger<SharpyRenameHandler>.Instance);
     }
 
     private async Task<WorkspaceEdit?> RenameAsync(string source, int line, int col, string newName)
@@ -277,7 +278,8 @@ public class RenameHandlerTests : IDisposable
     /// <summary>
     /// Regression test for #597: Rename from a const declaration site.
     /// `const y: int = 10` is parsed as a VariableDeclaration with IsConst=true.
-    /// ResolveSymbol handles VariableDeclaration via FindSymbolByDeclaration.
+    /// ResolveSymbol handles VariableDeclaration via the node-keyed
+    /// <c>SemanticInfo.GetDeclarationSymbol</c> map (#1232).
     /// </summary>
     [Fact]
     public async Task Rename_ConstVariable_RenamesFromDeclarationSite()
@@ -314,6 +316,63 @@ public class RenameHandlerTests : IDisposable
         var refEdit = edits.FirstOrDefault(e => e.Range.Start.Line == 2);
         refEdit.Should().NotBeNull("should have an edit at the reference site");
         refEdit!.NewText.Should().Be("LIMIT");
+    }
+
+    /// <summary>
+    /// Regression test for #1232: rename from a function-local declaration that nothing reads.
+    /// <para>
+    /// The handler used to resolve every declaration node through
+    /// <c>FindSymbolByDeclaration</c>, a name-and-position scan over two reference-populated
+    /// collections plus module scope. A local nobody references appears in none of the three, so
+    /// rename resolved no symbol and silently did nothing. It now resolves through the node-keyed
+    /// map the checker writes at the binding site — the same fix #1222 applied to inlay hints.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Rename_UnreferencedLocalDeclaration_RenamesFromDeclarationSite()
+    {
+        // Line 0: "def main():"
+        // Line 1: "    const LIMIT: int = 10"
+        //          "    const " = 10 chars, "LIMIT" at col 10
+        // Line 2: "    print(1)"
+        // Nothing reads LIMIT — that is the point. The trailing newline is #1233's repro
+        // requirement, unrelated to this fix.
+        var source = "def main():\n    const LIMIT: int = 10\n    print(1)\n";
+
+        var result = await RenameAsync(source, 1, 10, "MAX");
+
+        result.Should().NotBeNull("a local nothing references is still a declaration you can rename");
+        result!.Changes.Should().NotBeNull();
+
+        var uri = DocumentUri.From("file:///test.spy");
+        result.Changes.Should().ContainKey(uri);
+
+        var edits = result.Changes![uri].ToList();
+        edits.Should().ContainSingle("there is exactly one occurrence: the declaration itself");
+        edits[0].Range.Start.Line.Should().Be(1);
+        edits[0].Range.Start.Character.Should().Be(10,
+            "the edit covers the name 'LIMIT' (col 10), not 'const' (col 4)");
+        edits[0].Range.End.Character.Should().Be(10 + "LIMIT".Length);
+        edits[0].NewText.Should().Be("MAX");
+    }
+
+    /// <summary>
+    /// The other half of #1232: the scan the handler no longer uses for this kind genuinely cannot
+    /// answer for it, so the migration above is load-bearing rather than a preference.
+    /// </summary>
+    [Fact]
+    public async Task UnreferencedLocalDeclaration_IsInvisibleToTheDeclarationScan()
+    {
+        var source = "def main():\n    const LIMIT: int = 10\n    print(1)\n";
+        _workspace.OpenDocument("file:///scan.spy", source, 1);
+
+        var analysis = await _languageService.GetAnalysisAsync("file:///scan.spy", CancellationToken.None);
+        analysis.Should().NotBeNull();
+
+        // Compiler coordinates: line 2, column 5 — the statement start of `const LIMIT: int = 10`.
+        analysis!.SemanticInfo!.FindSymbolByDeclaration("LIMIT", 2, 5).Should().BeNull(
+            "the scan reads reference-populated collections and module scope; a function-local "
+            + "binding nothing reads is in none of them (#1232)");
     }
 
     /// <summary>

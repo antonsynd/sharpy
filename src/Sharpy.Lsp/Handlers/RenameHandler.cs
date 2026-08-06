@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
@@ -19,12 +20,18 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
     private readonly SharpyWorkspace _workspace;
     private readonly LanguageService _languageService;
     private readonly CompilerApi _api;
+    private readonly ILogger<SharpyRenameHandler> _logger;
 
-    public SharpyRenameHandler(SharpyWorkspace workspace, LanguageService languageService, CompilerApi api)
+    public SharpyRenameHandler(
+        SharpyWorkspace workspace,
+        LanguageService languageService,
+        CompilerApi api,
+        ILogger<SharpyRenameHandler> logger)
     {
         _workspace = workspace;
         _languageService = languageService;
         _api = api;
+        _logger = logger;
     }
 
     public override async Task<WorkspaceEdit?> Handle(RenameParams request, CancellationToken ct)
@@ -66,12 +73,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
             var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
 
-            var declFilePath = symbol.DeclaringFilePath ?? uri;
-            var declUri = declFilePath.StartsWith("file://", StringComparison.Ordinal)
-                ? DocumentUri.From(declFilePath)
-                : DocumentUri.FromFileSystemPath(declFilePath);
-
-            AddEdit(edits, declUri, declLine, declCol, symbol.Name.Length, newName);
+            AddEdit(edits, ToDocumentUri(symbol.DeclaringFilePath, uri),
+                declLine, declCol, symbol.Name.Length, newName);
         }
 
         // Edit all references in current file
@@ -125,16 +128,35 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         };
     }
 
-    private static Symbol? ResolveSymbol(Node node, ISemanticQuery query, int line, int col)
+    private Symbol? ResolveSymbol(Node node, ISemanticQuery query, int line, int col)
     {
         if (node is Identifier id)
             return query.GetIdentifierSymbol(id);
 
+        // A variable declaration resolves through the node-keyed map the checker writes where it
+        // binds the declaration, so a function-local nothing references still renames — the
+        // name-and-position scan below cannot see one (#1232, the #1222 template).
+        if (node is VariableDeclaration varDecl
+            && IsOnName(line, col, varDecl.NameLineStart, varDecl.NameColumnStart, varDecl.Name.Length))
+        {
+            var bound = query.GetDeclarationSymbol(varDecl);
+            if (bound != null)
+                return bound;
+
+            // Defensive: a declaration the checker never bound (e.g. a body whose checking bailed
+            // out). Logged rather than silent, so a future gap in the map shows up in the server
+            // log as a fallback instead of as "rename quietly does nothing".
+            _logger.LogDebug(
+                "Rename: no node-keyed symbol for variable declaration '{Name}' at {Line}:{Column}; "
+                + "falling back to the declaration scan.",
+                varDecl.Name, varDecl.NameLineStart, varDecl.NameColumnStart);
+
+            return query.FindSymbolByDeclaration(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart);
+        }
+
         // Handle declaration nodes where the name is a string property, not an Identifier child
         (string name, int nameLine, int nameCol)? decl = node switch
         {
-            VariableDeclaration v when IsOnName(line, col, v.NameLineStart, v.NameColumnStart, v.Name.Length)
-                => (v.Name, v.LineStart, v.ColumnStart),
             FunctionDef f when IsOnName(line, col, f.NameLineStart, f.NameColumnStart, f.Name.Length)
                 => (f.Name, f.LineStart, f.ColumnStart),
             ClassDef c when IsOnName(line, col, c.NameLineStart, c.NameColumnStart, c.Name.Length)
@@ -201,13 +223,37 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             var refLine = System.Math.Max(0, refLoc.Line - 1);
             var refCol = System.Math.Max(0, refLoc.Column - 1);
 
-            var refFilePath = refLoc.FilePath ?? fallbackUri;
-            var refUri = refFilePath.StartsWith("file://", StringComparison.Ordinal)
-                ? DocumentUri.From(refFilePath)
-                : DocumentUri.FromFileSystemPath(refFilePath);
-
-            AddEdit(edits, refUri, refLine, refCol, symbolName.Length, newName);
+            AddEdit(edits, ToDocumentUri(refLoc.FilePath, fallbackUri),
+                refLine, refCol, symbolName.Length, newName);
         }
+    }
+
+    /// <summary>
+    /// The path single-file analysis gives the buffer it was handed (<c>CompilerApi</c>'s synthetic
+    /// project-of-one-file). It names no document a client can open — it means "the source under
+    /// analysis", which is the request URI.
+    /// </summary>
+    /// <remarks>
+    /// Single-file analyze already strips the entry file's path identity for exactly this reason
+    /// (#1087, <c>ProjectConfig.NullifyEntryFilePath</c>), but the stripping reaches the name
+    /// resolver and the per-file <c>SemanticInfo</c> and not the type checker — so symbols the
+    /// checker binds (every function-local) still carry this placeholder (#1262). Mapping it here
+    /// keeps the edit on the document the user is editing; when #1262 lands the mapping becomes a
+    /// no-op, not a conflict.
+    /// </remarks>
+    private const string InMemorySourcePath = "<source>";
+
+    /// <summary>
+    /// The document an edit belongs in: <paramref name="filePath"/> when it names a real file,
+    /// and the request URI when analysis had no file to name (null, or the in-memory placeholder).
+    /// </summary>
+    private static DocumentUri ToDocumentUri(string? filePath, string requestUri)
+    {
+        var path = filePath is null or InMemorySourcePath ? requestUri : filePath;
+
+        return path.StartsWith("file://", StringComparison.Ordinal)
+            ? DocumentUri.From(path)
+            : DocumentUri.FromFileSystemPath(path);
     }
 
     private static void AddEdit(
