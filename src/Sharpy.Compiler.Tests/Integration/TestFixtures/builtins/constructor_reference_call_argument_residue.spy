@@ -1,0 +1,70 @@
+# #1249: a user-class constructor reference in a DIRECT CALL ARGUMENT that does not pin. It used to
+# fall back to the position's existing typing, and for a user class that typing is a bare type name
+# in an argument slot — so it reached codegen and produced CS0119 or CS0305 behind SPY0908, the
+# internal-compiler-error diagnostic. All three shapes now draw a deliberate SPY0342.
+#
+# Two of the three ALSO emitted an earlier SPY0908 (map's own TOut going unresolved) before the
+# interesting one. That is why this fixture matches the replacing SPY0342 and never a CS0119
+# substring: matching the C# error would pass on the wrong diagnostic.
+#
+# The builtin families are deliberately NOT refused here — their fallback is a synthesized signature
+# that WORKS, and it is what makes map(int, xs) compile. Refuse where the position leaks, preserve
+# where it works; the keep-working rows at the bottom are the other half of that rule.
+class Point:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def __str__(self) -> str:
+        return f"P{self.x}"
+
+
+class Many:
+    a: int
+
+    def __init__(self, a: int):
+        self.a = a
+
+    def __init__(self, a: int, b: int):
+        self.a = a + b
+
+
+class Other:
+    s: str
+
+    def __init__(self, s: str):
+        self.s = s
+
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def build(vs: list[int], make: (int) -> Point) -> int:
+    return len(vs)
+
+
+def main():
+    ns: list[int] = [1, 2]
+
+    # Shape 1: several declared constructors and NO target — map's parameter type is generic, so
+    # nothing selects among them. Note this is about the missing target, not the overload count:
+    # with a concrete target, tier 1 selects and the same class pins.
+    print(list(map(Many, ns)))
+
+    # Shape 2: a concrete target whose RETURN TYPE names a different class, so no constructor of
+    # this one can match it however well the parameters line up.
+    print(build(ns, make=Other))
+
+    # Shape 3: a GENERIC class. Its type arguments come from the target everywhere they work, and
+    # this position has none, so the shape would carry T unsubstituted (CS0305 before this).
+    print(list(map(Box, ns)))
+
+    # Keep-working: the same position, pinning. A single unambiguous constructor binds its shape.
+    print(list(map(Point, ns)))
+    print(build(ns, make=Point))
+    print(sorted(["3", "1"], key=int))

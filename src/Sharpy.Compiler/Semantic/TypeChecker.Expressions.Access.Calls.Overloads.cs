@@ -338,10 +338,10 @@ internal partial class TypeChecker
     /// <see cref="CheckExpression"/> for every reference that is not a call's own callee.
     ///
     /// <para>Three rules, in order: a form that exists only as call syntax is rejected outright
-    /// (SPY0337); a builtin type constructor reference is pinned to a signature, bound as a
-    /// call-only alias, or rejected (SPY0342, #1182); and an overload set whose candidates take
-    /// different numbers of arguments is resolved from the target type or rejected (SPY0336).
-    /// Everything else keeps the type it already had.</para>
+    /// (SPY0337); a type constructor reference is pinned to a signature or refused (SPY0342, or
+    /// SPY0346 for a type with no construction — #1182, #1248, #1250); and an overload set whose
+    /// candidates take different numbers of arguments is resolved from the target type or rejected
+    /// (SPY0336). Everything else keeps the type it already had.</para>
     /// </summary>
     private SemanticType CheckValuePositionReference(Expression reference, SemanticType type)
     {

@@ -139,23 +139,30 @@ public static partial class DiagnosticExplanations
             + "`bool` each name an overload set, `list`, `dict` and `set` are generic, and a user "
             + "class or struct may declare several constructors or be generic itself, so nothing "
             + "in the reference itself says which signature was meant. Sharpy accepts one wherever a "
-            + "signature is available — an annotated target, a declared return type, a parameter it "
-            + "is passed to — and wherever the binding is only ever called, which resolves per call "
-            + "site like the type itself. This diagnostic means neither was true at the reference, "
-            + "so there is no signature to give it. For a builtin the message lists the overload "
-            + "set; for a user class or struct it lists the DECLARED constructor signatures. "
-            + "Related: SPY0336 (an overloaded callable "
-            + "referenced with no target type) and SPY0339 (a generic type reference used as a value).",
-            "xs = [int, str]  # nothing here says which int(...) signature was meant\n"
+            + "signature is available — an annotated target, a declared return type, or the "
+            + "parameter it is passed to. This diagnostic means none was available at the "
+            + "reference, so there is no signature to give it. For a builtin the message lists the "
+            + "overload set; for a user class or struct it lists the DECLARED constructor "
+            + "signatures. "
+            + "A plain binding (`f = int`) is the most common way to hit this: it used to make a "
+            + "call-only alias, which was retired because it had no runtime value and was resolved "
+            + "where it was read rather than where it was written. Use a lambda when the factory "
+            + "has to be a value that varies at run time. "
+            + "Related: SPY0346 (a type that has no construction at all, so no position could pin "
+            + "it), SPY0336 (an overloaded callable referenced with no target type) and SPY0339 (a "
+            + "generic type reference used as a value).",
+            "f = int          # a plain binding supplies no target type\n"
+            + "xs = [int, str]  # nothing here says which int(...) signature was meant\n"
             + "def pick() -> object:\n    return dict\n"
             + "g: (str, str) -> Point = Point  # no declared __init__ matches (str, str)",
             "Annotate the target with a function type so one signature is selected:\n"
             + "  g: (str) -> int = int\n"
             + "  make: () -> dict[str, int] = dict\n"
             + "  mk: (int) -> Point = Point\n"
-            + "Or call it directly (`int(\"42\")`), bind it to a name you only ever call "
-            + "(`f = int` then `f(\"42\")`), or wrap it in a lambda to fix the signature yourself "
-            + "(`g = lambda s: int(s)`).");
+            + "Or call the type directly (`int(\"42\")`), or wrap the construction in a lambda to fix\n"
+            + "the signature yourself:\n"
+            + "  g: (str) -> int = lambda s: int(s)\n"
+            + "  make: (int) -> Point = lambda v: Point(v)");
 
         Add(dict, DiagnosticCodes.Semantic.NonConstructibleTypeReference,
             "Type cannot be constructed, so its name is not a value", "Semantic",

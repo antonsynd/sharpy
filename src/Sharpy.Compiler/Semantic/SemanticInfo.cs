@@ -210,10 +210,10 @@ public class SemanticInfo : ISemanticQuery
     // shape codegen must emit for it and the signature the TypeChecker pinned it to — the conversion
     // families' Builtins.X method group, or the collection families' constructor lambda (#1182).
     // Present only where a signature was available (an annotated target, a declared return type, a
-    // parameter): an unpinned reference is rejected (SPY0342) and a reference bound to a
-    // call-only alias emits the direct builtin call at each call site instead, so neither reaches
-    // codegen through this dictionary. The emitter switches on the recorded Family and never
-    // inspects the builtin (Critical Rule 2 pattern (b)). Keyed by node identity.
+    // parameter): an unpinned reference is refused in semantic analysis (SPY0342, or SPY0346 for a
+    // type with no construction at all) and never reaches codegen through this dictionary. The
+    // emitter switches on the recorded Family and never inspects the builtin (Critical Rule 2
+    // pattern (b)). Keyed by node identity.
     private readonly ConcurrentDictionary<Expression, ConstructorReferenceLowering> _constructorReferenceLowerings =
         new(ReferenceEqualityComparer.Instance);
 

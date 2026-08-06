@@ -182,7 +182,7 @@ transforms: dict[str, (int) -> int] = {}
 
 ## Constructor References
 
-A bare type name used as a value — `f = int`, `f = dict`, `f = MyClass` — is a **constructor reference**. It is a legitimate value, but like a C# *method group* it has no natural type of its own: `int`, `str`, `float` and `bool` each name an overload set; `list`, `dict` and `set` are generic; and a user class may declare several constructors. Nothing in the reference itself says which signature was meant, so Sharpy takes the signature from the context, in one of three ways.
+A bare type name used as a value — `f = int`, `f = dict`, `f = MyClass` — is a **constructor reference**. It is a legitimate value, but like a C# *method group* it has no natural type of its own: `int`, `str`, `float` and `bool` each name an overload set; `list`, `dict` and `set` are generic; and a user class may declare several constructors. Nothing in the reference itself says which signature was meant, so the signature has to come from the context. There are exactly two outcomes: the context supplies one, or the reference is refused.
 
 **1. Pinned against an expected function type.** Wherever a signature is available — an annotated target, a declared return type, or the parameter it is passed to — the reference binds that signature:
 
@@ -235,52 +235,52 @@ print(mb(3).value)                  # 3
 
 Writing the type arguments on the reference instead (`f = Box[int]`) is a *type* reference, not a value, and is refused with SPY0339.
 
-**2. A call-only alias.** A binding with no signature available aliases the type, and each call through it resolves exactly like a call of the type itself — Python's factory-alias pattern:
+**2. Otherwise, an error (SPY0342).** A reference the context supplies no signature for has no way to acquire one, so it is refused where it is written rather than compiled into something arbitrary:
 
 ```python
-f = int
-print(f("3"))                        # 3
-
-d_maker = dict
-d: dict[str, int] = d_maker()        # the annotated target infers K and V, as dict() would
-
-p_maker = Point
-p = p_maker(5)                       # a user class aliases the same way
-
-b_maker = Box
-b = b_maker(9)                       # a generic class too; the call infers Box[int]
-```
-
-Reassigning re-aliases, and each call site binds its own reaching binding. The alias itself has no runtime representation: it emits no C#, exactly as a C# method group is not a value until it is converted.
-
-Because the alias has no runtime value, it is resolved where it is **read**, against the binding reaching that read at compile time — not when the call runs. A closure that captures an alias is therefore fixed to the binding in effect where its body was checked, and rebinding the name afterwards does not change it. This is a deliberate divergence from Python, where the closure would re-read the name at call time:
-
-```python
-f = float
-g: (str) -> float = lambda s: f(s)   # pinned to float, here
-f = int
-print(g("42"))                       # 42.0 in Sharpy; Python prints 42
-```
-
-There is nothing to capture and nothing a later rebinding could update, so late binding is not available at any reasonable cost — Axiom 1 over Axiom 2. Catalogued in [`docs/deviations.yaml`](../deviations.yaml) as `constructor-alias-eager-capture`.
-
-**3. Otherwise, an error (SPY0342).** A reference that is neither pinned nor a call-only alias has no signature and no way to acquire one, so it is refused with guidance rather than compiled into something arbitrary:
-
-```python
+f = int                              # SPY0342 — a plain binding supplies no target type
+p_maker = Point                      # SPY0342 — the same for a user class
 xs = [int, str]                      # SPY0342 — a list element supplies no target type
-f = int if c else str                # SPY0342 — a conditional is not an alias
+f = int if c else str                # SPY0342 — a conditional supplies none either
+print(list(map(Box, ns)))            # SPY0342 — a GENERIC class in an argument whose
+                                     #           parameter type supplies no type arguments
 ```
 
-Annotate the target, call the type directly, or wrap it in a lambda that fixes the signature yourself (`g = lambda s: int(s)`).
+Annotate the target with a function type, call the type directly, or wrap the construction in a lambda that fixes the signature yourself.
+
+A lambda is what to reach for when the factory has to be a *value* that varies at run time. Unlike a constructor reference it has a runtime representation, so it can be rebound and captured, and it observes the ordinary rules:
+
+```python
+make: (int) -> Point = lambda v: Point(v)
+
+f: () -> Animal = lambda: Cat()
+if flag:
+    f = lambda: Dog()
+print(f().speak())                   # woof — the branch runs, as in Python
+```
+
+> **Retired.** There used to be a third outcome: a binding with no signature available became a **call-only alias**, and each call through it resolved like a call of the type itself (`f = int; f("3")`). It was untyped by design — it had no runtime representation, emitted no C#, and was resolved where it was *read* rather than where it was written, which made it a compile-time macro rather than a value. With overloaded constructors, which signature was meant was unknowable until each call, and a closure capturing one silently diverged from Python. C# has no constructor values at all, and Java's `Point::new` is legal only in target-typed positions — which is rule 1 above. Rewrite an alias as a pinned reference where the signature is known, or as a lambda where it is not ([#1248](https://github.com/antonsynd/sharpy/issues/1248)).
+
+**A type that cannot be constructed is not a constructor reference (SPY0346).** An interface, an enum, a union type name, a delegate type and an abstract class have no construction, so there is nothing for the name to denote:
+
+```python
+s = IShape                           # SPY0346 — an interface has no constructor
+e = Color                            # SPY0346 — a member is the value you want: Color.RED
+```
+
+This is a different failure from SPY0342, which means *this position* supplies no signature to select among the ones the type offers — and that presumes it offers some. Constructing one directly is refused for the same reason (SPY0280).
 
 Writing a type name where it names a **type** rather than a value is unaffected, for builtin and user names alike: a static-member receiver (`int.parse(s)`, `dict.fromkeys(ks)`, `Point.of(v)`), a type-test type argument (`isinstance(x, int)`, `isinstance(x, Point)`), and a type argument (`Box[int]`, `Box[Point]`) are all type positions, not constructor references.
 
 *Implementation*
-- *✅ Native — the conversion families emit the `Sharpy.Builtins.X` method group, so C#'s own method-group conversion binds the overload against the pinned delegate type; the collection and user-type families emit a constructor lambda at a reference and `new T(args)` at an alias call.*
-- *✅ User classes and structs ([#1211](https://github.com/antonsynd/sharpy/issues/1211)), pinning against their declared constructors, including generic classes whose type arguments come from the target. Interfaces, enums, unions and abstract classes are not constructible and are not constructor references — but note that using one as a value today leaks SPY0908 (CS0119) rather than drawing a deliberate refusal; see [#1250](https://github.com/antonsynd/sharpy/issues/1250).*
+- *✅ Native — the conversion families emit the `Sharpy.Builtins.X` method group, so C#'s own method-group conversion binds the overload against the pinned delegate type; the collection and user-type families emit a constructor lambda.*
+- *✅ User classes and structs ([#1211](https://github.com/antonsynd/sharpy/issues/1211)), pinning against their declared constructors, including generic classes whose type arguments come from the target.*
+- *✅ Interfaces, enums, unions, delegate types and abstract classes are not constructible and are not constructor references: SPY0346 as a value, SPY0280 constructed directly ([#1250](https://github.com/antonsynd/sharpy/issues/1250), [#1271](https://github.com/antonsynd/sharpy/issues/1271)).*
+- *✅ A user class in a direct call argument that does not pin draws SPY0342 naming its declared constructors, never an internal error ([#1249](https://github.com/antonsynd/sharpy/issues/1249)).*
+- *✅ The call-only alias is retired, which removes the conditional-rebind defect by construction rather than by correcting it ([#1248](https://github.com/antonsynd/sharpy/issues/1248)). The lambda form above is the replacement and is flow-correct.*
 - *⚠️ A generic type reference that carries its own type arguments (`f = Box[int]`) is a type reference, not a value, and stays refused with SPY0339.*
-- *⚠️ A user class with several constructor overloads passed as a direct call argument that does not pin still reaches SPY0908 rather than a deliberate diagnostic — see [#1249](https://github.com/antonsynd/sharpy/issues/1249).*
-- *⚠️ An alias rebound inside a conditional resolves against the binding that reached the `if`, silently constructing the wrong type — see [#1248](https://github.com/antonsynd/sharpy/issues/1248). Straight-line rebinding is correct. This is a defect, not the deliberate divergence above.*
+- *⚠️ A constructor reference pins only against a target whose return type names the class itself; a base-typed target does not pin, though the equivalent lambda converts — see [#1270](https://github.com/antonsynd/sharpy/issues/1270).*
+- *⚠️ A few builtin types construct but have no constructor-reference form (`object`, `bytes`, `decimal`, `frozenset`, `frozendict`, `Iterator`, the view types). A reference to one draws SPY0342 rather than pinning — see [#1272](https://github.com/antonsynd/sharpy/issues/1272).*
 
 ## C# Mapping
 
