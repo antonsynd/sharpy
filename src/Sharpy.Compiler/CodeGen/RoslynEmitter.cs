@@ -644,12 +644,21 @@ internal partial class RoslynEmitter : ICodeEmitter
         // Look up the symbol to check its kind
         var symbol = _context.LookupSymbol(name);
 
-        // Check if this is a reference to a class or struct name - preserve PascalCase
+        // Check if this is a REFERENCE to a class or struct name - preserve PascalCase.
         // Uses symbol table lookup instead of legacy tracking sets.
         // The lookup is by name, so it answers `int` with the builtin int TypeSymbol; a
         // backtick-escaped spelling denotes the user's own symbol, so it only takes this arm when
         // the type it found was itself declared escaped (#1241).
+        // <para>`isNewDeclaration` excludes it outright: a new declaration is a LOCAL BINDING being
+        // created, and a binding is named by its own spelling — never by a type that merely shares
+        // it. Without the guard a bare `str: int = 6` found the builtin str TypeSymbol and emitted
+        // `int Str = 6`, which (a) violates the local-variable casing rule, (b) collides with a user
+        // type named Str (CS1061 → SPY0908), and (c) silently merged with a sibling local declared
+        // as `Str` — two distinct Sharpy locals, one C# slot, last write wins. Invisible while bare
+        // shadowing was about to be refused; a shipping defect once value position became legal
+        // (#1241).</para>
         if (symbol is TypeSymbol typeSymbol &&
+            !isNewDeclaration &&
             (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
              typeSymbol.TypeKind == Semantic.TypeKind.Struct) &&
             isBacktickEscaped == typeSymbol.IsNameBacktickEscaped)
