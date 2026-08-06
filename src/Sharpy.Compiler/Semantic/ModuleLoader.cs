@@ -392,6 +392,23 @@ internal class ModuleLoader
             if (stmt is FunctionDef method)
             {
                 var methodSymbol = ExtractMethodSymbol(method, classDef.TypeParameters);
+
+                // A member of an `@abstract` class with an ellipsis body is implicitly abstract —
+                // the rule NameResolver.ResolveMethodDeclaration applies same-file
+                // (NameResolver.Members.cs:139). This arm applied no implicit rule at all;
+                // ExtractMethodSymbol reads only the `@abstract` decorator, so the same declaration
+                // classified abstract same-file and concrete when imported (#1266) — the mirror of
+                // #1258, by omission rather than by a wrong predicate, which is why a
+                // predicate-name sweep of this file comes back empty while the defect is present.
+                //
+                // The predicate is keyed to the OWNING TYPE KIND: a class member needs an ELLIPSIS
+                // body (`IsEllipsisStubBody`), and `pass` in an abstract class stays concrete on
+                // both sides. Using the interface predicate here would only rotate the bug.
+                if (isAbstract && !methodSymbol.IsAbstract && AstHelper.IsEllipsisStubBody(method.Body))
+                {
+                    methodSymbol = methodSymbol with { IsAbstract = true };
+                }
+
                 methods.Add(methodSymbol);
                 if (method.Name == DunderNames.Init)
                     ctors.Add(methodSymbol);

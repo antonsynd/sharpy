@@ -31,16 +31,21 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>EllipsisStubAuthorityConformanceTests</c> forces both sites through <c>AstHelper</c> but
 /// cannot see that they called <em>different</em> predicates.</para>
 ///
-/// <para><b>Why this test and not a fixture.</b> Measured 2026-08-06 by mutation: disabling
-/// <c>ModuleLoader</c>'s interface stub marking outright leaves
+/// <para><b>Why a symbol-level table and not only fixtures.</b> Measured 2026-08-06 by mutation:
+/// disabling <c>ModuleLoader</c>'s interface stub marking outright leaves
 /// <c>TestFixtures/imports/paren_ellipsis_imported_stub</c> green and leaves <c>project</c>,
 /// <c>run</c> and <c>emit diagnostics</c> output unchanged. Since #1087 every entry point lowers
 /// the entry file plus its local-import closure into a synthetic project
 /// (<c>SyntheticProject.DiscoverLocalImportClosure</c>) and <c>ProjectCompiler</c> name-resolves
-/// every unit, so an imported <c>.spy</c> module's symbols come from <c>NameResolver</c> and
-/// <c>ModuleLoader</c>'s classification is shadowed (#1267). No end-to-end fixture can pin this
-/// seam today; this table can, and does fail loudly under that mutation — verified by reverting
-/// the #1258 fix, which reddens exactly the two <c>pass</c>-interface cells and nothing else.</para>
+/// every unit, so for an ordinary import the symbols come from <c>NameResolver</c> and
+/// <c>ModuleLoader</c>'s classification is shadowed (#1267). No <c>TestFixtures</c> fixture can
+/// pin this seam; this table can, and does — verified by reverting the #1258 fix, which reddens
+/// exactly the two <c>pass</c>-interface cells and nothing else.</para>
+///
+/// <para>One compilation shape does escape that shadowing — a project whose declared source set
+/// does not cover a module it imports — and that is where these classifications become
+/// user-visible. <see cref="ImportedStubClassificationReachabilityTests"/> is the end-to-end half
+/// of this table on that path.</para>
 ///
 /// <para>Every cell's arrangement is built to fail loudly rather than quietly measure nothing: the
 /// source must parse cleanly, the parsed body must have the exact shape the cell names (so a parser
@@ -76,11 +81,11 @@ public class StubClassificationTableTests : IDisposable
     // --- The table -----------------------------------------------------------------------------
 
     /// <summary>
-    /// 12 cells. The three <c>interface</c> pairs must agree across the import boundary — that is
-    /// #1258's contract, and the <c>pass</c>/imported cell is the one the fix flipped (it read
-    /// <c>concrete</c> before). The two <c>abstract-class</c> ellipsis pairs deliberately record a
-    /// divergence that exists today (#1266; see
-    /// <see cref="AbstractClassEllipsisStub_DivergesAcrossTheImportBoundary_Pinned"/>).
+    /// 12 cells. Every same-file/imported pair must now agree: the <c>interface</c> pairs by the
+    /// interface rule (ellipsis or <c>pass</c>, #1258) and the <c>abstract-class</c> pairs by the
+    /// class rule (ellipsis only, #1266). The two rows that carry the rules' <em>difference</em> —
+    /// not a divergence — are the <c>pass</c> ones: a <c>pass</c> body makes an interface member
+    /// abstract and leaves an abstract-class member concrete, on both sides of the import.
     /// </summary>
     [Theory]
     // owner,         body,    site,     expected
@@ -91,11 +96,11 @@ public class StubClassificationTableTests : IDisposable
     [InlineData(Interface, "pass", SameFile, Abstract)]
     [InlineData(Interface, "pass", Imported, Abstract)]      // #1258: was Concrete before the fix
     [InlineData(AbstractClass, "...", SameFile, Abstract)]
-    [InlineData(AbstractClass, "...", Imported, Concrete)]   // #1266 divergence, recorded not endorsed
+    [InlineData(AbstractClass, "...", Imported, Abstract)]   // #1266: was Concrete before the fix
     [InlineData(AbstractClass, "(...)", SameFile, Abstract)]
-    [InlineData(AbstractClass, "(...)", Imported, Concrete)] // divergence recorded, not endorsed
+    [InlineData(AbstractClass, "(...)", Imported, Abstract)] // #1266: was Concrete before the fix
     [InlineData(AbstractClass, "pass", SameFile, Concrete)]  // abstract-class members need ellipsis
-    [InlineData(AbstractClass, "pass", Imported, Concrete)]
+    [InlineData(AbstractClass, "pass", Imported, Concrete)]  // ...on both sides, which is the point
     public void StubClassification(string ownerKind, string body, string site, string expected)
     {
         Classify(ownerKind, body, site).Should().Be(
@@ -126,30 +131,34 @@ public class StubClassificationTableTests : IDisposable
     }
 
     /// <summary>
-    /// The mirror-image divergence, pinned as measured rather than left unrecorded: an implicitly
-    /// abstract member of an <c>@abstract</c> class classifies abstract same-file but concrete when
-    /// imported, because <c>ModuleLoader.ExtractFullClassSymbol</c>/<c>ExtractMethodSymbol</c> apply
-    /// no implicit-abstract rule at all — they read only the <c>@abstract</c> decorator. Unlike
-    /// #1258 this is a divergence by <em>omission</em>, which is why a predicate-name sweep of
-    /// ModuleLoader comes back empty while the defect is present. Filed as #1266.
-    ///
-    /// <para><b>Drain on fix:</b> when the class arm learns the same-file rule
-    /// (<c>owningType.IsAbstract &amp;&amp; IsEllipsisStubBody(body)</c>), this test fails — delete
-    /// it and flip the two <c>AbstractClass</c>/<c>Imported</c> ellipsis rows in the table above to
-    /// <c>Abstract</c>.</para>
+    /// #1266, the mirror of <see cref="InterfaceStub_ClassifiesTheSameOnBothSidesOfAnImport"/>. The
+    /// expected answer varies by spelling because the CLASS rule is ellipsis-only — a <c>pass</c>
+    /// body leaves an abstract-class member concrete — and that difference must itself be
+    /// import-invariant. Until 2026-08-06 it was not: <c>ExtractFullClassSymbol</c> applied no
+    /// implicit-abstract rule at all (it read only the <c>@abstract</c> decorator), so the ellipsis
+    /// cells classified abstract same-file and concrete imported. Unlike #1258 that was a
+    /// divergence by <em>omission</em> — which is why a predicate-name sweep of ModuleLoader came
+    /// back empty while the defect was present, and why this table is keyed to outcomes.
     /// </summary>
     [Theory]
-    [InlineData("...")]
-    [InlineData("(...)")]
-    public void AbstractClassEllipsisStub_DivergesAcrossTheImportBoundary_Pinned(string body)
+    [InlineData("...", Abstract)]
+    [InlineData("(...)", Abstract)]
+    [InlineData("pass", Concrete)]
+    public void AbstractClassStub_ClassifiesTheSameOnBothSidesOfAnImport(string body, string expected)
     {
-        Classify(AbstractClass, body, SameFile).Should().Be(
-            Abstract, "NameResolver applies the implicit-abstract rule for @abstract classes");
-        Classify(AbstractClass, body, Imported).Should().Be(
-            Concrete,
-            "recorded divergence (#1266): ModuleLoader's class arm applies no implicit-abstract rule. If "
-            + "this now reads `abstract`, the divergence has been fixed — delete this test and set "
-            + "the two abstract-class/imported ellipsis rows of the table to `abstract`.");
+        var sameFile = Classify(AbstractClass, body, SameFile);
+        var imported = Classify(AbstractClass, body, Imported);
+
+        imported.Should().Be(
+            sameFile,
+            "an @abstract class method with a `{0}` body is one declaration with one classification; "
+            + "NameResolver.ResolveMethodDeclaration and ModuleLoader.ExtractFullClassSymbol must "
+            + "reach the same answer (#1266)", body);
+        sameFile.Should().Be(
+            expected,
+            "abstract-class members are implicitly abstract only for an ELLIPSIS body — `pass` is a "
+            + "stub for interface members, not for these (TypeChecker enforces it with \"Abstract "
+            + "method '…' must have '...' as its body\")");
     }
 
     // --- Arrangement ---------------------------------------------------------------------------
