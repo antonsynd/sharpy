@@ -1,0 +1,47 @@
+# `assert_raises(SomeError)` passes a TYPE TOKEN: the parameter is CLR System.Type, and the
+# emitter lowers the argument to the type argument of Xunit.Assert.Throws. Nothing is
+# constructed and no constructor signature is being selected — so the constructor-reference
+# rule has no business here (#1282, an over-fire of #1248's SPY0342).
+#
+# THE DISCRIMINATOR IS CONSTRUCTOR COUNT. A type with ONE constructor pinned by accident and
+# went silent, so every existing fixture of this shape — all of which use single-constructor
+# exception types like ValueError — passed vacuously and could not have caught the defect. It
+# broke every MULTI-constructor exception type instead, which is how it reached the sqlite3 spy
+# tests and stopped the whole spy-test regeneration gate.
+#
+# `MultiError` therefore declares three constructors. `SingleError` is kept as the control that
+# was already green, so a future regression that hits only the multi case shows up as a
+# difference between two rows rather than as a whole-fixture failure.
+from unittest import assert_raises
+
+
+class SingleError(Exception):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
+class MultiError(Exception):
+    def __init__(self):
+        super().__init__("boom")
+
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+    def __init__(self, msg: str, code: int):
+        super().__init__(msg)
+
+
+@test
+def test_single_constructor_type_token():
+    with assert_raises(SingleError):
+        raise SingleError("a")
+
+
+@test
+def test_multi_constructor_type_token():
+    with assert_raises(MultiError):
+        raise MultiError("b")
+
+
+def main():
+    print("ok")

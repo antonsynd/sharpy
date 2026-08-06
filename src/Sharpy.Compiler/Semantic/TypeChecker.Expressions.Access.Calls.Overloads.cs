@@ -399,6 +399,21 @@ internal partial class TypeChecker
     /// reference in a position this rule governs, so the caller's remaining rules apply.</returns>
     private SemanticType? CheckConstructorReference(Expression reference, SemanticType type)
     {
+        // A parameter typed as CLR System.Type asks for a TYPE TOKEN, not a callable:
+        // `assert_raises(SomeError)` passes the type itself and constructs nothing. So this position
+        // does not fail to supply a signature — it supplies one explicitly, and it is not a
+        // constructor signature. Every non-value exclusion this rule already carries is a position
+        // where a type NAME legitimately means the type (a type test's argument, a static-member
+        // receiver, #1170); this is the same kind, reached through a parameter type rather than
+        // through syntax.
+        //
+        // Without it, a bare exception name in an assert_raises drew SPY0342 — but only for types
+        // with SEVERAL constructors, because a single candidate pinned by accident and went silent.
+        // That made every multi-constructor exception type unusable with assert_raises while the
+        // single-constructor ones passed, which is why it survived #1248's own fixture sweep (#1282).
+        if (_expectedType is { } expectedParameterType && IsSystemTypeParameter(expectedParameterType))
+            return null;
+
         var classification = ClassifyConstructorReference(reference, type);
 
         if (classification.Reference is not { } constructorReference)
