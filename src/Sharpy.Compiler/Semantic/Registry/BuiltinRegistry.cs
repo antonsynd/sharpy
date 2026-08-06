@@ -771,6 +771,41 @@ internal class BuiltinRegistry
         || _functions.ContainsKey(name)
         || PrimitiveCatalog.IsPrimitive(name);
 
+    /// <summary>
+    /// True when <paramref name="name"/> is the bare spelling of a builtin <em>type</em> — the
+    /// narrower half of <see cref="IsReservedBuiltinName"/>, and the one the SPY0212 refusal is
+    /// stated over.
+    /// </summary>
+    /// <remarks>
+    /// A type declaration enters the TYPE namespace, which is the namespace annotations resolve
+    /// through; that is the only collision Sharpy cannot leave unresolved, so it is the only one
+    /// refused. Shadowing a builtin <em>function</em> name is a value-namespace event and draws the
+    /// SPY0483 warning instead.
+    /// </remarks>
+    public bool IsReservedBuiltinTypeName(string name) =>
+        _types.ContainsKey(name) || PrimitiveCatalog.IsPrimitive(name);
+
+    /// <summary>
+    /// True when <paramref name="symbol"/> IS one of the registry's own symbols, as opposed to a
+    /// user symbol that merely spells the same name.
+    /// </summary>
+    /// <remarks>
+    /// Identity, not name — the same discipline <c>ConstructorReferenceOf</c> uses. Builtins are
+    /// seeded into the global scope, so <c>SymbolTable.Lookup("len")</c> answers with the registry's
+    /// own <c>FunctionSymbol</c> when nothing shadows it and with the user's when something does.
+    /// Only reference identity separates those two, and both the TypeChecker's callee classifier and
+    /// the emitter's builtin-call arm need the same answer: when they disagreed, a bare
+    /// <c>def len</c> was type-checked as the builtin and emitted as the user's function (#1241).
+    /// </remarks>
+    public bool IsBuiltinSymbol(Symbol symbol)
+    {
+        if (_types.TryGetValue(symbol.Name, out var type) && ReferenceEquals(type, symbol))
+            return true;
+
+        return _functions.TryGetValue(symbol.Name, out var overloads)
+            && overloads.Any(f => ReferenceEquals(f, symbol));
+    }
+
     #region CLR Type Fallback
 
     private readonly Dictionary<string, TypeSymbol?> _clrTypeCache = new();

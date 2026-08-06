@@ -205,8 +205,19 @@ internal partial class TypeChecker
             if (symbol != null && id.IsNameBacktickEscaped != symbol.IsNameBacktickEscaped)
                 symbol = null;
 
+            // A user binding that spells a builtin name shadows it, exactly as any inner binding
+            // shadows an outer one — that is what makes `def double`, `def isinstance` and a
+            // parameter named `id` legal (SPY0483 warns; it does not refuse). The name-keyed
+            // inference below must therefore yield to it, or the checker validates the call against
+            // the BUILTIN while the emitter calls the USER's symbol: a bare `def len` was checked as
+            // Sharpy.Builtins.Len and emitted as the user's Len, giving CS1503 -> SPY0908, and a
+            // nested `def hash` silently ran the builtin (#1240, #1241). Identity decides, not the
+            // name: when nothing shadows it, Lookup answers with the registry's own symbol.
+            var shadowsBuiltin = symbol != null
+                && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol);
+
             // Data-driven builtin function return type inference (len, hash, reversed, sorted, min, max)
-            if (!id.IsNameBacktickEscaped)
+            if (!id.IsNameBacktickEscaped && !shadowsBuiltin)
             {
                 var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
                     id.Name, argTypes, _typeInference);

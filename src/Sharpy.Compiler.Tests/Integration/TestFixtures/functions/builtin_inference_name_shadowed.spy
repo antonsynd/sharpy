@@ -1,0 +1,23 @@
+# A user binding that spells a builtin name shadows it, at module level and nested.
+# The names here are the ones BuiltinReturnTypeInference is keyed on, which is where the
+# TypeChecker and the emitter used to disagree: the call was checked as the builtin and
+# emitted as the user's function (SPY0908), or checked as the user's and emitted as the
+# builtin (silent wrong output). CPython agrees with every line below.
+def len(x: int) -> int:
+    return x + 100
+
+
+def min(x: int) -> int:
+    return x + 200
+
+
+def main():
+    def hash(x: int) -> int:
+        return x + 300
+
+    print(len(4))
+    print(min(4))
+    print(hash(4))
+    # The escaped spelling is a different symbol, and the bare builtin is still reachable
+    # through it being escaped at the declaration rather than at the use.
+    print(sorted([3, 1, 2])[0])

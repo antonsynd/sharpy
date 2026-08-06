@@ -62,9 +62,13 @@ internal partial class RoslynEmitter
             var isBuiltinFunc = _context.IsBuiltinFunction(funcName.Name)
                                 && !funcName.IsNameBacktickEscaped;
 
-            // User-defined functions shadow builtins (Python scoping rules):
-            // A FunctionSymbol with CodeGenInfo was processed by semantic analysis (user-defined),
-            // while builtin functions from the registry won't have CodeGenInfo set.
+            // User-defined bindings shadow builtins (Python scoping rules). Identity decides which
+            // this is: builtins are seeded into the global scope, so a lookup answers with the
+            // registry's own symbol when nothing shadows the name and with the user's when something
+            // does. The TypeChecker asks the same question the same way, and the two MUST agree —
+            // the previous shape here required a FunctionSymbol carrying CodeGenInfo, which a nested
+            // `def` does not have, so a local `def hash` was checked as the user's function and
+            // emitted as Sharpy.Builtins.Hash: silent wrong output (#1240, #1241).
             //
             // The lookup is by NAME and the registry answers first, so an escaped callee must not
             // be resolved by a registry symbol it merely shares a spelling with — the same rule
@@ -73,7 +77,21 @@ internal partial class RoslynEmitter
             var symbol = _context.LookupSymbol(funcName.Name);
             if (symbol != null && funcName.IsNameBacktickEscaped != symbol.IsNameBacktickEscaped)
                 symbol = null;
-            if (isBuiltinFunc && symbol is FunctionSymbol { CodeGenInfo: not null })
+            // Asked of the SYMBOL TABLE's registry, not _context.Builtins: code generation builds a
+            // second BuiltinRegistry of its own, and reference identity only means anything against
+            // the instance that seeded the scope these symbols came from.
+            if (isBuiltinFunc && symbol != null
+                && !_context.SymbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol))
+                isBuiltinFunc = false;
+
+            // A nested `def` shadows too, and the lookup above cannot see it: by code generation the
+            // symbol table is back at global scope, so it answers with the builtin. The emitter's own
+            // record of the local functions it has emitted is the scope-correct answer here — and the
+            // TypeChecker, which still had the inner scope, already resolved the call to that nested
+            // function. Without this, `def main(): def hash(x)... hash(4)` emitted
+            // Sharpy.Builtins.Hash(4) and printed the builtin's answer (#1240, #1241).
+            if (isBuiltinFunc && !funcName.IsNameBacktickEscaped
+                && _localFunctionNames.ContainsKey(funcName.Name))
                 isBuiltinFunc = false;
 
             // Handle direct calls to asyncio functions (from asyncio import gather, sleep)
