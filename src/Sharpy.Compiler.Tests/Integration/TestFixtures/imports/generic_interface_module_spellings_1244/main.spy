@@ -1,0 +1,39 @@
+# Both module spellings of a generic-interface implementation, in one project (#1244).
+#
+# `import genlib` + `genlib.Holder[str]` used to fail CS0426 behind SPY0908 (the module
+# segment emitted on top of the resolved qualifier), which hid the assignability defect
+# that the `from genlib import Holder` spelling showed as SPY0220. Both are green now, and
+# they must stay in agreement.
+#
+# This is also the runnable fixture #1208's interface arm of
+# ModuleLoader.ExtractMethodSymbol never had: nothing else exercises generic-interface
+# implementation across a module boundary end to end.
+
+import genlib
+from genlib import Holder
+
+
+class QualifiedHolder(genlib.Holder[str]):
+    def get(self) -> str:
+        return "qualified"
+
+
+class BareHolder(Holder[str]):
+    def get(self) -> str:
+        return "bare"
+
+
+def show(h: genlib.Holder[str]) -> str:
+    return h.get()
+
+
+def main() -> None:
+    q: genlib.Holder[str] = QualifiedHolder()
+    b: Holder[str] = BareHolder()
+    print(q.get())
+    print(b.get())
+
+    # The two spellings name the same type, so each implementation binds to either.
+    print(show(BareHolder()))
+    crossed: Holder[str] = QualifiedHolder()
+    print(crossed.get())

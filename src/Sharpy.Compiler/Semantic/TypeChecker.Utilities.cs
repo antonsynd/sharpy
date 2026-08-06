@@ -368,7 +368,19 @@ internal partial class TypeChecker
         // from the definition's TypeParameterDefs; different-name generics check
         // assignability through implemented interfaces and base classes
         // (e.g., list[int] → IEnumerable[int], MyList[int] → list[int]).
-        if (source is GenericType sourceGeneric && target is GenericType targetGeneric)
+        //
+        // A NON-generic source reaches the same walk through AsInstantiatedGeneric (#1244): the
+        // question `class StrHolder(Holder[str])` → `Holder[str]` asks exactly what the generic
+        // source already asks — "does this declaration have the target among its instantiated
+        // supertypes?" — and the answer must not depend on whether the implementing class happens
+        // to have type parameters of its own. `class Box[T](Holder[T])` → `Holder[int]` worked
+        // before this; `class StrHolder(Holder[str])` → `Holder[str]` did not.
+        //
+        // This lives here rather than on UserDefinedType.IsAssignableTo because the walk needs the
+        // symbol table, the SemanticBinding and the TypeResolver, none of which a SemanticType
+        // record can reach; a second, weaker hierarchy walk over there would be the parallel-site
+        // hazard (#1145), not a fix.
+        if (AsInstantiatedGeneric(source) is { } sourceGeneric && target is GenericType targetGeneric)
         {
             var varianceResult = IsGenericAssignableWithVariance(sourceGeneric, targetGeneric);
             if (varianceResult == true)
@@ -390,6 +402,31 @@ internal partial class TypeChecker
 
         return false;
     }
+
+    /// <summary>
+    /// The type as an instantiated generic, for the one supertype walk in
+    /// <see cref="IsGenericAssignableWithVariance"/>. A <see cref="GenericType"/> is already one; a
+    /// user-defined type backed by a resolved symbol becomes the zero-argument instantiation of that
+    /// symbol, which is what a non-generic declaration IS. Anything else has no declaration to walk.
+    /// <para>The zero-argument view is exact, not a convenience: <c>GenericInstantiationWalker</c>
+    /// builds its initial substitution from (type parameters, type arguments), and a non-generic
+    /// declaration has none of either, so the empty map is the correct starting point and its
+    /// base-list entries (<c>Holder[str]</c>) resolve to their written arguments unchanged. A symbol
+    /// that IS generic but was referenced without arguments produces an arity mismatch there and
+    /// yields no supertypes — no opinion, which leaves the CLR fallback in charge exactly as
+    /// before (#1244).</para>
+    /// </summary>
+    private static GenericType? AsInstantiatedGeneric(SemanticType type) => type switch
+    {
+        GenericType generic => generic,
+        UserDefinedType { Symbol: { } symbol } => new GenericType
+        {
+            Name = symbol.Name,
+            TypeArguments = new List<SemanticType>(),
+            GenericDefinition = symbol
+        },
+        _ => null
+    };
 
     /// <summary>
     /// Argument-binding assignability: standard <see cref="IsAssignable"/>, the

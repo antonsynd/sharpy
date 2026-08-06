@@ -1,0 +1,5 @@
+# The generic interface both spellings in main.spy implement.
+
+interface Holder[T]:
+    def get(self) -> T:
+        ...

@@ -1,0 +1,54 @@
+# A class implementing a generic interface at a concrete type argument satisfies that
+# interface (#1244). Before the fix every one of these positions drew SPY0220: only a
+# GENERIC source reached the supertype walk, so `class Box[T](Holder[T])` -> `Holder[int]`
+# worked while `class StrHolder(Holder[str])` -> `Holder[str]` did not.
+
+interface Holder[T]:
+    def get(self) -> T:
+        ...
+
+
+class StrHolder(Holder[str]):
+    def get(self) -> str:
+        return "hi"
+
+
+class Sub(StrHolder):
+    pass
+
+
+class Box[T](Holder[T]):
+    item: T
+
+    def __init__(self, item: T):
+        self.item = item
+
+    def get(self) -> T:
+        return self.item
+
+
+def show(h: Holder[str]) -> str:
+    return h.get()
+
+
+def make() -> Holder[str]:
+    return StrHolder()
+
+
+def main() -> None:
+    # Assignment position.
+    sh: Holder[str] = StrHolder()
+    print(sh.get())
+
+    # Inherited through a base class that implements the interface.
+    inherited: Holder[str] = Sub()
+    print(inherited.get())
+
+    # Parameter and return positions.
+    print(show(StrHolder()))
+    print(make().get())
+
+    # A generic implementer at a concrete argument, which already worked — pinned so the
+    # two spellings cannot drift apart again.
+    boxed: Holder[int] = Box[int](3)
+    print(boxed.get())

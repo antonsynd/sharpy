@@ -1,0 +1,17 @@
+# The negative floor for #1244: implementing Holder[str] does not make a class a Holder[int].
+# The supertype walk finds a matching definition with a non-matching argument and rejects
+# authoritatively rather than falling through to the CLR fallback.
+
+interface Holder[T]:
+    def get(self) -> T:
+        ...
+
+
+class StrHolder(Holder[str]):
+    def get(self) -> str:
+        return "hi"
+
+
+def main() -> None:
+    sh: Holder[int] = StrHolder()
+    print(sh.get())
