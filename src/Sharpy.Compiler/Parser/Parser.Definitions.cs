@@ -4,6 +4,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Parser;
 
@@ -205,6 +206,64 @@ public partial class Parser
         _ => throw ReportError($"Not an assignment operator: {type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
     };
 
+    /// <summary>
+    /// A parsed inline stub body: the single-statement body and the token the body ended on
+    /// (the <c>...</c> itself, or the closing paren of a grouped spelling), which callers need
+    /// for the enclosing declaration's span.
+    /// </summary>
+    private readonly record struct InlineStubBody(ImmutableArray<Statement> Body, Token EndToken);
+
+    /// <summary>
+    /// Parses the inline stub body of a declaration written on one line — <c>def f(): ...</c>,
+    /// <c>property get p(self) -> int: ...</c>, <c>event add e(self, h: H): ...</c>. Call it
+    /// immediately after the declaration's <c>:</c>. Returns <c>null</c> without consuming anything
+    /// when what follows is not a stub, so the caller falls through to its ordinary
+    /// <c>ExpectNewline()</c> + indented-block path exactly as before.
+    ///
+    /// <para>Those three forms used to carry three independently written
+    /// <c>Current.Type == TokenType.Ellipsis</c> guards, which is why <c>(...)</c> — the same stub
+    /// as <c>...</c> at every other seam since #1214 — was a parse error here and only here
+    /// (#1238). Classification is delegated to <see cref="AstHelper.TryGetEllipsisStub"/> rather
+    /// than re-implemented as a lookahead past balanced parens: this position asks the same
+    /// authority every block position asks, so it cannot drift from it again.</para>
+    ///
+    /// <para>The token gate below is not a stub test — it only asks whether an inline body can
+    /// begin here at all. Anything else (<c>pass</c>, <c>return 1</c>, <c>1 + 1</c>) is left
+    /// wholly unconsumed so the caller reports the same SPY0102 "Expected newline, got X" it always
+    /// did, and a grouped expression that turns out not to be a stub (<c>(1 + 2)</c>) is rewound to
+    /// the same effect. An unterminated group (<c>(...</c>) is the one input whose diagnostic
+    /// changes: it now reports the missing <c>)</c> instead of "Expected newline, got LeftParen".
+    /// It was an error before and remains one — see <c>InlineStubParserTests</c>, which pins every
+    /// cell of this behavior.</para>
+    /// </summary>
+    private InlineStubBody? TryParseInlineStubBody()
+    {
+        if (Current.Type is not (TokenType.Ellipsis or TokenType.LeftParen))
+            return null;
+
+        var savedPosition = _position;
+        var expression = ParseExpression();
+        var statement = new ExpressionStatement
+        {
+            Expression = expression,
+            LineStart = expression.LineStart,
+            ColumnStart = expression.ColumnStart,
+            LineEnd = expression.LineEnd,
+            ColumnEnd = expression.ColumnEnd,
+            Span = expression.Span
+        };
+
+        if (!AstHelper.TryGetEllipsisStub(statement, out _))
+        {
+            _position = savedPosition;
+            return null;
+        }
+
+        var endToken = Previous;
+        ExpectNewline();
+        return new InlineStubBody(ImmutableArray.Create<Statement>(statement), endToken);
+    }
+
     private FunctionDef ParseAsyncFunctionDef()
     {
         var asyncToken = Current;
@@ -287,15 +346,9 @@ public partial class Parser
 
         Expect(TokenType.Colon);
 
-        // Support inline ellipsis syntax: def foo(): ...
-        if (Current.Type == TokenType.Ellipsis)
+        // Support inline stub syntax: def foo(): ...  (and every grouped spelling of it — #1238)
+        if (TryParseInlineStubBody() is { } inlineStub)
         {
-            var ellipsisLine = Current.Line;
-            var ellipsisColumn = Current.Column;
-            var ellipsisToken = Current;
-            Advance(); // consume '...'
-            ExpectNewline();
-
             return new FunctionDef
             {
                 Name = name,
@@ -305,30 +358,13 @@ public partial class Parser
                 TypeParameters = typeParams.ToImmutableArray(),
                 Parameters = parameters.ToImmutableArray(),
                 ReturnType = returnType,
-                Body = ImmutableArray.Create<Statement>(
-                    new ExpressionStatement
-                    {
-                        Expression = new EllipsisLiteral
-                        {
-                            LineStart = ellipsisLine,
-                            ColumnStart = ellipsisColumn,
-                            LineEnd = ellipsisLine,
-                            ColumnEnd = ellipsisColumn + 3,
-                            Span = GetSpanFromToken(ellipsisToken)
-                        },
-                        LineStart = ellipsisLine,
-                        ColumnStart = ellipsisColumn,
-                        LineEnd = ellipsisLine,
-                        ColumnEnd = ellipsisColumn + 3,
-                        Span = GetSpanFromToken(ellipsisToken)
-                    }
-                ),
+                Body = inlineStub.Body,
                 DocString = null,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = Current.Line,
                 ColumnEnd = Current.Column,
-                Span = GetSpanFromTokens(startToken, ellipsisToken)
+                Span = GetSpanFromTokens(startToken, inlineStub.EndToken)
             };
         }
 
@@ -1312,15 +1348,9 @@ public partial class Parser
 
             Expect(TokenType.Colon);
 
-            // Support inline ellipsis syntax: property get name(self) -> type: ...
-            if (Current.Type == TokenType.Ellipsis)
+            // Support inline stub syntax: property get name(self) -> type: ...  (#1238)
+            if (TryParseInlineStubBody() is { } inlineStub)
             {
-                var ellipsisLine = Current.Line;
-                var ellipsisColumn = Current.Column;
-                var ellipsisToken = Current;
-                Advance(); // consume '...'
-                ExpectNewline();
-
                 return new PropertyDef
                 {
                     Name = name,
@@ -1332,29 +1362,12 @@ public partial class Parser
                     Parameters = parameters.ToImmutableArray(),
                     ReturnType = returnType,
                     ExplicitInterface = explicitInterface,
-                    Body = ImmutableArray.Create<Statement>(
-                        new ExpressionStatement
-                        {
-                            Expression = new EllipsisLiteral
-                            {
-                                LineStart = ellipsisLine,
-                                ColumnStart = ellipsisColumn,
-                                LineEnd = ellipsisLine,
-                                ColumnEnd = ellipsisColumn + 3,
-                                Span = GetSpanFromToken(ellipsisToken)
-                            },
-                            LineStart = ellipsisLine,
-                            ColumnStart = ellipsisColumn,
-                            LineEnd = ellipsisLine,
-                            ColumnEnd = ellipsisColumn + 3,
-                            Span = GetSpanFromToken(ellipsisToken)
-                        }
-                    ),
+                    Body = inlineStub.Body,
                     LineStart = startLine,
                     ColumnStart = startColumn,
                     LineEnd = Current.Line,
                     ColumnEnd = Current.Column,
-                    Span = GetSpanFromTokens(startToken, ellipsisToken)
+                    Span = GetSpanFromTokens(startToken, inlineStub.EndToken)
                 };
             }
 
@@ -1570,15 +1583,9 @@ public partial class Parser
 
             Expect(TokenType.Colon);
 
-            // Support inline ellipsis syntax: event add name(self, handler: T): ...
-            if (Current.Type == TokenType.Ellipsis)
+            // Support inline stub syntax: event add name(self, handler: T): ...  (#1238)
+            if (TryParseInlineStubBody() is { } inlineStub)
             {
-                var ellipsisLine = Current.Line;
-                var ellipsisColumn = Current.Column;
-                var ellipsisToken = Current;
-                Advance(); // consume '...'
-                ExpectNewline();
-
                 return new EventDef
                 {
                     Name = name,
@@ -1588,29 +1595,12 @@ public partial class Parser
                     Accessor = accessor,
                     IsFunctionStyle = true,
                     Parameters = parameters.ToImmutableArray(),
-                    Body = ImmutableArray.Create<Statement>(
-                        new ExpressionStatement
-                        {
-                            Expression = new EllipsisLiteral
-                            {
-                                LineStart = ellipsisLine,
-                                ColumnStart = ellipsisColumn,
-                                LineEnd = ellipsisLine,
-                                ColumnEnd = ellipsisColumn + 3,
-                                Span = GetSpanFromToken(ellipsisToken)
-                            },
-                            LineStart = ellipsisLine,
-                            ColumnStart = ellipsisColumn,
-                            LineEnd = ellipsisLine,
-                            ColumnEnd = ellipsisColumn + 3,
-                            Span = GetSpanFromToken(ellipsisToken)
-                        }
-                    ),
+                    Body = inlineStub.Body,
                     LineStart = startLine,
                     ColumnStart = startColumn,
                     LineEnd = Current.Line,
                     ColumnEnd = Current.Column,
-                    Span = GetSpanFromTokens(startToken, ellipsisToken)
+                    Span = GetSpanFromTokens(startToken, inlineStub.EndToken)
                 };
             }
 

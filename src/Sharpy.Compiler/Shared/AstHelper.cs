@@ -6,7 +6,7 @@ using Sharpy.Compiler.Parser.Ast;
 namespace Sharpy.Compiler.Shared;
 
 /// <summary>
-/// Shared AST utility methods used by both semantic analysis and code generation.
+/// Shared AST utility methods used by the parser, semantic analysis, and code generation.
 /// </summary>
 internal static class AstHelper
 {
