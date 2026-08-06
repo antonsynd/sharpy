@@ -711,7 +711,9 @@ internal partial class TypeChecker
         // facts at that point so an enclosing narrowing is visible (#1042).
         _currentFacts = _narrowingFlow?.FactsBeforeBranch(forStmt.Iterator) ?? _currentFacts;
 
-        var iterType = CheckExpression(forStmt.Iterator);
+        SemanticType iterType;
+        using (ScopedValue.Push(ref _currentIterationSource, forStmt.Iterator))
+            iterType = CheckExpression(forStmt.Iterator);
 
         // Enum type used as iterable: `for c in Color:` — CheckIdentifier returns Unknown
         // for TypeSymbol references, so resolve enum types explicitly here.

@@ -377,6 +377,11 @@ internal partial class TypeChecker
     /// <item><description>Anything else has no signature and no way to acquire one: SPY0342.</description></item>
     /// </list>
     ///
+    /// <para>Ahead of all three, a name that resolves to a type with no construction at all — a
+    /// user-declared interface, enum, union or abstract class — is refused outright (SPY0346,
+    /// #1250). That is not tier 3 with a different message: tier 3 means this position supplies no
+    /// signature to select among the ones the type offers, which presumes it offers some.</para>
+    ///
     /// <para>A builtin type NAME written in one of the established non-value positions is left with
     /// the type it has today (see <see cref="IsConstructorReferenceValueUse"/>) — those positions
     /// already work, and rejecting or re-typing on the reference alone is what broke them last time
@@ -387,8 +392,14 @@ internal partial class TypeChecker
     /// reference in a position this rule governs, so the caller's remaining rules apply.</returns>
     private SemanticType? CheckConstructorReference(Expression reference, SemanticType type)
     {
-        if (ConstructorReferenceOf(reference, type) is not { } constructorReference)
-            return null;
+        var classification = ClassifyConstructorReference(reference, type);
+
+        if (classification.Reference is not { } constructorReference)
+        {
+            return classification.NonConstructible is { } nonConstructible
+                ? RefuseNonConstructibleReference(reference, nonConstructible)
+                : null;
+        }
 
         // A read already typed as the carrier is always a value use; nothing but this rule makes one.
         var isValueUse = type is ConstructorReferenceType || IsConstructorReferenceValueUse(reference);
@@ -485,31 +496,129 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The constructor reference an expression denotes, or null when it is not one. A read already
-    /// typed as the carrier denotes itself; a bare identifier denotes one when it resolves to a type
-    /// symbol with an emittable construction shape — a builtin of a recognized family, or a user
-    /// class/struct (#1211).
+    /// What a name denotes for the constructor-reference rule. Exactly one of the two is set: a
+    /// <see cref="Reference"/> the tier rules apply to, or a <see cref="NonConstructible"/> type
+    /// that has no construction for a reference to denote (#1250). Both null means the name is not
+    /// this rule's business, and the caller's remaining rules apply.
+    /// </summary>
+    private readonly record struct ConstructorReferenceClassification(
+        ConstructorReferenceType? Reference,
+        NonConstructibleTypeName? NonConstructible);
+
+    /// <summary>A type name with no construction, described for the diagnostic.</summary>
+    private readonly record struct NonConstructibleTypeName(
+        string Name, string Description, string Suggestion);
+
+    /// <summary>
+    /// Classifies the name an expression denotes. A read already typed as the carrier denotes
+    /// itself; a bare identifier denotes a constructor reference when it resolves to a type symbol
+    /// with an emittable construction shape — a builtin of a recognized family, or a user
+    /// class/struct (#1211) — and a NON-CONSTRUCTIBLE type when it resolves to a user-declared
+    /// interface, enum, union, delegate or abstract class (#1250).
     ///
     /// <para>Shadowing is preserved by construction: <c>_symbolTable.Lookup</c> returns the user
     /// declaration's own symbol, and the registry-identity test is what decides WHICH family rule
     /// applies. A user class named <c>int</c> is therefore its own UserType reference pinning
     /// against its own constructors — never the builtin's conversion overload set.</para>
+    ///
+    /// <para>A BUILTIN with no family is left alone rather than called non-constructible, because
+    /// it is not: <c>object()</c>, <c>bytes()</c>, <c>decimal()</c>, <c>frozenset()</c> and the view
+    /// types all construct and run. A reference to one still falls through to the position's typing
+    /// and leaks broken C#; that is a separate gap (#1272), and answering it here would attach a
+    /// diagnostic that says something false about them.</para>
     /// </summary>
-    private ConstructorReferenceType? ConstructorReferenceOf(Expression reference, SemanticType type)
+    private ConstructorReferenceClassification ClassifyConstructorReference(
+        Expression reference, SemanticType type)
     {
         if (type is ConstructorReferenceType carrier)
-            return carrier;
+            return new ConstructorReferenceClassification(carrier, null);
 
         if (reference is not Identifier id || _symbolTable.Lookup(id.Name) is not TypeSymbol typeSymbol)
-            return null;
+            return default;
 
-        var family = ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name))
+        var isBuiltin = ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name));
+        var family = isBuiltin
             ? ConstructorReferenceFamilyOf(typeSymbol)
             : UserConstructorReferenceFamilyOf(typeSymbol);
 
-        return family is not { } resolved
-            ? null
-            : new ConstructorReferenceType { Name = id.Name, Symbol = typeSymbol, Family = resolved };
+        if (family is { } resolved)
+        {
+            return new ConstructorReferenceClassification(
+                new ConstructorReferenceType { Name = id.Name, Symbol = typeSymbol, Family = resolved },
+                null);
+        }
+
+        return isBuiltin
+            ? default
+            : new ConstructorReferenceClassification(null, NonConstructibleTypeNameOf(typeSymbol));
+    }
+
+    /// <summary>
+    /// Why a user-declared type has no construction for a reference to denote, or null when it has
+    /// one (#1250).
+    ///
+    /// <para>Exactly the kinds <see cref="UserConstructorReferenceFamilyOf"/> declines: an
+    /// interface, an enum, a union type name, an abstract class, and a DELEGATE. Sharpy delegates
+    /// are named function TYPES that a compatible callable is assigned to
+    /// (<c>cb: Cb = log</c>) — <c>delegates.md</c> documents no construction spelling, and C#'s
+    /// <c>new Cb(log)</c> has no Sharpy equivalent, so a delegate name is no more a value than an
+    /// interface name is.</para>
+    ///
+    /// <para>A non-abstract class or struct returns null here and never reaches this method in
+    /// practice, since it takes the UserType family instead.</para>
+    /// </summary>
+    private static NonConstructibleTypeName? NonConstructibleTypeNameOf(TypeSymbol typeSymbol)
+    {
+        var name = typeSymbol.Name;
+        return typeSymbol.TypeKind switch
+        {
+            TypeKind.Interface => new NonConstructibleTypeName(name, "an interface",
+                "Name a concrete implementing type instead, or wrap the construction in a lambda."),
+            TypeKind.Enum => new NonConstructibleTypeName(name, "an enum",
+                $"A member is the value you want: '{name}.SOME_MEMBER'."),
+            TypeKind.Union => new NonConstructibleTypeName(name, "a union",
+                $"Construct one of its variants instead: '{name}.SomeCase(...)'."),
+            TypeKind.Delegate => new NonConstructibleTypeName(name, "a delegate type",
+                $"Assign a compatible function or lambda to it instead: 'cb: {name} = handler'."),
+            TypeKind.Class or TypeKind.Struct when typeSymbol.IsAbstract =>
+                new NonConstructibleTypeName(name, "abstract",
+                    "Name a concrete subclass instead, or wrap the construction in a lambda."),
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Refuses a non-constructible type name used as a value (#1250), or returns null to leave the
+    /// position the typing it has today.
+    ///
+    /// <para>Gated on the positions where the name is being used AS a value, plus the direct
+    /// call-argument position — the same pair #1249's residue uses. Both leak identically today
+    /// (<c>f = IShape</c> and <c>map(IShape, xs)</c> each reach codegen as a bare type name), and
+    /// <see cref="IsConstructorReferenceCallArgument"/> repeats every other exclusion verbatim, so
+    /// a type test's type argument, a static-member receiver, an index argument and a recorded type
+    /// reference are all still skipped. Those are the #1170 over-fire positions and they keep the
+    /// typing they have today.</para>
+    ///
+    /// <para>Minus one position neither predicate knows about: an ENUM name is a legitimate iterable
+    /// (<c>for c in Color</c>), and that reads as a value use to both. See
+    /// <c>_currentIterationSource</c>.</para>
+    /// </summary>
+    private SemanticType? RefuseNonConstructibleReference(
+        Expression reference, NonConstructibleTypeName nonConstructible)
+    {
+        if (IsCurrentIterationSource(reference))
+            return null;
+
+        if (!IsConstructorReferenceValueUse(reference) && !IsConstructorReferenceCallArgument(reference))
+            return null;
+
+        AddError(
+            $"'{nonConstructible.Name}' is {nonConstructible.Description} and has no constructor, "
+            + $"so its name is not a value. {nonConstructible.Suggestion}",
+            reference.LineStart, reference.ColumnStart,
+            code: DiagnosticCodes.Semantic.NonConstructibleTypeReference,
+            span: reference.Span);
+        return SemanticType.Unknown;
     }
 
     /// <summary>
@@ -521,10 +630,11 @@ internal partial class TypeChecker
     /// <c>class Point: x: int = 0</c> has none — and that is #1211's own repro. A class with no
     /// declared constructor offers exactly the zero-argument shape.</para>
     ///
-    /// <para>Interfaces, enums, unions, delegates and abstract classes return null and keep the
-    /// typing they have today rather than acquiring a new diagnostic — the same posture
+    /// <para>Interfaces, enums, unions, delegates and abstract classes return null, and none of
+    /// them has a construction for a reference to denote: <see cref="NonConstructibleTypeNameOf"/>
+    /// refuses all five in a value position (SPY0346, #1250). That is NOT the same posture
     /// <see cref="ConstructorReferenceFamilyOf"/> takes for <c>object</c>/<c>bytes</c>/the view
-    /// types.</para>
+    /// types — those construct, so they fall through unrefused (#1272).</para>
     /// </summary>
     private static ConstructorReferenceFamily? UserConstructorReferenceFamilyOf(TypeSymbol typeSymbol)
         => typeSymbol.TypeKind is TypeKind.Class or TypeKind.Struct && !typeSymbol.IsAbstract
@@ -532,9 +642,13 @@ internal partial class TypeChecker
             : null;
 
     /// <summary>
-    /// Which construction shape a builtin type emits as, or null for a builtin type that is not a
-    /// constructor reference at all (<c>object</c>, <c>bytes</c>, the view and iterator types): those
-    /// keep the behavior they have today rather than acquiring a new diagnostic.
+    /// Which construction shape a builtin type emits as, or null for a builtin type this rule does
+    /// not govern (<c>object</c>, <c>bytes</c>, <c>decimal</c>, <c>frozenset</c>, the view and
+    /// iterator types): those keep the behavior they have today.
+    ///
+    /// <para>Null here means "no family", NOT "not constructible" — every one of them constructs
+    /// (<c>object()</c>, <c>frozenset()</c> with a target type). A reference to one still falls
+    /// through to the position's typing and reaches codegen as a bare type name; see #1272.</para>
     /// </summary>
     private ConstructorReferenceFamily? ConstructorReferenceFamilyOf(TypeSymbol typeSymbol)
     {
@@ -568,6 +682,14 @@ internal partial class TypeChecker
             && !IsCurrentIndexArgument(reference)
             && !_semanticInfo.IsTypeReference(reference)
             && !IsDirectCallArgument(reference);
+
+    /// <summary>
+    /// Whether the reference is the iterator of the for statement or comprehension for-clause
+    /// currently being checked (<c>for c in Color</c>). See <c>_currentIterationSource</c>.
+    /// </summary>
+    private bool IsCurrentIterationSource(Expression reference)
+        => _currentIterationSource != null
+            && ReferenceEquals(UnwrapParenthesized(_currentIterationSource), UnwrapParenthesized(reference));
 
     /// <summary>
     /// Whether the reference is a type argument of the index currently being checked

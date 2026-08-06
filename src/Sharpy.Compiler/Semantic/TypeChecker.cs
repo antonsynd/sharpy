@@ -133,6 +133,15 @@ internal partial class TypeChecker
     // restore. See the comment at the CheckFunctionCall scope (#1218).
     private ConstructorReferenceType? _constructorAliasCallee;
 
+    // The iterator expression of the for statement or comprehension for-clause currently being
+    // checked (`for c in Color`, `[c.name for c in Color]`). An ENUM name is a legitimate iterable
+    // there — it denotes the member set, and both sites rescue it into a UserDefinedType right after
+    // CheckExpression returns Unknown for it. That makes the position a use of the type name, not of
+    // a value, so the non-constructible refusal skips exactly these nodes (#1250); refusing here
+    // broke five shipped enum-iteration fixtures, which is the #1170 over-fire in its enum flavor.
+    // Scoped around the iterator check via ScopedValue.Push (see Semantic/ScopedValue.cs, #1218).
+    private Expression? _currentIterationSource;
+
     // The index expression of the IndexAccess currently being checked, and the elements of a
     // multi-argument index (`Outer.Inner[int]`, `Dict[str, int]`). Some type references reach the
     // value-indexing path rather than the generic-reference resolver — the nested spelling does —
