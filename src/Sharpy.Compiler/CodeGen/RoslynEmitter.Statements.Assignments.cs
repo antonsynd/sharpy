@@ -18,16 +18,13 @@ internal partial class RoslynEmitter
 {
     private StatementSyntax GenerateAssignment(Assignment assign)
     {
-        if (IsConstructorAliasBinding(assign.Target, assign.Value)
-            && assign.Operator == AssignmentOperator.Assign)
-        {
-            return EmptyStatement();
-        }
-
-        // A ConstructorReferenceType value that was NOT elided above should be unreachable:
-        // tier 1 replaces the carrier with the pinned FunctionType, tier 2 is the elision,
-        // and tier 3 rejected everything else (SPY0342). Fail loudly rather than letting the
-        // generic identifier fallback emit a method group into a non-delegate C# type (#1182).
+        // A ConstructorReferenceType value here is unreachable, and this is the tripwire that says
+        // so. Two tiers remain since #1248 retired the call-only alias: tier 1 replaces the carrier
+        // with the pinned FunctionType, and everything else is refused in semantic analysis
+        // (SPY0342, or SPY0346 for a type with no construction at all). NO BINDING CARRIES THE
+        // CARRIER, so reaching here means the checker bound one where it should have refused. Fail
+        // loudly rather than letting the generic identifier fallback emit a method group into a
+        // non-delegate C# type (#1182, #1248).
         if (_context.SemanticInfo?.GetExpressionType(assign.Value) is ConstructorReferenceType crt)
         {
             _context.AddError(
@@ -606,25 +603,11 @@ internal partial class RoslynEmitter
         return BinaryExpression(SyntaxKind.DivideExpression, left, right);
     }
 
-    /// <summary>
-    /// Whether a binding aliases a builtin constructor (<c>f = int</c>, <c>f = dict</c>) and so emits
-    /// no C# at all (#1182). A constructor reference is Sharpy's method group: it has no runtime
-    /// value to store, and every call through the alias emits the direct builtin form the semantic
-    /// phase recorded on the call node. The name cannot survive anywhere else — an unpinned
-    /// constructor reference in any other position is rejected (SPY0342) — so nothing dangles.
-    /// </summary>
-    private bool IsConstructorAliasBinding(Expression? target, Expression? value)
-        => target is Identifier
-            && value != null
-            && _context.SemanticInfo?.GetExpressionType(value) is ConstructorReferenceType;
-
     private StatementSyntax GenerateVariableDeclaration(VariableDeclaration varDecl)
     {
-        if (varDecl.InitialValue != null
-            && _context.SemanticInfo?.GetExpressionType(varDecl.InitialValue) is ConstructorReferenceType)
-        {
-            return EmptyStatement();
-        }
+        // No carrier check here, deliberately. The alias elision this path carried inline until
+        // #1248 is gone with the alias itself; a carrier reaching a DECLARED type is caught by
+        // TypeSyntaxMapper, which throws on it.
 
         // Track const variables by their original Sharpy name for consistent reference resolution
         if (varDecl.IsConst)

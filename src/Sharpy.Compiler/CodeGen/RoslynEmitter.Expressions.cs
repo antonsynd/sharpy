@@ -303,54 +303,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Emits a call made through a builtin constructor alias (#1182). Semantic analysis resolved the
-    /// call as a call of the builtin itself and recorded which builtin and what it constructs, so
-    /// this emits the same shape the direct spelling emits: <c>Builtins.Int("3")</c> for the
-    /// conversion families, <c>new Dict&lt;string, int&gt;()</c> for the collection families.
-    /// </summary>
-    private ExpressionSyntax GenerateConstructorReferenceCall(
-        FunctionCall call, ConstructorReferenceLowering lowering)
-    {
-        // dict(a=1, b=2) reached through an alias is the same construct as the direct spelling and
-        // needs the same collection-initializer lowering. The positional pipeline below carries no
-        // keyword arguments, so without this the kwargs were dropped and `f = dict; f(c=3)` silently
-        // produced an EMPTY dict — worse than the CS error it replaced (#1220).
-        if (call.KeywordArguments.Length > 0 && call.Arguments.Length == 0
-            && lowering.ConstructedType is GenericType { Name: BuiltinNames.Dict } aliasDictType
-            && aliasDictType.TypeArguments.Count == 2
-            && aliasDictType.TypeArguments.All(t => t is not UnknownType))
-        {
-            return GenerateKeywordDictConstruction(call, aliasDictType);
-        }
-
-        // Loud guard for every other keyword argument reaching this seam: the pipeline below would
-        // drop it silently. Semantic analysis refuses the shapes it knows about, so anything here is
-        // a carrier the two halves disagree about — report it rather than emit wrong data.
-        if (call.KeywordArguments.Length > 0)
-        {
-            return EmitNotImplementedExpression(
-                $"Keyword arguments are not supported when calling '{lowering.Name}' through a "
-                + "constructor reference",
-                DiagnosticCodes.CodeGen.UnsupportedExpressionType,
-                call.LineStart, call.ColumnStart);
-        }
-
-        // Route through the shared positional-argument pipeline so spread elements and
-        // iterable projections lower exactly as they do for the direct spelling —
-        // a hand-rolled Select over GenerateExpression would send *t to the
-        // SPY0518 not-supported fallback (#1182 verification finding).
-        var arguments = ArgumentList(SeparatedList(GeneratePositionalArguments(call.Arguments)));
-
-        return lowering.Family == ConstructorReferenceFamily.Conversion
-            ? InvocationExpression(
-                MakeGlobalQualifiedName("Sharpy", "Builtins",
-                    NameCasing.ResolveMethod(lowering.Name, isBacktickEscaped: false)),
-                arguments)
-            : ObjectCreationExpression(_typeMapper.MapSemanticType(lowering.ConstructedType))
-                .WithArgumentList(arguments);
-    }
-
-    /// <summary>
     /// Applies the narrowed-read accessor the TypeChecker materialized for <paramref name="node"/>
     /// (#1081). The emitter is a pure applier here: it switches on the recorded
     /// <see cref="NarrowedReadKind"/> and never re-derives narrowing flow. Returns

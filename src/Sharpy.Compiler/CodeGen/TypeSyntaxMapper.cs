@@ -106,11 +106,12 @@ internal class TypeSyntaxMapper
                 ? RoslynEmitter.MakeGlobalQualifiedName("System", "Threading", "Tasks", "Task")
                 : QualifiedGenericName("System.Threading.Tasks.Task", globalQualified: true, MapSemanticType(tt.ResultType)),
 
-            // A constructor reference never survives to a declared type: tier 1 replaces it
-            // with the pinned FunctionType, tier 2 elides the binding, tier 3 rejects (#1182).
+            // A constructor reference never survives to a declared type. Two tiers since #1248
+            // retired the call-only alias: tier 1 replaces the carrier with the pinned FunctionType,
+            // and everything else is refused in semantic analysis (#1182, #1248).
             ConstructorReferenceType cr => throw new InvalidOperationException(
                 $"Compiler bug: constructor reference to '{cr.Name}' reached type mapping — "
-                + "it should have been pinned, elided, or rejected (SPY0342) in semantic analysis."),
+                + "it should have been pinned or rejected (SPY0342) in semantic analysis."),
 
             // Exhaustive check - if a new SemanticType is added, this will fail at runtime
             _ => throw new InvalidOperationException(

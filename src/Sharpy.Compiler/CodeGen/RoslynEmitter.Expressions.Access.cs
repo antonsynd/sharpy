@@ -25,12 +25,6 @@ internal partial class RoslynEmitter
             return GenerateFunctoolsPartialCall(call);
         }
 
-        // A call through a builtin constructor alias — `f = int; f("3")`, `f = dict; f()`. The
-        // semantic phase resolved it exactly as a call of the builtin and recorded the shape, so this
-        // emits the direct form; the alias binding itself emits nothing (#1182).
-        if (_context.SemanticInfo?.GetConstructorReferenceLowering(call) is { } aliasCall)
-            return GenerateConstructorReferenceCall(call, aliasCall);
-
         // A parenthesized callee — (foo)(5), (p.method)(5), (identity[int])(5) — wraps the inner
         // expression in Parenthesized. The semantic phase already pinned the call target through the
         // wrapper (CheckExpression recurses through Parenthesized), so unwrap once here and dispatch
