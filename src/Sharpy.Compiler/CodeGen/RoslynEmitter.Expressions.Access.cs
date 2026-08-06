@@ -55,13 +55,24 @@ internal partial class RoslynEmitter
 
         if (callee is Identifier funcName)
         {
-            // Check if this is a builtin function call (e.g., int(), str(), print(), len(), etc.)
-            var isBuiltinFunc = _context.IsBuiltinFunction(funcName.Name);
+            // Check if this is a builtin function call (e.g., int(), str(), print(), len(), etc.).
+            // A backtick-escaped callee never is: the escape says "this spelling names MY symbol",
+            // so `str`(3) must reach the user's constructor rather than Sharpy.Builtins.str, which
+            // is what made an escaped builtin-type name declarable but not callable (#1241).
+            var isBuiltinFunc = _context.IsBuiltinFunction(funcName.Name)
+                                && !funcName.IsNameBacktickEscaped;
 
             // User-defined functions shadow builtins (Python scoping rules):
             // A FunctionSymbol with CodeGenInfo was processed by semantic analysis (user-defined),
             // while builtin functions from the registry won't have CodeGenInfo set.
+            //
+            // The lookup is by NAME and the registry answers first, so an escaped callee must not
+            // be resolved by a registry symbol it merely shares a spelling with — the same rule
+            // GetMangledVariableName applies to escaped locals. Without this, `int`(21) resolves to
+            // the builtin int TYPE and emits `new int(21)`.
             var symbol = _context.LookupSymbol(funcName.Name);
+            if (symbol != null && funcName.IsNameBacktickEscaped != symbol.IsNameBacktickEscaped)
+                symbol = null;
             if (isBuiltinFunc && symbol is FunctionSymbol { CodeGenInfo: not null })
                 isBuiltinFunc = false;
 

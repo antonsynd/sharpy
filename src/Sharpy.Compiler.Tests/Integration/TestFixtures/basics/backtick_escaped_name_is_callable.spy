@@ -1,0 +1,30 @@
+# A backtick-escaped user symbol must be fully usable, INCLUDING callable (#1241). The callee
+# classifier asked only whether the NAME was a builtin, never whether the source escaped it, so
+# `int`(21) emitted `global::Sharpy.Builtins.int(21)` — CS1001, since `int` is a C# keyword — and
+# `str`(3) emitted `Builtins.str(3)`, CS0117. Both were declarable and neither was callable.
+def twice(x: int) -> int:
+    return x * 2
+
+
+# A user class spelling a builtin TYPE name. The semantic layer already honoured this end to end;
+# only the callee routed past it to the builtin conversion, so `s.v` bound against `string`.
+class `str`:
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+
+def main():
+    `int` = twice
+    print(`int`(21))
+
+    s = `str`(3)
+    print(s.v)
+
+    # The bare spellings must be untouched: they are still the builtins, which is the whole
+    # premise of requiring the escape. A fix that made these resolve to user symbols would have
+    # broken the rule rather than implemented it.
+    print(int("21"))
+    print(str(7))
+    print(len([1, 2, 3]))
