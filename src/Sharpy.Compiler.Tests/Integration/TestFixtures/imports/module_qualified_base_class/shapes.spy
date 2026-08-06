@@ -1,0 +1,15 @@
+# Module whose types are referenced through the module-qualified spelling `shapes.X`.
+
+interface Named:
+    def label(self) -> str:
+        ...
+
+
+class Shape:
+    sides: int
+
+    def __init__(self, sides: int):
+        self.sides = sides
+
+    def describe(self) -> str:
+        return "shape with " + str(self.sides) + " sides"

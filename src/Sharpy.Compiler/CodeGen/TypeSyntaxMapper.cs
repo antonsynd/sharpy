@@ -492,15 +492,31 @@ internal class TypeSyntaxMapper
         }
 
         // Check if it's a user-defined type from another file/module (takes priority over builtins)
-        var typeSymbol = _context.SymbolTable.LookupType(sharpyTypeName)
-            ?? LookupModuleQualifiedType(sharpyTypeName);
+        var typeSymbol = _context.SymbolTable.LookupType(sharpyTypeName);
+        var isModuleQualified = false;
+        if (typeSymbol == null && LookupModuleQualifiedType(sharpyTypeName) is { } moduleQualifiedSymbol)
+        {
+            typeSymbol = moduleQualifiedSymbol;
+            isModuleQualified = true;
+        }
+
         if (typeSymbol != null)
         {
             // For aliased imports, resolve the original type name for code generation.
             // E.g., "from helper import Config as Cfg" should generate "Helper.Config", not "Helper.Cfg".
             var codeGenInfo = _context.SemanticBinding.GetCodeGenInfo(typeSymbol)
                 ?? typeSymbol.CodeGenInfo;
-            var resolvedName = codeGenInfo?.OriginalImportName ?? sharpyTypeName;
+
+            // A module-qualified spelling (`genlib.Holder`) names the type through segments that
+            // QualifyFromSymbol re-derives from the symbol itself. Handing it the WRITTEN name
+            // emitted the qualifier twice — `SharpyApp.Genlib.genlib.Holder`, CS0426 behind SPY0908
+            // (#1244). Every leading segment ResolveQualifiedType consumed is a module, so the
+            // symbol's own name is exactly the remainder. This is the same "name the type from the
+            // resolved symbol, never from the source spelling" rule as #1139/#1241; the annotation
+            // position never had the bug because MapType resolves it through SemanticInfo first,
+            // and only positions with no recorded resolution — base lists — reach here.
+            var resolvedName = codeGenInfo?.OriginalImportName
+                ?? (isModuleQualified ? typeSymbol.Name : sharpyTypeName);
 
             // A *module-qualified* ClrType-backed symbol in the Sharpy runtime namespace (e.g.
             // sharpy.generators.GeneratorOutput) can resolve — via LookupModuleQualifiedType — to a

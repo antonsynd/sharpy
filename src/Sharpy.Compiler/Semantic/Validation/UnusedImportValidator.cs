@@ -213,6 +213,16 @@ internal class UnusedImportValidator : ValidatingAstWalker
         if (!string.IsNullOrEmpty(typeName))
         {
             refs.Add(typeName);
+
+            // A module-qualified annotation (`genlib.Base`, `genlib.Holder[str]`) is recorded under
+            // its written dotted name, but an `import genlib` is registered under the bare module
+            // name — so every annotation-only use of an imported module was reported unused
+            // (SPY0452). The value positions never had the bug: `genlib.Base()` walks a MemberAccess
+            // whose object is the bare Identifier. Record the top-level segment too, the same
+            // reduction GetTopLevelName applies on the import side.
+            var topLevel = GetTopLevelName(typeName);
+            if (topLevel.Length != typeName.Length)
+                refs.Add(topLevel);
         }
 
         foreach (var typeArg in typeAnnotation.TypeArguments)

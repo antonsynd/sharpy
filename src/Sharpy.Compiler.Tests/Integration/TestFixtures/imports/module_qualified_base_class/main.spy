@@ -1,0 +1,29 @@
+# A module-qualified base type is named from the resolved symbol, not the written spelling
+# (#1244). Before the fix the module segment was emitted on top of the resolved qualifier
+# (`SharpyApp.Shapes.shapes.Shape`), producing CS0426 behind SPY0908.
+#
+# The module-qualified ANNOTATION on `render` is the second half: an import used only in a
+# type annotation used to be reported unused (SPY0452), because the reference was recorded
+# under its dotted name while the import is registered under the bare module name.
+
+import shapes
+
+
+class Square(shapes.Shape):
+    def __init__(self):
+        super().__init__(4)
+
+
+class Tag(shapes.Named):
+    def label(self) -> str:
+        return "tag"
+
+
+def render(s: shapes.Shape) -> str:
+    return s.describe()
+
+
+def main() -> None:
+    print(Square().describe())
+    print(Tag().label())
+    print(render(Square()))
