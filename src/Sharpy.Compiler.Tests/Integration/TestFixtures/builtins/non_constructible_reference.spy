@@ -1,0 +1,88 @@
+# #1250: a type with NO construction cannot be a constructor reference, and its name in a value
+# position is refused at recognition time. Before this the name fell through every rule and reached
+# codegen as a bare type name — SPY0908 with no semantic diagnostic at all, while the spec already
+# promised the refusal (d090e6cd4).
+#
+# Distinct from SPY0342, which means this POSITION supplies no signature to select among the ones
+# the type offers. That presumes it offers some; here no position could ever pin the name.
+#
+# Scoped to the kinds that genuinely have no construction, each measured under `run` rather than
+# assumed — SPY0908 never appears under `emit diagnostics`. object/bytes/decimal/frozenset and the
+# view types DO construct, so a reference to one is deliberately NOT refused here even though it
+# leaks the same way; that gap is #1272.
+#
+# Every position below names a DIFFERENT type, so each expected message is unique: the harness
+# matches an expected substring to the first diagnostic containing it, and three rows all reading
+# "'IShape' is an interface…" would let a wrong @line:col pass against the wrong occurrence.
+delegate Cb(v: int) -> None
+
+
+interface IShape:
+    def area(self) -> float: ...
+
+
+interface IDrawable:
+    def draw(self) -> None: ...
+
+
+interface IComparer:
+    def compare(self, other: object) -> int: ...
+
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+
+enum Suit:
+    HEARTS = 1
+    SPADES = 2
+
+
+union Shape:
+    case Circle(r: float)
+    case Square(s: float)
+
+
+@abstract
+class Base:
+    def go(self) -> int: ...
+
+
+class Impl(Base):
+    def __init__(self):
+        pass
+
+    @override
+    def go(self) -> int:
+        return 1
+
+
+def main():
+    # A plain binding, the shape #1250 reports.
+    f = IShape
+
+    # An enum names a set of members, not a construction.
+    g = Color
+
+    # A union constructs through its VARIANTS; the union name itself does not. The variant spelling
+    # (`Shape.Circle`) is call-syntax-only and keeps SPY0337 — pinned next door.
+    h = Shape
+
+    # A delegate is a named function TYPE: a compatible callable is assigned to it. delegates.md
+    # documents no construction spelling, so the name is no more a value than an interface name is.
+    k = Cb
+
+    # An abstract class has a constructor body but no construction.
+    i = Base
+
+    # A PIN target is a value use too: annotating it cannot rescue a type that has no shape to pin.
+    j: (float) -> IDrawable = IDrawable
+
+    # A direct call argument is the other position that reaches codegen as a bare name. It is NOT
+    # covered by IsConstructorReferenceValueUse (#1170 excludes it deliberately), so the refusal is
+    # gated on IsConstructorReferenceCallArgument as well — the gate that repeats every other
+    # exclusion verbatim, leaving type tests and static-member receivers alone.
+    ns: list[int] = [1, 2]
+    print(list(map(IComparer, ns)))
+    print(list(map(Suit, ns)))

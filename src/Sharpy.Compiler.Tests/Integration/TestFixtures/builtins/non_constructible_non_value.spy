@@ -1,0 +1,102 @@
+# #1250 regression guard. The refusal next door fires only where a non-constructible type name is
+# used AS a value; every position where such a name legitimately appears must keep the typing it has
+# today. This is the #1170 over-fire rule applied to the new check — the same reason the wider
+# constructor_reference_tripwire fixture exists, for the kinds that fixture does not carry
+# (interface, enum, union, delegate, abstract class).
+#
+# Every row was measured working under `run` before the check was added, so a regression here is a
+# real loss rather than a never-supported shape. Deliberately absent: `Cb(log)`, which leaks
+# SPY0908 today and is not a spelling delegates.md documents (assignment is) — see #1271.
+delegate Cb(v: int) -> None
+
+
+interface IShape:
+    def area(self) -> float: ...
+
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+
+union Shape:
+    case Circle(r: float)
+    case Square(s: float)
+
+
+@abstract
+class Base(IShape):
+    @override
+    def area(self) -> float:
+        return 0.0
+
+
+class Circle(Base):
+    def __init__(self):
+        pass
+
+    @override
+    def area(self) -> float:
+        return 3.0
+
+
+class Holder[T]:
+    v: T
+
+    def __init__(self, v: T):
+        self.v = v
+
+
+def takes(s: IShape) -> float:
+    return s.area()
+
+
+def log(v: int) -> None:
+    print(v)
+
+
+def main():
+    c = Circle()
+
+    # Annotations, on a local and through a parameter.
+    s: IShape = c
+    b: Base = c
+    print(takes(s))
+    print(b.area())
+
+    # Type-test type arguments — a direct call argument too, which is exactly why the refusal's
+    # gate repeats IsTypeTestTypeArgument rather than approximating it.
+    print(isinstance(c, IShape))
+    print(isinstance(c, Base))
+
+    # Enum member access, and an enum-typed annotation.
+    print(Color.RED)
+    col: Color = Color.GREEN
+    print(col)
+
+    # An enum name is a legitimate ITERABLE: it denotes the member set. Both the statement and the
+    # comprehension spelling read as a value use to the refusal's other two predicates, so this is
+    # the position that needs its own exclusion — five shipped fixtures broke on it before the
+    # exclusion existed (#1250).
+    for e in Color:
+        print(e.name)
+    print([e.name for e in Color])
+
+    # Generic type arguments.
+    shapes: list[IShape] = [c]
+    print(len(shapes))
+    h: Holder[Color] = Holder[Color](Color.RED)
+    print(h.v)
+
+    # A delegate-typed annotation takes a compatible function; only the bare NAME is refused.
+    cb: Cb = log
+    cb(5)
+
+    # A union variant is call-syntax-only and keeps SPY0337 rather than acquiring the new code;
+    # constructing one is unaffected.
+    sh: Shape = Shape.Circle(2.0)
+    match sh:
+        case Circle(r):
+            print(r)
+        case Square(_):
+            print("square")

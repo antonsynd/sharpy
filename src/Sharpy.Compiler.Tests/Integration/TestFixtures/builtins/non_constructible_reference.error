@@ -1,0 +1,8 @@
+'IShape' is an interface and has no constructor, so its name is not a value. Name a concrete implementing type instead, or wrap the construction in a lambda. @63:9
+'Color' is an enum and has no constructor, so its name is not a value. A member is the value you want: 'Color.SOME_MEMBER'. @66:9
+'Shape' is a union and has no constructor, so its name is not a value. Construct one of its variants instead: 'Shape.SomeCase(...)'. @70:9
+'Cb' is a delegate type and has no constructor, so its name is not a value. Assign a compatible function or lambda to it instead: 'cb: Cb = handler'. @74:9
+'Base' is abstract and has no constructor, so its name is not a value. Name a concrete subclass instead, or wrap the construction in a lambda. @77:9
+'IDrawable' is an interface and has no constructor, so its name is not a value. @80:31
+'IComparer' is an interface and has no constructor, so its name is not a value. @87:20
+'Suit' is an enum and has no constructor, so its name is not a value. @88:20
