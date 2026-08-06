@@ -1,24 +1,15 @@
-# #1248 — THIS FIXTURE PINS A KNOWN DEFECT. Read before changing an expected value.
+# #1248 is CLOSED BY CONSTRUCTION, and this fixture records how.
 #
-# A constructor alias REBOUND INSIDE A CONDITIONAL resolves against the binding that reached the
-# `if`, not the one the branch installed, and does so SILENTLY — it constructs the wrong type with
-# no diagnostic. `taken()` below returns "meow"; CPython returns "woof", because the branch runs.
+# The defect: a constructor alias rebound inside a conditional resolved against the binding that
+# reached the `if`, not the one the branch installed, and did so SILENTLY — `taken()` returned
+# "meow" where CPython returns "woof". The cause was the alias being resolved where it was READ,
+# which is a property of a construct with no runtime value at all.
 #
-# The tell is that `taken()` and `not_taken()` are the same program apart from the value of `flag`
-# and they agree: the conditional is dead as far as the alias is concerned.
+# The fix is not a flow-analysis correction. The construct is retired (#1248), so every binding
+# below is refused where it is written and the wrong-answer shape cannot be spelled. The
+# CPython-matching replacement is pinned next door in constructor_reference_annotated_rebind.
 #
-# Bounded by measurement, not by reading:
-#   - straight-line rebinding is correct (`straight_line()` returns "woof", as CPython does);
-#   - a branch with NO pre-`if` binding never reaches this — SPY0200 refuses it, because Sharpy
-#     scopes block-locally rather than function-locally;
-#   - so only pre-`if` binding + conditional rebind is affected.
-#
-# Before #1211 made user classes constructor references, this shape was a loud SPY0908 internal
-# error. #1211 is a net improvement here — it makes two of the three rows below correct — but it
-# turned this row from loud to silent, which is why it is pinned rather than left uncovered.
-#
-# WHEN #1248 IS FIXED: update `taken()`'s expected value to "woof". Do NOT delete this fixture and
-# do NOT narrow constructor-reference recognition to "fix" it — that would undo #1211.
+# Each function names a different class so every expected message is unique.
 class Cat:
     def speak(self) -> str:
         return "meow"
@@ -29,6 +20,11 @@ class Dog:
         return "woof"
 
 
+class Fox:
+    def speak(self) -> str:
+        return "ring"
+
+
 def taken() -> str:
     flag: bool = True
     f = Cat
@@ -37,21 +33,11 @@ def taken() -> str:
     return f().speak()
 
 
-def not_taken() -> str:
-    flag: bool = False
-    f = Cat
-    if flag:
-        f = Dog
-    return f().speak()
-
-
 def straight_line() -> str:
-    f = Cat
-    f = Dog
-    return f().speak()
+    g = Fox
+    return g().speak()
 
 
 def main():
     print(taken())
-    print(not_taken())
     print(straight_line())

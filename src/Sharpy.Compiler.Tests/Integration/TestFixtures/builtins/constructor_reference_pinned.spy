@@ -43,11 +43,11 @@ def main():
     # Argument position: the parameter type supplies the signature.
     print(apply(int, "5"))
 
-    # An alias passed as an argument pins there too — it behaves exactly like the name it aliases.
-    f = int
+    # The same name in a generic argument position, where the legacy synthesized signature applies
+    # rather than a pin. This row used to go through an ALIAS (`f = int; map(f, xs)`), which is
+    # retired (#1248); the direct name is what remains and it must keep working.
     xs: list[str] = ["3", "1", "2"]
-    print(list(map(f, xs)))
-    print(apply(f, "6"))
+    print(list(map(int, xs)))
 
     # The collection copy constructor.
     src: list[int] = [1, 2, 3]

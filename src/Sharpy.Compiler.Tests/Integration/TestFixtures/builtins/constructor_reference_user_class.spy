@@ -4,9 +4,12 @@
 # broken C# before #1211.
 #
 # Three pinning rules, one per family: the conversion families match a Sharpy.Builtins overload set,
-# the collection families a known generic shape, and a user type its own DECLARED constructors. The
-# emitter arms are shared with the collection families (a constructor lambda at a reference,
-# `new T(args)` at an alias call), which is why nothing here needed a new emitter shape.
+# the collection families a known generic shape, and a user type its own DECLARED constructors.
+#
+# The call-only ALIAS rows this fixture also carried (`f = Point; f(6)`, and an alias passed to
+# map) moved to constructor_reference_user_class_alias when #1248 retired that tier. What remains is
+# every position where a user-class name IS still a value: pinned against a target, or a direct call
+# argument that binds its single constructor shape.
 class Origin:
     tag: str = "o"
 
@@ -93,20 +96,10 @@ def main():
     # Tier 1 through a declared parameter type rather than an annotation.
     print(apply(Point, 5))
 
-    # Tier 2: a call-only alias, and a re-alias.
-    f = Point
-    print(f(6))
-
-    f2 = Vec
-    print(f2(1, 2))
-
     # A direct call argument with a GENERIC parameter type: the class name as a factory, exactly as
     # `map(int, xs)` has always worked. Emitted broken C# (CS0119 behind SPY0908) before #1211.
     ns: list[int] = [3, 1, 2]
     print(list(map(Point, ns)))
-
-    # And an ALIAS in that same position, which must behave exactly like the name it aliases.
-    print(list(map(f, ns)))
 
     # A keyword argument.
     print(build(ns, make=Point))

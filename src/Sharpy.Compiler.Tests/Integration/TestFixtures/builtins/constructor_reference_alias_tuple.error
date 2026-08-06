@@ -1,1 +1,2 @@
-'tuple(...)' cannot convert an iterable to a tuple: a tuple's arity is part of its type. The argument is already a 'tuple[int, int]' — drop the conversion. @5:12
+cannot infer a single callable signature for builtin type 'tuple' @6:9
+call the type directly, or wrap the construction in a lambda @6:9

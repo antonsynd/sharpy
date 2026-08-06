@@ -1,0 +1,66 @@
+# The CPython-matching replacement for #1248's repro, and the evidence that retiring the call-only
+# alias did not just delete the wrong answer but supplied a right one.
+#
+# `f` is a real function-typed variable holding a lambda: it has a runtime value, the assignment
+# inside the branch actually executes, and the call reads the variable at run time. So the branch is
+# live and `taken()` returns "woof" — which is what CPython prints for the equivalent program, where
+# the alias spelling would have returned "meow".
+#
+# Two things this fixture depends on, both measured rather than assumed:
+#   - `speak` must be @virtual/@override. Without them the static type decides and every row prints
+#     the BASE implementation with no diagnostic at all (C# method hiding, Axiom 1) — the fixture
+#     would pin a silently wrong answer.
+#   - the annotation must be a LAMBDA, not a constructor reference. `f: () -> Animal = Cat` does not
+#     compile: a constructor reference pins only against a target naming the class itself, even
+#     though the equivalent lambda converts covariantly. That asymmetry is #1270 and this batch does
+#     not depend on it.
+class Animal:
+    @virtual
+    def speak(self) -> str:
+        return "..."
+
+
+class Cat(Animal):
+    def __init__(self):
+        pass
+
+    @override
+    def speak(self) -> str:
+        return "meow"
+
+
+class Dog(Animal):
+    def __init__(self):
+        pass
+
+    @override
+    def speak(self) -> str:
+        return "woof"
+
+
+def taken() -> str:
+    flag: bool = True
+    f: () -> Animal = lambda: Cat()
+    if flag:
+        f = lambda: Dog()
+    return f().speak()
+
+
+def not_taken() -> str:
+    flag: bool = False
+    f: () -> Animal = lambda: Cat()
+    if flag:
+        f = lambda: Dog()
+    return f().speak()
+
+
+def straight_line() -> str:
+    f: () -> Animal = lambda: Cat()
+    f = lambda: Dog()
+    return f().speak()
+
+
+def main():
+    print(taken())
+    print(not_taken())
+    print(straight_line())

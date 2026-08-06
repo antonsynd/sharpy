@@ -1,0 +1,2 @@
+cannot infer a single callable signature for builtin type 'float' @13:9
+cannot infer a single callable signature for builtin type 'int' @16:9

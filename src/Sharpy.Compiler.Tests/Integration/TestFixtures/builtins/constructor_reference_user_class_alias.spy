@@ -1,0 +1,40 @@
+# The tier-2 rows that constructor_reference_user_class carried until #1248 retired the call-only
+# alias. #1211 extended the alias to user classes; the retirement removes it for user classes and
+# builtins alike, so a class name bound to a plain name is refused where it is written.
+#
+# The generic row is the one worth keeping separately: `b_maker = Box; b_maker(5)` WORKED, because
+# the alias call inferred T from the argument. It was the only spelling of a generic-class factory
+# with no concrete target — `map(Box, ns)` does not work and `mb: (int) -> Box[int] = Box` requires
+# the caller to already know T. The replacement is a lambda.
+#
+# Each row names a different class so every expected message is unique.
+class Point:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+
+class Vec:
+    a: int
+    b: int
+
+    def __init__(self, a: int, b: int):
+        self.a = a
+        self.b = b
+
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main():
+    f = Point
+    f2 = Vec
+    b_maker = Box
+    print(f)
+    print(f2)
+    print(b_maker)

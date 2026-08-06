@@ -1,0 +1,23 @@
+# The alias-only rows from constructor_reference_user_class_edges, refused since #1248.
+#
+# The base-chain walk and the spread pipeline they exercised are not lost: the walk is still covered
+# by the pinned `d: (int) -> Derived = Derived` row next door, and spread through a call is an
+# ordinary call concern rather than a constructor-reference one now that no call goes through an
+# alias.
+class Base:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+
+class Derived(Base):
+    def tag(self) -> str:
+        return f"D{self.x}"
+
+
+def main():
+    f = Derived
+    g = Base
+    print(f)
+    print(g)

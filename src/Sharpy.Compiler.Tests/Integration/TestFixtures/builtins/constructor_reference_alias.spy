@@ -1,62 +1,31 @@
-# #1182 tier 2: a binding with no signature available becomes a call-only ALIAS of the builtin.
-# Each call through it resolves exactly like a call of the builtin itself — same overload selection,
-# same expected-type-driven type-argument inference — and the binding itself emits no C#, because a
-# constructor reference has no runtime value (the C# method-group model).
+# #1248 retired tier 2 — the call-only ALIAS. A binding with no signature available used to become
+# an alias of the builtin, with each call through it resolved at its own call site; it is now
+# refused where it is written.
+#
+# The alias was untyped BY DESIGN: it had no runtime representation, emitted no C#, and was resolved
+# where it was READ rather than where it was written — a compile-time macro impersonating a value.
+# With overloaded constructors, which signature was meant was unknowable until each call. C# has no
+# constructor values at all, and Java's `Point::new` is legal only in target-typed positions, which
+# is tier 1.
+#
+# One row per family, each naming a DIFFERENT type, so every expected message is unique: the harness
+# matches an expected substring to the first diagnostic containing it.
 def shadowed() -> int:
-    # A local variable named after a builtin shadows it, and stays an ordinary variable: the
-    # constructor-reference rules short-circuit on the VariableSymbol.
+    # A local variable named after a builtin shadows it and stays an ordinary variable: the
+    # constructor-reference rules short-circuit on the VariableSymbol, so this is NOT refused.
     dict = 5
     return dict + 1
 
 
 def main():
-    f = int
-    print(f("3"))
-
-    # Reassignment re-aliases: each call site binds its own reaching binding.
-    f = str
-    print(f(5))
-
-    d_maker = dict
-    d: dict[str, int] = d_maker()
-    d["k"] = 1
-    print(d)
-
-    l_maker = list
-    xs: list[int] = l_maker()
-    xs.append(9)
-    xs.append(4)
-    print(xs)
-
-    s_maker = set
-    s: set[str] = s_maker()
-    s.add("a")
-    print(s)
-
-    # A parenthesized callee is still a callee.
-    p = int
-    print((p)("11"))
-
-    fl = float
-    print(fl("2.5"))
-
-    # An alias bound inside a loop body, re-bound on every iteration.
-    total: int = 0
-    for raw in ["1", "2", "3"]:
-        parse = int
-        total = total + parse(raw)
-    print(total)
-
-    # And inside a nested block scope.
-    if True:
-        render = str
-        print(render(7))
-
     print(shadowed())
 
-    # Spread through an alias call lowers exactly like the direct spelling —
-    # the alias-call emitter shares the positional-argument pipeline
-    # (/verify-implementation finding: a hand-rolled arm sent *t to SPY0518).
-    spread_src: tuple[str] = ("8",)
-    conv = int
-    print(conv(*spread_src))
+    f = int
+    g = str
+    d_maker = dict
+    l_maker = list
+    s_maker = set
+    fl = float
+
+    # A parenthesized binding value is still a binding value.
+    b = (bool)

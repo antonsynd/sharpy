@@ -1,0 +1,7 @@
+cannot infer a single callable signature for builtin type 'int' @23:9
+cannot infer a single callable signature for builtin type 'str' @24:9
+cannot infer a single callable signature for builtin type 'dict' @25:15
+cannot infer a single callable signature for builtin type 'list' @26:15
+cannot infer a single callable signature for builtin type 'set' @27:15
+cannot infer a single callable signature for builtin type 'float' @28:10
+cannot infer a single callable signature for builtin type 'bool' @31:10

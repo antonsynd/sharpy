@@ -1,29 +1,18 @@
-# #1221: a constructor ALIAS is resolved where it is READ, against the binding reaching that read at
-# TYPE-CHECK time. A closure that captures an alias therefore sees the binding in effect where the
-# closure body was checked, which DIVERGES from Python, where the body would see the binding in
-# effect when the closure is CALLED.
-#
-# This is a consequence of the alias having no runtime value at all: it emits no C# (see
-# function_types.md, Constructor References), so there is nothing for a closure to capture and
-# nothing a later rebinding could update. Axiom 1 (.NET) over Axiom 2 (Python); recorded in
+# #1221 pinned a DEVIATION here: a constructor alias was resolved where it was READ, so a closure
+# capturing one saw the binding in effect where the closure body was CHECKED, not where it was
+# called. That diverged from Python and had a `constructor-alias-eager-capture` entry in
 # docs/deviations.yaml.
 #
-# The discriminator matters. The obvious `f = int` / `f = str` spelling CANNOT show this: both
-# print(int("42")) and print(str("42")) print 42, so the test would pass either way. float/int is
-# the smallest pair whose outputs differ.
+# #1248 retires the alias, which deletes the deviation rather than fixing it: there is no longer a
+# construct that behaves this way. Both bindings below are refused where they are written.
+#
+# The replacement idiom is an annotated function-typed variable holding a lambda, which is a real
+# delegate with a real runtime value and captures the way Python does — pinned in
+# constructor_reference_annotated_rebind.
 def main():
-    # Lambda capture. The lambda needs an annotated target — a bare `g = lambda s: f(s)` is refused
-    # by SPY0343, because nothing there says what `s` is (#1212).
     f = float
     g: (str) -> float = lambda s: f(s)
-    f = int
-    print(g("42"))
-
-    # A nested function captures by the same rule.
-    h = float
-
-    def convert(s: str) -> float:
-        return h(s)
 
     h = int
-    print(convert("7"))
+    print(g("42"))
+    print(h)

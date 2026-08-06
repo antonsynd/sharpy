@@ -1,0 +1,2 @@
+cannot infer a single callable signature for class 'Derived' @20:9
+cannot infer a single callable signature for class 'Base' @21:9

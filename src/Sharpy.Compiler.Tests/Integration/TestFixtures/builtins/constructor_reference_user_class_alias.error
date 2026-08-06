@@ -1,0 +1,3 @@
+cannot infer a single callable signature for class 'Point' @35:9
+cannot infer a single callable signature for class 'Vec' @36:10
+cannot infer a single callable signature for class 'Box' @37:15

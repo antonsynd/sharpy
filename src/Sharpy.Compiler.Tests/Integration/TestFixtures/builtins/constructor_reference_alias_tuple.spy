@@ -1,6 +1,7 @@
-# The tuple family has no pin shape, so an alias call lands on #1159's SPY0338
-# guidance instead of the old CS0119 leak — the deliberate outcome (#1182).
+# The tuple family has no pin shape: a tuple's arity is part of its type, so no constructor
+# signature follows from the name. This fixture used to reach that conclusion through an ALIAS
+# (`t = tuple; t((1, 2))`), which #1248 retired; the binding is now refused where it is written
+# rather than at the call, and the direct spelling keeps #1159's own SPY0338 guidance.
 def main() -> None:
     t = tuple
-    pair = t((1, 2))
-    print(pair)
+    print(t)

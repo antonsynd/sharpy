@@ -48,14 +48,8 @@ def main():
     d: (int) -> Derived = Derived
     print(d(5).tag())
 
-    f = Derived
-    print(f(9).tag())
-
-    # The shadowing class constructs itself, not the builtin.
-    m = map
+    # The shadowing class constructs itself, not the builtin — through a PIN, since #1248 retired
+    # the alias spelling (`m = map; m(11).v`) this row used to use. The registry-identity rule is
+    # what makes `map` here resolve to the user class rather than the builtin function.
+    m: (int) -> map = map
     print(m(11).v)
-
-    # A spread argument through an alias call rides the shared positional pipeline.
-    g = Base
-    t = (21,)
-    print(g(*t).x)

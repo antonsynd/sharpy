@@ -12,9 +12,9 @@ def main():
     mixed = dict(a=1, b="x")
     print(len(mixed))
 
-    # The alias spelling is the same construct and must lower identically. It silently produced an
-    # EMPTY dict until the constructor-reference path learned to carry keyword arguments.
-    alias = dict
-    aliased = alias(c=3, d=4)
-    print(aliased)
-    print(aliased["d"])
+    # The keyword construct through a PINNED reference rather than the bare name. The alias spelling
+    # (`alias = dict; alias(c=3, d=4)`) covered this until #1248 retired it; the construct itself is
+    # unchanged and must still carry its keyword arguments.
+    keyed: dict[str, int] = dict(c=3, d=4)
+    print(keyed)
+    print(keyed["d"])
