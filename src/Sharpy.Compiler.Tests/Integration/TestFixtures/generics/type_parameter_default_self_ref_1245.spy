@@ -1,0 +1,12 @@
+# A parameter is not yet declared at the point its own default is read, so naming itself is
+# the same rule as naming a later parameter (#1245). Also silently accepted before the fix.
+
+class Loop[K = K]:
+    a: K
+
+    def __init__(self, a: K):
+        self.a = a
+
+
+def main() -> None:
+    print(1)

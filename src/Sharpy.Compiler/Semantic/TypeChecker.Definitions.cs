@@ -2244,13 +2244,21 @@ internal partial class TypeChecker
         bool seenDefault = false;
         string? firstDefaultName = null;
 
-        foreach (var tp in typeParams)
+        for (int i = 0; i < typeParams.Length; i++)
         {
+            var tp = typeParams[i];
             if (tp.DefaultType != null)
             {
                 seenDefault = true;
                 firstDefaultName ??= tp.Name;
-                ValidateTypeParameterDefaultConstraints(tp);
+
+                // The reference rule is checked BEFORE resolution: a default that names a parameter
+                // it cannot see has no resolvable type, so resolving it would stack "type 'T' not
+                // found" underneath the SPY0347 that names the actual rule.
+                if (!ValidateTypeParameterDefaultReferences(typeParams, i))
+                    continue;
+
+                ValidateTypeParameterDefaultConstraints(typeParams, i);
             }
             else if (seenDefault)
             {
@@ -2263,25 +2271,146 @@ internal partial class TypeChecker
         }
     }
 
-    private void ValidateTypeParameterDefaultConstraints(TypeParameterDef typeParam)
+    /// <summary>
+    /// SPY0347: a type-parameter default may name only the parameters declared before it in the same
+    /// list (PEP 696), which is also what the Sharpy spec's <c>class Container[K, V = list[K]]</c>
+    /// example depends on. Returns false when it reported.
+    ///
+    /// <para>This runs at the DECLARATION on purpose. Defaults are resolved where a short type
+    /// argument vector is filled, i.e. at the use site, so before #1245 both
+    /// <c>class Bad[K = V, V = int]</c> and the self-referential <c>class Bad[K = K]</c> compiled in
+    /// total silence whenever the declaration was never used with a short vector — and the valid
+    /// <c>class Dup[K, V = K]</c> failed SPY0202 at whatever line happened to use it. Checking the
+    /// declaration is what makes the answer a property of the declaration rather than of its
+    /// callers.</para>
+    ///
+    /// <para>An enclosing declaration's parameter (<c>class Outer[T]</c> then
+    /// <c>def make[U, W = T]</c>) is refused under the same code. It is in scope everywhere else in
+    /// that signature, but a default is read when the declaration is instantiated, where the
+    /// enclosing binding is not part of this parameter list — PEP 696 excludes it for the same
+    /// reason.</para>
+    /// </summary>
+    private bool ValidateTypeParameterDefaultReferences(
+        System.Collections.Immutable.ImmutableArray<TypeParameterDef> typeParams, int index)
     {
-        if (typeParam.DefaultType == null || typeParam.Constraints.IsEmpty)
+        var typeParam = typeParams[index];
+        if (typeParam.DefaultType == null)
+            return true;
+
+        var visible = new HashSet<string>(
+            typeParams.Take(index).Select(tp => tp.Name), StringComparer.Ordinal);
+        var declaredHere = new HashSet<string>(
+            typeParams.Select(tp => tp.Name), StringComparer.Ordinal);
+
+        foreach (var reference in EnumerateAnnotationNames(typeParam.DefaultType))
+        {
+            if (visible.Contains(reference.Name))
+                continue;
+
+            string reason;
+            if (reference.Name == typeParam.Name)
+            {
+                reason = $"'{typeParam.Name}' cannot be its own default";
+            }
+            else if (declaredHere.Contains(reference.Name))
+            {
+                reason = $"'{reference.Name}' is declared after '{typeParam.Name}'";
+            }
+            else if (_symbolTable.Lookup(reference.Name) is TypeParameterSymbol)
+            {
+                reason = $"'{reference.Name}' belongs to an enclosing declaration";
+            }
+            else
+            {
+                continue; // an ordinary type name — not this rule's business
+            }
+
+            AddError(
+                $"The default for type parameter '{typeParam.Name}' may reference only type parameters declared before it: {reason}",
+                reference.LineStart, reference.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeParameterDefaultForwardReference,
+                span: reference.Span);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Every name a type annotation mentions, itself first and then its type arguments, so a nested
+    /// default like <c>V = list[K]</c> is inspected as thoroughly as the bare <c>V = K</c>.
+    /// </summary>
+    private static IEnumerable<TypeAnnotation> EnumerateAnnotationNames(TypeAnnotation annotation)
+    {
+        yield return annotation;
+        foreach (var typeArg in annotation.TypeArguments)
+        {
+            foreach (var nested in EnumerateAnnotationNames(typeArg))
+                yield return nested;
+        }
+    }
+
+    private void ValidateTypeParameterDefaultConstraints(
+        System.Collections.Immutable.ImmutableArray<TypeParameterDef> typeParams, int index)
+    {
+        var typeParam = typeParams[index];
+        if (typeParam.DefaultType == null)
             return;
 
-        var defaultType = _typeResolver.ResolveTypeAnnotation(typeParam.DefaultType);
-        if (defaultType is UnknownType)
+        // Resolved here, at the DECLARATION, and reporting — this is the one place a default's own
+        // names are diagnosed. Resolution otherwise happens where a short type-argument vector is
+        // filled, i.e. at the use site, so `class Dup[K, V = NoSuchType]` was accepted in silence
+        // until someone wrote `Dup[str]`, and then reported at THAT line, once per reference
+        // (#1245). Running unconditionally (not just when constraints exist) is what moves the
+        // report to the declaration; the use-site calls pass reportDiagnostics: false.
+        //
+        // The preceding parameters are in scope, so `V: str = K` sees K as the type parameter it is
+        // and the constraint check below reads K's own constraints rather than failing to find it.
+        var defaultType = _typeResolver.ResolveTypeParameterDefault(
+            typeParams, index, System.Array.Empty<SemanticType>(), reportDiagnostics: true);
+        if (defaultType is UnknownType || typeParam.Constraints.IsEmpty)
             return;
+
+        // A default that IS an earlier type parameter carries no type of its own to test — what has
+        // to hold is PEP 696's bound rule: the referenced parameter's constraints must satisfy the
+        // defaulting parameter's. `class Dup[K: str, V: str = K]` is fine, `class Dup[K, V: str = K]`
+        // is not, because nothing forces K to be a str (#1245).
+        var defaultConstraints = defaultType is TypeParameterType earlier
+            ? earlier.Constraints
+            : System.Collections.Immutable.ImmutableArray<Parser.Ast.ConstraintClause>.Empty;
 
         foreach (var constraint in typeParam.Constraints)
         {
             switch (constraint)
             {
+                case Parser.Ast.ClassConstraint when defaultType is TypeParameterType:
+                    if (!defaultConstraints.Any(c => c is Parser.Ast.ClassConstraint))
+                    {
+                        AddError(
+                            $"Default type parameter '{defaultType.GetDisplayName()}' for type parameter '{typeParam.Name}' is not constrained to a reference type (class)",
+                            typeParam.DefaultType.LineStart, typeParam.DefaultType.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeParameterDefaultViolatesConstraint,
+                            span: typeParam.DefaultType.Span);
+                    }
+                    break;
+
                 case Parser.Ast.ClassConstraint when defaultType.IsValueType:
                     AddError(
                         $"Default type '{defaultType.GetDisplayName()}' for type parameter '{typeParam.Name}' is a value type, but constraint requires a reference type (class)",
                         typeParam.DefaultType.LineStart, typeParam.DefaultType.ColumnStart,
                         code: DiagnosticCodes.Semantic.TypeParameterDefaultViolatesConstraint,
                         span: typeParam.DefaultType.Span);
+                    break;
+
+                case Parser.Ast.StructConstraint when defaultType is TypeParameterType:
+                    if (!defaultConstraints.Any(c => c is Parser.Ast.StructConstraint))
+                    {
+                        AddError(
+                            $"Default type parameter '{defaultType.GetDisplayName()}' for type parameter '{typeParam.Name}' is not constrained to a value type (struct)",
+                            typeParam.DefaultType.LineStart, typeParam.DefaultType.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeParameterDefaultViolatesConstraint,
+                            span: typeParam.DefaultType.Span);
+                    }
                     break;
 
                 case Parser.Ast.StructConstraint when !defaultType.IsValueType:
@@ -2296,7 +2425,15 @@ internal partial class TypeChecker
                     var constraintType = _typeResolver.ResolveTypeAnnotation(tc.Type);
                     if (constraintType is UnknownType)
                         break;
-                    if (!defaultType.IsAssignableTo(constraintType))
+
+                    var satisfied = defaultType is TypeParameterType
+                        ? defaultConstraints.OfType<Parser.Ast.TypeConstraint>().Any(earlierConstraint =>
+                            _typeResolver.ResolveTypeAnnotation(earlierConstraint.Type)
+                                is { } earlierType and not UnknownType
+                            && earlierType.IsAssignableTo(constraintType))
+                        : defaultType.IsAssignableTo(constraintType);
+
+                    if (!satisfied)
                     {
                         AddError(
                             $"Default type '{defaultType.GetDisplayName()}' for type parameter '{typeParam.Name}' does not satisfy constraint '{constraintType.GetDisplayName()}'",

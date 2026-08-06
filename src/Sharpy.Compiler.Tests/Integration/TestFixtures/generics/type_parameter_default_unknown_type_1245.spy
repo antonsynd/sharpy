@@ -1,0 +1,16 @@
+# A default naming a type that does not exist is reported at the DECLARATION, once. Before
+# #1245 defaults were only resolved where a short type argument vector was filled, so this
+# declaration was accepted in silence until someone wrote `Missing[str]` — and then reported
+# at that line, once per reference.
+
+class Missing[K, V = NoSuchType]:
+    a: K
+    b: V
+
+    def __init__(self, a: K, b: V):
+        self.a = a
+        self.b = b
+
+
+def main() -> None:
+    print(1)

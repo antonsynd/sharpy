@@ -156,10 +156,14 @@ internal class GenericTypeInferenceService
         {
             if (!substitutions.TryGetValue(typeParam.Name, out var inferredType))
             {
-                // PEP 696: try using the type parameter default
+                // PEP 696: try using the type parameter default. Resolved through
+                // ResolveTypeParameterDefault so a default naming an earlier parameter takes that
+                // parameter's INFERRED value (#1245) — `inferredTypes` is the vector settled so
+                // far, in declaration order, which is exactly what the earlier positions bound to.
                 if (typeParam.DefaultType != null && _typeResolver != null)
                 {
-                    inferredType = _typeResolver.ResolveTypeAnnotation(typeParam.DefaultType);
+                    inferredType = _typeResolver.ResolveTypeParameterDefault(
+                        typeParams, inferredTypes.Count, inferredTypes);
                     substitutions[typeParam.Name] = inferredType;
                 }
                 else

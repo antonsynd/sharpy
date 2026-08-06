@@ -992,6 +992,13 @@ internal partial class TypeChecker
     /// <c>ValidateTypeParameterDefaultOrdering</c>). The one answer to "what does a short vector
     /// mean?", shared by the function and type seams (#1219) — the two keep their own diagnostic
     /// wording, which is user-visible and pinned, but not their own notion of completeness.
+    ///
+    /// <para>Each default resolves through <c>TypeResolver.ResolveTypeParameterDefault</c>, which
+    /// puts the PRECEDING parameters in scope and substitutes the arguments filled so far. That is
+    /// what makes <c>class Dup[K, V = K]</c> referenced as <c>Dup[str]</c> mean <c>Dup[str, str]</c>
+    /// rather than failing SPY0202 on a <c>K</c> that is defined one position to the left (#1245).
+    /// Filling in order matters: <paramref name="typeArgs"/> grows as it goes, so a chained default
+    /// (the PEP's <c>slice</c> example) sees the value its predecessor just resolved to.</para>
     /// </summary>
     private void FillTrailingTypeArgumentDefaults(
         IReadOnlyList<TypeParameterDef> typeParameters, List<SemanticType> typeArgs)
@@ -1001,7 +1008,7 @@ internal partial class TypeChecker
             var typeParam = typeParameters[i];
             if (typeParam.DefaultType == null)
                 break;
-            typeArgs.Add(_typeResolver.ResolveTypeAnnotation(typeParam.DefaultType));
+            typeArgs.Add(_typeResolver.ResolveTypeParameterDefault(typeParameters, i, typeArgs));
         }
     }
 

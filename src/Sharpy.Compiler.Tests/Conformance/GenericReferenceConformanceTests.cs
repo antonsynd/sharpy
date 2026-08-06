@@ -82,6 +82,14 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// kinds are measured rather than one standing in for the class. They arrived green — no allowlist
 /// lines — which is what "the fix was class-level" means here.
 /// </para>
+///
+/// <para><b>#1245 added the DEFAULTED specimens</b> (<c>defaulted_dup</c>, <c>defaulted_fn</c>).
+/// They invert the deficient-arity expectation: every other two-parameter specimen expects a short
+/// vector to be rejected, while these must FILL from the second parameter's PEP-696 default and
+/// compile, so both are declared <c>called::deficient</c> must-succeed. The type and function seams
+/// are pinned together because #1219 recorded them as a matched pair — repairing one and leaving the
+/// other behind is the failure mode this pair exists to catch. They arrived green.
+/// </para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
 [Collection("HeavyCompilation")]
@@ -339,6 +347,22 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
         const string identityDecl = "def identity[T](x: T) -> T:\n    return x\n\n";
         const string pairDecl = "def pair[T, U](a: T, b: U) -> T:\n    return a\n\n";
         const string shadowMapDecl = "def map[T](x: T) -> T:\n    return x\n\n";
+        // Declarations whose second type parameter defaults to the FIRST (#1245). Their deficient
+        // cells are the point: a short vector must FILL from the default and compile, where every
+        // other two-parameter specimen's deficient cells are expected to reject. The two seams —
+        // type and function — moved together because #1219 pinned them as a matched pair, so both
+        // are measured across every reference form rather than only where the bug was reported.
+        const string defaultedDupPrelude =
+            "class Dup[K, V = K]:\n" +
+            "    a: K\n" +
+            "    b: V\n\n" +
+            "    def __init__(self, a: K, b: V):\n" +
+            "        self.a = a\n" +
+            "        self.b = b\n\n" +
+            "    def __str__(self) -> str:\n" +
+            "        return f\"d{self.a}{self.b}\"\n\n";
+        const string defaultedFnDecl =
+            "def echo_pair[K, V = K](a: K, b: V) -> K:\n    return a\n\n";
 
         return new List<Specimen>
         {
@@ -473,6 +497,29 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
                 // SPY0237 until #1208; both no-bracket forms exercise that gap, so both are pinned
                 // — pinning only `called::none` would leave `(genlib.Slot)(1, "a")` unguarded.
                 MustSucceed: new[] { "called::none", "parenCalled::none" }),
+
+            // (7d) a generic TYPE whose second parameter DEFAULTS to the first — Dup[K, V = K]
+            // (#1245). Every other two-parameter specimen expects its deficient cells to reject;
+            // these must fill and compile, which is what makes the default's meaning a matter of
+            // record rather than of one fixture. `Dup[str]` is `Dup[str, str]`.
+            new("defaulted_dup", "type-ref", 2,
+                Imports: "", Prelude: defaultedDupPrelude, SiblingModuleName: null, SiblingModuleContent: null,
+                EnclosingParams: "", Receiver: "", Member: "Dup",
+                ExactTypeArgs: new[] { "str", "str" }, CallArgs: "\"a\", \"b\"",
+                Runnable: defaultedDupPrelude + "def main() -> None:\n    print(Dup[str](\"a\", \"b\"))\n",
+                ExpectedOutput: "dab",
+                MustSucceed: new[] { "called::deficient" }),
+
+            // (7e) the function seam of the same rule — def echo_pair[K, V = K] (#1245, #1219's
+            // matched pair). Pinned beside the type seam so a change cannot repair one and leave the
+            // other silently behind, which is the failure mode #1219 recorded.
+            new("defaulted_fn", "user-fn", 2,
+                Imports: "", Prelude: defaultedFnDecl, SiblingModuleName: null, SiblingModuleContent: null,
+                EnclosingParams: "", Receiver: "", Member: "echo_pair",
+                ExactTypeArgs: new[] { "str", "str" }, CallArgs: "\"a\", \"b\"",
+                Runnable: defaultedFnDecl + "def main() -> None:\n    print(echo_pair[str](\"a\", \"b\"))\n",
+                ExpectedOutput: "a",
+                MustSucceed: new[] { "called::deficient" }),
 
             // (8) user function shadowing a same-named builtin — def map[T] shadows builtin map (#1002/#1003).
             new("shadow_map", "shadow-builtin", 1,

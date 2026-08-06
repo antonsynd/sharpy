@@ -1,0 +1,15 @@
+# PEP 696's bound rule, extended to the earlier-parameter case: what a default that IS a
+# type parameter must satisfy is the referenced parameter's own constraints, since there is
+# no concrete type to test. Here K is unconstrained, so nothing forces it to be a str.
+
+class Pair[K, V: str = K]:
+    a: K
+    b: V
+
+    def __init__(self, a: K, b: V):
+        self.a = a
+        self.b = b
+
+
+def main() -> None:
+    print(1)

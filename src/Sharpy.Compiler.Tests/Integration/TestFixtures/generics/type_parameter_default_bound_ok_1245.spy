@@ -1,0 +1,27 @@
+# The positive twin of type_parameter_default_bound_compat_1245: when the referenced
+# parameter carries a constraint that satisfies the defaulting parameter's, the default is
+# accepted and applies normally.
+
+interface Shape:
+    def area(self) -> int:
+        ...
+
+
+class Pair[K: Shape, V: Shape = K]:
+    a: K
+    b: V
+
+    def __init__(self, a: K, b: V):
+        self.a = a
+        self.b = b
+
+
+class Square(Shape):
+    def area(self) -> int:
+        return 4
+
+
+def main() -> None:
+    p = Pair[Square](Square(), Square())
+    print(p.a.area())
+    print(p.b.area())

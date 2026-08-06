@@ -1,0 +1,16 @@
+# SPY0347: a default may reference only parameters declared before it. This compiled in
+# total silence before #1245 whenever the declaration was never used with a short type
+# argument vector, because defaults were resolved at the USE site; the check now runs at the
+# declaration, so the answer is a property of the declaration itself.
+
+class Pair[K = V, V = int]:
+    a: K
+    b: V
+
+    def __init__(self, a: K, b: V):
+        self.a = a
+        self.b = b
+
+
+def main() -> None:
+    print(1)

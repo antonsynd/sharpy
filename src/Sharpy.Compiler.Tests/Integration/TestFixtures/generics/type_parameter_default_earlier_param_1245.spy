@@ -1,0 +1,65 @@
+# PEP 696: a type-parameter default may reference a type parameter declared BEFORE it, and
+# the reference means whatever that parameter was bound to at this use site (#1245). Before
+# the fix every shape below failed SPY0202 "Type 'K' not found" — pointing at a K defined
+# one position to the left — because defaults resolved without the type-parameter scope in
+# view. Both seams failed identically, so both are asserted here.
+
+class Dup[K, V = K]:
+    a: K
+    b: V
+
+    def __init__(self, a: K, b: V):
+        self.a = a
+        self.b = b
+
+
+# The Sharpy spec's own Partial Defaults example (type_parameter_defaults.md): a default may
+# nest the earlier parameter inside another generic.
+class Container[K, V = list[K]]:
+    key: K
+    values: V
+
+    def __init__(self, key: K, values: V):
+        self.key = key
+        self.values = values
+
+
+# The PEP's slice example, chained: each default takes the value its predecessor resolved to.
+class Extent[StartT, StopT = StartT, StepT = StopT]:
+    start: StartT
+    stop: StopT
+    step: StepT
+
+    def __init__(self, start: StartT, stop: StopT, step: StepT):
+        self.start = start
+        self.stop = stop
+        self.step = step
+
+
+# The function seam. #1219 made non-self-referential defaults work on both seams and pinned
+# this shape as a matched pair, so the fix had to move both.
+def echo_pair[K, V = K](a: K, b: V) -> V:
+    print(a)
+    return b
+
+
+def main() -> None:
+    # V defaults to whatever K was given: Dup[str] is Dup[str, str].
+    d = Dup[str]("a", "b")
+    print(d.a)
+    print(d.b)
+
+    # An explicit second argument still overrides the default.
+    override = Dup[int, str](1, "b")
+    print(override.a)
+    print(override.b)
+
+    c = Container[str]("k", ["x", "y"])
+    print(c.key)
+    print(len(c.values))
+
+    e = Extent[str]("s", "t", "u")
+    print(e.start)
+    print(e.step)
+
+    print(echo_pair[str]("fn-a", "fn-b"))

@@ -1060,6 +1060,13 @@ public static partial class DiagnosticExplanations
             "class Foo[T: class = int]:  # Error: int is a value type, not a class",
             "Use a default type that satisfies the constraint:\nclass Foo[T: class = str]: ...");
 
+        Add(dict, DiagnosticCodes.Semantic.TypeParameterDefaultForwardReference,
+            "Type parameter default references a parameter it cannot see",
+            "Semantic",
+            "A type parameter default may name only the type parameters declared before it in the same list (PEP 696). Defaults are resolved left to right, so a parameter declared later has no value yet, and a parameter from an enclosing declaration is not in scope for a default even though it is in scope elsewhere in the signature. Referencing the parameter itself is the same rule: it is not yet declared at the point its own default is read.",
+            "class Pair[K = V, V = int]:  # Error: V is declared after K",
+            "Reorder the parameters so the referenced one comes first:\nclass Pair[V = int, K = V]: ...");
+
         // ── Semantic errors: Exception filters (SPY0397-SPY0398) ──
 
         Add(dict, DiagnosticCodes.Semantic.ExceptionFilterNotBoolean,

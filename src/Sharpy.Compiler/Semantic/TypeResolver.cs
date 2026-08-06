@@ -19,7 +19,24 @@ internal class TypeResolver
     private readonly ICompilerLogger _logger;
     private readonly DiagnosticBag _diagnostics = new();
     private readonly CancellationToken _cancellationToken;
-    private bool _resolvingGenericAlias;
+
+    /// <summary>
+    /// Suppresses the <see cref="SemanticInfo"/> annotation cache. Set while resolving a body whose
+    /// annotation objects are SHARED across every use site and would therefore cache a result
+    /// belonging to one instantiation — a generic type alias body (<c>T</c> in <c>tuple[T, T]</c>)
+    /// and, since #1245, a type parameter's default (<c>K</c> in <c>class Dup[K, V = K]</c>).
+    /// </summary>
+    private bool _suppressAnnotationCache;
+
+    /// <summary>
+    /// Silences this resolver while a type-parameter default is resolved at a USE site. Whether a
+    /// default is well-formed is a property of the declaration, and
+    /// <c>TypeChecker.ValidateTypeParameterDefaultOrdering</c> resolves every default there and
+    /// reports once (#1245). Without this the use site re-reported the same defect at every
+    /// reference — and, for a default naming an enclosing declaration's parameter, stacked a
+    /// misleading "Type 'T' not found" underneath the SPY0347 that names the actual rule.
+    /// </summary>
+    private bool _suppressDiagnostics;
     private TypeSymbol? _currentTypeContext;
     private bool _isStaticContext;
 
@@ -51,10 +68,8 @@ internal class TypeResolver
         if (annotation == null)
             return SemanticType.Unknown;
 
-        // Skip cache when resolving inside a generic type alias body — the same
-        // annotation objects (e.g., `T` in `tuple[T, T]`) are shared across all
-        // usages and would produce stale TypeParameterType results.
-        if (!_resolvingGenericAlias)
+        // Skip the cache while resolving a shared annotation body — see _suppressAnnotationCache.
+        if (!_suppressAnnotationCache)
         {
             var cached = _semanticInfo.GetTypeAnnotation(annotation);
             if (cached != null)
@@ -242,7 +257,7 @@ internal class TypeResolver
         }
 
         // Cache the result (skip when resolving inside generic alias body)
-        if (!_resolvingGenericAlias)
+        if (!_suppressAnnotationCache)
         {
             _semanticInfo.SetTypeAnnotation(annotation, result);
         }
@@ -513,7 +528,7 @@ internal class TypeResolver
                     var tp = typeSymbol.TypeParameters[i];
                     if (tp.DefaultType != null)
                     {
-                        typeArgs.Add(ResolveTypeAnnotation(tp.DefaultType));
+                        typeArgs.Add(ResolveTypeParameterDefault(typeSymbol.TypeParameters, i, typeArgs));
                     }
                     else
                     {
@@ -583,6 +598,104 @@ internal class TypeResolver
     }
 
     /// <summary>
+    /// The one answer to "what does a PEP-696 type-parameter default MEAN" (#1245). Resolves the
+    /// default of <paramref name="typeParameters"/>[<paramref name="index"/>] with the parameters
+    /// declared BEFORE it in scope, then substitutes each of those for whatever this reference
+    /// supplied, so <c>class Dup[K, V = K]</c> referenced as <c>Dup[str]</c> is <c>Dup[str, str]</c>.
+    ///
+    /// <para>Only preceding parameters are registered, which is the PEP's left-to-right rule
+    /// expressed as scope rather than as a separate check: a default naming a LATER parameter or one
+    /// from an enclosing scope cannot resolve here, and is refused at the declaration by
+    /// <c>TypeChecker.ValidateTypeParameterDefaultOrdering</c> (SPY0347) so the refusal fires whether
+    /// or not the declaration is ever used.</para>
+    ///
+    /// <para><paramref name="boundArguments"/> is the vector resolved so far; entries beyond it stay
+    /// as <see cref="TypeParameterType"/>, which is exactly what the declaration-time callers want
+    /// (they check the default's shape, not a particular instantiation).</para>
+    ///
+    /// <para><paramref name="reportDiagnostics"/> defaults to <c>false</c> because most callers are
+    /// use sites, and a defect in a default belongs to the declaration that wrote it, not to every
+    /// reference that omits the type argument. Only the declaration-site validator passes true.</para>
+    /// </summary>
+    public SemanticType ResolveTypeParameterDefault(
+        IReadOnlyList<TypeParameterDef> typeParameters,
+        int index,
+        IReadOnlyList<SemanticType> boundArguments,
+        bool reportDiagnostics = false)
+    {
+        var defaultAnnotation = typeParameters[index].DefaultType;
+        if (defaultAnnotation == null)
+            return SemanticType.Unknown;
+
+        var wasSuppressed = _suppressDiagnostics;
+        _suppressDiagnostics = !reportDiagnostics;
+        try
+        {
+            return ResolveInTypeParameterScope(
+                typeParameters,
+                count: index,
+                resolve: () => ResolveTypeAnnotation(defaultAnnotation),
+                boundArguments);
+        }
+        finally
+        {
+            _suppressDiagnostics = wasSuppressed;
+        }
+    }
+
+    /// <summary>
+    /// Registers the first <paramref name="count"/> of <paramref name="typeParameters"/> in a
+    /// temporary scope, runs <paramref name="resolve"/> there with the annotation cache suppressed
+    /// (the annotation objects are shared across every use site), then substitutes each registered
+    /// parameter for its entry in <paramref name="boundArguments"/>. Follows the mechanism
+    /// <see cref="ExpandGenericTypeAlias"/> established for the same problem — resolve a body
+    /// written in terms of type parameters, then close it over this reference's arguments.
+    /// </summary>
+    private SemanticType ResolveInTypeParameterScope(
+        IReadOnlyList<TypeParameterDef> typeParameters,
+        int count,
+        Func<SemanticType> resolve,
+        IReadOnlyList<SemanticType> boundArguments)
+    {
+        _symbolTable.EnterScope("type-parameter-scope");
+        var wasSuppressed = _suppressAnnotationCache;
+        try
+        {
+            for (int i = 0; i < count; i++)
+            {
+                var paramDef = typeParameters[i];
+                _symbolTable.Define(new TypeParameterSymbol
+                {
+                    Name = paramDef.Name,
+                    Kind = SymbolKind.TypeParameter,
+                    AccessLevel = AccessLevel.Public,
+                    Constraints = paramDef.Constraints,
+                    DeclarationLine = paramDef.LineStart,
+                    DeclarationColumn = paramDef.ColumnStart,
+                    NameDeclarationLine = paramDef.LineStart,
+                    NameDeclarationColumn = paramDef.ColumnStart
+                });
+            }
+
+            _suppressAnnotationCache = true;
+            var resolved = resolve();
+            if (resolved is UnknownType)
+                return resolved;
+
+            var substitution = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+            for (int i = 0; i < count && i < boundArguments.Count; i++)
+                substitution[typeParameters[i].Name] = boundArguments[i];
+
+            return substitution.Count == 0 ? resolved : TypeSubstitution.Apply(resolved, substitution);
+        }
+        finally
+        {
+            _suppressAnnotationCache = wasSuppressed;
+            _symbolTable.ExitScope();
+        }
+    }
+
+    /// <summary>
     /// Expands a generic type alias with concrete type arguments.
     /// For `type Cb[T] = (T) -> None` used as `Cb[int]`, registers T as a TypeParameterSymbol
     /// in a temporary scope, resolves the alias body (producing TypeParameterType references),
@@ -614,7 +727,10 @@ internal class TypeResolver
             // Resolve the alias body — type parameters resolve to TypeParameterType.
             // Disable annotation caching because the alias body's annotation objects are
             // shared across all usages and would produce stale TypeParameterType results.
-            _resolvingGenericAlias = true;
+            // The previous value is restored rather than cleared, so an expansion nested inside
+            // another suppressed resolution does not re-enable the cache for its remainder.
+            var wasSuppressed = _suppressAnnotationCache;
+            _suppressAnnotationCache = true;
             SemanticType expanded;
             try
             {
@@ -633,7 +749,7 @@ internal class TypeResolver
             }
             finally
             {
-                _resolvingGenericAlias = false;
+                _suppressAnnotationCache = wasSuppressed;
             }
 
             // Build substitution map: TypeParameter name → concrete type
@@ -692,6 +808,9 @@ internal class TypeResolver
     private void AddError(string message, int? line = null, int? column = null, string? code = null,
         TextSpan? span = null)
     {
+        if (_suppressDiagnostics)
+            return;
+
         _diagnostics.AddPhaseError(message, CompilerPhase.TypeChecking,
             span, line, column, code: code, logger: _logger);
     }

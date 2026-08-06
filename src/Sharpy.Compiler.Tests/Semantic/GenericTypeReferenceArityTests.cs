@@ -437,12 +437,12 @@ def use() -> None:
     }
 
     [Fact]
-    public void BothSeams_SelfReferentialDefault_FailIdentically()
+    public void BothSeams_EarlierParameterDefault_ResolveIdentically()
     {
-        // `V = K` does not resolve on EITHER seam — ResolveTypeAnnotation has no type-parameter
-        // scope for a default. Pre-existing on the type side (#1192) and now shared rather than
-        // hidden behind the function seam's arity rejection. Pinned as a matched pair so a future
-        // fix moves both together.
+        // `V = K` now resolves on BOTH seams (#1245). It used to fail SPY0202 "Type 'K' not found"
+        // on each — pinned here as a matched pair precisely so a fix would have to move both rather
+        // than repairing one and leaving the other silently behind. It did, so this assertion turns
+        // over from "fail identically" to "resolve identically" and keeps guarding the same pairing.
         var functionDiagnostics = Analyze(@"
 def dup_fn[K, V = K](k: K, v: V) -> str:
     return ""dup""
@@ -463,7 +463,34 @@ def use() -> None:
     d = Dup[int](1, 2)
 ");
 
-        functionDiagnostics.GetErrors().Should().Contain(d => d.Code == DiagnosticCodes.Semantic.UndefinedType);
-        typeDiagnostics.GetErrors().Should().Contain(d => d.Code == DiagnosticCodes.Semantic.UndefinedType);
+        functionDiagnostics.GetErrors().Should().BeEmpty();
+        typeDiagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BothSeams_ForwardReferencingDefault_AreRefusedIdentically()
+    {
+        // The other half of the same pairing: what a default may NOT name. A parameter declared
+        // after it draws SPY0347 on each seam, at the DECLARATION — before #1245 both of these
+        // compiled in silence, because defaults were only resolved where a short type-argument
+        // vector was filled and neither declaration below is ever referenced that way.
+        var functionDiagnostics = Analyze(@"
+def bad_fn[K = V, V = int](k: K, v: V) -> str:
+    return ""bad""
+");
+        var typeDiagnostics = Analyze(@"
+class Bad[K = V, V = int]:
+    a: K
+    b: V
+
+    def __init__(self, a: K, b: V):
+        self.a = a
+        self.b = b
+");
+
+        functionDiagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.Semantic.TypeParameterDefaultForwardReference);
+        typeDiagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.Semantic.TypeParameterDefaultForwardReference);
     }
 }

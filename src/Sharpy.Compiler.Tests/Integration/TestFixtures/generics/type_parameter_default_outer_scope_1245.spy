@@ -1,0 +1,14 @@
+# An enclosing declaration's type parameter is in scope everywhere else in this signature
+# (`w: T` would be fine) but not as a default: a default is read where the declaration is
+# instantiated, and the enclosing binding is not part of this parameter list. PEP 696
+# excludes it for the same reason. Before #1245 this said "Type 'T' not found" at the use
+# site, which is misleading — T is defined, just not here.
+
+class Outer[T]:
+    def make[U, W = T](self, u: U, w: W) -> U:
+        print(w)
+        return u
+
+
+def main() -> None:
+    print(1)

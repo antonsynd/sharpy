@@ -384,11 +384,8 @@ public static class DiagnosticCodes
         // every declared const with no exemption list.
         //   SPY0346: TAKEN — NonConstructibleTypeReference (#1250, batch B), declared in the
         //            value-position reference overflow region below.
-        //   SPY0347: RESERVED — type-parameter default forward reference (#1245, batch E). A default
-        //            that names a parameter declared after it. Belongs with SPY0395-SPY0396, which is
-        //            boxed in by SPY0394 and SPY0397. NOTE: pick a name distinct from SPY0395
-        //            (TypeParameterDefaultOrdering) — that code already means "a non-default parameter
-        //            follows a defaulted one", a different rule.
+        //   SPY0347: TAKEN — TypeParameterDefaultForwardReference (#1245, batch E), declared in the
+        //            generic type parameter default overflow region below.
         //   SPY0348: RESERVED — ConstantIntegerOverflow (#1234, batch C). Constant integer +/-/*
         //            whose exact result exceeds the expression's result type. Sibling of SPY0328
         //            (IntegerPowerOverflow), which has no free slot beside it.
@@ -439,6 +436,18 @@ public static class DiagnosticCodes
         // reserved when this was written; the inference-overflow region above has since taken it.)
         public const string MultiTypeTypeTest = "SPY0344";          // Active — isinstance against a tuple of types; Sharpy keeps the form single-typed so a successful check narrows (#1213)
         public const string OpenGenericTypeTest = "SPY0345";        // Active — isinstance against a bare generic type name whose type arguments the operand does not determine (#1207)
+
+        #endregion
+
+        #region Generic type parameter default overflow (SPY0347)
+
+        // Overflow for the "Generic type parameter default errors" family (SPY0395-SPY0396), which
+        // is boxed in on both sides — SPY0394 is ReturnInExceptStar, SPY0397 is
+        // ExceptionFilterNotBoolean — so its third member is borrowed from the module-level reserve
+        // above, the same precedent as SPY0342/SPY0343. Deliberately NOT named "ordering": SPY0395
+        // already owns that word for "a non-default parameter follows a defaulted one", which is a
+        // different rule from this one.
+        public const string TypeParameterDefaultForwardReference = "SPY0347"; // Active — a type-parameter default naming a parameter declared after it, itself, or one from an enclosing scope (#1245)
 
         #endregion
 
@@ -503,9 +512,8 @@ public static class DiagnosticCodes
         // Generic type parameter default errors (SPY0395-SPY0396)
         public const string TypeParameterDefaultOrdering = "SPY0395"; // Active
         public const string TypeParameterDefaultViolatesConstraint = "SPY0396"; // Active
-        // This band is full (SPY0394 below, SPY0397 above). SPY0347 is RESERVED as its overflow slot
-        // — a default that references a parameter declared AFTER it (#1245), which is a different rule
-        // from SPY0395's "non-default follows default". See the module-level region.
+        // This band is full (SPY0394 below, SPY0397 above), so the family's third member lives at
+        // SPY0347 (TypeParameterDefaultForwardReference, #1245) — see the overflow region above.
         // Exception filter errors (SPY0397-SPY0398)
         public const string ExceptionFilterNotBoolean = "SPY0397";       // Active
         public const string ExceptStarWhenNotSupported = "SPY0398";      // Active
