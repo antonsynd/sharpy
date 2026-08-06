@@ -128,9 +128,7 @@ internal partial class TypeChecker
                 var parentType = GetVariableType(parentVarSym);
                 _expectedType = parentType is UnknownType ? null : parentType;
             }
-            SemanticType inferredType;
-            using (ScopedValue.Push(ref _currentBindingValue, assignment.Value))
-                inferredType = CheckExpression(assignment.Value);
+            var inferredType = CheckExpression(assignment.Value);
             _expectedType = previousExpectedType2;
             inferredType = CheckLambdaBindingInferable(assignment.Value, inferredType);
 
@@ -237,9 +235,7 @@ internal partial class TypeChecker
         // Set expected type for constructor inference (Some/None()/Ok/Err)
         var previousExpectedType = _expectedType;
         _expectedType = assignmentTargetType is UnknownType ? null : assignmentTargetType;
-        SemanticType valueType;
-        using (ScopedValue.Push(ref _currentBindingValue, assignment.Value))
-            valueType = CheckExpression(assignment.Value);
+        var valueType = CheckExpression(assignment.Value);
         _expectedType = previousExpectedType;
 
         // Handle augmented assignment operators (+=, -=, *=, /=, //=, %=, **=, &=, |=, ^=, <<=, >>=)
@@ -378,9 +374,7 @@ internal partial class TypeChecker
             // Set expected type for constructor inference (Some/None()/Ok/Err)
             var previousExpectedType = _expectedType;
             _expectedType = declaredType is UnknownType ? null : declaredType;
-            SemanticType initType;
-            using (ScopedValue.Push(ref _currentBindingValue, varDecl.InitialValue))
-                initType = CheckExpression(varDecl.InitialValue);
+            var initType = CheckExpression(varDecl.InitialValue);
             _expectedType = previousExpectedType;
 
             // Only on the 'auto' path: a declared annotation that cannot type the lambda already

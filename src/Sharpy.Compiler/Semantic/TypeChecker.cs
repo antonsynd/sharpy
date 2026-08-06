@@ -124,15 +124,6 @@ internal partial class TypeChecker
     // argument path is covered and nested calls restore the enclosing set.
     private HashSet<Expression>? _currentCallArguments;
 
-    // The builtin constructor reference the call currently being checked went through, when its
-    // callee was an ALIAS (`f = int; f("3")`). Set by the callee substitution in
-    // CheckFunctionCallCore and read by the CheckFunctionCall wrapper, which records the emission
-    // shape once the call's result type — what a collection alias constructs — is known (#1182).
-    // Unlike the other trackers this is a RESULT CHANNEL, not a context: it carries a value OUT of
-    // the core method rather than providing one to it, so its scope must read it back before the
-    // restore. See the comment at the CheckFunctionCall scope (#1218).
-    private ConstructorReferenceType? _constructorAliasCallee;
-
     // The iterator expression of the for statement or comprehension for-clause currently being
     // checked (`for c in Color`, `[c.name for c in Color]`). An ENUM name is a legitimate iterable
     // there — it denotes the member set, and both sites rescue it into a UserDefinedType right after
@@ -151,14 +142,10 @@ internal partial class TypeChecker
     // check via ScopedValue.Push (see Semantic/ScopedValue.cs, #1218).
     private HashSet<Expression>? _currentIndexArguments;
 
-    // The value expression of the binding currently being checked — an assignment's right-hand side
-    // or a variable declaration's initializer. A builtin constructor reference with no signature
-    // available becomes a call-only ALIAS exactly here (`f = int`, `f = dict`); the same reference in
-    // any other value position has nothing to bind it to and is rejected (SPY0342, #1182). Returns
-    // are deliberately absent: a declared return type reaches the pinning rule through _expectedType,
-    // and an unpinnable one is an escape, not an alias. Scoped around the value check via
-    // ScopedValue.Push (see Semantic/ScopedValue.cs, #1218).
-    private Expression? _currentBindingValue;
+    // _currentBindingValue lived here until #1248. It existed to recognise the ONE position that
+    // could mint a call-only alias — an assignment's right-hand side or a declaration's initializer —
+    // and the alias is retired, so nothing asks the question any more. Deleted rather than left
+    // write-only.
 
     // Per-compilation memo for BCL generic instance methods resolved by CLR reflection fallback
     // (TryResolveGenericInstanceMethod, #1136). Raw BCL TypeSymbols built by

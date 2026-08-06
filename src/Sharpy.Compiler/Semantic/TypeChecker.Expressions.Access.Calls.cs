@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
@@ -11,39 +12,7 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 internal partial class TypeChecker
 {
-    /// <summary>
-    /// Checks a call and, when it went through a builtin constructor ALIAS (<c>f = int; f("3")</c>),
-    /// records the shape codegen must emit (#1182). The recording happens here rather than inside the
-    /// dispatch because the constructed type — what the collection families emit
-    /// <c>new T(args)</c> for — is the call's own result, known only once resolution finishes.
-    /// </summary>
     private SemanticType CheckFunctionCall(FunctionCall call)
-    {
-        // This scope is NOT a context push like the others — the field is an out-parameter smuggled
-        // through a field. CheckFunctionCallCore WRITES _constructorAliasCallee deep inside its
-        // callee-substitution arm, and this wrapper READS IT BACK to record the emission shape. The
-        // read must therefore happen INSIDE the scope, before the restore; do not "simplify" this
-        // into a plain context push.
-        // Follow-up (not here): turning the channel into a real return value would be a genuine
-        // improvement, but it changes CheckFunctionCallCore's signature, which puts it out of scope
-        // for a no-behavior-change refactor (#1218).
-        SemanticType result;
-        using (ScopedValue.Push(ref _constructorAliasCallee, null))
-        {
-            result = CheckFunctionCallCore(call);
-
-            if (_constructorAliasCallee is { } alias && result is not UnknownType)
-            {
-                _semanticInfo.SetConstructorReferenceLowering(call,
-                    new ConstructorReferenceLowering(
-                        alias.Family, alias.Name, result, call.Arguments.Length));
-            }
-        }
-
-        return result;
-    }
-
-    private SemanticType CheckFunctionCallCore(FunctionCall call)
     {
         // The canonical callee (#1170). Redundant parentheses around a callee never change what a
         // call denotes, so every shape dispatch in this method — construction detection, special
@@ -130,29 +99,14 @@ internal partial class TypeChecker
         using (ScopedValue.Push(ref _currentCallCallee, call.Function))
             calleeType = CheckExpression(call.Function);
 
-        // #1182: a call through a builtin constructor alias (`f = int; f("3")`, `f = dict; f()`).
-        // The alias denotes the builtin, so the call resolves by dispatching on the BUILTIN'S NAME
-        // through the paths the direct spelling takes — same overload selection, same
-        // expected-type-driven type-argument inference, same diagnostics. The substituted callee is
-        // synthetic (it is not in the tree) and carries the alias's position so diagnostics still
-        // point at what the user wrote; every use below it is name- and shape-based.
-        if (calleeType is ConstructorReferenceType aliasReference && callee is Identifier aliasIdentifier)
-        {
-            _constructorAliasCallee = aliasReference;
-            callee = new Identifier
-            {
-                Name = aliasReference.Name,
-                LineStart = aliasIdentifier.LineStart,
-                ColumnStart = aliasIdentifier.ColumnStart,
-                LineEnd = aliasIdentifier.LineEnd,
-                ColumnEnd = aliasIdentifier.ColumnEnd,
-                Span = aliasIdentifier.Span
-            };
-            _semanticInfo.SetIdentifierSymbol((Identifier)callee, aliasReference.Symbol);
-            calleeType = aliasReference.Family == ConstructorReferenceFamily.Conversion
-                ? SynthesizePrimitiveFunctionType(aliasReference.Symbol)
-                : SemanticType.Unknown;
-        }
+        // The call-only alias is retired (#1248), so nothing binds ConstructorReferenceType any more
+        // and the callee-substitution arm that dispatched through it is gone. The carrier is now a
+        // transient classification value inside CheckConstructorReference alone: a callee typed as
+        // one means the checker bound it somewhere it should have refused, which is a bug in the
+        // checker rather than a shape to tolerate.
+        Debug.Assert(calleeType is not ConstructorReferenceType,
+            "A callee typed as ConstructorReferenceType means a binding kept the carrier. "
+            + "No tier produces one since #1248 retired the call-only alias.");
 
         // After checking the callee, determine if this is ?. on an Optional object
         if (isNullConditionalCall && callee is MemberAccess nullCondMa)

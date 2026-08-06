@@ -73,9 +73,9 @@ internal static class ScopedValue
     /// </summary>
     /// <example>
     /// <code>
-    /// SemanticType inferredType;
-    /// using (ScopedValue.Push(ref _currentBindingValue, assignment.Value))
-    ///     inferredType = CheckExpression(assignment.Value);
+    /// SemanticType iterType;
+    /// using (ScopedValue.Push(ref _currentIterationSource, forStmt.Iterator))
+    ///     iterType = CheckExpression(forStmt.Iterator);
     /// </code>
     /// </example>
     public static ScopedValue<T> Push<T>(ref T field, T value) => new(ref field, value);
