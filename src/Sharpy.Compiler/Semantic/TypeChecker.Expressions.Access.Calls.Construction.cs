@@ -31,10 +31,17 @@ internal partial class TypeChecker
             if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
                 return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
 
-            // Validate argument count and positional-only/keyword-only constraints.
-            // Skip type checking — the C# compiler handles type validation, and there
-            // are edge cases (None to nullable, enum conversions) it handles correctly.
-            ValidateCallArgumentsCountAndKinds(call, initParams, argTypes, kwargTypes, totalArgCount);
+            // Argument types are checked here like every other call seam. This used to be a
+            // deliberate deferral — "the C# compiler handles type validation, and there are edge
+            // cases (None to nullable, enum conversions) it handles correctly" — which made
+            // constructors the ONLY seam where a wrong argument produced CS1503 behind SPY0908
+            // instead of a diagnostic (#1243). IsArgumentAssignable is the authority that models
+            // those edge cases, so deferring to Roslyn buys nothing the check does not already
+            // give; both are pinned by fixtures. A generic type constructed without written type
+            // arguments passes no substitution, so its still-open parameters are skipped and
+            // inference below decides them exactly as before.
+            ValidateCallArguments(call, initParams, argTypes, kwargTypes, totalArgCount,
+                UnwrittenTypeParameterBinding(typeSymbol));
         }
         else if (initMethods.Count > 1)
         {
@@ -43,6 +50,9 @@ internal partial class TypeChecker
             var initParams = firstInit.Parameters.Skip(1).ToList();
             if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
                 return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+
+            ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes, totalArgCount,
+                UnwrittenTypeParameterBinding(typeSymbol));
         }
 
         // A type with no construction cannot be constructed. Reads the same authority as the

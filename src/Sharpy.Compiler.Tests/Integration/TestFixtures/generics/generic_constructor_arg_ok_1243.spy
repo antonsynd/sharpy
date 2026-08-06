@@ -1,0 +1,31 @@
+# The positive twin of generic_constructor_arg_mismatch_1243: arguments that DO match the
+# substituted signature stay accepted, including the keyword spelling and a nested generic
+# parameter that substitution closes.
+
+class Slot[K, V]:
+    key: K
+    value: V
+
+    def __init__(self, key: K, value: V):
+        self.key = key
+        self.value = value
+
+
+class Bucket[T]:
+    items: list[T]
+
+    def __init__(self, items: list[T]):
+        self.items = items
+
+
+def main() -> None:
+    b = Slot[int, str](1, "b")
+    print(b.key)
+    print(b.value)
+
+    kw = Slot[int, str](key=2, value="c")
+    print(kw.key)
+    print(kw.value)
+
+    nested = Bucket[int]([1, 2])
+    print(len(nested.items))

@@ -1,0 +1,56 @@
+# The edge cases the pre-#1243 deferral named as its reason — "None to nullable, enum
+# conversions ... the C# compiler handles correctly" — pinned now that the check is ours.
+# IsArgumentAssignable is the authority that models them, so none of these may regress into
+# a false diagnostic.
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+
+class Holder:
+    tag: str?
+    color: Color
+    count: int
+
+    def __init__(self, tag: str?, color: Color, count: int):
+        self.tag = tag
+        self.color = color
+        self.count = count
+
+
+class Widen:
+    ratio: float
+
+    def __init__(self, ratio: float):
+        self.ratio = ratio
+
+
+class Bag[T]:
+    items: list[T]
+
+    def __init__(self, items: list[T]):
+        self.items = items
+
+
+def main() -> None:
+    # None binds to a nullable parameter.
+    h = Holder(None, Color.RED, 3)
+    print(h.tag is None)
+    print(h.count)
+
+    # An enum value binds to its own enum parameter.
+    print(h.color == Color.RED)
+
+    # int widens to float, as it does at every other call seam.
+    w = Widen(2)
+    print(w.ratio)
+
+    # A generic constructed WITHOUT written type arguments leaves its parameters open:
+    # inference decides them, and this check must not pre-empt it.
+    b = Bag([1, 2, 3])
+    print(len(b.items))
+
+    # Written type arguments close them, and a matching argument is accepted.
+    typed = Bag[str](["a"])
+    print(typed.items[0])

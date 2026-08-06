@@ -1260,6 +1260,13 @@ def main():
     [Fact]
     public void ComprehensiveTest_StructWithStringEnum()
     {
+        // The enum member is converted explicitly. Passing `LogLevel.INFO` straight into a `str`
+        // parameter compiled only because constructors did not type-check their arguments (#1243);
+        // every other seam — free function, method, assignment — refuses it, because an enum member
+        // types as its enum. It happened to emit valid C# because a string-backed enum lowers to a
+        // sealed class of `static readonly string` fields, so the semantic type and the emitted type
+        // disagree for this one enum shape. That divergence is filed separately (#1284); this test's
+        // subject is a struct holding a string enum, which the explicit conversion preserves.
         var source = @"
 enum LogLevel:
     DEBUG = ""DEBUG""
@@ -1279,7 +1286,7 @@ struct LogEntry:
         return f""[{self.level}] {self.message}""
 
 def main():
-    log = LogEntry(""System started"", LogLevel.INFO)
+    log = LogEntry(""System started"", str(LogLevel.INFO))
     print(log.format())
 ";
         var result = CompileAndExecute(source);

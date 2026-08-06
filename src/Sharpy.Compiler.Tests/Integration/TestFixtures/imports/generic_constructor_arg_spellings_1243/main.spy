@@ -1,0 +1,21 @@
+# Spelling agreement is the acceptance axis for #1243: the same mismatch must draw the same
+# diagnostic however the generic type was imported. Pinned as one fixture so a change to the
+# module route (#1208's family) cannot split the two spellings apart again.
+#
+# The imported route matters for a second reason: an imported generic materialises a
+# type-parameter reference in a member signature as a bare UserDefinedType named after the
+# parameter rather than a TypeParameterType, so substitution has to see through both shapes
+# for these to agree with the single-file spelling.
+#
+# The two calls mismatch DIFFERENT parameters so each expected line identifies exactly one
+# diagnostic; that both name their own substituted type is the agreement being pinned.
+
+import genlib
+from genlib import Slot
+
+
+def main() -> None:
+    a = Slot[int, str]("not_an_int", "b")
+    b = genlib.Slot[int, str](1, 2)
+    print(a.key)
+    print(b.value)

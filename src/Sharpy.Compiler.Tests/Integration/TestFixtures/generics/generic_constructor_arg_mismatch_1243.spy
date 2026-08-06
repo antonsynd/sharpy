@@ -1,0 +1,17 @@
+# An explicitly-instantiated generic constructor validates its arguments against the
+# SUBSTITUTED __init__ signature (#1243). The type arguments are written, so `key: K` is
+# `int` here, and the diagnostic says which instantiation bound it — the C# error this used
+# to leak as (CS1503 behind SPY0908) named C# types and argument positions instead.
+
+class Slot[K, V]:
+    key: K
+    value: V
+
+    def __init__(self, key: K, value: V):
+        self.key = key
+        self.value = value
+
+
+def main() -> None:
+    b = Slot[int, str]("not_an_int", "b")
+    print(b.key)

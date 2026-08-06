@@ -1,0 +1,14 @@
+# Constructors type-check their arguments like every other call seam (#1243). This used to
+# be a deliberate deferral to Roslyn, which made this the ONLY seam where a wrong argument
+# produced CS1503 behind SPY0908 instead of a diagnostic.
+
+class Point:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+
+def main() -> None:
+    p = Point("not_an_int")
+    print(p.x)

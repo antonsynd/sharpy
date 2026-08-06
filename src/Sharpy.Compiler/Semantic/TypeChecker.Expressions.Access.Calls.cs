@@ -816,7 +816,14 @@ internal partial class TypeChecker
                             GenericDefinition = genericTypeSymbol
                         };
 
-                    ValidateCallArgumentsCountAndKinds(call, initParams, argTypes, kwargTypes, totalArgCount);
+                    // The written type arguments have already decided the substitution, so the
+                    // arguments are checked against the SUBSTITUTED __init__ — `key: K` bound to
+                    // `int` by `Slot[int, str]`. Nothing compared them before: the explicit
+                    // spelling arrived with the substitution settled and went straight to emission,
+                    // where the mismatch surfaced as CS1503 behind SPY0908 naming C# types and
+                    // argument positions rather than the user's own binding (#1243).
+                    ValidateCallArguments(call, initParams, argTypes, kwargTypes, totalArgCount,
+                        WrittenTypeParameterBinding(genericTypeSymbol, typeArgs));
                 }
                 else if (initMethods.Count > 1)
                 {
@@ -828,6 +835,9 @@ internal partial class TypeChecker
                             TypeArguments = typeArgs,
                             GenericDefinition = genericTypeSymbol
                         };
+
+                    ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes,
+                        totalArgCount, WrittenTypeParameterBinding(genericTypeSymbol, typeArgs));
                 }
 
                 // A type with no construction cannot be constructed — same authority as the
@@ -2292,11 +2302,19 @@ internal partial class TypeChecker
     /// Validates call arguments against a parameter list: argument count, types,
     /// and positional-only/keyword-only constraints. Used by both regular function
     /// calls and constructor calls (with __init__ params minus self).
+    ///
+    /// <para><paramref name="typeBinding"/> carries a constructor's type-parameter binding, so
+    /// <c>Slot[int, str](...)</c> validates against the SUBSTITUTED <c>__init__</c> signature
+    /// (<c>key: int</c>) rather than the declared one (<c>key: K</c>) — #1243. Parameters whose
+    /// substituted type still contains a type parameter are left to inference and not
+    /// type-checked, which is what makes one mechanism serve the explicitly-instantiated, the
+    /// inferred and the non-generic constructor alike: for the last two the binding is simply
+    /// absent or empty.</para>
     /// </summary>
     private void ValidateCallArguments(
         FunctionCall call, IReadOnlyList<ParameterSymbol> parameters,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
-        int totalArgCount)
+        int totalArgCount, TypeParameterBinding? typeBinding = null)
     {
         var hasVariadicParam = parameters.Any(p => p.IsVariadic);
         var requiredParamCount = parameters.Count(p => !p.HasDefault && !p.IsVariadic);
@@ -2359,24 +2377,29 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                if (!IsArgumentAssignable(argTypes[i], param.Type, ArgumentNodeAt(call, i)))
+                var paramType = SubstitutedParameterType(param.Type, typeBinding);
+                if (paramType == null)
+                    continue; // still open after substitution — inference decides, not this check
+
+                if (!IsArgumentAssignable(argTypes[i], paramType, ArgumentNodeAt(call, i)))
                 {
                     // PEP 675: string literals (and concatenations thereof) satisfy LiteralString
-                    if (param.Type is LiteralStringType && i < call.Arguments.Length
+                    if (paramType is LiteralStringType && i < call.Arguments.Length
                         && IsLiteralStringExpression(call.Arguments[i]))
                     {
                         // Allow — literal string expression satisfies LiteralString
                     }
                     // A type-reference expression (e.g. module.SomeError) satisfies a
                     // parameter backed by CLR System.Type (e.g. assert_raises's exceptionType).
-                    else if (IsSystemTypeParameter(param.Type) && i < call.Arguments.Length
+                    else if (IsSystemTypeParameter(paramType) && i < call.Arguments.Length
                         && _semanticInfo.IsTypeReference(call.Arguments[i]))
                     {
                         // Allow — type reference satisfies a System.Type parameter
                     }
                     else
                     {
-                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{param.Type.GetDisplayName()}'",
+                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{paramType.GetDisplayName()}'"
+                            + DescribeTypeParameterBinding(param.Type, typeBinding),
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
                     }
@@ -2403,16 +2426,19 @@ internal partial class TypeChecker
                 else
                 {
                     var paramIndex = parameters.ToList().IndexOf(param);
+                    var paramType = SubstitutedParameterType(param.Type, typeBinding);
                     if (!param.IsKeywordOnly && paramIndex < argTypes.Count)
                     {
                         AddError($"Argument '{kwarg.Name}' was already provided positionally",
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
                             span: kwarg.Span ?? kwarg.Value.Span);
                     }
-                    else if (!IsArgumentAssignable(kwargTypes[kwarg.Name], param.Type)
-                        && !(IsSystemTypeParameter(param.Type) && _semanticInfo.IsTypeReference(kwarg.Value)))
+                    else if (paramType != null
+                        && !IsArgumentAssignable(kwargTypes[kwarg.Name], paramType)
+                        && !(IsSystemTypeParameter(paramType) && _semanticInfo.IsTypeReference(kwarg.Value)))
                     {
-                        AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
+                        AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{paramType.GetDisplayName()}'"
+                            + DescribeTypeParameterBinding(param.Type, typeBinding),
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: kwarg.Span ?? kwarg.Value.Span);
                     }
@@ -2422,95 +2448,172 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Validates only argument count and positional-only/keyword-only constraints,
-    /// without type checking. Used for generic constructors without explicit type args
-    /// where __init__ parameters contain unsubstituted type parameters.
+    /// How a construction binds the constructed declaration's type parameters (#1243).
+    /// <paramref name="Substitution"/> is empty when the construction wrote no type arguments —
+    /// <c>Slot(1, "b")</c> — because inference has not run yet at this point;
+    /// <paramref name="TypeParameterNames"/> still names them all, which is what lets
+    /// <see cref="SubstitutedParameterType"/> recognise a still-open parameter and stay out of
+    /// inference's way.
     /// </summary>
-    private void ValidateCallArgumentsCountAndKinds(
-        FunctionCall call, IReadOnlyList<ParameterSymbol> parameters,
+    /// <param name="Substitution">Type-parameter name to written type argument.</param>
+    /// <param name="TypeParameterNames">Every type parameter of the constructed declaration.</param>
+    /// <param name="Origin">
+    /// The written instantiation (<c>Slot[int, str]</c>), used only to explain a mismatch;
+    /// null when nothing was written.
+    /// </param>
+    private sealed record TypeParameterBinding(
+        IReadOnlyDictionary<string, SemanticType> Substitution,
+        IReadOnlySet<string> TypeParameterNames,
+        string? Origin);
+
+    /// <summary>
+    /// Validates an overloaded constructor's arguments when exactly one overload can accept this
+    /// many of them, and stays silent otherwise (#1243).
+    ///
+    /// <para>The count is the whole selection rule here on purpose. Selecting on argument TYPES
+    /// would mean re-deciding overload resolution at a seam that does not own it, and would report
+    /// against a guess when nothing matches; when one arity fits, the user's intent is not in
+    /// doubt, so a wrong argument there is exactly as diagnosable as it is for a single
+    /// <c>__init__</c>. Two overloads of the same arity keep the pre-#1243 silence — a real
+    /// remaining gap, but a narrower one than "no overloaded constructor is ever checked".</para>
+    /// </summary>
+    private void ValidateSoleArityMatchingOverload(
+        FunctionCall call, IReadOnlyList<FunctionSymbol> initMethods,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
-        int totalArgCount)
+        int totalArgCount, TypeParameterBinding? typeBinding)
     {
-        var hasVariadicParam = parameters.Any(p => p.IsVariadic);
-        var requiredParamCount = parameters.Count(p => !p.HasDefault && !p.IsVariadic);
-        var totalParamCount = parameters.Count;
-        var positionalParamCount = parameters.Count(p => !p.IsKeywordOnly);
-
-        var tooFew = totalArgCount < requiredParamCount;
-        var tooManyPositional = !hasVariadicParam && argTypes.Count > positionalParamCount;
-        var tooMany = !hasVariadicParam && totalArgCount > totalParamCount;
-        if (tooFew || tooMany || tooManyPositional)
+        List<ParameterSymbol>? soleMatch = null;
+        foreach (var init in initMethods)
         {
-            if (hasVariadicParam)
-            {
-                AddError($"Function expects at least {requiredParamCount} arguments but got {totalArgCount}",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                    span: call.Span);
-            }
-            else if (requiredParamCount == totalParamCount)
-            {
-                AddError($"Function expects {totalParamCount} arguments but got {totalArgCount}",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                    span: call.Span);
-            }
-            else
-            {
-                AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount}",
-                    call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                    span: call.Span);
-            }
+            var parameters = init.Parameters.Skip(1).ToList();
+            if (parameters.Any(p => p.IsVariadic))
+                return; // a variadic overload can absorb any count; arity decides nothing
+
+            var required = parameters.Count(p => !p.HasDefault);
+            if (totalArgCount < required || totalArgCount > parameters.Count)
+                continue;
+
+            if (soleMatch != null)
+                return; // more than one overload accepts this count — leave resolution alone
+
+            soleMatch = parameters;
         }
-        else
+
+        if (soleMatch == null)
+            return; // none fits: the count diagnostic belongs to overload resolution, not here
+
+        ValidateCallArguments(call, soleMatch, argTypes, kwargTypes, totalArgCount, typeBinding);
+    }
+
+    /// <summary>
+    /// The binding for a construction that WROTE its type arguments — <c>Slot[int, str](...)</c>.
+    /// The vector is the resolver's, already default-filled, and is positionally paired with the
+    /// declaration's type parameters.
+    /// </summary>
+    private static TypeParameterBinding? WrittenTypeParameterBinding(
+        TypeSymbol typeSymbol, IReadOnlyList<SemanticType> typeArgs)
+    {
+        var typeParams = typeSymbol.TypeParameters;
+        if (typeParams.Count == 0 || typeParams.Count != typeArgs.Count)
+            return UnwrittenTypeParameterBinding(typeSymbol);
+
+        var substitution = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+        for (int i = 0; i < typeParams.Count; i++)
+            substitution[typeParams[i].Name] = typeArgs[i];
+
+        var origin = $"{typeSymbol.Name}[{string.Join(", ", typeArgs.Select(a => a.GetDisplayName()))}]";
+        return new TypeParameterBinding(
+            substitution,
+            new HashSet<string>(typeParams.Select(tp => tp.Name), StringComparer.Ordinal),
+            origin);
+    }
+
+    /// <summary>
+    /// The binding for a construction that wrote NO type arguments — <c>Slot(1, "b")</c>, or any
+    /// non-generic type. It carries the parameter names but no substitution, which is precisely
+    /// "these are still open": <see cref="SubstitutedParameterType"/> declines to check them and
+    /// leaves them to the inference that runs after this validation.
+    /// </summary>
+    private static TypeParameterBinding? UnwrittenTypeParameterBinding(TypeSymbol typeSymbol)
+        => typeSymbol.TypeParameters.Count == 0
+            ? null
+            : new TypeParameterBinding(
+                new Dictionary<string, SemanticType>(StringComparer.Ordinal),
+                new HashSet<string>(typeSymbol.TypeParameters.Select(tp => tp.Name), StringComparer.Ordinal),
+                Origin: null);
+
+    /// <summary>
+    /// The parameter type this call actually binds, or <c>null</c> when it is still open and only
+    /// inference can decide it. Constructors are the one call seam that had no argument type check
+    /// at all — a mismatch escaped to Roslyn as CS1503 behind SPY0908, generic or not (#1243) — and
+    /// this is the substitution that lets one check serve every spelling.
+    /// <para>Substitution uses <c>substituteNamedUserTypes</c> because an imported generic
+    /// materialises a type-parameter reference in a member signature as a bare
+    /// <see cref="UserDefinedType"/> named after the parameter rather than a
+    /// <see cref="TypeParameterType"/>. Without it the three import spellings of the same
+    /// mismatch would not agree, which is the acceptance axis for #1243. The openness test reads
+    /// <see cref="TypeParameterBinding.TypeParameterNames"/> for the same reason: a leftover
+    /// <c>UserDefinedType</c> named <c>K</c> is an unbound type parameter, not a user type.</para>
+    /// </summary>
+    private static SemanticType? SubstitutedParameterType(
+        SemanticType declared, TypeParameterBinding? binding)
+    {
+        if (binding == null)
+            return ContainsTypeParameter(declared) ? null : declared;
+
+        var substituted = binding.Substitution.Count > 0
+            ? TypeSubstitution.Apply(declared, binding.Substitution, substituteNamedUserTypes: true)
+            : declared;
+
+        return ContainsTypeParameter(substituted)
+               || MentionsTypeParameter(substituted, binding.TypeParameterNames)
+            ? null
+            : substituted;
+    }
+
+    /// <summary>
+    /// Whether the type still names one of <paramref name="typeParameterNames"/>, in either of the
+    /// two shapes a type-parameter reference can take (see <see cref="SubstitutedParameterType"/>).
+    /// </summary>
+    private static bool MentionsTypeParameter(SemanticType type, IReadOnlySet<string> typeParameterNames)
+    {
+        if (typeParameterNames.Count == 0)
+            return false;
+
+        return type switch
         {
-            // Check positional-only/keyword-only constraints (skip type checks)
-            var variadicParamIndex = parameters.ToList().FindIndex(p => p.IsVariadic);
-            for (int i = 0; i < argTypes.Count; i++)
-            {
-                ParameterSymbol param;
-                if (variadicParamIndex >= 0 && i >= variadicParamIndex)
-                    param = parameters[variadicParamIndex];
-                else if (i < parameters.Count)
-                    param = parameters[i];
-                else
-                    break;
+            TypeParameterType tpt => typeParameterNames.Contains(tpt.Name),
+            UserDefinedType udt => typeParameterNames.Contains(udt.Name),
+            GenericType gt => gt.TypeArguments.Any(t => MentionsTypeParameter(t, typeParameterNames)),
+            NullableType nt => MentionsTypeParameter(nt.UnderlyingType, typeParameterNames),
+            OptionalType ot => MentionsTypeParameter(ot.UnderlyingType, typeParameterNames),
+            TupleType tt => tt.ElementTypes.Any(t => MentionsTypeParameter(t, typeParameterNames)),
+            ResultType rt => MentionsTypeParameter(rt.OkType, typeParameterNames)
+                             || MentionsTypeParameter(rt.ErrorType, typeParameterNames),
+            FunctionType ft => ft.ParameterTypes.Any(t => MentionsTypeParameter(t, typeParameterNames))
+                               || MentionsTypeParameter(ft.ReturnType, typeParameterNames),
+            _ => false
+        };
+    }
 
-                if (param.IsKeywordOnly)
-                {
-                    AddError($"'{param.Name}' is keyword-only and must be passed as a keyword argument",
-                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
-                        code: DiagnosticCodes.Semantic.KeywordOnlyPassedPositionally,
-                        span: call.Arguments[i].Span);
-                }
-            }
+    /// <summary>
+    /// The clause that tells a user why a parameter written <c>key: K</c> has to be an <c>int</c>:
+    /// their own instantiation bound it. Empty for a non-generic parameter, where the declaration
+    /// already reads as the checked type and the leading clause is the whole story — which keeps
+    /// the message byte-identical to the method and free-function seams for every ordinary call.
+    /// </summary>
+    private static string DescribeTypeParameterBinding(
+        SemanticType declared, TypeParameterBinding? binding)
+    {
+        if (binding?.Origin is not { } origin || binding.Substitution.Count == 0)
+            return string.Empty;
 
-            foreach (var kwarg in call.KeywordArguments)
-            {
-                var param = parameters.FirstOrDefault(p => p.Name == kwarg.Name);
-                if (param == null)
-                {
-                    AddError($"Unknown keyword argument '{kwarg.Name}'",
-                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
-                        span: kwarg.Span ?? kwarg.Value.Span);
-                }
-                else if (param.IsPositionalOnly)
-                {
-                    AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
-                        kwarg.LineStart, kwarg.ColumnStart,
-                        code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
-                        span: kwarg.Span ?? kwarg.Value.Span);
-                }
-                else
-                {
-                    var paramIndex = parameters.ToList().IndexOf(param);
-                    if (!param.IsKeywordOnly && paramIndex < argTypes.Count)
-                    {
-                        AddError($"Argument '{kwarg.Name}' was already provided positionally",
-                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
-                            span: kwarg.Span ?? kwarg.Value.Span);
-                    }
-                }
-            }
-        }
+        var bound = binding.Substitution
+            .Where(entry => MentionsTypeParameter(declared, new HashSet<string>(StringComparer.Ordinal) { entry.Key }))
+            .Select(entry => $"'{entry.Key}' to '{entry.Value.GetDisplayName()}'")
+            .ToList();
+
+        return bound.Count == 0 ? string.Empty : $"; '{origin}' binds {string.Join(", ", bound)}";
     }
 
     private SemanticType CheckIifeLambdaCall(FunctionCall call, LambdaExpression lambda)

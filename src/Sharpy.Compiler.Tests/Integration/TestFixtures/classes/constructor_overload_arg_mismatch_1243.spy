@@ -1,0 +1,17 @@
+# An overloaded constructor is checked when exactly one overload accepts this argument
+# count (#1243). Selecting on count rather than on types keeps this seam out of overload
+# resolution's job while still catching the unambiguous case.
+
+class Point:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def __init__(self, x: int, y: int):
+        self.x = x + y
+
+
+def main() -> None:
+    p = Point("not_an_int")
+    print(p.x)
