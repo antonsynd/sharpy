@@ -1,0 +1,52 @@
+# An @abstract function-style event stub must lower to C#'s bare `public abstract event T Name;`.
+# Accessor syntax is forbidden on an abstract event (CS8712), which is why no runnable event-stub
+# fixture could exist before #1239. Subscribing through the Base-typed reference proves the
+# subclass's real accessors are the ones that run.
+delegate SimpleHandler() -> None
+
+
+@abstract
+class Base:
+    @abstract
+    event add on_action(self, handler: SimpleHandler):
+        ...
+
+    @abstract
+    event remove on_action(self, handler: SimpleHandler):
+        ...
+
+    @abstract
+    def fire(self):
+        ...
+
+
+class Impl(Base):
+    _handlers: list[SimpleHandler] = []
+
+    @override
+    event add on_action(self, handler: SimpleHandler):
+        self._handlers.append(handler)
+        print("added")
+
+    @override
+    event remove on_action(self, handler: SimpleHandler):
+        self._handlers.remove(handler)
+        print("removed")
+
+    @override
+    def fire(self):
+        for h in self._handlers:
+            h.invoke()
+
+
+def handler():
+    print("action fired")
+
+
+def main():
+    b: Base = Impl()
+    b.on_action += handler
+    b.fire()
+    b.on_action -= handler
+    b.fire()
+    print("done")

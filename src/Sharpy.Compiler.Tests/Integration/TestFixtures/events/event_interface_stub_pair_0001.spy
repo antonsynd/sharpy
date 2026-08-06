@@ -1,0 +1,45 @@
+# The add and remove halves of a function-style interface event share one name and must merge into
+# a single C# `event T Name;`. Emitting one member per half was CS0102 (#1239), which is why no
+# runnable fixture could exist before. Subscribing through the interface-typed reference proves the
+# implementing class's real accessors are the ones that run.
+delegate SimpleHandler() -> None
+
+
+interface INotifier:
+    event add on_action(self, handler: SimpleHandler):
+        ...
+
+    event remove on_action(self, handler: SimpleHandler):
+        ...
+
+    def fire(self):
+        ...
+
+
+class Publisher(INotifier):
+    _handlers: list[SimpleHandler] = []
+
+    event add on_action(self, handler: SimpleHandler):
+        self._handlers.append(handler)
+        print("added")
+
+    event remove on_action(self, handler: SimpleHandler):
+        self._handlers.remove(handler)
+        print("removed")
+
+    def fire(self):
+        for h in self._handlers:
+            h.invoke()
+
+
+def handler():
+    print("action fired")
+
+
+def main():
+    n: INotifier = Publisher()
+    n.on_action += handler
+    n.fire()
+    n.on_action -= handler
+    n.fire()
+    print("done")
