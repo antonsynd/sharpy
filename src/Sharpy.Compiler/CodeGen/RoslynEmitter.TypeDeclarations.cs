@@ -421,7 +421,7 @@ internal partial class RoslynEmitter
         _isInAbstractClass = classDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 
         // Transform class name
-        var className = NameMangler.Transform(classDef.Name, NameContext.Type);
+        var className = NameCasing.ResolveType(classDef.Name, classDef.IsNameBacktickEscaped);
 
         // Process decorators to determine modifiers
         var modifiers = GenerateModifiersFromDecorators(classDef.Decorators, ModifierContext.Type);
@@ -869,7 +869,7 @@ internal partial class RoslynEmitter
         // since the symbol table is populated during semantic analysis.
 
         // Transform struct name
-        var structName = NameMangler.Transform(structDef.Name, NameContext.Type);
+        var structName = NameCasing.ResolveType(structDef.Name, structDef.IsNameBacktickEscaped);
 
         // Process decorators to determine modifiers
         var modifiers = GenerateModifiersFromDecorators(structDef.Decorators, ModifierContext.Type);
@@ -1101,7 +1101,7 @@ internal partial class RoslynEmitter
     private EnumDeclarationSyntax GenerateIntegerEnum(EnumDef enumDef)
     {
         // Transform enum name
-        var enumName = NameMangler.Transform(enumDef.Name, NameContext.Type);
+        var enumName = NameCasing.ResolveType(enumDef.Name, enumDef.IsNameBacktickEscaped);
 
         // Enums are always public by default
         var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
@@ -1130,7 +1130,7 @@ internal partial class RoslynEmitter
     private ClassDeclarationSyntax GenerateStringEnumClass(EnumDef enumDef)
     {
         // Transform enum name
-        var className = NameMangler.Transform(enumDef.Name, NameContext.Type);
+        var className = NameCasing.ResolveType(enumDef.Name, enumDef.IsNameBacktickEscaped);
 
         // Create public sealed class
         var modifiers = TokenList(
@@ -1609,7 +1609,7 @@ internal partial class RoslynEmitter
     {
         _cancellationToken.ThrowIfCancellationRequested();
 
-        var unionName = NameMangler.Transform(unionDef.Name, NameContext.Type);
+        var unionName = NameCasing.ResolveType(unionDef.Name, unionDef.IsNameBacktickEscaped);
 
         // Look up the union symbol for field type information
         var unionSymbol = _context.LookupSymbol(unionDef.Name) as TypeSymbol;
@@ -1794,7 +1794,7 @@ internal partial class RoslynEmitter
     private DelegateDeclarationSyntax GenerateDelegateDeclaration(DelegateDef delegateDef)
     {
         // Transform delegate name using Type context (PascalCase)
-        var delegateName = NameMangler.Transform(delegateDef.Name, NameContext.Type);
+        var delegateName = NameCasing.ResolveType(delegateDef.Name, delegateDef.IsNameBacktickEscaped);
 
         // Determine return type from annotation or default to void
         TypeSyntax returnType = delegateDef.ReturnType != null

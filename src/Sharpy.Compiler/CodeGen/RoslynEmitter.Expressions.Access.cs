@@ -1974,12 +1974,13 @@ internal partial class RoslynEmitter
     /// not. Both construction spellings use it (#1217); the second builder it replaced joined
     /// segments into a string and round-tripped them through <c>ParseQualifiedName</c>.
     ///
-    /// <para>Every segment is cased from the SYMBOL, deliberately, including a backtick-escaped one.
-    /// The replaced builder passed the source's <c>IsMemberBacktickEscaped</c> through for the
-    /// innermost segment, emitting such a name verbatim — but the DECLARATION side PascalCases it
-    /// regardless (<c>class `data`</c> declares <c>Data</c>), so the verbatim reference named a type
-    /// that does not exist and failed CS0426. Casing from the symbol is what makes the reference
-    /// agree with the declaration (#1217).</para>
+    /// <para>Every segment is cased from the SYMBOL, deliberately. The replaced builder passed the
+    /// source's <c>IsMemberBacktickEscaped</c> through for the innermost segment only, so a
+    /// reference could disagree with its own declaration and fail CS0426. Casing from the symbol is
+    /// what makes the reference agree with the declaration (#1217) — and the symbol carries the
+    /// escape flag, so <c>class `data`</c> now declares and references <c>data</c> alike. Reading
+    /// the flag from the symbol rather than the reference site is what keeps the two sides in
+    /// agreement no matter how the reference happens to be spelled.</para>
     ///
     /// <para>The keyword escaping the issue reported as divergent was already identical in both
     /// builders: <c>NameMangler.Transform(x, NameContext.Type)</c> and
@@ -1993,7 +1994,7 @@ internal partial class RoslynEmitter
         var current = nestedSym;
         while (current != null)
         {
-            parts.Add(NameMangler.Transform(current.Name, NameContext.Type));
+            parts.Add(NameCasing.ResolveType(current.Name, current.IsNameBacktickEscaped));
             current = current.DeclaringType;
         }
         parts.Reverse();

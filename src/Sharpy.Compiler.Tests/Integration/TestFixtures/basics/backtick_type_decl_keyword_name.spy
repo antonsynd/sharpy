@@ -1,0 +1,50 @@
+# A backtick-escaped type name is a user symbol with that exact spelling, including when the
+# spelling collides with a C# keyword (#1246). Declaration and reference must agree: the
+# declaration emits `@event`, so every reference must too, or the fix trades SPY0599 for CS0246.
+#
+# `event` is the adversarial name here on purpose — the #1217 fixture deliberately used `data`
+# to avoid entangling the reference-side casing change with keyword escaping.
+class `event`[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+# The non-generic spelling travels a different declaration path than the generic one; before
+# #1246 they disagreed about whether to honor the escape at all, so both are pinned.
+class `class`:
+    v: int = 5
+
+
+# A C# keyword that is NOT also a builtin Sharpy type name: a name like `int` additionally
+# collides with the builtin registry at the callee, which is a separate seam from escaping.
+struct `readonly`:
+    n: int
+
+
+enum `delegate`:
+    A = 3
+
+
+delegate `checked`(v: int) -> None
+
+
+def log(v: int) -> None:
+    print(v)
+
+
+def main():
+    e = `event`[int](7)
+    print(e.value)
+
+    c = `class`()
+    print(c.v)
+
+    i = `readonly`(9)
+    print(i.n)
+
+    print(`delegate`.A.value)
+
+    d: `checked` = log
+    d(11)

@@ -1207,7 +1207,7 @@ internal partial class RoslynEmitter
     private ExpressionSyntax BuildQualifiedTypeAccess(
         Semantic.TypeSymbol typeSymbol, string originalName)
     {
-        var csharpTypeName = NameCasing.ResolveType(originalName, isBacktickEscaped: false);
+        var csharpTypeName = NameCasing.ResolveType(originalName, typeSymbol.IsNameBacktickEscaped);
         var fqn = GetFullyQualifiedTypeName(typeSymbol, originalName);
 
         if (fqn.Contains('.', StringComparison.Ordinal))

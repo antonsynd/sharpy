@@ -656,10 +656,12 @@ internal class TypeSyntaxMapper
         else
         {
             // Construction: type is in the current file. Reference: fallback that shouldn't happen.
-            return NameCasing.ResolveType(sharpyTypeName, false);
+            return NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped);
         }
 
-        return BuildQualifiedTypeName(moduleNamespace, NameCasing.ResolveType(sharpyTypeName, false));
+        return BuildQualifiedTypeName(
+            moduleNamespace,
+            NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped));
     }
 
     /// <summary>
@@ -802,15 +804,18 @@ internal class TypeSyntaxMapper
             var current = udt.Symbol;
             while (current != null)
             {
-                parts.Add(NameCasing.ResolveType(current.Name, false));
+                parts.Add(NameCasing.ResolveType(current.Name, current.IsNameBacktickEscaped));
                 current = current.DeclaringType;
             }
             parts.Reverse();
             return string.Join(".", parts);
         }
 
-        // Fall back to name-based lookup
-        return GetMappedTypeName(udt.Name);
+        // Fall back to name-based lookup. The escape flag still comes from the SYMBOL: a written
+        // annotation carries no backtick flag of its own (TypeAnnotation has no such field), so
+        // resolving by name alone would spell a `len`-declared type as `Len` at every annotation
+        // while its declaration emits `len` (#1241).
+        return GetMappedTypeName(udt.Name, udt.Symbol?.IsNameBacktickEscaped ?? false);
     }
 
     /// <summary>
