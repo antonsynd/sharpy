@@ -846,10 +846,11 @@ internal partial class TypeChecker
                         };
                 }
 
-                // Cannot instantiate abstract classes
-                if (genericTypeSymbol.IsAbstract)
+                // A type with no construction cannot be constructed — same authority as the
+                // non-generic path in CheckConstructorCall (#1271).
+                if (CannotInstantiateMessageOf(genericTypeSymbol) is { } cannotInstantiate)
                 {
-                    AddError($"Cannot instantiate abstract class '{genericTypeSymbol.Name}'",
+                    AddError(cannotInstantiate,
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation,
                         span: call.Span);
                     return SemanticType.Unknown;

@@ -396,8 +396,11 @@ internal partial class TypeChecker
 
         if (classification.Reference is not { } constructorReference)
         {
-            return classification.NonConstructible is { } nonConstructible
-                ? RefuseNonConstructibleReference(reference, nonConstructible)
+            if (classification.NonConstructible is { } nonConstructible)
+                return RefuseNonConstructibleReference(reference, nonConstructible);
+
+            return classification.UnfamiliedBuiltin is { } unfamiliedBuiltin
+                ? RefuseUnfamiliedBuiltinReference(reference, unfamiliedBuiltin)
                 : null;
         }
 
@@ -496,18 +499,30 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// What a name denotes for the constructor-reference rule. Exactly one of the two is set: a
-    /// <see cref="Reference"/> the tier rules apply to, or a <see cref="NonConstructible"/> type
-    /// that has no construction for a reference to denote (#1250). Both null means the name is not
-    /// this rule's business, and the caller's remaining rules apply.
+    /// What a name denotes for the constructor-reference rule. At most one of the three is set: a
+    /// <see cref="Reference"/> the tier rules apply to, a <see cref="NonConstructible"/> type that
+    /// has no construction for a reference to denote (#1250), or an
+    /// <see cref="UnfamiliedBuiltin"/> — a builtin that constructs but has no family, so no
+    /// signature can be pinned (#1272). All null means the name is not this rule's business, and
+    /// the caller's remaining rules apply.
     /// </summary>
     private readonly record struct ConstructorReferenceClassification(
         ConstructorReferenceType? Reference,
-        NonConstructibleTypeName? NonConstructible);
+        NonConstructibleTypeName? NonConstructible,
+        string? UnfamiliedBuiltin);
 
-    /// <summary>A type name with no construction, described for the diagnostic.</summary>
+    /// <summary>
+    /// A type name with no construction, described for the diagnostics that refuse it.
+    /// </summary>
+    /// <param name="Name">The type's name, as written.</param>
+    /// <param name="Noun">The kind as a bare noun phrase, for "Cannot instantiate {Noun} '{Name}'"
+    /// (SPY0280 at a call). "abstract class" rather than "class" keeps that message byte-identical
+    /// to the one it has shipped with.</param>
+    /// <param name="Description">The kind as a predicate phrase, for "'{Name}' is {Description}"
+    /// (SPY0346 at a reference).</param>
+    /// <param name="Suggestion">What to write instead. Shared by both diagnostics.</param>
     private readonly record struct NonConstructibleTypeName(
-        string Name, string Description, string Suggestion);
+        string Name, string Noun, string Description, string Suggestion);
 
     /// <summary>
     /// Classifies the name an expression denotes. A read already typed as the carrier denotes
@@ -521,17 +536,20 @@ internal partial class TypeChecker
     /// applies. A user class named <c>int</c> is therefore its own UserType reference pinning
     /// against its own constructors — never the builtin's conversion overload set.</para>
     ///
-    /// <para>A BUILTIN with no family is left alone rather than called non-constructible, because
-    /// it is not: <c>object()</c>, <c>bytes()</c>, <c>decimal()</c>, <c>frozenset()</c> and the view
-    /// types all construct and run. A reference to one still falls through to the position's typing
-    /// and leaks broken C#; that is a separate gap (#1272), and answering it here would attach a
-    /// diagnostic that says something false about them.</para>
+    /// <para>A BUILTIN with no family is NOT called non-constructible, because it is not:
+    /// <c>object()</c>, <c>bytes()</c>, <c>decimal()</c>, <c>frozenset()</c> and the view types all
+    /// construct and run. Saying otherwise would send a reader to fix the wrong thing. It is
+    /// reported instead as an unfamilied builtin, which SPY0342 refuses for the accurate reason —
+    /// no signature is available to pin — rather than letting the bare name reach codegen (#1272).
+    /// Giving these types families, so that <c>mk: () -&gt; frozenset[int] = frozenset</c> pins the
+    /// way <c>list</c> already does, is the other half of #1272 and a language ADDITION; it stays
+    /// open deliberately.</para>
     /// </summary>
     private ConstructorReferenceClassification ClassifyConstructorReference(
         Expression reference, SemanticType type)
     {
         if (type is ConstructorReferenceType carrier)
-            return new ConstructorReferenceClassification(carrier, null);
+            return new ConstructorReferenceClassification(carrier, null, null);
 
         if (reference is not Identifier id || _symbolTable.Lookup(id.Name) is not TypeSymbol typeSymbol)
             return default;
@@ -545,12 +563,12 @@ internal partial class TypeChecker
         {
             return new ConstructorReferenceClassification(
                 new ConstructorReferenceType { Name = id.Name, Symbol = typeSymbol, Family = resolved },
-                null);
+                null, null);
         }
 
         return isBuiltin
-            ? default
-            : new ConstructorReferenceClassification(null, NonConstructibleTypeNameOf(typeSymbol));
+            ? new ConstructorReferenceClassification(null, null, id.Name)
+            : new ConstructorReferenceClassification(null, NonConstructibleTypeNameOf(typeSymbol), null);
     }
 
     /// <summary>
@@ -572,20 +590,39 @@ internal partial class TypeChecker
         var name = typeSymbol.Name;
         return typeSymbol.TypeKind switch
         {
-            TypeKind.Interface => new NonConstructibleTypeName(name, "an interface",
+            TypeKind.Interface => new NonConstructibleTypeName(name, "interface", "an interface",
                 "Name a concrete implementing type instead, or wrap the construction in a lambda."),
-            TypeKind.Enum => new NonConstructibleTypeName(name, "an enum",
+            TypeKind.Enum => new NonConstructibleTypeName(name, "enum", "an enum",
                 $"A member is the value you want: '{name}.SOME_MEMBER'."),
-            TypeKind.Union => new NonConstructibleTypeName(name, "a union",
+            TypeKind.Union => new NonConstructibleTypeName(name, "union", "a union",
                 $"Construct one of its variants instead: '{name}.SomeCase(...)'."),
-            TypeKind.Delegate => new NonConstructibleTypeName(name, "a delegate type",
+            TypeKind.Delegate => new NonConstructibleTypeName(name, "delegate type", "a delegate type",
                 $"Assign a compatible function or lambda to it instead: 'cb: {name} = handler'."),
             TypeKind.Class or TypeKind.Struct when typeSymbol.IsAbstract =>
-                new NonConstructibleTypeName(name, "abstract",
+                new NonConstructibleTypeName(name, "abstract class", "abstract",
                     "Name a concrete subclass instead, or wrap the construction in a lambda."),
             _ => null,
         };
     }
+
+    /// <summary>
+    /// The message refusing a direct construction of a type that has no construction (SPY0280), or
+    /// null when the type can be constructed (#1271).
+    ///
+    /// <para>Reads the same <see cref="NonConstructibleTypeNameOf"/> authority the value-position
+    /// refusal does, so a kind cannot be refused at a reference and silently accepted at a call.
+    /// Before this, the check tested <c>IsAbstract</c> directly, which only abstract classes and
+    /// unions carry — an interface, an enum and a delegate reached codegen and produced CS1955
+    /// behind SPY0908.</para>
+    ///
+    /// <para>A union is <c>IsAbstract</c> too and was therefore reported as an abstract class. It
+    /// is now named as a union; the abstract-class wording itself is unchanged.</para>
+    /// </summary>
+    private static string? CannotInstantiateMessageOf(TypeSymbol typeSymbol)
+        => NonConstructibleTypeNameOf(typeSymbol) is { } nonConstructible
+            ? $"Cannot instantiate {nonConstructible.Noun} '{nonConstructible.Name}'. "
+                + nonConstructible.Suggestion
+            : null;
 
     /// <summary>
     /// Refuses a non-constructible type name used as a value (#1250), or returns null to leave the
@@ -617,6 +654,47 @@ internal partial class TypeChecker
             + $"so its name is not a value. {nonConstructible.Suggestion}",
             reference.LineStart, reference.ColumnStart,
             code: DiagnosticCodes.Semantic.NonConstructibleTypeReference,
+            span: reference.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Refuses a reference to a builtin type that constructs but has no constructor-reference
+    /// family — <c>object</c>, <c>bytes</c>, <c>decimal</c>, <c>frozenset</c>, <c>frozendict</c>,
+    /// <c>Iterator</c>, the view types (#1272) — or returns null to leave the position the typing it
+    /// has today.
+    ///
+    /// <para>SPY0342 rather than SPY0346, because the reason is that no signature is available to
+    /// pin, not that the type cannot be constructed: every one of these constructs. Without this the
+    /// name falls through every rule and reaches codegen bare, so the rule's headline invariant —
+    /// every unpinned reference draws SPY0342 — would be true of user classes and builtin families
+    /// and quietly false of seven builtin types.</para>
+    ///
+    /// <para>Gated on value uses ONLY — NOT on the direct call-argument position, which is the one
+    /// difference from <see cref="RefuseNonConstructibleReference"/>. An exception type is a builtin
+    /// with no family, and naming one in a call argument is established working behavior:
+    /// <c>self.assertRaises(ValueError, ...)</c>. Extending the refusal there broke ten shipped
+    /// unittest tests, which is the #1170 over-fire again. The distinction is real rather than
+    /// convenient: for a non-constructible USER kind that position has no working behavior to
+    /// protect (it leaks), while for these it does. <c>map(bytes, xs)</c> therefore still leaks, and
+    /// stays under #1272's open half.</para>
+    ///
+    /// <para>The untouched positions were measured working: <c>x: object = 5</c>,
+    /// <c>isinstance(x, object)</c>, <c>list[object]</c>, <c>dict[str, object]</c>, and annotated
+    /// construction of every one of these types.</para>
+    /// </summary>
+    private SemanticType? RefuseUnfamiliedBuiltinReference(Expression reference, string name)
+    {
+        if (IsCurrentIterationSource(reference) || !IsConstructorReferenceValueUse(reference))
+            return null;
+
+        AddError(
+            $"cannot infer a callable signature for builtin type '{name}': it has no constructor "
+            + "reference form, so no position can supply one. Call it directly "
+            + $"('{name}(...)'), or wrap the construction in a lambda "
+            + $"('f = lambda: {name}()').",
+            reference.LineStart, reference.ColumnStart,
+            code: DiagnosticCodes.Semantic.UnpinnedConstructorReference,
             span: reference.Span);
         return SemanticType.Unknown;
     }

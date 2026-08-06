@@ -45,10 +45,13 @@ internal partial class TypeChecker
                 return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
         }
 
-        // Cannot instantiate abstract classes
-        if (typeSymbol.IsAbstract)
+        // A type with no construction cannot be constructed. Reads the same authority as the
+        // value-position refusal (#1250) rather than testing IsAbstract, which only abstract classes
+        // and unions carry — an interface, an enum and a delegate reached codegen as a call on a
+        // type name and produced CS1955 behind SPY0908 (#1271).
+        if (CannotInstantiateMessageOf(typeSymbol) is { } cannotInstantiate)
         {
-            AddError($"Cannot instantiate abstract class '{typeSymbol.Name}'",
+            AddError(cannotInstantiate,
                 call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AbstractInstantiation,
                 span: call.Span);
             return SemanticType.Unknown;

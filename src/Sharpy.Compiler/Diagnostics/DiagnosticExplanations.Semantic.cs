@@ -512,10 +512,28 @@ public static partial class DiagnosticExplanations
 
         // ── Semantic errors: Class and inheritance (SPY0280-SPY0299) ────
 
-        Add(dict, DiagnosticCodes.Semantic.AbstractInstantiation, "Cannot instantiate abstract class", "Semantic",
-            "An attempt was made to create an instance of an abstract class. Abstract classes can only be subclassed, not instantiated directly.",
-            "abstract class Shape:\n    def area(self) -> float:\n        ...\n\ns = Shape()  # cannot instantiate",
-            "Create a concrete subclass:\nclass Circle(Shape):\n    radius: float\n    def area(self) -> float:\n        return 3.14159 * self.radius * self.radius");
+        Add(dict, DiagnosticCodes.Semantic.AbstractInstantiation, "Cannot instantiate a type that has no construction", "Semantic",
+            "An attempt was made to construct a type that has none. Five kinds have no construction: "
+            + "an abstract class and a union type name (both of which can only be subclassed or "
+            + "constructed through a variant), an interface, an enum, and a delegate type. A Sharpy "
+            + "delegate is a named function TYPE — you assign a compatible function or lambda to it "
+            + "(`cb: Cb = handler`), there is no `Cb(handler)` spelling. The message names which "
+            + "kind it found. This is the same constructibility rule SPY0346 applies to the type's "
+            + "NAME used as a value; a kind cannot be refused at a reference and accepted at a call.",
+            "@abstract\nclass Shape:\n    def area(self) -> float: ...\n\n"
+            + "interface IDrawable:\n    def draw(self) -> None: ...\n\n"
+            + "enum Color:\n    RED = 1\n\n"
+            + "def main():\n"
+            + "    s = Shape()      # abstract\n"
+            + "    d = IDrawable()  # an interface has no constructor\n"
+            + "    c = Color()      # an enum names its members",
+            "Construct a concrete type instead:\n"
+            + "  class Circle(Shape):\n"
+            + "      def __init__(self):\n          pass\n"
+            + "      @override\n      def area(self) -> float:\n          return 3.0\n"
+            + "For an enum, a member is the value you want: `c: Color = Color.RED`.\n"
+            + "For a union, construct one of its variants: `s: Shape = Shape.Circle(2.0)`.\n"
+            + "For a delegate, assign a compatible callable: `cb: Cb = handler`.");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidInheritance, "Invalid inheritance", "Semantic",
             "A class attempted to inherit from a type that cannot be used as a base class. For example, inheriting from a struct, enum, or sealed class.",
