@@ -84,6 +84,9 @@ internal static class RunCommand
         });
 
         root.Subcommands.Add(command);
+        // Display only: the generated help describes the option grammar, which the `--` separator
+        // deliberately sits outside of, so `run --help` has to be told about it (#1231).
+        RunHelpAction.Install(root, command);
         return command;
     }
 
