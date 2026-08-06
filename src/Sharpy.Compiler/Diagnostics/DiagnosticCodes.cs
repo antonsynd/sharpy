@@ -227,7 +227,13 @@ public static class DiagnosticCodes
         public const string InvalidTypeAlias = "SPY0209";           // Active
         // Question mark operator in finally (SPY0211)
         public const string QuestionMarkInFinally = "SPY0211";           // Active
-        // SPY0212-SPY0219: Reserved for future name resolution diagnostics
+        // SPY0210: Unclaimed gap — no recorded owner or tombstone. Left unallocated pending an
+        // explanation; do not reuse without establishing it was never issued.
+        // SPY0212: RESERVED for the builtin-name shadowing refusal (#1241, round-8 batch D) — a bare
+        // declaration of a builtin type or function name, where the bare spelling always denotes the
+        // builtin and a user symbol must be backtick-escaped. Natural fit for this family: it is a
+        // name-resolution rule, so no overflow borrowing is needed.
+        // SPY0213-SPY0219: Reserved for future name resolution diagnostics
 
         #endregion
 
@@ -345,6 +351,9 @@ public static class DiagnosticCodes
         public const string OptionalRequiresNarrowing = "SPY0326";  // Active
         public const string TupleNonConstantIndex = "SPY0327";      // Active
         public const string IntegerPowerOverflow = "SPY0328";       // Active
+        // SPY0348 is RESERVED as this code's constant-arithmetic sibling — ConstantIntegerOverflow
+        // (#1234): constant +/-/* whose exact result exceeds the result type. No slot free adjacent to
+        // SPY0328, so it borrows from the module-level reserve. See the module-level region.
         public const string VoidComparisonOperand = "SPY0329";      // Active
         public const string UnknownFutureFeature = "SPY0330";       // Active — from __future__ import of an unknown or mis-scoped feature
         public const string FeatureNotEnabled = "SPY0331";          // Active — use of a construct gated behind an experimental feature that is not enabled
@@ -364,9 +373,29 @@ public static class DiagnosticCodes
 
         public const string ModuleLevelExecutableStatement = "SPY0340"; // Active
         public const string ModuleLevelNoTypeAnnotation = "SPY0341"; // Active
-        // SPY0346-SPY0349: Reserved for future module-level diagnostics (SPY0342 is the
-        // value-position reference family's overflow slot, SPY0343 the inference family's, and
-        // SPY0344-SPY0345 the type-test family — see the regions below)
+        // SPY0342-SPY0345 were already borrowed from this reserve by families whose own bands filled:
+        // SPY0342 the value-position reference family, SPY0343 the inference family, SPY0344-SPY0345
+        // the type-test family (see the regions below).
+        //
+        // Round-8 allocation (2026-08-05) — three more families had no adjacent space, so they borrow
+        // here under the same precedent. Reserved, not yet declared: a code is declared together with
+        // its DiagnosticExplanations entry, because AllDiagnosticCodes_HaveExplanations reflects over
+        // every declared const with no exemption list.
+        //   SPY0346: RESERVED — NonConstructibleTypeReference (#1250, batch B). An interface, enum or
+        //            abstract class name used as a value. Value-position reference family (SPY0335-
+        //            SPY0339 full, overflow already at SPY0342).
+        //   SPY0347: RESERVED — type-parameter default forward reference (#1245, batch E). A default
+        //            that names a parameter declared after it. Belongs with SPY0395-SPY0396, which is
+        //            boxed in by SPY0394 and SPY0397. NOTE: pick a name distinct from SPY0395
+        //            (TypeParameterDefaultOrdering) — that code already means "a non-default parameter
+        //            follows a defaulted one", a different rule.
+        //   SPY0348: RESERVED — ConstantIntegerOverflow (#1234, batch C). Constant integer +/-/*
+        //            whose exact result exceeds the expression's result type. Sibling of SPY0328
+        //            (IntegerPowerOverflow), which has no free slot beside it.
+        //   SPY0349: the last free slot in this reserve. The semantic band SPY0200-SPY0399 is now
+        //            effectively exhausted — every other gap is earmarked to a specific family. The
+        //            next family needing space requires a structural decision (a new band, or a
+        //            documented general-overflow region), not another borrow.
 
         #endregion
 
@@ -376,6 +405,8 @@ public static class DiagnosticCodes
         // adjacent to that band rather than appended at the end of the semantic range so the family
         // stays readable; the module-level reserve above shrinks by one slot to pay for it.
         public const string UnpinnedConstructorReference = "SPY0342"; // Active — a builtin type constructor reference used as a value with no signature available to pin it to (#1182)
+        // SPY0346 is RESERVED as this family's second overflow slot — NonConstructibleTypeReference
+        // (#1250): an interface/enum/abstract class name used as a value. See the module-level region.
 
         #endregion
 
@@ -462,6 +493,9 @@ public static class DiagnosticCodes
         // Generic type parameter default errors (SPY0395-SPY0396)
         public const string TypeParameterDefaultOrdering = "SPY0395"; // Active
         public const string TypeParameterDefaultViolatesConstraint = "SPY0396"; // Active
+        // This band is full (SPY0394 below, SPY0397 above). SPY0347 is RESERVED as its overflow slot
+        // — a default that references a parameter declared AFTER it (#1245), which is a different rule
+        // from SPY0395's "non-default follows default". See the module-level region.
         // Exception filter errors (SPY0397-SPY0398)
         public const string ExceptionFilterNotBoolean = "SPY0397";       // Active
         public const string ExceptStarWhenNotSupported = "SPY0398";      // Active
