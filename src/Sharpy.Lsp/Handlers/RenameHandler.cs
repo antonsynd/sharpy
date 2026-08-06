@@ -154,11 +154,36 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             return query.FindSymbolByDeclaration(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart);
         }
 
+        // A function definition, likewise: a nested def nothing calls is in no reference collection
+        // and not in module scope, so only the node-keyed map can answer for it (#1232).
+        if (node is FunctionDef funcDef
+            && IsOnName(line, col, funcDef.NameLineStart, funcDef.NameColumnStart, funcDef.Name.Length))
+        {
+            var bound = query.GetFunctionDeclarationSymbol(funcDef);
+            if (bound != null)
+                return bound;
+
+            _logger.LogDebug(
+                "Rename: no node-keyed symbol for function definition '{Name}' at {Line}:{Column}; "
+                + "falling back to the declaration scan.",
+                funcDef.Name, funcDef.NameLineStart, funcDef.NameColumnStart);
+
+            return query.FindSymbolByDeclaration(funcDef.Name, funcDef.LineStart, funcDef.ColumnStart);
+        }
+
+        // The 'as' names of try/except and with: both bind in one place in the checker, and both
+        // scopes are gone by the time this runs, so both are answered node-keyed (#1232). The with
+        // map predates this — rename simply never used it, which is why even a *referenced*
+        // with-'as' name failed to resolve from its declaration.
+        if (node is TryStatement tryStmt)
+            return ResolveExceptHandlerSymbol(tryStmt, query, line, col);
+
+        if (node is WithStatement withStmt)
+            return ResolveWithItemSymbol(withStmt, query, line, col);
+
         // Handle declaration nodes where the name is a string property, not an Identifier child
         (string name, int nameLine, int nameCol)? decl = node switch
         {
-            FunctionDef f when IsOnName(line, col, f.NameLineStart, f.NameColumnStart, f.Name.Length)
-                => (f.Name, f.LineStart, f.ColumnStart),
             ClassDef c when IsOnName(line, col, c.NameLineStart, c.NameColumnStart, c.Name.Length)
                 => (c.Name, c.LineStart, c.ColumnStart),
             StructDef s when IsOnName(line, col, s.NameLineStart, s.NameColumnStart, s.Name.Length)
@@ -167,8 +192,6 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
                 => (i.Name, i.LineStart, i.ColumnStart),
             EnumDef e when IsOnName(line, col, e.NameLineStart, e.NameColumnStart, e.Name.Length)
                 => (e.Name, e.LineStart, e.ColumnStart),
-            TryStatement t => ResolveExceptHandlerName(t, line, col),
-            WithStatement w => ResolveWithItemName(w, line, col),
             _ => null
         };
 
@@ -178,29 +201,53 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         return null;
     }
 
-    private static (string name, int nameLine, int nameCol)? ResolveExceptHandlerName(TryStatement t, int line, int col)
+    private Symbol? ResolveExceptHandlerSymbol(TryStatement t, ISemanticQuery query, int line, int col)
     {
         foreach (var handler in t.Handlers)
         {
-            if (handler.Name != null
-                && IsOnName(line, col, handler.NameLineStart, handler.NameColumnStart, handler.Name.Length))
+            if (handler.Name == null
+                || !IsOnName(line, col, handler.NameLineStart, handler.NameColumnStart, handler.Name.Length))
             {
-                return (handler.Name, handler.LineStart, handler.ColumnStart);
+                continue;
             }
+
+            var bound = query.GetExceptHandlerSymbol(handler);
+            if (bound != null)
+                return bound;
+
+            _logger.LogDebug(
+                "Rename: no node-keyed symbol for except-as name '{Name}' at {Line}:{Column}; "
+                + "falling back to the declaration scan.",
+                handler.Name, handler.NameLineStart, handler.NameColumnStart);
+
+            return query.FindSymbolByDeclaration(handler.Name, handler.LineStart, handler.ColumnStart);
         }
+
         return null;
     }
 
-    private static (string name, int nameLine, int nameCol)? ResolveWithItemName(WithStatement w, int line, int col)
+    private Symbol? ResolveWithItemSymbol(WithStatement w, ISemanticQuery query, int line, int col)
     {
         foreach (var item in w.Items)
         {
-            if (item.Name != null
-                && IsOnName(line, col, item.NameLineStart, item.NameColumnStart, item.Name.Length))
+            if (item.Name == null
+                || !IsOnName(line, col, item.NameLineStart, item.NameColumnStart, item.Name.Length))
             {
-                return (item.Name, item.LineStart, item.ColumnStart);
+                continue;
             }
+
+            var bound = query.GetWithItemSymbol(item);
+            if (bound != null)
+                return bound;
+
+            _logger.LogDebug(
+                "Rename: no node-keyed symbol for with-as name '{Name}' at {Line}:{Column}; "
+                + "falling back to the declaration scan.",
+                item.Name, item.NameLineStart, item.NameColumnStart);
+
+            return query.FindSymbolByDeclaration(item.Name, item.LineStart, item.ColumnStart);
         }
+
         return null;
     }
 

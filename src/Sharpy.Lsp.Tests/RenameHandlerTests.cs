@@ -376,6 +376,94 @@ public class RenameHandlerTests : IDisposable
     }
 
     /// <summary>
+    /// #1232, measured sibling kind: a nested <c>def</c> nothing calls. It is in no reference
+    /// collection and not in module scope, so the declaration scan could not see it either; the
+    /// checker now records it keyed on the definition node.
+    /// </summary>
+    [Fact]
+    public async Task Rename_UnreferencedNestedFunction_RenamesFromDeclarationSite()
+    {
+        // Line 0: "def outer() -> int:"
+        // Line 1: "    def helper() -> int:"
+        //          "    def " = 8 chars, "helper" at col 8
+        // Line 2: "        return 1"
+        // Line 3: "    return 2"
+        var source = "def outer() -> int:\n    def helper() -> int:\n        return 1\n    return 2\n";
+
+        var result = await RenameAsync(source, 1, 8, "assist");
+
+        result.Should().NotBeNull("a nested def nothing calls is still a declaration you can rename");
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+        edits.Should().ContainSingle();
+        edits[0].Range.Start.Line.Should().Be(1);
+        edits[0].Range.Start.Character.Should().Be(8);
+        edits[0].NewText.Should().Be("assist");
+    }
+
+    /// <summary>
+    /// #1232, measured sibling kind: an <c>except ... as</c> name the handler body never reads.
+    /// </summary>
+    [Fact]
+    public async Task Rename_UnreferencedExceptAsName_RenamesFromDeclarationSite()
+    {
+        // Line 3: "    except Exception as err:"
+        //          "    except Exception as " = 24 chars, "err" at col 24
+        var source = "def main():\n    try:\n        print(1)\n    except Exception as err:\n        print(2)\n";
+
+        var result = await RenameAsync(source, 3, 24, "problem");
+
+        result.Should().NotBeNull("an except-as name nothing reads is still renameable");
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+        edits.Should().ContainSingle();
+        edits[0].Range.Start.Line.Should().Be(3);
+        edits[0].Range.Start.Character.Should().Be(24);
+        edits[0].NewText.Should().Be("problem");
+    }
+
+    /// <summary>
+    /// #1232, measured sibling kind: a <c>with ... as</c> name. Both the unreferenced and the
+    /// referenced case failed before — the scan matches on the symbol's declaration position, which
+    /// for a with-item is not the position the handler passed it. Resolving node-keyed (through the
+    /// map the checker already wrote, which rename simply never used) removes the mismatch.
+    /// </summary>
+    [Fact]
+    public async Task Rename_WithAsName_RenamesFromDeclarationSite()
+    {
+        // Line 1: "    with open(\"f.txt\") as handle:"
+        //          "    with open(\"f.txt\") as " = 26 chars, "handle" at col 26
+        // Line 2: "        print(handle)"
+        //          "        print(" = 14 chars, "handle" at col 14
+        var source = "def main():\n    with open(\"f.txt\") as handle:\n        print(handle)\n";
+
+        var result = await RenameAsync(source, 1, 26, "fh");
+
+        result.Should().NotBeNull();
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+        edits.Should().HaveCount(2, "the declaration and its one reference");
+        edits.Should().Contain(e => e.Range.Start.Line == 1 && e.Range.Start.Character == 26);
+        edits.Should().Contain(e => e.Range.Start.Line == 2 && e.Range.Start.Character == 14);
+        edits.Should().OnlyContain(e => e.NewText == "fh");
+    }
+
+    /// <summary>
+    /// #1232, measured sibling kind: the same with-<c>as</c> name when nothing reads it.
+    /// </summary>
+    [Fact]
+    public async Task Rename_UnreferencedWithAsName_RenamesFromDeclarationSite()
+    {
+        var source = "def main():\n    with open(\"f.txt\") as handle:\n        print(1)\n";
+
+        var result = await RenameAsync(source, 1, 26, "fh");
+
+        result.Should().NotBeNull();
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+        edits.Should().ContainSingle();
+        edits[0].Range.Start.Line.Should().Be(1);
+        edits[0].Range.Start.Character.Should().Be(26);
+        edits[0].NewText.Should().Be("fh");
+    }
+
+    /// <summary>
     /// Regression test for #597: Rename from a for-loop variable declaration site.
     /// `for i in range(5)` has the loop target as an Identifier AST node.
     /// ResolveSymbol resolves it via GetIdentifierSymbol.

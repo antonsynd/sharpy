@@ -676,6 +676,13 @@ internal partial class TypeChecker
         // Update the symbol in the symbol table
         _symbolTable.UpdateSymbol(updatedSymbol);
 
+        // Key the definition node to the symbol so the declaration itself resolves — a nested def
+        // nothing calls is in no reference collection and not in module scope, so the
+        // name-and-position scan cannot find it at all (#1232). Recorded here rather than at the
+        // lookup above because this replacement is what every later reference binds to, and Symbol
+        // compares by reference: the pre-update instance would carry an empty reference bag.
+        _semanticInfo.SetFunctionDeclarationSymbol(functionDef, updatedSymbol);
+
         // Also update the reference in the owning TypeSymbol's lists or the
         // module-level overload list.  Without this sync, downstream consumers
         // (FindMethodInHierarchy, ResolveOverloadCore) read stale return types.

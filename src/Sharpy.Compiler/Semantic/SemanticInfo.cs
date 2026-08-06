@@ -149,6 +149,20 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<WithItem, VariableSymbol> _withItemSymbols =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map except-handler nodes to their 'as' variable symbols. The except scope is exited after type
+    // checking, and a handler variable nothing reads is in no reference collection either, so this
+    // is the only way back to the symbol from the declaration node (#1232). Mirrors
+    // _withItemSymbols, whose 'as' variable has the same shape and the same problem.
+    private readonly ConcurrentDictionary<ExceptHandler, VariableSymbol> _exceptHandlerSymbols =
+        new(ReferenceEqualityComparer.Instance);
+
+    // Map function definitions to the symbol they declare, recorded where the checker resolves it.
+    // Module-level functions are findable by other means; a *nested* def that nothing calls is not —
+    // it is in no reference collection and not in module scope (#1232). Keyed per node so an
+    // overload set stays distinguishable.
+    private readonly ConcurrentDictionary<FunctionDef, FunctionSymbol> _functionDeclarationSymbols =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map binary-op expressions (==/!=) to the strategy codegen must use to emit them.
     // Only present when the strategy differs from the default native operator — e.g.
     // tuple equality and CLR types that implement Equals/IEquatable but define no
@@ -736,6 +750,36 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records the variable symbol an except handler's <c>as</c> clause binds. Called where the
+    /// checker binds it, so the binding is known whether or not the handler body reads it.
+    /// </summary>
+    public void SetExceptHandlerSymbol(ExceptHandler handler, VariableSymbol symbol)
+    {
+        _exceptHandlerSymbols[handler] = symbol;
+    }
+
+    /// <inheritdoc/>
+    public VariableSymbol? GetExceptHandlerSymbol(ExceptHandler handler)
+    {
+        return _exceptHandlerSymbols.TryGetValue(handler, out var symbol) ? symbol : null;
+    }
+
+    /// <summary>
+    /// Records the symbol a function definition declares. Called where the checker resolves it, so
+    /// a nested definition nothing calls is still reachable from its declaration node.
+    /// </summary>
+    public void SetFunctionDeclarationSymbol(FunctionDef definition, FunctionSymbol symbol)
+    {
+        _functionDeclarationSymbols[definition] = symbol;
+    }
+
+    /// <inheritdoc/>
+    public FunctionSymbol? GetFunctionDeclarationSymbol(FunctionDef definition)
+    {
+        return _functionDeclarationSymbols.TryGetValue(definition, out var symbol) ? symbol : null;
+    }
+
+    /// <summary>
     /// Records how an equality binary operation (<c>==</c>/<c>!=</c>) should be lowered by codegen.
     /// Only set when the strategy is not the default <see cref="BinaryOpLowering.NativeOperator"/>;
     /// the absence of an entry means codegen should emit a native C# operator.
@@ -921,6 +965,12 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._withItemSymbols)
             _withItemSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._exceptHandlerSymbols)
+            _exceptHandlerSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._functionDeclarationSymbols)
+            _functionDeclarationSymbols.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._binaryOpLowerings)
             _binaryOpLowerings.TryAdd(kvp.Key, kvp.Value);

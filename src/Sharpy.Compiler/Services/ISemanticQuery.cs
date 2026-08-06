@@ -74,15 +74,31 @@ public interface ISemanticQuery
     VariableSymbol? GetWithItemSymbol(WithItem item);
 
     /// <summary>
-    /// Finds a symbol by matching its name and declaration position.
-    /// Used by rename/references handlers when the cursor is on a declaration node
-    /// (e.g., VariableDeclaration, FunctionDef) rather than an Identifier reference.
+    /// Finds a symbol by matching its name and declaration position, for a cursor on a declaration
+    /// node rather than an Identifier reference.
     /// <para>
-    /// Prefer <see cref="GetDeclarationSymbol"/> for a <c>VariableDeclaration</c>: this is a
-    /// name-and-position scan over reference-populated collections plus module scope, so it
-    /// cannot see a function-local binding that nothing reads (#1222). <c>RenameHandler</c> still
-    /// resolves declaration sites through here and has that hole (#1232).
+    /// <b>Prefer a node-keyed lookup where one exists</b> — <see cref="GetDeclarationSymbol"/>,
+    /// <see cref="GetFunctionDeclarationSymbol"/>, <see cref="GetExceptHandlerSymbol"/>,
+    /// <see cref="GetWithItemSymbol"/>. This is a name-and-position scan over two
+    /// reference-populated collections plus module scope, so it is blind to any function-local
+    /// binding that nothing reads (#1222, #1232).
     /// </para>
+    /// <para>
+    /// Known residual holes, all measured (#1232). A declaration whose kind has no node-keyed map
+    /// is still resolved here, and for these the scan answers only when something references the
+    /// name:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>
+    /// <b>Class, struct, interface and enum declarations nested inside a function.</b> Not a
+    /// reachable hole today: the checker reports SPY0202 for a function-local type declaration, so
+    /// there is no symbol to find in the first place.
+    /// </description></item>
+    /// <item><description>
+    /// <b>Match-statement capture patterns and comprehension targets</b> — bound in scopes this
+    /// scan never sees. Unmeasured; rename does not route those node kinds here today.
+    /// </description></item>
+    /// </list>
     /// </summary>
     Symbol? FindSymbolByDeclaration(string name, int line, int column);
 
@@ -93,6 +109,19 @@ public interface ISemanticQuery
     /// cannot do for a function-local one.
     /// </summary>
     Symbol? GetDeclarationSymbol(Parser.Ast.VariableDeclaration declaration);
+
+    /// <summary>
+    /// Gets the symbol a function definition declares, keyed on the definition node. Recorded where
+    /// the checker resolves it, so a nested <c>def</c> that nothing calls is reachable from its
+    /// declaration — the scan cannot see one, since it is neither referenced nor in module scope.
+    /// </summary>
+    FunctionSymbol? GetFunctionDeclarationSymbol(Parser.Ast.FunctionDef definition);
+
+    /// <summary>
+    /// Gets the variable symbol an except handler's <c>as</c> clause binds, keyed on the handler
+    /// node. Returns null when the handler has no <c>as</c> clause.
+    /// </summary>
+    VariableSymbol? GetExceptHandlerSymbol(Parser.Ast.ExceptHandler handler);
 
     /// <summary>
     /// Returns true if the given statement was produced by a source generator

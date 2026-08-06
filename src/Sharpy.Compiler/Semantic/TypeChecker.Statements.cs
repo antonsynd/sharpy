@@ -1055,6 +1055,10 @@ internal partial class TypeChecker
                 {
                     _symbolTable.Define(varSymbol);
                     SemanticBinding.SetVariableType(varSymbol, exceptionType);
+                    // Keyed on the handler node so the binding is reachable from the declaration
+                    // even when the handler body never reads it (#1232) — the except scope is gone
+                    // by the time an LSP handler asks.
+                    _semanticInfo.SetExceptHandlerSymbol(handler, varSymbol);
                 }
             }
 
