@@ -1,0 +1,44 @@
+# Module-level `def` and `const` dropped the escape flag on the DECLARATION side while the
+# reference honoured it, so the two never met: `def `str`` declared `Str` and its call emitted
+# `str()` — CS0103 behind SPY0908 (#1241).
+#
+# This shape reproduces with an ordinary name too: it is not builtin- or keyword-specific, which
+# is why the sweep covers three name classes at once — a plain name, a builtin type name, a
+# builtin function name, and a C# keyword.
+def `zed`() -> int:
+    return 1
+
+
+def `str`() -> int:
+    return 2
+
+
+def `class`() -> int:
+    return 3
+
+
+const `len`: int = 4
+
+const `event`: int = 5
+
+
+# The same declaration-side flag drop is why the backtick escape did not rescue a user-vs-user
+# mangling collision: `def `h`` emitted `H` and collided with `class `H`` (CS0102, #1268). The
+# collision validator was already right — it considers `h` and `H` distinct once escaped — so only
+# codegen disagreed. Both spellings must now survive side by side.
+class `H`:
+    v: int = 6
+
+
+def `h`() -> int:
+    return 7
+
+
+def main():
+    print(`zed`())
+    print(`str`())
+    print(`class`())
+    print(`len`)
+    print(`event`)
+    print(`H`().v)
+    print(`h`())

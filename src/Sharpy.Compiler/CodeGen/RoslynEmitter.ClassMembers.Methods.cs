@@ -253,7 +253,7 @@ internal partial class RoslynEmitter
         modifiers = ResolveModifierConflicts(modifiers);
 
         // Generate method declaration
-        var method = MethodDeclaration(returnType, mangledName)
+        var method = MethodDeclaration(returnType, EscapedIdentifier(mangledName))
             .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList(parameters)));
 
@@ -643,7 +643,7 @@ internal partial class RoslynEmitter
             .Select(GenerateParameter)
             .ToArray();
 
-        var method = MethodDeclaration(returnType, mangledName)
+        var method = MethodDeclaration(returnType, EscapedIdentifier(mangledName))
             .WithParameterList(ParameterList(SeparatedList(parameters)));
 
         // Check if this is an abstract method (body is single ellipsis or pass)

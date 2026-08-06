@@ -39,11 +39,13 @@ internal partial class RoslynEmitter
         // with user-declared variables.
         CollectSourceVariableNames(func.Body);
 
-        // Transform name using NameMangler
+        // Transform name using NameCasing, which honours the backtick escape — the reference side
+        // already did, so resolving the declaration without the flag made `def `str`` declare `Str`
+        // and its call site emit `str()` (CS0103, #1241).
         // Special case: only convert "main" to "Main" if this is the entry point file
         var mangledName = func.Name == "main" && !_context.IsEntryPoint
             ? "MainFunc"  // Rename to avoid C# entry point conflict in non-entry files
-            : NameMangler.Transform(func.Name, NameContext.Method);
+            : NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
 
         // Check if this function is a generator and/or async
         using var _ = SetGeneratorScope(_context.Ir?.IsGenerator(func) == true);
@@ -119,7 +121,7 @@ internal partial class RoslynEmitter
         var preamble = GenerateLateBoundPreamble(func.Parameters);
         var body = Block(preamble.Concat(GenerateSuite(func.Body)));
 
-        var method = MethodDeclaration(returnType, mangledName)
+        var method = MethodDeclaration(returnType, EscapedIdentifier(mangledName))
             .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
@@ -854,7 +856,7 @@ internal partial class RoslynEmitter
             .ToArray();
 
         // Create abstract method declaration
-        return MethodDeclaration(returnType, mangledName)
+        return MethodDeclaration(returnType, EscapedIdentifier(mangledName))
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.AbstractKeyword)))

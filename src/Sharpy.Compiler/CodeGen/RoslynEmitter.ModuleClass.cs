@@ -615,7 +615,7 @@ internal partial class RoslynEmitter
         string fieldName;
         if (varDecl.IsConst || NameFormDetector.IsConstantCaseName(variableName))
         {
-            fieldName = NameMangler.ToConstantCase(variableName);
+            fieldName = NameCasing.ResolveConstant(variableName, varDecl.IsNameBacktickEscaped);
         }
         else
         {
