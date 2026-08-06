@@ -1,0 +1,58 @@
+# #1271: constructing a type that has no construction. SPY0280 tested IsAbstract directly, which
+# only abstract classes and unions carry, so `IShape()`, `Color()` and `Cb(log)` were clean at
+# semantic time and reached codegen as a call on a type name — CS1955 behind SPY0908.
+#
+# The check now reads the same constructibility authority the value-position refusal does
+# (NonConstructibleTypeNameOf), so a kind cannot be refused at a reference and silently accepted at
+# a call. Each position names a DIFFERENT type so every expected message is unique — the harness
+# matches a substring to the first diagnostic containing it.
+delegate Cb(v: int) -> None
+
+
+interface IShape:
+    def area(self) -> float: ...
+
+
+enum Color:
+    RED = 1
+
+
+union Shape:
+    case Circle(r: float)
+    case Square(s: float)
+
+
+@abstract
+class Base:
+    def go(self) -> int: ...
+
+
+@abstract
+class Generic[T]:
+    def get(self) -> T: ...
+
+
+def log(v: int) -> None:
+    print(v)
+
+
+def main():
+    # New: an interface has no construction.
+    a = IShape()
+
+    # New: an enum names its members; there is nothing to construct.
+    b = Color()
+
+    # New: a delegate is a named function TYPE. delegates.md documents assignment only.
+    c = Cb(log)
+
+    # Regression: a union already drew SPY0280, as "abstract class 'Shape'" — it is now named as a
+    # union. Still refused, still the same code.
+    d = Shape()
+
+    # Regression: the abstract-class wording is unchanged, which the two shipped
+    # abstract_instantiation fixtures match on.
+    e = Base()
+
+    # Regression: the generic construction path carries its own copy of this check.
+    f = Generic[int]()

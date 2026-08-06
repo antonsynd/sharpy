@@ -1,0 +1,6 @@
+Cannot instantiate interface 'IShape'. Name a concrete implementing type instead, or wrap the construction in a lambda. @41:9
+Cannot instantiate enum 'Color'. A member is the value you want: 'Color.SOME_MEMBER'. @44:9
+Cannot instantiate delegate type 'Cb'. Assign a compatible function or lambda to it instead: 'cb: Cb = handler'. @47:9
+Cannot instantiate union 'Shape'. Construct one of its variants instead: 'Shape.SomeCase(...)'. @51:9
+Cannot instantiate abstract class 'Base'. Name a concrete subclass instead, or wrap the construction in a lambda. @55:9
+Cannot instantiate abstract class 'Generic'. Name a concrete subclass instead, or wrap the construction in a lambda. @58:9

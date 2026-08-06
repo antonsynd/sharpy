@@ -1,0 +1,30 @@
+# #1272 (first half): a builtin type that CONSTRUCTS but has no constructor-reference family.
+# `ConstructorReferenceFamilyOf` returns null for object/bytes/decimal/frozenset/frozendict/
+# Iterator/the view types, so a reference to one fell through every rule and reached codegen as a
+# bare type name — CS0119 or CS0305 behind SPY0908.
+#
+# SPY0342 rather than SPY0346: these are not non-constructible. object(), bytes(), decimal(),
+# frozenset() and frozendict() all construct and run — the regression fixture next door pins that.
+# The reason is that no signature is available to pin, which is exactly what SPY0342 says.
+#
+# The OTHER half of #1272 stays open by design: giving these types families, so that
+# `mk: () -> frozenset[int] = frozenset` pins the way `list` already does, is a language ADDITION
+# and belongs to its own decision rather than falling out of a batch whose mandate is a reduction.
+def main():
+    # A plain binding, one per leak shape: CS0119 for the non-generic ones...
+    a = object
+    b = bytes
+    c = decimal
+
+    # ...and CS0305 for the generic ones, which reached codegen without type arguments.
+    d = frozenset
+    e = frozendict
+    f = Iterator
+    g = DictKeyView
+
+    # An EXCEPTION type is a builtin with no family too, and refusing it as a value is the same
+    # improvement. Its call-argument position is deliberately NOT refused — `assertRaises(ValueError,
+    # ...)` is established working behavior, and re-typing it is the #1170 over-fire. The refusal is
+    # gated on value uses only for this family, unlike the non-constructible one next door, so
+    # `map(bytes, ns)` still leaks and stays under #1272's open half.
+    h = ValueError

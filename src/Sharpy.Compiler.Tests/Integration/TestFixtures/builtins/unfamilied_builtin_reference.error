@@ -1,0 +1,8 @@
+cannot infer a callable signature for builtin type 'object': it has no constructor reference form, so no position can supply one. @15:9
+cannot infer a callable signature for builtin type 'bytes': it has no constructor reference form, so no position can supply one. @16:9
+cannot infer a callable signature for builtin type 'decimal': it has no constructor reference form, so no position can supply one. @17:9
+cannot infer a callable signature for builtin type 'frozenset': it has no constructor reference form, so no position can supply one. @20:9
+cannot infer a callable signature for builtin type 'frozendict': it has no constructor reference form, so no position can supply one. @21:9
+cannot infer a callable signature for builtin type 'Iterator': it has no constructor reference form, so no position can supply one. @22:9
+cannot infer a callable signature for builtin type 'DictKeyView': it has no constructor reference form, so no position can supply one. @23:9
+cannot infer a callable signature for builtin type 'ValueError': it has no constructor reference form, so no position can supply one. @30:9

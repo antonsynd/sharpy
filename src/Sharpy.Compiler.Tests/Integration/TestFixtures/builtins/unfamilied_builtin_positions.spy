@@ -1,0 +1,35 @@
+# #1272 regression guard, and the evidence for why these types are NOT refused as
+# non-constructible: every one of them constructs. The refusal next door says "no signature is
+# available to pin", which is true; saying "cannot be constructed" would be false and would send a
+# reader to fix the wrong thing.
+#
+# Every row below was measured working under `run` before the refusal was added.
+def takes(o: object) -> str:
+    return "took"
+
+
+def main():
+    # Annotations, local and through a parameter.
+    x: object = 5
+    print(takes(x))
+
+    # Type test.
+    print(isinstance(x, int))
+
+    # Type arguments.
+    xs: list[object] = [1, 2]
+    print(len(xs))
+    d: dict[str, object] = {}
+    print(len(d))
+
+    # Construction — the whole point. These are constructible types.
+    o = object()
+    print(o is not None)
+    y: bytes = bytes()
+    print(len(y))
+    m: decimal = decimal()
+    print(m)
+    fs: frozenset[int] = frozenset()
+    print(len(fs))
+    fd: frozendict[str, int] = frozendict()
+    print(len(fd))
