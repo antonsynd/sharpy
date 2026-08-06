@@ -1,0 +1,44 @@
+# The escape decides which namespace a name belongs to, and it decides it BOTH ways.
+#
+# An ESCAPED spelling is the user's symbol, so the name-keyed builtin paths must not claim it. Three
+# separate sites had to learn this, and they are reached by different name KINDS — which is why a
+# fix written over "builtin type" would have closed the first and left the others (#1241):
+#   - the callee classifier            -> `str`() resolved to the builtin str conversion
+#   - builtin return-type inference    -> `len`(9) was typed as a call to builtin len
+#   - ProtocolValidator's len() check  -> a hardcoded id.Name == "len", which no type-name fix reaches
+#
+# A BARE spelling is the builtin, always — even when an escaped user symbol with that spelling
+# exists elsewhere in the file. Getting this backwards produced a SPY0908 ICE in which declaring
+# `class `len`` suppressed the arity check on a bare len() call that never mentioned it: the checker
+# resolved the call to the user class while codegen resolved it to the builtin.
+class `str`:
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+
+class `len`:
+    n: int
+
+    def __init__(self, n: int):
+        self.n = n
+
+
+def twice(x: int) -> int:
+    return x * 2
+
+
+def main():
+    # Escaped: the user's symbol, including callable.
+    print(`str`(3).v)
+    print(`len`(9).n)
+
+    `int` = twice
+    print(`int`(21))
+
+    # Bare: still the builtin, in the same file where the escaped twins are declared. A fix that
+    # made these resolve to the user symbols would have inverted the rule rather than implemented it.
+    print(str(7))
+    print(len([1, 2, 3]))
+    print(int("21"))

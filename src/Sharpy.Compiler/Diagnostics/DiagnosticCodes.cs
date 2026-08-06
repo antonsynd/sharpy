@@ -229,10 +229,11 @@ public static class DiagnosticCodes
         public const string QuestionMarkInFinally = "SPY0211";           // Active
         // SPY0210: Unclaimed gap — no recorded owner or tombstone. Left unallocated pending an
         // explanation; do not reuse without establishing it was never issued.
-        // SPY0212: RESERVED for the builtin-name shadowing refusal (#1241, round-8 batch D) — a bare
-        // declaration of a builtin type or function name, where the bare spelling always denotes the
-        // builtin and a user symbol must be backtick-escaped. Natural fit for this family: it is a
-        // name-resolution rule, so no overflow borrowing is needed.
+        // Claims the SPY0212 reservation made for round-8 batch D. The bare spelling of a builtin
+        // name always denotes the builtin — types and functions uniformly — so a user symbol with
+        // that spelling must be backtick-escaped. Extends the rule hard keywords already follow
+        // (bare `class` is the keyword; `` `class` `` is your symbol) to the builtin namespace.
+        public const string BuiltinNameShadowed = "SPY0212";         // Active
         // SPY0213-SPY0219: Reserved for future name resolution diagnostics
 
         #endregion

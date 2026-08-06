@@ -49,6 +49,11 @@ public static partial class DiagnosticExplanations
             "def process() -> int !str:\n    try:\n        pass\n    finally:\n        val: int = get_value()?  # error",
             "Move the '?' expression outside the finally block:\ndef process() -> int !str:\n    val: int = get_value()?\n    try:\n        pass\n    finally:\n        cleanup()");
 
+        Add(dict, DiagnosticCodes.Semantic.BuiltinNameShadowed, "Builtin name shadowed", "Semantic",
+            "A declaration used the bare spelling of a builtin type or function name. The bare spelling always refers to the builtin, so the declaration could never be honored — Sharpy resolves annotations like 'x: int' statically, and a rebindable 'int' would make that resolution ambiguous. This extends the rule hard keywords already follow: bare 'class' is the keyword, '`class`' is your symbol. It applies to builtin types and builtin functions alike ('int', 'str', 'float', 'double', 'len', 'print', 'map', ...). The name most likely to reach this by accident is 'double', which reads naturally as a verb but is a builtin floating-point type name. Python differs here — CPython allows the rebinding and honors it, because annotations are not a static resolution surface there.",
+            "def double(x: int) -> int:  # error: 'double' is a builtin type name\n    return x * 2\n\ndef main():\n    print(double(21))",
+            "If the name was incidental — as it usually is for 'double' — rename it:\ndef twice(x: int) -> int:\n    return x * 2\n\nIf you genuinely want a user symbol with that spelling, backtick-escape it at the declaration and at every use; an escaped symbol is fully usable, including callable:\ndef `double`(x: int) -> int:\n    return x * 2\n\ndef main():\n    print(`double`(21))  # 42");
+
         // ── Semantic errors: Type checking (SPY0220-SPY0259) ────────────
 
         Add(dict, DiagnosticCodes.Semantic.TypeMismatch, "Type mismatch", "Semantic",

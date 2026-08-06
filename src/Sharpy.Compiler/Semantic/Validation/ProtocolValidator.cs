@@ -206,8 +206,12 @@ internal class ProtocolValidator : ValidatingAstWalker
 
     private void ValidateFunctionCall(FunctionCall call)
     {
-        // Check for len() calls
-        if (AstHelper.UnwrapParenthesized(call.Function) is Identifier id && id.Name == "len" && call.Arguments.Length == 1)
+        // Check for len() calls. `` `len`(x) `` is a call to the user's own symbol, not the builtin,
+        // so the protocol requirement does not apply to it (SPY0212's resolution half) — matching by
+        // name alone made a backtick-escaped class named `len` unconstructible.
+        if (AstHelper.UnwrapParenthesized(call.Function) is Identifier id
+            && id.Name == "len" && !id.IsNameBacktickEscaped
+            && call.Arguments.Length == 1)
         {
             var argType = Context.SemanticInfo.GetExpressionType(call.Arguments[0]);
             if (argType == null || argType is UnknownType)

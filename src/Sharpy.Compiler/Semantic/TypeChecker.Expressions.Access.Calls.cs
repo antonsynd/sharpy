@@ -193,16 +193,29 @@ internal partial class TypeChecker
 
         if (callee is Identifier id)
         {
-            // Data-driven builtin function return type inference (len, hash, reversed, sorted, min, max)
-            var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
-                id.Name, argTypes, _typeInference);
-            if (builtinReturn != null)
-            {
-                ValidateMinMaxValueFormKey(id, call, argTypes, kwargTypes);
-                return builtinReturn;
-            }
-
+            // The escape decides which namespace this callee names, and it decides it BOTH ways
+            // (SPY0212's other half). A bare spelling is the builtin, always — so it must not be
+            // answered by a user symbol that only exists because it was escaped. An escaped
+            // spelling is the user's symbol — so the name-keyed builtin paths below must not claim
+            // it. Mirrors the emitter's rule at RoslynEmitter.Expressions.Access.cs, and the two
+            // have to agree: when they did not, the checker validated a bare `len()` against a
+            // user `` class `len` `` while codegen emitted Sharpy.Builtins.Len() — a SPY0908 ICE
+            // where a declaration elsewhere in the file changed the diagnosis of an unrelated call.
             var symbol = _symbolTable.Lookup(id.Name);
+            if (symbol != null && id.IsNameBacktickEscaped != symbol.IsNameBacktickEscaped)
+                symbol = null;
+
+            // Data-driven builtin function return type inference (len, hash, reversed, sorted, min, max)
+            if (!id.IsNameBacktickEscaped)
+            {
+                var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
+                    id.Name, argTypes, _typeInference);
+                if (builtinReturn != null)
+                {
+                    ValidateMinMaxValueFormKey(id, call, argTypes, kwargTypes);
+                    return builtinReturn;
+                }
+            }
 
             // Special handling for constructor calls (calling a type)
             if (symbol is TypeSymbol typeSymbol)
@@ -210,8 +223,14 @@ internal partial class TypeChecker
                 // For primitive types (int, float, str, bool, long, etc.), route to builtin function overloads
                 // instead of treating as constructor. This matches Python semantics where int(x) calls
                 // the int conversion function, not constructs a new int object.
+                // Registry IDENTITY, not name: `int(x)` routes to the conversion function only when
+                // the type it resolved to IS the registry's own. A user type that merely spells a
+                // primitive name (reachable now only backticked, since the bare spelling is
+                // refused) owns its constructor — the same discipline ConstructorReferenceOf uses.
                 var primitiveOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-                if (primitiveOverloads != null && primitiveOverloads.Count > 0 && PrimitiveCatalog.IsPrimitive(id.Name))
+                if (primitiveOverloads != null && primitiveOverloads.Count > 0
+                    && PrimitiveCatalog.IsPrimitive(id.Name)
+                    && ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name)))
                 {
                     // Route to builtin function overload resolution below
                     // (fall through to overload handling)

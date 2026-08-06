@@ -752,6 +752,25 @@ internal class BuiltinRegistry
     public IEnumerable<(string Name, FunctionSymbol Function)> GetAllFunctions() =>
         _functions.SelectMany(kv => kv.Value.Select(f => (kv.Key, f)));
 
+    /// <summary>
+    /// True when <paramref name="name"/> is the bare spelling of something the language already
+    /// defines: a registered builtin type, a registered builtin function, or a primitive.
+    /// </summary>
+    /// <remarks>
+    /// The single authority behind the shadowing rule (SPY0212). It is deliberately a QUERY OVER THE
+    /// REGISTRIES rather than a hand-maintained list, so a builtin added later is covered without
+    /// anyone remembering to update this — the failure mode of a literal list is that it silently
+    /// stops matching the language.
+    /// <para>Types and functions are unioned on purpose. The behavioural split they have today is
+    /// accidental (shadowing a builtin type was silent, shadowing a builtin function produced an
+    /// incidental protocol or arity error), and a rule stated over only one of the two kinds leaks
+    /// at the boundary — which is exactly how <c>`len`</c> stayed correct while <c>`int`</c> broke.</para>
+    /// </remarks>
+    public bool IsReservedBuiltinName(string name) =>
+        _types.ContainsKey(name)
+        || _functions.ContainsKey(name)
+        || PrimitiveCatalog.IsPrimitive(name);
+
     #region CLR Type Fallback
 
     private readonly Dictionary<string, TypeSymbol?> _clrTypeCache = new();
