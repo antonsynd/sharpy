@@ -1,5 +1,9 @@
 # Verify that shadowing `len` with a user-defined function suppresses SPY0470.
+# The shadowing itself is what SPY0483 reports, and it is suppressed here on purpose: the
+# empty .warning sidecar asserts NO warnings, which is the only way this fixture proves
+# SPY0470 is absent rather than merely unlisted (#1241).
 
+@suppress("SPY0483")
 def len(s: str) -> int:
     return 42
 

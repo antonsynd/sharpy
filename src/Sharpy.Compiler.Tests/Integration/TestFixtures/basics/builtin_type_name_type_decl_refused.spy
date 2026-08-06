@@ -1,0 +1,9 @@
+# A TYPE declaration may not take the bare spelling of a builtin type name: it would enter the
+# type namespace and make `x: double` ambiguous, and Sharpy resolves annotations statically.
+# CPython allows this (annotations are not a static resolution surface there) — deviation
+# `builtin-type-name-shadowing-refused`.
+class double:
+    v: int
+
+def main():
+    print(1)

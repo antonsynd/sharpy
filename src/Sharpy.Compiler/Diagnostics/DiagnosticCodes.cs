@@ -678,7 +678,12 @@ public static class DiagnosticCodes
         public const string MustUseValueDiscarded = "SPY0480";       // Active (#1022)
         public const string UnusedSuppression = "SPY0481";           // Active (#1024)
         public const string InvalidSuppressionCode = "SPY0482";      // Active (#1024)
-        // SPY0483-SPY0489: Reserved for future validation warnings
+        // A binding in VALUE position — variable, parameter, for-target, with-as, except-as, or a
+        // function declaration — spells a builtin name. Legal and honoured (the binding shadows the
+        // builtin, C#-style), so this is a warning and not the SPY0212 refusal: only a TYPE
+        // declaration can make an annotation ambiguous, and only that is refused.
+        public const string BuiltinNameShadowedInValuePosition = "SPY0483";  // Active (#1241)
+        // SPY0484-SPY0489: Reserved for future validation warnings
 
         #endregion
 

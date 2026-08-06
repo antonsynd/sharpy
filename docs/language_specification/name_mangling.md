@@ -230,6 +230,99 @@ Different identifier types use different target conventions:
 | Class/Struct/Interface | Preserved | `UserService` → `UserService` |
 | Enum value | PascalCase | `RED_COLOR` → `RedColor` |
 
+## Backtick Escaping
+
+A backtick-escaped identifier bypasses name mangling entirely. The spelling between the backticks is
+what reaches C#, keyword-escaped with `@` when it collides with a C# keyword:
+
+```python
+def main():
+    `class`: int = 5      # emits: int @class = 5
+    `int`: int = 42       # emits: int @int = 42 — not 'Int'
+    print(`class` + `int`)
+```
+
+This holds at every declaration position — locals, constants, fields, parameters, methods,
+properties, events, module-level `def` and `const`, and all type-declaration forms:
+
+```python
+class `event`[T]:         # emits: public class @event<T>
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main():
+    e: `event`[int] = `event`[int](7)
+    print(e.value)        # 7
+```
+
+Two positions do **not** yet honor the escape: `type` aliases (#1275) and the name bound by
+`with ... as` / `except ... as` (#1279). The escape parses in all three and is currently dropped.
+
+### Builtin names
+
+Builtin type and function names (`int`, `str`, `double`, `len`, `map`, `id`, ...) are ordinary
+identifiers, not reserved words, so they can be declared over. Two rules apply, split by which
+namespace the declaration enters:
+
+**A type declaration may not take the bare spelling of a builtin type name** (SPY0212). A
+`class`/`struct`/`interface`/`enum`/`union`/`delegate` enters the namespace that annotations resolve
+through, and Sharpy resolves annotations statically — so after `class double:` there is no answer to
+what `x: double` means. Backtick-escape the name to declare a user type with that spelling:
+
+```python
+class double:             # ERROR SPY0212: 'double' is a builtin type name
+    v: int
+
+
+class `double`:           # OK — a distinct symbol, fully usable including constructible
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+
+def main():
+    print(`double`(3).v)  # 3
+```
+
+**A binding in value position may shadow any builtin name** (warning SPY0483). Variables, constants,
+parameters, for-targets and function declarations never enter the type namespace, so they cannot make
+an annotation ambiguous. The binding shadows the builtin lexically, the way any inner binding shadows
+an outer one:
+
+```python
+def double(x: int) -> int:   # warning SPY0483: 'double' is a builtin name
+    return x * 2
+
+
+def main():
+    print(double(21))        # 42 — the user function
+    len = 5                  # warning SPY0483
+    print(len)               # 5
+```
+
+Class members are not warned: a field or method is reached through `self.`, so it never competes for
+a bare spelling. A method's *parameters* are value position and are warned.
+
+Escaping the declaration keeps both spellings usable — the bare one stays the builtin, the escaped
+one is yours — and silences the warning:
+
+```python
+def `double`(x: int) -> int:
+    return x * 2
+
+
+def main():
+    print(`double`(21))      # 42 — the user function
+```
+
+Python differs on both rules: CPython allows and honors every rebinding, because annotations there
+are not a static resolution surface. Cataloged as `builtin-type-name-shadowing-refused` and
+`builtin-name-shadowing-in-value-position` in `docs/deviations.yaml`.
+
 ## Interop with .NET Libraries
 
 Write snake_case in Sharpy source code. The compiler mangles method names to PascalCase for C#:

@@ -8,6 +8,13 @@ internal partial class NameResolver
 {
     private void ResolveDeclaration(Statement statement)
     {
+        // One gate for every module-level declaration form, placed at the dispatcher rather than
+        // repeated in each Resolve*Declaration: a rule enumerated per site is a rule with a hole in
+        // it the moment a declaration form is added (#1241). Refused declarations still fall
+        // through to their resolver so the symbol exists for later passes — suppressing it would
+        // turn one deliberate diagnostic into a cascade of "undefined name" noise.
+        RefuseBuiltinTypeNameShadowing(statement);
+
         switch (statement)
         {
             case ClassDef classDef:
@@ -53,6 +60,48 @@ internal partial class NameResolver
                 break;
 
                 // Other statements are handled in later passes
+        }
+    }
+
+    /// <summary>
+    /// Refuses a TYPE declaration that takes the bare spelling of a builtin type name (SPY0212).
+    /// </summary>
+    /// <remarks>
+    /// Only the refusal lives here. Its value-position sibling is a warning and belongs to
+    /// <see cref="Validation.BuiltinNameShadowingValidator"/>, both because the pipeline is where
+    /// self-contained AST analyses go and because <c>ProjectCompiler</c> propagates only ERRORS out
+    /// of this pass — a warning raised here would be silently discarded.
+    /// <para>Reads the declaration's own name token position, not the statement start, so the caret
+    /// lands on the offending name rather than on <c>class</c>.</para>
+    /// </remarks>
+    private void RefuseBuiltinTypeNameShadowing(Statement statement)
+    {
+        // TypeAlias is deliberately absent: its AST node carries no IsNameBacktickEscaped, so the
+        // escape the refusal points at is unrepresentable for it. Refusing `type int = ...` would
+        // demand an escape that does not exist — the one thing the phase ordering forbids. Covering
+        // it needs the parser change tracked in #1275, not a case here.
+        (string? Name, bool Escaped, int Line, int Column) d = statement switch
+        {
+            ClassDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
+            StructDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
+            InterfaceDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
+            EnumDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
+            UnionDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
+            DelegateDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
+            _ => (null, false, 0, 0)
+        };
+        var (name, escaped, line, column) = d;
+
+        if (name is null)
+            return;
+
+        if (BuiltinNameShadowing.Classify(_symbolTable, name, escaped, isTypeDeclaration: true)
+            == BuiltinShadowVerdict.Refused)
+        {
+            // No span on purpose: a span wins over line/column at every consumer, and the statement
+            // span would put the caret on `class` when the offending token is the name after it.
+            AddError(BuiltinNameShadowing.RefusalMessage(name), line, column,
+                code: BuiltinNameShadowing.RefusalCode);
         }
     }
 

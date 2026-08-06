@@ -701,6 +701,24 @@ public static partial class DiagnosticExplanations
             "@suppress(\"SPY0201\")   # SPY0201 is an error; errors cannot be suppressed\ndef f() -> None:\n    ...",
             "Pass a valid warning/hint/info code (e.g. \"SPY0451\"). Fix errors at the source instead of suppressing them.");
 
+        Add(dict, DiagnosticCodes.Validation.BuiltinNameShadowedInValuePosition,
+            "Builtin name shadowed",
+            "Validation",
+            "A binding in value position — a variable, parameter, for-target, 'with ... as', " +
+            "'except ... as', or a function declaration — spells the name of a builtin type or builtin " +
+            "function. This is legal and it is honored: the binding shadows the builtin exactly as any " +
+            "inner binding shadows an outer one, which is why 'def double(x: int) -> int' and " +
+            "'def __init__(self, id: int)' compile and do what they say. It is warned because something " +
+            "real happens — for the rest of that scope the builtin is no longer reachable by its bare " +
+            "spelling, so a later 'id(x)' or 'len(xs)' in the same scope means your binding, not the " +
+            "builtin. Note that a TYPE declaration with a builtin type name is a different matter and is " +
+            "refused outright (SPY0212), because a type declaration enters the namespace annotations " +
+            "resolve through.",
+            "def double(x: int) -> int:  # warning: 'double' is a builtin name\n    return x * 2\n\ndef main():\n    print(double(21))  # 42 — the user function, as written",
+            "Nothing is required — the code compiles and behaves as written. To silence it and keep both " +
+            "names usable, backtick-escape the declaration; the bare spelling then stays the builtin and " +
+            "the escaped one is yours:\ndef `double`(x: int) -> int:\n    return x * 2\n\ndef main():\n    print(`double`(21))  # 42\n\nOr rename the binding, or add @suppress(\"SPY0483\").");
+
         // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
 
         Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,

@@ -1,0 +1,26 @@
+# Value position is allowed and honoured: a binding shadows the builtin the way any inner
+# binding shadows an outer one. Each draws SPY0483, none is refused. CPython agrees on every
+# line of output.
+def double(x: int) -> int:
+    return x * 2
+
+
+class Order:
+    id: int
+
+    def __init__(self, id: int):
+        self.id = id
+
+    # A member name is reached through `self.`, so it shadows nothing and is NOT warned.
+    def len(self) -> int:
+        return 3
+
+
+def main():
+    print(double(21))
+    print(Order(7).id)
+    print(Order(7).len())
+    len = 5
+    print(len)
+    for int in range(3):
+        print(int)

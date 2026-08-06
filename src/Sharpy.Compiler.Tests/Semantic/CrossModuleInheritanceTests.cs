@@ -527,9 +527,12 @@ def main() -> None:
     {
         // Tests the IsAssignableTo fix: imported function return types have
         // Symbol=null but should still match by name.
+        // Named Outcome, not Result: `Result` is a registered builtin type, and a type declaration
+        // may not take a builtin type name bare (SPY0212, #1241). Nothing in this test turns on the
+        // name — it is about an imported return type whose Symbol is null matching by name.
         var modulePath = Path.Combine(_tempDir, "validators.spy");
         File.WriteAllText(modulePath, @"
-class Result:
+class Outcome:
     ok: bool
     msg: str
 
@@ -537,18 +540,18 @@ class Result:
         self.ok = ok
         self.msg = msg
 
-def validate(value: int) -> Result:
+def validate(value: int) -> Outcome:
     if value > 0:
-        return Result(True, ""valid"")
-    return Result(False, ""invalid"")
+        return Outcome(True, ""valid"")
+    return Outcome(False, ""invalid"")
 ");
 
         var mainPath = Path.Combine(_tempDir, "main.spy");
         File.WriteAllText(mainPath, @"
-from validators import Result, validate
+from validators import Outcome, validate
 
 def main() -> None:
-    r: Result = validate(42)
+    r: Outcome = validate(42)
     print(r.msg)
 ");
 

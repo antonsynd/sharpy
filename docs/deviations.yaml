@@ -318,6 +318,57 @@ deviations:
         results = [y for x in data if (y := transform(x)) > 0]
         print(y)  # ERROR SPY0200: 'y' is comprehension-local
 
+  - id: builtin-type-name-shadowing-refused
+    code: SPY0212
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "A class statement may take any builtin name: `class double:` rebinds `double` in the module namespace, and annotations — which CPython does not resolve statically — are unaffected."
+    sharpy_behavior: "A TYPE declaration (class/struct/interface/enum/union/delegate) may not take the bare spelling of a builtin TYPE name. A type declaration enters the namespace annotations resolve through, so `x: double` would become ambiguous, and Sharpy resolves annotations statically. Backtick-escape the name to declare a user type with that spelling. Bindings in VALUE position are NOT refused — see `builtin-name-shadowing-in-value-position`."
+    spec_ref: docs/language_specification/name_mangling.md
+    existing_diagnostic: SPY0212
+    planned_diagnostic: null
+    example:
+      python: |
+        class double:
+            def __init__(self, v):
+                self.v = v
+        print(double(3).v)  # 3
+      sharpy: |
+        class double:          # ERROR SPY0212: 'double' is a builtin type name
+            v: int
+
+        class `double`:        # OK — the escaped spelling is a user symbol
+            v: int
+
+            def __init__(self, v: int):
+                self.v = v
+
+        def main():
+            print(`double`(3).v)  # 3
+
+  - id: builtin-name-shadowing-in-value-position
+    code: SPY0483
+    category: scoping
+    audience: python
+    severity: warning
+    python_behavior: "Rebinding a builtin name is silent and late-bound: `len = 5` at module level changes what `len` means for every later use in that module, including uses in functions defined earlier."
+    sharpy_behavior: "Allowed and honored, but warned. A variable, constant, parameter, for-target or function declaration may spell a builtin name; the binding shadows the builtin lexically, as any inner binding shadows an outer one — statically, not late-bound. The builtin is then unreachable by its bare spelling in that scope. Backtick-escape the declaration to keep both spellings usable. Class MEMBERS are not warned: a field or method is reached through `self.`, so it never competes for a bare spelling."
+    spec_ref: docs/language_specification/name_mangling.md
+    existing_diagnostic: SPY0483
+    planned_diagnostic: null
+    example:
+      python: |
+        def double(x):
+            return x * 2
+        print(double(21))  # 42 — silent, no diagnostic
+      sharpy: |
+        def double(x: int) -> int:  # warning SPY0483: 'double' is a builtin name
+            return x * 2
+
+        def main():
+            print(double(21))  # 42 — the user function, as written
+
   # ============================================================
   # Planned transition hints (SPY0470 - SPY0476)
   # ============================================================
