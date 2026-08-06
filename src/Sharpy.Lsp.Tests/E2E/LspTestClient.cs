@@ -18,6 +18,9 @@ public sealed class LspTestClient : IAsyncDisposable
     private readonly ConcurrentDictionary<string, ConcurrentQueue<JsonNode>> _notifications = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _readTask;
+    private readonly Task _stderrTask;
+    private readonly ConcurrentQueue<string> _stderrLines = new();
+    private readonly ConcurrentQueue<string> _logMessages = new();
     private int _nextId;
     private bool _disposed;
 
@@ -28,12 +31,38 @@ public sealed class LspTestClient : IAsyncDisposable
         _process = process;
         _output = output;
         _readTask = Task.Run(ReadLoopAsync);
+        _stderrTask = Task.Run(ReadStandardErrorAsync);
     }
+
+    /// <summary>
+    /// Everything the server has written to standard error so far. The server writes its own
+    /// startup diagnostics there (e.g. a rejected <c>--log-level</c> value), which is the one
+    /// channel that exists before any logging is configured.
+    /// </summary>
+    public IReadOnlyList<string> StandardErrorLines => _stderrLines.ToArray();
+
+    /// <summary>
+    /// Every <c>window/logMessage</c> the server has sent, in arrival order. Kept separately from
+    /// the notification queues so a test can read them all without draining anything.
+    /// </summary>
+    public IReadOnlyList<string> LogMessages => _logMessages.ToArray();
 
     /// <summary>
     /// Starts the LSP server process and returns a connected client.
     /// </summary>
-    public static LspTestClient Start(ITestOutputHelper? output = null)
+    /// <param name="output">Test output for the protocol trace, if wanted.</param>
+    /// <param name="serverArgs">
+    /// Arguments passed through to the server itself (after <c>dotnet run</c>'s own <c>--</c>),
+    /// e.g. <c>--log-level Debug</c>.
+    /// </param>
+    /// <param name="environment">
+    /// Extra environment variables for the server process, e.g.
+    /// <c>SHARPY_LSP_LOG_LEVEL</c> — the mechanism editors that cannot pass server arguments use.
+    /// </param>
+    public static LspTestClient Start(
+        ITestOutputHelper? output = null,
+        IEnumerable<string>? serverArgs = null,
+        IEnumerable<KeyValuePair<string, string>>? environment = null)
     {
         // Find the LSP project directory relative to the test assembly
         var repoRoot = FindRepoRoot();
@@ -44,16 +73,27 @@ public sealed class LspTestClient : IAsyncDisposable
             throw new InvalidOperationException($"LSP project not found at {lspProject}");
         }
 
+        var arguments = $"run --project \"{lspProject}\" --no-build";
+        var forwarded = serverArgs?.ToList() ?? new System.Collections.Generic.List<string>();
+        if (forwarded.Count > 0)
+            arguments += " -- " + string.Join(" ", forwarded);
+
         var psi = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = $"run --project \"{lspProject}\" --no-build",
+            Arguments = arguments,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+
+        if (environment != null)
+        {
+            foreach (var (name, value) in environment)
+                psi.Environment[name] = value;
+        }
 
         var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start LSP server process");
@@ -364,8 +404,8 @@ public sealed class LspTestClient : IAsyncDisposable
 
         try
         {
-            // Give the read loop time to exit
-            await _readTask.WaitAsync(TimeSpan.FromSeconds(5));
+            // Give the reader loops time to exit
+            await Task.WhenAll(_readTask, _stderrTask).WaitAsync(TimeSpan.FromSeconds(5));
         }
         catch
         {
@@ -402,6 +442,30 @@ public sealed class LspTestClient : IAsyncDisposable
         await stdin.WriteAsync(headerBytes, ct);
         await stdin.WriteAsync(content, ct);
         await stdin.FlushAsync(ct);
+    }
+
+    private async Task ReadStandardErrorAsync()
+    {
+        try
+        {
+            while (!_cts.Token.IsCancellationRequested)
+            {
+                var line = await _process.StandardError.ReadLineAsync(_cts.Token);
+                if (line == null)
+                    return;
+
+                _stderrLines.Enqueue(line);
+                _output?.WriteLine($"<<< stderr: {line}");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal shutdown
+        }
+        catch (IOException)
+        {
+            // Process exited
+        }
     }
 
     private async Task ReadLoopAsync()
@@ -487,6 +551,13 @@ public sealed class LspTestClient : IAsyncDisposable
         {
             // Notification from server
             _output?.WriteLine($"<<< notification: {method}");
+
+            if (method == "window/logMessage")
+            {
+                var text = message["params"]?["message"]?.GetValue<string>();
+                if (text != null)
+                    _logMessages.Enqueue(text);
+            }
 
             var queue = _notifications.GetOrAdd(method, _ => new ConcurrentQueue<JsonNode>());
             queue.Enqueue(message["params"]!);
