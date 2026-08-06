@@ -1,0 +1,3 @@
+# Shadowing is this fixture's subject (#1241): a local named 'len' is a legal value-position
+# binding, warned and honored.
+'len' is a builtin name

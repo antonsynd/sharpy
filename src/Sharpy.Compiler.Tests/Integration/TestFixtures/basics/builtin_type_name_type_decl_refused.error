@@ -1,1 +1,6 @@
-'double' is a builtin type name @5:7
+'double' is a builtin type name @10:7
+'str' is a builtin type name @14:8
+'int' is a builtin type name @18:11
+'char' is a builtin type name @23:6
+'bytes' is a builtin type name @27:7
+'float' is a builtin type name @31:10

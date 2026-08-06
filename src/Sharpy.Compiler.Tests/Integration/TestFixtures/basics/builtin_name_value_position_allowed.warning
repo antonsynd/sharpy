@@ -1,4 +1,8 @@
+'hash' is a builtin name
+'abs' is a builtin name
 'double' is a builtin name
 'id' is a builtin name
-'len' is a builtin name
+'sorted' is a builtin name
+'map' is a builtin name
+'input' is a builtin name
 'int' is a builtin name

@@ -1,0 +1,2 @@
+# The user symbols here deliberately spell builtin names (#1182, #1241), so SPY0483 is expected.
+'map' is a builtin name

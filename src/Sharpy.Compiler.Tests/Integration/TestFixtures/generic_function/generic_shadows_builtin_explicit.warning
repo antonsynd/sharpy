@@ -1,0 +1,2 @@
+# A generic function deliberately shadowing the builtin 'map' (#1241).
+'map' is a builtin name

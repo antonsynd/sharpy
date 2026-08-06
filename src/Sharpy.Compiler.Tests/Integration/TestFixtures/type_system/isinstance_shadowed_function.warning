@@ -1,0 +1,3 @@
+# Shadowing is this fixture's subject (#1241): the user 'isinstance' must win over the builtin
+# carve-out, and SPY0483 is the diagnostic that says so.
+'isinstance' is a builtin name

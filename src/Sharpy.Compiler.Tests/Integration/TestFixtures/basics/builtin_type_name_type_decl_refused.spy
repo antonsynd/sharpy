@@ -1,9 +1,35 @@
-# A TYPE declaration may not take the bare spelling of a builtin type name: it would enter the
-# type namespace and make `x: double` ambiguous, and Sharpy resolves annotations statically.
-# CPython allows this (annotations are not a static resolution surface there) — deviation
-# `builtin-type-name-shadowing-refused`.
+# A TYPE declaration may not take the bare spelling of a builtin type name. It enters the
+# namespace annotations resolve through, so `x: double` would have two answers and Sharpy
+# resolves annotations statically. Every declaration form is covered, and each row names a
+# DIFFERENT builtin so the @line:col assertions cannot match the wrong occurrence.
+#
+# CPython allows all of these and honors the rebinding, because annotations are not a static
+# resolution surface there — deviation `builtin-type-name-shadowing-refused` in
+# docs/deviations.yaml. Value-position shadowing is NOT refused; see
+# builtin_name_value_position_allowed.
 class double:
     v: int
+
+
+struct str:
+    n: int
+
+
+interface int:
+    def go(self) -> None:
+        ...
+
+
+enum char:
+    A = 1
+
+
+union bytes:
+    case One(v: int)
+
+
+delegate float(v: int) -> None
+
 
 def main():
     print(1)

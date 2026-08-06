@@ -1,0 +1,5 @@
+# This fixture's SUBJECT is builtin-name shadowing in value position (#1241): a user 'double'
+# and 'abs' shadow the builtins and are honored. SPY0483 is part of what it demonstrates, so it
+# is pinned rather than left advisory.
+'double' is a builtin name
+'abs' is a builtin name

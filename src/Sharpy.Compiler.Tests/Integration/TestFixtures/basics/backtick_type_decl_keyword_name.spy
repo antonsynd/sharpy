@@ -30,6 +30,17 @@ enum `delegate`:
 delegate `checked`(v: int) -> None
 
 
+# NEUTRAL-NAME ROW. `zed` is neither a C# keyword nor a builtin, so this row fails only if the
+# generic type-declaration path drops the escape flag itself. Without it, the generic coverage
+# above rides entirely on names that would also fail for keyword-escaping or builtin-registry
+# reasons, and a flag drop would be indistinguishable from either.
+class `zed`[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
 def log(v: int) -> None:
     print(v)
 
@@ -48,3 +59,6 @@ def main():
 
     d: `checked` = log
     d(11)
+
+    z = `zed`[int](13)
+    print(z.value)

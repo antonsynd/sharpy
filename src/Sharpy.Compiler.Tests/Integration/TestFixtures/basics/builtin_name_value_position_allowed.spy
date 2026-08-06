@@ -1,26 +1,56 @@
-# Value position is allowed and honoured: a binding shadows the builtin the way any inner
-# binding shadows an outer one. Each draws SPY0483, none is refused. CPython agrees on every
-# line of output.
+# Value position is allowed and honored: the binding shadows the builtin the way any inner
+# binding shadows an outer one. Each draws SPY0483; none is refused. One position class per
+# name, so the warning list below cannot pass by matching the wrong occurrence.
+#
+# CPython allows all of these too, and prints the same output — it just says nothing. The
+# divergence is the warning, not the behavior: deviation
+# `builtin-name-shadowing-in-value-position` in docs/deviations.yaml.
+
+# module-level variable
+hash: int = 90
+
+# module-level const
+const abs: int = 91
+
+
+# module-level function declaration
 def double(x: int) -> int:
     return x * 2
 
 
 class Order:
+    # a field is reached through `self.`, so it competes with nothing and is NOT warned
     id: int
 
+    # a parameter IS value position, so it is warned
     def __init__(self, id: int):
         self.id = id
 
-    # A member name is reached through `self.`, so it shadows nothing and is NOT warned.
+    # a method name is reached through `self.`, so it is NOT warned
     def len(self) -> int:
         return 3
 
 
 def main():
+    # nested function declaration
+    def sorted(x: int) -> int:
+        return x + 1
+
     print(double(21))
     print(Order(7).id)
     print(Order(7).len())
-    len = 5
-    print(len)
+    print(sorted(5))
+    print(hash)
+    print(abs)
+
+    # local binding by assignment
+    map = 5
+    print(map)
+
+    # local binding by annotated declaration
+    input: int = 6
+    print(input)
+
+    # for-target
     for int in range(3):
         print(int)
