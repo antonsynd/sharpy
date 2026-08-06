@@ -1,0 +1,27 @@
+# An escaped type name has to survive the BASE-LIST position too, not just annotations.
+# The two travel different routes: an annotation resolves through the SYMBOL (which carries the
+# escape flag), while a base list resolves through the type NAME — and a TypeAnnotation has no
+# escape flag of its own, so the name route defaulted to false and PascalCased. The declaration
+# emitted `zed` and the base list emitted `Zed`, CS0246 (#1241).
+#
+# A NEUTRAL name is what pins this: the defect has nothing to do with builtins or C# keywords, so
+# covering it only through keyword names would make the coverage incidental to a different rule.
+# A keyword row is deliberately ABSENT — the unparser does not emit backticks in a base-list
+# position, so `class D(`class`)` round-trips to `class D(class)` and fails to re-parse. That is a
+# separate pre-existing gap in Pretty/Unparser.cs, not a codegen one, and pinning it here would
+# have coupled this fixture to an unrelated fix.
+class `zed`:
+    def go(self) -> int:
+        return 1
+
+
+class DerivedZed(`zed`):
+    pass
+
+
+def main():
+    a: `zed` = DerivedZed()
+    print(a.go())
+
+    b = `zed`()
+    print(b.go())

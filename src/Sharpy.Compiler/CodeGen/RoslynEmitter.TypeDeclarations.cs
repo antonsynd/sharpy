@@ -988,7 +988,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private static TypeParameterSyntax GenerateTypeParameterSyntax(TypeParameterDef tp)
     {
-        var typeParam = TypeParameter(tp.Name);
+        var typeParam = TypeParameter(EscapedIdentifier(tp.Name));
         return tp.Variance switch
         {
             TypeParameterVariance.Covariant => typeParam.WithVarianceKeyword(Token(SyntaxKind.OutKeyword)),
@@ -1005,7 +1005,7 @@ internal partial class RoslynEmitter
     /// defense-in-depth that keeps non-halting emit paths (LSP, playground) producing valid C#.
     /// </summary>
     private static TypeParameterSyntax GenerateMethodTypeParameterSyntax(TypeParameterDef tp)
-        => TypeParameter(tp.Name);
+        => TypeParameter(EscapedIdentifier(tp.Name));
 
     private SyntaxList<TypeParameterConstraintClauseSyntax> GenerateConstraintClauses(
         IReadOnlyList<TypeParameterDef> typeParameters)

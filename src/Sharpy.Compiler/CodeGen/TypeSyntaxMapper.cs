@@ -68,7 +68,7 @@ internal class TypeSyntaxMapper
             UserDefinedType udt => RoslynEmitter.ParseQualifiedTypeName(GetMappedTypeNameFromSymbol(udt)),
 
             // Handle type parameters (e.g., T in class Box[T])
-            TypeParameterType typeParam => IdentifierName(typeParam.Name),
+            TypeParameterType typeParam => RoslynEmitter.EscapedIdentifierName(typeParam.Name),
 
             // Template emits as Sharpy.Template
             TemplateType => RoslynEmitter.ParseQualifiedTypeName("global::" + CSharpTypeNames.SharpyTemplate),
@@ -190,7 +190,7 @@ internal class TypeSyntaxMapper
         {
             // For generic classes (e.g., Box[T]), emit Box<T> with type parameter references
             var typeArgs = declaringType.TypeParameters
-                .Select(tp => (TypeSyntax)IdentifierName(tp.Name))
+                .Select(tp => (TypeSyntax)RoslynEmitter.EscapedIdentifierName(tp.Name))
                 .ToArray();
             var baseName = GetMappedTypeNameFromSymbol(new UserDefinedType { Name = declaringType.Name, Symbol = declaringType });
             return GenericName(Identifier(baseName))
@@ -534,8 +534,13 @@ internal class TypeSyntaxMapper
             }
 
             // Type is in current scope (user-defined in current file) - use simple name
-            // This takes priority over builtin registry to allow shadowing
-            return NameCasing.ResolveType(sharpyTypeName, isBacktickEscaped);
+            // This takes priority over builtin registry to allow shadowing.
+            // The escape flag comes from the SYMBOL, not the caller's argument: this route is
+            // reached from positions holding a TypeAnnotation (base lists, `is` operands), and a
+            // TypeAnnotation carries no flag of its own, so the argument is false there even for an
+            // escaped declaration. Reading the symbol is what keeps `class Impl(`class`)` emitting
+            // the same identifier the declaration did (#1241).
+            return NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped);
         }
 
         // Check if it's a known builtin from the registry (exception types, etc.)
