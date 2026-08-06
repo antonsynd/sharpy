@@ -16,7 +16,18 @@ public class Program
     {
         try
         {
-            await RunServerAsync().ConfigureAwait(false);
+            if (ServerCommandLine.IsHelpRequested(args))
+            {
+                await Console.Out.WriteAsync(ServerCommandLine.UsageText).ConfigureAwait(false);
+                return;
+            }
+
+            var logging = ServerCommandLine.ResolveLogging(
+                args,
+                Environment.GetEnvironmentVariable(ServerCommandLine.EnvironmentVariable),
+                Console.Error);
+
+            await RunServerAsync(logging).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -26,12 +37,29 @@ public class Program
         }
     }
 
-    private static async Task RunServerAsync()
+    private static async Task RunServerAsync(ServerLogging logging)
     {
         // Store the workspace root URI from initialization for use in OnInitialized.
         Uri? workspaceRootUri = null;
 
+        // A log destination is attached only when a level was asked for (#1225). OmniSharp registers
+        // no logging provider of its own, so an unconfigured server discards its records exactly as
+        // it always has — which is what keeps the per-keystroke instrumentation free when nobody is
+        // watching (#1140). The factory has to be supplied here: neither ConfigureLogging nor the
+        // service collection reaches the ILoggerFactory the container resolves ILogger<T> from.
+        var loggerFactory = logging.IsConfigured
+            ? LoggerFactory.Create(builder =>
+            {
+                builder.SetMinimumLevel(logging.Level);
+                builder.AddProvider(new StandardErrorLoggerProvider(Console.Error));
+            })
+            : null;
+
         var server = await LanguageServer.From(options =>
+        {
+            if (loggerFactory != null)
+                options.WithLoggerFactory(loggerFactory);
+
             options
                 .WithInput(Console.OpenStandardInput())
                 .WithOutput(Console.OpenStandardOutput())
@@ -40,9 +68,12 @@ public class Program
                     Name = "sharpyc",
                     Version = Compiler.VersionInfo.InformationalVersion,
                 })
-                .ConfigureLogging(logging =>
+                .ConfigureLogging(builder =>
                 {
-                    logging.SetMinimumLevel(LogLevel.Information);
+                    // Information by default; raised by --log-level or SHARPY_LSP_LOG_LEVEL (#1225).
+                    // Debug is what makes the per-stage analysis attribution (#1140) reachable on a
+                    // running server — see ServerCommandLine.UsageText for how to read one.
+                    builder.SetMinimumLevel(logging.Level);
                 })
                 .WithServices(services =>
                 {
@@ -152,8 +183,8 @@ public class Program
                 .WithHandler<SharpyOnTypeFormattingHandler>()
                 .WithHandler<SharpySelectionRangeHandler>()
                 .WithHandler<SharpyLinkedEditingRangeHandler>()
-                .WithHandler<SharpyDocumentLinkHandler>()
-        ).ConfigureAwait(false);
+                .WithHandler<SharpyDocumentLinkHandler>();
+        }).ConfigureAwait(false);
 
         await server.WaitForExit.ConfigureAwait(false);
     }

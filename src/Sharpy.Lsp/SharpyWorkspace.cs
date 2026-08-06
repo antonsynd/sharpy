@@ -583,8 +583,9 @@ internal sealed class SharpyWorkspace : IDisposable
         {
             // Per-stage attribution (#1140) is opt-in because it allocates a metrics object and
             // brackets every pipeline stage — on the very path whose latency is being measured.
-            // The server's minimum level is Information (Program.cs), so this stays null on every
-            // keystroke unless someone turns debug logging on to investigate.
+            // The server's minimum level defaults to Information, so this stays null on every
+            // keystroke unless someone asks for Debug (--log-level / SHARPY_LSP_LOG_LEVEL, #1225)
+            // to investigate.
             var stageMetrics = _logger.IsEnabled(LogLevel.Debug)
                 ? new CompilationMetrics(fileName: uri)
                 : null;
