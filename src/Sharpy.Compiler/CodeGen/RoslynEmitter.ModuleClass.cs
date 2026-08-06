@@ -996,7 +996,7 @@ internal partial class RoslynEmitter
                     IdentifierName(paramName))));
             }
 
-            ctor = ConstructorDeclaration(testClassName)
+            ctor = ConstructorDeclaration(EscapedIdentifier(testClassName))
                 .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                 .WithParameterList(ParameterList(SeparatedList(ctorParams)))
                 .WithBody(Block(ctorStmts));

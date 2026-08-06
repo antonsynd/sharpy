@@ -436,9 +436,9 @@ internal partial class RoslynEmitter : ICodeEmitter
     {
         NameSyntax name = AliasQualifiedName(
             IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-            IdentifierName(parts[0]));
+            EscapedIdentifierName(parts[0]));
         for (int i = 1; i < parts.Length; i++)
-            name = QualifiedName(name, IdentifierName(parts[i]));
+            name = QualifiedName(name, EscapedIdentifierName(parts[i]));
         return name;
     }
 
@@ -564,6 +564,11 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// </summary>
     /// <param name="name">The original Sharpy variable name</param>
     /// <param name="isNewDeclaration">True if this is a new declaration/redefinition, false if this is a reference</param>
+    /// <param name="isBacktickEscaped">
+    /// True when the source spelled this name backtick-escaped. Purely a syntactic property of the
+    /// token — the same one already read at the call and member sites — not a resolution decision
+    /// made here.
+    /// </param>
     /// <returns>The C# variable name with version suffix (e.g., "x", "x_1", "x_2")</returns>
     /// <remarks>
     /// This method delegates to NameResolutionService for name computation while
@@ -576,8 +581,15 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// 3. Type/module symbols (via SymbolTable lookup and NameResolutionService)
     /// 4. CodeGenInfo-based resolution (module-level symbols, imports)
     /// 5. New local variable registration
+    ///
+    /// <para>Step 3 is why the escape flag has to reach this far. The lookup is by NAME, so a local
+    /// spelled <c>`int`</c> finds the BUILTIN <c>int</c> TypeSymbol and was PascalCased to <c>Int</c>
+    /// — the mangling the backtick exists to suppress (#1241). A backtick-escaped spelling denotes
+    /// the user's symbol by definition, so it must not be answered by a registry type it merely
+    /// shares a name with. <c>`len`</c> came out correct only because builtin functions are not
+    /// TypeSymbols and missed the arm; that asymmetry was the tell.</para>
     /// </remarks>
-    private string GetMangledVariableName(string name, bool isNewDeclaration)
+    private string GetMangledVariableName(string name, bool isNewDeclaration, bool isBacktickEscaped = false)
     {
         var baseName = _nameResolutionService.GetBaseName(name);
 
@@ -621,22 +633,28 @@ internal partial class RoslynEmitter : ICodeEmitter
         }
 
         // Check if this is a reference to a local const variable - use constant case
-        // (still needed for local scope tracking during emission)
+        // (still needed for local scope tracking during emission).
+        // Must agree with the declaration in GenerateVariableDeclaration, which resolves the same
+        // name through NameCasing.ResolveConstant with the same flag.
         if (_constVariables.Contains(name))
         {
-            return NameMangler.ToConstantCase(name);
+            return NameCasing.ResolveConstant(name, isBacktickEscaped);
         }
 
         // Look up the symbol to check its kind
         var symbol = _context.LookupSymbol(name);
 
         // Check if this is a reference to a class or struct name - preserve PascalCase
-        // Uses symbol table lookup instead of legacy tracking sets
+        // Uses symbol table lookup instead of legacy tracking sets.
+        // The lookup is by name, so it answers `int` with the builtin int TypeSymbol; a
+        // backtick-escaped spelling denotes the user's own symbol, so it only takes this arm when
+        // the type it found was itself declared escaped (#1241).
         if (symbol is TypeSymbol typeSymbol &&
             (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
-             typeSymbol.TypeKind == Semantic.TypeKind.Struct))
+             typeSymbol.TypeKind == Semantic.TypeKind.Struct) &&
+            isBacktickEscaped == typeSymbol.IsNameBacktickEscaped)
         {
-            return NameCasing.ResolveType(name, false);
+            return NameCasing.ResolveType(name, typeSymbol.IsNameBacktickEscaped);
         }
 
         // Check if this is a module symbol - use service for name resolution

@@ -1053,7 +1053,7 @@ internal class TypeSyntaxMapper
 
         if (parts.Length == 1)
         {
-            var simpleGeneric = GenericName(parts[0]).WithTypeArgumentList(typeArgList);
+            var simpleGeneric = GenericName(RoslynEmitter.EscapedIdentifier(parts[0])).WithTypeArgumentList(typeArgList);
             return globalQualified
                 ? AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), simpleGeneric)
                 : simpleGeneric;
@@ -1062,14 +1062,16 @@ internal class TypeSyntaxMapper
         NameSyntax result = globalQualified
             ? AliasQualifiedName(
                 IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                IdentifierName(parts[0]))
-            : IdentifierName(parts[0]);
+                RoslynEmitter.EscapedIdentifierName(parts[0]))
+            : RoslynEmitter.EscapedIdentifierName(parts[0]);
         for (var i = 1; i < parts.Length - 1; i++)
         {
-            result = QualifiedName(result, IdentifierName(parts[i]));
+            result = QualifiedName(result, RoslynEmitter.EscapedIdentifierName(parts[i]));
         }
 
-        return QualifiedName(result, GenericName(parts[^1]).WithTypeArgumentList(typeArgList));
+        return QualifiedName(
+            result,
+            GenericName(RoslynEmitter.EscapedIdentifier(parts[^1])).WithTypeArgumentList(typeArgList));
     }
 
     private TypeSymbol? LookupModuleQualifiedType(string dottedName)

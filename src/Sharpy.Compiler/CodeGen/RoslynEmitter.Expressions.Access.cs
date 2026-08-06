@@ -225,7 +225,7 @@ internal partial class RoslynEmitter
             string funcCSharpName;
             if (_variableVersions.ContainsKey(_nameResolutionService.GetBaseName(funcName.Name)))
             {
-                funcCSharpName = GetMangledVariableName(funcName.Name, isNewDeclaration: false);
+                funcCSharpName = GetMangledVariableName(funcName.Name, isNewDeclaration: false, funcName.IsNameBacktickEscaped);
             }
             else if (codeGenInfo?.CSharpName != null)
             {
@@ -2003,9 +2003,9 @@ internal partial class RoslynEmitter
         // Outer<int>.Inner: the nested type declares them, its enclosing types do not.
         SimpleNameSyntax Segment(int index) =>
             index == parts.Count - 1 && typeArguments is { Length: > 0 }
-                ? GenericName(Identifier(parts[index]))
+                ? GenericName(EscapedIdentifier(parts[index]))
                     .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArguments)))
-                : IdentifierName(parts[index]);
+                : EscapedIdentifierName(parts[index]);
 
         NameSyntax result = Segment(0);
         for (int i = 1; i < parts.Count; i++)

@@ -81,7 +81,7 @@ internal partial class RoslynEmitter
                 if (existsAsModuleLevel || existsAsLocal)
                 {
                     // Variable exists - just update it with a regular assignment
-                    var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false);
+                    var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false, name.IsNameBacktickEscaped);
 
                     // `x = None` for an Optional<T> variable must produce Optional<T>.None
                     // rather than a bare `null` (which cannot convert to the struct).
@@ -111,7 +111,7 @@ internal partial class RoslynEmitter
                 else
                 {
                     // First declaration of this variable in this scope
-                    var varName = GetMangledVariableName(name.Name, isNewDeclaration: true);
+                    var varName = GetMangledVariableName(name.Name, isNewDeclaration: true, name.IsNameBacktickEscaped);
                     _declaredVariables.Add(varName);
 
                     // Check if the value is a lambda/function — C# can't infer delegate
@@ -141,7 +141,7 @@ internal partial class RoslynEmitter
             {
                 // Augmented assignment: x += value
                 // This references the current version and modifies it
-                var varName = GetMangledVariableName(name.Name, isNewDeclaration: false);
+                var varName = GetMangledVariableName(name.Name, isNewDeclaration: false, name.IsNameBacktickEscaped);
                 var target = EscapedIdentifierName(varName);
 
                 // For the read side of augmented assignment, apply the narrowed-read accessor the
@@ -657,8 +657,8 @@ internal partial class RoslynEmitter
 
         // NOW get the mangled variable name (which may update version tracking for redeclarations)
         var varName = varDecl.IsConst
-            ? NameMangler.ToConstantCase(varDecl.Name)
-            : GetMangledVariableName(varDecl.Name, isNewDeclaration: true);
+            ? NameCasing.ResolveConstant(varDecl.Name, varDecl.IsNameBacktickEscaped)
+            : GetMangledVariableName(varDecl.Name, isNewDeclaration: true, varDecl.IsNameBacktickEscaped);
 
         // Record the declared local variable type so later reassignments (e.g. `x = None`)
         // can target Optional<T>.None when the variable is Optional.

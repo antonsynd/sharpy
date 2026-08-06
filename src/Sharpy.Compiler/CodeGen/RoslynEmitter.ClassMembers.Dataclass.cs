@@ -185,7 +185,7 @@ internal partial class RoslynEmitter
                 InvocationExpression(IdentifierName("PostInit"))));
         }
 
-        var constructor = ConstructorDeclaration(Identifier(className))
+        var constructor = ConstructorDeclaration(EscapedIdentifier(className))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(Block(statements));

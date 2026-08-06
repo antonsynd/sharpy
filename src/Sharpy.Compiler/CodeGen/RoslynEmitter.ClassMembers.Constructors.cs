@@ -216,7 +216,7 @@ internal partial class RoslynEmitter
 
         var body = AttachLineDirectiveToBlock(Block(bodyStatements), func.LineStart);
 
-        var constructor = ConstructorDeclaration(className)
+        var constructor = ConstructorDeclaration(EscapedIdentifier(className))
             .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
@@ -299,7 +299,7 @@ internal partial class RoslynEmitter
                 }
             }
 
-            constructors.Add(ConstructorDeclaration(Identifier(className))
+            constructors.Add(ConstructorDeclaration(EscapedIdentifier(className))
                 .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                 .WithParameterList(ParameterList())
                 .WithBody(Block(parameterlessStatements)));
@@ -360,7 +360,7 @@ internal partial class RoslynEmitter
         // (avoids duplicate when parameterless was already generated above)
         if (orderedFields.Count > 0)
         {
-            constructors.Add(ConstructorDeclaration(Identifier(className))
+            constructors.Add(ConstructorDeclaration(EscapedIdentifier(className))
                 .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                 .WithParameterList(ParameterList(SeparatedList(parameters)))
                 .WithBody(Block(statements)));
@@ -440,7 +440,7 @@ internal partial class RoslynEmitter
                         return Argument(EscapedIdentifierName(paramName));
                     }).ToArray();
 
-                    var ctor = ConstructorDeclaration(Identifier(className))
+                    var ctor = ConstructorDeclaration(EscapedIdentifier(className))
                         .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                         .WithParameterList(ParameterList(SeparatedList(parameters)))
                         .WithInitializer(ConstructorInitializer(

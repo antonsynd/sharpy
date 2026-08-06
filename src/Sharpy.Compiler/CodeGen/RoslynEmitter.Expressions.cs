@@ -244,7 +244,7 @@ internal partial class RoslynEmitter
             }
         }
 
-        var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false);
+        var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false, name.IsNameBacktickEscaped);
         ExpressionSyntax expr = EscapedIdentifierName(mangledName);
 
         // Apply the narrowed-read accessor the TypeChecker recorded for this identifier node, if any

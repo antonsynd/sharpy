@@ -451,7 +451,7 @@ internal partial class RoslynEmitter
         }
 
         // Create class declaration
-        var classDecl = ClassDeclaration(className)
+        var classDecl = ClassDeclaration(EscapedIdentifier(className))
             .WithModifiers(modifiers);
 
         // Add C# attributes from unknown decorators
@@ -516,7 +516,7 @@ internal partial class RoslynEmitter
             if (hasSetup)
             {
                 // public ClassName() { Setup(); }
-                var ctor = ConstructorDeclaration(Identifier(className))
+                var ctor = ConstructorDeclaration(EscapedIdentifier(className))
                     .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                     .WithParameterList(ParameterList())
                     .WithBody(Block(ExpressionStatement(
@@ -875,7 +875,7 @@ internal partial class RoslynEmitter
         var modifiers = GenerateModifiersFromDecorators(structDef.Decorators, ModifierContext.Type);
 
         // Create struct declaration
-        var structDecl = StructDeclaration(structName)
+        var structDecl = StructDeclaration(EscapedIdentifier(structName))
             .WithModifiers(modifiers);
 
         // Add C# attributes from unknown decorators
@@ -934,7 +934,7 @@ internal partial class RoslynEmitter
         var modifiers = GenerateModifiersFromDecorators(interfaceDef.Decorators, ModifierContext.Type);
 
         // Create interface declaration
-        var interfaceDecl = InterfaceDeclaration(interfaceName)
+        var interfaceDecl = InterfaceDeclaration(EscapedIdentifier(interfaceName))
             .WithModifiers(modifiers);
 
         // Add C# attributes from custom decorators
@@ -1111,7 +1111,7 @@ internal partial class RoslynEmitter
             .Select(GenerateEnumMember)
             .ToArray();
 
-        var enumDecl = EnumDeclaration(enumName)
+        var enumDecl = EnumDeclaration(EscapedIdentifier(enumName))
             .WithModifiers(modifiers)
             .WithMembers(SeparatedList(members));
 
@@ -1138,7 +1138,7 @@ internal partial class RoslynEmitter
             Token(SyntaxKind.SealedKeyword)
         );
 
-        var classDecl = ClassDeclaration(className)
+        var classDecl = ClassDeclaration(EscapedIdentifier(className))
             .WithModifiers(modifiers);
 
         // Generate public static readonly string fields for each member
@@ -1615,7 +1615,7 @@ internal partial class RoslynEmitter
         var unionSymbol = _context.LookupSymbol(unionDef.Name) as TypeSymbol;
 
         // Create abstract base class with public modifier
-        var classDecl = ClassDeclaration(unionName)
+        var classDecl = ClassDeclaration(EscapedIdentifier(unionName))
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.AbstractKeyword)));
@@ -1641,7 +1641,7 @@ internal partial class RoslynEmitter
         var members = new List<MemberDeclarationSyntax>();
 
         // Private parameterless constructor to prevent external subclassing
-        var privateCtor = ConstructorDeclaration(Identifier(unionName))
+        var privateCtor = ConstructorDeclaration(EscapedIdentifier(unionName))
             .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)))
             .WithParameterList(ParameterList())
             .WithBody(Block());
@@ -1682,7 +1682,7 @@ internal partial class RoslynEmitter
         var caseName = NameMangler.Transform(caseDef.Name, NameContext.Type);
 
         // public sealed class CaseName : BaseClass
-        var caseDecl = ClassDeclaration(caseName)
+        var caseDecl = ClassDeclaration(EscapedIdentifier(caseName))
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.SealedKeyword)));
@@ -1739,7 +1739,7 @@ internal partial class RoslynEmitter
                         IdentifierName(paramName)));
             }).ToArray();
 
-            var ctor = ConstructorDeclaration(Identifier(caseName))
+            var ctor = ConstructorDeclaration(EscapedIdentifier(caseName))
                 .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                 .WithParameterList(ParameterList(SeparatedList(ctorParams)))
                 .WithBody(Block(ctorBody));
@@ -1751,7 +1751,7 @@ internal partial class RoslynEmitter
         else
         {
             // Parameterless constructor for cases with no fields
-            var ctor = ConstructorDeclaration(Identifier(caseName))
+            var ctor = ConstructorDeclaration(EscapedIdentifier(caseName))
                 .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                 .WithParameterList(ParameterList())
                 .WithBody(Block());
@@ -1812,7 +1812,7 @@ internal partial class RoslynEmitter
             .Select(GenerateParameter)
             .ToArray();
 
-        var delegateDecl = DelegateDeclaration(returnType, delegateName)
+        var delegateDecl = DelegateDeclaration(returnType, EscapedIdentifier(delegateName))
             .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList(parameters)));
 

@@ -206,7 +206,7 @@ internal partial class RoslynEmitter
             members.Add(teardownField);
 
         // public XFixture() { ...setup...; Value = expr; [_teardown = () => {...}] }
-        var ctor = ConstructorDeclaration(info.ClassName)
+        var ctor = ConstructorDeclaration(EscapedIdentifier(info.ClassName))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
             .WithBody(Block(ctorStmts));
         members.Add(ctor);

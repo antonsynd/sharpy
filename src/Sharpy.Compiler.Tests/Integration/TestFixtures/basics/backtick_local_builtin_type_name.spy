@@ -1,0 +1,28 @@
+# A backtick-escaped LOCAL whose spelling collides with a builtin TYPE name is the user's symbol,
+# emitted verbatim (#1241). It used to mangle to `Int`/`Str`: the local-name path looks symbols up
+# by NAME, so `int` found the BUILTIN int TypeSymbol and took the type-reference arm, which
+# PascalCased with the escape flag hardcoded off.
+#
+# `len` was the tell — it came out correct all along, because builtin FUNCTIONS are not TypeSymbols
+# and so missed that arm entirely. Both name classes are pinned here so the asymmetry cannot
+# silently return.
+def main():
+    `int`: int = 42
+    print(`int`)
+
+    `str` = 7
+    print(`str`)
+
+    `len` = 3
+    print(`len`)
+
+    # const travels a different declaration path than a plain local, and its reference travels a
+    # third; before this fix the declaration emitted `Len` and so did the reference, consistently
+    # wrong rather than broken, which is why running the program never caught it.
+    const `float`: int = 11
+    print(`float`)
+
+    # The keyword baseline that already worked, kept adjacent so a regression shows up as a diff
+    # against a known-good row rather than as an isolated failure.
+    `class`: int = 5
+    print(`class`)

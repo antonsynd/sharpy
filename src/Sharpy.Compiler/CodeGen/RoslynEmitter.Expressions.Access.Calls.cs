@@ -1244,10 +1244,10 @@ internal partial class RoslynEmitter
             return MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName(moduleClassName),
-                IdentifierName(csharpTypeName));
+                EscapedIdentifierName(csharpTypeName));
         }
 
-        return IdentifierName(csharpTypeName);
+        return EscapedIdentifierName(csharpTypeName);
     }
 
     /// <summary>
