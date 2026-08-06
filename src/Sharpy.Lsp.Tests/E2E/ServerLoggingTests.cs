@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
@@ -151,18 +152,32 @@ public class ServerLoggingTests
     }
 
     /// <summary>
-    /// Polls for a condition. Log lines are written after the diagnostics that prove the analysis
-    /// ran, and reach this process through a pipe, so they can lag the notification slightly.
+    /// Polls for a condition, and throws if it never holds. Log lines are written after the
+    /// diagnostics that prove the analysis ran, and reach this process through a pipe, so they can
+    /// lag the notification slightly.
     /// </summary>
-    private static async Task WaitForAsync(Func<bool> condition)
+    /// <remarks>
+    /// Expiring quietly would make <see cref="Fast_path_edits_get_a_latency_line_and_no_invented_stages"/>
+    /// pass for free: if the edit were never processed, the stage count would be trivially
+    /// unchanged and the test would report that a thing which never happened emitted no stages. A
+    /// wait that expires is a broken arrangement, not the absence the caller was about to assert.
+    /// </remarks>
+    private static async Task WaitForAsync(
+        Func<bool> condition,
+        [CallerArgumentExpression(nameof(condition))] string? description = null)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(15);
+        var timeout = TimeSpan.FromSeconds(15);
+        var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
             if (condition())
                 return;
             await Task.Delay(50);
         }
+
+        throw new TimeoutException(
+            $"Waited {timeout.TotalSeconds:F0}s and this never became true: {description}. "
+            + "The server did not produce what the test then asserts about.");
     }
 
     private static async Task ShutdownAsync(LspTestClient client)

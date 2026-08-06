@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Sharpy.Compiler;
@@ -85,19 +86,35 @@ public class AnalysisStageAttributionTests : IDisposable
         => logger.Entries.Count(e => e.Message.Contains(marker, StringComparison.Ordinal));
 
     /// <summary>
-    /// Polls until the condition holds. Analysis is debounced (300ms) and then runs off the timer
-    /// thread, so there is nothing to await; the generous deadline is for a loaded CI machine, and
-    /// a failure here surfaces as the assertion that follows, not as a timeout.
+    /// Polls until the condition holds, and throws if it never does. Analysis is debounced (300ms)
+    /// and then runs off the timer thread, so there is nothing to await; the generous deadline is
+    /// for a loaded CI machine.
     /// </summary>
-    private static async Task WaitForAsync(Func<bool> condition)
+    /// <remarks>
+    /// Returning quietly on timeout would be safe only for a caller that goes on to assert
+    /// something <i>appeared</i>. The assertions that matter most in this file check that something
+    /// did <i>not</i> — no fabricated stages — and those pass for free when the edit under test was
+    /// never processed at all. A wait that expires is a broken setup, not a satisfied expectation,
+    /// so it fails here and names the condition rather than being laundered into a green absence
+    /// assertion downstream.
+    /// </remarks>
+    private static async Task WaitForAsync(
+        Func<bool> condition,
+        [CallerArgumentExpression(nameof(condition))] string? description = null)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(30);
+        var timeout = TimeSpan.FromSeconds(30);
+        var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
             if (condition())
                 return;
             await Task.Delay(25);
         }
+
+        throw new TimeoutException(
+            $"Waited {timeout.TotalSeconds:F0}s and this never became true: {description}. "
+            + "The setup did not produce what the test then asserts about — treat this as a broken "
+            + "arrangement, not as the absence the following assertion was going to check.");
     }
 
     public void Dispose()
