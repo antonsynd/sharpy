@@ -280,3 +280,68 @@ public class IntegerFloorDiv_Tests
         }
     }
 }
+
+/// <summary>
+/// The <c>int.MinValue % -1</c> boundary (#1302), and the resulting consistency between
+/// <c>FloorDiv</c>, <c>FloorMod</c> and <c>Divmod</c> at that input.
+/// </summary>
+public class IntegerFloorMod_MinValueBoundary_Tests
+{
+    // NOT a boundary decision — a wrong answer, now corrected. CPython gives 0, and 0 fits an
+    // int perfectly, so nothing here is unrepresentable. `x % -1` traps in .NET at int.MinValue
+    // even unchecked, and FloorMod used to inherit that trap as a raw System.OverflowException.
+    // Contrast FloorDiv at the same input, where the true quotient genuinely does not fit and
+    // raising IS the decision.
+    [Fact]
+    public void FloorMod_Int_MinValueByMinusOne_ReturnsZeroLikePython()
+    {
+        FloorMod(int.MinValue, -1).Should().Be(0);
+    }
+
+    [Fact]
+    public void FloorMod_Long_MinValueByMinusOne_ReturnsZeroLikePython()
+    {
+        FloorMod(long.MinValue, -1L).Should().Be(0L);
+    }
+
+    // The short-circuit must not change any ordinary answer: x % -1 is 0 for every dividend.
+    [Theory]
+    [InlineData(7)]
+    [InlineData(-7)]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void FloorMod_Int_ByMinusOne_IsAlwaysZero(int x)
+    {
+        FloorMod(x, -1).Should().Be(0);
+    }
+
+    // Divmod's remainder follows, and its quotient now reports the unrepresentable result with
+    // Sharpy's own exception rather than leaking a bare CLR type out of a builtin.
+    [Fact]
+    public void Divmod_Int_MinValueByMinusOne_RaisesOverflowError()
+    {
+        var act = () => Divmod(int.MinValue, -1);
+
+        act.Should().Throw<OverflowError>()
+            .WithMessage("integer division result too large for int");
+    }
+
+    // Divmod delegates to FloorDiv/FloorMod, so it cannot drift from them. Swept, not sampled.
+    [Fact]
+    public void Divmod_Int_AgreesWithItsParts()
+    {
+        for (int x = -8; x <= 8; x++)
+        {
+            for (int y = -8; y <= 8; y++)
+            {
+                if (y == 0)
+                {
+                    continue;
+                }
+
+                Divmod(x, y).Should().Be((FloorDiv(x, y), FloorMod(x, y)));
+            }
+        }
+    }
+}

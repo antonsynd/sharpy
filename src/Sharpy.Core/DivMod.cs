@@ -25,19 +25,12 @@ namespace Sharpy
                 throw new ZeroDivisionError("integer division or modulo by zero");
             }
 
-            var remainder = FloorMod(x, y);
-
-            // C# `/` truncates toward zero while floored division rounds down, so the quotient
-            // drops by one exactly when the division is inexact and the operand signs differ.
-            // Computed from `x / y` rather than `(x - remainder) / y` because the latter
-            // overflows for dividends near int.MinValue.
-            var quotient = x / y;
-            if (remainder != 0 && ((x < 0) != (y < 0)))
-            {
-                quotient--;
-            }
-
-            return (quotient, remainder);
+            // Quotient from FloorDiv rather than a third copy of the algorithm (#1226): the two
+            // must agree for the divmod identity to hold, and sharing the implementation is what
+            // makes that structural instead of a coincidence. It also means the int.MinValue / -1
+            // boundary reports Sharpy's OverflowError here, as it does for `//`, rather than
+            // leaking a raw System.OverflowException out of a builtin (#1302).
+            return (FloorDiv(x, y), FloorMod(x, y));
         }
 
         /// <summary>
@@ -56,15 +49,8 @@ namespace Sharpy
                 throw new ZeroDivisionError("integer division or modulo by zero");
             }
 
-            var remainder = FloorMod(x, y);
-
-            var quotient = x / y;
-            if (remainder != 0 && ((x < 0) != (y < 0)))
-            {
-                quotient--;
-            }
-
-            return (quotient, remainder);
+            // See the int overload (#1226, #1302).
+            return (FloorDiv(x, y), FloorMod(x, y));
         }
 
         /// <summary>

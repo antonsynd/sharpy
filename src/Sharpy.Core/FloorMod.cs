@@ -26,6 +26,17 @@ namespace Sharpy
                 throw new ZeroDivisionError("integer modulo by zero");
             }
 
+            // Division by -1 leaves no remainder for any dividend, so the answer is 0 by
+            // definition — but `x % -1` traps in .NET at int.MinValue even in an unchecked
+            // context (a hardware trap, as for `/`). Answering directly avoids inheriting an
+            // exception where CPython returns a perfectly representable 0 (#1302). This is the
+            // same value `x % -1` produces for every other dividend, so the general path below
+            // loses no case.
+            if (y == -1)
+            {
+                return 0;
+            }
+
             var r = x % y;
             // C# `%` has the sign of the dividend; adjust when the remainder is non-zero and
             // its sign differs from the divisor's so the result matches Python's floored `%`.
@@ -50,6 +61,12 @@ namespace Sharpy
             if (y == 0)
             {
                 throw new ZeroDivisionError("integer modulo by zero");
+            }
+
+            // See the int overload: long.MinValue % -1 traps identically (#1302).
+            if (y == -1)
+            {
+                return 0;
             }
 
             var r = x % y;
