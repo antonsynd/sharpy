@@ -356,6 +356,9 @@ internal partial class NameResolver
                 continue;
             }
 
+            if (!ValidateBaseReferenceArity(baseAnnot, baseSymbol))
+                continue;
+
             if (baseSymbol.TypeKind == TypeKind.Class)
             {
                 // Only one base class allowed (C# single inheritance)
@@ -421,6 +424,9 @@ internal partial class NameResolver
                 continue;
             }
 
+            if (!ValidateBaseReferenceArity(baseAnnot, interfaceSymbol))
+                continue;
+
             _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
             {
                 Definition = interfaceSymbol,
@@ -465,6 +471,9 @@ internal partial class NameResolver
                 continue;
             }
 
+            if (!ValidateBaseReferenceArity(baseAnnot, baseInterfaceSymbol))
+                continue;
+
             _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
             {
                 Definition = baseInterfaceSymbol,
@@ -474,6 +483,37 @@ internal partial class NameResolver
 
         // Propagate inherited methods from base interfaces
         PropagateInterfaceMethods(typeSymbol);
+    }
+
+    /// <summary>
+    /// Base-list arity (#1286): a generic base class or interface must be written with exactly
+    /// its declared number of type arguments. Nothing downstream can repair a mismatch — the
+    /// <see cref="InterfaceReference"/> carries the written annotations verbatim,
+    /// <see cref="GenericInstantiationWalker"/> skips mismatched references by design, and the
+    /// emitter writes the base list as spelled — so an unchecked mismatch reaches Roslyn as
+    /// CS0305 through the SPY0908 net. The wording is the arity authority's own
+    /// (<c>TypeResolver.ResolveTypeAnnotation</c>). Type-parameter defaults (#1245) are
+    /// deliberately NOT filled here: a base list has nowhere to materialize the fill
+    /// (<c>TypeSymbol.BaseType</c> is a bare symbol and the interface reference carries
+    /// annotations, the same shape gap as #1287), and an accepted-but-unmaterialized default is
+    /// exactly the leak this check exists to stop.
+    /// </summary>
+    private bool ValidateBaseReferenceArity(TypeAnnotation baseAnnot, TypeSymbol baseSymbol)
+    {
+        if (!baseSymbol.IsGeneric || baseAnnot.TypeArguments.Length == baseSymbol.TypeParameters.Count)
+            return true;
+
+        var message =
+            $"Type '{baseAnnot.Name}' expects {baseSymbol.TypeParameters.Count} type arguments but got {baseAnnot.TypeArguments.Length}";
+        if (baseAnnot.TypeArguments.Length < baseSymbol.TypeParameters.Count
+            && baseSymbol.TypeParameters.Skip(baseAnnot.TypeArguments.Length).All(tp => tp.DefaultType != null))
+        {
+            message += "; type parameter defaults are not filled in a base list — write the arguments explicitly";
+        }
+
+        AddError(message, baseAnnot.LineStart, baseAnnot.ColumnStart,
+            code: DiagnosticCodes.Semantic.WrongArgumentCount, span: baseAnnot.Span);
+        return false;
     }
 
     /// <summary>

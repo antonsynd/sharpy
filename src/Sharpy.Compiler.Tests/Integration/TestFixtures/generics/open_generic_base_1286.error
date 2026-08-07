@@ -1,0 +1,5 @@
+Type 'Holder' expects 1 type arguments but got 0 @25:16
+Type 'GenBase' expects 1 type arguments but got 0 @30:16
+Type 'Holder' expects 1 type arguments but got 2 @35:16
+Type 'HolderS' expects 1 type arguments but got 0 @40:18
+Type 'HolderX' expects 1 type arguments but got 0 @44:21

@@ -1,1 +1,1 @@
-The default for type parameter 'K' may reference only type parameters declared before it: 'K' cannot be its own default
+The default for type parameter 'K' may reference only type parameters declared before it: 'K' cannot be its own default @4:16

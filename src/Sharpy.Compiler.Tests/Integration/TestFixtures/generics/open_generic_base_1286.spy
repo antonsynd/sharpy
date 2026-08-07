@@ -1,0 +1,49 @@
+# #1286: a generic base class or interface written without (or with the wrong number of) type
+# arguments is refused where the base list is resolved, with the arity authority's own wording
+# (#1192). Before this, the mismatch reached emission as a bare `Holder<T>` base and leaked
+# CS0305 through the SPY0908 net. One check covers all four base-list arms: class base-class,
+# class interface, struct interface, and interface base-interface. Each arm uses its own base
+# name so every pinned message is unique (the harness anchors @line:col to the first diagnostic
+# containing the pattern).
+interface Holder[T]:
+    def get(self) -> T: ...
+
+
+interface HolderS[T]:
+    def gets(self) -> T: ...
+
+
+interface HolderX[T]:
+    def getx(self) -> T: ...
+
+
+class GenBase[T]:
+    def __init__(self) -> None:
+        pass
+
+
+class BadIface(Holder):
+    def get(self) -> str:
+        return "x"
+
+
+class BadClass(GenBase):
+    def __init__(self) -> None:
+        pass
+
+
+class BadArity(Holder[int, str]):
+    def get(self) -> int:
+        return 1
+
+
+struct BadStruct(HolderS):
+    x: int
+
+
+interface BadExtend(HolderX):
+    def more(self) -> int: ...
+
+
+def main() -> None:
+    pass

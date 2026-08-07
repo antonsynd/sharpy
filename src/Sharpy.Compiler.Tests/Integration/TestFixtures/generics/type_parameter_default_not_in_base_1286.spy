@@ -1,0 +1,16 @@
+# #1286 x #1245: a type-parameter default fills annotation and reference positions, but a base
+# list has nowhere to materialize the fill (TypeSymbol.BaseType is a bare symbol and the
+# interface reference carries the written annotations verbatim — the same shape gap as #1287),
+# so a defaulted parameter left implicit in a base list is refused, not half-filled. The message
+# says why, so the fix (writing the argument) is one edit away.
+interface HolderD[T = str]:
+    def get(self) -> T: ...
+
+
+class Bad(HolderD):
+    def get(self) -> str:
+        return "d"
+
+
+def main() -> None:
+    pass

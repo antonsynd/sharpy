@@ -157,6 +157,31 @@ A default is validated at its **declaration**, whether or not the declaration is
 unresolvable default type, an out-of-scope reference and a constraint violation are each reported
 once, at the parameter list, rather than at each site that omits the type argument.
 
+## Where Defaults Fill
+
+Defaults fill **partially-written annotation and reference positions** (`x: Dup[str]` means
+`Dup[str, str]`) and **call positions** (`echo_pair("a", "b")`). They are **not** filled in a
+**base list**: a base class or interface must be written with all of its type arguments, even
+when the omitted ones have defaults.
+
+```python
+interface HolderD[T = str]:
+    def get(self) -> T: ...
+
+
+class Bad(HolderD):       # ERROR (SPY0224): Type 'HolderD' expects 1 type arguments but got 0;
+    ...                   # type parameter defaults are not filled in a base list — write the
+                          # arguments explicitly
+
+
+class Good(HolderD[str]): # OK
+    ...
+```
+
+A base list names the concrete shape a declaration is built on, and that shape is materialized
+directly into the generated C# base list — there is no later inference site at which a default
+could be applied (#1286).
+
 ## Diagnostics
 
 | Code | Level | Description |
