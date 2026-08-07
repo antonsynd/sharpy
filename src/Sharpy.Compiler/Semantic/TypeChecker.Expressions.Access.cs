@@ -1082,7 +1082,7 @@ internal partial class TypeChecker
 
         var objectType = CheckExpression(indexAccess.Object);
         SemanticType indexType;
-        using (ScopedValue.Push(ref _currentIndexArguments, IndexArgumentSetOf(indexAccess.Index)))
+        using (ScopedValue.Push(ref _currentIndexArguments, indexAccess.Index))
             indexType = CheckExpression(indexAccess.Index);
 
         // Materialize the codegen lowering strategy for this access so the emitter switches on the

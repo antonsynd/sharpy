@@ -121,8 +121,13 @@ internal partial class TypeChecker
     // exactly those nodes so #1182 cannot over-fire on them (the failure mode that reverted the
     // SPY0337 extension, #1170). Scoped once around the whole argument-checking block in
     // CheckFunctionCall via ScopedValue.Push (see Semantic/ScopedValue.cs, #1218), so every internal
-    // argument path is covered and nested calls restore the enclosing set.
-    private HashSet<Expression>? _currentCallArguments;
+    // argument path is covered and nested calls restore the enclosing call.
+    //
+    // Holds the CALL, not a precomputed argument set: membership is answered by IsDirectCallArgument
+    // scanning call.Arguments/KeywordArguments directly (#1255). Argument lists are short, the check
+    // is reference equality, and building a HashSet per call node allocated on every checked call
+    // whether or not anything ever asked about membership.
+    private FunctionCall? _currentCallArguments;
 
     // The iterator expression of the for statement or comprehension for-clause currently being
     // checked (`for c in Color`, `[c.name for c in Color]`). An ENUM name is a legitimate iterable
@@ -140,7 +145,10 @@ internal partial class TypeChecker
     // type argument in an index position (nothing in Sharpy is indexed BY a type), so the
     // constructor-reference rules skip exactly these nodes (#1182, #1192). Scoped around the index
     // check via ScopedValue.Push (see Semantic/ScopedValue.cs, #1218).
-    private HashSet<Expression>? _currentIndexArguments;
+    //
+    // Holds the INDEX expression, not a precomputed set; IsCurrentIndexArgument scans it and, for a
+    // multi-argument index, its tuple elements (#1255).
+    private Expression? _currentIndexArguments;
 
     // _currentBindingValue lived here until #1248. It existed to recognise the ONE position that
     // could mint a call-only alias — an assignment's right-hand side or a declaration's initializer —

@@ -834,25 +834,31 @@ internal partial class TypeChecker
     /// Whether the reference is a type argument of the index currently being checked
     /// (<c>Outer.Inner[int]</c>). See <c>_currentIndexArguments</c>.
     /// </summary>
+    /// <remarks>
+    /// Scans rather than consulting a precomputed set (#1255). The membership is exactly what
+    /// the set held: the index expression itself, plus each element when the index is the
+    /// multi-argument tuple spelling.
+    /// </remarks>
     private bool IsCurrentIndexArgument(Expression reference)
-        => _currentIndexArguments?.Contains(UnwrapParenthesized(reference)) == true;
-
-    /// <summary>
-    /// The index expression plus, for a multi-argument index, each of its elements, for
-    /// <c>_currentIndexArguments</c>.
-    /// </summary>
-    private static HashSet<Expression> IndexArgumentSetOf(Expression index)
     {
-        var arguments = new HashSet<Expression>(ReferenceEqualityComparer.Instance);
-        var unwrapped = UnwrapParenthesized(index);
-        arguments.Add(unwrapped);
-        if (unwrapped is TupleLiteral indexTuple)
+        if (_currentIndexArguments == null)
+            return false;
+
+        var target = UnwrapParenthesized(reference);
+        var index = UnwrapParenthesized(_currentIndexArguments);
+        if (ReferenceEquals(index, target))
+            return true;
+
+        if (index is TupleLiteral indexTuple)
         {
             foreach (var element in indexTuple.Elements)
-                arguments.Add(UnwrapParenthesized(element));
+            {
+                if (ReferenceEquals(UnwrapParenthesized(element), target))
+                    return true;
+            }
         }
 
-        return arguments;
+        return false;
     }
 
     /// <summary>
@@ -873,8 +879,39 @@ internal partial class TypeChecker
     }
 
     /// <summary>Whether the reference is a direct argument of the call currently being checked.</summary>
+    /// <remarks>
+    /// Scans rather than consulting a precomputed set (#1255). The membership is exactly what the set
+    /// held: each positional argument unwrapped through parentheses, the operand of a spread
+    /// (<c>f(*args)</c> passes the spread operand itself into the argument position, #1182), and each
+    /// keyword argument's value.
+    /// </remarks>
     private bool IsDirectCallArgument(Expression reference)
-        => _currentCallArguments?.Contains(UnwrapParenthesized(reference)) == true;
+    {
+        if (_currentCallArguments == null)
+            return false;
+
+        var target = UnwrapParenthesized(reference);
+
+        foreach (var argument in _currentCallArguments.Arguments)
+        {
+            var unwrapped = UnwrapParenthesized(argument);
+            if (ReferenceEquals(unwrapped, target))
+                return true;
+            if (unwrapped is SpreadElement spread
+                && ReferenceEquals(UnwrapParenthesized(spread.Value), target))
+            {
+                return true;
+            }
+        }
+
+        foreach (var keywordArgument in _currentCallArguments.KeywordArguments)
+        {
+            if (ReferenceEquals(UnwrapParenthesized(keywordArgument.Value), target))
+                return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// Pins a constructor reference to <paramref name="target"/> when the builtin can construct that
