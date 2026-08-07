@@ -323,11 +323,24 @@ Located in `src/Sharpy.Compiler.Benchmarks/Corpus/`:
 |-----------|------|-----------|
 | ~~Combined Corpus~~ | ~~~35 ms~~ | ~~~20,000~~ |
 
-> **SUPERSEDED (2026-08-07) — SHAPE CHANGE, not a refresh. PENDING RE-RECORD (quiet machine).**
-> The concatenated input never compiled (9× SPY0204 and more), so this number timed a partial
-> pipeline; and the row now measures **six independent compilations rather than one concatenated
-> unit**, so the replacement figure is not comparable to this one. Full reasoning in the
-> 2026-08-07 correction under *LSP Analysis Latency* below (#1224).
+> **SUPERSEDED (2026-08-07) — SHAPE CHANGE, not a refresh.** The concatenated input never compiled
+> (9× SPY0204 and more), so the struck-through number timed a partial pipeline; and the row now
+> measures **six independent compilations rather than one concatenated unit**. Full reasoning in
+> the 2026-08-07 correction under *LSP Analysis Latency* below (#1224).
+
+| Benchmark | Mean | Median | Lines/sec | Allocated |
+|-----------|------|--------|-----------|-----------|
+| Whole Corpus (6 files, 632 lines) | 46.76 ms | 45.88 ms | ~13,500 | 40.93 MB |
+
+> **Recorded:** 2026-08-07 (#1224) · Apple M4 Max (14 cores), macOS 26.6 · .NET 10.0.302 · Release
+> **Machine state: verified quiet** (same window as the LSP rows below — 14 resident `dotnet`
+> processes, all at 0.0 % CPU across five samples over 100 s, no concurrent agent runs).
+> BenchmarkDotNet `DefaultJob`; 2 outliers removed (52.69 ms, 52.73 ms).
+>
+> **Do not read a delta against the struck-through ~35 ms / ~20,000 lines-per-second row.** That
+> figure came from one concatenated compilation unit that failed in semantic analysis, and this one
+> comes from six complete compilations. The two measure different work on different inputs; the
+> difference between them says nothing about compiler performance.
 
 ## Performance Notes
 
@@ -411,8 +424,32 @@ reparse) stays roadmap, so a structural edit still re-runs a full whole-project 
 | ~~project full reanalysis~~ | ~~6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`)~~ | ~~0.9 ms~~ | ~~0.6 ms~~ | ~~1.4 ms~~ |
 | ~~project no-change edit skip~~ | ~~6-file project, comment/whitespace edit to `stats.spy` (fast path returns without reanalysis)~~ | ~~0.0 ms ‡~~ | ~~0.0 ms~~ | ~~0.0 ms~~ |
 
-> **Both project rows are SUPERSEDED — see the 2026-08-07 correction below.**
-> **PENDING RE-RECORD (quiet machine).**
+> **Both project rows are SUPERSEDED — see the 2026-08-07 correction below.** Replacements:
+
+| Path | Input | median | min | max |
+|------|-------|-------:|----:|----:|
+| project full reanalysis | 6-file project, 58 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`) | **6.8 ms** | 6.3 ms | 11.3 ms |
+| project no-change edit skip | 6-file project, comment/whitespace edit to `stats.spy` (fast path returns without reanalysis) | **0.0 ms** ‡ | 0.0 ms | 0.0 ms |
+
+> **Recorded:** 2026-08-07 (#1224) · Apple M4 Max (14 cores), macOS 26.6 · .NET 10.0.302
+> **Machine state: verified quiet** — measured unsandboxed immediately before the run, and sampled
+> five times over 100 s: 14 resident `dotnet` processes, **0.0 % CPU on every one of them** (idle
+> MSBuild node-reuse workers and `VBCSCompiler`), no `testhost`/`vstest` doing work, no concurrent
+> agent runs. This is recorded because it is the one fact about a timing measurement that no future
+> reader can reconstruct from the number.
+> **Harness:** same class; warm in-process medians of 15 timed runs after 3 warmups.
+>
+> The input is 58 lines rather than the 54 recorded above because `shapes.spy` gained four lines
+> declaring `Triangle`'s fields at class level — the correction itself.
+>
+> **`project full reanalysis` is 7.6× the struck-through figure** (0.9 ms → 6.8 ms), which is the
+> implausibility argument closing: 6.8 ms for a 6-file project sits sensibly below the 14.4 ms
+> single-file row, where 0.9 ms did not.
+>
+> **The no-change row is unchanged at 0.0 ms, and that is the point.** It was 0.0 ms before because
+> the project never analyzed, and it is 0.0 ms now because the `AstFingerprint` fast path genuinely
+> skips a project that *does* analyze. Only the second reading measures the fast path; the number is
+> the same and the evidence behind it is not.
 
 ### Correction (2026-07-31): the single-file row above measured neither a full analysis nor the server's configuration
 
@@ -451,9 +488,8 @@ entire number that row has been reporting.
 
 ### Correction (2026-08-07): the two project rows were poisoned the same way, and nobody checked
 
-> **Status:** rows struck through above. **PENDING RE-RECORD (quiet machine)** — replacement
-> figures are deliberately absent rather than approximate. A precise-looking number measured on a
-> loaded machine would be laundered by this very note.
+> **Status:** rows struck through above; **replacements recorded 2026-08-07 on a verified-quiet
+> machine** (provenance with the new rows).
 
 The 2026-07-31 correction directly above is titled *"the **single-file** row above…"*, and that is
 exactly how far it reached. `LspAnalysisLatencyBaselineHarness` builds its inputs in **two**
@@ -481,7 +517,7 @@ against each other this way: a figure too good to be true generally isn't.
 
 ### Correction (2026-08-07): the throughput row measures a different shape now
 
-> **Status:** superseded, **PENDING RE-RECORD (quiet machine)**.
+> **Status:** superseded; **replacement recorded 2026-08-07 on a verified-quiet machine.**
 
 `ThroughputBenchmarks` concatenated all six `Corpus/*.spy` files into one compilation unit. That
 input has never compiled: five of the six define `main`, and `large_lexer_corpus.spy` additionally
