@@ -394,7 +394,7 @@ internal class AssemblyCompiler
     /// <summary>
     /// Convert a Roslyn diagnostic to a structured CompilerDiagnostic
     /// </summary>
-    private static CompilerDiagnostic ToCompilerDiagnostic(Diagnostic diagnostic)
+    internal static CompilerDiagnostic ToCompilerDiagnostic(Diagnostic diagnostic)
     {
         var severity = diagnostic.Severity == DiagnosticSeverity.Error
             ? CompilerDiagnosticSeverity.Error
@@ -412,6 +412,11 @@ internal class AssemblyCompiler
             // Use GetMappedLineSpan to respect #line directives, which map
             // generated C# locations back to original .spy source files.
             var lineSpan = location.GetMappedLineSpan();
+            if (!lineSpan.HasMappedPath && TryMapFromEnclosingRegion(location) is { } enclosing)
+            {
+                lineSpan = enclosing;
+            }
+
             filePath = lineSpan.HasMappedPath ? lineSpan.Path : Path.GetFileName(lineSpan.Path);
             line = lineSpan.StartLinePosition.Line + 1;
             column = lineSpan.StartLinePosition.Character + 1;
@@ -444,6 +449,56 @@ internal class AssemblyCompiler
             filePath,
             code,
             CompilerPhase.Assembly);
+    }
+
+    /// <summary>
+    /// Finds the <c>.spy</c> coordinate for a generated-C# location that carries no mapping of its own,
+    /// by walking back to the nearest preceding mapped region (#1237).
+    /// <para>
+    /// <see cref="LineDirectivePostProcessor"/> anchors a <c>#line</c> at the first mapped line of each
+    /// statement and frames the rest in <c>#line hidden</c>, so parts of a statement that are not
+    /// themselves statements — a catch-clause header, a match pattern's type — sit in hidden gaps. A
+    /// diagnostic landing there previously reported the generated file with no source line and no
+    /// caret, which is useless in a bug report and, for SPY0908, actively misleading: it names a file
+    /// the user never wrote.
+    /// </para>
+    /// <para>
+    /// Fixed at the READER rather than by planting more <c>#line</c> anchors: the enclosing statement is
+    /// the right granularity for "here is where in your code this happened", and adding per-node
+    /// anchors would change debugger stepping behaviour (#609). Returns null when the tree carries no
+    /// mapped regions at all — an <c>EmitLineDirectives</c>-off compilation, such as the REPL — so that
+    /// path keeps its existing generated-file fallback.
+    /// </para>
+    /// </summary>
+    internal static FileLinePositionSpan? TryMapFromEnclosingRegion(Location location)
+    {
+        var tree = location.SourceTree;
+        if (tree == null)
+        {
+            return null;
+        }
+
+        // The UNmapped line: where the diagnostic actually sits in the generated C#.
+        var actualLine = location.GetLineSpan().StartLinePosition.Line;
+
+        FileLinePositionSpan? nearest = null;
+        var nearestStart = -1;
+        foreach (var mapping in tree.GetLineMappings())
+        {
+            if (mapping.IsHidden || !mapping.MappedSpan.HasMappedPath)
+            {
+                continue;
+            }
+
+            var start = mapping.Span.Start.Line;
+            if (start <= actualLine && start > nearestStart)
+            {
+                nearestStart = start;
+                nearest = mapping.MappedSpan;
+            }
+        }
+
+        return nearest;
     }
 
     /// <summary>
