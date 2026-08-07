@@ -759,6 +759,23 @@ public static partial class DiagnosticExplanations
             "Use a floating-point base to get an (approximate) double result (10.0 ** 50), or " +
             "restructure the computation so intermediate values stay within long range.");
 
+        Add(dict, DiagnosticCodes.Semantic.ConstantIntegerOverflow,
+            "Constant integer arithmetic overflows its result type",
+            "Semantic",
+            "A constant integer +, - or * expression was evaluated at compile time and its exact " +
+            "result does not fit the type the expression has. Per Axiom 1, Sharpy integers are " +
+            "fixed-width (.NET int/long) rather than Python's arbitrary precision. The type is not " +
+            "widened to fit: 'int * int' is 'int' whether its operands are literals or variables, " +
+            "so a constant never types differently from the same expression written with " +
+            "variables. Note the deliberate asymmetry with the runtime: with variable operands the " +
+            "same overflow wraps silently under .NET's unchecked default, exactly as in C#, where " +
+            "constant overflow is an error (CS0220) while the runtime wraps.",
+            "def main() -> None:\n    print(3794 * 1973 * 948)  # 7096312776 does not fit int",
+            "Annotate an operand as 'long' so the whole expression is computed as 'long':\n" +
+            "    print(3794L * 1973 * 948)  # 7096312776\nOr bind one operand to a 'long' first " +
+            "(a: long = 3794; print(a * 1973 * 948)). If the value genuinely exceeds 64 bits, " +
+            "restructure the computation.");
+
         Add(dict, DiagnosticCodes.Semantic.VoidComparisonOperand,
             "Void-returning call used as a comparison operand",
             "Semantic",

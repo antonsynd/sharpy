@@ -352,9 +352,10 @@ public static class DiagnosticCodes
         public const string OptionalRequiresNarrowing = "SPY0326";  // Active
         public const string TupleNonConstantIndex = "SPY0327";      // Active
         public const string IntegerPowerOverflow = "SPY0328";       // Active
-        // SPY0348 is RESERVED as this code's constant-arithmetic sibling — ConstantIntegerOverflow
-        // (#1234): constant +/-/* whose exact result exceeds the result type. No slot free adjacent to
-        // SPY0328, so it borrows from the module-level reserve. See the module-level region.
+        // This code's constant-arithmetic sibling — ConstantIntegerOverflow (#1234): constant +/-/*
+        // whose exact result exceeds the result type. No slot was free adjacent to SPY0328, so it
+        // borrows SPY0348 from the module-level reserve; declared in that region.
+        public const string ConstantIntegerOverflow = "SPY0348";    // Active
         public const string VoidComparisonOperand = "SPY0329";      // Active
         public const string UnknownFutureFeature = "SPY0330";       // Active — from __future__ import of an unknown or mis-scoped feature
         public const string FeatureNotEnabled = "SPY0331";          // Active — use of a construct gated behind an experimental feature that is not enabled
@@ -386,9 +387,10 @@ public static class DiagnosticCodes
         //            value-position reference overflow region below.
         //   SPY0347: TAKEN — TypeParameterDefaultForwardReference (#1245, batch E), declared in the
         //            generic type parameter default overflow region below.
-        //   SPY0348: RESERVED — ConstantIntegerOverflow (#1234, batch C). Constant integer +/-/*
+        //   SPY0348: TAKEN — ConstantIntegerOverflow (#1234, batch C). Constant integer +/-/*
         //            whose exact result exceeds the expression's result type. Sibling of SPY0328
-        //            (IntegerPowerOverflow), which has no free slot beside it.
+        //            (IntegerPowerOverflow), which has no free slot beside it; declared next to
+        //            SPY0328 in the region above so the two read together.
         //   SPY0349: the last free slot in this reserve. The semantic band SPY0200-SPY0399 is now
         //            effectively exhausted — every other gap is earmarked to a specific family. The
         //            next family needing space requires a structural decision (a new band, or a

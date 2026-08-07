@@ -157,6 +157,18 @@ internal partial class TypeChecker
                 return folded;
         }
 
+        // Constant integer +, -, * whose exact result does not fit the expression's own result
+        // type is refused here (SPY0348) rather than left for Roslyn (#1234). Roslyn evaluates
+        // CONSTANT expressions in a checked context regardless of the unchecked runtime default,
+        // so `3794 * 1973 * 948` reached the C# compiler as CS0220 ("the operation overflows at
+        // compile time in checked mode") and surfaced as an SPY0908 internal error — a compiler
+        // bug report for what is really a user-program fact.
+        if (binOp.Operator is BinaryOperator.Add or BinaryOperator.Subtract or BinaryOperator.Multiply
+            && TypeUtils.IsInteger(leftType) && TypeUtils.IsInteger(rightType))
+        {
+            CheckConstantIntegerOverflow(binOp, resultType);
+        }
+
         // Warn when is/is not is used with value types — identity comparison is
         // meaningless because value types are boxed, so the result is always False.
         if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
@@ -221,6 +233,150 @@ internal partial class TypeChecker
 
         ReportIntegerPowerOverflow(binOp);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Refuses a constant integer <c>+</c>/<c>-</c>/<c>*</c> whose exact value does not fit
+    /// <paramref name="resultType"/> (SPY0348, #1234). Does nothing when the expression is not a
+    /// constant integer, or when its result type is neither <c>int</c> nor <c>long</c> — every
+    /// other integer width keeps whatever behavior it has today.
+    /// <para>
+    /// <b>No widening</b>, deliberately, and unlike constant <c>**</c> (which widens int→long
+    /// before reporting SPY0328). A constant must type exactly as the same expression would with
+    /// variables in place of its literals: runtime <c>int * int</c> is <c>int</c>, so constant
+    /// <c>int * int</c> is <c>int</c> too. The user-visible consequence is that
+    /// <c>x: long = 3794 * 1973 * 948</c> is refused even though the value fits <c>long</c> —
+    /// annotating one operand (<c>3794L * 1973 * 948</c>) types the whole expression <c>long</c>
+    /// and compiles. Documented in arithmetic_operators.md.
+    /// </para>
+    /// <para>
+    /// Constant-vs-runtime asymmetry is intentional too: the same overflow with variable operands
+    /// wraps silently under .NET's unchecked default. That is C#'s own documented behavior
+    /// (CS0220 is an error while the runtime wraps), so Axiom 1 settles it.
+    /// </para>
+    /// </summary>
+    private void CheckConstantIntegerOverflow(BinaryOp binOp, SemanticType resultType)
+    {
+        // A suffixed integer literal (3794L) is honoured by CODEGEN but IGNORED by type inference
+        // today (#1314): `a: int = 3794L` still fails with CS0266 as an SPY0908, because the checker types
+        // the literal 'int' while the emitter writes a C# 'long'. So when a suffix appears anywhere
+        // in the constant subtree, the Sharpy result type is not the width Roslyn will compute in,
+        // and this check — whose entire job is to predict CS0220 — must use the emitted width
+        // instead. Without it, `3794L * 1973 * 948` (which compiles and prints 7096312776 today)
+        // would be refused by a diagnostic whose own remedy sentence recommends exactly that
+        // spelling. An unsigned suffix declines outright rather than guessing at its width.
+        var suffix = GetConstantSuffixWidth(binOp);
+        if (suffix == ConstantSuffixWidth.Unsigned)
+            return;
+
+        System.Numerics.BigInteger min;
+        System.Numerics.BigInteger max;
+        if (suffix == ConstantSuffixWidth.Long || resultType == SemanticType.Long)
+        {
+            min = long.MinValue;
+            max = long.MaxValue;
+        }
+        else if (resultType == SemanticType.Int)
+        {
+            min = int.MinValue;
+            max = int.MaxValue;
+        }
+        else
+        {
+            return;
+        }
+
+        if (!IntegerConstantEvaluator.TryGetConstantInteger(binOp, out var value))
+            return;
+
+        if (value >= min && value <= max)
+            return;
+
+        // Report only at the FIRST level that overflows. `a * b * c * d` is checked bottom-up, so
+        // once `a * b * c` has its own diagnostic every enclosing node would repeat it. An operand
+        // that is not itself a foldable operation (a bare out-of-range literal) never had a chance
+        // to report, so it must not suppress this one.
+        if (OverflowedOperandAlreadyReported(binOp.Left, min, max)
+            || OverflowedOperandAlreadyReported(binOp.Right, min, max))
+        {
+            return;
+        }
+
+        AddError(
+            $"Constant expression evaluates to {value}, which does not fit " +
+            $"'{resultType.GetDisplayName()}'; Sharpy integers are fixed-width. Annotate an " +
+            "operand as 'long' (e.g. '3794L * 1973 * 948') so the whole expression is computed " +
+            "as 'long', or restructure the computation.",
+            binOp.LineStart,
+            binOp.ColumnStart,
+            code: DiagnosticCodes.Semantic.ConstantIntegerOverflow,
+            span: binOp.Span);
+    }
+
+    /// <summary>
+    /// The integer width the EMITTED C# will compute a constant subtree in, as far as literal
+    /// suffixes reveal it. See <see cref="CheckConstantIntegerOverflow"/> for why the Sharpy result
+    /// type is not enough. This whole scan is a workaround for #1314 (inference ignores the
+    /// suffix); delete it, and the call site's widening, when that is fixed.
+    /// </summary>
+    private enum ConstantSuffixWidth
+    {
+        /// <summary>No suffixed literal in the subtree — the Sharpy result type's width applies.</summary>
+        None,
+        /// <summary>A 64-bit suffix (L). C# propagates long upward through +, -, *.</summary>
+        Long,
+        /// <summary>An unsigned suffix (U/UL) — width not modelled here; the check declines.</summary>
+        Unsigned
+    }
+
+    private static ConstantSuffixWidth GetConstantSuffixWidth(Expression expr)
+    {
+        switch (expr)
+        {
+            case IntegerLiteral { Suffix: { Length: > 0 } suffix }:
+                if (suffix.Contains("u", System.StringComparison.OrdinalIgnoreCase))
+                    return ConstantSuffixWidth.Unsigned;
+                return suffix.Contains("l", System.StringComparison.OrdinalIgnoreCase)
+                    ? ConstantSuffixWidth.Long
+                    : ConstantSuffixWidth.None;
+
+            case Parenthesized paren:
+                return GetConstantSuffixWidth(paren.Expression);
+
+            case UnaryOp unary:
+                return GetConstantSuffixWidth(unary.Operand);
+
+            case BinaryOp binary:
+                var left = GetConstantSuffixWidth(binary.Left);
+                var right = GetConstantSuffixWidth(binary.Right);
+                if (left == ConstantSuffixWidth.Unsigned || right == ConstantSuffixWidth.Unsigned)
+                    return ConstantSuffixWidth.Unsigned;
+                return left == ConstantSuffixWidth.Long || right == ConstantSuffixWidth.Long
+                    ? ConstantSuffixWidth.Long
+                    : ConstantSuffixWidth.None;
+
+            default:
+                return ConstantSuffixWidth.None;
+        }
+    }
+
+    /// <summary>
+    /// True when <paramref name="operand"/> is itself a foldable constant arithmetic operation
+    /// whose value is already out of range — meaning it drew its own SPY0348 and the enclosing
+    /// node must stay quiet. See <see cref="CheckConstantIntegerOverflow"/>.
+    /// </summary>
+    private static bool OverflowedOperandAlreadyReported(
+        Expression operand, System.Numerics.BigInteger min, System.Numerics.BigInteger max)
+    {
+        while (operand is Parenthesized paren)
+            operand = paren.Expression;
+
+        return operand is BinaryOp
+        {
+            Operator: BinaryOperator.Add or BinaryOperator.Subtract or BinaryOperator.Multiply
+        }
+            && IntegerConstantEvaluator.TryGetConstantInteger(operand, out var value)
+            && (value < min || value > max);
     }
 
     private void ReportIntegerPowerOverflow(BinaryOp binOp)

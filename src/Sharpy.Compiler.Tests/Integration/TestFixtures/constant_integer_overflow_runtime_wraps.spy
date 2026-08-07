@@ -1,0 +1,19 @@
+# The constant-vs-runtime split is deliberate and mirrors C# itself: constant
+# overflow is an error (CS0220 / SPY0348) while the same arithmetic over
+# variables wraps under .NET's default unchecked context (#1234). Every operand
+# here is a runtime variable, so SPY0348 does not apply and wrapping stands.
+#
+# This fixture is the runtime half of a pair with constant_integer_overflow.spy.
+# It exists so neither half can drift without the other failing.
+def main() -> None:
+    n: int = 2147483647
+    print(n + 1)
+
+    # The same overflow a constant expression would be refused for.
+    m: int = 2
+    big: int = 1073741824
+    print(big * m)
+
+    # Annotating an operand 'long' is the remedy SPY0348's own message tells the
+    # user to apply, so the remedy is pinned by a test rather than by prose.
+    print(3794L * 1973 * 948)

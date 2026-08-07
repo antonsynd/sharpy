@@ -1169,19 +1169,22 @@ deviations:
     audience: python
     severity: none
     python_behavior: "Python `int` is arbitrary precision; no overflow. `2 ** 40` is exact."
-    sharpy_behavior: "`int` maps to `System.Int32` (32-bit). `+`/`-`/`*` follow .NET semantics and wrap under the default unchecked context. `**` is the exception: non-constant integer exponentiation routes through `Sharpy.Builtins.CheckedIntPow` (#905) so it stays exact and raises `OverflowError` instead of silently saturating through a lossy `Math.Pow` round-trip. Use `long` for 64-bit. Axiom precedence: .NET (1) > Python (2)."
+    sharpy_behavior: "`int` maps to `System.Int32` (32-bit). `+`/`-`/`*` with **variable** operands follow .NET semantics and wrap under the default unchecked context; the same operators with **constant** operands are refused at compile time with SPY0348 (#1234), mirroring C#'s own split (CS0220 is an error while the runtime wraps). `**` never wraps either way, but reaches that by a different route: with a variable exponent it routes through `Sharpy.Builtins.CheckedIntPow` (#905) and raises `OverflowError` rather than saturating through a lossy `Math.Pow` round-trip, while a constant `**` widens `int` to `long` and is refused with SPY0328 only past 64 bits. That widening is why `2 ** 40` is accepted while the smaller-valued `3794 * 1973 * 948` is refused — an asymmetry tracked in #1316. Use `long` for 64-bit. Axiom precedence: .NET (1) > Python (2)."
     spec_ref: docs/language_specification/primitive_types.md
-    existing_diagnostic: null
+    existing_diagnostic: SPY0348
     planned_diagnostic: null
     example:
       python: |
         2 ** 40             # 1099511627776, exact
         2147483647 + 1      # 2147483648, exact
       sharpy: |
-        # int is 32-bit.
-        print(2147483647 + 1)   # -2147483648 (wraps)
-        print(power(2, 40))     # raises OverflowError (checked)
-        x: long = 1 << 62       # use 'long' for 64-bit
+        # int is 32-bit. Every line below was executed against the compiler.
+        print(2147483647 + 1)   # SPY0348 — constant overflow is refused, not wrapped
+        print(n + 1)            # n: int = 2147483647 -> -2147483648 (runtime wraps)
+        print(2 ** 40)          # 1099511627776 — a constant '**' widens int -> long
+        print(2 ** e)           # e: int = 40 -> raises OverflowError (checked)
+        print(2 ** 100)         # SPY0328 — past 64 bits, refused
+        x: long = 1L << 62      # use 'long' for 64-bit (a bare 1 << 62 is int — #1315)
 
   - id: int-power-negative-exponent
     code: null

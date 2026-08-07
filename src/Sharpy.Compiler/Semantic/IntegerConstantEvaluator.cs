@@ -13,24 +13,58 @@ internal static class IntegerConstantEvaluator
 {
     /// <summary>
     /// Extracts a constant integer value (as <see cref="BigInteger"/>) from an expression, handling
-    /// underscores, <c>0x</c>/<c>0o</c>/<c>0b</c> prefixes, and a leading unary minus. Returns
-    /// <c>false</c> for anything that is not a constant integer literal.
+    /// underscores, <c>0x</c>/<c>0o</c>/<c>0b</c> prefixes, unary <c>+</c>/<c>-</c>, parentheses, and
+    /// <c>+</c>/<c>-</c>/<c>*</c> over constant-integer subtrees. Returns <c>false</c> for anything
+    /// else — a name, a call, a division (a zero divisor is a runtime trap, not a constant), or a
+    /// float.
+    /// <para>
+    /// Arithmetic is exact <see cref="BigInteger"/>: this evaluator decides only <em>what the value
+    /// is</em>, never whether it fits a type. Range decisions belong to the callers, which is what
+    /// lets the type checker refuse an out-of-range constant (SPY0348) while the lowering pass emits
+    /// an in-range one, both from the same numbers (#1234).
+    /// </para>
     /// </summary>
     public static bool TryGetConstantInteger(Expression expr, out BigInteger value)
     {
         value = BigInteger.Zero;
 
-        if (expr is IntegerLiteral intLit)
-            return TryParseIntegerLiteral(intLit.Value, out value);
-
-        if (expr is UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral negLit }
-            && TryParseIntegerLiteral(negLit.Value, out var magnitude))
+        switch (expr)
         {
-            value = -magnitude;
-            return true;
-        }
+            case IntegerLiteral intLit:
+                return TryParseIntegerLiteral(intLit.Value, out value);
 
-        return false;
+            case Parenthesized paren:
+                return TryGetConstantInteger(paren.Expression, out value);
+
+            case UnaryOp { Operator: UnaryOperator.Plus } plus:
+                return TryGetConstantInteger(plus.Operand, out value);
+
+            case UnaryOp { Operator: UnaryOperator.Minus } minus:
+                if (!TryGetConstantInteger(minus.Operand, out var magnitude))
+                    return false;
+                value = -magnitude;
+                return true;
+
+            case BinaryOp
+            {
+                Operator: BinaryOperator.Add or BinaryOperator.Subtract or BinaryOperator.Multiply
+            } binary:
+                if (!TryGetConstantInteger(binary.Left, out var left)
+                    || !TryGetConstantInteger(binary.Right, out var right))
+                {
+                    return false;
+                }
+                value = binary.Operator switch
+                {
+                    BinaryOperator.Add => left + right,
+                    BinaryOperator.Subtract => left - right,
+                    _ => left * right
+                };
+                return true;
+
+            default:
+                return false;
+        }
     }
 
     private static bool TryParseIntegerLiteral(string raw, out BigInteger value)

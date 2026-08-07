@@ -1,0 +1,7 @@
+def main() -> None:
+    # Sharpy integers are fixed-width. A constant int +/-/* whose exact value
+    # exceeds the expression's own result type is refused (SPY0348, #1234)
+    # rather than wrapped. Roslyn evaluates CONSTANT expressions in a checked
+    # context regardless of the unchecked runtime default, so before this check
+    # the overflow escaped as a raw CS0220 inside an SPY0908 internal error.
+    print(3794 * 1973 * 948)

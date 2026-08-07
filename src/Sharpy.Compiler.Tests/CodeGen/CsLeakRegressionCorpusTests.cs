@@ -195,6 +195,17 @@ public class CsLeakRegressionCorpusTests
                 rec.scores.append(1)
                 print(rec.scores[0])
             """);
+
+        // #1234 — a constant integer expression that overflows int leaked CS0220 ("the
+        // operation overflows at compile time in checked mode"), because Roslyn evaluates
+        // CONSTANT expressions in a checked context regardless of the unchecked runtime
+        // default. Found by CsCheck seed c8UyFOjGfy27, pinned deterministically here.
+        // Now rejected by SPY0348 before codegen — which this corpus accepts as clean, the
+        // #900 outcome: the user sees a Sharpy diagnostic, never a CS code.
+        yield return Case("#1234-constant-integer-overflow", """
+            def main() -> None:
+                print(3794 * 1973 * 948)
+            """);
     }
 
     [Theory]
