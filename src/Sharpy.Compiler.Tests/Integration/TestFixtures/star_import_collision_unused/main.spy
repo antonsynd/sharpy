@@ -1,0 +1,13 @@
+# The precision half of SPY0492 (#1324): the star-import itself is NOT an error. `shadowlib`
+# exports a `len` that would displace the builtin, but this file never writes `len`, so there
+# is no ambiguous reference and nothing to report -- exactly as a C# `using` directive that
+# merely could collide is fine until an unqualified name actually resolves two ways.
+#
+# Reporting at the import instead would refuse this program, which is the outcome this
+# fixture exists to prevent.
+from shadowlib import *
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs[0])

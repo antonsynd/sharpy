@@ -1,0 +1,5 @@
+# A module that exports a name displacing a builtin. Signature-compatible on purpose:
+# an incompatible one fails loudly at the call site (SPY0220), so the compatible shape is
+# the one that needs a diagnostic of its own.
+def len(x: list[int]) -> int:
+    return 999

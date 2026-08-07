@@ -1,0 +1,13 @@
+# SPY0492 (#1324): a name bound by `from M import *` that displaces a builtin is ambiguous
+# WHERE IT IS USED -- C#'s CS0104 rule, chosen over refusing the import itself because
+# `from numpy import *` in a file that never calls `sum` is harmless.
+#
+# The sibling fixtures pin the other three cells of the matrix: star-import without using the
+# colliding name compiles, an explicit `from M import len` states intent and compiles, and a
+# qualified `import M` leaves the builtin alone. All four must move together.
+from shadowlib import *
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(len(xs))

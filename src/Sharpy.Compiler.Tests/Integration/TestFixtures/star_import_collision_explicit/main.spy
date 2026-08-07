@@ -1,0 +1,9 @@
+# Naming the import is the statement of intent that resolves the ambiguity (#1324), the same
+# way a C# `using Foo = A.B;` alias resolves what two bare `using` directives could not.
+# `len` here is deliberately the library's, and 999 -- not 3 -- is the point.
+from shadowlib import len
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(len(xs))

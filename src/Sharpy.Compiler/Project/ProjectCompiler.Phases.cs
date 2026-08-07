@@ -296,8 +296,18 @@ internal partial class ProjectCompiler
                             // Add specific imported symbols (skip if already defined from project files)
                             if (fromImport.ImportAll)
                             {
+                                // Star-imported names that displace a builtin are RECORDED here and
+                                // reported where they are used, not here (#1324, C#'s CS0104 rule).
+                                // This has to happen on this path as well as in ImportResolver:
+                                // multi-file compilation binds star-imported symbols here and never
+                                // runs the single-file one, so recording only there would cover
+                                // exactly the case that cannot arise — a library and its consumer
+                                // are by definition two files. Same one-site-of-two shape as #1145.
                                 foreach (var (name, symbol) in symbolsToImport)
                                 {
+                                    if (BuiltinNameShadowing.ShadowsBuiltin(SymbolTable.BuiltinRegistry, name))
+                                        SymbolTable.AmbiguousGlobImports[name] = fromImport.Module;
+
                                     var symbolToRegister = ResolveImportSymbol(symbol, name, sourceModuleScope);
                                     if (!SymbolTable.TryDefine(symbolToRegister))
                                     {
@@ -315,6 +325,7 @@ internal partial class ProjectCompiler
                                         }
                                     }
                                 }
+
                             }
                             else
                             {

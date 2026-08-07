@@ -94,6 +94,16 @@ internal static class BuiltinNameShadowing
         + $"annotation position ambiguous. To declare a user type with this spelling, write it "
         + $"backtick-escaped: `{name}`";
 
+    /// <summary>
+    /// True when binding <paramref name="name"/> would displace a builtin, in either namespace.
+    /// The declaration-site classifier above answers a richer question (refuse vs warn vs allow);
+    /// this is the plain "does this name belong to a builtin" predicate that the import path needs,
+    /// stated here so both paths read the same registry rather than each keying off its own idea of
+    /// what a builtin is.
+    /// </summary>
+    public static bool ShadowsBuiltin(Registry.BuiltinRegistry registry, string name) =>
+        registry.IsReservedBuiltinName(name);
+
     /// <summary>The warning message (SPY0483).</summary>
     public static string WarningMessage(string name) =>
         $"'{name}' is a builtin name; this declaration shadows it, so the builtin is no longer "

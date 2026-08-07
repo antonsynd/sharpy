@@ -719,6 +719,23 @@ public static partial class DiagnosticExplanations
             "names usable, backtick-escape the declaration; the bare spelling then stays the builtin and " +
             "the escaped one is yours:\ndef `double`(x: int) -> int:\n    return x * 2\n\ndef main():\n    print(`double`(21))  # 42\n\nOr rename the binding, or add @suppress(\"SPY0483\").");
 
+        Add(dict, DiagnosticCodes.Validation.AmbiguousGlobImportOfBuiltin,
+            "Ambiguous reference to a star-imported builtin name",
+            "Validation",
+            "A name used here was bound both by a 'from M import *' and by the builtin namespace, " +
+            "so the reference is ambiguous. This mirrors C# CS0104, where two 'using' directives " +
+            "supplying the same name make an unqualified reference an error while the directives " +
+            "themselves are fine. The error is reported at the USE and not at the import on " +
+            "purpose: 'from numpy import *' in a file that never calls 'sum' is harmless, and " +
+            "refusing it would be both louder and less precise. Without this, a dependency adding " +
+            "a function in a later version could silently change what 'len' or 'sum' means in " +
+            "your file, with a correct-looking result and no diagnostic anywhere.",
+            "from numpy import *\n\ndef main() -> None:\n    xs: list[int] = [1, 2, 3]\n    print(len(xs))  # fine \u2014 no collision on this name\n    print(sum(xs))  # SPY0492: ambiguous between numpy.sum and the builtin",
+            "State which one you mean. Import the module qualified:\n    import numpy\n    " +
+            "print(numpy.sum(xs))\n\nOr name the import explicitly, which is the statement of " +
+            "intent that resolves the ambiguity:\n    from numpy import sum\n\nOr reach the " +
+            "builtin:\n    import builtins\n    print(builtins.sum(xs))");
+
         // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
 
         Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,

@@ -708,6 +708,14 @@ public static class DiagnosticCodes
         public const string PropertyObserverInvalidTarget = "SPY0490"; // Active
         public const string DuplicatePropertyObserver = "SPY0491";     // Active
 
+        // A name bound by `from M import *` that displaces a builtin, used unqualified. An ERROR
+        // despite sitting in the Validation range — severity is set at emission, per this band's
+        // rule. Reported at the USE, not at the import, which is C#'s CS0104: `using` directives
+        // that merely COULD collide are fine, and only an ambiguous reference is refused. An
+        // explicit `from M import sum` is the statement of intent that resolves it, exactly as a
+        // C# `using Foo = A.B;` alias resolves what two bare `using`s could not (#1324).
+        public const string AmbiguousGlobImportOfBuiltin = "SPY0492";  // Active (#1324)
+
         #endregion
     }
 

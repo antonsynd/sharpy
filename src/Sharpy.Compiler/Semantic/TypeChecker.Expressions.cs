@@ -303,6 +303,25 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // A name a `from M import *` bound over a builtin is ambiguous WHERE IT IS USED, not at the
+        // import — C#'s CS0104 rule (#1324). Reporting at the import would refuse
+        // `from numpy import *` in a file that never touches `sum`, which is both louder and less
+        // precise than the language Sharpy is bound to by Axiom 1. A backtick-escaped reference is
+        // the user naming their own symbol and is never ambiguous.
+        if (!id.IsNameBacktickEscaped
+            && _symbolTable.AmbiguousGlobImports.TryGetValue(id.Name, out var globModule))
+        {
+            AddError(
+                $"'{id.Name}' is an ambiguous reference between '{globModule}.{id.Name}' (bound by "
+                + $"'from {globModule} import *') and the builtin '{id.Name}'. Qualify it as "
+                + $"'{globModule}.{id.Name}' or 'builtins.{id.Name}', or import it explicitly with "
+                + $"'from {globModule} import {id.Name}' to state which one you mean",
+                id.LineStart, id.ColumnStart,
+                code: DiagnosticCodes.Validation.AmbiguousGlobImportOfBuiltin,
+                span: id.Span);
+            return SemanticType.Unknown;
+        }
+
         var symbol = _symbolTable.Lookup(id.Name);
         if (symbol == null)
         {

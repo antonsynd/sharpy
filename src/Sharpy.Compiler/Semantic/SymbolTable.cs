@@ -18,6 +18,20 @@ public class SymbolTable : IGlobalSymbolTable
     private readonly Dictionary<string, Scope> _moduleScopes = new();
 
     /// <summary>
+    /// Names bound by a <c>from M import *</c> that displace a builtin, mapped to the module they
+    /// came from. Recorded here rather than reported at the import, because the collision is an
+    /// error only where the name is actually USED — C#'s CS0104 rule (#1324).
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not populated for an explicit <c>from M import sum</c>: naming the symbol is
+    /// the statement of intent that makes the rebinding unambiguous, exactly as a C# <c>using
+    /// Foo = A.B;</c> alias resolves what two bare <c>using</c>s could not. Both star-import
+    /// binding paths write here — the single-file resolver and the project compiler — because a
+    /// library and its consumer are two files and only the second path runs for them.
+    /// </remarks>
+    public Dictionary<string, string> AmbiguousGlobImports { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// Tracks variables that were declared inside a now-exited block scope but are
     /// no longer visible in any active outer scope. Populated by <see cref="ExitScope"/>
     /// for block-like scopes (if, for, while, try, with, except, match, comprehension).

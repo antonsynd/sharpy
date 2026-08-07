@@ -146,6 +146,11 @@ internal partial class ImportResolver
                             if (name.StartsWith("_"))
                                 continue;
 
+                            // Recorded, not reported: a star-imported name that displaces a builtin
+                            // is an error only where it is USED (#1324, mirroring C# CS0104).
+                            if (BuiltinNameShadowing.ShadowsBuiltin(symbolTable.BuiltinRegistry, name))
+                                symbolTable.AmbiguousGlobImports[name] = fromImport.Module;
+
                             _logger.LogDebug($"  Defining symbol (import *): {name}");
                             var defined = TryDefineFromImport(symbolTable, symbol, name, sourceModule,
                                 importedSymbolSources, fromImport, importAlias: null);
