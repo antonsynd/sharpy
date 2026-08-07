@@ -125,6 +125,150 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Whether a type-test site can lower a bare <c>list</c>/<c>set</c>/<c>dict</c> to its non-generic
+    /// protocol interface (#912). Only sites that produce a <b>boolean</b> can: the erased interface is
+    /// what the runtime test must name, since a closed instantiation would match only itself.
+    /// </summary>
+    private enum CollectionErasure
+    {
+        /// <summary>
+        /// The site binds a value of the tested type (<c>as?</c>/<c>as!</c>), so the erased interface
+        /// is not a usable answer — it is not the type the checker gave the expression. A bare
+        /// collection name is filled from the subject or refused like any other open generic.
+        /// </summary>
+        Disallowed,
+
+        /// <summary>
+        /// The site yields a boolean (<c>is</c>), so a bare collection name erases exactly as
+        /// <c>isinstance</c>'s does — which is what keeps the two operators' answers the same.
+        /// </summary>
+        Allowed
+    }
+
+    /// <summary>
+    /// Classifies an annotation-shaped type-test operand — the <see cref="TypeAnnotation"/> of
+    /// <c>is</c>/<c>as?</c>/<c>as!</c>, a match class pattern, or an <c>except</c> clause — and records
+    /// the decision on <paramref name="lodgeOn"/> for codegen to apply verbatim (#1235).
+    /// <para>
+    /// This is the <c>isinstance</c> three-outcome rule at the remaining type-operand positions, and
+    /// deliberately the same rule: a closed spelling, a primitive or a non-generic name is a closed
+    /// test; a bare generic name has its vector filled from the SUBJECT when the subject determines it;
+    /// otherwise the operand names no runtime type and is refused (SPY0345) with a message naming a
+    /// spelling that works. .NET reifies generics, so an open name denotes nothing to test against —
+    /// emitting it produces CS0305 behind SPY0908, which is the leak this closes.
+    /// </para>
+    /// <para>
+    /// Shapes with no single decidable answer — a nullable/optional/result spelling, an unresolvable
+    /// name — are left <b>unrecorded</b> on purpose: the emitter then maps the annotation exactly as it
+    /// did before classification existed, so this adds decisions without removing fallbacks.
+    /// </para>
+    /// </summary>
+    /// <param name="annotation">The written type operand.</param>
+    /// <param name="lodgeOn">The node the lowering is keyed on — normally <paramref name="annotation"/>
+    /// itself, or the owning annotation for one element of an <c>except</c> tuple.</param>
+    /// <param name="subjectType">The static type of the value being tested, or null when the site has
+    /// no subject (an <c>except</c> clause tests whatever was thrown).</param>
+    /// <param name="siteNoun">How the refusal message names this position.</param>
+    /// <param name="erasure">Whether a bare builtin collection may erase to its protocol interface.</param>
+    /// <returns>The type the site tests against, or null when nothing was recorded.</returns>
+    private SemanticType? ClassifyTypeTestAnnotation(
+        TypeAnnotation annotation,
+        Node lodgeOn,
+        SemanticType? subjectType,
+        string siteNoun,
+        CollectionErasure erasure)
+    {
+        // Only a bare NAME can be an open generic, so it is the only shape needing the vector-filling
+        // rule. A spelling carrying type arguments, or any nullable/optional/result modifier, names
+        // what it names; resolve it and record the closed answer.
+        if (annotation.TypeArguments.Length > 0
+            || annotation.IsOptional || annotation.IsCSharpNullable || annotation.IsResult)
+        {
+            var spelled = _typeResolver.ResolveTypeAnnotation(annotation);
+            if (spelled is UnknownType)
+                return null;
+
+            // Nullable/optional/result spellings keep the emitter's own mapping: the wrapper decides
+            // the emitted shape, and nothing here improves on it.
+            if (annotation.IsOptional || annotation.IsCSharpNullable || annotation.IsResult)
+                return null;
+
+            _semanticInfo.SetTypeTestLowering(lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, spelled));
+            return spelled;
+        }
+
+        if (ResolveBuiltinPrimitiveTypeName(annotation.Name) is { } primitive)
+        {
+            _semanticInfo.SetTypeTestLowering(lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, primitive));
+            return primitive;
+        }
+
+        if (_symbolTable.Lookup(annotation.Name) is not TypeSymbol typeSymbol)
+            return null;
+
+        // list/set/dict written without type arguments: the test cannot know the element types, so a
+        // boolean site erases to the non-generic protocol interface, which every closed instantiation
+        // implements. BuildIsInstanceNarrowedType supplies the same default-argument type narrowing
+        // resolves the operand to, so the test and the narrowed type stay the same object.
+        if (erasure == CollectionErasure.Allowed
+            && typeSymbol.IsGeneric && BuiltinNames.IsErasableCollection(typeSymbol.Name))
+        {
+            var erased = BuildIsInstanceNarrowedType(typeSymbol);
+            _semanticInfo.SetTypeTestLowering(
+                lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ErasedBuiltinCollection, erased));
+            return erased;
+        }
+
+        if (!typeSymbol.IsGeneric)
+        {
+            var closed = BuildIsInstanceNarrowedType(typeSymbol);
+            _semanticInfo.SetTypeTestLowering(lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, closed));
+            return closed;
+        }
+
+        if (FillTypeArgumentsFromSubject(typeSymbol, subjectType) is { } closedGeneric)
+        {
+            _semanticInfo.SetTypeTestLowering(
+                lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, closedGeneric));
+            return closedGeneric;
+        }
+
+        ReportOpenGenericTypeOperand(annotation, annotation.Name, typeSymbol, siteNoun, ClosedSpelling);
+        return null;
+
+        string ClosedSpelling(string suggestion) => $"{annotation.Name}[{suggestion}]";
+    }
+
+    /// <summary>
+    /// Refuses an open generic type operand, naming a closed spelling that works at this site. One
+    /// message body and one code (SPY0345) for all five type-operand positions — <c>isinstance</c>,
+    /// <c>is</c>, <c>as?</c>/<c>as!</c>, match class patterns and <c>except</c> clauses — so a reader
+    /// who has met the refusal once does not have to learn it again (#1207, #1235). Only the site noun
+    /// and the example spelling vary, because those are the parts that are actually site-specific.
+    /// </summary>
+    /// <param name="at">The node the diagnostic is anchored to.</param>
+    /// <param name="typeName">The generic type's name as written.</param>
+    /// <param name="typeSymbol">Its symbol, read for the arity of the suggested spelling.</param>
+    /// <param name="siteNoun">How the message names this position ("type test", "except clause", ...).</param>
+    /// <param name="closedSpelling">Renders the example, given the <c>...</c> placeholder vector.</param>
+    /// <param name="fallbackSpan">Used when <paramref name="at"/> carries no span of its own.</param>
+    private void ReportOpenGenericTypeOperand(
+        Node at, string typeName, TypeSymbol typeSymbol, string siteNoun,
+        Func<string, string> closedSpelling, Text.TextSpan? fallbackSpan = null)
+    {
+        var suggestion = string.Join(", ", typeSymbol.TypeParameters.Select(_ => "..."));
+        AddError(
+            $"'{typeName}' is a generic type, so it does not name a single type to test against, "
+                + $"and nothing at this {siteNoun} determines its type arguments. "
+                + $"Write the closed spelling — for example `{closedSpelling(suggestion)}` — "
+                + "or test against a non-generic base type. Unlike Python, Sharpy's generics are real "
+                + "runtime types, and a successful open test could not narrow to a type you can write.",
+            at.LineStart, at.ColumnStart,
+            code: DiagnosticCodes.Semantic.OpenGenericTypeTest,
+            span: at.Span ?? fallbackSpan);
+    }
+
+    /// <summary>
     /// Builds the narrowed type for an <c>isinstance(x, T)</c> check against a user/builtin
     /// TypeSymbol. Generic builtin collections (list, set, dict) narrow to a parameterized
     /// <see cref="GenericType"/> with default <c>object</c> type arguments, so downstream member

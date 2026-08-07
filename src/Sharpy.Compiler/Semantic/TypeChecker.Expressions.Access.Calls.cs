@@ -491,7 +491,11 @@ internal partial class TypeChecker
             return;
         }
 
-        if (ResolveTypeTestOperandType(typeOperand) is { } resolved)
+        // Every other shape already names its type arguments (or has none): a qualified name
+        // (`mod.Type`, #903) or a closed generic spelling (`Box[int]`). Read through the single
+        // expression-as-type resolver the generic-construction path uses, so the two cannot drift
+        // (#1257).
+        if (TryResolveExpressionAsType(typeOperand, TypeOperandShapes.TypeTestOperand) is { } resolved)
             _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, resolved));
     }
 
@@ -541,16 +545,13 @@ internal partial class TypeChecker
             return;
         }
 
-        var suggestion = string.Join(", ", typeSymbol.TypeParameters.Select(_ => "..."));
-        AddError(
-            $"'{typeId.Name}' is a generic type, so it does not name a single type to test against, "
-                + $"and nothing at this call determines its type arguments. "
-                + $"Write the closed spelling — for example `{BuiltinNames.Isinstance}(..., {typeId.Name}[{suggestion}])` — "
-                + "or test against a non-generic base type. Unlike Python, Sharpy's generics are real "
-                + "runtime types, and a successful open test could not narrow to a type you can write.",
-            typeId.LineStart, typeId.ColumnStart,
-            code: DiagnosticCodes.Semantic.OpenGenericTypeTest,
-            span: typeId.Span ?? call.Span);
+        // Shares SPY0345's body with the annotation-shaped sites (#1235); only the site noun and the
+        // example spelling differ, and the example here is the whole call because that is what the
+        // reader has to retype.
+        ReportOpenGenericTypeOperand(
+            typeId, typeId.Name, typeSymbol, siteNoun: "call",
+            closedSpelling: suggestion => $"{BuiltinNames.Isinstance}(..., {typeId.Name}[{suggestion}])",
+            fallbackSpan: call.Span);
     }
 
     /// <summary>
@@ -574,60 +575,6 @@ internal partial class TypeChecker
             && (ReferenceEquals(generic.GenericDefinition, typeSymbol) || generic.Name == typeSymbol.Name)
                 ? generic
                 : null;
-    }
-
-    /// <summary>
-    /// Resolves a type-operand expression that already names its type arguments (or has none):
-    /// a module-qualified name (<c>isinstance(x, mod.Type)</c>, #903) or a closed generic spelling
-    /// (<c>isinstance(x, Box[int])</c>). Returns null for anything that does not denote a type, which
-    /// leaves the call on the ordinary path it took before classification existed.
-    /// </summary>
-    private SemanticType? ResolveTypeTestOperandType(Expression typeOperand)
-    {
-        switch (UnwrapParenthesized(typeOperand))
-        {
-            case Identifier typeId:
-                return ResolveBuiltinPrimitiveTypeName(typeId.Name)
-                    ?? (_symbolTable.Lookup(typeId.Name) is TypeSymbol { IsGeneric: false } typeSymbol
-                        ? new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name }
-                        : null);
-
-            // A module-qualified type reads the type the checker already recorded for the expression.
-            case MemberAccess memberAccess:
-                return _semanticInfo.GetExpressionType(memberAccess) as UserDefinedType;
-
-            // `Box[int]` / `dict[str, int]` — the base name plus an argument list, which is a single
-            // element or a TupleLiteral of them.
-            case IndexAccess { Object: Identifier baseName } indexAccess:
-                {
-                    if (_symbolTable.Lookup(baseName.Name) is not TypeSymbol { IsGeneric: true } genericDefinition)
-                        return null;
-
-                    var argumentNodes = UnwrapParenthesized(indexAccess.Index) is TupleLiteral argumentTuple
-                        ? (IReadOnlyList<Expression>)argumentTuple.Elements
-                        : new[] { indexAccess.Index };
-                    if (argumentNodes.Count != genericDefinition.TypeParameters.Count)
-                        return null;
-
-                    var typeArguments = new List<SemanticType>(argumentNodes.Count);
-                    foreach (var argumentNode in argumentNodes)
-                    {
-                        if (ResolveTypeTestOperandType(argumentNode) is not { } argument)
-                            return null;
-                        typeArguments.Add(argument);
-                    }
-
-                    return new GenericType
-                    {
-                        Name = genericDefinition.Name,
-                        TypeArguments = typeArguments,
-                        GenericDefinition = genericDefinition
-                    };
-                }
-
-            default:
-                return null;
-        }
     }
 
     /// <summary>

@@ -1396,15 +1396,75 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Tries to resolve an expression as a type. This is used for generic type instantiation
-    /// where Box[int](42) parses the type argument as an expression.
-    /// Returns null if the expression cannot be interpreted as a type.
+    /// Which spellings an expression-as-type read accepts, and how it reads them. The
+    /// <b>generic-argument skeleton</b> — single argument vs <see cref="TupleLiteral"/>, recursion,
+    /// <see cref="GenericType"/> assembly — is shared by every caller; these flags select only the
+    /// per-site policy that genuinely differs, so a capability added to the skeleton reaches both the
+    /// construction path and the type-test classifier at once (#1257).
     /// </summary>
-    private SemanticType? TryResolveExpressionAsType(Expression expr)
+    [Flags]
+    private enum TypeOperandShapes
     {
+        /// <summary>
+        /// The generic-construction spelling (<c>Box[int](42)</c>): a bare name resolves through the
+        /// full type resolver — aliases, builtins and nullable spellings included — and a type-argument
+        /// list is taken as written.
+        /// </summary>
+        Construction = 0,
+
+        /// <summary>Grouping parentheses, around the operand and around each type argument, are
+        /// transparent (#1170, #1197).</summary>
+        UnwrapGrouping = 1 << 0,
+
+        /// <summary>
+        /// A qualified name (<c>mod.Type</c>, <c>Outer.Inner</c>) denotes the type the checker already
+        /// recorded for that expression (#903).
+        /// </summary>
+        QualifiedName = 1 << 1,
+
+        /// <summary>
+        /// A bare name resolves through the primitive table and then a <b>non-generic</b> symbol
+        /// lookup, instead of through the full type resolver. A bare <i>generic</i> name deliberately
+        /// denotes nothing under this flag: at a type test it is the open-generic shape the classifier
+        /// must fill from the subject or refuse (SPY0345), never a type in its own right.
+        /// </summary>
+        BareNameIsPrimitiveOrNonGeneric = 1 << 2,
+
+        /// <summary>
+        /// A type-argument list whose length disagrees with the definition's arity denotes nothing,
+        /// rather than assembling a wrong-arity <see cref="GenericType"/> for a later phase to reject.
+        /// </summary>
+        RequireMatchingArity = 1 << 3,
+
+        /// <summary>The shape set a type-test operand is read with.</summary>
+        TypeTestOperand =
+            UnwrapGrouping | QualifiedName | BareNameIsPrimitiveOrNonGeneric | RequireMatchingArity
+    }
+
+    /// <summary>
+    /// Tries to resolve an expression as a type. Used both for generic type instantiation, where
+    /// <c>Box[int](42)</c> parses the type argument as an expression, and for reading an
+    /// <c>isinstance</c> type operand that already names its arguments (or has none) — one resolver so
+    /// the two cannot drift (#1257). Returns null when the expression does not denote a type, which
+    /// leaves each caller on the path it took before.
+    /// </summary>
+    private SemanticType? TryResolveExpressionAsType(
+        Expression expr, TypeOperandShapes shapes = TypeOperandShapes.Construction)
+    {
+        if (shapes.HasFlag(TypeOperandShapes.UnwrapGrouping))
+            expr = UnwrapParenthesized(expr);
+
         // Handle simple identifier as type name (e.g., "int", "str", "MyClass")
         if (expr is Identifier typeId)
         {
+            if (shapes.HasFlag(TypeOperandShapes.BareNameIsPrimitiveOrNonGeneric))
+            {
+                return ResolveBuiltinPrimitiveTypeName(typeId.Name)
+                    ?? (_symbolTable.Lookup(typeId.Name) is TypeSymbol { IsGeneric: false } nonGeneric
+                        ? new UserDefinedType { Symbol = nonGeneric, Name = nonGeneric.Name }
+                        : null);
+            }
+
             // Create a synthetic type annotation and resolve it
             var typeAnnotation = new Parser.Ast.TypeAnnotation
             {
@@ -1416,14 +1476,22 @@ internal partial class TypeChecker
             return resolved != SemanticType.Unknown ? resolved : null;
         }
 
+        // A qualified type reads the type the checker already recorded for the expression.
+        if (shapes.HasFlag(TypeOperandShapes.QualifiedName) && expr is MemberAccess memberAccess)
+        {
+            return _semanticInfo.GetExpressionType(memberAccess) as UserDefinedType;
+        }
+
         // Handle nested generic types (e.g., Box[int] in Container[Box[int]])
         if (expr is IndexAccess indexAccess &&
             indexAccess.Object is Identifier nestedTypeId &&
             _symbolTable.Lookup(nestedTypeId.Name) is TypeSymbol nestedGenericType &&
             nestedGenericType.IsGeneric)
         {
-            var nestedTypeArgs = TryResolveTypeArguments(indexAccess.Index);
-            if (nestedTypeArgs != null)
+            var nestedTypeArgs = TryResolveTypeArguments(indexAccess.Index, shapes);
+            if (nestedTypeArgs != null
+                && (!shapes.HasFlag(TypeOperandShapes.RequireMatchingArity)
+                    || nestedTypeArgs.Count == nestedGenericType.TypeParameters.Count))
             {
                 return new GenericType
                 {
@@ -1442,16 +1510,19 @@ internal partial class TypeChecker
     /// Handles both single type arguments (int) and multiple type arguments (int, str as TupleLiteral).
     /// Returns null if the expressions cannot be interpreted as types.
     /// </summary>
-    private List<SemanticType>? TryResolveTypeArguments(Expression indexExpr)
+    private List<SemanticType>? TryResolveTypeArguments(
+        Expression indexExpr, TypeOperandShapes shapes = TypeOperandShapes.Construction)
     {
         var typeArgs = new List<SemanticType>();
 
         // Handle multiple type arguments: Pair[int, str] parses as TupleLiteral
-        if (indexExpr is TupleLiteral tuple)
+        if ((shapes.HasFlag(TypeOperandShapes.UnwrapGrouping)
+                ? UnwrapParenthesized(indexExpr)
+                : indexExpr) is TupleLiteral tuple)
         {
             foreach (var element in tuple.Elements)
             {
-                var typeArg = TryResolveExpressionAsType(element);
+                var typeArg = TryResolveExpressionAsType(element, shapes);
                 if (typeArg == null)
                     return null;
                 typeArgs.Add(typeArg);
@@ -1460,7 +1531,7 @@ internal partial class TypeChecker
         }
 
         // Handle single type argument
-        var singleTypeArg = TryResolveExpressionAsType(indexExpr);
+        var singleTypeArg = TryResolveExpressionAsType(indexExpr, shapes);
         if (singleTypeArg == null)
             return null;
         typeArgs.Add(singleTypeArg);
