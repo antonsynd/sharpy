@@ -1153,6 +1153,23 @@ internal partial class TypeChecker
     /// the first textually matching handler wins, and <c>e</c> is bound to the raised instance —
     /// which is exactly how C# orders catch clauses and evaluates their filters.
     /// </para>
+    /// <para>
+    /// <b>There is deliberately no Exception-derivation check here.</b> One was added with this
+    /// lowering and then <b>withdrawn</b> — it was removed because it is unsound, not because it was
+    /// unwanted. Under <c>--incremental</c> a dependency served from the symbol cache comes back with
+    /// its base chain missing (#1309), so the check refused <i>valid</i> user exception types on any
+    /// build where their defining file was cached: a clean build succeeded and the next incremental
+    /// build failed on identical source. The data needed to tell "not an exception" from "inheritance
+    /// unavailable" is simply absent after deserialization, so no refinement of the check is sound —
+    /// and gating it on cache provenance would only relocate the clean-vs-incremental divergence from
+    /// the outcome into the diagnostic.
+    /// </para>
+    /// <para>
+    /// <b>Do not re-add it until #1309 is fixed</b>, at which point it becomes safe and is worth
+    /// restoring for diagnostic quality. The property Owner Decision 3 actually required —
+    /// <c>catch (object e)</c> can never be emitted — is unaffected: it is enforced by
+    /// <see cref="ClampToExceptionBase"/>, which needs no inheritance data to be correct.
+    /// </para>
     /// </summary>
     private SemanticType? ClassifyExceptHandlerType(ExceptHandler handler, TypeAnnotation annotation)
     {
