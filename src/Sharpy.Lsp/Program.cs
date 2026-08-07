@@ -70,9 +70,12 @@ public class Program
                 })
                 .ConfigureLogging(builder =>
                 {
-                    // Information by default; raised by --log-level or SHARPY_LSP_LOG_LEVEL (#1225).
-                    // Debug is what makes the per-stage analysis attribution (#1140) reachable on a
-                    // running server — see ServerCommandLine.UsageText for how to read one.
+                    // Not the #1225 knob. OmniSharp's DI-configured logging never reaches the
+                    // ILoggerFactory the container resolves ILogger<T> from (see the factory
+                    // comment above), so the attached destination and its level are governed
+                    // solely by the factory built at the top of this method. This call only keeps
+                    // OmniSharp's internal builder aligned with the same level, as a harmless
+                    // belt-and-suspenders.
                     builder.SetMinimumLevel(logging.Level);
                 })
                 .WithServices(services =>
