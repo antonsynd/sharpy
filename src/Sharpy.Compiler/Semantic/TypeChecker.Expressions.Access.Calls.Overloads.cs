@@ -897,6 +897,14 @@ internal partial class TypeChecker
             var unwrapped = UnwrapParenthesized(argument);
             if (ReferenceEquals(unwrapped, target))
                 return true;
+
+            // Preserved verbatim from the set-builder this replaced (#1255), but note: no fixture
+            // reaches this arm, and it may be unreachable from Sharpy source. A query here needs a
+            // constructor-reference rule to ask about the OPERAND of a spread, which requires a bare
+            // builtin type name in that position (`f(*int)`) — not a meaningful spelling. Kept rather
+            // than dropped because a behaviour-neutral perf change is the wrong place to delete code
+            // whose deadness is unproven. Whether it is reachable is a #1182 question about what
+            // constructor references can appear in a spread position, not a #1255 one.
             if (unwrapped is SpreadElement spread
                 && ReferenceEquals(UnwrapParenthesized(spread.Value), target))
             {
