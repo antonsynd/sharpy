@@ -144,3 +144,139 @@ public class FloorDiv_Tests
         FloorDiv(-5.0, double.PositiveInfinity).Should().Be(-1.0);
     }
 }
+
+/// <summary>
+/// The integer <c>FloorDiv</c> overloads added in #1226.
+/// </summary>
+/// <remarks>
+/// Every expected value here was produced by running CPython 3.12.13, not derived by hand —
+/// <c>python3 -c "print(-7 // 3)"</c> and friends. The one case where Sharpy deliberately
+/// diverges from CPython (<c>int.MinValue // -1</c>) is called out at its test.
+/// </remarks>
+public class IntegerFloorDiv_Tests
+{
+    // The sign matrix. C# `/` truncates toward zero; Python floors. The two disagree on
+    // every row where the signs differ and the division is inexact.
+    [Theory]
+    [InlineData(7, 3, 2)]
+    [InlineData(-7, 3, -3)]     // truncating division would give -2
+    [InlineData(7, -3, -3)]     // truncating division would give -2
+    [InlineData(-7, -3, 2)]
+    [InlineData(6, 3, 2)]       // exact: signs differ but no adjustment
+    [InlineData(-6, 3, -2)]
+    [InlineData(6, -3, -2)]
+    [InlineData(0, 5, 0)]
+    [InlineData(1, 2, 0)]
+    [InlineData(-1, 2, -1)]     // truncating division would give 0
+    [InlineData(1, -2, -1)]
+    public void FloorDiv_Int_MatchesPython(int x, int y, int expected)
+    {
+        FloorDiv(x, y).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(7L, 3L, 2L)]
+    [InlineData(-7L, 3L, -3L)]
+    [InlineData(7L, -3L, -3L)]
+    [InlineData(-7L, -3L, 2L)]
+    public void FloorDiv_Long_MatchesPython(long x, long y, long expected)
+    {
+        FloorDiv(x, y).Should().Be(expected);
+    }
+
+    // The reason this helper computes in integer arithmetic instead of
+    // (long)Math.Floor((double)x / y): above 2^53 a double cannot represent the operands, so
+    // the round-trip returns a neighbouring value. These are the exact CPython quotients.
+    [Theory]
+    [InlineData(4611686018427387905L, 3L, 1537228672809129301L)]   // (2**62 + 1) // 3
+    [InlineData(4611686018427387905L, 7L, 658812288346769700L)]    // (2**62 + 1) // 7
+    [InlineData(9007199254740993L, 3L, 3002399751580331L)]         // (2**53 + 1) // 3
+    [InlineData(9223372036854775807L, 2L, 4611686018427387903L)]   // long.MaxValue // 2
+    [InlineData(-9223372036854775808L, 2L, -4611686018427387904L)] // long.MinValue // 2
+    public void FloorDiv_Long_IsExactAboveDoublePrecision(long x, long y, long expected)
+    {
+        FloorDiv(x, y).Should().Be(expected);
+    }
+
+    [Fact]
+    public void FloorDiv_Int_ZeroDivisor_RaisesZeroDivisionError()
+    {
+        var act = () => FloorDiv(1, 0);
+
+        act.Should().Throw<ZeroDivisionError>()
+            .WithMessage("integer division or modulo by zero");
+    }
+
+    [Fact]
+    public void FloorDiv_Long_ZeroDivisor_RaisesZeroDivisionError()
+    {
+        var act = () => FloorDiv(1L, 0L);
+
+        act.Should().Throw<ZeroDivisionError>()
+            .WithMessage("integer division or modulo by zero");
+    }
+
+    // DELIBERATE CPython divergence, decided rather than inherited. CPython computes
+    // -2**31 // -1 == 2147483648 exactly, because its integers are arbitrary precision.
+    // That value does not fit an int, and .NET raises OverflowException for int.MinValue / -1
+    // even in an unchecked context (a hardware trap, unlike * and +, which wrap) — so there is
+    // no "match the runtime wrap" option to fall back on. Diagnosing matches CheckedIntPow's
+    // contract. The behavior this replaces returned int.MaxValue: silently wrong.
+    [Fact]
+    public void FloorDiv_Int_MinValueByMinusOne_RaisesOverflowError()
+    {
+        var act = () => FloorDiv(int.MinValue, -1);
+
+        act.Should().Throw<OverflowError>()
+            .WithMessage("integer division result too large for int");
+    }
+
+    [Fact]
+    public void FloorDiv_Long_MinValueByMinusOne_RaisesOverflowError()
+    {
+        var act = () => FloorDiv(long.MinValue, -1L);
+
+        act.Should().Throw<OverflowError>()
+            .WithMessage("integer division result too large for long");
+    }
+
+    // The divmod identity from #1153: x == (x // y) * y + (x % y). This is the property that
+    // ties FloorDiv to FloorMod, and it is why FloorDiv borrows Divmod's algorithm rather than
+    // inventing one. Swept over the full sign grid rather than sampled.
+    [Fact]
+    public void FloorDiv_Int_SatisfiesTheDivmodIdentity()
+    {
+        for (int x = -8; x <= 8; x++)
+        {
+            for (int y = -8; y <= 8; y++)
+            {
+                if (y == 0)
+                {
+                    continue;
+                }
+
+                (FloorDiv(x, y) * y + FloorMod(x, y)).Should().Be(
+                    x, "the divmod identity must hold for {0} // {1}", x, y);
+            }
+        }
+    }
+
+    // FloorDiv must agree with Divmod's quotient everywhere — they share an algorithm precisely
+    // so the two cannot drift apart.
+    [Fact]
+    public void FloorDiv_Int_AgreesWithDivmodQuotient()
+    {
+        for (int x = -8; x <= 8; x++)
+        {
+            for (int y = -8; y <= 8; y++)
+            {
+                if (y == 0)
+                {
+                    continue;
+                }
+
+                FloorDiv(x, y).Should().Be(Divmod(x, y).Item1);
+            }
+        }
+    }
+}
