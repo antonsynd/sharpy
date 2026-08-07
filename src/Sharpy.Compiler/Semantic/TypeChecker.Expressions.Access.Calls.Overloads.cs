@@ -366,7 +366,7 @@ internal partial class TypeChecker
 
     /// <summary>
     /// The value-position rule for a bare builtin type-constructor reference (<c>f = int</c>,
-    /// <c>f = dict</c>) — Sharpy's method group (#1182). Three tiers, in order:
+    /// <c>f = dict</c>) — Sharpy's method group (#1182). Two tiers, in order:
     ///
     /// <list type="number">
     /// <item><description>An expected function type supplies a signature: the reference binds that
@@ -639,6 +639,9 @@ internal partial class TypeChecker
     ///
     /// <para>A non-abstract class or struct returns null here and never reaches this method in
     /// practice, since it takes the UserType family instead.</para>
+    /// <para>Exhaustiveness note: a future <see cref="TypeKind"/> falls to the null arm and is
+    /// treated as constructible — extend the switch when a kind is added, or the new kind's
+    /// value uses leak SPY0908 the way #1250's did.</para>
     /// </summary>
     private static NonConstructibleTypeName? NonConstructibleTypeNameOf(TypeSymbol typeSymbol)
     {

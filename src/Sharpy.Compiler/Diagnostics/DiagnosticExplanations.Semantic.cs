@@ -187,9 +187,11 @@ public static partial class DiagnosticExplanations
             + "(constructing an abstract class or a union type name directly).",
             "interface IShape:\n    def area(self) -> float: ...\n\n"
             + "enum Color:\n    RED = 1\n\n"
+            + "@abstract\nclass Base:\n    def run(self) -> None: ...\n\n"
             + "def main():\n"
             + "    f = IShape   # an interface has no constructor\n"
-            + "    g = Color    # an enum has no constructor",
+            + "    g = Color    # an enum has no constructor\n"
+            + "    h = Base     # an abstract class has no constructor",
             "Name a concrete implementing type, whose constructor IS a value:\n"
             + "  f: (float) -> Circle = Circle\n"
             + "Or wrap the construction you actually mean in a lambda:\n"

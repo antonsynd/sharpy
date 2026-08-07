@@ -22,7 +22,7 @@ public class ScopedValueTests
 {
     /// <summary>
     /// Stands in for one of the checker's tracker fields (<c>_typeTestOperand</c>,
-    /// <c>_currentBindingValue</c>, …). The real fields hold AST node references; a string carries
+    /// <c>_typeTestTypeArgument</c>, …). The real fields hold AST node references; a string carries
     /// the same identity semantics for these tests and reads better in failure messages.
     /// </summary>
     private string? _tracker;

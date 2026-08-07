@@ -108,8 +108,9 @@ internal sealed class SharpyTypeDefinitionHandler : TypeDefinitionHandlerBase
             GenericType gt => gt.GenericDefinition,
             NullableType nt => GetTypeSymbol(nt.UnderlyingType),
             OptionalType ot => GetTypeSymbol(ot.UnderlyingType),
-            // A builtin constructor alias (`f = int`) resolves to the builtin it references (#1182).
-            ConstructorReferenceType cr => cr.Symbol,
+            // No ConstructorReferenceType arm: since the tier-2 alias retirement (#1248) no binding
+            // carries the transient carrier, so a carrier-typed node here would be a checker bug —
+            // fall through to null rather than silently resolving it (delete-don't-strand, plan-d3207d).
             _ => null
         };
     }
