@@ -1,0 +1,59 @@
+# pprint's wrapped layout matches CPython (#1297), and floats are measured at the length they
+# actually print (#1230).
+#
+# ORACLE: CPython 3.12.13's own pprint. Every expected line was produced by running the
+# equivalent `python3 -c "import pprint; pprint.pprint(<value>, width=<w>)"`.
+#
+# There were TWO independent defects here and this file pins both, deliberately including
+# non-float cases:
+#
+#   #1297  Sharpy broke the line after the opening bracket, where CPython keeps the first element
+#          inline — so every wrapped container was one line longer. TYPE-INDEPENDENT: the int and
+#          string cases below diverged identically before the fix, which is how it was established
+#          that this was never a float bug despite being found through one.
+#
+#   #1230  GetFormattedLength measured floats with ToString().Length: `5.0` measured 1 ("5") but
+#          prints 3. Its ONLY observable footprint is the dict child-indent column, pinned at the
+#          bottom — a float KEY shifted its value's continuation column left by the difference.
+#
+# Wrap DECISIONS are not affected by #1230 and never were: a sweep of [5.0]*n across widths
+# 20/25/30/40 found Sharpy and CPython agreeing on every wrap/no-wrap answer both before and after
+# the fix. Do not add cells here expecting wrap changes; there are none to find.
+import pprint
+
+
+def main() -> None:
+    # --- #1297, non-float: the neutral control that proved the defect is type-independent ---
+    print("== ints ==")
+    pprint.pprint([100, 200, 300, 400, 500, 600, 700, 800], width=30)
+    print("== strs ==")
+    pprint.pprint(["aaaa", "bbbb", "cccc", "dddd", "eeee", "ffff"], width=30)
+    print("== dict of ints ==")
+    pprint.pprint({"a": [100, 200, 300, 400, 500, 600, 700, 800]}, width=30)
+
+    # --- float-bearing containers across the value bands ---
+    print("== integral floats ==")
+    pprint.pprint([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0], width=30)
+    print("== mixed bands ==")
+    pprint.pprint([1e20, 5.0, 1e16, 3.14159, 1e20, 5.0, 1e16, 3.14159], width=40)
+    print("== tiny ==")
+    pprint.pprint([1e-05, 2.5e-10, 1e-4, 1e-05, 2.5e-10, 1e-4, 1e-05, 2.5e-10, 1e-4], width=40)
+    print("== negative and signed zero ==")
+    pprint.pprint([-1e20, -0.0, -5.0, -1e20, -0.0, -5.0, -1e20, -0.0, -5.0], width=30)
+    print("== nested ==")
+    pprint.pprint([[5.0, 5.0, 5.0, 5.0], [1e20, 1e20, 1e20], [3.14159, 3.14159, 3.14159]], width=40)
+
+    # A one-line case: the wrap decision itself, which neither fix moves.
+    print("== fits on one line ==")
+    pprint.pprint([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0], width=80)
+
+    # --- #1230's isolation: a float KEY drives the value's child-indent column ---
+    # `{5.0: [` is 7 characters, so the continuation column is 7. Measuring the key as "5" put it
+    # at 5. The int key is the control (ToString is accurate there), and the 1e+20 key is the
+    # accidental pass — "1E+20" and "1e+20" are both 5 characters, so it was right by coincidence.
+    print("== float key ==")
+    pprint.pprint({5.0: [100, 200, 300, 400, 500, 600]}, width=30)
+    print("== int key (control) ==")
+    pprint.pprint({5: [100, 200, 300, 400, 500, 600]}, width=30)
+    print("== exponent key (coincidental pass) ==")
+    pprint.pprint({1e20: [100, 200, 300, 400, 500, 600]}, width=30)

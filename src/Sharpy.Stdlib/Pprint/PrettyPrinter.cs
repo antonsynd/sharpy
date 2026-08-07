@@ -275,10 +275,13 @@ namespace Sharpy
             var keys = GetSortedDictKeys(obj);
             foreach (var key in keys)
             {
+                // First entry shares the line with '{' (#1297); only later ones break.
                 if (!first)
+                {
                     sb.Append(',');
-                sb.Append('\n');
-                sb.Append(indentStr);
+                    sb.Append('\n');
+                    sb.Append(indentStr);
+                }
                 FormatObject(sb, key, childIndent, currentDepth + 1, seen);
                 sb.Append(": ");
                 FormatObject(sb, GetDictValue(obj, key), childIndent + GetFormattedLength(key) + 2, currentDepth + 1, seen);
@@ -315,10 +318,13 @@ namespace Sharpy
             sb.Append('(');
             for (int i = 0; i < items.Length; i++)
             {
+                // First element shares the line with '(' (#1297).
                 if (i > 0)
+                {
                     sb.Append(',');
-                sb.Append('\n');
-                sb.Append(indentStr);
+                    sb.Append('\n');
+                    sb.Append(indentStr);
+                }
                 FormatObject(sb, items[i], childIndent, currentDepth + 1, seen);
             }
 
@@ -349,10 +355,13 @@ namespace Sharpy
             bool first = true;
             foreach (var item in (IEnumerable)obj)
             {
+                // First element shares the line with '{' (#1297).
                 if (!first)
+                {
                     sb.Append(',');
-                sb.Append('\n');
-                sb.Append(indentStr);
+                    sb.Append('\n');
+                    sb.Append(indentStr);
+                }
                 FormatObject(sb, item, childIndent, currentDepth + 1, seen);
                 first = false;
             }
@@ -390,10 +399,17 @@ namespace Sharpy
             {
                 for (int i = 0; i < count; i++)
                 {
+                    // The first element goes on the SAME line as the opening bracket; only the
+                    // others get a newline and the continuation indent (#1297). Emitting the newline
+                    // unconditionally made every wrapped container one line longer than CPython's,
+                    // for every element type — ints and strings diverged identically, so this was
+                    // never a float defect even though it was found through one (#1230).
                     if (i > 0)
+                    {
                         sb.Append(',');
-                    sb.Append('\n');
-                    sb.Append(indentStr);
+                        sb.Append('\n');
+                        sb.Append(indentStr);
+                    }
                     FormatObject(sb, GetListItem(obj, i), childIndent, currentDepth + 1, seen);
                 }
             }
@@ -403,8 +419,10 @@ namespace Sharpy
 
         private void FormatCompactSequence(StringBuilder sb, object obj, int count, int childIndent, int currentDepth, HashSet<int> seen, string indentStr)
         {
-            sb.Append('\n');
-            sb.Append(indentStr);
+            // No leading break: the first item shares the line with the opening bracket, exactly as
+            // in the non-compact path (#1297). `lineLength` therefore starts at the column just past
+            // that bracket rather than at the continuation indent, or the first line would be
+            // measured as if it began one indent in and would wrap early.
             int lineLength = childIndent;
             bool firstOnLine = true;
 
@@ -545,6 +563,23 @@ namespace Sharpy
                 return Builtins.Repr(s).Length;
             if (obj is bool b)
                 return b ? 4 : 5;
+
+            // Measure a float at the length it will PRINT, not at ToString()'s (#1230). `5.0`
+            // measured 1 ("5") but prints 3, so a float in a dict KEY position shifted the value's
+            // child-indent column left by the difference — `{5.0: [` aligned children at 5 where
+            // CPython uses 7. Formatting already routes through Builtins.FormatFloat (#1204), so
+            // reading the same authority here makes measure == format by construction rather than
+            // by two rules agreeing.
+            //
+            // Scope, measured rather than assumed: this does NOT move wrap decisions. A sweep of
+            // [5.0]*n across widths 20/25/30/40 found Sharpy and CPython agreeing on every
+            // wrap/no-wrap answer both before and after, so the one-line-vs-wrap path does not
+            // consult this method. Indent columns are the whole observable footprint.
+            if (obj is double d)
+                return Builtins.FormatFloat(d).Length;
+            if (obj is float f)
+                return Builtins.FormatFloat(f).Length;
+
             return obj.ToString()?.Length ?? 0;
         }
 
