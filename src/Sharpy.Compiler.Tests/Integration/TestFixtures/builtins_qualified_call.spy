@@ -1,0 +1,30 @@
+# A builtins-qualified call must mean exactly what the bare spelling means (#1322).
+#
+# The bare spelling short-circuits into BuiltinReturnTypeInference before any CLR overload
+# resolution runs. The qualified spelling used to skip that and resolve against the raw
+# discovered overload set instead, where Len(ICollection), Len(ISized) and Len(object) all
+# match a list[int] with nothing to rank them -- so `builtins.len(xs)` was SPY0353 "ambiguous
+# overload" with no shadowing involved at all, while `builtins.len("abc")` worked because
+# Len(string) is an exact match.
+#
+# Each pair below is the same call written both ways; the two lines must agree.
+import builtins
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(builtins.len(xs))
+    print(len(xs))
+
+    d: dict[str, int] = {"a": 1, "b": 2}
+    print(builtins.len(d))
+    print(len(d))
+
+    s: set[int] = {1, 2, 3, 4}
+    print(builtins.len(s))
+    print(len(s))
+
+    # The case that already worked -- an exact CLR overload match. Kept so a future change that
+    # fixes the collections by breaking this one cannot pass.
+    print(builtins.len("abc"))
+    print(len("abc"))

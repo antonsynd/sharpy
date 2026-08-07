@@ -1048,6 +1048,19 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// True for the synthetic <c>builtins</c> module — the one whose members are the same symbols
+    /// the bare spelling of a builtin resolves to.
+    /// </summary>
+    /// <remarks>
+    /// The <c>IsNetModule</c> half is what keeps a user's own <c>builtins.spy</c> out: a source
+    /// module is not a .NET module, so it keeps ordinary module resolution and does not inherit
+    /// builtin inference. Name alone would hand a user's module the builtins' semantics.
+    /// </remarks>
+    private static bool IsBuiltinsModule(ModuleSymbol moduleSymbol) =>
+        moduleSymbol.IsNetModule
+        && string.Equals(moduleSymbol.Name, "builtins", StringComparison.Ordinal);
+
+    /// <summary>
     /// The overload set an imported module exports under <paramref name="memberName"/>, trying the
     /// PascalCase spelling as well for .NET modules (mirroring the member lookup in the resolver).
     /// </summary>
@@ -1746,6 +1759,23 @@ internal partial class TypeChecker
             return null;
 
         var moduleSymbol = moduleType.Symbol;
+
+        // `builtins.len(xs)` must mean exactly what `len(xs)` means — the qualified spelling is the
+        // sanctioned way to reach a builtin that a local declaration has shadowed, so if the two
+        // spellings disagree the escape is worthless precisely when it is needed. The bare spelling
+        // short-circuits into BuiltinReturnTypeInference (see CheckCall) before any CLR overload
+        // resolution runs. The qualified one used to skip that and resolve against the raw
+        // discovered overload set, where Len(ICollection), Len(ISized) and Len(object) all match a
+        // list[int] with nothing to rank them — SPY0353, with no shadowing involved (#1322).
+        // The bare spelling is the definition; this makes the qualified one agree.
+        if (IsBuiltinsModule(moduleSymbol))
+        {
+            var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
+                memberAccess.Member, argTypes, _typeInference);
+            if (builtinReturn != null)
+                return builtinReturn;
+        }
+
         if (!moduleSymbol.FunctionOverloads.TryGetValue(memberAccess.Member, out var overloads) || overloads.Count <= 1)
             return null;
 

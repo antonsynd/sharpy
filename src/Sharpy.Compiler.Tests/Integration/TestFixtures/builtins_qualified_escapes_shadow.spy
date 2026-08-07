@@ -1,0 +1,22 @@
+# The point of the qualified spelling: it is the escape that makes shadowing a builtin
+# RECOVERABLE in the value namespace (#1322).
+#
+# SPY0483 warns rather than refuses precisely because `builtins.len` gets the builtin back.
+# That justification was false while the qualified call was SPY0353 for collections -- the
+# escape failed for exactly the types most likely to need it. This fixture pins the two
+# halves together so the warning's rationale cannot silently stop being true.
+import builtins
+
+
+def len(x: int) -> int:
+    return x * 100
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+
+    # The builtin, reached past the shadow.
+    print(builtins.len(xs))
+
+    # The user's function, reached by the bare spelling.
+    print(len(7))
