@@ -490,7 +490,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (192, 5) - (192, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<int>(r);
 #line (193, 5) - (193, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(r, 42));
+                Xunit.Assert.True(@operator.Eq(((int)r!), 42));
 #line hidden
             }
 
@@ -502,7 +502,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (198, 5) - (198, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<int>(r);
 #line (199, 5) - (199, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(r, -7));
+                Xunit.Assert.True(@operator.Eq(((int)r!), -7));
 #line hidden
             }
 
@@ -516,7 +516,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (205, 5) - (205, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 long value = 9999999999L;
 #line (206, 5) - (206, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(r, value));
+                Xunit.Assert.True(@operator.Eq(((long)r!), value));
 #line hidden
             }
 
@@ -528,7 +528,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (211, 5) - (211, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<double>(r);
 #line (212, 5) - (212, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(r, 3.14d));
+                Xunit.Assert.True(@operator.Eq(((double)r!), 3.14d));
 #line hidden
             }
 
@@ -540,7 +540,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (217, 5) - (217, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<double>(r);
 #line (218, 5) - (218, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(r, 1.5e10d));
+                Xunit.Assert.True(@operator.Eq(((double)r!), 1.5e10d));
 #line hidden
             }
 
@@ -552,7 +552,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (223, 5) - (223, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<int>(r);
 #line (224, 5) - (224, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.True(@operator.Eq(r, 0));
+                Xunit.Assert.True(@operator.Eq(((int)r!), 0));
 #line hidden
             }
 
@@ -986,7 +986,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }));
 #line (416, 5) - (416, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<ValueError>(ex);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.ValueError>(ex);
 #line hidden
             }
 
