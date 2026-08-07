@@ -428,26 +428,47 @@ internal static class ClrTypeHelper
 
     private static Type? FindGenericDefinitionInClosureUncached(Type type, string definitionFullName)
     {
-        for (var current = type; current != null; current = current.BaseType)
+        foreach (var supertype in SupertypeClosureOf(type))
         {
-            if (current.IsGenericType
-                && current.GetGenericTypeDefinition().FullName == definitionFullName)
+            if (supertype.IsGenericType
+                && DefinitionIsOrigin(supertype.GetGenericTypeDefinition(), definitionFullName))
             {
-                return current.GetGenericTypeDefinition();
-            }
-        }
-
-        foreach (var implemented in type.GetInterfaces())
-        {
-            if (implemented.IsGenericType
-                && implemented.GetGenericTypeDefinition().FullName == definitionFullName)
-            {
-                return implemented.GetGenericTypeDefinition();
+                return supertype.GetGenericTypeDefinition();
             }
         }
 
         return null;
     }
+
+    /// <summary>
+    /// A type's own supertype closure: the type itself, its base chain, then every interface it
+    /// implements (including inherited ones — <see cref="Type.GetInterfaces"/> flattens). This is the
+    /// ONE enumeration of "what a CLR type can be seen as": <see cref="FindGenericDefinitionInClosure"/>
+    /// walks it for assignability, and <c>GenericTypeInferenceService.TryUnifyViaClrReflection</c> walks
+    /// it (over an open definition) to bind type arguments through a provenance-carrying formal. Keeping
+    /// both consumers on this method is the #1145 discipline — a second hand-rolled walk is how the two
+    /// answers drift apart.
+    /// <para>The type itself is yielded FIRST because a formal can name the actual's own definition
+    /// rather than one of its interfaces (a CLR parameter typed <c>List&lt;T&gt;</c> against a
+    /// <c>List[int]</c> actual).</para>
+    /// </summary>
+    internal static IEnumerable<Type> SupertypeClosureOf(Type type)
+    {
+        for (var current = type; current != null && current != typeof(object); current = current.BaseType)
+            yield return current;
+
+        foreach (var implemented in type.GetInterfaces())
+            yield return implemented;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="definition"/> is the CLR definition a provenance stamp names. The rule —
+    /// full-name equality on the OPEN definition — is deliberately the only spelling of this comparison
+    /// (#1145): <see cref="FindGenericDefinitionInClosure"/> and the unification path both resolve a
+    /// provenance string through here, so what satisfies one satisfies the other.
+    /// </summary>
+    internal static bool DefinitionIsOrigin(Type definition, string originFullName)
+        => definition.FullName == originFullName;
 
     /// <summary>
     /// Gets the element type if the given type is <c>Sharpy.Iterator&lt;T&gt;</c>

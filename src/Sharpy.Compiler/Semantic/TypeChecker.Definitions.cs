@@ -1762,10 +1762,12 @@ internal partial class TypeChecker
 
             if (propertyType is UnknownType)
             {
-                propertyType = defaultType;
+                // Inferred: bind as the Sharpy collection the value is typed as, exactly like the
+                // inferred-assignment rule (#1251) — a CLR iterator must not become the property's type.
+                propertyType = NativeCollectionForm(defaultType);
                 if (propDef.Type != null)
                 {
-                    _semanticInfo.SetTypeAnnotation(propDef.Type, defaultType);
+                    _semanticInfo.SetTypeAnnotation(propDef.Type, propertyType);
                 }
             }
             else if (!IsAssignable(defaultType, propertyType))
@@ -1776,6 +1778,10 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.TypeMismatch,
                     span: propDef.DefaultValue.Span);
             }
+
+            // PropertyDef is its own AST node — the variable-declaration path's recording (#1251)
+            // never reaches a property initializer.
+            RecordSequenceMaterialization(propDef.DefaultValue, defaultType, propertyType);
         }
 
         // Update the symbol registered by NameResolver (pass 1). Getter and
@@ -1931,6 +1937,10 @@ internal partial class TypeChecker
                         code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: propDef.DefaultValue.Span);
                 }
+
+                // PropertyDef is its own AST node — the variable-declaration path's recording (#1251)
+                // never reaches a property initializer.
+                RecordSequenceMaterialization(propDef.DefaultValue, defaultType, propertyType);
             }
 
             if (!propDef.Observers.IsEmpty)

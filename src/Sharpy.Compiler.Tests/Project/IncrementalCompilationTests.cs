@@ -1402,6 +1402,70 @@ def main():
     }
 
     [Fact]
+    public void IncrementalMode_ClrOriginFormal_UnifiesOnWarmCacheBuild()
+    {
+        // #1252's warm-cache face (plan-8ecf0f): unification through a provenance-carrying formal
+        // must still succeed on a build served from the symbol cache — a missing schema bump plus a
+        // stale cache reproduces the original silent decline, and a serializer round-trip test alone
+        // cannot see that. Layout mirrors GenericFunctionExport_StaysGenericAcrossReload: build once
+        // (both files compiled, symbols cached), then edit only the entry file so it recompiles with
+        // the library served from the DESERIALIZED cache while the bridge re-maps the BCL formals.
+        var libFile = CreateTempFile("seqhelpers.spy", @"
+def label(n: int) -> str:
+    return str(n)
+");
+        var mainFile = CreateTempFile("main.spy", @"
+import seqhelpers
+from system.collections.generic import List
+
+def main():
+    lst: List[int] = List[int]()
+    lst.add(1)
+    inner: List[int] = List[int]()
+    inner.add(9)
+    print(list(lst.select_many(lambda x: inner, lambda a, b: seqhelpers.label(a + b))))
+");
+
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = new List<string> { mainFile, libFile },
+            Configuration = "Debug"
+        };
+
+        var options = new CompilerOptions { Incremental = true };
+        var compiler = new Compiler(options, NullLogger.Instance);
+
+        var result1 = compiler.CompileProject(config);
+        Assert.True(result1.Success,
+            "Cold build of the #1252 shape must succeed: " +
+            string.Join("; ", result1.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Edit only the entry file: seqhelpers is unchanged and cache-served. The added second
+        // select_many call proves unification through the CLR-origin formal on the warm build —
+        // the exact decline the original bug produced silently.
+        File.WriteAllText(mainFile, @"
+import seqhelpers
+from system.collections.generic import List
+
+def main():
+    lst: List[int] = List[int]()
+    lst.add(1)
+    inner: List[int] = List[int]()
+    inner.add(9)
+    print(list(lst.select_many(lambda x: inner, lambda a, b: seqhelpers.label(a + b))))
+    print(list(lst.select_many(lambda x: inner, lambda a, b: seqhelpers.label(a * b))))
+");
+
+        var result2 = compiler.CompileProject(config);
+        Assert.True(result2.Success,
+            "Warm-cache build must still unify through the CLR-origin formal: " +
+            string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+    }
+
+    [Fact]
     public void IncrementalMode_TransitiveDependency_RecompilesDependents()
     {
         // Test that when a dependency changes, files that import it are also recompiled.

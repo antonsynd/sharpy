@@ -1,17 +1,24 @@
 import sys
 
-# Ported from SysModuleTests.cs (#843). 14/21 ported, 7 omitted.
+# Ported from SysModuleTests.cs (#843). 16/21 ported, 5 omitted.
 # Stdout_IsConsoleOut/Stderr_IsConsoleError BeSameAs(Console.Out/Error) identity
 # checks are replaced by weaker not-None assertions (reference identity has no
 # Sharpy surface; behavioral non-null is verifiable).
 #
-# 7 omitted: Print_WithStderrFile/Stdout_WriteRoutesToConsoleOut (StringWriter +
-# Console.SetError/SetOut redirect — no Sharpy surface); Argv_ReturnsCopy/
-# Path_ReturnsCopy (reference identity via NotBeSameAs — no Sharpy surface);
-# Argv_MutatingCopy_DoesNotAffectSource (array[0] mutation + reference identity
-# — CLR array semantics, no Sharpy surface); Getsizeof_Null_ReturnsZero (null
-# arg to non-nullable param, Axiom 3); Executable_MatchesArgvZeroOrEmpty
-# (string.IsNullOrEmpty + ternary, C#-specific).
+# The copy-contract tests (Argv_ReturnsCopy/Path_ReturnsCopy/
+# Argv_MutatingCopy_DoesNotAffectSource) were originally omitted as
+# reference-identity-only — true while argv/path were CLR string[] with no
+# Sharpy mutation surface. #1256 made both list[str], so `.append()` IS a
+# Sharpy surface and the contract is behaviorally testable: mutate what a
+# caller received, re-read, unchanged (test_argv_mutating_copy_* /
+# test_path_mutating_copy_* below).
+#
+# 5 omitted: Print_WithStderrFile/Stdout_WriteRoutesToConsoleOut (StringWriter +
+# Console.SetError/SetOut redirect — no Sharpy surface); Getsizeof_Null_ReturnsZero
+# (null arg to non-nullable param, Axiom 3); Executable_MatchesArgvZeroOrEmpty
+# (string.IsNullOrEmpty + ternary, C#-specific); the two ReturnsCopy
+# reference-identity spellings themselves (NotBeSameAs — subsumed by the
+# behavioral mutation tests above).
 
 
 # --- Streams ---
@@ -41,6 +48,16 @@ def test_argv_is_not_none():
 @test
 def test_argv_has_at_least_program_name():
     assert len(sys.Argv) > 0
+
+
+@test
+def test_argv_mutating_copy_does_not_affect_source():
+    # The copy contract (#1256): each access returns a fresh list, so mutating
+    # what a caller received cannot reach the backing store.
+    copy = sys.Argv
+    before = len(copy)
+    copy.append("injected")
+    assert len(sys.Argv) == before
 
 
 # --- Version ---
@@ -82,6 +99,15 @@ def test_path_is_not_none():
 @test
 def test_path_is_not_empty():
     assert len(sys.Path) > 0
+
+
+@test
+def test_path_mutating_copy_does_not_affect_source():
+    # Same copy contract as argv (#1256): sys.path is a fresh list per access.
+    copy = sys.Path
+    before = len(copy)
+    copy.append("/injected")
+    assert len(sys.Path) == before
 
 
 # --- Maxsize ---

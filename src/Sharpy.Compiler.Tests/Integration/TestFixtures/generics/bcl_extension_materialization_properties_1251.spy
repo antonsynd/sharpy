@@ -1,0 +1,36 @@
+# #1251 remediation: auto-properties are Sharpy collection slots too. The batch's enumeration
+# ("annotated bindings, reassignment, returns, call arguments, field initializers") missed
+# PropertyDef — a distinct AST node checked by CheckModuleProperty/CheckClassProperty, neither
+# of which recorded the materialization lowering, so a CLR sequence initializer leaked CS0266
+# behind SPY0908 in exactly the shape the sibling fixtures pin as fixed. Two cells: class
+# auto-property and module auto-property. The append is the proof of real listness — the silent
+# failure mode bound LINQ's pure Enumerable.Append and discarded the result.
+from system.collections.generic import List
+
+
+def make_source() -> List[int]:
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(4)
+    return lst
+
+
+class Holder:
+    property xs: list[str] = make_source().select[str](lambda x: str(x))
+
+    # A class FIELD initializer rides CheckVariableDeclaration and was covered by path reuse all
+    # along — pinned here so the reuse cannot silently un-share (the audit found the mechanism
+    # proven but no fixture holding it).
+    ys: list[str] = make_source().select[str](lambda x: str(x))
+
+
+property module_xs: list[str] = make_source().select[str](lambda x: str(x))
+
+
+def main() -> None:
+    h: Holder = Holder()
+    print(h.xs)
+    h.xs.append("tail")
+    print(h.xs)
+    print(h.ys)
+    print(module_xs)

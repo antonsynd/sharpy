@@ -500,7 +500,9 @@ internal class GenericTypeInferenceService
             return false;
         }
 
-        foreach (var clrInterface in ClrSupertypesOf(clrDefinition))
+        // One closure walk for the whole compiler (#1145): Discovery owns the enumeration, exactly
+        // as it owns the origin-match rule inside FormalMatchesClrDefinition.
+        foreach (var clrInterface in ClrTypeHelper.SupertypeClosureOf(clrDefinition))
         {
             if (!clrInterface.IsGenericType)
                 continue;
@@ -543,27 +545,15 @@ internal class GenericTypeInferenceService
     /// Whether a formal generic names the CLR definition <paramref name="clrDefinition"/>. Provenance
     /// decides when the formal has it — the formal's Sharpy spelling is the bridge's collapsed name
     /// (<c>list</c>) while the CLR definition's is its own (<c>IEnumerable`1</c>), so they never agree
-    /// textually. The Sharpy-name comparison remains as the alternative for every formal written in
+    /// textually; the match rule itself is Discovery's (<see cref="ClrTypeHelper.DefinitionIsOrigin"/>),
+    /// the same one assignability resolves provenance through, so the two consumers cannot drift
+    /// (#1145). The Sharpy-name comparison remains as the alternative for every formal written in
     /// source, which is what unified through CLR interfaces before provenance existed.
     /// </summary>
     private static bool FormalMatchesClrDefinition(GenericType formal, Type clrDefinition)
-        => (formal.ClrOriginTypeName is { Length: > 0 } origin && clrDefinition.FullName == origin)
+        => (formal.ClrOriginTypeName is { Length: > 0 } origin
+                && ClrTypeHelper.DefinitionIsOrigin(clrDefinition, origin))
            || ClrNameHelper.StripArity(clrDefinition.Name) == formal.Name;
-
-    /// <summary>
-    /// The open definition itself, its base chain, and its interfaces — the closure a formal can name.
-    /// The definition is yielded FIRST because a formal can name the actual's own definition rather than
-    /// one of its interfaces (a CLR parameter typed <c>List&lt;T&gt;</c> against a <c>List[int]</c>
-    /// actual), and <c>GetInterfaces</c> alone never returns the type itself.
-    /// </summary>
-    private static IEnumerable<Type> ClrSupertypesOf(Type clrDefinition)
-    {
-        for (var current = clrDefinition; current != null && current != typeof(object); current = current.BaseType)
-            yield return current;
-
-        foreach (var implemented in clrDefinition.GetInterfaces())
-            yield return implemented;
-    }
 
     /// <summary>
     /// Unify two function types (e.g., (T) -> U with (str) -> int).
