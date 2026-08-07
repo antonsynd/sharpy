@@ -4,7 +4,8 @@
 # nulling the AST, so every LSP feature on the file went dark at once. If anything
 # ever appends the byte back, this fixture silently stops testing its own premise;
 # UnterminatedFinalLineParserTests asserts the same shapes at byte level in-process,
-# and NoTrailingNewlineFixtureTests asserts this file's last byte directly.
+# and its NoTrailingNewlineFixture_StillHasNoTrailingNewline test asserts this
+# file's last byte directly.
 def main() -> None:
     print(Config.LIMIT)
 

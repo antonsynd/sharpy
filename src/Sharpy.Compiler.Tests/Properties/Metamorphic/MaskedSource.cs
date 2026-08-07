@@ -234,8 +234,9 @@ internal sealed class MaskedSource
     /// Length of the string-prefix run immediately before the quote at <paramref name="quoteIndex"/>
     /// (0, 1 or 2 characters). A run counts only when it is a whole word — the <c>r</c> of
     /// <c>expr"x"</c> would be part of an identifier, not a prefix — and only for the letters the
-    /// language actually uses as prefixes, in either case: <c>r b f u t</c> and the two-letter
-    /// combinations built from them (<c>rb</c>, <c>br</c>, <c>fr</c>, <c>rf</c>).
+    /// language actually uses as prefixes, in either case: <c>r b f u t</c>. Any two-letter run of
+    /// those letters is accepted (the scan does not validate which pairings are legal spellings —
+    /// masking a byte too many on an illegal prefix is harmless, unmasking one is not).
     /// </summary>
     private static int PrefixLength(string source, int quoteIndex)
     {

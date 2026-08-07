@@ -230,6 +230,7 @@ public class DocStringClassificationTests
     [InlineData("enum Color:\n    \"doc\"\n    RED = 1\n")]
     [InlineData("enum Color:\n    (\"doc\")\n    RED = 1\n")]
     [InlineData("enum Color:\n    r\"doc\"\n    RED = 1\n")]
+    [InlineData("enum Color:\n    \"\"\"doc\"\"\"\n    RED = 1\n")]
     public void EnumDocString_IsClassifiedByTheSameAuthority(string source)
     {
         var parser = new ParserNs.Parser(new LexerNs.Lexer(source).TokenizeAll());
@@ -245,6 +246,7 @@ public class DocStringClassificationTests
     [Theory]
     [InlineData("union Shape:\n    \"doc\"\n    case Circle(radius: float)\n")]
     [InlineData("union Shape:\n    (\"doc\")\n    case Circle(radius: float)\n")]
+    [InlineData("union Shape:\n    \"\"\"doc\"\"\"\n    case Circle(radius: float)\n")]
     public void UnionDocString_IsClassifiedByTheSameAuthority(string source)
     {
         var parser = new ParserNs.Parser(new LexerNs.Lexer(source).TokenizeAll());
