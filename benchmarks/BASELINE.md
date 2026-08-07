@@ -321,7 +321,13 @@ Located in `src/Sharpy.Compiler.Benchmarks/Corpus/`:
 
 | Benchmark | Mean | Lines/sec |
 |-----------|------|-----------|
-| Combined Corpus | ~35 ms | ~20,000 |
+| ~~Combined Corpus~~ | ~~~35 ms~~ | ~~~20,000~~ |
+
+> **SUPERSEDED (2026-08-07) — SHAPE CHANGE, not a refresh. PENDING RE-RECORD (quiet machine).**
+> The concatenated input never compiled (9× SPY0204 and more), so this number timed a partial
+> pipeline; and the row now measures **six independent compilations rather than one concatenated
+> unit**, so the replacement figure is not comparable to this one. Full reasoning in the
+> 2026-08-07 correction under *LSP Analysis Latency* below (#1224).
 
 ## Performance Notes
 
@@ -402,8 +408,11 @@ reparse) stays roadmap, so a structural edit still re-runs a full whole-project 
 | Path | Input | median | min | max |
 |------|-------|-------:|----:|----:|
 | single-file full analysis | 227-line file (`GetAnalysisAsync`, no incremental reuse) | 2.3 ms † | 2.1 ms | 6.0 ms |
-| project full reanalysis | 6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`) | 0.9 ms | 0.6 ms | 1.4 ms |
-| project no-change edit skip | 6-file project, comment/whitespace edit to `stats.spy` (fast path returns without reanalysis) | 0.0 ms ‡ | 0.0 ms | 0.0 ms |
+| ~~project full reanalysis~~ | ~~6-file project, 54 lines total (`OnDocumentChangedAsync` → `AnalyzeProject`)~~ | ~~0.9 ms~~ | ~~0.6 ms~~ | ~~1.4 ms~~ |
+| ~~project no-change edit skip~~ | ~~6-file project, comment/whitespace edit to `stats.spy` (fast path returns without reanalysis)~~ | ~~0.0 ms ‡~~ | ~~0.0 ms~~ | ~~0.0 ms~~ |
+
+> **Both project rows are SUPERSEDED — see the 2026-08-07 correction below.**
+> **PENDING RE-RECORD (quiet machine).**
 
 ### Correction (2026-07-31): the single-file row above measured neither a full analysis nor the server's configuration
 
@@ -439,6 +448,53 @@ All four combinations, so the effect of each defect is separable:
 The corrected figure is **~6× the recorded 2.3 ms**. Reference loading alone accounts for ~5 ms of
 the difference — more than ten times the ~0.4 ms residual footnote † blames, and roughly twice the
 entire number that row has been reporting.
+
+### Correction (2026-08-07): the two project rows were poisoned the same way, and nobody checked
+
+> **Status:** rows struck through above. **PENDING RE-RECORD (quiet machine)** — replacement
+> figures are deliberately absent rather than approximate. A precise-looking number measured on a
+> loaded machine would be laundered by this very note.
+
+The 2026-07-31 correction directly above is titled *"the **single-file** row above…"*, and that is
+exactly how far it reached. `LspAnalysisLatencyBaselineHarness` builds its inputs in **two**
+constructors: #1140 corrected `MediumFileSource` (adding `ValidMediumFileSource`) and left
+`MediumProjectFiles`, in the same file, carrying the identical defect —
+
+```
+("shapes.spy", … "        self.a: Vec = a\n" …)
+```
+
+— three SPY0107s, exactly the spelling the correction above describes. `registry.spy` and
+`main.spy` both import `Triangle`, so `ProjectCompiler.ParseAllFiles` returned false and
+`AnalyzeProject` returned after phase 1. **Both project rows timed a parse and an early return**
+(#1224, umbrella #1145 for the parallel-site class).
+
+Neither row could have caught it. Both "guarded" themselves with `Assert.Empty(affected)` and an
+`affectedFiles=0` log assertion — which is precisely what a project that never analyzed also
+produces. They are now replaced by a positive assertion that every project file analyzed.
+
+**The tell was in the numbers, not the code.** A 6-file project reanalyzing in 0.9 ms sat next to a
+corrected single-file analysis of 14.4 ms — one project analyzing 16× faster than one file in it.
+That is not a fast path; it is physically implausible, and implausibility in the *favourable*
+direction is evidence of a broken measurement. Recorded benchmarks should be sanity-checked
+against each other this way: a figure too good to be true generally isn't.
+
+### Correction (2026-08-07): the throughput row measures a different shape now
+
+> **Status:** superseded, **PENDING RE-RECORD (quiet machine)**.
+
+`ThroughputBenchmarks` concatenated all six `Corpus/*.spy` files into one compilation unit. That
+input has never compiled: five of the six define `main`, and `large_lexer_corpus.spy` additionally
+redefines `is_prime`, `gcd`, `lcm`, `factorial` and `Point` — 9 SPY0204 redefinition errors plus
+SPY0220/SPY0203 fallout. Compilation stopped in semantic analysis, so every recorded
+"Combined Corpus" number timed a partial pipeline, under a label describing a 636-line input as
+"~160 lines".
+
+**This is a shape change, not a refresh.** Concatenation was never repairable in place — the
+members are independent programs that collide by construction — so the row now compiles the corpus
+**member by member: six independent compilations, not one concatenated unit.** The forthcoming
+number is therefore *not comparable* to the struck-through one, and the difference between them
+says nothing about compiler performance. Do not read a delta across this boundary.
 
 #### Per-stage attribution of the corrected row
 

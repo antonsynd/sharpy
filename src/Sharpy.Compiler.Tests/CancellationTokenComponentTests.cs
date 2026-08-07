@@ -152,6 +152,11 @@ public class CancellationTokenComponentTests
         var lexer = new SharpyLexer(sb.ToString(), NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
 
+        // This tokenization is not cancelled, so it is real setup rather than the thing under
+        // test: a truncated token stream would leave the parser with nothing to do and the
+        // promptness assertion below would pass for the wrong reason (#1224).
+        Assert.Equal(TokenType.Eof, tokens[^1].Type);
+
         // Parse with a pre-cancelled token
         var cancelledToken = CreateCancelledToken();
         var parser = new SharpyParser(tokens, NullLogger.Instance, cancellationToken: cancelledToken);
@@ -248,6 +253,12 @@ public class CancellationTokenComponentTests
         // But if it was cancelled, it should have terminated reasonably promptly.
         if (!result.Success)
         {
+            // The failure has to be the cancellation itself. Without this, an input that stopped
+            // compiling for an unrelated reason would satisfy the timing assertion below forever,
+            // while timing an error path rather than a cancelled compile (#1224).
+            Assert.Contains(result.Diagnostics.GetErrors(),
+                d => d.Code == DiagnosticCodes.Infrastructure.CompilationCancelled);
+
             Assert.True(sw.ElapsedMilliseconds < 2000,
                 $"Cancelled compilation should terminate promptly, took {sw.ElapsedMilliseconds}ms");
         }
