@@ -75,7 +75,7 @@ namespace Sharpy
         /// <para>
         /// Absorbing the case here rather than throwing is what lets the emitter emit ONE
         /// invocation splicing each operand once (#1228). Previously the emitter had to wrap the
-        /// call in a <c>y &lt; 0</c> ternary dispatching between this method and a double path,
+        /// call in a negative-exponent ternary dispatching between this method and a double path,
         /// which regenerated both operands — and regeneration is not pure, since it can re-push
         /// hoisted statements that then run unconditionally.
         /// </para>

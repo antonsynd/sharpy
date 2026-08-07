@@ -603,6 +603,75 @@ FloorDiv(-1.0, 0.1)  // -10.0
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
 
+### `floor_div(x: int, y: int) -> int`
+
+Returns the floored quotient of *x* divided by
+*y*, computed entirely in integer arithmetic.
+
+**Parameters:**
+
+- `x` (int) -- The dividend
+- `y` (int) -- The divisor
+
+**Returns:** The floored quotient
+
+```python
+FloorDiv(7, 3)    // 2
+FloorDiv(-7, 3)   // -3   (floored, not truncated)
+FloorDiv(7, -3)   // -3
+FloorDiv(-7, -3)  // 2
+```
+
+!!! note
+    This is the quotient half of `Divmod(int, int)` and shares its algorithm,
+    so the divmod identity `x == (x // y) * y + (x % y)` established in #1153 holds
+    for integers against `FloorMod(int, int)`.
+    
+    
+    Integer arithmetic rather than `(int)Math.Floor((double)x / y)` (#1226): the double
+    round-trip loses precision once the operands exceed 2^53, and it saturates instead of
+    reporting at the `int.MinValue / -1` boundary. The zero guard lives HERE rather than
+    in a caller-side ternary so the emitter splices each operand exactly once (#1216).
+    
+    
+    `int.MinValue / -1` is decided, not inherited. The exact quotient (2147483648) does
+    not fit `int`, and .NET raises `OverflowException` for it even in an unchecked
+    context — division at MinValue by -1 is a hardware trap, unlike `*` and `+`,
+    which wrap. So there is no "match the runtime wrap" option available. This raises
+    `OverflowError`, matching `CheckedIntPow(int, int)`'s
+    "diagnose, don't saturate" contract; the behavior it replaces returned
+    `int.MaxValue`, a silently wrong value. CPython, whose integers are arbitrary
+    precision, computes 2147483648 exactly.
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+- `OverflowError` -- Thrown when the quotient does not fit an `int`, which happens only for
+`int.MinValue / -1`.
+
+### `floor_div(x: long, y: long) -> long`
+
+Returns the floored quotient of *x* divided by
+*y*, computed entirely in integer arithmetic.
+See the `FloorDiv(int, int)` overload for the full contract.
+
+**Parameters:**
+
+- `x` (long) -- The dividend
+- `y` (long) -- The divisor
+
+**Returns:** The floored quotient
+
+!!! note
+    Exact across the whole `long` range — the `(long)Math.Floor((double)x / y)`
+    form it replaces went through a double and so was wrong above 2^53 (#1226).
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+- `OverflowError` -- Thrown when the quotient does not fit a `long`, which happens only for
+`long.MinValue / -1`.
+
 ### `floor_div(x: float32, y: float32) -> float32`
 
 Returns the floored quotient of *x* divided by
@@ -1463,15 +1532,27 @@ semantics for fixed-width integers.
 **Parameters:**
 
 - `x` (int) -- The base.
-- `y` (int) -- The exponent. Must be non-negative; negative exponents
-are handled by the caller's floating-point path (e.g. `2 ** -1 == 0.5`).
+- `y` (int) -- The exponent. A negative exponent is handled here rather than by the
+caller (#1228) — see the remarks.
 
 **Returns:** x raised to the power y.
+
+!!! note
+    A negative exponent returns the truncating double-path value, which is the spec's rule
+    for `int ** int`: `2 ** -1` is `0`, not `0.5`
+    (arithmetic_operators.md, "Integer ** negative exponent"). This is a DELIBERATE
+    divergence from CPython, where `2 ** -1` is the float `0.5`.
+    
+    
+    Absorbing the case here rather than throwing is what lets the emitter emit ONE
+    invocation splicing each operand once (#1228). Previously the emitter had to wrap the
+    call in a negative-exponent ternary dispatching between this method and a double path,
+    which regenerated both operands — and regeneration is not pure, since it can re-push
+    hoisted statements that then run unconditionally.
 
 **Raises:**
 
 - `OverflowError` -- The result does not fit in an `int`.
-- `System.ArgumentOutOfRangeException` -- y is negative.
 
 ### `checked_int_pow(x: long, y: long) -> long`
 
@@ -1482,14 +1563,14 @@ for semantics; an out-of-range result raises `OverflowError`.
 **Parameters:**
 
 - `x` (long) -- The base.
-- `y` (long) -- The exponent. Must be non-negative.
+- `y` (long) -- The exponent. A negative exponent returns the truncating double-path
+value, as in `CheckedIntPow(int, int)` (#1228).
 
 **Returns:** x raised to the power y.
 
 **Raises:**
 
 - `OverflowError` -- The result does not fit in a `long`.
-- `System.ArgumentOutOfRangeException` -- y is negative.
 
 ### `range(stop: int) -> RangeIterator`
 

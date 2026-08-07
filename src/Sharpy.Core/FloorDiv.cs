@@ -83,7 +83,7 @@ namespace Sharpy
         /// in a caller-side ternary so the emitter splices each operand exactly once (#1216).
         /// </para>
         /// <para>
-        /// <c>int.MinValue / -1</c> is decided, not inherited. Its true quotient (2147483648) does
+        /// <c>int.MinValue / -1</c> is decided, not inherited. The exact quotient (2147483648) does
         /// not fit <c>int</c>, and .NET raises <c>OverflowException</c> for it even in an unchecked
         /// context — division at MinValue by -1 is a hardware trap, unlike <c>*</c> and <c>+</c>,
         /// which wrap. So there is no "match the runtime wrap" option available. This raises
