@@ -1,0 +1,47 @@
+# json.dumps spells floats exactly as CPython does (#1229).
+#
+# Every expected value below was produced by running the equivalent CPython:
+#   python3 -c "import json; print(json.dumps(<value>))"      (CPython 3.12.13)
+# json.dumps and repr agree in CPython, so Builtins.FormatFloat — which implements repr's rule — is
+# the authority this routes through, with no wire-format adjustment.
+#
+# What this replaced diverged on two independent axes, both pinned here:
+#   * CASE:   .NET's ToString("R") spells the exponent E+20; CPython spells it e+20.
+#   * LAYOUT: .NET stays positional at 1e16 (10000000000000000); CPython has already switched to
+#             exponent form there. 1e15 vs 1e16 is the exact band boundary, so both sides are pinned.
+import json
+
+
+def main() -> None:
+    # Exponent band — the case divergence.
+    print(json.dumps(1e20))
+    print(json.dumps(1e17))
+
+    # The layout boundary: 1e16 is the first exponent-form value, 1e15 the last positional one.
+    print(json.dumps(1e16))
+    print(json.dumps(1e15))
+
+    # Small values: 1e-4 is still positional, 1e-5 has crossed over.
+    print(json.dumps(1e-4))
+    print(json.dumps(1e-5))
+
+    # A mantissa that already carries digits keeps them.
+    print(json.dumps(2.5e-10))
+    print(json.dumps(1.5e20))
+
+    # Ordinary and whole values. The `.0` is FormatFloat's contract, not a separate append.
+    print(json.dumps(0.1))
+    print(json.dumps(1.0))
+    print(json.dumps(5.0))
+    print(json.dumps(3.14159))
+
+    # Signed zero survives, both ways.
+    print(json.dumps(-0.0))
+    print(json.dumps(0.0))
+
+    # Negative exponent form, and a far-out magnitude.
+    print(json.dumps(-1e20))
+    print(json.dumps(1e100))
+
+    # Floats inside a container take the same path.
+    print(json.dumps([1e20, 5.0, 1e16, 3.14159]))

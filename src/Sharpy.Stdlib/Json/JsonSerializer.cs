@@ -78,7 +78,7 @@ namespace Sharpy
 
             if (value is float f)
             {
-                SerializeDouble(sb, f);
+                SerializeSingle(sb, f);
                 return;
             }
 
@@ -198,6 +198,29 @@ namespace Sharpy
             sb.Append('"');
         }
 
+        /// <summary>
+        /// Serializes a finite double using the one float-formatting authority (#1229).
+        /// </summary>
+        /// <remarks>
+        /// <c>json.dumps</c> spells a float exactly as <c>repr</c> does in CPython, and
+        /// <see cref="Builtins.FormatFloat(double)"/> IS that rule — so the authority applies here
+        /// verbatim, with no wire-format adjustment.
+        ///
+        /// <para>
+        /// This replaces <c>ToString("R")</c> plus a hand-rolled <c>.0</c> append, which diverged on
+        /// two axes: .NET spells the exponent <c>E+20</c> where CPython spells it <c>e+20</c>, and
+        /// .NET stays positional at <c>1e16</c> (<c>10000000000000000</c>) where CPython has already
+        /// switched to exponent form. The append is deleted rather than kept — producing <c>1.0</c>
+        /// for a whole value is part of the authority's contract, so a second append would be a
+        /// redundant rule to keep in sync.
+        /// </para>
+        ///
+        /// <para>
+        /// Infinity and NaN still throw. That divergence from CPython (which emits
+        /// <c>Infinity</c>/<c>NaN</c> by default) is pre-existing, separate from float spelling, and
+        /// tracked by #1296 — deliberately untouched here.
+        /// </para>
+        /// </remarks>
         private static void SerializeDouble(StringBuilder sb, double d)
         {
             if (double.IsInfinity(d) || double.IsNaN(d))
@@ -206,15 +229,27 @@ namespace Sharpy
                     "Out of range float values are not JSON compliant");
             }
 
-            string repr = d.ToString("R", CultureInfo.InvariantCulture);
+            sb.Append(Builtins.FormatFloat(d));
+        }
 
-            // Ensure it looks like a float (has . or e)
-            if (repr.IndexOf('.') < 0 && repr.IndexOf('E') < 0 && repr.IndexOf('e') < 0)
+        /// <summary>
+        /// Serializes a finite single-precision float at its OWN precision (#1229).
+        /// </summary>
+        /// <remarks>
+        /// Widening to double before formatting changes the shortest-round-trip digits — the same
+        /// defect #1204 fixed in pprint — so the <c>float</c> overload of the authority is used rather
+        /// than letting the value widen at the call. A <c>float32</c> therefore serializes as the text
+        /// Sharpy's own <c>str()</c> would produce for it.
+        /// </remarks>
+        private static void SerializeSingle(StringBuilder sb, float f)
+        {
+            if (float.IsInfinity(f) || float.IsNaN(f))
             {
-                repr += ".0";
+                throw new ValueError(
+                    "Out of range float values are not JSON compliant");
             }
 
-            sb.Append(repr);
+            sb.Append(Builtins.FormatFloat(f));
         }
 
         private static void SerializeDict(

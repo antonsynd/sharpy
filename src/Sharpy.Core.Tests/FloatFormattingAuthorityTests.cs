@@ -67,15 +67,20 @@ public class FloatFormattingAuthorityTests
 
     private static readonly Exemption[] GeneralFloatFormatExemptions =
     {
+        // JsonSerializer.cs drained by #1229: json.dumps spells a float exactly as repr does, so it
+        // routes through the authority verbatim. Its NaN/Infinity throw remains, but that is a
+        // question about which VALUES are representable (#1296), not about how a finite one is spelled
+        // — which is why it never needed a formatting exemption.
         new(AuthorityFile, "the authority itself"),
-        new("JsonSerializer.cs", "#1229 — JSON wire format: its own number grammar, and NaN/Infinity are an error rather than a spelling"),
         new("YamlRoundtrip.cs", "#1229 — YAML wire format: NaN/Infinity are spelled .nan/.inf/-.inf"),
     };
 
     private static readonly Exemption[] PythonDotZeroExemptions =
     {
+        // JsonSerializer.cs drained by #1229: the `.0` append is deleted, not bypassed. Producing
+        // `1.0` for a whole value is part of FormatFloat's own contract, so keeping a second rule
+        // here would be a duplicate to keep in sync.
         new(AuthorityFile, "the authority itself"),
-        new("JsonSerializer.cs", "#1229 — keeps a whole value reloading as a float, not an int"),
         new("YamlRoundtrip.cs", "#1229 — keeps a whole value reloading as a float, not an int"),
     };
 
