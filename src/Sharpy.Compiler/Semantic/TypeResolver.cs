@@ -129,6 +129,25 @@ internal class TypeResolver
             return result;
         }
 
+        // `x: builtins.int` must resolve exactly as `x: int` does (#1321). Builtin types live in
+        // the BuiltinRegistry rather than in any module's Exports, so the module-qualified walk
+        // below cannot see them and every builtins-qualified annotation was SPY0202 — which left
+        // the type namespace with no escape at all once a name was shadowed, and that asymmetry is
+        // the whole justification for SPY0212 refusing what SPY0483 only warns about.
+        //
+        // Normalizing the qualified spelling to its bare tail and resolving that resolves it
+        // through the IDENTICAL path — primitives, generic builtins and registry types at once —
+        // instead of teaching three separate lookups about one module and getting two of them
+        // right. The result is recorded against the ORIGINAL annotation node as well, because
+        // SemanticInfo is keyed by reference and downstream reads hold the node the parser made.
+        if (TryStripBuiltinsQualifier(annotation.Name, out var bareTypeName))
+        {
+            var bareAnnotation = annotation with { Name = bareTypeName };
+            var bareResult = ResolveTypeAnnotation(bareAnnotation);
+            _semanticInfo.SetTypeAnnotation(annotation, bareResult);
+            return bareResult;
+        }
+
         // Try builtin types first
         if (TryResolveBuiltinType(annotation.Name, out var builtinType))
         {
@@ -289,6 +308,37 @@ internal class TypeResolver
     /// <see cref="ModuleSymbol.Exports"/> dictionaries, applying a PascalCase fallback for .NET
     /// modules (mirrors the module branch in TypeChecker.Expressions.Access.cs).
     /// </summary>
+    /// <summary>
+    /// Recognizes a <c>builtins.</c>-qualified type spelling and yields the bare name it stands for
+    /// (<c>builtins.int</c> → <c>int</c>), so it can be resolved by the ordinary builtin path.
+    /// </summary>
+    /// <remarks>
+    /// Three conditions, each load-bearing. The qualifier must be IMPORTED — with no
+    /// <c>import builtins</c> in scope the lookup fails and the annotation stays SPY0202, which is
+    /// the honest answer. It must be a .NET module, so a user's own <c>builtins.spy</c> keeps
+    /// ordinary module resolution rather than inheriting the registry's namespace. And the tail
+    /// must be a single segment: <c>builtins.a.b</c> is not a builtin type spelling, and letting it
+    /// through would strip the qualifier off a genuinely nested name.
+    /// </remarks>
+    private bool TryStripBuiltinsQualifier(string name, out string bareName)
+    {
+        const string prefix = "builtins.";
+        bareName = string.Empty;
+
+        if (!name.StartsWith(prefix, StringComparison.Ordinal))
+            return false;
+
+        if (_symbolTable.Lookup("builtins") is not ModuleSymbol { IsNetModule: true })
+            return false;
+
+        var tail = name[prefix.Length..];
+        if (tail.Length == 0 || tail.Contains('.', StringComparison.Ordinal))
+            return false;
+
+        bareName = tail;
+        return true;
+    }
+
     private TypeSymbol? LookupModuleQualifiedType(string dottedName)
     {
         if (!dottedName.Contains('.', StringComparison.Ordinal))

@@ -1,0 +1,10 @@
+# The negative half of #1321: the qualifier has to be IMPORTED.
+#
+# Without `import builtins` in scope, `builtins.int` names nothing and must stay SPY0202
+# rather than being silently rewritten to the bare builtin. The normalization is gated on the
+# qualifier actually resolving to the synthetic .NET builtins module, and this fixture is what
+# proves the gate is real -- without it the rewrite would fire on the mere spelling and this
+# program would compile.
+def main() -> None:
+    x: builtins.int = 5
+    print(x)

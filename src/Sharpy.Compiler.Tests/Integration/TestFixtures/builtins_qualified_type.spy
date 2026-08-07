@@ -1,0 +1,32 @@
+# A builtins-qualified TYPE must resolve exactly as its bare spelling does (#1321).
+#
+# Builtin types live in the BuiltinRegistry rather than in any module's Exports, so the
+# module-qualified type walk could not see them and every one of these annotations was
+# SPY0202 "Type not found" -- while the same qualification already worked in value position
+# (builtins.len(...)). That asymmetry left the TYPE namespace with no escape at all once a
+# name was shadowed, which is the entire reason SPY0212 refuses what SPY0483 merely warns
+# about.
+#
+# Each pair is the same annotation written both ways; the two must agree.
+import builtins
+
+
+def main() -> None:
+    a: builtins.int = 5
+    b: int = 5
+    print(a + b)
+
+    s: builtins.str = "hi"
+    t: str = "hi"
+    print(s + t)
+
+    # Generic builtins resolve through the same path, type arguments intact.
+    xs: builtins.list[int] = [1, 2, 3]
+    print(len(xs))
+
+    d: builtins.dict[str, int] = {"a": 1, "b": 2}
+    print(len(d))
+
+    # A non-primitive registry type, to show this is not a primitives-only patch.
+    bs: builtins.bytes = b"abcd"
+    print(len(bs))
