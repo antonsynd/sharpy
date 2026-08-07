@@ -73,13 +73,18 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, SemanticType> _sequenceMaterializations =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map the TYPE OPERAND node of an `isinstance(x, T)` call to the type test codegen must emit.
-    // Keyed on the operand expression (`call.Arguments[1]`, the same node an IsType narrowing fact
-    // retains) so the emitter and both narrowing resolvers read ONE decided type and none of them
-    // re-derives what the operand's syntax denotes (#1207, #1213, Critical Rule 2 pattern (b)).
+    // Map a TYPE OPERAND node to the type test codegen must emit. Keyed on the operand node so the
+    // emitter and both narrowing resolvers read ONE decided type and none of them re-derives what the
+    // operand's syntax denotes (#1207, #1213, Critical Rule 2 pattern (b)).
+    //
+    // The key is `Node`, not `Expression`, because a type operand is written two ways: as an
+    // expression (`isinstance(x, T)`'s second argument, the same node an IsType narrowing fact
+    // retains) and as a TypeAnnotation (`x is T`, `x as? T`, `case T():`, `except T:`). Both derive
+    // from Node, so one channel serves all four sites (#1235) — see TypeAnnotation's remarks.
+    //
     // Absent ⇒ the operand is not a classified type test: either the callee is a shadowed
     // `isinstance`, or the shape is one the classifier left to the ordinary runtime-call path.
-    private readonly ConcurrentDictionary<Expression, TypeTestLowering> _typeTestLowerings =
+    private readonly ConcurrentDictionary<Node, TypeTestLowering> _typeTestLowerings =
         new(ReferenceEqualityComparer.Instance);
 
     // Map generic function calls to their inferred type arguments
@@ -414,23 +419,25 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
-    /// Records the type test codegen must emit for an <c>isinstance</c> type operand. Set by the
-    /// TypeChecker's type-operand classifier, which is the single authority on what the operand
-    /// denotes; the emitter switches on <see cref="TypeTestLowering.Kind"/> and the narrowing
-    /// resolvers read <see cref="TypeTestLowering.TestType"/>, so the emitted test and the narrowed
-    /// type agree by construction (#1207, #1213).
+    /// Records the type test codegen must emit for a type operand — an <c>isinstance</c> argument or
+    /// the <see cref="TypeAnnotation"/> of an <c>is</c>/<c>as?</c>/<c>as!</c>, a match class pattern
+    /// or an <c>except</c> clause. Set by the TypeChecker's type-operand classifier, which is the
+    /// single authority on what the operand denotes; the emitter switches on
+    /// <see cref="TypeTestLowering.Kind"/> and the narrowing resolvers read
+    /// <see cref="TypeTestLowering.TestType"/>, so the emitted test and the narrowed type agree by
+    /// construction (#1207, #1213, #1235).
     /// </summary>
-    public void SetTypeTestLowering(Expression typeOperand, TypeTestLowering lowering)
+    public void SetTypeTestLowering(Node typeOperand, TypeTestLowering lowering)
     {
         _typeTestLowerings[typeOperand] = lowering;
     }
 
     /// <summary>
-    /// Gets the type test recorded for an <c>isinstance</c> type operand, or <c>null</c> when the
-    /// operand was not classified as one (shadowed <c>isinstance</c>, or a shape the classifier
-    /// leaves to the ordinary runtime-call path).
+    /// Gets the type test recorded for a type operand, or <c>null</c> when the operand was not
+    /// classified as one (shadowed <c>isinstance</c>, a synthesized node the checker never saw, or a
+    /// shape the classifier leaves to the ordinary runtime-call path).
     /// </summary>
-    public TypeTestLowering? GetTypeTestLowering(Expression typeOperand)
+    public TypeTestLowering? GetTypeTestLowering(Node typeOperand)
     {
         return _typeTestLowerings.TryGetValue(typeOperand, out var lowering) ? lowering : null;
     }
@@ -1206,7 +1213,22 @@ public enum TypeTestLoweringKind
     /// instantiation (#912). The parameterized spelling <c>list[int]</c> is
     /// <see cref="ClosedType"/>: it names the instantiation, so the test can be exact.
     /// </summary>
-    ErasedBuiltinCollection
+    ErasedBuiltinCollection,
+
+    /// <summary>
+    /// <b><c>except</c> clauses only.</b> The operand is a tuple of exception types with an <c>as</c>
+    /// binding — <c>except (A, B) as e:</c>. C# has no multi-type catch, so the clause binds at the
+    /// common base carried in <see cref="TypeTestLowering.TestType"/> and discriminates with a filter
+    /// over <see cref="TypeTestLowering.Alternatives"/>:
+    /// <c>catch (Base e) when (e is A || e is B)</c> (#1235).
+    /// <para>
+    /// This is not the isinstance tuple, which stays refused (SPY0344). The refusal exists because a
+    /// successful <c>isinstance</c> must narrow to one type and a union of types is not spellable;
+    /// an <c>except</c> binding has a principled type to bind at — the same common base
+    /// <c>try[A | B]</c> already uses for its Result error type — so the form is supported here.
+    /// </para>
+    /// </summary>
+    ExceptionAlternation
 }
 
 /// <summary>
@@ -1223,7 +1245,15 @@ public enum TypeTestLoweringKind
 /// </summary>
 /// <param name="Kind">Which emission shape to apply.</param>
 /// <param name="TestType">The resolved closed type the operand denotes — also the narrowing target.</param>
-public sealed record TypeTestLowering(TypeTestLoweringKind Kind, SemanticType TestType);
+/// <param name="Alternatives">
+/// The individual exception types of an <see cref="TypeTestLoweringKind.ExceptionAlternation"/>,
+/// in written order. <c>null</c> for every other kind — only the <c>except (A, B) as e</c> lowering
+/// tests more than one type, and it still binds at the single <paramref name="TestType"/>.
+/// </param>
+public sealed record TypeTestLowering(
+    TypeTestLoweringKind Kind,
+    SemanticType TestType,
+    IReadOnlyList<SemanticType>? Alternatives = null);
 
 /// <summary>
 /// The emission shape codegen applies for a safe cast (<c>value to T?</c> / <c>value as? T</c>) whose
