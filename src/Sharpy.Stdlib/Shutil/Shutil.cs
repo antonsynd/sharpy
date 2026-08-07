@@ -30,7 +30,7 @@ namespace Sharpy
             {
                 global::System.IO.File.Copy(src, destPath, true);
             }
-            catch (Exception)
+            catch (global::System.Exception)
             {
                 throw new global::Sharpy.OSError("Failed to copy '" + src + "' to '" + dst + "'");
             }
@@ -55,7 +55,7 @@ namespace Sharpy
                 global::System.IO.File.SetLastWriteTimeUtc(destPath, global::System.IO.File.GetLastWriteTimeUtc(src));
                 global::System.IO.File.SetCreationTimeUtc(destPath, global::System.IO.File.GetCreationTimeUtc(src));
             }
-            catch (Exception)
+            catch (global::System.Exception)
             {
                 throw new global::Sharpy.OSError("Failed to copy2 '" + src + "' to '" + dst + "'");
             }
@@ -77,7 +77,7 @@ namespace Sharpy
             {
                 _CopyDirectoryRecursive(src, dst);
             }
-            catch (Exception)
+            catch (global::System.Exception)
             {
                 throw new global::Sharpy.OSError("Failed to copytree '" + src + "' to '" + dst + "'");
             }
@@ -99,7 +99,7 @@ namespace Sharpy
             {
                 global::System.IO.Directory.Delete(path, true);
             }
-            catch (Exception)
+            catch (global::System.Exception)
             {
                 throw new global::Sharpy.OSError("Failed to remove directory tree '" + path + "'");
             }

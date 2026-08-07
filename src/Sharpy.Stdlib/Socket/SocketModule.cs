@@ -621,7 +621,7 @@ namespace Sharpy
                 sock.Connect(address);
                 return sock;
             }
-            catch (Exception)
+            catch (global::System.Exception)
             {
                 sock.Close();
                 throw;
@@ -679,7 +679,7 @@ namespace Sharpy
                 var entry = global::System.Net.Dns.GetHostEntry(hostName);
                 return entry.HostName;
             }
-            catch (Exception)
+            catch (global::System.Exception)
             {
                 return "localhost";
             }

@@ -142,7 +142,7 @@ namespace Sharpy
             {
                 global::System.IO.Directory.Delete(path, false);
             }
-            catch (Exception)
+            catch (global::System.Exception)
             {
                 throw new global::Sharpy.IOError("Directory not empty: '" + path + "'");
             }

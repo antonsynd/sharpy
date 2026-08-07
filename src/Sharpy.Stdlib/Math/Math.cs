@@ -410,7 +410,7 @@ namespace Sharpy
 
             a = global::System.Math.Abs(a);
             b = global::System.Math.Abs(b);
-            return (Gcd(a, b) == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(a) / Gcd(a, b)))) * b;
+            return global::Sharpy.Builtins.FloorDiv(a, Gcd(a, b)) * b;
         }
 
         /// <summary>
@@ -442,7 +442,7 @@ namespace Sharpy
             int i = 0;
             while (i < k)
             {
-                result = ((i + 1) == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(result * (n - i)) / (i + 1))));
+                result = global::Sharpy.Builtins.FloorDiv(result * (n - i), (i + 1));
                 i = i + 1;
             }
 

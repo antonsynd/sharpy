@@ -164,11 +164,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestArithmetic()
             {
 #line (107, 5) - (107, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.Equal(3, (5 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(17) / 5))));
+                Xunit.Assert.Equal(3, global::Sharpy.Builtins.FloorDiv(17, 5));
 #line (108, 5) - (108, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.FloorMod(17, 5));
 #line (109, 5) - (109, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
-                Xunit.Assert.Equal(5, (4 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(20) / 4))));
+                Xunit.Assert.Equal(5, global::Sharpy.Builtins.FloorDiv(20, 4));
 #line (110, 5) - (110, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.FloorMod(20, 4));
 #line (111, 5) - (111, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"

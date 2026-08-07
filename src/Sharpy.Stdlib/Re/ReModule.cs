@@ -698,7 +698,7 @@ namespace Sharpy
                 {
                     this._Regex = new global::System.Text.RegularExpressions.Regex(translated, _FlagsToOptions(flags));
                 }
-                catch (Exception ex)
+                catch (global::System.Exception ex)
                 {
                     throw new Error(ex.Message, patternStr);
                 }

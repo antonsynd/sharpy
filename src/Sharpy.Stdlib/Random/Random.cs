@@ -121,11 +121,11 @@ namespace Sharpy
             int n = 0;
             if (step > 0)
             {
-                n = (step == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)((width + step - 1)) / step)));
+                n = global::Sharpy.Builtins.FloorDiv((width + step - 1), step);
             }
             else
             {
-                n = (step == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)((width + step + 1)) / step)));
+                n = global::Sharpy.Builtins.FloorDiv((width + step + 1), step);
             }
 
             if (n <= 0)

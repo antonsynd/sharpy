@@ -28,7 +28,7 @@ namespace Sharpy
 
             while (lo < hi)
             {
-                int mid = lo + (2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)((hi - lo)) / 2)));
+                int mid = lo + global::Sharpy.Builtins.FloorDiv((hi - lo), 2);
                 if (a[mid].CompareTo(x) < 0)
                 {
                     lo = mid + 1;
@@ -55,7 +55,7 @@ namespace Sharpy
 
             while (lo < hi)
             {
-                int mid = lo + (2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)((hi - lo)) / 2)));
+                int mid = lo + global::Sharpy.Builtins.FloorDiv((hi - lo), 2);
                 if (a[mid].CompareTo(x) > 0)
                 {
                     hi = mid;

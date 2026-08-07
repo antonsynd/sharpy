@@ -59,7 +59,7 @@ namespace Sharpy
             where T : global::System.IComparable<T>
         {
             int n = global::Sharpy.Builtins.Len(x);
-            int i = (2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(n) / 2))) - 1;
+            int i = global::Sharpy.Builtins.FloorDiv(n, 2) - 1;
             while (i >= 0)
             {
                 _SiftDown(x, i);
@@ -205,7 +205,7 @@ namespace Sharpy
         {
             while (index > 0)
             {
-                int parent = (2 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)((index - 1)) / 2)));
+                int parent = global::Sharpy.Builtins.FloorDiv((index - 1), 2);
                 if (heap[index].CompareTo(heap[parent]) < 0)
                 {
                     T temp = heap[index];
