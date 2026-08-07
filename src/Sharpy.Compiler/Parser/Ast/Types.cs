@@ -5,7 +5,31 @@ namespace Sharpy.Compiler.Parser.Ast;
 /// <summary>
 /// Type annotation (int, list[str], dict[str, int], Optional[T], etc.)
 /// </summary>
-public record TypeAnnotation
+/// <remarks>
+/// <para>
+/// Derives from <see cref="Node"/> so that annotation-shaped operands can key the same
+/// node-keyed <c>SemanticInfo</c> channels expression operands use — in particular the
+/// type-test lowering the checker records for <c>is</c>/<c>as?</c>/<c>as!</c>, match class
+/// patterns and <c>except</c> clauses (#1235). Before this, the record was base-less and
+/// re-declared <see cref="Node"/>'s location members, so no dictionary keyed by
+/// <see cref="Node"/> could admit an annotation.
+/// </para>
+/// <para>
+/// <b>Deliberately not reachable from <see cref="Node.GetChildNodes"/>.</b> No owning node
+/// enumerates its annotations as children, so generic <c>Node</c> traversal still never sees a
+/// <see cref="TypeAnnotation"/>. Exposing them would newly surface this type to several
+/// hand-rolled <c>switch (node)</c> sites (the lowering-IR rewriter and optimization passes) and
+/// to <c>Node</c>-taking walkers such as the await scanners, none of which has an exhaustiveness
+/// guard — they would silently take their default arms. Making annotations traversable is a
+/// separate change with its own test burden.
+/// </para>
+/// <para>
+/// The sibling annotation records in this file (<see cref="FunctionType"/>,
+/// <see cref="TupleType"/>) stay base-less; the asymmetry is intentional, as nothing keys a
+/// node-keyed channel by them.
+/// </para>
+/// </remarks>
+public record TypeAnnotation : Node
 {
     public string Name { get; init; } = "";
     public ImmutableArray<TypeAnnotation> TypeArguments { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
@@ -40,16 +64,7 @@ public record TypeAnnotation
     /// </summary>
     public ImmutableArray<string?> TupleElementNames { get; init; } = ImmutableArray<string?>.Empty;
 
-    // Source location
-    public int LineStart { get; init; }
-    public int ColumnStart { get; init; }
-    public int LineEnd { get; init; }
-    public int ColumnEnd { get; init; }
-
-    /// <summary>
-    /// Character offset-based span. May be null if not tracked.
-    /// </summary>
-    public Text.TextSpan? Span { get; init; }
+    // Source location (LineStart/ColumnStart/LineEnd/ColumnEnd/Span) is inherited from Node.
 }
 
 /// <summary>

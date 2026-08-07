@@ -321,6 +321,11 @@ public abstract class AstVisitor
                 VisitPositionalPattern(n);
                 break;
 
+            // Type annotations
+            case TypeAnnotation n:
+                VisitTypeAnnotation(n);
+                break;
+
             default:
                 DefaultVisit(node);
                 break;
@@ -527,6 +532,19 @@ public abstract class AstVisitor
     public virtual void VisitPositionalPattern(PositionalPattern node) => VisitPattern(node);
 
     #endregion
+
+    #region Type annotations
+
+    /// <summary>
+    /// Called for a <see cref="TypeAnnotation"/>. No node enumerates its annotations from
+    /// <see cref="Node.GetChildNodes"/>, so ordinary traversal never reaches this — it exists for
+    /// callers that dispatch an annotation explicitly, and so that the concrete-node-kind coverage
+    /// guard has an arm to find (#1235). See <see cref="TypeAnnotation"/>'s remarks for why
+    /// annotations stay out of child traversal.
+    /// </summary>
+    public virtual void VisitTypeAnnotation(TypeAnnotation node) => DefaultVisit(node);
+
+    #endregion
 }
 
 /// <summary>
@@ -666,6 +684,9 @@ public abstract class AstVisitor<T>
             PropertyPatternField n => VisitPropertyPatternField(n),
             PropertyPattern n => VisitPropertyPattern(n),
             PositionalPattern n => VisitPositionalPattern(n),
+
+            // Type annotations
+            TypeAnnotation n => VisitTypeAnnotation(n),
 
             _ => DefaultVisit(node)
         };
@@ -870,6 +891,19 @@ public abstract class AstVisitor<T>
     public virtual T VisitPropertyPatternField(PropertyPatternField node) => DefaultVisit(node);
     public virtual T VisitPropertyPattern(PropertyPattern node) => VisitPattern(node);
     public virtual T VisitPositionalPattern(PositionalPattern node) => VisitPattern(node);
+
+    #endregion
+
+    #region Type annotations
+
+    /// <summary>
+    /// Called for a <see cref="TypeAnnotation"/>. No node enumerates its annotations from
+    /// <see cref="Node.GetChildNodes"/>, so ordinary traversal never reaches this — it exists for
+    /// callers that dispatch an annotation explicitly, and so that the concrete-node-kind coverage
+    /// guard has an arm to find (#1235). See <see cref="TypeAnnotation"/>'s remarks for why
+    /// annotations stay out of child traversal.
+    /// </summary>
+    public virtual T VisitTypeAnnotation(TypeAnnotation node) => DefaultVisit(node);
 
     #endregion
 }

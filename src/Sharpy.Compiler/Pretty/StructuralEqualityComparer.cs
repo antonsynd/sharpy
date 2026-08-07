@@ -118,6 +118,12 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             PropertyPatternField a => a.Name == ((PropertyPatternField)y).Name && Equals(a.Pattern, ((PropertyPatternField)y).Pattern),
             PropertyPattern a => PropertyPatternEquals(a, (PropertyPattern)y),
             PositionalPattern a => PositionalPatternEquals(a, (PositionalPattern)y),
+            // A TypeAnnotation is a Node so that annotation-shaped type operands can key the
+            // node-keyed type-test lowering channel (#1235). Ordinary traversal never reaches one —
+            // no GetChildNodes() enumerates annotations — but it is a concrete node kind, so it needs
+            // an arm. It delegates to the same TypeAnnotationEquals every owning arm already uses,
+            // which is what keeps a directly compared annotation and an embedded one from disagreeing.
+            TypeAnnotation a => TypeAnnotationEquals(a, (TypeAnnotation)y),
             // A missing arm must fail loudly rather than silently report inequality (`_ => false`
             // turned an uncovered node kind into a false-negative — #1152). Every concrete node kind
             // has an arm above; anything reaching here is a newly added kind whose arm is absent.
