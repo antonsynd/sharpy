@@ -3,10 +3,11 @@
 # only in the resolver unit tests, so a defect in the deferral pass's phase-2 re-substitution
 # (FoldCheckedArgumentIntoSubstitutions) that the resolver cannot see had no end-to-end pin.
 #
-# join's inner sequence is a SHARPY list deliberately: a CLR List[int] argument against the closed
-# `list[int]` formal draws SPY0220 — the #1252-family mapping asymmetry on the value-argument side,
-# recorded as #1260 (pre-AF the same shape was an SPY0908/CS0305 leak, so it is a conversion, not a
-# regression).
+# join's inner sequence is a SHARPY list here, which is now the ordinary case rather than the only
+# working one: #1260 made a CLR List[int] argument satisfy the closed `list[int]` formal too, since
+# the formal remembers it was mapped from `IEnumerable<T>` and .NET binds the call. The CLR form is
+# pinned next door in bcl_extension_clr_sequence_arg_1260; this file stays on the Sharpy form so the
+# two spellings keep independent coverage.
 # Expected output verified against the LINQ semantics (groups in first-appearance key order; join
 # matches only o == i).
 from system.collections.generic import List

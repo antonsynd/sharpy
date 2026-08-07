@@ -1,0 +1,36 @@
+# Test (#1260): a CLR sequence VALUE ARGUMENT satisfies an extension formal the bridge mapped from
+# CLR metadata. `IEnumerable<T>` is spelled `list[T]` after mapping, so comparing that spelling
+# against a CLR `List[int]` actual by semantic identity refused calls C# binds natively — SPY0220
+# "expects 'list[int]' but got 'List[int]'". Provenance makes the formal remember the CLR definition
+# it came from, and .NET answers the question.
+#
+# Both spellings are pinned because ONE seam serves them: the staged `concat(...)` (#1206) and the
+# explicit `concat[int](...)` (#1195) both reach ValidateClosedExtensionArguments, so a fix that
+# reached only one would be the parallel-site defect this provenance exists to close.
+#
+# `union` and `join` are here so the rule is not `concat`-shaped: three different extension methods,
+# three different formal positions, all taking a CLR sequence where the mapped formal says `list`.
+from system.collections.generic import List
+
+
+def main() -> None:
+    outer = List[int]()
+    outer.add(1)
+    outer.add(2)
+
+    inner = List[int]()
+    inner.add(2)
+    inner.add(3)
+
+    # Staged spelling — no type arguments written.
+    print(list(outer.concat(inner)))
+
+    # Explicit spelling — type arguments written; same seam, same formal.
+    print(list(outer.concat[int](inner)))
+
+    # A different method whose value parameter is also a mapped sequence.
+    print(list(outer.union(inner)))
+
+    # The issue's own repro: join's `inner` is a value argument in a three-round staged call.
+    joined = list(outer.join(inner, lambda o: o, lambda i: i, lambda o, i: str(o + i)))
+    print(joined)

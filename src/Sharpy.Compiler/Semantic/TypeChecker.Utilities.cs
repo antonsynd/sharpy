@@ -364,6 +364,35 @@ internal partial class TypeChecker
             }
         }
 
+        // Two function types, re-compared with the knowledge the record does not have. Same shape as
+        // FunctionType.IsAssignableTo — parameters either way, return one way — but each position goes
+        // through IsAssignable, so a position type that needs the symbol table or CLR provenance gets
+        // the same answer here that it gets anywhere else. The delegate branch above already recurses
+        // this way for its return type; this is that rule for the FunctionType-to-FunctionType case.
+        //
+        // Reached only after the record-level check at the top failed, so it can widen but never narrow.
+        // What it buys (#1252): a lambda returning a CLR `List[int]` matches a mapped
+        // `(int) -> list[int]` formal, because the return position finally asks .NET about the origin
+        // rather than comparing `List` to `list` as text.
+        if (source is FunctionType structuralSource && target is FunctionType structuralTarget
+            && structuralSource.ParameterTypes.Count == structuralTarget.ParameterTypes.Count)
+        {
+            var compatible = true;
+            for (int i = 0; i < structuralSource.ParameterTypes.Count && compatible; i++)
+            {
+                compatible = IsAssignable(structuralTarget.ParameterTypes[i], structuralSource.ParameterTypes[i])
+                             || IsAssignable(structuralSource.ParameterTypes[i], structuralTarget.ParameterTypes[i]);
+            }
+
+            if (compatible
+                && (structuralTarget.ReturnType is VoidType
+                    || structuralSource.ReturnType is VoidType
+                    || IsAssignable(structuralSource.ReturnType, structuralTarget.ReturnType)))
+            {
+                return true;
+            }
+        }
+
         // Generic variance (#827): same-name generics check per-type-parameter variance
         // from the definition's TypeParameterDefs; different-name generics check
         // assignability through implemented interfaces and base classes
@@ -399,6 +428,21 @@ internal partial class TypeChecker
         var targetClr = TryGetClrType(target);
         if (sourceClr != null && targetClr != null && targetClr.IsAssignableFrom(sourceClr))
             return true;
+
+        // Provenance-scoped widening (#1260): a formal the bridge MAPPED from CLR metadata is spelled in
+        // Sharpy vocabulary but means the CLR type it came from, and the check above asks the wrong
+        // question about it — `Sharpy.List<int>.IsAssignableFrom(System.List<int>)` is false, so
+        // `outer.concat(inner)` with a CLR `List[int]` drew SPY0220 for a call C# binds natively.
+        //
+        // Asking .NET about the ORIGIN instead accepts exactly the calls .NET binds and nothing more,
+        // and it needs no codegen support: the emitted call's real formal IS that CLR type, so the
+        // actual goes in unconverted. Scoped by construction — a `list[int]` written in Sharpy source
+        // has no provenance, so a native parameter stays strict and no hidden copy is introduced.
+        if (sourceClr != null && target is GenericType { ClrOriginTypeName: not null } mappedTarget
+            && Discovery.ClrTypeHelper.ClrOriginIsSatisfiedBy(mappedTarget, sourceClr, TryGetClrType))
+        {
+            return true;
+        }
 
         return false;
     }

@@ -1,0 +1,18 @@
+# Test (#1260): the SCOPE GUARD for provenance-scoped widening. A `list[int]` written in Sharpy
+# source carries no CLR provenance, so a CLR `List[int]` does NOT satisfy it — the widening accepts
+# exactly what .NET binds at a CLR formal and nothing at a native one.
+#
+# This is load-bearing, not incidental. Accepting it here would mean either a hidden copy (changing
+# aliasing: mutations through the parameter would stop being visible through `clr`) or handing a
+# non-Sharpy list to code that may call list-only members. The refusal is the design.
+from system.collections.generic import List
+
+
+def take(xs: list[int]) -> int:
+    return len(xs)
+
+
+def main() -> None:
+    clr = List[int]()
+    clr.add(1)
+    print(take(clr))

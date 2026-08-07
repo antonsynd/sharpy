@@ -468,9 +468,19 @@ internal class GenericTypeInferenceService
 
     /// <summary>
     /// CLR reflection fallback for supertype unification: resolves the actual type's open
-    /// CLR generic definition and scans its interfaces for one matching the formal name.
+    /// CLR generic definition and scans its interfaces for one matching the formal.
     /// Only interface arguments that map directly to the actual type's own generic
     /// parameters are unified; concrete CLR argument positions are skipped.
+    ///
+    /// <para>
+    /// A formal matches an interface by CLR PROVENANCE when it has any, and by Sharpy name otherwise
+    /// (#1260, #1252). Name-only matching is what made a lambda returning a CLR <c>List[int]</c> decline
+    /// silently: <c>SelectMany</c>'s selector formal is <c>Func[int, list[TCollection]]</c> because the
+    /// bridge maps <c>IEnumerable&lt;T&gt;</c> to <c>list</c>, and <c>"IEnumerable" != "list"</c>, so
+    /// <c>TCollection</c> never bound and the whole staged call was abandoned with no diagnostic. The
+    /// two rules are alternatives rather than a replacement, so nothing that matched by name before
+    /// stops matching now.
+    /// </para>
     /// </summary>
     private bool TryUnifyViaClrReflection(
         GenericType formal,
@@ -490,13 +500,13 @@ internal class GenericTypeInferenceService
             return false;
         }
 
-        foreach (var clrInterface in clrDefinition.GetInterfaces())
+        foreach (var clrInterface in ClrSupertypesOf(clrDefinition))
         {
             if (!clrInterface.IsGenericType)
                 continue;
 
             var interfaceDefinition = clrInterface.GetGenericTypeDefinition();
-            if (ClrNameHelper.StripArity(interfaceDefinition.Name) != formal.Name)
+            if (!FormalMatchesClrDefinition(formal, interfaceDefinition))
                 continue;
 
             var interfaceArguments = clrInterface.GetGenericArguments();
@@ -527,6 +537,32 @@ internal class GenericTypeInferenceService
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Whether a formal generic names the CLR definition <paramref name="clrDefinition"/>. Provenance
+    /// decides when the formal has it — the formal's Sharpy spelling is the bridge's collapsed name
+    /// (<c>list</c>) while the CLR definition's is its own (<c>IEnumerable`1</c>), so they never agree
+    /// textually. The Sharpy-name comparison remains as the alternative for every formal written in
+    /// source, which is what unified through CLR interfaces before provenance existed.
+    /// </summary>
+    private static bool FormalMatchesClrDefinition(GenericType formal, Type clrDefinition)
+        => (formal.ClrOriginTypeName is { Length: > 0 } origin && clrDefinition.FullName == origin)
+           || ClrNameHelper.StripArity(clrDefinition.Name) == formal.Name;
+
+    /// <summary>
+    /// The open definition itself, its base chain, and its interfaces — the closure a formal can name.
+    /// The definition is yielded FIRST because a formal can name the actual's own definition rather than
+    /// one of its interfaces (a CLR parameter typed <c>List&lt;T&gt;</c> against a <c>List[int]</c>
+    /// actual), and <c>GetInterfaces</c> alone never returns the type itself.
+    /// </summary>
+    private static IEnumerable<Type> ClrSupertypesOf(Type clrDefinition)
+    {
+        for (var current = clrDefinition; current != null && current != typeof(object); current = current.BaseType)
+            yield return current;
+
+        foreach (var implemented in clrDefinition.GetInterfaces())
+            yield return implemented;
     }
 
     /// <summary>

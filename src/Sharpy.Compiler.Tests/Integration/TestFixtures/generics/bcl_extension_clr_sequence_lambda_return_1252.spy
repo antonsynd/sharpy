@@ -1,0 +1,21 @@
+# Test (#1252): staged extension inference binds a type parameter through a lambda that returns a
+# CLR sequence. `SelectMany`'s selector formal is `Func[int, list[TCollection]]` because the bridge
+# maps `IEnumerable<T>` to `list`, and unification compared "IEnumerable" to "list" as text — so
+# TCollection never bound, the candidate declined, and the call fell out as SPY0908/CS0305 with
+# nothing recorded to explain it. The decline was safe but invisible.
+#
+# The Sharpy-list form of the same call is pinned in bcl_extension_staged_1206; this is the CLR half,
+# which #1206 deliberately left open.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(1)
+    lst.add(3)
+
+    inner: List[int] = List[int]()
+    inner.add(9)
+
+    # The first lambda returns a CLR List[int], not a Sharpy list.
+    print(list(lst.select_many(lambda x: inner, lambda a, b: str(a + b))))
