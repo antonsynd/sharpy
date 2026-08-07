@@ -71,8 +71,10 @@ public class FloatFormattingAuthorityTests
         // routes through the authority verbatim. Its NaN/Infinity throw remains, but that is a
         // question about which VALUES are representable (#1296), not about how a finite one is spelled
         // — which is why it never needed a formatting exemption.
+        // Both YAML entries drained by #1229: neither file writes a second renderer any more. YAML
+        // text is now Builtins.FormatFloat plus one documented wire-format adjustment, so the
+        // "general float format" family — which catches ToString("R"/"G") — has nothing to exempt.
         new(AuthorityFile, "the authority itself"),
-        new("YamlRoundtrip.cs", "#1229 — YAML wire format: NaN/Infinity are spelled .nan/.inf/-.inf"),
     };
 
     private static readonly Exemption[] PythonDotZeroExemptions =
@@ -81,7 +83,14 @@ public class FloatFormattingAuthorityTests
         // `1.0` for a whole value is part of FormatFloat's own contract, so keeping a second rule
         // here would be a duplicate to keep in sync.
         new(AuthorityFile, "the authority itself"),
-        new("YamlRoundtrip.cs", "#1229 — keeps a whole value reloading as a float, not an int"),
+        // NOT a second float renderer: YamlFloatFormat calls the authority and then applies the one
+        // respect in which PyYAML differs from repr — an exponent-form mantissa is forced to contain
+        // a decimal point (1e+20 -> 1.0e+20). MEASURED against PyYAML 6.0.3, not derived from
+        // json.dumps; the table lives in that file. The ".0" this matches is that mantissa insertion,
+        // not the whole-value append the authority already owns. YamlRoundtrip.cs's entry is gone
+        // because its hand-rolled append is deleted, and Yaml.cs needs none — it formats nothing
+        // itself, it delegates.
+        new("YamlFloatFormat.cs", "#1229 — PyYAML's exponent mantissa rule, applied on top of the authority"),
     };
 
     private static readonly Exemption[] FormatFloatDeclarationExemptions =

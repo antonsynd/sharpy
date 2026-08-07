@@ -612,3 +612,76 @@ def test_yaml_parse_error_is_yaml_error():
     with assert_raises(yaml.YAMLParseError) as exc:
         yaml.safe_load("key: [1, 2")
     assert isinstance(exc, yaml.YAMLError)
+
+
+# --- Float text matches PyYAML, and a float stays a float (#1229) ---
+#
+# ORACLE: PyYAML 6.0.3 under CPython 3.12.13 — NOT `repr` and not json.dumps. Every expected
+# string below was produced by `python3 -c "import yaml; print(yaml.safe_dump(<value>))"`.
+#
+# PyYAML differs from repr in exactly one respect: in EXPONENT form the mantissa is forced to
+# contain a decimal point.
+#
+#     value      repr        PyYAML       agree?
+#     1e20       1e+20       1.0e+20      no
+#     1e-5       1e-05       1.0e-05      no
+#     2.5e-10    2.5e-10     2.5e-10      yes   (mantissa already has '.')
+#     1e15       positional  positional   yes
+#
+# Do NOT "correct" these toward repr — that is what the plan for #1229 assumed before the
+# spellings were measured.
+
+
+@test
+def test_safe_dump_float_exponent_matches_pyyaml():
+    assert yaml.safe_dump(1e20).strip() == "1.0e+20"
+    assert yaml.safe_dump(1e17).strip() == "1.0e+17"
+    assert yaml.safe_dump(-1e20).strip() == "-1.0e+20"
+    assert yaml.safe_dump(1e100).strip() == "1.0e+100"
+    # A mantissa that already carries digits keeps them.
+    assert yaml.safe_dump(2.5e-10).strip() == "2.5e-10"
+    assert yaml.safe_dump(1.5e20).strip() == "1.5e+20"
+
+
+@test
+def test_safe_dump_float_layout_boundary_matches_pyyaml():
+    # 1e16 is the first exponent-form value; 1e15 is the last positional one.
+    assert yaml.safe_dump(1e16).strip() == "1.0e+16"
+    assert yaml.safe_dump(1e15).strip() == "1000000000000000.0"
+    # Small values cross over between 1e-4 and 1e-5.
+    assert yaml.safe_dump(1e-4).strip() == "0.0001"
+    assert yaml.safe_dump(1e-5).strip() == "1.0e-05"
+
+
+@test
+def test_safe_dump_whole_float_keeps_its_point():
+    # Previously safe_dump emitted "1" and "5" here, which reload as INTS.
+    assert yaml.safe_dump(1.0).strip() == "1.0"
+    assert yaml.safe_dump(5.0).strip() == "5.0"
+    assert yaml.safe_dump(0.0).strip() == "0.0"
+    assert yaml.safe_dump(-0.0).strip() == "-0.0"
+
+
+@test
+def test_safe_dump_float_round_trips_as_a_float():
+    # The value-fidelity floor, and the half of #1229 that was corruption rather than cosmetics:
+    # safe_dump(1.0) used to emit "1", so the value came back an int.
+    parsed: object = yaml.safe_load(yaml.safe_dump(1.0))
+    assert isinstance(parsed, float)
+
+
+@test
+def test_roundtrip_dump_float_matches_safe_dump():
+    # The two surfaces formatted floats independently and had drifted: roundtrip_dump got the
+    # trailing .0 right but spelled the exponent "1E+20". One shared formatter now serves both,
+    # so agreement between them is the property worth pinning.
+    assert yaml.roundtrip_dump(1e20).strip() == yaml.safe_dump(1e20).strip()
+    assert yaml.roundtrip_dump(1.0).strip() == yaml.safe_dump(1.0).strip()
+    assert yaml.roundtrip_dump(1e16).strip() == yaml.safe_dump(1e16).strip()
+
+
+@test
+def test_safe_dump_special_floats_keep_yaml_spellings():
+    assert yaml.safe_dump(float("inf")).strip() == ".inf"
+    assert yaml.safe_dump(float("-inf")).strip() == "-.inf"
+    assert yaml.safe_dump(float("nan")).strip() == ".nan"

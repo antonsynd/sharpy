@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -200,6 +201,10 @@ namespace Sharpy
             int width)
         {
             SerializerBuilder builder = new SerializerBuilder().DisableAliases();
+
+            // Unconditional: float spelling is not a style choice (#1229).
+            builder = builder.WithTypeConverter(new YamlFloatTypeConverter());
+
             if (defaultFlowStyle)
             {
                 builder = builder.WithEventEmitter(next => new FlowStyleEventEmitter(next));
@@ -325,6 +330,52 @@ namespace Sharpy
             }
         }
 #endif
+    }
+
+    /// <summary>
+    /// Spells floats the way PyYAML does, for the <c>safe_dump</c> family (#1229).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Without this, YamlDotNet's own scalar rendering emitted <c>1</c> for <c>1.0</c> — so a float
+    /// dumped by <c>safe_dump</c> reloaded as an <b>int</b>. That is value corruption, not a spelling
+    /// difference, and it was in the API users actually call: <c>YamlRoundtrip</c>'s emitter (used by
+    /// <c>roundtrip_dump</c>) had its own, better, formatting that this path never saw. Both surfaces
+    /// now read <see cref="YamlFloatFormat"/> — the two had drifted precisely because each formatted
+    /// floats itself.
+    /// </para>
+    /// <para>
+    /// A type converter rather than a <c>ChainedEventEmitter</c>: an emitter that sets
+    /// <c>RenderedValue</c> is overwritten by the built-in type-assigning emitter further down the
+    /// chain, so the scalar came out unchanged. A converter owns the emission outright. Registered on
+    /// the SERIALIZER only — <c>CreateDeserializer</c> builds separately, so reading is untouched and
+    /// <see cref="ReadYaml"/> is unreachable.
+    /// </para>
+    /// </remarks>
+    internal sealed class YamlFloatTypeConverter : IYamlTypeConverter
+    {
+        /// <inheritdoc />
+        public bool Accepts(Type type) => type == typeof(double) || type == typeof(float);
+
+        /// <inheritdoc />
+        public object? ReadYaml(IParser parser, Type type, ObjectDeserializer rootDeserializer)
+            => throw new NotSupportedException(
+                "YamlFloatTypeConverter is registered on the serializer only; parsing floats stays with the deserializer.");
+
+        /// <inheritdoc />
+        public void WriteYaml(IEmitter emitter, object? value, Type type, ObjectSerializer serializer)
+        {
+            string text = value switch
+            {
+                float f => YamlFloatFormat.Format(f),
+                double d => YamlFloatFormat.Format(d),
+                _ => string.Empty
+            };
+
+            // Plain style: every spelling this produces (1.0, 1.0e+20, .inf, .nan) is a valid plain
+            // YAML scalar that reloads as a float, so quoting would break the round-trip.
+            emitter.Emit(new Scalar(AnchorName.Empty, TagName.Empty, text, ScalarStyle.Plain, true, false));
+        }
     }
 
     /// <summary>

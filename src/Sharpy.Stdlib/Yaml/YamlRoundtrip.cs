@@ -481,7 +481,7 @@ namespace Sharpy
 
             if (value is float floatValue)
             {
-                emitter.Emit(PlainScalar(FormatDouble(floatValue)));
+                emitter.Emit(PlainScalar(FormatSingle(floatValue)));
                 return;
             }
 
@@ -489,31 +489,22 @@ namespace Sharpy
             emitter.Emit(PlainScalar(ScalarText(value)));
         }
 
-        private static string FormatDouble(double value)
-        {
-            if (double.IsNaN(value))
-            {
-                return ".nan";
-            }
-            if (double.IsPositiveInfinity(value))
-            {
-                return ".inf";
-            }
-            if (double.IsNegativeInfinity(value))
-            {
-                return "-.inf";
-            }
+        /// <summary>
+        /// YAML text for a float, delegated to <see cref="YamlFloatFormat"/> — the one place the
+        /// spelling is decided, shared with <c>safe_dump</c>'s serializer (#1229).
+        /// </summary>
+        /// <remarks>
+        /// Replaces <c>ToString("R")</c> plus a <c>.0</c> append, which spelled the exponent
+        /// <c>1E+20</c> where PyYAML spells it <c>1.0e+20</c> — wrong in both the case and the
+        /// mantissa. The special-value spellings are unchanged and now also live in the helper.
+        /// </remarks>
+        private static string FormatDouble(double value) => YamlFloatFormat.Format(value);
 
-            string formatted = value.ToString("R", CultureInfo.InvariantCulture);
-            // Ensure the value reloads as a float, not an int (e.g. 1 -> 1.0).
-            if (formatted.IndexOf('.') < 0 && formatted.IndexOf('e') < 0 &&
-                formatted.IndexOf('E') < 0 && formatted.IndexOf("inf", System.StringComparison.Ordinal) < 0 &&
-                formatted.IndexOf("nan", System.StringComparison.Ordinal) < 0)
-            {
-                formatted += ".0";
-            }
-            return formatted;
-        }
+        /// <summary>
+        /// YAML text for a single-precision float at its own precision (#1229). Previously these
+        /// widened to double at the call site, changing the shortest-round-trip digits (#1204).
+        /// </summary>
+        private static string FormatSingle(float value) => YamlFloatFormat.Format(value);
 
         private static string ScalarText(object? value)
         {
