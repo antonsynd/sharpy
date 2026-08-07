@@ -1029,6 +1029,14 @@ internal partial class TypeChecker
                 }
             }
 
+            // Classify the handler's exception type for EVERY handler, bound or not (#1235). Before
+            // this the annotation was resolved only when there was an `as` binding, so an unbound
+            // `except MyError:` for a generic MyError was never validated at all and reached codegen
+            // as an open generic — CS0305 behind SPY0908. Bare `except:` carries no annotation.
+            var classifiedExceptionType = handler.IsExceptStar || handler.ExceptionType == null
+                ? null
+                : ClassifyExceptHandlerType(handler, handler.ExceptionType);
+
             // Register the 'as' variable binding (e.g., except ValueError as e:)
             if (handler.Name != null)
             {
@@ -1046,10 +1054,14 @@ internal partial class TypeChecker
                 }
                 else
                 {
-                    exceptionType = handler.ExceptionType != null
-                        ? _typeResolver.ResolveTypeAnnotation(handler.ExceptionType)
-                        : _typeResolver.ResolveTypeAnnotation(
-                            new TypeAnnotation { Name = "Exception", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart });
+                    // The classified type is what the binding takes. For `except (A, B) as e:` that
+                    // is the common base the catch clause binds at — previously the binding was typed
+                    // as the TUPLE, which emitted `catch (ValueTuple<A, B> e)` (CS0155).
+                    exceptionType = classifiedExceptionType
+                        ?? (handler.ExceptionType != null
+                            ? _typeResolver.ResolveTypeAnnotation(handler.ExceptionType)
+                            : _typeResolver.ResolveTypeAnnotation(
+                                new TypeAnnotation { Name = "Exception", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart }));
                 }
 
                 var varSymbol = new VariableSymbol
@@ -1122,6 +1134,101 @@ internal partial class TypeChecker
             _inFinally = previousInFinally;
         }
     }
+
+    /// <summary>
+    /// Classifies an <c>except</c> handler's exception type and records what codegen must emit for it
+    /// (#1235). Returns the type an <c>as</c> binding takes, or null when nothing was decided.
+    /// <para>
+    /// A handler has <b>no subject</b> — it tests whatever was thrown — so a bare generic name can
+    /// never be filled and is always refused (SPY0345), which is what turns the open-generic CS0305
+    /// into a diagnostic that names a spelling that works.
+    /// </para>
+    /// <para>
+    /// The tuple spelling is Python's OR-of-exception-types. Unbound, it expands to one catch clause
+    /// per element and already worked. <b>Bound</b>, it has to bind somewhere, and C# has no
+    /// multi-type catch — so it lowers to a catch at the most specific shared base with an
+    /// is-alternation filter. That base comes from <see cref="FindCommonExceptionBase"/>, the same
+    /// helper <c>try[A | B]</c> uses for its Result error type: the two spellings ask the same
+    /// question and must not answer it from two places. CPython semantics verified with python3 —
+    /// the first textually matching handler wins, and <c>e</c> is bound to the raised instance —
+    /// which is exactly how C# orders catch clauses and evaluates their filters.
+    /// </para>
+    /// </summary>
+    private SemanticType? ClassifyExceptHandlerType(ExceptHandler handler, TypeAnnotation annotation)
+    {
+        var exceptionSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("Exception");
+
+        if (annotation.Name == BuiltinNames.Tuple && annotation.TypeArguments.Length > 0)
+        {
+            var alternatives = new List<SemanticType>(annotation.TypeArguments.Length);
+            foreach (var element in annotation.TypeArguments)
+            {
+                // Each element is classified in its own right, so the unbound form's per-element
+                // catch expansion has a recorded type to read for every clause it emits.
+                var resolvedElement = ClassifyTypeTestAnnotation(
+                    element, lodgeOn: element, subjectType: null,
+                    siteNoun: "except clause", erasure: CollectionErasure.Disallowed);
+                if (resolvedElement == null)
+                    return null;
+
+                RequireExceptionDerivation(element, resolvedElement, exceptionSymbol);
+                alternatives.Add(resolvedElement);
+            }
+
+            if (handler.Name == null)
+            {
+                // Unbound: the emitter expands one catch clause per element, so there is nothing for
+                // an alternation to bind and recording one would describe a lowering nobody applies.
+                return null;
+            }
+
+            var commonBase = ClampToExceptionBase(
+                FindCommonExceptionBase(alternatives, exceptionSymbol), exceptionSymbol);
+            _semanticInfo.SetTypeTestLowering(
+                annotation,
+                new TypeTestLowering(TypeTestLoweringKind.ExceptionAlternation, commonBase, alternatives));
+            return commonBase;
+        }
+
+        var resolved = ClassifyTypeTestAnnotation(
+            annotation, lodgeOn: annotation, subjectType: null,
+            siteNoun: "except clause", erasure: CollectionErasure.Disallowed);
+        if (resolved != null)
+            RequireExceptionDerivation(annotation, resolved, exceptionSymbol);
+        return resolved;
+    }
+
+    /// <summary>
+    /// Requires an <c>except</c> clause's type to derive from <c>Exception</c>, reusing the check and
+    /// the code <c>try[E]</c> already applies. Not decoration: it is what makes the alternation's
+    /// common base an <c>Exception</c> subtype <b>by construction</b>, since a base computed over
+    /// types that are not exceptions could land on <c>object</c>, and <c>catch (object e)</c> is not
+    /// legal C#. Without it the same shape reached codegen as CS0155 behind SPY0908.
+    /// Fails open when <c>Exception</c> cannot be resolved, matching <c>try[E]</c>.
+    /// </summary>
+    private void RequireExceptionDerivation(TypeAnnotation at, SemanticType resolved, TypeSymbol? exceptionSymbol)
+    {
+        if (exceptionSymbol == null || resolved is UnknownType || IsExceptionSubtype(resolved, exceptionSymbol))
+            return;
+
+        AddError(
+            $"Type '{at.Name}' in an 'except' clause must be a subclass of 'Exception'",
+            at.LineStart, at.ColumnStart,
+            code: DiagnosticCodes.Semantic.TryExceptionTypeNotException,
+            span: at.Span);
+    }
+
+    /// <summary>
+    /// Belt-and-braces guard on the alternation's catch type: a common base that is not an
+    /// <c>Exception</c> subtype becomes <c>Exception</c>. <see cref="RequireExceptionDerivation"/>
+    /// should already make this unreachable, but a catch type is one of the few places where being
+    /// wrong produces uncompilable C# rather than a wrong answer, so the invariant is enforced at the
+    /// point of use as well as at the point of check.
+    /// </summary>
+    private static SemanticType ClampToExceptionBase(SemanticType candidate, TypeSymbol? exceptionSymbol)
+        => exceptionSymbol != null && !IsExceptionSubtype(candidate, exceptionSymbol)
+            ? new UserDefinedType { Name = "Exception", Symbol = exceptionSymbol }
+            : candidate;
 
     private void CheckWith(WithStatement withStmt)
     {

@@ -1072,15 +1072,20 @@ internal partial class RoslynEmitter
             return protocolInterface;
         }
 
-        // A user/CLR type reaches its name through the construction position — the same position the
-        // module-qualified arm used before classification (#903) and the one TypeSyntaxMapper documents
-        // for isinstance and except clauses. Going through MapSemanticType instead would take the
-        // reference position and re-qualify non-generic CLR types differently (#1139).
-        if (typeTest.TestType is UserDefinedType { Symbol: { } typeSymbol } userDefined)
-            return BuildTypeNameFromFqn(GetFullyQualifiedTypeName(typeSymbol, userDefined.Name));
-
-        return _typeMapper.MapSemanticType(typeTest.TestType);
+        return MapTypeTestTypeName(typeTest.TestType);
     }
+
+    /// <summary>
+    /// Renders a decided test type as C# type syntax. A user/CLR type reaches its name through the
+    /// construction position — the same position the module-qualified arm used before classification
+    /// (#903) and the one <c>TypeSyntaxMapper</c> documents for isinstance and except clauses. Going
+    /// through <c>MapSemanticType</c> instead would take the reference position and re-qualify
+    /// non-generic CLR types differently (#1139).
+    /// </summary>
+    private TypeSyntax MapTypeTestTypeName(SemanticType testType)
+        => testType is UserDefinedType { Symbol: { } typeSymbol } userDefined
+            ? BuildTypeNameFromFqn(GetFullyQualifiedTypeName(typeSymbol, userDefined.Name))
+            : _typeMapper.MapSemanticType(testType);
 
     /// <summary>
     /// Resolves a member access of the form <c>module.TypeName</c> (or nested

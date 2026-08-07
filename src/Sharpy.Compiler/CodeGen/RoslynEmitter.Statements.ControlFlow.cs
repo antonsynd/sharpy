@@ -1451,13 +1451,27 @@ internal partial class RoslynEmitter
                     foreach (var typeArg in handler.ExceptionType.TypeArguments)
                     {
                         var catchBlock = GenerateSuiteBlock(handler.Body);
-                        var declaration = CatchDeclaration(_typeMapper.MapType(typeArg));
+                        var declaration = CatchDeclaration(MapClassifiedTypeOperand(typeArg));
                         result.Add(CatchClause(declaration, filterClause, catchBlock));
                     }
                     continue;
                 }
 
-                var exceptionType = _typeMapper.MapType(handler.ExceptionType);
+                // `except (A, B) as e:` — C# has no multi-type catch, and mapping the tuple annotation
+                // emitted `catch (ValueTuple<A, B> e)` (CS0155). The semantic phase decided the base to
+                // bind at and the alternatives to discriminate on, so this catches at that base and
+                // filters: catch (Base e) when (e is A || e is B). Handler order is unchanged, which is
+                // what keeps CPython's "first matching handler wins" (verified with python3).
+                if (_context.SemanticInfo?.GetTypeTestLowering(handler.ExceptionType) is
+                        { Kind: TypeTestLoweringKind.ExceptionAlternation, Alternatives: { } alternatives }
+                        alternation
+                    && handler.Name != null)
+                {
+                    result.Add(GenerateAlternationCatchClause(handler, alternation, alternatives, filterClause));
+                    continue;
+                }
+
+                var exceptionType = MapClassifiedTypeOperand(handler.ExceptionType);
 
                 if (handler.Name != null)
                 {
@@ -1520,6 +1534,50 @@ internal partial class RoslynEmitter
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Emits <c>except (A, B) as e:</c> as <c>catch (Base e) when (e is A || e is B)</c>, applying the
+    /// base and the alternatives the semantic phase decided (#1235). Any user <c>when</c> filter is
+    /// composed with <c>&amp;&amp;</c> so both conditions still have to hold.
+    /// </summary>
+    private CatchClauseSyntax GenerateAlternationCatchClause(
+        ExceptHandler handler,
+        TypeTestLowering alternation,
+        IReadOnlyList<SemanticType> alternatives,
+        CatchFilterClauseSyntax? userFilter)
+    {
+        var baseName = NameMangler.ToCamelCase(handler.Name!);
+
+        // Same versioning as the single-type bound handler below: nested catch clauses binding the
+        // same name would otherwise collide (CS0136).
+        var hadPrevious = _variableVersions.TryGetValue(baseName, out var previousVersion);
+        _variableVersions[baseName] = hadPrevious ? previousVersion + 1 : 0;
+        var exceptionVar = hadPrevious ? $"{baseName}_{_variableVersions[baseName]}" : baseName;
+
+        var catchBlock = GenerateSuiteBlock(handler.Body);
+
+        if (hadPrevious)
+            _variableVersions[baseName] = previousVersion;
+        else
+            _variableVersions.Remove(baseName);
+
+        var alternationTest = alternatives
+            .Select(alternative => (ExpressionSyntax)BinaryExpression(
+                SyntaxKind.IsExpression, IdentifierName(exceptionVar), MapTypeTestTypeName(alternative)))
+            .Aggregate((left, right) => BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
+
+        var filter = userFilter == null
+            ? CatchFilterClause(alternationTest)
+            : CatchFilterClause(BinaryExpression(
+                SyntaxKind.LogicalAndExpression,
+                ParenthesizedExpression(alternationTest),
+                ParenthesizedExpression(userFilter.FilterExpression)));
+
+        return CatchClause(
+            CatchDeclaration(MapTypeTestTypeName(alternation.TestType), Identifier(exceptionVar)),
+            filter,
+            catchBlock);
     }
 
     private CatchFilterClauseSyntax? GenerateCatchFilterClause(ExceptHandler handler)

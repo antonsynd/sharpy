@@ -1,0 +1,23 @@
+# #1235: an except clause has NO subject — it tests whatever was thrown — so a bare generic
+# name can never have its type arguments filled the way `is`/`isinstance`/a match pattern
+# can. It is therefore always refused, and the message names the closed spelling, which
+# works.
+#
+# Before this, an UNBOUND handler's type was never resolved at all (the annotation was only
+# looked at when there was an `as` binding), so the open generic went straight to codegen
+# and emitted `MyError<T>` — CS0305 behind SPY0908, reported at a position in the generated
+# C# rather than here (#1237).
+
+class MyError[T](Exception):
+    value: T
+
+    def __init__(self, value: T):
+        super().__init__("boom")
+        self.value = value
+
+
+def main() -> None:
+    try:
+        raise MyError[int](1)
+    except MyError:
+        print("never")

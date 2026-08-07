@@ -1,0 +1,70 @@
+# #1235: `except (A, B) as e:` is ordinary Python, but C# has no multi-type catch. The
+# binding used to be typed as the TUPLE, which emitted `catch (ValueTuple<A, B> e)` —
+# CS0155 behind SPY0908. It now binds at the most specific shared base with an
+# is-alternation filter: catch (Base e) when (e is A || e is B).
+#
+# Binding at the COMMON BASE rather than at Exception is what makes `e.code` resolve
+# below. The base comes from the same helper `try[A | B]` uses for its Result error type,
+# so the two spellings of "one of these exception types" cannot answer differently.
+#
+# Handler order is unchanged by the lowering, which is what preserves CPython's rule that
+# the first textually matching handler wins — verified with python3, including that a
+# specific handler before a tuple handler still claims the exception, and a tuple handler
+# before a specific one still claims it.
+
+class AppError(Exception):
+    code: int = 7
+
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
+class NotFound(AppError):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
+class Denied(AppError):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
+def raise_it(which: int) -> None:
+    if which == 0:
+        raise NotFound("nf")
+    else:
+        raise Denied("dn")
+
+
+def main() -> None:
+    # Both alternatives are caught, and `e` is the instance actually raised.
+    for i in range(2):
+        try:
+            raise_it(i)
+        except (NotFound, Denied) as e:
+            print("caught", type(e).__name__, e.code)
+
+    # A specific handler placed first still wins.
+    try:
+        raise NotFound("x")
+    except NotFound as e:
+        print("specific first")
+    except (NotFound, Denied) as e:
+        print("unreachable")
+
+    # A tuple handler placed first still wins.
+    try:
+        raise NotFound("y")
+    except (NotFound, Denied) as e:
+        print("tuple first")
+    except NotFound as e:
+        print("unreachable")
+
+    # An unmatched type falls past the tuple handler.
+    try:
+        try:
+            raise ValueError("v")
+        except (NotFound, Denied) as e:
+            print("unreachable")
+    except ValueError:
+        print("fell through")
