@@ -549,8 +549,9 @@ internal partial class TypeChecker
         // example spelling differ, and the example here is the whole call because that is what the
         // reader has to retype.
         ReportOpenGenericTypeOperand(
-            typeId, typeId.Name, typeSymbol, siteNoun: "call",
-            closedSpelling: suggestion => $"{BuiltinNames.Isinstance}(..., {typeId.Name}[{suggestion}])",
+            typeId, typeId.Name, siteNoun: "call",
+            remedy: ClosedSpellingRemedy(
+                $"{BuiltinNames.Isinstance}(..., {typeId.Name}[{OpenGenericPlaceholders(typeSymbol)}])"),
             fallbackSpan: call.Span);
     }
 

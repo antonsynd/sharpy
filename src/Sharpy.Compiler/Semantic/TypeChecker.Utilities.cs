@@ -233,35 +233,53 @@ internal partial class TypeChecker
             return closedGeneric;
         }
 
-        ReportOpenGenericTypeOperand(annotation, annotation.Name, typeSymbol, siteNoun, ClosedSpelling);
+        ReportOpenGenericTypeOperand(
+            annotation, annotation.Name, siteNoun,
+            remedy: ClosedSpellingRemedy($"{annotation.Name}[{OpenGenericPlaceholders(typeSymbol)}]"));
         return null;
-
-        string ClosedSpelling(string suggestion) => $"{annotation.Name}[{suggestion}]";
     }
 
     /// <summary>
-    /// Refuses an open generic type operand, naming a closed spelling that works at this site. One
-    /// message body and one code (SPY0345) for all five type-operand positions — <c>isinstance</c>,
-    /// <c>is</c>, <c>as?</c>/<c>as!</c>, match class patterns and <c>except</c> clauses — so a reader
-    /// who has met the refusal once does not have to learn it again (#1207, #1235). Only the site noun
-    /// and the example spelling vary, because those are the parts that are actually site-specific.
+    /// The <c>...</c> placeholder vector for a generic type's arity, used when a refusal message
+    /// suggests a closed spelling.
+    /// </summary>
+    private static string OpenGenericPlaceholders(TypeSymbol typeSymbol)
+        => string.Join(", ", typeSymbol.TypeParameters.Select(_ => "..."));
+
+    /// <summary>
+    /// The remedy clause for sites where a closed spelling is actually writable — <c>isinstance</c>,
+    /// <c>is</c>, <c>as?</c>/<c>as!</c> and <c>except</c>. <b>Match patterns do not use this</b>: the
+    /// parser refuses type arguments in a pattern (SPY0125), so telling a user to write
+    /// <c>case Box[int]():</c> would name a spelling the compiler rejects.
+    /// </summary>
+    private static string ClosedSpellingRemedy(string example)
+        => $"Write the closed spelling — for example `{example}` — or test against a non-generic base type.";
+
+    /// <summary>
+    /// Refuses an open generic type operand. One diagnosis sentence and one code (SPY0345) for all
+    /// five type-operand positions — <c>isinstance</c>, <c>is</c>, <c>as?</c>/<c>as!</c>, match class
+    /// patterns and <c>except</c> clauses — so a reader who has met the refusal once does not have to
+    /// learn it again (#1207, #1235).
+    /// <para>
+    /// The <b>remedy</b> is supplied per site rather than templated here, because what a user should
+    /// write genuinely differs: most sites can name the closed spelling, but a match pattern cannot
+    /// (SPY0125 refuses type arguments in patterns), so a shared "write <c>Box[int]</c>" sentence would
+    /// be false advice at that one site.
+    /// </para>
     /// </summary>
     /// <param name="at">The node the diagnostic is anchored to.</param>
     /// <param name="typeName">The generic type's name as written.</param>
-    /// <param name="typeSymbol">Its symbol, read for the arity of the suggested spelling.</param>
     /// <param name="siteNoun">How the message names this position ("type test", "except clause", ...).</param>
-    /// <param name="closedSpelling">Renders the example, given the <c>...</c> placeholder vector.</param>
+    /// <param name="remedy">The site's actionable advice, as a complete sentence.</param>
     /// <param name="fallbackSpan">Used when <paramref name="at"/> carries no span of its own.</param>
     private void ReportOpenGenericTypeOperand(
-        Node at, string typeName, TypeSymbol typeSymbol, string siteNoun,
-        Func<string, string> closedSpelling, Text.TextSpan? fallbackSpan = null)
+        Node at, string typeName, string siteNoun, string remedy, Text.TextSpan? fallbackSpan = null)
     {
-        var suggestion = string.Join(", ", typeSymbol.TypeParameters.Select(_ => "..."));
         AddError(
             $"'{typeName}' is a generic type, so it does not name a single type to test against, "
                 + $"and nothing at this {siteNoun} determines its type arguments. "
-                + $"Write the closed spelling — for example `{closedSpelling(suggestion)}` — "
-                + "or test against a non-generic base type. Unlike Python, Sharpy's generics are real "
+                + remedy
+                + " Unlike Python, Sharpy's generics are real "
                 + "runtime types, and a successful open test could not narrow to a type you can write.",
             at.LineStart, at.ColumnStart,
             code: DiagnosticCodes.Semantic.OpenGenericTypeTest,

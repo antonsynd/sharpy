@@ -520,6 +520,31 @@ internal partial class TypeChecker
             }
         }
 
+        // A bare GENERIC name in a class pattern — `case Box():` (#1235). .NET reifies generics, so
+        // `Box` alone names no runtime type; fill the vector from the scrutinee's own static type.
+        // Two failures collapse into this one rule: against an `object` scrutinee the open name reached
+        // codegen and emitted `Box<T>` (CS0305 behind SPY0908), and against a `Box[int]` scrutinee the
+        // open name matched neither direction of the compatibility check below and was rejected as
+        // incompatible with the very type that determines it.
+        //
+        // Builtin collections are excluded: their erasure is already expressed above and by the
+        // emitter's pattern arm, and routing them through here would give the #912 rule a third copy.
+        if (typePattern.Type.TypeArguments.Length == 0
+            && _symbolTable.Lookup(typePattern.Type.Name) is TypeSymbol { IsGeneric: true } genericPatternType
+            && !BuiltinNames.IsErasableCollection(genericPatternType.Name))
+        {
+            if (FillTypeArgumentsFromSubject(genericPatternType, scrutineeType) is { } filledPatternType)
+            {
+                resolvedType = filledPatternType;
+                _semanticInfo.SetPatternType(typePattern, filledPatternType);
+            }
+            else
+            {
+                ReportOpenGenericPatternType(typePattern, genericPatternType);
+                return;
+            }
+        }
+
         if (resolvedType is UnknownType)
         {
             // Try to resolve as a union case (e.g., case Point(): when matching Shape)
@@ -567,6 +592,29 @@ internal partial class TypeChecker
             SemanticBinding.SetVariableType(newSymbol, resolvedType);
             _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, newSymbol);
         }
+    }
+
+    /// <summary>
+    /// Refuses a bare generic name in a class pattern whose type arguments the scrutinee does not
+    /// determine (#1235). Shares SPY0345's diagnosis with the other type-operand positions but
+    /// <b>not</b> their remedy: the parser rejects type arguments in a pattern (SPY0125), so
+    /// <c>case Box[int]():</c> is not writable and suggesting it would send the user to a spelling the
+    /// compiler refuses. What does work is giving the scrutinee a more specific static type before
+    /// matching, or matching a non-generic base.
+    /// </summary>
+    private void ReportOpenGenericPatternType(TypePattern typePattern, TypeSymbol typeSymbol)
+    {
+        // Both suggestions below are executed as fixtures, not assumed: an `isinstance` guard around
+        // the match does NOT help, because the narrowed type does not reach the scrutinee, so
+        // suggesting it would send the user in a circle.
+        var name = typePattern.Type.Name;
+        var placeholders = OpenGenericPlaceholders(typeSymbol);
+        ReportOpenGenericTypeOperand(
+            typePattern.Type, name, siteNoun: "match pattern",
+            remedy: "Match on a value whose static type supplies them — for example bind it first with "
+                + $"`v: {name}[{placeholders}] = x as! {name}[{placeholders}]` — or match against a "
+                + "non-generic base type. A pattern cannot name type arguments itself.",
+            fallbackSpan: typePattern.Span);
     }
 
     /// <summary>

@@ -1,0 +1,25 @@
+# #1235: the match-pattern sibling of isinstance_open_generic_undetermined. Nothing at this
+# pattern determines Box's type arguments, so the operand names no runtime type.
+#
+# The REMEDY differs from every other type-operand site, and deliberately: a pattern cannot
+# name type arguments at all (`case Box[int]():` is refused by the parser, SPY0125), so the
+# usual "write the closed spelling" advice would name something the compiler rejects. Both
+# suggestions in this message are executed as fixtures — binding to a typed local is
+# match_class_pattern_open_generic_filled, and a non-generic base match works because the
+# base names one runtime type. An `isinstance` guard around the match does NOT work: the
+# narrowed type does not reach the scrutinee, which is why it is not suggested.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main() -> None:
+    o: object = Box[int](7)
+    match o:
+        case Box():
+            print("never")
+        case _:
+            print("other")

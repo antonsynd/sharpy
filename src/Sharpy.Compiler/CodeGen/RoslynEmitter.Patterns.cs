@@ -294,7 +294,14 @@ internal partial class RoslynEmitter
                         }
                     }
 
-                    var typeSyntax = _typeMapper.MapType(typePattern.Type);
+                    // A bare generic name like `case Box():` names no runtime type on its own, so the
+                    // semantic phase filled its argument vector from the scrutinee and recorded the
+                    // result as the pattern's type (#1235). Reading that here is what stops the open
+                    // `Box<T>` from being emitted (CS0305 behind SPY0908); mapping the written
+                    // annotation is only right when nothing was decided.
+                    var typeSyntax = _context.SemanticInfo?.GetPatternType(typePattern) is { } decidedPatternType
+                        ? _typeMapper.MapSemanticType(decidedPatternType)
+                        : _typeMapper.MapType(typePattern.Type);
                     if (typePattern.BindingName != null)
                     {
                         var varName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);

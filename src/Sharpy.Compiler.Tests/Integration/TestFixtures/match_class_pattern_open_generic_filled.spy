@@ -1,0 +1,35 @@
+# #1235: a bare generic name in a class pattern gets its argument vector filled from the
+# scrutinee's own static type. Two separate failures collapse into that one rule:
+#
+#   * against an `object` scrutinee the open name reached codegen and emitted `Box<T>`
+#     (CS0305 behind SPY0908) — see errors/match_class_pattern_open_generic_undetermined;
+#   * against a `Box[int]` scrutinee — the very type that determines the vector — the open
+#     name matched neither direction of the pattern compatibility check and was rejected
+#     with SPY0361, which is the case pinned here.
+#
+# `case list()` against an `object` scrutinee is pinned alongside it because the two rules
+# have to coexist: an unparameterized builtin collection still erases to its non-generic
+# protocol interface (#912) rather than being filled or refused, and that erasure keeps
+# living in the pattern channel, not in a second copy of the rule.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main() -> None:
+    b: Box[int] = Box[int](7)
+    match b:
+        case Box():
+            print("box filled")
+        case _:
+            print("other")
+
+    xs: object = [1, 2, 3]
+    match xs:
+        case list():
+            print("list erased")
+        case _:
+            print("other")
