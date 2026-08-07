@@ -30,6 +30,14 @@ namespace Sharpy
             // makes that structural instead of a coincidence. It also means the int.MinValue / -1
             // boundary reports Sharpy's OverflowError here, as it does for `//`, rather than
             // leaking a raw System.OverflowException out of a builtin (#1302).
+            //
+            // DELIBERATE TRADEOFF: this divides twice (once in each helper) where the inlined
+            // version divided once, and division is not cheap. Structural correctness was chosen
+            // over that — three hand-kept-in-sync copies of a floored-division algorithm is the
+            // parallel-site defect this round hit seven times, and "they agree today" is a weaker
+            // property than "they cannot disagree". If you are here to make a hot divmod loop
+            // faster, inline FloorDiv/FloorMod or let the JIT CSE them; do NOT restore a private
+            // third copy of the quotient computation.
             return (FloorDiv(x, y), FloorMod(x, y));
         }
 
