@@ -1,0 +1,32 @@
+# #1235 remediation: the bare-generic-name rule covers ALL THREE class-pattern shapes. The batch
+# wired only the type-pattern arm (`case Box():`); positional (`case Box(v):`) and property
+# (`case Box(value=v):`) patterns still resolved the raw annotation and leaked the open `Box<T>`
+# as CS0305 behind SPY0908 — with BOTH object and Box[int] scrutinees. One shared rule now fills
+# from the scrutinee (here) or refuses with SPY0345 (the .error twin), and the emitter reads the
+# recorded pattern type for all three shapes.
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def positional_filled(b: Box[int]) -> str:
+    match b:
+        case Box(v):
+            return "pos " + str(v)
+        case _:
+            return "other"
+
+
+def property_filled(b: Box[int]) -> str:
+    match b:
+        case Box(value=v):
+            return "prop " + str(v)
+        case _:
+            return "other"
+
+
+def main() -> None:
+    print(positional_filled(Box[int](1)))
+    print(property_filled(Box[int](2)))

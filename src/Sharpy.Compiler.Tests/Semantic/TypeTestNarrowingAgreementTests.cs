@@ -133,6 +133,105 @@ def f(x: object) -> int:
             $"the {shape} narrowing and its emitted type test must come from one resolved type");
     }
 
+    /// <summary>
+    /// The agreement contract on the <c>is</c>-operator path (#1235): the operator's
+    /// <see cref="TypeAnnotation"/> operand and the <c>isinstance</c> spelling of the SAME test on
+    /// the SAME subject must classify to the same resolved type — one classifier, two spellings,
+    /// one answer. Each probe contains both spellings so the assertion compares lowerings from one
+    /// analysis of one program.
+    /// <para>
+    /// This deliberately does NOT assert a narrowed read on the <c>is</c> branch: the CFG condition
+    /// recognizer (<c>NarrowingFlowAnalysis.RecognizeLeaf</c>) has never produced a fact for a
+    /// <c>TypeCheck</c> condition, so <c>if a is Dog:</c> narrows nothing today. That gap is tracked
+    /// separately (#1333); when it is closed, this theory should grow the cast-agreement half its
+    /// isinstance sibling has.
+    /// </para>
+    /// </summary>
+    public static TheoryData<string, string> IsOperatorTwinShapes() => new()
+    {
+        {
+            "non-generic user class",
+            @"
+class Animal:
+    pass
+
+class Dog(Animal):
+    def speak(self) -> str:
+        return ""woof""
+
+def f(a: Animal) -> bool:
+    if a is Dog:
+        return True
+    return isinstance(a, Dog)
+"
+        },
+        {
+            "bare generic name filled from the subject",
+            @"
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+def f(b: Box[int]) -> bool:
+    if b is Box:
+        return True
+    return isinstance(b, Box)
+"
+        },
+        {
+            "closed generic spelling",
+            @"
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+def f(x: object) -> bool:
+    if x is Box[int]:
+        return True
+    return isinstance(x, Box[int])
+"
+        },
+    };
+
+    [Theory]
+    [MemberData(nameof(IsOperatorTwinShapes))]
+    public void IsOperatorAndIsinstanceClassifyTheSameTestToTheSameType(string shape, string source)
+    {
+        var (module, info) = Analyze(source);
+
+        var isOperatorTests = Descendants(module)
+            .OfType<TypeCheck>()
+            .Select(tc => info.GetTypeTestLowering(tc.CheckType))
+            .Where(l => l != null)
+            .Select(l => l!)
+            .ToList();
+
+        isOperatorTests.Should().ContainSingle(
+            $"the {shape} probe contains exactly one classified is-operator test");
+
+        var isinstanceTests = Descendants(module)
+            .OfType<FunctionCall>()
+            .Where(c => c.Arguments.Length == 2)
+            .Select(c => info.GetTypeTestLowering(c.Arguments[1]))
+            .Where(l => l != null)
+            .Select(l => l!)
+            .ToList();
+
+        isinstanceTests.Should().ContainSingle(
+            $"the {shape} probe contains exactly one classified isinstance test");
+
+        isOperatorTests[0].TestType.Should().Be(
+            isinstanceTests[0].TestType,
+            $"the {shape} test resolves through one classifier regardless of spelling");
+        isOperatorTests[0].Kind.Should().Be(
+            isinstanceTests[0].Kind,
+            $"the {shape} test's lowering kind must not depend on the spelling");
+    }
+
     [Fact]
     public void EquivalentTypeTestsOnBothBranchesSurviveTheMergePoint()
     {

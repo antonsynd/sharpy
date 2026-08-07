@@ -146,8 +146,8 @@ public record UnionDef : Statement
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // TypeParameters, Cases, and Decorators don't contain Node-derived children
-        // that we need to traverse (TypeAnnotation doesn't inherit from Node)
+        // TypeParameters, Cases, and Decorators are not traversed: TypeAnnotation is a Node
+        // since #1235 but deliberately not exposed to traversal (see TypeAnnotation's doc)
         foreach (var stmt in Body)
             yield return stmt;
     }

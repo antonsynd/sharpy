@@ -1,0 +1,42 @@
+# #1235 remediation: the two tuple-except cells the plan's Testing Strategy names that the
+# batch left unpinned. The BARE tuple (`except (A, B):`, no binding) keeps the per-clause
+# expansion path — a different lowering from the binding form's common-base catch, so the
+# binding fixture does not stand guard over it. The SINGLE-ELEMENT tuple (`except (A,):`)
+# is the degenerate spelling. Expected outputs verified against python3 (first matching
+# handler wins; a later specific handler still claims what the tuple did not).
+
+class NotFound(Exception):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
+class Denied(Exception):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
+def catch_bare(which: int) -> str:
+    try:
+        if which == 0:
+            raise NotFound("nf")
+        raise Denied("dn")
+    except (NotFound, Denied):
+        return "caught bare " + str(which)
+
+
+def catch_single(ok: bool) -> str:
+    try:
+        if ok:
+            raise NotFound("nf")
+        raise Denied("dn")
+    except (NotFound,):
+        return "caught single"
+    except Denied:
+        return "caught denied"
+
+
+def main() -> None:
+    print(catch_bare(0))
+    print(catch_bare(1))
+    print(catch_single(True))
+    print(catch_single(False))

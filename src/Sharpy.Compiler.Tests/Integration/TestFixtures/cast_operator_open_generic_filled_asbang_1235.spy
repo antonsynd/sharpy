@@ -1,0 +1,17 @@
+# #1235 remediation: the as! cell of the fill matrix. type_test_operator_open_generic_filled
+# pins `is Box` and `as? Box` (open, filled from the subject) but only the CLOSED spelling of
+# as! — this pins the open one, completing the per-operator 2x2 the plan's Testing Strategy
+# calls for. as! shares the classification with as?, so this is a ratchet against the two
+# operators drifting apart, not a new mechanism.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main() -> None:
+    b: Box[int] = Box[int](7)
+    d = b as! Box
+    print(d.value)

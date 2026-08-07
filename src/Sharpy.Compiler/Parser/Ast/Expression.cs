@@ -816,7 +816,7 @@ public record LambdaExpression : Expression
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: param.Type is TypeAnnotation which doesn't inherit from Node
+        // Note: param.Type is a TypeAnnotation — a Node since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         foreach (var param in Parameters)
         {
             if (param.DefaultValue != null)
@@ -917,7 +917,7 @@ public record TypeCoercion : Expression
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: TargetType is TypeAnnotation which doesn't inherit from Node
+        // Note: TargetType is a TypeAnnotation — a Node since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         yield return Value;
     }
 }
@@ -941,7 +941,7 @@ public record TypeCheck : Expression
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: CheckType is TypeAnnotation which doesn't inherit from Node
+        // Note: CheckType is a TypeAnnotation — a Node since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         yield return Value;
     }
 }
@@ -1025,7 +1025,7 @@ public record TryExpression : Expression
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: ExceptionTypes are TypeAnnotations which don't inherit from Node
+        // Note: ExceptionTypes are TypeAnnotations — Nodes since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         yield return Operand;
     }
 }

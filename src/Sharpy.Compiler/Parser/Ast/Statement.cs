@@ -124,7 +124,7 @@ public record VariableDeclaration : Statement
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: Type is a TypeAnnotation which doesn't inherit from Node
+        // Note: Type is a TypeAnnotation — a Node since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         if (InitialValue != null)
             yield return InitialValue;
     }
@@ -379,7 +379,7 @@ public record TryStatement : Statement
     {
         foreach (var stmt in Body)
             yield return stmt;
-        // Note: handler.ExceptionType is a TypeAnnotation which doesn't inherit from Node
+        // Note: handler.ExceptionType is a TypeAnnotation — a Node since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         foreach (var handler in Handlers)
         {
             if (handler.Filter != null)
@@ -540,7 +540,7 @@ public record FunctionDef : Statement
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: ReturnType and param.Type are TypeAnnotations which don't inherit from Node
+        // Note: ReturnType and param.Type are TypeAnnotations — Nodes since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         foreach (var param in Parameters)
         {
             if (param.DefaultValue != null)
@@ -580,7 +580,7 @@ public record ClassDef : Statement
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: BaseClasses are TypeAnnotations which don't inherit from Node
+        // Note: BaseClasses are TypeAnnotations — Nodes since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         foreach (var stmt in Body)
             yield return stmt;
     }
@@ -615,7 +615,7 @@ public record StructDef : Statement
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: BaseClasses are TypeAnnotations which don't inherit from Node
+        // Note: BaseClasses are TypeAnnotations — Nodes since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         foreach (var stmt in Body)
             yield return stmt;
     }
@@ -650,7 +650,7 @@ public record InterfaceDef : Statement
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Note: BaseInterfaces are TypeAnnotations which don't inherit from Node
+        // Note: BaseInterfaces are TypeAnnotations — Nodes since #1235, but deliberately not exposed to traversal (see TypeAnnotation's doc)
         foreach (var stmt in Body)
             yield return stmt;
     }
@@ -732,7 +732,8 @@ public record TypeAlias : Statement
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        // Type and FunctionType don't inherit from Node
+        // FunctionType is not a Node; Type is a TypeAnnotation — a Node since #1235, but
+        // deliberately not exposed to traversal (see TypeAnnotation's doc)
         yield break;
     }
 }

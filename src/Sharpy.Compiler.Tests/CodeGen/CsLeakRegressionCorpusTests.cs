@@ -39,6 +39,85 @@ public class CsLeakRegressionCorpusTests
 
     public static IEnumerable<object[]> Corpus()
     {
+        // #1235 site 1 — a bare generic operand of as?/as!/is emitted the open generic
+        // `Box<T>` (CS0305, twice for as?). Filled from the tested value's static type.
+        yield return Case("#1235-cast-open-generic", """
+            class Box[T]:
+                value: T
+
+                def __init__(self, value: T):
+                    self.value = value
+
+            def main() -> None:
+                b: Box[int] = Box[int](42)
+                if b is Box:
+                    c = b as? Box
+                    if c is not None:
+                        d = b as! Box
+                        print(d.value)
+            """);
+
+        // #1235 site 2 — class patterns with a bare generic type emitted the open generic
+        // (CS0305) in all THREE pattern shapes; the property/positional arms were fixed by
+        // the verification pass after the type-pattern arm shipped alone.
+        yield return Case("#1235-match-class-patterns", """
+            class Box[T]:
+                value: T
+
+                def __init__(self, value: T):
+                    self.value = value
+
+            def shapes(b: Box[int]) -> str:
+                match b:
+                    case Box(v) if v > 1:
+                        return "pos"
+                    case Box(value=w) if w > 0:
+                        return "prop"
+                    case Box():
+                        return "type"
+                    case _:
+                        return "other"
+
+            def main() -> None:
+                print(shapes(Box[int](1)))
+            """);
+
+        // #1235 site 3 — `except (A, B) as e:` emitted `catch (ValueTuple<A, B> e)` (CS0155).
+        // Lowered to a common-base catch with an is-alternation filter.
+        yield return Case("#1235-except-tuple-binding", """
+            class NotFound(Exception):
+                def __init__(self, msg: str):
+                    super().__init__(msg)
+
+            class Denied(Exception):
+                def __init__(self, msg: str):
+                    super().__init__(msg)
+
+            def main() -> None:
+                try:
+                    raise NotFound("nf")
+                except (NotFound, Denied) as e:
+                    print("caught")
+            """);
+
+        // #1235 site 4 / #1254 — a bare generic operand of a @test assert isinstance emitted
+        // the open generic through GenerateTestAssert's private resolver copy.
+        yield return Case("#1235-test-assert-isinstance", """
+            class Box[T]:
+                value: T
+
+                def __init__(self, value: T):
+                    self.value = value
+
+            @test
+            def test_box_shape():
+                b: Box[int] = Box[int](3)
+                assert isinstance(b, Box)
+
+            def main() -> None:
+                print("ok")
+            """);
+
         // #980 — empty tuple () emitted `var t = ();` (CS1525).
         yield return Case("#980-empty-tuple", """
             def main() -> None:

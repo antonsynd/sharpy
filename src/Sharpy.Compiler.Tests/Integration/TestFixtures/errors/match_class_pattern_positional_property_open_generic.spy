@@ -1,0 +1,38 @@
+# #1235 remediation twin of match_class_pattern_positional_property_1235: against an `object`
+# scrutinee nothing determines the vector, so positional and property class patterns refuse with
+# SPY0345 exactly as the type-pattern arm does — before this they leaked CS0305 behind SPY0908.
+# Two class names so each pinned message is unique (the harness anchors @line:col to the first
+# diagnostic containing the pattern).
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+class Crate[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def positional_refused(o: object) -> str:
+    match o:
+        case Box(v):
+            return "never"
+        case _:
+            return "other"
+
+
+def property_refused(o: object) -> str:
+    match o:
+        case Crate(value=v):
+            return "never"
+        case _:
+            return "other"
+
+
+def main() -> None:
+    print(positional_refused(1))
+    print(property_refused(2))

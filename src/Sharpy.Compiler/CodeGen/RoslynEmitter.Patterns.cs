@@ -423,8 +423,13 @@ internal partial class RoslynEmitter
 
             case PropertyPattern propertyPattern:
                 {
-                    var typeSyntax = propertyPattern.Type != null
-                        ? _typeMapper.MapType(propertyPattern.Type) : null;
+                    // Same read as the type-pattern arm (#1235): a bare generic name had its argument
+                    // vector filled from the scrutinee and recorded as the pattern's type; mapping the
+                    // written annotation is only right when nothing was decided.
+                    var typeSyntax = _context.SemanticInfo?.GetPatternType(propertyPattern) is { } decidedPropertyType
+                        ? _typeMapper.MapSemanticType(decidedPropertyType)
+                        : propertyPattern.Type != null
+                            ? _typeMapper.MapType(propertyPattern.Type) : null;
                     var subPatterns = new List<SubpatternSyntax>();
                     foreach (var field in propertyPattern.Fields)
                     {
@@ -457,8 +462,11 @@ internal partial class RoslynEmitter
                             positionalPattern, unionCase, scrutineeType, memberGuards, ref matchVarCounter);
                     }
 
-                    var typeSyntax = positionalPattern.Type != null
-                        ? _typeMapper.MapType(positionalPattern.Type) : null;
+                    // Same read as the type-pattern arm (#1235) — see the property-pattern case above.
+                    var typeSyntax = _context.SemanticInfo?.GetPatternType(positionalPattern) is { } decidedPositionalType
+                        ? _typeMapper.MapSemanticType(decidedPositionalType)
+                        : positionalPattern.Type != null
+                            ? _typeMapper.MapType(positionalPattern.Type) : null;
 
                     // Look up the type symbol to get field names for positional-to-property mapping
                     TypeSymbol? typeSymbol = null;
