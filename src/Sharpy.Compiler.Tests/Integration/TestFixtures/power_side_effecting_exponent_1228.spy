@@ -1,0 +1,25 @@
+# #1228 remediation: the two side-effecting-exponent cells the plan named that the batch left
+# unpinned. With the IsSideEffectFree gate deleted there is no branch left to special-case a
+# runtime exponent, but nothing EXECUTED these cells — and the gate's whole defect was that two
+# spellings of one operation behaved differently, so both get pins:
+#   1. Overflow with a side-effecting exponent raises OverflowError (the old gate silently
+#      SATURATED here — an undocumented spec violation) and evaluates the exponent once.
+#   2. A side-effecting NEGATIVE exponent takes the truncating path: 2 ** g() where g() is -1
+#      is 0, g called once. DELIBERATE CPython DIVERGENCE: python3 gives 0.5 (a float) — the
+#      spec pins int ** int at a truncated int (arithmetic_operators.md, negative-exponent row).
+def big_exp() -> int:
+    print("big_exp called")
+    return 40
+
+
+def neg_exp() -> int:
+    print("neg_exp called")
+    return -1
+
+
+def main() -> None:
+    try:
+        print(1000003 ** big_exp())
+    except OverflowError:
+        print("overflow")
+    print(2 ** neg_exp())

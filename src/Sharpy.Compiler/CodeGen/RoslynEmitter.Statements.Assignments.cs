@@ -703,6 +703,9 @@ internal partial class RoslynEmitter
             // Optional ??= value → target.IsSome ? target : value (staying Optional)
             // or target.UnwrapOr(value) if rhs is raw T — but ??= assigns back to
             // the same variable, so both sides are Optional in practice.
+            // `left` appears THREE times across the test and both arms — safe only because
+            // the caller has already hoisted any non-trivial target into a temp (#1227), so
+            // these are three reads of the same local, not three evaluations.
             return ConditionalExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName("IsSome")),
                 left,

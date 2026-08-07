@@ -6,7 +6,7 @@
 | `-` | Subtraction | `-` |
 | `*` | Multiplication | `*` |
 | `/` | Division* | `/` (with cast if necessary) |
-| `//` | Floor division** | `Math.Floor` (integer); `Sharpy.Builtins.FloorDiv` (float); `decimal.Truncate(decimal.Divide(x, y))` for decimal |
+| `//` | Floor division** | `Sharpy.Builtins.FloorDiv` (integer and float); `decimal.Truncate(decimal.Divide(x, y))` for decimal |
 | `%` | Modulo*** | `Sharpy.Builtins.FloorMod` (integer/float); `decimal.Remainder(x, y)` for decimal; native `%` for other types |
 | `**` | Exponentiation | Integer: constant folding / checked integer power; float: `Math.Pow(x, y)` (see below) |
 
@@ -32,7 +32,8 @@ operands:
 
 | Operands | Result Type | Rounding |
 |----------|-------------|----------|
-| Any integer types | `int32` | Floored (toward negative infinity) |
+| Both `int` | `int32` | Floored (toward negative infinity) |
+| Any `long` operand (with `int` or `long`) | `int64` | Floored (toward negative infinity) |
 | Any float type | Same float type | Floored (toward negative infinity) |
 | Mixed integer and float | Float type of the float operand | Floored (toward negative infinity) |
 | Both `decimal` | `decimal` | **Truncated** (toward zero) — see below |
@@ -47,6 +48,22 @@ operands:
 7.0 // 2    # 3.0 (float64) - mixed: result is float64
 7.0f // 2   # 3.0f (float32) - mixed: result is float32
 ```
+
+Integer `//` is computed **in integer arithmetic** (`Sharpy.Builtins.FloorDiv`),
+so quotients are exact across the full `int64` range — there is no
+double-precision round trip to lose the low bits of a large `long`:
+
+```python
+big: long = 4611686018427387905L   # 2**62 + 1
+print(big // 3L)                   # 1537228672809129301 — exact, matches CPython
+```
+
+One boundary is deliberately a runtime error: `int.MinValue // -1` (and the
+`long` equivalent) raises `OverflowError`. The mathematically correct quotient
+(`2147483648`) does not fit the result type, and .NET traps this division even
+in unchecked code, so the helper surfaces it as the ordinary Sharpy overflow
+error rather than an unexplained crash. CPython, with arbitrary-precision
+integers, computes `2147483648` — a documented divergence.
 
 ### Float floor division is not `Math.Floor(a / b)`
 
@@ -199,18 +216,49 @@ silently saturates or loses precision:
 | Integer `**` negative exponent | Truncating `Math.Pow` double path (`int ** int` stays `int`, e.g. `2 ** -1` is `0`). |
 | Any float operand | `Math.Pow(x, y)`, result is float. |
 
+## Constant Integer Arithmetic
+
+Sharpy folds constant integer `+`, `-` (binary and unary) and `*` at compile
+time, exactly. A constant result that does not fit the width the compiler
+emits is a **compile error, SPY0348** (`ConstantIntegerOverflow`) — never a
+silently wrong value, and never a leaked C# error (Roslyn folds constants in a
+checked context, so an unfolded overflowing tree would surface as CS0220):
+
+```python
+print(3794 * 1973 * 948)    # ERROR (SPY0348): 7096312776 does not fit int
+print(3794L * 1973 * 948)   # OK: 7096312776 — a long operand makes the expression long
+print(4294967296 + 1)       # OK: 4294967297 — the literal itself is long-width by magnitude
+```
+
+Two deliberate asymmetries, both Axiom-1 (they are C#'s own rules for
+constants):
+
+- **Constant `+ - *` does not widen, unlike constant `**`.** A constant
+  `int * int` stays `int` (erroring if the product does not fit), because the
+  same expression with variables is `int` at runtime — constants must not type
+  differently than the code they abbreviate. Constant `**` widens `int` →
+  `long` when needed (SPY0328's rule) because `**` has no native C# operator
+  and its result type is Sharpy's to define.
+- **Constant overflow errors; runtime overflow wraps.** Non-constant integer
+  `+ - *` runs unchecked in the generated C# and wraps silently
+  (`n + 1` at `int.MaxValue` is `int.MinValue`). Loud-at-compile-time,
+  wrapping-at-runtime is exactly C#'s own split. CPython, with
+  arbitrary-precision integers, computes every case exactly — a documented
+  divergence (see `docs/deviations.yaml`, `int-overflow-checked`).
+
 ## Implementation
 
 - *Standard: ✅ Native*
 - *`**`: 🔄 Constant-folded or lowered to `Sharpy.Builtins.CheckedIntPow()` for
 integers, `Math.Pow()` for floats. See table above.*
 - *`/`: 🔄 Lowered to floating-point division. See table above.*
-- *`//`: 🔄 Lowered to `(int)Math.Floor((double)a / b)` for integers,
-`Sharpy.Builtins.FloorDiv(a, b)` for floats, and
+- *`//`: 🔄 Lowered to `Sharpy.Builtins.FloorDiv(a, b)` for integers (exact
+integer arithmetic, int/long overloads) and floats, and
 `decimal.Truncate(decimal.Divide(a, b))` for decimal (truncated toward zero,
-matching Python's `Decimal`); all three guard a zero divisor with
-`ZeroDivisionError`. `decimal.Divide` rather than `/` because a literal zero
-divisor through `/` is a C# compile error (CS0020).*
+matching Python's `Decimal`); all guard a zero divisor with
+`ZeroDivisionError` inside the helper, which is what lets the emitter splice
+each operand exactly once (#1216, #1226). `decimal.Divide` rather than `/`
+because a literal zero divisor through `/` is a C# compile error (CS0020).*
 - *`%`: 🔄 Lowered to `Sharpy.Builtins.FloorMod(a, b)` for integer/float operands
 (Python floored modulo, sign of divisor, `ZeroDivisionError` on zero); to
 `decimal.Remainder(a, b)` for decimal (native truncated remainder, sign of the

@@ -106,9 +106,9 @@ internal partial class RoslynEmitter
                 return BinaryExpression(SyntaxKind.DivideExpression, left, right);
 
             case BinaryOperator.FloorDivide:
-                // x // y → floor division with Python semantics (toward negative infinity)
-                // Integer operands: (int)Math.Floor((double)x / y) → result is int32
-                // Float operands: Builtins.FloorDiv(x, y) → result is the operands' float type
+                // x // y → floor division with Python semantics (toward negative infinity).
+                // One Builtins.FloorDiv invocation for integer AND float operands (#1226) —
+                // guard and dispatch live in the helper, each operand spliced once.
                 // Decimal operands: native truncating quotient (routed inside the wrapper,
                 // which both this site and the augmented `//=` site share).
                 return GenerateFloorDivideValue(left, right, binOp.Left, binOp.Right);

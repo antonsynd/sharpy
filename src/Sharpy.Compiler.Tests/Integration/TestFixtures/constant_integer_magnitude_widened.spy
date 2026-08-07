@@ -1,0 +1,10 @@
+# #1234 / #1320 (09591683e): the ACCEPTANCE side of the width correction. SPY0348 checks the
+# width codegen EMITS, magnitude included — 4294967296 does not fit int, so the literal itself
+# emits as long, and arithmetic over it is checked against LONG bounds, not int bounds. Before
+# the correction the checker used the un-widened result type and refused these. The refusal
+# side (a product that exceeds even long) is pinned by constant_integer_overflow and
+# ConstFoldPassTests; this pins the fits-because-it-widened side so a regression that refuses
+# valid magnitude-widened constants cannot land silently.
+def main() -> None:
+    print(4294967296 + 1)
+    print(4294967296 * 4)

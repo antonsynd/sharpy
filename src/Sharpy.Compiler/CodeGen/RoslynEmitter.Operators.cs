@@ -1302,12 +1302,12 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generates floor division expression with correct Python semantics.
     /// Floors toward negative infinity (not truncation toward zero).
-    /// - Float operands: <c>global::Sharpy.Builtins.FloorDiv(a, b)</c> → result is the float
-    ///   type of the operands (the Core helper carries CPython's <c>float_floor_div</c>
-    ///   algorithm and the ZeroDivisionError guard)
-    /// - Integer operands: (int)Math.Floor((double)a / b) → result is int32 (pragmatic for .NET)
-    /// Note: Spec says integer floor division should return int64, but we return int32
-    /// for .NET compatibility with most use cases (augmented assignment, common variables).
+    /// Every arm is one <c>global::Sharpy.Builtins.FloorDiv(a, b)</c> invocation — the helper
+    /// owns the ZeroDivisionError guard and the dispatch, so each operand is spliced exactly
+    /// once (#1216, #1226):
+    /// - Integer operands: the int/long overloads compute the floored quotient in integer
+    ///   arithmetic — exact across the full int64 range, int//int → int32, any long → int64
+    /// - Float operands: the float overloads carry CPython's <c>float_floor_div</c> algorithm
     /// </summary>
     private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)
     {
