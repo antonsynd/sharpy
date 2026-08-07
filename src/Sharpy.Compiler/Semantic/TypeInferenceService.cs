@@ -588,7 +588,7 @@ internal class TypeInferenceService
             return null;
 
         if (candidates.Count == 1)
-            return candidates[0];
+            return AcceptsArgument(candidates[0], argumentType) ? candidates[0] : null;
 
         if (DeterministicBinaryOverloadResolver != null)
             return DeterministicBinaryOverloadResolver(candidates, argumentType);
@@ -598,6 +598,33 @@ internal class TypeInferenceService
         // construct the service directly do not NRE if they ever reach it.
         return candidates.FirstOrDefault(c =>
             c.Parameters.Count >= 2 && c.Parameters[^1].Type.Equals(argumentType));
+    }
+
+    /// <summary>
+    /// Whether a lone operator candidate can accept <paramref name="argumentType"/> at all.
+    /// </summary>
+    /// <remarks>
+    /// A single candidate used to be returned unconditionally, on the reasoning that one overload
+    /// admits no ambiguity and the operator validator would report any type error. It does not:
+    /// <c>Sharpy.Set&lt;T&gt;</c> declares exactly one <c>operator |</c>, so <c>set | list</c>
+    /// resolved, typed as <c>set</c>, and emitted C# that Roslyn rejected with CS0019 — surfacing
+    /// as SPY0908, an internal error, for ordinary user code (#1253).
+    /// <para>
+    /// Deliberately shallow: it rejects only when parameter and argument are both generics built
+    /// from <em>different</em> type constructors (<c>set[T]</c> against <c>list[int]</c>), which no
+    /// conversion bridges. Anything else — a type parameter, a base type, a primitive, a user type
+    /// — is left alone, so a single-candidate operator that today accepts an argument via an
+    /// implicit conversion still does.
+    /// </para>
+    /// </remarks>
+    private static bool AcceptsArgument(FunctionSymbol candidate, SemanticType argumentType)
+    {
+        if (candidate.Parameters.Count < 2)
+            return true;
+
+        return candidate.Parameters[^1].Type is not GenericType parameterType
+            || argumentType is not GenericType argument
+            || string.Equals(parameterType.Name, argument.Name, StringComparison.Ordinal);
     }
 
     private SemanticType? TryInferClrBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
