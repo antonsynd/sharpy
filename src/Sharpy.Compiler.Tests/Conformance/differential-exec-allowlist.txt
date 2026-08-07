@@ -39,6 +39,14 @@ fixture::string_astral_escape
 # opt-in. deviations.yaml: int-overflow-checked. Permanent.
 fixture::integer_power_runtime_checked
 
+# The augmented `**=` form of the same two rows, and only those two rows: `big **= 40`
+# raises OverflowError where CPython is exact (`no raise`), and `neg **= -1` is `0`
+# where CPython's negative exponent produces the float `0.5`. Both are pinned by the
+# spec's `**` table and commented as deliberate in the fixture itself. Every other line
+# of the fixture (1024, 81, 8.0) agrees with CPython exactly.
+# deviations.yaml: int-overflow-checked, int-power-negative-exponent. Permanent.
+fixture::augmented_power
+
 # A parameterized generic is a legal `isinstance` type operand because .NET reifies
 # generics — `isinstance(x, list[int])` names a real runtime type and narrows to it.
 # CPython erases generics and refuses the same spelling outright ("isinstance()

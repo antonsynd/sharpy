@@ -1158,6 +1158,89 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Single routing seam for <c>**</c> — used by both the binary-operator site and the
+    /// augmented <c>**=</c> site so neither can drift, exactly as <c>//</c> and <c>%</c> do.
+    /// Integer operands get ONE <c>Sharpy.Builtins.CheckedIntPow</c> invocation (the Core helper
+    /// absorbs the negative-exponent case, so there is no gate, no dispatch ternary and no
+    /// operand regeneration — #1228); every other operand shape gets <c>Math.Pow</c>, whose
+    /// <c>double</c> result is what the TypeChecker types those expressions as.
+    /// <para>
+    /// Before #1227 the <c>**=</c> site did NOT share this seam: it emitted a raw
+    /// <c>Math.Pow(x, y)</c> and assigned the <c>double</c> straight back into the target, so
+    /// <c>x: int = 2; x **= 10</c> did not compile at all (SPY0908 / CS0266, "cannot implicitly
+    /// convert 'double' to 'int'"), and neither did the <c>long</c> form. That is the shape this
+    /// seam exists to make impossible — <c>//=</c> and <c>%=</c> already carried the comment
+    /// saying a shared wrapper cannot miss an operand class the binary site handles, and
+    /// <c>**=</c> was the one arm that had never joined them.
+    /// </para>
+    /// </summary>
+    /// <param name="left">Generated C# expression for the left operand.</param>
+    /// <param name="right">Generated C# expression for the right operand.</param>
+    /// <param name="leftAst">Left operand AST (for type inference); may be null.</param>
+    /// <param name="rightAst">Right operand AST (for type inference); may be null.</param>
+    /// <param name="resultType">
+    /// Semantic type the result must have — the binary node's own type at the binary site, the
+    /// assignment target's type at the <c>**=</c> site. Selects the integer width only.
+    /// </param>
+    private ExpressionSyntax GeneratePowerValue(
+        ExpressionSyntax left,
+        ExpressionSyntax right,
+        Expression? leftAst,
+        Expression? rightAst,
+        SemanticType? resultType)
+    {
+        // Decimal is matched POSITIVELY, as in GenerateFloorDivideValue and GenerateModuloValue
+        // (#1174), rather than being left to fall out of "not float". IsFloatExpression is false
+        // for decimal, so without this arm a decimal operand lands in the integer path below and
+        // emits CheckedIntPow((int)(d), ...): `2.5m ** 2` compiled and printed 4 where CPython
+        // gives 6.25. The TypeChecker already types `decimal ** int` as float64 (it refuses
+        // `d **= 2` with SPY0220 on exactly that ground), so the double path is what the rest of
+        // the compiler already believes this expression is.
+        if (IsDecimalOperand(leftAst) || IsDecimalOperand(rightAst))
+        {
+            return GenerateDoublePow(
+                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
+                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(right)));
+        }
+
+        if ((leftAst != null && IsFloatExpression(leftAst))
+            || (rightAst != null && IsFloatExpression(rightAst)))
+        {
+            return GenerateDoublePow(left, right);
+        }
+
+        // Both operands integral: stay integral. CheckedIntPow keeps results exact across the
+        // full long range and raises OverflowError instead of saturating, and — because the
+        // helper owns the negative-exponent dispatch — each operand is spliced exactly once.
+        var castKind = resultType == SemanticType.Long
+            ? SyntaxKind.LongKeyword
+            : SyntaxKind.IntKeyword;
+
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                IdentifierName("CheckedIntPow")))
+            .AddArgumentListArguments(
+                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
+                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
+    }
+
+    /// <summary>
+    /// Generates <c>global::System.Math.Pow(left, right)</c> — the float-returning
+    /// exponentiation arm of <see cref="GeneratePowerValue"/>.
+    /// </summary>
+    private ExpressionSyntax GenerateDoublePow(ExpressionSyntax left, ExpressionSyntax right)
+    {
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("System", "Math"),
+                IdentifierName("Pow")))
+            .AddArgumentListArguments(
+                Argument(left),
+                Argument(right));
+    }
+
+    /// <summary>
     /// Single routing seam for <c>//</c> — used by both the binary-operator site and the
     /// augmented <c>//=</c> site so neither can drift. Decimal operands take the native
     /// truncating path; every other operand shape keeps the floored

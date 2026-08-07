@@ -1,0 +1,83 @@
+# Every subexpression of an augmented-assignment target is evaluated EXACTLY ONCE (#1227).
+#
+# The lowering `target op= value` -> `target = <target> op <value>` splices the target's
+# generated syntax into both the read and the write, so a call in the target ran twice. That
+# produces the CORRECT value whenever the operand is pure, which is why no behavioural fixture
+# ever caught it -- every case below therefore uses an operand with an observable side effect,
+# and the printed CALL COUNT is the assertion, not the arithmetic.
+#
+# Verified against CPython (python3): each `idx`/`divisor`/`get_box` line appears once, and
+# `xs[idx()] += 1` -> [11, 20], `ys[idx()] //= divisor()` -> [3, 20], `get_box(b).value += 1`
+# -> 11.
+
+
+class Box:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+
+def idx() -> int:
+    print("idx")
+    return 0
+
+
+def divisor() -> int:
+    print("divisor")
+    return 2
+
+
+def get_box(b: Box) -> Box:
+    print("get_box")
+    return b
+
+
+def main() -> None:
+    # Index target: the #1227 repro. Was `xs[Idx()] = xs[Idx()] + 1`.
+    xs: list[int] = [10, 20]
+    xs[idx()] += 1
+    print(xs)
+
+    # Composes with the single-invocation `//` lowering (#1226): the index is evaluated once
+    # AND the divisor is evaluated once. CPython prints idx then divisor, in that order.
+    ys: list[int] = [7, 20]
+    ys[idx()] //= divisor()
+    print(ys)
+
+    # Array target: a separate emitter path (ArrayHelpers.GetItem/SetItem) that spliced the
+    # index into both calls. CPython has no fixed-size array; the count rule is the same.
+    arr: array[int] = array[int](2)
+    arr[0] = 10
+    arr[1] = 20
+    arr[idx()] += 1
+    print(arr[0])
+
+    # Member target with a call in the receiver chain.
+    b: Box = Box(10)
+    get_box(b).value += 1
+    print(b.value)
+
+    # `??=` spliced its target THREE times (`t = t.IsSome ? t : v` / `t = t ?? v`), so it is
+    # the worst case of the family; all three reads now come from one temp.
+    zs: list[int | None] = [None, None]
+    zs[idx()] ??= 7
+    print(zs[0])
+
+    # Every remaining operator family through the same seam, one side-effecting index each.
+    ns: list[int] = [10, 20]
+    ns[idx()] -= 1
+    ns[idx()] *= 2
+    ns[idx()] %= 7
+    ns[idx()] **= 2
+    ns[idx()] &= 6
+    ns[idx()] |= 1
+    ns[idx()] ^= 2
+    ns[idx()] <<= 2
+    ns[idx()] >>= 1
+    print(ns)
+
+    # `/=` needs a float target (int /= int is refused: true division is float64).
+    fs: list[float] = [10.0, 20.0]
+    fs[idx()] /= 4.0
+    print(fs)

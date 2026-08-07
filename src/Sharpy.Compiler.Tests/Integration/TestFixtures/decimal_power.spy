@@ -1,0 +1,17 @@
+# A decimal operand of `**` takes the float64 path, not the integer one.
+#
+# `IsFloatExpression` is false for decimal, so a decimal operand fell through into the integer
+# arm and emitted `CheckedIntPow((int)(d), ...)`: `2.5m ** 2` printed 4. The TypeChecker
+# already types `decimal ** int` as float64 -- it refuses `d **= 2` with SPY0220 on exactly
+# that ground -- so the double path is what the rest of the compiler already believes this
+# expression is. Decimal is matched positively here, the way `//` and `%` match it (#1174).
+#
+# CPython: Decimal('2.5') ** 2 == 6.25 -- the VALUE matches. The TRAILING DIGITS do not, and
+# that is deliberate: CPython's Decimal keeps its scale (Decimal('2.0') ** 3 prints 8.000)
+# while Sharpy's result is a float64 and prints 8.0. Do not "fix" the second line to 8.000.
+def main() -> None:
+    d: decimal = 2.5m
+    print(d ** 2)
+
+    whole: decimal = 2.0m
+    print(whole ** 3)

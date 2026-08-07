@@ -1,0 +1,40 @@
+# Binary `//`, `%` and `**` each emit ONE invocation, splicing every operand exactly once
+# (#1226, #1228 -- the invariant #1216 established).
+#
+# The old lowerings spliced an operand into two tree positions (`//`'s zero-guard ternary) or
+# regenerated it outright (`**`'s negative-exponent dispatch, which also duplicated any
+# statement the operand had hoisted). Both produced the CORRECT value, so only a
+# side-effecting operand can tell the difference -- the printed call count is the assertion.
+#
+# CPython-verified: 7 // 3 -> 2, 7 % 3 -> 1, 2 ** 2 -> 4, sum((2, 3)) ** 2 -> 25, and each
+# side-effect line printed once.
+
+
+def divisor() -> int:
+    print("divisor")
+    return 3
+
+
+def exponent() -> int:
+    print("exponent")
+    return 2
+
+
+def make_tuple() -> tuple[int, int]:
+    print("make_tuple")
+    return (2, 3)
+
+
+def main() -> None:
+    # #1226: the divisor sat in both the `right == 0` guard and the division.
+    print(7 // divisor())
+    print(7 % divisor())
+
+    # #1228: a side-effecting exponent used to DEGRADE the lowering to the saturating
+    # `(int)Math.Pow(...)` cast rather than evaluate twice. Both spellings now take the same
+    # checked path.
+    print(2 ** exponent())
+
+    # #1228's repro: the left operand was regenerated with no gate at all, and generation is
+    # not pure -- it re-emitted the tuple-spread hoist, so make_tuple() ran twice.
+    print(sum(make_tuple()) ** 2)

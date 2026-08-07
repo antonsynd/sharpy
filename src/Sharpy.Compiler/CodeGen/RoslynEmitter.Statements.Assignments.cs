@@ -148,6 +148,11 @@ internal partial class RoslynEmitter
                 // TypeChecker recorded for the target identifier so x += 1 with a narrowed
                 // Optional<int> reads as x.Unwrap() + 1 (or .Value / ! for nullables). The write side
                 // (target) is the un-narrowed identifier.
+                //
+                // Nothing to hoist here (#1227): an identifier target has no subexpressions, so
+                // the read and write forms are two spellings of the same name and evaluating
+                // both is free. The index and member paths below are where the double splice
+                // becomes a double evaluation.
                 var readExpr = ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName));
 
                 var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value);
@@ -165,6 +170,17 @@ internal partial class RoslynEmitter
         {
             var obj = GenerateExpression(indexAccess.Object);
             var index = GenerateExpression(indexAccess.Index);
+
+            // An augmented index target is spliced TWICE — once into the read (`obj[index]` or
+            // ArrayHelpers.GetItem(obj, index)) and once into the write — so `xs[idx()] += 1`
+            // called idx() twice where CPython calls it once (#1227). Hoist the non-trivial
+            // parts to temps first; both forms below then read the temps. A simple assignment
+            // splices each part exactly once and must stay byte-identical, so it is excluded.
+            if (assign.Operator != AssignmentOperator.Assign)
+            {
+                obj = HoistAugmentedTargetOperand(indexAccess.Object, obj, isWriteReceiver: true);
+                index = HoistAugmentedTargetOperand(indexAccess.Index, index, isWriteReceiver: false);
+            }
 
             // Array index assignment: route through ArrayHelpers for negative index support
             var objectType = GetExpressionSemanticType(indexAccess.Object);
@@ -242,6 +258,22 @@ internal partial class RoslynEmitter
             // read-side accessor so `self.x += v` reads the narrowed value.
             var target = GenerateMemberAccess(memberAccess,
                 applyNarrowing: assign.Operator != AssignmentOperator.Assign);
+
+            // An augmented member target is generated once and spliced TWICE — into the read
+            // side of the augmented value and into the assignment's LHS — so
+            // `get_obj().value += 1` called get_obj() twice (#1227, measured). Retarget both
+            // onto a temp holding the receiver. Only a plain member access is rewritten: a
+            // narrowed read generates as an invocation (`obj.Field.Unwrap()`), which this
+            // deliberately leaves alone rather than guessing at its shape. A simple assignment
+            // splices the target once and is excluded so its emission stays byte-identical.
+            if (assign.Operator != AssignmentOperator.Assign
+                && target is MemberAccessExpressionSyntax memberTarget)
+            {
+                var receiver = HoistAugmentedTargetOperand(
+                    memberAccess.Object, memberTarget.Expression, isWriteReceiver: true);
+                if (receiver != memberTarget.Expression)
+                    target = memberTarget.WithExpression(receiver);
+            }
 
             // Method group → Optional<delegate> field needs an explicit delegate cast.
             // `obj.field = None` for an Optional<T> field must produce Optional<T>.None.
@@ -492,6 +524,102 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// True when evaluating this augmented-assignment target subexpression twice is
+    /// indistinguishable from evaluating it once, so it may be spliced into both the read and
+    /// the write form without a temp. Identifiers (including <c>self</c>), <c>super</c> and
+    /// literals qualify, as do pure compositions of them — a field chain, a parenthesized
+    /// expression, an arithmetic index such as <c>i + 1</c>, a negated literal index.
+    /// <para>
+    /// Anything containing a call, an index read (a user <c>__getitem__</c> IS a call), a
+    /// comprehension or an await does not qualify: those are exactly the shapes #1227 is about.
+    /// Keeping the predicate tight is deliberate — every expression it accepts keeps its
+    /// emission byte-identical to what it was before the hoist existed, which is what the C#
+    /// snapshot fixtures pin.
+    /// </para>
+    /// </summary>
+    private static bool IsRepeatableTargetOperand(Expression expr) => expr switch
+    {
+        Parser.Ast.Identifier or SuperExpression or NoneLiteral or BooleanLiteral
+            or IntegerLiteral or FloatLiteral or StringLiteral => true,
+        Parenthesized paren => IsRepeatableTargetOperand(paren.Expression),
+        MemberAccess member => IsRepeatableTargetOperand(member.Object),
+        UnaryOp unary => IsRepeatableTargetOperand(unary.Operand),
+        BinaryOp binary => IsRepeatableTargetOperand(binary.Left)
+                           && IsRepeatableTargetOperand(binary.Right),
+        _ => false
+    };
+
+    /// <summary>
+    /// True when a temp holding this expression's value still designates the same storage the
+    /// expression itself designates — i.e. when the augmented WRITE may be retargeted onto the
+    /// temp. Only reference types qualify.
+    /// <para>
+    /// Value types must not: <c>var t = get_point(); t.X = t.X + 1;</c> compiles and mutates a
+    /// COPY, silently dropping the update, whereas the un-hoisted <c>GetPoint().X = …</c> is a
+    /// C# error (CS1612, surfaced as SPY0908 — measured). Trading a loud error for a wrong
+    /// answer is strictly worse than leaving the double evaluation in place, so an unresolved
+    /// type or a value type declines the hoist and keeps today's emission exactly. The index
+    /// EXPRESSION never comes through here — it is an rvalue passed by value on both sides, so
+    /// hoisting it can never change which storage is written.
+    /// </para>
+    /// </summary>
+    private bool CanRetargetAugmentedWrite(Expression expr)
+    {
+        return GetExpressionSemanticType(expr) switch
+        {
+            UserDefinedType { Symbol: { } symbol } =>
+                symbol.TypeKind is Semantic.TypeKind.Class or Semantic.TypeKind.Interface,
+            // The builtin collections are Sharpy.List/Dict/Set wrappers and CLR arrays, all
+            // reference types. A user generic type is judged by its definition; anything whose
+            // definition is unknown is declined rather than assumed.
+            GenericType generic => generic.GenericDefinition is { } definition
+                ? definition.TypeKind is Semantic.TypeKind.Class or Semantic.TypeKind.Interface
+                : generic.Name is BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set
+                    or BuiltinNames.Array or BuiltinNames.DefaultDict,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Hoists one subexpression of an augmented-assignment target into a temp so that the read
+    /// and write forms — which both splice it — evaluate it exactly once (#1227). Returns the
+    /// temp identifier, or <paramref name="generated"/> unchanged when no hoist is needed or
+    /// permitted.
+    /// <para>
+    /// The hoisted declaration goes into <c>_hoistedStatements</c>, which the statement emitter
+    /// flushes as flat siblings ahead of the statement being generated. Evaluating the target's
+    /// subexpressions before the value also matches CPython, which for
+    /// <c>xs[idx()] += val()</c> prints <c>idx</c> then <c>val</c> (verified with python3);
+    /// the un-hoisted emission printed <c>idx</c>, <c>idx</c>, <c>val</c>.
+    /// </para>
+    /// </summary>
+    /// <param name="ast">The target subexpression's AST; null declines the hoist.</param>
+    /// <param name="generated">Its already-generated C# syntax.</param>
+    /// <param name="isWriteReceiver">
+    /// True for the receiver the write is applied to (an indexer's collection, a member
+    /// access's object), which additionally requires <see cref="CanRetargetAugmentedWrite"/>.
+    /// False for a pure rvalue such as the index expression.
+    /// </param>
+    private ExpressionSyntax HoistAugmentedTargetOperand(
+        Expression? ast, ExpressionSyntax generated, bool isWriteReceiver)
+    {
+        if (ast == null || IsRepeatableTargetOperand(ast))
+            return generated;
+
+        if (isWriteReceiver && !CanRetargetAugmentedWrite(ast))
+            return generated;
+
+        var tempName = $"__aug{_tempVarCounter++}";
+        _hoistedStatements.Add(LocalDeclarationStatement(
+            VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(EscapedIdentifier(tempName))
+                        .WithInitializer(EqualsValueClause(generated))))));
+
+        return IdentifierName(tempName);
+    }
+
+    /// <summary>
     /// Generates the value expression for an augmented assignment.
     /// Handles special cases like //= (floor divide) and **= (power) that require
     /// method calls or casts instead of simple binary expressions.
@@ -505,15 +633,16 @@ internal partial class RoslynEmitter
     {
         return op switch
         {
-            // x **= y → global::System.Math.Pow(x, y)
+            // x **= y → checked integer power for integral operands, Math.Pow otherwise —
+            // decided by the binary `**` routing wrapper this site shares, so it cannot miss an
+            // operand class the binary site handles. Until #1227 this arm emitted a raw
+            // `Math.Pow(x, y)` and assigned the double straight back into the target, so the
+            // integral forms did not compile at all: `x: int = 2; x **= 10` and `n: long = 3;
+            // n **= 4` both failed with SPY0908 / CS0266 ("cannot implicitly convert 'double' to
+            // 'int'/'long'"). The target's own type selects the integer width.
             AssignmentOperator.PowerAssign =>
-                InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        MakeGlobalQualifiedName("System", "Math"),
-                        IdentifierName("Pow")))
-                    .AddArgumentListArguments(
-                        Argument(left),
-                        Argument(right)),
+                GeneratePowerValue(left, right, targetAst, valueAst,
+                    targetAst != null ? GetExpressionSemanticType(targetAst) : null),
 
             // x /= y → true division with Python semantics (always returns float64)
             // Cast left to double if both operands are integers

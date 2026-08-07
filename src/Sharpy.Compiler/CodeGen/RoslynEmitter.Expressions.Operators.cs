@@ -57,47 +57,27 @@ internal partial class RoslynEmitter
                             : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)foldedPow));
                     }
 
-                    // x ** y → global::System.Math.Pow(x, y)
-                    var powCall = InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            MakeGlobalQualifiedName("System", "Math"),
-                            IdentifierName("Pow")))
-                        .AddArgumentListArguments(
-                            Argument(left),
-                            Argument(right));
-                    // If both operands are integers, cast result back to integer type
-                    // Math.Pow returns double, but int ** int should stay integer
-                    if (!IsFloatExpression(binOp.Left) && !IsFloatExpression(binOp.Right))
-                    {
-                        // Check semantic type to determine the right integer cast type
-                        var resultType = GetExpressionSemanticType(binOp);
-                        var castKind = resultType == SemanticType.Long
-                            ? SyntaxKind.LongKeyword
-                            : SyntaxKind.IntKeyword;
-
-                        // ONE invocation, each operand spliced once (#1228). CheckedIntPow now
-                        // absorbs the negative-exponent case itself (returning the truncating
-                        // double-path value, so `2 ** -1` is still 0 per the spec), which is what
-                        // lets the gate, the dispatch ternary and both regenerations go.
-                        //
-                        // What this replaces was unsound in two ways. It called
-                        // GenerateExpression(binOp.Left) a second time with NO gate at all — the
-                        // IsSideEffectFree check covered only the right operand — and
-                        // GenerateExpression is not pure: it can push into _hoistedStatements
-                        // (the #1198 tuple-spread hoist), so `sum(make_tuple()) ** 2` emitted the
-                        // hoist twice and called make_tuple() twice. And when the gate DID fire it
-                        // silently degraded the lowering to the saturating `(int)Math.Pow` cast, so
-                        // `x ** f()` had different overflow behaviour from `x ** y` — a spelling
-                        // difference changing semantics. Both spellings now raise OverflowError.
-                        return InvocationExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                MakeGlobalQualifiedName("Sharpy", "Builtins"),
-                                IdentifierName("CheckedIntPow")))
-                            .AddArgumentListArguments(
-                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
-                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
-                    }
-                    return powCall;
+                    // x ** y → ONE invocation, each operand spliced once (#1228): integer
+                    // operands take Sharpy.Builtins.CheckedIntPow, everything else Math.Pow.
+                    // Both decisions live in the routing wrapper this site shares with the
+                    // augmented `**=` site (#1227), so the two cannot drift — the same
+                    // arrangement `//` and `%` already use.
+                    //
+                    // CheckedIntPow absorbs the negative-exponent case itself (returning the
+                    // truncating double-path value, so `2 ** -1` is still 0 per the spec), which
+                    // is what lets the gate, the dispatch ternary and both regenerations go.
+                    //
+                    // What this replaced was unsound in two ways. It called
+                    // GenerateExpression(binOp.Left) a second time with NO gate at all — the
+                    // IsSideEffectFree check covered only the right operand — and
+                    // GenerateExpression is not pure: it can push into _hoistedStatements
+                    // (the #1198 tuple-spread hoist), so `sum(make_tuple()) ** 2` emitted the
+                    // hoist twice and called make_tuple() twice. And when the gate DID fire it
+                    // silently degraded the lowering to the saturating `(int)Math.Pow` cast, so
+                    // `x ** f()` had different overflow behaviour from `x ** y` — a spelling
+                    // difference changing semantics. Both spellings now raise OverflowError.
+                    return GeneratePowerValue(
+                        left, right, binOp.Left, binOp.Right, GetExpressionSemanticType(binOp));
                 }
 
             case BinaryOperator.Divide:

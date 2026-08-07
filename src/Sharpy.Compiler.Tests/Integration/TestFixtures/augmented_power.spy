@@ -1,0 +1,37 @@
+# `**=` routes through the same power lowering as binary `**` (#1228).
+#
+# It used to emit a raw `Math.Pow(x, y)` and assign the double straight back into the target,
+# so the INTEGRAL forms did not compile at all: `x: int = 2; x **= 10` and `n: long = 3;
+# n **= 4` both failed with SPY0908 / CS0266 ("cannot implicitly convert 'double' to
+# 'int'/'long'"). This fixture is the closure of that leak, not a tidy-up of a working
+# lowering.
+def main() -> None:
+    # int **= int stays int and is exact (CPython: 1024).
+    x: int = 2
+    x **= 10
+    print(x)
+
+    # long **= long selects the 64-bit width from the TARGET's type (CPython: 81).
+    n: long = 3
+    n **= 4
+    print(n)
+
+    # float **= float is unchanged -- it always worked, and must keep working (CPython: 8.0).
+    f: float = 2.0
+    f **= 3.0
+    print(f)
+
+    # Overflow raises rather than saturating, exactly as binary `**` does.
+    big: int = 2
+    try:
+        big **= 40
+        print("no raise")
+    except OverflowError:
+        print("overflow")
+
+    # DELIBERATE CPython DIVERGENCE -- do not "fix" this to 0.5. CPython gives 0.5 (a float);
+    # Sharpy's spec pins int ** int with a negative exponent as the truncating double path
+    # with an int result, so `2 ** -1` is 0 (arithmetic_operators.md, the `**` table).
+    neg: int = 2
+    neg **= -1
+    print(neg)
