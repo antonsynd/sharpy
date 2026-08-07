@@ -61,6 +61,22 @@ deviations:
   spec_ref: docs/language_specification/dunder_invocation_rules.md
   existing_diagnostic: SPY0464
   planned_diagnostic: null
+- id: builtin-name-shadowing-in-value-position
+  category: scoping
+  audience: python
+  severity: warning
+  code: SPY0483
+  spec_ref: docs/language_specification/name_mangling.md
+  existing_diagnostic: SPY0483
+  planned_diagnostic: null
+- id: builtin-type-name-shadowing-refused
+  category: scoping
+  audience: python
+  severity: error
+  code: SPY0212
+  spec_ref: docs/language_specification/name_mangling.md
+  existing_diagnostic: SPY0212
+  planned_diagnostic: null
 - id: call-syntax-only-forms-as-values
   category: types
   audience: python
@@ -84,14 +100,6 @@ deviations:
   code: SPY0200
   spec_ref: docs/language_specification/comprehensions.md
   existing_diagnostic: SPY0200
-  planned_diagnostic: null
-- id: constructor-alias-eager-capture
-  category: semantics
-  audience: python
-  severity: none
-  code: null
-  spec_ref: docs/language_specification/function_types.md
-  existing_diagnostic: null
   planned_diagnostic: null
 - id: dataclass-field-ordering
   category: syntax
