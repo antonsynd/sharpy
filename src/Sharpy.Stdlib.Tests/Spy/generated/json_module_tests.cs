@@ -2026,6 +2026,38 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
             }
 
+            [Xunit.FactAttribute]
+            public void TestDumpsFloat32UsesSinglePrecisionDigits()
+            {
+#line (872, 5) - (872, 13) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                var a = 0.1f;
+#line (873, 5) - (873, 13) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                var b = 1.1f;
+#line (874, 5) - (874, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                var c = 3.14159f;
+#line (875, 5) - (875, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal("0.1", json.Dumps(a));
+#line (876, 5) - (876, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal("1.1", json.Dumps(b));
+#line (877, 5) - (877, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal("3.14159", json.Dumps(c));
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestDumpsFloat32AgreesWithStr()
+            {
+#line (883, 5) - (883, 13) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                var a = 0.1f;
+#line (884, 5) - (884, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                var c = 3.14159f;
+#line (885, 5) - (885, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal(global::Sharpy.Builtins.Str(a), json.Dumps(a));
+#line (886, 5) - (886, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal(global::Sharpy.Builtins.Str(c), json.Dumps(c));
+#line hidden
+            }
+
             public void Dispose()
             {
                 _tmpPathFixture.Dispose();

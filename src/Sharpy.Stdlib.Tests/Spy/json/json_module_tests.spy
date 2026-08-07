@@ -852,3 +852,35 @@ def fallback_callback(obj: object) -> object:
 
 def identity_callback(obj: object) -> object:
     return obj
+
+
+# --- float32 serializes at its OWN precision (#1229) ---
+#
+# ORACLE: Sharpy's own `str()` of the same float32 — deliberately NOT CPython. CPython has no
+# single-precision float type, so it cannot be the oracle for these rows; putting them in the
+# cpython-parity fixture would misrepresent where the expectation came from.
+#
+# The property: json.dumps must format a float32 at single precision, not widen it to double
+# first. Widening changes the shortest-round-trip digits — the same defect #1204 fixed in pprint.
+# The values below are chosen so the two precisions VISIBLY disagree, which is what makes this a
+# real pin: if someone routes float32 through the double overload again, the widened doubles are
+# 0.10000000149011612, 1.100000023841858 and 3.141590118408203, and every assertion here fails.
+
+
+@test
+def test_dumps_float32_uses_single_precision_digits():
+    a = 0.1f
+    b = 1.1f
+    c = 3.14159f
+    assert json.dumps(a) == "0.1"
+    assert json.dumps(b) == "1.1"
+    assert json.dumps(c) == "3.14159"
+
+
+@test
+def test_dumps_float32_agrees_with_str():
+    # json.dumps and str() must spell the same float32 identically — one authority, one precision.
+    a = 0.1f
+    c = 3.14159f
+    assert json.dumps(a) == str(a)
+    assert json.dumps(c) == str(c)
