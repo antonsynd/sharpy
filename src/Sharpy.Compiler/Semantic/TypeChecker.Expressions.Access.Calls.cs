@@ -153,7 +153,7 @@ internal partial class TypeChecker
                    isTypeTest && call.Arguments.Length > 1
                        ? UnwrapParenthesized(call.Arguments[1])
                        : _typeTestTypeArgument))
-        using (ScopedValue.Push(ref _currentCallArguments, call))
+        using (ScopedValue.Push(ref _currentCallArguments, DirectArgumentSetOf(call)))
         {
             (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
         }
@@ -3684,6 +3684,28 @@ internal partial class TypeChecker
             ReturnType = targetSymbol.ReturnType,
             OptionalParameterCount = optionalCount,
         };
+    }
+
+    /// <summary>
+    /// The call's direct argument expressions, unwrapped through parentheses, for
+    /// <c>_currentCallArguments</c>. Spread values count: <c>f(*args)</c> passes the spread operand
+    /// itself into the argument position (#1182).
+    /// </summary>
+    private static HashSet<Expression> DirectArgumentSetOf(FunctionCall call)
+    {
+        var arguments = new HashSet<Expression>(ReferenceEqualityComparer.Instance);
+        foreach (var argument in call.Arguments)
+        {
+            var unwrapped = UnwrapParenthesized(argument);
+            arguments.Add(unwrapped);
+            if (unwrapped is SpreadElement spread)
+                arguments.Add(UnwrapParenthesized(spread.Value));
+        }
+
+        foreach (var keywordArgument in call.KeywordArguments)
+            arguments.Add(UnwrapParenthesized(keywordArgument.Value));
+
+        return arguments;
     }
 
     private void MarkTypeReferenceArguments(FunctionCall call)

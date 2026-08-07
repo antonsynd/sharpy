@@ -834,31 +834,25 @@ internal partial class TypeChecker
     /// Whether the reference is a type argument of the index currently being checked
     /// (<c>Outer.Inner[int]</c>). See <c>_currentIndexArguments</c>.
     /// </summary>
-    /// <remarks>
-    /// Scans rather than consulting a precomputed set (#1255). The membership is exactly what
-    /// the set held: the index expression itself, plus each element when the index is the
-    /// multi-argument tuple spelling.
-    /// </remarks>
     private bool IsCurrentIndexArgument(Expression reference)
+        => _currentIndexArguments?.Contains(UnwrapParenthesized(reference)) == true;
+
+    /// <summary>
+    /// The index expression plus, for a multi-argument index, each of its elements, for
+    /// <c>_currentIndexArguments</c>.
+    /// </summary>
+    private static HashSet<Expression> IndexArgumentSetOf(Expression index)
     {
-        if (_currentIndexArguments == null)
-            return false;
-
-        var target = UnwrapParenthesized(reference);
-        var index = UnwrapParenthesized(_currentIndexArguments);
-        if (ReferenceEquals(index, target))
-            return true;
-
-        if (index is TupleLiteral indexTuple)
+        var arguments = new HashSet<Expression>(ReferenceEqualityComparer.Instance);
+        var unwrapped = UnwrapParenthesized(index);
+        arguments.Add(unwrapped);
+        if (unwrapped is TupleLiteral indexTuple)
         {
             foreach (var element in indexTuple.Elements)
-            {
-                if (ReferenceEquals(UnwrapParenthesized(element), target))
-                    return true;
-            }
+                arguments.Add(UnwrapParenthesized(element));
         }
 
-        return false;
+        return arguments;
     }
 
     /// <summary>
@@ -879,47 +873,8 @@ internal partial class TypeChecker
     }
 
     /// <summary>Whether the reference is a direct argument of the call currently being checked.</summary>
-    /// <remarks>
-    /// Scans rather than consulting a precomputed set (#1255). The membership is exactly what the set
-    /// held: each positional argument unwrapped through parentheses, the operand of a spread
-    /// (<c>f(*args)</c> passes the spread operand itself into the argument position, #1182), and each
-    /// keyword argument's value.
-    /// </remarks>
     private bool IsDirectCallArgument(Expression reference)
-    {
-        if (_currentCallArguments == null)
-            return false;
-
-        var target = UnwrapParenthesized(reference);
-
-        foreach (var argument in _currentCallArguments.Arguments)
-        {
-            var unwrapped = UnwrapParenthesized(argument);
-            if (ReferenceEquals(unwrapped, target))
-                return true;
-
-            // Preserved verbatim from the set-builder this replaced (#1255), but note: no fixture
-            // reaches this arm, and it may be unreachable from Sharpy source. A query here needs a
-            // constructor-reference rule to ask about the OPERAND of a spread, which requires a bare
-            // builtin type name in that position (`f(*int)`) — not a meaningful spelling. Kept rather
-            // than dropped because a behaviour-neutral perf change is the wrong place to delete code
-            // whose deadness is unproven. Whether it is reachable is a #1182 question about what
-            // constructor references can appear in a spread position, not a #1255 one.
-            if (unwrapped is SpreadElement spread
-                && ReferenceEquals(UnwrapParenthesized(spread.Value), target))
-            {
-                return true;
-            }
-        }
-
-        foreach (var keywordArgument in _currentCallArguments.KeywordArguments)
-        {
-            if (ReferenceEquals(UnwrapParenthesized(keywordArgument.Value), target))
-                return true;
-        }
-
-        return false;
-    }
+        => _currentCallArguments?.Contains(UnwrapParenthesized(reference)) == true;
 
     /// <summary>
     /// Pins a constructor reference to <paramref name="target"/> when the builtin can construct that
