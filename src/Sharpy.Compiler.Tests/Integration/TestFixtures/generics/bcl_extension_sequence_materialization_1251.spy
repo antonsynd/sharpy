@@ -1,0 +1,60 @@
+# Test (#1251): a CLR sequence landing in a Sharpy slot is materialized into a Sharpy collection.
+#
+# A BCL extension call is typed `list[str]` by the checker but emits as `IEnumerable<string>`. That
+# disagreement produced two different failures, and the second is the one worth pinning:
+#
+#   ICE      — `ys: list[str] = ...` gave CS0266, `return` gave CS0266, `ys[0]` gave CS0021.
+#   SILENT   — an INFERRED `ys = ...` compiled and ran: `print(ys)` printed
+#              "System.Linq.Enumerable+ListSelectIterator`2[...]" instead of the list, and
+#              `ys.append(v)` bound LINQ's PURE Enumerable.Append and discarded the result, so a
+#              Sharpy list append became a no-op with no error anywhere.
+#
+# The issue's own report called the inferred form a working control. It was not; it was the worse
+# half. Every row below is a slot: annotated declaration, inferred binding, reassignment, return
+# position, and a Sharpy-native parameter.
+#
+# Copy semantics are deliberate — this IS Python's `list(...)`, just implicit.
+from system.collections.generic import List
+
+
+def take(xs: list[str]) -> int:
+    return len(xs)
+
+
+def make(lst: List[int]) -> list[str]:
+    return lst.select[str](lambda x: str(x))
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(4)
+
+    # Annotated declaration — the issue's repro.
+    annotated: list[str] = lst.select[str](lambda x: str(x))
+    print(annotated)
+
+    # Inferred binding — the two silent rows. Both must behave as the list they are typed as.
+    inferred = lst.select[str](lambda x: str(x))
+    print(inferred)
+    inferred.append("z")
+    print(inferred)
+    print(inferred[0])
+    print(len(inferred))
+
+    # Reassignment into an existing Sharpy list.
+    reassigned: list[str] = []
+    reassigned = lst.select[str](lambda x: str(x))
+    print(reassigned)
+
+    # Return position.
+    print(make(lst))
+
+    # Sharpy-native parameter.
+    print(take(lst.select[str](lambda x: str(x))))
+
+    # A CLR method returning List<T> is the same defect with a different origin, so it is covered by
+    # the same rule rather than a second one.
+    listed = lst.to_list()
+    listed.append(5)
+    print(listed)

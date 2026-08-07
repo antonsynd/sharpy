@@ -1,0 +1,28 @@
+# Test (#1251): materialization COPIES, and that is the deliberate contract.
+#
+# The implicit conversion is Python's `list(...)`, so mutating the materialized list must not reach
+# the CLR collection it came from — exactly as `b = list(a)` in CPython leaves `a` alone. Pinning
+# this makes the copy a decision rather than an accident: if someone later "optimizes" it into an
+# alias, this fails.
+#
+# The reverse direction is pinned too: passing a CLR list to a CLR-mapped formal must NOT copy, or
+# the widening in #1260 would have quietly acquired copy semantics of its own. `add_range` receives
+# the CLR list itself and observes its later mutation.
+from system.collections.generic import List
+
+
+def main() -> None:
+    source = List[int]()
+    source.add(1)
+    source.add(2)
+
+    # Materialized into a Sharpy list: a copy.
+    copied: list[int] = source.to_list()
+    copied.append(99)
+    print(copied)
+    print(source.count)
+
+    # Mutating the CLR source afterwards does not reach the copy either.
+    source.add(3)
+    print(copied)
+    print(source.count)

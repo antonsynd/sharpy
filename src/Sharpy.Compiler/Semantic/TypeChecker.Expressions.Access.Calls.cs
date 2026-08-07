@@ -2381,6 +2381,12 @@ internal partial class TypeChecker
                 if (paramType == null)
                     continue; // still open after substitution — inference decides, not this check
 
+                // A Sharpy-native collection parameter is a Sharpy slot, so a CLR sequence bound to it
+                // materializes (#1251). A CLR-mapped parameter is NOT — there the emitted formal is the
+                // CLR type and the value goes in unconverted (#1260); RecordSequenceMaterialization
+                // enforces that distinction, so both rules read the same predicate.
+                RecordSequenceMaterialization(ArgumentNodeAt(call, i), argTypes[i], paramType);
+
                 if (!IsArgumentAssignable(argTypes[i], paramType, ArgumentNodeAt(call, i)))
                 {
                     // PEP 675: string literals (and concatenations thereof) satisfy LiteralString

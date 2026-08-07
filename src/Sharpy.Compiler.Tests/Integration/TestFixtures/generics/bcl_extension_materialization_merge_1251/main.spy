@@ -1,0 +1,20 @@
+# Test (#1251): sequence-materialization lowerings survive the per-file -> project SemanticInfo merge.
+#
+# The lowering is a node-keyed SemanticInfo side-table, and codegen reads the MERGED project-level
+# instance, not the per-file one. A side-table missing from SemanticInfo.MergeFrom is dropped there
+# SILENTLY — the failure mode that hid _generatorBindings from the source generator pipeline (#1042).
+# Single-file fixtures cannot see it, because they never take the merge path in a way that loses
+# anything. Here the facts are recorded while checking seqlib.spy and consumed when main.spy's
+# project is emitted, so a missing MergeFrom line surfaces as CS0266/CS1061 rather than as nothing.
+from system.collections.generic import List
+
+import seqlib
+
+
+def main() -> None:
+    lst = List[int]()
+    lst.add(1)
+    lst.add(2)
+
+    print(seqlib.doubled(lst))
+    print(seqlib.inferred_binding(lst))

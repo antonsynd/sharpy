@@ -62,6 +62,17 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, NarrowedReadLowering> _narrowedReadLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map expressions whose SEMANTIC type is a Sharpy collection but whose EMITTED type is the CLR
+    // sequence the bridge mapped it from, to the Sharpy collection they must be materialized into
+    // (#1251, Critical Rule 2 pattern (b)). A BCL extension call typed `list[str]` emits as
+    // `IEnumerable<string>`; without the materialization the two disagree, and the disagreement is
+    // not merely an ICE — `print(xs)` prints a LINQ iterator's type name and `xs.append(v)` binds
+    // LINQ's pure Enumerable.Append and silently discards the result. The value recorded is the
+    // target collection type; the emitter wraps the generated expression in its constructor and
+    // decides nothing itself.
+    private readonly ConcurrentDictionary<Expression, SemanticType> _sequenceMaterializations =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map the TYPE OPERAND node of an `isinstance(x, T)` call to the type test codegen must emit.
     // Keyed on the operand expression (`call.Arguments[1]`, the same node an IsType narrowing fact
     // retains) so the emitter and both narrowing resolvers read ONE decided type and none of them
@@ -379,6 +390,27 @@ public class SemanticInfo : ISemanticQuery
     public NarrowedReadLowering? GetNarrowedReadLowering(Expression expr)
     {
         return _narrowedReadLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
+    /// Records that <paramref name="expr"/> produces a CLR sequence which must be materialized into
+    /// <paramref name="targetCollection"/> — a Sharpy <c>list</c>/<c>set</c>/<c>dict</c> — before it can
+    /// be used as the value its semantic type already claims it is (#1251). Copy semantics are
+    /// deliberate and are exactly Python's <c>list(...)</c>.
+    /// </summary>
+    public void SetSequenceMaterialization(Expression expr, SemanticType targetCollection)
+    {
+        _sequenceMaterializations[expr] = targetCollection;
+    }
+
+    /// <summary>
+    /// The Sharpy collection an expression must be materialized into, or <c>null</c> when its emitted
+    /// type already matches its semantic type — which is every expression that did not come from a
+    /// CLR sequence.
+    /// </summary>
+    public SemanticType? GetSequenceMaterialization(Expression expr)
+    {
+        return _sequenceMaterializations.TryGetValue(expr, out var target) ? target : null;
     }
 
     /// <summary>
@@ -926,6 +958,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._narrowedReadLowerings)
             _narrowedReadLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._sequenceMaterializations)
+            _sequenceMaterializations.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._typeTestLowerings)
             _typeTestLowerings.TryAdd(kvp.Key, kvp.Value);

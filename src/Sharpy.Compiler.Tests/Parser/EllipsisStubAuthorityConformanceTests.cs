@@ -80,7 +80,9 @@ public class EllipsisStubAuthorityConformanceTests
     /// </summary>
     private static readonly Dictionary<string, string> Allowlist = new(StringComparer.Ordinal)
     {
-        ["RoslynEmitter.Expressions.cs :: GenerateExpression"] =
+        // Renamed from GenerateExpression when the sequence-materialization applier took that name as
+        // a wrapper (#1251); the dispatch switch itself is unchanged and so is this reason.
+        ["RoslynEmitter.Expressions.cs :: GenerateExpressionCore"] =
             "Expression-kind dispatch: routes the literal to GenerateEllipsisLiteral. Grouping is handled by the sibling Parenthesized arm, not here.",
         ["RoslynEmitter.Operators.cs :: CollectReferencedIdentifiers"] =
             "Identifier-collection walk: the arm is the leaf 'this literal names nothing' case, not a body classification.",

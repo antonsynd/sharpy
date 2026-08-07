@@ -632,6 +632,87 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The Sharpy-native form of a bridge-mapped collection type — the same type with its CLR
+    /// provenance dropped. A value of this type is backed by the Sharpy wrapper (<c>Sharpy.List&lt;T&gt;</c>),
+    /// which is what a Sharpy slot means by <c>list[T]</c>.
+    /// </summary>
+    private static SemanticType NativeCollectionForm(SemanticType type)
+        => type is GenericType { ClrOriginTypeName: not null } mapped
+            ? mapped with { ClrOriginTypeName = null }
+            : type;
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is a value the checker calls a Sharpy collection but codegen
+    /// emits as some OTHER CLR type — a bridge-mapped <c>list</c>/<c>set</c>/<c>dict</c> whose origin
+    /// is not the Sharpy wrapper. These are the values that need materializing before they can be used
+    /// as what their own semantic type says they are (#1251).
+    ///
+    /// <para>
+    /// A mapping whose origin IS the Sharpy wrapper (<c>Sharpy.List&lt;T&gt;</c> mapped to
+    /// <c>list[T]</c>) is excluded: the emitted type already matches, so wrapping it would add a copy
+    /// that changes aliasing while fixing nothing. So is any mapped generic that is not one of the
+    /// three collections — a <c>DictKeyView</c> is not a slot type.
+    /// </para>
+    /// </summary>
+    private static bool IsUnmaterializedClrSequence(SemanticType type)
+    {
+        if (type is not GenericType { ClrOriginTypeName: { Length: > 0 } origin } mapped)
+            return false;
+
+        var sharpyWrapper = mapped.Name switch
+        {
+            BuiltinNames.List => Discovery.ClrTypeBridge.SpecialCases.SharpyListFullName,
+            BuiltinNames.Dict => Discovery.ClrTypeBridge.SpecialCases.SharpyDictFullName,
+            BuiltinNames.Set => Discovery.ClrTypeBridge.SpecialCases.SharpySetFullName,
+            _ => null
+        };
+
+        if (sharpyWrapper == null || origin == sharpyWrapper)
+            return false;
+
+        // A collection whose element the bridge could not represent (`object`) is left alone. The
+        // element type is a degradation, not a fact, and materializing would MAKE IT BINDING: today
+        // the emitter writes `var groups = xs.GroupBy(...)` and C# keeps the precise
+        // IEnumerable<IGrouping<K,V>>, so `g.key` works; building a Sharpy.List<object> from it turns
+        // that into CS1061. Recording nothing keeps the permissive channel, which is the same call
+        // CompleteStagedExtensionCall already makes for an object-collapsed return (#1206 D2) —
+        // `object` there is "strictly WORSE than the Unknown it has today", and it is worse here too.
+        return !mapped.TypeArguments.Any(IsObjectType);
+    }
+
+    /// <summary>
+    /// Records that <paramref name="value"/> must be materialized into a Sharpy collection, when it is
+    /// a CLR sequence landing in a slot that means the Sharpy one (#1251).
+    ///
+    /// <para>
+    /// A "slot" is any position that binds the value as a Sharpy value rather than passing it back to
+    /// .NET: a variable declaration (annotated OR inferred — an inferred local is just as much a Sharpy
+    /// slot, and it is the case the issue's own "the inferred form works" control got wrong), a
+    /// reassignment, a <c>return</c> against a declared Sharpy collection, and a call argument bound to
+    /// a Sharpy-native parameter. Positions that hand the value to CLR code are deliberately NOT slots:
+    /// materializing a bare property read would insert a copy per read and quietly break mutation
+    /// through a CLR collection, which is the aliasing hazard this rule exists to avoid.
+    /// </para>
+    ///
+    /// <para>
+    /// Copy semantics are deliberate and are exactly Python's <c>list(...)</c> — the explicit spelling
+    /// of the same conversion, whose emitted form this reuses.
+    /// </para>
+    /// </summary>
+    private void RecordSequenceMaterialization(Expression? value, SemanticType valueType, SemanticType slotType)
+    {
+        if (value == null || !IsUnmaterializedClrSequence(valueType))
+            return;
+
+        // The slot must mean a Sharpy collection. A slot that is itself CLR-mapped is a .NET position:
+        // the emitted formal is the CLR type and the value goes in unconverted (#1260).
+        if (slotType is not GenericType { ClrOriginTypeName: null, Name: BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set })
+            return;
+
+        _semanticInfo.SetSequenceMaterialization(UnwrapParenthesized(value), slotType);
+    }
+
+    /// <summary>
     /// Attempts to resolve a CLR <see cref="Type"/> for a <see cref="SemanticType"/>, including
     /// constructing concrete generic types for Sharpy collection generics (list/dict/set). This
     /// enables CLR assignability checks (e.g., passing a <c>list[int]</c> to a method parameter

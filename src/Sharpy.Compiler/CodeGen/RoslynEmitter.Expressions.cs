@@ -18,6 +18,34 @@ internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression expr)
     {
+        var generated = GenerateExpressionCore(expr);
+
+        // Sequence materialization (#1251): the TypeChecker decided this expression yields a CLR
+        // sequence where its own semantic type says Sharpy collection, and named the collection to
+        // build. Applied here, at the one choke point every expression passes through, so no position
+        // can be reached that forgot to apply it. Absent for every expression whose emitted type
+        // already matches its semantic type, which is all of them except CLR-sequence values — so the
+        // default path is byte-identical.
+        var materializationTarget = _context.SemanticInfo?.GetSequenceMaterialization(expr);
+        return materializationTarget != null
+            ? MaterializeSequence(generated, materializationTarget)
+            : generated;
+    }
+
+    /// <summary>
+    /// Wraps a CLR sequence in the Sharpy collection the TypeChecker recorded for it:
+    /// <c>xs</c> -> <c>new Sharpy.List&lt;string&gt;(xs)</c>. The type name comes from
+    /// <see cref="TypeSyntaxMapper"/>, the single authority for <c>list[T]</c> -> <c>Sharpy.List&lt;T&gt;</c>,
+    /// so this cannot spell a collection type differently from anywhere else in the emitter.
+    /// </summary>
+    private ExpressionSyntax MaterializeSequence(ExpressionSyntax value, SemanticType targetCollection)
+    {
+        return ObjectCreationExpression(_typeMapper.MapSemanticType(targetCollection))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(value))));
+    }
+
+    private ExpressionSyntax GenerateExpressionCore(Sharpy.Compiler.Parser.Ast.Expression expr)
+    {
         // E3 const-folding (opt_const_fold, #640): an operation the pass reduced emits as its literal
         // value. FoldedConstants is empty unless the pass ran for this file, so the default
         // (flag-off) path is byte-identical.

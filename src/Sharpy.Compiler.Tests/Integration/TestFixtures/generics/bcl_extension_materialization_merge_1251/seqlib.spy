@@ -1,0 +1,14 @@
+# The materialization is recorded while checking THIS file, into this file's local SemanticInfo.
+from system.collections.generic import List
+
+
+def doubled(lst: List[int]) -> list[str]:
+    # Return position: a CLR sequence into a Sharpy slot.
+    return lst.select[str](lambda x: str(x * 2))
+
+
+def inferred_binding(lst: List[int]) -> list[str]:
+    # Inferred binding, then a list-only operation that only works if it really is a Sharpy list.
+    ys = lst.select[str](lambda x: str(x))
+    ys.append("tail")
+    return ys

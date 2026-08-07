@@ -132,6 +132,15 @@ internal partial class TypeChecker
             _expectedType = previousExpectedType2;
             inferredType = CheckLambdaBindingInferable(assignment.Value, inferredType);
 
+            // `ys = <CLR sequence>` binds a Sharpy collection, exactly as the annotated declaration
+            // path does (#1251). This is the case the issue's own control got wrong: without it the
+            // variable's type says `list[str]` while its emitted type stays `IEnumerable<string>`, so
+            // `print(ys)` prints a LINQ iterator's type name and `ys.append(v)` binds LINQ's pure
+            // Enumerable.Append and throws the result away — wrong, and silent.
+            var boundType = NativeCollectionForm(inferredType);
+            RecordSequenceMaterialization(assignment.Value, inferredType, boundType);
+            inferredType = boundType;
+
             // Create a new variable symbol with the inferred type (or redefine existing)
             var newSymbol = new VariableSymbol
             {
@@ -291,6 +300,8 @@ internal partial class TypeChecker
                     span: assignment.Span);
             }
         }
+
+        RecordSequenceMaterialization(assignment.Value, valueType, assignmentTargetType);
     }
 
     /// <summary>
@@ -386,10 +397,15 @@ internal partial class TypeChecker
             // Handle type inference for 'auto'
             if (declaredType is UnknownType)
             {
-                declaredType = initType;
+                // An inferred local binding a CLR sequence becomes a Sharpy collection, not a CLR one
+                // (#1251). Without this the variable's type says `list[str]` while its emitted type is
+                // `IEnumerable<string>`, and every later use is either an ICE (`ys[0]`, passing it on)
+                // or silently wrong (`print(ys)` prints a LINQ iterator's type name; `ys.append(v)`
+                // binds LINQ's pure Enumerable.Append and discards the result).
+                declaredType = NativeCollectionForm(initType);
                 if (varDecl.Type != null)
                 {
-                    _semanticInfo.SetTypeAnnotation(varDecl.Type, initType);
+                    _semanticInfo.SetTypeAnnotation(varDecl.Type, declaredType);
                 }
             }
             else if (!IsAssignable(initType, declaredType))
@@ -413,6 +429,8 @@ internal partial class TypeChecker
                         span: varDecl.Span);
                 }
             }
+
+            RecordSequenceMaterialization(varDecl.InitialValue, initType, declaredType);
         }
         else if (declaredType is UnknownType)
         {
@@ -532,6 +550,7 @@ internal partial class TypeChecker
             _expectedType = _currentFunctionReturnType;
             var returnType = CheckExpression(returnStmt.Value);
             _expectedType = previousExpectedType;
+            RecordSequenceMaterialization(returnStmt.Value, returnType, _currentFunctionReturnType);
             if (!IsAssignable(returnType, _currentFunctionReturnType))
             {
                 AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
