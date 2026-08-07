@@ -1196,10 +1196,24 @@ internal partial class TypeChecker
     /// <summary>
     /// Returns true when <paramref name="type"/> is the Exception type itself or a
     /// subclass of it. Walks the base chain via <see cref="TypeHierarchyService"/>.
+    /// <para>
+    /// A closed generic exception — <c>MyError[int]</c> for <c>class MyError[T](Exception)</c> — is a
+    /// <see cref="GenericType"/>, not a <see cref="UserDefinedType"/>, and its derivation is a property
+    /// of the definition, so the check reads <see cref="GenericType.GenericDefinition"/>. Without this
+    /// the closed spelling that <c>except</c>'s open-generic refusal (SPY0345) tells the user to write
+    /// was itself rejected as not-an-Exception — found by running that message's own example.
+    /// </para>
     /// </summary>
     private static bool IsExceptionSubtype(SemanticType type, TypeSymbol exceptionSymbol)
     {
-        if (type is not UserDefinedType { Symbol: { } symbol })
+        var symbol = type switch
+        {
+            UserDefinedType { Symbol: { } udtSymbol } => udtSymbol,
+            GenericType { GenericDefinition: { } definition } => definition,
+            _ => null
+        };
+
+        if (symbol == null)
         {
             return false;
         }

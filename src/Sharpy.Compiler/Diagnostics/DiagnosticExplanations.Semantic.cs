@@ -239,14 +239,41 @@ public static partial class DiagnosticExplanations
             + "be tested for. .NET reifies generics, so `Box<int>` and `Box<str>` are different runtime "
             + "types and there is no single 'Box' to check against; and a successful test would have to "
             + "narrow the value to `Box[T]` for an unknown T, which is not spellable. Sharpy fills the "
-            + "type arguments in for you when the value's own static type determines them (testing a "
+            + "type arguments in for you when the SUBJECT's own static type determines them (testing a "
             + "`Box[int]` against `Box` checks `Box[int]`), and rejects the test when nothing does. "
             + "Python accepts the open form because its generics are erased; Sharpy diverges here "
-            + "deliberately (Axiom 1 and Axiom 3 over Axiom 2 — see docs/deviations.yaml).",
-            "x: object = Box[int](5)\nif isinstance(x, Box):  # which Box?\n    ...",
-            "Name the closed type: `isinstance(x, Box[int])`. If the value could hold any "
-            + "parameterization, test against a non-generic base class or interface that all of them "
-            + "share, or model the cases as a tagged union and use `match`.");
+            + "deliberately (Axiom 1 and Axiom 3 over Axiom 2 — see docs/deviations.yaml).\n"
+            + "One rule covers every position that names a type to test against — `isinstance(x, T)`, "
+            + "`x is T`, `x as? T` / `x as! T`, a match class pattern `case T():`, and an `except T:` "
+            + "clause — so the spellings cannot disagree about what a bare name means. What differs "
+            + "between them is only what determines the type arguments, and therefore what fixes the "
+            + "error:\n"
+            + "  * isinstance / is / as? / as! take them from the tested value's static type;\n"
+            + "  * a match pattern takes them from the SCRUTINEE;\n"
+            + "  * an except clause has no subject at all — it tests whatever was thrown — so a bare "
+            + "generic exception name is always rejected.\n"
+            + "Two related forms are not affected. `x is list` (and set/dict) is allowed without type "
+            + "arguments: an unparameterized builtin collection tests against its non-generic protocol "
+            + "interface, exactly as `isinstance(x, list)` does. And a value-binding cast is stricter "
+            + "than a boolean test — `x as? list` is rejected where `x is list` is allowed, because the "
+            + "cast has to hand back a value of the named type and the erased interface is not it.",
+            "class Box[T]:\n"
+            + "    value: T\n\n"
+            + "    def __init__(self, value: T):\n"
+            + "        self.value = value\n\n\n"
+            + "def main() -> None:\n"
+            + "    x: object = Box[int](5)\n"
+            + "    if isinstance(x, Box):  # which Box?\n"
+            + "        print(\"never\")",
+            "Name the closed type: `isinstance(x, Box[int])`, `x is Box[int]`, `x as? Box[int]`, "
+            + "`except MyError[int]:`. Or give the value a static type that determines the arguments — "
+            + "`b: Box[int] = ...` makes `b is Box` and `case Box():` work by themselves.\n"
+            + "A MATCH PATTERN is the one position where the closed spelling is not available: "
+            + "`case Box[int]():` is rejected by the parser (SPY0125), so bind the value to a typed "
+            + "local first (`v: Box[int] = x as! Box[int]`) and match on that, or match a non-generic "
+            + "base type.\n"
+            + "Failing that, test against a non-generic base class or interface all the "
+            + "parameterizations share, or model the cases as a tagged union and use `match`.");
 
         Add(dict, DiagnosticCodes.Semantic.CallSyntaxOnlyReference, "Form must be called, not referenced", "Semantic",
             "Some forms exist only as call syntax and have no first-class value: 'isinstance' is a compile-time narrowing construct rather than a function, and a union variant constructor (Shape.Circle) names a case rather than a callable. Referencing one as a value is rejected deliberately, like Ok/Some (SPY0230) and generic function references (SPY0335). Python permits `g = isinstance`; Sharpy does not — see docs/deviations.yaml. A bare builtin type constructor reference (`f = dict`) looks similar but is NOT rejected: it is a value with no natural type, handled by the constructor-reference rules (SPY0342).",

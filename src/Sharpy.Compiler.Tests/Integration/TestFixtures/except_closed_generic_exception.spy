@@ -1,0 +1,31 @@
+# #1235: the closed spelling that `except`'s open-generic refusal (SPY0345) tells the user
+# to write must actually work. It did not: a closed generic exception is a GenericType, not
+# a UserDefinedType, so the Exception-derivation check read no symbol from it and rejected
+# `except MyError[int]:` as not-an-Exception (SPY0399) — the diagnostic's own remedy was
+# refused by the diagnostic's own sibling check.
+#
+# Found by running the SPY0345 explanation's examples against HEAD before committing the
+# text, which is the only reason it was caught: no fixture wrote a closed generic exception.
+#
+# `try[MyError[int]]` shares the check and was wrong the same way, so it is pinned here too.
+
+class MyError[T](Exception):
+    value: T
+
+    def __init__(self, value: T):
+        super().__init__("boom")
+        self.value = value
+
+
+def boom() -> int:
+    raise MyError[int](7)
+
+
+def main() -> None:
+    try:
+        raise MyError[int](1)
+    except MyError[int] as e:
+        print("caught", e.value)
+
+    r: int !MyError[int] = try[MyError[int]] boom()
+    print("try ok")
