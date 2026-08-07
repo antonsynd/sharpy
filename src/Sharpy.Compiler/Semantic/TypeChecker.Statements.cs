@@ -1171,7 +1171,6 @@ internal partial class TypeChecker
                 if (resolvedElement == null)
                     return null;
 
-                RequireExceptionDerivation(element, resolvedElement, exceptionSymbol);
                 alternatives.Add(resolvedElement);
             }
 
@@ -1190,40 +1189,23 @@ internal partial class TypeChecker
             return commonBase;
         }
 
-        var resolved = ClassifyTypeTestAnnotation(
+        return ClassifyTypeTestAnnotation(
             annotation, lodgeOn: annotation, subjectType: null,
             siteNoun: "except clause", erasure: CollectionErasure.Disallowed);
-        if (resolved != null)
-            RequireExceptionDerivation(annotation, resolved, exceptionSymbol);
-        return resolved;
-    }
-
-    /// <summary>
-    /// Requires an <c>except</c> clause's type to derive from <c>Exception</c>, reusing the check and
-    /// the code <c>try[E]</c> already applies. Not decoration: it is what makes the alternation's
-    /// common base an <c>Exception</c> subtype <b>by construction</b>, since a base computed over
-    /// types that are not exceptions could land on <c>object</c>, and <c>catch (object e)</c> is not
-    /// legal C#. Without it the same shape reached codegen as CS0155 behind SPY0908.
-    /// Fails open when <c>Exception</c> cannot be resolved, matching <c>try[E]</c>.
-    /// </summary>
-    private void RequireExceptionDerivation(TypeAnnotation at, SemanticType resolved, TypeSymbol? exceptionSymbol)
-    {
-        if (exceptionSymbol == null || resolved is UnknownType || IsExceptionSubtype(resolved, exceptionSymbol))
-            return;
-
-        AddError(
-            $"Type '{at.Name}' in an 'except' clause must be a subclass of 'Exception'",
-            at.LineStart, at.ColumnStart,
-            code: DiagnosticCodes.Semantic.TryExceptionTypeNotException,
-            span: at.Span);
     }
 
     /// <summary>
     /// Belt-and-braces guard on the alternation's catch type: a common base that is not an
-    /// <c>Exception</c> subtype becomes <c>Exception</c>. <see cref="RequireExceptionDerivation"/>
-    /// should already make this unreachable, but a catch type is one of the few places where being
-    /// wrong produces uncompilable C# rather than a wrong answer, so the invariant is enforced at the
-    /// point of use as well as at the point of check.
+    /// <c>Exception</c> subtype becomes <c>Exception</c>, so <c>catch (object e)</c> — which is not
+    /// legal C# — is unreachable.
+    /// <para>
+    /// This is now the <b>only</b> guard on the catch type. A semantic derivation check was tried and
+    /// removed: the inheritance information it needs does not survive the incremental symbol cache, so
+    /// it refused valid user exception types on any build where their defining file was served from
+    /// cache — a clean build succeeded and the next incremental build failed on identical source. The
+    /// clamp needs no inheritance data to be safe, because forcing <c>Exception</c> is correct for any
+    /// input; it can only ever widen the binding, never make it illegal. See #1309.
+    /// </para>
     /// </summary>
     private static SemanticType ClampToExceptionBase(SemanticType candidate, TypeSymbol? exceptionSymbol)
         => exceptionSymbol != null && !IsExceptionSubtype(candidate, exceptionSymbol)

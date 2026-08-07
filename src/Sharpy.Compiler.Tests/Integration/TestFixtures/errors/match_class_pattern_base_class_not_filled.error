@@ -1,0 +1,2 @@
+'Box' is a generic type, so it does not name a single type to test against @34:14
+nothing at this match pattern determines its type arguments

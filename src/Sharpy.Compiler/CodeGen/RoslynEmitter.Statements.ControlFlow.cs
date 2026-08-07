@@ -1451,8 +1451,8 @@ internal partial class RoslynEmitter
                 // filters: catch (Base e) when (e is A || e is B). Handler order is unchanged, which is
                 // what keeps CPython's "first matching handler wins" (verified with python3).
                 if (_context.SemanticInfo?.GetTypeTestLowering(handler.ExceptionType) is
-                        { Kind: TypeTestLoweringKind.ExceptionAlternation, Alternatives: { } alternatives }
-                        alternation
+                    { Kind: TypeTestLoweringKind.ExceptionAlternation, Alternatives: { } alternatives }
+                    alternation
                     && handler.Name != null)
                 {
                     result.Add(GenerateAlternationCatchClause(handler, alternation, alternatives, filterClause));

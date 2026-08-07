@@ -1,1 +1,0 @@
-Type 'NotAnError' in an 'except' clause must be a subclass of 'Exception' @17:12
