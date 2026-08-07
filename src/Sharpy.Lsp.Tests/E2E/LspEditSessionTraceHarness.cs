@@ -148,7 +148,8 @@ public sealed class LspEditSessionTraceHarness : IAsyncLifetime
     /// </summary>
     private static void AssertNoErrorsPublished(JsonNode notification)
     {
-        var diagnostics = notification["params"]?["diagnostics"]?.AsArray();
+        // LspTestClient enqueues the notification's `params` node, not the envelope.
+        var diagnostics = notification["diagnostics"]?.AsArray();
         Assert.NotNull(diagnostics);
 
         // LSP DiagnosticSeverity.Error == 1.
@@ -198,7 +199,13 @@ public sealed class LspEditSessionTraceHarness : IAsyncLifetime
                 return latencies;
             }
 
-            var message = notification["params"]?["message"]?.GetValue<string>();
+            // As above: the queued node is `params`, so the message sits directly on it — reading
+            // it as notification["params"]["message"] always yielded null. Fixing that does not by
+            // itself populate this row: the server sends no window/logMessage at all during a
+            // trace (measured: 36 publishDiagnostics, 0 logMessage), so the loop above times out
+            // on the first wait and this line is never reached. The path is corrected anyway
+            // because it would silently swallow every sample the moment logging is surfaced.
+            var message = notification["message"]?.GetValue<string>();
             if (message is null || !message.Contains(AnalysisLatencyLogMarker, StringComparison.Ordinal))
                 continue;
 
