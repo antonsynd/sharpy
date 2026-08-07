@@ -14,7 +14,10 @@
 #         .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer"
 
 LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
-TIMEOUT=900  # 15 minutes
+# The full suite takes ~18 minutes, so a 15-minute lock timeout made any queued run
+# behind one complete suite a GUARANTEED exit 124 — a structural failure, not a hung
+# peer (#1273). 45 minutes accommodates queueing behind two full suites.
+TIMEOUT=2700  # 45 minutes
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_DIR="${SCRIPT_DIR}/tmp"
@@ -51,7 +54,11 @@ acquire_lock() {
         fi
         if [ "$waited" -ge "$TIMEOUT" ]; then
             echo "ERROR: Timed out waiting for dotnet lock after $((TIMEOUT/60)) minutes." >&2
-            echo "Another dotnet command may be hung. Run: pkill -f dotnet" >&2
+            echo "Lock owner PID: $(cat "$LOCK_DIR/pid" 2>/dev/null || echo unknown)" >&2
+            echo "Do NOT run 'pkill -f dotnet' -- it kills other agents' live test runs." >&2
+            echo "A quiet run is not a hung run: a full suite spends its last minutes in" >&2
+            echo "teardown at 0% CPU with no log growth. Judge by ELAPSED time against the" >&2
+            echo "~18-minute expected duration first, and only then kill the specific PID." >&2
             exit 124
         fi
         sleep 2
