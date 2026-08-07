@@ -58,6 +58,7 @@ internal class ClrTypeBridge
         internal const string SharpyListFullName = CSharpTypeNames.SharpyList + "`1";
         internal const string SharpyDictFullName = CSharpTypeNames.SharpyDict + "`2";
         internal const string SharpySetFullName = CSharpTypeNames.SharpySet + "`1";
+        internal const string SharpyFrozenSetFullName = CSharpTypeNames.SharpyFrozenSet + "`1";
         internal const string SharpyOptionalFullName = CSharpTypeNames.SharpyOptional + "`1";
         internal const string SharpyResultFullName = CSharpTypeNames.SharpyResult + "`2";
         internal const string SharpyNdArrayFullName = CSharpTypeNames.SharpyNdArray + "`1";
@@ -340,6 +341,19 @@ internal class ClrTypeBridge
             return new GenericType
             {
                 Name = BuiltinNames.Set,
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0])
+                }
+            };
+        }
+
+        // Sharpy.FrozenSet<T>
+        if (genericDef.FullName == SpecialCases.SharpyFrozenSetFullName)
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.FrozenSet,
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(typeArgs[0])

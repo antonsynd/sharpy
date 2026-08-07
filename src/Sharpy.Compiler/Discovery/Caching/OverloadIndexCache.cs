@@ -19,7 +19,14 @@ internal class OverloadIndexCache
     // v16: value-type Nullable<T> parameters now serialize via the __nullable__ sentinel (#890).
     // v17: closed-generic CLR type construction for NdArray operator resolution (#970, #971).
     // v18: TypeParameters changed from List<string> to List<TypeParameterInfo> with CLR constraints (#976).
-    internal const int CurrentCacheFormatVersion = 18;
+    // v19: Sharpy.FrozenSet<T> maps to `frozenset` instead of degrading to `object` (#1253).
+    //      This bump is load-bearing, not housekeeping: the cache key is the *target assembly's*
+    //      content hash (AssemblyIdentity.ContentHash over e.g. Sharpy.Core.dll), so a change to
+    //      how the COMPILER maps CLR types does not invalidate anything. Without the bump the
+    //      corrected mapping is inert on every machine that has compiled once — the index keeps
+    //      serving `object` parameter types and the fix silently does nothing.
+    //      Any future change to ClrTypeBridge.MapClrTypeToSemanticType must bump this.
+    internal const int CurrentCacheFormatVersion = 19;
 
     // Process-lifetime in-memory layer over the on-disk index cache. Gunzip + JSON deserialize of
     // an overload index costs milliseconds per stdlib assembly and, before this, ran once per

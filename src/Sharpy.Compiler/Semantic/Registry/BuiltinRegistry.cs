@@ -732,6 +732,13 @@ internal class BuiltinRegistry
     public TypeSymbol? GetType(string name) => _types.GetValueOrDefault(name);
 
     /// <summary>
+    /// Every builtin type registered by <c>RegisterType</c>, keyed by Sharpy name. Exposed so the
+    /// registration-parity conformance guard can enumerate this site and diff it against the other
+    /// two a registered type has to appear in (#1253, umbrella #1145).
+    /// </summary>
+    internal IReadOnlyDictionary<string, TypeSymbol> RegisteredTypes => _types;
+
+    /// <summary>
     /// Returns the first function symbol with the given name.
     /// For functions with multiple overloads, use GetFunctionOverloads instead.
     /// </summary>

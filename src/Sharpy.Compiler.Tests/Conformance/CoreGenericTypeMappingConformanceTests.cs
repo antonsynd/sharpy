@@ -6,6 +6,7 @@ using System.Linq;
 using FluentAssertions;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Conformance;
@@ -41,12 +42,14 @@ public class CoreGenericTypeMappingConformanceTests
     /// </summary>
     private static readonly Dictionary<string, string> Allowlist = new(StringComparer.Ordinal)
     {
-        // Reachable only as registered builtin types, so the CLR-return mapping is never consulted
-        // for them: frozenset construction goes through CheckConstructorCall and frozendict has no
-        // static factory at all. #1210 retired the one factory that made this reachable
-        // (Builtins.FrozenSet<T>); if a future factory returns either type, this entry stops being
-        // true and the MapGenericType arm has to be written.
-        ["FrozenSet"] = "Registered builtin type; construction path never consults the CLR return mapping (#1210).",
+        // FrozenSet's entry was DRAINED by #1253, on exactly the condition the entry itself named:
+        // "if a future factory returns either type, this entry stops being true and the
+        // MapGenericType arm has to be written." Operator discovery turned out to consult the
+        // CLR-return mapping too — Sharpy.FrozenSet<T>'s operator signatures could not map back to
+        // `frozenset`, which is half of why frozenset refused every operator — so the arm is now
+        // written and the mapping no longer degrades to object.
+        //
+        // FrozenDict keeps its entry: it still has no static factory and gained no arm here.
         ["FrozenDict"] = "Registered builtin type; has no static factory, so no CLR return reaches the mapping (#1210).",
 
         // IReverseEnumerable's entry was DRAINED by #1242: MapGenericType now maps Sharpy.Core's own
@@ -120,6 +123,77 @@ public class CoreGenericTypeMappingConformanceTests
             "each allowlist entry must name a Sharpy.Core generic that still maps to `object`; "
             + "delete entries whose type is gone or has gained a MapGenericType arm.\nStale:\n"
             + string.Join("\n", stale));
+    }
+
+    /// <summary>
+    /// The second half of the same class of defect: a builtin type has to be registered in
+    /// <b>three</b> places, and the guard above only covers one of them (#1253, umbrella #1145).
+    /// </summary>
+    /// <remarks>
+    /// A builtin collection is registered in <c>BuiltinRegistry.RegisterType</c>, needs an entry in
+    /// <c>CachedModuleDiscovery.SharpyToClrNameMap</c> whenever its Sharpy name differs from its CLR
+    /// name, and needs an arm in <c>ClrTypeBridge.MapClrTypeToSemanticType</c>. Miss the second and
+    /// discovery searches for a CLR type named <c>frozenset</c>, finds nothing, and the registered
+    /// symbol gets an empty <c>OperatorMethods</c> — which is why <c>frozenset</c> refused every
+    /// operator including <c>==</c> while its methods worked fine.
+    /// <para>
+    /// The check is "declares operators in CLR ⇒ has them after discovery", because that is the
+    /// property the missing name-map entry actually destroys, and it cannot be satisfied by a
+    /// name-map entry that points somewhere wrong.
+    /// </para>
+    /// </remarks>
+    /// <summary>
+    /// Registered builtins known to resolve zero CLR operators, each against an open issue. Same
+    /// drain-on-fix contract as <see cref="Allowlist"/>: delete the entry when the issue closes.
+    /// </summary>
+    private static readonly Dictionary<string, string> OperatorResolutionAllowlist = new(StringComparer.Ordinal)
+    {
+        ["frozendict"] = "Sharpy.FrozenDict<K,V> declares 4 operators, discovery resolves none (#1310).",
+
+        // Complex is the odd one: its Sharpy name and CLR name are identical, so the name-map
+        // fallback should already find it. Whatever stops it is therefore NOT simply a missing
+        // entry, which is why #1253 did not fix it by pattern-matching frozenset's remedy onto it.
+        ["Complex"] = "Sharpy.Complex declares 2 operators, discovery resolves none; cause is not a missing name-map entry (#1310).",
+    };
+
+    [Fact]
+    public void EveryRegisteredBuiltinTypeResolvesItsClrOperators()
+    {
+        var registry = new BuiltinRegistry();
+        var gaps = new List<string>();
+
+        foreach (var (sharpyName, symbol) in registry.RegisteredTypes.OrderBy(k => k.Key, StringComparer.Ordinal))
+        {
+            var clrType = symbol.ClrType;
+            if (clrType is null)
+                continue;
+
+            // Scope: Sharpy.Core's own types, which are the ones whose operators reach the
+            // TypeChecker through CLR discovery. Primitives (int/float/decimal, backed by
+            // System.Int32/Double/Decimal) are owned by PrimitiveCatalog and resolved by
+            // TryInferBuiltinBinaryOp's numeric arm, so discovery resolving none of their 37
+            // System.Decimal operators is correct rather than a gap — including them would make
+            // this guard report noise it cannot act on.
+            if (clrType.Namespace is not ClrTypeBridge.SpecialCases.SharpyNamespace)
+                continue;
+
+            // Only types whose CLR side actually declares operators can lose them.
+            var declared = clrType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .Count(m => m.IsSpecialName && m.Name.StartsWith("op_", StringComparison.Ordinal));
+            if (declared == 0)
+                continue;
+
+            if (symbol.OperatorMethods.Count == 0 && !OperatorResolutionAllowlist.ContainsKey(sharpyName))
+            {
+                gaps.Add($"{sharpyName} ({clrType.Name}): declares {declared} CLR operator(s), "
+                    + "discovery resolved 0 — missing SharpyToClrNameMap entry?");
+            }
+        }
+
+        gaps.Should().BeEmpty(
+            "a registered builtin whose CLR type declares operators must resolve them; a missing "
+            + "SharpyToClrNameMap entry silently yields an operator-less symbol.\nGaps:\n"
+            + string.Join("\n", gaps));
     }
 
     private static bool IsDegraded(SemanticType mapped)

@@ -372,6 +372,7 @@ internal class CachedModuleDiscovery
         ["list"] = "List",
         ["dict"] = "Dict",
         ["set"] = "Set",
+        ["frozenset"] = "FrozenSet",
         ["str"] = "Str",
         ["tuple"] = "ValueTuple",
     };
