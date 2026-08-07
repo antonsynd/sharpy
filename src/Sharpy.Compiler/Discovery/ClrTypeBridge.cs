@@ -157,6 +157,31 @@ internal class ClrTypeBridge
     /// <summary>
     /// Map a CLR type to a Sharpy SemanticType.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Changing what this returns for any type requires bumping
+    /// <c>OverloadIndexCache.CurrentCacheFormatVersion</c>, or the change ships inert.</b>
+    /// </para>
+    /// <para>
+    /// The overload index persists the <i>result</i> of this mapping — an entry stores
+    /// <c>"name": "int"</c>, the Sharpy type, not just the CLR one — and its cache key is the
+    /// <b>target assembly's</b> content hash. So a change here does not invalidate anything: every
+    /// machine that has compiled once keeps reading the old mapping out of
+    /// <c>~/.sharpy/cache/overload-index</c>, and the fix silently does nothing. Nothing in a clean
+    /// checkout resets that cache, and CI builds cold, so the test suite cannot see it either.
+    /// </para>
+    /// <para>
+    /// This has already happened twice: <c>c0f112142</c> (#1242) and <c>191cf1cf6</c> (#1260, #1252)
+    /// both changed the mapping with the version constant left at 18, and both were inert against a
+    /// warm index until #1253 bumped it to 19 for unrelated reasons.
+    /// </para>
+    /// <para>
+    /// The bump is the enforcement, and it is manual — see #1313 for the missing-enforcement issue
+    /// and the proposal to key the cache on compiler identity instead. The reciprocal note lives at
+    /// <c>CurrentCacheFormatVersion</c>; this one is here because that is not the file someone
+    /// editing a mapping has any reason to open.
+    /// </para>
+    /// </remarks>
     public SemanticType MapClrTypeToSemanticType(Type clrType)
     {
         // Use GetOrAdd for thread-safe caching
