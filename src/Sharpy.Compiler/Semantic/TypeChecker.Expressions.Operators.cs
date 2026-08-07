@@ -271,15 +271,22 @@ internal partial class TypeChecker
 
         System.Numerics.BigInteger min;
         System.Numerics.BigInteger max;
+        // The name reported must be the width actually checked, NOT resultType's display name.
+        // When a suffix or a literal's magnitude widens the emitted expression to 64 bits, the
+        // Sharpy result type is still 'int', and naming it would send the user to the remedy they
+        // have already applied ("annotate an operand as long" — they did; that IS why it widened).
+        string widthName;
         if (suffix == ConstantSuffixWidth.Long || resultType == SemanticType.Long)
         {
             min = long.MinValue;
             max = long.MaxValue;
+            widthName = "long";
         }
         else if (resultType == SemanticType.Int)
         {
             min = int.MinValue;
             max = int.MaxValue;
+            widthName = "int";
         }
         else
         {
@@ -304,9 +311,12 @@ internal partial class TypeChecker
 
         AddError(
             $"Constant expression evaluates to {value}, which does not fit " +
-            $"'{resultType.GetDisplayName()}'; Sharpy integers are fixed-width. Annotate an " +
-            "operand as 'long' (e.g. '3794L * 1973 * 948') so the whole expression is computed " +
-            "as 'long', or restructure the computation.",
+            $"'{widthName}'; Sharpy integers are fixed-width. " +
+            (widthName == "long"
+                ? "This expression is already computed as 'long' and the value exceeds 64 bits, " +
+                  "so restructure the computation."
+                : "Annotate an operand as 'long' (e.g. '3794L * 1973 * 948') so the whole " +
+                  "expression is computed as 'long', or restructure the computation."),
             binOp.LineStart,
             binOp.ColumnStart,
             code: DiagnosticCodes.Semantic.ConstantIntegerOverflow,
@@ -337,6 +347,20 @@ internal partial class TypeChecker
                 if (suffix.Contains("u", System.StringComparison.OrdinalIgnoreCase))
                     return ConstantSuffixWidth.Unsigned;
                 return suffix.Contains("l", System.StringComparison.OrdinalIgnoreCase)
+                    ? ConstantSuffixWidth.Long
+                    : ConstantSuffixWidth.None;
+
+            // Codegen widens by MAGNITUDE as well as by suffix: a bare literal too large for int
+            // is emitted as a C# long (`4294967296` -> `4294967296L`), so the emitted expression
+            // computes in 64 bits with no suffix written anywhere. Inference still types it 'int'
+            // (#1320 — the same split as #1314, reached the other way), so reading the Sharpy
+            // result type here would refuse `4294967296 + 1`, a program that compiles today and
+            // prints 4294967297 (CPython agrees). Predicting CS0220 means predicting the width
+            // Roslyn will actually compute in, and that is this one. Delete this arm and the
+            // suffix one together when #1320 types literals by magnitude at inference time.
+            case IntegerLiteral bare:
+                return IntegerConstantEvaluator.TryGetConstantInteger(bare, out var literalValue)
+                       && (literalValue < int.MinValue || literalValue > int.MaxValue)
                     ? ConstantSuffixWidth.Long
                     : ConstantSuffixWidth.None;
 

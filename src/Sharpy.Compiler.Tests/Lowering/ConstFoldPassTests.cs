@@ -1,5 +1,6 @@
 using System.Linq;
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Shared;
 using Xunit;
 
@@ -72,26 +73,45 @@ public class ConstFoldPassTests
         cs.Should().NotContain("= 22", "88 // 4 must not be folded to its value");
     }
 
-    [Fact]
-    public void Enabled_IntArithmeticWrapsAtInt32()
+    /// <summary>
+    /// Supersedes <c>Enabled_IntArithmeticWrapsAtInt32</c> and
+    /// <c>Enabled_LongArithmeticWrapsAtInt64</c>, which asserted that an overflowing constant folds
+    /// to its WRAPPED value ("Design Decision 6: fold with exactly the emitted C#'s semantics").
+    /// <para>
+    /// SPY0348 (#1234) now refuses constant integer overflow during type checking, which runs
+    /// before the fold pass — so a folded wrapped constant is no longer reachable, and the pass's
+    /// wrap-at-width arm is dead for integer constants (#1319). The expectations were not edited
+    /// to chase an implementation change: the language rule itself changed, deliberately and as a
+    /// recorded breaking change, and these two cases encoded the behaviour it replaced.
+    /// </para>
+    /// <para>
+    /// What replaces them is stronger than what they asserted. An optimization flag must never
+    /// change whether a program compiles, so both spellings are pinned as refused with
+    /// <c>opt_const_fold</c> both ON and OFF. The old tests only ever exercised the ON path.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("def f() -> int:\n    x: int = 2147483647 + 1\n    return x\n")]
+    [InlineData("def f() -> int:\n    y: long = 4294967296 * 4294967296\n    return 0\n")]
+    public void OverflowingConstant_IsRefused_RegardlessOfFoldFlag(string source)
     {
-        // Design Decision 6: fold with exactly the emitted C#'s semantics — Sharpy `int` is C# int32
-        // with unchecked arithmetic, so int32.MaxValue + 1 folds to the wrapped value, not Python's
-        // unbounded 2147483648.
-        var cs = CompileCSharp("def f() -> int:\n    x: int = 2147483647 + 1\n    return x\n", fold: true);
+        foreach (var fold in new[] { true, false })
+        {
+            var options = new CompilerOptions
+            {
+                OutputType = "library",
+                Features = fold ? FeatureFlags.None.Enable("opt_const_fold") : FeatureFlags.None,
+            };
 
-        cs.Should().Contain("-2147483648", "the fold must wrap at the mapped int32 width");
-        cs.Should().NotContain("2147483647 + 1");
-    }
+            var result = _api.Compile(source, options);
 
-    [Fact]
-    public void Enabled_LongArithmeticWrapsAtInt64()
-    {
-        // 2^32 * 2^32 = 2^64 wraps to 0 in unchecked int64 arithmetic — the mapped width for `long`.
-        var cs = CompileCSharp("def f() -> int:\n    y: long = 4294967296 * 4294967296\n    return 0\n", fold: true);
-
-        cs.Should().Contain("y = 0", "the fold must wrap at the mapped int64 width");
-        cs.Should().NotContain("4294967296 * 4294967296");
+            result.Success.Should().BeFalse(
+                $"constant integer overflow is refused, not wrapped (opt_const_fold: {fold})");
+            result.Diagnostics.Should().Contain(
+                d => d.Code == DiagnosticCodes.Semantic.ConstantIntegerOverflow,
+                "SPY0348 is the diagnostic for constant integer overflow, and enabling "
+                + $"opt_const_fold must not change whether the program compiles (fold: {fold})");
+        }
     }
 
     [Fact]
