@@ -1,0 +1,48 @@
+# The CLR<->Sharpy sequence seam, as a matrix (#1251, #1252, #1256, #1260).
+#
+# Three actual kinds — a Sharpy list, a CLR List[T], a CLR array — against three positions:
+#   * a CLR-ORIGIN formal   (a parameter the bridge mapped from CLR metadata, spelled `list[T]`)
+#   * a SHARPY-NATIVE formal (a parameter written `list[T]` in Sharpy source)
+#   * an ANNOTATED Sharpy target
+#
+# The rule the matrix encodes: a CLR-origin formal accepts exactly what .NET binds, because the
+# emitted formal IS the CLR type; a Sharpy-native slot means the Sharpy collection, so a CLR value
+# either materializes into one or is refused. Seven cells work and are pinned here. The two that
+# refuse are deliberate and pinned next door as .error fixtures (a CLR List against a native formal
+# in generics/bcl_extension_native_formal_strict_1260, and against an annotated target in
+# clr_list_to_annotated_target_refused) — accepting either would mean a hidden copy, and a hidden
+# copy changes whether mutations through one name are visible through the other.
+#
+# Array-to-Sharpy-slot cells work through the pre-existing iterable-argument binding, not through
+# this batch's widening; they are pinned so a change to either rule cannot silently move them.
+from system.collections.generic import List
+from system import Environment
+
+
+def native_formal(xs: list[str]) -> int:
+    return len(xs)
+
+
+def main() -> None:
+    sharpy_list = ["a", "b"]
+
+    clr_list = List[str]()
+    clr_list.add("a")
+    clr_list.add("b")
+
+    clr_array = Environment.get_command_line_args()
+
+    # --- CLR-origin formal (LINQ concat's IEnumerable<T> parameter, mapped to list[str]) ---
+    print(list(sharpy_list.concat(sharpy_list)))
+    print(list(clr_list.concat(sharpy_list)))
+    print(len(list(clr_list.concat(clr_array))) == 2 + len(clr_array))
+
+    # --- Sharpy-native formal ---
+    print(native_formal(sharpy_list))
+    print(native_formal(clr_array) == len(clr_array))
+
+    # --- Annotated Sharpy target ---
+    annotated_from_sharpy: list[str] = sharpy_list
+    print(annotated_from_sharpy)
+    annotated_from_array: list[str] = clr_array
+    print(len(annotated_from_array) == len(clr_array))

@@ -1,0 +1,16 @@
+# The annotated-target sibling of generics/bcl_extension_native_formal_strict_1260 (#1260).
+#
+# A CLR List[int] does not satisfy a Sharpy `list[int]` annotation. This is the same refusal as the
+# native-parameter case and it exists for the same reason: the only way to accept it is to copy, and
+# a copy silently decides that mutations through `clr` are no longer visible through `xs`. Sharpy
+# refuses rather than choose that for the user — `list(clr)` says it explicitly.
+#
+# Pinned as a pair with the matrix next door so the strictness boundary cannot erode from either side.
+from system.collections.generic import List
+
+
+def main() -> None:
+    clr = List[int]()
+    clr.add(1)
+    xs: list[int] = clr
+    print(xs)
