@@ -28,7 +28,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return a.Pop(i) < 0;
 #line hidden
                 }
-                catch (IndexError)
+                catch (global::Sharpy.IndexError)
                 {
 #line (73, 9) - (73, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                     return true;
@@ -46,7 +46,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return a.Pop() < 0;
 #line hidden
                 }
-                catch (IndexError)
+                catch (global::Sharpy.IndexError)
                 {
 #line (79, 9) - (79, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                     return true;
@@ -66,7 +66,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return false;
 #line hidden
                 }
-                catch (ValueError)
+                catch (global::Sharpy.ValueError)
                 {
 #line (100, 9) - (100, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                     return true;
@@ -84,7 +84,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return a.Index(v) < 0;
 #line hidden
                 }
-                catch (ValueError)
+                catch (global::Sharpy.ValueError)
                 {
 #line (120, 9) - (120, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                     return true;
@@ -102,7 +102,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return a[i] < 0;
 #line hidden
                 }
-                catch (IndexError)
+                catch (global::Sharpy.IndexError)
                 {
 #line (239, 9) - (239, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                     return true;
@@ -122,7 +122,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return false;
 #line hidden
                 }
-                catch (IndexError)
+                catch (global::Sharpy.IndexError)
                 {
 #line (270, 9) - (270, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                     return true;

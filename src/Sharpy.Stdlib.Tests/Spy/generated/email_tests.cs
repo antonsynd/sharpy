@@ -463,7 +463,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (234, 5) - (234, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
                 var err = new global::Sharpy.MessageError("test");
 #line (235, 5) - (235, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/email/email_tests.spy"
-                Xunit.Assert.IsAssignableFrom<Exception>(err);
+                Xunit.Assert.IsAssignableFrom<global::System.Exception>(err);
 #line hidden
             }
 

@@ -209,22 +209,21 @@ internal partial class RoslynEmitter
 
         // assert isinstance(a, T) → Xunit.Assert.IsAssignableFrom<T>(a)
         //
-        // The type operand is ANY type expression, not just a bare name: `zoneinfo.ZoneInfo` is a
-        // MemberAccess and `Box[int]` an IndexAccess, and MapTypeFromExpression has arms for both
-        // (#903, #1184). Guarding this arm on `is Identifier` — which its two siblings below do not do —
-        // sent every qualified spelling to the generic Assert.True fall-through, where the call emitted
-        // verbatim as `Builtins.Isinstance(a, T)` with a bare type name where Isinstance takes a
-        // `Type`: CS0119, and only ever visible by regenerating the spy-test C# (#1254). Tuples are
-        // excluded so the tuple arm below still claims them; that spelling is now refused at semantic
-        // time (SPY0344, #1213), so the exclusion is belt-and-braces rather than live.
+        // WHAT THE OPERAND DENOTES IS NOT DECIDED HERE (Critical Rule 2). This arm used to carry its
+        // own type resolution — a bare-name collection-erasure check falling back to
+        // MapTypeFromExpression — which is a second derivation of what the classifier already decides,
+        // and it emitted a bare `Box` for a generic operand (CS0305). It now reads the classifier's
+        // answer, so the #912 erasure rule and the open-generic refusal reach @test asserts for free
+        // (#1235, #1254).
+        //
+        // Tuples are excluded so the tuple arm below still claims them: that spelling is refused in
+        // expression position (SPY0344) but lowered correctly here to `a is T1 || a is T2`, and the
+        // classifier skips exactly that shape under a @test assert for the same reason.
         if (testCallee is Identifier { Name: "isinstance" } && test is FunctionCall isinstCall
             && isinstCall.Arguments.Length == 2
             && isinstCall.Arguments[1] is not TupleLiteral)
         {
-            var typeOperand = isinstCall.Arguments[1];
-            var typeSyntax = (typeOperand is Identifier typeIdent
-                ? TryMapBuiltinCollectionToNonGenericInterface(typeIdent.Name)
-                : null) ?? _typeMapper.MapTypeFromExpression(typeOperand);
+            var typeSyntax = MapTestAssertTypeOperand(isinstCall.Arguments[1]);
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert,
                     GenericName(Identifier("IsAssignableFrom"))
@@ -239,12 +238,8 @@ internal partial class RoslynEmitter
         {
             var subject = GenerateExpression(isinstTupleCall.Arguments[0]);
             var isChecks = typeTuple.Elements.Select(typeExpr =>
-            {
-                var mappedType = (typeExpr is Identifier tid
-                    ? TryMapBuiltinCollectionToNonGenericInterface(tid.Name)
-                    : null) ?? _typeMapper.MapTypeFromExpression(typeExpr);
-                return (ExpressionSyntax)BinaryExpression(SyntaxKind.IsExpression, subject, mappedType);
-            });
+                (ExpressionSyntax)BinaryExpression(
+                    SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(typeExpr)));
             var combined = isChecks.Aggregate((left, right) =>
                 BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
             return ExpressionStatement(InvocationExpression(
@@ -261,22 +256,15 @@ internal partial class RoslynEmitter
             ExpressionSyntax isCheck;
             if (negIsinstCall.Arguments[1] is TupleLiteral negTypeTuple)
             {
-                var checks = negTypeTuple.Elements.Select(typeExpr =>
-                {
-                    var mappedType = (typeExpr is Identifier tid
-                        ? TryMapBuiltinCollectionToNonGenericInterface(tid.Name)
-                        : null) ?? _typeMapper.MapTypeFromExpression(typeExpr);
-                    return (ExpressionSyntax)BinaryExpression(SyntaxKind.IsExpression, subject, mappedType);
-                });
-                isCheck = checks.Aggregate((left, right) =>
-                    BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
+                isCheck = negTypeTuple.Elements
+                    .Select(typeExpr => (ExpressionSyntax)BinaryExpression(
+                        SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(typeExpr)))
+                    .Aggregate((left, right) => BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
             }
             else
             {
-                var negMappedType = (negIsinstCall.Arguments[1] is Identifier negTid
-                    ? TryMapBuiltinCollectionToNonGenericInterface(negTid.Name)
-                    : null) ?? _typeMapper.MapTypeFromExpression(negIsinstCall.Arguments[1]);
-                isCheck = BinaryExpression(SyntaxKind.IsExpression, subject, negMappedType);
+                isCheck = BinaryExpression(
+                    SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(negIsinstCall.Arguments[1]));
             }
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("False")))
@@ -1535,6 +1523,21 @@ internal partial class RoslynEmitter
 
         return result;
     }
+
+    /// <summary>
+    /// Renders one type operand of an <c>isinstance</c> inside a <c>@test</c> assert, applying the
+    /// classification the TypeChecker recorded for it (#1235, #1254).
+    /// <para>
+    /// The tuple spelling is the one shape the classifier deliberately skips here — the rewrite lowers
+    /// it to <c>a is T1 || a is T2</c>, which is correct and which SPY0344 would otherwise forbid — so
+    /// its elements have no recorded decision and fall back to mapping the written expression, exactly
+    /// as they did before. Every other spelling reads the decision.
+    /// </para>
+    /// </summary>
+    private TypeSyntax MapTestAssertTypeOperand(Expression typeOperand)
+        => _context.SemanticInfo?.GetTypeTestLowering(typeOperand) is { } lowering
+            ? MapTypeTestTarget(lowering)
+            : _typeMapper.MapTypeFromExpression(typeOperand);
 
     /// <summary>
     /// Emits <c>except (A, B) as e:</c> as <c>catch (Base e) when (e is A || e is B)</c>, applying the

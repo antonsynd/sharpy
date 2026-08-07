@@ -28,7 +28,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return global::Sharpy.StringExtensions.Index(s, sub) < 0;
 #line hidden
                 }
-                catch (ValueError)
+                catch (global::Sharpy.ValueError)
                 {
 #line (251, 9) - (251, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
                     return true;
@@ -46,7 +46,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return global::Sharpy.StringExtensions.Rindex(s, sub) < 0;
 #line hidden
                 }
-                catch (ValueError)
+                catch (global::Sharpy.ValueError)
                 {
 #line (266, 9) - (266, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
                     return true;

@@ -28,7 +28,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return global::Sharpy.Builtins.Int(s) == 0 && false;
 #line hidden
                 }
-                catch (ValueError)
+                catch (global::Sharpy.ValueError)
                 {
 #line (63, 9) - (63, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
                     return true;

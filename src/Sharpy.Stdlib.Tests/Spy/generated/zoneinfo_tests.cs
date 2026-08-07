@@ -132,7 +132,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     new global::Sharpy.ZoneInfo("Not/AZone");
 #line hidden
                 }
-                catch (KeyError)
+                catch (global::Sharpy.KeyError)
                 {
 #line (58, 9) - (58, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                     caught = true;

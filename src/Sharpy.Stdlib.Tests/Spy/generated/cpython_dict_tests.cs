@@ -28,7 +28,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return d[k] < 0;
 #line hidden
                 }
-                catch (KeyError)
+                catch (global::Sharpy.KeyError)
                 {
 #line (156, 9) - (156, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     return true;
@@ -46,7 +46,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     return d.Pop(k) < 0;
 #line hidden
                 }
-                catch (KeyError)
+                catch (global::Sharpy.KeyError)
                 {
 #line (184, 9) - (184, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     return true;
@@ -613,7 +613,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     var _ = d[(3, 4)];
 #line hidden
                 }
-                catch (KeyError)
+                catch (global::Sharpy.KeyError)
                 {
 #line (242, 9) - (242, 18) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                     ke = true;

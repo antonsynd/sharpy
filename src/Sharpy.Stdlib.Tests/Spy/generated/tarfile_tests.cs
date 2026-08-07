@@ -625,7 +625,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (252, 5) - (252, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 Xunit.Assert.IsAssignableFrom<global::Sharpy.TarError>(new global::Sharpy.ExtractError("test"));
 #line (253, 5) - (253, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.IsAssignableFrom<Exception>(new global::Sharpy.TarError("test"));
+                Xunit.Assert.IsAssignableFrom<global::System.Exception>(new global::Sharpy.TarError("test"));
 #line hidden
             }
 

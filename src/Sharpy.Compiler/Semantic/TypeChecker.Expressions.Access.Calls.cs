@@ -451,20 +451,26 @@ internal partial class TypeChecker
             return;
         }
 
-        // A @test-decorated function's `assert` is not an ordinary expression: the emitter rewrites
-        // the whole statement into an xUnit assertion (RoslynEmitter.GenerateTestAssert), pre-empting
-        // the call lowering this classifier feeds, and that rewrite carries its own isinstance forms —
-        // including the multi-type tuple spelling rejected below, which it lowers to
-        // `a is T1 || a is T2` for a boolean nobody narrows through. Rejecting there would break a form
-        // that path handles correctly. The rewrite is a special-purpose test lowering, not a precedent
-        // for general expression lowering, and this batch deliberately does not generalize it; its own
-        // un-lowerable shapes belong to the sibling type-operand sweep.
-        if (IsTestAssertTypeTest(call))
-            return;
-
         var operandNode = call.Arguments[1];
         var typeOperand = UnwrapParenthesized(operandNode);
         var subjectType = argTypes.Count > 0 ? argTypes[0] : null;
+
+        // A @test-decorated function's `assert` is not an ordinary expression: the emitter rewrites the
+        // whole statement into an xUnit assertion (RoslynEmitter.GenerateTestAssert), pre-empting the
+        // call lowering this classifier feeds. Only the TUPLE spelling is exempt from the refusal
+        // there, and the asymmetry with expression-position isinstance is deliberate: the rewrite
+        // lowers a tuple to `a is T1 || a is T2`, a boolean nobody narrows through, so it handles
+        // correctly the one form SPY0344 refuses — and refusing it would break a working form.
+        //
+        // Exempt from the REFUSAL, not from classification: each element is still classified in its
+        // own right, so the rewrite reads decided types for `(list, dict)` instead of re-deriving the
+        // #912 erasure itself (#1235, #1254).
+        if (typeOperand is TupleLiteral testAssertTuple && IsTestAssertTypeTest(call))
+        {
+            foreach (var element in testAssertTuple.Elements)
+                ClassifyTypeTestExpressionOperand(call, element, subjectType);
+            return;
+        }
 
         // The tuple spelling — Python's OR-of-types. Rejected by design; see the class-level rationale.
         if (typeOperand is TupleLiteral tuple)
@@ -482,6 +488,19 @@ internal partial class TypeChecker
                 span: call.Span);
             return;
         }
+
+        ClassifyTypeTestExpressionOperand(call, operandNode, subjectType);
+    }
+
+    /// <summary>
+    /// Classifies one expression-shaped type operand — an <c>isinstance</c> argument, or one element of
+    /// the tuple spelling a <c>@test</c> assert lowers to an <c>is</c>-alternation. Records the
+    /// decision on <paramref name="operandNode"/> so the emitter applies it verbatim.
+    /// </summary>
+    private void ClassifyTypeTestExpressionOperand(
+        FunctionCall call, Expression operandNode, SemanticType? subjectType)
+    {
+        var typeOperand = UnwrapParenthesized(operandNode);
 
         // A bare name is the only shape that can be an OPEN generic, so it is the only one that needs
         // the vector-filling rule; every other shape either names its type arguments or has none.

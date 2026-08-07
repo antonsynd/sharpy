@@ -58,7 +58,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     _AssertClose(1.0d, 2.0d);
 #line hidden
                 }
-                catch (AssertionError)
+                catch (global::Sharpy.AssertionError)
                 {
 #line (28, 9) - (28, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
                     raised = true;

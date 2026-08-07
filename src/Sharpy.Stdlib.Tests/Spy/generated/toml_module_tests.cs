@@ -732,7 +732,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }));
 #line (333, 5) - (333, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<ValueError>(ex);
+                Xunit.Assert.IsAssignableFrom<global::Sharpy.ValueError>(ex);
 #line hidden
             }
 

@@ -113,7 +113,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (80, 5) - (80, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<global::Sharpy.SubprocessError>(ex);
 #line (81, 5) - (81, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.IsAssignableFrom<Exception>(ex);
+                Xunit.Assert.IsAssignableFrom<global::System.Exception>(ex);
 #line hidden
             }
 

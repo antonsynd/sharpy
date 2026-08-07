@@ -197,6 +197,91 @@ def main():
     }
 
     [Fact]
+    public void AssertRewrite_Isinstance_BareGenericOperand_FillsVectorFromSubject()
+    {
+        // #1235/#1254: the rewrite used to resolve the type operand itself, so a bare generic name
+        // emitted `IsAssignableFrom<Box>` — an OPEN generic, CS0305. It now reads the classification
+        // the TypeChecker recorded, which fills the vector from the subject's own static type. This
+        // asserts the type NAME, not merely that some IsAssignableFrom was emitted: an assertion that
+        // only checks the method name passes for a wrong (or vacuous) type argument.
+        var source = @"
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+@test
+def test_isinstance_generic():
+    b: Box[int] = Box[int](42)
+    assert isinstance(b, Box)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<Box<int>>(b)");
+    }
+
+    [Fact]
+    public void AssertRewrite_Isinstance_BareCollectionOperand_ErasesToProtocolInterface()
+    {
+        // #912's erasure reaches the @test rewrite through the SAME classifier every other type-test
+        // position uses, rather than through a private copy of the rule inside GenerateTestAssert.
+        // Deleting that copy and recording the decision had to land together — the copy was
+        // load-bearing for exactly this shape until the classifier covered it.
+        var source = @"
+@test
+def test_isinstance_dict():
+    x: object = {""a"": 1}
+    assert isinstance(x, dict)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<global::Sharpy.IDict>(x)");
+    }
+
+    [Fact]
+    public void AssertRewrite_Isinstance_TupleOfCollections_ErasesEachAlternative()
+    {
+        // The tuple spelling is the one shape exempt from SPY0344 inside a @test assert, because the
+        // rewrite lowers it to a boolean nobody narrows through. Exempt from the REFUSAL, not from
+        // classification: each element is still classified, so the erasure below comes from the
+        // recorded decision rather than from a second derivation in the emitter.
+        var source = @"
+@test
+def test_isinstance_tuple():
+    x: object = [1]
+    assert isinstance(x, (list, dict))
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("x is global::Sharpy.IList || x is global::Sharpy.IDict");
+    }
+
+    [Fact]
+    public void AssertRewrite_NegatedIsinstance_BareCollectionOperand_ErasesToProtocolInterface()
+    {
+        // The negated arm reads the same recorded decision as the positive one; before this it
+        // carried its own third and fourth copies of the erasure check.
+        var source = @"
+@test
+def test_not_isinstance_dict():
+    x: object = 5
+    assert not isinstance(x, dict)
+
+def main():
+    print(""ok"")
+";
+        var code = CompileToCSharp(source);
+        code.Should().Contain("Xunit.Assert.False(x is global::Sharpy.IDict)");
+    }
+
+    [Fact]
     public void AssertRewrite_Not_GeneratesXunitAssertFalse()
     {
         var source = @"
