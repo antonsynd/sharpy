@@ -432,7 +432,7 @@ public class RoslynEmitterExpressionTests
     }
 
     [Fact]
-    public void GenerateExpression_PowerOperator_GeneratesMathPow()
+    public void GenerateExpression_PowerOperator_EmitsOneCheckedIntPowInvocation()
     {
         // Arrange
         var expr = new BinaryOp
@@ -443,17 +443,21 @@ public class RoslynEmitterExpressionTests
         };
 
         // Act
-        var result = InvokeGenerateExpression(expr);
+        var result = InvokeGenerateExpression(expr).ToString();
 
-        // Assert
-        var code = result.ToString();
-        code.Should().Contain("System.Math.Pow");
-        code.Should().Contain("2");
-        code.Should().Contain("3");
+        // Assert — integer ** emits ONE CheckedIntPow invocation splicing each operand once (#1228).
+        // This test previously asserted "System.Math.Pow", which was the SATURATING fallback the
+        // emitter dropped into when its side-effect gate declined; that path is gone, along with the
+        // gate, the negative-exponent dispatch ternary and the operand regeneration behind it.
+        // Renamed rather than edited in place, because the old name asserted the old lowering.
+        result.Should().Contain("CheckedIntPow", "integer ** lowers to the checked helper");
+        result.Should().NotContain("Math.Pow", "the saturating double path is no longer emitted");
+        CountOccurrences(result, "(2)").Should().Be(1, "the base is spliced exactly once");
+        CountOccurrences(result, "(3)").Should().Be(1, "the exponent is spliced exactly once");
     }
 
     [Fact]
-    public void GenerateExpression_FloorDivide_UsesFloorSemantics()
+    public void GenerateExpression_FloorDivide_EmitsOneFloorDivInvocation()
     {
         // Arrange
         var expr = new BinaryOp
@@ -464,17 +468,18 @@ public class RoslynEmitterExpressionTests
         };
 
         // Act
-        var result = InvokeGenerateExpression(expr);
+        var result = InvokeGenerateExpression(expr).ToString();
 
-        // Assert - Floor division should use System.Math.Floor for correct negative number handling
-        // (int)System.Math.Floor((double)x / y) rounds toward negative infinity (Python semantics)
-        // Result is int32 for pragmatic .NET compatibility with augmented assignments
-        var code = result.ToString();
-        code.Should().Contain("(int)");
-        code.Should().Contain("System.Math.Floor");
-        code.Should().Contain("(double)");
-        code.Should().Contain("/");
+        // Assert — integer // emits ONE Builtins.FloorDiv invocation (#1226). It previously built
+        // `(int)Math.Floor((double)x / y)` wrapped in a `y == 0 ? throw ... : ...` ternary, which
+        // spliced the DIVISOR TWICE; the zero guard now lives inside the helper (the #1216 shape),
+        // and the quotient is computed in integer arithmetic rather than through a double.
+        result.Should().Contain("FloorDiv", "integer // lowers to the Core helper");
+        result.Should().NotContain("Math.Floor", "the double round-trip is no longer emitted");
+        result.Should().NotContain("ZeroDivisionError", "the guard moved into the helper");
+        CountOccurrences(result, "3").Should().Be(1, "the divisor is spliced exactly once");
     }
+
 
     [Fact]
     public void GenerateExpression_FloorDivide_WithFloatOperand_ReturnsFloat()

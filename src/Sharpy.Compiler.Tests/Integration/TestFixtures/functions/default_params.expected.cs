@@ -14,7 +14,7 @@ public static partial class DefaultParams
 #line (6, 5) - (6, 34) 8 "default_params.spy"
         int baseCents = @base * 100;
 #line (7, 5) - (7, 64) 8 "default_params.spy"
-        int taxCents = (100 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)((baseCents * global::Sharpy.Builtins.Int(taxRate * 100))) / 100)));
+        int taxCents = global::Sharpy.Builtins.FloorDiv((baseCents * global::Sharpy.Builtins.Int(taxRate * 100)), 100);
 #line (8, 5) - (8, 47) 8 "default_params.spy"
         int totalCents = baseCents + taxCents;
 #line (9, 5) - (9, 42) 8 "default_params.spy"
@@ -22,7 +22,7 @@ public static partial class DefaultParams
 #line (10, 5) - (10, 53) 8 "default_params.spy"
         int finalCents = totalCents - discountCents;
 #line (11, 5) - (11, 31) 8 "default_params.spy"
-        return (100 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(finalCents) / 100)));
+        return global::Sharpy.Builtins.FloorDiv(finalCents, 100);
 #line hidden
     }
 

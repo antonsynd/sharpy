@@ -25,7 +25,7 @@ public static partial class AugmentedAssignment0001
 #line (12, 5) - (12, 24) 8 "augmented_assignment_0001.spy"
         global::Sharpy.Builtins.Print(CurrentTemp);
 #line (14, 5) - (14, 23) 8 "augmented_assignment_0001.spy"
-        CurrentTemp = (4 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(CurrentTemp) / 4)));
+        CurrentTemp = global::Sharpy.Builtins.FloorDiv(CurrentTemp, 4);
 #line (15, 5) - (15, 24) 8 "augmented_assignment_0001.spy"
         global::Sharpy.Builtins.Print(CurrentTemp);
 #line (17, 5) - (17, 22) 8 "augmented_assignment_0001.spy"

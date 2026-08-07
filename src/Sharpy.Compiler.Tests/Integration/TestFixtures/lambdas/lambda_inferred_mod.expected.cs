@@ -55,7 +55,7 @@ public static partial class LambdaInferredMod
 #line (19, 5) - (19, 44) 8 "lambda_inferred_mod.spy"
         global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Map(x => global::Sharpy.Builtins.FloorMod(x, 3), nums)));
 #line (22, 5) - (22, 45) 8 "lambda_inferred_mod.spy"
-        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Map(x => (3 == 0 ? throw new global::Sharpy.ZeroDivisionError("integer division or modulo by zero") : (int)global::System.Math.Floor((double)((double)(x) / 3))), nums)));
+        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Map(x => global::Sharpy.Builtins.FloorDiv(x, 3), nums)));
 #line (25, 5) - (25, 53) 8 "lambda_inferred_mod.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Sorted(new Sharpy.List<int>() { -7, -6, -5 }, key: x => global::Sharpy.Builtins.FloorMod(x, 3)));
 #line (28, 5) - (28, 67) 8 "lambda_inferred_mod.spy"

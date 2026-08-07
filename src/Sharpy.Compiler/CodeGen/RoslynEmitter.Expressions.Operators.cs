@@ -75,40 +75,27 @@ internal partial class RoslynEmitter
                             ? SyntaxKind.LongKeyword
                             : SyntaxKind.IntKeyword;
 
-                        // Non-negative integer power → checked exponentiation-by-squaring
-                        // (Sharpy.Core CheckedIntPow): overflow raises OverflowError and large
-                        // results stay exact, instead of the saturating/lossy (int)/(long) cast of
-                        // Math.Pow (#905). The checked helper throws on a negative exponent, so a
-                        // runtime guard preserves the existing truncating double path for `x ** -n`
-                        // (Sharpy types int ** int as int; e.g. `2 ** -1` stays 0, unchanged). Only
-                        // emit the guard when the exponent is side-effect-free so it isn't evaluated
-                        // twice; otherwise keep the legacy cast path (behavior-preserving).
-                        var saturatingCast = CastExpression(
-                            PredefinedType(Token(castKind)),
-                            ParenthesizedExpression(powCall));
-
-                        if (!IsSideEffectFree(binOp.Right))
-                            return saturatingCast;
-
-                        // Generate fresh operand nodes per use site (rather than reusing `left`/
-                        // `right`, which already sit inside powCall) so no syntax node instance
-                        // occupies multiple tree positions. Safe to re-generate: the
-                        // IsSideEffectFree guard above limits this path to identifiers/literals.
-                        var checkedPowCall = InvocationExpression(
+                        // ONE invocation, each operand spliced once (#1228). CheckedIntPow now
+                        // absorbs the negative-exponent case itself (returning the truncating
+                        // double-path value, so `2 ** -1` is still 0 per the spec), which is what
+                        // lets the gate, the dispatch ternary and both regenerations go.
+                        //
+                        // What this replaces was unsound in two ways. It called
+                        // GenerateExpression(binOp.Left) a second time with NO gate at all — the
+                        // IsSideEffectFree check covered only the right operand — and
+                        // GenerateExpression is not pure: it can push into _hoistedStatements
+                        // (the #1198 tuple-spread hoist), so `sum(make_tuple()) ** 2` emitted the
+                        // hoist twice and called make_tuple() twice. And when the gate DID fire it
+                        // silently degraded the lowering to the saturating `(int)Math.Pow` cast, so
+                        // `x ** f()` had different overflow behaviour from `x ** y` — a spelling
+                        // difference changing semantics. Both spellings now raise OverflowError.
+                        return InvocationExpression(
                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                                 MakeGlobalQualifiedName("Sharpy", "Builtins"),
                                 IdentifierName("CheckedIntPow")))
                             .AddArgumentListArguments(
-                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(GenerateExpression(binOp.Left)))),
-                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(GenerateExpression(binOp.Right)))));
-
-                        var negativeExponent = BinaryExpression(
-                            SyntaxKind.LessThanExpression,
-                            GenerateExpression(binOp.Right),
-                            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
-
-                        return ParenthesizedExpression(
-                            ConditionalExpression(negativeExponent, saturatingCast, checkedPowCall));
+                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
+                                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
                     }
                     return powCall;
                 }

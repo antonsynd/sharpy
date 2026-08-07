@@ -63,7 +63,13 @@ public class ConstFoldPassTests
         // stays runtime code with its ZeroDivisionError guard intact, even with the flag on.
         var cs = CompileCSharp("def f() -> int:\n    x: int = 88 // 4\n    return x\n", fold: true);
 
-        cs.Should().Contain("ZeroDivisionError", "division must stay runtime code, not be folded to a literal");
+        // Assert the INTENT — the division survives as a runtime call rather than becoming a
+        // literal. The previous assertion grepped for "ZeroDivisionError", which was a proxy that
+        // only worked while the zero guard was spliced inline at the call site; #1226 moved it into
+        // Builtins.FloorDiv, so the name no longer appears in emitted code even though the trap is
+        // as live as ever. Testing the intent directly is stronger than testing the old shape.
+        cs.Should().Contain("FloorDiv", "division must stay a runtime call, not be folded to a literal");
+        cs.Should().NotContain("= 22", "88 // 4 must not be folded to its value");
     }
 
     [Fact]

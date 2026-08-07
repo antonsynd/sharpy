@@ -1243,39 +1243,27 @@ internal partial class RoslynEmitter
                     Argument(right));
         }
 
-        // global::System.Math.Floor((double)((double)(left) / right))
-        // Cast to double to avoid CS0121 ambiguity between Math.Floor(double) and Math.Floor(decimal)
-        var divisionExpr = BinaryExpression(SyntaxKind.DivideExpression,
-            CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
-            right);
-
-        // Cast division result to double to resolve Math.Floor overload ambiguity
-        var castToDouble = CastExpression(
-            PredefinedType(Token(SyntaxKind.DoubleKeyword)),
-            ParenthesizedExpression(divisionExpr));
-
-        var floorCall = InvocationExpression(
+        // The integer arm mirrors the float arm above: ONE invocation, each operand spliced once,
+        // the zero guard inside the helper (#1226, the #1216 shape).
+        //
+        // What this replaces spliced `right` TWICE — once into `right == 0 ? throw ... : ...` and
+        // once into the division — so `7 // divisor()` called `divisor()` twice where CPython calls
+        // it once. Note the values were correct both times, which is why no behavioral fixture
+        // caught it; the defect is only visible with a side-effecting operand or by counting
+        // occurrences in the emitted C#.
+        //
+        // It also computed `(int)Math.Floor((double)left / right)`, which loses precision above 2^53
+        // and saturates at the int.MinValue / -1 boundary (returning int.MaxValue — a silently wrong
+        // value). Builtins.FloorDiv computes in integer arithmetic and raises OverflowError there.
+        // Overload selection is C#'s: int operands pick FloorDiv(int, int), long operands the
+        // long overload, so a long quotient is no longer truncated to int by an unconditional cast.
+        return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                MakeGlobalQualifiedName("System", "Math"),
-                IdentifierName("Floor")))
-            .AddArgumentListArguments(Argument(castToDouble));
-
-        // Cast to int (pragmatic .NET-first approach)
-        var floorDivExpr = CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), floorCall);
-
-        var throwExpr = ThrowExpression(
-            ObjectCreationExpression(ParseQualifiedTypeName("global::Sharpy.ZeroDivisionError"))
-                .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
-                        Literal("integer division or modulo by zero")))))));
-
-        // right == 0 ? throw new ZeroDivisionError(...) : floorDivExpr
-        return ParenthesizedExpression(
-            ConditionalExpression(
-                BinaryExpression(SyntaxKind.EqualsExpression, right,
-                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
-                throwExpr,
-                floorDivExpr));
+                MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                IdentifierName("FloorDiv")))
+            .AddArgumentListArguments(
+                Argument(left),
+                Argument(right));
     }
 
     /// <summary>
