@@ -75,9 +75,11 @@ public sealed class LspEditSessionTraceHarness : IAsyncLifetime
         await _client.DidOpenAsync(uri, EditedSource(0));
 
         // The open triggers its own publish; consume it so the first timed sample belongs to an
-        // edit rather than to document open.
-        await _client.WaitForNotificationAsync("textDocument/publishDiagnostics",
+        // edit rather than to document open. It also carries the server's verdict on the input, so
+        // it doubles as this trace's proof that what follows times a complete analysis (#1224).
+        var openPublish = await _client.WaitForNotificationAsync("textDocument/publishDiagnostics",
             TimeSpan.FromSeconds(30));
+        AssertNoErrorsPublished(openPublish);
 
         var samples = new SCG.List<double>();
         for (var i = 1; i <= EditCount; i++)
@@ -138,6 +140,27 @@ public sealed class LspEditSessionTraceHarness : IAsyncLifetime
         => LspAnalysisLatencyBaselineHarness.ValidMediumFileSource()
             + string.Create(CultureInfo.InvariantCulture,
                 $"\n\ndef marker_{edit:D2}() -> int:\n    return {edit % 10}\n");
+
+    /// <summary>
+    /// Asserts a <c>textDocument/publishDiagnostics</c> notification reported no errors, so the
+    /// samples that follow time a full analysis rather than a truncated one (#1224). Warnings are
+    /// allowed — they do not stop the pipeline.
+    /// </summary>
+    private static void AssertNoErrorsPublished(JsonNode notification)
+    {
+        var diagnostics = notification["params"]?["diagnostics"]?.AsArray();
+        Assert.NotNull(diagnostics);
+
+        // LSP DiagnosticSeverity.Error == 1.
+        var errors = diagnostics!
+            .Where(d => d?["severity"]?.GetValue<int>() == 1)
+            .Select(d => d?["message"]?.GetValue<string>() ?? "<no message>")
+            .ToList();
+
+        Assert.True(errors.Count == 0,
+            "The traced document must analyze cleanly for these samples to time a full analysis, "
+            + "but the server published: " + string.Join(" | ", errors));
+    }
 
     /// <summary>Consumes any already-queued notifications of the given method.</summary>
     private async Task DrainAsync(string method)

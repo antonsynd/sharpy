@@ -179,17 +179,21 @@ public class CachedDiscoveryPerformanceTests : IDisposable
     [Fact]
     public void Compiler_WithModules_CompilationOverheadMinimal()
     {
+        // Executable statements at module level are SPY0340, so the previous spelling of this
+        // input (bare `x = 5` ...) failed compilation and both sides timed an early return under a
+        // label claiming to compare compilation cost (#1224).
         var code = @"
-x = 5
-y = 10
-z = x + y
+def main():
+    x = 5
+    y = 10
+    print(x + y)
 ";
         var sharpyCoreAssembly = SharpyCoreReference.Location;
 
         // Without modules
         var compilerNoModules = new Sharpy.Compiler.Compiler();
         var noModulesWatch = Stopwatch.StartNew();
-        compilerNoModules.Compile(code, "test.spy");
+        var noModulesResult = compilerNoModules.Compile(code, "test.spy");
         noModulesWatch.Stop();
 
         // With modules
@@ -199,8 +203,13 @@ z = x + y
         };
         var compilerWithModules = new Sharpy.Compiler.Compiler(options);
         var withModulesWatch = Stopwatch.StartNew();
-        compilerWithModules.Compile(code, "test.spy");
+        var withModulesResult = compilerWithModules.Compile(code, "test.spy");
         withModulesWatch.Stop();
+
+        // Both sides must have actually compiled, or the "overhead" below is the difference
+        // between two error paths (#1224).
+        AssertCompiled(noModulesResult, "without modules");
+        AssertCompiled(withModulesResult, "with modules");
 
         _output.WriteLine($"Without modules: {noModulesWatch.ElapsedMilliseconds}ms");
         _output.WriteLine($"With modules: {withModulesWatch.ElapsedMilliseconds}ms");
@@ -210,6 +219,19 @@ z = x + y
         var overhead = withModulesWatch.ElapsedMilliseconds - noModulesWatch.ElapsedMilliseconds;
         Assert.True(overhead < 200,
             $"Module loading overhead was {overhead}ms, expected < 200ms");
+    }
+
+    /// <summary>
+    /// Asserts a timed compilation actually succeeded. A <see cref="Sharpy.Compiler.Compiler"/>
+    /// returns a failed result rather than throwing, so without this an invalid input yields a
+    /// perfectly plausible timing of a pipeline prefix (#1224).
+    /// </summary>
+    private static void AssertCompiled(CompilationResult result, string label)
+    {
+        Assert.True(result.Success,
+            $"The {label} compilation was timed but did not succeed, so the measurement covers an "
+            + "early return: "
+            + string.Join(" | ", result.Diagnostics.GetErrors().Select(d => $"{d.Code} {d.Message}")));
     }
 
     [Fact]

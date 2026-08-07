@@ -201,6 +201,51 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
     }
 
     /// <summary>
+    /// The project-row counterpart of <see cref="AssertAnalysisOutcome"/>: pins that every file in
+    /// the initialized project actually analyzes, so a project row cannot time a parse failure and
+    /// an early return (#1224). Like its single-file sibling this asserts correctness only, never
+    /// timing.
+    /// </summary>
+    /// <remarks>
+    /// This has to be a <em>positive</em> assertion. Both project rows previously "guarded"
+    /// themselves with <c>Assert.Empty(affected)</c> and an <c>affectedFiles=0</c> log check —
+    /// which is exactly what a project that never analyzed also produces, so neither could tell a
+    /// working fast path from a broken input.
+    /// </remarks>
+    private static async Task AssertProjectAnalyzesCleanlyAsync(LanguageService service)
+    {
+        var uris = service.GetProjectFileUris();
+        Assert.NotEmpty(uris);
+
+        // Collected across the whole project rather than asserted per file: a parse failure in one
+        // member fails analysis for every member, and the first file iterated is usually not the
+        // one at fault — reporting only that one names an innocent file and prints no errors.
+        var failures = new SCG.List<string>();
+        foreach (var uri in uris)
+        {
+            var result = await service.GetAnalysisAsync(uri);
+            if (result is null)
+            {
+                failures.Add($"{IOPath.GetFileName(uri)}: no analysis was produced");
+                continue;
+            }
+
+            if (result.Success)
+                continue;
+
+            var errors = result.Diagnostics.Where(d => d.IsError).Select(d => $"{d.Code} {d.Message}").ToList();
+            failures.Add($"{IOPath.GetFileName(uri)}: "
+                + (errors.Count > 0
+                    ? string.Join(", ", errors)
+                    : "analysis failed with no diagnostics of its own (another project file did not parse)"));
+        }
+
+        Assert.True(failures.Count == 0,
+            "The project rows are supposed to time a complete analysis, but the project did not "
+            + "analyze cleanly:\n  " + string.Join("\n  ", failures));
+    }
+
+    /// <summary>
     /// Pins how far down the pipeline a row's input actually gets. This is a correctness assertion,
     /// never a timing one, so it keeps the harness's never-fail-on-machine-speed contract.
     /// </summary>
@@ -263,6 +308,7 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
         using var workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         var service = new LanguageService(workspace, _api, _serviceLogger);
         await service.InitializeProjectAsync(_tempDir);
+        await AssertProjectAnalyzesCleanlyAsync(service);
 
         var mainUri = new Uri(IOPath.Combine(_tempDir, "main.spy")).ToString();
 
@@ -293,6 +339,7 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
         using var workspace = new SharpyWorkspace(_api, NullLogger<SharpyWorkspace>.Instance);
         using var service = new LanguageService(workspace, _api, _serviceLogger);
         await service.InitializeProjectAsync(_tempDir);
+        await AssertProjectAnalyzesCleanlyAsync(service);
 
         // stats.spy is used deliberately: AstFingerprint conservatively reports BodyOnly for any
         // function body it cannot prove equal (e.g. list literals/comprehensions, which main.spy
@@ -490,9 +537,28 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
         return string.Join("\n", lines);
     }
 
+    /// <summary>
+    /// The 6-file project the two project rows are measured against: a small library plus an entry
+    /// point that imports all of it.
+    /// </summary>
+    /// <remarks>
+    /// <b>Until #1224 this project did not parse.</b> <c>shapes.spy</c> annotated assignments to
+    /// attributes (<c>self.a: Vec = a</c>) — the same SPY0107 spelling that made every single-file
+    /// number an underestimate (#1140). #1140 corrected the single-file input
+    /// (<see cref="MediumFileSource"/> → <see cref="ValidMediumFileSource"/>) but left this
+    /// constructor, in the same file, carrying the identical defect. <c>registry.spy</c> and
+    /// <c>main.spy</c> both import <c>Triangle</c>, so <c>ProjectCompiler.ParseAllFiles</c> returned
+    /// false and <c>AnalyzeProject</c> returned after phase 1 — meaning the recorded
+    /// "project full reanalysis" and "project no-change edit skip" rows in
+    /// <c>benchmarks/BASELINE.md</c> timed a parse and an early return, never a reanalysis.
+    /// <para>
+    /// Unlike the single-file case there is no published comparison table depending on the broken
+    /// spelling, so the input is corrected here rather than kept alongside a valid twin; the
+    /// superseded rows are marked in the baseline doc instead.
+    /// </para>
+    /// </remarks>
     private static (string Name, string Content)[] MediumProjectFiles()
     {
-        // 6 interdependent files: a small library plus an entry point that imports all of it.
         return new (string, string)[]
         {
             ("geometry.spy",
@@ -514,14 +580,21 @@ public sealed class LspAnalysisLatencyBaselineHarness : IDisposable
                 "    for v in values:\n" +
                 "        total = total + v\n" +
                 "    return total // len(values)\n"),
+            // Fields are declared at class level and assigned unannotated in __init__. Annotating
+            // the assignment instead (`self.a: Vec = a`) is SPY0107, which is how this file used to
+            // be spelled — see the remark on MediumProjectFiles.
             ("shapes.spy",
                 "from geometry import Vec\n" +
                 "\n" +
                 "class Triangle:\n" +
+                "    a: Vec\n" +
+                "    b: Vec\n" +
+                "    c: Vec\n" +
+                "\n" +
                 "    def __init__(self, a: Vec, b: Vec, c: Vec):\n" +
-                "        self.a: Vec = a\n" +
-                "        self.b: Vec = b\n" +
-                "        self.c: Vec = c\n" +
+                "        self.a = a\n" +
+                "        self.b = b\n" +
+                "        self.c = c\n" +
                 "\n" +
                 "    def perimeter_dot(self) -> int:\n" +
                 "        return self.a.dot(self.b) + self.b.dot(self.c)\n"),

@@ -29,6 +29,13 @@ public class CompilerBenchmarks
         _classesSource = File.ReadAllText(Path.Combine(corpusDir, "classes.spy"));
         _comprehensionsSource = File.ReadAllText(Path.Combine(corpusDir, "comprehensions.spy"));
         _largeFunctionsSource = File.ReadAllText(Path.Combine(corpusDir, "large_functions.spy"));
+
+        // Every row below times a full compile, so every input has to survive one (#1224).
+        CorpusGuard.AssertCompiles(_helloWorldSource, "hello_world.spy");
+        CorpusGuard.AssertCompiles(_fibonacciSource, "fibonacci.spy");
+        CorpusGuard.AssertCompiles(_classesSource, "classes.spy");
+        CorpusGuard.AssertCompiles(_comprehensionsSource, "comprehensions.spy");
+        CorpusGuard.AssertCompiles(_largeFunctionsSource, "large_functions.spy");
     }
 
     [Benchmark(Description = "Hello World (4 lines)")]
@@ -68,12 +75,27 @@ public class CompilerBenchmarks
 }
 
 /// <summary>
-/// Throughput benchmark measuring compilation of combined corpus.
+/// Throughput benchmark measuring compilation across the whole corpus.
 /// </summary>
+/// <remarks>
+/// This row used to concatenate every corpus file into one compilation unit. That input has never
+/// compiled (#1224): five of the six members define <c>main</c>, and <c>large_lexer_corpus.spy</c>
+/// redefines <c>is_prime</c>, <c>gcd</c>, <c>lcm</c>, <c>factorial</c> and <c>Point</c> — 9 SPY0204
+/// redefinition errors plus SPY0220/SPY0203 fallout. Compilation therefore stopped in semantic
+/// analysis, so every recorded "Combined Corpus" number timed a partial pipeline, and its
+/// "~160 lines" label described a 636-line input.
+/// <para>
+/// Concatenation cannot be repaired in place — the members are independent programs and collide by
+/// construction. The corpus is compiled member by member instead, which is what a throughput row
+/// over a corpus means anyway, keeps every input identical to the one its per-file row already
+/// uses, and makes the reported line count true.
+/// </para>
+/// </remarks>
 [MemoryDiagnoser]
 public class ThroughputBenchmarks
 {
-    private string _combinedSource = null!;
+    private string[] _sources = null!;
+    private string[] _names = null!;
     private int _lineCount;
 
     [GlobalSetup]
@@ -81,24 +103,33 @@ public class ThroughputBenchmarks
     {
         var corpusDir = Path.Combine(AppContext.BaseDirectory, "Corpus");
 
-        // Combine all corpus files for throughput measurement
-        var files = Directory.GetFiles(corpusDir, "*.spy");
-        var sources = files.Select(File.ReadAllText);
-        _combinedSource = string.Join("\n\n", sources);
-        _lineCount = _combinedSource.Split('\n').Length;
+        var files = Directory.GetFiles(corpusDir, "*.spy").OrderBy(f => f, StringComparer.Ordinal).ToArray();
+        _names = files.Select(Path.GetFileName).ToArray()!;
+        _sources = files.Select(File.ReadAllText).ToArray();
+        _lineCount = _sources.Sum(s => s.Split('\n').Length);
 
-        Console.WriteLine($"Combined corpus: {_lineCount} lines from {files.Length} files");
+        for (var i = 0; i < _sources.Length; i++)
+            CorpusGuard.AssertCompiles(_sources[i], _names[i]);
+
+        Console.WriteLine($"Corpus: {_lineCount} lines from {files.Length} files");
     }
 
-    [Benchmark(Description = "Combined Corpus (~160 lines)")]
-    public CompilationResult CompileCombinedCorpus()
+    [Benchmark(Description = "Whole Corpus (6 files, 632 lines)")]
+    public int CompileWholeCorpus()
     {
-        var compiler = new Compiler();
-        return compiler.Compile(_combinedSource, "combined.spy");
+        var compiled = 0;
+        for (var i = 0; i < _sources.Length; i++)
+        {
+            var compiler = new Compiler();
+            if (compiler.Compile(_sources[i], _names[i]).Success)
+                compiled++;
+        }
+
+        return compiled;
     }
 
     /// <summary>
-    /// Gets the total line count of the combined corpus.
+    /// Gets the total line count across the corpus.
     /// Useful for calculating lines/second throughput.
     /// </summary>
     public int LineCount => _lineCount;
@@ -117,6 +148,8 @@ public class MemoryBenchmarks
     {
         var corpusDir = Path.Combine(AppContext.BaseDirectory, "Corpus");
         _largeFunctionsSource = File.ReadAllText(Path.Combine(corpusDir, "large_functions.spy"));
+
+        CorpusGuard.AssertCompiles(_largeFunctionsSource, "large_functions.spy");
     }
 
     [Benchmark(Description = "Memory: Large Functions (73 lines)")]
@@ -153,6 +186,12 @@ public class LexerBenchmarks
         var sources = files.Select(File.ReadAllText);
         _combinedSource = string.Join("\n\n", sources);
         _combinedLineCount = _combinedSource.Split('\n').Length;
+
+        // Lexer rows need a complete token stream, nothing more: the concatenated corpus does not
+        // type-check (see ThroughputBenchmarks), but that is invisible to tokenization, so these
+        // two rows measure exactly what they claim (#1224).
+        CorpusGuard.AssertTokenizes(_largeCorpusSource, "large_lexer_corpus.spy");
+        CorpusGuard.AssertTokenizes(_combinedSource, "combined corpus");
 
         Console.WriteLine($"Large corpus: {_largeCorpusLineCount} lines");
         Console.WriteLine($"Combined corpus: {_combinedLineCount} lines");
@@ -209,6 +248,11 @@ public class ParserBenchmarks
         var classesSource = File.ReadAllText(Path.Combine(corpusDir, "classes.spy"));
         var lexer3 = new SharpyLexer(classesSource);
         _classesTokens = lexer3.TokenizeAll().ToList();
+
+        // These rows time a parse, so each token stream has to produce one (#1224).
+        CorpusGuard.AssertParses(_largeCorpusTokens, "large_lexer_corpus.spy");
+        CorpusGuard.AssertParses(_fibonacciTokens, "fibonacci.spy");
+        CorpusGuard.AssertParses(_classesTokens, "classes.spy");
 
         Console.WriteLine($"Large corpus tokens: {_largeCorpusTokens.Count}");
         Console.WriteLine($"Fibonacci tokens: {_fibonacciTokens.Count}");
