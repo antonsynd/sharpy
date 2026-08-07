@@ -1,0 +1,39 @@
+# Test (#1256): slicing a CLR array produces a Sharpy list, with Python slice semantics.
+#
+# Before this, an array-typed slice had no lowering at all: the emitted Slice.GetSlice call bound the
+# `string` overload and leaked CS1503 behind SPY0908, and the natural annotation
+# `xs: list[str] = <array slice>` drew SPY0220 because a slice of array[T] was typed array[T].
+#
+# The source is deliberately NOT sys.argv. argv became a list[str] in the same change, so it now
+# exercises LIST slicing — pinning the array path through argv would have quietly stopped testing it.
+# `to_char_array()` returns a genuine CLR char[].
+#
+# Expected values verified against CPython (list('hello') sliced identically); Sharpy prints a char
+# without quotes, which is the only difference.
+#
+# The annotated row uses a string[] rather than the char[] above, on purpose. A char[]'s elements map
+# to Sharpy `str` semantically but emit as C# `char`, so ANY position where one meets a `str`
+# annotation leaks CS0029 — plain `x: str = cs[0]` does it too, with no slice involved. That is a
+# separate pre-existing defect and pinning it here would make this fixture fail for a reason that has
+# nothing to do with array slicing.
+from system import Environment
+
+
+def main() -> None:
+    cs = "hello".to_char_array()
+    print(len(cs))
+
+    # Plain indexing is unchanged: still the element, not a slice.
+    print(cs[0])
+
+    print(cs[1:4])
+    print(cs[-2:])
+    print(cs[::-1])
+    print(cs[0:0])
+
+    # The annotation a user would naturally write is now well-typed by construction. Only
+    # invocation-independent facts are asserted, since the argument vector varies by host.
+    argv = Environment.get_command_line_args()
+    tail: list[str] = argv[1:]
+    print(len(tail) == len(argv) - 1)
+    print(len(argv[0:0]))

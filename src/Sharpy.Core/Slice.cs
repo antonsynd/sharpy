@@ -115,6 +115,51 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Slice a CLR array using Python slice semantics, producing a Sharpy list.
+        /// Used by generated code for array[start:stop:step] expressions (#1256).
+        /// </summary>
+        /// <remarks>
+        /// Returns <see cref="List{T}"/> rather than <c>T[]</c> deliberately. A slice is a new
+        /// sequence in Python, and Sharpy's own vocabulary for "a new sequence you can grow" is
+        /// <c>list</c> — an array result would hand back a fixed-size value that does not answer
+        /// <c>append</c>. Without this overload, <c>arr[1:]</c> bound the <c>string</c> overload and
+        /// leaked CS1503 behind SPY0908.
+        ///
+        /// The index arithmetic is the shared <see cref="Normalize"/>/
+        /// <see cref="NormalizeForNegativeStep"/> pair the list and string overloads use, so negative
+        /// indices, clamping and negative steps cannot drift between array and list slicing.
+        /// </remarks>
+        public static List<T> GetSlice<T>(
+            T[] array, int? start, int? end, int? step)
+        {
+            if (array is null)
+            {
+                throw new TypeError("'NoneType' object is not subscriptable");
+            }
+
+            var s = new Slice(start, end, step);
+            if (s.step == 0)
+                throw new ValueError("slice step cannot be zero");
+
+            var result = new List<T>();
+
+            if (s.step < 0)
+            {
+                var (nStart, nEnd) = NormalizeForNegativeStep(s.start, s.end, s.step, array.Length);
+                for (int i = nStart; i > nEnd; i += s.step)
+                    result.Add(array[i]);
+            }
+            else
+            {
+                var (nStart, nEnd) = Normalize(s.start, s.end, array.Length);
+                for (int i = nStart; i < nEnd; i += s.step)
+                    result.Add(array[i]);
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Slice a string using Python slice semantics.
         /// Used by generated code for str[start:stop:step] expressions.
         /// </summary>

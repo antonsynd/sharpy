@@ -541,6 +541,23 @@ internal partial class TypeChecker
         if (objType == SemanticType.Str)
             return SemanticType.Str;
 
+        // Slicing a CLR array returns a LIST, not an array (#1256). A slice is a new sequence, and
+        // Sharpy's word for a new growable sequence is `list` — the same answer `Slice.GetSlice`
+        // gives at runtime, so the static type and the emitted type agree. Keeping it `array[T]`
+        // was the "best effort" fallthrough below, and it produced two defects at once:
+        // `sys.argv[1:]` leaked CS1503 behind SPY0908 because no GetSlice overload took an array,
+        // and `xs: list[str] = sys.argv[1:]` drew SPY0220 for the annotation a user would naturally
+        // write. Plain INDEXING is untouched — `arr[0]` is still the element type.
+        if (objType is GenericType { Name: BuiltinNames.Array } arrayType
+            && arrayType.TypeArguments.Count == 1)
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.List,
+                TypeArguments = new List<SemanticType> { arrayType.TypeArguments[0] }
+            };
+        }
+
         // For other types, return the same type (best effort)
         return objType;
     }

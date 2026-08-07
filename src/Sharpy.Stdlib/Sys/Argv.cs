@@ -15,7 +15,13 @@ namespace Sharpy
         /// The list of command line arguments passed to the program.
         /// argv[0] is the program name (or empty string).
         /// </summary>
-        public static string[] Argv => (string[])_argv.Clone();
+        /// <remarks>
+        /// A <see cref="List{T}"/>, not <c>string[]</c> (#1256): the stdlib's public API surface uses
+        /// Sharpy collections, and a raw array made the natural spellings fail — <c>argv[1:]</c> had
+        /// no array-slice lowering and <c>xs: list[str] = sys.argv[1:]</c> drew a type mismatch. Still
+        /// a fresh copy per access, so mutating what a caller received cannot reach the backing store.
+        /// </remarks>
+        public static List<string> Argv => new List<string>(_argv);
 
         /// <summary>
         /// Exit the program with the given status code.
@@ -90,7 +96,12 @@ namespace Sharpy
         /// A list of strings that specifies the search path for modules.
         /// In Sharpy, this is simplified to just return the current directory.
         /// </summary>
-        public static string[] Path => (string[])_path.Clone();
+        /// <remarks>
+        /// Converted alongside <see cref="Argv"/> for the same reason (#1256). The two are the same
+        /// raw-array surface nine lines apart; fixing one and leaving the other is how a one-cell fix
+        /// gets mistaken for a class fix. Still a fresh copy per access.
+        /// </remarks>
+        public static List<string> Path => new List<string>(_path);
 
         /// <summary>
         /// An integer giving the maximum value a variable of type int can take.

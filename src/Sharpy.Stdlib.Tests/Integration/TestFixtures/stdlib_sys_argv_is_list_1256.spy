@@ -1,0 +1,32 @@
+# Test (#1256): sys.argv and sys.path surface as list[str], not raw string[].
+#
+# The stdlib API rule is that public surfaces use Sharpy collections; the raw array also made
+# `for a in sys.argv[1:]` an SPY0908 leak. Both properties are pinned because they are the same
+# violation nine lines apart in the same file — fixing one and leaving the other is how a one-cell
+# fix gets mistaken for a class fix.
+#
+# Assertions are invocation-independent: a fixture runs with no extra arguments, so argv[1:] is
+# empty, but argv itself always has at least the program name.
+import sys
+
+
+def main() -> None:
+    args: list[str] = sys.argv
+    print(len(args) >= 1)
+
+    # The motivating spelling: iterating a slice of argv.
+    rest: list[str] = sys.argv[1:]
+    print(len(rest))
+    for a in rest:
+        print(a)
+
+    # A list, so list operations are available on it.
+    rest.append("added")
+    print(rest)
+
+    path: list[str] = sys.path
+    print(len(path) >= 1)
+
+    # Still a fresh copy per access: mutating what we received cannot reach the backing store.
+    sys.argv.append("mutated")
+    print(len(sys.argv) == len(args))
