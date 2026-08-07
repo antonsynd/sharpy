@@ -109,6 +109,20 @@ ln -sf "dotnet-serialized-${SLOT}.log" "${LOG_DIR}/dotnet-serialized-latest.log"
 dotnet "$@" 2>&1 | tee "$LOG_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 
+# A `test` run that produced NO results but exited 0 is the worst false green available
+# here (#1273): `test --no-build` against absent or stale binaries finds no test assemblies,
+# reports nothing, and succeeds. It reads as a pass. So does a --filter that matches nothing.
+# Every real run prints a "Total:" summary line per assembly; if none appeared, fail loudly
+# rather than letting zero verified tests be mistaken for a green suite.
+if [ "$1" = "test" ] && [ "$EXIT_CODE" -eq 0 ] && ! grep -q "Total:" "$LOG_FILE"; then
+    echo "ERROR: 'dotnet test' exited 0 but produced NO test results." >&2
+    echo "Zero tests ran. This is not a pass. Common causes:" >&2
+    echo "  * --no-build against binaries that were never built (a prior build failed)" >&2
+    echo "  * a --filter that matches nothing" >&2
+    echo "Full output: $LOG_FILE" >&2
+    EXIT_CODE=3
+fi
+
 cleanup
 trap - EXIT
 exit $EXIT_CODE
