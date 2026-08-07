@@ -50,7 +50,10 @@ internal class IncrementalCompilationCache
     // v17: Added TypeParameters round-trip for FunctionSymbol/TypeSymbol so generic exports stay generic (#1142)
     // v18: ModuleSymbol exports round-trip as one ModuleExports unit; the types-only view is now
     //      derived from every export, so v17 caches record fewer type entries than a fresh compile (#1145)
-    internal const int CurrentSchemaVersion = 18;
+    // v19: GenericType round-trips ClrOriginTypeName, so a formal mapped from CLR metadata keeps its
+    //      provenance across a warm build; without the bump a v18 cache would restore provenance-less
+    //      formals and silently revert the #1260/#1252 widening
+    internal const int CurrentSchemaVersion = 19;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

@@ -211,6 +211,31 @@ public sealed record GenericType : SemanticType
     public List<SemanticType> TypeArguments { get; init; } = new();
     public TypeSymbol? GenericDefinition { get; init; }
 
+    /// <summary>
+    /// The full name of the CLR generic definition this type was MAPPED FROM, when it was produced by
+    /// <see cref="Discovery.ClrTypeBridge"/> rather than written in Sharpy source — e.g.
+    /// <c>System.Collections.Generic.IEnumerable`1</c> for the <c>list[int]</c> that a CLR
+    /// <c>IEnumerable&lt;int&gt;</c> formal becomes. Null for every type spelled in Sharpy.
+    ///
+    /// <para>
+    /// The bridge's collapse is deliberately lossy — <c>List&lt;T&gt;</c>, <c>IList&lt;T&gt;</c>,
+    /// <c>IReadOnlyList&lt;T&gt;</c> and <c>IEnumerable&lt;T&gt;</c> all become <c>list[T]</c>, and its
+    /// own comment admits it. Provenance is what lets a later question be answered against the CLR type
+    /// the user's code actually meets: a CLR <c>List[int]</c> actual satisfies such a formal exactly
+    /// when .NET says it does, and nothing else is widened (#1260, #1252). A <c>list[int]</c> the user
+    /// WROTE carries no origin, which is what keeps Sharpy-native parameters strict.
+    /// </para>
+    ///
+    /// <para>
+    /// DELIBERATELY not part of <see cref="Equals(GenericType?)"/> or <see cref="GetHashCode"/>. A
+    /// mapped <c>list[int]</c> and a written <c>list[int]</c> are the same SHARPY type — that is the
+    /// whole point of the mapping — and splitting them would fracture every cache, substitution and
+    /// dictionary keyed on <c>SemanticType</c>. Assignability reads this field; identity must not. Do
+    /// not "complete" the equality by adding it.
+    /// </para>
+    /// </summary>
+    public string? ClrOriginTypeName { get; init; }
+
     public override string GetDisplayName()
     {
         var args = string.Join(", ", TypeArguments.Select(t => t.GetDisplayName()));
@@ -252,7 +277,11 @@ public sealed record GenericType : SemanticType
     }
 
     // Override Equals and GetHashCode to compare TypeArguments by content
-    // This improves cache effectiveness in operator validation
+    // This improves cache effectiveness in operator validation.
+    //
+    // ClrOriginTypeName is deliberately absent from both — see its own remarks. Because equality here
+    // is user-defined rather than compiler-synthesized, adding an init-only property does NOT change
+    // equality or hashing; that omission is the intended behavior, not an oversight.
     public bool Equals(GenericType? other)
     {
         if (other is null)

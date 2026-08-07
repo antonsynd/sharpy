@@ -269,7 +269,34 @@ internal class ClrTypeBridge
         return SemanticType.Object;
     }
 
+    /// <summary>
+    /// Maps a closed CLR generic to its Sharpy form, stamping the result with the CLR generic
+    /// definition it came from (<see cref="GenericType.ClrOriginTypeName"/>).
+    ///
+    /// <para>
+    /// The stamp is applied HERE, to whatever <see cref="MapGenericTypeCore"/> returns, rather than
+    /// inside each arm. Six arms collapse a CLR type to a Sharpy collection —
+    /// <c>List/IList/Sharpy.List</c>, <c>Dictionary/IDictionary/Sharpy.Dict</c>,
+    /// <c>HashSet/ISet/Sharpy.Set</c>, <c>IReadOnlyList/IReadOnlyCollection</c>,
+    /// <c>IReadOnlyDictionary</c> and <c>IEnumerable</c> — and stamping one and not its siblings is the
+    /// parallel-site defect this provenance exists to close (#1145, #1260). Wrapping the whole switch
+    /// makes the sweep exhaustive by construction: a future arm is stamped whether or not its author
+    /// knows provenance exists.
+    /// </para>
+    /// </summary>
     private SemanticType MapGenericType(Type clrType)
+    {
+        var mapped = MapGenericTypeCore(clrType);
+
+        // Only GenericType can carry provenance, and only a name-collapsing mapping needs it: the
+        // arms that produce a distinct shape (TupleType, FunctionType, TaskType, Optional, Result)
+        // lose no CLR identity, and `object` means the bridge already gave up.
+        return mapped is GenericType generic
+            ? generic with { ClrOriginTypeName = clrType.GetGenericTypeDefinition().FullName }
+            : mapped;
+    }
+
+    private SemanticType MapGenericTypeCore(Type clrType)
     {
         var genericDef = clrType.GetGenericTypeDefinition();
         var typeArgs = clrType.GetGenericArguments();

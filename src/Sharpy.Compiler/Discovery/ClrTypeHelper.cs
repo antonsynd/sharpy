@@ -24,6 +24,10 @@ internal static class ClrTypeHelper
     // Caches (CLR type, Sharpy member name) -> original CLR property name.
     private static readonly ConcurrentDictionary<(Type, string), string?> _clrPropertyNameCache = new();
 
+    // Caches (CLR type, CLR generic definition full name) -> that definition within the type's
+    // supertype closure, for provenance-scoped assignability (#1260).
+    private static readonly ConcurrentDictionary<(Type, string), Type?> _originDefinitionCache = new();
+
     /// <summary>
     /// Resolves the original CLR method name on <paramref name="clrType"/> whose reverse-mangled
     /// Sharpy form equals <paramref name="memberName"/> (e.g. <c>is_os_platform</c> ->
@@ -336,6 +340,113 @@ internal static class ClrTypeHelper
         {
             return openDef;
         }
+    }
+
+    /// <summary>
+    /// Whether <paramref name="sourceClr"/> satisfies a formal that the bridge mapped from a CLR
+    /// generic — answered by .NET itself, so the accepted set is exactly the set of calls C# binds.
+    ///
+    /// <para>
+    /// The question this exists to answer: a CLR <c>IEnumerable&lt;int&gt;</c> parameter is SPELLED
+    /// <c>list[int]</c> after <see cref="ClrTypeBridge"/> maps it, and comparing that spelling against a
+    /// CLR <c>List&lt;int&gt;</c> actual by semantic identity refuses a call .NET binds natively
+    /// (#1260). Rather than teach assignability a table of CLR sequence relationships — a second,
+    /// weaker copy of .NET's rules, and the #1145 hazard — the formal remembers the CLR definition it
+    /// came from and reflection answers.
+    /// </para>
+    ///
+    /// <para>
+    /// The open definition is recovered from <paramref name="sourceClr"/>'s own supertype closure
+    /// rather than resolved from the stored name, so no assembly loading or name lookup is involved and
+    /// a provenance string that survived a symbol-cache round-trip needs nothing rehydrated. A source
+    /// that does not implement the origin at all simply has no matching definition, which is the
+    /// correct <c>false</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// Returns false for a formal with no provenance — every type written in Sharpy source. That is the
+    /// scope guard: a user's <c>def f(xs: list[int])</c> stays strict, so no hidden copy or aliasing
+    /// surprise can be introduced by this rule.
+    /// </para>
+    /// </summary>
+    /// <param name="formal">The mapped formal; only its provenance and type arguments are read.</param>
+    /// <param name="sourceClr">The actual argument's resolved CLR type.</param>
+    /// <param name="resolveClrType">
+    /// The caller's <c>SemanticType</c> -> CLR resolution (the TypeChecker's <c>TryGetClrType</c>), so
+    /// this helper performs reflection but no semantic resolution.
+    /// </param>
+    internal static bool ClrOriginIsSatisfiedBy(
+        GenericType formal, Type sourceClr, Func<SemanticType, Type?> resolveClrType)
+    {
+        if (formal.ClrOriginTypeName is not { Length: > 0 } originName)
+            return false;
+
+        var openDefinition = FindGenericDefinitionInClosure(sourceClr, originName);
+        if (openDefinition == null
+            || openDefinition.GetGenericArguments().Length != formal.TypeArguments.Count)
+        {
+            return false;
+        }
+
+        var clrArgs = new Type[formal.TypeArguments.Count];
+        for (int i = 0; i < clrArgs.Length; i++)
+        {
+            var arg = resolveClrType(formal.TypeArguments[i]);
+            if (arg == null)
+                return false;
+            clrArgs[i] = arg;
+        }
+
+        try
+        {
+            // IsAssignableFrom, not argument-by-argument equality, so declared CLR variance is honored:
+            // List<string> satisfies IEnumerable<object> because IEnumerable<out T> says it does.
+            return openDefinition.MakeGenericType(clrArgs).IsAssignableFrom(sourceClr);
+        }
+        catch (ArgumentException)
+        {
+            // Constraint violation — the origin cannot be constructed at these arguments, so nothing
+            // could bind it either.
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The open generic definition named <paramref name="definitionFullName"/> within
+    /// <paramref name="type"/>'s own supertype closure: the type itself, its base chain, and every
+    /// interface it implements. Null when the type has no such supertype.
+    ///
+    /// <para>
+    /// Cached because the caller sits on assignability's failure path, which the checker takes often;
+    /// the closure of a CLR type never changes, so the answer is stable for the process.
+    /// </para>
+    /// </summary>
+    private static Type? FindGenericDefinitionInClosure(Type type, string definitionFullName)
+        => _originDefinitionCache.GetOrAdd(
+            (type, definitionFullName),
+            key => FindGenericDefinitionInClosureUncached(key.Item1, key.Item2));
+
+    private static Type? FindGenericDefinitionInClosureUncached(Type type, string definitionFullName)
+    {
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            if (current.IsGenericType
+                && current.GetGenericTypeDefinition().FullName == definitionFullName)
+            {
+                return current.GetGenericTypeDefinition();
+            }
+        }
+
+        foreach (var implemented in type.GetInterfaces())
+        {
+            if (implemented.IsGenericType
+                && implemented.GetGenericTypeDefinition().FullName == definitionFullName)
+            {
+                return implemented.GetGenericTypeDefinition();
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

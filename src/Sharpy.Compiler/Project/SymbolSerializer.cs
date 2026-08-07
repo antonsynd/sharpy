@@ -692,6 +692,25 @@ internal static class SymbolSerializer
 
 
     /// <summary>
+    /// Splits a serialized generic type's pre-bracket segment into its Sharpy name and, when the type
+    /// was mapped from CLR metadata, the <c>ClrOriginTypeName</c> that follows an <c>@</c> (#1260).
+    /// A segment with no <c>@</c> is a name with no provenance — the pre-provenance format, so old
+    /// caches parse unchanged even though the schema bump means they are not read.
+    /// </summary>
+    private static string SplitGenericName(string segment, out string? clrOriginTypeName)
+    {
+        var at = segment.IndexOf('@', StringComparison.Ordinal);
+        if (at < 0)
+        {
+            clrOriginTypeName = null;
+            return segment;
+        }
+
+        clrOriginTypeName = segment[(at + 1)..];
+        return segment[..at];
+    }
+
+    /// <summary>
     /// Parses a comma-separated list of type IDs, handling nested brackets.
     /// </summary>
     private static List<SemanticType> ParseTypeArguments(string argsStr)
@@ -1000,16 +1019,36 @@ internal static class SymbolSerializer
                 bt => bt.Name,
                 value => ResolveBuiltinType(value));
 
+            // Format: name[args], with `name@ClrOriginTypeName[args]` when the type was mapped from CLR
+            // metadata (#1260). The origin travels because a warm incremental build reads a cached
+            // formal without re-running the bridge, and a formal that lost its provenance silently
+            // reverts to the strict comparison — the #1252 shape would start declining again with no
+            // diagnostic to explain why. `@` cannot occur in a Sharpy generic name or a CLR type's
+            // FullName, so splitting the pre-bracket segment on it is unambiguous.
             Register<GenericType>("generic",
-                gt => $"{gt.Name}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]",
+                gt => gt.ClrOriginTypeName is { Length: > 0 } origin
+                    ? $"{gt.Name}@{origin}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]"
+                    : $"{gt.Name}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]",
                 value =>
                 {
                     var bracketIndex = value.IndexOf('[', StringComparison.Ordinal);
                     if (bracketIndex < 0)
-                        return new GenericType { Name = value, TypeArguments = new List<SemanticType>() };
-                    var name = value[..bracketIndex];
+                    {
+                        return new GenericType
+                        {
+                            Name = SplitGenericName(value, out var bareOrigin),
+                            ClrOriginTypeName = bareOrigin,
+                            TypeArguments = new List<SemanticType>()
+                        };
+                    }
+                    var name = SplitGenericName(value[..bracketIndex], out var origin);
                     var argsStr = value[(bracketIndex + 1)..^1];
-                    return new GenericType { Name = name, TypeArguments = ParseTypeArguments(argsStr) };
+                    return new GenericType
+                    {
+                        Name = name,
+                        ClrOriginTypeName = origin,
+                        TypeArguments = ParseTypeArguments(argsStr)
+                    };
                 });
 
             Register<UserDefinedType>("user",
