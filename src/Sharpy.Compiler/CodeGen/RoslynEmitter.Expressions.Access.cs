@@ -1305,6 +1305,14 @@ internal partial class RoslynEmitter
         // For reversed(): if the argument type has __reversed__, cast to IReverseEnumerable<T>
         // to disambiguate C# overload resolution between Reversed<T>(IEnumerable<T>) and
         // Reversed<T>(IReverseEnumerable<T>).
+        //
+        // This is a fact about the GENERATED code, not about Sharpy's type system. A class with both
+        // __iter__ and __reversed__ implements both interfaces, they are unrelated, so neither
+        // conversion is better and C# reports CS0121. #1242 predicted the cast would become removable
+        // once IReverseEnumerable<T> stopped degrading to `object` in the CLR-to-semantic mapping;
+        // that prediction was wrong, and it was checked rather than assumed — deleting this block with
+        // the mapping fixed still gives CS0121 (behind SPY0908) on builtins/reversed_user_class_both.
+        // No mapping change can affect C# overload resolution, so the cast stays.
         if (name == BuiltinNames.Reversed && typeArg != null && call.Arguments.Length > 0)
         {
             var argType2 = GetExpressionSemanticType(call.Arguments[0]);

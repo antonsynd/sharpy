@@ -49,14 +49,21 @@ public class CoreGenericTypeMappingConformanceTests
         ["FrozenSet"] = "Registered builtin type; construction path never consults the CLR return mapping (#1210).",
         ["FrozenDict"] = "Registered builtin type; has no static factory, so no CLR return reaches the mapping (#1210).",
 
-        // A protocol interface, never a return type — grep confirms its only appearances are the
-        // `__reversed__` contract a user class implements and the PARAMETER of
-        // Builtins.Reversed<T>(IReverseEnumerable<T>). Its degradation is therefore latent rather
-        // than reachable through a mapped return. Found by this guard during #1210 and filed as
-        // #1242; the emitter already carries an explicit cast at the reversed() call site to
-        // disambiguate the two Reversed overloads, which is the workaround this degradation makes
-        // necessary — #1242 tracks checking whether that cast can go once the mapping is fixed.
-        ["IReverseEnumerable"] = "Protocol interface: parameter/implement-only, never a mapped CLR return (#1242).",
+        // IReverseEnumerable's entry was DRAINED by #1242: MapGenericType now maps Sharpy.Core's own
+        // generic interfaces to a real GenericType with GenericDefinition set, so it no longer
+        // degrades and the stale-entry test below would fail if the entry were kept.
+        //
+        // The investigation that entry promised, recorded here because its conclusion is the opposite
+        // of what #1242 predicted: the explicit cast the emitter writes at reversed() call sites is
+        // NOT a consequence of this degradation and did not become removable. It breaks a genuine
+        // C#-level ambiguity (CS0121) between Builtins.Reversed<T>(IEnumerable<T>) and
+        // Reversed<T>(IReverseEnumerable<T>) when a user class implements both — a fact about the
+        // GENERATED code, which no CLR-to-semantic mapping change can affect. Verified by deleting
+        // the cast and observing CS0121; see the comment at that call site.
+        //
+        // ISized and IBoolConvertible are non-generic, so they never reach this guard, which only
+        // enumerates generic definitions. That is the answer #1242 asked for: not "they are fine",
+        // but "this guard cannot speak to them".
     };
 
     [Fact]

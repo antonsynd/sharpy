@@ -561,6 +561,27 @@ internal class ClrTypeBridge
             };
         }
 
+        // A generic interface Sharpy.Core owns, with no arm of its own above. Mapping it to `object`
+        // is a silent degradation: nothing fails until a user calls a member on the result, which is
+        // how #1210 surfaced with FrozenSet. `IReverseEnumerable<T>` — the `__reversed__` protocol
+        // contract — was the one such interface left, and it kept the CoreGenericTypeMapping guard's
+        // last allowlist entry alive (#1242).
+        //
+        // Scoped to Sharpy.Core's own interfaces rather than made a general fallback: mapping every
+        // unknown generic to a synthesized symbol would quietly change how a large set of BCL types
+        // are typed, which is a much larger decision than this one. GenericDefinition carries the CLR
+        // definition, so the closed type stays constructible for operator and overload resolution —
+        // the same shape the NdArray arm above uses.
+        if (genericDef is { IsInterface: true, Namespace: "Sharpy" })
+        {
+            return new GenericType
+            {
+                Name = ClrNameHelper.StripArity(genericDef.Name),
+                TypeArguments = typeArgs.Select(MapClrTypeToSemanticType).ToList(),
+                GenericDefinition = GetOrCreateInterfaceSymbol(genericDef)
+            };
+        }
+
         // Unknown generic type - fallback to object
         return SemanticType.Object;
     }
